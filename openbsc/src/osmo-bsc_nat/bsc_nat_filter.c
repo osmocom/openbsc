@@ -290,7 +290,7 @@ static int _cr_check_pag_resp(struct bsc_connection *bsc,
 
 static int _dt_check_id_resp(struct bsc_connection *bsc,
 			     uint8_t *data, unsigned int length,
-			     struct sccp_connections *con,
+			     struct nat_sccp_connection *con,
 			     struct bsc_nat_reject_cause *cause)
 {
 	char mi_string[GSM48_MI_SIZE];
@@ -404,7 +404,7 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 }
 
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
-		struct sccp_connections *con, struct bsc_nat_parsed *parsed,
+		struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
 		struct bsc_nat_reject_cause *cause)
 {
 	uint32_t len;

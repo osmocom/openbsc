@@ -68,7 +68,7 @@ static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 
 static int forward_sccp(struct bsc_nat *nat, struct msgb *msg)
 {
-	struct sccp_connections *con;
+	struct nat_sccp_connection *con;
 	struct bsc_nat_parsed *parsed;
 
 
@@ -255,7 +255,7 @@ int bsc_ussd_init(struct bsc_nat *nat)
 			 ntohl(addr.s_addr), 5001, 0, ussd_listen_cb, nat);
 }
 
-static int forward_ussd_simple(struct sccp_connections *con, struct msgb *input)
+static int forward_ussd_simple(struct nat_sccp_connection *con, struct msgb *input)
 {
 	struct msgb *copy;
 	struct bsc_nat_ussd_con *ussd;
@@ -279,7 +279,7 @@ static int forward_ussd_simple(struct sccp_connections *con, struct msgb *input)
 	return 0;
 }
 
-static int forward_ussd(struct sccp_connections *con, const struct ussd_request *req,
+static int forward_ussd(struct nat_sccp_connection *con, const struct ussd_request *req,
 			struct msgb *input)
 {
 	struct msgb *msg, *copy;
@@ -323,7 +323,7 @@ static int forward_ussd(struct sccp_connections *con, const struct ussd_request 
 	return 0;
 }
 
-int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
+int bsc_check_ussd(struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
 		   struct msgb *msg)
 {
 	uint32_t len;

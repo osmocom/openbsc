@@ -305,8 +305,8 @@ static void test_contrack()
 {
 	struct bsc_nat *nat;
 	struct bsc_connection *con;
-	struct sccp_connections *con_found;
-	struct sccp_connections *rc_con;
+	struct nat_sccp_connection *con_found;
+	struct nat_sccp_connection *rc_con;
 	struct bsc_nat_parsed *parsed;
 	struct msgb *msg;
 
@@ -457,7 +457,7 @@ static void test_mgcp_allocations(void)
 #if 0
 	struct bsc_connection *bsc;
 	struct bsc_nat *nat;
-	struct sccp_connections con;
+	struct nat_sccp_connection con;
 	int i, j, multiplex;
 
 	printf("Testing MGCP.\n");
@@ -501,7 +501,7 @@ static void test_mgcp_ass_tracking(void)
 {
 	struct bsc_connection *bsc;
 	struct bsc_nat *nat;
-	struct sccp_connections con;
+	struct nat_sccp_connection con;
 	struct bsc_nat_parsed *parsed;
 	struct msgb *msg;
 
@@ -581,7 +581,7 @@ static void test_mgcp_find(void)
 {
 	struct bsc_nat *nat;
 	struct bsc_connection *con;
-	struct sccp_connections *sccp_con;
+	struct nat_sccp_connection *sccp_con;
 
 	printf("Testing finding of a BSC Connection\n");
 
@@ -589,7 +589,7 @@ static void test_mgcp_find(void)
 	con = bsc_connection_alloc(nat);
 	llist_add(&con->list_entry, &nat->bsc_connections);
 
-	sccp_con = talloc_zero(con, struct sccp_connections);
+	sccp_con = talloc_zero(con, struct nat_sccp_connection);
 	sccp_con->msc_endp = 12;
 	sccp_con->bsc_endp = 12;
 	sccp_con->bsc = con;
@@ -832,7 +832,7 @@ static void test_dt_filter()
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
-	struct sccp_connections *con = talloc_zero(0, struct sccp_connections);
+	struct nat_sccp_connection *con = talloc_zero(0, struct nat_sccp_connection);
 
 	bsc->cfg = bsc_config_alloc(nat, "foo");
 	bsc_config_add_lac(bsc->cfg, 23);

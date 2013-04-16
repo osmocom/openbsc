@@ -62,7 +62,7 @@ struct bsc_nat_parsed {
  * be updated on new SCCP connections, connection confirm and reject,
  * and on the loss of the BSC connection.
  */
-struct sccp_connections {
+struct nat_sccp_connection {
 	struct llist_head list_entry;
 
 	struct bsc_connection *bsc;

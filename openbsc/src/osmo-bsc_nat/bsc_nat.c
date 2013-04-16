@@ -200,7 +200,7 @@ static void send_id_req(struct bsc_connection *bsc)
 	bsc_send_data(bsc, id_req, sizeof(id_req), IPAC_PROTO_IPACCESS);
 }
 
-static struct msgb *nat_create_rlsd(struct sccp_connections *conn)
+static struct msgb *nat_create_rlsd(struct nat_sccp_connection *conn)
 {
 	struct sccp_connection_released *rel;
 	struct msgb *msg;
@@ -221,7 +221,7 @@ static struct msgb *nat_create_rlsd(struct sccp_connections *conn)
 	return msg;
 }
 
-static void nat_send_rlsd_ussd(struct bsc_nat *nat, struct sccp_connections *conn)
+static void nat_send_rlsd_ussd(struct bsc_nat *nat, struct nat_sccp_connection *conn)
 {
 	struct msgb *msg;
 
@@ -235,7 +235,7 @@ static void nat_send_rlsd_ussd(struct bsc_nat *nat, struct sccp_connections *con
 	bsc_do_write(&nat->ussd_con->queue, msg, IPAC_PROTO_SCCP);
 }
 
-static void nat_send_rlsd_msc(struct sccp_connections *conn)
+static void nat_send_rlsd_msc(struct nat_sccp_connection *conn)
 {
 	struct msgb *msg;
 
@@ -247,7 +247,7 @@ static void nat_send_rlsd_msc(struct sccp_connections *conn)
 	queue_for_msc(conn->msc_con, msg);
 }
 
-static void nat_send_rlsd_bsc(struct sccp_connections *conn)
+static void nat_send_rlsd_bsc(struct nat_sccp_connection *conn)
 {
 	struct msgb *msg;
 	struct sccp_connection_released *rel;
@@ -268,7 +268,7 @@ static void nat_send_rlsd_bsc(struct sccp_connections *conn)
 	bsc_write(conn->bsc, msg, IPAC_PROTO_SCCP);
 }
 
-static struct msgb *nat_creat_clrc(struct sccp_connections *conn, uint8_t cause)
+static struct msgb *nat_creat_clrc(struct nat_sccp_connection *conn, uint8_t cause)
 {
 	struct msgb *msg;
 	struct msgb *sccp;
@@ -290,7 +290,7 @@ static struct msgb *nat_creat_clrc(struct sccp_connections *conn, uint8_t cause)
 	return sccp;
 }
 
-static int nat_send_clrc_bsc(struct sccp_connections *conn)
+static int nat_send_clrc_bsc(struct nat_sccp_connection *conn)
 {
 	struct msgb *sccp;
 
@@ -423,7 +423,7 @@ static void bsc_stat_reject(int filter, struct bsc_connection *bsc, int normal)
  *  2.1) Depending on the con type reject the service, or just close it
  */
 static void bsc_send_con_release(struct bsc_connection *bsc,
-		struct sccp_connections *con,
+		struct nat_sccp_connection *con,
 		struct bsc_nat_reject_cause *cause)
 {
 	struct msgb *rlsd;
@@ -496,7 +496,7 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 	 */
 	if (payload) {
 		struct msgb *cc, *udt, *clear, *rlsd;
-		struct sccp_connections *con;
+		struct nat_sccp_connection *con;
 		con = create_sccp_src_ref(bsc, parsed);
 		if (!con)
 			goto send_refuse;
@@ -612,7 +612,7 @@ static void bsc_nat_handle_paging(struct bsc_nat *nat, struct msgb *msg)
  * Update the auth status. This can be either a CIPHER MODE COMAMND or
  * a CM Serivce Accept. Maybe also LU Accept or such in the future.
  */
-static void update_con_authorize(struct sccp_connections *con,
+static void update_con_authorize(struct nat_sccp_connection *con,
 				 struct bsc_nat_parsed *parsed,
 				 struct msgb *msg)
 {
@@ -642,7 +642,7 @@ static void update_con_authorize(struct sccp_connections *con,
 
 static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *msg)
 {
-	struct sccp_connections *con = NULL;
+	struct nat_sccp_connection *con = NULL;
 	struct bsc_connection *bsc;
 	struct bsc_nat_parsed *parsed;
 	int proto;
@@ -862,7 +862,7 @@ static int ipaccess_msc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
  */
 void bsc_close_connection(struct bsc_connection *connection)
 {
-	struct sccp_connections *sccp_patch, *tmp;
+	struct nat_sccp_connection *sccp_patch, *tmp;
 	struct bsc_cmd_list *cmd_entry, *cmd_tmp;
 	struct rate_ctr *ctr = NULL;
 
@@ -912,7 +912,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 
 static void bsc_maybe_close(struct bsc_connection *bsc)
 {
-	struct sccp_connections *sccp;
+	struct nat_sccp_connection *sccp;
 	if (!bsc->nat->blocked)
 		return;
 
@@ -987,7 +987,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 	     bsc->write_queue.bfd.fd);
 }
 
-static void handle_con_stats(struct sccp_connections *con)
+static void handle_con_stats(struct nat_sccp_connection *con)
 {
 	struct rate_ctr_group *ctrg;
 	int id = bsc_conn_type_to_ctr(con);
@@ -1038,7 +1038,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	/* modify the SCCP entries */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
 		int filter;
-		struct sccp_connections *con;
+		struct nat_sccp_connection *con;
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_CR:
 			memset(&cause, 0, sizeof(cause));
@@ -1433,7 +1433,7 @@ static void sccp_close_unconfirmed(void *_data)
 {
 	int destroyed = 0;
 	struct bsc_connection *bsc, *bsc_tmp;
-	struct sccp_connections *conn, *tmp1;
+	struct nat_sccp_connection *conn, *tmp1;
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -1595,7 +1595,7 @@ int main(int argc, char **argv)
 /* Close all connections handed out to the USSD module */
 int bsc_close_ussd_connections(struct bsc_nat *nat)
 {
-	struct sccp_connections *con;
+	struct nat_sccp_connection *con;
 	llist_for_each_entry(con, &nat->sccp_connections, list_entry) {
 		if (con->con_local != NAT_CON_END_USSD)
 			continue;

@@ -108,7 +108,7 @@ static int bsc_init_endps_if_needed(struct bsc_connection *con)
 	return con->_endpoint_status == NULL;
 }
 
-static int bsc_assign_endpoint(struct bsc_connection *bsc, struct sccp_connections *con)
+static int bsc_assign_endpoint(struct bsc_connection *bsc, struct nat_sccp_connection *con)
 {
 	int multiplex;
 	int timeslot;
@@ -165,9 +165,9 @@ static uint16_t create_cic(int endpoint)
 	return (multiplex << 5) | (timeslot & 0x1f);
 }
 
-int bsc_mgcp_assign_patch(struct sccp_connections *con, struct msgb *msg)
+int bsc_mgcp_assign_patch(struct nat_sccp_connection *con, struct msgb *msg)
 {
-	struct sccp_connections *mcon;
+	struct nat_sccp_connection *mcon;
 	struct tlv_parsed tp;
 	uint16_t cic;
 	uint8_t timeslot;
@@ -299,7 +299,7 @@ static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint, int tra
 	bsc_write_mgcp(bsc, (uint8_t *) buf, len);
 }
 
-void bsc_mgcp_init(struct sccp_connections *con)
+void bsc_mgcp_init(struct nat_sccp_connection *con)
 {
 	con->msc_endp = -1;
 	con->bsc_endp = -1;
@@ -310,7 +310,7 @@ void bsc_mgcp_init(struct sccp_connections *con)
  * once the internal DLCX response arrives this can be combined with the
  * the BSC side and forwarded as a trap.
  */
-static void remember_pending_dlcx(struct sccp_connections *con, uint32_t transaction)
+static void remember_pending_dlcx(struct nat_sccp_connection *con, uint32_t transaction)
 {
 	struct bsc_nat_call_stats *stats;
 	struct bsc_connection *bsc = con->bsc;
@@ -366,7 +366,7 @@ static void remember_pending_dlcx(struct sccp_connections *con, uint32_t transac
 	llist_add_tail(&stats->entry, &bsc->pending_dlcx);
 }
 
-void bsc_mgcp_dlcx(struct sccp_connections *con)
+void bsc_mgcp_dlcx(struct nat_sccp_connection *con)
 {
 	/* send a DLCX down the stream */
 	if (con->bsc_endp != -1 && con->bsc->_endpoint_status) {
@@ -475,10 +475,10 @@ free_stat:
 }
 
 
-struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
+struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 {
-	struct sccp_connections *con = NULL;
-	struct sccp_connections *sccp;
+	struct nat_sccp_connection *con = NULL;
+	struct nat_sccp_connection *sccp;
 
 	llist_for_each_entry(sccp, &nat->sccp_connections, list_entry) {
 		if (sccp->msc_endp == -1)
@@ -501,7 +501,7 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 {
 	struct bsc_nat *nat;
 	struct bsc_endpoint *bsc_endp;
-	struct sccp_connections *sccp;
+	struct nat_sccp_connection *sccp;
 	struct mgcp_endpoint *mgcp_endp;
 	struct msgb *bsc_msg;
 
@@ -590,7 +590,7 @@ static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint
 
 	/* if a CRCX failed... send a DLCX down the stream */
 	if (bsc_endp->transaction_state == MGCP_ENDP_CRCX) {
-		struct sccp_connections *con;
+		struct nat_sccp_connection *con;
 		con = bsc_mgcp_find_con(bsc->nat, ENDPOINT_NUMBER(endp));
 		if (!con) {
 			LOGP(DMGCP, LOGL_ERROR,

@@ -178,7 +178,7 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
       SHOW_STR "Display information about SCCP\n"
       "All active connections\n")
 {
-	struct sccp_connections *con;
+	struct nat_sccp_connection *con;
 	vty_out(vty, "Listing all open SCCP connections%s", VTY_NEWLINE);
 
 	llist_for_each_entry(con, &_nat->sccp_connections, list_entry) {

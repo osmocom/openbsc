@@ -42,7 +42,7 @@ static int equal(struct sccp_source_reference *ref1, struct sccp_source_referenc
 /* check if we are using this ref for patched already */
 static int sccp_ref_is_free(struct sccp_source_reference *ref, struct bsc_nat *nat)
 {
-	struct sccp_connections *conn;
+	struct nat_sccp_connection *conn;
 
 	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
 		if (memcmp(ref, &conn->patched_ref, sizeof(*ref)) == 0)
@@ -82,10 +82,10 @@ static int assign_src_local_reference(struct sccp_source_reference *ref, struct 
 	return -1;
 }
 
-struct sccp_connections *create_sccp_src_ref(struct bsc_connection *bsc,
+struct nat_sccp_connection *create_sccp_src_ref(struct bsc_connection *bsc,
 					     struct bsc_nat_parsed *parsed)
 {
-	struct sccp_connections *conn;
+	struct nat_sccp_connection *conn;
 
 	/* Some commercial BSCs like to reassign there SRC ref */
 	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
@@ -111,7 +111,7 @@ struct sccp_connections *create_sccp_src_ref(struct bsc_connection *bsc,
 	}
 
 
-	conn = talloc_zero(bsc->nat, struct sccp_connections);
+	conn = talloc_zero(bsc->nat, struct nat_sccp_connection);
 	if (!conn) {
 		LOGP(DNAT, LOGL_ERROR, "Memory allocation failure.\n");
 		return NULL;
@@ -138,7 +138,7 @@ struct sccp_connections *create_sccp_src_ref(struct bsc_connection *bsc,
 	return conn;
 }
 
-int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *parsed)
+int update_sccp_src_ref(struct nat_sccp_connection *sccp, struct bsc_nat_parsed *parsed)
 {
 	if (!parsed->dest_local_ref || !parsed->src_local_ref) {
 		LOGP(DNAT, LOGL_ERROR, "CC MSG should contain both local and dest address.\n");
@@ -156,7 +156,7 @@ int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *pa
 
 void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
-	struct sccp_connections *conn;
+	struct nat_sccp_connection *conn;
 
 	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
 		if (memcmp(parsed->src_local_ref,
@@ -176,11 +176,11 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
  * an address that was assigned by the MUX, we need to update the
  * dest reference to the real network.
  */
-struct sccp_connections *patch_sccp_src_ref_to_bsc(struct msgb *msg,
+struct nat_sccp_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg,
 						   struct bsc_nat_parsed *parsed,
 						   struct bsc_nat *nat)
 {
-	struct sccp_connections *conn;
+	struct nat_sccp_connection *conn;
 
 	if (!parsed->dest_local_ref) {
 		LOGP(DNAT, LOGL_ERROR, "MSG should contain dest_local_ref.\n");
@@ -208,11 +208,11 @@ struct sccp_connections *patch_sccp_src_ref_to_bsc(struct msgb *msg,
  * in all other cases we need to work by the destination local
  * reference..
  */
-struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *msg,
+struct nat_sccp_connection *patch_sccp_src_ref_to_msc(struct msgb *msg,
 						   struct bsc_nat_parsed *parsed,
 						   struct bsc_connection *bsc)
 {
-	struct sccp_connections *conn;
+	struct nat_sccp_connection *conn;
 
 	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
 		if (conn->bsc != bsc)
@@ -235,10 +235,10 @@ struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *msg,
 	return NULL;
 }
 
-struct sccp_connections *bsc_nat_find_con_by_bsc(struct bsc_nat *nat,
+struct nat_sccp_connection *bsc_nat_find_con_by_bsc(struct bsc_nat *nat,
 						 struct sccp_source_reference *ref)
 {
-	struct sccp_connections *conn;
+	struct nat_sccp_connection *conn;
 
 	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
 		if (memcmp(ref, &conn->real_ref, sizeof(*ref)) == 0)

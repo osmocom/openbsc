@@ -271,7 +271,7 @@ int bsc_config_handles_lac(struct bsc_config *cfg, int lac_nr)
 	return 0;
 }
 
-void sccp_connection_destroy(struct sccp_connections *conn)
+void sccp_connection_destroy(struct nat_sccp_connection *conn)
 {
 	LOGP(DNAT, LOGL_DEBUG, "Destroy 0x%x <-> 0x%x mapping for con %p\n",
 	     sccp_src_ref_to_int(&conn->real_ref),
@@ -486,7 +486,7 @@ static const int con_to_ctr[] = {
 	[NAT_CON_TYPE_OTHER]		= BCFG_CTR_CON_OTHER,
 };
 
-int bsc_conn_type_to_ctr(struct sccp_connections *conn)
+int bsc_conn_type_to_ctr(struct nat_sccp_connection *conn)
 {
 	return con_to_ctr[conn->con_type];
 }

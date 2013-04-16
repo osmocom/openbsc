@@ -42,7 +42,7 @@
 #define PAGIN_GROUP_UNASSIGNED -1
 
 struct sccp_source_reference;
-struct sccp_connections;
+struct nat_sccp_connection;
 struct bsc_nat_parsed;
 struct bsc_nat;
 struct bsc_nat_ussd_con;
@@ -380,7 +380,7 @@ struct bsc_nat *bsc_nat_alloc(void);
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat);
 void bsc_nat_set_msc_ip(struct bsc_nat *bsc, const char *ip);
 
-void sccp_connection_destroy(struct sccp_connections *);
+void sccp_connection_destroy(struct nat_sccp_connection *);
 void bsc_close_connection(struct bsc_connection *);
 
 const char *bsc_con_type_to_string(int type);
@@ -404,31 +404,31 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 			struct bsc_nat_parsed *, int *con_type, char **imsi,
 			struct bsc_nat_reject_cause *cause);
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
-			struct sccp_connections *con, struct bsc_nat_parsed *parsed,
+			struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
 			struct bsc_nat_reject_cause *cause);
 
 /**
  * SCCP patching and handling
  */
-struct sccp_connections *create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parsed);
-int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *parsed);
+struct nat_sccp_connection *create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parsed);
+int update_sccp_src_ref(struct nat_sccp_connection *sccp, struct bsc_nat_parsed *parsed);
 void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed);
-struct sccp_connections *patch_sccp_src_ref_to_bsc(struct msgb *, struct bsc_nat_parsed *, struct bsc_nat *);
-struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat_parsed *, struct bsc_connection *);
-struct sccp_connections *bsc_nat_find_con_by_bsc(struct bsc_nat *, struct sccp_source_reference *);
+struct nat_sccp_connection *patch_sccp_src_ref_to_bsc(struct msgb *, struct bsc_nat_parsed *, struct bsc_nat *);
+struct nat_sccp_connection *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat_parsed *, struct bsc_connection *);
+struct nat_sccp_connection *bsc_nat_find_con_by_bsc(struct bsc_nat *, struct sccp_source_reference *);
 
 /**
  * MGCP/Audio handling
  */
 int bsc_mgcp_nr_multiplexes(int max_endpoints);
 int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int length);
-int bsc_mgcp_assign_patch(struct sccp_connections *, struct msgb *msg);
-void bsc_mgcp_init(struct sccp_connections *);
-void bsc_mgcp_dlcx(struct sccp_connections *);
+int bsc_mgcp_assign_patch(struct nat_sccp_connection *, struct msgb *msg);
+void bsc_mgcp_init(struct nat_sccp_connection *);
+void bsc_mgcp_dlcx(struct nat_sccp_connection *);
 void bsc_mgcp_free_endpoints(struct bsc_nat *nat);
 int bsc_mgcp_nat_init(struct bsc_nat *nat);
 
-struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
+struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
 struct msgb *bsc_mgcp_rewrite(char *input, int length, int endp, const char *ip, int port);
 void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
 
@@ -452,13 +452,13 @@ int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *imsi);
 
 int bsc_nat_msc_is_connected(struct bsc_nat *nat);
 
-int bsc_conn_type_to_ctr(struct sccp_connections *conn);
+int bsc_conn_type_to_ctr(struct nat_sccp_connection *conn);
 
 struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed, struct msgb *msg, uint32_t *len);
 
 /** USSD filtering */
 int bsc_ussd_init(struct bsc_nat *nat);
-int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
+int bsc_check_ussd(struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
 int bsc_close_ussd_connections(struct bsc_nat *nat);
 
 struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *, const char *imsi);
