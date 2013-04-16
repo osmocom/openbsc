@@ -1167,9 +1167,37 @@ void mgcp_format_stats(struct mgcp_endpoint *endp, char *msg, size_t size)
 				&expected, &ploss);
 	jitter = mgcp_state_calc_jitter(&endp->net_state);
 
-	snprintf(msg, size, "\r\nP: PS=%u, OS=%u, PR=%u, OR=%u, PL=%d, JI=%d",
+	snprintf(msg, size, "\r\nP: PS=%u, OS=%u, PR=%u, OR=%u, PL=%d, JI=%u",
 			endp->bts_end.packets, endp->bts_end.octets,
 			endp->net_end.packets, endp->net_end.octets,
 			ploss, jitter);
 	msg[size - 1] = '\0';
+}
+
+int mgcp_parse_stats(struct msgb *msg, uint32_t *ps, uint32_t *os,
+		uint32_t *pr, uint32_t *_or, int *loss, uint32_t *jitter)
+{
+	char *line, *save;
+	int rc;
+
+	/* initialize with bad values */
+	*ps = *os = *pr = *_or = *jitter = UINT_MAX;
+	*loss = INT_MAX;
+
+
+	line = strtok_r((char *) msg->l2h, "\r\n", &save);
+	if (!line)
+		return -1;
+
+	/* this can only parse the message that is created above... */
+	for_each_line(line, save) {
+		switch (line[0]) {
+		case 'P':
+			rc = sscanf(line, "P: PS=%u, OS=%u, PR=%u, OR=%u, PL=%d, JI=%u",
+					ps, os, pr, _or, loss, jitter);
+			return rc == 6 ? 0 : -1;
+		}
+	}
+
+	return -1;
 }

@@ -32,6 +32,7 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/statistics.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
+#include <osmocom/sccp/sccp_types.h>
 
 #include <regex.h>
 
@@ -111,6 +112,9 @@ struct bsc_connection {
 	int number_multiplexes;
 	int max_endpoints;
 	int last_endpoint;
+	int next_transaction;
+	uint32_t pending_dlcx_count;
+	struct llist_head pending_dlcx;
 
 	/* track the pending commands for this BSC */
 	struct llist_head cmd_pending;
@@ -270,6 +274,7 @@ struct bsc_nat {
 	struct mgcp_config *mgcp_cfg;
 	uint8_t mgcp_msg[4096];
 	int mgcp_length;
+	int mgcp_ipa;
 
 	/* msc things */
 	struct llist_head dests;
@@ -329,6 +334,33 @@ struct bsc_nat_ussd_con {
 	int authorized;
 
 	struct osmo_timer_list auth_timeout;
+};
+
+struct bsc_nat_call_stats {
+	struct llist_head entry;
+
+	struct sccp_source_reference remote_ref;
+	struct sccp_source_reference src_ref; /* as seen by the MSC */
+
+	/* mgcp options */
+	uint32_t ci;
+	int bts_rtp_port;
+	int net_rtp_port;
+	struct in_addr bts_addr;
+	struct in_addr net_addr;
+
+
+	/* as witnessed by the NAT */
+	uint32_t net_ps;
+	uint32_t net_os;
+	uint32_t bts_pr;
+	uint32_t bts_or;
+	uint32_t bts_expected;
+	uint32_t bts_jitter;
+	int      bts_loss;
+
+	uint32_t trans_id;
+	int msc_endpoint;
 };
 
 struct bsc_nat_reject_cause {
@@ -462,6 +494,9 @@ struct bsc_nat_barr_entry {
 
 int bsc_nat_barr_adapt(void *ctx, struct rb_root *rbtree, const struct osmo_config_list *);
 int bsc_nat_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu);
+
+void bsc_nat_send_mgcp_to_msc(struct bsc_nat *bsc_nat, struct msgb *msg);
+void bsc_nat_handle_mgcp(struct bsc_nat *bsc, struct msgb *msg);
 
 struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port);
 void bsc_nat_ctrl_del_pending(struct bsc_cmd_list *pending);

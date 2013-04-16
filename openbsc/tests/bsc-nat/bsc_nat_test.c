@@ -514,6 +514,7 @@ static void test_mgcp_ass_tracking(void)
 					       33);
 	nat->mgcp_cfg = mgcp_config_alloc();
 	nat->mgcp_cfg->trunk.number_endpoints = 64;
+	mgcp_endpoints_allocate(&nat->mgcp_cfg->trunk);
 
 	bsc = bsc_connection_alloc(nat);
 	bsc->cfg = bsc_config_alloc(nat, "foo");
@@ -1241,4 +1242,10 @@ int main(int argc, char **argv)
 
 	printf("Testing execution completed.\n");
 	return 0;
+}
+
+/* stub */
+void bsc_nat_send_mgcp_to_msc(struct bsc_nat *nat, struct msgb *msg)
+{
+	abort();
 }

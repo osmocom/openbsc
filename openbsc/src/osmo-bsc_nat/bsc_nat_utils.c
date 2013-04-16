@@ -132,6 +132,7 @@ struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)
 	con->nat = nat;
 	osmo_wqueue_init(&con->write_queue, 100);
 	INIT_LLIST_HEAD(&con->cmd_pending);
+	INIT_LLIST_HEAD(&con->pending_dlcx);
 	return con;
 }
 

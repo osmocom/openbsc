@@ -333,6 +333,12 @@ static void send_mgcp_reset(struct bsc_connection *bsc)
 	bsc_write_mgcp(bsc, mgcp_reset, sizeof mgcp_reset - 1);
 }
 
+void bsc_nat_send_mgcp_to_msc(struct bsc_nat *nat, struct msgb *msg)
+{
+	ipaccess_prepend_header(msg, IPAC_PROTO_MGCP_OLD);
+	queue_for_msc(nat->msc_con, msg);
+}
+
 /*
  * Below is the handling of messages coming
  * from the MSC and need to be forwarded to
@@ -820,8 +826,11 @@ static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 			initialize_msc_if_needed(msc_con);
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET)
 			send_id_get_response(msc_con);
-	} else if (hh->proto == IPAC_PROTO_SCCP)
+	} else if (hh->proto == IPAC_PROTO_SCCP) {
 		forward_sccp_to_bts(msc_con, msg);
+	} else if (hh->proto == IPAC_PROTO_MGCP_OLD) {
+		bsc_nat_handle_mgcp(nat, msg);
+	}
 
 	msgb_free(msg);
 	return 0;

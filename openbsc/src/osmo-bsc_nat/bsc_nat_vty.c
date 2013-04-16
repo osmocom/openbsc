@@ -143,6 +143,8 @@ static int config_write_nat(struct vty *vty)
 		write_acc_lst(vty, lst);
 	llist_for_each_entry(pgroup, &_nat->paging_groups, entry)
 		write_pgroup_lst(vty, pgroup);
+	if (_nat->mgcp_ipa)
+		vty_out(vty, " mgcp-through-msc-ipa%s", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -204,10 +206,11 @@ DEFUN(show_bsc, show_bsc_cmd, "show bsc connections",
 
 	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
 		getpeername(con->write_queue.bfd.fd, (struct sockaddr *) &sock, &len);
-		vty_out(vty, "BSC nr: %d auth: %d fd: %d peername: %s%s",
+		vty_out(vty, "BSC nr: %d auth: %d fd: %d peername: %s pending-stats: %u%s",
 			con->cfg ? con->cfg->nr : -1,
 			con->authenticated, con->write_queue.bfd.fd,
-			inet_ntoa(sock.sin_addr), VTY_NEWLINE);
+			inet_ntoa(sock.sin_addr), con->pending_dlcx_count,
+			VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
@@ -657,6 +660,20 @@ DEFUN(cfg_nat_ussd_local,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_mgcp_ipa,
+      cfg_nat_mgcp_ipa_cmd,
+      "mgcp-through-msc-ipa",
+      "This needs to be set at start. Handle MGCP messages through "
+      "the IPA protocol and not through the UDP socket.\n")
+{
+	if (_nat->mgcp_cfg->data)
+		vty_out(vty,
+			"%%the setting will not be applied right now.%s",
+			VTY_NEWLINE);
+	_nat->mgcp_ipa = 1;
+	return CMD_SUCCESS;
+}
+
 /* per BSC configuration */
 DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR",
       "BSC configuration\n" "Identifier of the BSC\n")
@@ -1086,6 +1103,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_ussd_query_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_token_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_local_cmd);
+	install_element(NAT_NODE, &cfg_nat_mgcp_ipa_cmd);
 
 	/* access-list */
 	install_element(NAT_NODE, &cfg_lst_imsi_allow_cmd);
