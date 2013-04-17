@@ -304,7 +304,6 @@ struct gsm_sms_addr {
 
 struct gsm_sms {
 	unsigned long long id;
-	struct gsm_subscriber *sender;
 	struct gsm_subscriber *receiver;
 	struct gsm_sms_addr src, dst;
 	enum gsm_sms_source_id source;

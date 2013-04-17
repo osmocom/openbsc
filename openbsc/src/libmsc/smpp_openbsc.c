@@ -133,7 +133,6 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	strncpy(sms->dst.addr, dest->extension, sizeof(sms->dst.addr)-1);
 
 	/* fill in the source address */
-	sms->sender = subscr_get_by_id(net, 1);
 	sms->src.ton = submit->source_addr_ton;
 	sms->src.npi = submit->source_addr_npi;
 	strncpy(sms->src.addr, (char *)submit->source_addr, sizeof(sms->src.addr)-1);
@@ -475,13 +474,13 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 		deliver.source_addr_npi = NPI_Land_Mobile_E212;
 		snprintf((char *)deliver.source_addr,
 			sizeof(deliver.source_addr), "%s",
-			sms->sender->imsi);
+			conn->subscr->imsi);
 	} else {
 		deliver.source_addr_ton = TON_Network_Specific;
 		deliver.source_addr_npi = NPI_ISDN_E163_E164;
 		snprintf((char *)deliver.source_addr,
 			 sizeof(deliver.source_addr), "%s",
-			 sms->sender->extension);
+			 conn->subscr->extension);
 	}
 
 	deliver.dest_addr_ton	= sms->dst.ton;
