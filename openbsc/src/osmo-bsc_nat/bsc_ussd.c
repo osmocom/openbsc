@@ -159,12 +159,13 @@ static void ussd_auth_con(struct tlv_parsed *tvp, struct bsc_nat_ussd_con *conn)
 
 	token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
  	len = TLVP_LEN(tvp, IPAC_IDTAG_UNITNAME);
-	if (strncmp(conn->nat->ussd_token, token, len) != 0) {
-		LOGP(DNAT, LOGL_ERROR, "Wrong USSD token by client: %d\n",
-			conn->queue.bfd.fd);
-		bsc_nat_ussd_destroy(conn);
-		return;
-	}
+
+	/* last byte should be a NULL */
+	if (strlen(conn->nat->ussd_token) != len - 1)
+		goto disconnect;
+	/* compare everything including the null byte */
+	if (memcmp(conn->nat->ussd_token, token, len) != 0)
+		goto disconnect;
 
 	/* it is authenticated now */
 	if (conn->nat->ussd_con && conn->nat->ussd_con != conn)
@@ -174,6 +175,12 @@ static void ussd_auth_con(struct tlv_parsed *tvp, struct bsc_nat_ussd_con *conn)
 	osmo_timer_del(&conn->auth_timeout);
 	conn->authorized = 1;
 	conn->nat->ussd_con = conn;
+	return;
+
+disconnect:
+	LOGP(DNAT, LOGL_ERROR, "Wrong USSD token by client: %d\n",
+		conn->queue.bfd.fd);
+	bsc_nat_ussd_destroy(conn);
 }
 
 static void ussd_start_auth(struct bsc_nat_ussd_con *conn)
