@@ -276,7 +276,7 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_bts_gprs_nsvc *nsvc;
 
-	if (nsd->bts->type != GSM_BTS_TYPE_NANOBTS)
+	if (!is_ipaccess_bts(nsd->bts))
 		return 0;
 
 	/* This event-driven BTS setup is currently only required on nanoBTS */
@@ -396,7 +396,7 @@ static int sw_activ_rep(struct msgb *mb)
 	if (!trx)
 		return -EINVAL;
 
-	if (trx->bts->type != GSM_BTS_TYPE_NANOBTS)
+	if (!is_ipaccess_bts(trx->bts))
 		return 0;
 
 	switch (foh->obj_class) {
