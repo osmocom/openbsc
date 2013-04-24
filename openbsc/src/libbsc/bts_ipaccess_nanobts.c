@@ -38,6 +38,8 @@
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/logging.h>
 
+extern struct gsm_network *bsc_gsmnet;
+
 static int bts_model_nanobts_start(struct gsm_network *net);
 static void bts_model_nanobts_e1line_bind_ops(struct e1inp_line *line);
 
@@ -457,13 +459,10 @@ static int bts_ipa_nm_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-struct gsm_network *ipaccess_gsmnet;
-
 static int bts_model_nanobts_start(struct gsm_network *net)
 {
 	osmo_signal_unregister_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
 	osmo_signal_register_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
-	ipaccess_gsmnet = net;
 	return 0;
 }
 
@@ -534,7 +533,7 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 	struct ipaccess_unit *dev = unit_data;
 	struct e1inp_sign_link *sign_link = NULL;
 
-	bts = find_bts_by_unitid(ipaccess_gsmnet, dev->site_id, dev->bts_id);
+	bts = find_bts_by_unitid(bsc_gsmnet, dev->site_id, dev->bts_id);
 	if (!bts) {
 		LOGP(DLINP, LOGL_ERROR, "Unable to find BTS configuration for "
 			" %u/%u/%u, disconnecting\n", dev->site_id,

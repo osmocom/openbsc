@@ -53,7 +53,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/abis/abis.h>
 
-static struct gsm_network *gsmnet;
+struct gsm_network *bsc_gsmnet;
 
 static int net_listen_testnr;
 static int restart;
@@ -980,11 +980,11 @@ int main(int argc, char **argv)
 	}
 	libosmo_abis_init(tall_ctx_config);
 
-	gsmnet = gsm_network_init(1, 1, NULL);
-	if (!gsmnet)
+	bsc_gsmnet = gsm_network_init(1, 1, NULL);
+	if (!bsc_gsmnet)
 		exit(1);
 
-	bts = gsm_bts_alloc_register(gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
+	bts = gsm_bts_alloc_register(bsc_gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
 				     HARDCODED_BSIC);
 	/* ip.access supports up to 4 chained TRX */
 	gsm_bts_trx_alloc(bts);
