@@ -439,7 +439,7 @@ static int sw_activ_rep(struct msgb *mb)
 }
 
 /* Callback function to be called every time we receive a signal from NM */
-int bts_ipa_nm_sig_cb(unsigned int subsys, unsigned int signal,
+static int bts_ipa_nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
 	if (subsys != SS_NM)
@@ -461,6 +461,7 @@ struct gsm_network *ipaccess_gsmnet;
 
 static int bts_model_nanobts_start(struct gsm_network *net)
 {
+	osmo_signal_unregister_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
 	osmo_signal_register_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
 	ipaccess_gsmnet = net;
 	return 0;
