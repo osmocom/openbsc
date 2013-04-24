@@ -457,9 +457,16 @@ int bts_ipa_nm_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-static struct gsm_network *ipaccess_gsmnet;
+struct gsm_network *ipaccess_gsmnet;
 
 static int bts_model_nanobts_start(struct gsm_network *net)
+{
+	osmo_signal_register_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
+	ipaccess_gsmnet = net;
+	return 0;
+}
+
+int bts_model_nanobts_init(void)
 {
 	bts_model_nanobts.features.data = &bts_model_nanobts._features_data[0];
 	bts_model_nanobts.features.data_len =
@@ -468,14 +475,6 @@ static int bts_model_nanobts_start(struct gsm_network *net)
 	gsm_btsmodel_set_feature(&bts_model_nanobts, BTS_FEAT_GPRS);
 	gsm_btsmodel_set_feature(&bts_model_nanobts, BTS_FEAT_EGPRS);
 
-	osmo_signal_register_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
-
-	ipaccess_gsmnet = net;
-	return 0;
-}
-
-int bts_model_nanobts_init(void)
-{
 	return gsm_bts_model_register(&bts_model_nanobts);
 }
 
