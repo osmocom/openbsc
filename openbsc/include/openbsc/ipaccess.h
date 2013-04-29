@@ -11,7 +11,8 @@ struct ipac_msgt_sccp_state {
 	uint8_t	dst_ref[3];
 	uint8_t trans_id;
 	uint8_t invoke_id;
-	char		imsi[GSM_IMSI_LENGTH];
+	char	imsi[GSM_IMSI_LENGTH];
+	uint8_t data[0];
 } __attribute__((packed));
 
 /*

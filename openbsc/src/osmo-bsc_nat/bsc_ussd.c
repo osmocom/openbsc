@@ -38,6 +38,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#define USSD_LAC_IE	0
+#define USSD_CI_IE	1
+
 static void ussd_auth_con(struct tlv_parsed *, struct bsc_nat_ussd_con *);
 
 static struct bsc_nat_ussd_con *bsc_nat_ussd_alloc(struct bsc_nat *nat)
@@ -292,6 +295,7 @@ static int forward_ussd(struct nat_sccp_connection *con, const struct ussd_reque
 	struct msgb *msg, *copy;
 	struct ipac_msgt_sccp_state *state;
 	struct bsc_nat_ussd_con *ussd;
+	uint16_t lac, ci;
 
 	if (!con->bsc->nat->ussd_con)
 		return -1;
@@ -322,6 +326,12 @@ static int forward_ussd(struct nat_sccp_connection *con, const struct ussd_reque
 	memcpy(&state->src_ref, &con->remote_ref, sizeof(con->remote_ref));
 	memcpy(&state->dst_ref, &con->real_ref, sizeof(con->real_ref));
 	memcpy(state->imsi, con->imsi, strlen(con->imsi));
+
+	/* add additional tag/values */
+	lac = htons(con->lac);
+	ci = htons(con->ci);
+	msgb_tv_fixed_put(msg, USSD_LAC_IE, sizeof(lac), &lac);
+	msgb_tv_fixed_put(msg, USSD_CI_IE, sizeof(ci), &ci);
 
 	ussd = con->bsc->nat->ussd_con;
 	bsc_do_write(&ussd->queue, msg, IPAC_PROTO_IPACCESS);
