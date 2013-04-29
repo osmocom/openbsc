@@ -38,6 +38,8 @@
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/logging.h>
 
+extern struct gsm_network *bsc_gsmnet;
+
 static int bts_model_nanobts_start(struct gsm_network *net);
 static void bts_model_nanobts_e1line_bind_ops(struct e1inp_line *line);
 
@@ -276,7 +278,7 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_bts_gprs_nsvc *nsvc;
 
-	if (nsd->bts->type != GSM_BTS_TYPE_NANOBTS)
+	if (!is_ipaccess_bts(nsd->bts))
 		return 0;
 
 	/* This event-driven BTS setup is currently only required on nanoBTS */
@@ -396,7 +398,7 @@ static int sw_activ_rep(struct msgb *mb)
 	if (!trx)
 		return -EINVAL;
 
-	if (trx->bts->type != GSM_BTS_TYPE_NANOBTS)
+	if (!is_ipaccess_bts(trx->bts))
 		return 0;
 
 	switch (foh->obj_class) {
@@ -439,7 +441,7 @@ static int sw_activ_rep(struct msgb *mb)
 }
 
 /* Callback function to be called every time we receive a signal from NM */
-int bts_ipa_nm_sig_cb(unsigned int subsys, unsigned int signal,
+static int bts_ipa_nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
 	if (subsys != SS_NM)
@@ -457,9 +459,14 @@ int bts_ipa_nm_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-static struct gsm_network *ipaccess_gsmnet;
-
 static int bts_model_nanobts_start(struct gsm_network *net)
+{
+	osmo_signal_unregister_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
+	return 0;
+}
+
+int bts_model_nanobts_init(void)
 {
 	bts_model_nanobts.features.data = &bts_model_nanobts._features_data[0];
 	bts_model_nanobts.features.data_len =
@@ -468,14 +475,6 @@ static int bts_model_nanobts_start(struct gsm_network *net)
 	gsm_btsmodel_set_feature(&bts_model_nanobts, BTS_FEAT_GPRS);
 	gsm_btsmodel_set_feature(&bts_model_nanobts, BTS_FEAT_EGPRS);
 
-	osmo_signal_register_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
-
-	ipaccess_gsmnet = net;
-	return 0;
-}
-
-int bts_model_nanobts_init(void)
-{
 	return gsm_bts_model_register(&bts_model_nanobts);
 }
 
@@ -534,7 +533,7 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 	struct ipaccess_unit *dev = unit_data;
 	struct e1inp_sign_link *sign_link = NULL;
 
-	bts = find_bts_by_unitid(ipaccess_gsmnet, dev->site_id, dev->bts_id);
+	bts = find_bts_by_unitid(bsc_gsmnet, dev->site_id, dev->bts_id);
 	if (!bts) {
 		LOGP(DLINP, LOGL_ERROR, "Unable to find BTS configuration for "
 			" %u/%u/%u, disconnecting\n", dev->site_id,

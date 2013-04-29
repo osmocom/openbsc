@@ -38,34 +38,22 @@
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/logging.h>
 
-extern int bts_ipa_nm_sig_cb(unsigned int subsys, unsigned int signal,
-			     void *handler_data, void *signal_data);
-
 extern struct gsm_bts_model bts_model_nanobts;
 
 static struct gsm_bts_model model_sysmobts;
 
-static int bts_model_sysmobts_start(struct gsm_network *net)
+int bts_model_sysmobts_init(void)
 {
+	model_sysmobts = bts_model_nanobts;
+	model_sysmobts.name = "sysmobts";
+	model_sysmobts.type = GSM_BTS_TYPE_OSMO_SYSMO;
+
 	model_sysmobts.features.data = &model_sysmobts._features_data[0];
 	model_sysmobts.features.data_len =
 				sizeof(model_sysmobts._features_data);
 
 	gsm_btsmodel_set_feature(&model_sysmobts, BTS_FEAT_GPRS);
 	gsm_btsmodel_set_feature(&model_sysmobts, BTS_FEAT_EGPRS);
-
-	osmo_signal_register_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
-
-	return 0;
-}
-
-int bts_model_sysmobts_init(void)
-{
-	memcpy(&model_sysmobts, &bts_model_nanobts, sizeof(model_sysmobts));
-
-	model_sysmobts.name = "sysmobts";
-	model_sysmobts.start = bts_model_sysmobts_start;
-	model_sysmobts.type = GSM_BTS_TYPE_OSMO_SYSMO;
 
 	return gsm_bts_model_register(&model_sysmobts);
 }
