@@ -40,6 +40,7 @@
 #include "smpp_smsc.h"
 
 #include <openbsc/debug.h>
+#include <openbsc/gsm_data.h>
 
 /*! \brief Ugly wrapper. libsmpp34 should do this itself! */
 #define SMPP34_UNPACK(rc, type, str, data, len)		\
@@ -718,7 +719,7 @@ static int smpp_handle_submit(struct osmo_esme *esme, struct msgb *msg)
 }
 
 /*! \brief one complete SMPP PDU from the ESME has been received */
-static int smpp_pdu_rx(struct osmo_esme *esme, struct msgb *msg)
+static int smpp_pdu_rx(struct osmo_esme *esme, struct msgb *msg __uses)
 {
 	uint32_t cmd_id = smpp_msgb_cmdid(msg);
 	int rc = 0;
@@ -822,6 +823,7 @@ static int esme_link_read_cb(struct osmo_fd *ofd)
 
 		if (esme->read_idx >= esme->read_len) {
 			rc = smpp_pdu_rx(esme, esme->read_msg);
+			msgb_free(esme->read_msg);
 			esme->read_msg = NULL;
 			esme->read_idx = 0;
 			esme->read_len = 0;

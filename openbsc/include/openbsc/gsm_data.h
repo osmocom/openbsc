@@ -8,6 +8,9 @@
 
 #include <openbsc/rest_octets.h>
 
+/** annotations for msgb ownership */
+#define __uses
+
 #define OBSC_NM_W_ACK_CB(__msgb) (__msgb)->cb[3]
 
 struct mncc_sock_state;
