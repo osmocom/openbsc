@@ -30,6 +30,7 @@
 #include <arpa/inet.h>
 
 #include <osmocom/core/linuxlist.h>
+#include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/silent_call.h>
@@ -925,6 +926,35 @@ DEFUN_DEPRECATED(log_level_sms, log_level_sms_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(allocate_all_channels, allocate_all_channels_cmd,
+      "allocate-all-channels", "Allocate everything for testing\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_bts *bts;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		/* crazy loop... */
+		while (true) {
+			int rc;
+			struct gsm_lchan *lchan;
+
+			lchan = lchan_alloc(bts, GSM_LCHAN_SDCCH, 1);
+			if (!lchan)
+				break;
+
+			rc = rsl_chan_activate_lchan(lchan, 0, 0, 0);
+			if (rc < 0) {
+				lchan_free(lchan);
+				break;
+			}
+
+			rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
+		}
+	}
+
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	osmo_signal_register_handler(SS_SCALL, scall_cbfn, NULL);
@@ -957,6 +987,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &smsqueue_clear_cmd);
 	install_element(ENABLE_NODE, &smsqueue_fail_cmd);
 	install_element(ENABLE_NODE, &subscriber_send_pending_sms_cmd);
+	install_element(ENABLE_NODE, &allocate_all_channels_cmd);
 
 #if 0
 	install_element(CONFIG_NODE, &cfg_mncc_int_cmd);
