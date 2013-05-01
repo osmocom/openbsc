@@ -196,10 +196,11 @@ static void lchan_act_tmr_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	LOGP(DRSL, LOGL_ERROR, "%s Timeout during activation!\n",
+	LOGP(DRSL, LOGL_ERROR,
+		"%s Timeout during activation. Marked as broken.\n",
 		gsm_lchan_name(lchan));
 
-	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	rsl_lchan_set_state(lchan, LCHAN_S_BROKEN);
 	lchan_free(lchan);
 }
 
@@ -207,10 +208,12 @@ static void lchan_deact_tmr_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	LOGP(DRSL, LOGL_ERROR, "%s Timeout during deactivation!\n",
+	LOGP(DRSL, LOGL_ERROR,
+		"%s Timeout during deactivation! Marked as broken.\n",
 		gsm_lchan_name(lchan));
 
-	do_lchan_free(lchan);
+	rsl_lchan_set_state(lchan, LCHAN_S_BROKEN);
+	lchan_free(lchan);
 }
 
 
@@ -737,6 +740,13 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 	osmo_timer_del(&lchan->act_timer);
 	osmo_timer_del(&lchan->T3111);
 
+	if (lchan->state == LCHAN_S_BROKEN) {
+		/* we are leaving this channel broken for now */
+		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK for broken channel.\n",
+			gsm_lchan_name(lchan));
+		return 0;
+	}
+
 	if (lchan->state != LCHAN_S_REL_REQ && lchan->state != LCHAN_S_REL_ERR)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 			gsm_lchan_name(lchan),
@@ -907,6 +917,12 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 
 	osmo_timer_del(&msg->lchan->act_timer);
 
+	if (msg->lchan->state == LCHAN_S_BROKEN) {
+		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK for broken channel.\n",
+			gsm_lchan_name(msg->lchan));
+		return 0;
+	}
+
 	if (msg->lchan->state != LCHAN_S_ACT_REQ)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK, but state %s\n",
 			gsm_lchan_name(msg->lchan),
@@ -932,6 +948,13 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 	struct tlv_parsed tp;
 
 	osmo_timer_del(&msg->lchan->act_timer);
+
+	if (msg->lchan->state == LCHAN_S_BROKEN) {
+		LOGP(DRSL, LOGL_ERROR,
+			"%s CHANNEL ACTIVATE NACK for broken channel.\n",
+			gsm_lchan_name(msg->lchan));
+		return -1;
+	}
 
 	LOGP(DRSL, LOGL_ERROR, "%s CHANNEL ACTIVATE NACK ",
 		gsm_lchan_name(msg->lchan));
