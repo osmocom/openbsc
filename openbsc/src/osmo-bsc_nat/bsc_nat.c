@@ -716,15 +716,18 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 			LOGP(DNAT, LOGL_ERROR, "Unknown connection for msg type: 0x%x from the MSC.\n", parsed->sccp_type);
 	}
 
-	talloc_free(parsed);
-	if (!con)
+	if (!con) {
+		talloc_free(parsed);
 		return -1;
+	}
 	if (!con->bsc->authenticated) {
+		talloc_free(parsed);
 		LOGP(DNAT, LOGL_ERROR, "Selected BSC not authenticated.\n");
 		return -1;
 	}
 
 	update_con_authorize(con, parsed, msg);
+	talloc_free(parsed);
 
 	bsc_send_data(con->bsc, msg->l2h, msgb_l2len(msg), proto);
 	return 0;
