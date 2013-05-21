@@ -862,7 +862,7 @@ static struct msgb *handle_noti_req(struct mgcp_parse_data *p)
 {
 	int res = 0;
 	char *line;
-	char tone = 0;
+	char tone = CHAR_MAX;
 
 	if (p->found != 0)
 		return create_err_response(NULL, 400, "RQNT", p->trans);
