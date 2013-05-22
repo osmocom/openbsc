@@ -1,6 +1,11 @@
-openbsc (0.13.0) UNRELEASED; urgency=low
+openbsc (0.13.0+z5) UNRELEASED; urgency=low
 
   * New upstream tag and additional patches.
+  * Add experimental osmux patches
+  * Add number rewrite support
+  * Add debug output for the rewrite support
+  * show ussd-connections, rebased osmux
+  * New mux patches 
 
  -- Holger Hans Peter Freyther <holger@freyther.de>  Tue, 16 Apr 2013 09:23:18 +0200
 
