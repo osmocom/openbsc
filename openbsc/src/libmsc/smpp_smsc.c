@@ -535,7 +535,7 @@ static int smpp_handle_bind_trx(struct osmo_esme *esme, struct msgb *msg)
 		return rc;
 	}
 
-	INIT_RESP(BIND_TRANSMITTER_RESP, &bind_r, &bind);
+	INIT_RESP(BIND_TRANSCEIVER_RESP, &bind_r, &bind);
 
 	LOGP(DSMPP, LOGL_INFO, "[%s] Rx BIND Trx (Version %02x)\n",
 		bind.system_id, bind.interface_version);
