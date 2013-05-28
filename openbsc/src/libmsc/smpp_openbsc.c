@@ -78,6 +78,9 @@ static struct tlv_t *find_tlv(struct tlv_t *head, uint16_t tag)
 	return NULL;
 }
 
+#define MODE_7BIT	7
+#define MODE_8BIT	8
+
 /*! \brief convert from submit_sm_t to gsm_sms */
 static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 			 const struct submit_sm_t *submit)
@@ -87,6 +90,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	struct tlv_t *t;
 	const uint8_t *sms_msg;
 	unsigned int sms_msg_len;
+	int mode;
 
 	dest = subscr_by_dst(net, submit->dest_addr_npi,
 			     submit->dest_addr_ton,
@@ -141,8 +145,34 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	}
 
 	if (submit->data_coding == 0x00 ||	/* SMSC default */
-	    submit->data_coding == 0x01 ||	/* GSM default alphabet */
-	    (submit->data_coding & 0xFC) == 0xF0) { /* 03.38 DCS default */
+	    submit->data_coding == 0x01) {	/* GSM default alphabet */
+		sms->data_coding_scheme = GSM338_DCS_1111_7BIT;
+		mode = MODE_7BIT;
+	} else if ((submit->data_coding & 0xFC) == 0xF0) { /* 03.38 DCS default */
+		/* pass DCS 1:1 through from SMPP to GSM */
+		sms->data_coding_scheme = submit->data_coding;
+		mode = MODE_7BIT;
+	} else if (submit->data_coding == 0x02 ||
+		   submit->data_coding == 0x04) {
+		/* 8-bit binary */
+		sms->data_coding_scheme = GSM338_DCS_1111_8BIT_DATA;
+		mode = MODE_8BIT;
+	} else if ((submit->data_coding & 0xFC) == 0xF4) { /* 03.38 DCS 8bit */
+		/* pass DCS 1:1 through from SMPP to GSM */
+		sms->data_coding_scheme = submit->data_coding;
+		mode = MODE_8BIT;
+	} else if (submit->data_coding == 0x80) {
+		/* UCS-2 */
+		sms->data_coding_scheme = (2 << 2);
+		mode = MODE_8BIT;
+	} else {
+		sms_free(sms);
+		LOGP(DLSMS, LOGL_ERROR, "SMPP Unknown Data Coding 0x%02x\n",
+			submit->data_coding);
+		return ESME_RUNKNOWNERR;
+	}
+
+	if (mode ==  MODE_7BIT) {
 		uint8_t ud_len = 0, padbits = 0;
 		sms->data_coding_scheme = GSM338_DCS_1111_7BIT;
 		if (sms->ud_hdr_ind) {
@@ -158,23 +188,9 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 				   sms_msg_len, padbits);
 		sms->user_data_len = (ud_len*8 + padbits)/7 + sms_msg_len;/* SEPTETS */
 		/* FIXME: sms->text */
-	} else if (submit->data_coding == 0x02 ||
-		   submit->data_coding == 0x04 ||
-		   (submit->data_coding & 0xFC) == 0xF4) { /* 03.38 DCS 8bit */
-		/* 8-bit binary */
-		sms->data_coding_scheme = GSM338_DCS_1111_8BIT_DATA;
+	} else {
 		memcpy(sms->user_data, sms_msg, sms_msg_len);
 		sms->user_data_len = sms_msg_len;
-	} else if (submit->data_coding == 0x80) {
-		/* UCS-2 */
-		sms->data_coding_scheme = (2 << 2);
-		memcpy(sms->user_data, sms_msg, submit->sm_length);
-		sms->user_data_len = sms_msg_len;
-	} else {
-		sms_free(sms);
-		LOGP(DLSMS, LOGL_ERROR, "SMPP Unknown Data Coding 0x%02x\n",
-			submit->data_coding);
-		return ESME_RUNKNOWNERR;
 	}
 
 	*psms = sms;
