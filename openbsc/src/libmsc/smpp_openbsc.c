@@ -172,7 +172,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 		return ESME_RUNKNOWNERR;
 	}
 
-	if (mode ==  MODE_7BIT) {
+	if (mode == MODE_7BIT) {
 		uint8_t ud_len = 0, padbits = 0;
 		sms->data_coding_scheme = GSM338_DCS_1111_7BIT;
 		if (sms->ud_hdr_ind) {
@@ -429,6 +429,7 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 {
 	struct deliver_sm_t deliver;
 	uint8_t dcs;
+	int mode;
 
 	memset(&deliver, 0, sizeof(deliver));
 	deliver.command_length	= 0;
@@ -465,14 +466,38 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 	deliver.priority_flag	= 0;
 	deliver.registered_delivery = 0;
 
+	/* Figure out SMPP DCS from TP-DCS */
 	dcs = sms->data_coding_scheme;
-	if (dcs == GSM338_DCS_1111_7BIT ||
-	   ((dcs & 0xE0000000) == 0 && (dcs & 0xC) == 0)) {
+	if ((dcs & 0xFC) == GSM338_DCS_1111_7BIT) {
+		deliver.data_coding = 0x01;
+		mode = MODE_7BIT;
+	} else if ((dcs & 0xE0) == 0 && (dcs & 0xC) == 0) {
+		deliver.data_coding = 0x01;
+		mode = MODE_7BIT;
+	} else if ((dcs & 0xFC) == GSM338_DCS_1111_8BIT_DATA) {
+		deliver.data_coding = 0x02;
+		mode = MODE_8BIT;
+	} else if ((dcs & 0xE0) == 0 && (dcs & 0xC) == 4) {
+		deliver.data_coding = 0x02;
+		mode = MODE_8BIT;
+	} else if ((dcs & 0xE0) == 0 && (dcs & 0xC) == 8) {
+		deliver.data_coding = 0x08;	/* UCS-2 */
+		mode = MODE_8BIT;
+	} else {
+		LOGP(DLSMS, LOGL_ERROR, "SMPP MO Unknown Data Coding 0x%02x\n",
+			dcs);
+		return -1;
+	}
+
+	/* Transparently pass on DCS via SMPP if requested */
+	if (esme->acl->dcs_transparent)
+		deliver.data_coding = dcs;
+
+	if (mode == MODE_7BIT) {
 		uint8_t *dst = deliver.short_message;
 
 		/* SMPP has this strange notion of putting 7bit SMS in
 		 * an octet-aligned mode */
-		deliver.data_coding = 0x01;
 		if (sms->ud_hdr_ind) {
 			/* length (bytes) of UDH inside UD */
 			uint8_t udh_len = sms->user_data[0] + 1;
@@ -484,13 +509,9 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 		}
 		/* add decoded text */
 		deliver.sm_length += gsm_7bit_expand((char *)dst, sms->user_data, sms->user_data_len, sms->ud_hdr_ind);
-	} else if (dcs == GSM338_DCS_1111_8BIT_DATA ||
-		   ((dcs & 0xE0000000) == 0 && (dcs & 0xC) == 4)) {
-		deliver.data_coding = 0x02;
+	} else {
 		deliver.sm_length = sms->user_data_len;
 		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
-	} else if ((dcs & 0xE0000000) == 0 && (dcs & 0xC) == 8) {
-		deliver.data_coding = 0x08;	/* UCS-2 */
 		deliver.sm_length = sms->user_data_len;
 		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
 	}

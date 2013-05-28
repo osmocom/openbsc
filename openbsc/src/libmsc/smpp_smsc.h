@@ -61,6 +61,7 @@ struct osmo_smpp_acl {
 	int default_route;
 	int deliver_src_imsi;
 	int osmocom_ext;
+	int dcs_transparent;
 	struct llist_head route_list;
 };
 
