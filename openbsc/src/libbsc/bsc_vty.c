@@ -284,6 +284,14 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	net_dump_nmstate(vty, &bts->mo.nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
 	net_dump_nmstate(vty, &bts->site_mgr.mo.nm_state);
+	vty_out(vty, "  GPRS NSE: ");
+	net_dump_nmstate(vty, &bts->gprs.nse.mo.nm_state);
+	vty_out(vty, "  GPRS CELL: ");
+	net_dump_nmstate(vty, &bts->gprs.cell.mo.nm_state);
+	vty_out(vty, "  GPRS NSVC0: ");
+	net_dump_nmstate(vty, &bts->gprs.nsvc[0].mo.nm_state);
+	vty_out(vty, "  GPRS NSVC1: ");
+	net_dump_nmstate(vty, &bts->gprs.nsvc[1].mo.nm_state);
 	vty_out(vty, "  Paging: %u pending requests, %u free slots%s",
 		paging_pending_requests_nr(bts),
 		bts->paging.available_slots, VTY_NEWLINE);
