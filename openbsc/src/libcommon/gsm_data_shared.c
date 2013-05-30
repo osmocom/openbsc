@@ -263,12 +263,20 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 
 #ifdef ROLE_BSC
 	/* default set of handover parameters */
+	bts->handover.min_rxlev = -100;
 	bts->handover.win_rxlev_avg = 10;
-	bts->handover.win_rxqual_avg = 1;
 	bts->handover.win_rxlev_avg_neigh = 10;
-	bts->handover.pwr_interval = 6;
 	bts->handover.pwr_hysteresis = 3;
+	bts->handover.pwr_interval = 6;
+	bts->handover.afs_rxlev_improve = 0;
+	bts->handover.min_rxqual = 5;
+	bts->handover.win_rxqual_avg = 10;
+	bts->handover.afs_rxqual_improve = 0;
 	bts->handover.max_distance = 9999;
+	bts->handover.max_unsync_ho = 9999;
+	bts->handover.penalty_max_dist = 300;
+	bts->handover.penalty_ho_fail = 60;
+	bts->handover.penalty_as_fail = 60;
 #endif
 
 	return bts;

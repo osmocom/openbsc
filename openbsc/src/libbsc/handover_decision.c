@@ -201,7 +201,7 @@ static int attempt_handover(struct gsm_meas_rep *mr)
 
 	LOGP(DHO, LOGL_INFO, "%s: Cell on ARFCN %u is better: ",
 		gsm_ts_name(mr->lchan->ts), best_cell->arfcn);
-	if (!bts->handover.active) {
+	if (!bts->handover.ho_active) {
 		LOGPC(DHO, LOGL_INFO, "Skipping, Handover disabled\n");
 		return 0;
 	}

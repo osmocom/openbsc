@@ -721,22 +721,51 @@ struct gsm_bts {
 	struct amr_multirate_conf mr_full;
 	struct amr_multirate_conf mr_half;
 
-	/* handover config */
+	/* handover/assignment config */
 	struct {
-		int active;
+		/* enable handover for this cell */
+		int ho_active;
+		/* enable assignment for this cell */
+		int as_active;
+
+		/* use FULL instead of SUB measurements */
+		int8_t full;
+		/* minimum RXLEV before forcing handover */
+		int8_t min_rxlev;		/* dBm */
 		/* Window RXLEV averaging */
 		unsigned int win_rxlev_avg;	/* number of SACCH frames */
-		/* Window RXQUAL averaging */
-		unsigned int win_rxqual_avg;	/* number of SACCH frames */
 		/* Window RXLEV neighbouring cells averaging */
 		unsigned int win_rxlev_avg_neigh; /* number of SACCH frames */
-
-		/* how often should we check for power budget HO */
-		unsigned int pwr_interval;	/* SACCH frames */
 		/* how much better does a neighbor cell have to be ? */
 		unsigned int pwr_hysteresis;	/* dBm */
+		/* how often should we check for power budget HO */
+		unsigned int pwr_interval;	/* SACCH frames */
+		/* how mucht improvement of RXLEV do we get when using AFS */
+		int8_t afs_rxlev_improve;	/* dB */
+
+		/* minimum RXQUAL before forcing handover */
+		int8_t min_rxqual;		/* dB */
+		/* Window RXQUAL averaging */
+		unsigned int win_rxqual_avg;	/* number of SACCH frames */
+		/* how mucht improvement of RXQUAL do we get when using AFS */
+		int8_t afs_rxqual_improve;	/* dB */
+
 		/* maximum distacne before we try a handover */
 		unsigned int max_distance;	/* TA values */
+
+		/* minimum number of free TCH/F slots trying to maintain */
+		unsigned int min_free_tchf;
+		/* minimum number of free TCH/H slots trying to maintain */
+		unsigned int min_free_tchh;
+		/* maximum number of unsynchronized handovers at a time */
+		unsigned int max_unsync_ho;
+
+		/* penalty time for a cell that exceed maximum distance */
+		unsigned int penalty_max_dist;	/* seconds */
+		/* penalty time for a cell after handover failure */
+		unsigned int penalty_ho_fail;	/* seconds */
+		/* penalty time for a cell after assignment failure */
+		unsigned int penalty_as_fail;	/* seconds */
 	} handover;
 #endif /* ROLE_BSC */
 	void *role;
