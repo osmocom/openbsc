@@ -3,6 +3,9 @@
 
 struct gsm_subscriber_connection;
 
+/* Count number of currently ongoing async handovers */
+int bsc_ho_count(struct gsm_bts *bts);
+
 /* Hand over the specified logical channel to the specified new BTS.
  * This is the main entry point for the actual handover algorithm,
  * after it has decided it wants to initiate HO to a specific BTS */
