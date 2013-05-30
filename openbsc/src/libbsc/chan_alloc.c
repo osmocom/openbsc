@@ -224,6 +224,53 @@ _lc_find_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
 	return &ts->lchan[0];
 }
 
+static int
+_lc_count_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
+{
+	struct gsm_bts_trx_ts *ts;
+	int j, ss;
+	int count = 0;
+
+	if (!trx_is_usable(trx))
+		return 0;
+
+	for (j = 0; j < 8; j++) {
+		ts = &trx->ts[j];
+		if (!ts_is_usable(ts))
+			continue;
+		/* ip.access dynamic TCH/F + PDCH combination */
+		if (ts->pchan == GSM_PCHAN_TCH_F_PDCH &&
+		    pchan == GSM_PCHAN_TCH_F) {
+			/* we can only consider such a dynamic channel
+			 * if the PDCH is currently inactive */
+			if (ts->flags & TS_F_PDCH_MODE)
+				continue;
+		} else if (ts->pchan != pchan)
+			continue;
+		/* check if all sub-slots are allocated yet */
+		for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
+			struct gsm_lchan *lc = &ts->lchan[ss];
+			if (lc->type == GSM_LCHAN_NONE &&
+			    lc->state == LCHAN_S_NONE)
+				count++;
+		}
+	}
+
+	return count;
+}
+
+/* Count number of free TS of given pchan type */
+int lc_count_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
+{
+	struct gsm_bts_trx *trx;
+	int count = 0;
+
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		count += _lc_count_trx(trx, pchan);
+
+	return count;
+}
+
 /* Allocate a logical channel */
 struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 			      int allow_bigger)

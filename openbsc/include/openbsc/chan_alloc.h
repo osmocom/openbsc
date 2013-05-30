@@ -35,6 +35,9 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 /* Regular physical channel (TS) */
 void ts_free(struct gsm_bts_trx_ts *ts);
 
+/* Count number of free TS of given pchan type */
+int lc_count_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan);
+
 /* Find an allocated channel for a specified subscriber */
 struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *subscr);
 
