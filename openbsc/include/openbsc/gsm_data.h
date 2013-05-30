@@ -97,6 +97,13 @@ struct neigh_meas_proc {
 	uint8_t last_seen_nr;
 };
 
+/* penalty timers for handover */
+struct ho_penalty_timer {
+	struct llist_head entry;
+	uint8_t bts;
+	time_t timeout;
+};
+
 /* the per subscriber data for lchan */
 struct gsm_subscriber_connection {
 	struct llist_head entry;
@@ -130,6 +137,9 @@ struct gsm_subscriber_connection {
 	/* for assignment handling */
 	struct osmo_timer_list T10;
 	struct gsm_lchan *secondary_lchan;
+
+	/* penalty timers for handover */
+	struct llist_head ho_penalty_timers;
 };
 
 

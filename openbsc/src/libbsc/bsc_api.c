@@ -249,6 +249,7 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 	conn->lchan = lchan;
 	conn->bts = lchan->ts->trx->bts;
 	lchan->conn = conn;
+	INIT_LLIST_HEAD(&conn->ho_penalty_timers);
 	llist_add_tail(&conn->entry, &sub_connections);
 	return conn;
 }
@@ -256,6 +257,8 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 /* TODO: move subscriber put here... */
 void subscr_con_free(struct gsm_subscriber_connection *conn)
 {
+	struct ho_penalty_timer *penalty;
+
 	if (!conn)
 		return;
 
@@ -279,6 +282,14 @@ void subscr_con_free(struct gsm_subscriber_connection *conn)
 	if (conn->secondary_lchan) {
 		LOGP(DNM, LOGL_ERROR, "The secondary_lchan should have been cleared.\n");
 		conn->secondary_lchan->conn = NULL;
+	}
+
+	/* flush handover penalty timers */
+	while (!llist_empty(&conn->ho_penalty_timers)) {
+		penalty = llist_entry(conn->ho_penalty_timers.next,
+			struct ho_penalty_timer, entry);
+		llist_del(&penalty->entry);
+		talloc_free(penalty);
 	}
 
 	llist_del(&conn->entry);
