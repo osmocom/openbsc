@@ -140,6 +140,9 @@ struct gsm_subscriber_connection {
 
 	/* penalty timers for handover */
 	struct llist_head ho_penalty_timers;
+
+	/* phone's bearer capabilities */
+	struct gsm_mncc_bearer_cap bcap;
 };
 
 
