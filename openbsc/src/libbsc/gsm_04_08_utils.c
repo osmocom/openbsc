@@ -449,6 +449,13 @@ int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
 	}
 	/* FIXME: optional bits for type of synchronization? */
 
+	msgb_tv_put(msg, GSM48_IE_CHANMODE_1, new_lchan->tch_mode);
+
+	/* in case of multi rate we need to attach a config */
+	if (new_lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		msgb_tlv_put(msg, GSM48_IE_MUL_RATE_CFG, new_lchan->mr_ms_lv[0],
+			new_lchan->mr_ms_lv + 1);
+
 	return gsm48_sendmsg(msg);
 }
 
