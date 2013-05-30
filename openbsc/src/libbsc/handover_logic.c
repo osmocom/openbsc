@@ -87,7 +87,7 @@ int bsc_ho_count(struct gsm_bts *bts)
 	llist_for_each_entry(ho, &bsc_handovers, list) {
 		if (!ho->ho_async)
 			continue;
-		if (ho->new_lchan->bts == bts)
+		if (ho->new_lchan->ts->trx->bts == bts)
 			count++;
 	}
 
@@ -134,7 +134,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	}
 	ho->old_lchan = old_lchan;
 	ho->new_lchan = new_lchan;
-	if (old_lchan->bts != bts) {
+	if (old_lchan->ts->trx->bts != bts) {
 		ho->ho_ref = ho_ref++;
 		ho->ho_async = 1;
 	}

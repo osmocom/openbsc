@@ -130,7 +130,6 @@ struct gsm_subscriber_connection {
 	/* for assignment handling */
 	struct osmo_timer_list T10;
 	struct gsm_lchan *secondary_lchan;
-
 };
 
 
@@ -212,22 +211,6 @@ struct gsm_network {
 	int a5_encryption;
 	int neci;
 	int send_mm_info;
-	struct {
-		int active;
-		/* Window RXLEV averaging */
-		unsigned int win_rxlev_avg;	/* number of SACCH frames */
-		/* Window RXQUAL averaging */
-		unsigned int win_rxqual_avg;	/* number of SACCH frames */
-		/* Window RXLEV neighbouring cells averaging */
-		unsigned int win_rxlev_avg_neigh; /* number of SACCH frames */
-
-		/* how often should we check for power budget HO */
-		unsigned int pwr_interval;	/* SACCH frames */
-		/* how much better does a neighbor cell have to be ? */
-		unsigned int pwr_hysteresis;	/* dBm */
-		/* maximum distacne before we try a handover */
-		unsigned int max_distance;	/* TA values */
-	} handover;
 
 	struct gsmnet_stats stats;
 

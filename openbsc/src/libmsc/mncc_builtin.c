@@ -249,7 +249,6 @@ static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
 			  struct gsm_mncc *connect)
 {
 	struct gsm_mncc connect_ack, frame_recv;
-	struct gsm_network *net = call->net;
 	struct gsm_call *remote;
 	uint32_t refs[2];
 
@@ -276,20 +275,14 @@ static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
 		return mncc_tx_to_cc(call->net, MNCC_BRIDGE, refs);
 
 	/* proxy mode */
-	if (!net->handover.active) {
-		/* in the no-handover case, we can bridge, i.e. use
-		 * the old RTP proxy code */
-		return mncc_tx_to_cc(call->net, MNCC_BRIDGE, refs);
-	} else {
-		/* in case of handover, we need to re-write the RTP
-		 * SSRC, sequence and timestamp values and thus
-		 * need to enable RTP receive for both directions */
-		memset(&frame_recv, 0, sizeof(struct gsm_mncc));
-		frame_recv.callref = call->callref;
-		mncc_tx_to_cc(call->net, MNCC_FRAME_RECV, &frame_recv);
-		frame_recv.callref = call->remote_ref;
-		return mncc_tx_to_cc(call->net, MNCC_FRAME_RECV, &frame_recv);
-	}
+	/* in case of handover, we need to re-write the RTP
+	 * SSRC, sequence and timestamp values and thus
+	 * need to enable RTP receive for both directions */
+	memset(&frame_recv, 0, sizeof(struct gsm_mncc));
+	frame_recv.callref = call->callref;
+	mncc_tx_to_cc(call->net, MNCC_FRAME_RECV, &frame_recv);
+	frame_recv.callref = call->remote_ref;
+	return mncc_tx_to_cc(call->net, MNCC_FRAME_RECV, &frame_recv);
 }
 
 static int mncc_disc_ind(struct gsm_call *call, int msg_type,

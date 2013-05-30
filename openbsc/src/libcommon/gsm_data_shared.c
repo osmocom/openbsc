@@ -261,6 +261,16 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 	bts->rach_ldavg_slots = -1;
 	bts->paging.free_chans_need = -1;
 
+#ifdef ROLE_BSC
+	/* default set of handover parameters */
+	bts->handover.win_rxlev_avg = 10;
+	bts->handover.win_rxqual_avg = 1;
+	bts->handover.win_rxlev_avg_neigh = 10;
+	bts->handover.pwr_interval = 6;
+	bts->handover.pwr_hysteresis = 3;
+	bts->handover.max_distance = 9999;
+#endif
+
 	return bts;
 }
 

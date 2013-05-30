@@ -199,8 +199,6 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		VTY_NEWLINE);
 	vty_out(vty, "  MM Info: %s%s", net->send_mm_info ? "On" : "Off",
 		VTY_NEWLINE);
-	vty_out(vty, "  Handover: %s%s", net->handover.active ? "On" : "Off",
-		VTY_NEWLINE);
 	network_chan_load(&pl, net);
 	vty_out(vty, "  Current Channel Load:%s", VTY_NEWLINE);
 	dump_pchan_load_vty(vty, "    ", &pl);
@@ -301,6 +299,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
 		e1isl_dump_vty(vty, bts->oml_link);
 	}
+	vty_out(vty, "  Handover: %s%s", bts->handover.active ? "On" : "Off",
+		VTY_NEWLINE);
 
 	/* FIXME: chan_desc */
 	memset(&pl, 0, sizeof(pl));
@@ -711,6 +711,20 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			vty_out(vty, "auto%s", VTY_NEWLINE);
 	}
 
+	vty_out(vty, "  handover %u%s", bts->handover.active, VTY_NEWLINE);
+	vty_out(vty, "  handover window rxlev averaging %u%s",
+		bts->handover.win_rxlev_avg, VTY_NEWLINE);
+	vty_out(vty, "  handover window rxqual averaging %u%s",
+		bts->handover.win_rxqual_avg, VTY_NEWLINE);
+	vty_out(vty, "  handover window rxlev neighbor averaging %u%s",
+		bts->handover.win_rxlev_avg_neigh, VTY_NEWLINE);
+	vty_out(vty, "  handover power budget interval %u%s",
+		bts->handover.pwr_interval, VTY_NEWLINE);
+	vty_out(vty, "  handover power budget hysteresis %u%s",
+		bts->handover.pwr_hysteresis, VTY_NEWLINE);
+	vty_out(vty, "  handover maximum distance %u%s",
+		bts->handover.max_distance, VTY_NEWLINE);
+
 	config_write_bts_gprs(vty, bts);
 
 	if (bts->excl_from_rf_lock)
@@ -752,19 +766,6 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " rrlp mode %s%s", rrlp_mode_name(gsmnet->rrlp.mode),
 		VTY_NEWLINE);
 	vty_out(vty, " mm info %u%s", gsmnet->send_mm_info, VTY_NEWLINE);
-	vty_out(vty, " handover %u%s", gsmnet->handover.active, VTY_NEWLINE);
-	vty_out(vty, " handover window rxlev averaging %u%s",
-		gsmnet->handover.win_rxlev_avg, VTY_NEWLINE);
-	vty_out(vty, " handover window rxqual averaging %u%s",
-		gsmnet->handover.win_rxqual_avg, VTY_NEWLINE);
-	vty_out(vty, " handover window rxlev neighbor averaging %u%s",
-		gsmnet->handover.win_rxlev_avg_neigh, VTY_NEWLINE);
-	vty_out(vty, " handover power budget interval %u%s",
-		gsmnet->handover.pwr_interval, VTY_NEWLINE);
-	vty_out(vty, " handover power budget hysteresis %u%s",
-		gsmnet->handover.pwr_hysteresis, VTY_NEWLINE);
-	vty_out(vty, " handover maximum distance %u%s",
-		gsmnet->handover.max_distance, VTY_NEWLINE);
 	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
 	vty_out(vty, " timer t3103 %u%s", gsmnet->T3103, VTY_NEWLINE);
 	vty_out(vty, " timer t3105 %u%s", gsmnet->T3105, VTY_NEWLINE);
@@ -1389,100 +1390,6 @@ DEFUN(cfg_net_mm_info, cfg_net_mm_info_cmd,
 
 	gsmnet->send_mm_info = atoi(argv[0]);
 
-	return CMD_SUCCESS;
-}
-
-#define HANDOVER_STR	"Handover Options\n"
-
-DEFUN(cfg_net_handover, cfg_net_handover_cmd,
-      "handover (0|1)",
-	HANDOVER_STR
-	"Don't perform in-call handover\n"
-	"Perform in-call handover\n")
-{
-	int enable = atoi(argv[0]);
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	if (enable && ipacc_rtp_direct) {
-		vty_out(vty, "%% Cannot enable handover unless RTP Proxy mode "
-			"is enabled by using the -P command line option%s",
-			VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-	gsmnet->handover.active = enable;
-
-	return CMD_SUCCESS;
-}
-
-#define HO_WIN_STR HANDOVER_STR "Measurement Window\n"
-#define HO_WIN_RXLEV_STR HO_WIN_STR "Received Level Averaging\n"
-#define HO_WIN_RXQUAL_STR HO_WIN_STR "Received Quality Averaging\n"
-#define HO_PBUDGET_STR HANDOVER_STR "Power Budget\n"
-#define HO_AVG_COUNT_STR "Amount to use for Averaging\n"
-
-DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
-      "handover window rxlev averaging <1-10>",
-	HO_WIN_RXLEV_STR
-	"How many RxLev measurements are used for averaging\n"
-	HO_AVG_COUNT_STR)
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->handover.win_rxlev_avg = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
-      "handover window rxqual averaging <1-10>",
-	HO_WIN_RXQUAL_STR
-	"How many RxQual measurements are used for averaging\n"
-	HO_AVG_COUNT_STR)
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->handover.win_rxqual_avg = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
-      "handover window rxlev neighbor averaging <1-10>",
-	HO_WIN_RXLEV_STR "Neighbor\n"
-	"How many RxQual measurements are used for averaging\n"
-	HO_AVG_COUNT_STR)
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->handover.win_rxlev_avg_neigh = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
-      "handover power budget interval <1-99>",
-	HO_PBUDGET_STR
-	"How often to check if we have a better cell (SACCH frames)\n"
-	"Interval\n" "Number\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->handover.pwr_interval = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
-      "handover power budget hysteresis <0-999>",
-	HO_PBUDGET_STR
-	"How many dB does a neighbor to be stronger to become a HO candidate\n"
-	"Hysteresis\n" "Number\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->handover.pwr_hysteresis = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
-      "handover maximum distance <0-9999>",
-	HANDOVER_STR
-	"How big is the maximum timing advance before HO is forced\n"
-	"Distance\n" "Number\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->handover.max_distance = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -3273,6 +3180,100 @@ DEFUN(cfg_bts_amr_hr_hyst3, cfg_bts_amr_hr_hyst3_cmd,
 	return CMD_SUCCESS;
 }
 
+#define HANDOVER_STR	"Handover Options\n"
+
+DEFUN(cfg_bts_handover, cfg_bts_handover_cmd,
+      "handover (0|1)",
+	HANDOVER_STR
+	"Don't perform in-call handover\n"
+	"Perform in-call handover\n")
+{
+	int enable = atoi(argv[0]);
+	struct gsm_bts *bts = vty->index;
+
+	if (enable && ipacc_rtp_direct) {
+		vty_out(vty, "%% Cannot enable handover unless RTP Proxy mode "
+			"is enabled by using the -P command line option%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	bts->handover.active = enable;
+
+	return CMD_SUCCESS;
+}
+
+#define HO_WIN_STR HANDOVER_STR "Measurement Window\n"
+#define HO_WIN_RXLEV_STR HO_WIN_STR "Received Level Averaging\n"
+#define HO_WIN_RXQUAL_STR HO_WIN_STR "Received Quality Averaging\n"
+#define HO_PBUDGET_STR HANDOVER_STR "Power Budget\n"
+#define HO_AVG_COUNT_STR "Amount to use for Averaging\n"
+
+DEFUN(cfg_bts_ho_win_rxlev_avg, cfg_bts_ho_win_rxlev_avg_cmd,
+      "handover window rxlev averaging <1-10>",
+	HO_WIN_RXLEV_STR
+	"How many RxLev measurements are used for averaging\n"
+	HO_AVG_COUNT_STR)
+{
+	struct gsm_bts *bts = vty->index;
+	bts->handover.win_rxlev_avg = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_ho_win_rxqual_avg, cfg_bts_ho_win_rxqual_avg_cmd,
+      "handover window rxqual averaging <1-10>",
+	HO_WIN_RXQUAL_STR
+	"How many RxQual measurements are used for averaging\n"
+	HO_AVG_COUNT_STR)
+{
+	struct gsm_bts *bts = vty->index;
+	bts->handover.win_rxqual_avg = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_ho_win_rxlev_neigh_avg, cfg_bts_ho_win_rxlev_avg_neigh_cmd,
+      "handover window rxlev neighbor averaging <1-10>",
+	HO_WIN_RXLEV_STR "Neighbor\n"
+	"How many RxQual measurements are used for averaging\n"
+	HO_AVG_COUNT_STR)
+{
+	struct gsm_bts *bts = vty->index;
+	bts->handover.win_rxlev_avg_neigh = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_ho_pwr_interval, cfg_bts_ho_pwr_interval_cmd,
+      "handover power budget interval <1-99>",
+	HO_PBUDGET_STR
+	"How often to check if we have a better cell (SACCH frames)\n"
+	"Interval\n" "Number\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->handover.pwr_interval = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_ho_pwr_hysteresis, cfg_bts_ho_pwr_hysteresis_cmd,
+      "handover power budget hysteresis <0-999>",
+	HO_PBUDGET_STR
+	"How many dB does a neighbor to be stronger to become a HO candidate\n"
+	"Hysteresis\n" "Number\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->handover.pwr_hysteresis = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_ho_max_distance, cfg_bts_ho_max_distance_cmd,
+      "handover maximum distance <0-9999>",
+	HANDOVER_STR
+	"How big is the maximum timing advance before HO is forced\n"
+	"Distance\n" "Number\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->handover.max_distance = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 #define TRX_TEXT "Radio Transceiver\n"
 
 /* per TRX configuration */
@@ -3786,13 +3787,6 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 	install_element(GSMNET_NODE, &cfg_net_rrlp_mode_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mm_info_cmd);
-	install_element(GSMNET_NODE, &cfg_net_handover_cmd);
-	install_element(GSMNET_NODE, &cfg_net_ho_win_rxlev_avg_cmd);
-	install_element(GSMNET_NODE, &cfg_net_ho_win_rxqual_avg_cmd);
-	install_element(GSMNET_NODE, &cfg_net_ho_win_rxlev_avg_neigh_cmd);
-	install_element(GSMNET_NODE, &cfg_net_ho_pwr_interval_cmd);
-	install_element(GSMNET_NODE, &cfg_net_ho_pwr_hysteresis_cmd);
-	install_element(GSMNET_NODE, &cfg_net_ho_max_distance_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3101_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3103_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3105_cmd);
@@ -3898,6 +3892,13 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_amr_hr_hyst2_cmd);
 	install_element(BTS_NODE, &cfg_bts_amr_hr_hyst3_cmd);
 	install_element(BTS_NODE, &cfg_bts_amr_hr_start_mode_cmd);
+	install_element(BTS_NODE, &cfg_bts_handover_cmd);
+	install_element(BTS_NODE, &cfg_bts_ho_win_rxlev_avg_cmd);
+	install_element(BTS_NODE, &cfg_bts_ho_win_rxqual_avg_cmd);
+	install_element(BTS_NODE, &cfg_bts_ho_win_rxlev_avg_neigh_cmd);
+	install_element(BTS_NODE, &cfg_bts_ho_pwr_interval_cmd);
+	install_element(BTS_NODE, &cfg_bts_ho_pwr_hysteresis_cmd);
+	install_element(BTS_NODE, &cfg_bts_ho_max_distance_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);

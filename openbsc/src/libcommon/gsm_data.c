@@ -100,14 +100,6 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	net->T3122 = GSM_T3122_DEFAULT;
 	/* FIXME: initialize all other timers! */
 
-	/* default set of handover parameters */
-	net->handover.win_rxlev_avg = 10;
-	net->handover.win_rxqual_avg = 1;
-	net->handover.win_rxlev_avg_neigh = 10;
-	net->handover.pwr_interval = 6;
-	net->handover.pwr_hysteresis = 3;
-	net->handover.max_distance = 9999;
-
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
 	INIT_LLIST_HEAD(&net->bts_list);

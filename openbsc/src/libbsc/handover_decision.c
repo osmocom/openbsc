@@ -166,7 +166,7 @@ static void process_meas_neigh(struct gsm_meas_rep *mr)
 /* attempt to do a handover */
 static int attempt_handover(struct gsm_meas_rep *mr)
 {
-	struct gsm_network *net = mr->lchan->ts->trx->bts->network;
+	struct gsm_bts *bts = mr->lchan->ts->trx->bts;
 	struct neigh_meas_proc *best_cell = NULL;
 	unsigned int best_better_db = 0;
 	int i, rc;
@@ -183,10 +183,10 @@ static int attempt_handover(struct gsm_meas_rep *mr)
 			continue;
 
 		/* caculate average rxlev for this cell over the window */
-		avg = neigh_meas_avg(nmp, net->handover.win_rxlev_avg_neigh);
+		avg = neigh_meas_avg(nmp, bts->handover.win_rxlev_avg_neigh);
 
 		/* check if hysteresis is fulfilled */
-		if (avg < mr->dl.full.rx_lev + net->handover.pwr_hysteresis)
+		if (avg < mr->dl.full.rx_lev + bts->handover.pwr_hysteresis)
 			continue;
 
 		better = avg - mr->dl.full.rx_lev;
@@ -201,7 +201,7 @@ static int attempt_handover(struct gsm_meas_rep *mr)
 
 	LOGP(DHO, LOGL_INFO, "%s: Cell on ARFCN %u is better: ",
 		gsm_ts_name(mr->lchan->ts), best_cell->arfcn);
-	if (!net->handover.active) {
+	if (!bts->handover.active) {
 		LOGPC(DHO, LOGL_INFO, "Skipping, Handover disabled\n");
 		return 0;
 	}
@@ -227,7 +227,7 @@ static int attempt_handover(struct gsm_meas_rep *mr)
  * attempt a handover */
 static int process_meas_rep(struct gsm_meas_rep *mr)
 {
-	struct gsm_network *net = mr->lchan->ts->trx->bts->network;
+	struct gsm_bts *bts = mr->lchan->ts->trx->bts;
 	int av_rxlev;
 
 	/* we currently only do handover for TCH channels */
@@ -244,7 +244,7 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 		process_meas_neigh(mr);
 
 	av_rxlev = get_meas_rep_avg(mr->lchan, MEAS_REP_DL_RXLEV_FULL,
-				    net->handover.win_rxlev_avg);
+				    bts->handover.win_rxlev_avg);
 
 	/* Interference HO */
 	if (rxlev2dbm(av_rxlev) > -85 &&
@@ -262,11 +262,11 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 		return attempt_handover(mr);
 
 	/* Distance */
-	if (mr->ms_l1.ta > net->handover.max_distance)
+	if (mr->ms_l1.ta > bts->handover.max_distance)
 		return attempt_handover(mr);
 
 	/* Power Budget AKA Better Cell */
-	if ((mr->nr % net->handover.pwr_interval) == 0)
+	if ((mr->nr % bts->handover.pwr_interval) == 0)
 		return attempt_handover(mr);
 
 	return 0;
