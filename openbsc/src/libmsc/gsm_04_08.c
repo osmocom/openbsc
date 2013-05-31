@@ -2998,12 +2998,78 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 	return mncc_recvmsg(trans->subscr->net, trans, MNCC_USERINFO_IND, &user);
 }
 
+static int _gsm48_lchan_modify_error(struct gsm_trans *trans, void *arg)
+{
+	/* on assignment error (no suitable channel), we need to release
+	 * transaction in both directions */
+
+	// FIXME: should we use release instead of release complete?
+	gsm48_tx_simple(trans->conn,
+		     GSM48_PDISC_CC | (trans->transaction_id << 4),
+		     GSM48_MT_CC_RELEASE_COMPL);
+
+	mncc_release_ind(trans->subscr->net, trans, trans->callref,
+		      GSM48_CAUSE_LOC_PRN_S_LU,
+		      GSM48_CC_CAUSE_TEMP_FAILURE);
+	trans->callref = 0;
+	trans_free(trans);
+
+	return 0;
+}
+
 static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
+	struct gsm_bts *bts = trans->conn->bts;
 	struct gsm_mncc *mode = arg;
+	int full_rate = 0;
+	int rc;
 
-	return gsm0808_assign_req(trans->conn, mode->lchan_mode,
-		trans->conn->lchan->type != GSM_LCHAN_TCH_H);
+	/* in case of modify to AMR, we need to check what codec the phone
+	 * actually supports and what rate is available. */
+	if (mode->lchan_mode == GSM48_CMODE_SPEECH_AMR) {
+		struct gsm_mncc_bearer_cap *bcap = &trans->conn->bcap;
+		int half = 0;
+		int full = 0;
+		int i;
+
+		/* check what AMR TCH rate the phone supports */
+		for (i = 0; bcap->speech_ver[i] >= 0; i++) {
+			if (bcap->speech_ver[i] == 4 && bts->codec.afs)
+				full = i + 1;
+			if (bcap->speech_ver[i] == 5 && bts->codec.ahs)
+				half = i + 1;
+		}
+		/* just check if we received a rate that is not compatible with
+		 * the one supported by the phone. this should never happen,
+		 * but in case it happens, we log it */
+		if (!full && !half) {
+			LOGP(DCC, LOGL_ERROR, "MNCC application selected AMR, "
+				"but the phone does not support AMR at all. "
+				"Please fix!\n");
+			return _gsm48_lchan_modify_error(trans, arg);
+		}
+		/* select TCH rate that is preferred, if not available, use
+		 * other rate */
+		if (full > half) {
+			if (lc_count_bts(bts, GSM_PCHAN_TCH_F))
+				full_rate = 1;
+		} else {
+			if (!lc_count_bts(bts, GSM_PCHAN_TCH_H))
+				full_rate = 1;
+		}
+	}
+	/* for all other modes (else) we select full rate if not half rate
+	 * is given */
+	else if (mode->lchan_type != GSM_LCHAN_TCH_H)
+		full_rate = 1;
+
+	rc = gsm0808_assign_req(trans->conn, mode->lchan_mode, full_rate);
+
+	if (rc >= 0) {
+		return 0;
+	}
+
+	return rc;
 }
 
 static struct downstate {
