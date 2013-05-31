@@ -68,41 +68,43 @@ static void store_bearer_cap(struct gsm_call *call, struct gsm_mncc *mncc)
 }
 
 static int determine_lchan_mode(struct gsm_call *calling,
-						struct gsm_call *called)
+	struct gsm_call *called, uint8_t *lchan_type, uint8_t *lchan_mode)
 {
 	int i, j;
 
-	/* FIXME: dynamic channel configuration */
-	if (calling->lchan_type != called->lchan_type) {
-		LOGP(DMNCC, LOGL_NOTICE, "Not equal lchan_types\n");
-		return -ENOTSUP;
-	}
-	if (calling->lchan_type != GSM_LCHAN_TCH_F
-	 && calling->lchan_type != GSM_LCHAN_TCH_H) {
-		LOGP(DMNCC, LOGL_NOTICE, "Not TCH lchan_types\n");
-		return -ENOTSUP;
-	}
-
-	/* select best codec, as prefered by the caller and supporte by both. */
+	/* select best codec, as prefered by the caller and supported by both.
+	 */
 	for (i = 0; calling->bcap.speech_ver[i] >= 0; i++) {
-		/* omit capability of different channel type
-		 * FIXME: dynamic channel configuration */
-		if (calling->lchan_type == GSM_LCHAN_TCH_F
-		 && (calling->bcap.speech_ver[i] & 1) == 1)
-			continue;
-		if (calling->lchan_type == GSM_LCHAN_TCH_H
-		 && (calling->bcap.speech_ver[i] & 1) == 0)
-			continue;
 		for (j = 0; called->bcap.speech_ver[j] >= 0; j++) {
 			if (calling->bcap.speech_ver[i]
-			  == called->bcap.speech_ver[j]) {
-				/* convert speech version to lchan mode */
-				return ((calling->bcap.speech_ver[i] & 0xe) << 4) | 1;
+			  == called->bcap.speech_ver[j])
+				goto found;
+			/* in case of AMR, we accept if other phone also
+			 * supports AMR, no matter what rate */
+			if (calling->bcap.speech_ver[i] == 4
+			 || calling->bcap.speech_ver[i] == 5) {
+				if (called->bcap.speech_ver[j] == 4
+				 || called->bcap.speech_ver[j] == 5)
+					goto found;
 			}
 		}
 	}
 
 	return -ENOTSUP;
+
+found:
+	/* convert speech version to lchan mode */
+	*lchan_mode = ((calling->bcap.speech_ver[i] & 0xe) << 4) | 1;
+
+	/* convert speech version to lchan type
+	 * in case of AMR, this does not matter, since gsm_04_08.c will
+	 * ignore it and sleect channels as available */
+	if ((calling->bcap.speech_ver[i] & 1))
+		*lchan_type = GSM_PCHAN_TCH_H;
+	else
+		*lchan_type = GSM_PCHAN_TCH_F;
+
+	return 0;
 }
 
 /* on incoming call, look up database and send setup to remote subscr. */
@@ -180,7 +182,8 @@ static int mncc_call_conf_ind(struct gsm_call *call, int msg_type,
 {
 	struct gsm_call *remote;
 	struct gsm_mncc mncc;
-	int mode;
+	uint8_t lchan_type, lchan_mode;
+	int rc;
 
 	memset(&mncc, 0, sizeof(struct gsm_mncc));
 	mncc.callref = call->callref;
@@ -192,8 +195,8 @@ static int mncc_call_conf_ind(struct gsm_call *call, int msg_type,
 	/* store bearer capabilites of supported modes */
 	store_bearer_cap(call, conf);
 
-	mode = determine_lchan_mode(call, remote);
-	if (mode < 0) {
+	rc = determine_lchan_mode(call, remote, &lchan_type, &lchan_mode);
+	if (rc < 0) {
 		LOGP(DMNCC, LOGL_NOTICE, "(call %x,%x) There is no commonly "
 			"supported speech version\n", call->callref,
 			remote->callref);
@@ -202,8 +205,9 @@ static int mncc_call_conf_ind(struct gsm_call *call, int msg_type,
 		goto out_release;
 	}
 
-	/* modify mode */
-	mncc.lchan_mode = mode;
+	/* modify mode/type */
+	mncc.lchan_type = lchan_type;
+	mncc.lchan_mode = lchan_mode;
 	DEBUGP(DMNCC, "(call %x) Modify channel mode.\n", call->callref);
 	mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, &mncc);
 	mncc.callref = remote->callref;
