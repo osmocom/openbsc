@@ -1383,21 +1383,47 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	 */
 	is_lu = !!(chreq_reason == GSM_CHREQ_REASON_LOCATION_UPD);
 
-	/* check availability / allocate channel */
-	lchan = lchan_alloc(bts, lctype, is_lu);
-	if (!lchan && (rqd_ref->ra & 0xf0) == 0x30) {
-		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x, retrying with %s\n",
-		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra, gsm_lchant_name(GSM_LCHAN_TCH_F));
-		lctype = GSM_LCHAN_TCH_F;
-		lchan = lchan_alloc(bts, lctype, is_lu);
+	/* check availability / allocate channel
+	 *
+	 * First try to allocate SDCCH.
+	 *
+	 * If SDCCH is not available, try whatever MS requested, if not SDCCH.
+	 *
+	 * If there is still no channel available, and MS requested not TCH/F,
+	 * try to allocate TCH/F.
+	 *
+	 * If there is still no channel available, reject channel request.
+	 *
+	 * Note: If the MS requests not TCH/H, we don't know if the phone
+	 *       supports TCH/H, so we must assign TCH/F or SDCCH.
+	 */
+	lchan = lchan_alloc(bts, GSM_LCHAN_SDCCH, 0);
+	if (!lchan && lctype != GSM_LCHAN_SDCCH) {
+		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s "
+			"0x%x, retrying with %s\n",
+			msg->lchan->ts->trx->bts->nr,
+			gsm_lchant_name(GSM_LCHAN_SDCCH), rqd_ref->ra,
+			gsm_lchant_name(lctype));
+		lchan = lchan_alloc(bts, lctype, 0);
+	}
+	if (!lchan && lctype != GSM_LCHAN_TCH_F) {
+		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s "
+			"0x%x, retrying with %s\n",
+			msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype),
+			rqd_ref->ra, gsm_lchant_name(GSM_LCHAN_TCH_F));
+		lchan = lchan_alloc(bts, GSM_LCHAN_TCH_F, 0);
 	}
 	if (!lchan) {
-		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
-		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
+		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s "
+			"0x%x, rejecting channel request\n",
+			msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype),
+			rqd_ref->ra);
 		osmo_counter_inc(bts->network->stats.chreq.no_channel);
 		/* FIXME gather multiple CHAN RQD and reject up to 4 at the same time */
-		if (bts->network->T3122)
-			rsl_send_imm_ass_rej(bts, 1, rqd_ref, bts->network->T3122 & 0xff);
+		if (bts->network->T3122)  {
+			rsl_send_imm_ass_rej(bts, 1, rqd_ref,
+				bts->network->T3122 & 0xff);
+		}
 		return -ENOMEM;
 	}
 
