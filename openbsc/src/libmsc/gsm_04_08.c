@@ -82,10 +82,21 @@ struct gsm_lai {
 static int apply_codec_restrictions(struct gsm_bts *bts,
 	struct gsm_mncc_bearer_cap *bcap)
 {
+	int tchf_count = lc_count_bts(bts, GSM_PCHAN_TCH_F);
+	int tchh_count = lc_count_bts(bts, GSM_PCHAN_TCH_H);
 	int i, j;
 
 	/* remove unsupported speech versions from list */
 	for (i = 0, j = 0; bcap->speech_ver[i] >= 0; i++) {
+		/* filter TCH rates currently available */
+		if ((bcap->speech_ver[i] & 1)) {
+			if (!tchh_count)
+				continue;
+		} else {
+			if (!tchf_count)
+				continue;
+		}
+		/* filter codecs supported by BTS */
 		if (bcap->speech_ver[i] == 0)
 			bcap->speech_ver[j++] = 0;
 		if (bcap->speech_ver[i] == 2 && bts->codec.efr)
