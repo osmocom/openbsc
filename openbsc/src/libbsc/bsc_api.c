@@ -360,7 +360,11 @@ static int chan_compat_with_mode(struct gsm_lchan *lchan, int chan_mode, int ful
 		 * an explicit override by the 'full_rate' argument */
 		switch (lchan->type) {
 		case GSM_LCHAN_TCH_F:
-			return 1;
+			if (full_rate)
+				return 1;
+			else
+				return 0;
+			break;
 		case GSM_LCHAN_TCH_H:
 			if (full_rate)
 				return 0;
