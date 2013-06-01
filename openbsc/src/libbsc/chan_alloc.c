@@ -323,6 +323,10 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 	if (lchan) {
 		lchan->type = type;
 
+		/* reset measuement report counter and index */
+	        lchan->meas_rep_cnt = 0;
+	        lchan->meas_rep_idx = 0;
+
 		/* clear sapis */
 		memset(lchan->sapis, 0, ARRAY_SIZE(lchan->sapis));
 

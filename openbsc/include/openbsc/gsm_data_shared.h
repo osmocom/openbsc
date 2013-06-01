@@ -248,6 +248,7 @@ struct gsm_lchan {
 	/* cache of last measurement reports on this lchan */
 	struct gsm_meas_rep meas_rep[6];
 	int meas_rep_idx;
+	int meas_rep_cnt;
 
 	/* GSM Random Access data */
 	struct gsm48_req_ref *rqd_ref;

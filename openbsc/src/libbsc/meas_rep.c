@@ -75,7 +75,10 @@ int get_meas_rep_avg(const struct gsm_lchan *lchan,
 	int avg = 0;
 
 	if (num < 1)
-		return 0;
+		return -EINVAL;
+
+	if (num > lchan->meas_rep_cnt)
+		return -EINVAL;
 
 	idx = calc_initial_idx(ARRAY_SIZE(lchan->meas_rep),
 				lchan->meas_rep_idx, num);

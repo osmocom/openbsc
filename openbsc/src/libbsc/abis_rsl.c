@@ -1073,6 +1073,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 
 	memset(mr, 0, sizeof(*mr));
 	mr->lchan = msg->lchan;
+	mr->lchan->meas_rep_cnt++;
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
