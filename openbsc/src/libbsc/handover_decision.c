@@ -76,6 +76,13 @@ static int neigh_meas_avg(struct neigh_meas_proc *nmp, int window)
 	unsigned int i, idx;
 	int avg = 0;
 
+	/* reduce window to the actual number of existing measurements */
+	if (window < nmp->rxlev_cnt)
+		window = nmp->rxlev_cnt;
+	/* this should never happen */
+	if (window == 0)
+		return 0;
+
 	idx = calc_initial_idx(ARRAY_SIZE(nmp->rxlev),
 				nmp->rxlev_cnt % ARRAY_SIZE(nmp->rxlev),
 				window);
@@ -154,6 +161,7 @@ static void process_meas_neigh(struct gsm_meas_rep *mr)
 		nmp->arfcn = mrc->arfcn;
 		nmp->bsic = mrc->bsic;
 
+		nmp->rxlev_cnt = 0;
 		idx = nmp->rxlev_cnt % ARRAY_SIZE(nmp->rxlev);
 		nmp->rxlev[idx] = mrc->rxlev;
 		nmp->rxlev_cnt++;
