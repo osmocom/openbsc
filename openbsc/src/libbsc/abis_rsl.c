@@ -1116,6 +1116,8 @@ static int rsl_rx_meas_res(struct msgb *msg)
 		if (msg->lchan->ts->trx->bts->type == GSM_BTS_TYPE_BS11
 		 || msg->lchan->ts->trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE)
 			mr->ms_l1.ta >>= 2;
+		/* store TA for next assignment/handover */
+		mr->lchan->rqd_ta = mr->ms_l1.ta;
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		msg->l3h = (uint8_t *) TLVP_VAL(&tp, RSL_IE_L3_INFO);
