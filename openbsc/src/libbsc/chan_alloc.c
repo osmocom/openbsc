@@ -35,7 +35,7 @@
 
 #include <osmocom/core/talloc.h>
 
-static int ts_is_usable(struct gsm_bts_trx_ts *ts)
+int ts_is_usable(struct gsm_bts_trx_ts *ts)
 {
 	/* FIXME: How does this behave for BS-11 ? */
 	if (is_ipaccess_bts(ts->trx->bts)) {
