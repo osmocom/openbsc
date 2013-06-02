@@ -97,6 +97,8 @@ enum signal_lchan {
 	S_LCHAN_ACTIVATE_NACK,		/* 08.58 Channel Activate NACK */
 	S_LCHAN_HANDOVER_COMPL,		/* 04.08 Handover Completed */
 	S_LCHAN_HANDOVER_FAIL,		/* 04.08 Handover Failed */
+	S_LCHAN_ASSIGNMENT_COMPL,	/* 04.08 Assignment Completed */
+	S_LCHAN_ASSIGNMENT_FAIL,	/* 04.08 Assignment Failed */
 	S_LCHAN_HANDOVER_DETECT,	/* 08.58 Handover Detect */
 	S_LCHAN_MEAS_REP,		/* 08.58 Measurement Report */
 };

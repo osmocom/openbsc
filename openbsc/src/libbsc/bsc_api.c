@@ -437,6 +437,21 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 	struct gsm48_hdr *gh;
 	struct bsc_api *api = conn->bts->network->bsc_api;
 
+	if (conn->ho_lchan) {
+		struct lchan_signal_data sig;
+		struct gsm48_hdr *gh = msgb_l3(msg);
+
+		DEBUGP(DRR, "ASSIGNMENT COMPLETE cause = %s\n",
+			rr_cause_name(gh->data[0]));
+
+		sig.lchan = msg->lchan;
+		sig.mr = NULL;
+		osmo_signal_dispatch(SS_LCHAN, S_LCHAN_ASSIGNMENT_COMPL, &sig);
+		/* FIXME: release old channel */
+
+		return;
+	}
+
 	if (conn->secondary_lchan != msg->lchan) {
 		LOGP(DMSC, LOGL_ERROR, "Assignment Compl should occur on second lchan.\n");
 		return;
@@ -472,6 +487,20 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 	uint8_t *rr_failure;
 	struct gsm48_hdr *gh;
 
+	if (conn->ho_lchan) {
+		struct lchan_signal_data sig;
+		struct gsm48_hdr *gh = msgb_l3(msg);
+
+		DEBUGP(DRR, "ASSIGNMENT FAILED cause = %s\n",
+			rr_cause_name(gh->data[0]));
+
+		sig.lchan = msg->lchan;
+		sig.mr = NULL;
+		osmo_signal_dispatch(SS_LCHAN, S_LCHAN_ASSIGNMENT_FAIL, &sig);
+		/* FIXME: release allocated new channel */
+
+		return;
+	}
 
 	if (conn->lchan != msg->lchan) {
 		LOGP(DMSC, LOGL_ERROR, "Assignment failure should occur on primary lchan.\n");
