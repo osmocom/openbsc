@@ -3017,6 +3017,19 @@ static int _gsm48_lchan_modify_error(struct gsm_trans *trans, void *arg)
 	return 0;
 }
 
+void gsm48_lchan_modify_error(struct gsm_subscriber_connection *conn)
+{
+	struct gsm_network *net = conn->lchan->ts->trx->bts->network;
+	struct gsm_trans *trans, *trans2;
+
+	llist_for_each_entry_safe(trans, trans2, &net->trans_list, entry) {
+		if (trans->protocol != GSM48_PDISC_CC)
+			continue;
+		if (trans->conn == conn)
+			_gsm48_lchan_modify_error(trans, NULL);
+	}
+}
+
 static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_bts *bts = trans->conn->bts;

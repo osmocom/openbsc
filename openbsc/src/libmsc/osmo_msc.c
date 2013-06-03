@@ -76,6 +76,8 @@ static void msc_assign_compl(struct gsm_subscriber_connection *conn,
 static void msc_assign_fail(struct gsm_subscriber_connection *conn,
 			    uint8_t cause, uint8_t *rr_cause)
 {
+	/* release call transactions */
+	gsm48_lchan_modify_error(conn);
 }
 
 static void msc_classmark_chg(struct gsm_subscriber_connection *conn,

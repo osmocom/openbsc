@@ -78,4 +78,6 @@ int tch_frame_down(struct gsm_network *net, uint32_t callref, struct gsm_data_fr
 
 int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, int ms);
 
+void gsm48_lchan_modify_error(struct gsm_subscriber_connection *conn);
+
 #endif
