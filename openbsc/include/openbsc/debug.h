@@ -22,6 +22,7 @@ enum {
 	DMSC,
 	DMGCP,
 	DHO,
+	DHODEC,
 	DDB,
 	DREF,
 	DGPRS,
