@@ -107,7 +107,14 @@ static const struct log_info_cat default_categories[] = {
 	},
 	[DHO] = {
 		.name = "DHO",
-		.description = "Hand-Over",
+		.description = "Hand-Over Process",
+		.color = "\033[1;38m",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
+	[DHODEC] = {
+		.name = "DHODEC",
+		.description = "Hand-Over Decision",
+		.color = "\033[1;38m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DDB] = {
