@@ -5,3 +5,10 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOABIS_LIBS) $(COVERA
 noinst_LIBRARIES = libtrau.a
 
 libtrau_a_SOURCES = rtp_proxy.c trau_mux.c trau_upqueue.c
+
+bin_PROGRAMS = osmo-rtpproxy
+
+osmo_rtpproxy_SOURCES = rtp_proxy_main.c
+osmo_rtpproxy_LDADD = libtrau.a ../libcommon/libcommon.a
+osmo_rtpproxy_CFLAGS = $(AM_CFLAGS) $(LIBOSMOVTY_CFLAGS)
+osmo_rtpproxy_LDFLAGS = $(AM_LDFLAGS) $(LIBOSMOVTY_LIBS)

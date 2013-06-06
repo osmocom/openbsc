@@ -563,15 +563,8 @@ struct rtp_socket *rtp_socket_create(void)
 		goto out_rtcp_socket;
 
 	DEBUGPC(DLMUX, "success\n");
-
-	rc = rtp_socket_bind(rs, INADDR_ANY);
-	if (rc < 0)
-		goto out_rtcp_bfd;
-
 	return rs;
 
-out_rtcp_bfd:
-	osmo_fd_unregister(&rs->rtcp.bfd);
 out_rtcp_socket:
 	close(rs->rtcp.bfd.fd);
 out_rtp_bfd:
@@ -642,6 +635,35 @@ int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip)
 	DEBUGPC(DLMUX, "BOUND_IP=%s, BOUND_PORT=%u\n",
 		inet_ntoa(ia), ntohs(rs->rtp.sin_local.sin_port));
 	return ntohs(rs->rtp.sin_local.sin_port);
+}
+
+int rtp_socket_bind_port(struct rtp_socket *rs, uint32_t ip, uint16_t port)
+{
+	int rc = -EIO;
+	struct in_addr ia;
+
+	ia.s_addr = htonl(ip);
+	DEBUGP(DLMUX, "rtp_socket_bind_port(rs=%p, IP=%s): ", rs,
+		inet_ntoa(ia));
+
+	/* try to bind to a consecutive pair of ports */
+	rc = rtp_sub_socket_bind(&rs->rtp, ip, port);
+	if (rc < 0) {
+		DEBUGPC(DLMUX, "failed\n");
+		return rc;
+	}
+
+	rc = rtp_sub_socket_bind(&rs->rtcp, ip, port+1);
+	if (rc < 0) {
+		DEBUGPC(DLMUX, "failed\n");
+		return rc;
+	}
+
+	ia.s_addr = rs->rtp.sin_local.sin_addr.s_addr;
+	DEBUGPC(DLMUX, "BOUND_IP=%s, BOUND_PORT=%u\n",
+		inet_ntoa(ia), ntohs(rs->rtp.sin_local.sin_port));
+
+	return 0;
 }
 
 static int rtp_sub_socket_connect(struct rtp_sub_socket *rss,

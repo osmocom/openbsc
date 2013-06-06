@@ -82,6 +82,7 @@ struct rtp_socket {
 
 struct rtp_socket *rtp_socket_create(void);
 int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip);
+int rtp_socket_bind_port(struct rtp_socket *rs, uint32_t ip, uint16_t port);
 int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port);
 int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other);
 int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net, uint32_t callref);

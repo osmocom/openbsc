@@ -1466,6 +1466,10 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 		if (!lchan->abis_ip.rtp_socket)
 			return -EIO;
 
+		rc = rtp_socket_bind(lchan->abis_ip.rtp_socket, INADDR_ANY);
+		if (rc < 0)
+			return -EIO;
+
 		rc = rtp_socket_connect(lchan->abis_ip.rtp_socket,
 				   lchan->abis_ip.bound_ip,
 				   lchan->abis_ip.bound_port);
