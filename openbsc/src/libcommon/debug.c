@@ -30,6 +30,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/logging.h>
+#include <osmocom/vty/vty.h>
 #include <osmocom/gprs/gprs_msgb.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
@@ -193,8 +194,53 @@ static int filter_fn(const struct log_context *ctx,
 	return 0;
 }
 
+static void filter_print(struct vty *vty,
+			 const struct log_info *info,
+			 const struct log_target *tar)
+{
+	if ((tar->filter_map & (1 << FLT_IMSI)) != 0)
+		vty_out(vty, " Log Filter 'IMSI': %s%s",
+			tar->filter_data[FLT_IMSI], VTY_NEWLINE);
+	else
+		vty_out(vty, " Log Filter 'IMSI': Disabled%s", VTY_NEWLINE);
+
+	if ((tar->filter_map & (1 << FLT_NSVC)) != 0)
+		vty_out(vty, " Log Filter 'NSVC': %u%s",
+			tar->filter_data[FLT_NSVC], VTY_NEWLINE);
+	else
+		vty_out(vty, " Log Filter 'NSVC': Disabled%s", VTY_NEWLINE);
+
+	/* Filter on the NS Virtual Connection */
+	if ((tar->filter_map & (1 << FLT_BVC)) != 0)
+		vty_out(vty, " Log Filter 'BVC': %u%s",
+			tar->filter_data[FLT_BVC], VTY_NEWLINE);
+	else
+		vty_out(vty, " Log Filter 'BVC': Disabled%s", VTY_NEWLINE);
+}
+
+static void filter_save(struct vty *vty,
+			 const struct log_info *info,
+			 const struct log_target *tar)
+{
+	if ((tar->filter_map & (1 << FLT_IMSI)) != 0)
+		vty_out(vty, " logging filter imsi %s%s",
+			tar->filter_data[FLT_IMSI], VTY_NEWLINE);
+
+	if ((tar->filter_map & (1 << FLT_NSVC)) != 0)
+		vty_out(vty, " logging filter nsvc %u%s",
+			tar->filter_data[FLT_NSVC], VTY_NEWLINE);
+
+	if ((tar->filter_map & (1 << FLT_BVC)) != 0)
+		vty_out(vty, " logging filter bvc %u%s",
+			tar->filter_data[FLT_BVC], VTY_NEWLINE);
+}
+
+
+
 const struct log_info log_info = {
 	.filter_fn = filter_fn,
+	.save_fn = filter_save,
+	.print_fn = filter_print,
 	.cat = default_categories,
 	.num_cat = ARRAY_SIZE(default_categories),
 };
