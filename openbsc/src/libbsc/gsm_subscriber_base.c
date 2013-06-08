@@ -43,6 +43,8 @@ struct llist_head *subscr_bsc_active_subscribers(void)
 
 char *subscr_name(struct gsm_subscriber *subscr)
 {
+	if (!subscr)
+		return "unknown";
 	if (strlen(subscr->name))
 		return subscr->name;
 
