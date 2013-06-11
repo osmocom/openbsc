@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = foreign dist-bzip2 1.6
 
-INCLUDES = $(all_includes) -I$(top_srcdir)/include
+AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
 SUBDIRS = doc include src tests
 
 pkgconfigdir = $(libdir)/pkgconfig

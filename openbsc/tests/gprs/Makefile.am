@@ -1,4 +1,4 @@
-INCLUDES = $(all_includes) -I$(top_srcdir)/include
+AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS)
 
 EXTRA_DIST = gprs_test.ok
