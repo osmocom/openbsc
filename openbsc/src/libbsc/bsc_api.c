@@ -224,7 +224,8 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 
 	/* copy new data to it */
 	new_lchan->tch_mode = chan_mode;
-	new_lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
+	new_lchan->rsl_cmode = (chan_mode == GSM48_CMODE_SIGN) ?
+					RSL_CMOD_SPD_SIGN : RSL_CMOD_SPD_SPEECH;
 
 	/* handle AMR correctly */
 	if (chan_mode == GSM48_CMODE_SPEECH_AMR)
@@ -357,8 +358,6 @@ static int chan_compat_with_mode(struct gsm_lchan *lchan, int chan_mode, int ful
 {
 	switch (chan_mode) {
 	case GSM48_CMODE_SIGN:
-		/* signalling is always possible */
-		return 1;
 	case GSM48_CMODE_SPEECH_V1:
 	case GSM48_CMODE_SPEECH_AMR:
 	case GSM48_CMODE_DATA_3k6:
