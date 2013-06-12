@@ -484,6 +484,15 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 			  lchan_to_chosen_channel(conn->lchan),
 			  conn->lchan->encr.alg_id,
 			  chan_mode_to_speech(conn->lchan));
+
+	if (conn->silent_call) {
+		struct scall_signal_data sigdata;
+		sigdata.conn = conn;
+		sigdata.data = conn->silent_call_vty;
+		sigdata.type = conn->lchan->type;
+
+		osmo_signal_dispatch(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
+	}
 }
 
 static void handle_ass_fail(struct gsm_subscriber_connection *conn,

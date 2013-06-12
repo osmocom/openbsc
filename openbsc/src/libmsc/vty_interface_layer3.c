@@ -337,7 +337,8 @@ DEFUN(subscriber_silent_call_start,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	int rc, type;
+	int rc;
+	uint8_t rqd_type, lchan_type;
 
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
@@ -345,16 +346,21 @@ DEFUN(subscriber_silent_call_start,
 		return CMD_WARNING;
 	}
 
-	if (!strcmp(argv[2], "tch/f"))
-		type = RSL_CHANNEED_TCH_F;
-	else if (!strcmp(argv[2], "tch/any"))
-		type = RSL_CHANNEED_TCH_ForH;
-	else if (!strcmp(argv[2], "sdcch"))
-		type = RSL_CHANNEED_SDCCH;
-	else
-		type = RSL_CHANNEED_ANY;	/* Defaults to ANY */
+	if (!strcmp(argv[2], "tch/f")) {
+		rqd_type = RSL_CHANNEED_TCH_F;
+		lchan_type = GSM_LCHAN_TCH_F;
+	} else if (!strcmp(argv[2], "tch/any")) {
+		rqd_type = RSL_CHANNEED_TCH_ForH;
+		lchan_type = GSM_LCHAN_TCH_H;
+	} else if (!strcmp(argv[2], "sdcch")) {
+		rqd_type = RSL_CHANNEED_SDCCH;
+		lchan_type = GSM_LCHAN_SDCCH;
+	} else {
+		rqd_type = RSL_CHANNEED_ANY;	/* Defaults to ANY */
+		lchan_type = GSM_LCHAN_SDCCH;
+	}
 
-	rc = gsm_silent_call_start(subscr, vty, type);
+	rc = gsm_silent_call_start(subscr, vty, rqd_type, lchan_type);
 	if (rc <= 0) {
 		vty_out(vty, "%% Subscriber not attached%s",
 			VTY_NEWLINE);
@@ -754,12 +760,26 @@ static int scall_cbfn(unsigned int subsys, unsigned int signal,
 {
 	struct scall_signal_data *sigdata = signal_data;
 	struct vty *vty = sigdata->data;
+	char *type;
 
 	switch (signal) {
 	case S_SCALL_SUCCESS:
-		vty_out(vty, "%% silent call on ARFCN %u timeslot %u%s",
-			sigdata->conn->lchan->ts->trx->arfcn, sigdata->conn->lchan->ts->nr,
-			VTY_NEWLINE);
+		switch (sigdata->type) {
+		case GSM_LCHAN_TCH_F:
+			type = "(TCH/F)";
+			break;
+		case GSM_LCHAN_TCH_H:
+			type = "(TCH/H)";
+			break;
+		case GSM_LCHAN_SDCCH:
+			type = "(SDCCH)";
+			break;
+		default:
+			type = "(unknown type)";
+		}
+		vty_out(vty, "%% silent call on ARFCN %u timeslot %u %s%s",
+			sigdata->conn->lchan->ts->trx->arfcn,
+			sigdata->conn->lchan->ts->nr, type, VTY_NEWLINE);
 		break;
 	case S_SCALL_EXPIRED:
 		vty_out(vty, "%% silent call expired paging%s", VTY_NEWLINE);

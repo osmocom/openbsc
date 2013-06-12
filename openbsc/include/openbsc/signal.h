@@ -155,6 +155,7 @@ struct scall_signal_data {
 	struct gsm_subscriber *subscr;
 	struct gsm_subscriber_connection *conn;
 	void *data;
+	uint8_t type;
 };
 
 struct ipacc_ack_signal_data {

@@ -34,11 +34,14 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/osmo_msc.h>
 
+static uint8_t silent_call_type;
+
 /* paging of the requested subscriber has completed */
 static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 			    struct msgb *msg, void *_conn, void *_data)
 {
 	struct gsm_subscriber_connection *conn = _conn;
+	struct gsm_lchan *lchan;
 	struct scall_signal_data sigdata;
 	int rc = 0;
 
@@ -52,11 +55,20 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
+		lchan = conn->lchan;
+		sigdata.type = lchan->type;
 		DEBUGPC(DLSMS, "success, using Timeslot %u on ARFCN %u\n",
-			conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
+			lchan->ts->nr, lchan->ts->trx->arfcn);
 		conn->silent_call = 1;
-		/* increment lchan reference count */
+		conn->silent_call_vty = _data;
 		osmo_signal_dispatch(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
+		/* assign to given channel type, if not already */
+		if (silent_call_type == lchan->type)
+			break;
+		if (silent_call_type == GSM_LCHAN_SDCCH)
+			break;
+		gsm0808_assign_req(conn, GSM48_CMODE_SIGN,
+			silent_call_type == GSM_LCHAN_TCH_F);
 		break;
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_BUSY:
@@ -114,11 +126,14 @@ int silent_call_reroute(struct gsm_subscriber_connection *conn, struct msgb *msg
 
 
 /* initiate a silent call with a given subscriber */
-int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
+int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data,
+	uint8_t rqd_type, uint8_t lchan_type)
 {
 	int rc;
 
-	rc = paging_request(subscr->net, subscr, type,
+	silent_call_type = lchan_type;
+
+	rc = paging_request(subscr->net, subscr, rqd_type,
 			    paging_cb_silent, data);
 	return rc;
 }

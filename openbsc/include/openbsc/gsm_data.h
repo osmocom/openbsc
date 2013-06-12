@@ -123,6 +123,7 @@ struct gsm_subscriber_connection {
 
 	/* Are we part of a special "silent" call */
 	int silent_call;
+	void *silent_call_vty;
 	int put_channel;
 
 	/* bsc structures */
