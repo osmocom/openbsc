@@ -588,13 +588,14 @@ DEFUN(ena_subscr_kick,
 
 DEFUN(ena_subscr_handover,
       ena_subscr_handover_cmd,
-      "subscriber " SUBSCR_TYPES " ID handover BTS_NR",
-	SUBSCR_HELP "Handover the active connection\n"
+      "subscriber " SUBSCR_TYPES " ID handover [BTS_NR]",
+	SUBSCR_HELP "Handover the active connection (if BTS is given) or do "
+	"assignment (if BTS is not given)\n"
 	"Number of the BTS to handover to\n")
 {
 	int ret;
 	struct gsm_subscriber_connection *conn;
-	struct gsm_bts *bts;
+	struct gsm_bts *bts = NULL;
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr =
 			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
@@ -613,12 +614,14 @@ DEFUN(ena_subscr_handover,
 		return CMD_WARNING;
 	}
 
-	bts = gsm_bts_num(gsmnet, atoi(argv[2]));
-	if (!bts) {
-		vty_out(vty, "%% BTS with number(%d) could not be found.%s",
-			atoi(argv[2]), VTY_NEWLINE);
-		subscr_put(subscr);
-		return CMD_WARNING;
+	if (argc > 2) {
+		bts = gsm_bts_num(gsmnet, atoi(argv[2]));
+		if (!bts) {
+			vty_out(vty, "%% BTS with number(%d) could not be "
+				"found.%s", atoi(argv[2]), VTY_NEWLINE);
+			subscr_put(subscr);
+			return CMD_WARNING;
+		}
 	}
 
 	/* now start the handover */
