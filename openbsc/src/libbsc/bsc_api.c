@@ -210,6 +210,13 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 		return -1;
 	}
 
+	/* check if we are on TCH/F and requested TCH/H, but got TCH/F */
+	if (conn->lchan->type == new_lchan->type) {
+		lchan_free(new_lchan);
+		LOGP(DMSC, LOGL_NOTICE, "Not assign to equal channel rate.\n");
+		return -1;
+	}
+
 	/* copy old data to the new channel */
 	memcpy(&new_lchan->encr, &conn->lchan->encr, sizeof(new_lchan->encr));
 	new_lchan->ms_power = conn->lchan->ms_power;
