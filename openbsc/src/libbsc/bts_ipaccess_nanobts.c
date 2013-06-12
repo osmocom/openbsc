@@ -111,7 +111,7 @@ static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_CCCH_L_I_P, 1, /* seconds */
 	NM_ATT_RACH_B_THRESH, 10, /* busy threshold in - dBm */
 	NM_ATT_LDAVG_SLOTS, 0x03, 0xe8, /* rach load averaging 1000 slots */
-	NM_ATT_BTS_AIR_TIMER, 128, /* miliseconds */
+	NM_ATT_BTS_AIR_TIMER, 13, /* 10 miliseconds */
 	NM_ATT_NY1, 10, /* 10 retransmissions of physical config */
 	NM_ATT_BCCH_ARFCN, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 	NM_ATT_BSIC, HARDCODED_BSIC,
@@ -225,6 +225,10 @@ static void patch_nm_tables(struct gsm_bts *bts)
 
 	/* patch BSIC */
 	nanobts_attr_bts[sizeof(nanobts_attr_bts)-11] = bts->bsic;
+
+	/* patch T3105 */
+	if (bts->network->T3105 > 0)
+		nanobts_attr_bts[38] = bts->network->T3105;
 
 	/* patch CGI */
 	abis_nm_ipaccess_cgi(nanobts_attr_bts+sizeof(nanobts_attr_bts)-7, bts);
