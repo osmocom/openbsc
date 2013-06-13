@@ -80,33 +80,73 @@ struct gsm_lai {
 };
 
 static int apply_codec_restrictions(struct gsm_bts *bts,
-	struct gsm_mncc_bearer_cap *bcap)
+	struct gsm_mncc_bearer_cap *bcap, const char *extension)
 {
 	int tchf_count = lc_count_bts(bts, GSM_PCHAN_TCH_F);
 	int tchh_count = lc_count_bts(bts, GSM_PCHAN_TCH_H);
 	int i, j;
 
+	DEBUGP(DCC, "Applying codec restrictions to extension %s:\n",
+		extension);
+
 	/* remove unsupported speech versions from list */
 	for (i = 0, j = 0; bcap->speech_ver[i] >= 0; i++) {
 		/* filter TCH rates currently available */
 		if ((bcap->speech_ver[i] & 1)) {
-			if (!tchh_count)
+			if (!tchh_count) {
+				DEBUGP(DCC, "- Delete TCH/H codec, because no "
+					"free channel\n");
 				continue;
+			}
 		} else {
-			if (!tchf_count)
+			if (!tchf_count) {
+				DEBUGP(DCC, "- Delete TCH/F codec, because no "
+					"free channel\n");
 				continue;
+			}
 		}
 		/* filter codecs supported by BTS */
-		if (bcap->speech_ver[i] == 0)
+		switch (bcap->speech_ver[i]) {
+		case 0:
+			DEBUGP(DCC, "- Keep FR\n");
 			bcap->speech_ver[j++] = 0;
-		if (bcap->speech_ver[i] == 2 && bts->codec.efr)
-			bcap->speech_ver[j++] = 2;
-		if (bcap->speech_ver[i] == 4 && bts->codec.afs)
-			bcap->speech_ver[j++] = 4;
-		if (bcap->speech_ver[i] == 1 && bts->codec.hr)
-			bcap->speech_ver[j++] = 1;
-		if (bcap->speech_ver[i] == 5 && bts->codec.ahs)
-			bcap->speech_ver[j++] = 5;
+			break;
+		case 2:
+			if (bts->codec.efr) {
+				DEBUGP(DCC, "- Keep EFR\n");
+				bcap->speech_ver[j++] = 2;
+			} else
+				DEBUGP(DCC, "- Delete EFR, because not "
+					"supported by BTS\n");
+			break;
+		case 4:
+			if (bts->codec.afs) {
+				DEBUGP(DCC, "- Keep AFS\n");
+				bcap->speech_ver[j++] = 4;
+			} else
+				DEBUGP(DCC, "- Delete AFS, because not "
+					"supported by BTS\n");
+			break;
+		case 1:
+			if (bts->codec.hr) {
+				DEBUGP(DCC, "- Keep HR\n");
+				bcap->speech_ver[j++] = 1;
+			} else
+				DEBUGP(DCC, "- Delete HR, because not "
+					"supported by BTS\n");
+			break;
+		case 5:
+			if (bts->codec.ahs) {
+				DEBUGP(DCC, "- Keep AHS\n");
+				bcap->speech_ver[j++] = 5;
+			} else
+				DEBUGP(DCC, "- Delete AHS, because not "
+					"supported by BTS\n");
+			break;
+		default:
+			DEBUGP(DCC, "- Delete unknown codec (%d)\n",
+				bcap->speech_ver[i]);
+		}
 	}
 	bcap->speech_ver[j] = -1;
 
@@ -1960,7 +2000,8 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 		memcpy(&trans->conn->bcap, &setup.bearer_cap,
 			sizeof(struct gsm_mncc_bearer_cap));
-		apply_codec_restrictions(trans->conn->bts, &setup.bearer_cap);
+		apply_codec_restrictions(trans->conn->bts, &setup.bearer_cap,
+			trans->subscr->extension);
 	}
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
@@ -2116,7 +2157,8 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 		memcpy(&trans->conn->bcap, &call_conf.bearer_cap,
 			sizeof(struct gsm_mncc_bearer_cap));
-		apply_codec_restrictions(trans->conn->bts, &call_conf.bearer_cap);
+		apply_codec_restrictions(trans->conn->bts,
+			&call_conf.bearer_cap, trans->subscr->extension);
 	}
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
@@ -2807,7 +2849,8 @@ static int gsm48_cc_rx_modify(struct gsm_trans *trans, struct msgb *msg)
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 		memcpy(&trans->conn->bcap, &modify.bearer_cap,
 			sizeof(struct gsm_mncc_bearer_cap));
-		apply_codec_restrictions(trans->conn->bts, &modify.bearer_cap);
+		apply_codec_restrictions(trans->conn->bts, &modify.bearer_cap,
+			trans->subscr->extension);
 	}
 
 	new_cc_state(trans, GSM_CSTATE_MO_ORIG_MODIFY);
@@ -2852,7 +2895,8 @@ static int gsm48_cc_rx_modify_complete(struct gsm_trans *trans, struct msgb *msg
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 		memcpy(&trans->conn->bcap, &modify.bearer_cap,
 			sizeof(struct gsm_mncc_bearer_cap));
-		apply_codec_restrictions(trans->conn->bts, &modify.bearer_cap);
+		apply_codec_restrictions(trans->conn->bts, &modify.bearer_cap,
+			trans->subscr->extension);
 	}
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
@@ -2895,7 +2939,8 @@ static int gsm48_cc_rx_modify_reject(struct gsm_trans *trans, struct msgb *msg)
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 		memcpy(&trans->conn->bcap, &modify.bearer_cap,
 			sizeof(struct gsm_mncc_bearer_cap));
-		apply_codec_restrictions(trans->conn->bts, &modify.bearer_cap);
+		apply_codec_restrictions(trans->conn->bts, &modify.bearer_cap,
+			trans->subscr->extension);
 	}
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
