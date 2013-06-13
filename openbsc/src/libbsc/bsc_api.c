@@ -524,8 +524,10 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 
 	/* stop the timer and release it */
 	osmo_timer_del(&conn->T10);
-	lchan_release(conn->secondary_lchan, 0, RSL_REL_LOCAL_END);
-	conn->secondary_lchan = NULL;
+	if (conn->secondary_lchan) {
+		lchan_release(conn->secondary_lchan, 0, RSL_REL_LOCAL_END);
+		conn->secondary_lchan = NULL;
+	}
 
 	gh = msgb_l3(msg);
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
