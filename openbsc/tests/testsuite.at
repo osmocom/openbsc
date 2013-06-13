@@ -59,3 +59,166 @@ AT_KEYWORDS([abis])
 cat $abs_srcdir/abis/abis_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/abis/abis_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([handover test 0])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 0], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 1])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 1], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 2])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 2], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 3])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 3], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 4])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 4], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 5])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 5], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 6])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 6], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 7])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 7], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 8])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 8], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 9])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 9], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 10])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 10], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 11])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 11], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 12])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 12], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 13])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 13], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 14])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 14], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 15])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 15], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 16])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 16], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 17])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 17], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 18])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 18], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 19])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 19], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 20])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 20], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 21])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 21], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 22])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 22], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 23])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 23], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 24])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 24], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 25])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 25], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([handover test 26])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test 26], [], [expout], [ignore])
+AT_CLEANUP
+

@@ -162,6 +162,7 @@ AC_OUTPUT(
     tests/si/Makefile
     tests/abis/Makefile
     tests/smpp/Makefile
+    tests/handover/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)
