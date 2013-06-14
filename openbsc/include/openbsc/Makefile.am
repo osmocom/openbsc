@@ -13,7 +13,7 @@ noinst_HEADERS = abis_nm.h abis_rsl.h db.h gsm_04_08.h gsm_data.h \
 		osmo_bsc_rf.h osmo_bsc.h network_listen.h bsc_nat_sccp.h \
 		osmo_msc_data.h osmo_bsc_grace.h sms_queue.h abis_om2000.h \
 		bss.h gsm_data_shared.h control_cmd.h ipaccess.h mncc_int.h \
-		arfcn_range_encode.h
+		arfcn_range_encode.h nat_rewrite_trie.h
 
 openbsc_HEADERS = gsm_04_08.h meas_rep.h bsc_api.h
 openbscdir = $(includedir)/openbsc

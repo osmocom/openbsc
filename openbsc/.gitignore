@@ -50,6 +50,7 @@ src/osmo-bsc_nat/osmo-bsc_nat
 
 #tests
 tests/bsc-nat/bsc_nat_test
+tests/bsc-nat-trie/bsc_nat_trie_test
 tests/channel/channel_test
 tests/db/db_test
 tests/debug/debug_test
