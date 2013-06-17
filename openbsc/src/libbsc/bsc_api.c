@@ -46,6 +46,13 @@ static void handle_release(struct gsm_subscriber_connection *conn, struct bsc_ap
 static void handle_chan_ack(struct gsm_subscriber_connection *conn, struct bsc_api *bsc, struct  gsm_lchan *lchan);
 static void handle_chan_nack(struct gsm_subscriber_connection *conn, struct bsc_api *bsc, struct  gsm_lchan *lchan);
 
+struct assignment_queue {
+	struct llist_head entry;
+	struct msgb *msg;
+	int link_id;
+	int allow_sacch;
+};
+
 /* GSM 08.08 3.2.2.33 */
 static uint8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
 {
@@ -258,8 +265,34 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 	conn->bts = lchan->ts->trx->bts;
 	lchan->conn = conn;
 	INIT_LLIST_HEAD(&conn->ho_penalty_timers);
+	INIT_LLIST_HEAD(&conn->assignment_queue);
 	llist_add_tail(&conn->entry, &sub_connections);
 	return conn;
+}
+
+static void flush_assignment_queue(struct gsm_subscriber_connection *conn,
+	int send)
+{
+	struct assignment_queue *ass_queue;
+
+	if (conn->secondary_lchan || conn->ho_lchan) {
+		LOGP(DNM, LOGL_ERROR, "Cannot send queued messages, because "
+			"handover/assignment is still ongoing, please fix!\n");
+		send = 0;
+	}
+
+	while (!llist_empty(&conn->assignment_queue)) {
+		ass_queue = llist_entry(conn->assignment_queue.next,
+			struct assignment_queue, entry);
+		llist_del(&ass_queue->entry);
+		if (send) {
+			LOGP(DNM, LOGL_DEBUG, "Sending pending DTAP message\n");
+			gsm0808_submit_dtap(conn, ass_queue->msg,
+				ass_queue->link_id, ass_queue->allow_sacch);
+		} else
+			msgb_free(ass_queue->msg);
+		talloc_free(ass_queue);
+	}
 }
 
 /* TODO: move subscriber put here... */
@@ -300,6 +333,9 @@ void subscr_con_free(struct gsm_subscriber_connection *conn)
 		talloc_free(penalty);
 	}
 
+	/* flush pending messages */
+	flush_assignment_queue(conn, 0);
+
 	llist_del(&conn->entry);
 	talloc_free(conn);
 }
@@ -322,6 +358,18 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 		     "Called submit dtap without an lchan.\n");
 		msgb_free(msg);
 		return -1;
+	}
+
+	/* buffer message during assignment / handover */
+	if (conn->secondary_lchan || conn->ho_lchan) {
+		struct assignment_queue *ass_queue;
+		LOGP(DNM, LOGL_DEBUG, "Queing DTAP message during ho/ass\n");
+		ass_queue = talloc_zero(tall_bsc_ctx, struct assignment_queue);
+		ass_queue->msg = msg;
+		ass_queue->link_id = link_id;
+		ass_queue->allow_sacch = allow_sacch;
+		llist_add_tail(&ass_queue->entry, &conn->assignment_queue);
+		return 0;
 	}
 
 	sapi = link_id & 0x7;
@@ -455,6 +503,9 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 		osmo_signal_dispatch(SS_LCHAN, S_LCHAN_ASSIGNMENT_COMPL, &sig);
 		/* FIXME: release old channel */
 
+		/* send pending messages, if any */
+		flush_assignment_queue(conn, 1);
+
 		return;
 	}
 
@@ -476,6 +527,9 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 	lchan_release(conn->lchan, 0, RSL_REL_LOCAL_END);
 	conn->lchan = conn->secondary_lchan;
 	conn->secondary_lchan = NULL;
+
+	/* send pending messages, if any */
+	flush_assignment_queue(conn, 1);
 
 	if (is_ipaccess_bts(conn->bts) && conn->lchan->tch_mode != GSM48_CMODE_SIGN)
 		rsl_ipacc_crcx(conn->lchan);
@@ -514,6 +568,9 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 		osmo_signal_dispatch(SS_LCHAN, S_LCHAN_ASSIGNMENT_FAIL, &sig);
 		/* FIXME: release allocated new channel */
 
+		/* send pending messages, if any */
+		flush_assignment_queue(conn, 1);
+
 		return;
 	}
 
@@ -528,6 +585,9 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 		lchan_release(conn->secondary_lchan, 0, RSL_REL_LOCAL_END);
 		conn->secondary_lchan = NULL;
 	}
+
+	/* send pending messages, if any */
+	flush_assignment_queue(conn, 1);
 
 	gh = msgb_l3(msg);
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
@@ -594,6 +654,9 @@ static void handle_rr_ho_compl(struct msgb *msg)
 	sig.mr = NULL;
 	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, &sig);
 	/* FIXME: release old channel */
+
+	/* send pending messages, if any */
+	flush_assignment_queue(msg->lchan->conn, 1);
 }
 
 /* Chapter 9.1.17 Handover Failure */
@@ -609,6 +672,9 @@ static void handle_rr_ho_fail(struct msgb *msg)
 	sig.mr = NULL;
 	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, &sig);
 	/* FIXME: release allocated new channel */
+
+	/* send pending messages, if any */
+	flush_assignment_queue(msg->lchan->conn, 1);
 }
 
 

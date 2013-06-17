@@ -138,6 +138,7 @@ struct gsm_subscriber_connection {
 	/* for assignment handling */
 	struct osmo_timer_list T10;
 	struct gsm_lchan *secondary_lchan;
+	struct llist_head assignment_queue;
 
 	/* penalty timers for handover */
 	struct llist_head ho_penalty_timers;
