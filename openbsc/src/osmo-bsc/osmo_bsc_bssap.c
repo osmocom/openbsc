@@ -25,6 +25,9 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/paging.h>
+#include <openbsc/signal.h>
+
+#include <osmocom/sccp/sccp.h>
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0808.h>
@@ -96,6 +99,43 @@ enum gsm48_chan_mode gsm88_to_chan_mode(enum gsm0808_permitted_speech speech)
 
 	LOGP(DMSC, LOGL_FATAL, "Should not be reached.\n");
 	return GSM48_CMODE_SPEECH_AMR;
+}
+
+static int bssmap_send_reset_ack(struct osmo_msc_data *msc)
+{
+	struct msgb *msg;
+
+	msg = gsm0808_create_reset_ack();
+	if (!msg) {
+		LOGP(DMSC, LOGL_ERROR, "Sending RESET_ACK failed.\n");
+		return -1;
+	}
+
+	sccp_write(msg, &sccp_ssn_bssap, &sccp_ssn_bssap, 0, msc->msc_con);
+	msgb_free(msg);
+	return 0;
+}
+
+
+/* GSM 08.08 / 3.2.1.23 */
+
+static int bssmap_handle_reset(struct osmo_msc_data *msc,
+			       struct msgb *msg, unsigned int length)
+{
+	struct msc_signal_data sig;
+	struct osmo_msc_data *data;
+
+	LOGP(DMSC, LOGL_NOTICE, "RESET from MSC\n");
+
+	/* send a SC_MSC_RESET signal which will be picked up by
+	 * osmo_bsc_sccp.c:handle_msc_signal() */
+	data = (struct osmo_msc_data *) msc->msc_con->write_queue.bfd.data;
+	sig.data = data;
+	osmo_signal_dispatch(SS_MSC, S_MSC_RESET, &sig);
+
+	/* FIXME: schedule timer T13/T16? and send RESET_ACK */
+	bssmap_send_reset_ack(msc);
+	return 0;
 }
 
 static int bssmap_handle_reset_ack(struct osmo_msc_data *msc,
@@ -411,6 +451,9 @@ static int bssmap_rcvmsg_udt(struct osmo_msc_data *msc,
 	switch (msg->l4h[0]) {
 	case BSS_MAP_MSG_RESET_ACKNOWLEDGE:
 		ret = bssmap_handle_reset_ack(msc, msg, length);
+		break;
+	case BSS_MAP_MSG_RESET:
+		ret = bssmap_handle_reset(msc, msg, length);
 		break;
 	case BSS_MAP_MSG_PAGING:
 		ret = bssmap_handle_paging(msc, msg, length);

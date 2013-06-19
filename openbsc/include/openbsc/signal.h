@@ -220,6 +220,7 @@ enum signal_msc {
 	S_MSC_LOST,
 	S_MSC_CONNECTED,
 	S_MSC_AUTHENTICATED,
+	S_MSC_RESET
 };
 
 struct osmo_msc_data;

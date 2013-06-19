@@ -133,7 +133,8 @@ static void sccp_cc_timeout(void *_data)
 	if (data->sccp->connection_state >= SCCP_CONNECTION_STATE_ESTABLISHED)
 		return;
 
-	LOGP(DMSC, LOGL_ERROR, "The connection was never established.\n");
+	LOGP(DMSC, LOGL_ERROR, "The connection was never established\
+	     (No SCCP CC from MSC).\n");
 	bsc_sccp_force_free(data);
 }
 
@@ -281,8 +282,14 @@ static int handle_msc_signal(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	msc = signal_data;
-	if (signal == S_MSC_LOST)
+	switch (signal) {
+	case S_MSC_LOST:
+	case S_MSC_RESET:
 		bsc_close_connections(msc->data->msc_con);
+		break;
+	default:
+		break;
+	}
 
 	return 0;
 }
