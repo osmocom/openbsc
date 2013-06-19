@@ -38,6 +38,7 @@ enum rtp_rx_action {
 	RTP_NONE,
 	RTP_PROXY,
 	RTP_RECV_UPSTREAM,
+	RTP_LOOPBACK
 };
 
 enum rtp_tx_action {
@@ -85,6 +86,7 @@ int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip);
 int rtp_socket_bind_port(struct rtp_socket *rs, uint32_t ip, uint16_t port);
 int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port);
 int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other);
+int rtp_socket_loopback(struct rtp_socket *s);
 int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net, uint32_t callref);
 int rtp_socket_free(struct rtp_socket *rs);
 int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame);

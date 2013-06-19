@@ -143,6 +143,29 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
+static int create_socket_loop(uint16_t port)
+{
+	struct rtp_socket *s;
+	int rc;
+
+	s = rtp_socket_create();
+	if (!s)
+		return -EIO;
+
+	rc = rtp_socket_bind_port(s, INADDR_ANY, port);
+	if (rc < 0)
+		goto err_free_s;
+
+	rc = rtp_socket_loopback(s);
+	if (rc < 0)
+		goto err_free_s;
+
+	return 0;
+err_free_s:
+	rtp_socket_free(s);
+	return -EIO;
+}
+
 static int create_socket_pair(uint16_t port1, uint16_t port2)
 {
 	struct rtp_socket *a, *b;
@@ -225,15 +248,21 @@ int main(int argc, char **argv)
 	osmo_init_ignore_signals();
 
 	/* hard-wire map CIC 1->33, 2->33, ... */
-	for (i = 1; i <= 4; i++) {
+	for (i = 1; i <= 8; i++) {
 		uint16_t port1, port2;
 		port1 = PORT_BY_CIC(0, i);
 		port2 = PORT_BY_CIC(1, i);
-		printf("Creating UDP port mapping %u -> %u\n", port1, port2);
+		printf("Creating UDP port mapping (%u,%u:%u) -> (%u,%u:%u)\n",
+			0,i,1,i,port1, port2);
 		rc = create_socket_pair(port1, port2);
 		if (rc < 0)
 			exit(1);
 	}
+	printf("Creating loopback CIC (%u,%u:%u)\n",
+		0, 16, PORT_BY_CIC(0, 16));
+	rc = create_socket_loop(PORT_BY_CIC(0,16));
+	if (rc < 0)
+		exit(1);
 
 	if (daemonize) {
 		rc = osmo_daemonize();

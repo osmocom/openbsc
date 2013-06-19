@@ -392,11 +392,15 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 	struct msgb *msg = msgb_alloc(RTP_ALLOC_SIZE, "RTP/RTCP");
 	struct msgb *new_msg;
 	struct rtp_sub_socket *other_rss;
+	struct sockaddr_in src_addr;
+	socklen_t src_addrlen;
 
 	if (!msg)
 		return -ENOMEM;
 
-	rc = read(rss->bfd.fd, msg->data, RTP_ALLOC_SIZE);
+	src_addrlen = sizeof(src_addr);
+	rc = recvfrom(rss->bfd.fd, msg->data, RTP_ALLOC_SIZE, 0,
+			(struct sockaddr *)&src_addr, &src_addrlen);
 	if (rc <= 0) {
 		rss->bfd.when &= ~BSC_FD_READ;
 		return rc;
@@ -405,6 +409,20 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 	msgb_put(msg, rc);
 
 	switch (rs->rx_action) {
+	case RTP_LOOPBACK:
+		/* if this socket is not connected yet to a remote
+		 * address, do so now */
+		if (rss->sin_local.sin_addr.s_addr != src_addr.sin_addr.s_addr ||
+		    rss->sin_local.sin_port != src_addr.sin_port) {
+			LOGP(DLMUX, LOGL_INFO, "connecting loopback socket\n");
+			rc = rtp_socket_connect(rs,
+					   ntohl(src_addr.sin_addr.s_addr),
+					   ntohs(src_addr.sin_port));
+		}
+		/* FIXME: Do we need RTCP mangling here? */
+		msgb_enqueue(&rss->tx_queue, msg);
+		rss->bfd.when |= BSC_FD_WRITE;
+		break;
 	case RTP_PROXY:
 		if (!rs->proxy.other_sock) {
 			rc = -EIO;
@@ -720,6 +738,16 @@ int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 
 	other->rx_action = RTP_PROXY;
 	other->proxy.other_sock = this;
+
+	return 0;
+}
+
+/*! \brief put socket into loopback mode, echong back all data
+ *  \param[in] RTP socket to be put in loopback mode
+ */
+int rtp_socket_loopback(struct rtp_socket *s)
+{
+	s->rx_action = RTP_LOOPBACK;
 
 	return 0;
 }
