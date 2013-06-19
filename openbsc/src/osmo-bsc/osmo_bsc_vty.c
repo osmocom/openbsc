@@ -120,7 +120,7 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 		vty_out(vty, " codec-list ");
 		for (i = 0; i < msc->audio_length; ++i) {
 			if (i != 0)
-				vty_out(vty, ", ");
+				vty_out(vty, " ");
 
 			if (msc->audio_support[i]->hr)
 				vty_out(vty, "hr%.1u", msc->audio_support[i]->ver);
