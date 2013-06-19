@@ -43,6 +43,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/vty.h>
 #include <openbsc/rtp_proxy.h>
+#include <openbsc/mgcp.h>
 
 #include "../../bscconfig.h"
 
@@ -211,7 +212,7 @@ err_free_a:
 }
 
 
-#define PORT_BY_CIC(mux, x) (4000 + ((mux)*32)+((x)*2))
+#define PORT_BY_CIC(mux, x) rtp_calculate_port((mux)*32+(x), 4000)
 
 int main(int argc, char **argv)
 {
