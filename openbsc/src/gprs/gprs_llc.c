@@ -547,7 +547,23 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 				"TLLI=%08x dropping UI, N(U=%d) not in window V(URV(UR:%d).\n",
 				lle->llme ? lle->llme->tlli : -1,
 				gph->seq_tx, lle->vu_recv);
-			return -EIO;
+
+			/* HACK: non-standard recovery handling.  If remote LLE
+			 * is re-transmitting the same sequence number for
+			 * threee times, don't discard the frame but pass it on
+			 * and 'learn' the new sequence number */
+			if (gph->seq_tx != lle->vu_recv_last) {
+				lle->vu_recv_last = gph->seq_tx;
+				lle->vu_recv_duplicates = 0;
+			} else {
+				lle->vu_recv_duplicates++;
+				if (lle->vu_recv_duplicates < 3)
+					return -EIO;
+				LOGP(DLLC, LOGL_NOTICE, "TLLI=%08x recovering "
+				     "N(U=%d) after receiving %u duplicates\n",
+					lle->llme ? lle->llme->tlli : -1,
+					gph->seq_tx, lle->vu_recv_duplicates);
+			}
 		}
 		/* Increment the sequence number that we expect in the next frame */
 		lle->vu_recv = (gph->seq_tx + 1) % 512;

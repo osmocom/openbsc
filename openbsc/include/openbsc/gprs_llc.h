@@ -126,6 +126,10 @@ struct gprs_llc_lle {
 	uint16_t vu_send;
 	uint16_t vu_recv;
 
+	/* non-standard LLC state */
+	uint16_t vu_recv_last;
+	uint16_t vu_recv_duplicates;
+
 	/* Overflow Counter for ABM */
 	uint32_t oc_i_send;
 	uint32_t oc_i_recv;
