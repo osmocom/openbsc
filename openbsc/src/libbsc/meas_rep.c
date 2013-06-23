@@ -28,12 +28,20 @@ static int get_field(const struct gsm_meas_rep *rep,
 {
 	switch (field) {
 	case MEAS_REP_DL_RXLEV_FULL:
+		if (!(rep->flags & MEAS_REP_F_DL_VALID))
+			return -EINVAL;
 		return rep->dl.full.rx_lev;
 	case MEAS_REP_DL_RXLEV_SUB:
+		if (!(rep->flags & MEAS_REP_F_DL_VALID))
+			return -EINVAL;
 		return rep->dl.sub.rx_lev;
 	case MEAS_REP_DL_RXQUAL_FULL:
+		if (!(rep->flags & MEAS_REP_F_DL_VALID))
+			return -EINVAL;
 		return rep->dl.full.rx_qual;
 	case MEAS_REP_DL_RXQUAL_SUB:
+		if (!(rep->flags & MEAS_REP_F_DL_VALID))
+			return -EINVAL;
 		return rep->dl.sub.rx_qual;
 	case MEAS_REP_UL_RXLEV_FULL:
 		return rep->ul.full.rx_lev;
@@ -72,7 +80,7 @@ int get_meas_rep_avg(const struct gsm_lchan *lchan,
 		     enum meas_rep_field field, unsigned int num)
 {
 	unsigned int i, idx;
-	int avg = 0;
+	int avg = 0, valid_num = 0;
 
 	if (num < 1)
 		return -EINVAL;
@@ -85,11 +93,18 @@ int get_meas_rep_avg(const struct gsm_lchan *lchan,
 
 	for (i = 0; i < num; i++) {
 		int j = (idx+i) % ARRAY_SIZE(lchan->meas_rep);
+		int val = get_field(&lchan->meas_rep[j], field);
 
-		avg += get_field(&lchan->meas_rep[j], field);
+		if (val >= 0) {
+			avg += val;
+			valid_num++;
+		}
 	}
 
-	return avg / num;
+	if (valid_num == 0)
+		return -EINVAL;
+
+	return avg / valid_num;
 }
 
 /* Check if N out of M last values for FIELD are >= bd */
@@ -107,7 +122,7 @@ int meas_rep_n_out_of_m_be(const struct gsm_lchan *lchan,
 		int j = (idx + i) % ARRAY_SIZE(lchan->meas_rep);
 		int val = get_field(&lchan->meas_rep[j], field);
 
-		if (val >= be)
+		if (val >= be) /* implies that val < 0 will not count */
 			count++;
 
 		if (count >= n)
