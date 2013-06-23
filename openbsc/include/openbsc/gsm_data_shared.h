@@ -246,7 +246,7 @@ struct gsm_lchan {
 	struct neigh_meas_proc neigh_meas[MAX_NEIGH_MEAS];
 
 	/* cache of last measurement reports on this lchan */
-	struct gsm_meas_rep meas_rep[6];
+	struct gsm_meas_rep meas_rep[MAX_MEAS_REP];
 	int meas_rep_idx;
 	int meas_rep_cnt;
 

@@ -87,6 +87,8 @@ struct gsm_anchor_operation {
 #define MAX_NEIGH_MEAS		10
 /* Maximum size of the averaging window for neighbor cells */
 #define MAX_WIN_NEIGH_AVG	10
+/* Maximum number of report history we store */
+#define MAX_MEAS_REP		10
 
 /* processed neighbor measurements for one cell */
 struct neigh_meas_proc {
