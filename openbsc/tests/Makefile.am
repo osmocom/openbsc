@@ -23,7 +23,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
                echo '  [$(PACKAGE_URL)])'; \
              } >'$(srcdir)/package.m4'
 
-EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE)
+EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) vty_test_runner.py
 TESTSUITE = $(srcdir)/testsuite
 DISTCLEANFILES = atconfig
 
@@ -31,6 +31,7 @@ if ENABLE_VTY_TESTS
 python-tests: $(BUILT_SOURCES)
 	osmotestvty.py -p $(abs_top_srcdir) -w $(abs_top_builddir) -v
 	osmotestconfig.py -p $(abs_top_srcdir) -w $(abs_top_builddir) -v
+	$(PYTHON) $(srcdir)/vty_test_runner.py -w $(abs_top_builddir) -v
 	rm -f $(top_builddir)/hlr.sqlite3
 else
 python-tests: $(BUILT_SOURCES)
