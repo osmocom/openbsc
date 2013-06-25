@@ -299,6 +299,8 @@ struct bsc_nat {
 	/* number rewriting */
 	char *num_rewr_name;
 	struct llist_head num_rewr;
+	char *num_rewr_post_name;
+	struct llist_head num_rewr_post;
 
 	char *smsc_rewr_name;
 	struct llist_head smsc_rewr;

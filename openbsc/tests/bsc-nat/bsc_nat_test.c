@@ -1096,6 +1096,66 @@ static void test_setup_rewrite_prefix(void)
 	talloc_free(nat);
 }
 
+static void test_setup_rewrite_post(void)
+{
+	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
+	struct msgb *out;
+	struct bsc_nat_parsed *parsed;
+	const char *imsi = "27408000001234";
+
+	struct bsc_nat *nat = bsc_nat_alloc();
+
+	/* a fake list */
+	struct osmo_config_list entries;
+	struct osmo_config_entry entry;
+	struct osmo_config_list entries_post;
+	struct osmo_config_entry entry_post;
+
+	INIT_LLIST_HEAD(&entries.entry);
+	entry.mcc = "274";
+	entry.mnc = "08";
+	entry.option = "^0([1-9])";
+	entry.text = "0049";
+	llist_add_tail(&entry.list, &entries.entry);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
+
+	/* attempt to undo the previous one */
+	INIT_LLIST_HEAD(&entries_post.entry);
+	entry_post.mcc = "274";
+	entry_post.mnc = "08";
+	entry_post.option = "^\\+49([1-9])";
+	entry_post.text = "prefix_lookup";
+	llist_add_tail(&entry_post.list, &entries_post.entry);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr_post, &entries_post);
+
+        nat->num_rewr_trie = nat_rewrite_parse(nat, "prefixes.csv");
+
+	msgb_reset(msg);
+	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		printf("FAIL: Could not parse ID resp\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	if (!out) {
+		printf("FAIL: A new message should be created.\n");
+		abort();
+	}
+
+	if (msg == out) {
+		printf("FAIL: The message should have changed\n");
+		abort();
+	}
+
+	verify_msg(out, cc_setup_national, ARRAY_SIZE(cc_setup_national));
+	msgb_free(out);
+
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, NULL);
+	talloc_free(nat);
+}
+
 static void test_sms_smsc_rewrite()
 {
 	struct msgb *msg = msgb_alloc(4096, "SMSC rewrite"), *out;
@@ -1378,6 +1438,7 @@ int main(int argc, char **argv)
 	test_dt_filter();
 	test_setup_rewrite();
 	test_setup_rewrite_prefix();
+	test_setup_rewrite_post();
 	test_sms_smsc_rewrite();
 	test_sms_number_rewrite();
 	test_mgcp_allocations();

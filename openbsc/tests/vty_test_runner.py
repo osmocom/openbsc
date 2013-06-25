@@ -103,6 +103,14 @@ class TestVTYNAT(TestVTYBase):
         res = self.vty.command("number-rewrite rewrite.cfg")
         res = self.vty.command("no number-rewrite")
 
+    def testRewritePostNoRewrite(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.verify("number-rewrite-post rewrite.cfg", [''])
+        self.vty.verify("no number-rewrite-post", [''])
+
+
     def testPrefixTreeLoading(self):
         cfg = os.path.join(confpath, "tests/bsc-nat-trie/prefixes.csv")
 

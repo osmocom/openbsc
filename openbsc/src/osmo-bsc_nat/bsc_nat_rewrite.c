@@ -93,8 +93,9 @@ static char *match_and_rewrite_number(void *ctx, const char *number,
 	return new_number;
 }
 
-static char *rewrite_isdn_number(struct bsc_nat *nat, void *ctx, const char *imsi,
-				       struct gsm_mncc_number *called)
+static char *rewrite_isdn_number(struct bsc_nat *nat, struct llist_head *rewr_list,
+				void *ctx, const char *imsi,
+				struct gsm_mncc_number *called)
 {
 	char int_number[sizeof(called->number) + 2];
 	char *number = called->number;
@@ -114,9 +115,22 @@ static char *rewrite_isdn_number(struct bsc_nat *nat, void *ctx, const char *ims
 	}
 
 	return match_and_rewrite_number(ctx, number,
-					imsi, &nat->num_rewr, nat->num_rewr_trie);
+					imsi, rewr_list, nat->num_rewr_trie);
 }
 
+static void update_called_number(struct gsm_mncc_number *called,
+				const char *chosen_number)
+{
+	if (strncmp(chosen_number, "00", 2) == 0) {
+		called->type = 1;
+		strncpy(called->number, chosen_number + 2, sizeof(called->number));
+	} else {
+		/* rewrite international to unknown */
+		if (called->type == 1)
+			called->type = 0;
+		strncpy(called->number, chosen_number, sizeof(called->number));
+	}
+}
 
 /**
  * Rewrite non global numbers... according to rules based on the IMSI
@@ -129,7 +143,7 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	unsigned int payload_len;
 	struct gsm_mncc_number called;
 	struct msgb *out;
-	char *new_number = NULL;
+	char *new_number_pre = NULL, *new_number_post = NULL, *chosen_number;
 	uint8_t *outptr;
 	const uint8_t *msgptr;
 	int sec_len;
@@ -147,16 +161,30 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
 
 	/* check if it looks international and stop */
-	new_number = rewrite_isdn_number(nat, msg, imsi, &called);
+	new_number_pre = rewrite_isdn_number(nat, &nat->num_rewr, msg, imsi, &called);
 
-	if (!new_number) {
+	if (!new_number_pre) {
 		LOGP(DNAT, LOGL_DEBUG, "No IMSI match found, returning message.\n");
 		return NULL;
 	}
 
-	if (strlen(new_number) > sizeof(called.number)) {
+	if (strlen(new_number_pre) > sizeof(called.number)) {
 		LOGP(DNAT, LOGL_ERROR, "Number is too long for structure.\n");
-		talloc_free(new_number);
+		talloc_free(new_number_pre);
+		return NULL;
+	}
+	update_called_number(&called, new_number_pre);
+
+	/* another run through the re-write engine with other rules */
+	new_number_post = rewrite_isdn_number(nat, &nat->num_rewr_post, msg,
+					imsi, &called);
+	chosen_number = new_number_post ? new_number_post : new_number_pre;
+
+
+	if (strlen(chosen_number) > sizeof(called.number)) {
+		LOGP(DNAT, LOGL_ERROR, "Number is too long for structure.\n");
+		talloc_free(new_number_pre);
+		talloc_free(new_number_post);
 		return NULL;
 	}
 
@@ -169,7 +197,8 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	out = msgb_alloc_headroom(4096, 128, "changed-setup");
 	if (!out) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
-		talloc_free(new_number);
+		talloc_free(new_number_pre);
+		talloc_free(new_number_post);
 		return NULL;
 	}
 
@@ -183,15 +212,7 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	memcpy(outptr, &hdr48->data[0], sec_len);
 
 	/* create the new number */
-	if (strncmp(new_number, "00", 2) == 0) {
-		called.type = 1;
-		strncpy(called.number, new_number + 2, sizeof(called.number));
-	} else {
-		/* rewrite international to unknown */
-		if (called.type == 1)
-			called.type = 0;
-		strncpy(called.number, new_number, sizeof(called.number));
-	}
+	update_called_number(&called, chosen_number);
 	gsm48_encode_called(out, &called);
 
 	/* copy thre rest */
@@ -201,7 +222,8 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	outptr = msgb_put(out, sec_len);
 	memcpy(outptr, msgptr, sec_len);
 
-	talloc_free(new_number);
+	talloc_free(new_number_pre);
+	talloc_free(new_number_post);
 	return out;
 }
 

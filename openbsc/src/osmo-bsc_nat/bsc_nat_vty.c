@@ -127,6 +127,10 @@ static int config_write_nat(struct vty *vty)
 
 	if (_nat->num_rewr_name)
 		vty_out(vty, " number-rewrite %s%s", _nat->num_rewr_name, VTY_NEWLINE);
+	if (_nat->num_rewr_post_name)
+		vty_out(vty, " number-rewrite-post %s%s",
+			_nat->num_rewr_post_name, VTY_NEWLINE);
+
 	if (_nat->smsc_rewr_name)
 		vty_out(vty, " rewrite-smsc addr %s%s",
 			_nat->smsc_rewr_name, VTY_NEWLINE);
@@ -567,6 +571,27 @@ DEFUN(cfg_nat_no_number_rewrite,
 	_nat->num_rewr_name = NULL;
 
 	bsc_nat_num_rewr_entry_adapt(NULL, &_nat->num_rewr, NULL);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_number_rewrite_post,
+      cfg_nat_number_rewrite_post_cmd,
+      "number-rewrite-post FILENAME",
+      "Set the file with post-routing rewriting rules.\n" "Filename")
+{
+	return replace_rules(_nat, &_nat->num_rewr_post_name,
+			     &_nat->num_rewr_post, argv[0]);
+}
+
+DEFUN(cfg_nat_no_number_rewrite_post,
+      cfg_nat_no_number_rewrite_post_cmd,
+      "no number-rewrite-post",
+      NO_STR "Set the file with post-routing rewriting rules.\n")
+{
+	talloc_free(_nat->num_rewr_post_name);
+	_nat->num_rewr_post_name = NULL;
+
+	bsc_nat_num_rewr_entry_adapt(NULL, &_nat->num_rewr_post, NULL);
 	return CMD_SUCCESS;
 }
 
@@ -1183,6 +1208,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	/* number rewriting */
 	install_element(NAT_NODE, &cfg_nat_number_rewrite_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_number_rewrite_cmd);
+	install_element(NAT_NODE, &cfg_nat_number_rewrite_post_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_number_rewrite_post_cmd);
 	install_element(NAT_NODE, &cfg_nat_smsc_addr_cmd);
 	install_element(NAT_NODE, &cfg_nat_smsc_tpdest_cmd);
 	install_element(NAT_NODE, &cfg_nat_sms_clear_tpsrr_cmd);
