@@ -1,6 +1,6 @@
 /* OpenBSC NAT interface to quagga VTY */
-/* (C) 2010-2012 by Holger Hans Peter Freyther
- * (C) 2010-2012 by On-Waves
+/* (C) 2010-2013 by Holger Hans Peter Freyther
+ * (C) 2010-2013 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -552,6 +552,18 @@ DEFUN(cfg_nat_number_rewrite,
 {
 	return replace_rules(_nat, &_nat->num_rewr_name,
 			     &_nat->num_rewr, argv[0]);
+}
+
+DEFUN(cfg_nat_no_number_rewrite,
+      cfg_nat_no_number_rewrite_cmd,
+      "no number-rewrite",
+      NO_STR "Set the file with rewriting rules.\n")
+{
+	talloc_free(_nat->num_rewr_name);
+	_nat->num_rewr_name = NULL;
+
+	bsc_nat_num_rewr_entry_adapt(NULL, &_nat->num_rewr, NULL);
+	return CMD_SUCCESS;
 }
 
 DEFUN(cfg_nat_smsc_addr,
@@ -1112,6 +1124,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 	/* number rewriting */
 	install_element(NAT_NODE, &cfg_nat_number_rewrite_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_number_rewrite_cmd);
 	install_element(NAT_NODE, &cfg_nat_smsc_addr_cmd);
 	install_element(NAT_NODE, &cfg_nat_smsc_tpdest_cmd);
 	install_element(NAT_NODE, &cfg_nat_sms_clear_tpsrr_cmd);

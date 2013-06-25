@@ -96,8 +96,12 @@ class TestVTYNAT(TestVTYBase):
     def vty_app(self):
         return (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat")
 
-    def testMoo(self):
-        pass
+    def testRewriteNoRewrite(self):
+        self.vty.enable()
+        res = self.vty.command("configure terminal")
+        res = self.vty.command("nat")
+        res = self.vty.command("number-rewrite rewrite.cfg")
+        res = self.vty.command("no number-rewrite")
 
 
 def add_nat_test(suite, workdir):
