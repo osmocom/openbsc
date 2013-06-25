@@ -452,6 +452,8 @@ static void test_paging(void)
 		printf("Should have found it.\n");
 		abort();
 	}
+
+	talloc_free(nat);
 }
 
 static void test_mgcp_allocations(void)
@@ -820,6 +822,7 @@ static void test_cr_filter()
 	}
 
 	msgb_free(msg);
+	talloc_free(nat);
 }
 
 static void test_dt_filter()
@@ -1040,6 +1043,8 @@ static void test_setup_rewrite()
 	verify_msg(out, cc_setup_national_again,
 			ARRAY_SIZE(cc_setup_national_again));
 	msgb_free(out);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, NULL);
+	talloc_free(nat);
 }
 
 static void test_setup_rewrite_prefix(void)
