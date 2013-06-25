@@ -22,13 +22,15 @@
 
 #include <osmocom/core/linuxrbtree.h>
 
+struct vty;
+
 struct nat_rewrite_rule {
 	/* For digits 0-9 and + */
 	struct nat_rewrite_rule *rules[11];
 
 	char empty;
 	char prefix[14];
-	char rewrite[4];
+	char rewrite[6];
 };
 
 struct nat_rewrite {
@@ -40,5 +42,6 @@ struct nat_rewrite {
 struct nat_rewrite *nat_rewrite_parse(void *ctx, const char *filename);
 struct nat_rewrite_rule *nat_rewrite_lookup(struct nat_rewrite *, const char *prefix);
 void nat_rewrite_dump(struct nat_rewrite *rewr);
+void nat_rewrite_dump_vty(struct vty *vty, struct nat_rewrite *rewr);
 
 #endif

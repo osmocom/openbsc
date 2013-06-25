@@ -27,6 +27,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/nat_rewrite_trie.h>
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
@@ -37,9 +38,30 @@
 
 #include <osmocom/sccp/sccp.h>
 
+static char *trie_lookup(struct nat_rewrite *trie, const char *number,
+			regoff_t off, void *ctx)
+{
+	struct nat_rewrite_rule *rule;
+
+	if (!trie) {
+		LOGP(DNAT, LOGL_ERROR,
+			"Asked to do a table lookup but no table.\n");
+		return NULL;
+	}
+
+	rule = nat_rewrite_lookup(trie, number);
+	if (!rule) {
+		LOGP(DNAT, LOGL_DEBUG,
+			"Couldn't find a prefix rule for %s\n", number);
+		return NULL;
+	}
+
+	return talloc_asprintf(ctx, "%s%s", rule->rewrite, &number[off]);
+}
+
 static char *match_and_rewrite_number(void *ctx, const char *number,
-				      const char *imsi,
-				      struct llist_head *list)
+				const char *imsi, struct llist_head *list,
+				struct nat_rewrite *trie)
 {
 	struct bsc_nat_num_rewr_entry *entry;
 	char *new_number = NULL;
@@ -53,11 +75,17 @@ static char *match_and_rewrite_number(void *ctx, const char *number,
 			continue;
 
 		/* this regexp matches... */
-		if (regexec(&entry->num_reg, number, 2, matches, 0) == 0 &&
-		    matches[1].rm_eo != -1)
-			new_number = talloc_asprintf(ctx, "%s%s",
+		if (regexec(&entry->num_reg, number, 2, matches, 0) == 0
+			&& matches[1].rm_eo != -1) {
+			if (entry->is_prefix_lookup)
+				new_number = trie_lookup(trie, number,
+						matches[1].rm_so, ctx);
+			else
+				new_number = talloc_asprintf(ctx, "%s%s",
 					entry->replace,
 					&number[matches[1].rm_so]);
+		}
+
 		if (new_number)
 			break;
 	}
@@ -86,7 +114,7 @@ static char *rewrite_isdn_number(struct bsc_nat *nat, void *ctx, const char *ims
 	}
 
 	return match_and_rewrite_number(ctx, number,
-					imsi, &nat->num_rewr);
+					imsi, &nat->num_rewr, nat->num_rewr_trie);
 }
 
 
@@ -261,7 +289,7 @@ static char *sms_new_dest_nr(struct bsc_nat *nat, void *ctx,
 			     const char *imsi, const char *dest_nr)
 {
 	return match_and_rewrite_number(ctx, dest_nr, imsi,
-					&nat->sms_num_rewr);
+					&nat->sms_num_rewr, NULL);
 }
 
 /**
@@ -599,6 +627,9 @@ void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head,
 			talloc_free(entry);
 			continue;
 		}
+
+		if (strcmp("prefix_lookup", entry->replace) == 0)
+			entry->is_prefix_lookup = 1;
 
 		/* we will now build a regexp string */
 		if (cfg_entry->mcc[0] == '^') {

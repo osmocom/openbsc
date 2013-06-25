@@ -26,6 +26,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
+#include <openbsc/nat_rewrite_trie.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/backtrace.h>
@@ -1041,6 +1042,55 @@ static void test_setup_rewrite()
 	msgb_free(out);
 }
 
+static void test_setup_rewrite_prefix(void)
+{
+	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
+	struct msgb *out;
+	struct bsc_nat_parsed *parsed;
+	const char *imsi = "27408000001234";
+
+	struct bsc_nat *nat = bsc_nat_alloc();
+
+	/* a fake list */
+	struct osmo_config_list entries;
+	struct osmo_config_entry entry;
+
+	INIT_LLIST_HEAD(&entries.entry);
+	entry.mcc = "274";
+	entry.mnc = "08";
+	entry.option = "^0([1-9])";
+	entry.text = "prefix_lookup";
+	llist_add_tail(&entry.list, &entries.entry);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
+
+        nat->num_rewr_trie = nat_rewrite_parse(nat, "prefixes.csv");
+
+	msgb_reset(msg);
+	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		printf("FAIL: Could not parse ID resp\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	if (!out) {
+		printf("FAIL: A new message should be created.\n");
+		abort();
+	}
+
+	if (msg == out) {
+		printf("FAIL: The message should have changed\n");
+		abort();
+	}
+
+	verify_msg(out, cc_setup_national_patched, ARRAY_SIZE(cc_setup_national_patched));
+	msgb_free(out);
+
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, NULL);
+	talloc_free(nat);
+}
+
 static void test_sms_smsc_rewrite()
 {
 	struct msgb *msg = msgb_alloc(4096, "SMSC rewrite"), *out;
@@ -1322,6 +1372,7 @@ int main(int argc, char **argv)
 	test_cr_filter();
 	test_dt_filter();
 	test_setup_rewrite();
+	test_setup_rewrite_prefix();
 	test_sms_smsc_rewrite();
 	test_sms_number_rewrite();
 	test_mgcp_allocations();

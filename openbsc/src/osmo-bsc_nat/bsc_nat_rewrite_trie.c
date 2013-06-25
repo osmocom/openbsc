@@ -21,6 +21,7 @@
 
 #include <openbsc/nat_rewrite_trie.h>
 #include <openbsc/debug.h>
+#include <openbsc/vty.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
@@ -237,4 +238,22 @@ static void nat_rewrite_dump_rec(struct nat_rewrite_rule *rule)
 void nat_rewrite_dump(struct nat_rewrite *rewrite)
 {
 	nat_rewrite_dump_rec(&rewrite->rule);
+}
+
+static void nat_rewrite_dump_rec_vty(struct vty *vty, struct nat_rewrite_rule *rule)
+{
+	int i;
+	if (!rule->empty)
+		vty_out(vty, "%s,%s%s", rule->prefix, rule->rewrite, VTY_NEWLINE);
+
+	for (i = 0; i < ARRAY_SIZE(rule->rules); ++i) {
+		if (!rule->rules[i])
+			continue;
+		nat_rewrite_dump_rec_vty(vty, rule->rules[i]);
+	}
+}
+
+void nat_rewrite_dump_vty(struct vty *vty, struct nat_rewrite *rewrite)
+{
+	nat_rewrite_dump_rec_vty(vty, &rewrite->rule);
 }
