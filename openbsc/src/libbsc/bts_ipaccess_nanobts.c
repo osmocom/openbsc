@@ -559,7 +559,7 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, dev->trx_id);
 
 		/* no OML link set yet? give up. */
-		if (!bts->oml_link)
+		if (!bts->oml_link || !trx)
 			return NULL;
 
 		/* remove old RSL link for this TRX. */
