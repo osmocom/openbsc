@@ -541,6 +541,7 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 	struct gsm_bts *bts;
 	struct ipaccess_unit *dev = unit_data;
 	struct e1inp_sign_link *sign_link = NULL;
+	struct gsm_bts_trx *trx;
 
 	bts = find_bts_by_unitid(bsc_gsmnet, dev->site_id, dev->bts_id);
 	if (!bts) {
@@ -549,8 +550,22 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 			dev->bts_id, dev->trx_id);
 		return NULL;
 	}
+	trx = gsm_bts_trx_num(bts, dev->trx_id);
+	if (!trx) {
+		LOGP(DLINP, LOGL_ERROR, "Invalid TRX specified %u/%u/%u",
+			dev->site_id, dev->bts_id, dev->trx_id);
+		return NULL;
+	}
+
+	/* HACK: RF handling */
+	if (trx->mo.nm_state.administrative == NM_STATE_LOCKED) {
+		LOGP(DLINP, LOGL_DEBUG, "Ignoring new connection on locked BTS\n");
+		return NULL;
+	}
+
 	DEBUGP(DLINP, "Identified BTS %u/%u/%u\n",
 			dev->site_id, dev->bts_id, dev->trx_id);
+
 
 	switch(type) {
 	case E1INP_SIGN_OML:
@@ -565,10 +580,9 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 		break;
 	case E1INP_SIGN_RSL: {
 		struct e1inp_ts *ts;
-		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, dev->trx_id);
 
 		/* no OML link set yet? give up. */
-		if (!bts->oml_link || !trx)
+		if (!bts->oml_link)
 			return NULL;
 
 		/* remove old RSL link for this TRX. */
