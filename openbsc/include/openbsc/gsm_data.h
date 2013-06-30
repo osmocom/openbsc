@@ -104,6 +104,9 @@ struct gsm_subscriber_connection {
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
 
+	/* LU expiration handling */
+	uint8_t expire_timer_stopped;
+
 	/*
 	 * Operations that have a state and might be pending
 	 */

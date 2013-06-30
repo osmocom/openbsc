@@ -1,7 +1,7 @@
 /* main MSC management code... */
 
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010,2013 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2010 by On-Waves
  *
  * All Rights Reserved
@@ -158,6 +158,15 @@ void msc_release_connection(struct gsm_subscriber_connection *conn)
 		return;
 
 	/* no more connections, asking to release the channel */
+
+	/*
+	 * We had stopped the LU expire timer T3212. Now we are about
+	 * to send the MS back to the idle state and this should lead
+	 * to restarting the timer. Set the new expiration time.
+	 */
+	if (conn->expire_timer_stopped)
+		subscr_update_expire_lu(conn->subscr, conn->bts);
+
 	conn->in_release = 1;
 	gsm0808_clear(conn);
 	if (conn->put_channel) {

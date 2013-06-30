@@ -100,6 +100,7 @@ char *subscr_name(struct gsm_subscriber *subscr);
 int subscr_purge_inactive(struct gsm_network *net);
 void subscr_update_from_db(struct gsm_subscriber *subscr);
 void subscr_expire(struct gsm_network *net);
+int subscr_update_expire_lu(struct gsm_subscriber *subscr, struct gsm_bts *bts);
 
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);

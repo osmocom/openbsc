@@ -829,6 +829,9 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
 	struct gsm_subscriber_connection *conn = data;
 	int rc = 0;
 
+	/* auth failed or succeeded, the timer was stopped */
+	conn->expire_timer_stopped = 1;
+
 	switch (event) {
 		case GSM_SECURITY_AUTH_FAILED:
 			/* Nothing to do */
@@ -929,6 +932,9 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	subscr->equipment.classmark2_len = classmark2_len;
 	memcpy(subscr->equipment.classmark2, classmark2, classmark2_len);
 	db_sync_equipment(&subscr->equipment);
+
+	/* we will send a MM message soon */
+	conn->expire_timer_stopped = 1;
 
 	return gsm48_secure_channel(conn, req->cipher_key_seq,
 			_gsm48_rx_mm_serv_req_sec_cb, NULL);
@@ -1122,6 +1128,9 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	subscr->equipment.classmark2_len = *classmark2_lv;
 	memcpy(subscr->equipment.classmark2, classmark2_lv+1, *classmark2_lv);
 	db_sync_equipment(&subscr->equipment);
+
+	/* We received a paging */
+	conn->expire_timer_stopped = 1;
 
 	rc = gsm48_handle_paging_resp(conn, msg, subscr);
 	return rc;
