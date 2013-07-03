@@ -596,7 +596,6 @@ static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
-	case GSM_BTS_TYPE_HSL_FEMTO:
 		*output++ = (l2_plen << 2) | 1;
 		l2_plen++;
 		break;
@@ -632,7 +631,6 @@ static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
-	case GSM_BTS_TYPE_HSL_FEMTO:
 		*output++ = (l2_plen << 2) | 1;
 		l2_plen++;
 		break;
@@ -677,7 +675,6 @@ static int generate_si5ter(uint8_t *output, struct gsm_bts *bts)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
-	case GSM_BTS_TYPE_HSL_FEMTO:
 		*output++ = (l2_plen << 2) | 1;
 		l2_plen++;
 		break;
@@ -714,7 +711,6 @@ static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
-	case GSM_BTS_TYPE_HSL_FEMTO:
 		*output++ = (l2_plen << 2) | 1;
 		l2_plen++;
 		break;

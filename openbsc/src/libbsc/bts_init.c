@@ -23,7 +23,6 @@ int bts_init(void)
 	bts_model_bs11_init();
 	bts_model_rbs2k_init();
 	bts_model_nanobts_init();
-	bts_model_hslfemto_init();
 	bts_model_nokia_site_init();
 	bts_model_sysmobts_init();
 	/* Your new BTS here. */

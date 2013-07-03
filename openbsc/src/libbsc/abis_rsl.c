@@ -722,12 +722,6 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 	rc =  abis_rsl_sendmsg(msg);
 
 	/* BTS will respond by RF CHAN REL ACK */
-#ifdef HSL_SR_1_0
-	/* The HSL Femto seems to 'forget' sending a REL ACK for TS1...TS7 */
-	if (lchan->ts->trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO && lchan->ts->nr != 0)
-		rc = rsl_rx_rf_chan_rel_ack(lchan);
-#endif
-
 	return rc;
 }
 

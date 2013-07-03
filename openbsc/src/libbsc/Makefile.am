@@ -12,7 +12,6 @@ libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
 			bts_ipaccess_nanobts.c \
 			bts_siemens_bs11.c \
 			bts_nokia_site.c \
-			bts_hsl_femtocell.c \
 			bts_unknown.c \
 			bts_sysmobts.c \
 			chan_alloc.c \

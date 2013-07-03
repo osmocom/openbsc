@@ -276,8 +276,6 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  Unit ID: %u/%u/0, OML Stream ID 0x%02x%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
 			bts->oml_tei, VTY_NEWLINE);
-	else if (bts->type == GSM_BTS_TYPE_HSL_FEMTO)
-		vty_out(vty, "  Serial Number: %lu%s", bts->hsl.serno, VTY_NEWLINE);
 	else if (bts->type == GSM_BTS_TYPE_NOKIA_SITE)
 		vty_out(vty, "  Skip Reset: %d%s",
 			bts->nokia.skip_reset, VTY_NEWLINE);
@@ -559,11 +557,6 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		}
 		vty_out(vty, "  oml ip.access stream_id %u line %u%s",
 			bts->oml_tei, bts->oml_e1_link.e1_nr, VTY_NEWLINE);
-		break;
-	case GSM_BTS_TYPE_HSL_FEMTO:
-		vty_out(vty, "  hsl serial-number %lu%s", bts->hsl.serno, VTY_NEWLINE);
-		vty_out(vty, "  oml hsl line %u%s",
-			bts->oml_e1_link.e1_nr, VTY_NEWLINE);
 		break;
 	case GSM_BTS_TYPE_NOKIA_SITE:
 		vty_out(vty, "  nokia_site skip-reset %d%s", bts->nokia.skip_reset, VTY_NEWLINE);
@@ -1665,25 +1658,6 @@ DEFUN(cfg_bts_rsl_ip,
 }
 
 
-DEFUN(cfg_bts_serno,
-      cfg_bts_serno_cmd,
-      "hsl serial-number STRING",
-      "HSL BTS specific options\n"
-      "Set the HSL Serial Number of this BTS\n"
-      "Serial Number of this HSL BTS\n")
-{
-	struct gsm_bts *bts = vty->index;
-
-	if (bts->type != GSM_BTS_TYPE_HSL_FEMTO) {
-		vty_out(vty, "%% BTS is not of HSL type%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	bts->hsl.serno = strtoul(argv[0], NULL, 10);
-
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_bts_nokia_site_skip_reset,
       cfg_bts_nokia_site_skip_reset_cmd,
       "nokia_site skip-reset (0|1)",
@@ -1723,26 +1697,6 @@ DEFUN(cfg_bts_stream_id,
 
 	bts->oml_tei = stream_id;
 	/* This is used by e1inp_bind_ops callback for each BTS model. */
-	bts->oml_e1_link.e1_nr = linenr;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_bts_hsl_oml,
-      cfg_bts_hsl_oml_cmd,
-      "oml hsl line E1_LINE",
-      OML_STR "HSL femto Specific Options\n"
-      "Set OML link of this HSL femto BTS\n"
-      "Virtual E1/T1 line number\n")
-{
-	struct gsm_bts *bts = vty->index;
-	int linenr = atoi(argv[0]);
-
-	if (!(bts->type == GSM_BTS_TYPE_HSL_FEMTO)) {
-		vty_out(vty, "%% BTS is not of HSL type%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	bts->oml_e1_link.e1_nr = linenr;
 
 	return CMD_SUCCESS;
@@ -3084,10 +3038,8 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_rsl_ip_cmd);
 	install_element(BTS_NODE, &cfg_bts_timezone_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_timezone_cmd);
-	install_element(BTS_NODE, &cfg_bts_serno_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_skip_reset_cmd);
 	install_element(BTS_NODE, &cfg_bts_stream_id_cmd);
-	install_element(BTS_NODE, &cfg_bts_hsl_oml_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);

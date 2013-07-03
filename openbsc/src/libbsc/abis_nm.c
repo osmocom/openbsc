@@ -632,10 +632,6 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		osmo_signal_dispatch(SS_NM, S_NM_IPACC_RESTART_NACK, NULL);
 		break;
 	case NM_MT_SET_BTS_ATTR_ACK:
-		/* The HSL wants an OPSTART _after_ the SI has been set */
-		if (sign_link->trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO) {
-			abis_nm_opstart(sign_link->trx->bts, NM_OC_BTS, 255, 255, 255);
-		}
 		break;
 	}
 

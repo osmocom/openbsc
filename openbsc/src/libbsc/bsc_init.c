@@ -38,7 +38,6 @@
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
-extern int hsl_setup(struct gsm_network *gsmnet);
 
 /* Callback function for NACK on the OML NM */
 static int oml_msg_nack(struct nm_nack_signal_data *nack)
@@ -98,7 +97,7 @@ int bsc_shutdown_net(struct gsm_network *net)
 static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 {
 	struct gsm_bts *bts = trx->bts;
-	int rc, j;
+	int rc;
 
 	DEBUGP(DRR, "SI%s: %s\n", get_value_string(osmo_sitype_strs, i),
 		osmo_hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
@@ -108,26 +107,8 @@ static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 	case SYSINFO_TYPE_5bis:
 	case SYSINFO_TYPE_5ter:
 	case SYSINFO_TYPE_6:
-		if (trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO) {
-			/* HSL has mistaken SACCH INFO MODIFY for SACCH FILLING,
-			 * so we need a special workaround here */
-			/* This assumes a combined BCCH and TCH on TS1...7 */
-			for (j = 0; j < 4; j++)
-				rsl_sacch_info_modify(&trx->ts[0].lchan[j],
-						      osmo_sitype2rsl(i),
-						      GSM_BTS_SI(bts, i), si_len);
-			for (j = 1; j < 8; j++) {
-				rsl_sacch_info_modify(&trx->ts[j].lchan[0],
-						      osmo_sitype2rsl(i),
-						      GSM_BTS_SI(bts, i), si_len);
-				rsl_sacch_info_modify(&trx->ts[j].lchan[1],
-						      osmo_sitype2rsl(i),
-						      GSM_BTS_SI(bts, i), si_len);
-			}
-			rc = 0;
-		} else
-			rc = rsl_sacch_filling(trx, osmo_sitype2rsl(i),
-					       GSM_BTS_SI(bts, i), si_len);
+		rc = rsl_sacch_filling(trx, osmo_sitype2rsl(i),
+				       GSM_BTS_SI(bts, i), si_len);
 		break;
 	default:
 		rc = rsl_bcch_info(trx, osmo_sitype2rsl(i),

@@ -393,7 +393,6 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_BS11,
 	GSM_BTS_TYPE_NANOBTS,
 	GSM_BTS_TYPE_RBS2000,
-	GSM_BTS_TYPE_HSL_FEMTO,
 	GSM_BTS_TYPE_NOKIA_SITE,
 	GSM_BTS_TYPE_OSMO_SYSMO,
 	_NUM_GSM_BTS_TYPE
@@ -630,9 +629,6 @@ struct gsm_bts {
 				struct gsm_abis_mo mo;
 			} tf;
 		} rbs2000;
-		struct {
-			unsigned long serno;
-		} hsl;
 		struct {
 			uint8_t bts_type;
 			unsigned int configured:1,

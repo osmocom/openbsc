@@ -189,7 +189,6 @@ const struct value_string bts_type_names[_NUM_GSM_BTS_TYPE+1] = {
 	{ GSM_BTS_TYPE_BS11,	"bs11" },
 	{ GSM_BTS_TYPE_NANOBTS,	"nanobts" },
 	{ GSM_BTS_TYPE_RBS2000,	"rbs2000" },
-	{ GSM_BTS_TYPE_HSL_FEMTO, "hsl_femto" },
 	{ GSM_BTS_TYPE_NOKIA_SITE, "nokia_site" },
 	{ GSM_BTS_TYPE_OSMO_SYSMO, "sysmobts" },
 	{ 0,			NULL }
@@ -200,7 +199,6 @@ const struct value_string bts_type_descs[_NUM_GSM_BTS_TYPE+1] = {
 	{ GSM_BTS_TYPE_BS11,		"Siemens BTS (BS-11 or compatible)" },
 	{ GSM_BTS_TYPE_NANOBTS,		"ip.access nanoBTS or compatible" },
 	{ GSM_BTS_TYPE_RBS2000,		"Ericsson RBS2000 Series" },
-	{ GSM_BTS_TYPE_HSL_FEMTO,	"HSL 2.75G femto" },
 	{ GSM_BTS_TYPE_NOKIA_SITE,	"Nokia {Metro,Ultra,In}Site" },
 	{ GSM_BTS_TYPE_OSMO_SYSMO,	"sysmocom sysmoBTS" },
 	{ 0,				NULL }
@@ -349,8 +347,6 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 	}
 
 	switch (bts->type) {
-	case GSM_BTS_TYPE_HSL_FEMTO:
-		bts->c0->rsl_tei = 0;
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
 		/* Set the default OML Stream ID to 0xff */
