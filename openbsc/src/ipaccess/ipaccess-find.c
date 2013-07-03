@@ -47,6 +47,7 @@ static int udp_sock(const char *ifname)
 			goto err;
 	}
 
+	memset(&sa, 0, sizeof(sa));
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(3006);
 	sa.sin_addr.s_addr = INADDR_ANY;
