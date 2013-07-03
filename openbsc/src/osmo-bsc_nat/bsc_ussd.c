@@ -330,8 +330,8 @@ static int forward_ussd(struct nat_sccp_connection *con, const struct ussd_reque
 	/* add additional tag/values */
 	lac = htons(con->lac);
 	ci = htons(con->ci);
-	msgb_tv_fixed_put(msg, USSD_LAC_IE, sizeof(lac), &lac);
-	msgb_tv_fixed_put(msg, USSD_CI_IE, sizeof(ci), &ci);
+	msgb_tv_fixed_put(msg, USSD_LAC_IE, sizeof(lac), (const uint8_t *) &lac);
+	msgb_tv_fixed_put(msg, USSD_CI_IE, sizeof(ci), (const uint8_t *) &ci);
 
 	ussd = con->bsc->nat->ussd_con;
 	bsc_do_write(&ussd->queue, msg, IPAC_PROTO_IPACCESS);
