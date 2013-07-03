@@ -337,7 +337,7 @@ static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *
 static int mgcp_analyze_header(struct mgcp_parse_data *pdata, char *data)
 {
 	int i = 0;
-	char *elem, *save;
+	char *elem, *save = NULL;
 
 	pdata->trans = "000000";
 
