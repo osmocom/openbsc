@@ -57,7 +57,6 @@ int mISDN_open(void)
 	if (!(devinfo.Dprotocols & (1 << ISDN_P_TE_S0))
 	 && !(devinfo.Dprotocols & (1 << ISDN_P_TE_E1))) {
 		fprintf(stderr,"Interface does not support TE mode (%s)\n", strerror(errno));
-		close(fd);
 		return ret;
 	}
 	fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_LAPD_TE);
