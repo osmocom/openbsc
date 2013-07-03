@@ -80,12 +80,12 @@ struct sgsn_mm_ctx {
 	/* CKSN */
 	enum gprs_ciph_algo	ciph_algo;
 	struct {
-		uint8_t	buf[52];	/* 10.5.5.12a */
 		uint8_t	len;
+		uint8_t	buf[50];	/* GSM 04.08 10.5.5.12a, extended in TS 24.008 */
 	} ms_radio_access_capa;
 	struct {
-		uint8_t	buf[4];		/* 10.5.5.12 */
 		uint8_t	len;
+		uint8_t	buf[8];		/* GSM 04.08 10.5.5.12, extended in TS 24.008 */
 	} ms_network_capa;
 	uint16_t		drx_parms;
 	int			mnrg;	/* MS reported to HLR? */
