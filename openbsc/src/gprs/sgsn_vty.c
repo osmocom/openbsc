@@ -46,7 +46,7 @@ static struct sgsn_config *g_cfg = NULL;
 static char *gprs_apn2str(uint8_t *apn, unsigned int len)
 {
 	static char apnbuf[GSM48_MAX_APN_LEN+1];
-	unsigned int i;
+	unsigned int i = 0;
 
 	if (!apn)
 		return "";
