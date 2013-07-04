@@ -216,8 +216,15 @@ DEFUN(subscriber_send_pending_sms,
 	SUBSCR_HELP "SMS Operations\n" "Send pending SMS\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct gsm_subscriber *subscr;
 	struct gsm_sms *sms;
+
+	subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	sms = db_sms_get_unsent_by_subscr(gsmnet, subscr->id, UINT_MAX);
 	if (sms)
