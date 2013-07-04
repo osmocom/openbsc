@@ -305,13 +305,6 @@ DEFUN(swow_mmctx_all, show_mmctx_all_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_ggsn, show_ggsn_cmd,
-	"show ggsn",
-	"")
-{
-
-}
-
 DEFUN(show_pdpctx_all, show_pdpctx_all_cmd,
 	"show pdp-context all",
 	SHOW_STR "Display information on PDP Context\n" "Show everything\n")
