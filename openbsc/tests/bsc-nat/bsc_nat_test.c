@@ -783,9 +783,6 @@ static void test_cr_filter()
 		msgb_reset(msg);
 		copy_to_msg(msg, cr_filter[i].data, cr_filter[i].length);
 
-		nat_lst = bsc_nat_acc_lst_get(nat, "nat");
-		bsc_lst = bsc_nat_acc_lst_get(nat, "bsc");
-
 		if (gsm_parse_reg(nat_entry, &nat_entry->imsi_deny_re, &nat_entry->imsi_deny,
 			      cr_filter[i].nat_imsi_deny ? 1 : 0,
 			      &cr_filter[i].nat_imsi_deny) != 0)
