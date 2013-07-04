@@ -72,7 +72,7 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 
 	/* First put the payload text into the message */
 	ptr8 = msgb_put(msg, 0);
-	response_len = gsm_7bit_encode(ptr8, response_text);
+	gsm_7bit_encode_ussd(ptr8, response_text, &response_len);
 	msgb_put(msg, response_len);
 
 	/* Then wrap it as an Octet String */
