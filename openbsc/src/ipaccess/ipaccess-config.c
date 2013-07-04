@@ -648,6 +648,7 @@ static int find_sw_load_params(const char *filename)
 	/* verify the file */
 	if (fstat(fd, &stat) == -1) {
 		perror("Can not stat the file");
+		close(fd);
 		return -1;
 	}
 
