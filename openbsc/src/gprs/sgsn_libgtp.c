@@ -587,18 +587,23 @@ int sgsn_gtp_init(struct sgsn_instance *sgi)
 	sgi->gtp_fd1c.data = sgi;
 	sgi->gtp_fd1c.when = BSC_FD_READ;
 	sgi->gtp_fd1c.cb = sgsn_gtp_fd_cb;
-	osmo_fd_register(&sgi->gtp_fd1c);
-	if (rc < 0)
+	rc = osmo_fd_register(&sgi->gtp_fd1c);
+	if (rc < 0) {
+		osmo_fd_unregister(&sgi->gtp_fd0);
 		return rc;
+	}
 
 	sgi->gtp_fd1u.fd = gsn->fd1u;
 	sgi->gtp_fd1u.priv_nr = 2;
 	sgi->gtp_fd1u.data = sgi;
 	sgi->gtp_fd1u.when = BSC_FD_READ;
 	sgi->gtp_fd1u.cb = sgsn_gtp_fd_cb;
-	osmo_fd_register(&sgi->gtp_fd1u);
-	if (rc < 0)
+	rc = osmo_fd_register(&sgi->gtp_fd1u);
+	if (rc < 0) {
+		osmo_fd_unregister(&sgi->gtp_fd0);
+		osmo_fd_unregister(&sgi->gtp_fd1c);
 		return rc;
+	}
 
 	/* Start GTP re-transmission timer */
 	sgi->gtp_timer.cb = sgsn_gtp_tmr_cb;
