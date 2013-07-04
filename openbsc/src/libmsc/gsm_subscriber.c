@@ -386,7 +386,7 @@ static void subscr_expire_callback(void *data, long long unsigned int id)
 	struct gsm_subscriber *s =
 		subscr_get_by_id(net, id);
 
-	LOGP(DMM, LOGL_NOTICE, "Expiring inactive subscriber %s (ID %i)\n",
+	LOGP(DMM, LOGL_NOTICE, "Expiring inactive subscriber %s (ID %llu)\n",
 			subscr_name(s), id);
 	s->lac = GSM_LAC_RESERVED_DETACHED;
 	db_sync_subscriber(s);
