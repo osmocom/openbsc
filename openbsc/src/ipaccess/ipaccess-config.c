@@ -940,6 +940,7 @@ int main(int argc, char **argv)
 					" see available tests.\n", optarg);
 				exit(2);
 			}
+			break;
 		case 's':
 			stream_id = atoi(optarg);
 			break;
