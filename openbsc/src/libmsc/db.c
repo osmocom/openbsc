@@ -511,7 +511,7 @@ int db_get_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 		return -ENOENT;
 	}
 
-	memset(atuple, 0, sizeof(atuple));
+	memset(atuple, 0, sizeof(*atuple));
 
 	atuple->use_count = dbi_result_get_ulonglong(result, "use_count");
 	atuple->key_seq = dbi_result_get_ulonglong(result, "key_seq");
