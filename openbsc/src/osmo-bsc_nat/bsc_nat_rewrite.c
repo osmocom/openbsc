@@ -68,6 +68,7 @@ static char *match_and_rewrite_number(void *ctx, const char *number,
 static char *rewrite_isdn_number(struct bsc_nat *nat, void *ctx, const char *imsi,
 				       struct gsm_mncc_number *called)
 {
+	char int_number[sizeof(called->number) + 2];
 	char *number = called->number;
 
 	if (llist_empty(&nat->num_rewr))
@@ -79,7 +80,6 @@ static char *rewrite_isdn_number(struct bsc_nat *nat, void *ctx, const char *ims
 
 	/* international, prepend */
 	if (called->type == 1) {
-		char int_number[sizeof(called->number) + 2];
 		int_number[0] = '+';
 		memcpy(&int_number[1], number, strlen(number) + 1);
 		number = int_number;
