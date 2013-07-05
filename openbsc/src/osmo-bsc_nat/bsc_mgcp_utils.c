@@ -934,6 +934,7 @@ static int init_mgcp_socket(struct bsc_nat *nat, struct mgcp_config *cfg)
 	on = 1;
 	setsockopt(cfg->gw_fd.bfd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
+	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(cfg->source_port);
 	inet_aton(cfg->source_addr, &addr.sin_addr);
