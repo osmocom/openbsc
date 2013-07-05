@@ -667,11 +667,6 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 			goto send_to_all;
 			break;
 		case SCCP_MSG_TYPE_RLSD:
-			if (con && con->con_local == NAT_CON_END_USSD) {
-				LOGP(DNAT, LOGL_NOTICE, "RLSD for a USSD connection. Ignoring.\n");
-				con = NULL;
-			}
-			/* fall through */
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
 		case SCCP_MSG_TYPE_IT:
