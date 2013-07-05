@@ -193,7 +193,7 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 	struct bsc_connection *bsc;
 	struct bsc_cmd_list *pending;
 	unsigned int nr;
-	char *nr_str, *tmp, *saveptr;
+	char *nr_str, *tmp, *saveptr = NULL;
 
 	/* Skip over the beginning (bsc.) */
 	tmp = strtok_r(cmd->variable, ".", &saveptr);
