@@ -62,6 +62,8 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/tlv.h>
 
+#include <assert.h>
+
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;
 
@@ -1758,13 +1760,12 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 		setup.emergency = 1;
 
 	/* use subscriber as calling party number */
-	if (trans->subscr) {
-		setup.fields |= MNCC_F_CALLING;
-		strncpy(setup.calling.number, trans->subscr->extension,
-			sizeof(setup.calling.number)-1);
-		strncpy(setup.imsi, trans->subscr->imsi,
-			sizeof(setup.imsi)-1);
-	}
+	setup.fields |= MNCC_F_CALLING;
+	strncpy(setup.calling.number, trans->subscr->extension,
+		sizeof(setup.calling.number)-1);
+	strncpy(setup.imsi, trans->subscr->imsi,
+		sizeof(setup.imsi)-1);
+
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
 		setup.fields |= MNCC_F_BEARER_CAP;
@@ -2087,13 +2088,12 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 	connect.callref = trans->callref;
 	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* use subscriber as connected party number */
-	if (trans->subscr) {
-		connect.fields |= MNCC_F_CONNECTED;
-		strncpy(connect.connected.number, trans->subscr->extension,
-			sizeof(connect.connected.number)-1);
-		strncpy(connect.imsi, trans->subscr->imsi,
-			sizeof(connect.imsi)-1);
-	}
+	connect.fields |= MNCC_F_CONNECTED;
+	strncpy(connect.connected.number, trans->subscr->extension,
+		sizeof(connect.connected.number)-1);
+	strncpy(connect.imsi, trans->subscr->imsi,
+		sizeof(connect.imsi)-1);
+
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		connect.fields |= MNCC_F_FACILITY;
@@ -3181,6 +3181,8 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 		DEBUGP(DCC, "Message unhandled at this state.\n");
 		return 0;
 	}
+
+	assert(trans->subscr);
 
 	rc = datastatelist[i].rout(trans, msg);
 
