@@ -252,7 +252,6 @@ int main(int argc, char **argv)
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
-	on_dso_load_ho_dec();
 
 	libosmo_abis_init(tall_bsc_ctx);
 	osmo_init_logging(&log_info);

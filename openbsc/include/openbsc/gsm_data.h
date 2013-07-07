@@ -281,7 +281,8 @@ struct gsm_network {
 	/* control interface */
 	struct ctrl_handle *ctrl;
 
-	/* congestion check timer */
+	/* global handover settings */
+	int ho_algorithm;
 	int ho_congest_timeout;
 	struct osmo_timer_list ho_congest_timer;
 };
