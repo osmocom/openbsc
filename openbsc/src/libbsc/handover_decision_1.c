@@ -42,7 +42,7 @@ static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
 	/* resolve the gsm_bts structure for the best neighbor */
 	new_bts = gsm_bts_neighbor(lchan->ts->trx->bts, arfcn, bsic);
 	if (!new_bts) {
-		LOGP(DHO, LOGL_NOTICE, "unable to determine neighbor BTS "
+		LOGP(DHODEC, LOGL_NOTICE, "unable to determine neighbor BTS "
 		     "for ARFCN %u BSIC %u ?!?\n", arfcn, bsic);
 		return -EINVAL;
 	}
@@ -207,26 +207,26 @@ static int attempt_handover(struct gsm_meas_rep *mr)
 	if (!best_cell)
 		return 0;
 
-	LOGP(DHO, LOGL_INFO, "%s: Cell on ARFCN %u is better: ",
+	LOGP(DHODEC, LOGL_INFO, "%s: Cell on ARFCN %u is better\n",
 		gsm_ts_name(mr->lchan->ts), best_cell->arfcn);
 	if (!bts->handover.ho_active) {
-		LOGPC(DHO, LOGL_INFO, "Skipping, Handover disabled\n");
+		LOGP(DHODEC, LOGL_INFO, "- Skipping, Handover disabled\n");
 		return 0;
 	}
 
 	rc = handover_to_arfcn_bsic(mr->lchan, best_cell->arfcn, best_cell->bsic);
 	switch (rc) {
 	case 0:
-		LOGPC(DHO, LOGL_INFO, "Starting handover\n");
+		LOGP(DHODEC, LOGL_INFO, "- Starting handover\n");
 		break;
 	case -ENOSPC:
-		LOGPC(DHO, LOGL_INFO, "No channel available\n");
+		LOGP(DHODEC, LOGL_INFO, "- No channel available\n");
 		break;
 	case -EBUSY:
-		LOGPC(DHO, LOGL_INFO, "Handover already active\n");
+		LOGP(DHODEC, LOGL_INFO, "- Handover already active\n");
 		break;
 	default:
-		LOGPC(DHO, LOGL_ERROR, "Unknown error\n");
+		LOGP(DHODEC, LOGL_ERROR, "- Unknown error\n");
 	}
 	return rc;
 }
