@@ -8,5 +8,9 @@ void bsc_vty_init_handover(void);
 
 void init_ho_1(void);
 
+void congestion_check_2(void *data);
+void init_ho_2(void);
+void init_ho_timer_2(void);
+
 #endif /* _HANDOVER_DECISION_H */
 

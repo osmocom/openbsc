@@ -35,6 +35,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/debug.h>
 
 void *tall_bsc_ctx;
 
@@ -161,7 +162,7 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
 struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
 				 uint16_t arfcn, uint8_t bsic)
 {
-	struct gsm_bts *neigh;
+	struct gsm_bts *neigh, *selected = NULL;
 	/* FIXME: use some better heuristics here to determine which cell
 	 * using this ARFCN really is closest to the target cell.  For
 	 * now we simply assume that each ARFCN will only be used by one
@@ -169,11 +170,20 @@ struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
 
 	llist_for_each_entry(neigh, &bts->network->bts_list, list) {
 		if (neigh->c0->arfcn == arfcn &&
-		    neigh->bsic == bsic)
-			return neigh;
+		    neigh->bsic == bsic) {
+			if (selected)
+				goto error;
+			selected = neigh;
+		}
 	}
 
-	return NULL;
+	return selected;
+
+error:
+	LOGP(DHO, LOGL_ERROR, "Ambiguous ARFCN (%u) and BSIC (%u). BTS %u and "
+		"BTS %u share same ARFCN + BSIC, plese fix configuration!\n",
+		arfcn, bsic, selected->nr, neigh->nr);
+	return 0;
 }
 
 const struct value_string bts_type_names[_NUM_GSM_BTS_TYPE+1] = {

@@ -16,7 +16,7 @@ libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
 			bts_sysmobts.c \
 			chan_alloc.c \
 			gsm_subscriber_base.c \
-			handover_decision_1.c \
+			handover_decision_1.c handover_decision_2.c \
 			handover_vty.c handover_logic.c meas_rep.c \
 			rest_octets.c system_information.c \
 			e1_config.c \

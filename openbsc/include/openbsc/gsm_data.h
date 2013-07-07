@@ -96,7 +96,7 @@ struct neigh_meas_proc {
 	uint8_t bsic;
 	uint8_t rxlev[MAX_WIN_NEIGH_AVG];
 	unsigned int rxlev_cnt;
-	uint8_t last_seen_nr;
+	int last_seen_nr;
 };
 
 /* penalty timers for handover */

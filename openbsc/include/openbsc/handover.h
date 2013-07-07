@@ -6,10 +6,15 @@ struct gsm_subscriber_connection;
 /* Count number of currently ongoing async handovers */
 int bsc_ho_count(struct gsm_bts *bts);
 
+/* Add a penalty timer to connection for the given BTS */
+void add_penalty_timer(struct gsm_subscriber_connection *conn,
+        struct gsm_bts *bts, int timeout);
+
 /* Hand over the specified logical channel to the specified new BTS.
  * This is the main entry point for the actual handover algorithm,
  * after it has decided it wants to initiate HO to a specific BTS */
-int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts);
+int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts,
+	int full_rate);
 
 /* clear any operation for this connection */
 void bsc_clear_handover(struct gsm_subscriber_connection *conn, int free_lchan);

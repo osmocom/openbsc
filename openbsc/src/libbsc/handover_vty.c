@@ -156,7 +156,7 @@ DEFUN(cfg_net_ho_algorithm,
 		init_ho_1();
 		break;
 	case 2:
-//		init_ho_2();
+		init_ho_2();
 		break;
 	}
 	return CMD_SUCCESS;
@@ -176,7 +176,7 @@ DEFUN(cfg_net_ho_congest_timer,
 	gsmnet->ho_congest_timeout = atoi(argv[0]);
 	switch (gsmnet->ho_algorithm) {
 	case 2:
-//		init_ho_timer_2();
+		init_ho_timer_2();
 		break;
 	}
 	return CMD_SUCCESS;
