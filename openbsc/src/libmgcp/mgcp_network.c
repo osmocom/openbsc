@@ -371,10 +371,19 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 	endp->net_end.octets += rc;
 
 	forward_data(fd->fd, &endp->taps[MGCP_TAP_NET_IN], buf, rc);
-	if (endp->is_transcoded)
-		return send_transcoder(&endp->trans_net, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
-	else
-		return send_to(endp, DEST_BTS, proto == PROTO_RTP, &addr, &buf[0], rc);
+
+	switch (endp->type) {
+	case MGCP_RTP_DEFAULT:
+		return send_to(endp, DEST_BTS, proto == PROTO_RTP, &addr,
+			       buf, rc);
+	case MGCP_RTP_TRANSCODED:
+		return send_transcoder(&endp->trans_net, endp->cfg,
+				       proto == PROTO_RTP, buf, rc);
+	}
+
+	LOGP(DMGCP, LOGL_ERROR, "Bad MGCP type %u on endpoint %u\n",
+	     endp->type, ENDPOINT_NUMBER(endp));
+	return 0;
 }
 
 static void discover_bts(struct mgcp_endpoint *endp, int proto, struct sockaddr_in *addr)
@@ -450,10 +459,19 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 	endp->bts_end.octets += rc;
 
 	forward_data(fd->fd, &endp->taps[MGCP_TAP_BTS_IN], buf, rc);
-	if (endp->is_transcoded)
-		return send_transcoder(&endp->trans_bts, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
-	else
-		return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
+
+	switch (endp->type) {
+	case MGCP_RTP_DEFAULT:
+		return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr,
+			       buf, rc);
+	case MGCP_RTP_TRANSCODED:
+		return send_transcoder(&endp->trans_bts, endp->cfg,
+				       proto == PROTO_RTP, buf, rc);
+	}
+
+	LOGP(DMGCP, LOGL_ERROR, "Bad MGCP type %u on endpoint %u\n",
+	     endp->type, ENDPOINT_NUMBER(endp));
+	return 0;
 }
 
 static int rtp_data_transcoder(struct mgcp_rtp_end *end, struct mgcp_endpoint *_endp,

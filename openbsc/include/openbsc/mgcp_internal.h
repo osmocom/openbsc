@@ -96,6 +96,11 @@ struct mgcp_rtp_tap {
 	struct sockaddr_in forward;
 };
 
+enum mgcp_type {
+	MGCP_RTP_DEFAULT	= 0,
+	MGCP_RTP_TRANSCODED,
+};
+
 struct mgcp_endpoint {
 	int allocated;
 	uint32_t ci;
@@ -119,7 +124,7 @@ struct mgcp_endpoint {
 	 */
 	struct mgcp_rtp_end trans_bts;
 	struct mgcp_rtp_end trans_net;
-	int is_transcoded;
+	enum mgcp_type type;
 
 	/* sequence bits */
 	struct mgcp_rtp_state net_state;

@@ -500,7 +500,7 @@ static int allocate_ports(struct mgcp_endpoint *endp)
 		}
 
 		/* remember that we have set up transcoding */
-		endp->is_transcoded = 1;
+		endp->type = MGCP_RTP_TRANSCODED;
 	}
 
 	return 0;
@@ -1014,7 +1014,7 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	mgcp_rtp_end_reset(&endp->net_end);
 	mgcp_rtp_end_reset(&endp->trans_net);
 	mgcp_rtp_end_reset(&endp->trans_bts);
-	endp->is_transcoded = 0;
+	endp->type = MGCP_RTP_DEFAULT;
 
 	memset(&endp->net_state, 0, sizeof(endp->net_state));
 	memset(&endp->bts_state, 0, sizeof(endp->bts_state));
@@ -1118,7 +1118,7 @@ static void create_transcoder(struct mgcp_endpoint *endp)
 	int in_endp = ENDPOINT_NUMBER(endp);
 	int out_endp = endp_back_channel(in_endp);
 
-	if (!endp->is_transcoded)
+	if (endp->type != MGCP_RTP_TRANSCODED)
 		return;
 
 	send_msg(endp, in_endp, endp->trans_bts.local_port, "CRCX", "sendrecv");
@@ -1140,7 +1140,7 @@ static void delete_transcoder(struct mgcp_endpoint *endp)
 	int in_endp = ENDPOINT_NUMBER(endp);
 	int out_endp = endp_back_channel(in_endp);
 
-	if (!endp->is_transcoded)
+	if (endp->type != MGCP_RTP_TRANSCODED)
 		return;
 
 	send_dlcx(endp, in_endp);
