@@ -173,7 +173,7 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 		status = GSM_SECURITY_NOAVAIL;
 	} else if (conn->lchan->encr.alg_id > RSL_ENC_ALG_A5(0)) {
 		DEBUGP(DMM, "Requesting to secure an already secure channel");
-		status = GSM_SECURITY_SUCCEEDED;
+		status = GSM_SECURITY_ALREADY;
 	} else if (!ms_cm2_a5n_support(subscr->equipment.classmark2,
 	                               net->a5_encryption)) {
 		DEBUGP(DMM, "Subscriber equipment doesn't support requested encryption");
@@ -835,6 +835,7 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
 			break;
 
 		case GSM_SECURITY_NOAVAIL:
+		case GSM_SECURITY_ALREADY:
 			rc = gsm48_tx_mm_serv_ack(conn);
 			break;
 

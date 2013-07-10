@@ -21,6 +21,7 @@ enum gsm_security_event {
 	GSM_SECURITY_NOAVAIL,
 	GSM_SECURITY_AUTH_FAILED,
 	GSM_SECURITY_SUCCEEDED,
+	GSM_SECURITY_ALREADY,
 };
 
 struct msgb;
