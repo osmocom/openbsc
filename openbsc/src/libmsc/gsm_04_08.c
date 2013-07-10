@@ -304,6 +304,11 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			release_loc_updating_req(conn);
 			break;
 
+		case GSM_SECURITY_ALREADY:
+			LOGP(DMM, LOGL_ERROR, "We don't expect LOCATION "
+				"UPDATING after CM SERVICE REQUEST\n");
+			/* fall through */
+
 		case GSM_SECURITY_NOAVAIL:
 		case GSM_SECURITY_SUCCEEDED:
 			/* We're all good */
