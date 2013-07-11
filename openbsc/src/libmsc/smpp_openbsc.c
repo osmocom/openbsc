@@ -468,22 +468,35 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 
 	/* Figure out SMPP DCS from TP-DCS */
 	dcs = sms->data_coding_scheme;
-	if ((dcs & 0xFC) == GSM338_DCS_1111_7BIT) {
-		deliver.data_coding = 0x01;
-		mode = MODE_7BIT;
-	} else if ((dcs & 0xE0) == 0 && (dcs & 0xC) == 0) {
-		deliver.data_coding = 0x01;
-		mode = MODE_7BIT;
-	} else if ((dcs & 0xFC) == GSM338_DCS_1111_8BIT_DATA) {
-		deliver.data_coding = 0x02;
-		mode = MODE_8BIT;
-	} else if ((dcs & 0xE0) == 0 && (dcs & 0xC) == 4) {
-		deliver.data_coding = 0x02;
-		mode = MODE_8BIT;
-	} else if ((dcs & 0xE0) == 0 && (dcs & 0xC) == 8) {
-		deliver.data_coding = 0x08;	/* UCS-2 */
-		mode = MODE_8BIT;
+	if ((dcs & 0xF0) == 0xF0) {
+		if (dcs & 0x04) {
+			/* bit 2 == 1: 8bit data */
+			deliver.data_coding = 0x02;
+			mode = MODE_8BIT;
+		} else {
+			/* bit 2 == 0: default alphabet */
+			deliver.data_coding = 0x01;
+			mode = MODE_7BIT;
+		}
+	} else if ((dcs & 0xE0) == 0) {
+		switch (dcs & 0xC) {
+		case 0:
+			deliver.data_coding = 0x01;
+			mode = MODE_7BIT;
+			break;
+		case 4:
+			deliver.data_coding = 0x02;
+			mode = MODE_8BIT;
+			break;
+		case 8:
+			deliver.data_coding = 0x08;	/* UCS-2 */
+			mode = MODE_8BIT;
+			break;
+		default:
+			goto unknown_mo;
+		}
 	} else {
+unknown_mo:
 		LOGP(DLSMS, LOGL_ERROR, "SMPP MO Unknown Data Coding 0x%02x\n",
 			dcs);
 		return -1;
