@@ -79,9 +79,6 @@ static struct tlv_t *find_tlv(struct tlv_t *head, uint16_t tag)
 	return NULL;
 }
 
-#define MODE_7BIT	7
-#define MODE_8BIT	8
-
 /*! \brief convert from submit_sm_t to gsm_sms */
 static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 			 const struct submit_sm_t *submit)
@@ -469,39 +466,8 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 
 	/* Figure out SMPP DCS from TP-DCS */
 	dcs = sms->data_coding_scheme;
-	if ((dcs & 0xF0) == 0xF0) {
-		if (dcs & 0x04) {
-			/* bit 2 == 1: 8bit data */
-			deliver.data_coding = 0x02;
-			mode = MODE_8BIT;
-		} else {
-			/* bit 2 == 0: default alphabet */
-			deliver.data_coding = 0x01;
-			mode = MODE_7BIT;
-		}
-	} else if ((dcs & 0xE0) == 0) {
-		switch (dcs & 0xC) {
-		case 0:
-			deliver.data_coding = 0x01;
-			mode = MODE_7BIT;
-			break;
-		case 4:
-			deliver.data_coding = 0x02;
-			mode = MODE_8BIT;
-			break;
-		case 8:
-			deliver.data_coding = 0x08;	/* UCS-2 */
-			mode = MODE_8BIT;
-			break;
-		default:
-			goto unknown_mo;
-		}
-	} else {
-unknown_mo:
-		LOGP(DLSMS, LOGL_ERROR, "SMPP MO Unknown Data Coding 0x%02x\n",
-			dcs);
+	if (smpp_determine_scheme(dcs, &deliver.data_coding, &mode) == -1)
 		return -1;
-	}
 
 	/* Transparently pass on DCS via SMPP if requested */
 	if (esme->acl && esme->acl->dcs_transparent)

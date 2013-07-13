@@ -15,6 +15,9 @@
 #define SMPP_SYS_ID_LEN	16
 #define SMPP_PASSWD_LEN	16
 
+#define MODE_7BIT	7
+#define MODE_8BIT	8
+
 enum esme_read_state {
 	READ_ST_IN_LEN = 0,
 	READ_ST_IN_MSG = 1,
@@ -126,4 +129,6 @@ int smpp_route_pfx_del(struct osmo_smpp_acl *acl,
 		       const struct osmo_smpp_addr *pfx);
 
 int smpp_vty_init(void);
+
+int smpp_determine_scheme(uint8_t dcs, uint8_t *data_coding, int *mode);
 #endif

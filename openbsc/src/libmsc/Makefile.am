@@ -19,5 +19,5 @@ libmsc_a_SOURCES =	auth.c \
 			osmo_msc.c
 
 if BUILD_SMPP
-libmsc_a_SOURCES += smpp_smsc.c smpp_openbsc.c smpp_vty.c
+libmsc_a_SOURCES += smpp_smsc.c smpp_openbsc.c smpp_vty.c smpp_utils.c
 endif

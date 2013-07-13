@@ -4,6 +4,10 @@ if BUILD_NAT
 SUBDIRS += bsc-nat
 endif
 
+if BUILD_SMPP
+SUBDIRS += smpp
+endif
+
 
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
 $(srcdir)/package.m4: $(top_srcdir)/configure.ac

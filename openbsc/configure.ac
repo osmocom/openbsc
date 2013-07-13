@@ -44,12 +44,13 @@ AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
 
 # Enable/disable smpp support in the nitb?
 AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface])],
-    [osmo_ac_build_smpp="$enableval"])
+    [osmo_ac_build_smpp="$enableval"],[osmo_ac_build_smpp="no"])
 if test "$osmo_ac_build_smpp" = "yes" ; then
     PKG_CHECK_MODULES(LIBSMPP34, libsmpp34 >= 1.10)
     AC_DEFINE(BUILD_SMPP, 1, [Define if we want to build SMPP])
 fi
 AM_CONDITIONAL(BUILD_SMPP, test "x$osmo_ac_build_smpp" = "xyes")
+AC_SUBST(osmo_ac_build_smpp)
 
 
 found_libgtp=yes
@@ -160,6 +161,7 @@ AC_OUTPUT(
     tests/gprs/Makefile
     tests/si/Makefile
     tests/abis/Makefile
+    tests/smpp/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

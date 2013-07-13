@@ -40,6 +40,14 @@ cat $abs_srcdir/bsc-nat/bsc_nat_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/bsc-nat/bsc_nat_test], [], [expout], [ignore])
 AT_CLEANUP
 
+AT_SETUP([smpp])
+AT_KEYWORDS([smpp])
+AT_CHECK([test "$enable_smpp_test" != no || exit 77])
+cat $abs_srcdir/smpp/smpp_test.ok > expout
+cat $abs_srcdir/smpp/smpp_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/smpp/smpp_test], [], [expout], [experr])
+AT_CLEANUP
+
 AT_SETUP([si])
 AT_KEYWORDS([si])
 cat $abs_srcdir/si/si_test.ok > expout
