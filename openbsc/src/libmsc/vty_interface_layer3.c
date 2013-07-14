@@ -65,8 +65,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 			VTY_NEWLINE);
 	vty_out(vty, "    LAC: %d/0x%x%s",
 		subscr->lac, subscr->lac, VTY_NEWLINE);
-	if (subscr->imsi)
-		vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
+	vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
 	if (subscr->tmsi != GSM_RESERVED_TMSI)
 		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
 			VTY_NEWLINE);
