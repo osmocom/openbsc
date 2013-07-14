@@ -504,7 +504,7 @@ unknown_mo:
 	}
 
 	/* Transparently pass on DCS via SMPP if requested */
-	if (esme->acl->dcs_transparent)
+	if (esme->acl && esme->acl->dcs_transparent)
 		deliver.data_coding = dcs;
 
 	if (mode == MODE_7BIT) {
@@ -530,7 +530,7 @@ unknown_mo:
 		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
 	}
 
-	if (esme->acl->osmocom_ext && conn && conn->lchan)
+	if (esme->acl && esme->acl->osmocom_ext && conn && conn->lchan)
 		append_osmo_tlvs(&deliver.tlv, conn->lchan);
 
 	return smpp_tx_deliver(esme, &deliver);
