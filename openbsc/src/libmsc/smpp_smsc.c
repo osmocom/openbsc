@@ -878,7 +878,11 @@ static int link_accept_cb(struct smsc *smsc, int fd,
 	esme->wqueue.bfd.fd = fd;
 	esme->wqueue.bfd.data = esme;
 	esme->wqueue.bfd.when = BSC_FD_READ;
-	osmo_fd_register(&esme->wqueue.bfd);
+
+	if (osmo_fd_register(&esme->wqueue.bfd) != 0) {
+		talloc_free(esme);
+		return -EIO;
+	}
 
 	esme->wqueue.read_cb = esme_link_read_cb;
 	esme->wqueue.write_cb = esme_link_write_cb;
