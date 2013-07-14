@@ -113,7 +113,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 		}
 		sms_msg = t->value.octet;
 		sms_msg_len = t->length;
-	} else if (submit->short_message && submit->sm_length) {
+	} else if (submit->sm_length) {
 		sms_msg = submit->short_message;
 		sms_msg_len = submit->sm_length;
 	} else {
