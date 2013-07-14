@@ -390,6 +390,7 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		default:
 			return NULL;
 		}
+		break;
 	case NM_OC_BS11_RACK:
 		mo = &bts->bs11.rack.mo;
 		break;
