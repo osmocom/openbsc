@@ -647,7 +647,7 @@ static void reconn_tmr_cb(void *data)
 			logp_ipbc_uid(DLINP, LOGL_NOTICE, ipbc, priv_nr >> 8);
 			LOGPC(DLINP, LOGL_NOTICE, "RSL Trying to reconnect\n");
 			ipbc->bsc_rsl_conn[i] = connect_bsc(&sin, priv_nr, ipbc);
-			if (!ipbc->bsc_rsl_conn)
+			if (!ipbc->bsc_rsl_conn[i])
 				goto reschedule;
 			logp_ipbc_uid(DLINP, LOGL_NOTICE, ipbc, priv_nr >> 8);
 			LOGPC(DLINP, LOGL_NOTICE, "RSL Reconnected\n");
