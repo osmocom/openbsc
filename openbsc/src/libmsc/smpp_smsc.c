@@ -867,8 +867,10 @@ static int link_accept_cb(struct smsc *smsc, int fd,
 			  struct sockaddr_storage *s, socklen_t s_len)
 {
 	struct osmo_esme *esme = talloc_zero(smsc, struct osmo_esme);
-	if (!esme)
+	if (!esme) {
+		close(fd);
 		return -ENOMEM;
+	}
 
 	smpp_esme_get(esme);
 	esme->own_seq_nr = rand();
@@ -880,6 +882,7 @@ static int link_accept_cb(struct smsc *smsc, int fd,
 	esme->wqueue.bfd.when = BSC_FD_READ;
 
 	if (osmo_fd_register(&esme->wqueue.bfd) != 0) {
+		close(fd);
 		talloc_free(esme);
 		return -EIO;
 	}
