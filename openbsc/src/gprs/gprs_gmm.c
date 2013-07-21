@@ -56,13 +56,13 @@
 
 #define PTMSI_ALLOC
 
-/* Section 11.2.2 / Table 11.4 MM timers netowkr side */
+/* Section 11.2.2 / Table 11.4 MM timers netwokr side */
 #define GSM0408_T3322_SECS	6	/* DETACH_REQ -> DETACH_ACC */
 #define GSM0408_T3350_SECS	6	/* waiting for ATT/RAU/TMSI COMPL */
 #define GSM0408_T3360_SECS	6	/* waiting for AUTH/CIPH RESP */
 #define GSM0408_T3370_SECS	6	/* waiting for ID RESP */
 
-/* Section 11.2.2 / Table 11.4a MM timers netowkr side */
+/* Section 11.2.2 / Table 11.4a MM timers netwokr side */
 #define GSM0408_T3313_SECS	30	/* waiting for paging response */
 #define GSM0408_T3314_SECS	44	/* force to STBY on expiry */
 #define GSM0408_T3316_SECS	44

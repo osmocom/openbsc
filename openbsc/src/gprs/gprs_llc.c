@@ -550,7 +550,7 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 
 			/* HACK: non-standard recovery handling.  If remote LLE
 			 * is re-transmitting the same sequence number for
-			 * threee times, don't discard the frame but pass it on
+			 * three times, don't discard the frame but pass it on
 			 * and 'learn' the new sequence number */
 			if (gph->seq_tx != lle->vu_recv_last) {
 				lle->vu_recv_last = gph->seq_tx;
