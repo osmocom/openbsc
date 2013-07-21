@@ -84,7 +84,9 @@ DEFUN(cfg_smpp_port, cfg_smpp_port_cmd,
 }
 
 DEFUN(cfg_smpp_sys_id, cfg_smpp_sys_id_cmd,
-	"system-id ID", "Set the System ID of this SMSC")
+	"system-id ID",
+	"Set the System ID of this SMSC\n"
+	"Alphanumeric SMSC System ID\n")
 {
 	struct smsc *smsc = smsc_from_vty(vty);
 
@@ -128,7 +130,9 @@ static int config_write_smpp(struct vty *vty)
 }
 
 DEFUN(cfg_esme, cfg_esme_cmd,
-	"esme NAME", "Configure a particular ESME")
+	"esme NAME",
+	"Configure a particular ESME\n"
+	"Alphanumeric System ID of the ESME to be configured\n")
 {
 	struct smsc *smsc = smsc_from_vty(vty);
 	struct osmo_smpp_acl *acl;
@@ -154,7 +158,9 @@ DEFUN(cfg_esme, cfg_esme_cmd,
 }
 
 DEFUN(cfg_no_esme, cfg_no_esme_cmd,
-	"no esme NAME", NO_STR "Remove ESME configuration")
+	"no esme NAME",
+	NO_STR "Remove ESME configuration\n"
+	"Alphanumeric System ID of the ESME to be removed\n")
 {
 	struct smsc *smsc = smsc_from_vty(vty);
 	struct osmo_smpp_acl *acl;
@@ -176,7 +182,9 @@ DEFUN(cfg_no_esme, cfg_no_esme_cmd,
 
 
 DEFUN(cfg_esme_passwd, cfg_esme_passwd_cmd,
-	"password PASSWORD", "Set the password for this ESME")
+	"password PASSWORD",
+	"Set the password for this ESME\n"
+	"Alphanumeric password string\n")
 {
 	struct osmo_smpp_acl *acl = vty->index;
 
@@ -189,7 +197,8 @@ DEFUN(cfg_esme_passwd, cfg_esme_passwd_cmd,
 }
 
 DEFUN(cfg_esme_no_passwd, cfg_esme_no_passwd_cmd,
-	"no password", NO_STR "Set the password for this ESME")
+	"no password",
+	NO_STR "Remove the password for this ESME\n")
 {
 	struct osmo_smpp_acl *acl = vty->index;
 
@@ -243,13 +252,28 @@ static const struct value_string smpp_npi_str_short[] = {
 
 
 #define SMPP_ROUTE_STR "Configure a route for MO-SMS to be sent to this ESME\n"
-#define SMPP_ROUTE_P_STR "Prefix-match route\n"
+#define SMPP_ROUTE_P_STR SMPP_ROUTE_STR "Prefix-match route\n"
 #define SMPP_PREFIX_STR "Destination number prefix\n"
 
 #define TON_CMD "(unknown|international|national|network|subscriber|alpha|abbrev)"
 #define NPI_CMD "(unknown|isdn|x121|f69|e212|national|private|ermes|ip|wap)"
-#define TON_STR "FIXME"
-#define NPI_STR "FIXME"
+#define TON_STR "Unknown type-of-number\n"		\
+		"International type-of-number\n"	\
+		"National type-of-number\n"		\
+		"Network specific type-of-number\n"	\
+		"Subscriber type-of-number\n"		\
+		"Alphanumeric type-of-number\n"		\
+		"Abbreviated type-of-number\n"
+#define NPI_STR "Unknown numbering plan\n"		\
+		"ISDN (E.164) numbering plan\n"		\
+		"X.121 numbering plan\n"		\
+		"F.69 numbering plan\n"			\
+		"E.212 numbering plan\n"		\
+		"National numbering plan\n"		\
+		"Private numbering plan\n"		\
+		"ERMES numbering plan\n"		\
+		"IP numbering plan\n"			\
+		"WAP numbeing plan\n"
 
 DEFUN(cfg_esme_route_pfx, cfg_esme_route_pfx_cmd,
 	"route prefix " TON_CMD " " NPI_CMD " PREFIX",
@@ -325,7 +349,7 @@ DEFUN(cfg_esme_defaultroute, cfg_esme_defaultroute_cmd,
 
 DEFUN(cfg_no_esme_defaultroute, cfg_esme_no_defaultroute_cmd,
 	"no default-route", NO_STR
-	"Set this ESME as default-route for all SMS to unknown destinations")
+	"Remove this ESME as default-route for all SMS to unknown destinations")
 {
 	struct osmo_smpp_acl *acl = vty->index;
 
