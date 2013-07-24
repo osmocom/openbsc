@@ -44,14 +44,14 @@ static char *trie_lookup(struct nat_rewrite *trie, const char *number,
 	struct nat_rewrite_rule *rule;
 
 	if (!trie) {
-		LOGP(DNAT, LOGL_ERROR,
+		LOGP(DCC, LOGL_ERROR,
 			"Asked to do a table lookup but no table.\n");
 		return NULL;
 	}
 
 	rule = nat_rewrite_lookup(trie, number);
 	if (!rule) {
-		LOGP(DNAT, LOGL_DEBUG,
+		LOGP(DCC, LOGL_DEBUG,
 			"Couldn't find a prefix rule for %s\n", number);
 		return NULL;
 	}
@@ -100,12 +100,17 @@ static char *rewrite_isdn_number(struct bsc_nat *nat, struct llist_head *rewr_li
 	char int_number[sizeof(called->number) + 2];
 	char *number = called->number;
 
-	if (llist_empty(&nat->num_rewr))
+	if (llist_empty(&nat->num_rewr)) {
+		LOGP(DCC, LOGL_DEBUG, "Rewrite rules empty.\n");
 		return NULL;
+	}
 
 	/* only ISDN plan */
-	if (called->plan != 1)
+	if (called->plan != 1) {
+		LOGP(DCC, LOGL_DEBUG, "Called plan is not 1 it was %d\n",
+			called->plan);
 		return NULL;
+	}
 
 	/* international, prepend */
 	if (called->type == 1) {
@@ -130,6 +135,8 @@ static void update_called_number(struct gsm_mncc_number *called,
 			called->type = 0;
 		strncpy(called->number, chosen_number, sizeof(called->number));
 	}
+
+	called->number[sizeof(called->number) - 1] = '\0';
 }
 
 /**
@@ -161,28 +168,37 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
 
 	/* check if it looks international and stop */
+	LOGP(DCC, LOGL_DEBUG,
+		"Pre-Rewrite for IMSI(%s) Plan(%d) Type(%d) Number(%s)\n",
+		imsi, called.plan, called.type, called.number);
 	new_number_pre = rewrite_isdn_number(nat, &nat->num_rewr, msg, imsi, &called);
 
 	if (!new_number_pre) {
-		LOGP(DNAT, LOGL_DEBUG, "No IMSI match found, returning message.\n");
+		LOGP(DCC, LOGL_DEBUG, "No IMSI(%s) match found, returning message.\n",
+			imsi);
 		return NULL;
 	}
 
 	if (strlen(new_number_pre) > sizeof(called.number)) {
-		LOGP(DNAT, LOGL_ERROR, "Number is too long for structure.\n");
+		LOGP(DCC, LOGL_ERROR, "Number %s is too long for structure.\n",
+				new_number_pre);
 		talloc_free(new_number_pre);
 		return NULL;
 	}
 	update_called_number(&called, new_number_pre);
 
 	/* another run through the re-write engine with other rules */
+	LOGP(DCC, LOGL_DEBUG,
+		"Post-Rewrite for IMSI(%s) Plan(%d) Type(%d) Number(%s)\n",
+		imsi, called.plan, called.type, called.number);
 	new_number_post = rewrite_isdn_number(nat, &nat->num_rewr_post, msg,
 					imsi, &called);
 	chosen_number = new_number_post ? new_number_post : new_number_pre;
 
 
 	if (strlen(chosen_number) > sizeof(called.number)) {
-		LOGP(DNAT, LOGL_ERROR, "Number is too long for structure.\n");
+		LOGP(DCC, LOGL_ERROR, "Number %s is too long for structure.\n",
+			chosen_number);
 		talloc_free(new_number_pre);
 		talloc_free(new_number_post);
 		return NULL;
@@ -196,7 +212,7 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 
 	out = msgb_alloc_headroom(4096, 128, "changed-setup");
 	if (!out) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
+		LOGP(DCC, LOGL_ERROR, "Failed to allocate.\n");
 		talloc_free(new_number_pre);
 		talloc_free(new_number_post);
 		return NULL;
@@ -213,6 +229,9 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 
 	/* create the new number */
 	update_called_number(&called, chosen_number);
+	LOGP(DCC, LOGL_DEBUG,
+		"Chosen number for IMSI(%s) is Plan(%d) Type(%d) Number(%s)\n",
+		imsi, called.plan, called.type, called.number);
 	gsm48_encode_called(out, &called);
 
 	/* copy thre rest */
