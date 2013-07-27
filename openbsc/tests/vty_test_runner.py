@@ -78,14 +78,14 @@ class TestVTYNITB(TestVTYBase):
         # Enable periodic lu..
         self.vty.verify("periodic location update 60", [''])
         res = self.vty.command("write terminal")
-        self.assertGreater(res.find('periodic location update 60'), 0)
+        self.assert_(res.find('periodic location update 60') > 0)
         self.assertEquals(res.find('no periodic location update'), -1)
 
         # Now disable it..
         self.vty.verify("no periodic location update", [''])
         res = self.vty.command("write terminal")
         self.assertEquals(res.find('periodic location update 60'), -1)
-        self.assertGreater(res.find('no periodic location update'), 0)
+        self.assert_(res.find('no periodic location update') > 0)
 
 class TestVTYNAT(TestVTYBase):
 
