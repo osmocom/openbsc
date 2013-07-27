@@ -15,6 +15,8 @@
 #define GSM_SUBSCRIBER_FIRST_CONTACT	0x00000001
 #define tmsi_from_string(str) strtoul(str, NULL, 10)
 
+#define GSM_SUBSCRIBER_NO_EXPIRATION	0x0
+
 struct vty;
 
 struct gsm_equipment {

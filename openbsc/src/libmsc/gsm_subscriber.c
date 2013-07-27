@@ -333,8 +333,14 @@ int subscr_update_expire_lu(struct gsm_subscriber *s, struct gsm_bts *bts)
 	 * periodic updating in decihours. Mark the subscriber as
 	 * inactive if it missed two consecutive location updates.
 	 * Timeout is twice the t3212 value plus one minute */
-	s->expire_lu = time(NULL) +
+
+	/* Is expiration handling enabled? */
+	if (bts->si_common.chan_desc.t3212 == 0)
+		s->expire_lu = GSM_SUBSCRIBER_NO_EXPIRATION;
+	else
+		s->expire_lu = time(NULL) +
 			(bts->si_common.chan_desc.t3212 * 60 * 6 * 2) + 60;
+
 	rc = db_sync_subscriber(s);
 	db_subscriber_update(s);
 	return rc;
@@ -354,11 +360,6 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		LOGP(DMM, LOGL_INFO, "Subscriber %s ATTACHED LAC=%u\n",
 			subscr_name(s), s->lac);
 
-		/* FIXME: We should allow 0 for T3212 as well to disable the
-		 * location update period. In that case we will need a way to
-		 * indicate that in the database and then reenable that value in
-		 * VTY.
-		 */
 		/*
 		 * The below will set a new expire_lu but as a side-effect
 		 * the new lac will be saved in the database.

@@ -639,7 +639,7 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 	if (!dbi_result_field_is_null(result, "expire_lu"))
 		subscr->expire_lu = dbi_result_get_datetime(result, "expire_lu");
 	else
-		subscr->expire_lu = 0;
+		subscr->expire_lu = GSM_SUBSCRIBER_NO_EXPIRATION;
 
 	subscr->authorized = dbi_result_get_uint(result, "authorized");
 }
@@ -766,23 +766,42 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 	} else
 		q_tmsi = strdup("NULL");
 
-	result = dbi_conn_queryf(conn,
-		"UPDATE Subscriber "
-		"SET updated = datetime('now'), "
-		"name = %s, "
-		"extension = %s, "
-		"authorized = %i, "
-		"tmsi = %s, "
-		"lac = %i, "
-		"expire_lu = datetime(%i, 'unixepoch') "
-		"WHERE imsi = %s ",
-		q_name,
-		q_extension,
-		subscriber->authorized,
-		q_tmsi,
-		subscriber->lac,
-		(int) subscriber->expire_lu,
-		subscriber->imsi);
+	if (subscriber->expire_lu == GSM_SUBSCRIBER_NO_EXPIRATION) {
+		result = dbi_conn_queryf(conn,
+			"UPDATE Subscriber "
+			"SET updated = datetime('now'), "
+			"name = %s, "
+			"extension = %s, "
+			"authorized = %i, "
+			"tmsi = %s, "
+			"lac = %i, "
+			"expire_lu = NULL "
+			"WHERE imsi = %s ",
+			q_name,
+			q_extension,
+			subscriber->authorized,
+			q_tmsi,
+			subscriber->lac,
+			subscriber->imsi);
+	} else {
+		result = dbi_conn_queryf(conn,
+			"UPDATE Subscriber "
+			"SET updated = datetime('now'), "
+			"name = %s, "
+			"extension = %s, "
+			"authorized = %i, "
+			"tmsi = %s, "
+			"lac = %i, "
+			"expire_lu = datetime(%i, 'unixepoch') "
+			"WHERE imsi = %s ",
+			q_name,
+			q_extension,
+			subscriber->authorized,
+			q_tmsi,
+			subscriber->lac,
+			(int) subscriber->expire_lu,
+			subscriber->imsi);
+	}
 
 	free(q_tmsi);
 	free(q_name);
@@ -852,8 +871,8 @@ int db_subscriber_expire(void *priv, void (*callback)(void *priv, long long unsi
 			"SELECT id "
 			"FROM Subscriber "
 			"WHERE lac != 0 AND "
-				"( expire_lu is NULL "
-				"OR expire_lu < datetime('now') ) "
+				"( expire_lu is NOT NULL "
+				"AND expire_lu < datetime('now') ) "
 			"LIMIT 1");
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR, "Failed to get expired subscribers\n");

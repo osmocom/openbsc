@@ -55,6 +55,37 @@ class TestVTYBase(unittest.TestCase):
         self.vty = None
         osmoutil.end_proc(self.proc)
 
+class TestVTYNITB(TestVTYBase):
+
+    def vty_command(self):
+        return ["./src/osmo-nitb/osmo-nitb", "-c",
+                "doc/examples/osmo-nitb/nanobts/openbsc.cfg"]
+
+    def vty_app(self):
+        return (4242, "./src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb")
+
+    def testEnableDisablePeriodicLU(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("network")
+        self.vty.command("bts 0")
+
+        # Test invalid input
+        self.vty.verify("periodic location update 0", ['% Unknown command.'])
+        self.vty.verify("periodic location update 5", ['% Unknown command.'])
+        self.vty.verify("periodic location update 1531", ['% Unknown command.'])
+
+        # Enable periodic lu..
+        self.vty.verify("periodic location update 60", [''])
+        res = self.vty.command("write terminal")
+        self.assertGreater(res.find('periodic location update 60'), 0)
+        self.assertEquals(res.find('no periodic location update'), -1)
+
+        # Now disable it..
+        self.vty.verify("no periodic location update", [''])
+        res = self.vty.command("write terminal")
+        self.assertEquals(res.find('periodic location update 60'), -1)
+        self.assertGreater(res.find('no periodic location update'), 0)
 
 class TestVTYNAT(TestVTYBase):
 
@@ -105,6 +136,7 @@ if __name__ == '__main__':
     os.chdir(workdir)
     print "Running tests for specific VTY commands"
     suite = unittest.TestSuite()
+    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYNITB))
     add_nat_test(suite, workdir)
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
     sys.exit(len(res.errors) + len(res.failures))

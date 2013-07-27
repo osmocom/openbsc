@@ -506,8 +506,13 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 				(sp->penalty_time*20)+20, VTY_NEWLINE);
 	}
 
-	vty_out(vty, "  periodic location update %u%s",
-		bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
+	/* Is periodic LU enabled or disabled? */
+	if (bts->si_common.chan_desc.t3212 == 0)
+		vty_out(vty, "  no periodic location update%s", VTY_NEWLINE);
+	else
+		vty_out(vty, "  periodic location update %u%s",
+			bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
+
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
@@ -2036,6 +2041,19 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_no_per_loc_upd, cfg_bts_no_per_loc_upd_cmd,
+      "no periodic location update",
+      NO_STR
+      "Periodic Location Updating Interval\n"
+      "Periodic Location Updating Interval\n"
+      "Periodic Location Updating Interval\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.chan_desc.t3212 = 0;
+	return CMD_SUCCESS;
+}
+
 #define GPRS_TEXT	"GPRS Packet Network\n"
 
 DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
@@ -3053,6 +3071,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_rach_ec_allowed_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
 	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_bar_qualify_cmd);
