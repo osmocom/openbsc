@@ -142,8 +142,6 @@ struct bsc_api *msc_bsc_api() {
 /* lchan release handling */
 void msc_release_connection(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_trans *trans;
-
 	/* skip when we are in release, e.g. due an error */
 	if (conn->in_release)
 		return;

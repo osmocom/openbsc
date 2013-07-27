@@ -124,4 +124,6 @@ int smpp_route_pfx_add(struct osmo_smpp_acl *acl,
 		       const struct osmo_smpp_addr *pfx);
 int smpp_route_pfx_del(struct osmo_smpp_acl *acl,
 		       const struct osmo_smpp_addr *pfx);
+
+int smpp_vty_init(void);
 #endif

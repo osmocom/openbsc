@@ -414,7 +414,7 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 
 	gh = msgb_l3(msg);
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
-		LOGP(DMSC, LOGL_ERROR, "Assignment Compl invalid: %lu\n",
+		LOGP(DMSC, LOGL_ERROR, "Assignment Compl invalid: %u\n",
 		     msgb_l3len(msg) - sizeof(*gh));
 		return;
 	}
@@ -455,7 +455,7 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 
 	gh = msgb_l3(msg);
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
-		LOGP(DMSC, LOGL_ERROR, "assignemnt failure unhandled: %lu\n",
+		LOGP(DMSC, LOGL_ERROR, "assignemnt failure unhandled: %u\n",
 		     msgb_l3len(msg) - sizeof(*gh));
 		rr_failure = NULL;
 	} else {

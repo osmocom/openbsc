@@ -781,7 +781,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 		subscriber->authorized,
 		q_tmsi,
 		subscriber->lac,
-		subscriber->expire_lu,
+		(int) subscriber->expire_lu,
 		subscriber->imsi);
 
 	free(q_tmsi);

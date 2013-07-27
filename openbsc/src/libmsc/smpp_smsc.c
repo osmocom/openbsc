@@ -267,18 +267,6 @@ void smpp_esme_put(struct osmo_esme *esme)
 		esme_destroy(esme);
 }
 
-static struct osmo_esme *
-esme_by_system_id(const struct smsc *smsc, char *system_id)
-{
-	struct osmo_esme *e;
-
-	llist_for_each_entry(e, &smsc->esme_list, list) {
-		if (!strcmp(e->system_id, system_id))
-			return e;
-	}
-	return NULL;
-}
-
 /*! \brief try to find a SMPP route (ESME) for given destination */
 struct osmo_esme *
 smpp_route(const struct smsc *smsc, const struct osmo_smpp_addr *dest)
@@ -845,7 +833,7 @@ dead_socket:
 }
 
 /* call-back of write queue once it wishes to write a message to the socket */
-static void esme_link_write_cb(struct osmo_fd *ofd, struct msgb *msg)
+static int esme_link_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 {
 	struct osmo_esme *esme = ofd->data;
 	int rc;
@@ -858,8 +846,10 @@ static void esme_link_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 		smpp_esme_put(esme);
 	} else if (rc < msgb_length(msg)) {
 		LOGP(DSMPP, LOGL_ERROR, "[%s] Short write\n", esme->system_id);
-		return;
+		return -1;
 	}
+
+	return 0;
 }
 
 /* callback for already-accepted new TCP socket */

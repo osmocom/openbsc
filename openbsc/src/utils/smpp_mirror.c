@@ -10,6 +10,7 @@
 #include <smpp34_structs.h>
 #include <smpp34_params.h>
 
+#include <osmocom/core/application.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>

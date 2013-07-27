@@ -337,7 +337,7 @@ static int verify_bts_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 	char *saveptr, *latstr, *lonstr, *heightstr, *tstampstr, *validstr, *tmp;
 	time_t tstamp;
 	int valid;
-	double lat, lon, height;
+	double lat, lon, height __attribute__((unused));
 
 	tmp = talloc_strdup(cmd, value);
 	if (!tmp)
