@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/buffer.h>
@@ -55,6 +56,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 	int rc;
 	struct gsm_auth_info ainfo;
 	struct gsm_auth_tuple atuple;
+	char expire_time[200];
 
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
@@ -95,6 +97,13 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 			osmo_hexdump(atuple.kc, sizeof(atuple.kc)),
 			VTY_NEWLINE);
 	}
+
+	/* print the expiration time of a subscriber */
+	strftime(expire_time, sizeof(expire_time),
+			"%a, %d %b %Y %T %z", localtime(&subscr->expire_lu));
+	expire_time[sizeof(expire_time) - 1] = '\0';
+	vty_out(vty, "    Expiration Time: %s%s", expire_time, VTY_NEWLINE);
+
 	if (pending)
 		vty_out(vty, "    Pending: %d%s",
 			subscr_pending_requests(subscr), VTY_NEWLINE);
