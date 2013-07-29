@@ -147,11 +147,9 @@ static inline uint32_t tlli_foreign2local(uint32_t tlli)
 }
 
 /* lookup LLC Entity based on DLCI (TLLI+SAPI tuple) */
-static struct gprs_llc_lle *lle_by_tlli_sapi(uint32_t tlli, uint8_t sapi)
+static struct gprs_llc_lle *lle_by_tlli_sapi(const uint32_t tlli, uint8_t sapi)
 {
 	struct gprs_llc_llme *llme;
-
-	tlli = tlli_foreign2local(tlli);
 
 	llist_for_each_entry(llme, &gprs_llc_llmes, list) {
 		if (llme->tlli == tlli || llme->old_tlli == tlli)
