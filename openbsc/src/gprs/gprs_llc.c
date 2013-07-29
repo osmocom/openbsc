@@ -84,6 +84,21 @@ struct gprs_llc_hdr_parsed {
 
 static struct gprs_llc_llme *llme_alloc(uint32_t tlli);
 
+/* If the TLLI is foreign, return its local version */
+static inline uint32_t tlli_foreign2local(uint32_t tlli)
+{
+	uint32_t new_tlli;
+
+	if (gprs_tlli_type(tlli) == TLLI_FOREIGN) {
+		new_tlli = tlli | 0x40000000;
+		DEBUGP(DLLC, "TLLI 0x%08x is foreign, converting to "
+			"local TLLI 0x%08x\n", tlli, new_tlli);
+	} else
+		new_tlli = tlli;
+
+	return new_tlli;
+}
+
 /* Entry function from upper level (LLC), asking us to transmit a BSSGP PDU
  * to a remote MS (identified by TLLI) at a BTS identified by its BVCI and NSEI */
 static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
@@ -100,6 +115,12 @@ static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
 		dup.drx_parms = mmctx->drx_parms;
 		dup.ms_ra_cap.len = mmctx->ms_radio_access_capa.len;
 		dup.ms_ra_cap.v = mmctx->ms_radio_access_capa.buf;
+
+		/* make sure we only send it to the right llme */
+		OSMO_ASSERT(msgb_tlli(msg) == mmctx->llme->tlli
+				|| msgb_tlli(msg) == mmctx->llme->old_tlli
+				|| tlli_foreign2local(msgb_tlli(msg)) == mmctx->llme->tlli
+				|| tlli_foreign2local(msgb_tlli(msg)) == mmctx->llme->old_tlli);
 	}
 	memcpy(&dup.qos_profile, qos_profile_default,
 		sizeof(qos_profile_default));
@@ -178,21 +199,6 @@ static const struct gprs_llc_params llc_default_params[] = {
 
 LLIST_HEAD(gprs_llc_llmes);
 void *llc_tall_ctx;
-
-/* If the TLLI is foreign, return its local version */
-static inline uint32_t tlli_foreign2local(uint32_t tlli)
-{
-	uint32_t new_tlli;
-
-	if (gprs_tlli_type(tlli) == TLLI_FOREIGN) {
-		new_tlli = tlli | 0x40000000;
-		DEBUGP(DLLC, "TLLI 0x%08x is foreign, converting to "
-			"local TLLI 0x%08x\n", tlli, new_tlli);
-	} else
-		new_tlli = tlli;
-
-	return new_tlli;
-}
 
 /* lookup LLC Entity based on DLCI (TLLI+SAPI tuple) */
 static struct gprs_llc_lle *lle_by_tlli_sapi(const uint32_t tlli, uint8_t sapi)
