@@ -36,6 +36,54 @@
 #include <openbsc/crc24.h>
 #include <openbsc/sgsn.h>
 
+enum gprs_llc_cmd {
+	GPRS_LLC_NULL,
+	GPRS_LLC_RR,
+	GPRS_LLC_ACK,
+	GPRS_LLC_RNR,
+	GPRS_LLC_SACK,
+	GPRS_LLC_DM,
+	GPRS_LLC_DISC,
+	GPRS_LLC_UA,
+	GPRS_LLC_SABM,
+	GPRS_LLC_FRMR,
+	GPRS_LLC_XID,
+	GPRS_LLC_UI,
+};
+
+static const struct value_string llc_cmd_strs[] = {
+	{ GPRS_LLC_NULL,	"NULL" },
+	{ GPRS_LLC_RR,		"RR" },
+	{ GPRS_LLC_ACK,		"ACK" },
+	{ GPRS_LLC_RNR,		"RNR" },
+	{ GPRS_LLC_SACK,	"SACK" },
+	{ GPRS_LLC_DM,		"DM" },
+	{ GPRS_LLC_DISC,	"DISC" },
+	{ GPRS_LLC_UA,		"UA" },
+	{ GPRS_LLC_SABM,	"SABM" },
+	{ GPRS_LLC_FRMR,	"FRMR" },
+	{ GPRS_LLC_XID,		"XID" },
+	{ GPRS_LLC_UI,		"UI" },
+	{ 0, NULL }
+};
+
+struct gprs_llc_hdr_parsed {
+	uint8_t sapi;
+	uint8_t is_cmd:1,
+		 ack_req:1,
+		 is_encrypted:1;
+	uint32_t seq_rx;
+	uint32_t seq_tx;
+	uint32_t fcs;
+	uint32_t fcs_calc;
+	uint8_t *data;
+	uint16_t data_len;
+	uint16_t crc_length;
+	enum gprs_llc_cmd cmd;
+};
+
+static struct gprs_llc_llme *llme_alloc(uint32_t tlli);
+
 /* Entry function from upper level (LLC), asking us to transmit a BSSGP PDU
  * to a remote MS (identified by TLLI) at a BTS identified by its BVCI and NSEI */
 static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
@@ -158,6 +206,47 @@ static struct gprs_llc_lle *lle_by_tlli_sapi(const uint32_t tlli, uint8_t sapi)
 	return NULL;
 }
 
+/* lookup LLC Entity for RX based on DLCI (TLLI+SAPI tuple) */
+static struct gprs_llc_lle *lle_for_rx_by_tlli_sapi(const uint32_t tlli,
+					uint8_t sapi, enum gprs_llc_cmd cmd)
+{
+	struct gprs_llc_lle *lle;
+
+	/* We already know about this TLLI */
+	lle = lle_by_tlli_sapi(tlli, sapi);
+	if (lle)
+		return lle;
+
+	/* Maybe it is a routing area update but we already know this sapi? */
+	if (gprs_tlli_type(tlli) == TLLI_FOREIGN) {
+		lle = lle_by_tlli_sapi(tlli_foreign2local(tlli), sapi);
+		if (lle) {
+			LOGP(DLLC, LOGL_NOTICE,
+				"LLC RX: Found a local entry for TLLI 0x%08x\n",
+				tlli);
+			return lle;
+		}
+	}
+
+	/* 7.2.1.1 LLC belonging to unassigned TLLI+SAPI shall be discarded,
+	 * except UID and XID frames with SAPI=1 */
+	if (sapi == GPRS_SAPI_GMM &&
+		    (cmd == GPRS_LLC_XID || cmd == GPRS_LLC_UI)) {
+		struct gprs_llc_llme *llme;
+		/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
+		llme = llme_alloc(tlli);
+		LOGP(DLLC, LOGL_DEBUG, "LLC RX: unknown TLLI 0x%08x, "
+			"creating LLME on the fly\n", tlli);
+		lle = &llme->lle[sapi];
+		return lle;
+	}
+	
+	LOGP(DLLC, LOGL_NOTICE,
+		"unknown TLLI(0x%08x)/SAPI(%d): Silently dropping\n",
+		tlli, sapi);
+	return NULL;
+}
+
 static void lle_init(struct gprs_llc_llme *llme, uint8_t sapi)
 {
 	struct gprs_llc_lle *lle = &llme->lle[sapi];
@@ -196,52 +285,6 @@ static void llme_free(struct gprs_llc_llme *llme)
 	llist_del(&llme->list);
 	talloc_free(llme);
 }
-
-enum gprs_llc_cmd {
-	GPRS_LLC_NULL,
-	GPRS_LLC_RR,
-	GPRS_LLC_ACK,
-	GPRS_LLC_RNR,
-	GPRS_LLC_SACK,
-	GPRS_LLC_DM,
-	GPRS_LLC_DISC,
-	GPRS_LLC_UA,
-	GPRS_LLC_SABM,
-	GPRS_LLC_FRMR,
-	GPRS_LLC_XID,
-	GPRS_LLC_UI,
-};
-
-static const struct value_string llc_cmd_strs[] = {
-	{ GPRS_LLC_NULL,	"NULL" },
-	{ GPRS_LLC_RR,		"RR" },
-	{ GPRS_LLC_ACK,		"ACK" },
-	{ GPRS_LLC_RNR,		"RNR" },
-	{ GPRS_LLC_SACK,	"SACK" },
-	{ GPRS_LLC_DM,		"DM" },
-	{ GPRS_LLC_DISC,	"DISC" },
-	{ GPRS_LLC_UA,		"UA" },
-	{ GPRS_LLC_SABM,	"SABM" },
-	{ GPRS_LLC_FRMR,	"FRMR" },
-	{ GPRS_LLC_XID,		"XID" },
-	{ GPRS_LLC_UI,		"UI" },
-	{ 0, NULL }
-};
-
-struct gprs_llc_hdr_parsed {
-	uint8_t sapi;
-	uint8_t is_cmd:1,
-		 ack_req:1,
-		 is_encrypted:1;
-	uint32_t seq_rx;
-	uint32_t seq_tx;
-	uint32_t fcs;
-	uint32_t fcs_calc;
-	uint8_t *data;
-	uint16_t data_len;
-	uint16_t crc_length;
-	enum gprs_llc_cmd cmd;
-};
 
 #define LLC_ALLOC_SIZE 16384
 #define UI_HDR_LEN	3
@@ -360,6 +403,8 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 
 	/* look-up or create the LL Entity for this (TLLI, SAPI) tuple */
 	lle = lle_by_tlli_sapi(msgb_tlli(msg), sapi);
+	if (!lle) 
+		lle = lle_by_tlli_sapi(tlli_foreign2local(msgb_tlli(msg)), sapi);
 	if (!lle) {
 		struct gprs_llc_llme *llme;
 		LOGP(DLLC, LOGL_ERROR, "LLC TX: unknown TLLI 0x%08x, "
@@ -766,25 +811,9 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	}
 
 	/* find the LLC Entity for this TLLI+SAPI tuple */
-	lle = lle_by_tlli_sapi(msgb_tlli(msg), llhp.sapi);
-
-	/* 7.2.1.1 LLC belonging to unassigned TLLI+SAPI shall be discarded,
-	 * except UID and XID frames with SAPI=1 */
-	if (!lle) {
-		if (llhp.sapi == GPRS_SAPI_GMM &&
-		    (llhp.cmd == GPRS_LLC_XID || llhp.cmd == GPRS_LLC_UI)) {
-			struct gprs_llc_llme *llme;
-			/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
-			llme = llme_alloc(msgb_tlli(msg));
-			LOGP(DLLC, LOGL_DEBUG, "LLC RX: unknown TLLI 0x%08x, "
-				"creating LLME on the fly\n", msgb_tlli(msg));
-			lle = &llme->lle[llhp.sapi];
-		} else {
-			LOGP(DLLC, LOGL_NOTICE,
-				"unknown TLLI/SAPI: Silently dropping\n");
-			return 0;
-		}
-	}
+	lle = lle_for_rx_by_tlli_sapi(msgb_tlli(msg), llhp.sapi, llhp.cmd);
+	if (!lle)
+		return 0;
 
 	/* decrypt information field + FCS, if needed! */
 	if (llhp.is_encrypted) {
