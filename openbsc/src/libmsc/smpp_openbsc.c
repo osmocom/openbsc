@@ -42,6 +42,8 @@
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
+#include <openbsc/transaction.h>
+#include <openbsc/gsm_subscriber.h>
 
 #include "smpp_smsc.h"
 
@@ -250,6 +252,9 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 {
 	struct sms_signal_data *sig_sms = signal_data;
 	struct gsm_sms *sms = sig_sms->sms;
+	struct smsc *smsc = handler_data;
+	struct osmo_esme *esme;
+	struct gsm_subscriber *subscr;
 	int rc = 0;
 
 	if (!sms)
@@ -281,6 +286,29 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 			rc = smpp_tx_submit_r(sms->smpp.esme,
 					      sms->smpp.sequence_nr,
 					      ESME_ROK, sms->smpp.msg_id);
+		}
+		break;
+	case S_SMS_SMMA:
+		if (!sig_sms->trans || !sig_sms->trans->subscr) {
+			/* SMMA without a subscriber? strange... */
+			LOGP(DLSMS, LOGL_NOTICE, "SMMA without subscriber?\n");
+			break;
+		}
+
+		subscr = sig_sms->trans->subscr;
+		/* There's no real 1:1 match for SMMA in SMPP.  However,
+		 * an ALERT NOTIFICATION seems to be the most logical
+		 * choice */
+		llist_for_each_entry(esme, &smsc->esme_list, list) {
+			if (esme->acl && esme->acl->deliver_src_imsi) {
+				smpp_tx_alert(esme, TON_Subscriber_Number,
+					      NPI_Land_Mobile_E212,
+					      subscr->imsi, 0);
+			} else {
+				smpp_tx_alert(esme, TON_Network_Specific,
+					      NPI_ISDN_E163_E164,
+					      subscr->extension, 0);
+			}
 		}
 		break;
 	}
