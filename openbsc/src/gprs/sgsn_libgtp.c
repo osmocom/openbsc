@@ -291,7 +291,16 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	return gsm48_tx_gsm_act_pdp_acc(pctx);
 
 reject:
+	/*
+	 * In case of a timeout pdp will be NULL but we have a valid pointer
+	 * in pctx->lib. For other rejects pctx->lib and pdp might be the
+	 * same.
+	 */
 	pctx->state = PDP_STATE_NONE;
+	if (pctx->lib && pctx->lib != pdp)
+		pdp_freepdp(pctx->lib);
+	pctx->lib = NULL;
+
 	if (pdp)
 		pdp_freepdp(pdp);
 	/* Send PDP CTX ACT REJ to MS */
