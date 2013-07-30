@@ -259,6 +259,10 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	switch (signal) {
+	case S_SMS_MEM_EXCEEDED:
+		/* fall-through: There is no ESME_Rxxx result code to
+		 * indicate a MEMORY EXCEEDED in transaction mode back
+		 * to the ESME */
 	case S_SMS_UNKNOWN_ERROR:
 		if (sms->smpp.transaction_mode) {
 			/* Send back the SUBMIT-SM response with apropriate error */
