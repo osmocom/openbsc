@@ -246,6 +246,29 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 	return rc;
 }
 
+static void alert_all_esme(struct smsc *smsc, struct gsm_subscriber *subscr,
+			   uint8_t smpp_avail_status)
+{
+	struct osmo_esme *esme;
+
+	llist_for_each_entry(esme, &smsc->esme_list, list) {
+		/* we currently send an alert notification to each ESME that is
+		 * connected, and do not require a (non-existant) delivery
+		 * pending flag to be set before,  FIXME: make this VTY
+		 * configurable */
+		if (esme->acl && esme->acl->deliver_src_imsi) {
+			smpp_tx_alert(esme, TON_Subscriber_Number,
+				      NPI_Land_Mobile_E212,
+				      subscr->imsi, 0);
+		} else {
+			smpp_tx_alert(esme, TON_Network_Specific,
+				      NPI_ISDN_E163_E164,
+				      subscr->extension, 0);
+		}
+	}
+}
+
+
 /*! \brief signal handler for status of attempted SMS deliveries */
 static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
@@ -253,8 +276,6 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 	struct sms_signal_data *sig_sms = signal_data;
 	struct gsm_sms *sms = sig_sms->sms;
 	struct smsc *smsc = handler_data;
-	struct osmo_esme *esme;
-	struct gsm_subscriber *subscr;
 	int rc = 0;
 
 	if (!sms)
@@ -295,21 +316,10 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 			break;
 		}
 
-		subscr = sig_sms->trans->subscr;
 		/* There's no real 1:1 match for SMMA in SMPP.  However,
 		 * an ALERT NOTIFICATION seems to be the most logical
 		 * choice */
-		llist_for_each_entry(esme, &smsc->esme_list, list) {
-			if (esme->acl && esme->acl->deliver_src_imsi) {
-				smpp_tx_alert(esme, TON_Subscriber_Number,
-					      NPI_Land_Mobile_E212,
-					      subscr->imsi, 0);
-			} else {
-				smpp_tx_alert(esme, TON_Network_Specific,
-					      NPI_ISDN_E163_E164,
-					      subscr->extension, 0);
-			}
-		}
+		alert_all_esme(smsc, sig_sms->trans->subscr, 0);
 		break;
 	}
 
@@ -322,7 +332,6 @@ static int smpp_subscr_cb(unsigned int subsys, unsigned int signal,
 {
 	struct gsm_subscriber *subscr = signal_data;
 	struct smsc *smsc = handler_data;
-	struct osmo_esme *esme;
 	uint8_t smpp_avail_status;
 
 	/* determine the smpp_avail_status depending on attach/detach */
@@ -337,15 +346,7 @@ static int smpp_subscr_cb(unsigned int subsys, unsigned int signal,
 		return 0;
 	}
 
-	llist_for_each_entry(esme, &smsc->esme_list, list) {
-		/* we currently send an alert notification to each ESME that is
-		 * connected, and do not require a (non-existant) delivery
-		 * pending flag to be set before,  FIXME: make this VTY
-		 * configurable */
-		smpp_tx_alert(esme, TON_Subscriber_Number,
-				NPI_Land_Mobile_E212, subscr->imsi,
-				smpp_avail_status);
-	}
+	alert_all_esme(smsc, subscr, smpp_avail_status);
 
 	return 0;
 }
