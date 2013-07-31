@@ -27,6 +27,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/nat_rewrite_trie.h>
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
@@ -37,9 +38,30 @@
 
 #include <osmocom/sccp/sccp.h>
 
+static char *trie_lookup(struct nat_rewrite *trie, const char *number,
+			regoff_t off, void *ctx)
+{
+	struct nat_rewrite_rule *rule;
+
+	if (!trie) {
+		LOGP(DCC, LOGL_ERROR,
+			"Asked to do a table lookup but no table.\n");
+		return NULL;
+	}
+
+	rule = nat_rewrite_lookup(trie, number);
+	if (!rule) {
+		LOGP(DCC, LOGL_DEBUG,
+			"Couldn't find a prefix rule for %s\n", number);
+		return NULL;
+	}
+
+	return talloc_asprintf(ctx, "%s%s", rule->rewrite, &number[off]);
+}
+
 static char *match_and_rewrite_number(void *ctx, const char *number,
-				      const char *imsi,
-				      struct llist_head *list)
+				const char *imsi, struct llist_head *list,
+				struct nat_rewrite *trie)
 {
 	struct bsc_nat_num_rewr_entry *entry;
 	char *new_number = NULL;
@@ -53,11 +75,17 @@ static char *match_and_rewrite_number(void *ctx, const char *number,
 			continue;
 
 		/* this regexp matches... */
-		if (regexec(&entry->num_reg, number, 2, matches, 0) == 0 &&
-		    matches[1].rm_eo != -1)
-			new_number = talloc_asprintf(ctx, "%s%s",
+		if (regexec(&entry->num_reg, number, 2, matches, 0) == 0
+			&& matches[1].rm_eo != -1) {
+			if (entry->is_prefix_lookup)
+				new_number = trie_lookup(trie, number,
+						matches[1].rm_so, ctx);
+			else
+				new_number = talloc_asprintf(ctx, "%s%s",
 					entry->replace,
 					&number[matches[1].rm_so]);
+		}
+
 		if (new_number)
 			break;
 	}
@@ -65,18 +93,24 @@ static char *match_and_rewrite_number(void *ctx, const char *number,
 	return new_number;
 }
 
-static char *rewrite_isdn_number(struct bsc_nat *nat, void *ctx, const char *imsi,
-				       struct gsm_mncc_number *called)
+static char *rewrite_isdn_number(struct bsc_nat *nat, struct llist_head *rewr_list,
+				void *ctx, const char *imsi,
+				struct gsm_mncc_number *called)
 {
 	char int_number[sizeof(called->number) + 2];
 	char *number = called->number;
 
-	if (llist_empty(&nat->num_rewr))
+	if (llist_empty(&nat->num_rewr)) {
+		LOGP(DCC, LOGL_DEBUG, "Rewrite rules empty.\n");
 		return NULL;
+	}
 
 	/* only ISDN plan */
-	if (called->plan != 1)
+	if (called->plan != 1) {
+		LOGP(DCC, LOGL_DEBUG, "Called plan is not 1 it was %d\n",
+			called->plan);
 		return NULL;
+	}
 
 	/* international, prepend */
 	if (called->type == 1) {
@@ -86,9 +120,24 @@ static char *rewrite_isdn_number(struct bsc_nat *nat, void *ctx, const char *ims
 	}
 
 	return match_and_rewrite_number(ctx, number,
-					imsi, &nat->num_rewr);
+					imsi, rewr_list, nat->num_rewr_trie);
 }
 
+static void update_called_number(struct gsm_mncc_number *called,
+				const char *chosen_number)
+{
+	if (strncmp(chosen_number, "00", 2) == 0) {
+		called->type = 1;
+		strncpy(called->number, chosen_number + 2, sizeof(called->number));
+	} else {
+		/* rewrite international to unknown */
+		if (called->type == 1)
+			called->type = 0;
+		strncpy(called->number, chosen_number, sizeof(called->number));
+	}
+
+	called->number[sizeof(called->number) - 1] = '\0';
+}
 
 /**
  * Rewrite non global numbers... according to rules based on the IMSI
@@ -101,7 +150,7 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	unsigned int payload_len;
 	struct gsm_mncc_number called;
 	struct msgb *out;
-	char *new_number = NULL;
+	char *new_number_pre = NULL, *new_number_post = NULL, *chosen_number;
 	uint8_t *outptr;
 	const uint8_t *msgptr;
 	int sec_len;
@@ -119,16 +168,39 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
 
 	/* check if it looks international and stop */
-	new_number = rewrite_isdn_number(nat, msg, imsi, &called);
+	LOGP(DCC, LOGL_DEBUG,
+		"Pre-Rewrite for IMSI(%s) Plan(%d) Type(%d) Number(%s)\n",
+		imsi, called.plan, called.type, called.number);
+	new_number_pre = rewrite_isdn_number(nat, &nat->num_rewr, msg, imsi, &called);
 
-	if (!new_number) {
-		LOGP(DNAT, LOGL_DEBUG, "No IMSI match found, returning message.\n");
+	if (!new_number_pre) {
+		LOGP(DCC, LOGL_DEBUG, "No IMSI(%s) match found, returning message.\n",
+			imsi);
 		return NULL;
 	}
 
-	if (strlen(new_number) > sizeof(called.number)) {
-		LOGP(DNAT, LOGL_ERROR, "Number is too long for structure.\n");
-		talloc_free(new_number);
+	if (strlen(new_number_pre) > sizeof(called.number)) {
+		LOGP(DCC, LOGL_ERROR, "Number %s is too long for structure.\n",
+				new_number_pre);
+		talloc_free(new_number_pre);
+		return NULL;
+	}
+	update_called_number(&called, new_number_pre);
+
+	/* another run through the re-write engine with other rules */
+	LOGP(DCC, LOGL_DEBUG,
+		"Post-Rewrite for IMSI(%s) Plan(%d) Type(%d) Number(%s)\n",
+		imsi, called.plan, called.type, called.number);
+	new_number_post = rewrite_isdn_number(nat, &nat->num_rewr_post, msg,
+					imsi, &called);
+	chosen_number = new_number_post ? new_number_post : new_number_pre;
+
+
+	if (strlen(chosen_number) > sizeof(called.number)) {
+		LOGP(DCC, LOGL_ERROR, "Number %s is too long for structure.\n",
+			chosen_number);
+		talloc_free(new_number_pre);
+		talloc_free(new_number_post);
 		return NULL;
 	}
 
@@ -140,8 +212,9 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 
 	out = msgb_alloc_headroom(4096, 128, "changed-setup");
 	if (!out) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
-		talloc_free(new_number);
+		LOGP(DCC, LOGL_ERROR, "Failed to allocate.\n");
+		talloc_free(new_number_pre);
+		talloc_free(new_number_post);
 		return NULL;
 	}
 
@@ -155,15 +228,10 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	memcpy(outptr, &hdr48->data[0], sec_len);
 
 	/* create the new number */
-	if (strncmp(new_number, "00", 2) == 0) {
-		called.type = 1;
-		strncpy(called.number, new_number + 2, sizeof(called.number));
-	} else {
-		/* rewrite international to unknown */
-		if (called.type == 1)
-			called.type = 0;
-		strncpy(called.number, new_number, sizeof(called.number));
-	}
+	update_called_number(&called, chosen_number);
+	LOGP(DCC, LOGL_DEBUG,
+		"Chosen number for IMSI(%s) is Plan(%d) Type(%d) Number(%s)\n",
+		imsi, called.plan, called.type, called.number);
 	gsm48_encode_called(out, &called);
 
 	/* copy thre rest */
@@ -173,7 +241,8 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	outptr = msgb_put(out, sec_len);
 	memcpy(outptr, msgptr, sec_len);
 
-	talloc_free(new_number);
+	talloc_free(new_number_pre);
+	talloc_free(new_number_post);
 	return out;
 }
 
@@ -261,7 +330,7 @@ static char *sms_new_dest_nr(struct bsc_nat *nat, void *ctx,
 			     const char *imsi, const char *dest_nr)
 {
 	return match_and_rewrite_number(ctx, dest_nr, imsi,
-					&nat->sms_num_rewr);
+					&nat->sms_num_rewr, NULL);
 }
 
 /**
@@ -599,6 +668,9 @@ void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head,
 			talloc_free(entry);
 			continue;
 		}
+
+		if (strcmp("prefix_lookup", entry->replace) == 0)
+			entry->is_prefix_lookup = 1;
 
 		/* we will now build a regexp string */
 		if (cfg_entry->mcc[0] == '^') {

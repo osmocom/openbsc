@@ -1,6 +1,6 @@
 /* OpenBSC NAT interface to quagga VTY */
-/* (C) 2010-2012 by Holger Hans Peter Freyther
- * (C) 2010-2012 by On-Waves
+/* (C) 2010-2013 by Holger Hans Peter Freyther
+ * (C) 2010-2013 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/vty.h>
+#include <openbsc/nat_rewrite_trie.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/rate_ctr.h>
@@ -126,6 +127,10 @@ static int config_write_nat(struct vty *vty)
 
 	if (_nat->num_rewr_name)
 		vty_out(vty, " number-rewrite %s%s", _nat->num_rewr_name, VTY_NEWLINE);
+	if (_nat->num_rewr_post_name)
+		vty_out(vty, " number-rewrite-post %s%s",
+			_nat->num_rewr_post_name, VTY_NEWLINE);
+
 	if (_nat->smsc_rewr_name)
 		vty_out(vty, " rewrite-smsc addr %s%s",
 			_nat->smsc_rewr_name, VTY_NEWLINE);
@@ -138,6 +143,9 @@ static int config_write_nat(struct vty *vty)
 	if (_nat->sms_num_rewr_name)
 		vty_out(vty, " sms-number-rewrite %s%s",
 			_nat->sms_num_rewr_name, VTY_NEWLINE);
+	if (_nat->num_rewr_trie_name)
+		vty_out(vty, " prefix-tree %s%s",
+			_nat->num_rewr_trie_name, VTY_NEWLINE);
 
 	llist_for_each_entry(lst, &_nat->access_lists, list)
 		write_acc_lst(vty, lst);
@@ -554,6 +562,39 @@ DEFUN(cfg_nat_number_rewrite,
 			     &_nat->num_rewr, argv[0]);
 }
 
+DEFUN(cfg_nat_no_number_rewrite,
+      cfg_nat_no_number_rewrite_cmd,
+      "no number-rewrite",
+      NO_STR "Set the file with rewriting rules.\n")
+{
+	talloc_free(_nat->num_rewr_name);
+	_nat->num_rewr_name = NULL;
+
+	bsc_nat_num_rewr_entry_adapt(NULL, &_nat->num_rewr, NULL);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_number_rewrite_post,
+      cfg_nat_number_rewrite_post_cmd,
+      "number-rewrite-post FILENAME",
+      "Set the file with post-routing rewriting rules.\n" "Filename")
+{
+	return replace_rules(_nat, &_nat->num_rewr_post_name,
+			     &_nat->num_rewr_post, argv[0]);
+}
+
+DEFUN(cfg_nat_no_number_rewrite_post,
+      cfg_nat_no_number_rewrite_post_cmd,
+      "no number-rewrite-post",
+      NO_STR "Set the file with post-routing rewriting rules.\n")
+{
+	talloc_free(_nat->num_rewr_post_name);
+	_nat->num_rewr_post_name = NULL;
+
+	bsc_nat_num_rewr_entry_adapt(NULL, &_nat->num_rewr_post, NULL);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_nat_smsc_addr,
       cfg_nat_smsc_addr_cmd,
       "rewrite-smsc addr FILENAME",
@@ -618,6 +659,59 @@ DEFUN(cfg_nat_no_sms_number_rewrite,
 	_nat->sms_num_rewr_name = NULL;
 
 	bsc_nat_num_rewr_entry_adapt(NULL, &_nat->sms_num_rewr, NULL);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_prefix_trie,
+      cfg_nat_prefix_trie_cmd,
+      "prefix-tree FILENAME",
+      "Prefix tree for number rewriting\n" "File to load\n")
+{
+	/* give up the old data */
+	talloc_free(_nat->num_rewr_trie);
+	_nat->num_rewr_trie = NULL;
+
+	/* replace the file name */
+	bsc_replace_string(_nat, &_nat->num_rewr_trie_name, argv[0]);
+	if (!_nat->num_rewr_trie_name) {
+		vty_out(vty, "%% prefix-tree no filename is present.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	_nat->num_rewr_trie = nat_rewrite_parse(_nat, _nat->num_rewr_trie_name);
+	if (!_nat->num_rewr_trie) {
+		vty_out(vty, "%% prefix-tree parsing has failed.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty_out(vty, "%% prefix-tree loaded %zu rules.%s",
+		_nat->num_rewr_trie->prefixes, VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_no_prefix_trie, cfg_nat_no_prefix_trie_cmd,
+      "no prefix-tree",
+      NO_STR "Prefix tree for number rewriting\n")
+{
+	talloc_free(_nat->num_rewr_trie);
+	_nat->num_rewr_trie = NULL;
+	talloc_free(_nat->num_rewr_trie_name);
+	_nat->num_rewr_trie_name = NULL;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_prefix_tree, show_prefix_tree_cmd,
+      "show prefix-tree",
+      SHOW_STR "Prefix tree for number rewriting\n")
+{
+	if (!_nat->num_rewr_trie) {
+		vty_out(vty, "%% there is now prefix tree loaded.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	nat_rewrite_dump_vty(vty, _nat->num_rewr_trie);
 	return CMD_SUCCESS;
 }
 
@@ -1077,6 +1171,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_bsc_mgcp_cmd);
 	install_element_ve(&show_acc_lst_cmd);
 	install_element_ve(&show_bar_lst_cmd);
+	install_element_ve(&show_prefix_tree_cmd);
 
 	install_element(ENABLE_NODE, &set_last_endp_cmd);
 	install_element(ENABLE_NODE, &block_new_conn_cmd);
@@ -1112,12 +1207,17 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 	/* number rewriting */
 	install_element(NAT_NODE, &cfg_nat_number_rewrite_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_number_rewrite_cmd);
+	install_element(NAT_NODE, &cfg_nat_number_rewrite_post_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_number_rewrite_post_cmd);
 	install_element(NAT_NODE, &cfg_nat_smsc_addr_cmd);
 	install_element(NAT_NODE, &cfg_nat_smsc_tpdest_cmd);
 	install_element(NAT_NODE, &cfg_nat_sms_clear_tpsrr_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_sms_clear_tpsrr_cmd);
 	install_element(NAT_NODE, &cfg_nat_sms_number_rewrite_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_sms_number_rewrite_cmd);
+	install_element(NAT_NODE, &cfg_nat_prefix_trie_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_prefix_trie_cmd);
 
 	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);

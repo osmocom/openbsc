@@ -96,6 +96,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->access_lists);
 	INIT_LLIST_HEAD(&nat->dests);
 	INIT_LLIST_HEAD(&nat->num_rewr);
+	INIT_LLIST_HEAD(&nat->num_rewr_post);
 	INIT_LLIST_HEAD(&nat->smsc_rewr);
 	INIT_LLIST_HEAD(&nat->tpdest_match);
 	INIT_LLIST_HEAD(&nat->sms_clear_tp_srr);

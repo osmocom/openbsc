@@ -1,7 +1,7 @@
 SUBDIRS = gsm0408 db channel mgcp gprs si abis
 
 if BUILD_NAT
-SUBDIRS += bsc-nat
+SUBDIRS += bsc-nat bsc-nat-trie
 endif
 
 if BUILD_SMPP

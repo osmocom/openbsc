@@ -96,8 +96,41 @@ class TestVTYNAT(TestVTYBase):
     def vty_app(self):
         return (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat")
 
-    def testMoo(self):
-        pass
+    def testRewriteNoRewrite(self):
+        self.vty.enable()
+        res = self.vty.command("configure terminal")
+        res = self.vty.command("nat")
+        res = self.vty.command("number-rewrite rewrite.cfg")
+        res = self.vty.command("no number-rewrite")
+
+    def testRewritePostNoRewrite(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.verify("number-rewrite-post rewrite.cfg", [''])
+        self.vty.verify("no number-rewrite-post", [''])
+
+
+    def testPrefixTreeLoading(self):
+        cfg = os.path.join(confpath, "tests/bsc-nat-trie/prefixes.csv")
+
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        res = self.vty.command("prefix-tree %s" % cfg)
+        self.assertEqual(res, "% prefix-tree loaded 17 rules.")
+        self.vty.command("end")
+
+        res = self.vty.command("show prefix-tree")
+        self.assertEqual(res, '1,1\r\n12,2\r\n123,3\r\n1234,4\r\n12345,5\r\n123456,6\r\n1234567,7\r\n12345678,8\r\n123456789,9\r\n1234567890,10\r\n13,11\r\n14,12\r\n15,13\r\n16,14\r\n82,16\r\n823455,15\r\n+49123,17')
+
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.command("no prefix-tree")
+        self.vty.command("end")
+
+        res = self.vty.command("show prefix-tree")
+        self.assertEqual(res, "% there is now prefix tree loaded.")
 
 
 def add_nat_test(suite, workdir):

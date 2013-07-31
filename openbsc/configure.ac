@@ -157,6 +157,7 @@ AC_OUTPUT(
     tests/db/Makefile
     tests/channel/Makefile
     tests/bsc-nat/Makefile
+    tests/bsc-nat-trie/Makefile
     tests/mgcp/Makefile
     tests/gprs/Makefile
     tests/si/Makefile

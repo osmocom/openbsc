@@ -45,6 +45,7 @@ struct nat_sccp_connection;
 struct bsc_nat_parsed;
 struct bsc_nat;
 struct bsc_nat_ussd_con;
+struct nat_rewrite_rule;
 
 enum {
 	NAT_CON_TYPE_NONE,
@@ -298,6 +299,8 @@ struct bsc_nat {
 	/* number rewriting */
 	char *num_rewr_name;
 	struct llist_head num_rewr;
+	char *num_rewr_post_name;
+	struct llist_head num_rewr_post;
 
 	char *smsc_rewr_name;
 	struct llist_head smsc_rewr;
@@ -307,6 +310,10 @@ struct bsc_nat {
 	struct llist_head sms_clear_tp_srr;
 	char *sms_num_rewr_name;
 	struct llist_head sms_num_rewr;
+
+	/* more rewriting */
+	char *num_rewr_trie_name;
+	struct nat_rewrite *num_rewr_trie;
 
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;
@@ -452,6 +459,7 @@ struct bsc_nat_num_rewr_entry {
 	regex_t num_reg;
 
 	char *replace;
+	uint8_t is_prefix_lookup;
 };
 
 void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head, const struct osmo_config_list *);
