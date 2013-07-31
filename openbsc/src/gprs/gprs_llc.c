@@ -943,7 +943,7 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 		/* TLLI Change 8.3.2 */
 		/* Both TLLI Old and TLLI New are assigned; use New when
 		 * (re)transmitting.  Accept both Old and New on Rx */
-		llme->old_tlli = llme->tlli;
+		llme->old_tlli = old_tlli;
 		llme->tlli = new_tlli;
 		llme->state = GPRS_LLMS_ASSIGNED;
 	} else if (old_tlli != 0xffffffff && new_tlli == 0xffffffff) {
