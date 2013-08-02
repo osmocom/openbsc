@@ -1515,7 +1515,7 @@ int main(int argc, char **argv)
 
 	/* init vty and parse */
 	telnet_init(tall_bsc_ctx, NULL, 4244);
-	if (mgcp_parse_config(config_file, nat->mgcp_cfg) < 0) {
+	if (mgcp_parse_config(config_file, nat->mgcp_cfg, MGCP_BSC_NAT) < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return -3;
 	}

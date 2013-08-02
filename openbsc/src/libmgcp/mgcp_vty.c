@@ -898,7 +898,8 @@ static int allocate_trunk(struct mgcp_trunk_config *trunk)
 	return 0;
 }
 
-int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
+int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg,
+		      enum mgcp_role role)
 {
 	int rc;
 	struct mgcp_trunk_config *trunk;
@@ -935,6 +936,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 			return -1;
 		}
 	}
+	cfg->role = role;
 
 	return 0;
 }

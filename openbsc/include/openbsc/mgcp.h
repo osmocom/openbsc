@@ -125,6 +125,11 @@ struct mgcp_trunk_config {
 	struct mgcp_endpoint *endpoints;
 };
 
+enum mgcp_role {
+	MGCP_BSC = 0,
+	MGCP_BSC_NAT,
+};
+
 struct mgcp_config {
 	int source_port;
 	char *local_ip;
@@ -162,11 +167,14 @@ struct mgcp_config {
 	/* only used for start with a static configuration */
 	int last_net_port;
 	int last_bts_port;
+
+	enum mgcp_role role;
 };
 
 /* config management */
 struct mgcp_config *mgcp_config_alloc(void);
-int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg);
+int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg,
+		      enum mgcp_role role);
 int mgcp_vty_init(void);
 int mgcp_endpoints_allocate(struct mgcp_trunk_config *cfg);
 void mgcp_free_endp(struct mgcp_endpoint *endp);

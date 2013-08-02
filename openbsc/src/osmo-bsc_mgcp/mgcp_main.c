@@ -223,7 +223,7 @@ int main(int argc, char **argv)
 
 	handle_options(argc, argv);
 
-        rc = mgcp_parse_config(config_file, cfg);
+	rc = mgcp_parse_config(config_file, cfg, MGCP_BSC);
 	if (rc < 0)
 		return rc;
 
