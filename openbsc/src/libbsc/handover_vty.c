@@ -95,6 +95,8 @@ void config_write_bts_handover(struct vty *vty, struct gsm_bts *bts)
 			bts->handover.penalty_ho_fail, VTY_NEWLINE);
 		vty_out(vty, "  handover penalty assignment failure %u%s",
 			bts->handover.penalty_as_fail, VTY_NEWLINE);
+		vty_out(vty, "  handover retries %u%s",
+			bts->handover.retries, VTY_NEWLINE);
 	}
 }
 
@@ -484,6 +486,20 @@ DEFUN(cfg_bts_ho_penalty_as_fail, cfg_bts_ho_penalty_as_fail_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_ho_retries, cfg_bts_ho_retries_cmd,
+      "handover retries <0-9>",
+	HANDOVER_STR
+	"Number of immediate retries, if handover/assignment fails\n"
+	"Retries\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (is_cmd_for_algorithm(vty, 0, 1))
+		return CMD_WARNING;
+	bts->handover.retries = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 void bsc_vty_init_handover(void)
 {
 	install_element(GSMNET_NODE, &cfg_net_ho_algorithm_cmd);
@@ -507,5 +523,6 @@ void bsc_vty_init_handover(void)
 	install_element(BTS_NODE, &cfg_bts_ho_penalty_max_dist_cmd);
 	install_element(BTS_NODE, &cfg_bts_ho_penalty_ho_fail_cmd);
 	install_element(BTS_NODE, &cfg_bts_ho_penalty_as_fail_cmd);
+	install_element(BTS_NODE, &cfg_bts_ho_retries_cmd);
 }
 

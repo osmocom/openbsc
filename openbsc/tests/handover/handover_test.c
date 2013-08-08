@@ -1121,6 +1121,33 @@ static char *test_case_26[] = {
 	NULL
 };
 
+static char *test_case_27[] = {
+	"2",
+
+	"Only after maximum allowed retries, start penalty timer\n\n"
+	"The MS will try to handover to a better cell, but this will fail.\n"
+	"The handover is performed again and fails again. After this retry,\n"
+	"the handover is not performed again, because penalty timer is\n"
+	"running.\n",
+
+	"create-bts", "2",
+	"ho-retries", "0", "1",
+	"create-ms", "0", "TCH/F", "AMR",
+	"meas-rep", "0", "20","0", "1","0","30",
+	"expect-chan", "1", "1",
+	"ack-chan",
+	"expect-ho", "0", "1",
+	"ho-failed",
+	"meas-rep", "0", "20","0", "1","0","30",
+	"expect-chan", "1", "1",
+	"ack-chan",
+	"expect-ho", "0", "1",
+	"ho-failed",
+	"meas-rep", "0", "20","0", "1","0","30",
+	"expect-no-chan",
+	NULL
+};
+
 static char **test_cases[] =  {
 	test_case_0,
 	test_case_1,
@@ -1149,6 +1176,7 @@ static char **test_cases[] =  {
 	test_case_24,
 	test_case_25,
 	test_case_26,
+	test_case_27,
 	NULL
 };
 
@@ -1237,6 +1265,14 @@ int main(int argc, char **argv)
 			fprintf(stderr, "- Set handover enable state at "
 				"BTS %s to %s\n", test_case[1], test_case[2]);
 			bts[atoi(test_case[1])]->handover.ho_active =
+				atoi(test_case[2]);
+			test_case += 3;
+		} else
+		if (!strcmp(*test_case, "ho-retries")) {
+			fprintf(stderr, "- Set number of handover/assignment "
+				"retries at BTS %s to %s\n", test_case[1],
+				test_case[2]);
+			bts[atoi(test_case[1])]->handover.retries =
 				atoi(test_case[2]);
 			test_case += 3;
 		} else

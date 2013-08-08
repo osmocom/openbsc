@@ -371,6 +371,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 
 	log_handover(DHO, LOGL_INFO, ho);
 	LOGPC(DHO, LOGL_INFO, "Handover/Assignment completed\n");
+	new_lchan->conn->ho_failure = 0;
 
 	net = new_lchan->ts->trx->bts->network;
 	osmo_counter_inc(net->stats.handover.completed);
@@ -414,11 +415,16 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 	new_bts = ho->new_lchan->ts->trx->bts;
 
 	log_handover(DHO, LOGL_NOTICE, ho);
-	LOGPC(DHO, LOGL_NOTICE, "Handover/Assignment failed, start penalty timer\n");
-
-	add_penalty_timer(old_lchan->conn, new_bts,
-		(ho->do_ass) ? old_bts->handover.penalty_as_fail
-			     : old_bts->handover.penalty_ho_fail);
+	if (old_lchan->conn->ho_failure == old_bts->handover.retries) {
+		LOGPC(DHO, LOGL_NOTICE, "Handover/Assignment failed, start penalty timer\n");
+		old_lchan->conn->ho_failure = 0;
+		add_penalty_timer(old_lchan->conn, new_bts,
+			(ho->do_ass) ? old_bts->handover.penalty_as_fail
+				     : old_bts->handover.penalty_ho_fail);
+	} else {
+		LOGPC(DHO, LOGL_NOTICE, "Handover/Assignment failed, trying again.\n");
+		old_lchan->conn->ho_failure++;
+	}
 
 	osmo_counter_inc(net->stats.handover.failed);
 

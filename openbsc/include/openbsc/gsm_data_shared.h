@@ -767,6 +767,8 @@ struct gsm_bts {
 		unsigned int penalty_ho_fail;	/* seconds */
 		/* penalty time for a cell after assignment failure */
 		unsigned int penalty_as_fail;	/* seconds */
+		/* number of retries, before starting penality timer */
+		unsigned int retries;
 	} handover;
 #endif /* ROLE_BSC */
 	void *role;

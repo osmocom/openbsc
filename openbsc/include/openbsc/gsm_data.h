@@ -142,7 +142,8 @@ struct gsm_subscriber_connection {
 	struct gsm_lchan *secondary_lchan;
 	struct llist_head assignment_queue;
 
-	/* penalty timers for handover */
+	/* failure count and penalty timers for handover */
+	int ho_failure;
 	struct llist_head ho_penalty_timers;
 
 	/* phone's bearer capabilities */
