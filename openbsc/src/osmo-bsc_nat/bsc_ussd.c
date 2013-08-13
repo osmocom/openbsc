@@ -128,6 +128,7 @@ static int ussd_read_cb(struct osmo_fd *bfd)
 			if (ret < 0) {
 				LOGP(DNAT, LOGL_ERROR, "ignoring IPA response "
 					"message with malformed TLVs\n");
+				msgb_free(msg);
 				return ret;
 			}
 			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME))
