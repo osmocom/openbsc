@@ -366,11 +366,11 @@ DEFUN(show_msc,
       "Status of the A-link connection\n")
 {
 	if (!_nat->msc_con) {
-		vty_out(vty, "The MSC is not yet configured.\n");
+		vty_out(vty, "The MSC is not yet configured.%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	vty_out(vty, "MSC is connected: %d%s\n",
+	vty_out(vty, "MSC is connected: %d%s",
 		_nat->msc_con->is_connected, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
@@ -393,7 +393,7 @@ DEFUN(close_bsc,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_nat, cfg_nat_cmd, "nat", "Configute the NAT")
+DEFUN(cfg_nat, cfg_nat_cmd, "nat", "Configure the NAT")
 {
 	vty->index = _nat;
 	vty->node = NAT_NODE;
