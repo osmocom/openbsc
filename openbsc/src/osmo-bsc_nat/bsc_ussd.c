@@ -69,6 +69,20 @@ static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 	talloc_free(con);
 }
 
+static void ussd_pong(struct bsc_nat_ussd_con *conn)
+{
+	struct msgb *msg;
+
+	msg = msgb_alloc_headroom(4096, 128, "pong message");
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate pong msg\n");
+		return;
+	}
+
+	msgb_v_put(msg, IPAC_MSGT_PONG);
+	bsc_do_write(&conn->queue, msg, IPAC_PROTO_IPACCESS);
+}
+
 static int forward_sccp(struct bsc_nat *nat, struct msgb *msg)
 {
 	struct nat_sccp_connection *con;
@@ -133,6 +147,11 @@ static int ussd_read_cb(struct osmo_fd *bfd)
 			}
 			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME))
 				ussd_auth_con(&tvp, conn);
+		} else if (msg->l2h[0] == IPAC_MSGT_PING) {
+			LOGP(DNAT, LOGL_DEBUG, "Got USSD ping request.\n");
+			ussd_pong(conn);
+		} else {
+			LOGP(DNAT, LOGL_NOTICE, "Got unknown IPACCESS message 0x%02x.\n", msg->l2h[0]);
 		}
 
 		msgb_free(msg);

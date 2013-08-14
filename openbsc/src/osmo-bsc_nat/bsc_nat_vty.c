@@ -1155,6 +1155,18 @@ DEFUN(cfg_pgroup_no_lac, cfg_pgroup_no_lac_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_ussd_connection,
+      show_ussd_connection_cmd,
+      "show ussd-connection",
+      SHOW_STR "USSD connection related information\n")
+{
+	vty_out(vty, "The USSD side channel provider is %sconnected and %sauthorized.%s",
+		_nat->ussd_con ? "" : "not ",
+		_nat->ussd_con && _nat->ussd_con->authorized? "" : "not ",
+		VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
 int bsc_nat_vty_init(struct bsc_nat *nat)
 {
 	_nat = nat;
@@ -1172,6 +1184,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_acc_lst_cmd);
 	install_element_ve(&show_bar_lst_cmd);
 	install_element_ve(&show_prefix_tree_cmd);
+	install_element_ve(&show_ussd_connection_cmd);
 
 	install_element(ENABLE_NODE, &set_last_endp_cmd);
 	install_element(ENABLE_NODE, &block_new_conn_cmd);

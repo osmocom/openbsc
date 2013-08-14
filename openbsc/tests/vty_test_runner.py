@@ -18,6 +18,7 @@
 import os
 import time
 import unittest
+import socket
 
 import osmopy.obscvty as obscvty
 import osmopy.osmoutil as osmoutil
@@ -132,6 +133,54 @@ class TestVTYNAT(TestVTYBase):
         res = self.vty.command("show prefix-tree")
         self.assertEqual(res, "% there is now prefix tree loaded.")
 
+    def testUssdSideChannelProvider(self):
+        self.vty.command("end")
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.command("ussd-token key")
+        self.vty.command("end")
+
+        res = self.vty.verify("show ussd-connection", ['The USSD side channel provider is not connected and not authorized.'])
+        self.assertTrue(res)
+
+        ussdSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ussdSocket.connect(('127.0.0.1', 5001))
+        ussdSocket.settimeout(2.0)
+        print "Connected to %s:%d" % ussdSocket.getpeername()
+
+        print "Expecting ID_GET request"
+        data = ussdSocket.recv(4)
+        self.assertEqual(data, "\x00\x01\xfe\x04")
+
+        print "Going to send ID_RESP response"
+        res = ussdSocket.send("\x00\x07\xfe\x05\x00\x04\x01\x6b\x65\x79")
+        self.assertEqual(res, 10)
+
+        # initiating PING/PONG cycle to know, that the ID_RESP message has been processed
+
+        print "Going to send PING request"
+        res = ussdSocket.send("\x00\x01\xfe\x00")
+        self.assertEqual(res, 4)
+
+        print "Expecting PONG response"
+        data = ussdSocket.recv(4)
+        self.assertEqual(data, "\x00\x01\xfe\x01")
+
+        res = self.vty.verify("show ussd-connection", ['The USSD side channel provider is connected and authorized.'])
+        self.assertTrue(res)
+
+        print "Going to shut down connection"
+        ussdSocket.shutdown(socket.SHUT_WR)
+
+        print "Expecting EOF"
+        data = ussdSocket.recv(4)
+        self.assertEqual(data, "")
+
+        ussdSocket.close()
+
+        res = self.vty.verify("show ussd-connection", ['The USSD side channel provider is not connected and not authorized.'])
+        self.assertTrue(res)
 
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
