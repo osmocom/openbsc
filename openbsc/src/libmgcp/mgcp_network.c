@@ -115,7 +115,8 @@ uint32_t get_current_ts(void)
 	return ret;
 }
 
-static int udp_send(int fd, struct in_addr *addr, int port, char *buf, int len)
+static int mgcp_udp_send(int fd, struct in_addr *addr, int port, char *buf,
+			 int len)
 {
 	struct sockaddr_in out;
 	out.sin_family = AF_INET;
@@ -129,8 +130,8 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 {
 	static char buf[] = { MGCP_DUMMY_LOAD };
 
-	return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
-			endp->net_end.rtp_port, buf, 1);
+	return mgcp_udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
+			     endp->net_end.rtp_port, buf, 1);
 }
 
 /**
@@ -283,11 +284,13 @@ static int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 					addr, buf, rc);
 			forward_data(endp->net_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_NET_OUT], buf, rc);
-			return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
-					endp->net_end.rtp_port, buf, rc);
+			return mgcp_udp_send(endp->net_end.rtp.fd,
+					     &endp->net_end.addr,
+					     endp->net_end.rtp_port, buf, rc);
 		} else if (!tcfg->omit_rtcp) {
-			return udp_send(endp->net_end.rtcp.fd, &endp->net_end.addr,
-					endp->net_end.rtcp_port, buf, rc);
+			return mgcp_udp_send(endp->net_end.rtcp.fd,
+					     &endp->net_end.addr,
+					     endp->net_end.rtcp_port, buf, rc);
 		}
 	} else {
 		if (is_rtp) {
@@ -296,11 +299,13 @@ static int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 					addr, buf, rc);
 			forward_data(endp->bts_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_BTS_OUT], buf, rc);
-			return udp_send(endp->bts_end.rtp.fd, &endp->bts_end.addr,
-					endp->bts_end.rtp_port, buf, rc);
+			return mgcp_udp_send(endp->bts_end.rtp.fd,
+					     &endp->bts_end.addr,
+					     endp->bts_end.rtp_port, buf, rc);
 		} else if (!tcfg->omit_rtcp) {
-			return udp_send(endp->bts_end.rtcp.fd, &endp->bts_end.addr,
-					endp->bts_end.rtcp_port, buf, rc);
+			return mgcp_udp_send(endp->bts_end.rtcp.fd,
+					     &endp->bts_end.addr,
+					     endp->bts_end.rtcp_port, buf, rc);
 		}
 	}
 
