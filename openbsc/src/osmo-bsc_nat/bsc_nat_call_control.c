@@ -25,9 +25,13 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/vty.h>
 
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 
 #include <osmocom/core/talloc.h>
+
+#include <string.h>
 
 void bsc_cc_update_msc_ip(struct bsc_nat *nat, const char *ip)
 {
@@ -173,8 +177,91 @@ int bsc_cc_initialize(struct bsc_nat *nat)
 	return 0;
 }
 
+static int cc_new_connection(struct nat_sccp_connection *con, struct msgb *msg)
+{
+	return 0;
+}
+
+static int cc_forward(struct nat_sccp_connection *con, struct msgb *msg)
+{
+	return 0;
+}
+
 int bsc_cc_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
 			struct msgb *msg)
 {
-	return 0;
+	uint32_t len;
+	uint8_t msg_type;
+	uint8_t proto;
+	uint8_t ti;
+	struct gsm48_hdr *hdr48;
+	struct gsm_mncc_number called;
+	struct tlv_parsed tp;
+	unsigned payload_len;
+
+	char _dest_nr[35];
+
+	/* no local number prefix */
+	if (!con->bsc->nat->local_prefix)
+		return 0;
+
+	/* We have not verified the IMSI yet */
+	if (!con->authorized)
+		return 0;
+
+	if (parsed->bssap != BSSAP_MSG_DTAP)
+		return 0;
+
+	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
+	if (!hdr48)
+		return 0;
+
+	proto = hdr48->proto_discr & 0x0f;
+	msg_type = hdr48->msg_type & 0xbf;
+	ti = (hdr48->proto_discr & 0x70) >> 4;
+
+	/* ignore everything not call related */
+	if (proto != GSM48_PDISC_CC)
+		return 0;
+
+	/* if we know this connection, return quickly */
+	if (con->has_cc_ti && con->cc_ti == ti) {
+		cc_forward(con, msg);
+		return 1;
+	}
+
+	/* right now we identify a CC setup and remember things */
+	if (msg_type != GSM48_MT_CC_SETUP)
+		return 0;
+
+	/* now look into it */
+	payload_len = msgb_l3len(msg) - sizeof(*hdr48);
+
+	tlv_parse(&tp, &gsm48_att_tlvdef, hdr48->data, payload_len, 0, 0);
+	if (!TLVP_PRESENT(&tp, GSM48_IE_CALLED_BCD)) {
+		LOGP(DMSC, LOGL_ERROR, "Called BCD not present in setup.\n");
+		return 0;
+	}
+
+	memset(&called, 0, sizeof(called));
+	gsm48_decode_called(&called,
+			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
+
+	if (called.plan != 1 && called.plan != 0)
+		return 0;
+
+	if (called.plan == 1 && called.type == 1) {
+		_dest_nr[0] = _dest_nr[1] = '0';
+		memcpy(_dest_nr + 2, called.number, sizeof(called.number));
+	} else
+		memcpy(_dest_nr, called.number, sizeof(called.number));
+
+	/* now we can compare the number... */
+	if (regexec(&con->bsc->nat->local_prefix_regexp, _dest_nr, 0, NULL, 0) != 0)
+		return 0;
+
+	con->has_cc_ti = 1;
+	con->cc_ti = ti;
+	cc_new_connection(con, msg);
+	return 1;
 }

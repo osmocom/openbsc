@@ -83,6 +83,10 @@ struct nat_sccp_connection {
 	int imsi_checked;
 	char *imsi;
 
+	/* status for local call handling */
+	int has_cc_ti;
+	int cc_ti;
+
 	uint16_t lac;
 	uint16_t ci;
 
