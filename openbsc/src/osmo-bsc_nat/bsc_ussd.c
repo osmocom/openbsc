@@ -58,7 +58,7 @@ static struct bsc_nat_ussd_con *bsc_nat_ussd_alloc(struct bsc_nat *nat)
 static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 {
 	if (con->nat->ussd_con == con) {
-		bsc_close_ussd_connections(con->nat);
+		bsc_ussd_close_connections(con->nat);
 		con->nat->ussd_con = NULL;
 	}
 
@@ -360,7 +360,7 @@ static int forward_ussd(struct nat_sccp_connection *con, const struct ussd_reque
 	return 0;
 }
 
-int bsc_check_ussd(struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
+int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
 		   struct msgb *msg)
 {
 	uint32_t len;

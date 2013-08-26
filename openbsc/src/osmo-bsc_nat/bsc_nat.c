@@ -1081,7 +1081,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					}
 
 					/* hand data to a side channel */
-					if (bsc_check_ussd(con, parsed, msg) == 1) 
+					if (bsc_ussd_check(con, parsed, msg) == 1) 
 						con->con_local = NAT_CON_END_USSD;
 
 					/*
@@ -1093,7 +1093,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					talloc_free(parsed);
 					parsed = NULL;
 				} else if (con->con_local == NAT_CON_END_USSD) {
-					bsc_check_ussd(con, parsed, msg);
+					bsc_ussd_check(con, parsed, msg);
 				}
 
 				con_bsc = con->bsc;
@@ -1595,7 +1595,7 @@ int main(int argc, char **argv)
 }
 
 /* Close all connections handed out to the USSD module */
-int bsc_close_ussd_connections(struct bsc_nat *nat)
+int bsc_ussd_close_connections(struct bsc_nat *nat)
 {
 	struct nat_sccp_connection *con;
 	llist_for_each_entry(con, &nat->sccp_connections, list_entry) {
