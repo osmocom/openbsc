@@ -85,6 +85,12 @@ static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsig
 static void msc_send_reset(struct bsc_msc_connection *con);
 static void bsc_stat_reject(int filter, struct bsc_connection *bsc, int normal);
 
+static int is_local_connection(struct nat_sccp_connection *con)
+{
+	return con->con_local == NAT_CON_END_USSD
+		|| con->con_local == NAT_CON_END_CALL;
+}
+
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 {
 	struct bsc_config *conf;
@@ -221,18 +227,30 @@ static struct msgb *nat_create_rlsd(struct nat_sccp_connection *conn)
 	return msg;
 }
 
-static void nat_send_rlsd_ussd(struct bsc_nat *nat, struct nat_sccp_connection *conn)
+static void nat_send_rlsd(struct osmo_wqueue *queue, struct nat_sccp_connection *conn)
 {
 	struct msgb *msg;
-
-	if (!nat->ussd_con)
-		return;
 
 	msg = nat_create_rlsd(conn);
 	if (!msg)
 		return;
 
-	bsc_do_write(&nat->ussd_con->queue, msg, IPAC_PROTO_SCCP);
+	bsc_do_write(queue, msg, IPAC_PROTO_SCCP);
+}
+
+static void nat_send_rlsd_ussd(struct bsc_nat *nat, struct nat_sccp_connection *conn)
+{
+
+	if (!nat->ussd_con)
+		return;
+	return nat_send_rlsd(&nat->ussd_con->queue, conn);
+}
+
+static void nat_send_rlsd_cc(struct bsc_nat *nat, struct nat_sccp_connection *conn)
+{
+	if (!nat->local_conn)
+		return;
+	return nat_send_rlsd(&nat->local_conn->write_queue, conn);
 }
 
 static void nat_send_rlsd_msc(struct nat_sccp_connection *conn)
@@ -682,9 +700,13 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 						LOGP(DNAT, LOGL_ERROR, "Failed to assign...\n");
 				} else
 					LOGP(DNAT, LOGL_ERROR, "Assignment command but no BSC.\n");
-			} else if (con && con->con_local == NAT_CON_END_USSD &&
-				   parsed->gsm_type == BSS_MAP_MSG_CLEAR_CMD) {
-				LOGP(DNAT, LOGL_NOTICE, "Clear Command for USSD Connection. Ignoring.\n");
+			} else if (con && is_local_connection(con)
+					&& parsed->gsm_type == BSS_MAP_MSG_CLEAR_CMD) {
+				LOGP(DNAT, LOGL_NOTICE, "Clear Command for local connection. Ignoring.\n");
+				con = NULL;
+			} else if (con && con->con_local == NAT_CON_END_CALL
+					&& parsed->sccp_type == SCCP_MSG_TYPE_RLSD) {
+				LOGP(DNAT, LOGL_NOTICE, "Ignoring RLSD for local CC connection.\n");
 				con = NULL;
 			}
 			break;
@@ -904,10 +926,20 @@ void bsc_close_connection(struct bsc_connection *connection)
 		if (ctr)
 			rate_ctr_inc(ctr);
 		if (sccp_patch->has_remote_ref) {
-			if (sccp_patch->con_local == NAT_CON_END_MSC)
+			switch (sccp_patch->con_local) {
+			case NAT_CON_END_MSC:
 				nat_send_rlsd_msc(sccp_patch);
-			else if (sccp_patch->con_local == NAT_CON_END_USSD)
+				break;
+			case NAT_CON_END_USSD:
 				nat_send_rlsd_ussd(nat, sccp_patch);
+				break;
+			case NAT_CON_END_CALL:
+				nat_send_rlsd_cc(nat, sccp_patch);
+				break;
+			case NAT_CON_END_LOCAL:
+				/* nothing */
+				break;
+			}
 		}
 
 		sccp_connection_destroy(sccp_patch);
@@ -1104,20 +1136,25 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 						goto exit2;
 					}
 
-					/* hand data to a side channel */
-					if (bsc_ussd_check(con, parsed, msg) == 1) 
+					/* hand data from the various side channels */
+					if (bsc_ussd_check(con, parsed, msg) == 1) {
 						con->con_local = NAT_CON_END_USSD;
-
-					/*
-					 * Optionally rewrite setup message. This can
-					 * replace the msg and the parsed structure becomes
-					 * invalid.
-					 */
-					msg = bsc_nat_rewrite_msg(bsc->nat, msg, parsed, con->imsi);
+					} else if (bsc_cc_check(con, parsed, msg) == 1) {
+						con->con_local = NAT_CON_END_CALL;
+					} else {
+						/*
+						 * Optionally rewrite setup message. This can
+						 * replace the msg and the parsed structure becomes
+						 * invalid.
+						 */
+						msg = bsc_nat_rewrite_msg(bsc->nat, msg, parsed, con->imsi);
+					}
 					talloc_free(parsed);
 					parsed = NULL;
 				} else if (con->con_local == NAT_CON_END_USSD) {
 					bsc_ussd_check(con, parsed, msg);
+				} else if (con->con_local == NAT_CON_END_CALL) {
+					bsc_cc_check(con, parsed, msg);
 				}
 
 				con_bsc = con->bsc;

@@ -356,6 +356,11 @@ struct bsc_nat_ussd_con {
 	struct osmo_timer_list auth_timeout;
 };
 
+struct bsc_nat_cc_con {
+	struct osmo_wqueue queue;
+	struct bsc_nat *nat;
+};
+
 struct bsc_nat_reject_cause {
 	int lu_reject_cause;
 	int cm_reject_cause;
@@ -457,6 +462,10 @@ struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed, struct msgb *ms
 int bsc_ussd_init(struct bsc_nat *nat);
 int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
 int bsc_ussd_close_connections(struct bsc_nat *nat);
+
+/** Call-Contrl filtering */
+int bsc_cc_init(struct bsc_nat *nat);
+int bsc_cc_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse, struct msgb *msg);
 
 void bsc_cc_update_msc_ip(struct bsc_nat *bsc, const char *ip);
 int bsc_cc_initialize(struct bsc_nat *bsc);

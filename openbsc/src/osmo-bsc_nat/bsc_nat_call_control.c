@@ -172,3 +172,9 @@ int bsc_cc_initialize(struct bsc_nat *nat)
 
 	return 0;
 }
+
+int bsc_cc_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
+			struct msgb *msg)
+{
+	return 0;
+}
