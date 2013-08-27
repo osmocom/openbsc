@@ -290,7 +290,7 @@ static void dump_stat_total(struct vty *vty, struct bsc_nat *nat)
 	vty_out(vty, " MSC Connections %lu%s",
 		osmo_counter_get(nat->stats.msc.reconn), VTY_NEWLINE);
 	vty_out(vty, " MSC Connected: %d%s",
-		nat->msc_con->is_connected, VTY_NEWLINE);
+		bsc_nat_msc_is_connected(nat), VTY_NEWLINE);
 	vty_out(vty, " BSC Connections %lu total, %lu auth failed.%s",
 		osmo_counter_get(nat->stats.bsc.reconn),
 		osmo_counter_get(nat->stats.bsc.auth_fail), VTY_NEWLINE);
@@ -371,7 +371,7 @@ DEFUN(show_msc,
 	}
 
 	vty_out(vty, "MSC is connected: %d%s",
-		_nat->msc_con->is_connected, VTY_NEWLINE);
+		bsc_nat_msc_is_connected(_nat), VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
