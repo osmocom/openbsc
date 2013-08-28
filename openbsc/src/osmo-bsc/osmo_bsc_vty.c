@@ -114,6 +114,11 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 	if (msc->ussd_welcome_txt)
 		vty_out(vty, " bsc-welcome-text %s%s", msc->ussd_welcome_txt, VTY_NEWLINE);
 
+	if (msc->ussd_msc_lost_txt && msc->ussd_msc_lost_txt[0])
+		vty_out(vty, " bsc-msc-lost-text %s%s", msc->ussd_msc_lost_txt, VTY_NEWLINE);
+	else
+		vty_out(vty, " no bsc-msc-lost-text%s", VTY_NEWLINE);
+
 	if (msc->audio_length != 0) {
 		int i;
 
@@ -368,6 +373,34 @@ DEFUN(cfg_net_msc_welcome_ussd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_msc_lost_ussd,
+      cfg_net_msc_lost_ussd_cmd,
+      "bsc-msc-lost-text .TEXT",
+      "Set the USSD notification to be sent on MSC connection loss\n" "Text to be sent\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	char *str = argv_concat(argv, argc, 0);
+	if (!str)
+		return CMD_WARNING;
+
+	bsc_replace_string(osmo_bsc_data(vty), &data->ussd_msc_lost_txt, str);
+	talloc_free(str);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_msc_no_lost_ussd,
+      cfg_net_msc_no_lost_ussd_cmd,
+      "no bsc-msc-lost-text",
+      NO_STR "Clear the USSD notification to be sent on MSC connection loss\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+
+	talloc_free(data->ussd_msc_lost_txt);
+	data->ussd_msc_lost_txt = 0;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_net_msc_type,
       cfg_net_msc_type_cmd,
       "type (normal|local)",
@@ -579,6 +612,8 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_ping_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_lost_ussd_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_no_lost_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_type_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_emerg_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_local_prefix_cmd);

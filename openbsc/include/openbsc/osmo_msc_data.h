@@ -83,6 +83,9 @@ struct osmo_msc_data {
 	struct osmo_wqueue mgcp_agent;
 
 	int nr;
+
+	/* ussd msc connection lost text */
+	char *ussd_msc_lost_txt;
 };
 
 /*

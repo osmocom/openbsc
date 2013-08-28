@@ -88,6 +88,39 @@ class TestVTYNITB(TestVTYBase):
         self.assertEquals(res.find('periodic location update 60'), -1)
         self.assert_(res.find('no periodic location update') > 0)
 
+class TestVTYBSC(TestVTYBase):
+
+    def vty_command(self):
+        return ["./src/osmo-bsc/osmo-bsc", "-c",
+                "doc/examples/osmo-bsc/osmo-bsc.cfg"]
+
+    def vty_app(self):
+        return (4242, "./src/osmo-bsc/osmo-bsc", "OsmoBSC", "bsc")
+
+    def testUssdNotifications(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("msc")
+
+        # Test invalid input
+        self.vty.verify("bsc-msc-lost-text", ['% Command incomplete.'])
+
+        # Enable USSD notifications
+        self.vty.verify("bsc-msc-lost-text MSC disconnected", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('bsc-msc-lost-text MSC disconnected') > 0)
+        self.assertEquals(res.find('no bsc-msc-lost-text'), -1)
+
+        # Now disable it..
+        self.vty.verify("no bsc-msc-lost-text", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assertEquals(res.find('bsc-msc-lost-text MSC disconnected'), -1)
+        self.assert_(res.find('no bsc-msc-lost-text') > 0)
+
 class TestVTYNAT(TestVTYBase):
 
     def vty_command(self):
@@ -189,6 +222,13 @@ def add_nat_test(suite, workdir):
     test = unittest.TestLoader().loadTestsFromTestCase(TestVTYNAT)
     suite.addTest(test)
 
+def add_bsc_test(suite, workdir):
+    if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc")):
+        print("Skipping the BSC test")
+        return
+    test = unittest.TestLoader().loadTestsFromTestCase(TestVTYBSC)
+    suite.addTest(test)
+
 if __name__ == '__main__':
     import argparse
     import sys
@@ -219,6 +259,7 @@ if __name__ == '__main__':
     print "Running tests for specific VTY commands"
     suite = unittest.TestSuite()
     suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYNITB))
+    add_bsc_test(suite, workdir)
     add_nat_test(suite, workdir)
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
     sys.exit(len(res.errors) + len(res.failures))
