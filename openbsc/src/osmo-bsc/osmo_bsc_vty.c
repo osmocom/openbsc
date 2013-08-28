@@ -111,8 +111,11 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 	vty_out(vty, " ip.access rtp-base %d%s", msc->rtp_base, VTY_NEWLINE);
 	vty_out(vty, " timeout-ping %d%s", msc->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout-pong %d%s", msc->pong_timeout, VTY_NEWLINE);
+
 	if (msc->ussd_welcome_txt)
 		vty_out(vty, " bsc-welcome-text %s%s", msc->ussd_welcome_txt, VTY_NEWLINE);
+	else
+		vty_out(vty, " no bsc-welcome-text%s", VTY_NEWLINE);
 
 	if (msc->ussd_msc_lost_txt && msc->ussd_msc_lost_txt[0])
 		vty_out(vty, " bsc-msc-lost-text %s%s", msc->ussd_msc_lost_txt, VTY_NEWLINE);
@@ -361,7 +364,7 @@ DEFUN(cfg_net_msc_pong_time,
 DEFUN(cfg_net_msc_welcome_ussd,
       cfg_net_msc_welcome_ussd_cmd,
       "bsc-welcome-text .TEXT",
-      "Set the USSD notification to be sent.\n" "Text to be sent\n")
+      "Set the USSD notification to be sent\n" "Text to be sent\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	char *str = argv_concat(argv, argc, 0);
@@ -370,6 +373,19 @@ DEFUN(cfg_net_msc_welcome_ussd,
 
 	bsc_replace_string(osmo_bsc_data(vty), &data->ussd_welcome_txt, str);
 	talloc_free(str);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_msc_no_welcome_ussd,
+      cfg_net_msc_no_welcome_ussd_cmd,
+      "no bsc-welcome-text",
+      NO_STR "Clear the USSD notification to be sent\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+
+	talloc_free(data->ussd_welcome_txt);
+	data->ussd_welcome_txt = 0;
+
 	return CMD_SUCCESS;
 }
 
@@ -612,6 +628,7 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_ping_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_no_welcome_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_lost_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_no_lost_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_type_cmd);

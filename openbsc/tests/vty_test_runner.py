@@ -104,22 +104,29 @@ class TestVTYBSC(TestVTYBase):
 
         # Test invalid input
         self.vty.verify("bsc-msc-lost-text", ['% Command incomplete.'])
+        self.vty.verify("bsc-welcome-text", ['% Command incomplete.'])
 
         # Enable USSD notifications
         self.vty.verify("bsc-msc-lost-text MSC disconnected", [''])
+        self.vty.verify("bsc-welcome-text Hello MS", [''])
 
         # Verify settings
         res = self.vty.command("write terminal")
         self.assert_(res.find('bsc-msc-lost-text MSC disconnected') > 0)
         self.assertEquals(res.find('no bsc-msc-lost-text'), -1)
+        self.assert_(res.find('bsc-welcome-text Hello MS') > 0)
+        self.assertEquals(res.find('no bsc-welcome-text'), -1)
 
         # Now disable it..
         self.vty.verify("no bsc-msc-lost-text", [''])
+        self.vty.verify("no bsc-welcome-text", [''])
 
         # Verify settings
         res = self.vty.command("write terminal")
         self.assertEquals(res.find('bsc-msc-lost-text MSC disconnected'), -1)
         self.assert_(res.find('no bsc-msc-lost-text') > 0)
+        self.assert_(res.find('no bsc-welcome-text') > 0)
+        self.assertEquals(res.find('bsc-welcome-text Hello MS'), -1)
 
 class TestVTYNAT(TestVTYBase):
 
