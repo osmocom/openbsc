@@ -262,13 +262,35 @@ int bsc_delete_connection(struct osmo_bsc_sccp_con *sccp)
 	return 0;
 }
 
-static void bsc_close_connections(struct bsc_msc_connection *msc_con)
+static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
+{
+	struct gsm_subscriber_connection *conn = con->conn;
+
+	/* send USSD notification if string configured and con->data is set */
+	if (!conn)
+		return;
+
+	/* check for config string */
+	if (!con->msc->ussd_msc_lost_txt)
+		return;
+	if (con->msc->ussd_msc_lost_txt[0] == '\0')
+		return;
+
+	/* send USSD notification */
+	gsm0480_send_ussdNotify(conn, 1, conn->sccp_con->msc->ussd_welcome_txt);
+	gsm0480_send_releaseComplete(conn);
+}
+
+static void bsc_notify_and_close_conns(struct bsc_msc_connection *msc_con)
 {
 	struct osmo_bsc_sccp_con *con, *tmp;
 
 	llist_for_each_entry_safe(con, tmp, &active_connections, entry) {
-		if (con->msc->msc_con == msc_con)
-			bsc_sccp_force_free(con);
+		if (con->msc->msc_con != msc_con)
+			continue;
+
+		bsc_notify_msc_lost(con);
+		bsc_sccp_force_free(con);
 	}
 }
 
@@ -282,7 +304,7 @@ static int handle_msc_signal(unsigned int subsys, unsigned int signal,
 
 	msc = signal_data;
 	if (signal == S_MSC_LOST)
-		bsc_close_connections(msc->data->msc_con);
+		bsc_notify_and_close_conns(msc->data->msc_con);
 
 	return 0;
 }
