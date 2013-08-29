@@ -265,6 +265,40 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	}
 }
 
+static uint8_t *nanobts_attr_bts_get(struct gsm_bts *bts, size_t *data_len)
+{
+	patch_nm_tables(bts);
+	*data_len = sizeof(nanobts_attr_bts);
+	return nanobts_attr_bts;
+}
+
+static uint8_t *nanobts_attr_nse_get(struct gsm_bts *bts, size_t *data_len)
+{
+	patch_nm_tables(bts);
+	*data_len = sizeof(nanobts_attr_nse);
+	return nanobts_attr_nse;
+}
+
+static uint8_t *nanobts_attr_cell_get(struct gsm_bts *bts, size_t *data_len)
+{
+	patch_nm_tables(bts);
+	*data_len = sizeof(nanobts_attr_cell);
+	return nanobts_attr_cell;
+}
+
+static uint8_t *nanobts_attr_nscv_get(struct gsm_bts *bts, size_t *data_len)
+{
+	patch_nm_tables(bts);
+	*data_len = sizeof(nanobts_attr_nsvc0);
+	return nanobts_attr_nsvc0;
+}
+
+static uint8_t *nanobts_attr_radio_get(struct gsm_bts *bts, size_t *data_len)
+{
+	patch_nm_tables(bts);
+	*data_len = sizeof(nanobts_attr_radio);
+	return nanobts_attr_radio;
+}
 
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
 static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
@@ -277,6 +311,9 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_bts_gprs_nsvc *nsvc;
+
+	uint8_t *data;
+	size_t data_len;
 
 	if (!is_ipaccess_bts(nsd->bts))
 		return 0;
@@ -300,9 +337,8 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 	case NM_OC_BTS:
 		bts = obj;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			patch_nm_tables(bts);
-			abis_nm_set_bts_attr(bts, nanobts_attr_bts,
-					     sizeof(nanobts_attr_bts));
+			data = nanobts_attr_bts_get(bts, &data_len);
+			abis_nm_set_bts_attr(bts, data, data_len);
 			abis_nm_chg_adm_state(bts, obj_class,
 					      bts->bts_nr, 0xff, 0xff,
 					      NM_STATE_UNLOCKED);
@@ -315,7 +351,6 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 		trx = ts->trx;
 		if (new_state->operational == NM_OPSTATE_DISABLED &&
 		    new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			patch_nm_tables(trx->bts);
 			enum abis_nm_chan_comb ccomb =
 						abis_nm_chcomb4pchan(ts->pchan);
 			abis_nm_set_channel_attr(ts, ccomb);
@@ -338,9 +373,9 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
+			data = nanobts_attr_nse_get(bts, &data_len);
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
-						  0xff, 0xff, nanobts_attr_nse,
-						  sizeof(nanobts_attr_nse));
+						  0xff, 0xff, data, data_len);
 			abis_nm_opstart(bts, obj_class, bts->bts_nr,
 					0xff, 0xff);
 		}
@@ -350,9 +385,9 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
+			data = nanobts_attr_cell_get(bts, &data_len);
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
-						  0, 0xff, nanobts_attr_cell,
-						  sizeof(nanobts_attr_cell));
+						  0, 0xff, data, data_len);
 			abis_nm_opstart(bts, obj_class, bts->bts_nr,
 					0, 0xff);
 			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
@@ -371,10 +406,10 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 			break;
 		if ((new_state->availability == NM_AVSTATE_OFF_LINE) ||
 		    (new_state->availability == NM_AVSTATE_DEPENDENCY)) {
+			data = nanobts_attr_nscv_get(bts, &data_len);
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
 						  nsvc->id, 0xff,
-						  nanobts_attr_nsvc0,
-						  sizeof(nanobts_attr_nsvc0));
+						  data, data_len);
 			abis_nm_opstart(bts, obj_class, bts->bts_nr,
 					nsvc->id, 0xff);
 			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
@@ -424,11 +459,12 @@ static int sw_activ_rep(struct msgb *mb)
 		 */
 		int rc_state = trx->mo.nm_state.administrative;
 		/* Patch ARFCN into radio attribute */
-		nanobts_attr_radio[5] &= 0xf0;
-		nanobts_attr_radio[5] |= trx->arfcn >> 8;
-		nanobts_attr_radio[6] = trx->arfcn & 0xff;
-		abis_nm_set_radio_attr(trx, nanobts_attr_radio,
-				       sizeof(nanobts_attr_radio));
+		size_t data_len;
+		uint8_t *data = nanobts_attr_radio_get(trx->bts, &data_len);
+		data[5] &= 0xf0;
+		data[5] |= trx->arfcn >> 8;
+		data[6] = trx->arfcn & 0xff;
+		abis_nm_set_radio_attr(trx, data, data_len);
 		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
 				      trx->bts->bts_nr, trx->nr, 0xff,
 				      rc_state);
