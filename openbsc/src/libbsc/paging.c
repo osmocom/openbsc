@@ -304,12 +304,22 @@ int paging_request_bts(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	int rc;
 
 	/* not the right network */
-	if (bts->network_code != subscr->mnc || bts->country_code != subscr->mcc)
-		return 0;;
+	if (bts->network_code != subscr->mnc || bts->country_code != subscr->mcc) {
+		LOGP(DPAG, LOGL_DEBUG,
+			"BTS(%d) is not of the right network mnc(%d/%d) mcc(%d/%d)\n",
+			bts->nr,
+			bts->network_code, subscr->mnc,
+			bts->country_code, subscr->mcc);
+		return 0;
+	}
 
 	/* skip all currently inactive TRX */
-	if (!trx_is_usable(bts->c0))
+	if (!trx_is_usable(bts->c0)) {
+		LOGP(DPAG, LOGL_DEBUG,
+			"BTS(%d) is not usable.\n",
+			bts->nr);
 		return 0;
+	}
 
 	/* maybe it is the first time we use it */
 	paging_init_if_needed(bts);
