@@ -779,6 +779,8 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			"authorized = %i, "
 			"tmsi = %s, "
 			"lac = %i, "
+			"mnc = %u, "
+			"mcc = %u, "
 			"expire_lu = NULL "
 			"WHERE imsi = %s ",
 			q_name,
@@ -786,6 +788,8 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			subscriber->authorized,
 			q_tmsi,
 			subscriber->lac,
+			subscriber->mnc,
+			subscriber->mcc,
 			subscriber->imsi);
 	} else {
 		result = dbi_conn_queryf(conn,
