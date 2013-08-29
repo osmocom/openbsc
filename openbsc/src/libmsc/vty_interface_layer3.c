@@ -355,14 +355,12 @@ DEFUN(subscriber_silent_call_start,
 		type = RSL_CHANNEED_ANY;	/* Defaults to ANY */
 
 	rc = gsm_silent_call_start(subscr, vty, type);
+	subscr_put(subscr);
 	if (rc <= 0) {
-		vty_out(vty, "%% Subscriber not attached%s",
-			VTY_NEWLINE);
-		subscr_put(subscr);
+		vty_out(vty, "%% Subscriber not attached: %d%s",
+			rc, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-
-	subscr_put(subscr);
 
 	return CMD_SUCCESS;
 }
