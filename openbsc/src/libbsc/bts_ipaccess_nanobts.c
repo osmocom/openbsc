@@ -340,6 +340,7 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
+			patch_nm_tables(bts);
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
 						  0xff, 0xff, nanobts_attr_nse,
 						  sizeof(nanobts_attr_nse));
@@ -352,6 +353,7 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
+			patch_nm_tables(bts);
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
 						  0, 0xff, nanobts_attr_cell,
 						  sizeof(nanobts_attr_cell));
@@ -373,6 +375,7 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 			break;
 		if ((new_state->availability == NM_AVSTATE_OFF_LINE) ||
 		    (new_state->availability == NM_AVSTATE_DEPENDENCY)) {
+			patch_nm_tables(bts);
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
 						  nsvc->id, 0xff,
 						  nanobts_attr_nsvc0,
@@ -433,6 +436,7 @@ static int sw_activ_rep(struct msgb *mb)
 		 */
 		int rc_state = trx->mo.nm_state.administrative;
 		/* Patch ARFCN into radio attribute */
+		patch_nm_tables(bts);
 		nanobts_attr_radio[5] &= 0xf0;
 		nanobts_attr_radio[5] |= trx->arfcn >> 8;
 		nanobts_attr_radio[6] = trx->arfcn & 0xff;
