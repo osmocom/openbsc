@@ -43,7 +43,7 @@ static struct osmo_msc_data *osmo_msc_data(struct vty *vty)
 
 static struct cmd_node bsc_node = {
 	BSC_NODE,
-	"%s(bsc)#",
+	"%s(config-bsc)# ",
 	1,
 };
 
