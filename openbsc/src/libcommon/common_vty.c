@@ -48,76 +48,6 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 			/* set vty->index correctly ! */
 			struct gsm_bts *bts = vty->index;
 			vty->index = bts->network;
-		}
-		break;
-	case TRX_NODE:
-		vty->node = BTS_NODE;
-		{
-			/* set vty->index correctly ! */
-			struct gsm_bts_trx *trx = vty->index;
-			vty->index = trx->bts;
-		}
-		break;
-	case TS_NODE:
-		vty->node = TRX_NODE;
-		{
-			/* set vty->index correctly ! */
-			struct gsm_bts_trx_ts *ts = vty->index;
-			vty->index = ts->trx;
-		}
-		break;
-	case OML_NODE:
-	case OM2K_NODE:
-		vty->node = ENABLE_NODE;
-		talloc_free(vty->index);
-		vty->index = NULL;
-		break;
-	case NAT_NODE:
-		vty->node = CONFIG_NODE;
-		vty->index = NULL;
-		break;
-	case NAT_BSC_NODE:
-		vty->node = NAT_NODE;
-		{
-			struct bsc_config *bsc_config = vty->index;
-			vty->index = bsc_config->nat;
-		}
-		break;
-	case PGROUP_NODE:
-		vty->node = NAT_NODE;
-		break;
-	case TRUNK_NODE:
-		vty->node = MGCP_NODE;
-		break;
-	case SMPP_ESME_NODE:
-		vty->node = SMPP_NODE;
-		vty->index = NULL;
-		break;
-	case SMPP_NODE:
-	case MSC_NODE:
-	case MNCC_INT_NODE:
-	default:
-		vty->node = CONFIG_NODE;
-	}
-
-	return vty->node;
-}
-
-/* Down vty node level. */
-gDEFUN(ournode_exit,
-       ournode_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
-{
-	switch (vty->node) {
-	case GSMNET_NODE:
-		vty->node = CONFIG_NODE;
-		vty->index = NULL;
-		break;
-	case BTS_NODE:
-		vty->node = GSMNET_NODE;
-		{
-			/* set vty->index correctly ! */
-			struct gsm_bts *bts = vty->index;
-			vty->index = bts->network;
 			vty->index_sub = NULL;
 		}
 		break;
@@ -139,6 +69,16 @@ gDEFUN(ournode_exit,
 			vty->index_sub = &ts->trx->description;
 		}
 		break;
+	case OML_NODE:
+	case OM2K_NODE:
+		vty->node = ENABLE_NODE;
+		/* NOTE: this only works because it's not part of the config
+		 * tree, where outer commands are searched via vty_go_parent()
+		 * and only (!) executed when a matching one is found.
+		 */
+		talloc_free(vty->index);
+		vty->index = NULL;
+		break;
 	case NAT_BSC_NODE:
 		vty->node = NAT_NODE;
 		{
@@ -148,6 +88,11 @@ gDEFUN(ournode_exit,
 		break;
 	case PGROUP_NODE:
 		vty->node = NAT_NODE;
+		vty->index = NULL;
+		break;
+	case TRUNK_NODE:
+		vty->node = MGCP_NODE;
+		vty->index = NULL;
 		break;
 	case SMPP_ESME_NODE:
 		vty->node = SMPP_NODE;
@@ -159,26 +104,25 @@ gDEFUN(ournode_exit,
 	case SGSN_NODE:
 	case NAT_NODE:
 	case BSC_NODE:
-		vty->node = CONFIG_NODE;
-		vty->index = NULL;
-		break;
-	case OML_NODE:
-	case OM2K_NODE:
-		vty->node = ENABLE_NODE;
-		talloc_free(vty->index);
-		vty->index = NULL;
-		break;
 	case MSC_NODE:
 	case MNCC_INT_NODE:
-		vty->node = CONFIG_NODE;
-		break;
-	case TRUNK_NODE:
-		vty->node = MGCP_NODE;
-		vty->index = NULL;
-		break;
 	default:
-		break;
+		if (bsc_vty_is_config_node(vty, vty->node))
+			vty->node = CONFIG_NODE;
+		else
+			vty->node = ENABLE_NODE;
+
+		vty->index = NULL;
 	}
+
+	return vty->node;
+}
+
+/* Down vty node level. */
+gDEFUN(ournode_exit,
+       ournode_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
+{
+	bsc_vty_go_parent (vty);
 	return CMD_SUCCESS;
 }
 
@@ -186,36 +130,24 @@ gDEFUN(ournode_exit,
 gDEFUN(ournode_end,
        ournode_end_cmd, "end", "End current mode and change to enable mode.")
 {
-	switch (vty->node) {
-	case VIEW_NODE:
-	case ENABLE_NODE:
-		/* Nothing to do. */
-		break;
-	case CONFIG_NODE:
-	case GSMNET_NODE:
-	case BTS_NODE:
-	case TRX_NODE:
-	case TS_NODE:
-	case MGCP_NODE:
-	case TRUNK_NODE:
-	case GBPROXY_NODE:
-	case SGSN_NODE:
-	case VTY_NODE:
-	case NAT_NODE:
-	case NAT_BSC_NODE:
-	case PGROUP_NODE:
-	case MSC_NODE:
-	case MNCC_INT_NODE:
-	case SMPP_NODE:
-	case SMPP_ESME_NODE:
-	case BSC_NODE:
+	enum node_type last_node = CONFIG_NODE;
+
+	if (vty->node > ENABLE_NODE) {
+		/* Repeatedly call go_parent until a top node is reached. */
+		while (vty->node > CONFIG_NODE) {
+			if (vty->node == last_node) {
+				/* Ensure termination, this shouldn't happen. */
+				break;
+			}
+			last_node = vty->node;
+			bsc_vty_go_parent(vty);
+		}
+
 		vty_config_unlock(vty);
-		vty->node = ENABLE_NODE;
+		if (vty->node > ENABLE_NODE)
+			vty->node = ENABLE_NODE;
 		vty->index = NULL;
 		vty->index_sub = NULL;
-		break;
-	default:
-		break;
 	}
 	return CMD_SUCCESS;
 }
