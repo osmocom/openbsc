@@ -56,7 +56,53 @@ class TestVTYBase(unittest.TestCase):
         self.vty = None
         osmoutil.end_proc(self.proc)
 
-class TestVTYNITB(TestVTYBase):
+
+class TestVTYGenericBSC(TestVTYBase):
+
+    def checkForEndAndExit(self):
+        res = self.vty.command("list")
+        #print ('looking for "exit"\n')
+        self.assert_(res.find('  exit\r') > 0)
+        #print 'found "exit"\nlooking for "end"\n'
+        self.assert_(res.find('  end\r') > 0)
+        #print 'found "end"\n'
+
+    def ignoredCheckForEndAndExit(self):
+        sys.stderr.write('Going to ignore the next assertion(s) due to known bugs\n')
+        try:
+            self.checkForEndAndExit()
+        except BaseException as e:
+            sys.stderr.write('Expected and ignored failure: %s\n' % (str(e))) 
+
+    def notIgnoredTest(self):
+        sys.stderr.write('Going to ignore the next assertion(s) due to known bugs\n')
+        return False
+
+
+    def _testConfigNetworkTree(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify("configure terminal",['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.ignoredCheckForEndAndExit()
+        self.assertTrue(self.vty.verify("network",['']))
+        self.assertEquals(self.vty.node(), 'config-net')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify("bts 0",['']))
+        self.assertEquals(self.vty.node(), 'config-net-bts')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify("trx 0",['']))
+        self.assertEquals(self.vty.node(), 'config-net-bts-trx')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify("exit",['']))
+        self.assertEquals(self.vty.node(), 'config-net-bts')
+        self.assertTrue(self.vty.verify("exit",['']))
+        self.assertEquals(self.vty.node(), 'config-net')
+        self.assertTrue(self.vty.verify("exit",['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify("exit",['']))
+        self.assertTrue(self.vty.node() is None)
+
+class TestVTYNITB(TestVTYGenericBSC):
 
     def vty_command(self):
         return ["./src/osmo-nitb/osmo-nitb", "-c",
@@ -64,6 +110,38 @@ class TestVTYNITB(TestVTYBase):
 
     def vty_app(self):
         return (4242, "./src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb")
+
+    def testConfigNetworkTree(self):
+	self._testConfigNetworkTree()
+
+    def testVtyTree(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify("configure terminal", ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.ignoredCheckForEndAndExit()
+        self.assertTrue(self.vty.verify('mncc-int', ['']))
+        self.assertEquals(self.vty.node(), 'config-mncc-int')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify('exit', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify('smpp', ['']))
+        self.assertEquals(self.vty.node(), 'config-smpp')
+        self.ignoredCheckForEndAndExit()
+        self.assertTrue(self.vty.verify("exit", ['']))
+        if self.notIgnoredTest():
+            self.assertEquals(self.vty.node(), 'config')
+        else:
+            self.assertTrue(self.vty.verify("configure terminal", ['']))
+        self.assertTrue(self.vty.verify("exit", ['']))
+        self.assertTrue(self.vty.node() is None)
+
+        # Check searching for outer node's commands
+        self.vty.command("configure terminal")
+        self.vty.command('mncc-int')
+        self.vty.command('smpp')
+        self.assertEquals(self.vty.node(), 'config-smpp')
+        self.vty.command('mncc-int')
+        self.assertEquals(self.vty.node(), 'config-mncc-int')
 
     def testEnableDisablePeriodicLU(self):
         self.vty.enable()
@@ -88,7 +166,7 @@ class TestVTYNITB(TestVTYBase):
         self.assertEquals(res.find('periodic location update 60'), -1)
         self.assert_(res.find('no periodic location update') > 0)
 
-class TestVTYBSC(TestVTYBase):
+class TestVTYBSC(TestVTYGenericBSC):
 
     def vty_command(self):
         return ["./src/osmo-bsc/osmo-bsc", "-c",
@@ -96,6 +174,41 @@ class TestVTYBSC(TestVTYBase):
 
     def vty_app(self):
         return (4242, "./src/osmo-bsc/osmo-bsc", "OsmoBSC", "bsc")
+
+    def testConfigNetworkTree(self):
+	self._testConfigNetworkTree()
+
+    def testVtyTree(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify("configure terminal", ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.ignoredCheckForEndAndExit()
+        self.assertTrue(self.vty.verify("msc 0", ['']))
+        self.assertEquals(self.vty.node(), 'config-msc')
+        self.ignoredCheckForEndAndExit()
+        self.assertTrue(self.vty.verify("exit", ['']))
+        if self.notIgnoredTest():
+            self.assertEquals(self.vty.node(), 'config')
+        else:
+            self.assertTrue(self.vty.verify("configure terminal", ['']))
+        self.assertTrue(self.vty.verify("bsc", ['']))
+        self.assertEquals(self.vty.node(), 'config-bsc')
+        self.ignoredCheckForEndAndExit()
+        self.assertTrue(self.vty.verify("exit", ['']))
+        if self.notIgnoredTest():
+            self.assertEquals(self.vty.node(), 'config')
+        else:
+            self.assertTrue(self.vty.verify("configure terminal", ['']))
+        self.assertTrue(self.vty.verify("exit", ['']))
+        self.assertTrue(self.vty.node() is None)
+
+        # Check searching for outer node's commands
+        self.vty.command("configure terminal")
+        self.vty.command('msc 0')
+        self.vty.command("bsc")
+        self.assertEquals(self.vty.node(), 'config-bsc')
+        self.vty.command("msc 0")
+        self.assertEquals(self.vty.node(), 'config-msc')
 
     def testUssdNotifications(self):
         self.vty.enable()
@@ -128,7 +241,7 @@ class TestVTYBSC(TestVTYBase):
         self.assert_(res.find('no bsc-welcome-text') > 0)
         self.assertEquals(res.find('bsc-welcome-text Hello MS'), -1)
 
-class TestVTYNAT(TestVTYBase):
+class TestVTYNAT(TestVTYGenericBSC):
 
     def vty_command(self):
         return ["./src/osmo-bsc_nat/osmo-bsc_nat", "-c",
@@ -136,6 +249,42 @@ class TestVTYNAT(TestVTYBase):
 
     def vty_app(self):
         return (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat")
+
+    def testVtyTree(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify('configure terminal', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.ignoredCheckForEndAndExit()
+        self.assertTrue(self.vty.verify('mgcp', ['']))
+        self.assertEquals(self.vty.node(), 'config-mgcp')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify('exit', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify('nat', ['']))
+        self.assertEquals(self.vty.node(), 'config-nat')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify('bsc 0', ['']))
+        self.assertEquals(self.vty.node(), 'config-nat-bsc')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify('exit', ['']))
+        self.assertEquals(self.vty.node(), 'config-nat')
+        self.assertTrue(self.vty.verify('exit', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify('exit', ['']))
+        self.assertTrue(self.vty.node() is None)
+
+        # Check searching for outer node's commands
+        self.vty.command('configure terminal')
+        self.vty.command('mgcp')
+        self.vty.command('nat')
+        self.assertEquals(self.vty.node(), 'config-nat')
+        self.vty.command('line vty')
+        self.assertEquals(self.vty.node(), 'config-line')
+        self.vty.command('nat')
+        self.assertEquals(self.vty.node(), 'config-nat')
+        self.vty.command('bsc 0')
+        self.vty.command('line vty')
+        self.assertEquals(self.vty.node(), 'config-line')
 
     def testRewriteNoRewrite(self):
         self.vty.enable()
