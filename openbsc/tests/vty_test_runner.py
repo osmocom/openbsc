@@ -109,6 +109,11 @@ class TestVTYNITB(TestVTYGenericBSC):
     def testConfigNetworkTree(self):
 	self._testConfigNetworkTree()
 
+    def checkForSmpp(self):
+        """SMPP is not always enabled, check if it is"""
+        res = self.vty.command("list")
+        return "smpp" in res
+
     def testVtyTree(self):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal", ['']))
@@ -118,11 +123,14 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assertEquals(self.vty.node(), 'config-mncc-int')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('exit', ['']))
-        self.assertEquals(self.vty.node(), 'config')
-        self.assertTrue(self.vty.verify('smpp', ['']))
-        self.assertEquals(self.vty.node(), 'config-smpp')
-        self.ignoredCheckForEndAndExit()
-        self.assertTrue(self.vty.verify("exit", ['']))
+
+        if self.checkForSmpp():
+            self.assertEquals(self.vty.node(), 'config')
+	    self.assertTrue(self.vty.verify('smpp', ['']))
+	    self.assertEquals(self.vty.node(), 'config-smpp')
+	    self.ignoredCheckForEndAndExit()
+	    self.assertTrue(self.vty.verify("exit", ['']))
+
         self.assertEquals(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify("exit", ['']))
         self.assertTrue(self.vty.node() is None)
@@ -130,9 +138,12 @@ class TestVTYNITB(TestVTYGenericBSC):
         # Check searching for outer node's commands
         self.vty.command("configure terminal")
         self.vty.command('mncc-int')
-        self.vty.command('smpp')
-        self.assertEquals(self.vty.node(), 'config-smpp')
-        self.vty.command('mncc-int')
+
+        if self.checkForSmpp():
+            self.vty.command('smpp')
+            self.assertEquals(self.vty.node(), 'config-smpp')
+            self.vty.command('mncc-int')
+
         self.assertEquals(self.vty.node(), 'config-mncc-int')
 
     def testEnableDisablePeriodicLU(self):
