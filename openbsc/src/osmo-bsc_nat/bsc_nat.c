@@ -793,11 +793,11 @@ static void msc_send_reset(struct bsc_msc_connection *msc_con)
 	LOGP(DMSC, LOGL_NOTICE, "Scheduled GSM0808 reset msg for the MSC.\n");
 }
 
-static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
+int bsc_base_msc_read_cb(struct osmo_fd *bfd, struct msgb **out_msg)
 {
+	struct ipaccess_head *hh;
 	struct bsc_msc_connection *msc_con;
 	struct msgb *msg;
-	struct ipaccess_head *hh;
 	int ret;
 
 	msc_con = (struct bsc_msc_connection *) bfd->data;
@@ -825,13 +825,43 @@ static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 	hh = (struct ipaccess_head *) msg->data;
 	ipaccess_rcvmsg_base(msg, bfd);
 
-	/* initialize the networking. This includes sending a GSM08.08 message */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
-		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
+		if (msg->l2h[0] == IPAC_MSGT_ID_ACK) {
 			initialize_msc_if_needed(msc_con);
-		else if (msg->l2h[0] == IPAC_MSGT_ID_GET)
+			goto handled;
+		} else if (msg->l2h[0] == IPAC_MSGT_ID_GET) {
 			send_id_get_response(msc_con);
-	} else if (hh->proto == IPAC_PROTO_SCCP) {
+			goto handled;
+		}
+	}
+
+	/* not handled */
+	*out_msg = msg;
+	return 0;
+
+handled:
+	msgb_free(msg);
+	return 1;
+}
+
+static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
+{
+	struct bsc_msc_connection *msc_con;
+	struct msgb *msg;
+	struct ipaccess_head *hh;
+	int ret;
+
+	msc_con = (struct bsc_msc_connection *) bfd->data;
+
+	ret = bsc_base_msc_read_cb(bfd, &msg);
+	if (ret == -1)
+		return ret;
+	if (ret == 1)
+		return 0;
+
+	hh = (struct ipaccess_head *) msg->data;
+	/* initialize the networking. This includes sending a GSM08.08 message */
+	if (hh->proto == IPAC_PROTO_SCCP) {
 		forward_sccp_to_bts(msc_con, msg);
 	} else if (hh->proto == IPAC_PROTO_MGCP_OLD) {
 		bsc_nat_handle_mgcp(nat, msg);
@@ -839,19 +869,6 @@ static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 
 	msgb_free(msg);
 	return 0;
-}
-
-static int ipaccess_msc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
-{
-	int rc;
-	rc = write(bfd->fd, msg->data, msg->len);
-
-	if (rc != msg->len) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to write MSG to MSC.\n");
-		return -1;
-	}
-
-	return rc;
 }
 
 /*
@@ -1559,9 +1576,15 @@ int main(int argc, char **argv)
 	nat->msc_con->connection_loss = msc_connection_was_lost;
 	nat->msc_con->connected = msc_connection_connected;
 	nat->msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
-	nat->msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
+	nat->msc_con->write_queue.write_cb = bsc_write_cb;
 	nat->msc_con->write_queue.bfd.data = nat->msc_con;
 	bsc_msc_connect(nat->msc_con);
+
+	/* prepare the local connection */
+	if (bsc_cc_initialize(nat) != 0) {
+		fprintf(stderr, "Creating local bsc_msc_connection failed.\n");
+		exit(1);
+	}
 
 	/* wait for the BSC */
 	rc = make_sock(&bsc_listen, IPPROTO_TCP, ntohl(local_addr.s_addr),
@@ -1603,11 +1626,11 @@ int main(int argc, char **argv)
 }
 
 /* Close all connections handed out to the USSD module */
-int bsc_ussd_close_connections(struct bsc_nat *nat)
+int bsc_close_connections_by_type(struct bsc_nat *nat, int type)
 {
 	struct nat_sccp_connection *con;
 	llist_for_each_entry(con, &nat->sccp_connections, list_entry) {
-		if (con->con_local != NAT_CON_END_USSD)
+		if (con->con_local != type)
 			continue;
 		if (!con->bsc)
 			continue;
@@ -1617,4 +1640,9 @@ int bsc_ussd_close_connections(struct bsc_nat *nat)
 	}
 
 	return 0;
+}
+
+int bsc_ussd_close_connections(struct bsc_nat *nat)
+{
+	return bsc_close_connections_by_type(nat, NAT_CON_END_USSD);
 }

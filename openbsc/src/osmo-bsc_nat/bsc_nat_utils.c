@@ -45,6 +45,7 @@
 static const struct rate_ctr_desc bsc_cfg_ctr_description[] = {
 	[BCFG_CTR_SCCP_CONN]     = { "sccp.conn",      "SCCP Connections         "},
 	[BCFG_CTR_SCCP_CALLS]    = { "sccp.calls",     "SCCP Assignment Commands "},
+	[BCFG_CTR_SCCP_LOC_CALLS]= { "sccp.local_calls","Local Assignment Commands "},
 	[BCFG_CTR_NET_RECONN]    = { "net.reconnects", "Network reconnects       "},
 	[BCFG_CTR_DROPPED_SCCP]  = { "dropped.sccp",   "Dropped SCCP connections."},
 	[BCFG_CTR_DROPPED_CALLS] = { "dropped.calls",  "Dropped active calls.    "},
@@ -115,6 +116,8 @@ struct bsc_nat *bsc_nat_alloc(void)
 	nat->stats.bsc.auth_fail = osmo_counter_alloc("nat.bsc.auth_fail");
 	nat->stats.msc.reconn = osmo_counter_alloc("nat.msc.conn");
 	nat->stats.ussd.reconn = osmo_counter_alloc("nat.ussd.conn");
+	nat->stats.local_cc.reconn = osmo_counter_alloc("nat.local_cc.conn");
+	nat->stats.local_cc.calls = osmo_counter_alloc("nat.local_cc.calls");
 	nat->auth_timeout = 2;
 	nat->ping_timeout = 20;
 	nat->pong_timeout = 5;
@@ -509,7 +512,7 @@ int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 
 	rc = write(bfd->fd, msg->data, msg->len);
 	if (rc != msg->len)
-		LOGP(DNAT, LOGL_ERROR, "Failed to write message to the BSC.\n");
+		LOGP(DNAT, LOGL_ERROR, "Failed to write message!\n");
 
 	return rc;
 }

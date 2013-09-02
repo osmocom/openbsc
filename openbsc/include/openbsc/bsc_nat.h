@@ -65,6 +65,7 @@ enum {
 	NAT_CON_END_MSC,
 	NAT_CON_END_LOCAL,
 	NAT_CON_END_USSD,
+	NAT_CON_END_CALL,
 };
 
 /*
@@ -134,6 +135,7 @@ struct bsc_config_stats {
 enum bsc_cfg_ctr {
 	BCFG_CTR_SCCP_CONN,
 	BCFG_CTR_SCCP_CALLS,
+	BCFG_CTR_SCCP_LOC_CALLS,
 	BCFG_CTR_NET_RECONN,
 	BCFG_CTR_DROPPED_SCCP,
 	BCFG_CTR_DROPPED_CALLS,
@@ -221,6 +223,11 @@ struct bsc_nat_statistics {
 	struct {
 		struct osmo_counter *reconn;
 	} ussd;
+
+	struct {
+		struct osmo_counter *reconn;
+		struct osmo_counter *calls;
+	} local_cc;
 };
 
 enum bsc_nat_acc_ctr {
@@ -325,6 +332,7 @@ struct bsc_nat {
 	struct bsc_nat_ussd_con *ussd_con;
 
 	/* Local Call-Control */
+	struct bsc_msc_connection *local_conn;
 	struct llist_head local_dests;
 	struct bsc_msc_dest *local_dest;
 	char *local_prefix;
@@ -427,6 +435,10 @@ int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int id);
 int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg);
 int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg);
 
+/* A-link handling */
+int bsc_base_msc_read_cb(struct osmo_fd *fd, struct msgb **out);
+int bsc_close_connections_by_type(struct bsc_nat *nat, int type);
+
 /* IMSI allow/deny handling */
 struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name);
 struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name);
@@ -447,6 +459,8 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 int bsc_ussd_close_connections(struct bsc_nat *nat);
 
 void bsc_cc_update_msc_ip(struct bsc_nat *bsc, const char *ip);
+int bsc_cc_initialize(struct bsc_nat *bsc);
+
 struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *, const char *imsi);
 
 /** paging group handling */

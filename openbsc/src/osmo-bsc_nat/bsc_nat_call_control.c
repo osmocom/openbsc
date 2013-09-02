@@ -20,8 +20,12 @@
  */
 
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bsc_nat_sccp.h>
 #include <openbsc/bsc_msc.h>
+#include <openbsc/ipaccess.h>
 #include <openbsc/vty.h>
+
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 
 #include <osmocom/core/talloc.h>
 
@@ -33,5 +37,138 @@ void bsc_cc_update_msc_ip(struct bsc_nat *nat, const char *ip)
 		talloc_free(nat->local_dest->ip);
 		nat->local_dest->ip = NULL;
 	}
+
+	/* re-connect if the local_conn was already created */
+	if (nat->local_conn)
+		bsc_msc_lost(nat->local_conn);
 }
 
+static void local_connection_connected(struct bsc_msc_connection *con)
+{
+	struct bsc_nat *nat = con->data;
+	osmo_counter_inc(nat->stats.local_cc.reconn);
+}
+
+/**
+ * In contrast to forward_sccp_to_bts above we only work on already
+ * authenticated connections and will only forward parts of the connection.
+ * I am not sure how to reduce the copy and paste between the two routines
+ * yet!
+ */
+static int local_forward_sccp_to_bts(struct bsc_msc_connection *local_con,
+					struct msgb *msg)
+{
+	struct nat_sccp_connection *con = NULL;
+	struct bsc_nat_parsed *parsed;
+	struct bsc_nat *nat;
+	int proto;
+
+	nat = local_con->data;
+
+	/* filter, drop, patch the message? */
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		LOGP(DNAT, LOGL_ERROR, "Can not parse msg from BSC.\n");
+		return -1;
+	}
+
+	if (bsc_nat_filter_ipa(DIR_BSC, msg, parsed))
+		goto exit;
+
+	proto = parsed->ipa_proto;
+	if (proto != IPAC_PROTO_SCCP)
+		return -1;
+
+	switch (parsed->sccp_type) {
+	case SCCP_MSG_TYPE_UDT:
+		/* ignore */
+		break;
+	case SCCP_MSG_TYPE_RLSD:
+	case SCCP_MSG_TYPE_CREF:
+	case SCCP_MSG_TYPE_DT1:
+	case SCCP_MSG_TYPE_IT:
+		con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+		if (parsed->gsm_type == BSS_MAP_MSG_ASSIGMENT_RQST) {
+			osmo_counter_inc(nat->stats.local_cc.calls);
+#warning "TODO... MGCP handling needs to be defined..."
+
+			if (con) {
+				struct rate_ctr_group *ctrg;
+				ctrg = con->bsc->cfg->stats.ctrg;
+				rate_ctr_inc(&ctrg->ctr[BCFG_CTR_SCCP_LOC_CALLS]);
+				if (bsc_mgcp_assign_patch(con, msg) != 0)
+					LOGP(DNAT, LOGL_ERROR, "Failed to assign...\n");
+			} else
+				LOGP(DNAT, LOGL_ERROR, "Assignment command but no BSC.\n");
+		}
+		break;
+	case SCCP_MSG_TYPE_CC:
+		/* should not happen */
+	case SCCP_MSG_TYPE_RLC:
+		/* should not happen */
+	case SCCP_MSG_TYPE_CR:
+		/* MSC never opens a SCCP connection, fall through */
+	default:
+		goto exit;
+	}
+
+exit:
+	talloc_free(parsed);
+	return 0;
+}
+
+int local_msc_read_cb(struct osmo_fd *bfd)
+{
+	struct bsc_msc_connection *local_con;
+	struct ipaccess_head *hh;
+	struct msgb *msg;
+	int ret;
+
+	local_con = (struct bsc_msc_connection *) bfd->data;
+	ret = bsc_base_msc_read_cb(bfd, &msg);
+	if (ret == -1)
+		return ret;
+	if (ret == 1)
+		return 0;
+
+	/* TODO: MGCP handling */
+	hh = (struct ipaccess_head *) msg->data;
+	if (hh->proto == IPAC_PROTO_SCCP)
+		local_forward_sccp_to_bts(local_con, msg);
+
+	msgb_free(msg);
+	return 0;
+}
+
+static void local_connection_was_lost(struct bsc_msc_connection *con)
+{
+	struct bsc_nat *nat = con->data;
+
+	LOGP(DMSC, LOGL_ERROR, "Local MSC disconnected. Closing things.\n");
+
+	/* Close local calls */
+	bsc_close_connections_by_type(nat, NAT_CON_END_CALL);
+
+	/* Only schedule the reconnect if we still have an IP address */
+	if (nat->local_dest->ip)
+		bsc_msc_schedule_connect(con);
+}
+
+int bsc_cc_initialize(struct bsc_nat *nat)
+{
+	nat->local_conn = bsc_msc_create(nat, &nat->local_dests);
+	if (!nat->local_conn)
+		return -1;
+
+	nat->local_conn->name = "local MSC";
+	nat->local_conn->connection_loss = local_connection_was_lost;
+	nat->local_conn->connected = local_connection_connected;
+	nat->local_conn->write_queue.read_cb = local_msc_read_cb;
+	nat->local_conn->write_queue.write_cb = bsc_write_cb;
+	nat->local_conn->write_queue.bfd.data = nat->local_conn;
+	nat->local_conn->data = nat;
+	if (nat->local_dest->ip)
+		bsc_msc_connect(nat->local_conn);
+
+	return 0;
+}
