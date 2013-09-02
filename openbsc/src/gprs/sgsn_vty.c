@@ -418,9 +418,7 @@ int sgsn_vty_init(void)
 
 	install_element(CONFIG_NODE, &cfg_sgsn_cmd);
 	install_node(&sgsn_node, config_write_sgsn);
-	install_default(SGSN_NODE);
-	install_element(SGSN_NODE, &ournode_exit_cmd);
-	install_element(SGSN_NODE, &ournode_end_cmd);
+	bsc_install_default(SGSN_NODE);
 	install_element(SGSN_NODE, &cfg_sgsn_bind_addr_cmd);
 	install_element(SGSN_NODE, &cfg_ggsn_remote_ip_cmd);
 	//install_element(SGSN_NODE, &cfg_ggsn_remote_port_cmd);

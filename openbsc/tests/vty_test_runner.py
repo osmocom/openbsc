@@ -74,11 +74,6 @@ class TestVTYGenericBSC(TestVTYBase):
         except BaseException as e:
             sys.stderr.write('Expected and ignored failure: %s\n' % (str(e))) 
 
-    def notIgnoredTest(self):
-        sys.stderr.write('Going to ignore the next assertion(s) due to known bugs\n')
-        return False
-
-
     def _testConfigNetworkTree(self):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal",['']))
@@ -128,10 +123,7 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assertEquals(self.vty.node(), 'config-smpp')
         self.ignoredCheckForEndAndExit()
         self.assertTrue(self.vty.verify("exit", ['']))
-        if self.notIgnoredTest():
-            self.assertEquals(self.vty.node(), 'config')
-        else:
-            self.assertTrue(self.vty.verify("configure terminal", ['']))
+        self.assertEquals(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify("exit", ['']))
         self.assertTrue(self.vty.node() is None)
 
@@ -185,20 +177,14 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.ignoredCheckForEndAndExit()
         self.assertTrue(self.vty.verify("msc 0", ['']))
         self.assertEquals(self.vty.node(), 'config-msc')
-        self.ignoredCheckForEndAndExit()
+        self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("exit", ['']))
-        if self.notIgnoredTest():
-            self.assertEquals(self.vty.node(), 'config')
-        else:
-            self.assertTrue(self.vty.verify("configure terminal", ['']))
+        self.assertEquals(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify("bsc", ['']))
         self.assertEquals(self.vty.node(), 'config-bsc')
-        self.ignoredCheckForEndAndExit()
+        self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("exit", ['']))
-        if self.notIgnoredTest():
-            self.assertEquals(self.vty.node(), 'config')
-        else:
-            self.assertTrue(self.vty.verify("configure terminal", ['']))
+        self.assertEquals(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify("exit", ['']))
         self.assertTrue(self.vty.node() is None)
 

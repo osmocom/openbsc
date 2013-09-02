@@ -975,9 +975,7 @@ int bsc_vty_init_extra(void)
 
 	install_element(CONFIG_NODE, &cfg_mncc_int_cmd);
 	install_node(&mncc_int_node, config_write_mncc_int);
-	install_default(MNCC_INT_NODE);
-	install_element(MNCC_INT_NODE, &ournode_exit_cmd);
-	install_element(MNCC_INT_NODE, &ournode_end_cmd);
+	bsc_install_default(MNCC_INT_NODE);
 	install_element(MNCC_INT_NODE, &mnccint_def_codec_f_cmd);
 	install_element(MNCC_INT_NODE, &mnccint_def_codec_h_cmd);
 

@@ -42,6 +42,8 @@ enum bsc_vty_node {
 extern int bsc_vty_is_config_node(struct vty *vty, int node);
 extern void bsc_replace_string(void *ctx, char **dst, const char *newstr);
 
+void bsc_install_default(enum node_type node);
+
 struct log_info;
 int bsc_vty_init(const struct log_info *cat);
 int bsc_vty_init_extra(void);

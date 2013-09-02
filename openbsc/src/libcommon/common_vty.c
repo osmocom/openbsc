@@ -174,3 +174,13 @@ void bsc_replace_string(void *ctx, char **dst, const char *newstr)
 		talloc_free(*dst);
 	*dst = talloc_strdup(ctx, newstr);
 }
+
+void bsc_install_default(enum node_type node)
+{
+	install_default (node);
+
+	if (node > CONFIG_NODE) {
+		install_element(node, &ournode_exit_cmd);
+		install_element(node, &ournode_end_cmd);
+	}
+}

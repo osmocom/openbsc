@@ -1192,9 +1192,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	/* nat group */
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
 	install_node(&nat_node, config_write_nat);
-	install_default(NAT_NODE);
-	install_element(NAT_NODE, &ournode_exit_cmd);
-	install_element(NAT_NODE, &ournode_end_cmd);
+	bsc_install_default(NAT_NODE);
 	install_element(NAT_NODE, &cfg_nat_msc_ip_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_port_cmd);
 	install_element(NAT_NODE, &cfg_nat_auth_time_cmd);
@@ -1235,18 +1233,14 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);
 	install_node(&pgroup_node, config_write_pgroup);
-	install_default(PGROUP_NODE);
-	install_element(PGROUP_NODE, &ournode_exit_cmd);
-	install_element(PGROUP_NODE, &ournode_end_cmd);
+	bsc_install_default(PGROUP_NODE);
 	install_element(PGROUP_NODE, &cfg_pgroup_lac_cmd);
 	install_element(PGROUP_NODE, &cfg_pgroup_no_lac_cmd);
 
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);
 	install_node(&bsc_node, config_write_bsc);
-	install_default(NAT_BSC_NODE);
-	install_element(NAT_BSC_NODE, &ournode_exit_cmd);
-	install_element(NAT_BSC_NODE, &ournode_end_cmd);
+	bsc_install_default(NAT_BSC_NODE);
 	install_element(NAT_BSC_NODE, &cfg_bsc_token_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_lac_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_no_lac_cmd);

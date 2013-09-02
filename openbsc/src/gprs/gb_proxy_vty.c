@@ -82,9 +82,7 @@ int gbproxy_vty_init(void)
 
 	install_element(CONFIG_NODE, &cfg_gbproxy_cmd);
 	install_node(&gbproxy_node, config_write_gbproxy);
-	install_default(GBPROXY_NODE);
-	install_element(GBPROXY_NODE, &ournode_exit_cmd);
-	install_element(GBPROXY_NODE, &ournode_end_cmd);
+	bsc_install_default(GBPROXY_NODE);
 	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_nsei_cmd);
 
 	return 0;
