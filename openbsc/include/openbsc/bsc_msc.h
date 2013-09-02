@@ -42,6 +42,8 @@ struct bsc_msc_connection {
 
 	struct llist_head *dests;
 
+	const char *name;
+
 	void (*connection_loss) (struct bsc_msc_connection *);
 	void (*connected) (struct bsc_msc_connection *);
 	struct osmo_timer_list reconnect_timer;

@@ -804,15 +804,21 @@ static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 	ret = ipa_msg_recv(bfd->fd, &msg);
 	if (ret <= 0) {
 		if (ret == 0)
-			LOGP(DNAT, LOGL_FATAL, "The connection the MSC was lost, exiting\n");
+			LOGP(DNAT, LOGL_FATAL,
+				"The connection the MSC(%s) was lost, exiting\n",
+				msc_con->name);
 		else
-			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", ret);
+			LOGP(DNAT, LOGL_ERROR,
+				"Failed to parse ip access message on %s: %d\n",
+				msc_con->name, ret);
 
 		bsc_msc_lost(msc_con);
 		return -1;
 	}
 
-	LOGP(DNAT, LOGL_DEBUG, "MSG from MSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DNAT, LOGL_DEBUG,
+		"MSG from MSC(%s): %s proto: %d\n", msc_con->name,
+		osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;
@@ -1548,6 +1554,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	nat->msc_con->name = "main MSC";
 	nat->msc_con->connection_loss = msc_connection_was_lost;
 	nat->msc_con->connected = msc_connection_connected;
 	nat->msc_con->write_queue.read_cb = ipaccess_msc_read_cb;

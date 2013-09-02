@@ -56,7 +56,8 @@ static void msc_con_timeout(void *_con)
 {
 	struct bsc_msc_connection *con = _con;
 
-	LOGP(DMSC, LOGL_ERROR, "MSC Connection timeout.\n");
+	LOGP(DMSC, LOGL_ERROR,
+		"MSC(%s) Connection timeout.\n", con->name);
 	bsc_msc_lost(con);
 }
 
@@ -70,13 +71,14 @@ static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 
 	socklen_t len = sizeof(val);
 
-	if ((what & BSC_FD_WRITE) == 0) {
-		LOGP(DMSC, LOGL_ERROR, "Callback but not writable.\n");
-		return -1;
-	}
-
 	queue = container_of(fd, struct osmo_wqueue, bfd);
 	con = container_of(queue, struct bsc_msc_connection, write_queue);
+
+	if ((what & BSC_FD_WRITE) == 0) {
+		LOGP(DMSC, LOGL_ERROR,
+			"MSC(%s) Callback but not writable.\n", con->name);
+		return -1;
+	}
 
 	/* From here on we will either be connected or reconnect */
 	osmo_timer_del(&con->timeout_timer);
@@ -84,11 +86,14 @@ static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 	/* check the socket state */
 	rc = getsockopt(fd->fd, SOL_SOCKET, SO_ERROR, &val, &len);
 	if (rc != 0) {
-		LOGP(DMSC, LOGL_ERROR, "getsockopt for the MSC socket failed.\n");
+		LOGP(DMSC, LOGL_ERROR,
+			"getsockopt for the MSC(%s) socket failed.\n", con->name);
 		goto error;
 	}
 	if (val != 0) {
-		LOGP(DMSC, LOGL_ERROR, "Not connected to the MSC: %d\n", val);
+		LOGP(DMSC, LOGL_ERROR,
+			"Not connected to the MSC(%s): %d\n",
+			con->name, val);
 		goto error;
 	}
 
@@ -98,7 +103,8 @@ static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 	fd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 
 	con->is_connected = 1;
-	LOGP(DMSC, LOGL_NOTICE, "(Re)Connected to the MSC.\n");
+	LOGP(DMSC, LOGL_NOTICE,
+		"(Re)Connected to the MSC(%s).\n", con->name);
 	if (con->connected)
 		con->connected(con);
 	return 0;
@@ -138,7 +144,9 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 	int on = 1, ret;
 
 	if (llist_empty(con->dests)) {
-		LOGP(DMSC, LOGL_ERROR, "No MSC connections configured.\n");
+		LOGP(DMSC, LOGL_ERROR,
+			"No MSC(%s) connections configured.\n",
+			con->name);
 		connection_loss(con);
 		return -1;
 	}
@@ -148,8 +156,9 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 	llist_del(&dest->list);
 	llist_add_tail(&dest->list, con->dests);
 
-	LOGP(DMSC, LOGL_NOTICE, "Attempting to connect MSC at %s:%d\n",
-	     dest->ip, dest->port);
+	LOGP(DMSC, LOGL_NOTICE,
+		"Attempting to connect MSC(%s) at %s:%d\n",
+		con->name, dest->ip, dest->port);
 
 	con->is_connected = 0;
 
@@ -169,8 +178,9 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 	ret = setsockopt(fd->fd, IPPROTO_IP, IP_TOS,
 			 &dest->dscp, sizeof(dest->dscp));
 	if (ret != 0)
-		LOGP(DMSC, LOGL_ERROR, "Failed to set DSCP to %d. %s\n",
-		     dest->dscp, strerror(errno));
+		LOGP(DMSC, LOGL_ERROR,
+			"Failed to set DSCP to %d on MSC(%s). %s\n",
+			dest->dscp, con->name, strerror(errno));
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
@@ -181,7 +191,8 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 	ret = connect(fd->fd, (struct sockaddr *) &sin, sizeof(sin));
 
 	if (ret == -1 && errno == EINPROGRESS) {
-		LOGP(DMSC, LOGL_ERROR, "MSC Connection in progress\n");
+		LOGP(DMSC, LOGL_ERROR,
+			"MSC(%s) Connection in progress\n", con->name);
 		fd->when = BSC_FD_WRITE;
 		fd->cb = msc_connection_connect;
 		con->timeout_timer.cb = msc_con_timeout;
@@ -215,12 +226,15 @@ struct bsc_msc_connection *bsc_msc_create(void *ctx, struct llist_head *dests)
 
 	con = talloc_zero(NULL, struct bsc_msc_connection);
 	if (!con) {
-		LOGP(DMSC, LOGL_FATAL, "Failed to create the MSC connection.\n");
+		LOGP(DMSC, LOGL_FATAL,
+			"Failed to create the MSC(%s) connection.\n",
+			con->name);
 		return NULL;
 	}
 
 	con->dests = dests;
 	con->write_queue.bfd.fd = -1;
+	con->name = "";
 	osmo_wqueue_init(&con->write_queue, 100);
 	return con;
 }
@@ -239,13 +253,15 @@ static void reconnect_msc(void *_msc)
 {
 	struct bsc_msc_connection *con = _msc;
 
-	LOGP(DMSC, LOGL_NOTICE, "Attempting to reconnect to the MSC.\n");
+	LOGP(DMSC, LOGL_NOTICE,
+		"Attempting to reconnect to the MSC(%s).\n", con->name);
 	bsc_msc_connect(con);
 }
 
 void bsc_msc_schedule_connect(struct bsc_msc_connection *con)
 {
-	LOGP(DMSC, LOGL_NOTICE, "Attempting to reconnect to the MSC.\n");
+	LOGP(DMSC, LOGL_NOTICE,
+		"Attempting to reconnect to the MSC(%s)\n", con->name);
 	con->reconnect_timer.cb = reconnect_msc;
 	con->reconnect_timer.data = con;
 	osmo_timer_schedule(&con->reconnect_timer, 5, 0);
