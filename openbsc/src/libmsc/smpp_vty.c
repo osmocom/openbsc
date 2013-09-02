@@ -363,6 +363,28 @@ DEFUN(cfg_no_esme_defaultroute, cfg_esme_no_defaultroute_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_esme_del_src_imsi, cfg_esme_del_src_imsi_cmd,
+	"deliver-src-imsi",
+	"Enable the use of IMSI as source addres in DELIVER")
+{
+	struct osmo_smpp_acl *acl = vty->index;
+
+	acl->deliver_src_imsi = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_esme_no_del_src_imsi, cfg_esme_no_del_src_imsi_cmd,
+	"no deliver-src-imsi", NO_STR
+	"Disable the use of IMSI as source addres in DELIVER")
+{
+	struct osmo_smpp_acl *acl = vty->index;
+
+	acl->deliver_src_imsi = 0;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_esme_osmo_ext, cfg_esme_osmo_ext_cmd,
 	"osmocom-extensions",
 	"Enable the use of Osmocom SMPP Extensions for this ESME")
@@ -504,6 +526,8 @@ int smpp_vty_init(void)
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_route_pfx_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_defaultroute_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_defaultroute_cmd);
+	install_element(SMPP_ESME_NODE, &cfg_esme_del_src_imsi_cmd);
+	install_element(SMPP_ESME_NODE, &cfg_esme_no_del_src_imsi_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_osmo_ext_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_osmo_ext_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_dcs_transp_cmd);
