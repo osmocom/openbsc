@@ -89,6 +89,12 @@ struct bsc_nat *bsc_nat_alloc(void)
 		return NULL;
 	}
 
+	nat->local_dest = talloc_zero(nat, struct bsc_msc_dest);
+	if (!nat->local_dest) {
+		talloc_free(nat);
+		return NULL;
+	}
+
 	INIT_LLIST_HEAD(&nat->sccp_connections);
 	INIT_LLIST_HEAD(&nat->bsc_connections);
 	INIT_LLIST_HEAD(&nat->paging_groups);
@@ -101,6 +107,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->tpdest_match);
 	INIT_LLIST_HEAD(&nat->sms_clear_tp_srr);
 	INIT_LLIST_HEAD(&nat->sms_num_rewr);
+	INIT_LLIST_HEAD(&nat->local_dests);
 
 	nat->stats.sccp.conn = osmo_counter_alloc("nat.sccp.conn");
 	nat->stats.sccp.calls = osmo_counter_alloc("nat.sccp.calls");
@@ -115,6 +122,10 @@ struct bsc_nat *bsc_nat_alloc(void)
 	llist_add(&nat->main_dest->list, &nat->dests);
 	nat->main_dest->ip = talloc_strdup(nat, "127.0.0.1");
 	nat->main_dest->port = 5000;
+
+	llist_add(&nat->local_dest->list, &nat->local_dests);
+	nat->local_dest->ip = NULL;
+	nat->local_dest->port = 0;
 
 	return nat;
 }

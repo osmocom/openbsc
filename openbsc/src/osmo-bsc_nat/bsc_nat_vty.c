@@ -156,6 +156,12 @@ static int config_write_nat(struct vty *vty)
 	if (_nat->local_prefix)
 		vty_out(vty, " local-call prefix %s%s",
 			_nat->local_prefix, VTY_NEWLINE);
+	if (_nat->local_dest->ip) {
+		vty_out(vty, " local-call ip %s%s",
+			_nat->local_dest->ip, VTY_NEWLINE);
+		vty_out(vty, " local-call port %d%s",
+			_nat->local_dest->port, VTY_NEWLINE);
+	}
 
 	return CMD_SUCCESS;
 }
@@ -802,6 +808,35 @@ DEFUN(cfg_nat_no_local_prefix,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_local_ip,
+      cfg_nat_local_ip_cmd,
+      "local-call ip A.B.C.D",
+      LOCAL_STR "Destination Address\n" IP_STR)
+{
+	bsc_cc_update_msc_ip(_nat, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_no_local_ip,
+      cfg_nat_no_local_ip_cmd,
+      "no local-call ip",
+      NO_STR LOCAL_STR "Destination Address\n")
+{
+	bsc_cc_update_msc_ip(_nat, NULL);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_local_port,
+      cfg_nat_local_port_cmd,
+      "local-call port <1-65500>",
+      LOCAL_STR
+      "Configure the port\n"
+      "Port number\n")
+{
+	_nat->local_dest->port = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 #undef LOCAL_STR
 
 /* per BSC configuration */
@@ -1269,6 +1304,9 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	/* local call handling */
 	install_element(NAT_NODE, &cfg_nat_local_prefix_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_local_prefix_cmd);
+	install_element(NAT_NODE, &cfg_nat_local_ip_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_local_ip_cmd);
+	install_element(NAT_NODE, &cfg_nat_local_port_cmd);
 
 	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);

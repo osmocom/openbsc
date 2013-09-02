@@ -325,6 +325,8 @@ struct bsc_nat {
 	struct bsc_nat_ussd_con *ussd_con;
 
 	/* Local Call-Control */
+	struct llist_head local_dests;
+	struct bsc_msc_dest *local_dest;
 	char *local_prefix;
 	regex_t local_prefix_regexp;
 
@@ -444,6 +446,7 @@ int bsc_ussd_init(struct bsc_nat *nat);
 int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
 int bsc_ussd_close_connections(struct bsc_nat *nat);
 
+void bsc_cc_update_msc_ip(struct bsc_nat *bsc, const char *ip);
 struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *, const char *imsi);
 
 /** paging group handling */

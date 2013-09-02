@@ -369,12 +369,21 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.assertTrue(res)
 
     def testLocalPrefix(self):
+	"""This tests that these commands are present"""
+
         self.vty.enable()
         self.vty.command("configure terminal")
         self.vty.command("nat")
         self.vty.verify("no local-call prefix", [''])
         self.vty.verify("local-call prefix *232334", [''])
         self.vty.verify("no local-call prefix", [''])
+        self.vty.command("end")
+
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.verify("local-call ip 10.23.24.7", [''])
+        self.vty.verify("local-call port 4000", [''])
+        self.vty.verify("no local-call ip", [''])
 
 
 def add_nat_test(suite, workdir):
