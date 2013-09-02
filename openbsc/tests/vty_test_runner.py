@@ -264,13 +264,13 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.vty.command('mgcp')
         self.vty.command('nat')
         self.assertEquals(self.vty.node(), 'config-nat')
-        self.vty.command('line vty')
-        self.assertEquals(self.vty.node(), 'config-line')
+        self.vty.command('mgcp')
+        self.assertEquals(self.vty.node(), 'config-mgcp')
         self.vty.command('nat')
         self.assertEquals(self.vty.node(), 'config-nat')
         self.vty.command('bsc 0')
-        self.vty.command('line vty')
-        self.assertEquals(self.vty.node(), 'config-line')
+        self.vty.command('mgcp')
+        self.assertEquals(self.vty.node(), 'config-mgcp')
 
     def testRewriteNoRewrite(self):
         self.vty.enable()

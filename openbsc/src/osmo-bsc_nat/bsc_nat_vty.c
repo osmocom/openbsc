@@ -152,7 +152,7 @@ static int config_write_nat(struct vty *vty)
 	llist_for_each_entry(pgroup, &_nat->paging_groups, entry)
 		write_pgroup_lst(vty, pgroup);
 	if (_nat->mgcp_ipa)
-		vty_out(vty, " mgcp-through-msc-ipa%s", VTY_NEWLINE);
+		vty_out(vty, " use-msc-ipa-for-mgcp%s", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -754,9 +754,9 @@ DEFUN(cfg_nat_ussd_local,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_nat_mgcp_ipa,
-      cfg_nat_mgcp_ipa_cmd,
-      "mgcp-through-msc-ipa",
+DEFUN(cfg_nat_use_ipa_for_mgcp,
+      cfg_nat_use_ipa_for_mgcp_cmd,
+      "use-msc-ipa-for-mgcp",
       "This needs to be set at start. Handle MGCP messages through "
       "the IPA protocol and not through the UDP socket.\n")
 {
@@ -1209,7 +1209,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_ussd_query_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_token_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_local_cmd);
-	install_element(NAT_NODE, &cfg_nat_mgcp_ipa_cmd);
+	install_element(NAT_NODE, &cfg_nat_use_ipa_for_mgcp_cmd);
 
 	/* access-list */
 	install_element(NAT_NODE, &cfg_lst_imsi_allow_cmd);
