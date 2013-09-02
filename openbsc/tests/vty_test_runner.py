@@ -368,6 +368,15 @@ class TestVTYNAT(TestVTYGenericBSC):
         res = self.vty.verify("show ussd-connection", ['The USSD side channel provider is not connected and not authorized.'])
         self.assertTrue(res)
 
+    def testLocalPrefix(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.verify("no local-call prefix", [''])
+        self.vty.verify("local-call prefix *232334", [''])
+        self.vty.verify("no local-call prefix", [''])
+
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")

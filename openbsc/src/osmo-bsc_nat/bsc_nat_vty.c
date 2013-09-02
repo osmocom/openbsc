@@ -153,6 +153,9 @@ static int config_write_nat(struct vty *vty)
 		write_pgroup_lst(vty, pgroup);
 	if (_nat->mgcp_ipa)
 		vty_out(vty, " use-msc-ipa-for-mgcp%s", VTY_NEWLINE);
+	if (_nat->local_prefix)
+		vty_out(vty, " local-call prefix %s%s",
+			_nat->local_prefix, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -768,6 +771,39 @@ DEFUN(cfg_nat_use_ipa_for_mgcp,
 	return CMD_SUCCESS;
 }
 
+#define LOCAL_STR "Locall Call Handling\n"
+
+DEFUN(cfg_nat_local_prefix,
+      cfg_nat_local_prefix_cmd,
+      "local-call prefix REGEXP",
+      LOCAL_STR "Prefix number\n" "Regular expression\n")
+{
+	int rc = gsm_parse_reg(_nat, &_nat->local_prefix_regexp,
+				&_nat->local_prefix, argc, argv);
+	if (rc != 0) {
+		vty_out(vty,
+			"%%setting the prefix failed.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_no_local_prefix,
+      cfg_nat_no_local_prefix_cmd,
+      "no local-call prefix",
+      NO_STR LOCAL_STR "Prefix number\n")
+{
+	if (_nat->local_prefix) {
+		regfree(&_nat->local_prefix_regexp);
+		talloc_free(_nat->local_prefix);
+		_nat->local_prefix = NULL;
+	}
+
+	return CMD_SUCCESS;
+}
+
+#undef LOCAL_STR
+
 /* per BSC configuration */
 DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR",
       "BSC configuration\n" "Identifier of the BSC\n")
@@ -1229,6 +1265,10 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_no_sms_number_rewrite_cmd);
 	install_element(NAT_NODE, &cfg_nat_prefix_trie_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_prefix_trie_cmd);
+
+	/* local call handling */
+	install_element(NAT_NODE, &cfg_nat_local_prefix_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_local_prefix_cmd);
 
 	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);

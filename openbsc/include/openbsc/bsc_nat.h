@@ -324,6 +324,10 @@ struct bsc_nat {
 	struct osmo_fd ussd_listen;
 	struct bsc_nat_ussd_con *ussd_con;
 
+	/* Local Call-Control */
+	char *local_prefix;
+	regex_t local_prefix_regexp;
+
 	/* for maintainenance */
 	int blocked;
 
