@@ -792,6 +792,8 @@ static void msc_connection_connected(struct bsc_msc_connection *con)
 	osmo_counter_inc(nat->stats.msc.reconn);
 }
 
+	/* TODO: re-set MGCP state... */
+
 static void msc_send_reset(struct bsc_msc_connection *msc_con)
 {
 	static const uint8_t reset[] = {
