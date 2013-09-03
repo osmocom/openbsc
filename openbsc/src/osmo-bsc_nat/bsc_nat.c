@@ -309,7 +309,7 @@ static void nat_send_rlc(struct bsc_msc_connection *msc_con,
 
 	msg = msgb_alloc_headroom(4096, 128, "rlc");
 	if (!msg) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to allocate clear command.\n");
+		LOGP(DNAT, LOGL_ERROR, "Failed to sccp rlc.\n");
 		return;
 	}
 
