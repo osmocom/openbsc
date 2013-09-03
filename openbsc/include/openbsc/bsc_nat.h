@@ -38,6 +38,9 @@
 #define DIR_BSC 1
 #define DIR_MSC 2
 
+#define USSD_LAC_IE	0
+#define USSD_CI_IE	1
+
 #define PAGIN_GROUP_UNASSIGNED -1
 
 struct sccp_source_reference;

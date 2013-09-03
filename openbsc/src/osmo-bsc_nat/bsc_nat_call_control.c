@@ -24,6 +24,7 @@
 #include <openbsc/bsc_msc.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/vty.h>
+#include <openbsc/ipaccess.h>
 
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/gsm48.h>
@@ -177,13 +178,69 @@ int bsc_cc_initialize(struct bsc_nat *nat)
 	return 0;
 }
 
-static int cc_new_connection(struct nat_sccp_connection *con, struct msgb *msg)
+static int cc_new_connection(struct nat_sccp_connection *con, struct msgb *input)
 {
+	struct ipac_msgt_sccp_state *state;
+	struct msgb *msg, *copy;
+	struct osmo_wqueue *queue;
+	uint16_t lac, ci;
+
+	msg = msgb_alloc_headroom(4096, 128, "forward ussd");
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "Allocation failed, not forwarding.\n");
+		return -1;
+	}
+
+	copy = msgb_alloc_headroom(4096, 128, "forward bts");
+	if (!copy) {
+		LOGP(DNAT, LOGL_ERROR, "Allocation failed, not forwarding.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
+	copy->l2h = msgb_put(copy, msgb_l2len(input));
+	memcpy(copy->l2h, input->l2h, msgb_l2len(input));
+
+	msg->l2h = msgb_put(msg, 1);
+	msg->l2h[0] = IPAC_MSGT_SCCP_OLD;
+
+	/* fill out the data */
+	state = (struct ipac_msgt_sccp_state *) msgb_put(msg, sizeof(*state));
+	state->trans_id = con->cc_ti;
+	state->invoke_id = 0;
+	memcpy(&state->src_ref, &con->remote_ref, sizeof(con->remote_ref));
+	memcpy(&state->dst_ref, &con->real_ref, sizeof(con->real_ref));
+	memcpy(state->imsi, con->imsi, strlen(con->imsi));
+
+	/* add additional tag/values */
+	lac = htons(con->lac);
+	ci = htons(con->ci);
+	msgb_tv_fixed_put(msg, USSD_LAC_IE, sizeof(lac), (const uint8_t *) &lac);
+	msgb_tv_fixed_put(msg, USSD_CI_IE, sizeof(ci), (const uint8_t *) &ci);
+
+	queue = &con->bsc->nat->local_conn->write_queue;
+	bsc_do_write(queue, msg, IPAC_PROTO_IPACCESS);
+	bsc_do_write(queue, copy, IPAC_PROTO_SCCP);
+
 	return 0;
 }
 
-static int cc_forward(struct nat_sccp_connection *con, struct msgb *msg)
+static int cc_forward(struct nat_sccp_connection *con, struct msgb *input)
 {
+	struct msgb *copy;
+
+	copy = msgb_alloc_headroom(4096, 128, "forward to local MSC");
+	if (!copy) {
+		LOGP(DNAT, LOGL_ERROR, "Allocation failed, not forwarding.\n");
+		return -1;
+	}
+
+	/* copy the data into the copy */
+	copy->l2h = msgb_put(copy, msgb_l2len(input));
+	memcpy(copy->l2h, input->l2h, msgb_l2len(input));
+
+	/* send it out */
+	bsc_do_write(&con->bsc->nat->local_conn->write_queue, copy, IPAC_PROTO_SCCP);
 	return 0;
 }
 

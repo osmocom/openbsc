@@ -38,9 +38,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define USSD_LAC_IE	0
-#define USSD_CI_IE	1
-
 static void ussd_auth_con(struct tlv_parsed *, struct bsc_nat_ussd_con *);
 
 static struct bsc_nat_ussd_con *bsc_nat_ussd_alloc(struct bsc_nat *nat)
