@@ -243,6 +243,7 @@ void bsc_msc_lost(struct bsc_msc_connection *con)
 {
 	osmo_wqueue_clear(&con->write_queue);
 	osmo_timer_del(&con->timeout_timer);
+	osmo_timer_del(&con->reconnect_timer);
 
 	if (con->write_queue.bfd.fd >= 0)
 		osmo_fd_unregister(&con->write_queue.bfd);
