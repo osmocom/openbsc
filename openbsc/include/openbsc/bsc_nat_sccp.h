@@ -41,6 +41,9 @@ struct bsc_nat_parsed {
 	/* destination local reference */
 	struct sccp_source_reference *dest_local_ref;
 
+	/* original value */
+	struct sccp_source_reference original_dest_ref;
+
 	/* called ssn number */
 	int called_ssn;
 

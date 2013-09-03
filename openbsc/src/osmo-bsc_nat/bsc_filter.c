@@ -120,6 +120,8 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg)
 		parsed->sccp_type = sccp_determine_msg_type(msg);
 		parsed->src_local_ref = result.source_local_reference;
 		parsed->dest_local_ref = result.destination_local_reference;
+		if (parsed->dest_local_ref)
+			parsed->original_dest_ref = *parsed->dest_local_ref;
 		parsed->called_ssn = result.called.ssn;
 		parsed->calling_ssn = result.calling.ssn;
 

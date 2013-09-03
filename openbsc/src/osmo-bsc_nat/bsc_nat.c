@@ -706,7 +706,8 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 		if (!con && parsed->sccp_type == SCCP_MSG_TYPE_RLSD) {
 			LOGP(DNAT, LOGL_NOTICE, "Sending fake RLC on RLSD message to network.\n");
 			/* Exchange src/dest for the reply */
-			nat_send_rlc(msc_con, parsed->dest_local_ref, parsed->src_local_ref);
+			nat_send_rlc(msc_con, &parsed->original_dest_ref,
+					parsed->src_local_ref);
 		} else if (!con)
 			LOGP(DNAT, LOGL_ERROR, "Unknown connection for msg type: 0x%x from the MSC.\n", parsed->sccp_type);
 	}
