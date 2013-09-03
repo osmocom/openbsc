@@ -703,10 +703,12 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 			} else if (con && is_local_connection(con)
 					&& parsed->gsm_type == BSS_MAP_MSG_CLEAR_CMD) {
 				LOGP(DNAT, LOGL_NOTICE, "Clear Command for local connection. Ignoring.\n");
+				con->msc_con = NULL;
 				con = NULL;
 			} else if (con && con->con_local == NAT_CON_END_CALL
 					&& parsed->sccp_type == SCCP_MSG_TYPE_RLSD) {
 				LOGP(DNAT, LOGL_NOTICE, "Ignoring RLSD for local CC connection.\n");
+				con->msc_con = NULL;
 				con = NULL;
 			}
 			break;
