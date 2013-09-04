@@ -226,9 +226,7 @@ struct bsc_msc_connection *bsc_msc_create(void *ctx, struct llist_head *dests)
 
 	con = talloc_zero(NULL, struct bsc_msc_connection);
 	if (!con) {
-		LOGP(DMSC, LOGL_FATAL,
-			"Failed to create the MSC(%s) connection.\n",
-			con->name);
+		LOGP(DMSC, LOGL_FATAL, "Failed to create the MSC connection.\n");
 		return NULL;
 	}
 
