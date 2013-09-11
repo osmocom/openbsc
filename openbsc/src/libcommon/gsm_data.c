@@ -256,6 +256,7 @@ static const struct value_string auth_policy_names[] = {
 	{ GSM_AUTH_POLICY_CLOSED,	"closed" },
 	{ GSM_AUTH_POLICY_ACCEPT_ALL,	"accept-all" },
 	{ GSM_AUTH_POLICY_TOKEN,	"token" },
+	{ GSM_AUTH_POLICY_BLACK_LIST,	"black-list"},
 	{ 0,				NULL }
 };
 

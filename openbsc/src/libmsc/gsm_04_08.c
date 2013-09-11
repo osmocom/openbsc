@@ -241,6 +241,8 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
 	case GSM_AUTH_POLICY_ACCEPT_ALL:
 		return 1;
+	case GSM_AUTH_POLICY_BLACK_LIST:
+		return subscriber->authorized;
 	default:
 		return 0;
 	}

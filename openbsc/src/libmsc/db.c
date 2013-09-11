@@ -319,6 +319,7 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 {
 	dbi_result result;
 	struct gsm_subscriber *subscr;
+	int authorized = 0;
 
 	/* Is this subscriber known in the db? */
 	subscr = db_get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi);
@@ -337,17 +338,22 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 	if (!subscr)
 		return NULL;
 	subscr->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+
+	if (net->auth_policy == GSM_AUTH_POLICY_BLACK_LIST)
+		authorized = 1;
+
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO Subscriber "
-		"(imsi, created, updated) "
+		"(imsi, created, updated, authorized) "
 		"VALUES "
-		"(%s, datetime('now'), datetime('now')) ",
-		imsi
+		"(%s, datetime('now'), datetime('now'), %d) ",
+		imsi, authorized
 	);
 	if (!result)
 		LOGP(DDB, LOGL_ERROR, "Failed to create Subscriber by IMSI.\n");
 	subscr->net = net;
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
+	subscr->authorized = authorized;
 	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	dbi_result_free(result);
 	LOGP(DDB, LOGL_INFO, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
