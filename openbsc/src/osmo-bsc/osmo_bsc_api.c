@@ -21,6 +21,8 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/debug.h>
 
+#include <openbsc/gsm_04_80.h>
+
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0808.h>
 
@@ -85,6 +87,47 @@ static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 	queue_msg_or_return(resp);
 }
 
+static void bsc_send_ussd_notification(struct gsm_subscriber_connection *conn,
+			   struct msgb *msg, const char *text)
+{
+	struct gsm48_hdr *gh;
+	int8_t pdisc;
+	uint8_t mtype;
+	int drop_message = 1;
+
+	if (!text)
+		return;
+
+	if (!msg || msgb_l3len(msg) < sizeof(*gh))
+		return;
+
+	gh = msgb_l3(msg);
+	pdisc = gh->proto_discr & 0x0f;
+	mtype = gh->msg_type & 0xbf;
+
+	/* Is CM service request? */
+	if (pdisc == GSM48_PDISC_MM && mtype == GSM48_MT_MM_CM_SERV_REQ) {
+		struct gsm48_service_request *cm;
+
+		cm = (struct gsm48_service_request *) &gh->data[0];
+
+		/* Is type SMS or call? */
+		if (cm->cm_service_type == GSM48_CMSERV_SMS)
+			drop_message = 0;
+		else if (cm->cm_service_type == GSM48_CMSERV_MO_CALL_PACKET)
+			drop_message = 0;
+	}
+
+	if (drop_message) {
+		LOGP(DMSC, LOGL_DEBUG, "Skipping (not sending) USSD message: '%s'\n", text);
+		return;
+	}
+
+	LOGP(DMSC, LOGL_INFO, "Sending USSD message: '%s'\n", text);
+	gsm0480_send_ussdNotify(conn, 1, text);
+	gsm0480_send_releaseComplete(conn);
+}
+
 /*
  * Instruct to reserve data for a new connectiom, create the complete
  * layer three message, send it to open the connection.
@@ -100,6 +143,7 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	msc = bsc_find_msc(conn, msg);
 	if (!msc) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to find a MSC for a connection.\n");
+		bsc_send_ussd_notification(conn, msg, conn->bts->network->bsc_data->ussd_no_msc_txt);
 		return -1;
 	}
 
@@ -112,10 +156,22 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 	struct msgb *resp;
 	uint16_t network_code;
 	uint16_t country_code;
+	enum bsc_con ret;
 
 	/* allocate resource for a new connection */
-	if (bsc_create_new_connection(conn, msc) != 0)
+	ret = bsc_create_new_connection(conn, msc);
+
+	if (ret != BSC_CON_SUCCESS) {
+		/* allocation has failed */
+		if (ret == BSC_CON_REJECT_NO_LINK)
+			bsc_send_ussd_notification(conn, msg, msc->ussd_msc_lost_txt);
+		else if (ret == BSC_CON_REJECT_RF_GRACE)
+			bsc_send_ussd_notification(conn, msg, msc->ussd_grace_txt);
+
 		return BSC_API_CONN_POL_REJECT;
+	}
+
+	/* check return value, if failed check msg for and send USSD */
 
 	bsc_scan_bts_msg(conn, msg);
 

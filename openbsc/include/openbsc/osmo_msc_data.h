@@ -86,6 +86,9 @@ struct osmo_msc_data {
 
 	/* ussd msc connection lost text */
 	char *ussd_msc_lost_txt;
+
+	/* ussd text when MSC has entered the grace period */
+	char *ussd_grace_txt;
 };
 
 /*
@@ -103,6 +106,9 @@ struct osmo_bsc_data {
 	char *rf_ctrl_name;
 	struct osmo_bsc_rf *rf_ctrl;
 	int auto_off_timeout;
+
+	/* ussd text when there is no MSC available */
+	char *ussd_no_msc_txt;
 };
 
 

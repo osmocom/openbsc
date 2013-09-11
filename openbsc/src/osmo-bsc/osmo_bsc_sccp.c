@@ -187,35 +187,35 @@ int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 	return 0;
 }
 
-int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
+enum bsc_con bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 			      struct osmo_msc_data *msc)
 {
 	struct osmo_bsc_sccp_con *bsc_con;
 	struct sccp_connection *sccp;
 
 	/* This should not trigger */
-	if (!msc->msc_con->is_authenticated) {
+	if (!msc || !msc->msc_con->is_authenticated) {
 		LOGP(DMSC, LOGL_ERROR,
 		     "How did this happen? MSC is not connected. Dropping.\n");
-		return -1;
+		return BSC_CON_REJECT_NO_LINK;
 	}
 
 	if (!bsc_grace_allow_new_connection(conn->bts->network, conn->bts)) {
 		LOGP(DMSC, LOGL_NOTICE, "BSC in grace period. No new connections.\n");
-		return -1;
+		return BSC_CON_REJECT_RF_GRACE;
 	}
 
 	sccp = sccp_connection_socket();
 	if (!sccp) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to allocate memory.\n");
-		return -ENOMEM;
+		return BSC_CON_NO_MEM;
 	}
 
 	bsc_con = talloc_zero(conn->bts, struct osmo_bsc_sccp_con);
 	if (!bsc_con) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to allocate.\n");
 		sccp_connection_free(sccp);
-		return -1;
+		return BSC_CON_NO_MEM;
 	}
 
 	/* callbacks */
@@ -236,7 +236,7 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 	bsc_con->conn = conn;
 	llist_add_tail(&bsc_con->entry, &active_connections);
 	conn->sccp_con = bsc_con;
-	return 0;
+	return BSC_CON_SUCCESS;
 }
 
 int bsc_open_connection(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
