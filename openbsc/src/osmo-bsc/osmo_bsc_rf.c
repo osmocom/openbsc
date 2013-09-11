@@ -503,6 +503,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	rf->gsm_network = net;
 	rf->policy = S_RF_ON;
 	rf->last_state_command = "";
+	rf->last_rf_lock_ctrl_command = talloc_strdup(rf, "");
 
 	/* check the rf state */
 	rf->rf_check.data = rf;
