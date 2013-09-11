@@ -207,7 +207,7 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.vty.command("msc 0")
         self.assertEquals(self.vty.node(), 'config-msc')
 
-    def testUssdNotifications(self):
+    def testUssdNotificationsMsc(self):
         self.vty.enable()
         self.vty.command("configure terminal")
         self.vty.command("msc")
@@ -215,10 +215,12 @@ class TestVTYBSC(TestVTYGenericBSC):
         # Test invalid input
         self.vty.verify("bsc-msc-lost-text", ['% Command incomplete.'])
         self.vty.verify("bsc-welcome-text", ['% Command incomplete.'])
+        self.vty.verify("bsc-grace-text", ['% Command incomplete.'])
 
         # Enable USSD notifications
         self.vty.verify("bsc-msc-lost-text MSC disconnected", [''])
         self.vty.verify("bsc-welcome-text Hello MS", [''])
+        self.vty.verify("bsc-grace-text In grace period", [''])
 
         # Verify settings
         res = self.vty.command("write terminal")
@@ -226,17 +228,46 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.assertEquals(res.find('no bsc-msc-lost-text'), -1)
         self.assert_(res.find('bsc-welcome-text Hello MS') > 0)
         self.assertEquals(res.find('no bsc-welcome-text'), -1)
+        self.assert_(res.find('bsc-grace-text In grace period') > 0)
+        self.assertEquals(res.find('no bsc-grace-text'), -1)
 
         # Now disable it..
         self.vty.verify("no bsc-msc-lost-text", [''])
         self.vty.verify("no bsc-welcome-text", [''])
+        self.vty.verify("no bsc-grace-text", [''])
 
         # Verify settings
         res = self.vty.command("write terminal")
         self.assertEquals(res.find('bsc-msc-lost-text MSC disconnected'), -1)
         self.assert_(res.find('no bsc-msc-lost-text') > 0)
-        self.assert_(res.find('no bsc-welcome-text') > 0)
         self.assertEquals(res.find('bsc-welcome-text Hello MS'), -1)
+        self.assert_(res.find('no bsc-welcome-text') > 0)
+        self.assertEquals(res.find('bsc-grace-text In grace period'), -1)
+        self.assert_(res.find('no bsc-grace-text') > 0)
+
+    def testUssdNotificationsBsc(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("bsc")
+
+        # Test invalid input
+        self.vty.verify("missing-msc-text", ['% Command incomplete.'])
+
+        # Enable USSD notifications
+        self.vty.verify("missing-msc-text No MSC found", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('missing-msc-text No MSC found') > 0)
+        self.assertEquals(res.find('no missing-msc-text'), -1)
+
+        # Now disable it..
+        self.vty.verify("no missing-msc-text", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assertEquals(res.find('missing-msc-text No MSC found'), -1)
+        self.assert_(res.find('no missing-msc-text') > 0)
 
 class TestVTYNAT(TestVTYGenericBSC):
 

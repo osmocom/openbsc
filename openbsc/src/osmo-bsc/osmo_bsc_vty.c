@@ -122,6 +122,11 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 	else
 		vty_out(vty, " no bsc-msc-lost-text%s", VTY_NEWLINE);
 
+	if (msc->ussd_grace_txt && msc->ussd_grace_txt[0])
+		vty_out(vty, " bsc-grace-text %s%s", msc->ussd_grace_txt, VTY_NEWLINE);
+	else
+		vty_out(vty, " no bsc-grace-text%s", VTY_NEWLINE);
+
 	if (msc->audio_length != 0) {
 		int i;
 
@@ -181,6 +186,11 @@ static int config_write_bsc(struct vty *vty)
 	if (bsc->auto_off_timeout != -1)
 		vty_out(vty, " bsc-auto-rf-off %d%s",
 			bsc->auto_off_timeout, VTY_NEWLINE);
+
+	if (bsc->ussd_no_msc_txt && bsc->ussd_no_msc_txt[0])
+		vty_out(vty, " missing-msc-text %s%s", bsc->ussd_no_msc_txt, VTY_NEWLINE);
+	else
+		vty_out(vty, " no missing-msc-text%s", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -384,7 +394,7 @@ DEFUN(cfg_net_msc_no_welcome_ussd,
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 
 	talloc_free(data->ussd_welcome_txt);
-	data->ussd_welcome_txt = 0;
+	data->ussd_welcome_txt = NULL;
 
 	return CMD_SUCCESS;
 }
@@ -416,6 +426,63 @@ DEFUN(cfg_net_msc_no_lost_ussd,
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_net_msc_grace_ussd,
+      cfg_net_msc_grace_ussd_cmd,
+      "bsc-grace-text .TEXT",
+      "Set the USSD notification to be sent when the MSC has entered the grace period\n" "Text to be sent\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	char *str = argv_concat(argv, argc, 0);
+	if (!str)
+		return CMD_WARNING;
+
+	bsc_replace_string(osmo_bsc_data(vty), &data->ussd_grace_txt, str);
+	talloc_free(str);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_msc_no_grace_ussd,
+      cfg_net_msc_no_grace_ussd_cmd,
+      "no bsc-grace-text",
+      NO_STR "Clear the USSD notification to be sent when the MSC has entered the grace period\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+
+	talloc_free(data->ussd_grace_txt);
+	data->ussd_grace_txt = NULL;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_bsc_missing_msc_ussd,
+      cfg_net_bsc_missing_msc_ussd_cmd,
+      "missing-msc-text .TEXT",
+      "Set the USSD notification to be send when a MSC has not been found.\n" "Text to be sent\n")
+{
+	struct osmo_bsc_data *data = osmo_bsc_data(vty);
+	char *txt = argv_concat(argv, argc, 0);
+	if (!txt)
+		return CMD_WARNING;
+
+	bsc_replace_string(data, &data->ussd_no_msc_txt, txt);
+	talloc_free(txt);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_bsc_no_missing_msc_text,
+      cfg_net_bsc_no_missing_msc_text_cmd,
+      "no missing-msc-text",
+      NO_STR "Clear the USSD notification to be send when a MSC has not been found.\n")
+{
+	struct osmo_bsc_data *data = osmo_bsc_data(vty);
+
+	talloc_free(data->ussd_no_msc_txt);
+	data->ussd_no_msc_txt = 0;
+
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(cfg_net_msc_type,
       cfg_net_msc_type_cmd,
@@ -615,6 +682,8 @@ int bsc_vty_init_extra(void)
 	install_element(BSC_NODE, &cfg_net_rf_socket_cmd);
 	install_element(BSC_NODE, &cfg_net_rf_off_time_cmd);
 	install_element(BSC_NODE, &cfg_net_no_rf_off_time_cmd);
+	install_element(BSC_NODE, &cfg_net_bsc_missing_msc_ussd_cmd);
+	install_element(BSC_NODE, &cfg_net_bsc_no_missing_msc_text_cmd);
 
 	install_node(&msc_node, config_write_msc);
 	bsc_install_default(MSC_NODE);
@@ -631,6 +700,8 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_no_welcome_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_lost_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_no_lost_ussd_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_grace_ussd_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_no_grace_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_type_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_emerg_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_local_prefix_cmd);
