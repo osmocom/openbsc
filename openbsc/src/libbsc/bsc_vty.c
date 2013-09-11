@@ -598,11 +598,13 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	if (bts->excl_from_rf_lock)
 		vty_out(vty, "  rf-lock-exclude%s", VTY_NEWLINE);
 
-	if (bts->model->config_write_bts)
-		bts->model->config_write_bts(vty, bts);
+	if (bts->model) {
+	       if (bts->model->config_write_bts)
+		       bts->model->config_write_bts(vty, bts);
 
-	llist_for_each_entry(trx, &bts->trx_list, list)
-		config_write_trx_single(vty, trx);
+	       llist_for_each_entry(trx, &bts->trx_list, list)
+		       config_write_trx_single(vty, trx);
+	}
 }
 
 static int config_write_bts(struct vty *v)
