@@ -210,6 +210,10 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		vty_out(vty, "  Last RF Command: %s%s",
 			net->bsc_data->rf_ctrl->last_state_command,
 			VTY_NEWLINE);
+	if (net->bsc_data && net->bsc_data->rf_ctrl)
+		vty_out(vty, "  Last RF Lock Command: %s%s",
+			net->bsc_data->rf_ctrl->last_rf_lock_ctrl_command,
+			VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",

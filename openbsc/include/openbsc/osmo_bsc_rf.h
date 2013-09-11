@@ -33,6 +33,8 @@ struct osmo_bsc_rf {
 
 	const char *last_state_command;
 
+	char *last_rf_lock_ctrl_command;
+
 	/* delay the command */
 	char last_request;
 	struct osmo_timer_list delay_cmd;

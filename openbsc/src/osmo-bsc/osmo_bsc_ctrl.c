@@ -35,6 +35,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#define TIME_FORMAT_RFC2822 "%a, %d %b %Y %T %z"
+
 void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con)
 {
 	struct ctrl_cmd *trap;
@@ -420,18 +422,28 @@ static int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
 	int locked = atoi(cmd->value);
 	struct gsm_network *net = cmd->node;
+	time_t now = time(NULL);
+	char now_buf[64];
+	struct osmo_bsc_rf *rf;
+
 	if (!net) {
 		cmd->reply = "net not found.";
 		return CTRL_CMD_ERROR;
 	}
 
-	if (!net->bsc_data->rf_ctrl) {
+	rf = net->bsc_data->rf_ctrl;
+
+	if (!rf) {
 		cmd->reply = "RF Ctrl is not enabled in the BSC Configuration";
 		return CTRL_CMD_ERROR;
 	}
 
-	osmo_bsc_rf_schedule_lock(net->bsc_data->rf_ctrl,
-			locked == 1 ? '0' : '1');
+	talloc_free(rf->last_rf_lock_ctrl_command);
+	strftime(now_buf, sizeof(now_buf), TIME_FORMAT_RFC2822, gmtime(&now));
+	rf->last_rf_lock_ctrl_command =
+		talloc_asprintf(rf, "rf_locked %u (%s)", locked, now_buf);
+
+	osmo_bsc_rf_schedule_lock(rf, locked == 1 ? '0' : '1');
 
 	cmd->reply = talloc_asprintf(cmd, "%u", locked);
 	if (!cmd->reply) {
