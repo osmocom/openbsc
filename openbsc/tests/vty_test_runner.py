@@ -169,6 +169,42 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assertEquals(res.find('periodic location update 60'), -1)
         self.assert_(res.find('no periodic location update') > 0)
 
+    def testAuthPolicy (self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("network")
+        
+        # Test invalid input
+        self.vty.verify("auth policy", ['% Command incomplete.'])
+
+        # Enable auth policy closed
+        self.vty.verify("auth policy closed", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('auth policy closed') > 0)
+
+        # Enable auth policy accept-all
+        self.vty.verify("auth policy accept-all", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('auth policy accept-all') > 0)
+
+        # Enable auth policy token
+        self.vty.verify("auth policy token", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('auth policy token') > 0)
+
+        # Enable auth policy black-list
+        self.vty.verify("auth policy black-list", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('auth policy black-list') > 0)
+
 class TestVTYBSC(TestVTYGenericBSC):
 
     def vty_command(self):
