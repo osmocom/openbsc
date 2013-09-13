@@ -539,6 +539,14 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
 	if ((bts->si_common.rach_control.t2 & 0x4) == 0)
 		vty_out(vty, "  rach emergency call allowed 1%s", VTY_NEWLINE);
+	if ((bts->si_common.rach_control.t3) != 0)
+		for (i = 0; i < 8; i++)
+			if (bts->si_common.rach_control.t3 & (0x1 << i))
+				vty_out(vty, "  rach access-control-class %d barred%s", i, VTY_NEWLINE);
+	if ((bts->si_common.rach_control.t2 & 0xfb) != 0)
+		for (i = 0; i < 8; i++)
+			if ((i != 2) && (bts->si_common.rach_control.t2 & (0x1 << i)))
+				vty_out(vty, "  rach access-control-class %d barred%s", i+8, VTY_NEWLINE);
 	for (i = SYSINFO_TYPE_1; i < _MAX_SYSINFO_TYPE; i++) {
 		if (bts->si_mode_static & (1 << i)) {
 			vty_out(vty, "  system-information %s mode static%s",
@@ -1899,6 +1907,51 @@ DEFUN(cfg_bts_rach_ec_allowed, cfg_bts_rach_ec_allowed_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_rach_ac_class, cfg_bts_rach_ac_class_cmd,
+      "rach access-control-class (0|1|2|3|4|5|6|7|8|9|11|12|13|14|15) (barred|allowed)",
+      RACH_STR
+      "Set access control class\n"
+      "Access control class 0\n"
+      "Access control class 1\n"
+      "Access control class 2\n"
+      "Access control class 3\n"
+      "Access control class 4\n"
+      "Access control class 5\n"
+      "Access control class 6\n"
+      "Access control class 7\n"
+      "Access control class 8\n"
+      "Access control class 9\n"
+      "Access control class 11 for PLMN use\n"
+      "Access control class 12 for security services\n"
+      "Access control class 13 for public utilities (e.g. water/gas suppliers)\n"
+      "Access control class 14 for emergency services\n"
+      "Access control class 15 for PLMN staff\n"
+      "barred to use access control class\n"
+      "allowed to use access control class\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	uint8_t control_class;
+	uint8_t allowed = 0;
+
+	if (strcmp(argv[1],"allowed") == 0)
+		allowed = 1;
+
+	control_class = atoi(argv[0]);
+	if (control_class < 8)
+		if (allowed)
+			bts->si_common.rach_control.t3 &= ~(0x1 << control_class);
+		else
+			bts->si_common.rach_control.t3 |= (0x1 << control_class);
+	else
+		if (allowed)
+			bts->si_common.rach_control.t2 &= ~(0x1 << (control_class - 8));
+		else
+			bts->si_common.rach_control.t2 |= (0x1 << (control_class - 8));
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
       "ms max power <0-40>",
       "MS Options\n"
@@ -3066,6 +3119,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_rach_nm_ldavg_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_ec_allowed_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_ac_class_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_per_loc_upd_cmd);
