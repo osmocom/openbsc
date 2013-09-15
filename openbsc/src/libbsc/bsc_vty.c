@@ -460,9 +460,23 @@ static void config_write_bts_gprs(struct vty *vty, struct gsm_bts *bts)
 	}
 }
 
-static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
+/* Write the model data if there is one */
+static void config_write_bts_model(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
+
+	if (!bts->model)
+		return;
+
+	if (bts->model->config_write_bts)
+		bts->model->config_write_bts(vty, bts);
+
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		config_write_trx_single(vty, trx);
+}
+
+static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
+{
 	int i;
 
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
@@ -602,13 +616,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	if (bts->excl_from_rf_lock)
 		vty_out(vty, "  rf-lock-exclude%s", VTY_NEWLINE);
 
-	if (bts->model) {
-	       if (bts->model->config_write_bts)
-		       bts->model->config_write_bts(vty, bts);
-
-	       llist_for_each_entry(trx, &bts->trx_list, list)
-		       config_write_trx_single(vty, trx);
-	}
+	config_write_bts_model(vty, bts);
 }
 
 static int config_write_bts(struct vty *v)
