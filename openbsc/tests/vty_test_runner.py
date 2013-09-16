@@ -180,6 +180,41 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assertEquals(res.find('periodic location update 60'), -1)
         self.assert_(res.find('no periodic location update') > 0)
 
+    def testRachAccessControlClass(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("network")
+        self.vty.command("bts 0")
+
+        # Test invalid input
+        self.vty.verify("rach access-control-class", ['% Command incomplete.'])
+        self.vty.verify("rach access-control-class 1", ['% Command incomplete.'])
+        self.vty.verify("rach access-control-class -1", ['% Unknown command.'])
+        self.vty.verify("rach access-control-class 10", ['% Unknown command.'])
+        self.vty.verify("rach access-control-class 16", ['% Unknown command.'])
+
+        # Barred rach access control classes
+        for classNum in range(16):
+            if classNum != 10:
+                self.vty.verify("rach access-control-class " + str(classNum) + " barred", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        for classNum in range(16):
+            if classNum != 10:
+                self.assert_(res.find("rach access-control-class " + str(classNum) + " barred") > 0)
+
+        # Allowed rach access control classes
+        for classNum in range(16):
+            if classNum != 10:
+                self.vty.verify("rach access-control-class " + str(classNum) + " allowed", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        for classNum in range(16):
+            if classNum != 10:
+                self.assertEquals(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
+
 class TestVTYBSC(TestVTYGenericBSC):
 
     def vty_command(self):
