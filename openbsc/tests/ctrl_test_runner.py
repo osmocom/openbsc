@@ -159,6 +159,10 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['mtype'], 'ERROR')
         self.assertEquals(r['error'], 'Command not found')
 
+        r = self.do_set('rf_locked', '999')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Value failed verification.')
+
         r = self.do_get('bts')
         self.assertEquals(r['mtype'], 'ERROR')
         self.assertEquals(r['error'], 'Error while parsing the index.')
