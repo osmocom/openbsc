@@ -1,2 +1,3 @@
 enable_nat_test='@osmo_ac_build_nat@'
 enable_smpp_test='@osmo_ac_build_smpp@'
+enable_bsc_test='@osmo_ac_build_bsc@'

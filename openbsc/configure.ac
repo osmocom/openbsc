@@ -36,11 +36,12 @@ AC_SUBST(osmo_ac_build_nat)
 
 # Enable/disable the BSC?
 AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo BSC])],
-    [osmo_ac_build_bsc="$enableval"])
+    [osmo_ac_build_bsc="$enableval"],[osmo_ac_build_bsc="no"])
 if test "$osmo_ac_build_bsc" = "yes" ; then
     PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.6)
 fi
 AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
+AC_SUBST(osmo_ac_build_bsc)
 
 # Enable/disable smpp support in the nitb?
 AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface])],
@@ -156,6 +157,7 @@ AC_OUTPUT(
     tests/gsm0408/Makefile
     tests/db/Makefile
     tests/channel/Makefile
+    tests/bsc/Makefile
     tests/bsc-nat/Makefile
     tests/bsc-nat-trie/Makefile
     tests/mgcp/Makefile

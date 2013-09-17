@@ -4,6 +4,10 @@ if BUILD_NAT
 SUBDIRS += bsc-nat bsc-nat-trie
 endif
 
+if BUILD_BSC
+SUBDIRS += bsc
+endif
+
 if BUILD_SMPP
 SUBDIRS += smpp
 endif

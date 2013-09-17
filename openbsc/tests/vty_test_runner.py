@@ -315,6 +315,40 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.assertEquals(res.find('missing-msc-text No MSC found'), -1)
         self.assert_(res.find('no missing-msc-text') > 0)
 
+    def testNetworkTimezone(self):
+        self.vty.enable()
+        self.vty.verify("configure terminal", [''])
+        self.vty.verify("network", [''])
+        self.vty.verify("bts 0", [''])
+
+        # Test invalid input
+        self.vty.verify("timezone", ['% Command incomplete.'])
+        self.vty.verify("timezone 20 0", ['% Unknown command.'])
+        self.vty.verify("timezone 0 11", ['% Unknown command.'])
+        self.vty.verify("timezone 0 0 99", ['% Unknown command.'])
+
+        # Set time zone without DST
+        self.vty.verify("timezone 2 30", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('timezone 2 30') > 0)
+        self.assertEquals(res.find('timezone 2 30 '), -1)
+
+        # Set time zone with DST
+        self.vty.verify("timezone 2 30 1", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('timezone 2 30 1') > 0)
+
+        # Now disable it..
+        self.vty.verify("no timezone", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assertEquals(res.find(' timezone'), -1)
+
 class TestVTYNAT(TestVTYGenericBSC):
 
     def vty_command(self):

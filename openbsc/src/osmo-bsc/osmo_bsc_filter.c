@@ -251,6 +251,65 @@ int bsc_send_welcome_ussd(struct gsm_subscriber_connection *conn)
 	return 0;
 }
 
+static int bsc_patch_mm_info(struct gsm_subscriber_connection *conn,
+		uint8_t *data, unsigned int length)
+{
+	struct tlv_parsed tp;
+	int parse_res;
+	struct gsm_bts *bts = conn->bts;
+	int tzunits;
+	uint8_t tzbsd = 0;
+	uint8_t dst = 0;
+
+	parse_res = tlv_parse(&tp, &gsm48_mm_att_tlvdef, data, length, 0, 0);
+	if (parse_res <= 0 && parse_res != -3)
+		return 0;
+
+	/* Is TZ patching enabled? */
+	if (!bts->tz.override)
+		return 0;
+
+	/* Convert tz.hr and tz.mn to units */
+	if (bts->tz.hr < 0) {
+		tzunits = -bts->tz.hr*4;
+		tzbsd |= 0x08;
+	} else
+		tzunits = bts->tz.hr*4;
+
+	tzunits = tzunits + (bts->tz.mn/15);
+
+	tzbsd |= (tzunits % 10)*0x10 + (tzunits / 10);
+
+	/* Convert DST value */
+	if (bts->tz.dst >= 0 && bts->tz.dst <= 2)
+		dst = bts->tz.dst;
+
+	if (TLVP_PRESENT(&tp, GSM48_IE_UTC)) {
+		LOGP(DMSC, LOGL_DEBUG,
+			"Changing 'Local time zone' from 0x%02x to 0x%02x.\n",
+			TLVP_VAL(&tp, GSM48_IE_UTC)[6], tzbsd);
+		((uint8_t *)(TLVP_VAL(&tp, GSM48_IE_UTC)))[0] = tzbsd;
+	}
+	if (TLVP_PRESENT(&tp, GSM48_IE_NET_TIME_TZ)) {
+		LOGP(DMSC, LOGL_DEBUG,
+			"Changing 'Universal time and local time zone' TZ from "
+			"0x%02x to 0x%02x.\n",
+			TLVP_VAL(&tp, GSM48_IE_NET_TIME_TZ)[6], tzbsd);
+		((uint8_t *)(TLVP_VAL(&tp, GSM48_IE_NET_TIME_TZ)))[6] = tzbsd;
+	}
+#ifdef GSM48_IE_NET_DST
+	if (TLVP_PRESENT(&tp, GSM48_IE_NET_DST)) {
+		LOGP(DMSC, LOGL_DEBUG,
+			"Changing 'Network daylight saving time' from "
+			"0x%02x to 0x%02x.\n",
+			TLVP_VAL(&tp, GSM48_IE_NET_DST)[0], dst);
+		((uint8_t *)(TLVP_VAL(&tp, GSM48_IE_NET_DST)))[0] = dst;
+	}
+#endif
+
+	return 0;
+}
+
 /**
  * Messages coming back from the MSC.
  */
@@ -261,13 +320,16 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	struct gsm48_loc_area_id *lai;
 	struct gsm48_hdr *gh;
 	uint8_t mtype;
+	int length = msgb_l3len(msg);
 
-	if (msgb_l3len(msg) < sizeof(*gh)) {
+	if (length < sizeof(*gh)) {
 		LOGP(DMSC, LOGL_ERROR, "GSM48 header does not fit.\n");
 		return -1;
 	}
 
 	gh = (struct gsm48_hdr *) msgb_l3(msg);
+	length -= (const char *)&gh->data[0] - (const char *)gh;
+
 	mtype = gh->msg_type & 0xbf;
 	net = conn->bts->network;
 	msc = conn->sccp_con->msc;
@@ -285,6 +347,8 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		if (conn->sccp_con->new_subscriber)
 			return send_welcome_ussd(conn);
 		return 0;
+	} else if (mtype == GSM48_MT_MM_INFO) {
+		bsc_patch_mm_info(conn, &gh->data[0], length);
 	}
 
 	return 0;
