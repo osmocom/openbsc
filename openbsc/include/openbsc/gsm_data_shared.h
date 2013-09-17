@@ -478,6 +478,7 @@ struct gsm_bts {
 		int hr;
 		int mn;
 		int override;
+		int dst;
 	} tz;
 
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */

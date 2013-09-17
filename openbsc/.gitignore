@@ -51,5 +51,6 @@ tests/mgcp/mgcp_test
 tests/sccp/sccp_test
 tests/sms/sms_test
 tests/timer/timer_test
+tests/bsc/bsc_test
 
 src/openbsc.cfg*

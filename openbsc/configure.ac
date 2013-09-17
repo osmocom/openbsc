@@ -33,15 +33,14 @@ AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Require
     ])
 AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
 
+# Enable/disable the BSC?
 AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo BSC])],
-    [
-        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.6)
-        osmo_ac_build_bsc="yes"
-    ],
-    [
-        osmo_ac_build_bsc="no"
-    ])
+    [osmo_ac_build_bsc="$enableval"],[osmo_ac_build_bsc="no"])
+if test "$osmo_ac_build_bsc" = "yes" ; then
+    PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.6)
+fi
 AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
+AC_SUBST(osmo_ac_build_bsc)
 
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.2)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
@@ -109,6 +108,7 @@ AC_OUTPUT(
     tests/gsm0408/Makefile
     tests/db/Makefile
     tests/channel/Makefile
+    tests/bsc/Makefile
     tests/bsc-nat/Makefile
     tests/mgcp/Makefile
     tests/si/Makefile

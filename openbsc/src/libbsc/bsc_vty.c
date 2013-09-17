@@ -474,8 +474,14 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
-	if (bts->tz.override != 0)
-		vty_out(vty, "  timezone %d %d%s", bts->tz.hr, bts->tz.mn, VTY_NEWLINE);
+	if (bts->tz.override != 0) {
+		if (bts->tz.dst)
+			vty_out(vty, "  timezone %d %d %d%s",
+				bts->tz.hr, bts->tz.mn, bts->tz.dst, VTY_NEWLINE);
+		else
+			vty_out(vty, "  timezone %d %d%s",
+				bts->tz.hr, bts->tz.mn, VTY_NEWLINE);
+	}
 	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "  cell reselection hysteresis %u%s",
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
@@ -1683,6 +1689,32 @@ DEFUN(cfg_bts_timezone,
 
 	bts->tz.hr = tzhr;
 	bts->tz.mn = tzmn;
+	bts->tz.dst = 0;
+	bts->tz.override = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_timezone_dst,
+      cfg_bts_timezone_dst_cmd,
+      "timezone <-19-19> (0|15|30|45) <0-2>",
+      "Set the Timezone Offset of this BTS\n"
+      "Timezone offset (hours)\n"
+      "Timezone offset (00 minutes)\n"
+      "Timezone offset (15 minutes)\n"
+      "Timezone offset (30 minutes)\n"
+      "Timezone offset (45 minutes)\n"
+      "DST offset (hours)\n"
+      )
+{
+	struct gsm_bts *bts = vty->index;
+	int tzhr = atoi(argv[0]);
+	int tzmn = atoi(argv[1]);
+	int tzdst = atoi(argv[2]);
+
+	bts->tz.hr = tzhr;
+	bts->tz.mn = tzmn;
+	bts->tz.dst = tzdst;
 	bts->tz.override = 1;
 
 	return CMD_SUCCESS;
@@ -2928,6 +2960,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_timezone_cmd);
+	install_element(BTS_NODE, &cfg_bts_timezone_dst_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_timezone_cmd);
 	install_element(BTS_NODE, &cfg_bts_serno_cmd);
 	install_element(BTS_NODE, &cfg_bts_stream_id_cmd);
