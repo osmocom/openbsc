@@ -9,10 +9,10 @@ noinst_PROGRAMS = bsc_nat_trie_test
 bsc_nat_trie_test_SOURCES = bsc_nat_trie_test.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_rewrite_trie.c
 bsc_nat_trie_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
-			$(top_srcdir)/src/libctrl/libctrl.a \
-			$(top_srcdir)/src/libmgcp/libmgcp.a \
-			$(top_srcdir)/src/libtrau/libtrau.a \
-			$(top_srcdir)/src/libcommon/libcommon.a \
+			$(top_builddir)/src/libctrl/libctrl.a \
+			$(top_builddir)/src/libmgcp/libmgcp.a \
+			$(top_builddir)/src/libtrau/libtrau.a \
+			$(top_builddir)/src/libcommon/libcommon.a \
 			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) -lrt \
 			$(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS) \
 			$(LIBOSMOABIS_LIBS)
