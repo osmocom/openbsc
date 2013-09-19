@@ -2173,6 +2173,10 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 			     TLVP_VAL(&tp, GSM48_IE_CC_CAP)-1);
 	}
 
+	/* IMSI of called subscriber */
+	strncpy(call_conf.imsi, trans->subscr->imsi,
+		sizeof(call_conf.imsi)-1);
+
 	new_cc_state(trans, GSM_CSTATE_MO_TERM_CALL_CONF);
 
 	return mncc_recvmsg(trans->subscr->net, trans, MNCC_CALL_CONF_IND,
