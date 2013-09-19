@@ -19,5 +19,6 @@ libmsc_a_SOURCES =	auth.c \
 			osmo_msc.c
 
 if BUILD_SMPP
+noinst_HEADERS = smpp_smsc.h
 libmsc_a_SOURCES += smpp_smsc.c smpp_openbsc.c smpp_vty.c smpp_utils.c
 endif

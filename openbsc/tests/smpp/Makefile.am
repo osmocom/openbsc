@@ -7,6 +7,6 @@ EXTRA_DIST = smpp_test.ok smpp_test.err
 noinst_PROGRAMS = smpp_test
 
 smpp_test_SOURCES = smpp_test.c \
-	$(top_srcdir)/src/libmsc/smpp_utils.c
+	$(top_builddir)/src/libmsc/smpp_utils.c
 smpp_test_LDADD = $(LIBOSMOCORE_LIBS) \
-	$(top_srcdir)/src/libcommon/libcommon.a
+	$(top_builddir)/src/libcommon/libcommon.a
