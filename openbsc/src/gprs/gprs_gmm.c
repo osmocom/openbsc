@@ -739,7 +739,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	default:
 		LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST with "
 			"MI type %u\n", mi_type);
-		return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
+		return gsm48_tx_gmm_att_rej_oldmsg(msg, sgsn->cfg.reject_cause);
 	}
 	/* Update MM Context with currient RA and Cell ID */
 	ctx->ra = ra_id;
@@ -961,7 +961,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		/* The MS has to perform GPRS attach */
 		DEBUGPC(DMM, " REJECT\n");
 		/* Device is still IMSI atached for CS but initiate GPRS ATTACH */
-		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
+		return gsm48_tx_gmm_ra_upd_rej(msg, sgsn->cfg.reject_cause);
 	}
 
 	/* Store new BVCI/NSEI in MM context (FIXME: delay until we ack?) */
@@ -1032,7 +1032,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
 		gprs_llgmm_reset(llme);
-		return gsm48_tx_gmm_status_oldmsg(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
+		return gsm48_tx_gmm_status_oldmsg(msg, sgsn->cfg.reject_cause);
 	}
 
 	switch (gh->msg_type) {
@@ -1135,7 +1135,7 @@ static void mmctx_timer_cb(void *_mm)
 	case 3370:	/* waiting for IDENTITY RESPONSE */
 		if (mm->num_T_exp >= 5) {
 			LOGP(DMM, LOGL_NOTICE, "T3370 expired >= 5 times\n");
-			gsm48_tx_gmm_att_rej(mm, GMM_CAUSE_MS_ID_NOT_DERIVED);
+			gsm48_tx_gmm_att_rej(mm, sgsn->cfg.reject_cause);
 			mm->mm_state = GMM_DEREGISTERED;
 			break;
 		}

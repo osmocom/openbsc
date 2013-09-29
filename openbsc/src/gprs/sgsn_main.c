@@ -50,6 +50,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_gmm.h>
+#include <openbsc/gsm_04_08_gprs.h>
 
 #include <gtp.h>
 
@@ -76,6 +77,7 @@ static struct sgsn_instance sgsn_inst = {
 	.cfg = {
 		.gtp_statedir = "./",
 		.acl_enabled = 1,
+		.reject_cause = GMM_CAUSE_MS_ID_NOT_DERIVED,
 	},
 };
 struct sgsn_instance *sgsn = &sgsn_inst;

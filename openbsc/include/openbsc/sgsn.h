@@ -18,6 +18,9 @@ struct sgsn_config {
 
 	int acl_enabled;
 	struct llist_head imsi_acl;
+
+	/* for GMM Routing Area Update handling */
+	int reject_cause;
 };
 
 struct sgsn_instance {

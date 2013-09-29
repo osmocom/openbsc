@@ -135,6 +135,8 @@ static int config_write_sgsn(struct vty *vty)
 		g_cfg->acl_enabled ? "closed" : "accept-all", VTY_NEWLINE);
 	llist_for_each_entry(acl, &g_cfg->imsi_acl, list)
 		vty_out(vty, " imsi-acl add %s%s", acl->imsi, VTY_NEWLINE);
+	vty_out(vty, " reject-cause %d%s",
+		g_cfg->reject_cause, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -408,6 +410,16 @@ DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mm_reject_cause, cfg_mm_reject_cause_cmd,
+	"reject-cause <0-65535>",
+	"Reject cause for routing area updates with unknown IMSI\n"
+	"Cause Value\n")
+{
+	g_cfg->reject_cause = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+
 int sgsn_vty_init(void)
 {
 	install_element_ve(&show_sgsn_cmd);
@@ -427,6 +439,7 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_ggsn_gtp_version_cmd);
 	install_element(SGSN_NODE, &cfg_imsi_acl_cmd);
 	install_element(SGSN_NODE, &cfg_auth_policy_cmd);
+	install_element(SGSN_NODE, &cfg_mm_reject_cause_cmd);
 
 	return 0;
 }
