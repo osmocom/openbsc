@@ -375,6 +375,117 @@ err:
 		return 1;
 }
 
+CTRL_CMD_DEFINE(bts_timezone, "timezone");
+static int get_bts_timezone(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = (struct gsm_bts *) cmd->node;
+	if (!bts) {
+		cmd->reply = "bts not found.";
+		return CTRL_CMD_ERROR;
+	}
+
+	if (bts->tz.override)
+		cmd->reply = talloc_asprintf(cmd, "%d,%d,%d",
+			       bts->tz.hr, bts->tz.mn, bts->tz.dst);
+	else
+		cmd->reply = talloc_asprintf(cmd, "off");
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+static int set_bts_timezone(struct ctrl_cmd *cmd, void *data)
+{
+	char *saveptr, *hourstr, *minstr, *dststr, *tmp = 0;
+	int override;
+	struct gsm_bts *bts = (struct gsm_bts *) cmd->node;
+
+	if (!bts) {
+		cmd->reply = "bts not found.";
+		return CTRL_CMD_ERROR;
+	}
+
+	tmp = talloc_strdup(cmd, cmd->value);
+	if (!tmp)
+		goto oom;
+
+	hourstr = strtok_r(tmp, ",", &saveptr);
+	minstr = strtok_r(NULL, ",", &saveptr);
+	dststr = strtok_r(NULL, ",", &saveptr);
+
+	override = 0;
+
+	if (hourstr != NULL)
+		override = strcasecmp(hourstr, "off") != 0;
+
+	bts->tz.override = override;
+
+	if (override) {
+		bts->tz.hr  = hourstr ? atol(hourstr) : 0;
+		bts->tz.mn  = minstr ? atol(minstr) : 0;
+		bts->tz.dst = dststr ? atol(dststr) : 0;
+	}
+
+	talloc_free(tmp);
+	tmp = NULL;
+
+	return get_bts_timezone(cmd, data);
+
+oom:
+	cmd->reply = "OOM";
+	return CTRL_CMD_ERROR;
+}
+
+static int verify_bts_timezone(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	char *saveptr, *hourstr, *minstr, *dststr, *tmp;
+	int override, tz_hours, tz_mins, tz_dst;
+
+	tmp = talloc_strdup(cmd, value);
+	if (!tmp)
+		return 1;
+
+	hourstr = strtok_r(tmp, ",", &saveptr);
+	minstr = strtok_r(NULL, ",", &saveptr);
+	dststr = strtok_r(NULL, ",", &saveptr);
+
+	if (hourstr == NULL)
+		goto err;
+
+	override = strcasecmp(hourstr, "off") != 0;
+
+	if (!override) {
+		talloc_free(tmp);
+		return 0;
+	}
+
+	if (minstr == NULL || dststr == NULL)
+		goto err;
+
+	tz_hours = atol(hourstr);
+	tz_mins = atol(minstr);
+	tz_dst = atol(dststr);
+
+	talloc_free(tmp);
+	tmp = NULL;
+
+	if ((tz_hours < -19) || (tz_hours > 19) ||
+	       (tz_mins < 0) || (tz_mins >= 60) || (tz_mins % 15 != 0) ||
+	       (tz_dst < 0) || (tz_dst > 2))
+		goto err;
+
+	return 0;
+
+err:
+	talloc_free(tmp);
+	cmd->reply = talloc_strdup(cmd, "The format is <hours>,<mins>,<dst> or 'off' where -19 <= hours <= 19, mins in {0, 15, 30, 45}, and 0 <= dst <= 2");
+	return 1;
+}
+
 CTRL_CMD_DEFINE(bts_rf_state, "rf_state");
 static int get_bts_rf_state(struct ctrl_cmd *cmd, void *data)
 {
@@ -492,6 +603,9 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_loc);
+	if (rc)
+		goto end;
+	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_timezone);
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_rf_lock);
