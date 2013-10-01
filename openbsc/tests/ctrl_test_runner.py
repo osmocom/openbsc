@@ -201,6 +201,44 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['var'], 'bts.0.rf_state')
         self.assertEquals(r['value'], 'inoperational,unlocked,on')
 
+    def testTimezone(self):
+        r = self.do_get('bts.0.timezone')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.timezone')
+        self.assertEquals(r['value'], 'off')
+
+        r = self.do_set('bts.0.timezone', '-2,15,2')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.timezone')
+        self.assertEquals(r['value'], '-2,15,2')
+
+        r = self.do_get('bts.0.timezone')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.timezone')
+        self.assertEquals(r['value'], '-2,15,2')
+
+        # Test invalid input
+        r = self.do_set('bts.0.timezone', '-2,15,2,5,6,7')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.timezone')
+        self.assertEquals(r['value'], '-2,15,2')
+
+        r = self.do_set('bts.0.timezone', '-2,15')
+        self.assertEquals(r['mtype'], 'ERROR')
+        r = self.do_set('bts.0.timezone', '-2')
+        self.assertEquals(r['mtype'], 'ERROR')
+        r = self.do_set('bts.0.timezone', '1')
+
+        r = self.do_set('bts.0.timezone', 'off')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.timezone')
+        self.assertEquals(r['value'], 'off')
+
+        r = self.do_get('bts.0.timezone')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.timezone')
+        self.assertEquals(r['value'], 'off')
+
 def add_bsc_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc")):
         print("Skipping the BSC test")
