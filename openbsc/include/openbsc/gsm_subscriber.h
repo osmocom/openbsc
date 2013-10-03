@@ -17,6 +17,10 @@
 
 #define GSM_SUBSCRIBER_NO_EXPIRATION	0x0
 
+#define GSM_SUBS_FMT_STR "IMSI %s (id %llu, ext %s%s%s)"
+#define GSM_SUBS_FMT_VAL(x) (x)->imsi, (x)->id, (x)->extension, \
+    strlen((x)->name)?", name ":"", strlen((x)->name)?(x)->name:""
+
 struct vty;
 
 struct gsm_equipment {
