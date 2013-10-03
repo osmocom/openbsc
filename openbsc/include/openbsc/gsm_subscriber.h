@@ -43,6 +43,15 @@ struct gsm_subscriber {
 	uint16_t lac;
 	char name[GSM_NAME_LENGTH];
 	char extension[GSM_EXTENSION_LENGTH];
+	/* Optional: an external phone number alias.
+	 *
+	 * This allows user to have an internal short number, while having an
+	 * external globally routable MSISDN at the same time.
+	 * If external_number is set for a user, it will be used for all
+	 * communications outside our network instead of the internal extension.
+	 *
+	 * PS At this moment it is used only by incoming/outgoing SMPP SMS. */
+	char external_number[GSM_EXTENSION_LENGTH+1];
 	int authorized;
 	time_t expire_lu;
 

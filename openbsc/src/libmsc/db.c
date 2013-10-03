@@ -61,6 +61,7 @@ static char *create_stmts[] = {
 		"imsi NUMERIC UNIQUE NOT NULL, "
 		"name TEXT, "
 		"extension TEXT UNIQUE, "
+		"external_number TEXT, "
 		"authorized INTEGER NOT NULL DEFAULT 0, "
 		"tmsi TEXT UNIQUE, "
 		"lac INTEGER NOT NULL DEFAULT 0, "
@@ -633,6 +634,10 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 	if (string)
 		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
 
+	string = dbi_result_get_string(result, "external_number");
+	if (string)
+		strncpy(subscr->external_number, string, GSM_EXTENSION_LENGTH);
+
 	subscr->lac = dbi_result_get_ulonglong(result, "lac");
 
 	if (!dbi_result_field_is_null(result, "expire_lu"))
@@ -675,8 +680,8 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 		dbi_conn_quote_string_copy(conn, id, &quoted);
 		result = dbi_conn_queryf(conn,
 			BASE_QUERY
-			"WHERE extension = %s ",
-			quoted
+			"WHERE extension = %s OR external_number = %s ",
+			quoted, quoted
 		);
 		free(quoted);
 		break;
@@ -706,8 +711,9 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 	subscr->id = dbi_result_get_ulonglong(result, "id");
 
 	db_set_from_query(subscr, result);
-	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
-		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
+	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', EXTERN '%s', LAC %hu, AUTH %u\n",
+		subscr->id, subscr->imsi, subscr->name, subscr->tmsi,
+		subscr->extension, subscr->external_number,
 		subscr->lac, subscr->authorized);
 	dbi_result_free(result);
 
@@ -749,12 +755,14 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 {
 	dbi_result result;
 	char tmsi[14];
-	char *q_tmsi, *q_name, *q_extension;
+	char *q_tmsi, *q_name, *q_extension, *q_external_number;
 
 	dbi_conn_quote_string_copy(conn, 
 				   subscriber->name, &q_name);
 	dbi_conn_quote_string_copy(conn, 
 				   subscriber->extension, &q_extension);
+	dbi_conn_quote_string_copy(conn,
+				   subscriber->external_number, &q_external_number);
 	
 	if (subscriber->tmsi != GSM_RESERVED_TMSI) {
 		sprintf(tmsi, "%u", subscriber->tmsi);
@@ -770,6 +778,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			"SET updated = datetime('now'), "
 			"name = %s, "
 			"extension = %s, "
+			"external_number = %s, "
 			"authorized = %i, "
 			"tmsi = %s, "
 			"lac = %i, "
@@ -777,6 +786,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			"WHERE imsi = %s ",
 			q_name,
 			q_extension,
+			q_external_number,
 			subscriber->authorized,
 			q_tmsi,
 			subscriber->lac,
@@ -787,6 +797,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			"SET updated = datetime('now'), "
 			"name = %s, "
 			"extension = %s, "
+			"external_number = %s, "
 			"authorized = %i, "
 			"tmsi = %s, "
 			"lac = %i, "
@@ -794,6 +805,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			"WHERE imsi = %s ",
 			q_name,
 			q_extension,
+			q_external_number,
 			subscriber->authorized,
 			q_tmsi,
 			subscriber->lac,
@@ -804,6 +816,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 	free(q_tmsi);
 	free(q_name);
 	free(q_extension);
+	free(q_external_number);
 
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR, "Failed to update Subscriber (by IMSI).\n");
@@ -1075,6 +1088,16 @@ int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber)
 	DEBUGP(DDB, "Allocated extension %i for IMSI %s.\n", try, subscriber->imsi);
 	return db_sync_subscriber(subscriber);
 }
+
+int db_subscriber_assoc_extern_number(struct gsm_subscriber *subscriber, char *extern_number)
+{
+	strncpy(subscriber->external_number, extern_number,
+		sizeof(subscriber->external_number)-1);
+	DEBUGP(DDB, "Associated external number '%s' for "GSM_SUBS_FMT_STR".\n",
+		subscriber->external_number, GSM_SUBS_FMT_VAL(subscriber));
+	return db_sync_subscriber(subscriber);
+}
+
 /*
  * try to allocate a new unique token for this subscriber and return it
  * via a parameter. if the subscriber already has a token, return

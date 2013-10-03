@@ -319,7 +319,8 @@ struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 	struct gsm_subscriber *subscr;
 
 	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
-		if (strcmp(subscr->extension, ext) == 0)
+		if (strcmp(subscr->extension, ext) == 0
+			|| strcmp(subscr->external_number, ext) == 0)
 			return subscr_get(subscr);
 	}
 

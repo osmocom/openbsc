@@ -32,32 +32,45 @@
 static struct gsm_network dummy_net;
 
 #define SUBSCR_PUT(sub) \
-	sub->net = &dummy_net;	\
-	subscr_put(sub);
+	if (sub) { \
+		sub->net = &dummy_net;	\
+		subscr_put(sub); \
+	}
 
 #define COMPARE(original, copy) \
-	if (original->id != copy->id) \
-		printf("Ids do not match in %s:%d %llu %llu\n", \
-			__FUNCTION__, __LINE__, original->id, copy->id); \
-	if (original->lac != copy->lac) \
-		printf("LAC do not match in %s:%d %d %d\n", \
-			__FUNCTION__, __LINE__, original->lac, copy->lac); \
-	if (original->authorized != copy->authorized) \
-		printf("Authorize do not match in %s:%d %d %d\n", \
-			__FUNCTION__, __LINE__, original->authorized, \
-			copy->authorized); \
-	if (strcmp(original->imsi, copy->imsi) != 0) \
-		printf("IMSIs do not match in %s:%d '%s' '%s'\n", \
-			__FUNCTION__, __LINE__, original->imsi, copy->imsi); \
-	if (original->tmsi != copy->tmsi) \
-		printf("TMSIs do not match in %s:%d '%u' '%u'\n", \
-			__FUNCTION__, __LINE__, original->tmsi, copy->tmsi); \
-	if (strcmp(original->name, copy->name) != 0) \
-		printf("names do not match in %s:%d '%s' '%s'\n", \
-			__FUNCTION__, __LINE__, original->name, copy->name); \
-	if (strcmp(original->extension, copy->extension) != 0) \
-		printf("Extensions do not match in %s:%d '%s' '%s'\n", \
-			__FUNCTION__, __LINE__, original->extension, copy->extension); \
+	if (!original) \
+		printf("NULL original in %s:%d\n", \
+			__FUNCTION__, __LINE__); \
+	if (!copy) \
+		printf("NULL copy in %s:%d\n", \
+			__FUNCTION__, __LINE__); \
+	if (original && copy) { \
+		if (original->id != copy->id) \
+			printf("Ids do not match in %s:%d %llu %llu\n", \
+				__FUNCTION__, __LINE__, original->id, copy->id); \
+		if (original->lac != copy->lac) \
+			printf("LAC do not match in %s:%d %d %d\n", \
+				__FUNCTION__, __LINE__, original->lac, copy->lac); \
+		if (original->authorized != copy->authorized) \
+			printf("Authorize do not match in %s:%d %d %d\n", \
+				__FUNCTION__, __LINE__, original->authorized, \
+				copy->authorized); \
+		if (strcmp(original->imsi, copy->imsi) != 0) \
+			printf("IMSIs do not match in %s:%d '%s' '%s'\n", \
+				__FUNCTION__, __LINE__, original->imsi, copy->imsi); \
+		if (original->tmsi != copy->tmsi) \
+			printf("TMSIs do not match in %s:%d '%u' '%u'\n", \
+				__FUNCTION__, __LINE__, original->tmsi, copy->tmsi); \
+		if (strcmp(original->name, copy->name) != 0) \
+			printf("names do not match in %s:%d '%s' '%s'\n", \
+				__FUNCTION__, __LINE__, original->name, copy->name); \
+		if (strcmp(original->extension, copy->extension) != 0) \
+			printf("Extensions do not match in %s:%d '%s' '%s'\n", \
+				__FUNCTION__, __LINE__, original->extension, copy->extension); \
+		if (strcmp(original->external_number, copy->external_number) != 0) \
+			printf("External numbers do not match in %s:%d '%s' '%s'\n", \
+				__FUNCTION__, __LINE__, original->external_number, copy->external_number); \
+	}
 
 int main()
 {
@@ -93,6 +106,7 @@ int main()
 	alice = db_create_subscriber(alice_imsi);
 	db_subscriber_assoc_imei(alice, "1234567890");
 	db_subscriber_alloc_tmsi(alice);
+	db_subscriber_assoc_extern_number(alice, "123456789012345");
 	alice->lac=42;
 	db_sync_subscriber(alice);
 	/* Get by TMSI */
@@ -111,6 +125,10 @@ int main()
 	SUBSCR_PUT(alice_db);
 	/* Get by extension */
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, alice->extension);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	/* And now by the external number alias */
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, "123456789012345");
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);
 	SUBSCR_PUT(alice);
@@ -122,6 +140,8 @@ int main()
 	db_sync_subscriber(alice);
 	db_subscriber_assoc_imei(alice, "1234567890");
 	db_subscriber_assoc_imei(alice, "6543560920");
+	/* This number is too long and should be truncated. */
+	db_subscriber_assoc_extern_number(alice, "2345678901234567890");
 	/* Get by TMSI */
 	snprintf(scratch_str, sizeof(scratch_str), "%"PRIu32, alice->tmsi);
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_TMSI, scratch_str);
@@ -138,6 +158,10 @@ int main()
 	SUBSCR_PUT(alice_db);
 	/* Get by extension */
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, alice->extension);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	/* And now by the external number alias */
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, "234567890123456");
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);
 	SUBSCR_PUT(alice);
