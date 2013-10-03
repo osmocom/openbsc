@@ -65,6 +65,9 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 	if (subscr->extension)
 		vty_out(vty, "    Extension: %s%s", subscr->extension,
 			VTY_NEWLINE);
+	if (strlen(subscr->external_number))
+		vty_out(vty, "    External number: %s%s", subscr->external_number,
+			VTY_NEWLINE);
 	vty_out(vty, "    LAC: %d/0x%x%s",
 		subscr->lac, subscr->lac, VTY_NEWLINE);
 	vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
