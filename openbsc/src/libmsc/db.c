@@ -1015,7 +1015,7 @@ int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IM
 	dbi_result result;
 
 	strncpy(subscriber->equipment.imei, imei,
-		sizeof(subscriber->equipment.imei)-1),
+		sizeof(subscriber->equipment.imei)-1);
 
 	result = dbi_conn_queryf(conn,
 		"INSERT OR IGNORE INTO Equipment "
