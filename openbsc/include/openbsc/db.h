@@ -35,10 +35,8 @@ int db_prepare(void);
 int db_fini(void);
 
 /* subscriber management */
-struct gsm_subscriber *db_create_subscriber(struct gsm_network *net,
-					    char *imsi);
-struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
-					 enum gsm_subscriber_field field,
+struct gsm_subscriber *db_create_subscriber(const char *imsi);
+struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 					 const char *subscr);
 int db_sync_subscriber(struct gsm_subscriber *subscriber);
 int db_subscriber_expire(void *priv, void (*callback)(void *priv, long long unsigned int id));

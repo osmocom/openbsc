@@ -315,13 +315,13 @@ int db_fini(void)
 	return 0;
 }
 
-struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
+struct gsm_subscriber *db_create_subscriber(const char *imsi)
 {
 	dbi_result result;
 	struct gsm_subscriber *subscr;
 
 	/* Is this subscriber known in the db? */
-	subscr = db_get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi);
+	subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi);
 	if (subscr) {
 		result = dbi_conn_queryf(conn,
                          "UPDATE Subscriber set updated = datetime('now') "
@@ -346,7 +346,6 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 	);
 	if (!result)
 		LOGP(DDB, LOGL_ERROR, "Failed to create Subscriber by IMSI.\n");
-	subscr->net = net;
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
 	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	dbi_result_free(result);
@@ -645,8 +644,7 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 }
 
 #define BASE_QUERY "SELECT * FROM Subscriber "
-struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
-					 enum gsm_subscriber_field field,
+struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 					 const char *id)
 {
 	dbi_result result;
@@ -704,7 +702,6 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 	}
 
 	subscr = subscr_alloc();
-	subscr->net = net;
 	subscr->id = dbi_result_get_ulonglong(result, "id");
 
 	db_set_from_query(subscr, result);

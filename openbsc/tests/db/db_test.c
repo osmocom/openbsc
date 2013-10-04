@@ -78,32 +78,32 @@ int main()
 	struct gsm_subscriber *alice_db;
 
 	char *alice_imsi = "3243245432345";
-	alice = db_create_subscriber(NULL, alice_imsi);
+	alice = db_create_subscriber(alice_imsi);
 	db_sync_subscriber(alice);
-	alice_db = db_get_subscriber(NULL, GSM_SUBSCRIBER_IMSI, alice->imsi);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice->imsi);
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);
 	SUBSCR_PUT(alice);
 
 	alice_imsi = "3693245423445";
-	alice = db_create_subscriber(NULL, alice_imsi);
+	alice = db_create_subscriber(alice_imsi);
 	db_subscriber_assoc_imei(alice, "1234567890");
 	db_subscriber_alloc_tmsi(alice);
 	alice->lac=42;
 	db_sync_subscriber(alice);
-	alice_db = db_get_subscriber(NULL, GSM_SUBSCRIBER_IMSI, alice_imsi);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice_imsi);
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice);
 	SUBSCR_PUT(alice_db);
 
 	alice_imsi = "9993245423445";
-	alice = db_create_subscriber(NULL, alice_imsi);
+	alice = db_create_subscriber(alice_imsi);
 	db_subscriber_alloc_tmsi(alice);
 	alice->lac=42;
 	db_sync_subscriber(alice);
 	db_subscriber_assoc_imei(alice, "1234567890");
 	db_subscriber_assoc_imei(alice, "6543560920");
-	alice_db = db_get_subscriber(NULL, GSM_SUBSCRIBER_IMSI, alice_imsi);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice_imsi);
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice);
 	SUBSCR_PUT(alice_db);

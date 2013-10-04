@@ -474,7 +474,7 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 		if (!conn->subscr) {
 			conn->subscr = subscr_get_by_imsi(net, mi_string);
 			if (!conn->subscr)
-				conn->subscr = db_create_subscriber(net, mi_string);
+				conn->subscr = subscr_create_subscriber(net, mi_string);
 		}
 		if (conn->loc_operation)
 			conn->loc_operation->waiting_for_imsi = 0;
@@ -586,7 +586,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 		/* look up subscriber based on IMSI, create if not found */
 		subscr = subscr_get_by_imsi(bts->network, mi_string);
 		if (!subscr) {
-			subscr = db_create_subscriber(bts->network, mi_string);
+			subscr = subscr_create_subscriber(bts->network, mi_string);
 		}
 		break;
 	case GSM_MI_TYPE_TMSI:

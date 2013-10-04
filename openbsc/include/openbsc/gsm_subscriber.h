@@ -73,6 +73,8 @@ enum gsm_subscriber_update_reason {
 
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
+struct gsm_subscriber *subscr_create_subscriber(struct gsm_network *net,
+						const char *imsi);
 struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
 					  uint32_t tmsi);
 struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
