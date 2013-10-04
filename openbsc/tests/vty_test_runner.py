@@ -215,6 +215,22 @@ class TestVTYNITB(TestVTYGenericBSC):
             if classNum != 10:
                 self.assertEquals(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
 
+    def testSubscriberCreate(self):
+        self.vty.enable()
+
+        imsi = "204300854013739"
+
+        # Initially we don't have this subscriber
+        self.vty.verify('show subscriber imsi '+imsi, ['% No subscriber found for imsi '+imsi])
+
+        # Lets create one
+        res = self.vty.command('subscriber create imsi '+imsi)
+        self.assert_(res.find("    IMSI: "+imsi) > 0)
+
+        # Now we have it
+        res = self.vty.command('show subscriber imsi '+imsi)
+        self.assert_(res.find("    IMSI: "+imsi) > 0)
+
 class TestVTYBSC(TestVTYGenericBSC):
 
     def vty_command(self):
