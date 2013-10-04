@@ -520,7 +520,7 @@ static const char *lupd_name(uint8_t type)
 	case GSM48_LUPD_NORMAL:
 		return "NORMAL";
 	case GSM48_LUPD_PERIODIC:
-		return "PEROIDOC";
+		return "PERIODIC";
 	case GSM48_LUPD_IMSI_ATT:
 		return "IMSI ATTACH";
 	default:
