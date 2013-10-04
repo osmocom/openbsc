@@ -54,7 +54,7 @@ static struct gsm_network dummy_net;
 		printf("names do not match in %s:%d '%s' '%s'\n", \
 			__FUNCTION__, __LINE__, original->name, copy->name); \
 	if (strcmp(original->extension, copy->extension) != 0) \
-		printf("names do not match in %s:%d '%s' '%s'\n", \
+		printf("Extensions do not match in %s:%d '%s' '%s'\n", \
 			__FUNCTION__, __LINE__, original->extension, copy->extension); \
 
 int main()
