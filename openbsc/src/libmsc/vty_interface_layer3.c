@@ -218,6 +218,32 @@ DEFUN(show_subscr,
 	return CMD_SUCCESS;
 }
 
+DEFUN(subscriber_create,
+      subscriber_create_cmd,
+      "subscriber create imsi ID",
+	"Operations on a Subscriber\n" \
+	"Create new subscriber\n" \
+	"Identify the subscriber by his IMSI\n" \
+	"Identifier for the subscriber\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr;
+
+	subscr = db_create_subscriber(gsmnet, argv[0]);
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber created for IMSI %s%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* Show info about the created subscriber. */
+	subscr_dump_full_vty(vty, subscr, 0);
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(subscriber_send_pending_sms,
       subscriber_send_pending_sms_cmd,
       "subscriber " SUBSCR_TYPES " ID sms pending-send",
@@ -910,6 +936,7 @@ int bsc_vty_init_extra(void)
 
 	install_element_ve(&sms_send_pend_cmd);
 
+	install_element_ve(&subscriber_create_cmd);
 	install_element_ve(&subscriber_send_sms_cmd);
 	install_element_ve(&subscriber_silent_sms_cmd);
 	install_element_ve(&subscriber_silent_call_start_cmd);
