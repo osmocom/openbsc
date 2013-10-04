@@ -337,8 +337,8 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 
 	sms_alphabet = gsm338_get_sms_alphabet(gsms->data_coding_scheme);
 	if (sms_alphabet == 0xffffffff) {
-		sms_free(gsms);
-		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
+		rc = GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
+		goto out;
 	}
 
 	switch (sms_vpf) {
@@ -359,7 +359,8 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	default:
 		LOGP(DLSMS, LOGL_NOTICE,
 		     "SMS Validity period not implemented: 0x%02x\n", sms_vpf);
-		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
+		rc = GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
+		goto out;
 	}
 	gsms->user_data_len = *smsp++;
 	if (gsms->user_data_len) {
