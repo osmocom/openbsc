@@ -2436,10 +2436,10 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 		LOGP(DNM, LOGL_ERROR, "RSL CONNECT NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			DEBUGPC(DNM, " CAUSE=%s\n",
+			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n",
 				abis_nm_nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
-			DEBUGPC(DNM, "\n");
+			LOGPC(DNM, LOGL_ERROR, "\n");
 		break;
 	case NM_MT_IPACC_SET_NVATTR_ACK:
 		DEBUGPC(DNM, "SET NVATTR ACK\n");
