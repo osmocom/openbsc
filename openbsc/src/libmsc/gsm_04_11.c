@@ -191,6 +191,9 @@ int gsm411_mn_send(struct gsm411_smr_inst *inst, int msg_type,
 
 static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 {
+	LOGP(DLSMS, LOGL_INFO, "Received SMS RP-SUBMIT from " GSM_SUBS_FMT_STR
+		" to " GSM_SUBS_FMT_STR ".\n",
+		GSM_SUBS_FMT_VAL(gsms->sender), GSM_SUBS_FMT_VAL(gsms->receiver));
 	if (db_sms_store(gsms) != 0) {
 		LOGP(DLSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
 		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
@@ -831,6 +834,11 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		}
 	}
 
+	LOGP(DLSMS, LOGL_INFO, "Received %s from " GSM_SUBS_FMT_STR ".\n",
+		(msg_type==GSM411_MT_CP_DATA)?"CP-DATA":(msg_type==GSM411_MT_CP_ACK)?"CP-ACK":
+		(msg_type==GSM411_MT_CP_ERROR)?"CP-ERROR":"UNKNOWN",
+		GSM_SUBS_FMT_VAL(conn->subscr));
+
 	gsm411_smc_recv(&trans->sms.smc_inst,
 		(new_trans) ? GSM411_MMSMS_EST_IND : GSM411_MMSMS_DATA_IND,
 		msg, msg_type);
@@ -900,6 +908,9 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	/* generate the 03.40 TPDU */
 	rc = gsm340_gen_tpdu(msg, sms);
 	if (rc < 0) {
+		LOGP(DLSMS, LOGL_ERROR, "Error encoding SMS from " GSM_SUBS_FMT_STR
+			" to " GSM_SUBS_FMT_STR ".\n",
+			GSM_SUBS_FMT_VAL(sms->sender), GSM_SUBS_FMT_VAL(sms->receiver));
 		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
 		sms_free(sms);
 		trans->sms.sms = NULL;
@@ -911,6 +922,9 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	*rp_ud_len = rc;
 
 	DEBUGP(DLSMS, "TX: SMS DELIVER\n");
+	LOGP(DLSMS, LOGL_INFO, "Sending SMS DELIVER from " GSM_SUBS_FMT_STR
+		" to " GSM_SUBS_FMT_STR ".\n",
+		GSM_SUBS_FMT_VAL(sms->sender), GSM_SUBS_FMT_VAL(sms->receiver));
 
 	osmo_counter_inc(conn->bts->network->stats.sms.delivered);
 	db_sms_inc_deliver_attempts(trans->sms.sms);
@@ -959,6 +973,9 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 			   struct gsm_sms *sms)
 {
 	struct gsm_subscriber_connection *conn;
+
+	LOGP(DLSMS, LOGL_INFO, "Request to send SMS to " GSM_SUBS_FMT_STR ".\n",
+		GSM_SUBS_FMT_VAL(subscr));
 
 	/* check if we already have an open lchan to the subscriber.
 	 * if yes, send the SMS this way */
