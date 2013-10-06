@@ -346,11 +346,8 @@ struct gsm_bts_trx {
 	/* how do we talk RSL with this TRX? */
 	struct gsm_e1_subslot rsl_e1_link;
 	uint8_t rsl_tei;
-#ifdef ROLE_BSC
 	struct e1inp_sign_link *rsl_link;
-#else
-	struct ipabis_link *rsl_link;
-#endif
+
 	/* Some BTS (specifically Ericsson RBS) have a per-TRX OML Link */
 	struct e1inp_sign_link *oml_link;
 
