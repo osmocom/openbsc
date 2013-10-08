@@ -95,7 +95,6 @@ static char *create_stmts[] = {
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"sent TIMESTAMP, "
-		"receiver_id INTEGER NOT NULL, "
 		"deliver_attempts INTEGER NOT NULL DEFAULT 0, "
 		/* data directly copied/derived from SMS */
 		"valid_until TIMESTAMP, "
@@ -1113,19 +1112,19 @@ int db_sms_store(struct gsm_sms *sms)
 	/* FIXME: correct validity period */
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO SMS "
-		"(created, receiver_id, valid_until, "
+		"(created, valid_until, "
 		 "reply_path_req, status_rep_req, protocol_id, "
 		 "data_coding_scheme, ud_hdr_ind, "
 		 "user_data, text, "
 		 "dest_addr, dest_ton, dest_npi, "
 		 "src_addr, src_ton, src_npi) VALUES "
-		"(datetime('now'), %llu, %u, "
+		"(datetime('now'), %u, "
 		"%u, %u, %u, "
 		"%u, %u, "
 		"%s, %s, "
 		"%s, %u, %u, "
 		"%s, %u, %u)",
-		sms->receiver ? sms->receiver->id : 0, validity_timestamp,
+		validity_timestamp,
 		sms->reply_path_req, sms->status_rep_req, sms->protocol_id,
 		sms->data_coding_scheme, sms->ud_hdr_ind,
 		q_udata, q_text,
@@ -1146,7 +1145,6 @@ int db_sms_store(struct gsm_sms *sms)
 static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result result)
 {
 	struct gsm_sms *sms = sms_alloc();
-	long long unsigned int receiver_id;
 	const char *text, *daddr, *saddr;
 	const unsigned char *user_data;
 
@@ -1154,16 +1152,6 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 		return NULL;
 
 	sms->id = dbi_result_get_ulonglong(result, "id");
-
-	receiver_id = dbi_result_get_ulonglong(result, "receiver_id");
-	sms->receiver = subscr_get_by_id(net, receiver_id);
-	if (!sms->receiver) {
-		LOGP(DLSMS, LOGL_ERROR,
-			"Failed to find receiver(%llu) for id(%llu)\n",
-			receiver_id, sms->id);
-		sms_free(sms);
-		return NULL;
-	}
 
 	/* FIXME: validity */
 	/* FIXME: those should all be get_uchar, but sqlite3 is braindead */
@@ -1182,6 +1170,7 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 		strncpy(sms->dst.addr, daddr, sizeof(sms->dst.addr));
 		sms->dst.addr[sizeof(sms->dst.addr)-1] = '\0';
 	}
+	sms->receiver = subscr_get_by_extension(net, sms->dst.addr);
 
 	sms->src.npi = dbi_result_get_uint(result, "src_npi");
 	sms->src.ton = dbi_result_get_uint(result, "src_ton");
@@ -1236,7 +1225,7 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long mi
 	result = dbi_conn_queryf(conn,
 		"SELECT SMS.* "
 			"FROM SMS JOIN Subscriber ON "
-				"SMS.receiver_id = Subscriber.id "
+				"SMS.dest_addr = Subscriber.extension "
 			"WHERE SMS.id >= %llu AND SMS.sent IS NULL "
 				"AND Subscriber.lac > 0 "
 			"ORDER BY SMS.id LIMIT 1",
@@ -1266,10 +1255,10 @@ struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net,
 	result = dbi_conn_queryf(conn,
 		"SELECT SMS.* "
 			"FROM SMS JOIN Subscriber ON "
-				"SMS.receiver_id = Subscriber.id "
-			"WHERE SMS.receiver_id >= %llu AND SMS.sent IS NULL "
+				"SMS.dest_addr = Subscriber.extension "
+			"WHERE Subscriber.id >= %llu AND SMS.sent IS NULL "
 				"AND Subscriber.lac > 0 AND SMS.deliver_attempts < %u "
-			"ORDER BY SMS.receiver_id, SMS.id LIMIT 1",
+			"ORDER BY Subscriber.id, SMS.id LIMIT 1",
 		min_subscr_id, failed);
 	if (!result)
 		return NULL;
@@ -1295,8 +1284,8 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 	result = dbi_conn_queryf(conn,
 		"SELECT SMS.* "
 			"FROM SMS JOIN Subscriber ON "
-				"SMS.receiver_id = Subscriber.id "
-			"WHERE SMS.receiver_id = %llu AND SMS.sent IS NULL "
+				"SMS.dest_addr = Subscriber.extension "
+			"WHERE Subscriber.id = %llu AND SMS.sent IS NULL "
 				"AND Subscriber.lac > 0 "
 			"ORDER BY SMS.id LIMIT 1",
 		subscr->id);
