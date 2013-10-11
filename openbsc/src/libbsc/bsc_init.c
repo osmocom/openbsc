@@ -329,8 +329,10 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 			llist_for_each_entry(cur_trx, &trx->bts->trx_list, list) {
 				int i;
 
-				for (i = 0; i < ARRAY_SIZE(cur_trx->ts); i++)
+				for (i = 0; i < ARRAY_SIZE(cur_trx->ts); i++) {
 					generate_ma_for_ts(&cur_trx->ts[i]);
+					cur_trx->ts[i].flags |= TS_F_PDCH_MODE;
+				}
 			}
 		}
 		if (isd->link_type == E1INP_SIGN_RSL)

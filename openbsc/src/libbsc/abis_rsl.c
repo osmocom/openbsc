@@ -470,6 +470,15 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	if (rc < 0)
 		return rc;
 
+	/* if channel is in PDCH mode, deactivate PDCH first */
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
+	    && (lchan->ts->flags & TS_F_PDCH_MODE)) {
+		/* store activation type and handover reference */
+		lchan->dyn_pdch.act_type = act_type;
+		lchan->dyn_pdch.ho_ref = ho_ref;
+		return rsl_ipacc_pdch_activate(lchan->ts, 0);
+	}
+
 	ta = lchan->rqd_ta;
 
 	/* BS11 requires TA shifted by 2 bits */
@@ -746,6 +755,11 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 			gsm_lchan_name(lchan),
 			gsm_lchans_name(lchan->state));
+
+	/* Put PDCH channel back into PDCH mode first */
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH)
+		return rsl_ipacc_pdch_activate(lchan->ts, 1);
+
 	do_lchan_free(lchan);
 
 	return 0;
@@ -1187,6 +1201,26 @@ static int rsl_rx_hando_det(struct msgb *msg)
 	return 0;
 }
 
+static int rsl_rx_pdch_act_ack(struct msgb *msg)
+{
+	msg->lchan->ts->flags |= TS_F_PDCH_MODE;
+
+	/* We have activated PDCH, so now the channel is available again. */
+	do_lchan_free(msg->lchan);
+
+	return 0;
+}
+
+static int rsl_rx_pdch_deact_ack(struct msgb *msg)
+{
+	msg->lchan->ts->flags &= ~TS_F_PDCH_MODE;
+
+	rsl_chan_activate_lchan(msg->lchan, msg->lchan->dyn_pdch.act_type,
+				msg->lchan->dyn_pdch.ho_ref);
+
+	return 0;
+}
+
 static int abis_rsl_rx_dchan(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
@@ -1225,14 +1259,14 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_ACK:
 		DEBUGP(DRSL, "%s IPAC PDCH ACT ACK\n", ts_name);
-		msg->lchan->ts->flags |= TS_F_PDCH_MODE;
+		rc = rsl_rx_pdch_act_ack(msg);
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_NACK:
 		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH ACT NACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_ACK:
 		DEBUGP(DRSL, "%s IPAC PDCH DEACT ACK\n", ts_name);
-		msg->lchan->ts->flags &= ~TS_F_PDCH_MODE;
+		rc = rsl_rx_pdch_deact_ack(msg);
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_NACK:
 		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH DEACT NACK\n", ts_name);
