@@ -18,7 +18,8 @@ noinst_HEADERS = abis_nm.h abis_rsl.h db.h gsm_04_08.h gsm_data.h \
 		 gprs_gb_parse.h smpp.h meas_feed.h \
 		 gprs_gsup_client.h bsc_msg_filter.h \
 		 oap.h oap_messages.h \
-		 gtphub.h
+		 gtphub.h \
+		 pdch_defrag.h
 
 openbsc_HEADERS = gsm_04_08.h meas_rep.h bsc_api.h
 openbscdir = $(includedir)/openbsc
