@@ -24,5 +24,6 @@ libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
 			arfcn_range_encode.c bsc_ctrl_commands.c \
 			bsc_ctrl_lookup.c \
 			net_init.c \
-			bsc_dyn_pdch.c
+			bsc_dyn_pdch.c \
+			pdch_defrag.c
 
