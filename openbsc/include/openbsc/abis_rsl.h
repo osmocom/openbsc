@@ -43,7 +43,7 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		      uint8_t bs_power, uint8_t ms_power,
 		      uint8_t ta);
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
-			    uint8_t ta, uint8_t ho_ref);
+			    uint8_t ho_ref);
 int rsl_chan_mode_modify_req(struct gsm_lchan *ts);
 int rsl_encryption_cmd(struct msgb *msg);
 int rsl_paging_cmd(struct gsm_bts *bts, uint8_t paging_group, uint8_t len,

@@ -476,12 +476,13 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, uint8_t chan_nr,
 #endif
 
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
-			    uint8_t ta, uint8_t ho_ref)
+			    uint8_t ho_ref)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
 	int rc;
 	uint8_t *len;
+	uint8_t ta;
 
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	struct rsl_ie_chan_mode cm;
@@ -490,6 +491,12 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	rc = channel_mode_from_lchan(&cm, lchan);
 	if (rc < 0)
 		return rc;
+
+	ta = lchan->rqd_ta;
+
+	/* BS11 requires TA shifted by 2 bits */
+	if (lchan->ts->trx->bts->type == GSM_BTS_TYPE_BS11)
+		ta <<= 2;
 
 	memset(&cd, 0, sizeof(cd));
 	gsm48_lchan2chan_desc(&cd, lchan);
@@ -1469,10 +1476,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		gsm_lchant_name(lchan->type), gsm_chreq_name(chreq_reason),
 		rqd_ref->ra, rqd_ta);
 
-	/* BS11 requires TA shifted by 2 bits */
-	if (bts->type == GSM_BTS_TYPE_BS11)
-		rqd_ta <<= 2;
-	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, 0);
+	rsl_chan_activate_lchan(lchan, 0x00, 0);
 
 	return 0;
 }

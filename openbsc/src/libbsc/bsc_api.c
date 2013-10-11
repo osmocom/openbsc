@@ -200,6 +200,7 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 	memcpy(&new_lchan->encr, &conn->lchan->encr, sizeof(new_lchan->encr));
 	new_lchan->ms_power = conn->lchan->ms_power;
 	new_lchan->bs_power = conn->lchan->bs_power;
+	new_lchan->rqd_ta = conn->lchan->rqd_ta;
 
 	/* copy new data to it */
 	new_lchan->tch_mode = chan_mode;
@@ -209,7 +210,7 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 	if (chan_mode == GSM48_CMODE_SPEECH_AMR)
 		handle_mr_config(conn, new_lchan);
 
-	if (rsl_chan_activate_lchan(new_lchan, 0x1, 0, 0) < 0) {
+	if (rsl_chan_activate_lchan(new_lchan, 0x1, 0) < 0) {
 		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
 		lchan_free(new_lchan);
 		return -1;
