@@ -645,7 +645,7 @@ DEFUN(ena_subscr_handover,
 	}
 
 	/* now start the handover */
-	ret = bsc_handover_start(conn->lchan, bts);
+	ret = bsc_handover_start(conn->lchan, NULL, bts);
 	if (ret != 0) {
 		vty_out(vty, "%% Handover failed with errno %d.%s",
 			ret, VTY_NEWLINE);

@@ -87,10 +87,13 @@ static struct bsc_handover *bsc_ho_by_old_lchan(struct gsm_lchan *old_lchan)
 
 /*! \brief Hand over the specified logical channel to the specified new BTS.
  * This is the main entry point for the actual handover algorithm, after the
- * decision whether to initiate HO to a specific BTS. */
-int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
+ * decision whether to initiate HO to a specific BTS.
+ *
+ * If new_lchan is NULL, allocate a new lchan. If not NULL, new_lchan must be a
+ * newly allocated lchan passed in by the caller. */
+int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
+		       struct gsm_bts *new_bts)
 {
-	struct gsm_lchan *new_lchan;
 	struct bsc_handover *ho;
 	static uint8_t ho_ref;
 	int rc;
@@ -101,19 +104,20 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 		return -EBUSY;
 
 	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
-		old_lchan->ts->trx->bts->nr, bts->nr);
+	       old_lchan->ts->trx->bts->nr, new_bts->nr);
 
-	osmo_counter_inc(bts->network->stats.handover.attempted);
+	osmo_counter_inc(new_bts->network->stats.handover.attempted);
 
 	if (!old_lchan->conn) {
 		LOGP(DHO, LOGL_ERROR, "Old lchan lacks connection data.\n");
 		return -ENOSPC;
 	}
 
-	new_lchan = lchan_alloc(bts, old_lchan->type, 0);
+	if (!new_lchan)
+		new_lchan = lchan_alloc(new_bts, old_lchan->type, 0);
 	if (!new_lchan) {
 		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
-		osmo_counter_inc(bts->network->stats.handover.no_channel);
+		osmo_counter_inc(new_bts->network->stats.handover.no_channel);
 		return -ENOSPC;
 	}
 
