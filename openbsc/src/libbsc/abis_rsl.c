@@ -42,6 +42,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/core/talloc.h>
+#include <openbsc/pdch_defrag.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
@@ -64,10 +65,13 @@ static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 
 static void do_lchan_free(struct gsm_lchan *lchan)
 {
-	/* we have an error timer pending to release that */
-	if (lchan->state != LCHAN_S_REL_ERR)
-		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 	lchan_free(lchan);
+	if (lchan->state != LCHAN_S_REL_ERR) {
+		/* we don't have an error timer pending to release that */
+		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+		/* defragment TCH/F+PDCH shared channels */
+		do_pdch_defrag(lchan->ts->trx->bts);
+	}
 }
 
 static uint8_t mdisc_by_msgtype(uint8_t msg_type)
@@ -485,6 +489,15 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	if (rc < 0)
 		return rc;
 
+	/* if channel is in PDCH mode, deactivate PDCH first */
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
+	 && (lchan->ts->flags & TS_F_PDCH_MODE)) {
+		/* store activation type and handover reference */
+		lchan->act_type = act_type;
+		lchan->ho_ref = ho_ref;
+		return rsl_ipacc_pdch_activate(lchan->ts, 0);
+	}
+
 	ta = lchan->rqd_ta;
 
 	/* BS11 requires TA shifted by 2 bits */
@@ -655,6 +668,8 @@ static void error_timeout_cb(void *data)
 	/* go back to the none state */
 	LOGP(DRSL, LOGL_NOTICE, "%s is back in operation.\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	/* defragment TCH/F+PDCH shared channels */
+	do_pdch_defrag(lchan->ts->trx->bts);
 }
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan);
@@ -753,6 +768,11 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 			gsm_lchan_name(lchan),
 			gsm_lchans_name(lchan->state));
+
+	/* Put PDCH channel back into PDCH mode first */
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH)
+		return rsl_ipacc_pdch_activate(lchan->ts, 1);
+
 	do_lchan_free(lchan);
 
 	return 0;
@@ -1161,6 +1181,26 @@ static int rsl_rx_hando_det(struct msgb *msg)
 	return 0;
 }
 
+static int rsl_rx_pdch_act_ack(struct msgb *msg)
+{
+	msg->lchan->ts->flags |= TS_F_PDCH_MODE;
+
+	/* We have activated PDCH, so now the channel is available again. */
+	do_lchan_free(msg->lchan);
+
+	return 0;
+}
+
+static int rsl_rx_pdch_deact_ack(struct msgb *msg)
+{
+	msg->lchan->ts->flags &= ~TS_F_PDCH_MODE;
+
+	rsl_chan_activate_lchan(msg->lchan, msg->lchan->act_type,
+		msg->lchan->ho_ref);
+
+	return 0;
+}
+
 static int abis_rsl_rx_dchan(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
@@ -1199,14 +1239,14 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_ACK:
 		DEBUGPC(DRSL, "%s IPAC PDCH ACT ACK\n", ts_name);
-		msg->lchan->ts->flags |= TS_F_PDCH_MODE;
+		rc = rsl_rx_pdch_act_ack(msg);
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_NACK:
 		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH ACT NACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_ACK:
 		DEBUGP(DRSL, "%s IPAC PDCH DEACT ACK\n", ts_name);
-		msg->lchan->ts->flags &= ~TS_F_PDCH_MODE;
+		rc = rsl_rx_pdch_deact_ack(msg);
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_NACK:
 		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH DEACT NACK\n", ts_name);

@@ -254,6 +254,10 @@ struct gsm_lchan {
 	struct gsm48_req_ref *rqd_ref;
 
 	struct gsm_subscriber_connection *conn;
+
+	/* channel activation type and handover ref */
+	uint8_t act_type;
+	uint8_t ho_ref;
 #else
 	/* Number of different GsmL1_Sapi_t used in osmo_bts_sysmo is 23.
 	 * Currently we don't share these headers so this is a magic number. */
