@@ -1191,11 +1191,6 @@ static int congestion_check_bts(struct gsm_bts *bts, int tchf_congestion,
 				continue;
 			switch (ts->pchan) {
 			case GSM_PCHAN_TCH_F_PDCH:
-			/* we can only consider such a dynamic channel
-			 * if the PDCH is currently inactive */
-			if (ts->flags & TS_F_PDCH_MODE)
-				break;
-			// fall through
 			case GSM_PCHAN_TCH_F:
 				lc = &ts->lchan[0];
 				/* omit if channel not active */
