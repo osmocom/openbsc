@@ -75,12 +75,24 @@ static struct gsm_lchan *
 _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 {
 	struct gsm_bts_trx_ts *ts;
-	int j, ss;
+	int j, start, stop, dir, ss;
 
 	if (!trx_is_usable(trx))
 		return NULL;
 
-	for (j = 0; j < 8; j++) {
+	if (trx->bts->chan_alloc_reverse) {
+		/* check TS 7..0 */
+		start = 7;
+		stop = -1;
+		dir = -1;
+	} else {
+		/* check TS 0..7 */
+		start = 0;
+		stop = 8;
+		dir = 1;
+	}
+
+	for (j = start; j != stop; j += dir) {
 		ts = &trx->ts[j];
 		if (!ts_is_usable(ts))
 			continue;
