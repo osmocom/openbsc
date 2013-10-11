@@ -632,7 +632,7 @@ DEFUN(ena_subscr_handover,
 	}
 
 	/* now start the handover */
-	ret = bsc_handover_start(conn->lchan, bts,
+	ret = bsc_handover_start(conn->lchan, NULL, bts,
 		(conn->lchan->type != GSM_LCHAN_TCH_H));
 	if (ret != 0) {
 		vty_out(vty, "%% Handover failed with errno %d.%s",

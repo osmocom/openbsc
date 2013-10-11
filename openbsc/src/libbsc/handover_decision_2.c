@@ -535,13 +535,13 @@ static int trigger_handover_or_assignment(struct gsm_lchan *lchan,
 		LOGPC(DHODEC, LOGL_NOTICE, "Trigger assignment due to %s to "
 			"%s.\n", get_ho_reason_name(ho_reason),
 			(full_rate) ? "TCH/F" : "TCH/H");
-		return bsc_handover_start(lchan, NULL, full_rate);
+		return bsc_handover_start(lchan, NULL, NULL, full_rate);
 	} else {
 		LOGPC(DHODEC, LOGL_NOTICE, "Trigger handover to BTS %d due to "
 			"%s to %s.\n", new_bts->nr,
 			get_ho_reason_name(ho_reason),
 			(full_rate) ? "TCH/F" : "TCH/H");
-		return bsc_handover_start(lchan, new_bts, full_rate);
+		return bsc_handover_start(lchan, NULL, new_bts, full_rate);
 	}
 
 	return 0;

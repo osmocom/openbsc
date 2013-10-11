@@ -48,7 +48,7 @@ static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
 	}
 
 	/* and actually try to handover to that cell */
-	return bsc_handover_start(lchan, new_bts,
+	return bsc_handover_start(lchan, NULL, new_bts,
 				  (lchan->type != GSM_LCHAN_TCH_H));
 }
 

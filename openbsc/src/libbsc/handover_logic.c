@@ -149,11 +149,10 @@ void add_penalty_timer(struct gsm_subscriber_connection *conn,
 /* Hand over the specified logical channel to the specified new BTS.
  * This is the main entry point for the actual handover algorithm,
  * after it has decided it wants to initiate HO to a specific BTS */
-int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *new_bts,
-	int full_rate)
+int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
+	struct gsm_bts *new_bts, int full_rate)
 {
 	struct gsm_bts *old_bts = old_lchan->ts->trx->bts;
-	struct gsm_lchan *new_lchan;
 	int chan_type;
 	struct bsc_handover *ho;
 	static uint8_t ho_ref;
@@ -180,7 +179,8 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *new_bts,
 
 	chan_type = full_rate ? GSM_LCHAN_TCH_F : GSM_LCHAN_TCH_H;
 
-	new_lchan = lchan_alloc(new_bts, chan_type, 0);
+	if (!new_lchan)
+		new_lchan = lchan_alloc(new_bts, chan_type, 0);
 	if (!new_lchan) {
 		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
 		osmo_counter_inc(new_bts->network->stats.handover.no_channel);
