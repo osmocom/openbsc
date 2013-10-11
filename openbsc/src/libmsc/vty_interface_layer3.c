@@ -942,7 +942,7 @@ DEFUN(allocate_all_channels, allocate_all_channels_cmd,
 			if (!lchan)
 				break;
 
-			rc = rsl_chan_activate_lchan(lchan, 0, 0, 0);
+			rc = rsl_chan_activate_lchan(lchan, 0, 0);
 			if (rc < 0) {
 				lchan_free(lchan);
 				break;

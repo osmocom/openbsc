@@ -157,7 +157,6 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *new_bts,
 	int chan_type;
 	struct bsc_handover *ho;
 	static uint8_t ho_ref;
-	uint8_t rqd_ta;
 	int rc;
 	int do_assignment = 0;
 
@@ -223,12 +222,8 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *new_bts,
 	new_lchan->conn = old_lchan->conn;
 	new_lchan->conn->ho_lchan = new_lchan;
 
-	rqd_ta = new_lchan->rqd_ta;
-	if (new_bts->type == GSM_BTS_TYPE_BS11)
-                rqd_ta <<= 2;
 	rc = rsl_chan_activate_lchan(new_lchan,
-		(ho->ho_async) ? RSL_ACT_INTER_ASYNC : 0x00, rqd_ta,
-			ho->ho_ref);
+		(ho->ho_async) ? RSL_ACT_INTER_ASYNC : 0x00, ho->ho_ref);
 	if (rc < 0) {
 		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
 		new_lchan->conn->ho_lchan = NULL;
