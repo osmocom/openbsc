@@ -1,4 +1,4 @@
-openbsc (0.13.0+z5) UNRELEASED; urgency=low
+openbsc (0.13.0+z19) UNRELEASED; urgency=low
 
   * New upstream tag and additional patches.
   * Add experimental osmux patches
@@ -6,6 +6,11 @@ openbsc (0.13.0+z5) UNRELEASED; urgency=low
   * Add debug output for the rewrite support
   * show ussd-connections, rebased osmux
   * New mux patches 
+  * New new new mux patches..
+  * Rebased osmux patches
+  * New GBproxy fixes....
+  * Debug package support.
+  * Init scripts for the gbproxy
 
  -- Holger Hans Peter Freyther <holger@freyther.de>  Tue, 16 Apr 2013 09:23:18 +0200
 
