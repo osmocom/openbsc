@@ -19,11 +19,11 @@ dnl checks for libraries
 AC_SEARCH_LIBS(crypt, crypt,
     [LIBCRYPT="-lcrypt"; AC_DEFINE([VTY_CRYPT_PW], [], [Use crypt functionality of vty.])])
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.5.3.60)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.6.4)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.6.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.1.0)
-PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.5.2)
+PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.6.4)
 
 # Enabke/disable the NAT?
 AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Requires SCCP])],
