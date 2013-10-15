@@ -80,7 +80,7 @@ static int proxy_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 
 	switch (event) {
 	case GPRS_NS_EVT_UNIT_DATA:
-		rc = gbprox_rcvmsg(msg, nsvc, bvci);
+		rc = gbprox_rcvmsg(msg, nsvc->nsei, bvci, nsvc->nsvci);
 		break;
 	default:
 		LOGP(DGPRS, LOGL_ERROR, "SGSN: Unknown event %u from NS\n", event);

@@ -160,7 +160,7 @@ int gprs_ns_callback(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 
 	switch (event) {
 	case GPRS_NS_EVT_UNIT_DATA:
-		return gbprox_rcvmsg(msg, nsvc, bvci);
+		return gbprox_rcvmsg(msg, nsvc->nsei, bvci, nsvc->nsvci);
 	default:
 		break;
 	}
