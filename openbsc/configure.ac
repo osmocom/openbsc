@@ -18,6 +18,9 @@ AC_PROG_RANLIB
 dnl checks for libraries
 AC_SEARCH_LIBS(crypt, crypt,
     [LIBCRYPT="-lcrypt"; AC_DEFINE([VTY_CRYPT_PW], [], [Use crypt functionality of vty.])])
+AC_SEARCH_LIBS([dlopen], [dl dld], [LIBRARY_DL="$LIBS";LIBS=""])
+AC_SUBST(LIBRARY_DL)
+
 
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.6.4)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
@@ -162,6 +165,7 @@ AC_OUTPUT(
     tests/bsc-nat-trie/Makefile
     tests/mgcp/Makefile
     tests/gprs/Makefile
+    tests/gbproxy/Makefile
     tests/si/Makefile
     tests/abis/Makefile
     tests/smpp/Makefile

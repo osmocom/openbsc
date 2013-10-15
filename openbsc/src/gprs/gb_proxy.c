@@ -658,6 +658,29 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+int gbprox_dump_peers(FILE *stream, int indent)
+{
+	struct gbprox_peer *peer;
+	struct gprs_ra_id raid;
+	int rc;
+
+	fprintf(stream, "%*sPeers:\n", indent, "");
+	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
+		gsm48_parse_ra(&raid, peer->ra);
+
+		rc = fprintf(stream, "%*s  NSEI %u, BVCI %u, %sblocked, "
+			     "RAC %u-%u-%u-%u\n",
+			     indent, "",
+			     peer->nsvc->nsei, peer->bvci,
+			     peer->blocked ? "" : "not ",
+			     raid.mcc, raid.mnc, raid.lac, raid.rac);
+
+		if (rc < 0)
+			return rc;
+	}
+
+	return 0;
+}
 
 #include <osmocom/vty/command.h>
 

@@ -60,6 +60,7 @@ tests/sccp/sccp_test
 tests/sms/sms_test
 tests/timer/timer_test
 tests/gprs/gprs_test
+tests/gbproxy/gbproxy_test
 tests/abis/abis_test
 tests/si/si_test
 tests/smpp/smpp_test

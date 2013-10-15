@@ -35,4 +35,5 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 /* Reset all persistent NS-VC's */
 int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi);
 
+int gbprox_dump_peers(FILE *stream, int indent);
 #endif
