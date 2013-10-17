@@ -279,8 +279,14 @@ struct gsm_subscriber *subscr_create_subscriber(struct gsm_network *net,
 					const char *imsi)
 {
 	struct gsm_subscriber *subscr = db_create_subscriber(imsi);
-	if (subscr)
+	if (subscr) {
 		subscr->net = net;
+		if (subscr->net->auth_policy == GSM_AUTH_POLICY_BLACKLIST) {
+			subscr->authorized = 1;
+			db_sync_subscriber(subscr);	
+		}
+	}
+
 	return subscr;
 }
 

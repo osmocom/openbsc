@@ -194,6 +194,7 @@ enum gsm_auth_policy {
 	GSM_AUTH_POLICY_CLOSED, /* only subscribers authorized in DB */
 	GSM_AUTH_POLICY_ACCEPT_ALL, /* accept everyone, even if not authorized in DB */
 	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
+	GSM_AUTH_POLICY_BLACKLIST /* accept everyone, except subscribers not authorized in DB */
 };
 
 #define GSM_T3101_DEFAULT 10
