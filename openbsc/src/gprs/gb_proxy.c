@@ -693,11 +693,13 @@ int gbprox_rcvmsg(struct msgb *msg, uint16_t nsei, uint16_t ns_bvci, uint16_t ns
 
 		/* else: SGSN -> BSS direction */
 		if (!peer) {
-			LOGP(DGPRS, LOGL_INFO, "Allocationg new peer for "
-			     "BVCI=%u via NSVC=%u/NSEI=%u\n", ns_bvci,
-			     nsvci, nsei);
-			peer = peer_alloc(ns_bvci);
-			peer->nsei = nsei;
+			LOGP(DGPRS, LOGL_INFO, "Didn't find peer for "
+			     "BVCI=%u for message from NSVC=%u/NSEI=%u (SGSN)\n",
+			     ns_bvci, nsvci, nsei);
+			rate_ctr_inc(&get_global_ctrg()->
+				     ctr[GBPROX_GLOB_CTR_INV_BVCI]);
+			return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI,
+					       &ns_bvci, msg);
 		}
 		if (peer->blocked) {
 			LOGP(DGPRS, LOGL_NOTICE, "Dropping PDU for "

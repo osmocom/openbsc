@@ -804,14 +804,15 @@ PROCESSING UNITDATA from 0x05060708:32000
 CALLBACK, event 0, msg length 0, bvci 0x10ff
 
 
-NS UNITDATA MESSAGE to SGSN, BVCI 0x10ff, msg length 0
+NS UNITDATA MESSAGE to SGSN, BVCI 0x0000, msg length 10
+41 07 81 05 04 82 10 ff 15 80 
 
+MESSAGE to SGSN at 0x05060708:32000, msg length 14
+00 00 00 00 41 07 81 05 04 82 10 ff 15 80 
 
-MESSAGE to SGSN at 0x05060708:32000, msg length 4
-00 00 10 ff 
-
-result (UNITDATA) = 4
+result (UNITDATA) = 14
 
 Gbproxy global:
+    Invalid BVC Identifier          : 1
 ===== NS protocol test END
 
