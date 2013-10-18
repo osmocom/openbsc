@@ -800,6 +800,37 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+int gbprox_dump_global(FILE *stream, int indent, int verbose)
+{
+	unsigned int i;
+	const struct rate_ctr_group_desc *desc;
+	int rc;
+
+	rc = fprintf(stream, "%*sGbproxy global:\n", indent, "");
+	if (rc < 0)
+		return rc;
+
+	if (!verbose)
+		return 0;
+
+	desc = get_global_ctrg()->desc;
+
+	for (i = 0; i < desc->num_ctr; i++) {
+		struct rate_ctr *ctr = &get_global_ctrg()->ctr[i];
+		if (ctr->current) {
+			rc = fprintf(stream, "%*s    %s: %llu\n",
+				     indent, "",
+				     desc->ctr_desc[i].description,
+				     (long long)ctr->current);
+
+			if (rc < 0)
+				return rc;
+		}
+	}
+
+	return 0;
+}
+
 int gbprox_dump_peers(FILE *stream, int indent, int verbose)
 {
 	struct gbprox_peer *peer;
@@ -808,7 +839,10 @@ int gbprox_dump_peers(FILE *stream, int indent, int verbose)
 	const struct rate_ctr_group_desc *desc;
 	int rc;
 
-	fprintf(stream, "%*sPeers:\n", indent, "");
+	rc = fprintf(stream, "%*sPeers:\n", indent, "");
+	if (rc < 0)
+		return rc;
+
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
 		gsm48_parse_ra(&raid, peer->ra);
 

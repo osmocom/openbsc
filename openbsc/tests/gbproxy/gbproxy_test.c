@@ -523,6 +523,8 @@ static void test_gbproxy()
 	gprs_dump_nsi(nsi);
 	gbprox_dump_peers(stdout, 0, 1);
 
+	gbprox_dump_global(stdout, 0, 1);
+
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
 	printf("--- Send message from BSS 1 to SGSN, BVCI 0x1002 ---\n\n");
@@ -532,6 +534,12 @@ static void test_gbproxy()
 	printf("--- Send message from SGSN to BSS 1, BVCI 0x1002 ---\n\n");
 
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, 0x1012, (uint8_t *)"", 0);
+
+	printf("--- Send message from SGSN to BSS 1, BVCI 0x10ff (invalid) ---\n\n");
+
+	send_ns_unitdata(nsi, NULL, &sgsn_peer, 0x10ff, (uint8_t *)"", 0);
+
+	gbprox_dump_global(stdout, 0, 1);
 
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
