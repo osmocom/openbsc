@@ -114,6 +114,7 @@ static struct gbprox_peer *peer_alloc(uint16_t bvci)
 	return peer;
 }
 
+static void peer_free(struct gbprox_peer *peer) __attribute__((__unused__));
 static void peer_free(struct gbprox_peer *peer)
 {
 	llist_del(&peer->list);
@@ -349,7 +350,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 	 * SGSN */
 	return gbprox_relay2sgsn(msg, ns_bvci);
 err_no_peer:
-	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(BSS) cannot find peer based on RAC\n",
+	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(BSS) cannot find peer based on NSEI\n",
 		nsei);
 	return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI, NULL, msg);
 err_mand_ie:
