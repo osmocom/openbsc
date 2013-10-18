@@ -31,6 +31,9 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
+#include <osmocom/core/rate_ctr.h>
+
+#include <osmocom/vty/misc.h>
 
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
@@ -38,6 +41,75 @@
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/gb_proxy.h>
+
+enum gbprox_global_ctr {
+	GBPROX_GLOB_CTR_INV_BVCI,
+	GBPROX_GLOB_CTR_INV_LAC,
+	GBPROX_GLOB_CTR_INV_RAC,
+	GBPROX_GLOB_CTR_INV_NSEI,
+	GBPROX_GLOB_CTR_PROTO_ERR_BSS,
+	GBPROX_GLOB_CTR_PROTO_ERR_SGSN,
+	GBPROX_GLOB_CTR_NOT_SUPPORTED_BSS,
+	GBPROX_GLOB_CTR_NOT_SUPPORTED_SGSN,
+	GBPROX_GLOB_CTR_RESTART_RESET_SGSN,
+	GBPROX_GLOB_CTR_TX_ERR_SGSN,
+	GBPROX_GLOB_CTR_OTHER_ERR,
+};
+
+static const struct rate_ctr_desc global_ctr_description[] = {
+	{ "inv-bvci",	    "Invalid BVC Identifier          " },
+	{ "inv-lac",	    "Invalid Location Area Code      " },
+	{ "inv-rac",	    "Invalid Routing Area Code       " },
+	{ "inv-nsei",	    "No BVC established for NSEI     " },
+	{ "proto-err.bss",  "BSSGP protocol error      (BSS )" },
+	{ "proto-err.sgsn", "BSSGP protocol error      (SGSN)" },
+	{ "not-supp.bss",   "Feature not supported     (BSS )" },
+	{ "not-supp.sgsn",  "Feature not supported     (SGSN)" },
+	{ "restart.sgsn",   "Restarted RESET procedure (SGSN)" },
+	{ "tx-err.sgsn",    "NS Transmission error     (SGSN)" },
+	{ "error",          "Other error                     " },
+};
+
+static const struct rate_ctr_group_desc global_ctrg_desc = {
+	.group_name_prefix = "gbproxy.global",
+	.group_description = "GBProxy Global Statistics",
+	.num_ctr = ARRAY_SIZE(global_ctr_description),
+	.ctr_desc = global_ctr_description,
+};
+
+static struct rate_ctr_group *global_ctrg = NULL;
+
+static struct rate_ctr_group *get_global_ctrg()
+{
+	if (global_ctrg)
+		return global_ctrg;
+
+	global_ctrg = rate_ctr_group_alloc(tall_bsc_ctx, &global_ctrg_desc, 0);
+	return global_ctrg;
+}
+
+enum gbprox_peer_ctr {
+	GBPROX_PEER_CTR_BLOCKED,
+	GBPROX_PEER_CTR_UNBLOCKED,
+	GBPROX_PEER_CTR_DROPPED,
+	GBPROX_PEER_CTR_INV_NSEI,
+	GBPROX_PEER_CTR_TX_ERR,
+};
+
+static const struct rate_ctr_desc peer_ctr_description[] = {
+	{ "blocked",	  "BVC Block                       " },
+	{ "unblocked",	  "BVC Unblock                     " },
+	{ "dropped",	  "BVC blocked, dropped packet     " },
+	{ "inv-nsei",	  "NSEI mismatch                   " },
+	{ "tx-err",       "NS Transmission error           " },
+};
+
+static const struct rate_ctr_group_desc peer_ctrg_desc = {
+	.group_name_prefix = "gbproxy.peer",
+	.group_description = "GBProxy Peer Statistics",
+	.num_ctr = ARRAY_SIZE(peer_ctr_description),
+	.ctr_desc = peer_ctr_description,
+};
 
 struct gbprox_peer {
 	struct llist_head list;
@@ -51,6 +123,9 @@ struct gbprox_peer {
 
 	/* Routeing Area that this peer is part of (raw 04.08 encoding) */
 	uint8_t ra[6];
+
+	/* Counter */
+	struct rate_ctr_group *ctrg;
 };
 
 /* Linked list of all Gb peers (except SGSN) */
@@ -100,6 +175,19 @@ static struct gbprox_peer *peer_by_lac(const uint8_t *la)
 	return NULL;
 }
 
+static int check_peer_nsei(struct gbprox_peer *peer, uint16_t nsei)
+{
+	if (peer->nsei != nsei) {
+		LOGP(DGPRS, LOGL_NOTICE, "Peer entry doesn't match current NSEI "
+		     "BVCI=%u via NSEI=%u (expected NSEI=%u)\n",
+		     peer->bvci, nsei, peer->nsei);
+		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_INV_NSEI]);
+		return 1;
+	}
+
+	return 0;
+}
+
 static struct gbprox_peer *peer_alloc(uint16_t bvci)
 {
 	struct gbprox_peer *peer;
@@ -109,6 +197,8 @@ static struct gbprox_peer *peer_alloc(uint16_t bvci)
 		return NULL;
 
 	peer->bvci = bvci;
+	peer->ctrg = rate_ctr_group_alloc(peer, &peer_ctrg_desc, bvci);
+
 	llist_add(&peer->list, &gbprox_bts_peers);
 
 	return peer;
@@ -175,6 +265,7 @@ static int gbprox_relay2sgsn(struct msgb *old_msg, uint16_t ns_bvci)
 	/* create a copy of the message so the old one can
 	 * be free()d safely when we return from gbprox_rcvmsg() */
 	struct msgb *msg = msgb_copy(old_msg, "msgb_relay2sgsn");
+	int rc;
 
 	DEBUGP(DGPRS, "NSEI=%u proxying BTS->SGSN (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, gbcfg.nsip_sgsn_nsei);
@@ -184,7 +275,11 @@ static int gbprox_relay2sgsn(struct msgb *old_msg, uint16_t ns_bvci)
 
 	strip_ns_hdr(msg);
 
-	return gprs_ns_sendmsg(bssgp_nsi, msg);
+	rc = gprs_ns_sendmsg(bssgp_nsi, msg);
+	if (rc < 0)
+		rate_ctr_inc(&get_global_ctrg()->ctr[GBPROX_GLOB_CTR_TX_ERR_SGSN]);
+
+	return rc;
 }
 
 /* feed a message down the NS-VC associated with the specified peer */
@@ -194,6 +289,7 @@ static int gbprox_relay2peer(struct msgb *old_msg, struct gbprox_peer *peer,
 	/* create a copy of the message so the old one can
 	 * be free()d safely when we return from gbprox_rcvmsg() */
 	struct msgb *msg = msgb_copy(old_msg, "msgb_relay2peer");
+	int rc;
 
 	DEBUGP(DGPRS, "NSEI=%u proxying SGSN->BSS (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, peer->nsei);
@@ -204,7 +300,11 @@ static int gbprox_relay2peer(struct msgb *old_msg, struct gbprox_peer *peer,
 	/* Strip the old NS header, it will be replaced with a new one */
 	strip_ns_hdr(msg);
 
-	return gprs_ns_sendmsg(bssgp_nsi, msg);
+	rc = gprs_ns_sendmsg(bssgp_nsi, msg);
+	if (rc < 0)
+		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_TX_ERR]);
+
+	return rc;
 }
 
 static int block_unblock_peer(uint16_t ptp_bvci, uint8_t pdu_type)
@@ -215,15 +315,18 @@ static int block_unblock_peer(uint16_t ptp_bvci, uint8_t pdu_type)
 	if (!peer) {
 		LOGP(DGPRS, LOGL_ERROR, "BVCI=%u: Cannot find BSS\n",
 			ptp_bvci);
+		rate_ctr_inc(&get_global_ctrg()->ctr[GBPROX_GLOB_CTR_INV_BVCI]);
 		return -ENOENT;
 	}
 
 	switch (pdu_type) {
 	case BSSGP_PDUT_BVC_BLOCK_ACK:
 		peer->blocked = 1;
+		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_BLOCKED]);
 		break;
 	case BSSGP_PDUT_BVC_UNBLOCK_ACK:
 		peer->blocked = 0;
+		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_UNBLOCKED]);
 		break;
 	default:
 		break;
@@ -242,6 +345,7 @@ static int gbprox_relay2bvci(struct msgb *msg, uint16_t ptp_bvci,
 	if (!peer) {
 		LOGP(DGPRS, LOGL_ERROR, "BVCI=%u: Cannot find BSS\n",
 			ptp_bvci);
+		rate_ctr_inc(&get_global_ctrg()->ctr[GBPROX_GLOB_CTR_INV_BVCI]);
 		return -ENOENT;
 	}
 
@@ -327,6 +431,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 				from_peer = peer_alloc(bvci);
 				from_peer->nsei = nsei;
 			}
+			check_peer_nsei(from_peer, nsei);
 			if (TLVP_PRESENT(&tp, BSSGP_IE_CELL_ID)) {
 				struct gprs_ra_id raid;
 				/* We have a Cell Identifier present in this
@@ -352,10 +457,12 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 err_no_peer:
 	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(BSS) cannot find peer based on NSEI\n",
 		nsei);
+	rate_ctr_inc(&get_global_ctrg()->ctr[GBPROX_GLOB_CTR_INV_NSEI]);
 	return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI, NULL, msg);
 err_mand_ie:
 	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(BSS) missing mandatory RA IE\n",
 		nsei);
+	rate_ctr_inc(&get_global_ctrg()->ctr[GBPROX_GLOB_CTR_PROTO_ERR_BSS]);
 	return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE, NULL, msg);
 }
 
@@ -364,6 +471,7 @@ static int gbprox_rx_paging(struct msgb *msg, struct tlv_parsed *tp,
 			    uint32_t nsei, uint16_t ns_bvci)
 {
 	struct gbprox_peer *peer = NULL;
+	int errctr = GBPROX_GLOB_CTR_PROTO_ERR_SGSN;
 
 	LOGP(DGPRS, LOGL_INFO, "NSEI=%u(SGSN) BSSGP PAGING ",
 		nsei);
@@ -371,20 +479,24 @@ static int gbprox_rx_paging(struct msgb *msg, struct tlv_parsed *tp,
 		uint16_t bvci = ntohs(tlvp_val16_unal(tp, BSSGP_IE_BVCI));
 		LOGPC(DGPRS, LOGL_INFO, "routing by BVCI to peer BVCI=%u\n",
 			bvci);
+		errctr = GBPROX_GLOB_CTR_OTHER_ERR;
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_ROUTEING_AREA)) {
 		peer = peer_by_rac(TLVP_VAL(tp, BSSGP_IE_ROUTEING_AREA));
 		LOGPC(DGPRS, LOGL_INFO, "routing by RAC to peer BVCI=%u\n",
 			peer ? peer->bvci : -1);
+		errctr = GBPROX_GLOB_CTR_INV_RAC;
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_LOCATION_AREA)) {
 		peer = peer_by_lac(TLVP_VAL(tp, BSSGP_IE_LOCATION_AREA));
 		LOGPC(DGPRS, LOGL_INFO, "routing by LAC to peer BVCI=%u\n",
 			peer ? peer->bvci : -1);
+		errctr = GBPROX_GLOB_CTR_INV_LAC;
 	} else
 		LOGPC(DGPRS, LOGL_INFO, "\n");
 
 	if (!peer) {
 		LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(SGSN) BSSGP PAGING: "
 			"unable to route, missing IE\n", nsei);
+		rate_ctr_inc(&get_global_ctrg()->ctr[errctr]);
 		return -EINVAL;
 	}
 	return gbprox_relay2peer(msg, peer, ns_bvci);
@@ -398,6 +510,8 @@ static int rx_reset_from_sgsn(struct msgb *msg, struct tlv_parsed *tp,
 	uint16_t ptp_bvci;
 
 	if (!TLVP_PRESENT(tp, BSSGP_IE_BVCI)) {
+		rate_ctr_inc(&get_global_ctrg()->
+			     ctr[GBPROX_GLOB_CTR_PROTO_ERR_SGSN]);
 		return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE,
 				       NULL, msg);
 	}
@@ -410,6 +524,8 @@ static int rx_reset_from_sgsn(struct msgb *msg, struct tlv_parsed *tp,
 		if (!peer) {
 			LOGP(DGPRS, LOGL_ERROR, "NSEI=%u BVCI=%u: Cannot find BSS\n",
 				nsei, ptp_bvci);
+			rate_ctr_inc(&get_global_ctrg()->
+				     ctr[GBPROX_GLOB_CTR_INV_BVCI]);
 			return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI,
 					       NULL, msg);
 		}
@@ -514,6 +630,8 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, uint32_t nsei,
 			     "%sBLOCK_ACK for signalling BVCI ?!?\n", nsei,
 			     pdu_type == BSSGP_PDUT_BVC_UNBLOCK_ACK ? "UN":"");
 			/* should we send STATUS ? */
+			rate_ctr_inc(&get_global_ctrg()->
+				     ctr[GBPROX_GLOB_CTR_INV_BVCI]);
 		} else {
 			/* Mark BVC as (un)blocked */
 			block_unblock_peer(bvci, pdu_type);
@@ -523,11 +641,15 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, uint32_t nsei,
 	case BSSGP_PDUT_SGSN_INVOKE_TRACE:
 		LOGP(DGPRS, LOGL_ERROR,
 		     "NSEI=%u(SGSN) BSSGP INVOKE TRACE not supported\n",nsei);
+		rate_ctr_inc(&get_global_ctrg()->
+			     ctr[GBPROX_GLOB_CTR_NOT_SUPPORTED_SGSN]);
 		rc = bssgp_tx_status(BSSGP_CAUSE_PDU_INCOMP_FEAT, NULL, msg);
 		break;
 	default:
 		LOGP(DGPRS, LOGL_NOTICE, "BSSGP PDU type 0x%02x unknown\n",
 			pdu_type);
+		rate_ctr_inc(&get_global_ctrg()->
+			     ctr[GBPROX_GLOB_CTR_PROTO_ERR_SGSN]);
 		rc = bssgp_tx_status(BSSGP_CAUSE_PROTO_ERR_UNSPEC, NULL, msg);
 		break;
 	}
@@ -536,10 +658,13 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, uint32_t nsei,
 err_mand_ie:
 	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(SGSN) missing mandatory IE\n",
 		nsei);
+	rate_ctr_inc(&get_global_ctrg()->
+		     ctr[GBPROX_GLOB_CTR_PROTO_ERR_SGSN]);
 	return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE, NULL, msg);
 err_no_peer:
 	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(SGSN) cannot find peer based on RAC\n",
 		nsei);
+	rate_ctr_inc(&get_global_ctrg()-> ctr[GBPROX_GLOB_CTR_INV_RAC]);
 	return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI, NULL, msg);
 }
 
@@ -557,12 +682,16 @@ int gbprox_rcvmsg(struct msgb *msg, uint16_t nsei, uint16_t ns_bvci, uint16_t ns
 		else
 			rc = gbprox_rx_sig_from_bss(msg, nsei, ns_bvci);
 	} else {
+		peer = peer_by_bvci(ns_bvci);
+
 		/* All other BVCI are PTP and thus can be simply forwarded */
-		if (!remote_end_is_sgsn)
+		if (!remote_end_is_sgsn) {
+			if (peer)
+				check_peer_nsei(peer, nsei);
 			return gbprox_relay2sgsn(msg, ns_bvci);
+		}
 
 		/* else: SGSN -> BSS direction */
-		peer = peer_by_bvci(ns_bvci);
 		if (!peer) {
 			LOGP(DGPRS, LOGL_INFO, "Allocationg new peer for "
 			     "BVCI=%u via NSVC=%u/NSEI=%u\n", ns_bvci,
@@ -574,6 +703,7 @@ int gbprox_rcvmsg(struct msgb *msg, uint16_t nsei, uint16_t ns_bvci, uint16_t ns
 			LOGP(DGPRS, LOGL_NOTICE, "Dropping PDU for "
 			     "blocked BVCI=%u via NSVC=%u/NSEI=%u\n",
 			     ns_bvci, nsvci, nsei);
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_DROPPED]);
 			return bssgp_tx_status(BSSGP_CAUSE_BVCI_BLOCKED, NULL, msg);
 		}
 		rc = gbprox_relay2peer(msg, peer, ns_bvci);
@@ -616,6 +746,8 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 	if (signal == S_NS_ALIVE_EXP && nsvc->remote_end_is_sgsn) {
 		LOGP(DGPRS, LOGL_NOTICE, "Tns alive expired too often, "
 			"re-starting RESET procedure\n");
+		rate_ctr_inc(&get_global_ctrg()->
+			     ctr[GBPROX_GLOB_CTR_RESTART_RESET_SGSN]);
 		gprs_ns_nsip_connect(nsvc->nsi, &nsvc->ip.bts_addr,
 				  nsvc->nsei, nsvc->nsvci);
 	}
@@ -668,10 +800,12 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-int gbprox_dump_peers(FILE *stream, int indent)
+int gbprox_dump_peers(FILE *stream, int indent, int verbose)
 {
 	struct gbprox_peer *peer;
 	struct gprs_ra_id raid;
+	unsigned int i;
+	const struct rate_ctr_group_desc *desc;
 	int rc;
 
 	fprintf(stream, "%*sPeers:\n", indent, "");
@@ -687,6 +821,24 @@ int gbprox_dump_peers(FILE *stream, int indent)
 
 		if (rc < 0)
 			return rc;
+
+		if (!verbose)
+			continue;
+
+		desc = peer->ctrg->desc;
+
+		for (i = 0; i < desc->num_ctr; i++) {
+			struct rate_ctr *ctr = &peer->ctrg->ctr[i];
+			if (ctr->current) {
+				rc = fprintf(stream, "%*s    %s: %llu\n",
+					     indent, "",
+					     desc->ctr_desc[i].description,
+					     (long long)ctr->current);
+
+				if (rc < 0)
+					return rc;
+			}
+		}
 	}
 
 	return 0;
@@ -694,10 +846,14 @@ int gbprox_dump_peers(FILE *stream, int indent)
 
 #include <osmocom/vty/command.h>
 
-gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
+gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
        SHOW_STR "Display information about the Gb proxy")
 {
 	struct gbprox_peer *peer;
+	int show_stats = argc >= 1;
+
+	if (show_stats)
+		vty_out_rate_ctr_group(vty, "", get_global_ctrg());
 
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
 		struct gprs_ra_id raid;
@@ -711,6 +867,9 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
 			vty_out(vty, " [BVC-BLOCKED]");
 
 		vty_out(vty, "%s", VTY_NEWLINE);
+
+		if (show_stats)
+			vty_out_rate_ctr_group(vty, "  ", peer->ctrg);
 	}
 	return CMD_SUCCESS;
 }

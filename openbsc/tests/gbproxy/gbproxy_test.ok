@@ -746,7 +746,9 @@ Current NS-VCIs:
 Peers:
   NSEI 4096, BVCI 4114, not blocked, RAC 10-32-16464-96
   NSEI 8192, BVCI 8194, not blocked, RAC 10-32-16464-96
+    NSEI mismatch                   : 1
   NSEI 4096, BVCI 4098, not blocked, RAC 10-32-16464-96
+    NSEI mismatch                   : 1
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
