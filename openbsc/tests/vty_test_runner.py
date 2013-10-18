@@ -231,6 +231,42 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command('show subscriber imsi '+imsi)
         self.assert_(res.find("    IMSI: "+imsi) > 0)
 
+    def testAuthPolicy (self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("network")
+
+        # Test invalid input
+        self.vty.verify("auth policy", ['% Command incomplete.'])
+
+        # Enable auth policy closed
+        self.vty.verify("auth policy closed", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find("auth policy closed") > 0)
+
+        # Enable auth policy accept-all
+        self.vty.verify("auth policy accept-all", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find("auth policy accept-all") > 0)
+
+        # Enable auth policy token
+        self.vty.verify("auth policy token", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find("auth policy token") > 0)
+
+        # Enable auth policy blacklist
+        self.vty.verify("auth policy blacklist", [''])
+
+        # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find("auth policy blacklist") > 0)
+
 class TestVTYBSC(TestVTYGenericBSC):
 
     def vty_command(self):
