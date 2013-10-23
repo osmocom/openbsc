@@ -495,6 +495,38 @@ class TestVTYNAT(TestVTYGenericBSC):
         res = self.vty.verify("show ussd-connection", ['The USSD side channel provider is not connected and not authorized.'])
         self.assertTrue(res)
 
+class TestVTYGbproxy(TestVTYGenericBSC):
+
+    def vty_command(self):
+        return ["./src/gprs/osmo-gbproxy", "-c",
+                "doc/examples/osmo-gbproxy/osmo-gbproxy.cfg"]
+
+    def vty_app(self):
+        return (4246, "./src/gprs/osmo-gbproxy", "OsmoGbProxy", "bsc")
+
+    def testVtyTree(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify('configure terminal', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.ignoredCheckForEndAndExit()
+        self.assertTrue(self.vty.verify('ns', ['']))
+        self.assertEquals(self.vty.node(), 'config-ns')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify('exit', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify('gbproxy', ['']))
+        self.assertEquals(self.vty.node(), 'config-gbproxy')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify('exit', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+
+    def testVtyShow(self):
+        res = self.vty.command("show ns")
+        self.assert_(res.find('Encapsulation NS-UDP-IP') >= 0)
+
+        res = self.vty.command("show gbproxy stats")
+        self.assert_(res.find('GBProxy Global Statistics') >= 0)
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")
@@ -507,6 +539,13 @@ def add_bsc_test(suite, workdir):
         print("Skipping the BSC test")
         return
     test = unittest.TestLoader().loadTestsFromTestCase(TestVTYBSC)
+    suite.addTest(test)
+
+def add_gbproxy_test(suite, workdir):
+    if not os.path.isfile(os.path.join(workdir, "src/gprs/osmo-gbproxy")):
+        print("Skipping the Gb-Proxy test")
+        return
+    test = unittest.TestLoader().loadTestsFromTestCase(TestVTYGbproxy)
     suite.addTest(test)
 
 if __name__ == '__main__':
@@ -541,5 +580,6 @@ if __name__ == '__main__':
     suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYNITB))
     add_bsc_test(suite, workdir)
     add_nat_test(suite, workdir)
+    add_gbproxy_test(suite, workdir)
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
     sys.exit(len(res.errors) + len(res.failures))
