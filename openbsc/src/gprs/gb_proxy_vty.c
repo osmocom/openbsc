@@ -80,6 +80,8 @@ int gbproxy_vty_init(void)
 {
 	install_element_ve(&show_gbproxy_cmd);
 
+	install_element(ENABLE_NODE, &delete_gb_cmd);
+
 	install_element(CONFIG_NODE, &cfg_gbproxy_cmd);
 	install_node(&gbproxy_node, config_write_gbproxy);
 	bsc_install_default(GBPROXY_NODE);

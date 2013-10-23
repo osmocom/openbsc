@@ -1,7 +1,8 @@
 /* NS-over-IP proxy */
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2013 by On-Waves
+ * (C) 2013 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -204,7 +205,6 @@ static struct gbprox_peer *peer_alloc(uint16_t bvci)
 	return peer;
 }
 
-static void peer_free(struct gbprox_peer *peer) __attribute__((__unused__));
 static void peer_free(struct gbprox_peer *peer)
 {
 	rate_ctr_group_free(peer->ctrg);
@@ -908,5 +908,28 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
 		if (show_stats)
 			vty_out_rate_ctr_group(vty, "  ", peer->ctrg);
 	}
+	return CMD_SUCCESS;
+}
+
+gDEFUN(delete_gb, delete_gb_cmd,
+	"delete-gbproxy-peer <0-65534> bvci <0-65534>",
+	"Delete a GBProxy peer by NSEI and BVCI\n"
+	"NSEI number\n"
+	"BVCI\n"
+	"BVCI number\n")
+{
+	struct gbprox_peer *peer, *tmp;
+	const uint16_t nsei = atoi(argv[0]);
+	const uint16_t bvci = atoi(argv[1]);
+
+	llist_for_each_entry_safe(peer, tmp, &gbprox_bts_peers, list) {
+		if (peer->bvci != bvci)
+			continue;
+		if (peer->nsei != nsei)
+			continue;
+
+		peer_free(peer);
+	}
+
 	return CMD_SUCCESS;
 }
