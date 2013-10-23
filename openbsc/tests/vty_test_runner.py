@@ -72,7 +72,7 @@ class TestVTYGenericBSC(TestVTYBase):
         try:
             self.checkForEndAndExit()
         except BaseException as e:
-            sys.stderr.write('Expected and ignored failure: %s\n' % (str(e))) 
+            sys.stderr.write('Expected and ignored failure: %s\n' % (str(e)))
 
     def _testConfigNetworkTree(self):
         self.vty.enable()
@@ -118,7 +118,7 @@ class TestVTYNITB(TestVTYGenericBSC):
         return (4242, "./src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb")
 
     def testConfigNetworkTree(self):
-	self._testConfigNetworkTree()
+        self._testConfigNetworkTree()
 
     def checkForSmpp(self):
         """SMPP is not always enabled, check if it is"""
@@ -137,10 +137,10 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         if self.checkForSmpp():
             self.assertEquals(self.vty.node(), 'config')
-	    self.assertTrue(self.vty.verify('smpp', ['']))
-	    self.assertEquals(self.vty.node(), 'config-smpp')
-	    self.ignoredCheckForEndAndExit()
-	    self.assertTrue(self.vty.verify("exit", ['']))
+            self.assertTrue(self.vty.verify('smpp', ['']))
+            self.assertEquals(self.vty.node(), 'config-smpp')
+            self.ignoredCheckForEndAndExit()
+            self.assertTrue(self.vty.verify("exit", ['']))
 
         self.assertEquals(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify("exit", ['']))
@@ -241,7 +241,7 @@ class TestVTYBSC(TestVTYGenericBSC):
         return (4242, "./src/osmo-bsc/osmo-bsc", "OsmoBSC", "bsc")
 
     def testConfigNetworkTree(self):
-	self._testConfigNetworkTree()
+        self._testConfigNetworkTree()
 
     def testVtyTree(self):
         self.vty.enable()
