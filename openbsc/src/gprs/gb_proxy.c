@@ -207,6 +207,7 @@ static struct gbprox_peer *peer_alloc(uint16_t bvci)
 static void peer_free(struct gbprox_peer *peer) __attribute__((__unused__));
 static void peer_free(struct gbprox_peer *peer)
 {
+	rate_ctr_group_free(peer->ctrg);
 	llist_del(&peer->list);
 	talloc_free(peer);
 }
