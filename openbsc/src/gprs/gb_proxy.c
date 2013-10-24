@@ -881,7 +881,40 @@ int gbprox_dump_peers(FILE *stream, int indent, int verbose)
 	return 0;
 }
 
+static int gbprox_cleanup_peers(uint16_t nsei, uint16_t bvci)
+{
+	int counter = 0;
+	struct gbprox_peer *peer, *tmp;
+
+	llist_for_each_entry_safe(peer, tmp, &gbprox_bts_peers, list) {
+		if (peer->nsei != nsei)
+			continue;
+		if (bvci && peer->bvci != bvci)
+			continue;
+
+		peer_free(peer);
+		counter += 1;
+	}
+
+	return counter;
+}
+
 #include <osmocom/vty/command.h>
+
+static void gbprox_vty_print_peer(struct vty *vty, struct gbprox_peer *peer)
+{
+	struct gprs_ra_id raid;
+	gsm48_parse_ra(&raid, peer->ra);
+
+	vty_out(vty, "NSEI %5u, PTP-BVCI %5u, "
+		"RAC %u-%u-%u-%u",
+		peer->nsei, peer->bvci,
+		raid.mcc, raid.mnc, raid.lac, raid.rac);
+	if (peer->blocked)
+		vty_out(vty, " [BVC-BLOCKED]");
+
+	vty_out(vty, "%s", VTY_NEWLINE);
+}
 
 gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
        SHOW_STR "Display information about the Gb proxy")
@@ -893,17 +926,7 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
 		vty_out_rate_ctr_group(vty, "", get_global_ctrg());
 
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
-		struct gprs_ra_id raid;
-		gsm48_parse_ra(&raid, peer->ra);
-
-		vty_out(vty, "NSEI %5u, PTP-BVCI %5u, "
-			"RAC %u-%u-%u-%u",
-			peer->nsei, peer->bvci,
-			raid.mcc, raid.mnc, raid.lac, raid.rac);
-		if (peer->blocked)
-			vty_out(vty, " [BVC-BLOCKED]");
-
-		vty_out(vty, "%s", VTY_NEWLINE);
+		gbprox_vty_print_peer(vty, peer);
 
 		if (show_stats)
 			vty_out_rate_ctr_group(vty, "  ", peer->ctrg);
@@ -911,24 +934,92 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
 	return CMD_SUCCESS;
 }
 
-gDEFUN(delete_gb, delete_gb_cmd,
-	"delete-gbproxy-peer <0-65534> bvci <0-65534>",
-	"Delete a GBProxy peer by NSEI and BVCI\n"
+gDEFUN(delete_gb_bvci, delete_gb_bvci_cmd,
+	"delete-gbproxy-peer <0-65534> bvci <2-65534>",
+	"Delete a GBProxy peer by NSEI and optionally BVCI\n"
 	"NSEI number\n"
-	"BVCI\n"
+	"Only delete peer with a matching BVCI\n"
 	"BVCI number\n")
 {
-	struct gbprox_peer *peer, *tmp;
 	const uint16_t nsei = atoi(argv[0]);
 	const uint16_t bvci = atoi(argv[1]);
+	int counter;
 
-	llist_for_each_entry_safe(peer, tmp, &gbprox_bts_peers, list) {
-		if (peer->bvci != bvci)
-			continue;
-		if (peer->nsei != nsei)
-			continue;
+	counter = gbprox_cleanup_peers(nsei, bvci);
 
-		peer_free(peer);
+	if (counter == 0) {
+		vty_out(vty, "BVC not found%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+gDEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
+	"delete-gbproxy-peer <0-65534> (only-bvc|only-nsvc|all) [dry-run]",
+	"Delete a GBProxy peer by NSEI and optionally BVCI\n"
+	"NSEI number\n"
+	"Only delete BSSGP connections (BVC)\n"
+	"Only delete dynamic NS connections (NS-VC)\n"
+	"Delete BVC and dynamic NS connections\n"
+	"Show what would be deleted instead of actually deleting\n"
+	)
+{
+	const uint16_t nsei = atoi(argv[0]);
+	const char *mode = argv[1];
+	int dry_run = argc > 2;
+	int delete_bvc = 0;
+	int delete_nsvc = 0;
+	int counter;
+
+	if (strcmp(mode, "only-bvc") == 0)
+		delete_bvc = 1;
+	else if (strcmp(mode, "only-nsvc") == 0)
+		delete_nsvc = 1;
+	else
+		delete_bvc = delete_nsvc = 1;
+
+	if (delete_bvc) {
+		if (!dry_run)
+			counter = gbprox_cleanup_peers(nsei, 0);
+		else {
+			struct gbprox_peer *peer;
+			counter = 0;
+			llist_for_each_entry(peer, &gbprox_bts_peers, list) {
+				if (peer->nsei != nsei)
+					continue;
+
+				vty_out(vty, "BVC: ");
+				gbprox_vty_print_peer(vty, peer);
+				counter += 1;
+			}
+		}
+		vty_out(vty, "%sDeleted %d BVC%s",
+			dry_run ? "Not " : "", counter, VTY_NEWLINE);
+	}
+
+	if (delete_nsvc) {
+		struct gprs_ns_inst *nsi = gbcfg.nsi;
+		struct gprs_nsvc *nsvc, *nsvc2;
+
+		counter = 0;
+		llist_for_each_entry_safe(nsvc, nsvc2, &nsi->gprs_nsvcs, list) {
+			if (nsvc->nsei != nsei)
+				continue;
+			if (nsvc->persistent)
+				continue;
+
+			if (!dry_run)
+				gprs_nsvc_delete(nsvc);
+			else
+				vty_out(vty, "NS-VC: NSEI %5u, NS-VCI %5u, "
+					"remote %s%s",
+					nsvc->nsei, nsvc->nsvci,
+					gprs_ns_ll_str(nsvc), VTY_NEWLINE);
+			counter += 1;
+		}
+		vty_out(vty, "%sDeleted %d NS-VC%s",
+			dry_run ? "Not " : "", counter, VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;

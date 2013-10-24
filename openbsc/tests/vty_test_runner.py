@@ -527,6 +527,22 @@ class TestVTYGbproxy(TestVTYGenericBSC):
         res = self.vty.command("show gbproxy stats")
         self.assert_(res.find('GBProxy Global Statistics') >= 0)
 
+    def testVtyDeletePeer(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify('delete-gbproxy-peer 9999 bvci 7777', ['BVC not found']))
+        res = self.vty.command("delete-gbproxy-peer 9999 all dry-run")
+        self.assert_(res.find('Not Deleted 0 BVC') >= 0)
+        self.assert_(res.find('Not Deleted 0 NS-VC') >= 0)
+        res = self.vty.command("delete-gbproxy-peer 9999 only-bvc dry-run")
+        self.assert_(res.find('Not Deleted 0 BVC') >= 0)
+        self.assert_(res.find('Not Deleted 0 NS-VC') < 0)
+        res = self.vty.command("delete-gbproxy-peer 9999 only-nsvc dry-run")
+        self.assert_(res.find('Not Deleted 0 BVC') < 0)
+        self.assert_(res.find('Not Deleted 0 NS-VC') >= 0)
+        res = self.vty.command("delete-gbproxy-peer 9999 all")
+        self.assert_(res.find('Deleted 0 BVC') >= 0)
+        self.assert_(res.find('Deleted 0 NS-VC') >= 0)
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")
