@@ -183,10 +183,10 @@ static int check_peer_nsei(struct gbprox_peer *peer, uint16_t nsei)
 		     "BVCI=%u via NSEI=%u (expected NSEI=%u)\n",
 		     peer->bvci, nsei, peer->nsei);
 		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_INV_NSEI]);
-		return 1;
+		return 0;
 	}
 
-	return 0;
+	return 1;
 }
 
 static struct gbprox_peer *peer_alloc(uint16_t bvci)
@@ -432,7 +432,10 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 				from_peer = peer_alloc(bvci);
 				from_peer->nsei = nsei;
 			}
-			check_peer_nsei(from_peer, nsei);
+
+			if (!check_peer_nsei(from_peer, nsei))
+				from_peer->nsei = nsei;
+
 			if (TLVP_PRESENT(&tp, BSSGP_IE_CELL_ID)) {
 				struct gprs_ra_id raid;
 				/* We have a Cell Identifier present in this
