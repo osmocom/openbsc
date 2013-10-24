@@ -881,6 +881,17 @@ int gbprox_dump_peers(FILE *stream, int indent, int verbose)
 	return 0;
 }
 
+void gbprox_reset()
+{
+	struct gbprox_peer *peer, *tmp;
+
+	llist_for_each_entry_safe(peer, tmp, &gbprox_bts_peers, list)
+		peer_free(peer);
+
+	rate_ctr_group_free(global_ctrg);
+	global_ctrg = NULL;
+}
+
 static int gbprox_cleanup_peers(uint16_t nsei, uint16_t bvci)
 {
 	int counter = 0;
