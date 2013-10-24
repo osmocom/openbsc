@@ -235,6 +235,9 @@ struct gsm_network {
 	struct mncc_sock_state *mncc_state;
 	int (*mncc_recv) (struct gsm_network *net, struct msgb *msg);
 	struct llist_head upqueue;
+	struct sms_sock_state *sms_state;
+	int (*sms_recv) (struct gsm_network *net, struct msgb *msg);
+	struct llist_head smsqueue;
 	struct llist_head trans_list;
 	struct bsc_api *bsc_api;
 

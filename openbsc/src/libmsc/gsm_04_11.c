@@ -406,8 +406,15 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 			/* FIXME: handle the error somehow? */
 		}
 #else
-		rc = 1; /* cause 1: unknown subscriber */
-		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+		rc = sms_sock_try_deliver(conn->bts->network, msg);
+		if (rc == 1) {
+			rc = 1; /* cause 1: unknown subscriber */
+			osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+		} else if (rc < 0) {
+			rc = 21; /* cause 21: short message transfer rejected */
+			/* FIXME: handle the error somehow? */
+		}
+
 #endif
 		goto out;
 	}

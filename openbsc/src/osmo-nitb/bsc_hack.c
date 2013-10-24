@@ -42,6 +42,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/bss.h>
 #include <openbsc/mncc.h>
+#include <openbsc/sms_sock.h>
 #include <openbsc/token_auth.h>
 #include <openbsc/handover_decision.h>
 #include <openbsc/rrlp.h>
@@ -282,6 +283,7 @@ int main(int argc, char **argv)
 #ifdef BUILD_SMPP
 	smpp_openbsc_set_net(bsc_gsmnet);
 #endif
+	sms_sock_init(bsc_gsmnet);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
 	bsc_gsmnet->ctrl = controlif_setup(bsc_gsmnet, 4249);
