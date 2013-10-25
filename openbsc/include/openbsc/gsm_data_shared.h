@@ -296,6 +296,8 @@ struct gsm_lchan {
 	} ho;
 	/* S counter for link loss */
 	int s;
+	/* Kind of the release/activation. E.g. RSL or PCU */
+	int rel_act_kind;
 #endif
 };
 
