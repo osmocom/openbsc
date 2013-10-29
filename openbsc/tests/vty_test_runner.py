@@ -67,18 +67,11 @@ class TestVTYGenericBSC(TestVTYBase):
         self.assert_(res.find('  end\r') > 0)
         #print 'found "end"\n'
 
-    def ignoredCheckForEndAndExit(self):
-        sys.stderr.write('Going to ignore the next assertion(s) due to known bugs\n')
-        try:
-            self.checkForEndAndExit()
-        except BaseException as e:
-            sys.stderr.write('Expected and ignored failure: %s\n' % (str(e)))
-
     def _testConfigNetworkTree(self):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal",['']))
         self.assertEquals(self.vty.node(), 'config')
-        self.ignoredCheckForEndAndExit()
+        self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("network",['']))
         self.assertEquals(self.vty.node(), 'config-net')
         self.checkForEndAndExit()
@@ -129,7 +122,7 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal", ['']))
         self.assertEquals(self.vty.node(), 'config')
-        self.ignoredCheckForEndAndExit()
+        self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('mncc-int', ['']))
         self.assertEquals(self.vty.node(), 'config-mncc-int')
         self.checkForEndAndExit()
@@ -139,7 +132,7 @@ class TestVTYNITB(TestVTYGenericBSC):
             self.assertEquals(self.vty.node(), 'config')
             self.assertTrue(self.vty.verify('smpp', ['']))
             self.assertEquals(self.vty.node(), 'config-smpp')
-            self.ignoredCheckForEndAndExit()
+            self.checkForEndAndExit()
             self.assertTrue(self.vty.verify("exit", ['']))
 
         self.assertEquals(self.vty.node(), 'config')
@@ -247,7 +240,7 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal", ['']))
         self.assertEquals(self.vty.node(), 'config')
-        self.ignoredCheckForEndAndExit()
+        self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("msc 0", ['']))
         self.assertEquals(self.vty.node(), 'config-msc')
         self.checkForEndAndExit()
@@ -378,7 +371,7 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.vty.enable()
         self.assertTrue(self.vty.verify('configure terminal', ['']))
         self.assertEquals(self.vty.node(), 'config')
-        self.ignoredCheckForEndAndExit()
+        self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('mgcp', ['']))
         self.assertEquals(self.vty.node(), 'config-mgcp')
         self.checkForEndAndExit()
@@ -508,7 +501,7 @@ class TestVTYGbproxy(TestVTYGenericBSC):
         self.vty.enable()
         self.assertTrue(self.vty.verify('configure terminal', ['']))
         self.assertEquals(self.vty.node(), 'config')
-        self.ignoredCheckForEndAndExit()
+        self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('ns', ['']))
         self.assertEquals(self.vty.node(), 'config-ns')
         self.checkForEndAndExit()
