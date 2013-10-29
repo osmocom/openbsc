@@ -509,7 +509,7 @@ static int config_write_esme(struct vty *v)
 int smpp_vty_init(void)
 {
 	install_node(&smpp_node, config_write_smpp);
-	bsc_install_default(SMPP_NODE);
+	vty_install_default(SMPP_NODE);
 	install_element(CONFIG_NODE, &cfg_smpp_cmd);
 
 	install_element(SMPP_NODE, &cfg_smpp_port_cmd);
@@ -519,7 +519,7 @@ int smpp_vty_init(void)
 	install_element(SMPP_NODE, &cfg_no_esme_cmd);
 
 	install_node(&esme_node, config_write_esme);
-	bsc_install_default(SMPP_ESME_NODE);
+	vty_install_default(SMPP_ESME_NODE);
 	install_element(SMPP_ESME_NODE, &cfg_esme_passwd_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_passwd_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_route_pfx_cmd);
@@ -532,7 +532,6 @@ int smpp_vty_init(void)
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_osmo_ext_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_dcs_transp_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_dcs_transp_cmd);
-	install_element(SMPP_ESME_NODE, &ournode_exit_cmd);
 
 	install_element_ve(&show_esme_cmd);
 

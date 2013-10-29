@@ -118,40 +118,6 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 	return vty->node;
 }
 
-/* Down vty node level. */
-gDEFUN(ournode_exit,
-       ournode_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
-{
-	bsc_vty_go_parent (vty);
-	return CMD_SUCCESS;
-}
-
-/* End of configuration. */
-gDEFUN(ournode_end,
-       ournode_end_cmd, "end", "End current mode and change to enable mode.")
-{
-	enum node_type last_node = CONFIG_NODE;
-
-	if (vty->node > ENABLE_NODE) {
-		/* Repeatedly call go_parent until a top node is reached. */
-		while (vty->node > CONFIG_NODE) {
-			if (vty->node == last_node) {
-				/* Ensure termination, this shouldn't happen. */
-				break;
-			}
-			last_node = vty->node;
-			bsc_vty_go_parent(vty);
-		}
-
-		vty_config_unlock(vty);
-		if (vty->node > ENABLE_NODE)
-			vty->node = ENABLE_NODE;
-		vty->index = NULL;
-		vty->index_sub = NULL;
-	}
-	return CMD_SUCCESS;
-}
-
 int bsc_vty_is_config_node(struct vty *vty, int node)
 {
 	switch (node) {
@@ -173,14 +139,4 @@ void bsc_replace_string(void *ctx, char **dst, const char *newstr)
 	if (*dst)
 		talloc_free(*dst);
 	*dst = talloc_strdup(ctx, newstr);
-}
-
-void bsc_install_default(enum node_type node)
-{
-	install_default (node);
-
-	if (node > CONFIG_NODE) {
-		install_element(node, &ournode_exit_cmd);
-		install_element(node, &ournode_end_cmd);
-	}
 }

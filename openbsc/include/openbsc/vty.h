@@ -14,8 +14,6 @@ struct buffer *vty_argv_to_buffer(int argc, const char *argv[], int base);
 
 extern struct cmd_element cfg_description_cmd;
 extern struct cmd_element cfg_no_description_cmd;
-extern struct cmd_element ournode_exit_cmd;
-extern struct cmd_element ournode_end_cmd;
 
 enum bsc_vty_node {
 	GSMNET_NODE = _LAST_OSMOVTY_NODE + 1,
@@ -41,8 +39,6 @@ enum bsc_vty_node {
 
 extern int bsc_vty_is_config_node(struct vty *vty, int node);
 extern void bsc_replace_string(void *ctx, char **dst, const char *newstr);
-
-void bsc_install_default(enum node_type node);
 
 struct log_info;
 int bsc_vty_init(const struct log_info *cat);
