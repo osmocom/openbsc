@@ -772,29 +772,6 @@ int gsm48_tx_mm_auth_rej(struct gsm_subscriber_connection *conn)
 	return gsm48_tx_simple(conn, GSM48_PDISC_MM, GSM48_MT_MM_AUTH_REJ);
 }
 
-static int gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
-{
-	DEBUGP(DMM, "-> CM SERVICE ACK\n");
-	return gsm48_tx_simple(conn, GSM48_PDISC_MM, GSM48_MT_MM_CM_SERV_ACC);
-}
-
-/* 9.2.6 CM service reject */
-static int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
-				enum gsm48_reject_value value)
-{
-	struct msgb *msg;
-
-	msg = gsm48_create_mm_serv_rej(value);
-	if (!msg) {
-		LOGP(DMM, LOGL_ERROR, "Failed to allocate CM Service Reject.\n");
-		return -1;
-	}
-
-	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
-	msg->lchan = conn->lchan;
-	return gsm48_conn_sendmsg(msg, conn, NULL);
-}
-
 static int _gsm48_rx_mm_serv_req_sec_cb(
 	unsigned int hooknum, unsigned int event,
 	struct msgb *msg, void *data, void *param)

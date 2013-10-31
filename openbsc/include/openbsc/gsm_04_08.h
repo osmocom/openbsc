@@ -39,6 +39,9 @@ void gsm_net_update_ctype(struct gsm_network *net);
 int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn);
 int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, uint8_t *rand, int key_seq);
 int gsm48_tx_mm_auth_rej(struct gsm_subscriber_connection *conn);
+int gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn);
+int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
+				enum gsm48_reject_value value);
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);
 int gsm48_send_rr_app_info(struct gsm_subscriber_connection *conn, uint8_t apdu_id,
