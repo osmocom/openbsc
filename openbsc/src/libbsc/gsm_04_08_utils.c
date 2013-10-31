@@ -36,6 +36,7 @@
 #include <openbsc/transaction.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/bsc_api.h>
 
 /* should ip.access BTS use direct RTP streams between each other (1),
  * or should OpenBSC always act as RTP relay/proxy in between (0) ? */
@@ -648,4 +649,37 @@ struct msgb *gsm48_create_loc_upd_rej(uint8_t cause)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
 	gh->data[0] = cause;
 	return msg;
+}
+
+/* 9.2.5 CM service accept */
+int gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+
+	msg->lchan = conn->lchan;
+
+	gh->proto_discr = GSM48_PDISC_MM;
+	gh->msg_type = GSM48_MT_MM_CM_SERV_ACC;
+
+	DEBUGP(DMM, "-> CM SERVICE ACK\n");
+
+	return gsm0808_submit_dtap(conn, msg, 0, 0);
+}
+
+/* 9.2.6 CM service reject */
+int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
+				enum gsm48_reject_value value)
+{
+	struct msgb *msg;
+
+	msg = gsm48_create_mm_serv_rej(value);
+	if (!msg) {
+		LOGP(DMM, LOGL_ERROR, "Failed to allocate CM Service Reject.\n");
+		return -1;
+	}
+
+	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
+
+	return gsm0808_submit_dtap(conn, msg, 0, 0);
 }
