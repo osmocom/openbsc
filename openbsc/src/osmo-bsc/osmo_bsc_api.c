@@ -123,6 +123,9 @@ static void bsc_send_ussd_notification(struct gsm_subscriber_connection *conn,
 		return;
 	}
 
+	LOGP(DMSC, LOGL_INFO, "Sending CM Service Accept\n");
+	gsm48_tx_mm_serv_ack(conn);
+
 	LOGP(DMSC, LOGL_INFO, "Sending USSD message: '%s'\n", text);
 	gsm0480_send_ussdNotify(conn, 1, text);
 	gsm0480_send_releaseComplete(conn);
