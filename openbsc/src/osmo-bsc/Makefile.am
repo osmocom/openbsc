@@ -16,7 +16,5 @@ osmo_bsc_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
 		 $(top_builddir)/src/libcommon/libcommon.a \
 		 $(top_builddir)/src/libctrl/libctrl.a \
 		 $(top_builddir)/src/libcommon/libcommon.a \
-		 -ldbi -ldl $(LIBOSMOSCCP_LIBS) \
-		 $(LIBSMPP34_LIBS) $(LIBOSMOCORE_LIBS) \
-		 $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(COVERAGE_LDFLAGS) \
-		 $(LIBOSMOABIS_LIBS)
+		 $(LIBOSMOSCCP_LIBS) $(LIBOSMOCORE_LIBS) \
+		 $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(COVERAGE_LDFLAGS) $(LIBOSMOABIS_LIBS)

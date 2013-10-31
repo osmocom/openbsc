@@ -804,14 +804,14 @@ int gsm48_tx_mm_auth_rej(struct gsm_subscriber_connection *conn)
 	return gsm48_tx_simple(conn, GSM48_PDISC_MM, GSM48_MT_MM_AUTH_REJ);
 }
 
-int gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
+static int gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
 {
 	DEBUGP(DMM, "-> CM SERVICE ACK\n");
 	return gsm48_tx_simple(conn, GSM48_PDISC_MM, GSM48_MT_MM_CM_SERV_ACC);
 }
 
 /* 9.2.6 CM service reject */
-int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
+static int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 				enum gsm48_reject_value value)
 {
 	struct msgb *msg;
