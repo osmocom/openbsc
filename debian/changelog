@@ -1,4 +1,4 @@
-openbsc (0.9.14~z10) UNRELEASED; urgency=low
+openbsc (0.9.14~z12) UNRELEASED; urgency=low
 
   * New BSC for SI testing on PCS1900
   * Add a VTY command for paging debugging
@@ -6,7 +6,7 @@ openbsc (0.9.14~z10) UNRELEASED; urgency=low
   * Rebuild against a split libosmocore library
   * New USSD command for connection loss (on all kind of channels)
   * Fix the init code for two bts coming up at the same time
-  * Jacobs changes for USSD
+  * Jacobs changes for USSD and fixes
   * Jacobs TimeZone changes and cherry-picks
 
  -- Holger Hans Peter Freyther <holger@freyther.de>  Thu, 19 Sep 2013 15:37:06 +0100
