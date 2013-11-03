@@ -931,7 +931,7 @@ static void gbprox_vty_print_peer(struct vty *vty, struct gbprox_peer *peer)
 }
 
 gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
-       SHOW_STR "Display information about the Gb proxy")
+       SHOW_STR "Display information about the Gb proxy\n" "Show statistics\n")
 {
 	struct gbprox_peer *peer;
 	int show_stats = argc >= 1;
