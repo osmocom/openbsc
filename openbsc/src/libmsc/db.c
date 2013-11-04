@@ -633,14 +633,15 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 	if (string)
 		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
 
-	subscr->lac = dbi_result_get_uint(result, "lac");
+	subscr->lac = dbi_result_get_ulonglong(result, "lac");
 
 	if (!dbi_result_field_is_null(result, "expire_lu"))
 		subscr->expire_lu = dbi_result_get_datetime(result, "expire_lu");
 	else
 		subscr->expire_lu = GSM_SUBSCRIBER_NO_EXPIRATION;
 
-	subscr->authorized = dbi_result_get_uint(result, "authorized");
+	subscr->authorized = dbi_result_get_ulonglong(result, "authorized");
+
 }
 
 #define BASE_QUERY "SELECT * FROM Subscriber "
