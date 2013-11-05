@@ -95,6 +95,7 @@ struct gsm_nm_state {
 
 struct gsm_abis_mo {
 	uint8_t obj_class;
+	uint8_t procedure_pending;
 	struct abis_om_obj_inst obj_inst;
 	const char *name;
 	struct gsm_nm_state nm_state;
