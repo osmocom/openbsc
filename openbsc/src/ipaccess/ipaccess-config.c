@@ -791,7 +791,7 @@ static void analyze_firmware(const char *filename)
 
 static void print_usage(void)
 {
-	printf("Usage: ipaccess-config\n");
+	printf("Usage: ipaccess-config IP_OF_BTS\n");
 }
 
 static void print_help(void)
