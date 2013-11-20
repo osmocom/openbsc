@@ -1,4 +1,4 @@
-openbsc (0.9.14~z14) UNRELEASED; urgency=low
+openbsc (0.9.14~z15) UNRELEASED; urgency=low
 
   * New BSC for SI testing on PCS1900
   * Add a VTY command for paging debugging
@@ -9,6 +9,7 @@ openbsc (0.9.14~z14) UNRELEASED; urgency=low
   * Jacobs changes for USSD and fixes.
   * Jacobs TimeZone changes and cherry-picks
   * GBproxy changes
+  * Channel release handling.
 
  -- Holger Hans Peter Freyther <holger@freyther.de>  Thu, 19 Sep 2013 15:37:06 +0100
 
