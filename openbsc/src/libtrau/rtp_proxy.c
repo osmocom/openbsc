@@ -151,7 +151,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		}
 	}
 	if (rtph->padding) {
-		if (payload_len < 0) {
+		if (payload_len < 1) {
 			DEBUGPC(DLMUX, "received RTP frame too short for "
 				"padding length\n");
 			return -EINVAL;
