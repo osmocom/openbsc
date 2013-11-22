@@ -49,6 +49,11 @@ char *subscr_name(struct gsm_subscriber *subscr)
 	return subscr->imsi;
 }
 
+char *subscr_extension(struct gsm_subscriber *subscr)
+{
+	return subscr->extension;
+}
+
 struct gsm_subscriber *subscr_alloc(void)
 {
 	struct gsm_subscriber *s;

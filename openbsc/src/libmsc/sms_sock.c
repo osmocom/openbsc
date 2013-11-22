@@ -43,9 +43,10 @@ struct sms_sock_state {
 	struct osmo_fd conn_bfd;		/* fd for connection to lcr */
 };
 
-int sms_sock_try_deliver(struct gsm_network *net, struct msgb *msg)
+int sms_sock_try_deliver(struct msgb *msg, struct gsm_subscriber_connection *conn)
 {
 	/* Check if we currently have a MNCC handler connected */
+	struct gsm_network *net = conn->bts->network;
 	if (net->sms_state->conn_bfd.fd < 0) {
 		LOGP(DMNCC, LOGL_ERROR, "sms_sock receives for external CC app "
 			"but socket is gone\n");
@@ -53,6 +54,14 @@ int sms_sock_try_deliver(struct gsm_network *net, struct msgb *msg)
 		msgb_free(msg);
 		return -1;
 	}
+
+	/* FIXME: temporary hack */
+	struct gsm_subscriber *subscr = conn->subscr;
+	char *extension = subscr_extension(subscr);
+	size_t len = 15*sizeof(char);
+	msg->l4h -= len;
+	msg->len += len;
+	memcpy(msg->l4h, extension, len);
 
 	/* FIXME: check for some maximum queue depth? */
 

@@ -27,7 +27,7 @@
 struct gsm_network;
 struct msgb;
 
-int sms_sock_try_deliver(struct gsm_network *net, struct msgb *msg);
+int sms_sock_try_deliver(struct msgb *msg, struct gsm_subscriber_connection *conn);
 
 int sms_sock_init(struct gsm_network *net);
 

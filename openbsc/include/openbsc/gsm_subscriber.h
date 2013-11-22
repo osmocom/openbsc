@@ -100,6 +100,8 @@ int subscr_pending_dump(struct gsm_subscriber *subscr, struct vty *vty);
 int subscr_pending_kick(struct gsm_subscriber *subscr);
 
 char *subscr_name(struct gsm_subscriber *subscr);
+char *subscr_extension(struct gsm_subscriber *subscr);
+
 
 int subscr_purge_inactive(struct gsm_network *net);
 void subscr_update_from_db(struct gsm_subscriber *subscr);
