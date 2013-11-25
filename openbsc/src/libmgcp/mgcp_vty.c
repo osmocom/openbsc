@@ -114,7 +114,7 @@ static int config_write_mgcp(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg)
+static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg, int verbose)
 {
 	int i;
 
@@ -139,18 +139,31 @@ static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg)
 			endp->bts_end.packets, endp->net_end.packets,
 			endp->trans_net.packets, endp->trans_bts.packets,
 			VTY_NEWLINE);
+
+		if (verbose)
+			vty_out(vty,
+				"  Timestamp Errs: BTS %d->%d, Net %d->%d%s",
+				endp->bts_state.in_stream.err_ts_counter,
+				endp->bts_state.out_stream.err_ts_counter,
+				endp->net_state.in_stream.err_ts_counter,
+				endp->net_state.out_stream.err_ts_counter,
+				VTY_NEWLINE);
 	}
 }
 
-DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
-      SHOW_STR "Display information about the MGCP Media Gateway")
+DEFUN(show_mcgp, show_mgcp_cmd,
+      "show mgcp [stats]",
+      SHOW_STR
+      "Display information about the MGCP Media Gateway\n"
+      "Include Statistics\n")
 {
 	struct mgcp_trunk_config *trunk;
+	int show_stats = argc >= 1;
 
-	dump_trunk(vty, &g_cfg->trunk);
+	dump_trunk(vty, &g_cfg->trunk, show_stats);
 
 	llist_for_each_entry(trunk, &g_cfg->trunks, entry)
-		dump_trunk(vty, trunk);
+		dump_trunk(vty, trunk, show_stats);
 
 	return CMD_SUCCESS;
 }

@@ -97,7 +97,8 @@
 		 "C: 2\r\n"
 
 #define DLCX_RET "250 7 OK\r\n"			\
-		 "P: PS=0, OS=0, PR=0, OR=0, PL=0, JI=0\r\n"
+		 "P: PS=0, OS=0, PR=0, OR=0, PL=0, JI=0\r\n" \
+		 "X-Osmo-CP: EC TIS=0, TOS=0, TIR=0, TOR=0\r\n"
 
 #define RQNT	 "RQNT 186908780 1@mgw MGCP 1.0\r\n"	\
 		 "X: B244F267488\r\n"			\
@@ -309,7 +310,7 @@ static void test_packet_loss_calc(void)
 
 		state.initialized = 1;
 		state.base_seq = pl_test_dat[i].base_seq;
-		state.max_seq = pl_test_dat[i].max_seq;
+		state.out_stream.last_seq = pl_test_dat[i].max_seq;
 		state.cycles = pl_test_dat[i].cycles;
 
 		rtp.packets = pl_test_dat[i].packets;

@@ -40,22 +40,30 @@ enum mgcp_trunk_type {
 	MGCP_TRUNK_E1,
 };
 
+struct mgcp_rtp_stream_state {
+	uint32_t ssrc;
+	uint16_t last_seq;
+	uint32_t last_timestamp;
+	uint32_t err_ts_counter;
+	int32_t last_tsdelta;
+};
+
 struct mgcp_rtp_state {
 	int initialized;
 	int patch;
 
 	uint32_t orig_ssrc;
-	uint32_t ssrc;
 
 	uint16_t base_seq;
-	uint16_t max_seq;
 	int seq_offset;
 	int cycles;
 
-	uint32_t last_timestamp;
 	int32_t  timestamp_offset;
 	uint32_t jitter;
 	int32_t transit;
+
+	struct mgcp_rtp_stream_state in_stream;
+	struct mgcp_rtp_stream_state out_stream;
 };
 
 struct mgcp_rtp_end {

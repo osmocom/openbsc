@@ -134,6 +134,73 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 			     endp->net_end.rtp_port, buf, 1);
 }
 
+static int check_rtp_timestamp(struct mgcp_endpoint *endp,
+			       struct mgcp_rtp_stream_state *state,
+			       struct mgcp_rtp_end *rtp_end,
+			       struct sockaddr_in *addr,
+			       uint16_t seq, uint32_t timestamp,
+			       const char *text, int32_t *tsdelta_out)
+{
+	int32_t tsdelta;
+
+	/* Not fully intialized, skip */
+	if (state->last_tsdelta == 0 && timestamp == state->last_timestamp)
+		return 0;
+
+	if (seq == state->last_seq) {
+		if (timestamp != state->last_timestamp) {
+			state->err_ts_counter += 1;
+			LOGP(DMGCP, LOGL_ERROR,
+			     "The %s timestamp delta is != 0 but the sequence "
+			     "number %d is the same"
+			     "on 0x%x SSRC: %u timestamp: %u "
+			     "from %s:%d in %d\n",
+			     text, seq,
+			     ENDPOINT_NUMBER(endp), state->ssrc, timestamp,
+			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			     endp->conn_mode);
+		}
+		return 0;
+	}
+
+	tsdelta =
+		(int32_t)(timestamp - state->last_timestamp) /
+		(int16_t)(seq - state->last_seq);
+
+	if (tsdelta == 0) {
+		state->err_ts_counter += 1;
+		LOGP(DMGCP, LOGL_ERROR,
+		     "The %s timestamp delta is %d "
+		     "on 0x%x SSRC: %u timestamp: %u "
+		     "from %s:%d in %d\n",
+		     text, tsdelta,
+		     ENDPOINT_NUMBER(endp), state->ssrc, timestamp,
+		     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+		     endp->conn_mode);
+
+		return 0;
+	}
+
+	if (state->last_tsdelta != tsdelta) {
+		if (state->last_tsdelta) {
+			state->err_ts_counter += 1;
+			LOGP(DMGCP, LOGL_ERROR,
+			     "The %s timestamp delta changes from %d to %d "
+			     "on 0x%x SSRC: %u timestamp: %u from %s:%d in %d\n",
+			     text, state->last_tsdelta, tsdelta,
+			     ENDPOINT_NUMBER(endp), state->ssrc, timestamp,
+			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			     endp->conn_mode);
+		}
+	}
+
+	if (tsdelta_out)
+		*tsdelta_out = tsdelta;
+
+	return 1;
+}
+
+
 /**
  * The RFC 3550 Appendix A assumes there are multiple sources but
  * some of the supported endpoints (e.g. the nanoBTS) can only handle
@@ -143,13 +210,15 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
  * we receive will be seen as a switch in streams.
  */
 static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
-			    int payload, struct sockaddr_in *addr, char *data, int len)
+			    struct mgcp_rtp_end *rtp_end, struct sockaddr_in *addr,
+			    char *data, int len)
 {
 	uint32_t arrival_time;
 	int32_t transit, d;
 	uint16_t seq, udelta;
 	uint32_t timestamp;
 	struct rtp_hdr *rtp_hdr;
+	int payload = rtp_end->payload_type;
 
 	if (len < sizeof(*rtp_hdr))
 		return;
@@ -160,23 +229,36 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 	arrival_time = get_current_ts();
 
 	if (!state->initialized) {
+		state->in_stream.last_seq = seq - 1;
+		state->in_stream.ssrc = state->orig_ssrc = rtp_hdr->ssrc;
+		state->in_stream.last_tsdelta = 0;
 		state->base_seq = seq;
-		state->max_seq = seq - 1;
-		state->ssrc = state->orig_ssrc = rtp_hdr->ssrc;
 		state->initialized = 1;
-		state->last_timestamp = timestamp;
 		state->jitter = 0;
 		state->transit = arrival_time - timestamp;
-	} else if (state->ssrc != rtp_hdr->ssrc) {
-		state->ssrc = rtp_hdr->ssrc;
-		state->seq_offset = (state->max_seq + 1) - seq;
-		state->timestamp_offset = state->last_timestamp - timestamp;
+		state->out_stream = state->in_stream;
+	} else if (state->in_stream.ssrc != rtp_hdr->ssrc) {
+		state->in_stream.ssrc = rtp_hdr->ssrc;
+		state->seq_offset = (state->out_stream.last_seq + 1) - seq;
+		state->timestamp_offset = state->out_stream.last_timestamp - timestamp;
 		state->patch = endp->allow_patch;
 		LOGP(DMGCP, LOGL_NOTICE,
 			"The SSRC changed on 0x%x SSRC: %u offset: %d from %s:%d in %d\n",
-			ENDPOINT_NUMBER(endp), state->ssrc, state->seq_offset,
-			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port), endp->conn_mode);
+			ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
+			state->seq_offset, inet_ntoa(addr->sin_addr),
+			ntohs(addr->sin_port), endp->conn_mode);
+
+		state->in_stream.last_tsdelta = 0;
+	} else {
+		/* Compute current per-packet timestamp delta */
+		check_rtp_timestamp(endp, &state->in_stream, rtp_end, addr,
+				    seq, timestamp, "input",
+				    &state->in_stream.last_tsdelta);
 	}
+
+	/* Save before patching */
+	state->in_stream.last_timestamp = timestamp;
+	state->in_stream.last_seq = seq;
 
 	/* apply the offset and store it back to the packet */
 	if (state->patch) {
@@ -188,14 +270,21 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 		rtp_hdr->timestamp = htonl(timestamp);
 	}
 
+	/* Check again, whether the timestamps are still valid */
+	check_rtp_timestamp(endp, &state->out_stream, rtp_end, addr,
+			    seq, timestamp, "output",
+			    &state->out_stream.last_tsdelta);
+
 	/*
 	 * The below takes the shape of the validation from Appendix A. Check
 	 * if there is something weird with the sequence number, otherwise check
 	 * for a wrap around in the sequence number.
+	 *
+	 * Note that last_seq is used where the appendix mentions max_seq.
 	 */
-	udelta = seq - state->max_seq;
+	udelta = seq - state->out_stream.last_seq;
 	if (udelta < RTP_MAX_DROPOUT) {
-		if (seq < state->max_seq)
+		if (seq < state->out_stream.last_seq)
 			state->cycles += RTP_SEQ_MOD;
 	} else if (udelta <= RTP_SEQ_MOD - RTP_MAX_MISORDER) {
 		LOGP(DMGCP, LOGL_NOTICE,
@@ -215,9 +304,10 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 		d = -d;
 	state->jitter += d - ((state->jitter + 8) >> 4);
 
-
-	state->max_seq = seq;
-	state->last_timestamp = timestamp;
+	/* Save output values */
+	state->out_stream.last_seq = seq;
+	state->out_stream.last_timestamp = timestamp;
+	state->out_stream.ssrc = rtp_hdr->ssrc;
 
 	if (payload < 0)
 		return;
@@ -280,7 +370,7 @@ static int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	if (dest == MGCP_DEST_NET) {
 		if (is_rtp) {
 			patch_and_count(endp, &endp->bts_state,
-					endp->net_end.payload_type,
+					&endp->net_end,
 					addr, buf, rc);
 			forward_data(endp->net_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_NET_OUT], buf, rc);
@@ -295,7 +385,7 @@ static int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	} else {
 		if (is_rtp) {
 			patch_and_count(endp, &endp->net_state,
-					endp->bts_end.payload_type,
+					&endp->bts_end,
 					addr, buf, rc);
 			forward_data(endp->bts_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_BTS_OUT], buf, rc);
@@ -684,7 +774,7 @@ void mgcp_state_calc_loss(struct mgcp_rtp_state *state,
 			struct mgcp_rtp_end *end, uint32_t *expected,
 			int *loss)
 {
-	*expected = state->cycles + state->max_seq;
+	*expected = state->cycles + state->out_stream.last_seq;
 	*expected = *expected - state->base_seq + 1;
 
 	if (!state->initialized) {

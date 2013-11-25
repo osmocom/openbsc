@@ -1163,14 +1163,30 @@ void mgcp_format_stats(struct mgcp_endpoint *endp, char *msg, size_t size)
 {
 	uint32_t expected, jitter;
 	int ploss;
+	int nchars;
 	mgcp_state_calc_loss(&endp->net_state, &endp->net_end,
 				&expected, &ploss);
 	jitter = mgcp_state_calc_jitter(&endp->net_state);
 
-	snprintf(msg, size, "\r\nP: PS=%u, OS=%u, PR=%u, OR=%u, PL=%d, JI=%u",
-			endp->bts_end.packets, endp->bts_end.octets,
-			endp->net_end.packets, endp->net_end.octets,
-			ploss, jitter);
+	nchars = snprintf(msg, size,
+			  "\r\nP: PS=%u, OS=%u, PR=%u, OR=%u, PL=%d, JI=%u",
+			  endp->bts_end.packets, endp->bts_end.octets,
+			  endp->net_end.packets, endp->net_end.octets,
+			  ploss, jitter);
+	if (nchars < 0 || nchars >= size)
+		goto truncate;
+
+	msg += nchars;
+	size -= nchars;
+
+	/* Error Counter */
+	snprintf(msg, size,
+		 "\r\nX-Osmo-CP: EC TIS=%u, TOS=%u, TIR=%u, TOR=%u",
+		 endp->net_state.in_stream.err_ts_counter,
+		 endp->net_state.out_stream.err_ts_counter,
+		 endp->bts_state.in_stream.err_ts_counter,
+		 endp->bts_state.out_stream.err_ts_counter);
+truncate:
 	msg[size - 1] = '\0';
 }
 
