@@ -28,4 +28,20 @@ Testing packet loss calculation.
 Testing stat parsing
 Parsing result: 0
 Parsing result: 0
+Testing packet error detection.
+TS: 0, dTS: 0, TS Errs: in 0, out 0
+TS: 160, dTS: 160, TS Errs: in 0, out 0
+TS: 320, dTS: 160, TS Errs: in 0, out 0
+TS: 320, dTS: 160, TS Errs: in 1, out 1
+TS: 480, dTS: 160, TS Errs: in 1, out 1
+TS: 640, dTS: 160, TS Errs: in 1, out 1
+TS: 960, dTS: 320, TS Errs: in 2, out 2
+TS: 1120, dTS: 160, TS Errs: in 3, out 3
+TS: 1280, dTS: 160, TS Errs: in 3, out 3
+TS: 1400, dTS: 120, TS Errs: in 4, out 4
+TS: 1560, dTS: 160, TS Errs: in 5, out 5
+TS: 1720, dTS: 160, TS Errs: in 5, out 5
+TS: 1720, dTS: 160, TS Errs: in 5, out 6
+TS: 1880, dTS: 160, TS Errs: in 5, out 6
+TS: 2040, dTS: 160, TS Errs: in 5, out 6
 Done

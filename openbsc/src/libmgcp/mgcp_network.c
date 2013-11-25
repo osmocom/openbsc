@@ -209,9 +209,9 @@ static int check_rtp_timestamp(struct mgcp_endpoint *endp,
  * There is also no probation period for new sources. Every package
  * we receive will be seen as a switch in streams.
  */
-static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
-			    struct mgcp_rtp_end *rtp_end, struct sockaddr_in *addr,
-			    char *data, int len)
+void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
+			  struct mgcp_rtp_end *rtp_end, struct sockaddr_in *addr,
+			  char *data, int len)
 {
 	uint32_t arrival_time;
 	int32_t transit, d;
@@ -369,9 +369,9 @@ static int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 
 	if (dest == MGCP_DEST_NET) {
 		if (is_rtp) {
-			patch_and_count(endp, &endp->bts_state,
-					&endp->net_end,
-					addr, buf, rc);
+			mgcp_patch_and_count(endp, &endp->bts_state,
+					     &endp->net_end,
+					     addr, buf, rc);
 			forward_data(endp->net_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_NET_OUT], buf, rc);
 			return mgcp_udp_send(endp->net_end.rtp.fd,
@@ -384,9 +384,9 @@ static int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		}
 	} else {
 		if (is_rtp) {
-			patch_and_count(endp, &endp->net_state,
-					&endp->bts_end,
-					addr, buf, rc);
+			mgcp_patch_and_count(endp, &endp->net_state,
+					     &endp->bts_end,
+					     addr, buf, rc);
 			forward_data(endp->bts_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_BTS_OUT], buf, rc);
 			return mgcp_udp_send(endp->bts_end.rtp.fd,

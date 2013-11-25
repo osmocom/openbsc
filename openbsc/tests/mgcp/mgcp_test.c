@@ -348,6 +348,111 @@ static void test_mgcp_stats(void)
 	msgb_free(msg);
 }
 
+struct rtp_packet_info {
+	float txtime;
+	int len;
+	char *data;
+};
+
+struct rtp_packet_info test_rtp_packets1[] = {
+	/* RTP: SeqNo=0, TS=0 */
+	{0.000000, 20, "\x80\x62\x00\x00\x00\x00\x00\x00\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=1, TS=160 */
+	{0.020000, 20, "\x80\x62\x00\x01\x00\x00\x00\xA0\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=2, TS=320 */
+	{0.040000, 20, "\x80\x62\x00\x02\x00\x00\x01\x40\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* Repeat RTP timestamp: */
+	/* RTP: SeqNo=3, TS=320 */
+	{0.060000, 20, "\x80\x62\x00\x03\x00\x00\x01\x40\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=4, TS=480 */
+	{0.080000, 20, "\x80\x62\x00\x04\x00\x00\x01\xE0\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=5, TS=640 */
+	{0.100000, 20, "\x80\x62\x00\x05\x00\x00\x02\x80\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* Double skip RTP timestamp (delta = 2*160): */
+	/* RTP: SeqNo=6, TS=960 */
+	{0.120000, 20, "\x80\x62\x00\x06\x00\x00\x03\xC0\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=7, TS=1120 */
+	{0.140000, 20, "\x80\x62\x00\x07\x00\x00\x04\x60\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=8, TS=1280 */
+	{0.160000, 20, "\x80\x62\x00\x08\x00\x00\x05\x00\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* Non 20ms RTP timestamp (delta = 120): */
+	/* RTP: SeqNo=9, TS=1400 */
+	{0.180000, 20, "\x80\x62\x00\x09\x00\x00\x05\x78\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=10, TS=1560 */
+	{0.200000, 20, "\x80\x62\x00\x0A\x00\x00\x06\x18\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=11, TS=1720 */
+	{0.220000, 20, "\x80\x62\x00\x0B\x00\x00\x06\xB8\x11\x22\x33\x44"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* SSRC changed to 0x10203040, RTP timestamp jump */
+	/* RTP: SeqNo=12, TS=34688 */
+	{0.240000, 20, "\x80\x62\x00\x0C\x00\x00\x87\x80\x10\x20\x30\x40"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=13, TS=34848 */
+	{0.260000, 20, "\x80\x62\x00\x0D\x00\x00\x88\x20\x10\x20\x30\x40"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=14, TS=35008 */
+	{0.280000, 20, "\x80\x62\x00\x0E\x00\x00\x88\xC0\x10\x20\x30\x40"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+};
+
+void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
+			  struct mgcp_rtp_end *rtp_end, struct sockaddr_in *addr,
+			  char *data, int len);
+
+static void test_packet_error_detection(void)
+{
+	int i;
+
+	struct mgcp_trunk_config trunk;
+	struct mgcp_endpoint endp;
+	struct mgcp_rtp_state state;
+	struct mgcp_rtp_end rtp;
+	struct sockaddr_in addr = {0};
+	char buffer[4096];
+
+	printf("Testing packet error detection.\n");
+
+	memset(&trunk, 0, sizeof(trunk));
+	memset(&endp, 0, sizeof(endp));
+	memset(&state, 0, sizeof(state));
+	memset(&rtp, 0, sizeof(rtp));
+
+	trunk.number_endpoints = 1;
+	trunk.endpoints = &endp;
+
+	rtp.payload_type = 98;
+	endp.allow_patch = 1;
+	endp.tcfg = &trunk;
+
+	for (i = 0; i < ARRAY_SIZE(test_rtp_packets1); ++i) {
+		struct rtp_packet_info *info = test_rtp_packets1 + i;
+
+		OSMO_ASSERT(info->len <= sizeof(buffer));
+		OSMO_ASSERT(info->len >= 0);
+		memmove(buffer, info->data, info->len);
+
+		mgcp_patch_and_count(&endp, &state, &rtp, &addr,
+				     buffer, info->len);
+
+		printf("TS: %d, dTS: %d, TS Errs: in %d, out %d\n",
+		       state.out_stream.last_timestamp,
+		       state.out_stream.last_tsdelta,
+		       state.in_stream.err_ts_counter,
+		       state.out_stream.err_ts_counter);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
@@ -357,6 +462,7 @@ int main(int argc, char **argv)
 	test_packet_loss_calc();
 	test_rqnt_cb();
 	test_mgcp_stats();
+	test_packet_error_detection();
 
 	printf("Done\n");
 	return EXIT_SUCCESS;
