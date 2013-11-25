@@ -238,15 +238,30 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		state->transit = arrival_time - timestamp;
 		state->out_stream = state->in_stream;
 	} else if (state->in_stream.ssrc != rtp_hdr->ssrc) {
+		int32_t tsdelta = state->out_stream.last_tsdelta;
+		if (tsdelta == 0) {
+			tsdelta = rtp_end->rate * rtp_end->frames_per_packet *
+				rtp_end->frame_duration_num /
+				rtp_end->frame_duration_den;
+			LOGP(DMGCP, LOGL_NOTICE,
+			     "Computed timestamp delta %d based on "
+			     "rate %d, num frames %d, frame duration %d/%d\n",
+			     tsdelta, rtp_end->rate, rtp_end->frames_per_packet,
+			     rtp_end->frame_duration_num,
+			     rtp_end->frame_duration_den);
+		}
 		state->in_stream.ssrc = rtp_hdr->ssrc;
 		state->seq_offset = (state->out_stream.last_seq + 1) - seq;
-		state->timestamp_offset = state->out_stream.last_timestamp - timestamp;
+		state->timestamp_offset =
+			(state->out_stream.last_timestamp + tsdelta) - timestamp;
 		state->patch = endp->allow_patch;
 		LOGP(DMGCP, LOGL_NOTICE,
-			"The SSRC changed on 0x%x SSRC: %u offset: %d from %s:%d in %d\n",
+			"The SSRC changed on 0x%x SSRC: %u offset: %d tsdelta: %d "
+			"from %s:%d in %d\n",
 			ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
-			state->seq_offset, inet_ntoa(addr->sin_addr),
-			ntohs(addr->sin_port), endp->conn_mode);
+			state->seq_offset, tsdelta,
+			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			endp->conn_mode);
 
 		state->in_stream.last_tsdelta = 0;
 	} else {

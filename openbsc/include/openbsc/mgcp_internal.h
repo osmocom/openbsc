@@ -77,6 +77,10 @@ struct mgcp_rtp_end {
 
 	/* per endpoint data */
 	int payload_type;
+	uint32_t rate;
+	uint32_t frame_duration_num;
+	uint32_t frame_duration_den;
+	int  frames_per_packet;
 	char *fmtp_extra;
 
 	/*

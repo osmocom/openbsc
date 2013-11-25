@@ -417,7 +417,7 @@ static void test_packet_error_detection(void)
 	struct mgcp_trunk_config trunk;
 	struct mgcp_endpoint endp;
 	struct mgcp_rtp_state state;
-	struct mgcp_rtp_end rtp;
+	struct mgcp_rtp_end *rtp = &endp.net_end;
 	struct sockaddr_in addr = {0};
 	char buffer[4096];
 
@@ -426,14 +426,20 @@ static void test_packet_error_detection(void)
 	memset(&trunk, 0, sizeof(trunk));
 	memset(&endp, 0, sizeof(endp));
 	memset(&state, 0, sizeof(state));
-	memset(&rtp, 0, sizeof(rtp));
 
 	trunk.number_endpoints = 1;
 	trunk.endpoints = &endp;
-
-	rtp.payload_type = 98;
-	endp.allow_patch = 1;
 	endp.tcfg = &trunk;
+
+	/* This doesn't free endp but resets/frees all fields of the structure
+	 * and invokes mgcp_rtp_end_reset() for each mgcp_rtp_end. OTOH, it
+	 * expects valid pointer fields (either NULL or talloc'ed), so the
+	 * memset is still needed. It also requires that endp.tcfg and
+	 * trunk.endpoints are set up properly. */
+	mgcp_free_endp(&endp);
+
+	rtp->payload_type = 98;
+	endp.allow_patch = 1;
 
 	for (i = 0; i < ARRAY_SIZE(test_rtp_packets1); ++i) {
 		struct rtp_packet_info *info = test_rtp_packets1 + i;
@@ -442,7 +448,7 @@ static void test_packet_error_detection(void)
 		OSMO_ASSERT(info->len >= 0);
 		memmove(buffer, info->data, info->len);
 
-		mgcp_patch_and_count(&endp, &state, &rtp, &addr,
+		mgcp_patch_and_count(&endp, &state, rtp, &addr,
 				     buffer, info->len);
 
 		printf("TS: %d, dTS: %d, TS Errs: in %d, out %d\n",

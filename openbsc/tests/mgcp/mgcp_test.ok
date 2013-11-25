@@ -41,7 +41,7 @@ TS: 1280, dTS: 160, TS Errs: in 3, out 3
 TS: 1400, dTS: 120, TS Errs: in 4, out 4
 TS: 1560, dTS: 160, TS Errs: in 5, out 5
 TS: 1720, dTS: 160, TS Errs: in 5, out 5
-TS: 1720, dTS: 160, TS Errs: in 5, out 6
-TS: 1880, dTS: 160, TS Errs: in 5, out 6
-TS: 2040, dTS: 160, TS Errs: in 5, out 6
+TS: 1880, dTS: 160, TS Errs: in 5, out 5
+TS: 2040, dTS: 160, TS Errs: in 5, out 5
+TS: 2200, dTS: 160, TS Errs: in 5, out 5
 Done
