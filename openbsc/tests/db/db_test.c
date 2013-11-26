@@ -73,6 +73,9 @@ static void test_sms(void)
 	sms = sms_alloc();
 	sms->receiver = subscr_get(subscr);
 
+	sms->received_time = 12345;
+	sms->valid_until = 67890;
+
 	sms->src.ton = 0x23;
 	sms->src.npi = 0x24;
 	memcpy(sms->src.addr, "1234", strlen("1234") + 1);
@@ -100,6 +103,8 @@ static void test_sms(void)
 	sms = db_sms_get_unsent_for_subscr(subscr);
 	OSMO_ASSERT(sms);
 	OSMO_ASSERT(sms->receiver == subscr);
+	OSMO_ASSERT(sms->received_time == 12345);
+	OSMO_ASSERT(sms->valid_until == 67890);
 	OSMO_ASSERT(sms->reply_path_req == 1);
 	OSMO_ASSERT(sms->status_rep_req == 2);
 	OSMO_ASSERT(sms->ud_hdr_ind == 3);

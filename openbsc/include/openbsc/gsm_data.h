@@ -315,7 +315,8 @@ struct gsm_sms {
 		char msg_id[16];
 	} smpp;
 
-	unsigned long validity_minutes;
+	time_t received_time;
+	time_t valid_until;
 	uint8_t reply_path_req;
 	uint8_t status_rep_req;
 	uint8_t ud_hdr_ind;

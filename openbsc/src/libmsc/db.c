@@ -2,6 +2,7 @@
 /* (C) 2008 by Jan Luebbe <jluebbe@debian.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2014 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -113,6 +114,7 @@ static const char *create_stmts[] = {
 		/* metadata, not part of sms */
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
+		"received TIMESTAMP, "
 		"sent TIMESTAMP, "
 		"deliver_attempts INTEGER NOT NULL DEFAULT 0, "
 		/* data directly copied/derived from SMS */
@@ -245,6 +247,8 @@ static struct gsm_sms *sms_from_result_v3(dbi_result result)
 	sms->protocol_id = dbi_result_get_uint(result, "protocol_id");
 	sms->data_coding_scheme = dbi_result_get_uint(result,
 						  "data_coding_scheme");
+	sms->received_time = dbi_result_get_datetime(result, "created");
+	sms->valid_until = dbi_result_get_datetime(result, "valid_until");
 
 	daddr = dbi_result_get_string(result, "dest_addr");
 	if (daddr) {
@@ -1278,32 +1282,33 @@ int db_sms_store(struct gsm_sms *sms)
 	dbi_result result;
 	char *q_text, *q_daddr, *q_saddr;
 	unsigned char *q_udata;
-	char *validity_timestamp = "2222-2-2";
-
-	/* FIXME: generate validity timestamp based on validity_minutes */
+	char received_timestamp[22];
+	char validity_timestamp[22];
 
 	dbi_conn_quote_string_copy(conn, (char *)sms->text, &q_text);
 	dbi_conn_quote_string_copy(conn, (char *)sms->dst.addr, &q_daddr);
 	dbi_conn_quote_string_copy(conn, (char *)sms->src.addr, &q_saddr);
 	dbi_conn_quote_binary_copy(conn, sms->user_data, sms->user_data_len,
 				   &q_udata);
-
-	/* FIXME: correct validity period */
+	strftime(received_timestamp, sizeof(received_timestamp),
+			 "'%F %T'", gmtime(&sms->received_time));
+	strftime(validity_timestamp, sizeof(validity_timestamp),
+			 "'%F %T'", gmtime(&sms->valid_until));
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO SMS "
-		"(created, valid_until, "
+		"(created, received, valid_until, "
 		 "reply_path_req, status_rep_req, protocol_id, "
 		 "data_coding_scheme, ud_hdr_ind, "
 		 "user_data, text, "
 		 "dest_addr, dest_ton, dest_npi, "
 		 "src_addr, src_ton, src_npi) VALUES "
-		"(datetime('now'), %u, "
+		"(datetime('now'), %s, %s, "
 		"%u, %u, %u, "
 		"%u, %u, "
 		"%s, %s, "
 		"%s, %u, %u, "
 		"%s, %u, %u)",
-		validity_timestamp,
+		received_timestamp, validity_timestamp,
 		sms->reply_path_req, sms->status_rep_req, sms->protocol_id,
 		sms->data_coding_scheme, sms->ud_hdr_ind,
 		q_udata, q_text,
@@ -1332,7 +1337,6 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 
 	sms->id = dbi_result_get_ulonglong(result, "id");
 
-	/* FIXME: validity */
 	/* FIXME: those should all be get_uchar, but sqlite3 is braindead */
 	sms->reply_path_req = dbi_result_get_uint(result, "reply_path_req");
 	sms->status_rep_req = dbi_result_get_uint(result, "status_rep_req");
@@ -1340,6 +1344,8 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 	sms->protocol_id = dbi_result_get_uint(result, "protocol_id");
 	sms->data_coding_scheme = dbi_result_get_uint(result,
 						  "data_coding_scheme");
+	sms->received_time = dbi_result_get_datetime(result, "received");
+	sms->valid_until = dbi_result_get_datetime(result, "valid_until");
 	/* sms->msg_ref is temporary and not stored in DB */
 
 	sms->dst.npi = dbi_result_get_uint(result, "dest_npi");

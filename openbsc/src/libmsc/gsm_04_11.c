@@ -102,6 +102,9 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver,
 	sms->protocol_id = 0; /* implicit */
 	sms->data_coding_scheme = dcs;
 	strncpy(sms->dst.addr, receiver->extension, sizeof(sms->dst.addr)-1);
+	/* Timestamps */
+	time(&sms->received_time);
+	sms->valid_until = sms->received_time + SMS_DEFAULT_VALIDITY_PERIOD;
 	/* Generate user_data */
 	sms->user_data_len = gsm_7bit_encode_n(sms->user_data, sizeof(sms->user_data),
 						sms->text, NULL);
@@ -384,7 +387,9 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 			sms_alphabet == DCS_7BIT_DEFAULT ? gsms->text :
 				osmo_hexdump(gsms->user_data, gsms->user_data_len));
 
-	gsms->validity_minutes = gsm340_validity_period(sms_vpf, sms_vp);
+	gsms->received_time = time(NULL);
+	gsms->valid_until = gsm340_validity_time(gsms->received_time,
+		sms_vpf, sms_vp);
 
 	/* FIXME: This looks very wrong */
 	send_signal(0, NULL, gsms, 0);
