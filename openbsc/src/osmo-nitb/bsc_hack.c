@@ -82,7 +82,7 @@ static void create_pcap_file(char *file)
 
 static void print_usage()
 {
-	printf("Usage: bsc_hack\n");
+	printf("Usage: osmo-nitb\n");
 }
 
 static void print_help()
