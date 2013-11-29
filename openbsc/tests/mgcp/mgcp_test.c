@@ -82,6 +82,26 @@ static void test_strline(void)
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
 		 "a=rtpmap:126 AMR/8000\r\n"
+#define MDCX4 "MDCX 18983216 1@mgw MGCP 1.0\r\n" \
+		 "C: 2\r\n"          \
+		 "I: 1\r\n"                    \
+		 "L: p:20, a:AMR, nt:IN\r\n"    \
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 4441 RTP/AVP 99\r\n"	\
+		 "a=rtpmap:99 AMR/8000\r\n"
+#define MDCX4_RET "200 18983216 OK\r\n"		\
+		 "I: 1\n"			\
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 0 RTP/AVP 126\r\n"	\
+		 "a=rtpmap:126 AMR/8000\r\n"
 
 #define SHORT2	"CRCX 1"
 #define SHORT2_RET "510 000000 FAIL\r\n"
@@ -145,10 +165,16 @@ static void test_strline(void)
 #define RQNT1_RET "200 186908780 OK\r\n"
 #define RQNT2_RET "200 186908781 OK\r\n"
 
+#define PTYPE_IGNORE 0 /* == default initializer */
+#define PTYPE_NONE 128
+#define PTYPE_NYI  PTYPE_NONE
+
 struct mgcp_test {
 	const char *name;
 	const char *req;
 	const char *exp_resp;
+	int exp_net_ptype;
+	int exp_bts_ptype;
 };
 
 static const struct mgcp_test tests[] = {
@@ -156,10 +182,11 @@ static const struct mgcp_test tests[] = {
 	{ "AUEP2", AUEP2, AUEP2_RET },
 	{ "MDCX1", MDCX_WRONG_EP, MDCX_ERR_RET },
 	{ "MDCX2", MDCX_UNALLOCATED, MDCX_RET },
-	{ "CRCX", CRCX, CRCX_RET },
-	{ "MDCX3", MDCX3, MDCX3_RET },
-	{ "DLCX", DLCX, DLCX_RET },
-	{ "CRCX_ZYN", CRCX_ZYN, CRCX_ZYN_RET },
+	{ "CRCX", CRCX, CRCX_RET, PTYPE_NYI, 126 },
+	{ "MDCX3", MDCX3, MDCX3_RET, PTYPE_NONE, 126 },
+	{ "MDCX4", MDCX4, MDCX4_RET, 99, 126 },
+	{ "DLCX", DLCX, DLCX_RET, -1, -1 },
+	{ "CRCX_ZYN", CRCX_ZYN, CRCX_ZYN_RET, PTYPE_NYI, 126 },
 	{ "EMPTY", EMPTY, EMPTY_RET },
 	{ "SHORT1", SHORT, SHORT_RET },
 	{ "SHORT2", SHORT2, SHORT2_RET },
@@ -167,7 +194,7 @@ static const struct mgcp_test tests[] = {
 	{ "SHORT4", SHORT4, SHORT2_RET },
 	{ "RQNT1", RQNT, RQNT1_RET },
 	{ "RQNT2", RQNT2, RQNT2_RET },
-	{ "DLCX", DLCX, DLCX_RET },
+	{ "DLCX", DLCX, DLCX_RET, -1, -1 },
 };
 
 static const struct mgcp_test retransmit[] = {
@@ -188,9 +215,21 @@ static struct msgb *create_msg(const char *str)
 	return msg;
 }
 
+static int last_endpoint = -1;
+
+static int mgcp_test_policy_cb(struct mgcp_trunk_config *cfg, int endpoint,
+			       int state, const char *transactio_id)
+{
+	fprintf(stderr, "Policy CB got state %d on endpoint %d\n",
+		state, endpoint);
+	last_endpoint = endpoint;
+	return MGCP_POLICY_CONT;
+}
+
 static void test_messages(void)
 {
 	struct mgcp_config *cfg;
+	struct mgcp_endpoint *endp;
 	int i;
 
 	cfg = mgcp_config_alloc();
@@ -198,7 +237,15 @@ static void test_messages(void)
 	cfg->trunk.number_endpoints = 64;
 	mgcp_endpoints_allocate(&cfg->trunk);
 
+	cfg->policy_cb = mgcp_test_policy_cb;
+
 	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
+
+	/* reset endpoints */
+	for (i = 0; i < cfg->trunk.number_endpoints; i++) {
+		endp = &cfg->trunk.endpoints[i];
+		endp->net_end.payload_type = PTYPE_NONE;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(tests); i++) {
 		const struct mgcp_test *t = &tests[i];
@@ -206,6 +253,8 @@ static void test_messages(void)
 		struct msgb *msg;
 
 		printf("Testing %s\n", t->name);
+
+		last_endpoint = -1;
 
 		inp = create_msg(t->req);
 		msg = mgcp_handle_message(cfg, inp);
@@ -216,6 +265,29 @@ static void test_messages(void)
 		} else if (strcmp((char *) msg->data, t->exp_resp) != 0)
 			printf("%s failed '%s'\n", t->name, (char *) msg->data);
 		msgb_free(msg);
+
+		/* Check detected payload type */
+		if (t->exp_net_ptype != PTYPE_IGNORE ||
+		    t->exp_bts_ptype != PTYPE_IGNORE) {
+			OSMO_ASSERT(last_endpoint != -1);
+			endp = &cfg->trunk.endpoints[last_endpoint];
+
+			fprintf(stderr, "endpoint %d: "
+				"payload type BTS %d (exp %d), NET %d (exp %d)\n",
+				last_endpoint,
+				endp->bts_end.payload_type, t->exp_bts_ptype,
+				endp->net_end.payload_type, t->exp_net_ptype);
+
+			if (t->exp_bts_ptype != PTYPE_IGNORE)
+				OSMO_ASSERT(endp->bts_end.payload_type ==
+					    t->exp_bts_ptype);
+			if (t->exp_net_ptype != PTYPE_IGNORE)
+				OSMO_ASSERT(endp->net_end.payload_type ==
+					    t->exp_net_ptype);
+
+			/* Reset them again for next test */
+			endp->net_end.payload_type = PTYPE_NONE;
+		}
 	}
 
 	talloc_free(cfg);

@@ -624,10 +624,24 @@ static void test_mgcp_rewrite(void)
 		const char *patc = mgcp_messages[i].patch;
 		const char *ip = mgcp_messages[i].ip;
 		const int port = mgcp_messages[i].port;
+		const int expected_payload_type = mgcp_messages[i].payload_type;
+		int payload_type = -1;
 
 		char *input = strdup(orig);
 
-		output = bsc_mgcp_rewrite(input, strlen(input), 0x1e, ip, port);
+		output = bsc_mgcp_rewrite(input, strlen(input), 0x1e,
+					  ip, port);
+
+		if (payload_type != -1) {
+			fprintf(stderr, "Found media payload type %d in SDP data\n",
+				payload_type);
+			if (payload_type != expected_payload_type) {
+				printf("Wrong payload type %d (expected %d)\n",
+				       payload_type, expected_payload_type);
+				abort();
+			}
+		}
+
 		if (msgb_l2len(output) != strlen(patc)) {
 			printf("Wrong sizes for test: %d  %d != %d != %d\n", i, msgb_l2len(output), strlen(patc), strlen(orig));
 			printf("String '%s' vs '%s'\n", (const char *) output->l2h, patc);
