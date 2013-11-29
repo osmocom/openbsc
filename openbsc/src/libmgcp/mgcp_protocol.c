@@ -282,7 +282,7 @@ struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
 	 */
 	memset(&pdata, 0, sizeof(pdata));
 	pdata.cfg = cfg;
-	data = strtok_r((char *) msg->l3h, "\r\n", &pdata.save);
+	data = strline_r((char *) msg->l3h, &pdata.save);
 	pdata.found = mgcp_analyze_header(&pdata, data);
 	if (pdata.endp && pdata.trans
 			&& pdata.endp->last_trans
@@ -544,6 +544,62 @@ static int allocate_ports(struct mgcp_endpoint *endp)
 	return 0;
 }
 
+static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
+{
+	char *line;
+	int found_media = 0;
+
+	for_each_line(line, p->save) {
+		switch (line[0]) {
+		case 'a':
+		case 'o':
+		case 's':
+		case 't':
+		case 'v':
+			/* skip these SDP attributes */
+			break;
+		case 'm': {
+			int port;
+			int payload;
+
+			if (sscanf(line, "m=audio %d RTP/AVP %d",
+				   &port, &payload) == 2) {
+				rtp->rtp_port = htons(port);
+				rtp->rtcp_port = htons(port + 1);
+				rtp->payload_type = payload;
+				found_media = 1;
+			}
+			break;
+		}
+		case 'c': {
+			char ipv4[16];
+
+			if (sscanf(line, "c=IN IP4 %15s", ipv4) == 1) {
+				inet_aton(ipv4, &rtp->addr);
+			}
+			break;
+		}
+		default:
+			if (p->endp)
+				LOGP(DMGCP, LOGL_NOTICE,
+				     "Unhandled SDP option: '%c'/%d on 0x%x\n",
+				     line[0], line[0], ENDPOINT_NUMBER(p->endp));
+			else
+				LOGP(DMGCP, LOGL_NOTICE,
+				     "Unhandled SDP option: '%c'/%d\n",
+				     line[0], line[0]);
+			break;
+		}
+	}
+
+	if (found_media)
+		LOGP(DMGCP, LOGL_NOTICE,
+		     "Got media info via SDP: port %d, payload %d, addr %s\n",
+		     ntohs(rtp->rtp_port), rtp->payload_type, inet_ntoa(rtp->addr));
+
+	return found_media;
+}
+
 static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 {
 	struct mgcp_trunk_config *tcfg;
@@ -559,7 +615,7 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 		return create_err_response(NULL, 510, "CRCX", p->trans);
 
 	/* parse CallID C: and LocalParameters L: */
-	for_each_non_empty_line(line, p->save) {
+	for_each_line(line, p->save) {
 		switch (line[0]) {
 		case 'L':
 			local_options = (const char *) line + 3;
@@ -684,7 +740,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 		return create_err_response(endp, 400, "MDCX", p->trans);
 	}
 
-	for_each_non_empty_line(line, p->save) {
+	for_each_line(line, p->save) {
 		switch (line[0]) {
 		case 'C': {
 			if (verify_call_id(endp, line + 3) != 0)
@@ -711,35 +767,13 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			break;
 		case '\0':
 			/* SDP file begins */
+			parse_sdp_data(&endp->net_end, p);
+			/* This will exhaust p->save, so the loop will
+			 * terminate next time.
+			 */
 			break;
-		case 'a':
-		case 'o':
-		case 's':
-		case 't':
-		case 'v':
-			/* skip these SDP attributes */
-			break;
-		case 'm': {
-			int port;
-			int payload;
-
-			if (sscanf(line, "m=audio %d RTP/AVP %d", &port, &payload) == 2) {
-				endp->net_end.rtp_port = htons(port);
-				endp->net_end.rtcp_port = htons(port + 1);
-				endp->net_end.payload_type = payload;
-			}
-			break;
-		}
-		case 'c': {
-			char ipv4[16];
-
-			if (sscanf(line, "c=IN IP4 %15s", ipv4) == 1) {
-				inet_aton(ipv4, &endp->net_end.addr);
-			}
-			break;
-		}
 		default:
-			LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
+			LOGP(DMGCP, LOGL_NOTICE, "Unhandled MGCP option: '%c'/%d on 0x%x\n",
 				line[0], line[0], ENDPOINT_NUMBER(endp));
 			break;
 		}
@@ -803,7 +837,7 @@ static struct msgb *handle_delete_con(struct mgcp_parse_data *p)
 		return create_err_response(endp, 400, "DLCX", p->trans);
 	}
 
-	for_each_non_empty_line(line, p->save) {
+	for_each_line(line, p->save) {
 		switch (line[0]) {
 		case 'C':
 			if (verify_call_id(endp, line + 3) != 0)
@@ -905,7 +939,7 @@ static struct msgb *handle_noti_req(struct mgcp_parse_data *p)
 	if (p->found != 0)
 		return create_err_response(NULL, 400, "RQNT", p->trans);
 
-	for_each_non_empty_line(line, p->save) {
+	for_each_line(line, p->save) {
 		switch (line[0]) {
 		case 'S':
 			tone = extract_tone(line);
