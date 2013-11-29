@@ -40,6 +40,38 @@
 	for (line = strtok_r(NULL, "\r\n", &save); line;\
 	     line = strtok_r(NULL, "\r\n", &save))
 
+#define for_each_line(line, save)			\
+	for (line = strline_r(NULL, &save); line;\
+	     line = strline_r(NULL, &save))
+
+char *strline_r(char *str, char **saveptr)
+{
+	char *result;
+
+	if (str)
+		*saveptr = str;
+
+	result = *saveptr;
+
+	if (*saveptr != NULL) {
+		*saveptr = strpbrk(*saveptr, "\r\n");
+
+		if (*saveptr != NULL) {
+			char *eos = *saveptr;
+
+			if ((*saveptr)[0] == '\r' && (*saveptr)[1] == '\n')
+				(*saveptr)++;
+			(*saveptr)++;
+			if ((*saveptr)[0] == '\0')
+				*saveptr = NULL;
+
+			*eos = '\0';
+		}
+	}
+
+	return result;
+}
+
 /* Assume audio frame length of 20ms */
 #define DEFAULT_RTP_AUDIO_FRAME_DUR_NUM 20
 #define DEFAULT_RTP_AUDIO_FRAME_DUR_DEN 1000

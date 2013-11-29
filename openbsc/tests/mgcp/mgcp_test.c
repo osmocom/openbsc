@@ -25,6 +25,40 @@
 #include <string.h>
 #include <limits.h>
 
+char *strline_r(char *str, char **saveptr);
+
+const char *strline_test_data =
+    "one CR\r"
+    "two CR\r"
+    "\r"
+    "one CRLF\r\n"
+    "two CRLF\r\n"
+    "\r\n"
+    "one LF\n"
+    "two LF\n"
+    "\n"
+    "mixed (4 lines)\r\r\n\n\r\n";
+
+#define EXPECTED_NUMBER_OF_LINES 13
+
+static void test_strline(void)
+{
+	char *save = NULL;
+	char *line;
+	char buf[2048];
+	int counter = 0;
+
+	strncpy(buf, strline_test_data, sizeof(buf));
+
+	for (line = strline_r(buf, &save); line;
+	     line = strline_r(NULL, &save)) {
+		printf("line: '%s'\n", line);
+		counter++;
+	}
+
+	OSMO_ASSERT(counter == EXPECTED_NUMBER_OF_LINES);
+}
+
 #define AUEP1	"AUEP 158663169 ds/e1-1/2@172.16.6.66 MGCP 1.0\r\n"
 #define AUEP1_RET "200 158663169 OK\r\n"
 #define AUEP2	"AUEP 18983213 ds/e1-2/1@172.16.6.66 MGCP 1.0\r\n"
@@ -463,6 +497,7 @@ int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
 
+	test_strline();
 	test_messages();
 	test_retransmission();
 	test_packet_loss_calc();
