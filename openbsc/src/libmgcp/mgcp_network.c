@@ -237,6 +237,16 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		state->jitter = 0;
 		state->transit = arrival_time - timestamp;
 		state->out_stream = state->in_stream;
+		state->out_stream.last_timestamp = timestamp;
+		/* force output SSRC change */
+		state->out_stream.ssrc = rtp_hdr->ssrc - 1;
+		LOGP(DMGCP, LOGL_INFO,
+			"Initializing stream on 0x%x SSRC: %u timestamp: %u "
+			"from %s:%d in %d\n",
+			ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
+			state->seq_offset,
+			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			endp->conn_mode);
 	} else if (state->in_stream.ssrc != rtp_hdr->ssrc) {
 		int32_t tsdelta = state->out_stream.last_tsdelta;
 		if (tsdelta == 0) {
@@ -286,9 +296,10 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	}
 
 	/* Check again, whether the timestamps are still valid */
-	check_rtp_timestamp(endp, &state->out_stream, rtp_end, addr,
-			    seq, timestamp, "output",
-			    &state->out_stream.last_tsdelta);
+	if (state->out_stream.ssrc == rtp_hdr->ssrc)
+		check_rtp_timestamp(endp, &state->out_stream, rtp_end, addr,
+				    seq, timestamp, "output",
+				    &state->out_stream.last_tsdelta);
 
 	/*
 	 * The below takes the shape of the validation from Appendix A. Check

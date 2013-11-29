@@ -80,15 +80,15 @@ TS: 1400, dTS: 120, TS Errs: in 4, out 4
 TS: 1560, dTS: 160, TS Errs: in 5, out 5
 TS: 1720, dTS: 160, TS Errs: in 5, out 5
 Output SSRC changed to 10203040
-TS: 34688, dTS: 32968, TS Errs: in 5, out 6
-TS: 34848, dTS: 160, TS Errs: in 5, out 7
-TS: 35008, dTS: 160, TS Errs: in 5, out 7
-TS: 35128, dTS: 120, TS Errs: in 6, out 8
-TS: 35288, dTS: 160, TS Errs: in 7, out 9
-TS: 35448, dTS: 160, TS Errs: in 7, out 9
-TS: 35768, dTS: 160, TS Errs: in 7, out 9
-TS: 35928, dTS: 160, TS Errs: in 7, out 9
-TS: 36088, dTS: 160, TS Errs: in 8, out 10
+TS: 34688, dTS: 160, TS Errs: in 5, out 5
+TS: 34848, dTS: 160, TS Errs: in 5, out 5
+TS: 35008, dTS: 160, TS Errs: in 5, out 5
+TS: 35128, dTS: 120, TS Errs: in 6, out 6
+TS: 35288, dTS: 160, TS Errs: in 7, out 7
+TS: 35448, dTS: 160, TS Errs: in 7, out 7
+TS: 35768, dTS: 160, TS Errs: in 7, out 7
+TS: 35928, dTS: 160, TS Errs: in 7, out 7
+TS: 36088, dTS: 160, TS Errs: in 8, out 8
 Testing packet error detection, patch timestamps.
 Output SSRC changed to 11223344
 TS: 0, dTS: 0, TS Errs: in 0, out 0
@@ -104,15 +104,15 @@ TS: 1400, dTS: 120, TS Errs: in 4, out 4
 TS: 1560, dTS: 160, TS Errs: in 5, out 5
 TS: 1720, dTS: 160, TS Errs: in 5, out 5
 Output SSRC changed to 10203040
-TS: 34688, dTS: 32968, TS Errs: in 5, out 6
-TS: 34848, dTS: 160, TS Errs: in 5, out 7
-TS: 35008, dTS: 160, TS Errs: in 5, out 7
-TS: 35128, dTS: 120, TS Errs: in 6, out 8
-TS: 35288, dTS: 160, TS Errs: in 7, out 9
-TS: 35448, dTS: 160, TS Errs: in 7, out 9
-TS: 35768, dTS: 160, TS Errs: in 7, out 9
-TS: 35928, dTS: 160, TS Errs: in 7, out 9
-TS: 36088, dTS: 160, TS Errs: in 8, out 10
+TS: 34688, dTS: 160, TS Errs: in 5, out 5
+TS: 34848, dTS: 160, TS Errs: in 5, out 5
+TS: 35008, dTS: 160, TS Errs: in 5, out 5
+TS: 35128, dTS: 120, TS Errs: in 6, out 6
+TS: 35288, dTS: 160, TS Errs: in 7, out 7
+TS: 35448, dTS: 160, TS Errs: in 7, out 7
+TS: 35768, dTS: 160, TS Errs: in 7, out 7
+TS: 35928, dTS: 160, TS Errs: in 7, out 7
+TS: 36088, dTS: 160, TS Errs: in 8, out 8
 Testing packet error detection, patch SSRC, patch timestamps.
 Output SSRC changed to 11223344
 TS: 0, dTS: 0, TS Errs: in 0, out 0
