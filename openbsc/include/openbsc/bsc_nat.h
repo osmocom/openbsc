@@ -408,7 +408,8 @@ void bsc_mgcp_free_endpoints(struct bsc_nat *nat);
 int bsc_mgcp_nat_init(struct bsc_nat *nat);
 
 struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
-struct msgb *bsc_mgcp_rewrite(char *input, int length, int endp, const char *ip, int port);
+struct msgb *bsc_mgcp_rewrite(char *input, int length, int endp, const char *ip,
+			      int port, int *payload_type);
 void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
 
 void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc);

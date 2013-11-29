@@ -542,8 +542,10 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	}
 
 	/* we need to generate a new and patched message */
-	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length, sccp->bsc_endp,
-				   nat->mgcp_cfg->source_addr, mgcp_endp->bts_end.local_port);
+	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
+				   sccp->bsc_endp, nat->mgcp_cfg->source_addr,
+				   mgcp_endp->bts_end.local_port,
+				   &mgcp_endp->net_end.payload_type);
 	if (!bsc_msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
 		return MGCP_POLICY_CONT;
@@ -683,7 +685,9 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	 * with the value of 0 should be no problem.
 	 */
 	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg), -1,
-				  bsc->nat->mgcp_cfg->source_addr, endp->net_end.local_port);
+				  bsc->nat->mgcp_cfg->source_addr,
+				  endp->net_end.local_port,
+				  &endp->bts_end.payload_type);
 
 	if (!output) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");
@@ -743,7 +747,9 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 }
 
 /* we need to replace some strings... */
-struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char *ip, int port)
+struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint,
+			      const char *ip, int port,
+			      int *payload_type)
 {
 	static const char crcx_str[] = "CRCX ";
 	static const char dlcx_str[] = "DLCX ";
@@ -835,6 +841,9 @@ copy:
 		output->l3h = msgb_put(output, strlen(buf));
 		memcpy(output->l3h, buf, strlen(buf));
 	}
+
+	if (payload != -1 && payload_type)
+		*payload_type = payload;
 
 	return output;
 }
