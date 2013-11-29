@@ -50,7 +50,7 @@ struct mgcp_rtp_stream_state {
 
 struct mgcp_rtp_state {
 	int initialized;
-	int patch;
+	int patch_ssrc;
 
 	uint32_t orig_ssrc;
 

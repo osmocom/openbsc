@@ -278,7 +278,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 			state->timestamp_offset =
 				(state->out_stream.last_timestamp + tsdelta) -
 				timestamp;
-			state->patch = 1;
+			state->patch_ssrc = 1;
 			ssrc = state->orig_ssrc;
 			if (rtp_end->force_constant_ssrc != -1)
 				rtp_end->force_constant_ssrc -= 1;
@@ -300,7 +300,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 				    seq, timestamp, "input",
 				    &state->in_stream.last_tsdelta);
 
-		if (state->patch)
+		if (state->patch_ssrc)
 			ssrc = state->orig_ssrc;
 	}
 
@@ -308,15 +308,37 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	state->in_stream.last_timestamp = timestamp;
 	state->in_stream.last_seq = seq;
 
-	/* apply the offset and store it back to the packet */
-	if (state->patch) {
-		seq += state->seq_offset;
-		rtp_hdr->sequence = htons(seq);
+	if (rtp_end->force_constant_timing &&
+	    state->out_stream.ssrc == ssrc && state->packet_duration) {
+		int delta_seq = seq + state->seq_offset - state->out_stream.last_seq;
+		int timestamp_offset =
+			state->out_stream.last_timestamp - timestamp +
+			delta_seq * state->packet_duration;
+		if (state->timestamp_offset != timestamp_offset) {
+			state->timestamp_offset = timestamp_offset;
+
+			LOGP(DMGCP, LOGL_NOTICE,
+			     "Timestamp patching enabled on 0x%x SSRC: %u "
+			     "SeqNo delta: %d, TS offset: %d, "
+			     "from %s:%d in %d\n",
+			     ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
+			     delta_seq, state->timestamp_offset,
+			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			     endp->conn_mode);
+		}
+	}
+
+	/* Store the updated SSRC back to the packet */
+	if (state->patch_ssrc)
 		rtp_hdr->ssrc = htonl(ssrc);
 
-		timestamp += state->timestamp_offset;
-		rtp_hdr->timestamp = htonl(timestamp);
-	}
+	/* Apply the offset and store it back to the packet.
+	 * This won't change anything if the offset is 0, so the conditional is
+	 * omitted. */
+	seq += state->seq_offset;
+	rtp_hdr->sequence = htons(seq);
+	timestamp += state->timestamp_offset;
+	rtp_hdr->timestamp = htonl(timestamp);
 
 	/* Check again, whether the timestamps are still valid */
 	if (state->out_stream.ssrc == ssrc)
