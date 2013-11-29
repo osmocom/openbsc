@@ -36,7 +36,7 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
-#define for_each_line(line, save)			\
+#define for_each_non_empty_line(line, save)			\
 	for (line = strtok_r(NULL, "\r\n", &save); line;\
 	     line = strtok_r(NULL, "\r\n", &save))
 
@@ -527,7 +527,7 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 		return create_err_response(NULL, 510, "CRCX", p->trans);
 
 	/* parse CallID C: and LocalParameters L: */
-	for_each_line(line, p->save) {
+	for_each_non_empty_line(line, p->save) {
 		switch (line[0]) {
 		case 'L':
 			local_options = (const char *) line + 3;
@@ -652,7 +652,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 		return create_err_response(endp, 400, "MDCX", p->trans);
 	}
 
-	for_each_line(line, p->save) {
+	for_each_non_empty_line(line, p->save) {
 		switch (line[0]) {
 		case 'C': {
 			if (verify_call_id(endp, line + 3) != 0)
@@ -771,7 +771,7 @@ static struct msgb *handle_delete_con(struct mgcp_parse_data *p)
 		return create_err_response(endp, 400, "DLCX", p->trans);
 	}
 
-	for_each_line(line, p->save) {
+	for_each_non_empty_line(line, p->save) {
 		switch (line[0]) {
 		case 'C':
 			if (verify_call_id(endp, line + 3) != 0)
@@ -873,7 +873,7 @@ static struct msgb *handle_noti_req(struct mgcp_parse_data *p)
 	if (p->found != 0)
 		return create_err_response(NULL, 400, "RQNT", p->trans);
 
-	for_each_line(line, p->save) {
+	for_each_non_empty_line(line, p->save) {
 		switch (line[0]) {
 		case 'S':
 			tone = extract_tone(line);
@@ -1218,7 +1218,7 @@ int mgcp_parse_stats(struct msgb *msg, uint32_t *ps, uint32_t *os,
 		return -1;
 
 	/* this can only parse the message that is created above... */
-	for_each_line(line, save) {
+	for_each_non_empty_line(line, save) {
 		switch (line[0]) {
 		case 'P':
 			rc = sscanf(line, "P: PS=%u, OS=%u, PR=%u, OR=%u, PL=%d, JI=%u",
