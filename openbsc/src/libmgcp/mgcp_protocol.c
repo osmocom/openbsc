@@ -624,6 +624,7 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 	const char *callid = NULL;
 	const char *mode = NULL;
 	char *line;
+	int have_sdp = 0;
 
 	if (p->found != 0)
 		return create_err_response(NULL, 510, "CRCX", p->trans);
@@ -640,6 +641,9 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 		case 'M':
 			mode = (const char *) line + 3;
 			break;
+		case '\0':
+			have_sdp = 1;
+			goto mgcp_header_done;
 		default:
 			LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
 				*line, *line, ENDPOINT_NUMBER(endp));
@@ -647,6 +651,7 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 		}
 	}
 
+mgcp_header_done:
 	tcfg = p->endp->tcfg;
 
 	/* Check required data */
@@ -697,9 +702,13 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 		goto error2;
 
 	endp->allocated = 1;
+
+	/* set up RTP media parameters */
 	endp->bts_end.payload_type = tcfg->audio_payload;
 	endp->bts_end.fmtp_extra = talloc_strdup(tcfg->endpoints,
 						tcfg->audio_fmtp_extra);
+	if (have_sdp)
+		parse_sdp_data(&endp->net_end, p);
 
 	/* policy CB */
 	if (p->cfg->policy_cb) {
