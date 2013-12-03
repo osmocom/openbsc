@@ -586,7 +586,7 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 
 		if (state.out_stream.ssrc != last_ssrc) {
 			printf("Output SSRC changed to %08x\n",
-			       ntohl(state.out_stream.ssrc));
+			       state.out_stream.ssrc);
 			last_ssrc = state.out_stream.ssrc;
 		}
 
