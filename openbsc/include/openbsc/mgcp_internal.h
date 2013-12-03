@@ -85,7 +85,7 @@ struct mgcp_rtp_end {
 	char *fmtp_extra;
 
 	/* RTP patching */
-	int force_constant_ssrc;
+	int force_constant_ssrc; /* -1: always, 0: don't, 1: once */
 	int force_constant_timing;
 
 	/*

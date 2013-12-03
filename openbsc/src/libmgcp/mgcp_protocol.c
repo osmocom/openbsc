@@ -619,8 +619,10 @@ void mgcp_rtp_end_config(struct mgcp_endpoint *endp, int expect_ssrc_change,
 {
 	struct mgcp_trunk_config *tcfg = endp->tcfg;
 
+	int patch_ssrc = expect_ssrc_change && tcfg->force_constant_ssrc;
+
 	rtp->force_constant_timing = tcfg->force_constant_timing;
-	rtp->force_constant_ssrc = tcfg->force_constant_ssrc;
+	rtp->force_constant_ssrc = patch_ssrc ? 1 : 0;
 
 	LOGP(DMGCP, LOGL_DEBUG,
 	     "Configuring RTP endpoint: local port %d%s%s\n",

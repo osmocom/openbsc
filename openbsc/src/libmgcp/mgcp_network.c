@@ -280,6 +280,8 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 				timestamp;
 			state->patch = 1;
 			ssrc = state->orig_ssrc;
+			if (rtp_end->force_constant_ssrc != -1)
+				rtp_end->force_constant_ssrc -= 1;
 
 			LOGP(DMGCP, LOGL_NOTICE,
 			     "SSRC patching enabled on 0x%x SSRC: %u "
