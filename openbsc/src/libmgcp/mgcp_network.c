@@ -264,7 +264,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		state->seq_offset = (state->out_stream.last_seq + 1) - seq;
 		state->timestamp_offset =
 			(state->out_stream.last_timestamp + tsdelta) - timestamp;
-		state->patch = endp->allow_patch;
+		state->patch = rtp_end->force_constant_ssrc;
 		LOGP(DMGCP, LOGL_NOTICE,
 			"The SSRC changed on 0x%x SSRC: %u offset: %d tsdelta: %d "
 			"from %s:%d in %d\n",

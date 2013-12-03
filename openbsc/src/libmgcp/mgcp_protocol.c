@@ -614,6 +614,21 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 	return found_media;
 }
 
+void mgcp_rtp_end_config(struct mgcp_endpoint *endp, int expect_ssrc_change,
+			 struct mgcp_rtp_end *rtp)
+{
+	struct mgcp_trunk_config *tcfg = endp->tcfg;
+
+	rtp->force_constant_timing = tcfg->force_constant_timing;
+	rtp->force_constant_ssrc = tcfg->force_constant_ssrc;
+
+	LOGP(DMGCP, LOGL_DEBUG,
+	     "Configuring RTP endpoint: local port %d%s%s\n",
+	     ntohs(rtp->rtp_port),
+	     rtp->force_constant_timing ? ", force constant timing" : "",
+	     rtp->force_constant_ssrc ? ", force constant ssrc" : "");
+}
+
 static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 {
 	struct mgcp_trunk_config *tcfg;
@@ -688,6 +703,8 @@ mgcp_header_done:
 
 	/* initialize */
 	endp->net_end.rtp_port = endp->net_end.rtcp_port = endp->bts_end.rtp_port = endp->bts_end.rtcp_port = 0;
+	mgcp_rtp_end_config(endp, 0, &endp->net_end);
+	mgcp_rtp_end_config(endp, 0, &endp->bts_end);
 
 	/* set to zero until we get the info */
 	memset(&endp->net_end.addr, 0, sizeof(endp->net_end.addr));
@@ -824,6 +841,9 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			break;
 		}
 	}
+
+	mgcp_rtp_end_config(endp, 1, &endp->net_end);
+	mgcp_rtp_end_config(endp, 1, &endp->bts_end);
 
 	/* modify */
 	LOGP(DMGCP, LOGL_DEBUG, "Modified endpoint on: 0x%x Server: %s:%u\n",
@@ -1121,7 +1141,6 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	memset(&endp->bts_state, 0, sizeof(endp->bts_state));
 
 	endp->conn_mode = endp->orig_mode = MGCP_CONN_NONE;
-	endp->allow_patch = 0;
 
 	memset(&endp->taps, 0, sizeof(endp->taps));
 }

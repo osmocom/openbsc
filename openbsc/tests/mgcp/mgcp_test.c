@@ -558,6 +558,9 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 
 	trunk.number_endpoints = 1;
 	trunk.endpoints = &endp;
+	trunk.force_constant_ssrc = patch_ssrc;
+	trunk.force_constant_timing = patch_ts;
+
 	endp.tcfg = &trunk;
 
 	/* This doesn't free endp but resets/frees all fields of the structure
@@ -568,7 +571,6 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 	mgcp_free_endp(&endp);
 
 	rtp->payload_type = 98;
-	endp.allow_patch = patch_ssrc;
 
 	for (i = 0; i < ARRAY_SIZE(test_rtp_packets1); ++i) {
 		struct rtp_packet_info *info = test_rtp_packets1 + i;
@@ -576,6 +578,8 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 		OSMO_ASSERT(info->len <= sizeof(buffer));
 		OSMO_ASSERT(info->len >= 0);
 		memmove(buffer, info->data, info->len);
+
+		mgcp_rtp_end_config(&endp, 1, rtp);
 
 		mgcp_patch_and_count(&endp, &state, rtp, &addr,
 				     buffer, info->len);
