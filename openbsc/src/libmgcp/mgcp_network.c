@@ -237,10 +237,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		state->initialized = 1;
 		state->jitter = 0;
 		state->transit = arrival_time - timestamp;
-		state->packet_duration =
-			rtp_end->rate * rtp_end->frames_per_packet *
-			rtp_end->frame_duration_num /
-			rtp_end->frame_duration_den;
+		state->packet_duration = mgcp_rtp_packet_duration(endp, rtp_end);
 		state->out_stream = state->in_stream;
 		state->out_stream.last_timestamp = timestamp;
 		state->out_stream.ssrc = ssrc - 1; /* force output SSRC change */
