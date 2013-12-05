@@ -236,15 +236,19 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		state->initialized = 1;
 		state->jitter = 0;
 		state->transit = arrival_time - timestamp;
+		state->packet_duration =
+			rtp_end->rate * rtp_end->frames_per_packet *
+			rtp_end->frame_duration_num /
+			rtp_end->frame_duration_den;
 		state->out_stream = state->in_stream;
 		state->out_stream.last_timestamp = timestamp;
 		/* force output SSRC change */
 		state->out_stream.ssrc = rtp_hdr->ssrc - 1;
 		LOGP(DMGCP, LOGL_INFO,
 			"Initializing stream on 0x%x SSRC: %u timestamp: %u "
-			"from %s:%d in %d\n",
+			"pkt-duration: %d, from %s:%d in %d\n",
 			ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
-			state->seq_offset,
+			state->seq_offset, state->packet_duration,
 			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
 			endp->conn_mode);
 	} else if (state->in_stream.ssrc != rtp_hdr->ssrc) {
@@ -260,15 +264,14 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		if (rtp_end->force_constant_ssrc) {
 			int32_t tsdelta = state->out_stream.last_tsdelta;
 			if (tsdelta == 0) {
-				tsdelta = rtp_end->rate * rtp_end->frames_per_packet *
-					rtp_end->frame_duration_num /
-					rtp_end->frame_duration_den;
+				tsdelta = state->packet_duration;
 				LOGP(DMGCP, LOGL_NOTICE,
-				     "Computed timestamp delta %d based on "
-				     "rate %d, num frames %d, frame duration %d/%d\n",
-				     tsdelta, rtp_end->rate, rtp_end->frames_per_packet,
-				     rtp_end->frame_duration_num,
-				     rtp_end->frame_duration_den);
+				     "Timestamp delta is not available on 0x%x, "
+				     "using packet duration instead: %d "
+				     "from %s:%d in %d\n",
+				     ENDPOINT_NUMBER(endp), tsdelta,
+				     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+				     endp->conn_mode);
 			}
 			state->seq_offset =
 				(state->out_stream.last_seq + 1) - seq;

@@ -59,6 +59,7 @@ struct mgcp_rtp_state {
 	int cycles;
 
 	int32_t  timestamp_offset;
+	uint32_t packet_duration;
 	uint32_t jitter;
 	int32_t transit;
 
