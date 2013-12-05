@@ -31,6 +31,7 @@
 #include <osmocom/core/talloc.h>
 #include <openbsc/trau_upqueue.h>
 #include <osmocom/core/crcgen.h>
+#include <openbsc/transaction.h>
 
 /* this corresponds to the bit-lengths of the individual codec
  * parameters as indicated in Table 1.1 of TS 06.10 */
@@ -517,4 +518,21 @@ int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame)
 	/* and send it to the muxer */
 	return subchan_mux_enqueue(mx, dst_e1_ss->e1_ts_ss, trau_bits_out,
 				   TRAU_FRAME_BITS);
+}
+
+/* switch trau muxer to new lchan */
+int switch_trau_mux(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan)
+{
+	struct gsm_network *net = old_lchan->ts->trx->bts->network;
+	struct gsm_trans *trans;
+
+	/* look up transaction with TCH frame receive enabled */
+	llist_for_each_entry(trans, &net->trans_list, entry) {
+		if (trans->conn && trans->conn->lchan == old_lchan && trans->tch_recv) {
+			/* switch */
+			trau_recv_lchan(new_lchan, trans->callref);
+		}
+	}
+
+	return 0;
 }

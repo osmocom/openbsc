@@ -51,6 +51,9 @@ int trau_recv_lchan(struct gsm_lchan *lchan, uint32_t callref);
 /* send trau from application */
 int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame);
 
+/* switch trau muxer to new lchan */
+int switch_trau_mux(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan);
+
 /* callback invoked if we receive TRAU frames */
 int subch_cb(struct subch_demux *dmx, int ch, uint8_t *data, int len, void *_priv);
 

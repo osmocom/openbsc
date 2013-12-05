@@ -31,6 +31,7 @@
 #include <openbsc/handover.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/trau_mux.h>
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 
@@ -418,6 +419,10 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 		     msgb_l3len(msg) - sizeof(*gh));
 		return;
 	}
+
+	/* switch TRAU muxer for E1 based BTS from one channel to another */
+	if (is_e1_bts(conn->bts))
+		switch_trau_mux(conn->lchan, conn->secondary_lchan);
 
 	/* swap channels */
 	osmo_timer_del(&conn->T10);

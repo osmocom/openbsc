@@ -39,6 +39,7 @@
 #include <openbsc/signal.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/transaction.h>
+#include <openbsc/trau_mux.h>
 
 struct bsc_handover {
 	struct llist_head list;
@@ -264,6 +265,10 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 
 	osmo_timer_del(&ho->T3103);
 
+	/* switch TRAU muxer for E1 based BTS from one channel to another */
+	if (is_e1_bts(new_lchan->conn->bts))
+		switch_trau_mux(ho->old_lchan, new_lchan);
+
 	/* Replace the ho lchan with the primary one */
 	if (ho->old_lchan != new_lchan->conn->lchan)
 		LOGP(DHO, LOGL_ERROR, "Primary lchan changed during handover.\n");
@@ -277,8 +282,6 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 
 	rsl_lchan_set_state(ho->old_lchan, LCHAN_S_INACTIVE);
 	lchan_release(ho->old_lchan, 0, RSL_REL_LOCAL_END);
-
-	/* do something to re-route the actual speech frames ! */
 
 	llist_del(&ho->list);
 	talloc_free(ho);

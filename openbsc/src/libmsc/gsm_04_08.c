@@ -1648,6 +1648,9 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 	lchan = trans->conn->lchan;
 	bts = lchan->ts->trx->bts;
 
+	/* store receive state */
+	trans->tch_recv = enable;
+
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
@@ -1655,10 +1658,12 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 			LOGP(DCC, LOGL_ERROR, "Error: RTP proxy is disabled\n");
 			return -EINVAL;
 		}
-		/* in case, we don't have a RTP socket yet, we note this
-		 * in the transaction and try later */
+		/* In case, we don't have a RTP socket to the BTS yet, the BTS
+		 * will not be connected to our RTP proxy and the socket will
+		 * not be assigned to the application interface. This method
+		 * will be called again, once the audio socket is created and
+		 * connected. */
 		if (!lchan->abis_ip.rtp_socket) {
-			trans->tch_recv = enable;
 			DEBUGP(DCC, "queue tch_recv_mncc request (%d)\n", enable);
 			return 0;
 		}
@@ -1677,6 +1682,14 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 	case GSM_BTS_TYPE_BS11:
 	case GSM_BTS_TYPE_RBS2000:
 	case GSM_BTS_TYPE_NOKIA_SITE:
+		/* In case we don't have a TCH with correct mode, the TRAU muxer
+		 * will not be asigned to the application interface. This is
+		 * performed by switch_trau_mux() after successful handover or
+		 * assignment. */
+		if (lchan->tch_mode == GSM48_CMODE_SIGN) {
+			DEBUGP(DCC, "queue tch_recv_mncc request (%d)\n", enable);
+			return 0;
+		}
 		if (enable)
 			return trau_recv_lchan(lchan, callref);
 		return trau_mux_unmap(NULL, callref);
