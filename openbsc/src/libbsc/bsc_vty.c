@@ -601,7 +601,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		break;
 	case GSM_BTS_TYPE_NOKIA_SITE:
 		vty_out(vty, "  nokia_site skip-reset %d%s", bts->nokia.skip_reset, VTY_NEWLINE);
-		break;
+		/* fall through: Nokia requires "oml e1" parameters also */
 	default:
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
