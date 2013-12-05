@@ -601,6 +601,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		break;
 	case GSM_BTS_TYPE_NOKIA_SITE:
 		vty_out(vty, "  nokia_site skip-reset %d%s", bts->nokia.skip_reset, VTY_NEWLINE);
+		vty_out(vty, "  nokia_site no-local-rel-conf %d%s",
+			bts->nokia.no_loc_rel_cnf, VTY_NEWLINE);
 		/* fall through: Nokia requires "oml e1" parameters also */
 	default:
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
@@ -1749,11 +1751,12 @@ DEFUN(cfg_bts_rsl_ip,
 	return CMD_SUCCESS;
 }
 
+#define NOKIA_STR "Nokia *Site related commands\n"
 
 DEFUN(cfg_bts_nokia_site_skip_reset,
       cfg_bts_nokia_site_skip_reset_cmd,
       "nokia_site skip-reset (0|1)",
-      "Nokia *Site related commands\n"
+      NOKIA_STR
       "Skip the reset step during bootstrap process of this BTS\n"
       "Do NOT skip the reset\n" "Skip the reset\n")
 {
@@ -1765,6 +1768,26 @@ DEFUN(cfg_bts_nokia_site_skip_reset,
 	}
 
 	bts->nokia.skip_reset = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_nokia_site_no_loc_rel_cnf,
+      cfg_bts_nokia_site_no_loc_rel_cnf_cmd,
+      "nokia_site no-local-rel-conf (0|1)",
+      NOKIA_STR
+      "Do not wait for RELease CONFirm message when releasing channel locally\n"
+      "Wait for RELease CONFirm\n" "Do not wait for RELease CONFirm\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!is_nokia_bts(bts)) {
+		vty_out(vty, "%% BTS is not of Nokia *Site type%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->nokia.no_loc_rel_cnf = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -3187,6 +3210,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_timezone_dst_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_timezone_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_skip_reset_cmd);
+	install_element(BTS_NODE, &cfg_bts_nokia_site_no_loc_rel_cnf_cmd);
 	install_element(BTS_NODE, &cfg_bts_stream_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);

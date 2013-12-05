@@ -113,6 +113,7 @@ struct gsm_abis_mo {
 #define LCHAN_SAPI_UNUSED	0
 #define LCHAN_SAPI_MS		1
 #define LCHAN_SAPI_NET		2
+#define LCHAN_SAPI_REL		3
 
 /* state of a logical channel */
 enum gsm_lchan_state {
@@ -231,6 +232,7 @@ struct gsm_lchan {
 	struct osmo_timer_list T3111;
 	struct osmo_timer_list error_timer;
 	struct osmo_timer_list act_timer;
+	struct osmo_timer_list rel_work;
 	uint8_t error_cause;
 
 	/* table of neighbor cell measurements */
@@ -634,6 +636,7 @@ struct gsm_bts {
 			uint8_t bts_type;
 			unsigned int configured:1,
 				skip_reset:1,
+				no_loc_rel_cnf:1,
 				did_reset:1,
 				wait_reset:1;
 			struct osmo_timer_list reset_timer;

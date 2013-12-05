@@ -867,6 +867,22 @@ int rsl_establish_request(struct gsm_lchan *lchan, uint8_t link_id)
 	return abis_rsl_sendmsg(msg);
 }
 
+static void rsl_handle_release(struct gsm_lchan *lchan);
+
+/* Special work handler to handle missing RSL_MT_REL_CONF message from
+ * Nokia InSite BTS */
+static void lchan_rel_work_cb(void *data)
+{
+	struct gsm_lchan *lchan = data;
+	int sapi;
+
+	for (sapi = 0; sapi < ARRAY_SIZE(lchan->sapis); ++sapi) {
+		if (lchan->sapis[sapi] == LCHAN_SAPI_REL)
+			lchan->sapis[sapi] = LCHAN_SAPI_UNUSED;
+	}
+	rsl_handle_release(lchan);
+}
+
 /* Chapter 8.3.7 Request the release of multiframe mode of RLL connection.
    This is what higher layers should call.  The BTS then responds with
    RELEASE CONFIRM, which we in turn use to trigger RSL CHANNEL RELEASE,
@@ -890,7 +906,20 @@ int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id,
 	DEBUGP(DRLL, "%s RSL RLL RELEASE REQ (link_id=0x%02x, reason=%u)\n",
 		gsm_lchan_name(lchan), link_id, release_mode);
 
-	return abis_rsl_sendmsg(msg);
+	abis_rsl_sendmsg(msg);
+
+	/* Do not wait for Nokia BTS to send the confirm. */
+	if (is_nokia_bts(lchan->ts->trx->bts)
+	 && lchan->ts->trx->bts->nokia.no_loc_rel_cnf
+	 && release_mode == RSL_REL_LOCAL_END) {
+		DEBUGP(DRLL, "Scheduling release, becasuse Nokia InSite BTS does not send a RELease CONFirm.\n");
+		lchan->sapis[link_id & 0x7] = LCHAN_SAPI_REL;
+		lchan->rel_work.cb = lchan_rel_work_cb;
+		lchan->rel_work.data = lchan;
+		osmo_timer_schedule(&lchan->rel_work, 0, 0);
+	}
+
+	return 0;
 }
 
 int rsl_lchan_set_state(struct gsm_lchan *lchan, int state)
