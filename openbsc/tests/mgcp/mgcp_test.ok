@@ -1,9 +1,23 @@
+line: 'one CR'
+line: 'two CR'
+line: ''
+line: 'one CRLF'
+line: 'two CRLF'
+line: ''
+line: 'one LF'
+line: 'two LF'
+line: ''
+line: 'mixed (4 lines)'
+line: ''
+line: ''
+line: ''
 Testing AUEP1
 Testing AUEP2
 Testing MDCX1
 Testing MDCX2
 Testing CRCX
 Testing MDCX3
+Testing MDCX4
 Testing DLCX
 Testing CRCX_ZYN
 Testing EMPTY

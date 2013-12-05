@@ -177,6 +177,7 @@ struct mgcp_patch_test {
 	const char *patch;
 	const char *ip;
 	const int port;
+	const int payload_type;
 };
 
 static const struct mgcp_patch_test mgcp_messages[] = {
@@ -191,24 +192,28 @@ static const struct mgcp_patch_test mgcp_messages[] = {
 		.patch = crcx_resp_patched,
 		.ip = "10.0.0.1",
 		.port = 999,
+		.payload_type = 98,
 	},
 	{
 		.orig = mdcx,
 		.patch = mdcx_patched,
 		.ip = "10.0.0.23",
 		.port = 6666,
+		.payload_type = 126,
 	},
 	{
 		.orig = mdcx_resp,
 		.patch = mdcx_resp_patched,
 		.ip = "10.0.0.23",
 		.port = 5555,
+		.payload_type = 98,
 	},
 	{
 		.orig = mdcx_resp2,
 		.patch = mdcx_resp_patched2,
 		.ip = "10.0.0.23",
 		.port = 5555,
+		.payload_type = 98,
 	},
 };
 
