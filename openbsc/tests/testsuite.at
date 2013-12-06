@@ -81,3 +81,9 @@ AT_KEYWORDS([gbproxy])
 cat $abs_srcdir/gbproxy/gbproxy_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/gbproxy/gbproxy_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([trau])
+AT_KEYWORDS([trau])
+cat $abs_srcdir/trau/trau_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau/trau_test], [], [expout], [ignore])
+AT_CLEANUP

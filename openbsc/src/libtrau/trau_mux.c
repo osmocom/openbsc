@@ -30,6 +30,7 @@
 #include <openbsc/debug.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/trau_upqueue.h>
+#include <osmocom/core/crcgen.h>
 
 /* this corresponds to the bit-lengths of the individual codec
  * parameters as indicated in Table 1.1 of TS 06.10 */
@@ -45,6 +46,53 @@ static const uint8_t gsm_fr_map[] = {
 	3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3
 };
+
+
+/*
+ * EFR TRAU parity
+ *
+ * g(x) = x^3 + x^1 + 1
+ */
+static const struct osmo_crc8gen_code gsm0860_efr_crc3 = {
+	.bits = 3,
+	.poly = 0x3,
+	.init = 0x0,
+	.remainder = 0x7,
+};
+
+/* EFR parity bits */
+static inline void efr_parity_bits_1(ubit_t *check_bits, const ubit_t *d_bits)
+{
+	memcpy(check_bits + 0 , d_bits + 0, 22);
+	memcpy(check_bits + 22 , d_bits + 24, 3);
+	check_bits[25] = d_bits[28];
+}
+
+static inline void efr_parity_bits_2(ubit_t *check_bits, const ubit_t *d_bits)
+{
+	memcpy(check_bits + 0 , d_bits + 42, 10);
+	memcpy(check_bits + 10 , d_bits + 90, 2);
+}
+
+static inline void efr_parity_bits_3(ubit_t *check_bits, const ubit_t *d_bits)
+{
+	memcpy(check_bits + 0 , d_bits + 98, 5);
+	check_bits[5] = d_bits[104];
+	memcpy(check_bits + 6 , d_bits + 143, 2);
+}
+
+static inline void efr_parity_bits_4(ubit_t *check_bits, const ubit_t *d_bits)
+{
+	memcpy(check_bits + 0 , d_bits + 151, 10);
+	memcpy(check_bits + 10 , d_bits + 199, 2);
+}
+
+static inline void efr_parity_bits_5(ubit_t *check_bits, const ubit_t *d_bits)
+{
+	memcpy(check_bits + 0 , d_bits + 207, 5);
+	check_bits[5] = d_bits[213];
+	memcpy(check_bits + 6 , d_bits + 252, 2);
+}
 
 struct map_entry {
 	struct llist_head list;
@@ -158,7 +206,117 @@ lookup_trau_upqueue(const struct gsm_e1_subslot *src)
 	return NULL;
 }
 
-static const uint8_t c_bits_check[] = { 0, 0, 0, 1, 0 };
+static const uint8_t c_bits_check_fr[] = { 0, 0, 0, 1, 0 };
+static const uint8_t c_bits_check_efr[] = { 1, 1, 0, 1, 0 };
+
+struct msgb *trau_decode_fr(uint32_t callref,
+	const struct decoded_trau_frame *tf)
+{
+	struct msgb *msg;
+	struct gsm_data_frame *frame;
+	unsigned char *data;
+	int i, j, k, l, o;
+
+	msg = msgb_alloc(sizeof(struct gsm_data_frame) + 33,
+				 "GSM-DATA");
+	if (!msg)
+		return NULL;
+
+	frame = (struct gsm_data_frame *)msg->data;
+	memset(frame, 0, sizeof(struct gsm_data_frame));
+	data = frame->data;
+	data[0] = 0xd << 4;
+	/* reassemble d-bits */
+	i = 0; /* counts bits */
+	j = 4; /* counts output bits */
+	k = gsm_fr_map[0]-1; /* current number bit in element */
+	l = 0; /* counts element bits */
+	o = 0; /* offset input bits */
+	while (i < 260) {
+		data[j/8] |= (tf->d_bits[k+o] << (7-(j%8)));
+		if (--k < 0) {
+			o += gsm_fr_map[l];
+			k = gsm_fr_map[++l]-1;
+		}
+		i++;
+		j++;
+	}
+	frame->msg_type = GSM_TCHF_FRAME;
+	frame->callref = callref;
+	msgb_put(msg, sizeof(struct gsm_data_frame) + 33);
+
+	return msg;
+}
+
+struct msgb *trau_decode_efr(uint32_t callref,
+	const struct decoded_trau_frame *tf)
+{
+	struct msgb *msg;
+	struct gsm_data_frame *frame;
+	unsigned char *data;
+	int i, j, rc;
+	ubit_t check_bits[26];
+
+	msg = msgb_alloc(sizeof(struct gsm_data_frame) + 31,
+				 "GSM-DATA");
+	if (!msg)
+		return NULL;
+
+	frame = (struct gsm_data_frame *)msg->data;
+	memset(frame, 0, sizeof(struct gsm_data_frame));
+	frame->msg_type = GSM_TCHF_FRAME_EFR;
+	frame->callref = callref;
+	msgb_put(msg, sizeof(struct gsm_data_frame) + 31);
+
+	if (tf->c_bits[11]) /* BFI */
+		goto bad_frame;
+
+	data = frame->data;
+	data[0] = 0xc << 4;
+	/* reassemble d-bits */
+	for (i = 1, j = 4; i < 39; i++, j++)
+		data[j/8] |= (tf->d_bits[i] << (7-(j%8)));
+	efr_parity_bits_1(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 26,
+			tf->d_bits + 39);
+	if (rc)
+		goto bad_frame;
+	for (i = 42, j = 42; i < 95; i++, j++)
+		data[j/8] |= (tf->d_bits[i] << (7-(j%8)));
+	efr_parity_bits_2(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 12,
+			tf->d_bits + 95);
+	if (rc)
+		goto bad_frame;
+	for (i = 98, j = 95; i < 148; i++, j++)
+		data[j/8] |= (tf->d_bits[i] << (7-(j%8)));
+	efr_parity_bits_3(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 8,
+			tf->d_bits + 148);
+	if (rc)
+		goto bad_frame;
+	for (i = 151, j = 145; i < 204; i++, j++)
+		data[j/8] |= (tf->d_bits[i] << (7-(j%8)));
+	efr_parity_bits_4(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 12,
+			tf->d_bits + 204);
+	if (rc)
+		goto bad_frame;
+	for (i = 207, j = 198; i < 257; i++, j++)
+		data[j/8] |= (tf->d_bits[i] << (7-(j%8)));
+	efr_parity_bits_5(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 8,
+			tf->d_bits + 257);
+	if (rc)
+		goto bad_frame;
+
+	return msg;
+
+bad_frame:
+	frame->msg_type = GSM_TCHF_BAD_FRAME;
+
+	return msg;
+}
 
 /* we get called by subchan_demux */
 int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
@@ -177,45 +335,25 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 		return rc;
 
 	if (!dst_e1_ss) {
-		struct msgb *msg;
-		struct gsm_data_frame *frame;
-		unsigned char *data;
-		int i, j, k, l, o;
+		struct msgb *msg = NULL;
 		/* frame shall be sent to upqueue */
 		if (!(ue = lookup_trau_upqueue(src_e1_ss)))
 			return -EINVAL;
 		if (!ue->callref)
 			return -EINVAL;
-		if (memcmp(tf.c_bits, c_bits_check, sizeof(c_bits_check)))
+		if (!memcmp(tf.c_bits, c_bits_check_fr, 5))
+			msg = trau_decode_fr(ue->callref, &tf);
+		else if (!memcmp(tf.c_bits, c_bits_check_efr, 5))
+			msg = trau_decode_efr(ue->callref, &tf);
+		else {
 			DEBUGPC(DLMUX, "illegal trau (C1-C5) %s\n",
-				osmo_hexdump(tf.c_bits, sizeof(c_bits_check)));
-		msg = msgb_alloc(sizeof(struct gsm_data_frame) + 33,
-				 "GSM-DATA");
+				osmo_hexdump(tf.c_bits, 5));
+			DEBUGPC(DLMUX, "test trau (C1-C5) %s\n",
+				osmo_hexdump(c_bits_check_efr, 5));
+			return -EINVAL;
+		}
 		if (!msg)
 			return -ENOMEM;
-
-		frame = (struct gsm_data_frame *)msg->data;
-		memset(frame, 0, sizeof(struct gsm_data_frame));
-		data = frame->data;
-		data[0] = 0xd << 4;
-		/* reassemble d-bits */
-		i = 0; /* counts bits */
-		j = 4; /* counts output bits */
-		k = gsm_fr_map[0]-1; /* current number bit in element */
-		l = 0; /* counts element bits */
-		o = 0; /* offset input bits */
-		while (i < 260) {
-			data[j/8] |= (tf.d_bits[k+o] << (7-(j%8)));
-			if (--k < 0) {
-				o += gsm_fr_map[l];
-				k = gsm_fr_map[++l]-1;
-			}
-			i++;
-			j++;
-		}
-		frame->msg_type = GSM_TCHF_FRAME;
-		frame->callref = ue->callref;
-		msgb_put(msg, sizeof(struct gsm_data_frame) + 33);
 		trau_tx_to_mncc(ue->net, msg);
 
 		return 0;
@@ -275,13 +413,86 @@ int trau_recv_lchan(struct gsm_lchan *lchan, uint32_t callref)
 	return 0;
 }
 
+void trau_encode_fr(struct decoded_trau_frame *tf,
+	const unsigned char *data)
+{
+	int i, j, k, l, o;
+
+	/* set c-bits and t-bits */
+	tf->c_bits[0] = 1;
+	tf->c_bits[1] = 1;
+	tf->c_bits[2] = 1;
+	tf->c_bits[3] = 0;
+	tf->c_bits[4] = 0;
+	memset(&tf->c_bits[5], 0, 6);
+	memset(&tf->c_bits[11], 1, 10);
+	memset(&tf->t_bits[0], 1, 4);
+	/* reassemble d-bits */
+	i = 0; /* counts bits */
+	j = 4; /* counts input bits */
+	k = gsm_fr_map[0]-1; /* current number bit in element */
+	l = 0; /* counts element bits */
+	o = 0; /* offset output bits */
+	while (i < 260) {
+		tf->d_bits[k+o] = (data[j/8] >> (7-(j%8))) & 1;
+		if (--k < 0) {
+			o += gsm_fr_map[l];
+			k = gsm_fr_map[++l]-1;
+		}
+		i++;
+		j++;
+	}
+}
+
+void trau_encode_efr(struct decoded_trau_frame *tf,
+	const unsigned char *data)
+{
+	int i, j;
+	ubit_t check_bits[26];
+
+	/* set c-bits and t-bits */
+	tf->c_bits[0] = 1;
+	tf->c_bits[1] = 1;
+	tf->c_bits[2] = 0;
+	tf->c_bits[3] = 1;
+	tf->c_bits[4] = 0;
+	memset(&tf->c_bits[5], 0, 6);
+	memset(&tf->c_bits[11], 1, 10);
+	memset(&tf->t_bits[0], 1, 4);
+	/* reassemble d-bits */
+	tf->d_bits[0] = 1;
+	for (i = 1, j = 4; i < 39; i++, j++)
+		tf->d_bits[i] = (data[j/8] >> (7-(j%8))) & 1;
+	efr_parity_bits_1(check_bits, tf->d_bits);
+	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, check_bits, 26,
+			tf->d_bits + 39);
+	for (i = 42, j = 42; i < 95; i++, j++)
+		tf->d_bits[i] = (data[j/8] >> (7-(j%8))) & 1;
+	efr_parity_bits_2(check_bits, tf->d_bits);
+	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, check_bits, 12,
+			tf->d_bits + 95);
+	for (i = 98, j = 95; i < 148; i++, j++)
+		tf->d_bits[i] = (data[j/8] >> (7-(j%8))) & 1;
+	efr_parity_bits_3(check_bits, tf->d_bits);
+	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, check_bits, 8,
+			tf->d_bits + 148);
+	for (i = 151, j = 145; i < 204; i++, j++)
+		tf->d_bits[i] = (data[j/8] >> (7-(j%8))) & 1;
+	efr_parity_bits_4(check_bits, tf->d_bits);
+	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, check_bits, 12,
+			tf->d_bits + 204);
+	for (i = 207, j = 198; i < 257; i++, j++)
+		tf->d_bits[i] = (data[j/8] >> (7-(j%8))) & 1;
+	efr_parity_bits_5(check_bits, tf->d_bits);
+	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, check_bits, 8,
+			tf->d_bits + 257);
+}
+
 int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame)
 {
 	uint8_t trau_bits_out[TRAU_FRAME_BITS];
 	struct gsm_e1_subslot *dst_e1_ss = &lchan->ts->e1_link;
 	struct subch_mux *mx;
-	int i, j, k, l, o;
-	unsigned char *data = frame->data;
 	struct decoded_trau_frame tf;
 
 	mx = e1inp_get_mux(dst_e1_ss->e1_nr, dst_e1_ss->e1_ts);
@@ -290,30 +501,10 @@ int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame)
 
 	switch (frame->msg_type) {
 	case GSM_TCHF_FRAME:
-		/* set c-bits and t-bits */
-		tf.c_bits[0] = 1;
-		tf.c_bits[1] = 1;
-		tf.c_bits[2] = 1;
-		tf.c_bits[3] = 0;
-		tf.c_bits[4] = 0;
-		memset(&tf.c_bits[5], 0, 6);
-		memset(&tf.c_bits[11], 1, 10);
-		memset(&tf.t_bits[0], 1, 4);
-		/* reassemble d-bits */
-		i = 0; /* counts bits */
-		j = 4; /* counts input bits */
-		k = gsm_fr_map[0]-1; /* current number bit in element */
-		l = 0; /* counts element bits */
-		o = 0; /* offset output bits */
-		while (i < 260) {
-			tf.d_bits[k+o] = (data[j/8] >> (7-(j%8))) & 1;
-			if (--k < 0) {
-				o += gsm_fr_map[l];
-				k = gsm_fr_map[++l]-1;
-			}
-			i++;
-			j++;
-		}
+		trau_encode_fr(&tf, frame->data);
+		break;
+	case GSM_TCHF_FRAME_EFR:
+		trau_encode_efr(&tf, frame->data);
 		break;
 	default:
 		DEBUGPC(DLMUX, "unsupported message type %d\n",

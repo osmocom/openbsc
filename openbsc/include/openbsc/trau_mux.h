@@ -53,3 +53,13 @@ int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame);
 
 /* callback invoked if we receive TRAU frames */
 int subch_cb(struct subch_demux *dmx, int ch, uint8_t *data, int len, void *_priv);
+
+/* TRAU frame transcoding */
+struct msgb *trau_decode_fr(uint32_t callref,
+	const struct decoded_trau_frame *tf);
+struct msgb *trau_decode_efr(uint32_t callref,
+	const struct decoded_trau_frame *tf);
+void trau_encode_fr(struct decoded_trau_frame *tf,
+	const unsigned char *data);
+void trau_encode_efr(struct decoded_trau_frame *tf,
+	const unsigned char *data);

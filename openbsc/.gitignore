@@ -66,6 +66,7 @@ tests/abis/abis_test
 tests/si/si_test
 tests/smpp/smpp_test
 tests/bsc/bsc_test
+tests/trau/trau_test
 
 tests/atconfig
 tests/atlocal

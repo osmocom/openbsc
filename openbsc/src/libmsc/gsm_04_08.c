@@ -2876,6 +2876,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 	case MNCC_FRAME_RECV:
 		return tch_recv_mncc(net, data->callref, 1);
 	case GSM_TCHF_FRAME:
+	case GSM_TCHF_FRAME_EFR:
 		/* Find callref */
 		trans = trans_find_by_callref(net, data->callref);
 		if (!trans) {
