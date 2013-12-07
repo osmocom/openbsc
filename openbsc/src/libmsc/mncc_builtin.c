@@ -43,7 +43,7 @@ static LLIST_HEAD(call_list);
 static uint32_t new_callref = 0x00000001;
 
 struct mncc_int mncc_int = {
-	.def_codec = { GSM48_CMODE_SPEECH_EFR, GSM48_CMODE_SPEECH_V1 },
+	.def_codec = { GSM48_CMODE_SPEECH_V1, GSM48_CMODE_SPEECH_V1 },
 };
 
 static void free_call(struct gsm_call *call)

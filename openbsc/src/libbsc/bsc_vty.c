@@ -631,6 +631,15 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		}
 	}
 
+	vty_out(vty, "  codec-support fr");
+	if (bts->codec.hr)
+		vty_out(vty, " hr");
+	if (bts->codec.efr)
+		vty_out(vty, " efr");
+	if (bts->codec.amr)
+		vty_out(vty, " amr");
+	vty_out(vty, "%s", VTY_NEWLINE);
+
 	config_write_bts_gprs(vty, bts);
 
 	if (bts->excl_from_rf_lock)
@@ -2658,6 +2667,73 @@ DEFUN(cfg_bts_no_excl_rf_lock,
 	return CMD_SUCCESS;
 }
 
+static void _get_codec_from_arg(struct vty *vty, int argc, const char *argv[])
+{
+	struct gsm_bts *bts = vty->index;
+	struct bts_codec_conf *codec = &bts->codec;
+	int i;
+
+	codec->hr = 0;
+	codec->efr = 0;
+	codec->amr = 0;
+	for (i = 0; i < argc; i++) {
+		if (!strcmp(argv[i], "hr"))
+			codec->hr = 1;
+		if (!strcmp(argv[i], "efr"))
+			codec->efr = 1;
+		if (!strcmp(argv[i], "amr"))
+			codec->amr = 1;
+	}
+}
+
+#define CODEC_PAR_STR	" (hr|efr|amr)"
+#define CODEC_HELP_STR	"Half Rate\n" \
+			"Enhanced Full Rate\nAdaptive Multirate\n"
+
+DEFUN(cfg_bts_codec0, cfg_bts_codec0_cmd,
+	"codec-support fr",
+	"Codec Support settings\nFullrate\n")
+{
+	_get_codec_from_arg(vty, 0, argv);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_codec1, cfg_bts_codec1_cmd,
+	"codec-support fr" CODEC_PAR_STR,
+	"Codec Support settings\nFullrate\n"
+	CODEC_HELP_STR)
+{
+	_get_codec_from_arg(vty, 1, argv);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_codec2, cfg_bts_codec2_cmd,
+	"codec-support fr" CODEC_PAR_STR CODEC_PAR_STR,
+	"Codec Support settings\nFullrate\n"
+	CODEC_HELP_STR CODEC_HELP_STR)
+{
+	_get_codec_from_arg(vty, 2, argv);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_codec3, cfg_bts_codec3_cmd,
+	"codec-support fr" CODEC_PAR_STR CODEC_PAR_STR CODEC_PAR_STR,
+	"Codec Support settings\nFullrate\n"
+	CODEC_HELP_STR CODEC_HELP_STR CODEC_HELP_STR)
+{
+	_get_codec_from_arg(vty, 3, argv);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_codec4, cfg_bts_codec4_cmd,
+	"codec-support fr" CODEC_PAR_STR CODEC_PAR_STR CODEC_PAR_STR CODEC_PAR_STR,
+	"Codec Support settings\nFullrate\n"
+	CODEC_HELP_STR CODEC_HELP_STR CODEC_HELP_STR CODEC_HELP_STR)
+{
+	_get_codec_from_arg(vty, 4, argv);
+	return CMD_SUCCESS;
+}
+
 #define TRX_TEXT "Radio Transceiver\n"
 
 /* per TRX configuration */
@@ -3255,6 +3331,11 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_excl_rf_lock_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec0_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec1_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec2_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec3_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec4_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
