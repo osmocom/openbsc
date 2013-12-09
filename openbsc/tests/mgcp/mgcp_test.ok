@@ -17,19 +17,19 @@ Testing MDCX1
 Testing MDCX2
 Testing CRCX
 Packet duration not set
-Requested packetization period not set
+Requested packetetization period: 20-20
 Testing MDCX3
 Packet duration not set
 Requested packetization period not set
 Testing MDCX4
 Packet duration not set
-Requested packetization period not set
+Requested packetetization period: 20-20
 Testing MDCX4_PT1
 Packet duration not set
-Requested packetization period not set
+Requested packetetization period: 20-40
 Testing MDCX4_PT2
 Packet duration not set
-Requested packetization period not set
+Requested packetetization period: 20-20
 Testing MDCX4_PT3
 Packet duration not set
 Requested packetization period not set

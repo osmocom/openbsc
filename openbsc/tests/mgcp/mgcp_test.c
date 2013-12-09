@@ -319,7 +319,14 @@ static void test_messages(void)
 				       endp->net_end.packet_duration_ms);
 			else
 				printf("Packet duration not set\n");
-			printf("Requested packetization period not set\n");
+			if (endp->local_options.pkt_period_min ||
+			    endp->local_options.pkt_period_max)
+				printf("Requested packetetization period: "
+				       "%d-%d\n",
+				       endp->local_options.pkt_period_min,
+				       endp->local_options.pkt_period_max);
+			else
+				printf("Requested packetization period not set\n");
 
 			endp->net_end.packet_duration_ms = -1;
 		}

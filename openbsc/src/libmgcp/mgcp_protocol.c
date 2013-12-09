@@ -614,6 +614,25 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 	return found_media;
 }
 
+/* Set the LCO from a string (see RFC 3435).
+ * The string is stored in the 'string' field. A NULL string is handled excatly
+ * like an empty string, the 'string' field is never NULL after this function
+ * has been called. */
+static void set_local_cx_options(void *ctx, struct mgcp_lco *lco,
+				 const char *options)
+{
+	char *p_opt;
+
+	talloc_free(lco->string);
+	lco->pkt_period_min = lco->pkt_period_max = 0;
+	lco->string = talloc_strdup(ctx, options ? options : "");
+
+	p_opt = strstr(lco->string, "p:");
+	if (p_opt && sscanf(p_opt, "p:%d-%d",
+			    &lco->pkt_period_min, &lco->pkt_period_max) == 1)
+		lco->pkt_period_max = lco->pkt_period_min;
+}
+
 void mgcp_rtp_end_config(struct mgcp_endpoint *endp, int expect_ssrc_change,
 			 struct mgcp_rtp_end *rtp)
 {
@@ -712,8 +731,8 @@ mgcp_header_done:
 	/* copy some parameters */
 	endp->callid = talloc_strdup(tcfg->endpoints, callid);
 
-	if (local_options)
-		endp->local_options = talloc_strdup(tcfg->endpoints, local_options);
+	set_local_cx_options(endp->tcfg->endpoints, &endp->local_options,
+			     local_options);
 
 	if (parse_conn_mode(mode, &endp->conn_mode) != 0) {
 		    error_code = 517;
@@ -789,6 +808,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 	int error_code = 500;
 	int silent = 0;
 	char *line;
+	const char *local_options = NULL;
 
 	if (p->found != 0)
 		return create_err_response(NULL, 510, "MDCX", p->trans);
@@ -812,7 +832,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			break;
 		}
 		case 'L':
-			/* skip */
+			local_options = (const char *) line + 3;
 			break;
 		case 'M':
 			if (parse_conn_mode(line + 3, &endp->conn_mode) != 0) {
@@ -837,6 +857,9 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			break;
 		}
 	}
+
+	set_local_cx_options(endp->tcfg->endpoints, &endp->local_options,
+			     local_options);
 
 	/* policy CB */
 	if (p->cfg->policy_cb) {
@@ -1148,8 +1171,8 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	talloc_free(endp->callid);
 	endp->callid = NULL;
 
-	talloc_free(endp->local_options);
-	endp->local_options = NULL;
+	talloc_free(endp->local_options.string);
+	endp->local_options.string = NULL;
 
 	mgcp_rtp_end_reset(&endp->bts_end);
 	mgcp_rtp_end_reset(&endp->net_end);
