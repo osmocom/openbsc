@@ -92,8 +92,9 @@ static void test_strline(void)
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 4441 RTP/AVP 99\r\n"	\
-		 "a=rtpmap:99 AMR/8000\r\n"
-#define MDCX4_RET "200 18983216 OK\r\n"		\
+		 "a=rtpmap:99 AMR/8000\r\n"	\
+		 "a=ptime:40\r\n"
+#define MDCX4_RET(Ident) "200 " Ident " OK\r\n"	\
 		 "I: 1\n"			\
 		 "\n"				\
 		 "v=0\r\n"			\
@@ -102,6 +103,45 @@ static void test_strline(void)
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
 		 "a=rtpmap:126 AMR/8000\r\n"
+
+#define MDCX4_PT1 "MDCX 18983217 1@mgw MGCP 1.0\r\n" \
+		 "C: 2\r\n"          \
+		 "I: 1\r\n"                    \
+		 "L: p:20-40, a:AMR, nt:IN\r\n"    \
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 4441 RTP/AVP 99\r\n"	\
+		 "a=rtpmap:99 AMR/8000\r\n"	\
+		 "a=ptime:40\r\n"
+
+#define MDCX4_PT2 "MDCX 18983218 1@mgw MGCP 1.0\r\n" \
+		 "C: 2\r\n"          \
+		 "I: 1\r\n"                    \
+		 "L: p:20-20, a:AMR, nt:IN\r\n"    \
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 4441 RTP/AVP 99\r\n"	\
+		 "a=rtpmap:99 AMR/8000\r\n"	\
+		 "a=ptime:40\r\n"
+
+#define MDCX4_PT3 "MDCX 18983219 1@mgw MGCP 1.0\r\n" \
+		 "C: 2\r\n"          \
+		 "I: 1\r\n"                    \
+		 "L: a:AMR, nt:IN\r\n"    \
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 4441 RTP/AVP 99\r\n"	\
+		 "a=rtpmap:99 AMR/8000\r\n"	\
+		 "a=ptime:40\r\n"
 
 #define SHORT2	"CRCX 1"
 #define SHORT2_RET "510 000000 FAIL\r\n"
@@ -112,11 +152,13 @@ static void test_strline(void)
 #define CRCX	 "CRCX 2 1@mgw MGCP 1.0\r\n"	\
 		 "M: sendrecv\r\n"		\
 		 "C: 2\r\n"			\
+		 "L: p:20\r\n"		\
 		 "\r\n"				\
 		 "v=0\r\n"			\
 		 "c=IN IP4 123.12.12.123\r\n"	\
 		 "m=audio 5904 RTP/AVP 97\r\n"	\
-		 "a=rtpmap:97 GSM-EFR/8000\r\n"
+		 "a=rtpmap:97 GSM-EFR/8000\r\n"	\
+		 "a=ptime:40\r\n"
 
 #define CRCX_RET "200 2 OK\r\n"			\
 		 "I: 1\n"			\
@@ -127,7 +169,6 @@ static void test_strline(void)
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
 		 "a=rtpmap:126 AMR/8000\r\n"
-
 
 #define CRCX_ZYN "CRCX 2 1@mgw MGCP 1.0\r"	\
 		 "M: sendrecv\r"		\
@@ -184,7 +225,10 @@ static const struct mgcp_test tests[] = {
 	{ "MDCX2", MDCX_UNALLOCATED, MDCX_RET },
 	{ "CRCX", CRCX, CRCX_RET, 97, 126 },
 	{ "MDCX3", MDCX3, MDCX3_RET, PTYPE_NONE, 126 },
-	{ "MDCX4", MDCX4, MDCX4_RET, 99, 126 },
+	{ "MDCX4", MDCX4, MDCX4_RET("18983216"), 99, 126 },
+	{ "MDCX4_PT1", MDCX4_PT1, MDCX4_RET("18983217"), 99, 126 },
+	{ "MDCX4_PT2", MDCX4_PT2, MDCX4_RET("18983218"), 99, 126 },
+	{ "MDCX4_PT3", MDCX4_PT3, MDCX4_RET("18983219"), 99, 126 },
 	{ "DLCX", DLCX, DLCX_RET, -1, -1 },
 	{ "CRCX_ZYN", CRCX_ZYN, CRCX_ZYN_RET, 97, 126 },
 	{ "EMPTY", EMPTY, EMPTY_RET },
@@ -245,6 +289,7 @@ static void test_messages(void)
 	for (i = 0; i < cfg->trunk.number_endpoints; i++) {
 		endp = &cfg->trunk.endpoints[i];
 		endp->net_end.payload_type = PTYPE_NONE;
+		endp->net_end.packet_duration_ms = -1;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tests); i++) {
@@ -265,6 +310,20 @@ static void test_messages(void)
 		} else if (strcmp((char *) msg->data, t->exp_resp) != 0)
 			printf("%s failed '%s'\n", t->name, (char *) msg->data);
 		msgb_free(msg);
+
+		if (last_endpoint != -1) {
+			endp = &cfg->trunk.endpoints[last_endpoint];
+
+			if (endp->net_end.packet_duration_ms != -1)
+				printf("Detected packet duration: %d\n",
+				       endp->net_end.packet_duration_ms);
+			else
+				printf("Packet duration not set\n");
+			printf("Requested packetization period not set\n");
+
+			endp->net_end.packet_duration_ms = -1;
+		}
+
 
 		/* Check detected payload type */
 		if (t->exp_net_ptype != PTYPE_IGNORE ||
