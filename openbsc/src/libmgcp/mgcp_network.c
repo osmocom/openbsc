@@ -216,7 +216,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	uint32_t arrival_time;
 	int32_t transit, d;
 	uint16_t seq, udelta;
-	uint32_t timestamp;
+	uint32_t timestamp, ssrc;
 	struct rtp_hdr *rtp_hdr;
 	int payload = rtp_end->payload_type;
 
@@ -227,41 +227,68 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	seq = ntohs(rtp_hdr->sequence);
 	timestamp = ntohl(rtp_hdr->timestamp);
 	arrival_time = get_current_ts();
+	ssrc = ntohl(rtp_hdr->ssrc);
 
 	if (!state->initialized) {
 		state->in_stream.last_seq = seq - 1;
-		state->in_stream.ssrc = state->orig_ssrc = rtp_hdr->ssrc;
+		state->in_stream.ssrc = state->orig_ssrc = ssrc;
 		state->in_stream.last_tsdelta = 0;
 		state->base_seq = seq;
 		state->initialized = 1;
 		state->jitter = 0;
 		state->transit = arrival_time - timestamp;
+		state->packet_duration = mgcp_rtp_packet_duration(endp, rtp_end);
 		state->out_stream = state->in_stream;
-	} else if (state->in_stream.ssrc != rtp_hdr->ssrc) {
-		int32_t tsdelta = state->out_stream.last_tsdelta;
-		if (tsdelta == 0) {
-			tsdelta = rtp_end->rate * rtp_end->frames_per_packet *
-				rtp_end->frame_duration_num /
-				rtp_end->frame_duration_den;
-			LOGP(DMGCP, LOGL_NOTICE,
-			     "Computed timestamp delta %d based on "
-			     "rate %d, num frames %d, frame duration %d/%d\n",
-			     tsdelta, rtp_end->rate, rtp_end->frames_per_packet,
-			     rtp_end->frame_duration_num,
-			     rtp_end->frame_duration_den);
-		}
-		state->in_stream.ssrc = rtp_hdr->ssrc;
-		state->seq_offset = (state->out_stream.last_seq + 1) - seq;
-		state->timestamp_offset =
-			(state->out_stream.last_timestamp + tsdelta) - timestamp;
-		state->patch = endp->allow_patch;
-		LOGP(DMGCP, LOGL_NOTICE,
-			"The SSRC changed on 0x%x SSRC: %u offset: %d tsdelta: %d "
-			"from %s:%d in %d\n",
+		state->out_stream.last_timestamp = timestamp;
+		state->out_stream.ssrc = ssrc - 1; /* force output SSRC change */
+		LOGP(DMGCP, LOGL_INFO,
+			"Initializing stream on 0x%x SSRC: %u timestamp: %u "
+			"pkt-duration: %d, from %s:%d in %d\n",
 			ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
-			state->seq_offset, tsdelta,
+			state->seq_offset, state->packet_duration,
 			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
 			endp->conn_mode);
+	} else if (state->in_stream.ssrc != ssrc) {
+		LOGP(DMGCP, LOGL_NOTICE,
+			"The SSRC changed on 0x%x: %u -> %u  "
+			"from %s:%d in %d\n",
+			ENDPOINT_NUMBER(endp),
+			state->in_stream.ssrc, rtp_hdr->ssrc,
+			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			endp->conn_mode);
+
+		state->in_stream.ssrc = ssrc;
+		if (rtp_end->force_constant_ssrc) {
+			int32_t tsdelta = state->out_stream.last_tsdelta;
+			if (tsdelta == 0) {
+				tsdelta = state->packet_duration;
+				LOGP(DMGCP, LOGL_NOTICE,
+				     "Timestamp delta is not available on 0x%x, "
+				     "using packet duration instead: %d "
+				     "from %s:%d in %d\n",
+				     ENDPOINT_NUMBER(endp), tsdelta,
+				     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+				     endp->conn_mode);
+			}
+			state->seq_offset =
+				(state->out_stream.last_seq + 1) - seq;
+			state->timestamp_offset =
+				(state->out_stream.last_timestamp + tsdelta) -
+				timestamp;
+			state->patch_ssrc = 1;
+			ssrc = state->orig_ssrc;
+			if (rtp_end->force_constant_ssrc != -1)
+				rtp_end->force_constant_ssrc -= 1;
+
+			LOGP(DMGCP, LOGL_NOTICE,
+			     "SSRC patching enabled on 0x%x SSRC: %u "
+			     "offset: %d tsdelta: %d "
+			     "from %s:%d in %d\n",
+			     ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
+			     state->seq_offset, tsdelta,
+			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			     endp->conn_mode);
+		}
 
 		state->in_stream.last_tsdelta = 0;
 	} else {
@@ -269,26 +296,52 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		check_rtp_timestamp(endp, &state->in_stream, rtp_end, addr,
 				    seq, timestamp, "input",
 				    &state->in_stream.last_tsdelta);
+
+		if (state->patch_ssrc)
+			ssrc = state->orig_ssrc;
 	}
 
 	/* Save before patching */
 	state->in_stream.last_timestamp = timestamp;
 	state->in_stream.last_seq = seq;
 
-	/* apply the offset and store it back to the packet */
-	if (state->patch) {
-		seq += state->seq_offset;
-		rtp_hdr->sequence = htons(seq);
-		rtp_hdr->ssrc = state->orig_ssrc;
+	if (rtp_end->force_constant_timing &&
+	    state->out_stream.ssrc == ssrc && state->packet_duration) {
+		int delta_seq = seq + state->seq_offset - state->out_stream.last_seq;
+		int timestamp_offset =
+			state->out_stream.last_timestamp - timestamp +
+			delta_seq * state->packet_duration;
+		if (state->timestamp_offset != timestamp_offset) {
+			state->timestamp_offset = timestamp_offset;
 
-		timestamp += state->timestamp_offset;
-		rtp_hdr->timestamp = htonl(timestamp);
+			LOGP(DMGCP, LOGL_NOTICE,
+			     "Timestamp patching enabled on 0x%x SSRC: %u "
+			     "SeqNo delta: %d, TS offset: %d, "
+			     "from %s:%d in %d\n",
+			     ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
+			     delta_seq, state->timestamp_offset,
+			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			     endp->conn_mode);
+		}
 	}
 
+	/* Store the updated SSRC back to the packet */
+	if (state->patch_ssrc)
+		rtp_hdr->ssrc = htonl(ssrc);
+
+	/* Apply the offset and store it back to the packet.
+	 * This won't change anything if the offset is 0, so the conditional is
+	 * omitted. */
+	seq += state->seq_offset;
+	rtp_hdr->sequence = htons(seq);
+	timestamp += state->timestamp_offset;
+	rtp_hdr->timestamp = htonl(timestamp);
+
 	/* Check again, whether the timestamps are still valid */
-	check_rtp_timestamp(endp, &state->out_stream, rtp_end, addr,
-			    seq, timestamp, "output",
-			    &state->out_stream.last_tsdelta);
+	if (state->out_stream.ssrc == ssrc)
+		check_rtp_timestamp(endp, &state->out_stream, rtp_end, addr,
+				    seq, timestamp, "output",
+				    &state->out_stream.last_tsdelta);
 
 	/*
 	 * The below takes the shape of the validation from Appendix A. Check
@@ -322,7 +375,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	/* Save output values */
 	state->out_stream.last_seq = seq;
 	state->out_stream.last_timestamp = timestamp;
-	state->out_stream.ssrc = rtp_hdr->ssrc;
+	state->out_stream.ssrc = ssrc;
 
 	if (payload < 0)
 		return;

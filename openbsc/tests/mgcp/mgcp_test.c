@@ -510,13 +510,33 @@ struct rtp_packet_info test_rtp_packets1[] = {
 	/* RTP: SeqNo=14, TS=35008 */
 	{0.280000, 20, "\x80\x62\x00\x0E\x00\x00\x88\xC0\x10\x20\x30\x40"
 		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* Non 20ms RTP timestamp (delta = 120): */
+	/* RTP: SeqNo=15, TS=35128 */
+	{0.300000, 20, "\x80\x62\x00\x0F\x00\x00\x89\x38\x10\x20\x30\x40"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=16, TS=35288 */
+	{0.320000, 20, "\x80\x62\x00\x10\x00\x00\x89\xD8\x10\x20\x30\x40"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=17, TS=35448 */
+	{0.340000, 20, "\x80\x62\x00\x11\x00\x00\x8A\x78\x10\x20\x30\x40"
+		       "\x01\x23\x45\x67\x8A\xAB\xCD\xEF"},
+	/* SeqNo increment by 2, RTP timestamp delta = 320: */
+	/* RTP: SeqNo=19, TS=35768 */
+	{0.360000, 20, "\x80\x62\x00\x13\x00\x00\x8B\xB8\x10\x20\x30\x40"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=20, TS=35928 */
+	{0.380000, 20, "\x80\x62\x00\x14\x00\x00\x8C\x58\x10\x20\x30\x40"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=21, TS=36088 */
+	{0.380000, 20, "\x80\x62\x00\x14\x00\x00\x8C\xF8\x10\x20\x30\x40"
+		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
 };
 
 void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
 			  struct mgcp_rtp_end *rtp_end, struct sockaddr_in *addr,
 			  char *data, int len);
 
-static void test_packet_error_detection(void)
+static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 {
 	int i;
 
@@ -526,8 +546,11 @@ static void test_packet_error_detection(void)
 	struct mgcp_rtp_end *rtp = &endp.net_end;
 	struct sockaddr_in addr = {0};
 	char buffer[4096];
+	uint32_t last_ssrc = 0;
 
-	printf("Testing packet error detection.\n");
+	printf("Testing packet error detection%s%s.\n",
+	       patch_ssrc ? ", patch SSRC" : "",
+	       patch_ts ? ", patch timestamps" : "");
 
 	memset(&trunk, 0, sizeof(trunk));
 	memset(&endp, 0, sizeof(endp));
@@ -535,6 +558,9 @@ static void test_packet_error_detection(void)
 
 	trunk.number_endpoints = 1;
 	trunk.endpoints = &endp;
+	trunk.force_constant_ssrc = patch_ssrc;
+	trunk.force_constant_timing = patch_ts;
+
 	endp.tcfg = &trunk;
 
 	/* This doesn't free endp but resets/frees all fields of the structure
@@ -545,7 +571,6 @@ static void test_packet_error_detection(void)
 	mgcp_free_endp(&endp);
 
 	rtp->payload_type = 98;
-	endp.allow_patch = 1;
 
 	for (i = 0; i < ARRAY_SIZE(test_rtp_packets1); ++i) {
 		struct rtp_packet_info *info = test_rtp_packets1 + i;
@@ -554,8 +579,16 @@ static void test_packet_error_detection(void)
 		OSMO_ASSERT(info->len >= 0);
 		memmove(buffer, info->data, info->len);
 
+		mgcp_rtp_end_config(&endp, 1, rtp);
+
 		mgcp_patch_and_count(&endp, &state, rtp, &addr,
 				     buffer, info->len);
+
+		if (state.out_stream.ssrc != last_ssrc) {
+			printf("Output SSRC changed to %08x\n",
+			       state.out_stream.ssrc);
+			last_ssrc = state.out_stream.ssrc;
+		}
 
 		printf("TS: %d, dTS: %d, TS Errs: in %d, out %d\n",
 		       state.out_stream.last_timestamp,
@@ -575,7 +608,10 @@ int main(int argc, char **argv)
 	test_packet_loss_calc();
 	test_rqnt_cb();
 	test_mgcp_stats();
-	test_packet_error_detection();
+	test_packet_error_detection(1, 0);
+	test_packet_error_detection(0, 0);
+	test_packet_error_detection(0, 1);
+	test_packet_error_detection(1, 1);
 
 	printf("Done\n");
 	return EXIT_SUCCESS;

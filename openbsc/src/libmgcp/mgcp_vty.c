@@ -31,6 +31,7 @@
 #include <string.h>
 
 #define RTCP_OMIT_STR "Drop RTCP packets in both directions\n"
+#define RTP_PATCH_STR "Modify RTP packet header in both directions\n"
 
 static struct mgcp_config *g_cfg = NULL;
 
@@ -88,6 +89,13 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
 	else
 		vty_out(vty, "  no rtcp-omit%s", VTY_NEWLINE);
+	if (g_cfg->trunk.force_constant_ssrc || g_cfg->trunk.force_constant_timing) {
+		vty_out(vty, "  %srtp-patch ssrc%s",
+			g_cfg->trunk.force_constant_ssrc ? "" : "no ", VTY_NEWLINE);
+		vty_out(vty, "  %srtp-patch timestamp%s",
+			g_cfg->trunk.force_constant_timing ? "" : "no ", VTY_NEWLINE);
+	} else
+		vty_out(vty, "  no rtp-patch%s", VTY_NEWLINE);
 	if (g_cfg->trunk.audio_payload != -1)
 		vty_out(vty, "  sdp audio-payload number %d%s",
 			g_cfg->trunk.audio_payload, VTY_NEWLINE);
@@ -421,6 +429,61 @@ DEFUN(cfg_mgcp_no_omit_rtcp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_patch_rtp_ssrc,
+      cfg_mgcp_patch_rtp_ssrc_cmd,
+      "rtp-patch ssrc",
+      RTP_PATCH_STR
+      "Force a fixed SSRC\n"
+      )
+{
+	g_cfg->trunk.force_constant_ssrc = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_no_patch_rtp_ssrc,
+      cfg_mgcp_no_patch_rtp_ssrc_cmd,
+      "no rtp-patch ssrc",
+      NO_STR RTP_PATCH_STR
+      "Force a fixed SSRC\n"
+      )
+{
+	g_cfg->trunk.force_constant_ssrc = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_patch_rtp_ts,
+      cfg_mgcp_patch_rtp_ts_cmd,
+      "rtp-patch timestamp",
+      RTP_PATCH_STR
+      "Adjust RTP timestamp\n"
+      )
+{
+	g_cfg->trunk.force_constant_timing = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_no_patch_rtp_ts,
+      cfg_mgcp_no_patch_rtp_ts_cmd,
+      "no rtp-patch timestamp",
+      NO_STR RTP_PATCH_STR
+      "Adjust RTP timestamp\n"
+      )
+{
+	g_cfg->trunk.force_constant_timing = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_no_patch_rtp,
+      cfg_mgcp_no_patch_rtp_cmd,
+      "no rtp-patch",
+      NO_STR RTP_PATCH_STR)
+{
+	g_cfg->trunk.force_constant_ssrc = 0;
+	g_cfg->trunk.force_constant_timing = 0;
+	return CMD_SUCCESS;
+}
+
+
 #define CALL_AGENT_STR "Callagent information\n"
 DEFUN(cfg_mgcp_agent_addr,
       cfg_mgcp_agent_addr_cmd,
@@ -511,6 +574,13 @@ static int config_write_trunk(struct vty *vty)
 			vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
 		else
 			vty_out(vty, "  no rtcp-omit%s", VTY_NEWLINE);
+		if (trunk->force_constant_ssrc || trunk->force_constant_timing) {
+			vty_out(vty, "  %srtp-patch ssrc%s",
+				trunk->force_constant_ssrc ? "" : "no ", VTY_NEWLINE);
+			vty_out(vty, "  %srtp-patch timestamp%s",
+				trunk->force_constant_timing ? "" : "no ", VTY_NEWLINE);
+		} else
+			vty_out(vty, "  no rtp-patch%s", VTY_NEWLINE);
 		if (trunk->audio_fmtp_extra)
 			vty_out(vty, "   sdp audio fmtp-extra %s%s",
 				trunk->audio_fmtp_extra, VTY_NEWLINE);
@@ -599,6 +669,66 @@ DEFUN(cfg_trunk_no_omit_rtcp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trunk_patch_rtp_ssrc,
+      cfg_trunk_patch_rtp_ssrc_cmd,
+      "rtp-patch ssrc",
+      RTP_PATCH_STR
+      "Force a fixed SSRC\n"
+      )
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->force_constant_ssrc = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_no_patch_rtp_ssrc,
+      cfg_trunk_no_patch_rtp_ssrc_cmd,
+      "no rtp-patch ssrc",
+      NO_STR RTP_PATCH_STR
+      "Force a fixed SSRC\n"
+      )
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->force_constant_ssrc = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_patch_rtp_ts,
+      cfg_trunk_patch_rtp_ts_cmd,
+      "rtp-patch timestamp",
+      RTP_PATCH_STR
+      "Adjust RTP timestamp\n"
+      )
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->force_constant_timing = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_no_patch_rtp_ts,
+      cfg_trunk_no_patch_rtp_ts_cmd,
+      "no rtp-patch timestamp",
+      NO_STR RTP_PATCH_STR
+      "Adjust RTP timestamp\n"
+      )
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->force_constant_timing = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_no_patch_rtp,
+      cfg_trunk_no_patch_rtp_cmd,
+      "no rtp-patch",
+      NO_STR RTP_PATCH_STR)
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->force_constant_ssrc = 0;
+	trunk->force_constant_timing = 0;
+	return CMD_SUCCESS;
+}
+
+
 DEFUN(loop_endp,
       loop_endp_cmd,
       "loop-endpoint <0-64> NAME (0|1)",
@@ -636,7 +766,10 @@ DEFUN(loop_endp,
 		endp->conn_mode = MGCP_CONN_LOOPBACK;
 	else
 		endp->conn_mode = endp->orig_mode;
-	endp->allow_patch = 1;
+
+	/* Handle it like a MDCX, switch on SSRC patching if enabled */
+	mgcp_rtp_end_config(endp, 1, &endp->bts_end);
+	mgcp_rtp_end_config(endp, 1, &endp->net_end);
 
 	return CMD_SUCCESS;
 }
@@ -827,6 +960,11 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_omit_rtcp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_omit_rtcp_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_patch_rtp_ssrc_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_patch_rtp_ssrc_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_patch_rtp_ts_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_patch_rtp_ts_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_patch_rtp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_fmtp_extra_cmd);
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
@@ -839,6 +977,11 @@ int mgcp_vty_init(void)
 	install_element(TRUNK_NODE, &cfg_trunk_loop_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_omit_rtcp_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_no_omit_rtcp_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_patch_rtp_ssrc_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_no_patch_rtp_ssrc_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_patch_rtp_ts_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_no_patch_rtp_ts_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_no_patch_rtp_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_sdp_fmtp_extra_cmd);
 
 	return 0;

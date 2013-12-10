@@ -50,7 +50,7 @@ struct mgcp_rtp_stream_state {
 
 struct mgcp_rtp_state {
 	int initialized;
-	int patch;
+	int patch_ssrc;
 
 	uint32_t orig_ssrc;
 
@@ -59,6 +59,7 @@ struct mgcp_rtp_state {
 	int cycles;
 
 	int32_t  timestamp_offset;
+	uint32_t packet_duration;
 	uint32_t jitter;
 	int32_t transit;
 
@@ -81,7 +82,12 @@ struct mgcp_rtp_end {
 	uint32_t frame_duration_num;
 	uint32_t frame_duration_den;
 	int  frames_per_packet;
+	uint32_t packet_duration_ms;
 	char *fmtp_extra;
+
+	/* RTP patching */
+	int force_constant_ssrc; /* -1: always, 0: don't, 1: once */
+	int force_constant_timing;
 
 	/*
 	 * Each end has a socket...
@@ -142,9 +148,6 @@ struct mgcp_endpoint {
 	struct mgcp_rtp_state net_state;
 	struct mgcp_rtp_state bts_state;
 
-	/* SSRC/seq/ts patching for loop */
-	int allow_patch;
-
 	/* fields for re-transmission */
 	char *last_trans;
 	char *last_response;
@@ -175,6 +178,11 @@ static inline int endp_back_channel(int endpoint)
 
 struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int index);
 struct mgcp_trunk_config *mgcp_trunk_num(struct mgcp_config *cfg, int index);
+
+void mgcp_rtp_end_config(struct mgcp_endpoint *endp, int expect_ssrc_change,
+			 struct mgcp_rtp_end *rtp);
+uint32_t mgcp_rtp_packet_duration(struct mgcp_endpoint *endp,
+				  struct mgcp_rtp_end *rtp);
 
 void mgcp_state_calc_loss(struct mgcp_rtp_state *s, struct mgcp_rtp_end *,
 			uint32_t *expected, int *loss);
