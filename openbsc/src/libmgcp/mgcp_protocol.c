@@ -230,11 +230,12 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	const char *addr = endp->cfg->local_ip;
 	const char *fmtp_extra = endp->bts_end.fmtp_extra;
 	char sdp_record[4096];
+	int len;
 
 	if (!addr)
 		addr = endp->cfg->source_addr;
 
-	snprintf(sdp_record, sizeof(sdp_record) - 1,
+	len = snprintf(sdp_record, sizeof(sdp_record) - 1,
 			"I: %u\n\n"
 			"v=0\r\n"
 			"o=- %u 23 IN IP4 %s\r\n"
@@ -247,7 +248,25 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			endp->net_end.local_port, endp->bts_end.payload_type,
 			endp->bts_end.payload_type, endp->tcfg->audio_name,
 			fmtp_extra ? fmtp_extra : "", fmtp_extra ? "\r\n" : "");
+
+	if (len < 0 || len >= sizeof(sdp_record))
+		goto buffer_too_small;
+
+	if (endp->bts_end.packet_duration_ms > 0 && endp->tcfg->audio_send_ptime) {
+		int nchars = snprintf(sdp_record + len, sizeof(sdp_record) - len,
+				      "a=ptime:%d\r\n",
+				      endp->bts_end.packet_duration_ms);
+		if (nchars < 0 || nchars >= sizeof(sdp_record) - len)
+			goto buffer_too_small;
+
+		len += nchars;
+	}
 	return create_resp(endp, 200, " OK", msg, trans_id, NULL, sdp_record);
+
+buffer_too_small:
+	LOGP(DMGCP, LOGL_ERROR, "SDP buffer too small: %d (needed %d)\n",
+	     sizeof(sdp_record), len);
+	return NULL;
 }
 
 /*
@@ -1109,6 +1128,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->trunk.trunk_type = MGCP_TRUNK_VIRTUAL;
 	cfg->trunk.audio_name = talloc_strdup(cfg, "AMR/8000");
 	cfg->trunk.audio_payload = 126;
+	cfg->trunk.audio_send_ptime = 1;
 	cfg->trunk.omit_rtcp = 0;
 
 	INIT_LLIST_HEAD(&cfg->trunks);
@@ -1131,6 +1151,7 @@ struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int nr)
 	trunk->trunk_nr = nr;
 	trunk->audio_name = talloc_strdup(cfg, "AMR/8000");
 	trunk->audio_payload = 126;
+	trunk->audio_send_ptime = 1;
 	trunk->number_endpoints = 33;
 	trunk->omit_rtcp = 0;
 	llist_add_tail(&trunk->entry, &cfg->trunks);

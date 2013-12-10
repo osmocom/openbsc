@@ -81,7 +81,8 @@ static void test_strline(void)
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
-		 "a=rtpmap:126 AMR/8000\r\n"
+		 "a=rtpmap:126 AMR/8000\r\n"	\
+		 "a=ptime:20\r\n"
 #define MDCX4 "MDCX 18983216 1@mgw MGCP 1.0\r\n" \
 		 "C: 2\r\n"          \
 		 "I: 1\r\n"                    \
@@ -102,7 +103,8 @@ static void test_strline(void)
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
-		 "a=rtpmap:126 AMR/8000\r\n"
+		 "a=rtpmap:126 AMR/8000\r\n"	\
+		 "a=ptime:20\r\n"
 
 #define MDCX4_PT1 "MDCX 18983217 1@mgw MGCP 1.0\r\n" \
 		 "C: 2\r\n"          \
@@ -168,7 +170,8 @@ static void test_strline(void)
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
-		 "a=rtpmap:126 AMR/8000\r\n"
+		 "a=rtpmap:126 AMR/8000\r\n"	\
+		 "a=ptime:20\r\n"
 
 #define CRCX_ZYN "CRCX 2 1@mgw MGCP 1.0\r"	\
 		 "M: sendrecv\r"		\
@@ -186,7 +189,8 @@ static void test_strline(void)
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
-		 "a=rtpmap:126 AMR/8000\r\n"
+		 "a=rtpmap:126 AMR/8000\r\n"	\
+		 "a=ptime:20\r\n"
 
 #define DLCX	 "DLCX 7 1@mgw MGCP 1.0\r\n"	\
 		 "C: 2\r\n"
@@ -370,6 +374,13 @@ static void test_retransmission(void)
 	mgcp_endpoints_allocate(&cfg->trunk);
 
 	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
+
+	/* reset endpoints */
+	for (i = 0; i < cfg->trunk.number_endpoints; i++) {
+		struct mgcp_endpoint *endp;
+		endp = &cfg->trunk.endpoints[i];
+		endp->bts_end.packet_duration_ms = 20;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(retransmit); i++) {
 		const struct mgcp_test *t = &retransmit[i];
