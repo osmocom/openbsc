@@ -562,25 +562,64 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 {
 	char *line;
 	int found_media = 0;
+	int audio_payload = -1;
 
 	for_each_line(line, p->save) {
 		switch (line[0]) {
-		case 'a':
 		case 'o':
 		case 's':
 		case 't':
 		case 'v':
 			/* skip these SDP attributes */
 			break;
+		case 'a': {
+			int payload;
+			int rate;
+			int channels = 1;
+			int ptime, ptime2 = 0;
+			char audio_name[64];
+			char audio_codec[64];
+
+			if (audio_payload == -1)
+				break;
+
+			if (sscanf(line, "a=rtpmap:%d %64s",
+				   &payload, audio_name) == 2) {
+				if (payload != audio_payload)
+					break;
+
+				if (sscanf(audio_name, "%[^/]/%d/%d",
+					  audio_codec, &rate, &channels) < 2)
+					break;
+
+				rtp->rate = rate;
+				if (channels != 1)
+					LOGP(DMGCP, LOGL_NOTICE,
+					     "Channels != 1 in SDP: '%s' on 0x%x\n",
+					     line, ENDPOINT_NUMBER(p->endp));
+			} else if (sscanf(line, "a=ptime:%d-%d",
+					  &ptime, &ptime2) >= 1) {
+				if (ptime2 > 0 && ptime2 != ptime)
+					rtp->packet_duration_ms = 0;
+				else
+					rtp->packet_duration_ms = ptime;
+			} else if (sscanf(line, "a=maxptime:%d", &ptime2) == 1) {
+				if (ptime2 * rtp->frame_duration_den >
+				    rtp->frame_duration_num * 1500)
+					/* more than 1 frame */
+					rtp->packet_duration_ms = 0;
+			}
+			break;
+		}
 		case 'm': {
 			int port;
-			int payload;
+			audio_payload = -1;
 
 			if (sscanf(line, "m=audio %d RTP/AVP %d",
-				   &port, &payload) == 2) {
+				   &port, &audio_payload) == 2) {
 				rtp->rtp_port = htons(port);
 				rtp->rtcp_port = htons(port + 1);
-				rtp->payload_type = payload;
+				rtp->payload_type = audio_payload;
 				found_media = 1;
 			}
 			break;
@@ -608,8 +647,10 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 
 	if (found_media)
 		LOGP(DMGCP, LOGL_NOTICE,
-		     "Got media info via SDP: port %d, payload %d, addr %s\n",
-		     ntohs(rtp->rtp_port), rtp->payload_type, inet_ntoa(rtp->addr));
+		     "Got media info via SDP: port %d, payload %d, "
+		     "duration %d, addr %s\n",
+		     ntohs(rtp->rtp_port), rtp->payload_type,
+		     rtp->packet_duration_ms, inet_ntoa(rtp->addr));
 
 	return found_media;
 }

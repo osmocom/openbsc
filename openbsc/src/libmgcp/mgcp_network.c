@@ -300,6 +300,15 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 			state->seq_offset, state->packet_duration,
 			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
 			endp->conn_mode);
+		if (state->packet_duration == 0 && rtp_end->force_constant_timing)
+			LOGP(DMGCP, LOGL_ERROR,
+			"Cannot patch timestamps on 0x%x: "
+			"RTP packet duration is unknown, SSRC: %u, "
+			"from %s:%d in %d\n",
+			ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
+			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			endp->conn_mode);
+
 	} else if (state->in_stream.ssrc != ssrc) {
 		LOGP(DMGCP, LOGL_NOTICE,
 			"The SSRC changed on 0x%x: %u -> %u  "
