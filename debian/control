@@ -42,3 +42,59 @@ Package: osmocom-bsc-nat
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore
 Description: Osmocom Base Station Controller Network Address Translation
+
+Package: osmocom-bsc-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-bsc (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the OpenBSC BSC
+ Make debugging possible
+
+Package: osmocom-nitb-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-nitb (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the OpenBSC NITB
+ Make debugging possible
+
+Package: osmocom-ipaccess-utils-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-ipaccess-utils (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the OpenBSC ip.access utils
+ Make debugging possible
+
+Package: osmocom-bs11-utils-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-bs11-utils (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the OpenBSC BS11 utils
+ Make debugging possible
+
+Package: osmocom-sgsn-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-sgsn (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the OpenBSC Serving GPRS Support Node
+ Make debugging possible
+
+Package: osmocom-gbproxy-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-gbproxy (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the OpenBSC GPRS GBProxy
+ Make debugging possible
+
+Package: osmocom-bsc-nat-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-bsc-nat (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the OpenBSC Network Address Translation
+ Make debugging possible
