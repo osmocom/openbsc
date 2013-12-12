@@ -210,10 +210,10 @@ int range_enc_range256(uint8_t *chan_list, int f0, int *w)
 int range_enc_range512(uint8_t *chan_list, int f0, int *w)
 {
 	struct gsm48_range_512 *range512;
+	chan_list[0] = 0x88;
 	write_orig_arfcn(chan_list, f0);
 
 	range512 = (struct gsm48_range_512 *) &chan_list[0];
-	range512->form_id = chan_list[0] = 0x44;
 
 	/* W(1) */
 	range512->w1_hi = HIGH_BITS(w, 1, 9, 7);
