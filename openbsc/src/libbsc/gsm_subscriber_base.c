@@ -104,7 +104,8 @@ struct gsm_subscriber *subscr_get_or_create(struct gsm_network *net,
 	if (!subscr)
 		return NULL;
 
-	strcpy(subscr->imsi, imsi);
+	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH);
+	subscr->imsi[GSM_IMSI_LENGTH - 1] = '\0';
 	subscr->net = net;
 	return subscr;
 }
