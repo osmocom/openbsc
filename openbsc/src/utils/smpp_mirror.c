@@ -170,6 +170,8 @@ static int smpp_pdu_rx(struct esme *esme, struct msgb *msg)
 		rc = smpp_handle_deliver(esme, msg);
 		break;
 	default:
+		LOGP(DSMPP, LOGL_NOTICE, "unhandled case %d\n", cmd_id);
+		rc = 0;
 		break;
 	}
 
