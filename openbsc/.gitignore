@@ -23,6 +23,7 @@ config.status
 config.guess
 config.sub
 configure
+compile
 depcomp
 install-sh
 missing
