@@ -21,7 +21,7 @@ ipaccess_config_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
 			$(top_builddir)/src/libbsc/libbsc.a \
 			$(top_builddir)/src/libtrau/libtrau.a \
 			$(top_builddir)/src/libcommon/libcommon.a \
-			-ldl -ldbi $(LIBCRYPT) $(OSMO_LIBS)
+			$(LIBRARY_DL) -ldbi $(LIBCRYPT) $(OSMO_LIBS)
 
 ipaccess_proxy_SOURCES = ipaccess-proxy.c
 ipaccess_proxy_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
