@@ -1005,6 +1005,13 @@ static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, v
 	bfd->data = ipc;
 	bfd->priv_nr = priv_nr;
 
+	if (bfd->fd < 0) {
+		LOGP(DLINP, LOGL_ERROR, "Could not create socket: %s\n",
+			strerror(errno));
+		talloc_free(ipc);
+		return NULL;
+	}
+
 	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
 	ret = connect(bfd->fd, (struct sockaddr *) sa, sizeof(*sa));
