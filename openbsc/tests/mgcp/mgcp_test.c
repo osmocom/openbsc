@@ -210,7 +210,7 @@ static struct msgb *create_msg(const char *str)
 	struct msgb *msg;
 
 	msg = msgb_alloc_headroom(4096, 128, "MGCP msg");
-	int len = sprintf((char *)msg->data, str);
+	int len = sprintf((char *)msg->data, "%s", str);
 	msg->l2h = msgb_put(msg, len);
 	return msg;
 }
