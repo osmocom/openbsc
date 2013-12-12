@@ -103,7 +103,7 @@ static void test_print_encoding()
 			break;
 		}
 
-	rc = range_enc_range512(chan_list, 0x96, w);
+	rc = range_enc_range512(chan_list, (1 << 9) | 0x96, w);
 	VERIFY(rc, ==, 0);
 
 	printf("Range512: %s\n", osmo_hexdump(chan_list, ARRAY_SIZE(chan_list)));
