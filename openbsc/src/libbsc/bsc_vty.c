@@ -873,7 +873,7 @@ static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
-	if (subscr->name)
+	if (strlen(subscr->name))
 		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
 	if (subscr->extension)
 		vty_out(vty, "    Extension: %s%s", subscr->extension,
