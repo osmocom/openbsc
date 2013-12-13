@@ -7,11 +7,15 @@ FileStream fileIn: 'rtp_replay_shared.st'.
 
 
 Eval [
-    | replay |
+    | replay file host dport |
 
+    file := Smalltalk arguments at: 1 ifAbsent: [ 'rtpstream.state' ].
+    host := Smalltalk arguments at: 2 ifAbsent: [ '127.0.0.1' ].
+    dport := (Smalltalk arguments at: 3 ifAbsent: [ '4000' ]) asInteger.
+    sport := (Smalltalk arguments at: 4 ifAbsent: [ '0' ]) asInteger.
 
-    replay := RTPReplay on: Smalltalk arguments first.
+    replay := RTPReplay on: file fromPort: sport.
 
     Transcript nextPutAll: 'Going to stream now'; nl.
-    replay streamAudio: '127.0.0.1' port: 4000.
+    replay streamAudio: host port: dport.
 ]

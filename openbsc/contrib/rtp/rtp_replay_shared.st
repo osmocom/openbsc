@@ -42,8 +42,18 @@ Object subclass: RTPReplay [
             file: aFile; yourself
     ]
 
+    RTPReplay class >> on: aFile fromPort: aPort [
+        ^ self new
+            initialize: aPort;
+            file: aFile; yourself
+    ]
+
     initialize [
-        socket := Sockets.DatagramSocket new.
+        self initialize: 0.
+    ]
+
+    initialize: aPort [
+        socket := Sockets.DatagramSocket local: '0.0.0.0' port: aPort.
     ]
 
     file: aFile [ 
@@ -59,7 +69,7 @@ Object subclass: RTPReplay [
 
         last_time := nil.
         last_image := nil.
-        file := FileStream open: filename.
+        file := FileStream open: filename mode: #read.
 
         "Send the payload"
         dest := Sockets.SocketAddress byName: aHost.
