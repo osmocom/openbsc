@@ -114,6 +114,12 @@ struct mgcp_rtp_tap {
 	struct sockaddr_in forward;
 };
 
+struct mgcp_lco {
+	char *string;
+	int pkt_period_min; /* time in ms */
+	int pkt_period_max; /* time in ms */
+};
+
 enum mgcp_type {
 	MGCP_RTP_DEFAULT	= 0,
 	MGCP_RTP_TRANSCODED,
@@ -123,7 +129,7 @@ struct mgcp_endpoint {
 	int allocated;
 	uint32_t ci;
 	char *callid;
-	char *local_options;
+	struct mgcp_lco local_options;
 	int conn_mode;
 	int orig_mode;
 

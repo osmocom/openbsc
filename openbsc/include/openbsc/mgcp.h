@@ -114,6 +114,7 @@ struct mgcp_trunk_config {
 	char *audio_fmtp_extra;
 	char *audio_name;
 	int audio_payload;
+	int audio_send_ptime;
 	int audio_loop;
 
 	int omit_rtcp;

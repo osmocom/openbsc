@@ -200,6 +200,58 @@ static int check_rtp_timestamp(struct mgcp_endpoint *endp,
 	return 1;
 }
 
+/* Set the timestamp offset according to the packet duration. */
+static int adjust_rtp_timestamp_offset(struct mgcp_endpoint *endp,
+				       struct mgcp_rtp_state *state,
+				       struct mgcp_rtp_end *rtp_end,
+				       struct sockaddr_in *addr,
+				       int16_t delta_seq, uint32_t timestamp)
+{
+	int32_t tsdelta = state->packet_duration;
+	int timestamp_offset;
+
+	if (tsdelta == 0) {
+		tsdelta = state->out_stream.last_tsdelta;
+		if (tsdelta != 0) {
+			LOGP(DMGCP, LOGL_NOTICE,
+			     "A fixed packet duration is not available on 0x%x, "
+			     "using last output timestamp delta instead: %d "
+			     "from %s:%d in %d\n",
+			     ENDPOINT_NUMBER(endp), tsdelta,
+			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			     endp->conn_mode);
+		} else {
+			tsdelta = rtp_end->rate * 20 / 1000;
+			LOGP(DMGCP, LOGL_NOTICE,
+			     "Fixed packet duration and last timestamp delta "
+			     "are not available on 0x%x, "
+			     "using fixed 20ms instead: %d "
+			     "from %s:%d in %d\n",
+			     ENDPOINT_NUMBER(endp), tsdelta,
+			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			     endp->conn_mode);
+		}
+	}
+
+	timestamp_offset =
+		state->out_stream.last_timestamp - timestamp +
+		delta_seq * tsdelta;
+
+	if (state->timestamp_offset != timestamp_offset) {
+		state->timestamp_offset = timestamp_offset;
+
+		LOGP(DMGCP, LOGL_NOTICE,
+		     "Timestamp offset change on 0x%x SSRC: %u "
+		     "SeqNo delta: %d, TS offset: %d, "
+		     "from %s:%d in %d\n",
+		     ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
+		     delta_seq, state->timestamp_offset,
+		     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+		     endp->conn_mode);
+	}
+
+	return timestamp_offset;
+}
 
 /**
  * The RFC 3550 Appendix A assumes there are multiple sources but
@@ -248,6 +300,15 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 			state->seq_offset, state->packet_duration,
 			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
 			endp->conn_mode);
+		if (state->packet_duration == 0 && rtp_end->force_constant_timing)
+			LOGP(DMGCP, LOGL_ERROR,
+			"Cannot patch timestamps on 0x%x: "
+			"RTP packet duration is unknown, SSRC: %u, "
+			"from %s:%d in %d\n",
+			ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
+			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			endp->conn_mode);
+
 	} else if (state->in_stream.ssrc != ssrc) {
 		LOGP(DMGCP, LOGL_NOTICE,
 			"The SSRC changed on 0x%x: %u -> %u  "
@@ -259,22 +320,14 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 
 		state->in_stream.ssrc = ssrc;
 		if (rtp_end->force_constant_ssrc) {
-			int32_t tsdelta = state->out_stream.last_tsdelta;
-			if (tsdelta == 0) {
-				tsdelta = state->packet_duration;
-				LOGP(DMGCP, LOGL_NOTICE,
-				     "Timestamp delta is not available on 0x%x, "
-				     "using packet duration instead: %d "
-				     "from %s:%d in %d\n",
-				     ENDPOINT_NUMBER(endp), tsdelta,
-				     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
-				     endp->conn_mode);
-			}
+			const int16_t delta_seq = 1;
+
 			state->seq_offset =
-				(state->out_stream.last_seq + 1) - seq;
-			state->timestamp_offset =
-				(state->out_stream.last_timestamp + tsdelta) -
-				timestamp;
+				(state->out_stream.last_seq + delta_seq) - seq;
+
+			adjust_rtp_timestamp_offset(endp, state, rtp_end, addr,
+						    delta_seq, timestamp);
+
 			state->patch_ssrc = 1;
 			ssrc = state->orig_ssrc;
 			if (rtp_end->force_constant_ssrc != -1)
@@ -282,10 +335,10 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 
 			LOGP(DMGCP, LOGL_NOTICE,
 			     "SSRC patching enabled on 0x%x SSRC: %u "
-			     "offset: %d tsdelta: %d "
+			     "SeqNo offset: %d, TS offset: %d "
 			     "from %s:%d in %d\n",
 			     ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
-			     state->seq_offset, tsdelta,
+			     state->seq_offset, state->timestamp_offset,
 			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
 			     endp->conn_mode);
 		}
@@ -307,22 +360,12 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 
 	if (rtp_end->force_constant_timing &&
 	    state->out_stream.ssrc == ssrc && state->packet_duration) {
-		int delta_seq = seq + state->seq_offset - state->out_stream.last_seq;
-		int timestamp_offset =
-			state->out_stream.last_timestamp - timestamp +
-			delta_seq * state->packet_duration;
-		if (state->timestamp_offset != timestamp_offset) {
-			state->timestamp_offset = timestamp_offset;
+		/* Update the timestamp offset */
+		const int delta_seq =
+			seq + state->seq_offset - state->out_stream.last_seq;
 
-			LOGP(DMGCP, LOGL_NOTICE,
-			     "Timestamp patching enabled on 0x%x SSRC: %u "
-			     "SeqNo delta: %d, TS offset: %d, "
-			     "from %s:%d in %d\n",
-			     ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
-			     delta_seq, state->timestamp_offset,
-			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
-			     endp->conn_mode);
-		}
+		adjust_rtp_timestamp_offset(endp, state, rtp_end, addr,
+					    delta_seq, timestamp);
 	}
 
 	/* Store the updated SSRC back to the packet */

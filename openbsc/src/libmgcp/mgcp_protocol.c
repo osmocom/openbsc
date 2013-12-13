@@ -230,11 +230,12 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	const char *addr = endp->cfg->local_ip;
 	const char *fmtp_extra = endp->bts_end.fmtp_extra;
 	char sdp_record[4096];
+	int len;
 
 	if (!addr)
 		addr = endp->cfg->source_addr;
 
-	snprintf(sdp_record, sizeof(sdp_record) - 1,
+	len = snprintf(sdp_record, sizeof(sdp_record) - 1,
 			"I: %u\n\n"
 			"v=0\r\n"
 			"o=- %u 23 IN IP4 %s\r\n"
@@ -247,7 +248,25 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			endp->net_end.local_port, endp->bts_end.payload_type,
 			endp->bts_end.payload_type, endp->tcfg->audio_name,
 			fmtp_extra ? fmtp_extra : "", fmtp_extra ? "\r\n" : "");
+
+	if (len < 0 || len >= sizeof(sdp_record))
+		goto buffer_too_small;
+
+	if (endp->bts_end.packet_duration_ms > 0 && endp->tcfg->audio_send_ptime) {
+		int nchars = snprintf(sdp_record + len, sizeof(sdp_record) - len,
+				      "a=ptime:%d\r\n",
+				      endp->bts_end.packet_duration_ms);
+		if (nchars < 0 || nchars >= sizeof(sdp_record) - len)
+			goto buffer_too_small;
+
+		len += nchars;
+	}
 	return create_resp(endp, 200, " OK", msg, trans_id, NULL, sdp_record);
+
+buffer_too_small:
+	LOGP(DMGCP, LOGL_ERROR, "SDP buffer too small: %d (needed %d)\n",
+	     sizeof(sdp_record), len);
+	return NULL;
 }
 
 /*
@@ -562,25 +581,64 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 {
 	char *line;
 	int found_media = 0;
+	int audio_payload = -1;
 
 	for_each_line(line, p->save) {
 		switch (line[0]) {
-		case 'a':
 		case 'o':
 		case 's':
 		case 't':
 		case 'v':
 			/* skip these SDP attributes */
 			break;
+		case 'a': {
+			int payload;
+			int rate;
+			int channels = 1;
+			int ptime, ptime2 = 0;
+			char audio_name[64];
+			char audio_codec[64];
+
+			if (audio_payload == -1)
+				break;
+
+			if (sscanf(line, "a=rtpmap:%d %64s",
+				   &payload, audio_name) == 2) {
+				if (payload != audio_payload)
+					break;
+
+				if (sscanf(audio_name, "%[^/]/%d/%d",
+					  audio_codec, &rate, &channels) < 2)
+					break;
+
+				rtp->rate = rate;
+				if (channels != 1)
+					LOGP(DMGCP, LOGL_NOTICE,
+					     "Channels != 1 in SDP: '%s' on 0x%x\n",
+					     line, ENDPOINT_NUMBER(p->endp));
+			} else if (sscanf(line, "a=ptime:%d-%d",
+					  &ptime, &ptime2) >= 1) {
+				if (ptime2 > 0 && ptime2 != ptime)
+					rtp->packet_duration_ms = 0;
+				else
+					rtp->packet_duration_ms = ptime;
+			} else if (sscanf(line, "a=maxptime:%d", &ptime2) == 1) {
+				if (ptime2 * rtp->frame_duration_den >
+				    rtp->frame_duration_num * 1500)
+					/* more than 1 frame */
+					rtp->packet_duration_ms = 0;
+			}
+			break;
+		}
 		case 'm': {
 			int port;
-			int payload;
+			audio_payload = -1;
 
 			if (sscanf(line, "m=audio %d RTP/AVP %d",
-				   &port, &payload) == 2) {
+				   &port, &audio_payload) == 2) {
 				rtp->rtp_port = htons(port);
 				rtp->rtcp_port = htons(port + 1);
-				rtp->payload_type = payload;
+				rtp->payload_type = audio_payload;
 				found_media = 1;
 			}
 			break;
@@ -608,10 +666,31 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 
 	if (found_media)
 		LOGP(DMGCP, LOGL_NOTICE,
-		     "Got media info via SDP: port %d, payload %d, addr %s\n",
-		     ntohs(rtp->rtp_port), rtp->payload_type, inet_ntoa(rtp->addr));
+		     "Got media info via SDP: port %d, payload %d, "
+		     "duration %d, addr %s\n",
+		     ntohs(rtp->rtp_port), rtp->payload_type,
+		     rtp->packet_duration_ms, inet_ntoa(rtp->addr));
 
 	return found_media;
+}
+
+/* Set the LCO from a string (see RFC 3435).
+ * The string is stored in the 'string' field. A NULL string is handled excatly
+ * like an empty string, the 'string' field is never NULL after this function
+ * has been called. */
+static void set_local_cx_options(void *ctx, struct mgcp_lco *lco,
+				 const char *options)
+{
+	char *p_opt;
+
+	talloc_free(lco->string);
+	lco->pkt_period_min = lco->pkt_period_max = 0;
+	lco->string = talloc_strdup(ctx, options ? options : "");
+
+	p_opt = strstr(lco->string, "p:");
+	if (p_opt && sscanf(p_opt, "p:%d-%d",
+			    &lco->pkt_period_min, &lco->pkt_period_max) == 1)
+		lco->pkt_period_max = lco->pkt_period_min;
 }
 
 void mgcp_rtp_end_config(struct mgcp_endpoint *endp, int expect_ssrc_change,
@@ -712,8 +791,8 @@ mgcp_header_done:
 	/* copy some parameters */
 	endp->callid = talloc_strdup(tcfg->endpoints, callid);
 
-	if (local_options)
-		endp->local_options = talloc_strdup(tcfg->endpoints, local_options);
+	set_local_cx_options(endp->tcfg->endpoints, &endp->local_options,
+			     local_options);
 
 	if (parse_conn_mode(mode, &endp->conn_mode) != 0) {
 		    error_code = 517;
@@ -789,6 +868,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 	int error_code = 500;
 	int silent = 0;
 	char *line;
+	const char *local_options = NULL;
 
 	if (p->found != 0)
 		return create_err_response(NULL, 510, "MDCX", p->trans);
@@ -812,7 +892,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			break;
 		}
 		case 'L':
-			/* skip */
+			local_options = (const char *) line + 3;
 			break;
 		case 'M':
 			if (parse_conn_mode(line + 3, &endp->conn_mode) != 0) {
@@ -837,6 +917,9 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			break;
 		}
 	}
+
+	set_local_cx_options(endp->tcfg->endpoints, &endp->local_options,
+			     local_options);
 
 	/* policy CB */
 	if (p->cfg->policy_cb) {
@@ -1045,6 +1128,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->trunk.trunk_type = MGCP_TRUNK_VIRTUAL;
 	cfg->trunk.audio_name = talloc_strdup(cfg, "AMR/8000");
 	cfg->trunk.audio_payload = 126;
+	cfg->trunk.audio_send_ptime = 1;
 	cfg->trunk.omit_rtcp = 0;
 
 	INIT_LLIST_HEAD(&cfg->trunks);
@@ -1067,6 +1151,7 @@ struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int nr)
 	trunk->trunk_nr = nr;
 	trunk->audio_name = talloc_strdup(cfg, "AMR/8000");
 	trunk->audio_payload = 126;
+	trunk->audio_send_ptime = 1;
 	trunk->number_endpoints = 33;
 	trunk->omit_rtcp = 0;
 	llist_add_tail(&trunk->entry, &cfg->trunks);
@@ -1148,8 +1233,8 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	talloc_free(endp->callid);
 	endp->callid = NULL;
 
-	talloc_free(endp->local_options);
-	endp->local_options = NULL;
+	talloc_free(endp->local_options.string);
+	endp->local_options.string = NULL;
 
 	mgcp_rtp_end_reset(&endp->bts_end);
 	mgcp_rtp_end_reset(&endp->net_end);
