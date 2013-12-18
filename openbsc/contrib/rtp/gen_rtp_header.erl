@@ -45,7 +45,9 @@ main([First | RemArgs], Opts) ->
 	InFile = proplists:get_value(file, Opts, undef),
 
         Payload = case {PayloadData, InFile} of
-	    {undef, undef} -> #rtp_packet.payload;
+	    {undef, undef} ->
+		% use default value
+		#rtp_packet{}#rtp_packet.payload;
 	    {P, undef} -> P;
 	    {_, File} ->
 		log(info, "Loading file '~s'~n", [File], Opts),
