@@ -65,120 +65,228 @@ Parsing result: 0
 Parsing result: 0
 Testing packet error detection, patch SSRC.
 Output SSRC changed to 11223344
-TS: 0, dTS: 0, TS Errs: in 0, out 0
-TS: 160, dTS: 160, TS Errs: in 0, out 0
-TS: 320, dTS: 160, TS Errs: in 0, out 0
-TS: 320, dTS: 160, TS Errs: in 1, out 1
-TS: 480, dTS: 160, TS Errs: in 1, out 1
-TS: 640, dTS: 160, TS Errs: in 1, out 1
-TS: 960, dTS: 320, TS Errs: in 2, out 2
-TS: 1120, dTS: 160, TS Errs: in 3, out 3
-TS: 1280, dTS: 160, TS Errs: in 3, out 3
-TS: 1400, dTS: 120, TS Errs: in 4, out 4
-TS: 1560, dTS: 160, TS Errs: in 5, out 5
-TS: 1720, dTS: 160, TS Errs: in 5, out 5
-TS: 1880, dTS: 160, TS Errs: in 5, out 5
-TS: 2040, dTS: 160, TS Errs: in 5, out 5
-TS: 2200, dTS: 160, TS Errs: in 5, out 5
-TS: 2320, dTS: 120, TS Errs: in 6, out 6
-TS: 2480, dTS: 160, TS Errs: in 7, out 7
-TS: 2640, dTS: 160, TS Errs: in 7, out 7
-TS: 2960, dTS: 160, TS Errs: in 7, out 7
-TS: 3120, dTS: 160, TS Errs: in 7, out 7
-TS: 3280, dTS: 160, TS Errs: in 7, out 7
-TS: 3280, dTS: 160, TS Errs: in 7, out 7
-TS: 3440, dTS: 160, TS Errs: in 7, out 7
-TS: 3600, dTS: 160, TS Errs: in 7, out 7
-TS: 3760, dTS: 160, TS Errs: in 8, out 8
-TS: 3920, dTS: 160, TS Errs: in 8, out 8
-TS: 4080, dTS: 160, TS Errs: in 8, out 8
+In TS: 0, dTS: 0, Seq: 0
+Out TS change: 0, dTS: 0, Seq change: 0, TS Err change: in +0, out +0
+In TS: 160, dTS: 160, Seq: 1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 320, dTS: 160, Seq: 2
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 320, dTS: 160, Seq: 3
+Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+In TS: 480, dTS: 160, Seq: 4
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 640, dTS: 160, Seq: 5
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 960, dTS: 320, Seq: 6
+Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +1, out +1
+In TS: 1120, dTS: 160, Seq: 7
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+In TS: 1280, dTS: 160, Seq: 8
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 1400, dTS: 120, Seq: 9
+Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
+In TS: 1560, dTS: 160, Seq: 10
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+In TS: 1720, dTS: 160, Seq: 11
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 34688, dTS: 0, Seq: 12
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 34848, dTS: 160, Seq: 13
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35008, dTS: 160, Seq: 14
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35128, dTS: 120, Seq: 15
+Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
+In TS: 35288, dTS: 160, Seq: 16
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+In TS: 35448, dTS: 160, Seq: 17
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35768, dTS: 160, Seq: 19
+Out TS change: 320, dTS: 160, Seq change: 2, TS Err change: in +0, out +0
+In TS: 35928, dTS: 160, Seq: 20
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36088, dTS: 160, Seq: 21
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36088, dTS: 160, Seq: 21
+Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +0, out +0
+In TS: 36248, dTS: 160, Seq: 22
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36408, dTS: 160, Seq: 23
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36568, dTS: 160, Seq: 23
+Out TS change: 160, dTS: 160, Seq change: 0, TS Err change: in +1, out +1
+In TS: 36728, dTS: 160, Seq: 24
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36888, dTS: 160, Seq: 25
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Testing packet error detection.
 Output SSRC changed to 11223344
-TS: 0, dTS: 0, TS Errs: in 0, out 0
-TS: 160, dTS: 160, TS Errs: in 0, out 0
-TS: 320, dTS: 160, TS Errs: in 0, out 0
-TS: 320, dTS: 160, TS Errs: in 1, out 1
-TS: 480, dTS: 160, TS Errs: in 1, out 1
-TS: 640, dTS: 160, TS Errs: in 1, out 1
-TS: 960, dTS: 320, TS Errs: in 2, out 2
-TS: 1120, dTS: 160, TS Errs: in 3, out 3
-TS: 1280, dTS: 160, TS Errs: in 3, out 3
-TS: 1400, dTS: 120, TS Errs: in 4, out 4
-TS: 1560, dTS: 160, TS Errs: in 5, out 5
-TS: 1720, dTS: 160, TS Errs: in 5, out 5
+In TS: 0, dTS: 0, Seq: 0
+Out TS change: 0, dTS: 0, Seq change: 0, TS Err change: in +0, out +0
+In TS: 160, dTS: 160, Seq: 1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 320, dTS: 160, Seq: 2
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 320, dTS: 160, Seq: 3
+Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+In TS: 480, dTS: 160, Seq: 4
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 640, dTS: 160, Seq: 5
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 960, dTS: 320, Seq: 6
+Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +1, out +1
+In TS: 1120, dTS: 160, Seq: 7
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+In TS: 1280, dTS: 160, Seq: 8
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 1400, dTS: 120, Seq: 9
+Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
+In TS: 1560, dTS: 160, Seq: 10
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+In TS: 1720, dTS: 160, Seq: 11
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Output SSRC changed to 10203040
-TS: 34688, dTS: 160, TS Errs: in 5, out 5
-TS: 34848, dTS: 160, TS Errs: in 5, out 5
-TS: 35008, dTS: 160, TS Errs: in 5, out 5
-TS: 35128, dTS: 120, TS Errs: in 6, out 6
-TS: 35288, dTS: 160, TS Errs: in 7, out 7
-TS: 35448, dTS: 160, TS Errs: in 7, out 7
-TS: 35768, dTS: 160, TS Errs: in 7, out 7
-TS: 35928, dTS: 160, TS Errs: in 7, out 7
-TS: 36088, dTS: 160, TS Errs: in 7, out 7
-TS: 36088, dTS: 160, TS Errs: in 7, out 7
-TS: 36248, dTS: 160, TS Errs: in 7, out 7
-TS: 36408, dTS: 160, TS Errs: in 7, out 7
-TS: 36568, dTS: 160, TS Errs: in 8, out 8
-TS: 36728, dTS: 160, TS Errs: in 8, out 8
-TS: 36888, dTS: 160, TS Errs: in 8, out 8
+In TS: 34688, dTS: 0, Seq: 12
+Out TS change: 32968, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 34848, dTS: 160, Seq: 13
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35008, dTS: 160, Seq: 14
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35128, dTS: 120, Seq: 15
+Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
+In TS: 35288, dTS: 160, Seq: 16
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+In TS: 35448, dTS: 160, Seq: 17
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35768, dTS: 160, Seq: 19
+Out TS change: 320, dTS: 160, Seq change: 2, TS Err change: in +0, out +0
+In TS: 35928, dTS: 160, Seq: 20
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36088, dTS: 160, Seq: 21
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36088, dTS: 160, Seq: 21
+Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +0, out +0
+In TS: 36248, dTS: 160, Seq: 22
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36408, dTS: 160, Seq: 23
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36568, dTS: 160, Seq: 23
+Out TS change: 160, dTS: 160, Seq change: 0, TS Err change: in +1, out +1
+In TS: 36728, dTS: 160, Seq: 24
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36888, dTS: 160, Seq: 25
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Testing packet error detection, patch timestamps.
 Output SSRC changed to 11223344
-TS: 0, dTS: 0, TS Errs: in 0, out 0
-TS: 160, dTS: 160, TS Errs: in 0, out 0
-TS: 320, dTS: 160, TS Errs: in 0, out 0
-TS: 480, dTS: 160, TS Errs: in 1, out 0
-TS: 640, dTS: 160, TS Errs: in 1, out 0
-TS: 800, dTS: 160, TS Errs: in 1, out 0
-TS: 960, dTS: 160, TS Errs: in 2, out 0
-TS: 1120, dTS: 160, TS Errs: in 3, out 0
-TS: 1280, dTS: 160, TS Errs: in 3, out 0
-TS: 1440, dTS: 160, TS Errs: in 4, out 0
-TS: 1600, dTS: 160, TS Errs: in 5, out 0
-TS: 1760, dTS: 160, TS Errs: in 5, out 0
+In TS: 0, dTS: 0, Seq: 0
+Out TS change: 0, dTS: 0, Seq change: 0, TS Err change: in +0, out +0
+In TS: 160, dTS: 160, Seq: 1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 320, dTS: 160, Seq: 2
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 320, dTS: 160, Seq: 3
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 480, dTS: 160, Seq: 4
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 640, dTS: 160, Seq: 5
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 960, dTS: 320, Seq: 6
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 1120, dTS: 160, Seq: 7
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 1280, dTS: 160, Seq: 8
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 1400, dTS: 120, Seq: 9
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 1560, dTS: 160, Seq: 10
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 1720, dTS: 160, Seq: 11
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Output SSRC changed to 10203040
-TS: 34728, dTS: 160, TS Errs: in 5, out 0
-TS: 34888, dTS: 160, TS Errs: in 5, out 0
-TS: 35048, dTS: 160, TS Errs: in 5, out 0
-TS: 35208, dTS: 160, TS Errs: in 6, out 0
-TS: 35368, dTS: 160, TS Errs: in 7, out 0
-TS: 35528, dTS: 160, TS Errs: in 7, out 0
-TS: 35848, dTS: 160, TS Errs: in 7, out 0
-TS: 36008, dTS: 160, TS Errs: in 7, out 0
-TS: 36168, dTS: 160, TS Errs: in 7, out 0
-TS: 36168, dTS: 160, TS Errs: in 7, out 0
-TS: 36328, dTS: 160, TS Errs: in 7, out 0
-TS: 36488, dTS: 160, TS Errs: in 7, out 0
-TS: 36488, dTS: 160, TS Errs: in 8, out 0
-TS: 36648, dTS: 160, TS Errs: in 8, out 0
-TS: 36808, dTS: 160, TS Errs: in 8, out 0
+In TS: 34688, dTS: 0, Seq: 12
+Out TS change: 32968, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 34848, dTS: 160, Seq: 13
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35008, dTS: 160, Seq: 14
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35128, dTS: 120, Seq: 15
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 35288, dTS: 160, Seq: 16
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 35448, dTS: 160, Seq: 17
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35768, dTS: 160, Seq: 19
+Out TS change: 320, dTS: 160, Seq change: 2, TS Err change: in +0, out +0
+In TS: 35928, dTS: 160, Seq: 20
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36088, dTS: 160, Seq: 21
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36088, dTS: 160, Seq: 21
+Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +0, out +0
+In TS: 36248, dTS: 160, Seq: 22
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36408, dTS: 160, Seq: 23
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36568, dTS: 160, Seq: 23
+Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +1, out +0
+In TS: 36728, dTS: 160, Seq: 24
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36888, dTS: 160, Seq: 25
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Testing packet error detection, patch SSRC, patch timestamps.
 Output SSRC changed to 11223344
-TS: 0, dTS: 0, TS Errs: in 0, out 0
-TS: 160, dTS: 160, TS Errs: in 0, out 0
-TS: 320, dTS: 160, TS Errs: in 0, out 0
-TS: 480, dTS: 160, TS Errs: in 1, out 0
-TS: 640, dTS: 160, TS Errs: in 1, out 0
-TS: 800, dTS: 160, TS Errs: in 1, out 0
-TS: 960, dTS: 160, TS Errs: in 2, out 0
-TS: 1120, dTS: 160, TS Errs: in 3, out 0
-TS: 1280, dTS: 160, TS Errs: in 3, out 0
-TS: 1440, dTS: 160, TS Errs: in 4, out 0
-TS: 1600, dTS: 160, TS Errs: in 5, out 0
-TS: 1760, dTS: 160, TS Errs: in 5, out 0
-TS: 1920, dTS: 160, TS Errs: in 5, out 0
-TS: 2080, dTS: 160, TS Errs: in 5, out 0
-TS: 2240, dTS: 160, TS Errs: in 5, out 0
-TS: 2400, dTS: 160, TS Errs: in 6, out 0
-TS: 2560, dTS: 160, TS Errs: in 7, out 0
-TS: 2720, dTS: 160, TS Errs: in 7, out 0
-TS: 3040, dTS: 160, TS Errs: in 7, out 0
-TS: 3200, dTS: 160, TS Errs: in 7, out 0
-TS: 3360, dTS: 160, TS Errs: in 7, out 0
-TS: 3360, dTS: 160, TS Errs: in 7, out 0
-TS: 3520, dTS: 160, TS Errs: in 7, out 0
-TS: 3680, dTS: 160, TS Errs: in 7, out 0
-TS: 3680, dTS: 160, TS Errs: in 8, out 0
-TS: 3840, dTS: 160, TS Errs: in 8, out 0
-TS: 4000, dTS: 160, TS Errs: in 8, out 0
+In TS: 0, dTS: 0, Seq: 0
+Out TS change: 0, dTS: 0, Seq change: 0, TS Err change: in +0, out +0
+In TS: 160, dTS: 160, Seq: 1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 320, dTS: 160, Seq: 2
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 320, dTS: 160, Seq: 3
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 480, dTS: 160, Seq: 4
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 640, dTS: 160, Seq: 5
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 960, dTS: 320, Seq: 6
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 1120, dTS: 160, Seq: 7
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 1280, dTS: 160, Seq: 8
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 1400, dTS: 120, Seq: 9
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 1560, dTS: 160, Seq: 10
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 1720, dTS: 160, Seq: 11
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 34688, dTS: 0, Seq: 12
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 34848, dTS: 160, Seq: 13
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35008, dTS: 160, Seq: 14
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35128, dTS: 120, Seq: 15
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 35288, dTS: 160, Seq: 16
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+In TS: 35448, dTS: 160, Seq: 17
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 35768, dTS: 160, Seq: 19
+Out TS change: 320, dTS: 160, Seq change: 2, TS Err change: in +0, out +0
+In TS: 35928, dTS: 160, Seq: 20
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36088, dTS: 160, Seq: 21
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36088, dTS: 160, Seq: 21
+Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +0, out +0
+In TS: 36248, dTS: 160, Seq: 22
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36408, dTS: 160, Seq: 23
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36568, dTS: 160, Seq: 23
+Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +1, out +0
+In TS: 36728, dTS: 160, Seq: 24
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+In TS: 36888, dTS: 160, Seq: 25
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Done

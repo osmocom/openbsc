@@ -644,6 +644,10 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 	struct sockaddr_in addr = {0};
 	char buffer[4096];
 	uint32_t last_ssrc = 0;
+	uint32_t last_timestamp = 0;
+	uint32_t last_seqno = 0;
+	int last_in_ts_err_cnt = 0;
+	int last_out_ts_err_cnt = 0;
 
 	printf("Testing packet error detection%s%s.\n",
 	       patch_ssrc ? ", patch SSRC" : "",
@@ -687,11 +691,23 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 			last_ssrc = state.out_stream.ssrc;
 		}
 
-		printf("TS: %d, dTS: %d, TS Errs: in %d, out %d\n",
-		       state.out_stream.last_timestamp,
+		printf("In TS: %d, dTS: %d, Seq: %d\n",
+		       state.in_stream.last_timestamp,
+		       state.in_stream.last_tsdelta,
+		       state.in_stream.last_seq);
+
+		printf("Out TS change: %d, dTS: %d, Seq change: %d, "
+		       "TS Err change: in %+d, out %+d\n",
+		       state.out_stream.last_timestamp - last_timestamp,
 		       state.out_stream.last_tsdelta,
-		       state.in_stream.err_ts_counter,
-		       state.out_stream.err_ts_counter);
+		       state.out_stream.last_seq - last_seqno,
+		       state.in_stream.err_ts_counter - last_in_ts_err_cnt,
+		       state.out_stream.err_ts_counter - last_out_ts_err_cnt);
+
+		last_in_ts_err_cnt = state.in_stream.err_ts_counter;
+		last_out_ts_err_cnt = state.out_stream.err_ts_counter;
+		last_timestamp = state.out_stream.last_timestamp;
+		last_seqno = state.out_stream.last_seq;
 	}
 }
 
