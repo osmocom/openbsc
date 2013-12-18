@@ -85,7 +85,13 @@ TS: 2480, dTS: 160, TS Errs: in 7, out 7
 TS: 2640, dTS: 160, TS Errs: in 7, out 7
 TS: 2960, dTS: 160, TS Errs: in 7, out 7
 TS: 3120, dTS: 160, TS Errs: in 7, out 7
-TS: 3280, dTS: 160, TS Errs: in 8, out 8
+TS: 3280, dTS: 160, TS Errs: in 7, out 7
+TS: 3280, dTS: 160, TS Errs: in 7, out 7
+TS: 3440, dTS: 160, TS Errs: in 7, out 7
+TS: 3600, dTS: 160, TS Errs: in 7, out 7
+TS: 3760, dTS: 160, TS Errs: in 8, out 8
+TS: 3920, dTS: 160, TS Errs: in 8, out 8
+TS: 4080, dTS: 160, TS Errs: in 8, out 8
 Testing packet error detection.
 Output SSRC changed to 11223344
 TS: 0, dTS: 0, TS Errs: in 0, out 0
@@ -109,7 +115,13 @@ TS: 35288, dTS: 160, TS Errs: in 7, out 7
 TS: 35448, dTS: 160, TS Errs: in 7, out 7
 TS: 35768, dTS: 160, TS Errs: in 7, out 7
 TS: 35928, dTS: 160, TS Errs: in 7, out 7
-TS: 36088, dTS: 160, TS Errs: in 8, out 8
+TS: 36088, dTS: 160, TS Errs: in 7, out 7
+TS: 36088, dTS: 160, TS Errs: in 7, out 7
+TS: 36248, dTS: 160, TS Errs: in 7, out 7
+TS: 36408, dTS: 160, TS Errs: in 7, out 7
+TS: 36568, dTS: 160, TS Errs: in 8, out 8
+TS: 36728, dTS: 160, TS Errs: in 8, out 8
+TS: 36888, dTS: 160, TS Errs: in 8, out 8
 Testing packet error detection, patch timestamps.
 Output SSRC changed to 11223344
 TS: 0, dTS: 0, TS Errs: in 0, out 0
@@ -133,7 +145,13 @@ TS: 35368, dTS: 160, TS Errs: in 7, out 0
 TS: 35528, dTS: 160, TS Errs: in 7, out 0
 TS: 35848, dTS: 160, TS Errs: in 7, out 0
 TS: 36008, dTS: 160, TS Errs: in 7, out 0
-TS: 36008, dTS: 160, TS Errs: in 8, out 0
+TS: 36168, dTS: 160, TS Errs: in 7, out 0
+TS: 36168, dTS: 160, TS Errs: in 7, out 0
+TS: 36328, dTS: 160, TS Errs: in 7, out 0
+TS: 36488, dTS: 160, TS Errs: in 7, out 0
+TS: 36488, dTS: 160, TS Errs: in 8, out 0
+TS: 36648, dTS: 160, TS Errs: in 8, out 0
+TS: 36808, dTS: 160, TS Errs: in 8, out 0
 Testing packet error detection, patch SSRC, patch timestamps.
 Output SSRC changed to 11223344
 TS: 0, dTS: 0, TS Errs: in 0, out 0
@@ -156,5 +174,11 @@ TS: 2560, dTS: 160, TS Errs: in 7, out 0
 TS: 2720, dTS: 160, TS Errs: in 7, out 0
 TS: 3040, dTS: 160, TS Errs: in 7, out 0
 TS: 3200, dTS: 160, TS Errs: in 7, out 0
-TS: 3200, dTS: 160, TS Errs: in 8, out 0
+TS: 3360, dTS: 160, TS Errs: in 7, out 0
+TS: 3360, dTS: 160, TS Errs: in 7, out 0
+TS: 3520, dTS: 160, TS Errs: in 7, out 0
+TS: 3680, dTS: 160, TS Errs: in 7, out 0
+TS: 3680, dTS: 160, TS Errs: in 8, out 0
+TS: 3840, dTS: 160, TS Errs: in 8, out 0
+TS: 4000, dTS: 160, TS Errs: in 8, out 0
 Done
