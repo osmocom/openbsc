@@ -134,29 +134,47 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 			     endp->net_end.rtp_port, buf, 1);
 }
 
+static int32_t compute_timestamp_aligment_error(struct mgcp_rtp_stream_state *sstate,
+						int ptime, uint32_t timestamp)
+{
+	int32_t timestamp_delta;
+
+	if (ptime == 0)
+		return 0;
+
+	/* Align according to: T - Tlast = k * Tptime */
+	timestamp_delta = timestamp - sstate->last_timestamp;
+
+	return timestamp_delta % ptime;
+}
+
 static int check_rtp_timestamp(struct mgcp_endpoint *endp,
-			       struct mgcp_rtp_stream_state *state,
+			       struct mgcp_rtp_state *state,
+			       struct mgcp_rtp_stream_state *sstate,
 			       struct mgcp_rtp_end *rtp_end,
 			       struct sockaddr_in *addr,
 			       uint16_t seq, uint32_t timestamp,
 			       const char *text, int32_t *tsdelta_out)
 {
 	int32_t tsdelta;
+	int32_t timestamp_error;
 
 	/* Not fully intialized, skip */
-	if (state->last_tsdelta == 0 && timestamp == state->last_timestamp)
+	if (sstate->last_tsdelta == 0 && timestamp == sstate->last_timestamp)
 		return 0;
 
-	if (seq == state->last_seq) {
-		if (timestamp != state->last_timestamp) {
-			state->err_ts_counter += 1;
+	if (seq == sstate->last_seq) {
+		if (timestamp != sstate->last_timestamp) {
+			sstate->err_ts_counter += 1;
 			LOGP(DMGCP, LOGL_ERROR,
 			     "The %s timestamp delta is != 0 but the sequence "
-			     "number %d is the same"
+			     "number %d is the same, "
+			     "TS offset: %d, SeqNo offset: %d "
 			     "on 0x%x SSRC: %u timestamp: %u "
 			     "from %s:%d in %d\n",
 			     text, seq,
-			     ENDPOINT_NUMBER(endp), state->ssrc, timestamp,
+			     state->timestamp_offset, state->seq_offset,
+			     ENDPOINT_NUMBER(endp), sstate->ssrc, timestamp,
 			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
 			     endp->conn_mode);
 		}
@@ -164,31 +182,30 @@ static int check_rtp_timestamp(struct mgcp_endpoint *endp,
 	}
 
 	tsdelta =
-		(int32_t)(timestamp - state->last_timestamp) /
-		(int16_t)(seq - state->last_seq);
+		(int32_t)(timestamp - sstate->last_timestamp) /
+		(int16_t)(seq - sstate->last_seq);
 
 	if (tsdelta == 0) {
-		state->err_ts_counter += 1;
-		LOGP(DMGCP, LOGL_ERROR,
+		/* Don't update *tsdelta_out */
+		LOGP(DMGCP, LOGL_NOTICE,
 		     "The %s timestamp delta is %d "
 		     "on 0x%x SSRC: %u timestamp: %u "
 		     "from %s:%d in %d\n",
 		     text, tsdelta,
-		     ENDPOINT_NUMBER(endp), state->ssrc, timestamp,
+		     ENDPOINT_NUMBER(endp), sstate->ssrc, timestamp,
 		     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
 		     endp->conn_mode);
 
 		return 0;
 	}
 
-	if (state->last_tsdelta != tsdelta) {
-		if (state->last_tsdelta) {
-			state->err_ts_counter += 1;
-			LOGP(DMGCP, LOGL_ERROR,
+	if (sstate->last_tsdelta != tsdelta) {
+		if (sstate->last_tsdelta) {
+			LOGP(DMGCP, LOGL_INFO,
 			     "The %s timestamp delta changes from %d to %d "
 			     "on 0x%x SSRC: %u timestamp: %u from %s:%d in %d\n",
-			     text, state->last_tsdelta, tsdelta,
-			     ENDPOINT_NUMBER(endp), state->ssrc, timestamp,
+			     text, sstate->last_tsdelta, tsdelta,
+			     ENDPOINT_NUMBER(endp), sstate->ssrc, timestamp,
 			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
 			     endp->conn_mode);
 		}
@@ -197,6 +214,25 @@ static int check_rtp_timestamp(struct mgcp_endpoint *endp,
 	if (tsdelta_out)
 		*tsdelta_out = tsdelta;
 
+	timestamp_error =
+		compute_timestamp_aligment_error(sstate, state->packet_duration,
+						 timestamp);
+
+	if (timestamp_error) {
+		sstate->err_ts_counter += 1;
+		LOGP(DMGCP, LOGL_NOTICE,
+		     "The %s timestamp has an alignment error of %d "
+		     "on 0x%x SSRC: %u "
+		     "SeqNo delta: %d, TS delta: %d, dTS/dSeq: %d "
+		     "from %s:%d in %d\n",
+		     text, timestamp_error,
+		     ENDPOINT_NUMBER(endp), sstate->ssrc,
+		     (int16_t)(seq - sstate->last_seq),
+		     (int32_t)(timestamp - sstate->last_timestamp),
+		     tsdelta,
+		     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+		     endp->conn_mode);
+	}
 	return 1;
 }
 
@@ -253,6 +289,42 @@ static int adjust_rtp_timestamp_offset(struct mgcp_endpoint *endp,
 	return timestamp_offset;
 }
 
+/* Set the timestamp offset according to the packet duration. */
+static int align_rtp_timestamp_offset(struct mgcp_endpoint *endp,
+				      struct mgcp_rtp_state *state,
+				      struct mgcp_rtp_end *rtp_end,
+				      struct sockaddr_in *addr,
+				      uint32_t timestamp)
+{
+	int timestamp_error = 0;
+	int ptime = state->packet_duration;
+
+	/* Align according to: T + Toffs - Tlast = k * Tptime */
+
+	timestamp_error = compute_timestamp_aligment_error(
+		&state->out_stream, ptime,
+		timestamp + state->timestamp_offset);
+
+	if (timestamp_error) {
+		state->timestamp_offset += ptime - timestamp_error;
+
+		LOGP(DMGCP, LOGL_NOTICE,
+		     "Corrected timestamp alignment error of %d on 0x%x SSRC: %u "
+		     "new TS offset: %d, "
+		     "from %s:%d in %d\n",
+		     timestamp_error,
+		     ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
+		     state->timestamp_offset, inet_ntoa(addr->sin_addr),
+		     ntohs(addr->sin_port), endp->conn_mode);
+	}
+
+	OSMO_ASSERT(compute_timestamp_aligment_error(&state->out_stream, ptime,
+						     timestamp + state->timestamp_offset) == 0);
+
+	return timestamp_error;
+}
+
+
 /**
  * The RFC 3550 Appendix A assumes there are multiple sources but
  * some of the supported endpoints (e.g. the nanoBTS) can only handle
@@ -300,15 +372,15 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 			state->seq_offset, state->packet_duration,
 			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
 			endp->conn_mode);
-		if (state->packet_duration == 0 && rtp_end->force_constant_timing)
-			LOGP(DMGCP, LOGL_ERROR,
-			"Cannot patch timestamps on 0x%x: "
-			"RTP packet duration is unknown, SSRC: %u, "
-			"from %s:%d in %d\n",
-			ENDPOINT_NUMBER(endp), state->in_stream.ssrc,
-			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
-			endp->conn_mode);
-
+		if (state->packet_duration == 0) {
+			state->packet_duration = rtp_end->rate * 20 / 1000;
+			LOGP(DMGCP, LOGL_NOTICE,
+			     "Fixed packet duration is not available on 0x%x, "
+			     "using fixed 20ms instead: %d from %s:%d in %d\n",
+			     ENDPOINT_NUMBER(endp), state->packet_duration,
+			     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
+			     endp->conn_mode);
+		}
 	} else if (state->in_stream.ssrc != ssrc) {
 		LOGP(DMGCP, LOGL_NOTICE,
 			"The SSRC changed on 0x%x: %u -> %u  "
@@ -346,7 +418,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		state->in_stream.last_tsdelta = 0;
 	} else {
 		/* Compute current per-packet timestamp delta */
-		check_rtp_timestamp(endp, &state->in_stream, rtp_end, addr,
+		check_rtp_timestamp(endp, state, &state->in_stream, rtp_end, addr,
 				    seq, timestamp, "input",
 				    &state->in_stream.last_tsdelta);
 
@@ -358,15 +430,10 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	state->in_stream.last_timestamp = timestamp;
 	state->in_stream.last_seq = seq;
 
-	if (rtp_end->force_constant_timing &&
-	    state->out_stream.ssrc == ssrc && state->packet_duration) {
-		/* Update the timestamp offset */
-		const int delta_seq =
-			seq + state->seq_offset - state->out_stream.last_seq;
-
-		adjust_rtp_timestamp_offset(endp, state, rtp_end, addr,
-					    delta_seq, timestamp);
-	}
+	if (rtp_end->force_aligned_timing &&
+	    state->out_stream.ssrc == ssrc && state->packet_duration)
+		/* Align the timestamp offset */
+		align_rtp_timestamp_offset(endp, state, rtp_end, addr, timestamp);
 
 	/* Store the updated SSRC back to the packet */
 	if (state->patch_ssrc)
@@ -382,8 +449,8 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 
 	/* Check again, whether the timestamps are still valid */
 	if (state->out_stream.ssrc == ssrc)
-		check_rtp_timestamp(endp, &state->out_stream, rtp_end, addr,
-				    seq, timestamp, "output",
+		check_rtp_timestamp(endp, state, &state->out_stream, rtp_end,
+				    addr, seq, timestamp, "output",
 				    &state->out_stream.last_tsdelta);
 
 	/*

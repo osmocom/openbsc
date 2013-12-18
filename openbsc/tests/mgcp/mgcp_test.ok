@@ -72,21 +72,21 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 320, dTS: 160, Seq: 2
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 320, dTS: 160, Seq: 3
-Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 480, dTS: 160, Seq: 4
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 640, dTS: 160, Seq: 5
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 960, dTS: 320, Seq: 6
-Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1120, dTS: 160, Seq: 7
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1280, dTS: 160, Seq: 8
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1400, dTS: 120, Seq: 9
 Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
 In TS: 1560, dTS: 160, Seq: 10
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1720, dTS: 160, Seq: 11
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 34688, dTS: 0, Seq: 12
@@ -98,7 +98,7 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35128, dTS: 120, Seq: 15
 Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
 In TS: 35288, dTS: 160, Seq: 16
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35448, dTS: 160, Seq: 17
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35768, dTS: 160, Seq: 19
@@ -128,21 +128,21 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 320, dTS: 160, Seq: 2
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 320, dTS: 160, Seq: 3
-Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 480, dTS: 160, Seq: 4
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 640, dTS: 160, Seq: 5
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 960, dTS: 320, Seq: 6
-Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1120, dTS: 160, Seq: 7
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1280, dTS: 160, Seq: 8
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1400, dTS: 120, Seq: 9
 Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
 In TS: 1560, dTS: 160, Seq: 10
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1720, dTS: 160, Seq: 11
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Output SSRC changed to 10203040
@@ -155,7 +155,7 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35128, dTS: 120, Seq: 15
 Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
 In TS: 35288, dTS: 160, Seq: 16
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +1
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35448, dTS: 160, Seq: 17
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35768, dTS: 160, Seq: 19
@@ -185,21 +185,21 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 320, dTS: 160, Seq: 2
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 320, dTS: 160, Seq: 3
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 480, dTS: 160, Seq: 4
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 640, dTS: 160, Seq: 5
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 960, dTS: 320, Seq: 6
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1120, dTS: 160, Seq: 7
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1280, dTS: 160, Seq: 8
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1400, dTS: 120, Seq: 9
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
 In TS: 1560, dTS: 160, Seq: 10
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1720, dTS: 160, Seq: 11
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Output SSRC changed to 10203040
@@ -212,7 +212,7 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35128, dTS: 120, Seq: 15
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
 In TS: 35288, dTS: 160, Seq: 16
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35448, dTS: 160, Seq: 17
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35768, dTS: 160, Seq: 19
@@ -228,7 +228,7 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 36408, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 36568, dTS: 160, Seq: 23
-Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +1, out +0
+Out TS change: 160, dTS: 160, Seq change: 0, TS Err change: in +1, out +1
 In TS: 36728, dTS: 160, Seq: 24
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 36888, dTS: 160, Seq: 25
@@ -242,21 +242,21 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 320, dTS: 160, Seq: 2
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 320, dTS: 160, Seq: 3
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 480, dTS: 160, Seq: 4
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 640, dTS: 160, Seq: 5
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 960, dTS: 320, Seq: 6
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1120, dTS: 160, Seq: 7
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1280, dTS: 160, Seq: 8
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1400, dTS: 120, Seq: 9
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
 In TS: 1560, dTS: 160, Seq: 10
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 1720, dTS: 160, Seq: 11
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 34688, dTS: 0, Seq: 12
@@ -268,7 +268,7 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35128, dTS: 120, Seq: 15
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
 In TS: 35288, dTS: 160, Seq: 16
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35448, dTS: 160, Seq: 17
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 35768, dTS: 160, Seq: 19
@@ -284,7 +284,7 @@ Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 36408, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 36568, dTS: 160, Seq: 23
-Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +1, out +0
+Out TS change: 160, dTS: 160, Seq change: 0, TS Err change: in +1, out +1
 In TS: 36728, dTS: 160, Seq: 24
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 In TS: 36888, dTS: 160, Seq: 25

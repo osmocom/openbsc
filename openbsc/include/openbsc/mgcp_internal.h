@@ -87,7 +87,7 @@ struct mgcp_rtp_end {
 
 	/* RTP patching */
 	int force_constant_ssrc; /* -1: always, 0: don't, 1: once */
-	int force_constant_timing;
+	int force_aligned_timing;
 
 	/*
 	 * Each end has a socket...

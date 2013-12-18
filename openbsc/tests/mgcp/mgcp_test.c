@@ -660,7 +660,7 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 	trunk.number_endpoints = 1;
 	trunk.endpoints = &endp;
 	trunk.force_constant_ssrc = patch_ssrc;
-	trunk.force_constant_timing = patch_ts;
+	trunk.force_aligned_timing = patch_ts;
 
 	endp.tcfg = &trunk;
 

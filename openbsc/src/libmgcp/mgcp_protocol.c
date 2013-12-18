@@ -700,13 +700,13 @@ void mgcp_rtp_end_config(struct mgcp_endpoint *endp, int expect_ssrc_change,
 
 	int patch_ssrc = expect_ssrc_change && tcfg->force_constant_ssrc;
 
-	rtp->force_constant_timing = tcfg->force_constant_timing;
+	rtp->force_aligned_timing = tcfg->force_aligned_timing;
 	rtp->force_constant_ssrc = patch_ssrc ? 1 : 0;
 
 	LOGP(DMGCP, LOGL_DEBUG,
 	     "Configuring RTP endpoint: local port %d%s%s\n",
 	     ntohs(rtp->rtp_port),
-	     rtp->force_constant_timing ? ", force constant timing" : "",
+	     rtp->force_aligned_timing ? ", force constant timing" : "",
 	     rtp->force_constant_ssrc ? ", force constant ssrc" : "");
 }
 

@@ -89,11 +89,11 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
 	else
 		vty_out(vty, "  no rtcp-omit%s", VTY_NEWLINE);
-	if (g_cfg->trunk.force_constant_ssrc || g_cfg->trunk.force_constant_timing) {
+	if (g_cfg->trunk.force_constant_ssrc || g_cfg->trunk.force_aligned_timing) {
 		vty_out(vty, "  %srtp-patch ssrc%s",
 			g_cfg->trunk.force_constant_ssrc ? "" : "no ", VTY_NEWLINE);
 		vty_out(vty, "  %srtp-patch timestamp%s",
-			g_cfg->trunk.force_constant_timing ? "" : "no ", VTY_NEWLINE);
+			g_cfg->trunk.force_aligned_timing ? "" : "no ", VTY_NEWLINE);
 	} else
 		vty_out(vty, "  no rtp-patch%s", VTY_NEWLINE);
 	if (g_cfg->trunk.audio_payload != -1)
@@ -480,7 +480,7 @@ DEFUN(cfg_mgcp_patch_rtp_ts,
       "Adjust RTP timestamp\n"
       )
 {
-	g_cfg->trunk.force_constant_timing = 1;
+	g_cfg->trunk.force_aligned_timing = 1;
 	return CMD_SUCCESS;
 }
 
@@ -491,7 +491,7 @@ DEFUN(cfg_mgcp_no_patch_rtp_ts,
       "Adjust RTP timestamp\n"
       )
 {
-	g_cfg->trunk.force_constant_timing = 0;
+	g_cfg->trunk.force_aligned_timing = 0;
 	return CMD_SUCCESS;
 }
 
@@ -501,7 +501,7 @@ DEFUN(cfg_mgcp_no_patch_rtp,
       NO_STR RTP_PATCH_STR)
 {
 	g_cfg->trunk.force_constant_ssrc = 0;
-	g_cfg->trunk.force_constant_timing = 0;
+	g_cfg->trunk.force_aligned_timing = 0;
 	return CMD_SUCCESS;
 }
 
@@ -598,11 +598,11 @@ static int config_write_trunk(struct vty *vty)
 			vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
 		else
 			vty_out(vty, "  no rtcp-omit%s", VTY_NEWLINE);
-		if (trunk->force_constant_ssrc || trunk->force_constant_timing) {
+		if (trunk->force_constant_ssrc || trunk->force_aligned_timing) {
 			vty_out(vty, "  %srtp-patch ssrc%s",
 				trunk->force_constant_ssrc ? "" : "no ", VTY_NEWLINE);
 			vty_out(vty, "  %srtp-patch timestamp%s",
-				trunk->force_constant_timing ? "" : "no ", VTY_NEWLINE);
+				trunk->force_aligned_timing ? "" : "no ", VTY_NEWLINE);
 		} else
 			vty_out(vty, "  no rtp-patch%s", VTY_NEWLINE);
 		if (trunk->audio_fmtp_extra)
@@ -747,7 +747,7 @@ DEFUN(cfg_trunk_patch_rtp_ts,
       )
 {
 	struct mgcp_trunk_config *trunk = vty->index;
-	trunk->force_constant_timing = 1;
+	trunk->force_aligned_timing = 1;
 	return CMD_SUCCESS;
 }
 
@@ -759,7 +759,7 @@ DEFUN(cfg_trunk_no_patch_rtp_ts,
       )
 {
 	struct mgcp_trunk_config *trunk = vty->index;
-	trunk->force_constant_timing = 0;
+	trunk->force_aligned_timing = 0;
 	return CMD_SUCCESS;
 }
 
@@ -770,7 +770,7 @@ DEFUN(cfg_trunk_no_patch_rtp,
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 	trunk->force_constant_ssrc = 0;
-	trunk->force_constant_timing = 0;
+	trunk->force_aligned_timing = 0;
 	return CMD_SUCCESS;
 }
 
