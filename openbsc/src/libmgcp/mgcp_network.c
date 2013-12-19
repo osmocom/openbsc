@@ -241,10 +241,11 @@ static int adjust_rtp_timestamp_offset(struct mgcp_endpoint *endp,
 				       struct mgcp_rtp_state *state,
 				       struct mgcp_rtp_end *rtp_end,
 				       struct sockaddr_in *addr,
-				       int16_t delta_seq, uint32_t timestamp)
+				       int16_t delta_seq, uint32_t in_timestamp)
 {
 	int32_t tsdelta = state->packet_duration;
 	int timestamp_offset;
+	uint32_t out_timestamp;
 
 	if (tsdelta == 0) {
 		tsdelta = state->out_stream.last_tsdelta;
@@ -269,9 +270,8 @@ static int adjust_rtp_timestamp_offset(struct mgcp_endpoint *endp,
 		}
 	}
 
-	timestamp_offset =
-		state->out_stream.last_timestamp - timestamp +
-		delta_seq * tsdelta;
+	out_timestamp = state->out_stream.last_timestamp + delta_seq * tsdelta;
+	timestamp_offset = out_timestamp - in_timestamp;
 
 	if (state->timestamp_offset != timestamp_offset) {
 		state->timestamp_offset = timestamp_offset;
