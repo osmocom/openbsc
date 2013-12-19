@@ -537,6 +537,10 @@ static int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		     struct sockaddr_in *addr, char *buf, int rc)
 {
 	struct mgcp_trunk_config *tcfg = endp->tcfg;
+	struct mgcp_rtp_end *rtp_end;
+	struct mgcp_rtp_state *rtp_state;
+	int tap_idx;
+
 	/* For loop toggle the destination and then dispatch. */
 	if (tcfg->audio_loop)
 		dest = !dest;
@@ -546,35 +550,25 @@ static int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		dest = !dest;
 
 	if (dest == MGCP_DEST_NET) {
-		if (is_rtp) {
-			mgcp_patch_and_count(endp, &endp->bts_state,
-					     &endp->net_end,
-					     addr, buf, rc);
-			forward_data(endp->net_end.rtp.fd,
-				     &endp->taps[MGCP_TAP_NET_OUT], buf, rc);
-			return mgcp_udp_send(endp->net_end.rtp.fd,
-					     &endp->net_end.addr,
-					     endp->net_end.rtp_port, buf, rc);
-		} else if (!tcfg->omit_rtcp) {
-			return mgcp_udp_send(endp->net_end.rtcp.fd,
-					     &endp->net_end.addr,
-					     endp->net_end.rtcp_port, buf, rc);
-		}
+		rtp_end = &endp->net_end;
+		rtp_state = &endp->bts_state;
+		tap_idx = MGCP_TAP_NET_OUT;
 	} else {
-		if (is_rtp) {
-			mgcp_patch_and_count(endp, &endp->net_state,
-					     &endp->bts_end,
-					     addr, buf, rc);
-			forward_data(endp->bts_end.rtp.fd,
-				     &endp->taps[MGCP_TAP_BTS_OUT], buf, rc);
-			return mgcp_udp_send(endp->bts_end.rtp.fd,
-					     &endp->bts_end.addr,
-					     endp->bts_end.rtp_port, buf, rc);
-		} else if (!tcfg->omit_rtcp) {
-			return mgcp_udp_send(endp->bts_end.rtcp.fd,
-					     &endp->bts_end.addr,
-					     endp->bts_end.rtcp_port, buf, rc);
-		}
+		rtp_end = &endp->bts_end;
+		rtp_state = &endp->net_state;
+		tap_idx = MGCP_TAP_BTS_OUT;
+	}
+
+	if (is_rtp) {
+		mgcp_patch_and_count(endp, rtp_state, rtp_end, addr, buf, rc);
+		forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx], buf, rc);
+		return mgcp_udp_send(rtp_end->rtp.fd,
+				     &rtp_end->addr,
+				     rtp_end->rtp_port, buf, rc);
+	} else if (!tcfg->omit_rtcp) {
+		return mgcp_udp_send(rtp_end->rtcp.fd,
+				     &rtp_end->addr,
+				     rtp_end->rtcp_port, buf, rc);
 	}
 
 	return 0;
