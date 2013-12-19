@@ -71,6 +71,7 @@ struct mgcp_rtp_end {
 	/* statistics */
 	unsigned int packets;
 	unsigned int octets;
+	unsigned int dropped_packets;
 	struct in_addr addr;
 
 	/* in network byte order */
@@ -84,6 +85,7 @@ struct mgcp_rtp_end {
 	int  frames_per_packet;
 	uint32_t packet_duration_ms;
 	char *fmtp_extra;
+	int output_enabled;
 
 	/* RTP patching */
 	int force_constant_ssrc; /* -1: always, 0: don't, 1: once */

@@ -150,7 +150,7 @@ static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg, int verbo
 			endp->trans_net.packets, endp->trans_bts.packets,
 			VTY_NEWLINE);
 
-		if (verbose)
+		if (verbose) {
 			vty_out(vty,
 				"  Timestamp Errs: BTS %d->%d, Net %d->%d%s",
 				endp->bts_state.in_stream.err_ts_counter,
@@ -158,6 +158,12 @@ static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg, int verbo
 				endp->net_state.in_stream.err_ts_counter,
 				endp->net_state.out_stream.err_ts_counter,
 				VTY_NEWLINE);
+			vty_out(vty,
+				"  Dropped Packets: Net->BTS %d, BTS->Net %d%s",
+				endp->bts_end.dropped_packets,
+				endp->net_end.dropped_packets,
+				VTY_NEWLINE);
+		}
 	}
 }
 

@@ -1178,6 +1178,7 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 
 	end->packets = 0;
 	end->octets = 0;
+	end->dropped_packets = 0;
 	memset(&end->addr, 0, sizeof(end->addr));
 	end->rtp_port = end->rtcp_port = 0;
 	end->payload_type = -1;
@@ -1191,6 +1192,7 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	end->frames_per_packet  = 0; /* unknown */
 	end->packet_duration_ms = DEFAULT_RTP_AUDIO_PACKET_DURATION_MS;
 	end->rate               = DEFAULT_RTP_AUDIO_DEFAULT_RATE;
+	end->output_enabled	= 1;
 }
 
 static void mgcp_rtp_end_init(struct mgcp_rtp_end *end)

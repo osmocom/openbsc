@@ -559,7 +559,9 @@ static int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		tap_idx = MGCP_TAP_BTS_OUT;
 	}
 
-	if (is_rtp) {
+	if (!rtp_end->output_enabled)
+		rtp_end->dropped_packets += 1;
+	else if (is_rtp) {
 		mgcp_patch_and_count(endp, rtp_state, rtp_end, addr, buf, rc);
 		forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx], buf, rc);
 		return mgcp_udp_send(rtp_end->rtp.fd,
