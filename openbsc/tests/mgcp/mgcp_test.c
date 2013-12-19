@@ -84,6 +84,7 @@ static void test_strline(void)
 		 "a=rtpmap:126 AMR/8000\r\n"	\
 		 "a=ptime:20\r\n"
 #define MDCX4 "MDCX 18983216 1@mgw MGCP 1.0\r\n" \
+		 "M: sendrecv\r"		\
 		 "C: 2\r\n"          \
 		 "I: 1\r\n"                    \
 		 "L: p:20, a:AMR, nt:IN\r\n"    \
@@ -107,6 +108,7 @@ static void test_strline(void)
 		 "a=ptime:20\r\n"
 
 #define MDCX4_PT1 "MDCX 18983217 1@mgw MGCP 1.0\r\n" \
+		 "M: sendrecv\r"		\
 		 "C: 2\r\n"          \
 		 "I: 1\r\n"                    \
 		 "L: p:20-40, a:AMR, nt:IN\r\n"    \
@@ -120,6 +122,7 @@ static void test_strline(void)
 		 "a=ptime:40\r\n"
 
 #define MDCX4_PT2 "MDCX 18983218 1@mgw MGCP 1.0\r\n" \
+		 "M: sendrecv\r"		\
 		 "C: 2\r\n"          \
 		 "I: 1\r\n"                    \
 		 "L: p:20-20, a:AMR, nt:IN\r\n"    \
@@ -133,9 +136,24 @@ static void test_strline(void)
 		 "a=ptime:40\r\n"
 
 #define MDCX4_PT3 "MDCX 18983219 1@mgw MGCP 1.0\r\n" \
+		 "M: sendrecv\r"		\
 		 "C: 2\r\n"          \
 		 "I: 1\r\n"                    \
 		 "L: a:AMR, nt:IN\r\n"    \
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 4441 RTP/AVP 99\r\n"	\
+		 "a=rtpmap:99 AMR/8000\r\n"	\
+		 "a=ptime:40\r\n"
+
+#define MDCX4_SO "MDCX 18983220 1@mgw MGCP 1.0\r\n" \
+		 "M: sendonly\r"		\
+		 "C: 2\r\n"          \
+		 "I: 1\r\n"                    \
+		 "L: p:20, a:AMR, nt:IN\r\n"    \
 		 "\n"				\
 		 "v=0\r\n"			\
 		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
@@ -152,7 +170,7 @@ static void test_strline(void)
 #define SHORT5	"CRCX 1 1@mgw MGCP 1.0"
 
 #define CRCX	 "CRCX 2 1@mgw MGCP 1.0\r\n"	\
-		 "M: sendrecv\r\n"		\
+		 "M: recvonly\r\n"		\
 		 "C: 2\r\n"			\
 		 "L: p:20\r\n"		\
 		 "\r\n"				\
@@ -174,7 +192,7 @@ static void test_strline(void)
 		 "a=ptime:20\r\n"
 
 #define CRCX_ZYN "CRCX 2 1@mgw MGCP 1.0\r"	\
-		 "M: sendrecv\r"		\
+		 "M: recvonly\r"		\
 		 "C: 2\r\r"			\
 		 "v=0\r"			\
 		 "c=IN IP4 123.12.12.123\r"	\
@@ -233,6 +251,7 @@ static const struct mgcp_test tests[] = {
 	{ "MDCX4_PT1", MDCX4_PT1, MDCX4_RET("18983217"), 99, 126 },
 	{ "MDCX4_PT2", MDCX4_PT2, MDCX4_RET("18983218"), 99, 126 },
 	{ "MDCX4_PT3", MDCX4_PT3, MDCX4_RET("18983219"), 99, 126 },
+	{ "MDCX4_SO", MDCX4_SO, MDCX4_RET("18983220"), 99, 126 },
 	{ "DLCX", DLCX, DLCX_RET, -1, -1 },
 	{ "CRCX_ZYN", CRCX_ZYN, CRCX_ZYN_RET, 97, 126 },
 	{ "EMPTY", EMPTY, EMPTY_RET },
@@ -294,6 +313,9 @@ static void test_messages(void)
 		endp = &cfg->trunk.endpoints[i];
 		endp->net_end.payload_type = PTYPE_NONE;
 		endp->net_end.packet_duration_ms = -1;
+		endp->bts_end.output_enabled = 0;
+		endp->net_end.output_enabled = 0;
+		endp->conn_mode = -1;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tests); i++) {
@@ -332,7 +354,19 @@ static void test_messages(void)
 			else
 				printf("Requested packetization period not set\n");
 
+			if (endp->conn_mode != -1)
+				printf("Connection mode: %d, "
+				       "BTS output %sabled, NET output %sabled\n",
+				       endp->conn_mode,
+				       endp->bts_end.output_enabled ? "en" : "dis",
+				       endp->net_end.output_enabled ? "en" : "dis");
+			else
+				printf("Connection mode not set\n");
+
 			endp->net_end.packet_duration_ms = -1;
+			endp->bts_end.output_enabled = 0;
+			endp->net_end.output_enabled = 0;
+			endp->conn_mode = -1;
 		}
 
 
