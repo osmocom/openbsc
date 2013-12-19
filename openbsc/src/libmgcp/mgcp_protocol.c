@@ -488,21 +488,44 @@ static struct msgb *handle_audit_endpoint(struct mgcp_parse_data *p)
 		return create_ok_response(p->endp, 200, "AUEP", p->trans);
 }
 
-static int parse_conn_mode(const char *msg, int *conn_mode)
+static int parse_conn_mode(const char *msg, struct mgcp_endpoint *endp)
 {
 	int ret = 0;
 	if (strcmp(msg, "recvonly") == 0)
-		*conn_mode = MGCP_CONN_RECV_ONLY;
+		endp->conn_mode = MGCP_CONN_RECV_ONLY;
 	else if (strcmp(msg, "sendrecv") == 0)
-		*conn_mode = MGCP_CONN_RECV_SEND;
+		endp->conn_mode = MGCP_CONN_RECV_SEND;
 	else if (strcmp(msg, "sendonly") == 0)
-		*conn_mode = MGCP_CONN_SEND_ONLY;
+		endp->conn_mode = MGCP_CONN_SEND_ONLY;
 	else if (strcmp(msg, "loopback") == 0)
-		*conn_mode = MGCP_CONN_LOOPBACK;
+		endp->conn_mode = MGCP_CONN_LOOPBACK;
 	else {
 		LOGP(DMGCP, LOGL_ERROR, "Unknown connection mode: '%s'\n", msg);
 		ret = -1;
 	}
+
+	switch (endp->conn_mode) {
+	case MGCP_CONN_NONE:
+		endp->net_end.output_enabled = 0;
+		endp->bts_end.output_enabled = 0;
+		break;
+
+	case MGCP_CONN_RECV_ONLY:
+		endp->net_end.output_enabled = 0;
+		endp->bts_end.output_enabled = 1;
+		break;
+
+	case MGCP_CONN_SEND_ONLY:
+		endp->net_end.output_enabled = 1;
+		endp->bts_end.output_enabled = 0;
+		break;
+
+	default:
+		endp->net_end.output_enabled = 1;
+		endp->bts_end.output_enabled = 1;
+		break;
+	}
+
 
 	return ret;
 }
@@ -794,7 +817,7 @@ mgcp_header_done:
 	set_local_cx_options(endp->tcfg->endpoints, &endp->local_options,
 			     local_options);
 
-	if (parse_conn_mode(mode, &endp->conn_mode) != 0) {
+	if (parse_conn_mode(mode, endp) != 0) {
 		    error_code = 517;
 		    goto error2;
 	}
@@ -895,7 +918,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			local_options = (const char *) line + 3;
 			break;
 		case 'M':
-			if (parse_conn_mode(line + 3, &endp->conn_mode) != 0) {
+			if (parse_conn_mode(line + 3, endp) != 0) {
 			    error_code = 517;
 			    goto error3;
 			}
