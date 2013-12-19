@@ -877,6 +877,9 @@ mgcp_header_done:
 	if (p->cfg->change_cb)
 		p->cfg->change_cb(tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX);
 
+	if (endp->bts_end.output_enabled && tcfg->keepalive_interval != 0)
+		mgcp_send_dummy(endp);
+
 	create_transcoder(endp);
 	return create_response_with_sdp(endp, "CRCX", p->trans);
 error2:
@@ -975,6 +978,10 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 	if (p->cfg->change_cb)
 		p->cfg->change_cb(endp->tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX);
+
+	if (endp->bts_end.output_enabled && endp->tcfg->keepalive_interval != 0)
+		mgcp_send_dummy(endp);
+
 	if (silent)
 		goto out_silent;
 
@@ -1127,6 +1134,40 @@ static struct msgb *handle_noti_req(struct mgcp_parse_data *p)
 		create_err_response(p->endp, res, "RQNT", p->trans);
 }
 
+static void mgcp_keepalive_timer_cb(void *_tcfg)
+{
+	struct mgcp_trunk_config *tcfg = _tcfg;
+	int i;
+	LOGP(DMGCP, LOGL_DEBUG, "Triggered trunk %d keepalive timer.\n",
+	     tcfg->trunk_nr);
+
+	if (tcfg->keepalive_interval <= 0)
+		return;
+
+	for (i = 1; i < tcfg->number_endpoints; ++i) {
+		struct mgcp_endpoint *endp = &tcfg->endpoints[i];
+		if (endp->conn_mode == MGCP_CONN_RECV_ONLY)
+			mgcp_send_dummy(endp);
+	}
+
+	LOGP(DMGCP, LOGL_DEBUG, "Rescheduling trunk %d keepalive timer.\n",
+	     tcfg->trunk_nr);
+	osmo_timer_schedule(&tcfg->keepalive_timer, tcfg->keepalive_interval, 0);
+}
+
+void mgcp_trunk_set_keepalive(struct mgcp_trunk_config *tcfg, int interval)
+{
+	tcfg->keepalive_interval = interval;
+	tcfg->keepalive_timer.data = tcfg;
+	tcfg->keepalive_timer.cb = mgcp_keepalive_timer_cb;
+
+	if (interval <= 0)
+		osmo_timer_del(&tcfg->keepalive_timer);
+	else
+		osmo_timer_schedule(&tcfg->keepalive_timer,
+				    tcfg->keepalive_interval, 0);
+}
+
 struct mgcp_config *mgcp_config_alloc(void)
 {
 	struct mgcp_config *cfg;
@@ -1153,6 +1194,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->trunk.audio_payload = 126;
 	cfg->trunk.audio_send_ptime = 1;
 	cfg->trunk.omit_rtcp = 0;
+	mgcp_trunk_set_keepalive(&cfg->trunk, MGCP_KEEPALIVE_ONCE);
 
 	INIT_LLIST_HEAD(&cfg->trunks);
 
@@ -1177,6 +1219,7 @@ struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int nr)
 	trunk->audio_send_ptime = 1;
 	trunk->number_endpoints = 33;
 	trunk->omit_rtcp = 0;
+	mgcp_trunk_set_keepalive(trunk, MGCP_KEEPALIVE_ONCE);
 	llist_add_tail(&trunk->entry, &cfg->trunks);
 	return trunk;
 }
