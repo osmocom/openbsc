@@ -45,7 +45,7 @@ Requested packetetization period: 20-20
 Connection mode: 2, BTS output disabled, NET output disabled
 Testing DLCX
 Detected packet duration: 20
-Requested packetetization period: 20-20
+Requested packetization period not set
 Connection mode: 0, BTS output enabled, NET output enabled
 Testing CRCX_ZYN
 Packet duration not set

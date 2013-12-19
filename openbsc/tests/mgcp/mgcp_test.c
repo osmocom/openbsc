@@ -366,6 +366,8 @@ static void test_messages(void)
 			endp->net_end.packet_duration_ms = -1;
 			endp->bts_end.output_enabled = 0;
 			endp->net_end.output_enabled = 0;
+			endp->local_options.pkt_period_min = 0;
+			endp->local_options.pkt_period_max = 0;
 			endp->conn_mode = -1;
 		}
 
