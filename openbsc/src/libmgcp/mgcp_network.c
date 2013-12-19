@@ -129,9 +129,16 @@ static int mgcp_udp_send(int fd, struct in_addr *addr, int port, char *buf,
 int mgcp_send_dummy(struct mgcp_endpoint *endp)
 {
 	static char buf[] = { MGCP_DUMMY_LOAD };
+	int rc;
 
-	return mgcp_udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
-			     endp->net_end.rtp_port, buf, 1);
+	rc = mgcp_udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
+			   endp->net_end.rtp_port, buf, 1);
+
+	if (rc == -1 || endp->tcfg->omit_rtcp)
+		return rc;
+
+	return mgcp_udp_send(endp->net_end.rtcp.fd, &endp->net_end.addr,
+			     endp->net_end.rtcp_port, buf, 1);
 }
 
 static int32_t compute_timestamp_aligment_error(struct mgcp_rtp_stream_state *sstate,
