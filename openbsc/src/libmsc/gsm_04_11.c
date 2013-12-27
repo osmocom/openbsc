@@ -988,19 +988,24 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 
 	net = conn->bts->network;
 
-	llist_for_each_entry_safe(trans, tmp, &net->trans_list, entry)
-		if (trans->conn == conn) {
-			struct gsm_sms *sms = trans->sms.sms;
-			if (!sms) {
-				LOGP(DLSMS, LOGL_ERROR, "SAPI Reject but no "
-					"SMS.\n");
-				continue;
-			}
+	llist_for_each_entry_safe(trans, tmp, &net->trans_list, entry) {
+		struct gsm_sms *sms;
 
-			send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
-			sms_free(sms);
-			trans->sms.sms = NULL;
-			trans_free(trans);
+		if (trans->conn != conn)
+			continue;
+		if (trans->protocol != GSM48_PDISC_SMS)
+			continue;
+
+		sms = trans->sms.sms;
+		if (!sms) {
+			LOGP(DLSMS, LOGL_ERROR, "SAPI Reject but no SMS.\n");
+			continue;
 		}
+
+		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
+		sms_free(sms);
+		trans->sms.sms = NULL;
+		trans_free(trans);
+	}
 }
 
