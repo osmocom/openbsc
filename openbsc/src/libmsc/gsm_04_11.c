@@ -988,6 +988,7 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 
 	net = conn->bts->network;
 
+restart:
 	llist_for_each_entry_safe(trans, tmp, &net->trans_list, entry)
 		if (trans->conn == conn) {
 			struct gsm_sms *sms = trans->sms.sms;
@@ -1001,6 +1002,7 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 			sms_free(sms);
 			trans->sms.sms = NULL;
 			trans_free(trans);
+			goto restart;
 		}
 }
 
