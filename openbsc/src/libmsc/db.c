@@ -1143,10 +1143,25 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 
 	sender_id = dbi_result_get_ulonglong(result, "sender_id");
 	sms->sender = subscr_get_by_id(net, sender_id);
+	if (!sms->sender) {
+		LOGP(DLSMS, LOGL_ERROR,
+			"Failed to find sender(%llu) for id(%llu)\n",
+			sender_id, sms->id);
+		sms_free(sms);
+		return NULL;
+	}
+
 	strncpy(sms->src.addr, sms->sender->extension, sizeof(sms->src.addr)-1);
 
 	receiver_id = dbi_result_get_ulonglong(result, "receiver_id");
 	sms->receiver = subscr_get_by_id(net, receiver_id);
+	if (!sms->receiver) {
+		LOGP(DLSMS, LOGL_ERROR,
+			"Failed to find receiver(%llu) for id(%llu)\n",
+			receiver_id, sms->id);
+		sms_free(sms);
+		return NULL;
+	}
 
 	/* FIXME: validity */
 	/* FIXME: those should all be get_uchar, but sqlite3 is braindead */
