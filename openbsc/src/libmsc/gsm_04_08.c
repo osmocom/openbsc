@@ -804,6 +804,21 @@ int gsm48_tx_mm_auth_rej(struct gsm_subscriber_connection *conn)
 	return gsm48_tx_simple(conn, GSM48_PDISC_MM, GSM48_MT_MM_AUTH_REJ);
 }
 
+/*
+ * At the 30C3 phones miss their periodic update
+ * interval a lot and then remain unreachable. In case
+ * we still know the TMSI we can just attach it again.
+ */
+static void implit_attach(struct gsm_subscriber_connection *conn)
+{
+	if (conn->subscr->lac != GSM_LAC_RESERVED_DETACHED)
+		return;
+
+	subscr_update(conn->subscr, conn->bts,
+		      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+}
+
+
 static int _gsm48_rx_mm_serv_req_sec_cb(
 	unsigned int hooknum, unsigned int event,
 	struct msgb *msg, void *data, void *param)
@@ -822,11 +837,13 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
 		case GSM_SECURITY_NOAVAIL:
 		case GSM_SECURITY_ALREADY:
 			rc = gsm48_tx_mm_serv_ack(conn);
+			implit_attach(conn);
 			break;
 
 		case GSM_SECURITY_SUCCEEDED:
 			/* nothing to do. CIPHER MODE COMMAND is
 			 * implicit CM SERV ACK */
+			implit_attach(conn);
 			break;
 
 		default:
@@ -897,10 +914,6 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	if (!subscr)
 		return gsm48_tx_mm_serv_rej(conn,
 					    GSM48_REJECT_IMSI_UNKNOWN_IN_HLR);
-	if (subscr->lac == GSM_LAC_RESERVED_DETACHED)
-		/* If the subscriber is not attached, reject service */
-		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_IMSI_UNKNOWN_IN_VLR);
 
 	if (!conn->subscr)
 		conn->subscr = subscr;
