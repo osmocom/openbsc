@@ -92,7 +92,7 @@ int rll_establish(struct gsm_lchan *lchan, uint8_t sapi,
 	rllr->timer.cb = &timer_cb;
 	rllr->timer.data = rllr;
 
-	osmo_timer_schedule(&rllr->timer, 10, 0);
+	osmo_timer_schedule(&rllr->timer, 7, 0);
 
 	/* send the RSL RLL ESTablish REQuest */
 	return rsl_establish_request(rllr->lchan, rllr->link_id);
