@@ -113,7 +113,7 @@ void trans_free(struct gsm_trans *trans)
 	if (trans->conn)
 		msc_release_connection(trans->conn);
 
-
+	trans->conn = NULL;
 	talloc_free(trans);
 }
 
