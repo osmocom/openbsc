@@ -51,7 +51,15 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	memset(&req, 0, sizeof(req));
 	gh = msgb_l3(msg);
 	rc = gsm0480_decode_ussd_request(gh, msgb_l3len(msg), &req);
-	if (req.text[0] == '\0')  /* Release-Complete */
+	if (!rc) {
+		DEBUGP(DMM, "Unhandled SS\n");
+		rc = gsm0480_send_ussd_reject(conn, msg, &req);
+		msc_release_connection(conn);
+		return rc;
+	}
+
+	/* Release-Complete */
+	if (req.text[0] == '\0')
 		return 0;
 
 	if (!strcmp(USSD_TEXT_OWN_NUMBER, (const char *)req.text)) {
