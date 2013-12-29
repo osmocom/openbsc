@@ -1584,6 +1584,9 @@ static int tch_bridge(struct gsm_network *net, uint32_t *refs)
 	if (!trans1->conn || !trans2->conn)
 		return -EIO;
 
+	/* Which subscriber do we want to track trans1 or trans2? */
+	log_set_context(BSC_CTX_SUBSCR, trans1->subscr);
+
 	/* through-connect channel */
 	return tch_map(trans1->conn->lchan, trans2->conn->lchan);
 }
@@ -1602,6 +1605,8 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 		return -EIO;
 	if (!trans->conn)
 		return 0;
+
+	log_set_context(BSC_CTX_SUBSCR, trans->subscr);
 	lchan = trans->conn->lchan;
 	bts = lchan->ts->trx->bts;
 
@@ -2899,6 +2904,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			LOGP(DMNCC, LOGL_ERROR, "TCH frame for non-existing trans\n");
 			return -EIO;
 		}
+		log_set_context(BSC_CTX_SUBSCR, trans->subscr);
 		if (!trans->conn) {
 			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
 			return 0;
@@ -2964,6 +2970,10 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 							data->called.number);
 		else
 			subscr = subscr_get_by_imsi(net, data->imsi);
+
+		/* update the subscriber we deal with */
+		log_set_context(BSC_CTX_SUBSCR, subscr);
+
 		/* If subscriber is not found */
 		if (!subscr) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
@@ -3040,6 +3050,9 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		/* Assign lchan */
 		trans->conn = conn;
 		subscr_put(subscr);
+	} else {
+		/* update the subscriber we deal with */
+		log_set_context(BSC_CTX_SUBSCR, trans->subscr);
 	}
 
 	if (trans->conn)
