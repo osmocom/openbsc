@@ -66,6 +66,8 @@ static struct gsm_subscriber *subscr_by_dst(struct gsm_network *net,
 		break;
 	}
 
+	/* tag the context in case we know it */
+	log_set_context(BSC_CTX_SUBSCR, subscr);
 	return subscr;
 }
 
