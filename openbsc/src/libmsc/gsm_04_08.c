@@ -659,6 +659,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	struct tm* gmt_time;
 	struct tm* local_time;
 	int tzunits;
+	int dst = 0;
 
 	msg->lchan = conn->lchan;
 
@@ -752,6 +753,9 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 			tzunits = tzunits + (bts->tz.mn/15);
 			ptr8[7] = bcdify(tzunits);
 		}
+		/* Convert DST value */
+		if (bts->tz.dst >= 0 && bts->tz.dst <= 2)
+			dst = bts->tz.dst;
 	}
 	else {
 		/* Need to get GSM offset and convert into 15 min units */
@@ -771,6 +775,17 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		}
 		else
 			ptr8[7] = bcdify(tzunits);
+
+		/* Does not support DST +2 */
+		if (local_time->tm_isdst)
+			dst = 1;
+	}
+
+	if (dst) {
+		ptr8 = msgb_put(msg, 3);
+		ptr8[0] = GSM48_IE_NET_DST;
+		ptr8[1] = 1;
+		ptr8[2] = dst;
 	}
 
 	DEBUGP(DMM, "-> MM INFO\n");
