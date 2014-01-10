@@ -2,4 +2,52 @@ Testing test location area identifier
 Testing parsing and generating TMSI/IMSI
 hex: 17 08 99 78 56 34 12 90 78 36 
 hex: 17 09 91 78 56 34 12 90 78 56 f4 
+Range test 0: range 511, num ARFCNs 12
+chan_list = 88 00 98 34 85 36 7c 50 22 dc 5e ec 00 00 00 00 
+Decoded freqs 12 (expected 12)
+Decoded: 1 12 31 51 57 91 97 98 113 117 120 125 
+Range test 1: range 511, num ARFCNs 17
+chan_list = 88 00 82 7f 01 3f 7e 04 0b ff ff fc 10 41 07 e0 
+Decoded freqs 17 (expected 17)
+Decoded: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 
+Range test 2: range 511, num ARFCNs 18
+chan_list = 88 00 82 7f 01 7f 7e 04 0b ff ff fc 10 41 07 ff 
+Decoded freqs 18 (expected 18)
+Decoded: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 
+Range test 3: range 511, num ARFCNs 18
+chan_list = 88 00 94 3a 44 32 d7 2a 43 2a 13 94 e5 38 39 76 
+Decoded freqs 18 (expected 18)
+Decoded: 1 17 31 45 58 79 81 97 113 127 213 277 287 311 331 391 417 507 (!= 511) 
+Decoding error, got wrong freqs
+Range test 4: range 511, num ARFCNs 6
+chan_list = 88 00 8b 3c 88 b9 6b 00 00 00 00 00 00 00 00 00 
+Decoded freqs 6 (expected 6)
+Decoded: 1 17 31 45 58 79 
+Range test 5: range 511, num ARFCNs 6
+chan_list = 88 05 08 fc 88 b9 6b 00 00 00 00 00 00 00 00 00 
+Decoded freqs 6 (expected 6)
+Decoded: 10 17 31 45 58 79 
+Range test 6: range 1023, num ARFCNs 17
+Cannot encode range, rc = -1
+Range test 7: range 1023, num ARFCNs 16
+Cannot encode range, rc = -1
+Random range test: range 127, max num ARFCNs 29
+Cannot encode range, rc = -1
+Failed on test 0, range 127, num ARFCNs 1
+Cannot encode range, rc = -1
+Random range test: range 255, max num ARFCNs 22
+Cannot encode range, rc = -1
+Failed on test 0, range 255, num ARFCNs 1
+Cannot encode range, rc = -1
+Random range test: range 511, max num ARFCNs 18
+Decoding error, got wrong freqs
+Failed on test 0, range 511, num ARFCNs 17
+chan_list = 88 21 55 fc da d7 76 03 31 2f ed 45 dc 93 d6 80 
+Decoded freqs 17 (expected 17)
+Decoded: 66 81 161 250 314 343 383 (!= 380) 395 396 397 409 429 505 506 516 518 545 
+Decoding error, got wrong freqs
+Random range test: range 1023, max num ARFCNs 16
+Cannot encode range, rc = -1
+Failed on test 0, range 1023, num ARFCNs 1
+Cannot encode range, rc = -1
 Done.
