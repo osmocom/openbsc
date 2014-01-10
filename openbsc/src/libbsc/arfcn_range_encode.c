@@ -176,21 +176,93 @@ int range_enc_determine_range(const int *arfcns, const int size, int *f0)
 	return ARFCN_RANGE_INVALID;
 }
 
-/*
- * The below is easier is to write in four methods than
- * to use the max_bits. The encoding is so screwed.. as
- * the bits need to be put in place in the wrong order..
- */
-#define HIGH_BITS(w, index, bits, offset) \
-		(w[index - 1] >> (bits - offset))
-#define LOW_BITS(w, index, bits, offset) \
-		(w[index - 1])
-
 static void write_orig_arfcn(uint8_t *chan_list, int f0)
 {
 	chan_list[0] |= (f0 >> 9) & 1;
 	chan_list[1] = (f0 >> 1);
 	chan_list[2] = (f0 & 1) << 7;
+}
+
+static void write_all_wn(uint8_t *chan_list, int bit_offs,
+			 int *w, int w_size, int w1_len)
+{
+	int octet_offs = 0; /* offset into chan_list */
+	int wk_len = w1_len; /* encoding size in bits of w[k] */
+	int k; /* 1 based */
+	int level = 0; /* tree level, top level = 0 */
+	int lvl_left = 1; /* nodes per tree level */
+
+	/* W(2^i) to W(2^(i+1)-1) are on w1_len-i bits when present */
+
+	for (k = 1; k <= w_size; k++) {
+		int wk_left = wk_len;
+		DEBUGP(DRR,
+		       "k=%d, wk_len=%d, offs=%d:%d, level=%d, "
+		       "lvl_left=%d\n",
+		       k, wk_len, octet_offs, bit_offs, level, lvl_left);
+
+		while (wk_left > 0) {
+			int cur_bits = 8 - bit_offs;
+			int cur_mask;
+			int wk_slice;
+
+			if (cur_bits > wk_left)
+				cur_bits = wk_left;
+
+			cur_mask = ((1 << cur_bits) - 1);
+
+			DEBUGP(DRR,
+			       " wk_left=%d, cur_bits=%d, offs=%d:%d\n",
+			       wk_left, cur_bits, octet_offs, bit_offs);
+
+			/* advance */
+			wk_left -= cur_bits;
+			bit_offs += cur_bits;
+
+			/* right aligned wk data for current out octet */
+			wk_slice = (w[k-1] >> wk_left) & cur_mask;
+
+			/* cur_bits now contains the number of bits
+			 * that are to be copied from wk to the chan_list.
+			 * wk_left is set to the number of bits that must
+			 * not yet be copied.
+			 * bit_offs points after the bit area that is going to
+			 * be overwritten:
+			 *
+			 *          wk_left
+			 *             |
+			 *             v
+			 * wk: WWWWWWWWWWW
+			 *        |||||<-- wk_slice, cur_bits=5
+			 *      --WWWWW-
+			 *             ^
+			 *             |
+			 *           bit_offs
+			 */
+
+			DEBUGP(DRR,
+			       " wk=%02x, slice=%02x/%02x, cl=%02x\n",
+			       w[k-1], wk_slice, cur_mask, wk_slice << (8 - bit_offs));
+
+			chan_list[octet_offs] &= ~(cur_mask << (8 - bit_offs));
+			chan_list[octet_offs] |= wk_slice << (8 - bit_offs);
+
+			/* adjust output */
+			if (bit_offs == 8) {
+				bit_offs = 0;
+				octet_offs += 1;
+			}
+		}
+
+		/* adjust bit sizes */
+		lvl_left -= 1;
+		if (!lvl_left) {
+			/* completed tree level, advance to next */
+			level += 1;
+			lvl_left = 1 << level;
+			wk_len -= 1;
+		}
+	}
 }
 
 int range_enc_range128(uint8_t *chan_list, int f0, int *w)
@@ -213,57 +285,10 @@ int range_enc_range256(uint8_t *chan_list, int f0, int *w)
 
 int range_enc_range512(uint8_t *chan_list, int f0, int *w)
 {
-	struct gsm48_range_512 *range512;
 	chan_list[0] = 0x88;
 	write_orig_arfcn(chan_list, f0);
 
-	range512 = (struct gsm48_range_512 *) &chan_list[0];
-
-	/* W(1) */
-	range512->w1_hi = HIGH_BITS(w, 1, 9, 7);
-	range512->w1_lo = LOW_BITS (w, 1, 9, 2);
-	/* W(2) */
-	range512->w2_hi = HIGH_BITS(w, 2, 8, 6);
-	range512->w2_lo = LOW_BITS (w, 2, 8, 2);
-	/* W(3) */
-	range512->w3_hi = HIGH_BITS(w, 3, 8, 6);
-	range512->w3_lo = LOW_BITS (w, 3, 8, 2);
-	/* W(4) */
-	range512->w4_hi = HIGH_BITS(w, 4, 7, 6);
-	range512->w4_lo = LOW_BITS (w, 4, 7, 1);
-	/* W(5) */
-	range512->w5 = HIGH_BITS(w, 5, 7, 7);
-	/* W(6) */
-	range512->w6 = HIGH_BITS(w, 6, 7, 7);
-	/* W(7) */
-	range512->w7_hi = HIGH_BITS(w, 7, 7, 1);
-	range512->w7_lo = LOW_BITS (w, 7, 7, 6);
-	/* W(8) */
-	range512->w8_hi = HIGH_BITS(w, 8, 6, 2);
-	range512->w8_lo = LOW_BITS (w, 8, 6, 4);
-	/* W(9) */
-	range512->w9_hi = HIGH_BITS(w, 9, 6, 4);
-	range512->w9_lo = LOW_BITS(w, 9, 6, 2);
-	/* W(10) */
-	range512->w10 = HIGH_BITS(w, 10, 6, 6);
-	/* W(11) */
-	range512->w11 = HIGH_BITS(w, 11, 6, 6);
-	/* W(12) */
-	range512->w12_hi = HIGH_BITS(w, 12, 6, 2);
-	range512->w12_lo = LOW_BITS (w, 12, 6, 4);
-	/* W(13) */
-	range512->w13_hi = HIGH_BITS(w, 13, 6, 4);
-	range512->w13_lo = LOW_BITS(w, 13, 6, 2);
-	/* W(14) */
-	range512->w14 = HIGH_BITS(w, 14, 6, 6);
-	/* W(15) */
-	range512->w15 = HIGH_BITS(w, 15, 6, 6);
-	/* W(16) */
-	range512->w16_hi = HIGH_BITS(w, 16, 5, 2);
-	range512->w16_lo = LOW_BITS(w, 16, 5, 3);
-	/* W(17) */
-	range512->w17 = HIGH_BITS(w, 17, 5, 5);
-
+	write_all_wn(&chan_list[2], 1, w, 17, 9);
 	return 0;
 }
 
