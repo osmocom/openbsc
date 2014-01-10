@@ -270,8 +270,8 @@ int range_enc_range128(uint8_t *chan_list, int f0, int *w)
 	chan_list[0] = 0x8C;
 	write_orig_arfcn(chan_list, f0);
 
-	LOGP(DRR, LOGL_ERROR, "Range128 encoding is not implemented.\n");
-	return -1;
+	write_all_wn(&chan_list[2], 1, w, 28, 7);
+	return 0;
 }
 
 int range_enc_range256(uint8_t *chan_list, int f0, int *w)
@@ -279,8 +279,8 @@ int range_enc_range256(uint8_t *chan_list, int f0, int *w)
 	chan_list[0] = 0x8A;
 	write_orig_arfcn(chan_list, f0);
 
-	LOGP(DRR, LOGL_ERROR, "Range256 encoding is not implemented.\n");
-	return -1;
+	write_all_wn(&chan_list[2], 1, w, 21, 8);
+	return 0;
 }
 
 int range_enc_range512(uint8_t *chan_list, int f0, int *w)
@@ -296,8 +296,8 @@ int range_enc_range1024(uint8_t *chan_list, int f0, int f0_included, int *w)
 {
 	chan_list[0] = 0x80 | (f0_included << 2);
 
-	LOGP(DRR, LOGL_ERROR, "Range1024 encoding is not implemented.\n");
-	return -1;
+	write_all_wn(&chan_list[0], 6, w, 16, 10);
+	return 0;
 }
 
 int range_enc_filter_arfcns(int *arfcns,

@@ -47,20 +47,15 @@ chan_list = 88 05 08 fc 88 b9 6b 00 00 00 00 00 00 00 00 00
 Decoded freqs 6 (expected 6)
 Decoded: 10 17 31 45 58 79 
 Range test 6: range 1023, num ARFCNs 17
-Cannot encode range, rc = -1
+chan_list = 84 71 e4 ab b9 58 05 cb 39 17 fd b0 75 62 0f 2f 
+Decoded freqs 17 (expected 17)
+Decoded: 0 17 31 45 58 79 81 97 113 127 213 277 287 311 331 391 1023 
 Range test 7: range 1023, num ARFCNs 16
-Cannot encode range, rc = -1
+chan_list = 80 71 e4 ab b9 58 05 cb 39 17 fd b0 75 62 0f 2f 
+Decoded freqs 16 (expected 16)
+Decoded: 17 31 45 58 79 81 97 113 127 213 277 287 311 331 391 1023 
 Random range test: range 127, max num ARFCNs 29
-Cannot encode range, rc = -1
-Failed on test 0, range 127, num ARFCNs 1
-Cannot encode range, rc = -1
 Random range test: range 255, max num ARFCNs 22
-Cannot encode range, rc = -1
-Failed on test 0, range 255, num ARFCNs 1
-Cannot encode range, rc = -1
 Random range test: range 511, max num ARFCNs 18
 Random range test: range 1023, max num ARFCNs 16
-Cannot encode range, rc = -1
-Failed on test 0, range 1023, num ARFCNs 1
-Cannot encode range, rc = -1
 Done.
