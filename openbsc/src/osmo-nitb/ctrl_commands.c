@@ -22,7 +22,7 @@
 #include <openbsc/control_cmd.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
-
+#include <openbsc/chan_alloc.h>
 #include <osmocom/vty/misc.h>
 
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
@@ -150,6 +150,53 @@ static int set_net_apply_config(struct ctrl_cmd *cmd, void *data)
 }
 
 CTRL_CMD_DEFINE(net_apply_config, "apply-configuration");
+
+static int verify_net_channels_load(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int set_net_channels_load(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Read only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct pchan_load pl;
+	network_chan_load(&pl, net);
+	struct pchan_load* pl_ptr = &pl;
+
+	int i;
+	cmd->reply = talloc_strdup(cmd, "\n");
+
+	for (i = 0; i < ARRAY_SIZE(pl_ptr->pchan); i++) {
+		const struct load_counter *lc = &pl_ptr->pchan[i];
+		unsigned int percent;
+
+		if (lc->total == 0)
+			continue;
+
+		percent = (lc->used * 100) / lc->total;
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"channel_load.percent.%s, %u\n", gsm_pchan_name(i), percent);
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"channel_load.lc_used.%s, %u\n", gsm_pchan_name(i), lc->used);
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"channel_load.lc_total.%s, %u\n", gsm_pchan_name(i), lc->total);
+	}
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_channels_load, "channels-load");
 
 /* Network related counters */
 CTRL_CMD_VTY_COUNTER(net_chreq_total, "chreq-total",
@@ -324,6 +371,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_config);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_channels_load);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_total);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_no_channel);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chan_rf_fail);
