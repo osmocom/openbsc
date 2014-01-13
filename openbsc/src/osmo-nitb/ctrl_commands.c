@@ -36,6 +36,17 @@ static struct ctrl_cmd_element cmd_##cmdname = { \
 	.verify = verify_vty_description_string, \
 }
 
+#define CTRL_CMD_VTY_COUNTER(cmdname, cmdstr, dtype, element) \
+        CTRL_HELPER_GET_COUNTER(cmdname, dtype, element) \
+        CTRL_HELPER_SET_COUNTER(cmdname, dtype, element) \
+static struct ctrl_cmd_element cmd_##cmdname = { \
+        .name = cmdstr, \
+        .param = NULL, \
+        .get = get_##cmdname, \
+        .set = set_##cmdname, \
+        .verify = verify_vty_description_string, \
+}
+
 CTRL_HELPER_VERIFY_RANGE(net_timer, 0, 65535);
 #define CTRL_CMD_TIMER(timer) \
 		CTRL_HELPER_GET_INT(net_timer_t##timer, struct gsm_network, T##timer); \
@@ -139,6 +150,68 @@ static int set_net_apply_config(struct ctrl_cmd *cmd, void *data)
 }
 
 CTRL_CMD_DEFINE(net_apply_config, "apply-configuration");
+
+/* Network related counters */
+CTRL_CMD_VTY_COUNTER(net_chreq_total, "chreq-total",
+		struct gsm_network, stats.chreq.total);
+CTRL_CMD_VTY_COUNTER(net_chreq_no_channel, "chreq-no_channel",
+		struct gsm_network, stats.chreq.no_channel);
+CTRL_CMD_VTY_COUNTER(net_chan_rf_fail, "chan-rf_fail",
+		struct gsm_network, stats.chan.rf_fail);
+CTRL_CMD_VTY_COUNTER(net_chan_rll_err, "chan-rll_err",
+		struct gsm_network, stats.chan.rll_err);
+CTRL_CMD_VTY_COUNTER(net_paging_attempted, "paging-attempted",
+		struct gsm_network, stats.paging.attempted);
+CTRL_CMD_VTY_COUNTER(net_paging_detached, "paging-detached",
+		struct gsm_network, stats.paging.detached);
+CTRL_CMD_VTY_COUNTER(net_paging_completed, "paging-completed",
+		struct gsm_network, stats.paging.completed);
+CTRL_CMD_VTY_COUNTER(net_paging_expired, "paging-expired",
+		struct gsm_network, stats.paging.expired);
+CTRL_CMD_VTY_COUNTER(net_bts_oml_fail, "bts-oml_fail",
+		struct gsm_network, stats.bts.oml_fail);
+CTRL_CMD_VTY_COUNTER(net_bts_rsl_fail, "bts-rsl_fail",
+		struct gsm_network, stats.bts.rsl_fail);
+CTRL_CMD_VTY_COUNTER(net_loc_upd_type_attach, "loc_upd_type-attach",
+		struct gsm_network, stats.loc_upd_type.attach);
+CTRL_CMD_VTY_COUNTER(net_loc_upd_type_normal, "loc_upd_type-normal",
+		struct gsm_network, stats.loc_upd_type.normal);
+CTRL_CMD_VTY_COUNTER(net_loc_upd_type_periodic, "loc_upd_type-periodic",
+		struct gsm_network, stats.loc_upd_type.periodic);
+CTRL_CMD_VTY_COUNTER(net_loc_upd_type_detach, "loc_upd_type-detach",
+		struct gsm_network, stats.loc_upd_type.detach);
+CTRL_CMD_VTY_COUNTER(net_loc_upd_type_accept, "loc_upd_type-accept",
+		struct gsm_network, stats.loc_upd_resp.accept);
+CTRL_CMD_VTY_COUNTER(net_loc_upd_type_reject, "loc_upd_type-reject",
+		struct gsm_network, stats.loc_upd_resp.reject);
+CTRL_CMD_VTY_COUNTER(net_handover_attempted, "handover-attempted",
+		struct gsm_network, stats.handover.attempted);
+CTRL_CMD_VTY_COUNTER(net_handover_no_channel, "handover-no_channel",
+		struct gsm_network, stats.handover.no_channel);
+CTRL_CMD_VTY_COUNTER(net_handover_timeout, "handover-timeout",
+		struct gsm_network, stats.handover.timeout);
+CTRL_CMD_VTY_COUNTER(net_handover_completed, "handover-completed",
+		struct gsm_network, stats.handover.completed);
+CTRL_CMD_VTY_COUNTER(net_handover_failed, "handover-failed",
+		struct gsm_network, stats.handover.failed);
+CTRL_CMD_VTY_COUNTER(net_sms_submitted, "sms-submitted",
+		struct gsm_network, stats.sms.submitted);
+CTRL_CMD_VTY_COUNTER(net_sms_no_receiver, "sms-no_receiver",
+		struct gsm_network, stats.sms.no_receiver);
+CTRL_CMD_VTY_COUNTER(net_sms_delivered, "sms-delivered",
+		struct gsm_network, stats.sms.delivered);
+CTRL_CMD_VTY_COUNTER(net_sms_rp_err_mem, "sms-rp_err_mem",
+		struct gsm_network, stats.sms.rp_err_mem);
+CTRL_CMD_VTY_COUNTER(net_sms_rp_err_other,"sms-rp_err_other",
+		struct gsm_network, stats.sms.rp_err_other);
+CTRL_CMD_VTY_COUNTER(net_call_mo_setup, "call-mo_setup",
+		struct gsm_network, stats.call.mo_setup);
+CTRL_CMD_VTY_COUNTER(net_call_mo_connect_ack, "call-mo_connect_ack",
+		struct gsm_network, stats.call.mo_connect_ack);
+CTRL_CMD_VTY_COUNTER(net_call_mt_setup, "call-mt_setup",
+		struct gsm_network, stats.call.mt_setup);
+CTRL_CMD_VTY_COUNTER(net_call_mt_connect, "call-mt_connect",
+		struct gsm_network, stats.call.mt_connect);
 
 /* BTS related commands below here */
 CTRL_CMD_VTY_STRING(bts_description, "description", struct gsm_bts, description);
@@ -251,6 +324,36 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_config);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_total);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_no_channel);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chan_rf_fail);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chan_rll_err);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_paging_attempted);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_paging_detached);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_paging_completed);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_paging_expired);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_bts_oml_fail);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_bts_rsl_fail);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_loc_upd_type_attach);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_loc_upd_type_normal);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_loc_upd_type_periodic);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_loc_upd_type_detach);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_loc_upd_type_accept);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_loc_upd_type_reject);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_handover_attempted);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_handover_no_channel);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_handover_timeout);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_handover_completed);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_handover_failed);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sms_submitted);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sms_no_receiver);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sms_delivered);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sms_rp_err_mem);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sms_rp_err_other);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_call_mo_setup);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_call_mo_connect_ack);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_call_mt_setup);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_call_mt_connect);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3101);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3103);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3105);

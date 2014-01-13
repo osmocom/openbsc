@@ -158,6 +158,35 @@ static struct ctrl_cmd_element cmd_##cmdname = { \
 	.verify = NULL, \
 }
 
+#define CTRL_HELPER_GET_COUNTER(cmdname, dtype, element) \
+static int get_##cmdname(struct ctrl_cmd *cmd, void *_data) \
+{ \
+	dtype *data = cmd->node; \
+	cmd->reply = talloc_asprintf_append(cmd->reply, "%lu", \
+		osmo_counter_get(data->element)); \
+	if (!cmd->reply) { \
+		cmd->reply = "OOM"; \
+		return CTRL_CMD_ERROR; \
+	} \
+	return CTRL_CMD_REPLY; \
+}
+#define CTRL_HELPER_SET_COUNTER(cmdname, dtype, element) \
+static int set_##cmdname(struct ctrl_cmd *cmd, void *_data) \
+{ \
+	cmd->reply = "Read only attribute"; \
+	return CTRL_CMD_ERROR; \
+}
+#define CTRL_CMD_DEFINE_COUNTER(cmdname, cmdstr, dtype, element) \
+	CTRL_HELPER_GET_COUNTER(cmdname, dtype, element) \
+	CTRL_HELPER_SET_COUNTER(cmdname, dtype, element) \
+static struct ctrl_cmd_element cmd_##cmdname = { \
+	.name = cmdstr, \
+	.param = NULL, \
+	.get = &get_##cmdname, \
+	.set = &set_##cmdname, \
+	.verify = NULL, \
+}
+
 #define CTRL_CMD_RAW(cmdname, cmdstr, cmdget, cmdset, cmdverify) \
 static struct ctrl_cmd_element cmd_##cmdname = { \
 	.name = cmdstr, \
