@@ -256,7 +256,7 @@ int range_enc_range512(uint8_t *chan_list, int f0, int *w)
 	range512->w15 = HIGH_BITS(w, 15, 6, 6);
 	/* W(16) */
 	range512->w16_hi = HIGH_BITS(w, 16, 5, 2);
-	range512->w16_lo = HIGH_BITS(w, 16, 5, 3);
+	range512->w16_lo = LOW_BITS(w, 16, 5, 3);
 	/* W(17) */
 	range512->w17 = HIGH_BITS(w, 17, 5, 5);
 
