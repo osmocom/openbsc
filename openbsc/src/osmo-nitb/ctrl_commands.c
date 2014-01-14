@@ -191,11 +191,11 @@ static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
 
 		percent = (lc->used * 100) / lc->total;
 		cmd->reply = talloc_asprintf_append(cmd->reply,
-			"channel_load.percent.%s, %u\n", gsm_pchan_name(i), percent);
+			"channel_load.percent.%s,%u\n", gsm_pchan_name(i), percent);
 		cmd->reply = talloc_asprintf_append(cmd->reply,
-			"channel_load.lc_used.%s, %u\n", gsm_pchan_name(i), lc->used);
+			"channel_load.lc_used.%s,%u\n", gsm_pchan_name(i), lc->used);
 		cmd->reply = talloc_asprintf_append(cmd->reply,
-			"channel_load.lc_total.%s, %u\n", gsm_pchan_name(i), lc->total);
+			"channel_load.lc_total.%s,%u\n", gsm_pchan_name(i), lc->total);
 	}
 
 	if (!cmd->reply) {
@@ -305,6 +305,80 @@ static int get_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_lchan_summary, "lchan-summary");
 
+static int verify_net_paging(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int set_net_paging(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Read only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int get_net_paging(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts;
+	int bts_nr;
+
+	cmd->reply = talloc_strdup(cmd, "\n");
+
+	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+		bts = gsm_bts_num(net, bts_nr);
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"paging.pending_requests.bts.%u,%u\n", bts_nr,
+			paging_pending_requests_nr(bts));
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"paging.available_slots.bts.%u,%u\n", bts_nr,
+			bts->paging.available_slots);
+	}
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_paging, "paging");
+
+
+static int verify_net_oml_link(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int set_net_oml_link(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Read only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int get_net_oml_link(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts;
+	int bts_nr;
+
+	cmd->reply = talloc_strdup(cmd, "\n");
+
+	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+		bts = gsm_bts_num(net, bts_nr);
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"oml_link.bts.%u,%u\n", bts_nr, bts->oml_link ? 1 : 0);
+	}
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_oml_link, "oml_link");
 
 /* Network related counters */
 CTRL_CMD_VTY_COUNTER(net_chreq_total, "chreq.total",
@@ -481,6 +555,8 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_channels_load);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_lchan_summary);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_paging);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_oml_link);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_total);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_no_channel);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chan_rf_fail);
