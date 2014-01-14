@@ -8,6 +8,9 @@ struct vty;
 int sms_queue_start(struct gsm_network *, int in_flight);
 int sms_queue_trigger(struct gsm_sms_queue *);
 
+/* Ctrl interface helper function */
+int sms_queue_pending_stat(struct gsm_sms_queue *smsq, char* reply);
+
 /* vty helper functions */
 int sms_queue_stats(struct gsm_sms_queue *, struct vty* vty);
 int sms_queue_set_max_pending(struct gsm_sms_queue *, int max);

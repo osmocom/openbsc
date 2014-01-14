@@ -454,6 +454,17 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+/* Ctrl interface helper function */
+int sms_queue_pending_stat(struct gsm_sms_queue *smsq, char* reply)
+{
+	reply = talloc_asprintf_append(reply, "smsqueue.max_pending,%u\n",
+		smsq->max_pending);
+	reply = talloc_asprintf_append(reply, "smsqueue.pending,%u\n",
+		smsq->pending);
+
+	return 0;
+}
+
 /* VTY helper functions */
 int sms_queue_stats(struct gsm_sms_queue *smsq, struct vty *vty)
 {

@@ -23,6 +23,7 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/sms_queue.h>
 #include <osmocom/vty/misc.h>
 
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
@@ -380,6 +381,35 @@ static int get_net_oml_link(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_oml_link, "oml_link");
 
+static int verify_net_smsqueue(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int set_net_smsqueue(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Read only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int get_net_smsqueue(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct gsm_sms_queue *smsq = net->sms_queue;
+
+	cmd->reply = talloc_strdup(cmd, "\n");
+	sms_queue_pending_stat(smsq, cmd->reply);
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_smsqueue, "smsqueue");
+
 /* Network related counters */
 CTRL_CMD_VTY_COUNTER(net_chreq_total, "chreq.total",
 		struct gsm_network, stats.chreq.total);
@@ -557,6 +587,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_lchan_summary);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_paging);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_oml_link);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_smsqueue);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_total);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_no_channel);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chan_rf_fail);
