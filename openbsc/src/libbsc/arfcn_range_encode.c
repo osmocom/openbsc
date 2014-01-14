@@ -144,7 +144,9 @@ int range_enc_arfcns(const int range,
  */
 /**
  * This implements the range determination as described in GSM 04.08 J4. The
- * result will be a base frequency f0 and the range to use.
+ * result will be a base frequency f0 and the range to use. Note that for range
+ * 1024 encoding f0 always refers to ARFCN 0 even if it is not an element of
+ * the arfcns list.
  *
  * \param[in] arfcns The input frequencies, they must be sorted, lowest number first
  * \param[in] size The length of the array
@@ -166,8 +168,10 @@ int range_enc_determine_range(const int *arfcns, const int size, int *f0)
 		return ARFCN_RANGE_256;
 	if (max < 512 && size <= 18)
 		return ARFCN_RANGE_512;
-	if (max < 1024 && size <= 17)
+	if (max < 1024 && size <= 17) {
+		*f0 = 0;
 		return ARFCN_RANGE_1024;
+	}
 
 	return ARFCN_RANGE_INVALID;
 }
@@ -271,34 +275,24 @@ int range_enc_range1024(uint8_t *chan_list, int f0, int f0_included, int *w)
 	return -1;
 }
 
-int range_enc_filter_arfcns(const int range, int *arfcns,
-			const int size, const int f0, int *f0_included)
+int range_enc_filter_arfcns(int *arfcns,
+			    const int size, const int f0, int *f0_included)
 {
 	int i, j = 0;
 	*f0_included = 0;
 
-	if (range == ARFCN_RANGE_1024) {
-		for (i = 0; i < size; ++i) {
-			if (arfcns[i] == f0) {
-				*f0_included = 1;
-				continue;
-			}
-
-			/* copy and subtract */
-			arfcns[j++] = mod(arfcns[i] - 1, 1024);
+	for (i = 0; i < size; ++i) {
+		/*
+		 * Appendix J.4 says the following:
+		 * All frequencies except F(0), minus F(0) + 1.
+		 * I assume we need to exclude it here.
+		 */
+		if (arfcns[i] == f0) {
+			*f0_included = 1;
+			continue;
 		}
-	} else {
-		for (i = 0; i < size; ++i) {
-			/*
-			 * Appendix J.4 says the following:
-			 * All frequencies except F(0), minus F(0) + 1.
-			 * I assume we need to exclude it here.
-			 */
-			if (arfcns[i] == f0)
-				continue;
 
-			arfcns[j++] = mod(arfcns[i] - (f0 + 1), 1024);
-		}
+		arfcns[j++] = mod(arfcns[i] - (f0 + 1), 1024);
 	}
 
 	return j;

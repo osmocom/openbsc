@@ -152,12 +152,12 @@ static int test_single_range_encoding(int range, const int *orig_arfcns,
 	arfcns_used = arfcns_num;
 	memmove(arfcns, orig_arfcns, sizeof(arfcns));
 
-	f0 = arfcns[0];
+	f0 = range == ARFCN_RANGE_1024 ? 0 : arfcns[0];
 	/*
 	 * Manipulate the ARFCN list according to the rules in J4 depending
 	 * on the selected range.
 	 */
-	arfcns_used = range_enc_filter_arfcns(range, arfcns, arfcns_used,
+	arfcns_used = range_enc_filter_arfcns(arfcns, arfcns_used,
 					      f0, &f0_included);
 
 	memset(w, 0, sizeof(w));
@@ -354,28 +354,28 @@ static void test_arfcn_filter()
 
 	/* check that the arfcn is taken out. f0_included is only set for Range1024 */
 	f0_included = 24;
-	res = range_enc_filter_arfcns(ARFCN_RANGE_512, arfcns, ARRAY_SIZE(arfcns),
-			arfcns[0], &f0_included);
-	VERIFY(res, ==, ARRAY_SIZE(arfcns) - 1);
-	VERIFY(f0_included, ==, 0);
-	for (i = 0; i < res; ++i)
-		VERIFY(arfcns[i], ==, ((i+2) * 2) - (2+1));
-
-	/* check with range1024 */
-	for (i = 0; i < ARRAY_SIZE(arfcns); ++i)
-		arfcns[i] = (i + 1) * 2;
-	res = range_enc_filter_arfcns(ARFCN_RANGE_1024, arfcns, ARRAY_SIZE(arfcns),
+	res = range_enc_filter_arfcns(arfcns, ARRAY_SIZE(arfcns),
 			arfcns[0], &f0_included);
 	VERIFY(res, ==, ARRAY_SIZE(arfcns) - 1);
 	VERIFY(f0_included, ==, 1);
 	for (i = 0; i < res; ++i)
-		VERIFY(arfcns[i], ==, ((i + 2) * 2) - 1);
+		VERIFY(arfcns[i], ==, ((i+2) * 2) - (2+1));
 
-	/* check with range1024, not included */
+	/* check with range1024, ARFCN 0 is included */
+	for (i = 0; i < ARRAY_SIZE(arfcns); ++i)
+		arfcns[i] = i * 2;
+	res = range_enc_filter_arfcns(arfcns, ARRAY_SIZE(arfcns),
+			0, &f0_included);
+	VERIFY(res, ==, ARRAY_SIZE(arfcns) - 1);
+	VERIFY(f0_included, ==, 1);
+	for (i = 0; i < res; ++i)
+		VERIFY(arfcns[i], ==, (i + 1) * 2 - 1);
+
+	/* check with range1024, ARFCN 0 not included */
 	for (i = 0; i < ARRAY_SIZE(arfcns); ++i)
 		arfcns[i] = (i + 1) * 2;
-	res = range_enc_filter_arfcns(ARFCN_RANGE_1024, arfcns, ARRAY_SIZE(arfcns),
-			11, &f0_included);
+	res = range_enc_filter_arfcns(arfcns, ARRAY_SIZE(arfcns),
+			0, &f0_included);
 	VERIFY(res, ==, ARRAY_SIZE(arfcns));
 	VERIFY(f0_included, ==, 0);
 	for (i = 0; i < res; ++i)

@@ -197,7 +197,7 @@ static int enc_freq_lst_range(uint8_t *chan_list,
 	 * Manipulate the ARFCN list according to the rules in J4 depending
 	 * on the selected range.
 	 */
-	arfcns_used = range_enc_filter_arfcns(range, arfcns, arfcns_used,
+	arfcns_used = range_enc_filter_arfcns(arfcns, arfcns_used,
 				f0, &f0_included);
 
 	memset(w, 0, sizeof(w));
