@@ -55,6 +55,16 @@ CTRL_HELPER_VERIFY_RANGE(net_timer, 0, 65535);
 			get_net_timer_t##timer, set_net_timer_t##timer, \
 			verify_net_timer);
 
+#define PRINT_LCHAN_INFO(name, element) \
+cmd->reply = talloc_asprintf_append(cmd->reply, \
+"lchan_summary.bts.%u.trx.%u.ts.%u.lchan.%u.type.%s."#name, \
+lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
+lchan->nr, gsm_lchant_name(lchan->type)); \
+if (sizeof(element) == sizeof(int)) \
+	cmd->reply = talloc_asprintf_append(cmd->reply, ",%d\n", element); \
+else \
+	cmd->reply = talloc_asprintf_append(cmd->reply, ",%u\n", element);
+
 /**
  * Check that there are no newlines or comments or other things
  * that could make the VTY configuration unparsable.
@@ -197,6 +207,104 @@ static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
 }
 
 CTRL_CMD_DEFINE(net_channels_load, "channels-load");
+
+static int verify_net_lchan_summary(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int set_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Read only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int get_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts_trx_ts *ts;
+	struct gsm_lchan *lchan;
+	struct gsm_meas_rep *mr;
+	struct gsm_meas_rep_unidir *mru_dl;
+	struct gsm_meas_rep_unidir *mru_ul;
+	int bts_nr, trx_nr, ts_nr, lchan_nr, idx;
+
+	cmd->reply = talloc_strdup(cmd, "\n");
+
+	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+
+		bts = gsm_bts_num(net, bts_nr);
+
+		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+
+			trx = gsm_bts_trx_num(bts, trx_nr);
+
+			for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
+
+				ts = &trx->ts[ts_nr];
+
+				for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN; lchan_nr++) {
+
+					lchan = &ts->lchan[lchan_nr];
+
+					if ((lchan->type == GSM_LCHAN_NONE) &&
+							(lchan->state == LCHAN_S_NONE))
+						continue;
+
+					PRINT_LCHAN_INFO(bs_power, lchan->ts->trx->nominal_power
+						 - lchan->ts->trx->max_power_red- lchan->bs_power*2);
+					PRINT_LCHAN_INFO(ms_power,
+						ms_pwr_dbm(lchan->ts->trx->bts->band,
+						lchan->ms_power));
+
+					/* we want to report the last measurement report */
+					idx = calc_initial_idx(ARRAY_SIZE(lchan->meas_rep),
+							lchan->meas_rep_idx, 1);
+					mr = &lchan->meas_rep[idx];
+
+					if (mr->flags & MEAS_REP_F_MS_TO) {
+						PRINT_LCHAN_INFO(ms_timing_offset,
+								mr->ms_timing_offset);
+					}
+
+					if (mr->flags & MEAS_REP_F_MS_L1) {
+						PRINT_LCHAN_INFO(l1_ms_power, mr->ms_l1.pwr);
+						PRINT_LCHAN_INFO(timing_advance, mr->ms_l1.ta);
+					}
+
+					mru_dl = &mr->dl;
+					mru_ul = &mr->ul;
+					if (mr->flags & MEAS_REP_F_DL_VALID) {
+						PRINT_LCHAN_INFO(rxl_full.dl,
+							rxlev2dbm(mru_dl->full.rx_lev));
+						PRINT_LCHAN_INFO(rxl_sub.dl,
+							rxlev2dbm(mru_dl->sub.rx_lev));
+						PRINT_LCHAN_INFO(rxq_full.dl, mru_dl->full.rx_qual);
+						PRINT_LCHAN_INFO(rxq_sub.dl, mru_dl->sub.rx_qual);
+					}
+					PRINT_LCHAN_INFO(rxl_full.ul,
+						rxlev2dbm(mru_ul->full.rx_lev));
+					PRINT_LCHAN_INFO(rxl_sub.ul,
+						rxlev2dbm(mru_ul->sub.rx_lev));
+					PRINT_LCHAN_INFO(rxq_full.ul, mru_ul->full.rx_qual);
+					PRINT_LCHAN_INFO(rxq_sub.ul, mru_ul->sub.rx_qual);
+				}
+			}
+		}
+	}
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_lchan_summary, "lchan-summary");
+
 
 /* Network related counters */
 CTRL_CMD_VTY_COUNTER(net_chreq_total, "chreq-total",
@@ -372,6 +480,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_channels_load);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_lchan_summary);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_total);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chreq_no_channel);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_chan_rf_fail);
