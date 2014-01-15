@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
+#include <time.h>
 #include <openbsc/control_cmd.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
@@ -38,14 +38,14 @@ static struct ctrl_cmd_element cmd_##cmdname = { \
 }
 
 #define CTRL_CMD_VTY_COUNTER(cmdname, cmdstr, dtype, element) \
-        CTRL_HELPER_GET_COUNTER(cmdname, dtype, element) \
-        CTRL_HELPER_SET_COUNTER(cmdname, dtype, element) \
+	CTRL_HELPER_GET_COUNTER(cmdname, dtype, element) \
+	CTRL_HELPER_SET_COUNTER(cmdname, dtype, element) \
 static struct ctrl_cmd_element cmd_##cmdname = { \
-        .name = cmdstr, \
-        .param = NULL, \
-        .get = get_##cmdname, \
-        .set = set_##cmdname, \
-        .verify = verify_vty_description_string, \
+	.name = cmdstr, \
+	.param = NULL, \
+	.get = get_##cmdname, \
+	.set = set_##cmdname, \
+	.verify = verify_vty_description_string, \
 }
 
 CTRL_HELPER_VERIFY_RANGE(net_timer, 0, 65535);
@@ -181,7 +181,6 @@ static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
 	struct pchan_load* pl_ptr = &pl;
 
 	int i;
-	cmd->reply = talloc_strdup(cmd, "\n");
 
 	for (i = 0; i < ARRAY_SIZE(pl_ptr->pchan); i++) {
 		const struct load_counter *lc = &pl_ptr->pchan[i];
@@ -231,8 +230,6 @@ static int get_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
 	struct gsm_meas_rep_unidir *mru_dl;
 	struct gsm_meas_rep_unidir *mru_ul;
 	int bts_nr, trx_nr, ts_nr, lchan_nr, idx;
-
-	cmd->reply = talloc_strdup(cmd, "\n");
 
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
 
@@ -323,8 +320,6 @@ static int get_net_paging(struct ctrl_cmd *cmd, void *data)
 	struct gsm_bts *bts;
 	int bts_nr;
 
-	cmd->reply = talloc_strdup(cmd, "\n");
-
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
 		bts = gsm_bts_num(net, bts_nr);
 		cmd->reply = talloc_asprintf_append(cmd->reply,
@@ -363,8 +358,6 @@ static int get_net_oml_link(struct ctrl_cmd *cmd, void *data)
 	struct gsm_bts *bts;
 	int bts_nr;
 
-	cmd->reply = talloc_strdup(cmd, "\n");
-
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
 		bts = gsm_bts_num(net, bts_nr);
 		cmd->reply = talloc_asprintf_append(cmd->reply,
@@ -397,7 +390,6 @@ static int get_net_smsqueue(struct ctrl_cmd *cmd, void *data)
 	struct gsm_network *net = cmd->node;
 	struct gsm_sms_queue *smsq = net->sms_queue;
 
-	cmd->reply = talloc_strdup(cmd, "\n");
 	sms_queue_pending_stat(smsq, cmd->reply);
 
 	if (!cmd->reply) {
@@ -471,6 +463,94 @@ CTRL_CMD_VTY_COUNTER(net_call_mt_setup, "call.mt_setup",
 		struct gsm_network, stats.call.mt_setup);
 CTRL_CMD_VTY_COUNTER(net_call_mt_connect, "call.mt_connect",
 		struct gsm_network, stats.call.mt_connect);
+
+static int verify_net_status(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int set_net_status(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Read only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int get_net_status(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	cmd->reply = talloc_strdup(cmd, "\n");
+	cmd->reply = talloc_asprintf_append(cmd->reply,"time,%u",
+		(unsigned)time(NULL));
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nchreq.total,");
+	get_net_chreq_total(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nchreq.no_channel,");
+	get_net_chreq_no_channel(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nchan.rf_fail,");
+	get_net_chan_rf_fail(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nchan.rll_err,");
+	get_net_chan_rll_err(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\npaging.attempted,");
+	get_net_paging_attempted(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\npaging.completed,");
+	get_net_paging_completed(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\npaging.expired,");
+	get_net_paging_expired(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nbts.oml_fail,");
+	get_net_bts_oml_fail(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nbts.rsl_fail,");
+	get_net_bts_rsl_fail(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nloc_upd_type.attach,");
+	get_net_loc_upd_type_attach(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nloc_upd_type.normal,");
+	get_net_loc_upd_type_normal(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nloc_upd_type.periodic,");
+	get_net_loc_upd_type_periodic(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nloc_upd_type.detach,");
+	get_net_loc_upd_type_detach(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nloc_upd_type.accept,");
+	get_net_loc_upd_type_accept(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nloc_upd_type.reject,");
+	get_net_loc_upd_type_reject(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nhandover.attempted,");
+	get_net_handover_attempted(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nhandover.no_channel,");
+	get_net_handover_no_channel(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nhandover.timeout,");
+	get_net_handover_timeout(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nhandover.completed,");
+	get_net_handover_completed(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nhandover.failed,");
+	get_net_handover_failed(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nsms.submitted,");
+	get_net_sms_submitted(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nsms.no_receiver,");
+	get_net_sms_no_receiver(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nsms.delivered,");
+	get_net_sms_delivered(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nsms.rp_err_mem,");
+	get_net_sms_rp_err_mem(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\nsms.rp_err_other,");
+	get_net_sms_rp_err_other(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\ncall.mo_setup,");
+	get_net_call_mo_setup(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\ncall.mo_connect_ack,");
+	get_net_call_mo_connect_ack(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\ncall.mt_setup,");
+	get_net_call_mt_setup(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\ncall.mt_connect,");
+	get_net_call_mt_connect(cmd, net);
+	cmd->reply = talloc_strdup_append(cmd->reply, "\n");
+	get_net_channels_load(cmd, net);
+	get_net_paging(cmd, net);
+	get_net_oml_link(cmd, net);
+	get_net_smsqueue(cmd, net);
+	get_net_lchan_summary(cmd, net);
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_status, "network-status");
+
 
 /* BTS related commands below here */
 CTRL_CMD_VTY_STRING(bts_description, "description", struct gsm_bts, description);
@@ -618,6 +698,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_call_mo_connect_ack);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_call_mt_setup);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_call_mt_connect);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_status);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3101);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3103);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3105);

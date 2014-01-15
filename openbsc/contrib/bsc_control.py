@@ -85,14 +85,14 @@ if options.cmd_get:
 		parser.error("Get requires the var argument")
 	do_get(args[0], options.id, sock)
 
-data = sock.recv(1024)
+data = sock.recv(10240)
 while (len(data)>0):
 	(answer, data) = remove_ipa_ctrl_header(data)
 	print "Got message:", answer
 
 if options.monitor:
 	while (True):
-		data = sock.recv(1024)
+		data = sock.recv(10240)
 		if len(data) == 0:
 			print "Connection is gone."
 			break
