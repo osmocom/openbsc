@@ -58,9 +58,8 @@ CTRL_HELPER_VERIFY_RANGE(net_timer, 0, 65535);
 
 #define PRINT_LCHAN_INFO(name, element) \
 cmd->reply = talloc_asprintf_append(cmd->reply, \
-"lchan_summary.bts.%u.trx.%u.ts.%u.lchan.%u.type.%s."#name, \
-lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
-lchan->nr, gsm_lchant_name(lchan->type)); \
+"lchan_status.bts.%u.trx.%u.ts.%u.lchan.%u."#name, \
+lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, lchan->nr); \
 if (sizeof(element) == sizeof(int)) \
 	cmd->reply = talloc_asprintf_append(cmd->reply, ",%d\n", element); \
 else \
@@ -200,10 +199,10 @@ static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_channels_load, "channels-load");
 
-CTRL_HELPER_VERIFY_STATUS(net_lchan_summary);
-CTRL_HELPER_SET_STATUS(net_lchan_summary);
+CTRL_HELPER_VERIFY_STATUS(net_lchan);
+CTRL_HELPER_SET_STATUS(net_lchan);
 
-static int get_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
+static int get_net_lchan(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net = cmd->node;
 	struct gsm_bts *bts;
@@ -234,6 +233,11 @@ static int get_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
 					if ((lchan->type == GSM_LCHAN_NONE) &&
 							(lchan->state == LCHAN_S_NONE))
 						continue;
+
+					cmd->reply = talloc_asprintf_append(cmd->reply,
+						"lchan_status.bts.%u.trx.%u.ts.%u.lchan.%u.type,%s\n",
+						lchan->ts->trx->bts->nr, lchan->ts->trx->nr,
+						lchan->ts->nr, lchan->nr, gsm_lchant_name(lchan->type));
 
 					PRINT_LCHAN_INFO(bs_power, lchan->ts->trx->nominal_power
 						 - lchan->ts->trx->max_power_red- lchan->bs_power*2);
@@ -285,7 +289,7 @@ static int get_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-CTRL_CMD_DEFINE(net_lchan_summary, "lchan-summary");
+CTRL_CMD_DEFINE(net_lchan, "lchan");
 
 CTRL_HELPER_VERIFY_STATUS(net_paging);
 CTRL_HELPER_SET_STATUS(net_paging);
@@ -496,7 +500,7 @@ static int get_net_status(struct ctrl_cmd *cmd, void *data)
 	get_net_paging(cmd, net);
 	get_net_oml_link(cmd, net);
 	get_net_smsqueue(cmd, net);
-	get_net_lchan_summary(cmd, net);
+	get_net_lchan(cmd, net);
 
 	return CTRL_CMD_REPLY;
 }
@@ -616,7 +620,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_channels_load);
-	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_lchan_summary);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_lchan);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_paging);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_oml_link);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_smsqueue);
