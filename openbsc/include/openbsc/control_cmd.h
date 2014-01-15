@@ -187,6 +187,18 @@ static struct ctrl_cmd_element cmd_##cmdname = { \
 	.verify = NULL, \
 }
 
+#define CTRL_HELPER_SET_STATUS(cmdname) \
+static int set_##cmdname(struct ctrl_cmd *cmd, void *_data) \
+{ \
+	cmd->reply = "Read only attribute"; \
+	return CTRL_CMD_ERROR; \
+}
+#define CTRL_HELPER_VERIFY_STATUS(cmdname) \
+static int verify_##cmdname(struct ctrl_cmd *cmd, const char *value, void *_data) \
+{ \
+	return 0;\
+}
+
 #define CTRL_CMD_RAW(cmdname, cmdstr, cmdget, cmdset, cmdverify) \
 static struct ctrl_cmd_element cmd_##cmdname = { \
 	.name = cmdstr, \

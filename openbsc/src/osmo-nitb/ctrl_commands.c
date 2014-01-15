@@ -162,16 +162,8 @@ static int set_net_apply_config(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_apply_config, "apply-configuration");
 
-static int verify_net_channels_load(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
-
-static int set_net_channels_load(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Read only attribute";
-	return CTRL_CMD_ERROR;
-}
+CTRL_HELPER_VERIFY_STATUS(net_channels_load);
+CTRL_HELPER_SET_STATUS(net_channels_load);
 
 static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
 {
@@ -208,16 +200,8 @@ static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_channels_load, "channels-load");
 
-static int verify_net_lchan_summary(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
-
-static int set_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Read only attribute";
-	return CTRL_CMD_ERROR;
-}
+CTRL_HELPER_VERIFY_STATUS(net_lchan_summary);
+CTRL_HELPER_SET_STATUS(net_lchan_summary);
 
 static int get_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
 {
@@ -303,16 +287,8 @@ static int get_net_lchan_summary(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_lchan_summary, "lchan-summary");
 
-static int verify_net_paging(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
-
-static int set_net_paging(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Read only attribute";
-	return CTRL_CMD_ERROR;
-}
+CTRL_HELPER_VERIFY_STATUS(net_paging);
+CTRL_HELPER_SET_STATUS(net_paging);
 
 static int get_net_paging(struct ctrl_cmd *cmd, void *data)
 {
@@ -341,16 +317,8 @@ static int get_net_paging(struct ctrl_cmd *cmd, void *data)
 CTRL_CMD_DEFINE(net_paging, "paging");
 
 
-static int verify_net_oml_link(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
-
-static int set_net_oml_link(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Read only attribute";
-	return CTRL_CMD_ERROR;
-}
+CTRL_HELPER_VERIFY_STATUS(net_oml_link);
+CTRL_HELPER_SET_STATUS(net_oml_link);
 
 static int get_net_oml_link(struct ctrl_cmd *cmd, void *data)
 {
@@ -374,16 +342,8 @@ static int get_net_oml_link(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_oml_link, "oml_link");
 
-static int verify_net_smsqueue(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
-
-static int set_net_smsqueue(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Read only attribute";
-	return CTRL_CMD_ERROR;
-}
+CTRL_HELPER_VERIFY_STATUS(net_smsqueue);
+CTRL_HELPER_SET_STATUS(net_smsqueue);
 
 static int get_net_smsqueue(struct ctrl_cmd *cmd, void *data)
 {
@@ -464,16 +424,8 @@ CTRL_CMD_VTY_COUNTER(net_call_mt_setup, "call.mt_setup",
 CTRL_CMD_VTY_COUNTER(net_call_mt_connect, "call.mt_connect",
 		struct gsm_network, stats.call.mt_connect);
 
-static int verify_net_status(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
-
-static int set_net_status(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Read only attribute";
-	return CTRL_CMD_ERROR;
-}
+CTRL_HELPER_VERIFY_STATUS(net_status);
+CTRL_HELPER_SET_STATUS(net_status);
 
 static int get_net_status(struct ctrl_cmd *cmd, void *data)
 {
