@@ -19,6 +19,8 @@
  *
  */
 #include <time.h>
+#include <arpa/inet.h>
+#include <openbsc/paging.h>
 #include <openbsc/control_cmd.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
@@ -56,7 +58,7 @@ CTRL_HELPER_VERIFY_RANGE(net_timer, 0, 65535);
 			get_net_timer_t##timer, set_net_timer_t##timer, \
 			verify_net_timer);
 
-#define PRINT_LCHAN_INFO(name, element) \
+#define PRINT_LCHAN_INT_INFO(name, element) \
 cmd->reply = talloc_asprintf_append(cmd->reply, \
 "lchan_status.bts.%u.trx.%u.ts.%u.lchan.%u."#name, \
 lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, lchan->nr); \
@@ -64,6 +66,18 @@ if (sizeof(element) == sizeof(int)) \
 	cmd->reply = talloc_asprintf_append(cmd->reply, ",%d\n", element); \
 else \
 	cmd->reply = talloc_asprintf_append(cmd->reply, ",%u\n", element);
+
+#define PRINT_LCHAN_LLUINT_INFO(name, element) \
+cmd->reply = talloc_asprintf_append(cmd->reply, \
+"lchan_status.bts.%u.trx.%u.ts.%u.lchan.%u."#name, \
+lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, lchan->nr); \
+cmd->reply = talloc_asprintf_append(cmd->reply, ",%llu\n", element);
+
+#define PRINT_LCHAN_STR_INFO(name, element) \
+cmd->reply = talloc_asprintf_append(cmd->reply, \
+"lchan_status.bts.%u.trx.%u.ts.%u.lchan.%u."#name, \
+lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, lchan->nr); \
+cmd->reply = talloc_asprintf_append(cmd->reply, ",%s\n", element);
 
 /**
  * Check that there are no newlines or comments or other things
@@ -209,6 +223,7 @@ static int get_net_lchan(struct ctrl_cmd *cmd, void *data)
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_lchan *lchan;
+	struct gsm_subscriber *subscr;
 	struct gsm_meas_rep *mr;
 	struct gsm_meas_rep_unidir *mru_dl;
 	struct gsm_meas_rep_unidir *mru_ul;
@@ -234,14 +249,39 @@ static int get_net_lchan(struct ctrl_cmd *cmd, void *data)
 							(lchan->state == LCHAN_S_NONE))
 						continue;
 
-					cmd->reply = talloc_asprintf_append(cmd->reply,
-						"lchan_status.bts.%u.trx.%u.ts.%u.lchan.%u.type,%s\n",
-						lchan->ts->trx->bts->nr, lchan->ts->trx->nr,
-						lchan->ts->nr, lchan->nr, gsm_lchant_name(lchan->type));
+					PRINT_LCHAN_STR_INFO(type, gsm_lchant_name(lchan->type));
+					PRINT_LCHAN_INT_INFO(conn, lchan->conn ? 1: 0);
+					PRINT_LCHAN_STR_INFO(state, gsm_lchans_name(lchan->state));
 
-					PRINT_LCHAN_INFO(bs_power, lchan->ts->trx->nominal_power
+					if (lchan->conn && lchan->conn->subscr) {
+						subscr = lchan->conn->subscr;
+						PRINT_LCHAN_LLUINT_INFO(subscr_id, subscr->id);
+						PRINT_LCHAN_INT_INFO(subscr_auth, subscr->authorized);
+						if (strlen(subscr->name)) {
+							PRINT_LCHAN_STR_INFO(subscr_name, subscr->name);
+						}
+						if (subscr->extension) {
+							PRINT_LCHAN_STR_INFO(subscr_ext, subscr->extension);
+						}
+						PRINT_LCHAN_STR_INFO(subscr_imsi, subscr->imsi);
+						if (subscr->tmsi != GSM_RESERVED_TMSI) {
+							PRINT_LCHAN_INT_INFO(subscr_tmsi, subscr->tmsi);
+						}
+						PRINT_LCHAN_INT_INFO(subscr_use_count, subscr->use_count);
+					}
+
+					if (is_ipaccess_bts(lchan->ts->trx->bts)) {
+						struct in_addr ia;
+						ia.s_addr = htonl(lchan->abis_ip.bound_ip);
+						PRINT_LCHAN_STR_INFO(bound_ip, inet_ntoa(ia));
+						PRINT_LCHAN_INT_INFO(bound_port, lchan->abis_ip.bound_port);
+						PRINT_LCHAN_INT_INFO(rtp_type2, lchan->abis_ip.rtp_payload2);
+						PRINT_LCHAN_INT_INFO(conn_id, lchan->abis_ip.conn_id);
+					}
+
+					PRINT_LCHAN_INT_INFO(bs_power, lchan->ts->trx->nominal_power
 						 - lchan->ts->trx->max_power_red- lchan->bs_power*2);
-					PRINT_LCHAN_INFO(ms_power,
+					PRINT_LCHAN_INT_INFO(ms_power,
 						ms_pwr_dbm(lchan->ts->trx->bts->band,
 						lchan->ms_power));
 
@@ -251,31 +291,31 @@ static int get_net_lchan(struct ctrl_cmd *cmd, void *data)
 					mr = &lchan->meas_rep[idx];
 
 					if (mr->flags & MEAS_REP_F_MS_TO) {
-						PRINT_LCHAN_INFO(ms_timing_offset,
+						PRINT_LCHAN_INT_INFO(ms_timing_offset,
 								mr->ms_timing_offset);
 					}
 
 					if (mr->flags & MEAS_REP_F_MS_L1) {
-						PRINT_LCHAN_INFO(l1_ms_power, mr->ms_l1.pwr);
-						PRINT_LCHAN_INFO(timing_advance, mr->ms_l1.ta);
+						PRINT_LCHAN_INT_INFO(l1_ms_power, mr->ms_l1.pwr);
+						PRINT_LCHAN_INT_INFO(timing_advance, mr->ms_l1.ta);
 					}
 
 					mru_dl = &mr->dl;
 					mru_ul = &mr->ul;
 					if (mr->flags & MEAS_REP_F_DL_VALID) {
-						PRINT_LCHAN_INFO(rxl_full.dl,
+						PRINT_LCHAN_INT_INFO(rxl_full.dl,
 							rxlev2dbm(mru_dl->full.rx_lev));
-						PRINT_LCHAN_INFO(rxl_sub.dl,
+						PRINT_LCHAN_INT_INFO(rxl_sub.dl,
 							rxlev2dbm(mru_dl->sub.rx_lev));
-						PRINT_LCHAN_INFO(rxq_full.dl, mru_dl->full.rx_qual);
-						PRINT_LCHAN_INFO(rxq_sub.dl, mru_dl->sub.rx_qual);
+						PRINT_LCHAN_INT_INFO(rxq_full.dl, mru_dl->full.rx_qual);
+						PRINT_LCHAN_INT_INFO(rxq_sub.dl, mru_dl->sub.rx_qual);
 					}
-					PRINT_LCHAN_INFO(rxl_full.ul,
+					PRINT_LCHAN_INT_INFO(rxl_full.ul,
 						rxlev2dbm(mru_ul->full.rx_lev));
-					PRINT_LCHAN_INFO(rxl_sub.ul,
+					PRINT_LCHAN_INT_INFO(rxl_sub.ul,
 						rxlev2dbm(mru_ul->sub.rx_lev));
-					PRINT_LCHAN_INFO(rxq_full.ul, mru_ul->full.rx_qual);
-					PRINT_LCHAN_INFO(rxq_sub.ul, mru_ul->sub.rx_qual);
+					PRINT_LCHAN_INT_INFO(rxq_full.ul, mru_ul->full.rx_qual);
+					PRINT_LCHAN_INT_INFO(rxq_sub.ul, mru_ul->sub.rx_qual);
 				}
 			}
 		}
