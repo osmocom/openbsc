@@ -404,12 +404,11 @@ CTRL_HELPER_SET_STATUS(net_smsqueue);
 static int get_net_smsqueue(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net = cmd->node;
-	struct gsm_sms_queue *smsq = net->sms_queue;
 
 	if (!strcmp(cmd->variable,"smsqueue"))
 		cmd->reply = talloc_strdup(cmd, "\n");
 
-	sms_queue_pending_stat(smsq, cmd->reply);
+	sms_queue_pending_stat(net, cmd);
 
 	if (!cmd->reply) {
 		cmd->reply = "OOM";

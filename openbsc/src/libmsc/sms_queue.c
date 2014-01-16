@@ -36,6 +36,7 @@
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/signal.h>
+#include <openbsc/control_cmd.h>
 
 #include <osmocom/core/talloc.h>
 
@@ -455,12 +456,12 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 }
 
 /* Ctrl interface helper function */
-int sms_queue_pending_stat(struct gsm_sms_queue *smsq, char* reply)
+int sms_queue_pending_stat(struct gsm_network *net, struct ctrl_cmd *cmd)
 {
-	reply = talloc_asprintf_append(reply, "smsqueue.max_pending,%u\n",
-		smsq->max_pending);
-	reply = talloc_asprintf_append(reply, "smsqueue.pending,%u\n",
-		smsq->pending);
+	cmd->reply = talloc_asprintf_append(cmd->reply, "smsqueue.max_pending,%u\n",
+		net->sms_queue->max_pending);
+	cmd->reply = talloc_asprintf_append(cmd->reply, "smsqueue.pending,%u\n",
+		net->sms_queue->pending);
 
 	return 0;
 }
