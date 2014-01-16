@@ -187,6 +187,9 @@ static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
 
 	int i;
 
+	if (!strcmp(cmd->variable,"channels-load"))
+		cmd->reply = talloc_strdup(cmd, "\n");
+
 	for (i = 0; i < ARRAY_SIZE(pl_ptr->pchan); i++) {
 		const struct load_counter *lc = &pl_ptr->pchan[i];
 		unsigned int percent;
@@ -228,6 +231,9 @@ static int get_net_lchan(struct ctrl_cmd *cmd, void *data)
 	struct gsm_meas_rep_unidir *mru_dl;
 	struct gsm_meas_rep_unidir *mru_ul;
 	int bts_nr, trx_nr, ts_nr, lchan_nr, idx;
+
+	if (!strcmp(cmd->variable,"lchan"))
+		cmd->reply = talloc_strdup(cmd, "\n");
 
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
 
@@ -340,6 +346,9 @@ static int get_net_paging(struct ctrl_cmd *cmd, void *data)
 	struct gsm_bts *bts;
 	int bts_nr;
 
+	if (!strcmp(cmd->variable,"paging"))
+		cmd->reply = talloc_strdup(cmd, "\n");
+
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
 		bts = gsm_bts_num(net, bts_nr);
 		cmd->reply = talloc_asprintf_append(cmd->reply,
@@ -370,6 +379,9 @@ static int get_net_oml_link(struct ctrl_cmd *cmd, void *data)
 	struct gsm_bts *bts;
 	int bts_nr;
 
+	if (!strcmp(cmd->variable,"oml_link"))
+		cmd->reply = talloc_strdup(cmd, "\n");
+
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
 		bts = gsm_bts_num(net, bts_nr);
 		cmd->reply = talloc_asprintf_append(cmd->reply,
@@ -393,6 +405,9 @@ static int get_net_smsqueue(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net = cmd->node;
 	struct gsm_sms_queue *smsq = net->sms_queue;
+
+	if (!strcmp(cmd->variable,"smsqueue"))
+		cmd->reply = talloc_strdup(cmd, "\n");
 
 	sms_queue_pending_stat(smsq, cmd->reply);
 
