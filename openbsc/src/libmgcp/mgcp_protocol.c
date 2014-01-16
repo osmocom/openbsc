@@ -504,28 +504,10 @@ static int parse_conn_mode(const char *msg, struct mgcp_endpoint *endp)
 		ret = -1;
 	}
 
-	switch (endp->conn_mode) {
-	case MGCP_CONN_NONE:
-		endp->net_end.output_enabled = 0;
-		endp->bts_end.output_enabled = 0;
-		break;
-
-	case MGCP_CONN_RECV_ONLY:
-		endp->net_end.output_enabled = 0;
-		endp->bts_end.output_enabled = 1;
-		break;
-
-	case MGCP_CONN_SEND_ONLY:
-		endp->net_end.output_enabled = 1;
-		endp->bts_end.output_enabled = 0;
-		break;
-
-	default:
-		endp->net_end.output_enabled = 1;
-		endp->bts_end.output_enabled = 1;
-		break;
-	}
-
+	endp->net_end.output_enabled =
+		endp->conn_mode & MGCP_CONN_SEND_ONLY ? 1 : 0;
+	endp->bts_end.output_enabled =
+		endp->conn_mode & MGCP_CONN_RECV_ONLY ? 1 : 0;
 
 	return ret;
 }
@@ -877,7 +859,7 @@ mgcp_header_done:
 	if (p->cfg->change_cb)
 		p->cfg->change_cb(tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX);
 
-	if (endp->bts_end.output_enabled && tcfg->keepalive_interval != 0)
+	if (endp->conn_mode & MGCP_CONN_RECV_ONLY && tcfg->keepalive_interval != 0)
 		mgcp_send_dummy(endp);
 
 	create_transcoder(endp);
@@ -979,7 +961,8 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 	if (p->cfg->change_cb)
 		p->cfg->change_cb(endp->tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX);
 
-	if (endp->bts_end.output_enabled && endp->tcfg->keepalive_interval != 0)
+	if (endp->conn_mode & MGCP_CONN_RECV_ONLY &&
+	    endp->tcfg->keepalive_interval != 0)
 		mgcp_send_dummy(endp);
 
 	if (silent)

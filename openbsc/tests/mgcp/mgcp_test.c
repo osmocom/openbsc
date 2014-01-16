@@ -321,6 +321,19 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
 	return real_sendto(sockfd, buf, len, flags, dest_addr, addrlen);
 }
 
+#define CONN_UNMODIFIED (0x1000)
+
+static void test_values(void)
+{
+	/* Check that NONE disables all output */
+	OSMO_ASSERT((MGCP_CONN_NONE & MGCP_CONN_RECV_SEND) == 0)
+
+	/* Check that LOOPBACK enables all output */
+	OSMO_ASSERT((MGCP_CONN_LOOPBACK & MGCP_CONN_RECV_SEND) ==
+		    MGCP_CONN_RECV_SEND)
+}
+
+
 static void test_messages(void)
 {
 	struct mgcp_config *cfg;
@@ -341,9 +354,9 @@ static void test_messages(void)
 		endp = &cfg->trunk.endpoints[i];
 		endp->net_end.payload_type = PTYPE_NONE;
 		endp->net_end.packet_duration_ms = -1;
-		endp->bts_end.output_enabled = 0;
-		endp->net_end.output_enabled = 0;
-		endp->conn_mode = -1;
+
+		OSMO_ASSERT(endp->conn_mode == MGCP_CONN_NONE);
+		endp->conn_mode |= CONN_UNMODIFIED;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tests); i++) {
@@ -386,7 +399,7 @@ static void test_messages(void)
 			else
 				printf("Requested packetization period not set\n");
 
-			if (endp->conn_mode != -1)
+			if ((endp->conn_mode & CONN_UNMODIFIED) == 0)
 				printf("Connection mode: %d, "
 				       "BTS output %sabled, NET output %sabled\n",
 				       endp->conn_mode,
@@ -395,12 +408,17 @@ static void test_messages(void)
 			else
 				printf("Connection mode not set\n");
 
+			OSMO_ASSERT(endp->net_end.output_enabled ==
+				    (endp->conn_mode & MGCP_CONN_SEND_ONLY ? 1 : 0));
+			OSMO_ASSERT(endp->bts_end.output_enabled ==
+				    (endp->conn_mode & MGCP_CONN_RECV_ONLY ? 1 : 0));
+
 			endp->net_end.packet_duration_ms = -1;
-			endp->bts_end.output_enabled = 0;
-			endp->net_end.output_enabled = 0;
 			endp->local_options.pkt_period_min = 0;
 			endp->local_options.pkt_period_max = 0;
-			endp->conn_mode = -1;
+			endp->conn_mode = MGCP_CONN_NONE | CONN_UNMODIFIED;
+			endp->net_end.output_enabled = 0;
+			endp->bts_end.output_enabled = 0;
 		}
 
 
@@ -784,6 +802,7 @@ int main(int argc, char **argv)
 	osmo_init_logging(&log_info);
 
 	test_strline();
+	test_values();
 	test_messages();
 	test_retransmission();
 	test_packet_loss_calc();
