@@ -51,7 +51,7 @@ Connection mode: 2, BTS output disabled, NET output enabled
 Testing DLCX
 Detected packet duration: 20
 Requested packetization period not set
-Connection mode: 0, BTS output enabled, NET output enabled
+Connection mode: 0, BTS output disabled, NET output disabled
 Testing CRCX_ZYN
 Dummy packets: 1
 Packet duration not set
@@ -67,7 +67,7 @@ Testing RQNT2
 Testing DLCX
 Detected packet duration: 20
 Requested packetization period not set
-Connection mode: 0, BTS output enabled, NET output enabled
+Connection mode: 0, BTS output disabled, NET output disabled
 Testing CRCX
 Re-transmitting CRCX
 Testing RQNT1
