@@ -411,7 +411,7 @@ struct msgb *ctrl_cmd_make(struct ctrl_cmd *cmd)
 	if (!cmd->id)
 		return NULL;
 
-	msg = msgb_alloc_headroom(4096, 128, "ctrl command make");
+	msg = msgb_alloc_headroom(40960, 128, "ctrl command make");
 	if (!msg)
 		return NULL;
 
