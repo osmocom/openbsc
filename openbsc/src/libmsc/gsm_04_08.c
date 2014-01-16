@@ -1803,8 +1803,7 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&setup, 0, sizeof(struct gsm_mncc));
 	setup.callref = trans->callref;
-	if (trans->conn && trans->conn->lchan)
-		setup.lchan_type = trans->conn->lchan->type;
+	setup.lchan_type = trans->conn->lchan->type;
 	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* emergency setup is identified by msg_type */
 	if (msg_type == GSM48_MT_CC_EMERG_SETUP)
@@ -1961,8 +1960,7 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&call_conf, 0, sizeof(struct gsm_mncc));
 	call_conf.callref = trans->callref;
-	if (trans->conn && trans->conn->lchan)
-		call_conf.lchan_type = trans->conn->lchan->type;
+	call_conf.lchan_type = trans->conn->lchan->type;
 	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 #if 0
 	/* repeat */
