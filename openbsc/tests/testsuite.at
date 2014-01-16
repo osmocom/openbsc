@@ -57,12 +57,6 @@ cat $abs_srcdir/bsc-nat-trie/bsc_nat_trie_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/bsc-nat-trie/bsc_nat_trie_test], [], [expout], [ignore])
 AT_CLEANUP
 
-AT_SETUP([si])
-AT_KEYWORDS([si])
-cat $abs_srcdir/si/si_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/si/si_test], [], [expout], [ignore])
-AT_CLEANUP
-
 AT_SETUP([abis])
 AT_KEYWORDS([abis])
 cat $abs_srcdir/abis/abis_test.ok > expout

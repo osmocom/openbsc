@@ -645,6 +645,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	if (bts->excl_from_rf_lock)
 		vty_out(vty, "  rf-lock-exclude%s", VTY_NEWLINE);
 
+	vty_out(vty, "  %sforce-combined-si%s",
+		bts->force_combined_si ? "" : "no ", VTY_NEWLINE);
+
 	config_write_bts_model(vty, bts);
 }
 
@@ -2667,6 +2670,28 @@ DEFUN(cfg_bts_no_excl_rf_lock,
 	return CMD_SUCCESS;
 }
 
+#define FORCE_COMB_SI_STR "Force the generation of a single SI (no ter/bis)\n"
+
+DEFUN(cfg_bts_force_comb_si,
+      cfg_bts_force_comb_si_cmd,
+      "force-combined-si",
+      FORCE_COMB_SI_STR)
+{
+	struct gsm_bts *bts = vty->index;
+	bts->force_combined_si = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_force_comb_si,
+      cfg_bts_no_force_comb_si_cmd,
+      "no force-combined-si",
+      NO_STR FORCE_COMB_SI_STR)
+{
+	struct gsm_bts *bts = vty->index;
+	bts->force_combined_si = 0;
+	return CMD_SUCCESS;
+}
+
 static void _get_codec_from_arg(struct vty *vty, int argc, const char *argv[])
 {
 	struct gsm_bts *bts = vty->index;
@@ -3331,6 +3356,8 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_excl_rf_lock_cmd);
+	install_element(BTS_NODE, &cfg_bts_force_comb_si_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_force_comb_si_cmd);
 	install_element(BTS_NODE, &cfg_bts_codec0_cmd);
 	install_element(BTS_NODE, &cfg_bts_codec1_cmd);
 	install_element(BTS_NODE, &cfg_bts_codec2_cmd);

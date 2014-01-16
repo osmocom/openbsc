@@ -70,8 +70,11 @@ static int is_dcs_net(const struct gsm_bts *bts)
 static int use_arfcn(const struct gsm_bts *bts, const int bis, const int ter,
 			const int pgsm, const int arfcn)
 {
+	if (bts->force_combined_si)
+		return !bis && !ter;
 	if (!bis && !ter && band_compatible(bts, arfcn))
 		return 1;
+	/* Correct but somehow broken with either the nanoBTS or the iPhone5 */
 	if (bis && pgsm && band_compatible(bts, arfcn) && (arfcn < 1 || arfcn > 124))
 		return 1;
 	if (ter && !band_compatible(bts, arfcn))
@@ -194,7 +197,7 @@ static int enc_freq_lst_range(uint8_t *chan_list,
 	 * Manipulate the ARFCN list according to the rules in J4 depending
 	 * on the selected range.
 	 */
-	arfcns_used = range_enc_filter_arfcns(range, arfcns, arfcns_used,
+	arfcns_used = range_enc_filter_arfcns(arfcns, arfcns_used,
 				f0, &f0_included);
 
 	memset(w, 0, sizeof(w));

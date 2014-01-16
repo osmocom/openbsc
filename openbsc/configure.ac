@@ -166,7 +166,6 @@ AC_OUTPUT(
     tests/mgcp/Makefile
     tests/gprs/Makefile
     tests/gbproxy/Makefile
-    tests/si/Makefile
     tests/abis/Makefile
     tests/smpp/Makefile
     tests/trau/Makefile

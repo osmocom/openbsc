@@ -16,7 +16,7 @@ enum {
 int range_enc_determine_range(const int *arfcns, int size, int *f0_out);
 int range_enc_arfcns(const int rng, const int *arfcns, int sze, int *out, int idx);
 int range_enc_find_index(const int rng, const int *arfcns, int size);
-int range_enc_filter_arfcns(const int rng, int *arfcns, const int sze, const int f0, int *f0_included);
+int range_enc_filter_arfcns(int *arfcns, const int sze, const int f0, int *f0_included);
 
 int range_enc_range128(uint8_t *chan_list, int f0, int *w);
 int range_enc_range256(uint8_t *chan_list, int f0, int *w);
