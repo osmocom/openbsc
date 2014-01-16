@@ -25,6 +25,7 @@
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/write_queue.h>
+#include <osmocom/core/timer.h>
 
 #include "debug.h"
 
@@ -103,6 +104,8 @@ struct mgcp_port_range {
 	int last_port;
 };
 
+#define MGCP_KEEPALIVE_ONCE (-1)
+
 struct mgcp_trunk_config {
 	struct llist_head entry;
 
@@ -118,6 +121,7 @@ struct mgcp_trunk_config {
 	int audio_loop;
 
 	int omit_rtcp;
+	int keepalive_interval;
 
 	/* RTP patching */
 	int force_constant_ssrc; /* 0: don't, 1: once */
@@ -125,6 +129,9 @@ struct mgcp_trunk_config {
 
 	/* spec handling */
 	int force_realloc;
+
+	/* timer */
+	struct osmo_timer_list keepalive_timer;
 
 	unsigned int number_endpoints;
 	struct mgcp_endpoint *endpoints;
@@ -186,6 +193,8 @@ void mgcp_free_endp(struct mgcp_endpoint *endp);
 int mgcp_reset_transcoder(struct mgcp_config *cfg);
 void mgcp_format_stats(struct mgcp_endpoint *endp, char *stats, size_t size);
 int mgcp_parse_stats(struct msgb *msg, uint32_t *ps, uint32_t *os, uint32_t *pr, uint32_t *_or, int *loss, uint32_t *jitter);
+
+void mgcp_trunk_set_keepalive(struct mgcp_trunk_config *tcfg, int interval);
 
 /*
  * format helper functions

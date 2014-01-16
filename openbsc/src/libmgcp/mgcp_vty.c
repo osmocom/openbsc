@@ -32,6 +32,7 @@
 
 #define RTCP_OMIT_STR "Drop RTCP packets in both directions\n"
 #define RTP_PATCH_STR "Modify RTP packet header in both directions\n"
+#define RTP_KEEPALIVE_STR "Send dummy UDP packet to net RTP destination\n"
 
 static struct mgcp_config *g_cfg = NULL;
 
@@ -85,6 +86,14 @@ static int config_write_mgcp(struct vty *vty)
 			g_cfg->net_ports.range_start, g_cfg->net_ports.range_end, VTY_NEWLINE);
 
 	vty_out(vty, "  rtp ip-dscp %d%s", g_cfg->endp_dscp, VTY_NEWLINE);
+	if (g_cfg->trunk.keepalive_interval == MGCP_KEEPALIVE_ONCE)
+		vty_out(vty, "  rtp keep-alive once%s", VTY_NEWLINE);
+	else if (g_cfg->trunk.keepalive_interval)
+		vty_out(vty, "  rtp keep-alive %d%s",
+			g_cfg->trunk.keepalive_interval, VTY_NEWLINE);
+	else
+		vty_out(vty, "  no rtp keep-alive%s", VTY_NEWLINE);
+
 	if (g_cfg->trunk.omit_rtcp)
 		vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
 	else
@@ -150,7 +159,7 @@ static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg, int verbo
 			endp->trans_net.packets, endp->trans_bts.packets,
 			VTY_NEWLINE);
 
-		if (verbose)
+		if (verbose) {
 			vty_out(vty,
 				"  Timestamp Errs: BTS %d->%d, Net %d->%d%s",
 				endp->bts_state.in_stream.err_ts_counter,
@@ -158,6 +167,12 @@ static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg, int verbo
 				endp->net_state.in_stream.err_ts_counter,
 				endp->net_state.out_stream.err_ts_counter,
 				VTY_NEWLINE);
+			vty_out(vty,
+				"  Dropped Packets: Net->BTS %d, BTS->Net %d%s",
+				endp->bts_end.dropped_packets,
+				endp->net_end.dropped_packets,
+				VTY_NEWLINE);
+		}
 	}
 }
 
@@ -505,6 +520,39 @@ DEFUN(cfg_mgcp_no_patch_rtp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_rtp_keepalive,
+      cfg_mgcp_rtp_keepalive_cmd,
+      "rtp keep-alive <1-120>",
+      RTP_STR RTP_KEEPALIVE_STR
+      "Keep alive interval in secs\n"
+      )
+{
+	mgcp_trunk_set_keepalive(&g_cfg->trunk, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_rtp_keepalive_once,
+      cfg_mgcp_rtp_keepalive_once_cmd,
+      "rtp keep-alive once",
+      RTP_STR RTP_KEEPALIVE_STR
+      "Send dummy packet only once after CRCX/MDCX\n"
+      )
+{
+	mgcp_trunk_set_keepalive(&g_cfg->trunk, MGCP_KEEPALIVE_ONCE);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_no_rtp_keepalive,
+      cfg_mgcp_no_rtp_keepalive_cmd,
+      "no rtp keep-alive",
+      NO_STR RTP_STR RTP_KEEPALIVE_STR
+      )
+{
+	mgcp_trunk_set_keepalive(&g_cfg->trunk, 0);
+	return CMD_SUCCESS;
+}
+
+
 
 #define CALL_AGENT_STR "Callagent information\n"
 DEFUN(cfg_mgcp_agent_addr,
@@ -592,6 +640,15 @@ static int config_write_trunk(struct vty *vty)
 			trunk->audio_name, VTY_NEWLINE);
 		vty_out(vty, "  %ssdp audio-payload send-ptime%s",
 			trunk->audio_send_ptime ? "" : "no ", VTY_NEWLINE);
+
+		if (trunk->keepalive_interval == MGCP_KEEPALIVE_ONCE)
+			vty_out(vty, "  rtp keep-alive once%s", VTY_NEWLINE);
+		else if (trunk->keepalive_interval)
+			vty_out(vty, "  rtp keep-alive %d%s",
+				trunk->keepalive_interval, VTY_NEWLINE);
+		else
+			vty_out(vty, "  no rtp keep-alive%s", VTY_NEWLINE);
+
 		vty_out(vty, "  loop %d%s",
 			trunk->audio_loop, VTY_NEWLINE);
 		if (trunk->omit_rtcp)
@@ -774,6 +831,40 @@ DEFUN(cfg_trunk_no_patch_rtp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trunk_rtp_keepalive,
+      cfg_trunk_rtp_keepalive_cmd,
+      "rtp keep-alive <1-120>",
+      RTP_STR RTP_KEEPALIVE_STR
+      "Keep-alive interval in secs\n"
+      )
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	mgcp_trunk_set_keepalive(trunk, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_rtp_keepalive_once,
+      cfg_trunk_rtp_keepalive_once_cmd,
+      "rtp keep-alive once",
+      RTP_STR RTP_KEEPALIVE_STR
+      "Send dummy packet only once after CRCX/MDCX\n"
+      )
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	mgcp_trunk_set_keepalive(trunk, MGCP_KEEPALIVE_ONCE);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_no_rtp_keepalive,
+      cfg_trunk_no_rtp_keepalive_cmd,
+      "no rtp keep-alive",
+      NO_STR RTP_STR RTP_KEEPALIVE_STR
+      )
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	mgcp_trunk_set_keepalive(trunk, 0);
+	return CMD_SUCCESS;
+}
 
 DEFUN(loop_endp,
       loop_endp_cmd,
@@ -993,6 +1084,9 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_transcoder_base_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_dscp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_tos_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_keepalive_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_keepalive_once_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_rtp_keepalive_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd_old);
 	install_element(MGCP_NODE, &cfg_mgcp_transcoder_cmd);
@@ -1018,6 +1112,9 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
 	install_node(&trunk_node, config_write_trunk);
 	vty_install_default(TRUNK_NODE);
+	install_element(TRUNK_NODE, &cfg_trunk_rtp_keepalive_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_rtp_keepalive_once_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_no_rtp_keepalive_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_payload_number_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_payload_name_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_payload_number_cmd_old);

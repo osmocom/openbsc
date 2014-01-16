@@ -488,21 +488,44 @@ static struct msgb *handle_audit_endpoint(struct mgcp_parse_data *p)
 		return create_ok_response(p->endp, 200, "AUEP", p->trans);
 }
 
-static int parse_conn_mode(const char *msg, int *conn_mode)
+static int parse_conn_mode(const char *msg, struct mgcp_endpoint *endp)
 {
 	int ret = 0;
 	if (strcmp(msg, "recvonly") == 0)
-		*conn_mode = MGCP_CONN_RECV_ONLY;
+		endp->conn_mode = MGCP_CONN_RECV_ONLY;
 	else if (strcmp(msg, "sendrecv") == 0)
-		*conn_mode = MGCP_CONN_RECV_SEND;
+		endp->conn_mode = MGCP_CONN_RECV_SEND;
 	else if (strcmp(msg, "sendonly") == 0)
-		*conn_mode = MGCP_CONN_SEND_ONLY;
+		endp->conn_mode = MGCP_CONN_SEND_ONLY;
 	else if (strcmp(msg, "loopback") == 0)
-		*conn_mode = MGCP_CONN_LOOPBACK;
+		endp->conn_mode = MGCP_CONN_LOOPBACK;
 	else {
 		LOGP(DMGCP, LOGL_ERROR, "Unknown connection mode: '%s'\n", msg);
 		ret = -1;
 	}
+
+	switch (endp->conn_mode) {
+	case MGCP_CONN_NONE:
+		endp->net_end.output_enabled = 0;
+		endp->bts_end.output_enabled = 0;
+		break;
+
+	case MGCP_CONN_RECV_ONLY:
+		endp->net_end.output_enabled = 0;
+		endp->bts_end.output_enabled = 1;
+		break;
+
+	case MGCP_CONN_SEND_ONLY:
+		endp->net_end.output_enabled = 1;
+		endp->bts_end.output_enabled = 0;
+		break;
+
+	default:
+		endp->net_end.output_enabled = 1;
+		endp->bts_end.output_enabled = 1;
+		break;
+	}
+
 
 	return ret;
 }
@@ -794,7 +817,7 @@ mgcp_header_done:
 	set_local_cx_options(endp->tcfg->endpoints, &endp->local_options,
 			     local_options);
 
-	if (parse_conn_mode(mode, &endp->conn_mode) != 0) {
+	if (parse_conn_mode(mode, endp) != 0) {
 		    error_code = 517;
 		    goto error2;
 	}
@@ -854,6 +877,9 @@ mgcp_header_done:
 	if (p->cfg->change_cb)
 		p->cfg->change_cb(tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX);
 
+	if (endp->bts_end.output_enabled && tcfg->keepalive_interval != 0)
+		mgcp_send_dummy(endp);
+
 	create_transcoder(endp);
 	return create_response_with_sdp(endp, "CRCX", p->trans);
 error2:
@@ -895,7 +921,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			local_options = (const char *) line + 3;
 			break;
 		case 'M':
-			if (parse_conn_mode(line + 3, &endp->conn_mode) != 0) {
+			if (parse_conn_mode(line + 3, endp) != 0) {
 			    error_code = 517;
 			    goto error3;
 			}
@@ -952,6 +978,10 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 	if (p->cfg->change_cb)
 		p->cfg->change_cb(endp->tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX);
+
+	if (endp->bts_end.output_enabled && endp->tcfg->keepalive_interval != 0)
+		mgcp_send_dummy(endp);
+
 	if (silent)
 		goto out_silent;
 
@@ -1104,6 +1134,40 @@ static struct msgb *handle_noti_req(struct mgcp_parse_data *p)
 		create_err_response(p->endp, res, "RQNT", p->trans);
 }
 
+static void mgcp_keepalive_timer_cb(void *_tcfg)
+{
+	struct mgcp_trunk_config *tcfg = _tcfg;
+	int i;
+	LOGP(DMGCP, LOGL_DEBUG, "Triggered trunk %d keepalive timer.\n",
+	     tcfg->trunk_nr);
+
+	if (tcfg->keepalive_interval <= 0)
+		return;
+
+	for (i = 1; i < tcfg->number_endpoints; ++i) {
+		struct mgcp_endpoint *endp = &tcfg->endpoints[i];
+		if (endp->conn_mode == MGCP_CONN_RECV_ONLY)
+			mgcp_send_dummy(endp);
+	}
+
+	LOGP(DMGCP, LOGL_DEBUG, "Rescheduling trunk %d keepalive timer.\n",
+	     tcfg->trunk_nr);
+	osmo_timer_schedule(&tcfg->keepalive_timer, tcfg->keepalive_interval, 0);
+}
+
+void mgcp_trunk_set_keepalive(struct mgcp_trunk_config *tcfg, int interval)
+{
+	tcfg->keepalive_interval = interval;
+	tcfg->keepalive_timer.data = tcfg;
+	tcfg->keepalive_timer.cb = mgcp_keepalive_timer_cb;
+
+	if (interval <= 0)
+		osmo_timer_del(&tcfg->keepalive_timer);
+	else
+		osmo_timer_schedule(&tcfg->keepalive_timer,
+				    tcfg->keepalive_interval, 0);
+}
+
 struct mgcp_config *mgcp_config_alloc(void)
 {
 	struct mgcp_config *cfg;
@@ -1130,6 +1194,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->trunk.audio_payload = 126;
 	cfg->trunk.audio_send_ptime = 1;
 	cfg->trunk.omit_rtcp = 0;
+	mgcp_trunk_set_keepalive(&cfg->trunk, MGCP_KEEPALIVE_ONCE);
 
 	INIT_LLIST_HEAD(&cfg->trunks);
 
@@ -1154,6 +1219,7 @@ struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int nr)
 	trunk->audio_send_ptime = 1;
 	trunk->number_endpoints = 33;
 	trunk->omit_rtcp = 0;
+	mgcp_trunk_set_keepalive(trunk, MGCP_KEEPALIVE_ONCE);
 	llist_add_tail(&trunk->entry, &cfg->trunks);
 	return trunk;
 }
@@ -1178,6 +1244,7 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 
 	end->packets = 0;
 	end->octets = 0;
+	end->dropped_packets = 0;
 	memset(&end->addr, 0, sizeof(end->addr));
 	end->rtp_port = end->rtcp_port = 0;
 	end->payload_type = -1;
@@ -1191,6 +1258,7 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	end->frames_per_packet  = 0; /* unknown */
 	end->packet_duration_ms = DEFAULT_RTP_AUDIO_PACKET_DURATION_MS;
 	end->rate               = DEFAULT_RTP_AUDIO_DEFAULT_RATE;
+	end->output_enabled	= 1;
 }
 
 static void mgcp_rtp_end_init(struct mgcp_rtp_end *end)

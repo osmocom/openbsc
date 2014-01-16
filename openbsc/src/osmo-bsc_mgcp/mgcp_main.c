@@ -137,15 +137,6 @@ static int mgcp_rsip_cb(struct mgcp_trunk_config *tcfg)
 	return 0;
 }
 
-static int mgcp_change_cb(struct mgcp_trunk_config *cfg, int endpoint, int state)
-{
-	if (state != MGCP_ENDP_MDCX)
-		return 0;
-
-	mgcp_send_dummy(&cfg->endpoints[endpoint]);
-	return 0;
-}
-
 static int read_call_agent(struct osmo_fd *fd, unsigned int what)
 {
 	struct sockaddr_in addr;
@@ -233,7 +224,6 @@ int main(int argc, char **argv)
 
 	/* set some callbacks */
 	cfg->reset_cb = mgcp_rsip_cb;
-	cfg->change_cb = mgcp_change_cb;
 
         /* we need to bind a socket */
         if (rc == 0) {
