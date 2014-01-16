@@ -21,6 +21,7 @@ Detected packet duration: 40
 Requested packetetization period: 20-20
 Connection mode: 1, BTS output enabled, NET output disabled
 Testing MDCX3
+Dummy packets: 1
 Packet duration not set
 Requested packetization period not set
 Connection mode not set
