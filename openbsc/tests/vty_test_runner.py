@@ -173,6 +173,24 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assertEquals(res.find('periodic location update 60'), -1)
         self.assert_(res.find('no periodic location update') > 0)
 
+    def testEnableDisableSiHacks(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("network")
+        self.vty.command("bts 0")
+
+        # Enable periodic lu..
+        self.vty.verify("force-combined-si", [''])
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('  force-combined-si') > 0)
+        self.assertEquals(res.find('no force-combined-si'), -1)
+
+        # Now disable it..
+        self.vty.verify("no force-combined-si", [''])
+        res = self.vty.command("write terminal")
+        self.assertEquals(res.find('  force-combined-si'), -1)
+        self.assert_(res.find('no force-combined-si') > 0)
+
     def testRachAccessControlClass(self):
         self.vty.enable()
         self.vty.command("configure terminal")
