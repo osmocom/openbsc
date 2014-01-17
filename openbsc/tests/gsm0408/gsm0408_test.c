@@ -416,15 +416,15 @@ static void test_si_range_helpers()
 	memset(&ws[0], 0x23, sizeof(ws));
 
 	i = range_enc_find_index(1023, freqs1, ARRAY_SIZE(freqs1));
-	printf("Element is: %d => freqs[i] = %d\n", i, freqs1[i]);
+	printf("Element is: %d => freqs[i] = %d\n", i, i >= 0 ? freqs1[i] : -1);
 	VERIFY(i, ==, 2);
 
 	i = range_enc_find_index(511, freqs2, ARRAY_SIZE(freqs2));
-	printf("Element is: %d => freqs[i] = %d\n", i, freqs2[i]);
+	printf("Element is: %d => freqs[i] = %d\n", i,  i >= 0 ? freqs2[i] : -1);
 	VERIFY(i, ==, 2);
 
 	i = range_enc_find_index(511, freqs3, ARRAY_SIZE(freqs3));
-	printf("Element is: %d => freqs[i] = %d\n", i, freqs3[i]);
+	printf("Element is: %d => freqs[i] = %d\n", i,  i >= 0 ? freqs3[i] : -1);
 	VERIFY(i, ==, 0);
 
 	i = range_enc_arfcns(1023, freqs1, ARRAY_SIZE(freqs1), ws, 0);

@@ -134,11 +134,24 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 	rc = mgcp_udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
 			   endp->net_end.rtp_port, buf, 1);
 
-	if (rc == -1 || endp->tcfg->omit_rtcp)
+	if (rc == -1)
+		goto failed;
+
+	if (endp->tcfg->omit_rtcp)
 		return rc;
 
-	return mgcp_udp_send(endp->net_end.rtcp.fd, &endp->net_end.addr,
-			     endp->net_end.rtcp_port, buf, 1);
+	rc = mgcp_udp_send(endp->net_end.rtcp.fd, &endp->net_end.addr,
+			   endp->net_end.rtcp_port, buf, 1);
+
+	if (rc >= 0)
+		return rc;
+
+failed:
+	LOGP(DMGCP, LOGL_ERROR,
+	     "Failed to send dummy packet: %s on: 0x%x to %s\n",
+	     strerror(errno), ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr));
+
+	return -1;
 }
 
 static int32_t compute_timestamp_aligment_error(struct mgcp_rtp_stream_state *sstate,
