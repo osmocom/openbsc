@@ -183,6 +183,15 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 			return -EINVAL;
 		}
 		break;
+	case RTP_PT_GSM_HALF:
+		msg_type = GSM_TCHH_FRAME;
+		if (payload_len != RTP_LEN_GSM_HALF) {
+			DEBUGPC(DLMUX, "received RTP half rate frame with "
+				"payload length != %d (len = %d)\n",
+				RTP_LEN_GSM_HALF, payload_len);
+			return -EINVAL;
+		}
+		break;
 	default:
 		DEBUGPC(DLMUX, "received RTP frame with unknown payload "
 			"type %d\n", rtph->payload_type);
@@ -248,6 +257,11 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	case GSM_TCHF_FRAME_EFR:
 		payload_type = RTP_PT_GSM_EFR;
 		payload_len = RTP_LEN_GSM_EFR;
+		duration = RTP_GSM_DURATION;
+		break;
+	case GSM_TCHH_FRAME:
+		payload_type = RTP_PT_GSM_HALF;
+		payload_len = RTP_LEN_GSM_HALF;
 		duration = RTP_GSM_DURATION;
 		break;
 	default:
