@@ -762,6 +762,23 @@ static int smpp_pdu_rx(struct osmo_esme *esme, struct msgb *msg __uses)
 	return rc;
 }
 
+/* This macro should be called after a call to read() in the read_cb of an
+ * osmo_fd to properly check for errors.
+ * rc is the return value of read, err_label is the label to jump to in case of
+ * an error. The code there should handle closing the connection.
+ * FIXME: This code should go in libosmocore utils.h so it can be used by other
+ * projects as well.
+ * */
+#define OSMO_FD_CHECK_READ(rc, err_label) \
+	if (rc < 0) { \
+		/* EINTR is a non-fatal error, just try again */ \
+		if (errno == EINTR) \
+			return 0; \
+		goto err_label; \
+	} else if (rc == 0) { \
+		goto err_label; \
+	}
+
 /* !\brief call-back when per-ESME TCP socket has some data to be read */
 static int esme_link_read_cb(struct osmo_fd *ofd)
 {
@@ -777,13 +794,13 @@ static int esme_link_read_cb(struct osmo_fd *ofd)
 	case READ_ST_IN_LEN:
 		rdlen = sizeof(uint32_t) - esme->read_idx;
 		rc = read(ofd->fd, lenptr + esme->read_idx, rdlen);
-		if (rc < 0) {
-			LOGP(DSMPP, LOGL_ERROR, "[%s] read returned %d\n",
-			     esme->system_id, rc);
-		} else if (rc == 0) {
-			goto dead_socket;
-		} else
-			esme->read_idx += rc;
+		if (rc < 0)
+			LOGP(DSMPP, LOGL_ERROR, "[%s] read returned %d (%s)\n",
+					esme->system_id, rc, strerror(errno));
+		OSMO_FD_CHECK_READ(rc, dead_socket);
+
+		esme->read_idx += rc;
+
 		if (esme->read_idx >= sizeof(uint32_t)) {
 			esme->read_len = ntohl(len);
 			msg = msgb_alloc(esme->read_len, "SMPP Rx");
@@ -800,15 +817,13 @@ static int esme_link_read_cb(struct osmo_fd *ofd)
 		msg = esme->read_msg;
 		rdlen = esme->read_len - esme->read_idx;
 		rc = read(ofd->fd, msg->tail, OSMO_MIN(rdlen, msgb_tailroom(msg)));
-		if (rc < 0) {
-			LOGP(DSMPP, LOGL_ERROR, "[%s] read returned %d\n",
-				esme->system_id, rc);
-		} else if (rc == 0) {
-			goto dead_socket;
-		} else {
-			esme->read_idx += rc;
-			msgb_put(msg, rc);
-		}
+		if (rc < 0)
+			LOGP(DSMPP, LOGL_ERROR, "[%s] read returned %d (%s)\n",
+					esme->system_id, rc, strerror(errno));
+		OSMO_FD_CHECK_READ(rc, dead_socket);
+
+		esme->read_idx += rc;
+		msgb_put(msg, rc);
 
 		if (esme->read_idx >= esme->read_len) {
 			rc = smpp_pdu_rx(esme, esme->read_msg);
