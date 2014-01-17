@@ -803,6 +803,12 @@ static int esme_link_read_cb(struct osmo_fd *ofd)
 
 		if (esme->read_idx >= sizeof(uint32_t)) {
 			esme->read_len = ntohl(len);
+			if (esme->read_len < 8) {
+				LOGP(DSMPP, LOGL_ERROR, "[%s] read length too small %u\n",
+						esme->system_id, esme->read_len);
+				goto dead_socket;
+			}
+
 			msg = msgb_alloc(esme->read_len, "SMPP Rx");
 			if (!msg)
 				return -ENOMEM;
