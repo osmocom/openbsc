@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <limits.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -787,15 +788,14 @@ static int esme_link_read_cb(struct osmo_fd *ofd)
 	uint8_t *lenptr = (uint8_t *) &len;
 	uint8_t *cur;
 	struct msgb *msg;
-	int rdlen;
-	int rc;
+	ssize_t rdlen, rc;
 
 	switch (esme->read_state) {
 	case READ_ST_IN_LEN:
 		rdlen = sizeof(uint32_t) - esme->read_idx;
 		rc = read(ofd->fd, lenptr + esme->read_idx, rdlen);
 		if (rc < 0)
-			LOGP(DSMPP, LOGL_ERROR, "[%s] read returned %d (%s)\n",
+			LOGP(DSMPP, LOGL_ERROR, "[%s] read returned %zd (%s)\n",
 					esme->system_id, rc, strerror(errno));
 		OSMO_FD_CHECK_READ(rc, dead_socket);
 
@@ -803,8 +803,8 @@ static int esme_link_read_cb(struct osmo_fd *ofd)
 
 		if (esme->read_idx >= sizeof(uint32_t)) {
 			esme->read_len = ntohl(len);
-			if (esme->read_len < 8) {
-				LOGP(DSMPP, LOGL_ERROR, "[%s] read length too small %u\n",
+			if (esme->read_len < 8 || esme->read_len > UINT16_MAX) {
+				LOGP(DSMPP, LOGL_ERROR, "[%s] length invalid %u\n",
 						esme->system_id, esme->read_len);
 				goto dead_socket;
 			}
@@ -824,7 +824,7 @@ static int esme_link_read_cb(struct osmo_fd *ofd)
 		rdlen = esme->read_len - esme->read_idx;
 		rc = read(ofd->fd, msg->tail, OSMO_MIN(rdlen, msgb_tailroom(msg)));
 		if (rc < 0)
-			LOGP(DSMPP, LOGL_ERROR, "[%s] read returned %d (%s)\n",
+			LOGP(DSMPP, LOGL_ERROR, "[%s] read returned %zd (%s)\n",
 					esme->system_id, rc, strerror(errno));
 		OSMO_FD_CHECK_READ(rc, dead_socket);
 
