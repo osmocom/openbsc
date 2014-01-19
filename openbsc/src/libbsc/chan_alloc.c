@@ -197,8 +197,8 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 		memset(lchan->sapis, 0, ARRAY_SIZE(lchan->sapis));
 
 		/* clear multi rate config */
-		memset(&lchan->mr_conf, 0, sizeof(lchan->mr_conf));
-
+		memset(&lchan->mr_ms_lv, 0, sizeof(lchan->mr_ms_lv));
+		memset(&lchan->mr_bts_lv, 0, sizeof(lchan->mr_bts_lv));
 		lchan->broken_reason = "";
 	} else {
 		struct challoc_signal_data sig;

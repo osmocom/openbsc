@@ -40,7 +40,7 @@ struct bsc_api {
 	 * not implemented AMR5.9 will be used.
 	 */
 	void (*mr_config)(struct gsm_subscriber_connection *conn,
-			  struct gsm48_multi_rate_conf *conf);
+			  uint8_t *mr_ms_lv, uint8_t *mr_bts_lv);
 };
 
 int bsc_api_init(struct gsm_network *network, struct bsc_api *api);
