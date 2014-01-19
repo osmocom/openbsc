@@ -510,6 +510,7 @@ int bts_model_nanobts_init(void)
 
 	gsm_btsmodel_set_feature(&bts_model_nanobts, BTS_FEAT_GPRS);
 	gsm_btsmodel_set_feature(&bts_model_nanobts, BTS_FEAT_EGPRS);
+	gsm_btsmodel_set_feature(&bts_model_nanobts, BTS_FEAT_MULTI_TSC);
 
 	return gsm_bts_model_register(&bts_model_nanobts);
 }

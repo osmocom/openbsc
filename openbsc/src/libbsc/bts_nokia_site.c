@@ -1724,6 +1724,7 @@ static int bts_model_nokia_site_start(struct gsm_network *net)
 
 	gsm_btsmodel_set_feature(&model_nokia_site, BTS_FEAT_HOPPING);
 	gsm_btsmodel_set_feature(&model_nokia_site, BTS_FEAT_HSCSD);
+	gsm_btsmodel_set_feature(&model_nokia_site, BTS_FEAT_MULTI_TSC);
 
 	osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
 	osmo_signal_register_handler(SS_L_GLOBAL, gbl_sig_cb, NULL);

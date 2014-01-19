@@ -436,6 +436,7 @@ enum gsm_bts_features {
 	BTS_FEAT_EGPRS,
 	BTS_FEAT_ECSD,
 	BTS_FEAT_HOPPING,
+	BTS_FEAT_MULTI_TSC,
 };
 
 /*

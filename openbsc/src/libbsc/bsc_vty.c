@@ -491,8 +491,10 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  cell_identity %u%s", bts->cell_identity, VTY_NEWLINE);
 	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
 		VTY_NEWLINE);
-	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
+	if (bts->tsc != (bts->bsic & 7))
+		vty_out(vty, "  training_sequence_code %u%s", bts->tsc,
+			VTY_NEWLINE);
 	if (bts->tz.override != 0) {
 		if (bts->tz.dst)
 			vty_out(vty, "  timezone %d %d %d%s",
@@ -1634,6 +1636,13 @@ DEFUN(cfg_bts_tsc,
 	struct gsm_bts *bts = vty->index;
 	int tsc = atoi(argv[0]);
 
+	if (!gsm_bts_has_feature(bts, BTS_FEAT_MULTI_TSC)) {
+		vty_out(vty, "%% This BTS does not support a TSC != BCC, "
+			"falling back to BCC%s", VTY_NEWLINE);
+		bts->tsc = bts->bsic & 7;
+		return CMD_WARNING;
+	}
+
 	bts->tsc = tsc;
 
 	return CMD_SUCCESS;
@@ -1654,6 +1663,11 @@ DEFUN(cfg_bts_bsic,
 		return CMD_WARNING;
 	}
 	bts->bsic = bsic;
+
+	/* automatically re-configuer the TSC if we change the BCC
+	 * which is the lower 3 bits of the BSIC */
+	if (!gsm_bts_has_feature(bts, BTS_FEAT_MULTI_TSC))
+		bts->tsc = bts->bsic & 7;
 
 	return CMD_SUCCESS;
 }
@@ -2976,6 +2990,13 @@ DEFUN(cfg_ts_tsc,
       "Training Sequence Code of the Timeslot\n" "TSC\n")
 {
 	struct gsm_bts_trx_ts *ts = vty->index;
+
+	if (!gsm_bts_has_feature(ts->trx->bts, BTS_FEAT_MULTI_TSC)) {
+		vty_out(vty, "%% This BTS does not support a TSC != BCC, "
+			"falling back to BCC%s", VTY_NEWLINE);
+		ts->tsc = -1;
+		return CMD_WARNING;
+	}
 
 	ts->tsc = atoi(argv[0]);
 
