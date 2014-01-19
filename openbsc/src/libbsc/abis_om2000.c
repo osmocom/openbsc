@@ -1203,7 +1203,7 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 		msgb_tv_put(msg, OM2K_DEI_NY1, 35);
 		msgb_tv_put(msg, OM2K_DEI_BA_PA_MFRMS, 0x06);
 		msgb_tv_put(msg, OM2K_DEI_CBCH_INDICATOR, 0);
-		msgb_tv_put(msg, OM2K_DEI_TSC, ts->trx->bts->tsc);
+		msgb_tv_put(msg, OM2K_DEI_TSC, gsm_ts_tsc(ts));
 		msgb_tv_put(msg, OM2K_DEI_BS_AG_BKS_RES, 0x01);
 		msgb_tv_put(msg, OM2K_DEI_ICM_INDICATOR, 0);
 		msgb_tv_put(msg, OM2K_DEI_DRX_DEV_MAX, 0x05);
@@ -1216,7 +1216,7 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 		msgb_tv_put(msg, OM2K_DEI_T3105, ts->trx->bts->network->T3105 / 10);
 		msgb_tv_put(msg, OM2K_DEI_NY1, 35);
 		msgb_tv_put(msg, OM2K_DEI_CBCH_INDICATOR, 0);
-		msgb_tv_put(msg, OM2K_DEI_TSC, ts->trx->bts->tsc);
+		msgb_tv_put(msg, OM2K_DEI_TSC, gsm_ts_tsc(ts));
 		/* Disable RF RESOURCE INDICATION on idle channels */
 		msgb_tv_put(msg, OM2K_DEI_ICM_INDICATOR, 0);
 		msgb_tv_fixed_put(msg, OM2K_DEI_ICM_BOUND_PARAMS,
@@ -1225,7 +1225,7 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 	default:
 		msgb_tv_put(msg, OM2K_DEI_T3105, ts->trx->bts->network->T3105 / 10);
 		msgb_tv_put(msg, OM2K_DEI_NY1, 35);
-		msgb_tv_put(msg, OM2K_DEI_TSC, ts->trx->bts->tsc);
+		msgb_tv_put(msg, OM2K_DEI_TSC, gsm_ts_tsc(ts));
 		/* Disable RF RESOURCE INDICATION on idle channels */
 		msgb_tv_put(msg, OM2K_DEI_ICM_INDICATOR, 0);
 		msgb_tv_fixed_put(msg, OM2K_DEI_ICM_BOUND_PARAMS,
