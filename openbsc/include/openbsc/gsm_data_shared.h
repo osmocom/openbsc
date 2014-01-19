@@ -769,6 +769,13 @@ uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
 int gsm_parse_reg(void *ctx, regex_t *reg, char **str,
 		int argc, const char **argv) __attribute__ ((warn_unused_result));
 
+static inline uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts)
+{
+	if (ts->tsc != -1)
+		return ts->tsc;
+	else
+		return ts->trx->bts->tsc;
+}
 
 
 #endif

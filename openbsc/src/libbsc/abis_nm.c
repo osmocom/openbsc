@@ -1678,10 +1678,7 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 			}
 		}
 	}
-	if (ts->tsc == -1)
-		msgb_tv_put(msg, NM_ATT_TSC, bts->tsc);	/* training sequence */
-	else
-		msgb_tv_put(msg, NM_ATT_TSC, ts->tsc);	/* training sequence */
+	msgb_tv_put(msg, NM_ATT_TSC, gsm_ts_tsc(ts));	/* training sequence */
 	if (bts->type == GSM_BTS_TYPE_BS11)
 		msgb_tlv_put(msg, 0x59, 1, &zero);
 
