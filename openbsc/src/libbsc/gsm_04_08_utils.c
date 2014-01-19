@@ -341,15 +341,21 @@ void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 			   const struct gsm_lchan *lchan)
 {
 	uint16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
+	uint8_t tsc;
+
+	if (lchan->ts->tsc == -1)
+		tsc = lchan->ts->trx->bts->tsc;
+	else
+		tsc = lchan->ts->tsc;
 
 	cd->chan_nr = gsm_lchan2chan_nr(lchan);
 	if (!lchan->ts->hopping.enabled) {
-		cd->h0.tsc = lchan->ts->trx->bts->tsc;
+		cd->h0.tsc = tsc;
 		cd->h0.h = 0;
 		cd->h0.arfcn_high = arfcn >> 8;
 		cd->h0.arfcn_low = arfcn & 0xff;
 	} else {
-		cd->h1.tsc = lchan->ts->trx->bts->tsc;
+		cd->h1.tsc = tsc;
 		cd->h1.h = 1;
 		cd->h1.maio_high = lchan->ts->hopping.maio >> 2;
 		cd->h1.maio_low = lchan->ts->hopping.maio & 0x03;
