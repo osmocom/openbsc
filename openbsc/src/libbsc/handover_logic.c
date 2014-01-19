@@ -134,7 +134,8 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	new_lchan->bs_power = old_lchan->bs_power;
 	new_lchan->rsl_cmode = old_lchan->rsl_cmode;
 	new_lchan->tch_mode = old_lchan->tch_mode;
-	new_lchan->mr_conf = old_lchan->mr_conf;
+	memcpy(&new_lchan->mr_ms_lv, &old_lchan->mr_ms_lv, ARRAY_SIZE(new_lchan->mr_ms_lv));
+	memcpy(&new_lchan->mr_bts_lv, &old_lchan->mr_bts_lv, ARRAY_SIZE(new_lchan->mr_bts_lv));
 
 	new_lchan->conn = old_lchan->conn;
 	new_lchan->conn->ho_lchan = new_lchan;

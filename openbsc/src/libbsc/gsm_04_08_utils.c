@@ -357,6 +357,60 @@ void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 	}
 }
 
+int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, int ms)
+{
+	int num = 0, i;
+
+	for (i = 0; i < 8; i++) {
+		if (((mr->gsm48_ie[1] >> i) & 1))
+			num++;
+	}
+	if (num > 4) {
+		LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec with too "
+				"many modes in config.\n");
+		num = 4;
+	}
+	if (num < 1) {
+		LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec with no "
+				"mode in config.\n");
+		num = 1;
+	}
+
+	lv[0] = (num == 1) ? 2 : (num + 2);
+	memcpy(lv + 1, mr->gsm48_ie, 2);
+	if (num == 1)
+		return 0;
+	if (ms) {
+		lv[3] = mr->mode[0].threshold_ms & 0x3f;
+		lv[4] = mr->mode[0].hysteresis_ms << 4;
+		if (num == 2)
+			return 0;
+		lv[4] |= (mr->mode[1].threshold_ms & 0x3f) >> 2;
+		lv[5] = mr->mode[1].threshold_ms << 6;
+		lv[5] |= (mr->mode[1].hysteresis_ms & 0x0f) << 2;
+		if (num == 3)
+			return 0;
+		lv[5] |= (mr->mode[2].threshold_ms & 0x3f) >> 4;
+		lv[6] = mr->mode[2].threshold_ms << 4;
+		lv[6] |= mr->mode[2].hysteresis_ms & 0x0f;
+	} else {
+		lv[3] = mr->mode[0].threshold_bts & 0x3f;
+		lv[4] = mr->mode[0].hysteresis_bts << 4;
+		if (num == 2)
+			return 0;
+		lv[4] |= (mr->mode[1].threshold_bts & 0x3f) >> 2;
+		lv[5] = mr->mode[1].threshold_bts << 6;
+		lv[5] |= (mr->mode[1].hysteresis_bts & 0x0f) << 2;
+		if (num == 3)
+			return 0;
+		lv[5] |= (mr->mode[2].threshold_bts & 0x3f) >> 4;
+		lv[6] = mr->mode[2].threshold_bts << 4;
+		lv[6] |= mr->mode[2].hysteresis_bts & 0x0f;
+	}
+
+	return 0;
+}
+
 #define GSM48_HOCMD_CCHDESC_LEN	16
 
 /* Chapter 9.1.15: Handover Command */
@@ -435,17 +489,9 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 	}
 
 	/* in case of multi rate we need to attach a config */
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
-		if (lchan->mr_conf.ver == 0) {
-			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
-				"without multirate config.\n");
-		} else {
-			uint8_t *data = msgb_put(msg, 4);
-			data[0] = GSM48_IE_MUL_RATE_CFG;
-			data[1] = 0x2;
-			memcpy(&data[2], &lchan->mr_conf, 2);
-		}
-	}
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		msgb_tlv_put(msg, GSM48_IE_MUL_RATE_CFG, lchan->mr_ms_lv[0],
+			lchan->mr_ms_lv + 1);
 
 	return gsm48_sendmsg(msg);
 }
@@ -471,17 +517,9 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
 	cmm->mode = mode;
 
 	/* in case of multi rate we need to attach a config */
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
-		if (lchan->mr_conf.ver == 0) {
-			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
-				"without multirate config.\n");
-		} else {
-			uint8_t *data = msgb_put(msg, 4);
-			data[0] = GSM48_IE_MUL_RATE_CFG;
-			data[1] = 0x2;
-			memcpy(&data[2], &lchan->mr_conf, 2);
-		}
-	}
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		msgb_tlv_put(msg, GSM48_IE_MUL_RATE_CFG, lchan->mr_ms_lv[0],
+			lchan->mr_ms_lv + 1);
 
 	return gsm48_sendmsg(msg);
 }

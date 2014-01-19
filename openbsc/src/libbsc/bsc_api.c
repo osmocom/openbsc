@@ -156,17 +156,31 @@ static void assignment_t10_timeout(void *_conn)
  * Handle the multirate config
  */
 static void handle_mr_config(struct gsm_subscriber_connection *conn,
-			     struct gsm_lchan *lchan)
+			     struct gsm_lchan *lchan, int full_rate)
 {
 	struct bsc_api *api;
 	api = conn->bts->network->bsc_api;
+	struct amr_multirate_conf *mr;
+	struct gsm48_multi_rate_conf *mr_conf;
 
 	if (api->mr_config)
-		return api->mr_config(conn, &lchan->mr_conf);
+		return api->mr_config(conn, lchan->mr_ms_lv, lchan->mr_bts_lv);
 
-	lchan->mr_conf.ver = 1;
-	lchan->mr_conf.icmi = 1;
-	lchan->mr_conf.m5_90 = 1;
+	if (full_rate)
+		mr = &lchan->ts->trx->bts->mr_full;
+	else
+		mr = &lchan->ts->trx->bts->mr_half;
+
+	mr_conf = (struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+	mr_conf->ver = 1;
+
+	/* default, if no AMR codec defined */
+	if (!mr->gsm48_ie[1]) {
+		mr_conf->icmi = 1;
+		mr_conf->m5_90 = 1;
+	}
+	gsm48_multirate_config(lchan->mr_ms_lv, mr, 1);
+	gsm48_multirate_config(lchan->mr_bts_lv, mr, 0);
 }
 
 /*
@@ -210,7 +224,7 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 
 	/* handle AMR correctly */
 	if (chan_mode == GSM48_CMODE_SPEECH_AMR)
-		handle_mr_config(conn, new_lchan);
+		handle_mr_config(conn, new_lchan, full_rate);
 
 	if (rsl_chan_activate_lchan(new_lchan, 0x1, 0) < 0) {
 		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
@@ -383,7 +397,7 @@ int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, in
 		LOGP(DMSC, LOGL_NOTICE,
 			"Sending ChanModify for speech %d %d\n", chan_mode, full_rate);
 		if (chan_mode == GSM48_CMODE_SPEECH_AMR)
-			handle_mr_config(conn, conn->lchan);
+			handle_mr_config(conn, conn->lchan, full_rate);
 
 		gsm48_lchan_modify(conn->lchan, chan_mode);
 	}

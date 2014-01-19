@@ -520,8 +520,8 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
 
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
-		msgb_tlv_put(msg, RSL_IE_MR_CONFIG, sizeof(lchan->mr_conf),
-			     (uint8_t *) &lchan->mr_conf);
+		msgb_tlv_put(msg, RSL_IE_MR_CONFIG, lchan->mr_bts_lv[0],
+			     lchan->mr_bts_lv + 1);
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
@@ -557,10 +557,11 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 			msgb_tlv_put(msg, RSL_IE_ENCR_INFO, rc, encr_info);
 	}
 
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
-		msgb_tlv_put(msg, RSL_IE_MR_CONFIG, sizeof(lchan->mr_conf),
-			     (uint8_t *) &lchan->mr_conf);
-	}
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+{
+		msgb_tlv_put(msg, RSL_IE_MR_CONFIG, lchan->mr_bts_lv[0],
+			     lchan->mr_bts_lv + 1);
+}
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
