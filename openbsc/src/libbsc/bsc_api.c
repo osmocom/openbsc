@@ -485,11 +485,26 @@ int gsm0808_page(struct gsm_bts *bts, unsigned int page_group, unsigned int mi_l
 	return rsl_paging_cmd(bts, page_group, mi_len, mi, chan_type);
 }
 
+static void send_siemens_mrpci_after_ass_ho(struct gsm_subscriber *subscr,
+					    struct gsm_lchan *lchan)
+{
+	struct gsm_equipment *equipment = &subscr->equipment;
+	uint8_t classmark2_lv[equipment->classmark2_len + 1];
+
+	classmark2_lv[0] = equipment->classmark2_len;
+        memcpy(classmark2_lv + 1, equipment->classmark2, classmark2_lv[0]);
+
+	send_siemens_mrpci(lchan, classmark2_lv);
+}
+
 static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 			     struct msgb *msg)
 {
 	struct gsm48_hdr *gh;
 	struct bsc_api *api = conn->bts->network->bsc_api;
+
+	if (is_siemens_bts(conn->bts))
+		send_siemens_mrpci_after_ass_ho(conn->subscr, msg->lchan);
 
 	if (conn->ho_lchan) {
 		struct lchan_signal_data sig;
@@ -654,6 +669,10 @@ static void handle_rr_ho_compl(struct msgb *msg)
 	sig.mr = NULL;
 	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, &sig);
 	/* FIXME: release old channel */
+
+	if (is_siemens_bts(msg->lchan->conn->bts))
+		send_siemens_mrpci_after_ass_ho(msg->lchan->conn->subscr,
+			msg->lchan);
 
 	/* send pending messages, if any */
 	flush_assignment_queue(msg->lchan->conn, 1);
