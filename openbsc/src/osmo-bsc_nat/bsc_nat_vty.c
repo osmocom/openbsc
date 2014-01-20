@@ -78,8 +78,10 @@ static void write_acc_lst(struct vty *vty, struct bsc_nat_acc_lst *lst)
 			vty_out(vty, " access-list %s imsi-allow %s%s",
 				lst->name, entry->imsi_allow, VTY_NEWLINE);
 		if (entry->imsi_deny)
-			vty_out(vty, " access-list %s imsi-deny %s%s",
-				lst->name, entry->imsi_deny, VTY_NEWLINE);
+			vty_out(vty, " access-list %s imsi-deny %s %d %d%s",
+				lst->name, entry->imsi_deny,
+				entry->cm_reject_cause, entry->lu_reject_cause,
+				VTY_NEWLINE);
 	}
 }
 
@@ -870,11 +872,13 @@ DEFUN(cfg_lst_imsi_allow,
 
 DEFUN(cfg_lst_imsi_deny,
       cfg_lst_imsi_deny_cmd,
-      "access-list NAME imsi-deny [REGEXP]",
+      "access-list NAME imsi-deny [REGEXP] (<0-256>) (<0-256>)",
       "Access list commands\n"
       "Name of the access list\n"
       "Add denied IMSI to the list\n"
-      "Regexp for IMSIs\n")
+      "Regexp for IMSIs\n"
+      "CM Service Reject reason\n"
+      "LU Reject reason\n")
 {
 	struct bsc_nat_acc_lst *acc;
 	struct bsc_nat_acc_lst_entry *entry;
@@ -889,6 +893,10 @@ DEFUN(cfg_lst_imsi_deny,
 
 	if (gsm_parse_reg(acc, &entry->imsi_deny_re, &entry->imsi_deny, argc - 1, &argv[1]) != 0)
 		return CMD_WARNING;
+	if (argc >= 3)
+		entry->cm_reject_cause = atoi(argv[2]);
+	if (argc >= 4)
+		entry->lu_reject_cause = atoi(argv[3]);
 	return CMD_SUCCESS;
 }
 

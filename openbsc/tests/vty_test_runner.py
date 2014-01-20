@@ -512,6 +512,44 @@ class TestVTYNAT(TestVTYGenericBSC):
         res = self.vty.verify("show ussd-connection", ['The USSD side channel provider is not connected and not authorized.'])
         self.assertTrue(res)
 
+    def testAccessList(self):
+        """
+        Verify that the imsi-deny can have a reject cause or no reject cause
+        """
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+
+        # Old default
+        self.vty.command("access-list test-default imsi-deny ^123[0-9]*$")
+        res = self.vty.command("show running-config").split("\r\n")
+        asserted = False
+        for line in res:
+           if line.startswith(" access-list"):
+                self.assertEqual(line, " access-list test-default imsi-deny ^123[0-9]*$ 11 11")
+                asserted = True
+        self.assert_(asserted)
+
+        # Check the optional CM Service Reject Cause
+        self.vty.command("access-list test-cm-deny imsi-deny ^123[0-9]*$ 42").split("\r\n")
+        res = self.vty.command("show running-config").split("\r\n")
+        asserted = False
+        for line in res:
+           if line.startswith(" access-list test-cm"):
+                self.assertEqual(line, " access-list test-cm-deny imsi-deny ^123[0-9]*$ 42 11")
+                asserted = True
+        self.assert_(asserted)
+
+        # Check the optional LU Reject Cause
+        self.vty.command("access-list test-lu-deny imsi-deny ^123[0-9]*$ 23 42").split("\r\n")
+        res = self.vty.command("show running-config").split("\r\n")
+        asserted = False
+        for line in res:
+           if line.startswith(" access-list test-lu"):
+                self.assertEqual(line, " access-list test-lu-deny imsi-deny ^123[0-9]*$ 23 42")
+                asserted = True
+        self.assert_(asserted)
+
 class TestVTYGbproxy(TestVTYGenericBSC):
 
     def vty_command(self):
