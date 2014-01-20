@@ -247,6 +247,10 @@ struct bsc_nat_acc_lst_entry {
 	regex_t imsi_allow_re;
 	char *imsi_deny;
 	regex_t imsi_deny_re;
+
+	/* reject reasons for the access lists */
+	int cm_reject_cause;
+	int lu_reject_cause;
 };
 
 /**

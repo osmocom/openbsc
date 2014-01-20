@@ -122,15 +122,19 @@ int bsc_nat_barr_adapt(void *ctx, struct rb_root *root,
 }
 
 
-static int lst_check_deny(struct bsc_nat_acc_lst *lst, const char *mi_string)
+static int lst_check_deny(struct bsc_nat_acc_lst *lst, const char *mi_string,
+			int *cm_cause, int *lu_cause)
 {
 	struct bsc_nat_acc_lst_entry *entry;
 
 	llist_for_each_entry(entry, &lst->fltr_list, list) {
 		if (!entry->imsi_deny)
 			continue;
-		if (regexec(&entry->imsi_deny_re, mi_string, 0, NULL, 0) == 0)
+		if (regexec(&entry->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
+			*cm_cause = entry->cm_reject_cause;
+			*lu_cause = entry->lu_reject_cause;
 			return 0;
+		}
 	}
 
 	return 1;
@@ -173,10 +177,12 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 			return 1;
 
 		/* 3. BSC deny */
-		if (lst_check_deny(bsc_lst, imsi) == 0) {
+		if (lst_check_deny(bsc_lst, imsi, &cm, &lu) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by imsi_deny on bsc nr: %d.\n", imsi, bsc->cfg->nr);
 			rate_ctr_inc(&bsc_lst->stats->ctr[ACC_LIST_BSC_FILTER]);
+			cause->cm_reject_cause = cm;
+			cause->lu_reject_cause = lu;
 			return -2;
 		}
 
@@ -184,10 +190,12 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 
 	/* 4. NAT deny */
 	if (nat_lst) {
-		if (lst_check_deny(nat_lst, imsi) == 0) {
+		if (lst_check_deny(nat_lst, imsi, &cm, &lu) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", imsi, bsc->cfg->nr);
 			rate_ctr_inc(&nat_lst->stats->ctr[ACC_LIST_NAT_FILTER]);
+			cause->cm_reject_cause = cm;
+			cause->lu_reject_cause = lu;
 			return -3;
 		}
 	}

@@ -468,6 +468,8 @@ struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_ls
 	if (!entry)
 		return NULL;
 
+	entry->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
+	entry->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	llist_add_tail(&entry->list, &lst->fltr_list);
 	return entry;
 }

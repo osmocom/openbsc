@@ -696,6 +696,12 @@ struct cr_filter {
 	const char *bsc_imsi_allow;
 	const char *bsc_imsi_deny;
 	const char *nat_imsi_deny;
+	int nat_cm_reject_cause;
+	int nat_lu_reject_cause;
+	int bsc_cm_reject_cause;
+	int bsc_lu_reject_cause;
+	int want_cm_reject_cause;
+	int want_lu_reject_cause;
 };
 
 static struct cr_filter cr_filter[] = {
@@ -704,18 +710,36 @@ static struct cr_filter cr_filter[] = {
 		.length = sizeof(bssmap_cr),
 		.result = 1,
 		.contype = NAT_CON_TYPE_CM_SERV_REQ,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 	},
 	{
 		.data = bss_lu,
 		.length = sizeof(bss_lu),
 		.result = 1,
 		.contype = NAT_CON_TYPE_LU,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 	},
 	{
 		.data = pag_resp,
 		.length = sizeof(pag_resp),
 		.result = 1,
 		.contype = NAT_CON_TYPE_PAG_RESP,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 	},
 	{
 		/* nat deny is before blank/null BSC */
@@ -724,6 +748,12 @@ static struct cr_filter cr_filter[] = {
 		.result = -3,
 		.nat_imsi_deny = "[0-9]*",
 		.contype = NAT_CON_TYPE_LU,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 	},
 	{
 		/* BSC allow is before NAT deny */
@@ -733,6 +763,12 @@ static struct cr_filter cr_filter[] = {
 		.nat_imsi_deny = "[0-9]*",
 		.bsc_imsi_allow = "2440[0-9]*",
 		.contype = NAT_CON_TYPE_LU,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 	},
 	{
 		/* BSC allow is before NAT deny */
@@ -742,6 +778,12 @@ static struct cr_filter cr_filter[] = {
 		.bsc_imsi_allow = "[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
 		.contype = NAT_CON_TYPE_LU,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 	},
 	{
 		/* filter as deny is first */
@@ -752,6 +794,12 @@ static struct cr_filter cr_filter[] = {
 		.bsc_imsi_allow = "[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
 		.contype = NAT_CON_TYPE_LU,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 	},
 	{
 		/* deny by nat rule */
@@ -761,6 +809,27 @@ static struct cr_filter cr_filter[] = {
 		.bsc_imsi_deny = "000[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
 		.contype = NAT_CON_TYPE_LU,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+	},
+	{
+		/* deny by nat rule */
+		.data = bss_lu,
+		.length = sizeof(bss_lu),
+		.result = -3,
+		.bsc_imsi_deny = "000[0-9]*",
+		.nat_imsi_deny = "[0-9]*",
+		.contype = NAT_CON_TYPE_LU,
+		.nat_cm_reject_cause = 0x23,
+		.nat_lu_reject_cause = 0x42,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = 0x42,
+		.want_cm_reject_cause = 0x23,
 	},
 	{
 		/* deny by bsc rule */
@@ -769,8 +838,27 @@ static struct cr_filter cr_filter[] = {
 		.result = -2,
 		.bsc_imsi_deny = "[0-9]*",
 		.contype = NAT_CON_TYPE_LU,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.want_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 	},
-
+	{
+		/* deny by bsc rule */
+		.data = bss_lu,
+		.length = sizeof(bss_lu),
+		.result = -2,
+		.bsc_imsi_deny = "[0-9]*",
+		.contype = NAT_CON_TYPE_LU,
+		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
+		.bsc_cm_reject_cause = 0x42,
+		.bsc_lu_reject_cause = 0x23,
+		.want_lu_reject_cause = 0x23,
+		.want_cm_reject_cause = 0x42,
+	},
 };
 
 static void test_cr_filter()
@@ -795,10 +883,19 @@ static void test_cr_filter()
 	bsc_entry = bsc_nat_acc_lst_entry_create(bsc_lst);
 	nat_entry = bsc_nat_acc_lst_entry_create(nat_lst);
 
+	/* test the default value as we are going to overwrite it */
+	OSMO_ASSERT(bsc_entry->cm_reject_cause == GSM48_REJECT_PLMN_NOT_ALLOWED);
+	OSMO_ASSERT(bsc_entry->lu_reject_cause == GSM48_REJECT_PLMN_NOT_ALLOWED);
+
 	for (i = 0; i < ARRAY_SIZE(cr_filter); ++i) {
 		char *imsi;
 		msgb_reset(msg);
 		copy_to_msg(msg, cr_filter[i].data, cr_filter[i].length);
+
+		bsc_entry->cm_reject_cause = cr_filter[i].bsc_cm_reject_cause;
+		bsc_entry->lu_reject_cause = cr_filter[i].bsc_lu_reject_cause;
+		nat_entry->cm_reject_cause = cr_filter[i].nat_cm_reject_cause;
+		nat_entry->lu_reject_cause = cr_filter[i].nat_lu_reject_cause;
 
 		if (gsm_parse_reg(nat_entry, &nat_entry->imsi_deny_re, &nat_entry->imsi_deny,
 			      cr_filter[i].nat_imsi_deny ? 1 : 0,
@@ -825,6 +922,10 @@ static void test_cr_filter()
 			printf("FAIL: Wrong result %d for test %d.\n", res, i);
 			abort();
 		}
+
+
+		OSMO_ASSERT(cause.cm_reject_cause == cr_filter[i].want_cm_reject_cause);
+		OSMO_ASSERT(cause.lu_reject_cause == cr_filter[i].want_lu_reject_cause);
 
 		if (contype != cr_filter[i].contype) {
 			printf("FAIL: Wrong contype %d for test %d.\n", res, contype);
