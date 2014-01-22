@@ -167,15 +167,21 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 	switch (rtph->payload_type) {
 	case RTP_PT_GSM_FULL:
 		msg_type = GSM_TCHF_FRAME;
-		if (payload_len != 33) {
+		if (payload_len != RTP_LEN_GSM_FULL) {
 			DEBUGPC(DLMUX, "received RTP full rate frame with "
-				"payload length != 32 (len = %d)\n",
-				payload_len);
+				"payload length != %d (len = %d)\n",
+				RTP_LEN_GSM_FULL, payload_len);
 			return -EINVAL;
 		}
 		break;
 	case RTP_PT_GSM_EFR:
 		msg_type = GSM_TCHF_FRAME_EFR;
+		if (payload_len != RTP_LEN_GSM_EFR) {
+			DEBUGPC(DLMUX, "received RTP extended full rate frame "
+				"with payload length != %d (len = %d)\n",
+				RTP_LEN_GSM_EFR, payload_len);
+			return -EINVAL;
+		}
 		break;
 	default:
 		DEBUGPC(DLMUX, "received RTP frame with unknown payload "
@@ -236,13 +242,13 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	switch (frame->msg_type) {
 	case GSM_TCHF_FRAME:
 		payload_type = RTP_PT_GSM_FULL;
-		payload_len = 33;
-		duration = 160;
+		payload_len = RTP_LEN_GSM_FULL;
+		duration = RTP_GSM_DURATION;
 		break;
 	case GSM_TCHF_FRAME_EFR:
 		payload_type = RTP_PT_GSM_EFR;
-		payload_len = 31;
-		duration = 160;
+		payload_len = RTP_LEN_GSM_EFR;
+		duration = RTP_GSM_DURATION;
 		break;
 	default:
 		DEBUGPC(DLMUX, "unsupported message type %d\n",

@@ -33,6 +33,10 @@
 #define RTP_PT_GSM_HALF 96
 #define RTP_PT_GSM_EFR 97
 #define RTP_PT_AMR 98
+#define RTP_LEN_GSM_FULL 33
+#define RTP_LEN_GSM_HALF 15
+#define RTP_LEN_GSM_EFR 31
+#define RTP_GSM_DURATION 160
 
 enum rtp_rx_action {
 	RTP_NONE,
