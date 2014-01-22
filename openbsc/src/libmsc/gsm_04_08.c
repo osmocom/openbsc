@@ -1575,6 +1575,17 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
 		if (!ipacc_rtp_direct) {
+			if (!lchan->abis_ip.rtp_socket) {
+				LOGP(DHO, LOGL_ERROR, "no RTP socket for "
+					"lchan\n");
+				return -EIO;
+			}
+			if (!remote_lchan->abis_ip.rtp_socket) {
+				LOGP(DHO, LOGL_ERROR, "no RTP socket for "
+					"remote_lchan\n");
+				return -EIO;
+			}
+
 			/* connect the TCH's to our RTP proxy */
 			rc = rsl_ipacc_mdcx_to_rtpsock(lchan);
 			if (rc < 0)
