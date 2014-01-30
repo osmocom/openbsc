@@ -375,6 +375,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	timestamp = ntohl(rtp_hdr->timestamp);
 	arrival_time = get_current_ts(rtp_end->rate);
 	ssrc = ntohl(rtp_hdr->ssrc);
+	transit = arrival_time - timestamp;
 
 	if (!state->initialized) {
 		state->in_stream.last_seq = seq - 1;
@@ -383,7 +384,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		state->base_seq = seq;
 		state->initialized = 1;
 		state->jitter = 0;
-		state->transit = arrival_time - timestamp;
+		state->transit = transit;
 		state->packet_duration = mgcp_rtp_packet_duration(endp, rtp_end);
 		state->out_stream = state->in_stream;
 		state->out_stream.last_timestamp = timestamp;
@@ -414,6 +415,8 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 			endp->conn_mode);
 
 		state->in_stream.ssrc = ssrc;
+		state->jitter = 0;
+		state->transit = transit;
 		if (rtp_end->force_constant_ssrc) {
 			int16_t delta_seq;
 
@@ -507,7 +510,6 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	 * Appendix A of RFC 3550. Timestamp and arrival_time have a 1/rate
 	 * resolution.
 	 */
-	transit = arrival_time - timestamp;
 	d = transit - state->transit;
 	state->transit = transit;
 	if (d < 0)
