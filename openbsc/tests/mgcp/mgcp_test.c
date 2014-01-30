@@ -27,6 +27,7 @@
 #include <string.h>
 #include <limits.h>
 #include <dlfcn.h>
+#include <time.h>
 
 char *strline_r(char *str, char **saveptr);
 
@@ -319,6 +320,25 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
 	}
 
 	return real_sendto(sockfd, buf, len, flags, dest_addr, addrlen);
+}
+
+static int64_t force_monotonic_time_us = -1;
+/* override and forward */
+int clock_gettime(clockid_t clk_id, struct timespec *tp)
+{
+	typedef int (*clock_gettime_t)(clockid_t clk_id, struct timespec *tp);
+	static clock_gettime_t real_clock_gettime = NULL;
+
+	if (!real_clock_gettime)
+		real_clock_gettime = dlsym(RTLD_NEXT, "clock_gettime");
+
+	if (clk_id == CLOCK_MONOTONIC && force_monotonic_time_us >= 0) {
+		tp->tv_sec = force_monotonic_time_us / 1000000;
+		tp->tv_nsec = (force_monotonic_time_us % 1000000) * 1000;
+		return 0;
+	}
+
+	return real_clock_gettime(clk_id, tp);
 }
 
 #define CONN_UNMODIFIED (0x1000)
@@ -720,6 +740,17 @@ struct rtp_packet_info test_rtp_packets1[] = {
 	/* RTP: SeqNo=25, TS=36888 */
 	{0.500000, 20, "\x80\x62\x00\x19\x00\x00\x90\x18\x10\x20\x30\x40"
 		       "\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* SSRC changed to 0x50607080, RTP timestamp jump, Delay of 1.5s,
+	 * SeqNo jump */
+	/* RTP: SeqNo=1000, TS=160000 */
+	{2.000000, 20, "\x80\x62\x03\xE8\x00\x02\x71\x00\x50\x60\x70\x80"
+			"\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=1001, TS=160160 */
+	{2.020000, 20, "\x80\x62\x03\xE9\x00\x02\x71\xA0\x50\x60\x70\x80"
+			"\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
+	/* RTP: SeqNo=1002, TS=160320 */
+	{2.040000, 20, "\x80\x62\x03\xEA\x00\x02\x72\x40\x50\x60\x70\x80"
+			"\x01\x23\x45\x67\x89\xAB\xCD\xEF"},
 };
 
 void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
@@ -769,6 +800,8 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 	for (i = 0; i < ARRAY_SIZE(test_rtp_packets1); ++i) {
 		struct rtp_packet_info *info = test_rtp_packets1 + i;
 
+		force_monotonic_time_us = 1000000ULL * info->txtime;
+
 		OSMO_ASSERT(info->len <= sizeof(buffer));
 		OSMO_ASSERT(info->len >= 0);
 		memmove(buffer, info->data, info->len);
@@ -797,11 +830,16 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 		       state.in_stream.err_ts_counter - last_in_ts_err_cnt,
 		       state.out_stream.err_ts_counter - last_out_ts_err_cnt);
 
+		printf("Stats: Jitter = %u, Transit = %u\n",
+		       mgcp_state_calc_jitter(&state), state.transit);
+
 		last_in_ts_err_cnt = state.in_stream.err_ts_counter;
 		last_out_ts_err_cnt = state.out_stream.err_ts_counter;
 		last_timestamp = state.out_stream.last_timestamp;
 		last_seqno = state.out_stream.last_seq;
 	}
+
+	force_monotonic_time_us = -1;
 }
 
 int main(int argc, char **argv)

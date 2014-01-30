@@ -87,226 +87,372 @@ Testing packet error detection, patch SSRC.
 Output SSRC changed to 11223344
 In TS: 0, dTS: 0, Seq: 0
 Out TS change: 0, dTS: 0, Seq change: 0, TS Err change: in +0, out +0
+Stats: Jitter = 0, Transit = 0
 In TS: 160, dTS: 160, Seq: 1
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 8, Transit = 4294967155
 In TS: 320, dTS: 160, Seq: 2
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 17, Transit = 4294967015
 In TS: 320, dTS: 160, Seq: 3
 Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 17, Transit = 4294967035
 In TS: 480, dTS: 160, Seq: 4
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 24, Transit = 4294966895
 In TS: 640, dTS: 160, Seq: 5
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 32, Transit = 4294966756
 In TS: 960, dTS: 320, Seq: 6
 Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 48, Transit = 4294966455
 In TS: 1120, dTS: 160, Seq: 7
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 54, Transit = 4294966316
 In TS: 1280, dTS: 160, Seq: 8
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 59, Transit = 4294966175
 In TS: 1400, dTS: 120, Seq: 9
 Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
+Stats: Jitter = 62, Transit = 4294966076
 In TS: 1560, dTS: 160, Seq: 10
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 67, Transit = 4294965936
 In TS: 1720, dTS: 160, Seq: 11
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 71, Transit = 4294965795
 In TS: 34688, dTS: 0, Seq: 12
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 76, Transit = 4294965655
 In TS: 34848, dTS: 160, Seq: 13
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 80, Transit = 4294965515
 In TS: 35008, dTS: 160, Seq: 14
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 83, Transit = 4294965376
 In TS: 35128, dTS: 120, Seq: 15
 Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
+Stats: Jitter = 84, Transit = 4294965276
 In TS: 35288, dTS: 160, Seq: 16
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 88, Transit = 4294965135
 In TS: 35448, dTS: 160, Seq: 17
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 91, Transit = 4294964996
 In TS: 35768, dTS: 160, Seq: 19
 Out TS change: 320, dTS: 160, Seq change: 2, TS Err change: in +0, out +0
+Stats: Jitter = 104, Transit = 4294964696
 In TS: 35928, dTS: 160, Seq: 20
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 106, Transit = 4294964555
 In TS: 36088, dTS: 160, Seq: 21
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 110, Transit = 4294964395
 In TS: 36088, dTS: 160, Seq: 21
 Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +0, out +0
+Stats: Jitter = 104, Transit = 4294964416
 In TS: 36248, dTS: 160, Seq: 22
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 106, Transit = 4294964275
 In TS: 36408, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 108, Transit = 4294964135
 In TS: 36568, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 0, TS Err change: in +1, out +1
+Stats: Jitter = 110, Transit = 4294963996
 In TS: 36728, dTS: 160, Seq: 24
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 112, Transit = 4294963855
 In TS: 36888, dTS: 160, Seq: 25
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 114, Transit = 4294963716
+In TS: 160000, dTS: 0, Seq: 1000
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 190, Transit = 4294965056
+In TS: 160160, dTS: 160, Seq: 1001
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 187, Transit = 4294964915
+In TS: 160320, dTS: 160, Seq: 1002
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 184, Transit = 4294964775
 Testing packet error detection.
 Output SSRC changed to 11223344
 In TS: 0, dTS: 0, Seq: 0
 Out TS change: 0, dTS: 0, Seq change: 0, TS Err change: in +0, out +0
+Stats: Jitter = 0, Transit = 0
 In TS: 160, dTS: 160, Seq: 1
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 8, Transit = 4294967155
 In TS: 320, dTS: 160, Seq: 2
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 17, Transit = 4294967015
 In TS: 320, dTS: 160, Seq: 3
 Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 17, Transit = 4294967035
 In TS: 480, dTS: 160, Seq: 4
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 24, Transit = 4294966895
 In TS: 640, dTS: 160, Seq: 5
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 32, Transit = 4294966756
 In TS: 960, dTS: 320, Seq: 6
 Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 48, Transit = 4294966455
 In TS: 1120, dTS: 160, Seq: 7
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 54, Transit = 4294966316
 In TS: 1280, dTS: 160, Seq: 8
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 59, Transit = 4294966175
 In TS: 1400, dTS: 120, Seq: 9
 Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
+Stats: Jitter = 62, Transit = 4294966076
 In TS: 1560, dTS: 160, Seq: 10
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 67, Transit = 4294965936
 In TS: 1720, dTS: 160, Seq: 11
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 71, Transit = 4294965795
 Output SSRC changed to 10203040
 In TS: 34688, dTS: 0, Seq: 12
 Out TS change: 32968, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 2126, Transit = 4294932847
 In TS: 34848, dTS: 160, Seq: 13
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 2002, Transit = 4294932707
 In TS: 35008, dTS: 160, Seq: 14
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1885, Transit = 4294932568
 In TS: 35128, dTS: 120, Seq: 15
 Out TS change: 120, dTS: 120, Seq change: 1, TS Err change: in +1, out +1
+Stats: Jitter = 1774, Transit = 4294932468
 In TS: 35288, dTS: 160, Seq: 16
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1672, Transit = 4294932327
 In TS: 35448, dTS: 160, Seq: 17
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1576, Transit = 4294932188
 In TS: 35768, dTS: 160, Seq: 19
 Out TS change: 320, dTS: 160, Seq change: 2, TS Err change: in +0, out +0
+Stats: Jitter = 1496, Transit = 4294931888
 In TS: 35928, dTS: 160, Seq: 20
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1411, Transit = 4294931747
 In TS: 36088, dTS: 160, Seq: 21
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1333, Transit = 4294931587
 In TS: 36088, dTS: 160, Seq: 21
 Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +0, out +0
+Stats: Jitter = 1251, Transit = 4294931608
 In TS: 36248, dTS: 160, Seq: 22
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1182, Transit = 4294931467
 In TS: 36408, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1117, Transit = 4294931327
 In TS: 36568, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 0, TS Err change: in +1, out +1
+Stats: Jitter = 1055, Transit = 4294931188
 In TS: 36728, dTS: 160, Seq: 24
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 998, Transit = 4294931047
 In TS: 36888, dTS: 160, Seq: 25
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 945, Transit = 4294930908
+Output SSRC changed to 50607080
+In TS: 160000, dTS: 0, Seq: 1000
+Out TS change: 123112, dTS: 160, Seq change: 975, TS Err change: in +0, out +0
+Stats: Jitter = 8486, Transit = 4294809296
+In TS: 160160, dTS: 160, Seq: 1001
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 7965, Transit = 4294809155
+In TS: 160320, dTS: 160, Seq: 1002
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 7476, Transit = 4294809015
 Testing packet error detection, patch timestamps.
 Output SSRC changed to 11223344
 In TS: 0, dTS: 0, Seq: 0
 Out TS change: 0, dTS: 0, Seq change: 0, TS Err change: in +0, out +0
+Stats: Jitter = 0, Transit = 0
 In TS: 160, dTS: 160, Seq: 1
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 8, Transit = 4294967155
 In TS: 320, dTS: 160, Seq: 2
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 17, Transit = 4294967015
 In TS: 320, dTS: 160, Seq: 3
 Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 17, Transit = 4294967035
 In TS: 480, dTS: 160, Seq: 4
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 24, Transit = 4294966895
 In TS: 640, dTS: 160, Seq: 5
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 32, Transit = 4294966756
 In TS: 960, dTS: 320, Seq: 6
 Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 48, Transit = 4294966455
 In TS: 1120, dTS: 160, Seq: 7
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 54, Transit = 4294966316
 In TS: 1280, dTS: 160, Seq: 8
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 59, Transit = 4294966175
 In TS: 1400, dTS: 120, Seq: 9
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Stats: Jitter = 64, Transit = 4294966036
 In TS: 1560, dTS: 160, Seq: 10
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 69, Transit = 4294965896
 In TS: 1720, dTS: 160, Seq: 11
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 73, Transit = 4294965755
 Output SSRC changed to 10203040
 In TS: 34688, dTS: 0, Seq: 12
 Out TS change: 32968, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 2128, Transit = 4294932807
 In TS: 34848, dTS: 160, Seq: 13
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 2004, Transit = 4294932667
 In TS: 35008, dTS: 160, Seq: 14
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1887, Transit = 4294932528
 In TS: 35128, dTS: 120, Seq: 15
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Stats: Jitter = 1778, Transit = 4294932388
 In TS: 35288, dTS: 160, Seq: 16
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1676, Transit = 4294932247
 In TS: 35448, dTS: 160, Seq: 17
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1580, Transit = 4294932108
 In TS: 35768, dTS: 160, Seq: 19
 Out TS change: 320, dTS: 160, Seq change: 2, TS Err change: in +0, out +0
+Stats: Jitter = 1500, Transit = 4294931808
 In TS: 35928, dTS: 160, Seq: 20
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1415, Transit = 4294931667
 In TS: 36088, dTS: 160, Seq: 21
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1336, Transit = 4294931507
 In TS: 36088, dTS: 160, Seq: 21
 Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +0, out +0
+Stats: Jitter = 1254, Transit = 4294931528
 In TS: 36248, dTS: 160, Seq: 22
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1184, Transit = 4294931387
 In TS: 36408, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1119, Transit = 4294931247
 In TS: 36568, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 0, TS Err change: in +1, out +1
+Stats: Jitter = 1058, Transit = 4294931108
 In TS: 36728, dTS: 160, Seq: 24
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 1000, Transit = 4294930967
 In TS: 36888, dTS: 160, Seq: 25
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 947, Transit = 4294930828
+Output SSRC changed to 50607080
+In TS: 160000, dTS: 0, Seq: 1000
+Out TS change: 123112, dTS: 160, Seq change: 975, TS Err change: in +0, out +0
+Stats: Jitter = 8488, Transit = 4294809216
+In TS: 160160, dTS: 160, Seq: 1001
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 7966, Transit = 4294809075
+In TS: 160320, dTS: 160, Seq: 1002
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 7477, Transit = 4294808935
 Testing packet error detection, patch SSRC, patch timestamps.
 Output SSRC changed to 11223344
 In TS: 0, dTS: 0, Seq: 0
 Out TS change: 0, dTS: 0, Seq change: 0, TS Err change: in +0, out +0
+Stats: Jitter = 0, Transit = 0
 In TS: 160, dTS: 160, Seq: 1
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 8, Transit = 4294967155
 In TS: 320, dTS: 160, Seq: 2
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 17, Transit = 4294967015
 In TS: 320, dTS: 160, Seq: 3
 Out TS change: 0, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 17, Transit = 4294967035
 In TS: 480, dTS: 160, Seq: 4
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 24, Transit = 4294966895
 In TS: 640, dTS: 160, Seq: 5
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 32, Transit = 4294966756
 In TS: 960, dTS: 320, Seq: 6
 Out TS change: 320, dTS: 320, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 48, Transit = 4294966455
 In TS: 1120, dTS: 160, Seq: 7
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 54, Transit = 4294966316
 In TS: 1280, dTS: 160, Seq: 8
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 59, Transit = 4294966175
 In TS: 1400, dTS: 120, Seq: 9
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Stats: Jitter = 64, Transit = 4294966036
 In TS: 1560, dTS: 160, Seq: 10
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 69, Transit = 4294965896
 In TS: 1720, dTS: 160, Seq: 11
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 73, Transit = 4294965755
 In TS: 34688, dTS: 0, Seq: 12
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 78, Transit = 4294965615
 In TS: 34848, dTS: 160, Seq: 13
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 81, Transit = 4294965475
 In TS: 35008, dTS: 160, Seq: 14
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 85, Transit = 4294965336
 In TS: 35128, dTS: 120, Seq: 15
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +1, out +0
+Stats: Jitter = 88, Transit = 4294965196
 In TS: 35288, dTS: 160, Seq: 16
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 92, Transit = 4294965055
 In TS: 35448, dTS: 160, Seq: 17
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 95, Transit = 4294964916
 In TS: 35768, dTS: 160, Seq: 19
 Out TS change: 320, dTS: 160, Seq change: 2, TS Err change: in +0, out +0
+Stats: Jitter = 107, Transit = 4294964616
 In TS: 35928, dTS: 160, Seq: 20
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 109, Transit = 4294964475
 In TS: 36088, dTS: 160, Seq: 21
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 113, Transit = 4294964315
 In TS: 36088, dTS: 160, Seq: 21
 Out TS change: 0, dTS: 160, Seq change: 0, TS Err change: in +0, out +0
+Stats: Jitter = 107, Transit = 4294964336
 In TS: 36248, dTS: 160, Seq: 22
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 109, Transit = 4294964195
 In TS: 36408, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 111, Transit = 4294964055
 In TS: 36568, dTS: 160, Seq: 23
 Out TS change: 160, dTS: 160, Seq change: 0, TS Err change: in +1, out +1
+Stats: Jitter = 113, Transit = 4294963916
 In TS: 36728, dTS: 160, Seq: 24
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 114, Transit = 4294963775
 In TS: 36888, dTS: 160, Seq: 25
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 116, Transit = 4294963636
+In TS: 160000, dTS: 0, Seq: 1000
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 192, Transit = 4294964976
+In TS: 160160, dTS: 160, Seq: 1001
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 189, Transit = 4294964835
+In TS: 160320, dTS: 160, Seq: 1002
+Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 186, Transit = 4294964695
 Done
