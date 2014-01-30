@@ -76,6 +76,7 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 int silent_call_rx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	/* FIXME: do something like sending it through a UDP port */
+	LOGP(DLSMS, LOGL_NOTICE, "Discarding L3 message from a silent call.\n");
 	return 0;
 }
 
@@ -109,6 +110,7 @@ int silent_call_reroute(struct gsm_subscriber_connection *conn, struct msgb *msg
 	}
 
 	/* otherwise, reroute */
+	LOGP(DLSMS, LOGL_INFO, "Rerouting L3 message from a silent call.\n");
 	return 1;
 }
 
@@ -135,6 +137,9 @@ int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 	/* did we actually establish a silent call for this guy? */
 	if (!conn->silent_call)
 		return -EINVAL;
+
+	DEBUGPC(DLSMS, "Stopping silent call using Timeslot %u on ARFCN %u\n",
+		conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
 
 	conn->silent_call = 0;
 	msc_release_connection(conn);

@@ -59,6 +59,8 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 		return BSC_API_CONN_POL_ACCEPT;
 	if (trans_has_conn(conn))
 		return BSC_API_CONN_POL_ACCEPT;
+
+	LOGP(DRR, LOGL_INFO, "MSC Complete L3: Rejecting connection.\n");
 	return BSC_API_CONN_POL_REJECT;
 }
 
@@ -71,11 +73,13 @@ static void msc_assign_compl(struct gsm_subscriber_connection *conn,
 			     uint8_t rr_cause, uint8_t chosen_channel,
 			     uint8_t encr_alg_id, uint8_t speec)
 {
+	LOGP(DRR, LOGL_DEBUG, "MSC assign complete (do nothing).\n");
 }
 
 static void msc_assign_fail(struct gsm_subscriber_connection *conn,
 			    uint8_t cause, uint8_t *rr_cause)
 {
+	LOGP(DRR, LOGL_DEBUG, "MSC assign failure (do nothing).\n");
 }
 
 static void msc_classmark_chg(struct gsm_subscriber_connection *conn,
