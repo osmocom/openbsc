@@ -399,13 +399,22 @@ static void test_messages(void)
 			else
 				printf("Requested packetization period not set\n");
 
-			if ((endp->conn_mode & CONN_UNMODIFIED) == 0)
-				printf("Connection mode: %d, "
-				       "BTS output %sabled, NET output %sabled\n",
+			if ((endp->conn_mode & CONN_UNMODIFIED) == 0) {
+				printf("Connection mode: %d:%s%s%s%s\n",
 				       endp->conn_mode,
-				       endp->bts_end.output_enabled ? "en" : "dis",
-				       endp->net_end.output_enabled ? "en" : "dis");
-			else
+				       !endp->conn_mode ? " NONE" : "",
+				       endp->conn_mode & MGCP_CONN_SEND_ONLY ?
+				       " SEND" : "",
+				       endp->conn_mode & MGCP_CONN_RECV_ONLY ?
+				       " RECV" : "",
+				       endp->conn_mode & MGCP_CONN_LOOPBACK &
+				       ~MGCP_CONN_RECV_SEND ?
+				       " LOOP" : "");
+				fprintf(stderr,
+					"BTS output %sabled, NET output %sabled\n",
+					endp->bts_end.output_enabled ? "en" : "dis",
+					endp->net_end.output_enabled ? "en" : "dis");
+			} else
 				printf("Connection mode not set\n");
 
 			OSMO_ASSERT(endp->net_end.output_enabled ==

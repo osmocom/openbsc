@@ -19,7 +19,7 @@ Testing CRCX
 Dummy packets: 1
 Detected packet duration: 40
 Requested packetetization period: 20-20
-Connection mode: 1, BTS output enabled, NET output disabled
+Connection mode: 1: RECV
 Testing MDCX3
 Dummy packets: 1
 Packet duration not set
@@ -29,35 +29,35 @@ Testing MDCX4
 Dummy packets: 1
 Detected packet duration: 40
 Requested packetetization period: 20-20
-Connection mode: 3, BTS output enabled, NET output enabled
+Connection mode: 3: SEND RECV
 Testing MDCX4_PT1
 Dummy packets: 1
 Detected packet duration: 40
 Requested packetetization period: 20-40
-Connection mode: 3, BTS output enabled, NET output enabled
+Connection mode: 3: SEND RECV
 Testing MDCX4_PT2
 Dummy packets: 1
 Detected packet duration: 40
 Requested packetetization period: 20-20
-Connection mode: 3, BTS output enabled, NET output enabled
+Connection mode: 3: SEND RECV
 Testing MDCX4_PT3
 Dummy packets: 1
 Detected packet duration: 40
 Requested packetization period not set
-Connection mode: 3, BTS output enabled, NET output enabled
+Connection mode: 3: SEND RECV
 Testing MDCX4_SO
 Detected packet duration: 40
 Requested packetetization period: 20-20
-Connection mode: 2, BTS output disabled, NET output enabled
+Connection mode: 2: SEND
 Testing DLCX
 Detected packet duration: 20
 Requested packetization period not set
-Connection mode: 0, BTS output disabled, NET output disabled
+Connection mode: 0: NONE
 Testing CRCX_ZYN
 Dummy packets: 1
 Packet duration not set
 Requested packetization period not set
-Connection mode: 1, BTS output enabled, NET output disabled
+Connection mode: 1: RECV
 Testing EMPTY
 Testing SHORT1
 Testing SHORT2
@@ -68,7 +68,7 @@ Testing RQNT2
 Testing DLCX
 Detected packet duration: 20
 Requested packetization period not set
-Connection mode: 0, BTS output disabled, NET output disabled
+Connection mode: 0: NONE
 Testing CRCX
 Re-transmitting CRCX
 Testing RQNT1
