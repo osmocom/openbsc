@@ -46,6 +46,7 @@ struct mgcp_rtp_stream_state {
 	uint32_t last_timestamp;
 	uint32_t err_ts_counter;
 	int32_t last_tsdelta;
+	uint32_t last_arrival_time;
 };
 
 struct mgcp_rtp_state {

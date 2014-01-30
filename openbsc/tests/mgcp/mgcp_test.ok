@@ -167,14 +167,14 @@ In TS: 36888, dTS: 160, Seq: 25
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Stats: Jitter = 27, Transit = 4294967216
 In TS: 160000, dTS: 0, Seq: 1000
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
-Stats: Jitter = 765, Transit = 11760
+Out TS change: 12000, dTS: 12000, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 25, Transit = 4294967216
 In TS: 160160, dTS: 160, Seq: 1001
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
-Stats: Jitter = 718, Transit = 11759
+Stats: Jitter = 24, Transit = 4294967215
 In TS: 160320, dTS: 160, Seq: 1002
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
-Stats: Jitter = 673, Transit = 11759
+Stats: Jitter = 22, Transit = 4294967215
 Testing packet error detection.
 Output SSRC changed to 11223344
 In TS: 0, dTS: 0, Seq: 0
@@ -447,12 +447,12 @@ In TS: 36888, dTS: 160, Seq: 25
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
 Stats: Jitter = 25, Transit = 4294967136
 In TS: 160000, dTS: 0, Seq: 1000
-Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
-Stats: Jitter = 763, Transit = 11680
+Out TS change: 12000, dTS: 12000, Seq change: 1, TS Err change: in +0, out +0
+Stats: Jitter = 23, Transit = 4294967136
 In TS: 160160, dTS: 160, Seq: 1001
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
-Stats: Jitter = 716, Transit = 11679
+Stats: Jitter = 22, Transit = 4294967135
 In TS: 160320, dTS: 160, Seq: 1002
 Out TS change: 160, dTS: 160, Seq change: 1, TS Err change: in +0, out +0
-Stats: Jitter = 671, Transit = 11679
+Stats: Jitter = 21, Transit = 4294967135
 Done

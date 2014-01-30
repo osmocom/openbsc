@@ -415,10 +415,17 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 
 		state->in_stream.ssrc = ssrc;
 		if (rtp_end->force_constant_ssrc) {
-			const int16_t delta_seq = 1;
+			int16_t delta_seq;
 
+			/* Always increment seqno by 1 */
 			state->seq_offset =
-				(state->out_stream.last_seq + delta_seq) - seq;
+				(state->out_stream.last_seq + 1) - seq;
+
+			/* Estimate number of packets that would have been sent */
+			delta_seq =
+				(arrival_time - state->in_stream.last_arrival_time
+				 + state->packet_duration/2) /
+				state->packet_duration;
 
 			adjust_rtp_timestamp_offset(endp, state, rtp_end, addr,
 						    delta_seq, timestamp);
@@ -452,6 +459,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	/* Save before patching */
 	state->in_stream.last_timestamp = timestamp;
 	state->in_stream.last_seq = seq;
+	state->in_stream.last_arrival_time = arrival_time;
 
 	if (rtp_end->force_aligned_timing &&
 	    state->out_stream.ssrc == ssrc && state->packet_duration)
