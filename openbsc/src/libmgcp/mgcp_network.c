@@ -95,22 +95,25 @@ enum {
 /**
  * This does not need to be a precision timestamp and
  * is allowed to wrap quite fast. The returned value is
- * milli seconds now.
+ * 1/unit seconds.
  */
-uint32_t get_current_ts(void)
+static uint32_t get_current_ts(unsigned unit)
 {
 	struct timespec tp;
 	uint64_t ret;
+
+	if (!unit)
+		return 0;
 
 	memset(&tp, 0, sizeof(tp));
 	if (clock_gettime(CLOCK_MONOTONIC, &tp) != 0)
 		LOGP(DMGCP, LOGL_NOTICE,
 			"Getting the clock failed.\n");
 
-	/* convert it to useconds */
+	/* convert it to 1/unit seconds */
 	ret = tp.tv_sec;
-	ret *= 1000;
-	ret += tp.tv_nsec / 1000 / 1000;
+	ret *= unit;
+	ret += (int64_t)tp.tv_nsec * unit / 1000 / 1000 / 1000;
 
 	return ret;
 }
@@ -370,7 +373,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	rtp_hdr = (struct rtp_hdr *) data;
 	seq = ntohs(rtp_hdr->sequence);
 	timestamp = ntohl(rtp_hdr->timestamp);
-	arrival_time = get_current_ts();
+	arrival_time = get_current_ts(rtp_end->rate);
 	ssrc = ntohl(rtp_hdr->ssrc);
 
 	if (!state->initialized) {
@@ -491,9 +494,10 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	}
 
 	/*
-	 * calculate the jitter between the two packages. The TS should be
+	 * Calculate the jitter between the two packages. The TS should be
 	 * taken closer to the read function. This was taken from the
-	 * Appendix A of RFC 3550. The local timestamp has a usec resolution.
+	 * Appendix A of RFC 3550. Timestamp and arrival_time have a 1/rate
+	 * resolution.
 	 */
 	transit = arrival_time - timestamp;
 	d = transit - state->transit;
