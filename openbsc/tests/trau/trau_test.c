@@ -57,7 +57,7 @@ void test_trau_fr_efr(unsigned char *data)
 	msg = trau_decode_efr(1, &tf);
 	OSMO_ASSERT(msg != NULL);
 	frame = (struct gsm_data_frame *)msg->data;
-	OSMO_ASSERT(frame->msg_type == GSM_TCHF_BAD_FRAME);
+	OSMO_ASSERT(frame->msg_type == GSM_BAD_FRAME);
 	msgb_free(msg);
 }
 

@@ -314,7 +314,7 @@ struct msgb *trau_decode_efr(uint32_t callref,
 	return msg;
 
 bad_frame:
-	frame->msg_type = GSM_TCHF_BAD_FRAME;
+	frame->msg_type = GSM_BAD_FRAME;
 
 	return msg;
 }
