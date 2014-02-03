@@ -313,7 +313,7 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
 		real_sendto = dlsym(RTLD_NEXT, "sendto");
 
 	if (len == 1 && ((const char *)buf)[0] == MGCP_DUMMY_LOAD ) {
-		fprintf(stderr, "Dummy packet to 0x%08x:%d, msg length %d\n%s\n\n",
+		fprintf(stderr, "Dummy packet to 0x%08x:%d, msg length %zu\n%s\n\n",
 		       dest_host, dest_port,
 		       len, osmo_hexdump(buf, len));
 		dummy_packets += 1;
