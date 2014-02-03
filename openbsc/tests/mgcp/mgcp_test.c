@@ -830,7 +830,7 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 		       state.in_stream.err_ts_counter - last_in_ts_err_cnt,
 		       state.out_stream.err_ts_counter - last_out_ts_err_cnt);
 
-		printf("Stats: Jitter = %u, Transit = %u\n",
+		printf("Stats: Jitter = %u, Transit = %d\n",
 		       mgcp_state_calc_jitter(&state), state.transit);
 
 		last_in_ts_err_cnt = state.in_stream.err_ts_counter;
