@@ -11,5 +11,5 @@ mgcp_test_SOURCES = mgcp_test.c
 mgcp_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libmgcp/libmgcp.a \
 		$(top_builddir)/src/libcommon/libcommon.a \
-		$(LIBOSMOCORE_LIBS) -lrt $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS) \
+		$(LIBOSMOCORE_LIBS) -lrt -lm $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS) \
 		$(LIBRARY_DL)
