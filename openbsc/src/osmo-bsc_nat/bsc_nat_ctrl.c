@@ -186,6 +186,26 @@ static void ctrl_conn_closed_cb(struct ctrl_connection *connection)
 	}
 }
 
+static int extract_bsc_nr_variable(char *variable, unsigned int *nr, char **bsc_variable)
+{
+	char *nr_str, *tmp, *saveptr = NULL;
+
+	tmp = strtok_r(variable, ".", &saveptr);
+	tmp = strtok_r(NULL, ".", &saveptr);
+	tmp = strtok_r(NULL, ".", &saveptr);
+	nr_str = strtok_r(NULL, ".", &saveptr);
+	if (!nr_str)
+		return 0;
+	*nr = atoi(nr_str);
+
+	tmp = strtok_r(NULL, "\0", &saveptr);
+	if (!tmp)
+		return 0;
+
+	*bsc_variable = tmp;
+	return 1;
+}
+
 static int forward_to_bsc(struct ctrl_cmd *cmd)
 {
 	int ret = CTRL_CMD_HANDLED;
@@ -193,24 +213,14 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 	struct bsc_connection *bsc;
 	struct bsc_cmd_list *pending;
 	unsigned int nr;
-	char *nr_str, *tmp, *saveptr = NULL;
+	char *bsc_variable;
 
 	/* Skip over the beginning (bsc.) */
-	tmp = strtok_r(cmd->variable, ".", &saveptr);
-	tmp = strtok_r(NULL, ".", &saveptr);
-	tmp = strtok_r(NULL, ".", &saveptr);
-	nr_str = strtok_r(NULL, ".", &saveptr);
-	if (!nr_str) {
+	if (!extract_bsc_nr_variable(cmd->variable, &nr, &bsc_variable)) {
 		cmd->reply = "command incomplete";
 		goto err;
 	}
-	nr = atoi(nr_str);
 
-	tmp = strtok_r(NULL, "\0", &saveptr);
-	if (!tmp) {
-		cmd->reply = "command incomplete";
-		goto err;
-	}
 
 	llist_for_each_entry(bsc, &g_nat->bsc_connections, list_entry) {
 		if (!bsc->cfg)
@@ -245,7 +255,7 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 			}
 
 			talloc_free(bsc_cmd->variable);
-			bsc_cmd->variable = talloc_strdup(bsc_cmd, tmp);
+			bsc_cmd->variable = talloc_strdup(bsc_cmd, bsc_variable);
 			if (!bsc_cmd->variable) {
 				cmd->reply = "OOM";
 				goto err;
@@ -274,8 +284,7 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 err:
 	ret = CTRL_CMD_ERROR;
 done:
-	if (bsc_cmd)
-		talloc_free(bsc_cmd);
+	talloc_free(bsc_cmd);
 	return ret;
 
 }
@@ -297,6 +306,69 @@ static int verify_fwd_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
 	return 0;
 }
 
+static int extract_bsc_cfg_variable(struct ctrl_cmd *cmd, struct bsc_config **cfg,
+				char **bsc_variable)
+{
+	unsigned int nr;
+
+	if (!extract_bsc_nr_variable(cmd->variable, &nr, bsc_variable)) {
+		cmd->reply = "command incomplete";
+		return 0;
+	}
+
+	*cfg = bsc_config_num(g_nat, nr);
+	if (!*cfg) {
+		cmd->reply = "Unknown BSC";
+		return 0;
+	}
+
+	return 1;
+}
+
+CTRL_CMD_DEFINE(net_cfg_cmd, "net 0 bsc_cfg *");
+static int get_net_cfg_cmd(struct ctrl_cmd *cmd, void *data)
+{
+	char *bsc_variable;
+	struct bsc_config *bsc_cfg;
+
+	if (!extract_bsc_cfg_variable(cmd, &bsc_cfg, &bsc_variable))
+		return CTRL_CMD_ERROR;
+
+	if (strcmp(bsc_variable, "access-list-name") == 0) {
+		cmd->reply = talloc_asprintf(cmd, "%s",
+				bsc_cfg->acc_lst_name ? bsc_cfg->acc_lst_name : "");
+		return CTRL_CMD_REPLY;
+	}
+
+	cmd->reply = "unknown command";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_net_cfg_cmd(struct ctrl_cmd *cmd, void *data)
+{
+	char *bsc_variable;
+	struct bsc_config *bsc_cfg;
+
+	if (!extract_bsc_cfg_variable(cmd, &bsc_cfg, &bsc_variable))
+		return CTRL_CMD_ERROR;
+
+	if (strcmp(bsc_variable, "access-list-name") == 0) {
+		bsc_replace_string(bsc_cfg, &bsc_cfg->acc_lst_name, cmd->value);
+		cmd->reply = talloc_asprintf(cmd, "%s",
+				bsc_cfg->acc_lst_name ? bsc_cfg->acc_lst_name : "");
+		return CTRL_CMD_REPLY;
+	}
+
+	cmd->reply = "unknown command";
+	return CTRL_CMD_ERROR;
+}
+
+static int verify_net_cfg_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	return 0;
+}
+
+
 struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port)
 {
 	struct ctrl_handle *ctrl;
@@ -312,13 +384,21 @@ struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port)
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_fwd_cmd);
 	if (rc) {
 		fprintf(stderr, "Failed to install the control command. Exiting.\n");
-		osmo_fd_unregister(&ctrl->listen_fd);
-		close(ctrl->listen_fd.fd);
-		talloc_free(ctrl);
-		return NULL;
+		goto error;
+	}
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_cfg_cmd);
+	if (rc) {
+		fprintf(stderr, "Failed to install the net cfg command. Exiting.\n");
+		goto error;
 	}
 
 	g_nat = nat;
 	return ctrl;
+
+error:
+	osmo_fd_unregister(&ctrl->listen_fd);
+	close(ctrl->listen_fd.fd);
+	talloc_free(ctrl);
+	return NULL;
 }
 
