@@ -236,7 +236,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 		addr = endp->cfg->source_addr;
 
 	len = snprintf(sdp_record, sizeof(sdp_record) - 1,
-			"I: %u\n\n"
+			"I: %u%s\n\n"
 			"v=0\r\n"
 			"o=- %u 23 IN IP4 %s\r\n"
 			"c=IN IP4 %s\r\n"
@@ -244,7 +244,8 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			"m=audio %d RTP/AVP %d\r\n"
 			"a=rtpmap:%d %s\r\n"
 			"%s%s",
-			endp->ci, endp->ci, addr, addr,
+			endp->ci, endp->cfg->osmux && endp->osmux ? "\nX-Osmux: On" : "",
+			endp->ci, addr, addr,
 			endp->net_end.local_port, endp->bts_end.payload_type,
 			endp->bts_end.payload_type, endp->tcfg->audio_name,
 			fmtp_extra ? fmtp_extra : "", fmtp_extra ? "\r\n" : "");
@@ -759,6 +760,14 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 		case 'M':
 			mode = (const char *) line + 3;
 			break;
+		case 'X':
+			if (strcmp("Osmux: on", line + 2) == 0 &&
+			    osmux_enable_endpoint(endp, OSMUX_ROLE_BSC) < 0) {
+				LOGP(DMGCP, LOGL_ERROR,
+				     "Could not activate osmux in endpoint %d\n",
+				     ENDPOINT_NUMBER(endp));
+			}
+			break;
 		case '\0':
 			have_sdp = 1;
 			goto mgcp_header_done;
@@ -859,8 +868,12 @@ mgcp_header_done:
 	if (p->cfg->change_cb)
 		p->cfg->change_cb(tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX);
 
-	if (endp->conn_mode & MGCP_CONN_RECV_ONLY && tcfg->keepalive_interval != 0)
-		mgcp_send_dummy(endp);
+	if (endp->conn_mode & MGCP_CONN_RECV_ONLY && tcfg->keepalive_interval != 0) {
+		if (endp->osmux)
+			osmux_send_dummy(endp);
+		else
+			mgcp_send_dummy(endp);
+	}
 
 	create_transcoder(endp);
 	return create_response_with_sdp(endp, "CRCX", p->trans);
@@ -874,7 +887,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 {
 	struct mgcp_endpoint *endp = p->endp;
 	int error_code = 500;
-	int silent = 0;
+	int silent = 0, osmux = 0;
 	char *line;
 	const char *local_options = NULL;
 
@@ -909,6 +922,10 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			}
 			endp->orig_mode = endp->conn_mode;
 			break;
+		case 'X':
+			if (strcmp("Osmux: on", line + 2) == 0)
+				osmux = 1;
+			break;
 		case 'Z':
 			silent = strcmp("noanswer", line + 3) == 0;
 			break;
@@ -924,6 +941,21 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 				line[0], line[0], ENDPOINT_NUMBER(endp));
 			break;
 		}
+	}
+
+	/* Re-enable Osmux if we receive a MDCX, we have to set up a new
+	 * RTP flow: this generates a randomly allocated RTP SSRC and sequence
+	 * number.
+	 */
+	if (osmux) {
+		if (osmux_enable_endpoint(endp, OSMUX_ROLE_BSC) < 0) {
+			LOGP(DMGCP, LOGL_ERROR,
+			     "Could not update osmux in endpoint %d\n",
+			     ENDPOINT_NUMBER(endp));
+		}
+		LOGP(DMGCP, LOGL_NOTICE,
+		     "Re-enabling osmux in endpoint %d, we got updated\n",
+		     ENDPOINT_NUMBER(endp));
 	}
 
 	set_local_cx_options(endp->tcfg->endpoints, &endp->local_options,

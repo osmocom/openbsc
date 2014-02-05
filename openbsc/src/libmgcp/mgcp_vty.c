@@ -129,6 +129,10 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, "  rtp transcoder-range %u %u%s",
 			g_cfg->transcoder_ports.range_start, g_cfg->transcoder_ports.range_end, VTY_NEWLINE);
 	vty_out(vty, "  transcoder-remote-base %u%s", g_cfg->transcoder_remote_base, VTY_NEWLINE);
+	vty_out(vty, "  osmux %s%s",
+		g_cfg->osmux == 1 ? "on" : "off", VTY_NEWLINE);
+	vty_out(vty, "  osmux batch-factor %d%s",
+		g_cfg->osmux_batch, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -434,6 +438,10 @@ DEFUN(cfg_mgcp_loop,
       "Loop audio for all endpoints on main trunk\n"
       "Don't Loop\n" "Loop\n")
 {
+	if (g_cfg->osmux) {
+		vty_out(vty, "Cannot use `loop' with `osmux'.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 	g_cfg->trunk.audio_loop = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -726,6 +734,10 @@ DEFUN(cfg_trunk_loop,
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 
+	if (g_cfg->osmux) {
+		vty_out(vty, "Cannot use `loop' with `osmux'.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 	trunk->audio_loop = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -1056,6 +1068,33 @@ DEFUN(reset_all_endp, reset_all_endp_cmd,
 	return CMD_SUCCESS;
 }
 
+#define OSMUX_STR "RTP multiplexing"
+DEFUN(cfg_mgcp_osmux,
+      cfg_mgcp_osmux_cmd,
+      "osmux (on|off)",
+       OSMUX_STR "Enable OSMUX\n" "Disable OSMUX\n")
+{
+	if (strcmp(argv[0], "on") == 0) {
+		g_cfg->osmux = 1;
+		if (g_cfg->trunk.audio_loop) {
+			vty_out(vty, "Cannot use `loop' with `osmux'.%s",
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	} else if (strcmp(argv[0], "off") == 0)
+		g_cfg->osmux = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_osmux_batch_factor,
+      cfg_mgcp_osmux_batch_factor_cmd,
+      "osmux batch-factor <1-4>",
+      OSMUX_STR "Batching factor\n" "Number of messages in the batch\n")
+{
+	g_cfg->osmux_batch = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
 
 int mgcp_vty_init(void)
 {
@@ -1108,6 +1147,8 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_fmtp_extra_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_send_ptime_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_sdp_payload_send_ptime_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_osmux_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_factor_cmd);
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
 	install_node(&trunk_node, config_write_trunk);
@@ -1202,6 +1243,9 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg,
 {
 	int rc;
 	struct mgcp_trunk_config *trunk;
+
+	/* Default to 4 messages */
+	cfg->osmux_batch = 4;
 
 	g_cfg = cfg;
 	rc = vty_read_config_file(config_file, NULL);

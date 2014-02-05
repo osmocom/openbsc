@@ -630,7 +630,7 @@ static void test_mgcp_rewrite(void)
 		char *input = strdup(orig);
 
 		output = bsc_mgcp_rewrite(input, strlen(input), 0x1e,
-					  ip, port, &payload_type);
+					  ip, port, 0, &payload_type);
 
 		if (payload_type != -1) {
 			fprintf(stderr, "Found media payload type %d in SDP data\n",

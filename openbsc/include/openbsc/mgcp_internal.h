@@ -126,7 +126,11 @@ struct mgcp_lco {
 enum mgcp_type {
 	MGCP_RTP_DEFAULT	= 0,
 	MGCP_RTP_TRANSCODED,
+	MGCP_OSMUX_BSC,
+	MGCP_OSMUX_BSC_NAT,
 };
+
+#include <openbsc/osmux.h>
 
 struct mgcp_endpoint {
 	int allocated;
@@ -163,6 +167,11 @@ struct mgcp_endpoint {
 
 	/* tap for the endpoint */
 	struct mgcp_rtp_tap taps[MGCP_TAP_COUNT];
+
+	/* osmux is enabled/disabled */
+	int osmux;
+	/* osmux internal to unbatch messages for this endpoint */
+	struct osmux_out_handle osmux_out;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->tcfg->endpoints)
@@ -197,5 +206,11 @@ void mgcp_state_calc_loss(struct mgcp_rtp_state *s, struct mgcp_rtp_end *,
 			uint32_t *expected, int *loss);
 uint32_t mgcp_state_calc_jitter(struct mgcp_rtp_state *);
 
+enum {
+	MGCP_DEST_NET = 0,
+	MGCP_DEST_BTS,
+};
+
+#define MGCP_DUMMY_LOAD 0x23
 
 #endif

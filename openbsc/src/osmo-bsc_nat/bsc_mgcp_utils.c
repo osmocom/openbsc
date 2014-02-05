@@ -262,12 +262,12 @@ static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, int port, struct mgcp
 	int len;
 
 	len = snprintf(buf, sizeof(buf),
-		       "MDCX 23 %x@mgw MGCP 1.0\r\n"
+		       "MDCX 23 %x@mgw MGCP 1.0%s\r\n"
 		       "Z: noanswer\r\n"
 		       "\r\n"
 		       "c=IN IP4 %s\r\n"
 		       "m=audio %d RTP/AVP 255\r\n",
-		       port,
+		       port, bsc->cfg->osmux ? "\nX-Osmux: on" : "",
 		       bsc->nat->mgcp_cfg->source_addr,
 		       endp->bts_end.local_port);
 	if (len < 0) {
@@ -545,6 +545,7 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
 				   sccp->bsc_endp, nat->mgcp_cfg->source_addr,
 				   mgcp_endp->bts_end.local_port,
+				   nat->mgcp_cfg->osmux ? sccp->bsc->cfg->osmux : 0,
 				   &mgcp_endp->net_end.payload_type);
 	if (!bsc_msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
@@ -559,6 +560,16 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	/* we need to update some bits */
 	if (state == MGCP_ENDP_CRCX) {
 		struct sockaddr_in sock;
+		struct mgcp_endpoint *endp = &nat->mgcp_cfg->trunk.endpoints[endpoint];
+
+		if (nat->mgcp_cfg->osmux ? sccp->bsc->cfg->osmux : 0) {
+			if (osmux_enable_endpoint(endp, OSMUX_ROLE_BSC_NAT) < 0) {
+				LOGP(DMGCP, LOGL_ERROR,
+				     "Could not activate osmux in endpoint %d\n",
+				     ENDPOINT_NUMBER(endp));
+			}
+		}
+
 		socklen_t len = sizeof(sock);
 		if (getpeername(sccp->bsc->write_queue.bfd.fd, (struct sockaddr *) &sock, &len) != 0) {
 			LOGP(DMGCP, LOGL_ERROR, "Can not get the peername...%d/%s\n",
@@ -687,8 +698,8 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg), -1,
 				  bsc->nat->mgcp_cfg->source_addr,
 				  endp->net_end.local_port,
+				  bsc->nat->mgcp_cfg->osmux ? bsc_endp->bsc->cfg->osmux : 0,
 				  &endp->bts_end.payload_type);
-
 	if (!output) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");
 		return;
@@ -727,7 +738,7 @@ uint32_t bsc_mgcp_extract_ci(const char *str)
  * Create a new MGCPCommand based on the input and endpoint from a message
  */
 static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
-		       int endp, int len, int cr)
+		       int endp, int len, int cr, int osmux)
 {
 	int slen;
 	int ret;
@@ -741,14 +752,15 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 		return;
 	}
 
-	slen = sprintf((char *) output->l3h, "%s %s %x@mgw MGCP 1.0%s",
-			op, buf, endp, cr ? "\r\n" : "\n");
+	slen = sprintf((char *) output->l3h, "%s %s %x@mgw MGCP 1.0%s%s",
+			op, buf, endp, osmux ? "\nX-Osmux: on" : "",
+			cr ? "\r\n" : "\n");
 	output->l3h = msgb_put(output, slen);
 }
 
 /* we need to replace some strings... */
 struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint,
-			      const char *ip, int port,
+			      const char *ip, int port, int osmux,
 			      int *payload_type)
 {
 	static const char crcx_str[] = "CRCX ";
@@ -787,11 +799,11 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint,
 		cr = len > 0 && token[len - 1] == '\r';
 
 		if (strncmp(crcx_str, token, (sizeof crcx_str) - 1) == 0) {
-			patch_mgcp(output, "CRCX", token, endpoint, len, cr);
+			patch_mgcp(output, "CRCX", token, endpoint, len, cr, osmux);
 		} else if (strncmp(dlcx_str, token, (sizeof dlcx_str) - 1) == 0) {
-			patch_mgcp(output, "DLCX", token, endpoint, len, cr);
+			patch_mgcp(output, "DLCX", token, endpoint, len, cr, 0);
 		} else if (strncmp(mdcx_str, token, (sizeof mdcx_str) - 1) == 0) {
-			patch_mgcp(output, "MDCX", token, endpoint, len, cr);
+			patch_mgcp(output, "MDCX", token, endpoint, len, cr, osmux);
 		} else if (strncmp(ip_str, token, (sizeof ip_str) - 1) == 0) {
 			output->l3h = msgb_put(output, strlen(ip_str));
 			memcpy(output->l3h, ip_str, strlen(ip_str));

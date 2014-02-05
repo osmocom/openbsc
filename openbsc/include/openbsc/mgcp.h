@@ -181,6 +181,15 @@ struct mgcp_config {
 	int last_bts_port;
 
 	enum mgcp_role role;
+
+	/* osmux translator: 0 means disabled, 1 means enabled */
+	int osmux;
+	/* The BSC-NAT may ask for enabling osmux on demand. This tells us if
+	 * the osmux socket is already initialized.
+	 */
+	int osmux_init;
+	/* osmux batch factor: from 1 to 4 maximum */
+	int osmux_batch;
 };
 
 /* config management */
@@ -221,5 +230,9 @@ static inline void mgcp_endpoint_to_timeslot(int endpoint, int *multiplex, int *
 int mgcp_send_reset_ep(struct mgcp_endpoint *endp, int endpoint);
 int mgcp_send_reset_all(struct mgcp_config *cfg);
 
+
+int mgcp_create_bind(const char *source_addr, struct osmo_fd *fd, int port);
+int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp, struct sockaddr_in *addr, char *buf, int rc);
+int mgcp_udp_send(int fd, struct in_addr *addr, int port, char *buf, int len);
 
 #endif
