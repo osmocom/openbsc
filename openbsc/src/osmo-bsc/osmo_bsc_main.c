@@ -228,13 +228,10 @@ int main(int argc, char **argv)
 	if (rf_ctrl)
 		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctrl);
 
-	if (data->rf_ctrl_name) {
-		data->rf_ctrl = osmo_bsc_rf_create(data->rf_ctrl_name,
-						  bsc_gsmnet);
-		if (!data->rf_ctrl) {
-			fprintf(stderr, "Failed to create the RF service.\n");
-			exit(1);
-		}
+	data->rf_ctrl = osmo_bsc_rf_create(data->rf_ctrl_name, bsc_gsmnet);
+	if (!data->rf_ctrl) {
+		fprintf(stderr, "Failed to create the RF service.\n");
+		exit(1);
 	}
 
 	llist_for_each_entry(msc, &bsc_gsmnet->bsc_data->mscs, entry) {

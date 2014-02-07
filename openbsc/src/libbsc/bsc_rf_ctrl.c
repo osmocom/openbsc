@@ -1,8 +1,8 @@
 /* RF Ctl handling socket */
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
- * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010-2012 by On-Waves
+ * (C) 2010-2014 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2014 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -435,26 +435,19 @@ static int msc_signal_handler(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net)
+static int rf_create_socket(struct osmo_bsc_rf *rf, const char *path)
 {
 	unsigned int namelen;
 	struct sockaddr_un local;
 	struct osmo_fd *bfd;
-	struct osmo_bsc_rf *rf;
 	int rc;
-
-	rf = talloc_zero(NULL, struct osmo_bsc_rf);
-	if (!rf) {
-		LOGP(DLINP, LOGL_ERROR, "Failed to create osmo_bsc_rf.\n");
-		return NULL;
-	}
 
 	bfd = &rf->listen;
 	bfd->fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (bfd->fd < 0) {
 		LOGP(DLINP, LOGL_ERROR, "Can not create socket. %d/%s\n",
 		     errno, strerror(errno));
-		return NULL;
+		return -1;
 	}
 
 	local.sun_family = AF_UNIX;
@@ -479,15 +472,13 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 		LOGP(DLINP, LOGL_ERROR, "Failed to bind '%s' errno: %d/%s\n",
 		     local.sun_path, errno, strerror(errno));
 		close(bfd->fd);
-		talloc_free(rf);
-		return NULL;
+		return -1;
 	}
 
 	if (listen(bfd->fd, 0) != 0) {
 		LOGP(DLINP, LOGL_ERROR, "Failed to listen: %d/%s\n", errno, strerror(errno));
 		close(bfd->fd);
-		talloc_free(rf);
-		return NULL;
+		return -1;
 	}
 
 	bfd->when = BSC_FD_READ;
@@ -497,6 +488,23 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	if (osmo_fd_register(bfd) != 0) {
 		LOGP(DLINP, LOGL_ERROR, "Failed to register bfd.\n");
 		close(bfd->fd);
+		return -1;
+	}
+
+	return 0;
+}
+
+struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net)
+{
+	struct osmo_bsc_rf *rf;
+
+	rf = talloc_zero(NULL, struct osmo_bsc_rf);
+	if (!rf) {
+		LOGP(DLINP, LOGL_ERROR, "Failed to create osmo_bsc_rf.\n");
+		return NULL;
+	}
+
+	if (path && rf_create_socket(rf, path) != 0) {
 		talloc_free(rf);
 		return NULL;
 	}

@@ -293,12 +293,10 @@ int main(int argc, char **argv)
 	/* seed the PRNG */
 	srand(time(NULL));
 
-	if (rf_ctrl_name) {
-		rf_ctrl = osmo_bsc_rf_create(rf_ctrl_name, bsc_gsmnet);
-		if (!rf_ctrl) {
-			fprintf(stderr, "Failed to create the RF service.\n");
-			exit(1);
-		}
+	rf_ctrl = osmo_bsc_rf_create(rf_ctrl_name, bsc_gsmnet);
+	if (!rf_ctrl) {
+		fprintf(stderr, "Failed to create the RF service.\n");
+		exit(1);
 	}
 
 	if (db_init(database_name)) {
