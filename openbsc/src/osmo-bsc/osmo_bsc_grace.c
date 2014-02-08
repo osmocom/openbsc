@@ -28,8 +28,6 @@
 
 int bsc_grace_allow_new_connection(struct gsm_network *network, struct gsm_bts *bts)
 {
-	if (!network->bsc_data->rf_ctrl)
-		return 1;
 	if (bts->excl_from_rf_lock)
 		return 1;
 	return network->bsc_data->rf_ctrl->policy == S_RF_ON;
@@ -43,8 +41,6 @@ int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
 {
 	struct gsm_bts *bts = NULL;
 
-	if (!subscr->net->bsc_data->rf_ctrl)
-		goto page;
 	if (subscr->net->bsc_data->rf_ctrl->policy == S_RF_ON)
 		goto page;
 

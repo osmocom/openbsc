@@ -108,7 +108,7 @@ enum osmo_bsc_rf_policy osmo_bsc_rf_get_policy_by_bts(struct gsm_bts *bts)
 {
 	struct osmo_bsc_data *bsc_data = bts->network->bsc_data;
 
-	if (!bsc_data || !bsc_data->rf_ctrl)
+	if (!bsc_data)
 		return OSMO_BSC_RF_POLICY_UNKNOWN;
 
 	switch (bsc_data->rf_ctrl->policy) {
@@ -412,7 +412,7 @@ static int msc_signal_handler(unsigned int subsys, unsigned int signal,
 	msc = signal_data;
 
 	/* check if we have the needed information */
-	if (!net->bsc_data || !net->bsc_data->rf_ctrl)
+	if (!net->bsc_data)
 		return 0;
 	if (msc->data->type != MSC_CON_TYPE_NORMAL)
 		return 0;
