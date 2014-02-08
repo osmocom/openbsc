@@ -450,7 +450,7 @@ static int gsm411_rp_sendmsg(struct gsm411_smr_inst *inst, struct msgb *msg,
 	rp = (struct gsm411_rp_hdr *)msgb_push(msg, sizeof(*rp));
 	rp->len = len + 2;
 	rp->msg_type = rp_msg_type;
-	rp->msg_ref = rp_msg_ref; /* FIXME: Choose randomly */
+	rp->msg_ref = rp_msg_ref;
 
 	return gsm411_smr_send(inst, rl_msg_type, msg);
 }
@@ -836,7 +836,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm_trans *trans;
 	uint8_t *data, *rp_ud_len;
-	uint8_t msg_ref = 42;
+	uint8_t msg_ref = sms_next_rp_msg_ref(conn);
 	int transaction_id;
 	int rc;
 

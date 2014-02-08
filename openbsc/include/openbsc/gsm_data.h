@@ -106,6 +106,8 @@ struct gsm_subscriber_connection {
 
 	/* LU expiration handling */
 	uint8_t expire_timer_stopped;
+	/* SMS helpers for libmsc */
+	uint8_t next_rp_ref;
 
 	/*
 	 * Operations that have a state and might be pending

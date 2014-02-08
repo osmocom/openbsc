@@ -58,4 +58,8 @@ Random range test: range 127, max num ARFCNs 29
 Random range test: range 255, max num ARFCNs 22
 Random range test: range 511, max num ARFCNs 18
 Random range test: range 1023, max num ARFCNs 16
+testing RP-Reference wrap
+Allocated reference: 255
+Allocated reference: 0
+Allocated reference: 1
 Done.
