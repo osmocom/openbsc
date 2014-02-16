@@ -801,7 +801,7 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 	for (i = 0; i < ARRAY_SIZE(test_rtp_packets1); ++i) {
 		struct rtp_packet_info *info = test_rtp_packets1 + i;
 
-		force_monotonic_time_us = round(1000000.0 * info->txtime);
+		force_monotonic_time_us = (1000000.0 * info->txtime)+0.5;
 
 		OSMO_ASSERT(info->len <= sizeof(buffer));
 		OSMO_ASSERT(info->len >= 0);
