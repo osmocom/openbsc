@@ -225,6 +225,17 @@ struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr)
 	return NULL;
 }
 
+struct gsm_bts_trx *gsm_bts_trx_by_arfcn(struct gsm_bts *bts, int arfcn)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->arfcn == arfcn)
+			return trx;
+	}
+	return NULL;
+}
+
 /* Search for a BTS in the given Location Area; optionally start searching
  * with start_bts (for continuing to search after the first result) */
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
