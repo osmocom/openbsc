@@ -351,6 +351,8 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 static int bootstrap_bts(struct gsm_bts *bts)
 {
 	int i, n;
+	struct gsm_bts_trx *cur_trx;
+	struct gsm_bts_trx *trx;
 
 	if (bts->model->start && !bts->model->started) {
 		int ret = bts->model->start(bts->network);
@@ -392,6 +394,17 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	default:
 		LOGP(DNM, LOGL_ERROR, "Unsupported frequency band.\n");
 		return -EINVAL;
+	}
+
+	llist_for_each_entry(cur_trx, &bts->trx_list, list) {
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			if ((cur_trx->arfcn == trx->arfcn) && (cur_trx->nr != trx->nr)) {
+				LOGP(DNM, LOGL_ERROR, "BTS should not use duplicate ARFCNs. "
+					"Duplicate ARFCN = %d BTS = %d TRX = %d TRX = %d\n",
+					trx->arfcn, bts->nr, cur_trx->nr, trx->nr);
+				return -EINVAL;
+			}
+		}
 	}
 
 	if (bts->network->auth_policy == GSM_AUTH_POLICY_ACCEPT_ALL &&
