@@ -32,6 +32,8 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/mncc.h>
 
+struct decoded_trau_frame;
+
 /* map a TRAU mux map entry */
 int trau_mux_map(const struct gsm_e1_subslot *src,
 		 const struct gsm_e1_subslot *dst);
