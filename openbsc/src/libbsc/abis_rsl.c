@@ -1539,6 +1539,40 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 	return 0;
 }
 
+/* CCCH is overloaded, IMM_ASSIGN was dropped */
+static int rsl_rx_delete_ind(struct gsm_bts_trx *trx, struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *rqd_hdr = msgb_l2(msg);
+	struct gsm48_imm_ass *ia;
+	struct gsm_lchan *lchan;
+	struct gsm_bts_trx *cur_trx;
+	uint8_t chan_nr;
+	uint16_t arfcn;
+
+	/* bts didn't send IMM_ASSIGN, so we should release allocated channel */
+	if (msgb_l2len(msg) != MACBLOCK_SIZE + 6)
+		return -EIO;
+
+	ia = (struct gsm48_imm_ass *) (rqd_hdr->data + 2);
+
+	if (ia->msg_type == GSM48_MT_RR_IMM_ASS) {
+		chan_nr = ia->chan_desc.chan_nr;
+		arfcn = ia->chan_desc.h0.arfcn_high;
+		arfcn = (arfcn << 8) | ia->chan_desc.h0.arfcn_low;
+		cur_trx = gsm_bts_trx_by_arfcn(trx->bts, arfcn);
+		if (!cur_trx)
+			return -EINVAL;
+		lchan = lchan_lookup(cur_trx, chan_nr);
+		if (!lchan)
+			return -EINVAL;
+		if (lchan->state != LCHAN_S_ACTIVE)
+			return -EINVAL;
+		rsl_direct_rf_release(lchan);
+	}
+
+	return 0;
+}
+
 static int abis_rsl_rx_cchan(struct msgb *msg)
 {
 	struct e1inp_sign_link *sign_link = msg->dst;
@@ -1557,7 +1591,9 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 		rc = rsl_rx_ccch_load(msg);
 		break;
 	case RSL_MT_DELETE_IND:
-		/* CCCH overloaded, IMM_ASSIGN was dropped */
+		/* CCCH is overloaded, IMM_ASSIGN was dropped */
+		rc = rsl_rx_delete_ind(sign_link->trx, msg);
+		break;
 	case RSL_MT_CBCH_LOAD_IND:
 		/* current load on the CBCH */
 		LOGP(DRSL, LOGL_NOTICE, "Unimplemented Abis RSL TRX message "
