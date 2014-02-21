@@ -163,7 +163,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 		/* pass DCS 1:1 through from SMPP to GSM */
 		sms->data_coding_scheme = submit->data_coding;
 		mode = MODE_8BIT;
-	} else if (submit->data_coding == 0x80) {
+	} else if (submit->data_coding == 0x08) {
 		/* UCS-2 */
 		sms->data_coding_scheme = (2 << 2);
 		mode = MODE_8BIT;
