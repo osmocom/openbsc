@@ -1,6 +1,6 @@
 /* Osmo BSC VTY Configuration */
-/* (C) 2009-2011 by Holger Hans Peter Freyther
- * (C) 2009-2011 by On-Waves
+/* (C) 2009-2014 by Holger Hans Peter Freyther
+ * (C) 2009-2014 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,6 +19,7 @@
  */
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/osmo_bsc.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/vty.h>
 
@@ -670,6 +671,28 @@ DEFUN(show_pos,
 	return CMD_SUCCESS;
 }
 
+DEFUN(gen_position_trap,
+      gen_position_trap_cmd,
+      "generate-location-state-trap <0-255>",
+      "Generate location state report\n"
+      "BTS to report\n")
+{
+	int bts_nr;
+	struct gsm_bts *bts;
+	struct gsm_network *net = bsc_gsmnet;
+
+	bts_nr = atoi(argv[0]);
+	if (bts_nr >= net->num_bts) {
+		vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts = gsm_bts_num(net, bts_nr);
+	bsc_gen_location_state_trap(bts);
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
@@ -717,6 +740,8 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);
 	install_element_ve(&show_pos_cmd);
+
+	install_element(ENABLE_NODE, &gen_position_trap_cmd);
 
 	return 0;
 }

@@ -214,6 +214,14 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 	talloc_free(cmd);
 }
 
+void bsc_gen_location_state_trap(struct gsm_bts *bts)
+{
+	struct osmo_msc_data *msc;
+
+	llist_for_each_entry(msc, &bts->network->bsc_data->mscs, entry)
+		generate_location_state_trap(bts, msc->msc_con);
+}
+
 static int location_equal(struct bts_location *a, struct bts_location *b)
 {
 	return ((a->tstamp == b->tstamp) && (a->valid == b->valid) && (a->lat == b->lat) &&
@@ -279,10 +287,8 @@ static int get_bts_loc(struct ctrl_cmd *cmd, void *data)
 static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
 {
 	char *saveptr, *lat, *lon, *height, *tstamp, *valid, *tmp;
-	struct osmo_msc_data *msc;
 	struct bts_location *curloc, *lastloc;
 	int ret;
-	struct gsm_network *gsmnet = (struct gsm_network *)data;
 	struct gsm_bts *bts = (struct gsm_bts *) cmd->node;
 	if (!bts) {
 		cmd->reply = "bts not found.";
@@ -322,8 +328,7 @@ static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
 	ret = get_bts_loc(cmd, data);
 
 	if (!location_equal(curloc, lastloc))
-		llist_for_each_entry(msc, &gsmnet->bsc_data->mscs, entry)
-			generate_location_state_trap(bts, msc->msc_con);
+		bsc_gen_location_state_trap(bts);
 
 	cleanup_locations(&bts->loc_list);
 

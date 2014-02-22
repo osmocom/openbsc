@@ -55,4 +55,6 @@ int bsc_handle_dt1(struct osmo_bsc_sccp_con *conn, struct msgb *msg, unsigned in
 
 int bsc_ctrl_cmds_install();
 
+void bsc_gen_location_state_trap(struct gsm_bts *bts);
+
 #endif
