@@ -980,7 +980,7 @@ DEFUN(allocate_all_channels, allocate_all_channels_cmd,
 			if (!lchan)
 				break;
 
-			rc = rsl_chan_activate_lchan(lchan, 0, 0, 0);
+			rc = rsl_chan_activate_lchan(lchan, 0, 0);
 			if (rc < 0) {
 				lchan_free(lchan);
 				break;
@@ -989,6 +989,42 @@ DEFUN(allocate_all_channels, allocate_all_channels_cmd,
 			rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 		}
 	}
+
+	return CMD_SUCCESS;
+}
+
+int rsl_send_imm_ass_rej(struct gsm_bts *bts,
+			 unsigned int num_req_refs,
+			 struct gsm48_req_ref *rqd_refs,
+			 uint8_t wait_ind);
+
+DEFUN(flood_imm_ass_rej, flood_imm_ass_rej_cmd,
+      "flood-imm-ass-rej <0-65536> <1-1000>",
+      "Flood BTS with IMMEDIATE ASSING REJECT messages\n"
+      "BTS number\n"
+      "Number of messages\n")
+{
+	struct gsm_bts *bts;
+	int reps = atoi(argv[1]);
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm48_req_ref req_ref = {0x25, 0};
+	int i;
+	int rc = 0;
+
+	bts = gsm_bts_num(gsmnet, atoi(argv[0]));
+	if (!bts) {
+		vty_out(vty, "%% BTS with number(%d) could not be found.%s",
+			atoi(argv[0]), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	for (i = 1; i <= reps && rc >= 0; i++) {
+		req_ref.t1++;
+		rc = rsl_send_imm_ass_rej(bts, 1, &req_ref, 10);
+	}
+	vty_out(vty, "%% Stopped after %d/%d iterations: %s (%d).%s",
+		i-1, reps, rc >= 0 ? "OK" : strerror(-rc), rc,
+		VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1027,6 +1063,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &smsqueue_fail_cmd);
 	install_element(ENABLE_NODE, &subscriber_send_pending_sms_cmd);
 	install_element(ENABLE_NODE, &allocate_all_channels_cmd);
+	install_element(ENABLE_NODE, &flood_imm_ass_rej_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mncc_int_cmd);
 	install_node(&mncc_int_node, config_write_mncc_int);

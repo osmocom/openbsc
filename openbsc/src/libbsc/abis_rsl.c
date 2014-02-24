@@ -1347,10 +1347,10 @@ static void t3109_expired(void *data)
 #define GSM48_LEN2PLEN(a)	(((a) << 2) | 1)
 
 /* Format an IMM ASS REJ according to 04.08 Chapter 9.1.20 */
-static int rsl_send_imm_ass_rej(struct gsm_bts *bts,
-				unsigned int num_req_refs,
-				struct gsm48_req_ref *rqd_refs,
-				uint8_t wait_ind)
+int rsl_send_imm_ass_rej(struct gsm_bts *bts,
+			 unsigned int num_req_refs,
+			 struct gsm48_req_ref *rqd_refs,
+			 uint8_t wait_ind)
 {
 	uint8_t buf[GSM_MACBLOCK_LEN];
 	struct gsm48_imm_ass_rej *iar = (struct gsm48_imm_ass_rej *)buf;
