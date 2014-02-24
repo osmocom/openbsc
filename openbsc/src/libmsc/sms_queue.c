@@ -280,6 +280,45 @@ static void sms_submit_pending(void *_data)
 	LOGP(DLSMS, LOGL_DEBUG, "SMSqueue added %d messages in %d rounds\n", attempted, rounds);
 }
 
+/**
+ * Send the next SMS or trigger the queue
+ */
+static void sms_send_next(struct gsm_subscriber *subscr)
+{
+	struct gsm_sms_queue *smsq = subscr->net->sms_queue;
+	struct gsm_sms_pending *pending;
+	struct gsm_sms *sms;
+
+	/* the subscriber should not be in the queue */
+	OSMO_ASSERT(!sms_subscriber_is_pending(smsq, subscr));
+
+	/* check for more messages for this subscriber */
+	sms = db_sms_get_unsent_for_subscr(subscr);
+	if (!sms)
+		goto no_pending_sms;
+
+	/* No sms should be scheduled right now */
+	OSMO_ASSERT(!sms_is_in_pending(smsq, sms));
+
+	/* Remember that we deliver this SMS and send it */
+	pending = sms_pending_from(smsq, sms);
+	if (!pending) {
+		LOGP(DLSMS, LOGL_ERROR,
+			"Failed to create pending SMS entry.\n");
+		sms_free(sms);
+		goto no_pending_sms;
+	}
+
+	smsq->pending += 1;
+	llist_add_tail(&pending->entry, &smsq->pending_sms);
+	gsm411_send_sms_subscr(sms->receiver, sms);
+	return;
+
+no_pending_sms:
+	/* Try to send the SMS to avoid the queue being stuck */
+	sms_submit_pending(subscr->net->sms_queue);
+}
+
 /*
  * Kick off the queue again.
  */
@@ -377,6 +416,7 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 	struct gsm_network *network = handler_data;
 	struct sms_signal_data *sig_sms = signal_data;
 	struct gsm_sms_pending *pending;
+	struct gsm_subscriber *subscr;
 
 	/* We got a new SMS and maybe should launch the queue again. */
 	if (signal == S_SMS_SUBMITTED || signal == S_SMS_SMMA) {
@@ -400,14 +440,13 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_SMS_DELIVERED:
+		/* Remember the subscriber and clear the pending entry */
 		network->sms_queue->pending -= 1;
+		subscr = subscr_get(pending->subscr);
 		sms_pending_free(pending);
-		/*
-		 * TODO: we could specially make sure to re-use the existing
-		 * radio connection here. Maybe something like the readyForSM
-		 * code.
-		 */
-		sms_submit_pending(network->sms_queue);
+		/* Attempt to send another SMS to this subscriber */
+		sms_send_next(subscr);
+		subscr_put(subscr);
 		break;
 	case S_SMS_MEM_EXCEEDED:
 		network->sms_queue->pending -= 1;
