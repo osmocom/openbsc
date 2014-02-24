@@ -380,6 +380,7 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 
 	/* We got a new SMS and maybe should launch the queue again. */
 	if (signal == S_SMS_SUBMITTED || signal == S_SMS_SMMA) {
+		/* TODO: For SMMA we might want to re-use the radio connection. */
 		sms_queue_trigger(network->sms_queue);
 		return 0;
 	}
@@ -399,15 +400,14 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_SMS_DELIVERED:
-		/*
-		 * Create place for a new SMS but keep the pending data
-		 * so we will not attempt to send the SMS for this subscriber
-		 * as we still have an open channel and will attempt to submit
-		 * SMS to it anyway.
-		 */
 		network->sms_queue->pending -= 1;
-		sms_submit_pending(network->sms_queue);
 		sms_pending_free(pending);
+		/*
+		 * TODO: we could specially make sure to re-use the existing
+		 * radio connection here. Maybe something like the readyForSM
+		 * code.
+		 */
+		sms_submit_pending(network->sms_queue);
 		break;
 	case S_SMS_MEM_EXCEEDED:
 		network->sms_queue->pending -= 1;

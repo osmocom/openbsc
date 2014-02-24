@@ -561,11 +561,6 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	sms_free(sms);
 	trans->sms.sms = NULL;
 
-	/* check for more messages for this subscriber */
-	sms = db_sms_get_unsent_for_subscr(trans->subscr);
-	if (sms)
-		gsm411_send_sms(trans->conn, sms);
-
 	return 0;
 }
 
@@ -615,7 +610,6 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 			     struct gsm411_rp_hdr *rph)
 {
-	struct gsm_sms *sms;
 	int rc;
 
 	rc = gsm411_send_rp_ack(trans, rph->msg_ref);
@@ -624,11 +618,6 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	 * to check if we have any pending messages for it and then
 	 * transfer those */
 	send_signal(S_SMS_SMMA, trans, NULL, 0);
-
-	/* check for more messages for this subscriber */
-	sms = db_sms_get_unsent_for_subscr(trans->subscr);
-	if (sms)
-		gsm411_send_sms(trans->conn, sms);
 
 	return rc;
 }
