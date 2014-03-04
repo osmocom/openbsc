@@ -357,6 +357,11 @@ static int set_net_cfg_cmd(struct ctrl_cmd *cmd, void *data)
 		cmd->reply = talloc_asprintf(cmd, "%s",
 				bsc_cfg->acc_lst_name ? bsc_cfg->acc_lst_name : "");
 		return CTRL_CMD_REPLY;
+	} else if (strcmp(bsc_variable, "no-access-list-name") == 0) {
+		talloc_free(bsc_cfg->acc_lst_name);
+		bsc_cfg->acc_lst_name = NULL;
+		cmd->reply = "";
+		return CTRL_CMD_REPLY;
 	}
 
 	cmd->reply = "unknown command";
