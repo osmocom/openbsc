@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # (C) 2013 by Jacob Erlbeck <jerlbeck@sysmocom.de>
+# (C) 2014 by Holger Hans Peter Freyther
 # based on vty_test_runner.py:
 # (C) 2013 by Katerina Barone-Adesi <kat.obsc@gmail.com>
 # (C) 2013 by Holger Hans Peter Freyther
@@ -131,7 +132,7 @@ class TestCtrlBase(unittest.TestCase):
             if mtype == "ERROR":
                 rsp['error'] = msg
             else:
-                [rsp['var'], rsp['value']]  = msg.split(None, 2)
+                [rsp['var'], rsp['value']]  = msg.split(None, 1)
 
             responses[id] = rsp
 
@@ -238,6 +239,49 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'bts.0.timezone')
         self.assertEquals(r['value'], 'off')
+
+    def testMccMncApply(self):
+        # Test some invalid input
+        r = self.do_set('mcc-mnc-apply', 'WRONG')
+        self.assertEquals(r['mtype'], 'ERROR')
+
+        r = self.do_set('mcc-mnc-apply', '1,')
+        self.assertEquals(r['mtype'], 'ERROR')
+
+        r = self.do_set('mcc-mnc-apply', '200,3')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'mcc-mnc-apply')
+        self.assertEquals(r['value'], 'Tried to drop the BTS')
+
+        # Set it again
+        r = self.do_set('mcc-mnc-apply', '200,3')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'mcc-mnc-apply')
+        self.assertEquals(r['value'], 'Nothing changed')
+
+        # Change it
+        r = self.do_set('mcc-mnc-apply', '200,4')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'mcc-mnc-apply')
+        self.assertEquals(r['value'], 'Tried to drop the BTS')
+
+        # Change it
+        r = self.do_set('mcc-mnc-apply', '201,4')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'mcc-mnc-apply')
+        self.assertEquals(r['value'], 'Tried to drop the BTS')
+
+        # Verify
+        r = self.do_get('mnc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mnc')
+        self.assertEquals(r['value'], '4')
+
+        r = self.do_get('mcc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mcc')
+        self.assertEquals(r['value'], '201')
+
 
 def add_bsc_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc")):

@@ -93,6 +93,64 @@ static int set_net_apply_config(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_apply_config, "apply-configuration");
 
+static int verify_net_mcc_mnc_apply(struct ctrl_cmd *cmd, const char *value, void *d)
+{
+	char *tmp, *saveptr, *mcc, *mnc;
+
+	tmp = talloc_strdup(cmd, value);
+	if (!tmp)
+		return 1;
+
+	mcc = strtok_r(tmp, ",", &saveptr);
+	mnc = strtok_r(NULL, ",", &saveptr);
+	talloc_free(tmp);
+
+	if (!mcc || !mnc)
+		return 1;
+	return 0;
+}
+
+static int get_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Write only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	char *tmp, *saveptr, *mcc_str, *mnc_str;
+	int mcc, mnc;
+
+	tmp = talloc_strdup(cmd, cmd->value);
+	if (!tmp)
+		goto oom;
+
+
+	mcc_str = strtok_r(tmp, ",", &saveptr);
+	mnc_str = strtok_r(NULL, ",", &saveptr);
+
+	mcc = atoi(mcc_str);
+	mnc = atoi(mnc_str);
+
+	talloc_free(tmp);
+
+	if (net->network_code == mnc && net->country_code == mcc) {
+		cmd->reply = "Nothing changed";
+		return CTRL_CMD_REPLY;
+	}
+
+	net->network_code = mnc;
+	net->country_code = mcc;
+
+	return set_net_apply_config(cmd, data);
+
+oom:
+	cmd->reply = "OOM";
+	return CTRL_CMD_ERROR;
+}
+CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
+
 int bsc_base_ctrl_cmds_install(void)
 {
 	int rc = 0;
@@ -101,6 +159,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_short_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
 
 	return rc;
 }
