@@ -525,7 +525,7 @@ class TestVTYNAT(TestVTYGenericBSC):
         res = self.vty.command("show running-config").split("\r\n")
         asserted = False
         for line in res:
-           if line.startswith(" access-list"):
+           if line.startswith(" access-list test-default"):
                 self.assertEqual(line, " access-list test-default imsi-deny ^123[0-9]*$ 11 11")
                 asserted = True
         self.assert_(asserted)
