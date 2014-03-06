@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # (C) 2013 by Jacob Erlbeck <jerlbeck@sysmocom.de>
+# (C) 2014 by Holger Hans Peter Freyther
 # based on vty_test_runner.py:
 # (C) 2013 by Katerina Barone-Adesi <kat.obsc@gmail.com>
 # (C) 2013 by Holger Hans Peter Freyther
@@ -131,8 +132,12 @@ class TestCtrlBase(unittest.TestCase):
             if mtype == "ERROR":
                 rsp['error'] = msg
             else:
-                [rsp['var'], rsp['value']]  = msg.split(None, 2)
-
+                split = msg.split(None, 1)
+                rsp['var'] = split[0]
+                if len(split) > 1:
+                    rsp['value'] = split[1]
+                else:
+                    rsp['value'] = None
             responses[id] = rsp
 
         if verbose:
@@ -239,11 +244,95 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['var'], 'bts.0.timezone')
         self.assertEquals(r['value'], 'off')
 
+    def testMccMncApply(self):
+        # Test some invalid input
+        r = self.do_set('mcc-mnc-apply', 'WRONG')
+        self.assertEquals(r['mtype'], 'ERROR')
+
+        r = self.do_set('mcc-mnc-apply', '1,')
+        self.assertEquals(r['mtype'], 'ERROR')
+
+        r = self.do_set('mcc-mnc-apply', '200,3')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'mcc-mnc-apply')
+        self.assertEquals(r['value'], 'Tried to drop the BTS')
+
+        # Set it again
+        r = self.do_set('mcc-mnc-apply', '200,3')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'mcc-mnc-apply')
+        self.assertEquals(r['value'], 'Nothing changed')
+
+        # Change it
+        r = self.do_set('mcc-mnc-apply', '200,4')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'mcc-mnc-apply')
+        self.assertEquals(r['value'], 'Tried to drop the BTS')
+
+        # Change it
+        r = self.do_set('mcc-mnc-apply', '201,4')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'mcc-mnc-apply')
+        self.assertEquals(r['value'], 'Tried to drop the BTS')
+
+        # Verify
+        r = self.do_get('mnc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mnc')
+        self.assertEquals(r['value'], '4')
+
+        r = self.do_get('mcc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mcc')
+        self.assertEquals(r['value'], '201')
+
+class TestCtrlNAT(TestCtrlBase):
+
+    def ctrl_command(self):
+        return ["./src/osmo-bsc_nat/osmo-bsc_nat", "-c",
+                "doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg"]
+
+    def ctrl_app(self):
+        return (4250, "./src/osmo-bsc_nat/osmo-bsc_nat", "OsmoNAT", "nat")
+
+    def testAccessList(self):
+        r = self.do_get('net.0.bsc_cfg.0.access-list-name')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'net')
+        self.assertEquals(r['value'], None)
+
+        r = self.do_set('net.0.bsc_cfg.0.access-list-name', 'bla')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'net')
+        self.assertEquals(r['value'], 'bla')
+
+        r = self.do_get('net.0.bsc_cfg.0.access-list-name')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'net')
+        self.assertEquals(r['value'], 'bla')
+
+        r = self.do_set('net.0.bsc_cfg.0.no-access-list-name', '1')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'net')
+        self.assertEquals(r['value'], None)
+
+        r = self.do_set('net.0.bsc_cfg.0.no-access-list-name', '1')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'net')
+        self.assertEquals(r['value'], None)
+
 def add_bsc_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc")):
         print("Skipping the BSC test")
         return
     test = unittest.TestLoader().loadTestsFromTestCase(TestCtrlBSC)
+    suite.addTest(test)
+
+def add_nat_test(suite, workdir):
+    if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
+        print("Skipping the NAT test")
+        return
+    test = unittest.TestLoader().loadTestsFromTestCase(TestCtrlNAT)
     suite.addTest(test)
 
 if __name__ == '__main__':
@@ -277,5 +366,6 @@ if __name__ == '__main__':
     print "Running tests for specific control commands"
     suite = unittest.TestSuite()
     add_bsc_test(suite, workdir)
+    add_nat_test(suite, workdir)
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
     sys.exit(len(res.errors) + len(res.failures))

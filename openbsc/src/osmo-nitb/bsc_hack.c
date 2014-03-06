@@ -290,6 +290,11 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
+	if (bsc_base_ctrl_cmds_install() != 0) {
+		printf("Failed to initialize the control commands. Exiting.\n");
+		return -1;
+	}
+
 	/* seed the PRNG */
 	srand(time(NULL));
 

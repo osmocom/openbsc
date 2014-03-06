@@ -208,7 +208,11 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 	admin = osmo_bsc_rf_get_adminstate_name(osmo_bsc_rf_get_adminstate_by_bts(bts));
 	policy = osmo_bsc_rf_get_policy_name(osmo_bsc_rf_get_policy_by_bts(bts));
 
-	cmd->reply = talloc_asprintf_append(cmd->reply, ",%s,%s,%s", oper, admin, policy);
+	cmd->reply = talloc_asprintf_append(cmd->reply,
+				",%s,%s,%s,%d,%d",
+				oper, admin, policy,
+				bts->network->country_code,
+				bts->network->network_code);
 
 	osmo_bsc_send_trap(cmd, msc_con);
 	talloc_free(cmd);
@@ -605,6 +609,9 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 {
 	int rc;
 
+	rc = bsc_base_ctrl_cmds_install();
+	if (rc)
+		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rf_state);
 	if (rc)
 		goto end;
