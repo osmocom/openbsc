@@ -38,6 +38,7 @@
 #include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/osmo_msc.h>
+#include <openbsc/osmo_msc_data.h>
 #include <openbsc/sms_queue.h>
 #include <openbsc/vty.h>
 #include <openbsc/bss.h>
@@ -52,7 +53,6 @@
 
 /* MCC and MNC for the Location Area Identifier */
 struct gsm_network *bsc_gsmnet = 0;
-static struct osmo_bsc_rf *rf_ctrl;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
 static const char *rf_ctrl_name = NULL;
@@ -298,8 +298,8 @@ int main(int argc, char **argv)
 	/* seed the PRNG */
 	srand(time(NULL));
 
-	rf_ctrl = osmo_bsc_rf_create(rf_ctrl_name, bsc_gsmnet);
-	if (!rf_ctrl) {
+	bsc_gsmnet->bsc_data->rf_ctrl = osmo_bsc_rf_create(rf_ctrl_name, bsc_gsmnet);
+	if (!bsc_gsmnet->bsc_data->rf_ctrl) {
 		fprintf(stderr, "Failed to create the RF service.\n");
 		exit(1);
 	}

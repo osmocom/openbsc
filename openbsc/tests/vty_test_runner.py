@@ -248,6 +248,10 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command("show paging-group 0 1234567")
         self.assertEquals(res, "%Paging group for IMSI 1234567 on BTS #0 is 7")
 
+    def testShowNetwork(self):
+        res = self.vty.command("show network")
+        self.assert_(res.startswith('BSC is on Country Code') >= 0)
+
 class TestVTYBSC(TestVTYGenericBSC):
 
     def vty_command(self):
@@ -381,6 +385,10 @@ class TestVTYBSC(TestVTYGenericBSC):
         # Verify settings
         res = self.vty.command("write terminal")
         self.assertEquals(res.find(' timezone'), -1)
+
+    def testShowNetwork(self):
+        res = self.vty.command("show network")
+        self.assert_(res.startswith('BSC is on Country Code') >= 0)
 
 class TestVTYNAT(TestVTYGenericBSC):
 
