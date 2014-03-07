@@ -37,5 +37,5 @@ override_dh_strip:
 
 override_dh_auto_configure:
 	echo $(VERSION) > openbsc/.tarball-version
-	dh_auto_configure --sourcedirectory=openbsc -- --enable-nat --enable-osmo-bsc
+	dh_auto_configure --sourcedirectory=openbsc -- --enable-nat --enable-osmo-bsc --enable-smpp
 
