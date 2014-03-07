@@ -85,7 +85,7 @@ struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr)
 	subscr->use_count--;
 	DEBUGP(DREF, "subscr %s usage decreased usage to: %d\n",
 			subscr->extension, subscr->use_count);
-	if (subscr->use_count <= 0 && !subscr->net->keep_subscr)
+	if (subscr->use_count <= 0 && (!subscr->net || !subscr->net->keep_subscr))
 		subscr_free(subscr);
 	return NULL;
 }
