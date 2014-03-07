@@ -393,7 +393,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 
 	/* determine gsms->receiver based on dialled number */
 	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dst.addr);
-	if (!gsms->receiver) {
+//	if (!gsms->receiver) {
 #ifdef BUILD_SMPP
 		rc = smpp_try_deliver(gsms, conn);
 		if (rc == 1) {
@@ -408,7 +408,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
 #endif
 		goto out;
-	}
+//	}
 
 	switch (sms_mti) {
 	case GSM340_SMS_SUBMIT_MS2SC:
