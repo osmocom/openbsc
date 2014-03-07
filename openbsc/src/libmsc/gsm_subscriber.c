@@ -78,15 +78,6 @@ enum {
 	REQ_STATE_DISPATCHED,
 };
 
-static struct gsm_subscriber *get_subscriber(struct gsm_network *net,
-						int type, const char *ident)
-{
-	struct gsm_subscriber *subscr = db_get_subscriber(type, ident);
-	if (subscr)
-		subscr->net = net;
-	return subscr;
-}
-
 /*
  * We got the channel assigned and can now hand this channel
  * over to one of our callbacks.
@@ -275,14 +266,6 @@ void subscr_put_channel(struct gsm_subscriber *subscr)
 		subscr_send_paging_request(subscr);
 }
 
-struct gsm_subscriber *subscr_create_subscriber(struct gsm_network *net,
-					const char *imsi)
-{
-	struct gsm_subscriber *subscr = db_create_subscriber(imsi);
-	if (subscr)
-		subscr->net = net;
-	return subscr;
-}
 
 struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
 					  uint32_t tmsi)
@@ -297,7 +280,7 @@ struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
 	}
 
 	sprintf(tmsi_string, "%u", tmsi);
-	return get_subscriber(net, GSM_SUBSCRIBER_TMSI, tmsi_string);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_TMSI, tmsi_string);
 }
 
 struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
@@ -310,7 +293,7 @@ struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
 			return subscr_get(subscr);
 	}
 
-	return get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi);
 }
 
 struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
@@ -323,7 +306,7 @@ struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 			return subscr_get(subscr);
 	}
 
-	return get_subscriber(net, GSM_SUBSCRIBER_EXTENSION, ext);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_EXTENSION, ext);
 }
 
 struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
@@ -338,7 +321,7 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
 			return subscr_get(subscr);
 	}
 
-	return get_subscriber(net, GSM_SUBSCRIBER_ID, buf);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_ID, buf);
 }
 
 int subscr_update_expire_lu(struct gsm_subscriber *s, struct gsm_bts *bts)

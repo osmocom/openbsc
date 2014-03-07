@@ -229,7 +229,7 @@ DEFUN(subscriber_create,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr;
 
-	subscr = subscr_create_subscriber(gsmnet, argv[0]);
+	subscr = db_create_subscriber(gsmnet, argv[0]);
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber created for IMSI %s%s",
 			argv[0], VTY_NEWLINE);
