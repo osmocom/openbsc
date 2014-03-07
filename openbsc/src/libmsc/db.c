@@ -38,23 +38,42 @@
 #include <osmocom/core/statistics.h>
 #include <osmocom/core/rate_ctr.h>
 
+/* Semi-Private-Interface (SPI) for the subscriber code */
+void subscr_direct_free(struct gsm_subscriber *subscr);
+
 static char *db_basename = NULL;
 static char *db_dirname = NULL;
 static dbi_conn conn;
 
-#define SCHEMA_REVISION "3"
+#define SCHEMA_REVISION "4"
 
-static char *create_stmts[] = {
-	"CREATE TABLE IF NOT EXISTS Meta ("
+enum {
+	SCHEMA_META,
+	INSERT_META,
+	SCHEMA_SUBSCRIBER,
+	SCHEMA_AUTH,
+	SCHEMA_EQUIPMENT,
+	SCHEMA_EQUIPMENT_WATCH,
+	SCHEMA_SMS,
+	SCHEMA_VLR,
+	SCHEMA_APDU,
+	SCHEMA_COUNTERS,
+	SCHEMA_RATE,
+	SCHEMA_AUTHKEY,
+	SCHEMA_AUTHLAST,
+};
+
+static const char *create_stmts[] = {
+	[SCHEMA_META] = "CREATE TABLE IF NOT EXISTS Meta ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"key TEXT UNIQUE NOT NULL, "
 		"value TEXT NOT NULL"
 		")",
-	"INSERT OR IGNORE INTO Meta "
+	[INSERT_META] = "INSERT OR IGNORE INTO Meta "
 		"(key, value) "
 		"VALUES "
 		"('revision', " SCHEMA_REVISION ")",
-	"CREATE TABLE IF NOT EXISTS Subscriber ("
+	[SCHEMA_SUBSCRIBER] = "CREATE TABLE IF NOT EXISTS Subscriber ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"updated TIMESTAMP NOT NULL, "
@@ -66,13 +85,13 @@ static char *create_stmts[] = {
 		"lac INTEGER NOT NULL DEFAULT 0, "
 		"expire_lu TIMESTAMP DEFAULT NULL"
 		")",
-	"CREATE TABLE IF NOT EXISTS AuthToken ("
+	[SCHEMA_AUTH] = "CREATE TABLE IF NOT EXISTS AuthToken ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"subscriber_id INTEGER UNIQUE NOT NULL, "
 		"created TIMESTAMP NOT NULL, "
 		"token TEXT UNIQUE NOT NULL"
 		")",
-	"CREATE TABLE IF NOT EXISTS Equipment ("
+	[SCHEMA_EQUIPMENT] = "CREATE TABLE IF NOT EXISTS Equipment ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"updated TIMESTAMP NOT NULL, "
@@ -82,7 +101,7 @@ static char *create_stmts[] = {
 		"classmark3 BLOB, "
 		"imei NUMERIC UNIQUE NOT NULL"
 		")",
-	"CREATE TABLE IF NOT EXISTS EquipmentWatch ("
+	[SCHEMA_EQUIPMENT_WATCH] = "CREATE TABLE IF NOT EXISTS EquipmentWatch ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"updated TIMESTAMP NOT NULL, "
@@ -90,7 +109,7 @@ static char *create_stmts[] = {
 		"equipment_id NUMERIC NOT NULL, "
 		"UNIQUE (subscriber_id, equipment_id) "
 		")",
-	"CREATE TABLE IF NOT EXISTS SMS ("
+	[SCHEMA_SMS] = "CREATE TABLE IF NOT EXISTS SMS ("
 		/* metadata, not part of sms */
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
@@ -114,39 +133,39 @@ static char *create_stmts[] = {
 		"header BLOB, "		/* UD Header */
 		"text TEXT "		/* decoded UD after UDH */
 		")",
-	"CREATE TABLE IF NOT EXISTS VLR ("
+	[SCHEMA_VLR] = "CREATE TABLE IF NOT EXISTS VLR ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"updated TIMESTAMP NOT NULL, "
 		"subscriber_id NUMERIC UNIQUE NOT NULL, "
 		"last_bts NUMERIC NOT NULL "
 		")",
-	"CREATE TABLE IF NOT EXISTS ApduBlobs ("
+	[SCHEMA_APDU] = "CREATE TABLE IF NOT EXISTS ApduBlobs ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"apdu_id_flags INTEGER NOT NULL, "
 		"subscriber_id INTEGER NOT NULL, "
 		"apdu BLOB "
 		")",
-	"CREATE TABLE IF NOT EXISTS Counters ("
+	[SCHEMA_COUNTERS] = "CREATE TABLE IF NOT EXISTS Counters ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"timestamp TIMESTAMP NOT NULL, "
 		"value INTEGER NOT NULL, "
 		"name TEXT NOT NULL "
 		")",
-	"CREATE TABLE IF NOT EXISTS RateCounters ("
+	[SCHEMA_RATE] = "CREATE TABLE IF NOT EXISTS RateCounters ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"timestamp TIMESTAMP NOT NULL, "
 		"value INTEGER NOT NULL, "
 		"name TEXT NOT NULL, "
 		"idx INTEGER NOT NULL "
 		")",
-	"CREATE TABLE IF NOT EXISTS AuthKeys ("
+	[SCHEMA_AUTHKEY] = "CREATE TABLE IF NOT EXISTS AuthKeys ("
 		"subscriber_id INTEGER PRIMARY KEY, "
 		"algorithm_id INTEGER NOT NULL, "
 		"a3a8_ki BLOB "
 		")",
-	"CREATE TABLE IF NOT EXISTS AuthLastTuples ("
+	[SCHEMA_AUTHLAST] = "CREATE TABLE IF NOT EXISTS AuthLastTuples ("
 		"subscriber_id INTEGER PRIMARY KEY, "
 		"issued TIMESTAMP NOT NULL, "
 		"use_count INTEGER NOT NULL DEFAULT 0, "
@@ -185,12 +204,164 @@ static int update_db_revision_2(void)
 				"WHERE key = 'revision'");
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR,
-		     "Failed set new revision (upgrade vom rev 2).\n");
+		     "Failed to update DB schema revision  (upgrade from rev 2).\n");
 		return -EINVAL;
 	}
 	dbi_result_free(result);
 
 	return 0;
+}
+
+/**
+ * Copied from the normal sms_from_result_v3 to avoid having
+ * to make sure that the real routine will remain backward
+ * compatible.
+ */
+static struct gsm_sms *sms_from_result_v3(dbi_result result)
+{
+	struct gsm_sms *sms = sms_alloc();
+	long long unsigned int sender_id;
+	struct gsm_subscriber *sender;
+	const char *text, *daddr;
+	const unsigned char *user_data;
+	char buf[32];
+
+	if (!sms)
+		return NULL;
+
+	sms->id = dbi_result_get_ulonglong(result, "id");
+
+	sender_id = dbi_result_get_ulonglong(result, "sender_id");
+	snprintf(buf, sizeof(buf), "%llu", sender_id);
+	sender = db_get_subscriber(GSM_SUBSCRIBER_ID, buf);
+	OSMO_ASSERT(sender);
+	strncpy(sms->src.addr, sender->extension, sizeof(sms->src.addr)-1);
+	subscr_direct_free(sender);
+	sender = NULL;
+
+	sms->reply_path_req = dbi_result_get_uint(result, "reply_path_req");
+	sms->status_rep_req = dbi_result_get_uint(result, "status_rep_req");
+	sms->ud_hdr_ind = dbi_result_get_uint(result, "ud_hdr_ind");
+	sms->protocol_id = dbi_result_get_uint(result, "protocol_id");
+	sms->data_coding_scheme = dbi_result_get_uint(result,
+						  "data_coding_scheme");
+
+	daddr = dbi_result_get_string(result, "dest_addr");
+	if (daddr) {
+		strncpy(sms->dst.addr, daddr, sizeof(sms->dst.addr));
+		sms->dst.addr[sizeof(sms->dst.addr)-1] = '\0';
+	}
+
+	sms->user_data_len = dbi_result_get_field_length(result, "user_data");
+	user_data = dbi_result_get_binary(result, "user_data");
+	if (sms->user_data_len > sizeof(sms->user_data))
+		sms->user_data_len = (uint8_t) sizeof(sms->user_data);
+	memcpy(sms->user_data, user_data, sms->user_data_len);
+
+	text = dbi_result_get_string(result, "text");
+	if (text) {
+		strncpy(sms->text, text, sizeof(sms->text));
+		sms->text[sizeof(sms->text)-1] = '\0';
+	}
+	return sms;
+}
+
+static int update_db_revision_3(void)
+{
+	dbi_result result;
+	struct gsm_sms *sms;
+
+	result = dbi_conn_query(conn, "BEGIN EXCLUSIVE TRANSACTION");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to begin transaction (upgrade from rev 3)\n");
+		return -EINVAL;
+	}
+	dbi_result_free(result);
+
+	/* Rename old SMS table to be able create a new one */
+	result = dbi_conn_query(conn, "ALTER TABLE SMS RENAME TO SMS_3");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to rename the old SMS table (upgrade from rev 3).\n");
+		goto rollback;
+	}
+	dbi_result_free(result);
+
+	/* Create new SMS table with all the bells and whistles! */
+	result = dbi_conn_query(conn, create_stmts[SCHEMA_SMS]);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to create a new SMS table (upgrade from rev 3).\n");
+		goto rollback;
+	}
+	dbi_result_free(result);
+
+	/* Cycle through old messages and convert them to the new format */
+	result = dbi_conn_queryf(conn, "SELECT * FROM SMS_3");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed fetch messages from the old SMS table (upgrade from rev 3).\n");
+		goto rollback;
+	}
+	while (dbi_result_next_row(result)) {
+		sms = sms_from_result_v3(result);
+		if (db_sms_store(sms) != 0) {
+			LOGP(DDB, LOGL_ERROR, "Failed to store message to the new SMS table(upgrade from rev 3).\n");
+			sms_free(sms);
+			dbi_result_free(result);
+			goto rollback;
+		}
+		sms_free(sms);
+	}
+	dbi_result_free(result);
+
+	/* Remove the temporary table */
+	result = dbi_conn_query(conn, "DROP TABLE SMS_3");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to drop the old SMS table (upgrade from rev 3).\n");
+		goto rollback;
+	}
+	dbi_result_free(result);
+
+	/* We're done. Bump DB Meta revision to 4 */
+	result = dbi_conn_query(conn,
+				"UPDATE Meta "
+				"SET value = '4' "
+				"WHERE key = 'revision'");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to update DB schema revision (upgrade from rev 3).\n");
+		goto rollback;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_query(conn, "COMMIT TRANSACTION");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to commit the transaction (upgrade from rev 3)\n");
+		return -EINVAL;
+	}
+
+	/* Shrink DB file size by actually wiping out SMS_3 table data */
+	result = dbi_conn_query(conn, "VACUUM");
+	if (!result)
+		LOGP(DDB, LOGL_ERROR,
+			"VACUUM failed. Ignoring it (upgrade from rev 3).\n");
+	else
+		dbi_result_free(result);
+
+	return 0;
+
+rollback:
+	result = dbi_conn_query(conn, "ROLLBACK TRANSACTION");
+	if (!result)
+		LOGP(DDB, LOGL_ERROR,
+			"Rollback failed (upgrade from rev 3).\n");
+	else
+		dbi_result_free(result);
+	return -EINVAL;
 }
 
 static int check_db_revision(void)
@@ -214,6 +385,12 @@ static int check_db_revision(void)
 	}
 	if (!strcmp(rev_s, "2")) {
 		if (update_db_revision_2()) {
+			LOGP(DDB, LOGL_FATAL, "Failed to update database from schema revision '%s'.\n", rev_s);
+			dbi_result_free(result);
+			return -EINVAL;
+		}
+	} else if (!strcmp(rev_s, "3")) {
+		if (update_db_revision_3()) {
 			LOGP(DDB, LOGL_FATAL, "Failed to update database from schema revision '%s'.\n", rev_s);
 			dbi_result_free(result);
 			return -EINVAL;
