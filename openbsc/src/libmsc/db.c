@@ -171,7 +171,7 @@ static int update_db_revision_2(void)
 				"TIMESTAMP DEFAULT NULL");
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR,
-		     "Failed to alter table Subscriber (upgrade vom rev 2).\n");
+		     "Failed to alter table Subscriber (upgrade from rev 2).\n");
 		return -EINVAL;
 	}
 	dbi_result_free(result);
