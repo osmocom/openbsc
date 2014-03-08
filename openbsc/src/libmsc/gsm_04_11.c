@@ -554,7 +554,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	}
 
 	/* mark this SMS as sent in database */
-	db_sms_mark_sent(sms);
+	db_sms_mark_delivered(sms);
 
 	send_signal(S_SMS_DELIVERED, trans, sms, 0);
 
