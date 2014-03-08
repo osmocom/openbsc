@@ -10,7 +10,9 @@ AT_CLEANUP
 AT_SETUP([db])
 AT_KEYWORDS([db])
 cat $abs_srcdir/db/db_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/db/db_test], [], [expout], [ignore])
+cat $abs_srcdir/db/db_test.err > experr
+cat $abs_srcdir/db/hlr.sqlite3 > hlr.sqlite3
+AT_CHECK([$abs_top_builddir/tests/db/db_test], [], [expout], [experr])
 AT_CLEANUP
 
 AT_SETUP([channel])
