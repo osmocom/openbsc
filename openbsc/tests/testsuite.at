@@ -70,11 +70,11 @@ cat $abs_srcdir/bsc/bsc_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/bsc/bsc_test], [], [expout], [ignore])
 AT_CLEANUP
 
-AT_SETUP([gbproxy])
-AT_KEYWORDS([gbproxy])
-cat $abs_srcdir/gbproxy/gbproxy_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/gbproxy/gbproxy_test], [], [expout], [ignore])
-AT_CLEANUP
+#AT_SETUP([gbproxy])
+#AT_KEYWORDS([gbproxy])
+#cat $abs_srcdir/gbproxy/gbproxy_test.ok > expout
+#AT_CHECK([$abs_top_builddir/tests/gbproxy/gbproxy_test], [], [expout], [ignore])
+#AT_CLEANUP
 
 AT_SETUP([trau])
 AT_KEYWORDS([trau])
