@@ -1303,8 +1303,8 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 	return sms;
 }
 
-/* mark a given SMS as read */
-int db_sms_mark_sent(struct gsm_sms *sms)
+/* mark a given SMS as delivered */
+int db_sms_mark_delivered(struct gsm_sms *sms)
 {
 	dbi_result result;
 
