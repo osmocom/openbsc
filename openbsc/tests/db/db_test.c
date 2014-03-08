@@ -118,6 +118,39 @@ static void test_sms(void)
 	subscr_put(subscr);
 }
 
+static void test_sms_migrate(void)
+{
+	struct gsm_subscriber *rcv_subscr;
+	struct gsm_sms *sms;
+	static const uint8_t user_data_1[] = {
+		0x41, 0xf1, 0xd8, 0x05, 0x22, 0x96, 0xcd, 0x2e,
+		0x90, 0xf1, 0xfd, 0x06, 0x00 };
+	static const uint8_t user_data_2[] = {
+		0x41, 0xf1, 0xd8, 0x05, 0x22, 0x96, 0xcd, 0x2e,
+		0xd0, 0xf1, 0xfd, 0x06, 0x00 };
+
+	rcv_subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, "901010000001111");
+	rcv_subscr->net = &dummy_net;
+
+	sms = db_sms_get(&dummy_net, 1);
+	OSMO_ASSERT(sms->id == 1);
+	OSMO_ASSERT(sms->receiver == rcv_subscr);
+	OSMO_ASSERT(strcmp(sms->text, "Abc. Def. Foo") == 0);
+	OSMO_ASSERT(sms->user_data_len == ARRAY_SIZE(user_data_1));
+	OSMO_ASSERT(memcmp(sms->user_data, user_data_1, ARRAY_SIZE(user_data_1)) == 0);
+	sms_free(sms);
+
+	sms = db_sms_get(&dummy_net, 2);
+	OSMO_ASSERT(sms->id == 2);
+	OSMO_ASSERT(sms->receiver == rcv_subscr);
+	OSMO_ASSERT(strcmp(sms->text, "Abc. Def. Goo") == 0);
+	OSMO_ASSERT(sms->user_data_len == ARRAY_SIZE(user_data_2));
+	OSMO_ASSERT(memcmp(sms->user_data, user_data_2, ARRAY_SIZE(user_data_2)) == 0);
+	sms_free(sms);
+
+	subscr_put(rcv_subscr);
+}
+
 int main()
 {
 	char scratch_str[256];
@@ -202,6 +235,7 @@ int main()
 	SUBSCR_PUT(alice);
 
 	test_sms();
+	test_sms_migrate();
 
 	db_fini();
 

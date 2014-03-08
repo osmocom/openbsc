@@ -271,6 +271,8 @@ static int update_db_revision_3(void)
 	dbi_result result;
 	struct gsm_sms *sms;
 
+	LOGP(DDB, LOGL_NOTICE, "Going to migrate from revision 3\n");
+
 	result = dbi_conn_query(conn, "BEGIN EXCLUSIVE TRANSACTION");
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR,
