@@ -210,9 +210,9 @@ static int gsm340_gen_oa_sub(uint8_t *oa, unsigned int oa_len,
 	return gsm340_gen_oa(oa, oa_len, src->ton, src->npi, src->addr);
 }
 
-/* generate a msgb containing a TPDU derived from struct gsm_sms,
- * returns total size of TPDU */
-static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
+/* generate a msgb containing an 03.40 9.2.2.1 SMS-DELIVER TPDU derived from
+ * struct gsm_sms, returns total size of TPDU */
+static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 {
 	uint8_t *smsp;
 	uint8_t oa[12];	/* max len per 03.40 */
@@ -876,8 +876,8 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	/* obtain a pointer for the rp_ud_len, so we can fill it later */
 	rp_ud_len = (uint8_t *)msgb_put(msg, 1);
 
-	/* generate the 03.40 TPDU */
-	rc = gsm340_gen_tpdu(msg, sms);
+	/* generate the 03.40 SMS-DELIVER TPDU */
+	rc = gsm340_gen_sms_deliver_tpdu(msg, sms);
 	if (rc < 0) {
 		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
 		sms_free(sms);
