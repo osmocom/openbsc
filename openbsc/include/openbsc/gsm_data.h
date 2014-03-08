@@ -302,7 +302,13 @@ struct gsm_sms_addr {
 	char addr[21+1];
 };
 
+enum gsm_sms_type {
+	GSM_SMS_DELIVER = 0,    /* SMS-DELIVER or SMS-SUBMIT */
+	GSM_SMS_STATUS_REP = 1, /* SMS-STATUS-REPORT */
+};
+
 struct gsm_sms {
+	enum gsm_sms_type type;
 	unsigned long long id;
 	struct gsm_subscriber *receiver;
 	struct gsm_sms_addr src, dst;
@@ -317,6 +323,8 @@ struct gsm_sms {
 
 	time_t received_time;
 	time_t valid_until;
+	time_t delivered_time;
+	uint8_t delivery_status;
 	uint8_t reply_path_req;
 	uint8_t status_rep_req;
 	uint8_t ud_hdr_ind;

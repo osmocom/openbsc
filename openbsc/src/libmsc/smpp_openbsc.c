@@ -123,6 +123,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	}
 
 	sms = sms_alloc();
+	sms->type = GSM_SMS_DELIVER;
 	sms->source = SMS_SOURCE_SMPP;
 	sms->smpp.sequence_nr = submit->sequence_number;
 

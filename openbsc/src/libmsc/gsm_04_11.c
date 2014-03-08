@@ -92,6 +92,7 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver,
 	if (!sms)
 		return NULL;
 
+	sms->type = GSM_SMS_DELIVER;
 	sms->receiver = subscr_get(receiver);
 	strncpy(sms->text, text, sizeof(sms->text)-1);
 
@@ -298,6 +299,9 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	gsms = sms_alloc();
 	if (!gsms)
 		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
+
+	/* This is a normal SMS */
+	gsms->type = GSM_SMS_DELIVER;
 
 	/* invert those fields where 0 means active/present */
 	sms_mti = *smsp & 0x03;

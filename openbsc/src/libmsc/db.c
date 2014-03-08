@@ -115,9 +115,11 @@ static const char *create_stmts[] = {
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"received TIMESTAMP, "
-		"sent TIMESTAMP, "
+		"delivered TIMESTAMP, "
 		"deliver_attempts INTEGER NOT NULL DEFAULT 0, "
+		"type INTEGER NOT NULL, "
 		/* data directly copied/derived from SMS */
+		"msg_ref INTEGER NOT NULL, "
 		"valid_until TIMESTAMP, "
 		"reply_path_req INTEGER NOT NULL, "
 		"status_rep_req INTEGER NOT NULL, "
@@ -230,6 +232,9 @@ static struct gsm_sms *sms_from_result_v3(dbi_result result)
 
 	if (!sms)
 		return NULL;
+
+	/* This is a normal SMS */
+	sms->type = GSM_SMS_DELIVER;
 
 	sms->id = dbi_result_get_ulonglong(result, "id");
 
@@ -1284,6 +1289,7 @@ int db_sms_store(struct gsm_sms *sms)
 	unsigned char *q_udata;
 	char received_timestamp[22];
 	char validity_timestamp[22];
+	char delivered_timestamp[22];
 
 	dbi_conn_quote_string_copy(conn, (char *)sms->text, &q_text);
 	dbi_conn_quote_string_copy(conn, (char *)sms->dst.addr, &q_daddr);
@@ -1294,21 +1300,26 @@ int db_sms_store(struct gsm_sms *sms)
 			 "'%F %T'", gmtime(&sms->received_time));
 	strftime(validity_timestamp, sizeof(validity_timestamp),
 			 "'%F %T'", gmtime(&sms->valid_until));
+	strftime(delivered_timestamp, sizeof(delivered_timestamp),
+			 "'%F %T'", gmtime(&sms->delivered_time));
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO SMS "
-		"(created, received, valid_until, "
+		"(created, received, msg_ref, valid_until, "
+		 "delivered, type, "
 		 "reply_path_req, status_rep_req, protocol_id, "
 		 "data_coding_scheme, ud_hdr_ind, "
 		 "user_data, text, "
 		 "dest_addr, dest_ton, dest_npi, "
 		 "src_addr, src_ton, src_npi) VALUES "
-		"(datetime('now'), %s, %s, "
+		"(datetime('now'), %s, %u, %s, "
+		"%s, %u, "
 		"%u, %u, %u, "
 		"%u, %u, "
 		"%s, %s, "
 		"%s, %u, %u, "
 		"%s, %u, %u)",
-		received_timestamp, validity_timestamp,
+		received_timestamp, sms->msg_ref, validity_timestamp,
+		delivered_timestamp, sms->type,
 		sms->reply_path_req, sms->status_rep_req, sms->protocol_id,
 		sms->data_coding_scheme, sms->ud_hdr_ind,
 		q_udata, q_text,
@@ -1335,6 +1346,7 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 	if (!sms)
 		return NULL;
 
+	sms->type = dbi_result_get_uint(result, "type");
 	sms->id = dbi_result_get_ulonglong(result, "id");
 
 	/* FIXME: those should all be get_uchar, but sqlite3 is braindead */
@@ -1346,7 +1358,8 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 						  "data_coding_scheme");
 	sms->received_time = dbi_result_get_datetime(result, "received");
 	sms->valid_until = dbi_result_get_datetime(result, "valid_until");
-	/* sms->msg_ref is temporary and not stored in DB */
+	sms->delivered_time = dbi_result_get_datetime(result, "delivered");
+	sms->msg_ref = dbi_result_get_uint(result, "msg_ref");
 
 	sms->dst.npi = dbi_result_get_uint(result, "dest_npi");
 	sms->dst.ton = dbi_result_get_uint(result, "dest_ton");
@@ -1411,7 +1424,7 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long mi
 		"SELECT SMS.* "
 			"FROM SMS JOIN Subscriber ON "
 				"SMS.dest_addr = Subscriber.extension "
-			"WHERE SMS.id >= %llu AND SMS.sent IS NULL "
+			"WHERE SMS.id >= %llu "
 				"AND Subscriber.lac > 0 "
 			"ORDER BY SMS.id LIMIT 1",
 		min_id);
@@ -1441,7 +1454,7 @@ struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net,
 		"SELECT SMS.* "
 			"FROM SMS JOIN Subscriber ON "
 				"SMS.dest_addr = Subscriber.extension "
-			"WHERE Subscriber.id >= %llu AND SMS.sent IS NULL "
+			"WHERE Subscriber.id >= %llu "
 				"AND Subscriber.lac > 0 AND SMS.deliver_attempts < %u "
 			"ORDER BY Subscriber.id, SMS.id LIMIT 1",
 		min_subscr_id, failed);
@@ -1470,7 +1483,7 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 		"SELECT SMS.* "
 			"FROM SMS JOIN Subscriber ON "
 				"SMS.dest_addr = Subscriber.extension "
-			"WHERE Subscriber.id = %llu AND SMS.sent IS NULL "
+			"WHERE Subscriber.id = %llu "
 				"AND Subscriber.lac > 0 "
 			"ORDER BY SMS.id LIMIT 1",
 		subscr->id);
@@ -1495,11 +1508,9 @@ int db_sms_mark_delivered(struct gsm_sms *sms)
 	dbi_result result;
 
 	result = dbi_conn_queryf(conn,
-		"UPDATE SMS "
-		"SET sent = datetime('now') "
-		"WHERE id = %llu", sms->id);
+		"DELETE FROM SMS WHERE SMS.id = %llu", sms->id);
 	if (!result) {
-		LOGP(DDB, LOGL_ERROR, "Failed to mark SMS %llu as sent.\n", sms->id);
+		LOGP(DDB, LOGL_ERROR, "Failed to remove SMS %llu from DB.\n", sms->id);
 		return 1;
 	}
 

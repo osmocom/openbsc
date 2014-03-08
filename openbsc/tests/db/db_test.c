@@ -73,10 +73,13 @@ static void test_sms(void)
 	subscr->net = &dummy_net;
 
 	sms = sms_alloc();
+	sms->type = GSM_SMS_DELIVER;
 	sms->receiver = subscr_get(subscr);
 
 	sms->received_time = 12345;
 	sms->valid_until = 67890;
+	sms->delivered_time = 98765;
+	sms->msg_ref = 123;
 
 	sms->src.ton = 0x23;
 	sms->src.npi = 0x24;
@@ -104,9 +107,12 @@ static void test_sms(void)
 	/* now query */
 	sms = db_sms_get_unsent_for_subscr(subscr);
 	OSMO_ASSERT(sms);
+	OSMO_ASSERT(sms->type == GSM_SMS_DELIVER);
 	OSMO_ASSERT(sms->receiver == subscr);
 	OSMO_ASSERT(sms->received_time == 12345);
 	OSMO_ASSERT(sms->valid_until == 67890);
+	OSMO_ASSERT(sms->delivered_time == 98765);
+	OSMO_ASSERT(sms->msg_ref == 123);
 	OSMO_ASSERT(sms->reply_path_req == 1);
 	OSMO_ASSERT(sms->status_rep_req == 2);
 	OSMO_ASSERT(sms->ud_hdr_ind == 3);
@@ -119,6 +125,14 @@ static void test_sms(void)
 	OSMO_ASSERT(strcmp((char *) sms->text, "Text123") == 0);
 	OSMO_ASSERT(sms->user_data_len == strlen("UserData123"));
 	OSMO_ASSERT(strcmp((char *) sms->user_data, "UserData123") == 0);
+
+	/* mark SMS as delivered in the DB */
+	db_sms_mark_delivered(sms);
+	sms_free(sms);
+
+	/* now query - we should not get anything */
+	sms = db_sms_get_unsent_for_subscr(subscr);
+	OSMO_ASSERT(!sms);
 
 	subscr_put(subscr);
 }
