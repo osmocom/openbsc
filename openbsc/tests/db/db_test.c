@@ -1,5 +1,6 @@
 /* (C) 2008 by Jan Luebbe <jluebbe@debian.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2014 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -26,6 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 static struct gsm_network dummy_net;
 
@@ -59,6 +61,8 @@ static struct gsm_network dummy_net;
 
 int main()
 {
+	char scratch_str[256];
+
 	printf("Testing subscriber database code.\n");
 	osmo_init_logging(&log_info);
 
@@ -91,10 +95,25 @@ int main()
 	db_subscriber_alloc_tmsi(alice);
 	alice->lac=42;
 	db_sync_subscriber(alice);
+	/* Get by TMSI */
+	snprintf(scratch_str, sizeof(scratch_str), "%"PRIu32, alice->tmsi);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_TMSI, scratch_str);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	/* Get by IMSI */
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice_imsi);
 	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice);
 	SUBSCR_PUT(alice_db);
+	/* Get by id */
+	snprintf(scratch_str, sizeof(scratch_str), "%llu", alice->id);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_ID, scratch_str);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	/* Get by extension */
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, alice->extension);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	SUBSCR_PUT(alice);
 
 	alice_imsi = "9993245423445";
 	alice = db_create_subscriber(alice_imsi);
@@ -103,10 +122,25 @@ int main()
 	db_sync_subscriber(alice);
 	db_subscriber_assoc_imei(alice, "1234567890");
 	db_subscriber_assoc_imei(alice, "6543560920");
+	/* Get by TMSI */
+	snprintf(scratch_str, sizeof(scratch_str), "%"PRIu32, alice->tmsi);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_TMSI, scratch_str);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	/* Get by IMSI */
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice_imsi);
 	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice);
 	SUBSCR_PUT(alice_db);
+	/* Get by id */
+	snprintf(scratch_str, sizeof(scratch_str), "%llu", alice->id);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_ID, scratch_str);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	/* Get by extension */
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, alice->extension);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	SUBSCR_PUT(alice);
 
 	db_fini();
 
