@@ -250,7 +250,7 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 
 	/* generate TP-SCTS */
 	smsp = msgb_put(msg, 7);
-	gsm340_gen_scts(smsp, time(NULL));
+	gsm340_gen_scts(smsp, sms->received_time);
 
 	/* generate TP-UDL */
 	smsp = msgb_put(msg, 1);
