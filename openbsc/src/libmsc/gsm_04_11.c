@@ -204,11 +204,11 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 }
 
 /* generate a TPDU address field compliant with 03.40 sec. 9.1.2.5 */
-static int gsm340_gen_oa_sub(uint8_t *oa, unsigned int oa_len,
+static int gsm340_gen_addr_sub(uint8_t *oa, unsigned int oa_len,
 			 const struct gsm_sms_addr *src)
 {
 	/* network specific, private numbering plan */
-	return gsm340_gen_oa(oa, oa_len, src->ton, src->npi, src->addr);
+	return gsm340_gen_address_field(oa, oa_len, src->ton, src->npi, src->addr);
 }
 
 /* generate a msgb containing an 03.40 9.2.2.1 SMS-DELIVER TPDU derived from
@@ -236,7 +236,7 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 		*smsp |= 0x40;
 
 	/* generate originator address */
-	oa_len = gsm340_gen_oa_sub(oa, sizeof(oa), &sms->src);
+	oa_len = gsm340_gen_addr_sub(oa, sizeof(oa), &sms->src);
 	smsp = msgb_put(msg, oa_len);
 	memcpy(smsp, oa, oa_len);
 
