@@ -291,6 +291,7 @@ enum gsm_sms_source_id {
 	SMS_SOURCE_MS,		/* received from MS */
 	SMS_SOURCE_VTY,		/* received from VTY */
 	SMS_SOURCE_SMPP,	/* received via SMPP */
+	SMS_SOURCE_INT,		/* generated internally */
 };
 
 #define SMS_HDR_SIZE	128

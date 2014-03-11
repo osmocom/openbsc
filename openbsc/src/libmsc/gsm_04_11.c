@@ -54,6 +54,7 @@
 #include <openbsc/bsc_rll.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_api.h>
+#include <openbsc/sms_queue.h>
 
 #ifdef BUILD_SMPP
 #include "smpp_smsc.h"
@@ -124,6 +125,57 @@ static void send_signal(int sig_no,
 	sig.sms = sms;
 	sig.paging_result = paging_result;
 	osmo_signal_dispatch(SS_SMS, sig_no, &sig);
+}
+
+struct gsm_sms *gen_status_rep_from_deliver(struct gsm_network *net, struct gsm_sms *sms)
+{
+	struct gsm_sms *report;
+
+	report = sms_alloc();
+	if (!report)
+		return NULL;
+
+	/* This is a normal SMS */
+	report->type = GSM_SMS_STATUS_REP;
+
+	/* Swap src and dst addresses */
+	report->src = sms->dst;
+	report->dst = sms->src;
+	report->receiver = subscr_get_by_extension(net, report->dst.addr);
+
+	report->source = SMS_SOURCE_INT;
+
+	report->received_time = sms->received_time;
+	report->delivered_time = time(NULL);
+	report->msg_ref = sms->msg_ref;
+	report->protocol_id = sms->protocol_id;
+
+	/* TODO: I'm not sure this is correct */
+	report->valid_until = report->delivered_time + SMS_DEFAULT_VALIDITY_PERIOD;
+
+	return report;
+}
+
+static int send_status_rep(struct gsm_network *net, struct gsm_sms *sms)
+{
+	struct gsm_sms *report;
+
+	LOGP(DLSMS, LOGL_ERROR, "In with send_status_rep()\n");
+
+	report = gen_status_rep_from_deliver(net, sms);
+	if (!report)
+		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
+
+	/* store in the database for the queue */
+	if (db_sms_store(report) != 0) {
+		LOGP(DLSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
+		sms_free(report);
+		return -1;
+	}
+
+	sms_free(report);
+	sms_queue_trigger(net->sms_queue);
+	return 0;
 }
 
 static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg)
@@ -277,6 +329,49 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 		     sms->data_coding_scheme);
 		break;
 	}
+
+	return msg->len - old_msg_len;
+}
+
+/* generate a msgb containing an 03.40 9.2.2.3 SMS-STATUS-REPORT TPDU derived
+ * from struct gsm_sms, returns total size of TPDU */
+static int gsm340_gen_sms_status_report_tpdu(struct msgb *msg, struct gsm_sms *sms)
+{
+	uint8_t *smsp;
+	uint8_t addr[12];	/* max len per 03.40 */
+	uint8_t addr_len = 0;
+	unsigned int old_msg_len = msg->len;
+
+	/* generate first octet with masked bits */
+	smsp = msgb_put(msg, 1);
+	/* TP-MTI (message type indicator) */
+	*smsp = GSM340_SMS_STATUS_REP_SC2MS;
+	/* TP-MMS (more messages to send), 1 = no messages */
+	if (0 /* FIXME */)
+		*smsp |= (1 << 2);
+	/* TP-SRQ (bit 5) is 0, because we support only SMS-SUBMIT and
+	 * do not support SMS-COMMAND */
+
+	/* TP-MR: Message Reference of the original SMS-SUBMIT */
+	smsp = msgb_put(msg, 1);
+	*smsp = sms->msg_ref;
+
+	/* TP-RA: address of the recepient of the original SMS-SUBMIT */
+	addr_len = gsm340_gen_addr_sub(addr, sizeof(addr), &sms->dst);
+	smsp = msgb_put(msg, addr_len);
+	memcpy(smsp, addr, addr_len);
+
+	/* TP-SCTS: timestamp of the original SMS-SUBMIT */
+	smsp = msgb_put(msg, 7);
+	gsm340_gen_scts(smsp, sms->received_time);
+
+	/* TP-DT: when the original SMS-SUBMIT was delivered or failed */
+	smsp = msgb_put(msg, 7);
+	gsm340_gen_scts(smsp, sms->delivered_time);
+
+	/* TP-ST: Status of the original SMS-SUBMIT */
+	smsp = msgb_put(msg, 1);
+	*smsp = sms->delivery_status;
 
 	return msg->len - old_msg_len;
 }
@@ -561,6 +656,12 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	db_sms_mark_delivered(sms);
 
 	send_signal(S_SMS_DELIVERED, trans, sms, 0);
+
+	LOGP(DLSMS, LOGL_ERROR, "Checking for status report: %d\n", sms->status_rep_req);
+	if (sms->status_rep_req) {
+		LOGP(DLSMS, LOGL_ERROR, "Going to send report\n");
+		send_status_rep(trans->subscr->net, sms);
+	}
 
 	sms_free(sms);
 	trans->sms.sms = NULL;
@@ -880,8 +981,22 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	/* obtain a pointer for the rp_ud_len, so we can fill it later */
 	rp_ud_len = (uint8_t *)msgb_put(msg, 1);
 
-	/* generate the 03.40 SMS-DELIVER TPDU */
-	rc = gsm340_gen_sms_deliver_tpdu(msg, sms);
+	switch (sms->type) {
+	case GSM_SMS_DELIVER:
+		/* generate the 03.40 SMS-DELIVER TPDU */
+		LOGP(DLSMS, LOGL_ERROR, "Calling gsm340_gen_sms_deliver_tpdu()\n");
+		rc = gsm340_gen_sms_deliver_tpdu(msg, sms);
+		break;
+	case GSM_SMS_STATUS_REP:
+		/* generate the 03.40 SMS-STATUS-REP TPDU */
+		/* TODO: proper time and status */
+		LOGP(DLSMS, LOGL_ERROR, "Calling gsm340_gen_sms_status_report_tpdu()\n");
+		rc = gsm340_gen_sms_status_report_tpdu(msg, sms);
+		break;
+	default:
+		LOGP(DLSMS, LOGL_ERROR, "Unkown SMS type when generating TPDU\n");
+		rc = -1;
+	}
 	if (rc < 0) {
 		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
 		sms_free(sms);
