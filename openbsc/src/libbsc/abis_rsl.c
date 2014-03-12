@@ -197,10 +197,10 @@ static void lchan_act_tmr_cb(void *data)
 	struct gsm_lchan *lchan = data;
 
 	LOGP(DRSL, LOGL_ERROR,
-		"%s Timeout during activation. Marked as broken.\n",
+		"%s Timeout during activation. Should be marked as broken, releasing it as workaround.\n",
 		gsm_lchan_name(lchan));
 
-	rsl_lchan_set_state(lchan, LCHAN_S_BROKEN);
+	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 	lchan_free(lchan);
 }
 
@@ -209,10 +209,10 @@ static void lchan_deact_tmr_cb(void *data)
 	struct gsm_lchan *lchan = data;
 
 	LOGP(DRSL, LOGL_ERROR,
-		"%s Timeout during deactivation! Marked as broken.\n",
+		"%s Timeout during deactivation! Should be marked as broken, releasing it as workaround.\n",
 		gsm_lchan_name(lchan));
 
-	rsl_lchan_set_state(lchan, LCHAN_S_BROKEN);
+	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 	lchan_free(lchan);
 }
 

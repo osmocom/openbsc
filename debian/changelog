@@ -1,3 +1,9 @@
+openbsc (0.13.0+git1-rhizo2) precise; urgency=low
+
+  * Added workaround for BROKEN channel state.
+
+ -- ciaby <ciaby@lila>  Wed, 12 Mar 2014 16:50:20 +0100
+
 openbsc (0.13.0+git1-rhizo1) precise; urgency=low
 
   * Bumped version number, added SMPP support.
