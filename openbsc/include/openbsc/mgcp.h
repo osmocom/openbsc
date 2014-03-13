@@ -65,6 +65,7 @@ static inline int rtp_calculate_port(int multiplex, int base)
 struct mgcp_endpoint;
 struct mgcp_config;
 struct mgcp_trunk_config;
+struct mgcp_rtp_end;
 
 #define MGCP_ENDP_CRCX 1
 #define MGCP_ENDP_DLCX 2
@@ -86,6 +87,11 @@ typedef int (*mgcp_policy)(struct mgcp_trunk_config *cfg, int endpoint, int stat
 typedef int (*mgcp_reset)(struct mgcp_trunk_config *cfg);
 typedef int (*mgcp_rqnt)(struct mgcp_endpoint *endp, char tone);
 
+typedef int (*mgcp_processing)(struct mgcp_rtp_end *dst_end,
+			       char *data, int *len, int buf_size);
+typedef int (*mgcp_processing_setup)(struct mgcp_endpoint *endp,
+				     struct mgcp_rtp_end *dst_end,
+				     struct mgcp_rtp_end *src_end);
 #define PORT_ALLOC_STATIC	0
 #define PORT_ALLOC_DYNAMIC	1
 
@@ -155,6 +161,10 @@ struct mgcp_config {
 	char *transcoder_ip;
 	struct in_addr transcoder_in;
 	int transcoder_remote_base;
+
+	/* RTP processing */
+	mgcp_processing rtp_processing_cb;
+	mgcp_processing_setup setup_rtp_processing_cb;
 
 	struct osmo_wqueue gw_fd;
 
