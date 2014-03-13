@@ -72,6 +72,19 @@ struct mgcp_process_rtp_state {
 	size_t dst_samples_per_frame;
 };
 
+int mgcp_transcoding_get_frame_size(void *state_, int nsamples, int dst)
+{
+	struct mgcp_process_rtp_state *state = state_;
+	if (dst)
+		return (nsamples >= 0 ?
+			nsamples / state->dst_samples_per_frame :
+			1) * state->dst_frame_size;
+	else
+		return (nsamples >= 0 ?
+			nsamples / state->src_samples_per_frame :
+			1) * state->src_frame_size;
+}
+
 static enum audio_format get_audio_format(const struct mgcp_rtp_end *rtp_end)
 {
 	if (rtp_end->subtype_name) {

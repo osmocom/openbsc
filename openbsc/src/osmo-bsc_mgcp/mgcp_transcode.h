@@ -31,4 +31,6 @@ void mgcp_transcoding_net_downlink_format(struct mgcp_endpoint *endp,
 int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 				 struct mgcp_rtp_end *dst_end,
 				 char *data, int *len, int buf_size);
+
+int mgcp_transcoding_get_frame_size(void *state_, int nsamples, int dst);
 #endif /* OPENBSC_MGCP_TRANSCODE_H */
