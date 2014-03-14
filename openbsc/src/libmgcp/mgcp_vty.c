@@ -381,7 +381,7 @@ DEFUN(cfg_mgcp_sdp_fmtp_extra,
 #define AUDIO_STR "Audio payload options\n"
 DEFUN(cfg_mgcp_sdp_payload_number,
       cfg_mgcp_sdp_payload_number_cmd,
-      "sdp audio-payload number <1-255>",
+      "sdp audio-payload number <0-255>",
       SDP_STR AUDIO_STR
       "Number\n" "Payload number\n")
 {
@@ -391,7 +391,7 @@ DEFUN(cfg_mgcp_sdp_payload_number,
 }
 
 ALIAS_DEPRECATED(cfg_mgcp_sdp_payload_number, cfg_mgcp_sdp_payload_number_cmd_old,
-      "sdp audio payload number <1-255>",
+      "sdp audio payload number <0-255>",
       SDP_STR AUDIO_STR AUDIO_STR "Number\n" "Payload number\n")
       
 
@@ -688,7 +688,7 @@ DEFUN(cfg_trunk_sdp_fmtp_extra,
 
 DEFUN(cfg_trunk_payload_number,
       cfg_trunk_payload_number_cmd,
-      "sdp audio-payload number <1-255>",
+      "sdp audio-payload number <0-255>",
       SDP_STR AUDIO_STR "Number\n" "Payload Number\n")
 {
 	struct mgcp_trunk_config *trunk = vty->index;
@@ -699,7 +699,7 @@ DEFUN(cfg_trunk_payload_number,
 }
 
 ALIAS_DEPRECATED(cfg_trunk_payload_number, cfg_trunk_payload_number_cmd_old,
-      "sdp audio payload number <1-255>",
+      "sdp audio payload number <0-255>",
       SDP_STR AUDIO_STR AUDIO_STR "Number\n" "Payload Number\n")
 
 DEFUN(cfg_trunk_payload_name,
