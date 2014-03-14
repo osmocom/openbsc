@@ -241,56 +241,106 @@ static struct msgb *create_err_response(struct mgcp_endpoint *endp,
 	return create_resp(endp, code, " FAIL", msg, trans, NULL, NULL);
 }
 
-static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
-					     const char *msg, const char *trans_id)
+static int write_response_sdp(struct mgcp_endpoint *endp,
+			      char *sdp_record, size_t size, const char *addr)
 {
-	const char *addr = endp->cfg->local_ip;
 	const char *fmtp_extra;
 	const char *audio_name;
 	int payload_type;
-	char sdp_record[4096];
 	int len;
+	int nchars;
 
 	endp->cfg->get_net_downlink_format_cb(endp, &payload_type,
 					      &audio_name, &fmtp_extra);
 
-	if (!addr)
-		addr = endp->cfg->source_addr;
-
-	len = snprintf(sdp_record, sizeof(sdp_record) - 1,
-			"I: %u%s\n\n"
+	len = snprintf(sdp_record, size,
 			"v=0\r\n"
 			"o=- %u 23 IN IP4 %s\r\n"
 			"c=IN IP4 %s\r\n"
-			"t=0 0\r\n"
-			"m=audio %d RTP/AVP %d\r\n"
-			"a=rtpmap:%d%s%s\r\n"
-			"%s%s",
-			endp->ci, endp->cfg->osmux && endp->osmux ? "\nX-Osmux: On" : "",
-			endp->ci, addr, addr,
-			endp->net_end.local_port, payload_type,
-			payload_type,
-			audio_name ? " " : "", audio_name ? audio_name : "",
-			fmtp_extra ? fmtp_extra : "", fmtp_extra ? "\r\n" : "");
+			"t=0 0\r\n",
+			endp->ci, addr, addr);
 
-	if (len < 0 || len >= sizeof(sdp_record))
+	if (len < 0 || len >= size)
 		goto buffer_too_small;
 
+	if (payload_type >= 0) {
+		nchars = snprintf(sdp_record + len, size - len,
+				  "m=audio %d RTP/AVP %d\r\n",
+				  endp->net_end.local_port, payload_type);
+		if (nchars < 0 || nchars >= size - len)
+			goto buffer_too_small;
+
+		len += nchars;
+
+		if (audio_name) {
+			nchars = snprintf(sdp_record + len, size - len,
+					  "a=rtpmap:%d %s\r\n",
+					  payload_type, audio_name);
+
+			if (nchars < 0 || nchars >= size - len)
+				goto buffer_too_small;
+
+			len += nchars;
+		}
+
+		if (fmtp_extra) {
+			nchars = snprintf(sdp_record + len, size - len,
+					  "a=rtpmap:%d %s\r\n",
+					  payload_type, audio_name);
+
+			if (nchars < 0 || nchars >= size - len)
+				goto buffer_too_small;
+
+			len += nchars;
+		}
+	}
 	if (endp->bts_end.packet_duration_ms > 0 && endp->tcfg->audio_send_ptime) {
-		int nchars = snprintf(sdp_record + len, sizeof(sdp_record) - len,
-				      "a=ptime:%d\r\n",
-				      endp->bts_end.packet_duration_ms);
-		if (nchars < 0 || nchars >= sizeof(sdp_record) - len)
+		nchars = snprintf(sdp_record + len, size - len,
+				  "a=ptime:%d\r\n",
+				  endp->bts_end.packet_duration_ms);
+		if (nchars < 0 || nchars >= size - len)
 			goto buffer_too_small;
 
 		len += nchars;
 	}
-	return create_resp(endp, 200, " OK", msg, trans_id, NULL, sdp_record);
+
+	return len;
 
 buffer_too_small:
 	LOGP(DMGCP, LOGL_ERROR, "SDP buffer too small: %d (needed %d)\n",
-	     sizeof(sdp_record), len);
-	return NULL;
+	     size, len);
+	return -1;
+}
+
+static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
+					     const char *msg, const char *trans_id)
+{
+	const char *addr = endp->cfg->local_ip;
+	char sdp_record[4096];
+	int len;
+	int nchars;
+
+	if (!addr)
+		addr = endp->cfg->source_addr;
+
+	len = snprintf(sdp_record, sizeof(sdp_record),
+		       "I: %u%s\n\n",
+			endp->ci,
+			endp->cfg->osmux && endp->osmux ? "\nX-Osmux: On" : "");
+
+	if (len < 0)
+		return NULL;
+
+	nchars = write_response_sdp(endp, sdp_record + len,
+				    sizeof(sdp_record) - len - 1, addr);
+	if (nchars < 0)
+		return NULL;
+
+	len += nchars;
+
+	sdp_record[sizeof(sdp_record) - 1] = '\0';
+
+	return create_resp(endp, 200, " OK", msg, trans_id, NULL, sdp_record);
 }
 
 /*
@@ -726,9 +776,10 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 
 	if (found_media)
 		LOGP(DMGCP, LOGL_NOTICE,
-		     "Got media info via SDP: port %d, payload %d, "
+		     "Got media info via SDP: port %d, payload %d (%s), "
 		     "duration %d, addr %s\n",
 		     ntohs(rtp->rtp_port), rtp->payload_type,
+		     rtp->subtype_name ? rtp->subtype_name : "unknown",
 		     rtp->packet_duration_ms, inet_ntoa(rtp->addr));
 
 	return found_media;
@@ -1429,29 +1480,25 @@ static void send_msg(struct mgcp_endpoint *endp, int endpoint, int port,
 {
 	char buf[2096];
 	int len;
-	const char *fmtp_extra;
-	const char *audio_name;
-	int payload_type;
-
-	endp->cfg->get_net_downlink_format_cb(endp, &payload_type,
-					      &audio_name, &fmtp_extra);
+	int nchars;
 
 	/* hardcoded to AMR right now, we do not know the real type at this point */
 	len = snprintf(buf, sizeof(buf),
 			"%s 42 %x@mgw MGCP 1.0\r\n"
 			"C: 4256\r\n"
 			"M: %s\r\n"
-			"\r\n"
-			"c=IN IP4 %s\r\n"
-			"m=audio %d RTP/AVP %d\r\n"
-			"a=rtpmap:%d%s%s\r\n",
-			msg, endpoint, mode, endp->cfg->source_addr,
-			port, payload_type,
-			payload_type,
-			audio_name ? " " : "", audio_name ? audio_name : "");
+			"\r\n",
+			msg, endpoint, mode);
 
 	if (len < 0)
 		return;
+
+	nchars = write_response_sdp(endp, buf + len, sizeof(buf) + len - 1,
+				    endp->cfg->source_addr);
+	if (nchars < 0)
+		return;
+
+	len += nchars;
 
 	buf[sizeof(buf) - 1] = '\0';
 
