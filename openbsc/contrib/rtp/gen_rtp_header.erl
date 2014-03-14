@@ -28,6 +28,7 @@
 main(Args) ->
     DefaultOpts = [{format, state},
                    {ssrc, 16#11223344},
+                   {rate, 8000},
                    {pt, 98}],
     {PosArgs, Opts} = getopts_checked(Args, DefaultOpts),
     log(debug, fun (Dev) ->
@@ -144,7 +145,8 @@ show_help() ->
               "Options:~n" ++
 	      "  -h, --help             this text~n" ++
 	      "      --version          show version info~n" ++
-	      "  -i, --file=FILE        reads payload from state file~n" ++
+	      "  -i, --file=FILE        reads payload from file (state format by default)~n" ++
+	      "  -f, --frame-size=N     read payload as binary frames of size N instead~n" ++
 	      "  -p, --payload=HEX      set constant payload~n" ++
 	      "      --verbose=N        set verbosity~n" ++
 	      "  -v                     increase verbosity~n" ++
@@ -153,6 +155,8 @@ show_help() ->
 	      "      --format=carray    use a C array for output~n" ++
 	      "  -s, --ssrc=SSRC        set the SSRC~n" ++
 	      "  -t, --type=N           set the payload type~n" ++
+	      "  -r, --rate=N           set the RTP rate [8000]~n" ++
+	      "  -D, --duration=N       set the packet duration in RTP time units [160]~n" ++
 	      "  -d, --delay=FLOAT      add offset to playout timestamp~n" ++
 	      "~n" ++
 	      "Arguments:~n" ++
@@ -165,6 +169,21 @@ getopts([ "--file=" ++ File | R], Opts) ->
         getopts(R, [{file, File} | Opts]);
 getopts([ "-i" ++ T | R], Opts) ->
         getopts_alias_arg("--file", T, R, Opts);
+getopts([ "--frame-size=" ++ N | R], Opts) ->
+        Size = list_to_integer(N),
+        getopts(R, [{frame_size, Size}, {in_format, bin} | Opts]);
+getopts([ "-f" ++ T | R], Opts) ->
+        getopts_alias_arg("--frame-size", T, R, Opts);
+getopts([ "--duration=" ++ N | R], Opts) ->
+        Duration = list_to_integer(N),
+        getopts(R, [{duration, Duration} | Opts]);
+getopts([ "-D" ++ T | R], Opts) ->
+        getopts_alias_arg("--duration", T, R, Opts);
+getopts([ "--rate=" ++ N | R], Opts) ->
+        Rate = list_to_integer(N),
+        getopts(R, [{rate, Rate} | Opts]);
+getopts([ "-r" ++ T | R], Opts) ->
+        getopts_alias_arg("--rate", T, R, Opts);
 getopts([ "--version" | _], _Opts) ->
 	show_version(),
         halt(0);
@@ -328,9 +347,10 @@ write_packets(Dev, DataSource, P = #rtp_packet{}, F, L, O, Opts) ->
     Format = proplists:get_value(format, Opts, state),
     Ptime = proplists:get_value(duration, Opts, 160),
     Delay = proplists:get_value(delay, Opts, 0),
+    Rate = proplists:get_value(rate, Opts, 8000),
     case next_payload(DataSource) of
         {Payload, DataSource2} ->
-            write_packet(Dev, 0.020 * F + Delay,
+            write_packet(Dev, Ptime * F / Rate + Delay,
                          P#rtp_packet{seqno = F, timestamp = F*Ptime+O,
 			              payload = Payload},
                          Format),
@@ -376,12 +396,18 @@ read_packets(Dev, Opts) ->
     read_packets(Dev, Opts, Format).
 
 read_packets(Dev, Opts, Format) ->
-    case read_packet(Dev, Format) of
+    case read_packet(Dev, Opts, Format) of
         eof -> [];
         Tuple -> [Tuple | read_packets(Dev, Opts, Format)]
     end.
 
-read_packet(Dev, Format) ->
+read_packet(Dev, Opts, bin) ->
+    Size = proplists:get_value(frame_size, Opts),
+    case file:read(Dev, Size) of
+        {ok, Data} -> {0, #rtp_packet{payload = iolist_to_binary(Data)}};
+	eof -> eof
+    end;
+read_packet(Dev, _Opts, Format) ->
     case read_packet_line(Dev, Format) of
         {Time, Bin} -> {Time, parse_rtp_packet(Bin)};
 	eof -> eof
