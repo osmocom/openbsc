@@ -217,6 +217,11 @@ int mgcp_setup_rtp_processing_default(struct mgcp_endpoint *endp,
 				      struct mgcp_rtp_end *dst_end,
 				      struct mgcp_rtp_end *src_end);
 
+void mgcp_get_net_downlink_format_default(struct mgcp_endpoint *endp,
+					  int *payload_type,
+					  const char**subtype_name,
+					  const char**fmtp_extra);
+
 enum {
 	MGCP_DEST_NET = 0,
 	MGCP_DEST_BTS,

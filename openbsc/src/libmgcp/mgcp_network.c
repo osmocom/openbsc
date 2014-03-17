@@ -353,6 +353,19 @@ int mgcp_setup_rtp_processing_default(struct mgcp_endpoint *endp,
 	return 0;
 }
 
+void mgcp_get_net_downlink_format_default(struct mgcp_endpoint *endp,
+					  int *payload_type,
+					  const char**audio_name,
+					  const char**fmtp_extra)
+{
+	/* Use the BTS side parameters when passing the SDP data (for
+	 * downlink) to the net peer.
+	 */
+	*payload_type = endp->bts_end.payload_type;
+	*audio_name = endp->bts_end.audio_name;
+	*fmtp_extra = endp->bts_end.fmtp_extra;
+}
+
 /**
  * The RFC 3550 Appendix A assumes there are multiple sources but
  * some of the supported endpoints (e.g. the nanoBTS) can only handle
