@@ -28,6 +28,7 @@
 #include <time.h>
 #include <limits.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
@@ -77,6 +78,7 @@ char *strline_r(char *str, char **saveptr)
 #define DEFAULT_RTP_AUDIO_FRAME_DUR_DEN 1000
 #define DEFAULT_RTP_AUDIO_PACKET_DURATION_MS 20
 #define DEFAULT_RTP_AUDIO_DEFAULT_RATE  8000
+#define DEFAULT_RTP_AUDIO_DEFAULT_CHANNELS 1
 
 static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end);
 
@@ -244,6 +246,8 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 {
 	const char *addr = endp->cfg->local_ip;
 	const char *fmtp_extra = endp->bts_end.fmtp_extra;
+	const char *audio_name = endp->bts_end.audio_name;
+	int payload_type = endp->bts_end.payload_type;
 	char sdp_record[4096];
 	int len;
 
@@ -257,12 +261,13 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			"c=IN IP4 %s\r\n"
 			"t=0 0\r\n"
 			"m=audio %d RTP/AVP %d\r\n"
-			"a=rtpmap:%d %s\r\n"
+			"a=rtpmap:%d%s%s\r\n"
 			"%s%s",
 			endp->ci, endp->cfg->osmux && endp->osmux ? "\nX-Osmux: On" : "",
 			endp->ci, addr, addr,
-			endp->net_end.local_port, endp->bts_end.payload_type,
-			endp->bts_end.payload_type, endp->tcfg->audio_name,
+			endp->net_end.local_port, payload_type,
+			payload_type,
+			audio_name ? " " : "", audio_name ? audio_name : "",
 			fmtp_extra ? fmtp_extra : "", fmtp_extra ? "\r\n" : "");
 
 	if (len < 0 || len >= sizeof(sdp_record))
@@ -528,6 +533,48 @@ static int parse_conn_mode(const char *msg, struct mgcp_endpoint *endp)
 	return ret;
 }
 
+static int set_audio_info(void *ctx, struct mgcp_rtp_end *rtp,
+			  int payload_type, const char *audio_name)
+{
+	int rate = rtp->rate;
+	int channels = rtp->channels;
+	char audio_codec[64];
+
+	talloc_free(rtp->subtype_name);
+	rtp->subtype_name = NULL;
+	talloc_free(rtp->audio_name);
+	rtp->audio_name = NULL;
+
+	rtp->payload_type = payload_type;
+
+	if (!audio_name) {
+		switch (payload_type) {
+		case 3: audio_name = "GSM/8000/1"; break;
+		case 8: audio_name = "PCMA/8000/1"; break;
+		case 18: audio_name = "G729/8000/1"; break;
+		default:
+			 /* Payload type is unknown, don't change rate and
+			  * channels. */
+			 /* TODO: return value? */
+			 return 0;
+		}
+	}
+
+	if (sscanf(audio_name, "%63[^/]/%d/%d",
+		   audio_codec, &rate, &channels) < 2)
+		return -EINVAL;
+
+	rtp->rate = rate;
+	rtp->channels = channels;
+	rtp->subtype_name = talloc_strdup(ctx, audio_codec);
+	rtp->audio_name = talloc_strdup(ctx, audio_name);
+	if (channels != 1)
+		LOGP(DMGCP, LOGL_NOTICE,
+		     "Channels != 1 in SDP: '%s'\n", audio_name);
+
+	return 0;
+}
+
 static int allocate_port(struct mgcp_endpoint *endp, struct mgcp_rtp_end *end,
 			 struct mgcp_port_range *range,
 			 int (*alloc)(struct mgcp_endpoint *endp, int port))
@@ -614,11 +661,8 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 			break;
 		case 'a': {
 			int payload;
-			int rate;
-			int channels = 1;
 			int ptime, ptime2 = 0;
 			char audio_name[64];
-			char audio_codec[64];
 
 			if (audio_payload == -1)
 				break;
@@ -628,15 +672,7 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 				if (payload != audio_payload)
 					break;
 
-				if (sscanf(audio_name, "%[^/]/%d/%d",
-					  audio_codec, &rate, &channels) < 2)
-					break;
-
-				rtp->rate = rate;
-				if (channels != 1)
-					LOGP(DMGCP, LOGL_NOTICE,
-					     "Channels != 1 in SDP: '%s' on 0x%x\n",
-					     line, ENDPOINT_NUMBER(p->endp));
+				set_audio_info(p->cfg, rtp, payload, audio_name);
 			} else if (sscanf(line, "a=ptime:%d-%d",
 					  &ptime, &ptime2) >= 1) {
 				if (ptime2 > 0 && ptime2 != ptime)
@@ -659,8 +695,8 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 				   &port, &audio_payload) == 2) {
 				rtp->rtp_port = htons(port);
 				rtp->rtcp_port = htons(port + 1);
-				rtp->payload_type = audio_payload;
 				found_media = 1;
+				set_audio_info(p->cfg, rtp, audio_payload, NULL);
 			}
 			break;
 		}
@@ -851,7 +887,7 @@ mgcp_header_done:
 	endp->allocated = 1;
 
 	/* set up RTP media parameters */
-	endp->bts_end.payload_type = tcfg->audio_payload;
+	set_audio_info(p->cfg, &endp->bts_end, tcfg->audio_payload, tcfg->audio_name);
 	endp->bts_end.fmtp_extra = talloc_strdup(tcfg->endpoints,
 						tcfg->audio_fmtp_extra);
 	if (have_sdp) {
@@ -1297,6 +1333,10 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	end->local_alloc = -1;
 	talloc_free(end->fmtp_extra);
 	end->fmtp_extra = NULL;
+	talloc_free(end->subtype_name);
+	end->subtype_name = NULL;
+	talloc_free(end->audio_name);
+	end->audio_name = NULL;
 	talloc_free(end->rtp_process_data);
 	end->rtp_process_data = NULL;
 
@@ -1306,6 +1346,7 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	end->frames_per_packet  = 0; /* unknown */
 	end->packet_duration_ms = DEFAULT_RTP_AUDIO_PACKET_DURATION_MS;
 	end->rate               = DEFAULT_RTP_AUDIO_DEFAULT_RATE;
+	end->channels           = DEFAULT_RTP_AUDIO_DEFAULT_CHANNELS;
 	end->output_enabled	= 0;
 }
 
@@ -1383,6 +1424,8 @@ static void send_msg(struct mgcp_endpoint *endp, int endpoint, int port,
 {
 	char buf[2096];
 	int len;
+	const char *audio_name = endp->bts_end.audio_name;
+	int payload_type = endp->bts_end.payload_type;
 
 	/* hardcoded to AMR right now, we do not know the real type at this point */
 	len = snprintf(buf, sizeof(buf),
@@ -1392,10 +1435,11 @@ static void send_msg(struct mgcp_endpoint *endp, int endpoint, int port,
 			"\r\n"
 			"c=IN IP4 %s\r\n"
 			"m=audio %d RTP/AVP %d\r\n"
-			"a=rtpmap:%d %s\r\n",
+			"a=rtpmap:%d%s%s\r\n",
 			msg, endpoint, mode, endp->cfg->source_addr,
-			port, endp->tcfg->audio_payload,
-			endp->tcfg->audio_payload, endp->tcfg->audio_name);
+			port, payload_type,
+			payload_type,
+			audio_name ? " " : "", audio_name ? audio_name : "");
 
 	if (len < 0)
 		return;
