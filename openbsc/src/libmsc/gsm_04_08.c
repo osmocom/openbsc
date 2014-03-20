@@ -2952,6 +2952,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		return tch_recv_mncc(net, data->callref, 1);
 	case GSM_TCHF_FRAME:
 	case GSM_TCHF_FRAME_EFR:
+	case GSM_TCHH_FRAME:
 		/* Find callref */
 		trans = trans_find_by_callref(net, data->callref);
 		if (!trans) {
@@ -2963,11 +2964,12 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
 			return 0;
 		}
-		if (trans->conn->lchan->type != GSM_LCHAN_TCH_F) {
+		if (trans->conn->lchan->type != GSM_LCHAN_TCH_F
+		 && trans->conn->lchan->type != GSM_LCHAN_TCH_H) {
 			/* This should be LOGL_ERROR or NOTICE, but
 			 * unfortuantely it happens for a couple of frames at
 			 * the beginning of every RTP connection */
-			LOGP(DMNCC, LOGL_DEBUG, "TCH frame for lchan != TCH_F\n");
+			LOGP(DMNCC, LOGL_DEBUG, "TCH frame for lchan != TCH_F/TCH_H\n");
 			return 0;
 		}
 		bts = trans->conn->lchan->ts->trx->bts;

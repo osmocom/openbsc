@@ -95,7 +95,9 @@ struct gsm_call {
 
 #define GSM_TCHF_FRAME		0x0300
 #define GSM_TCHF_FRAME_EFR	0x0301
-#define GSM_TCHF_BAD_FRAME	0x03ff
+#define GSM_TCHH_FRAME		0x0302
+#define GSM_TCH_FRAME_AMR	0x0303
+#define GSM_BAD_FRAME		0x03ff
 
 #define MNCC_SOCKET_HELLO	0x0400
 
@@ -161,7 +163,7 @@ struct gsm_data_frame {
 	unsigned char	data[0];
 };
 
-#define MNCC_SOCK_VERSION	2
+#define MNCC_SOCK_VERSION	4
 struct gsm_mncc_hello {
 	uint32_t	msg_type;
 	uint32_t	version;
@@ -188,5 +190,13 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg);
 int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg);
 
 int mncc_sock_init(struct gsm_network *gsmnet);
+
+#define mncc_is_data_frame(msg_type) \
+	(msg_type == GSM_TCHF_FRAME \
+		|| msg_type == GSM_TCHF_FRAME_EFR \
+		|| msg_type == GSM_TCHH_FRAME \
+		|| msg_type == GSM_TCH_FRAME_AMR \
+		|| msg_type == GSM_BAD_FRAME)
+
 
 #endif
