@@ -5,5 +5,4 @@ Description=OpenBSC MGCP
 Type=simple
 Restart=always
 ExecStart=/usr/bin/osmo-bsc_mgcp -s -c /etc/osmocom/osmo-bsc-mgcp.cfg
-Restart=always
 RestartSec=2
