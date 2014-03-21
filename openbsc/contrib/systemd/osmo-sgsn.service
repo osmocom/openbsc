@@ -1,0 +1,8 @@
+[Unit]
+Description=OpenBSC SGSN
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/osmo-sgsn -c /etc/osmocom/osmo-sgsn.cfg
+RestartSec=2
