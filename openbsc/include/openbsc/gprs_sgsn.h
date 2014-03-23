@@ -15,6 +15,7 @@
 #define GSM_EXTENSION_LENGTH 15
 
 struct gprs_llc_lle;
+struct ctrl_handle;
 
 /* TS 04.08 4.1.3.3 GMM mobility management states on the network side */
 enum gprs_mm_state {
@@ -218,5 +219,14 @@ uint32_t sgsn_alloc_ptmsi(void);
 /* High-level function to be called in case a GGSN has disappeared or
  * ottherwise lost state (recovery procedure) */
 int drop_all_pdp_for_ggsn(struct sgsn_ggsn_ctx *ggsn);
+
+char *gprs_pdpaddr2str(uint8_t *pdpa, uint8_t len);
+
+/*
+ * ctrl interface related work
+ */
+struct gsm_network;
+struct ctrl_handle *sgsn_controlif_setup(struct gsm_network *, uint16_t port);
+int sgsn_ctrl_cmds_install(void);
 
 #endif /* _GPRS_SGSN_H */

@@ -50,6 +50,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_gmm.h>
+#include <openbsc/control_if.h>
 
 #include <gtp.h>
 
@@ -288,6 +289,7 @@ static const struct log_info gprs_log_info = {
 
 int main(int argc, char **argv)
 {
+	struct ctrl_handle *ctrl;
 	struct gsm_network dummy_network;
 	int rc;
 
@@ -313,6 +315,17 @@ int main(int argc, char **argv)
 	rc = telnet_init(tall_bsc_ctx, &dummy_network, 4245);
 	if (rc < 0)
 		exit(1);
+
+	ctrl = sgsn_controlif_setup(NULL, 4251);
+	if (!ctrl) {
+		LOGP(DGPRS, LOGL_ERROR, "Failed to create CTRL interface.\n");
+		exit(1);
+	}
+
+	if (sgsn_ctrl_cmds_install() != 0) {
+		LOGP(DGPRS, LOGL_ERROR, "Failed to install CTRL commands.\n");
+		exit(1);
+	}
 
 	gprs_ns_set_log_ss(DNS);
 	bssgp_set_log_ss(DBSSGP);

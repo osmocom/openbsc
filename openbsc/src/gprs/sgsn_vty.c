@@ -71,7 +71,7 @@ static char *gprs_apn2str(uint8_t *apn, unsigned int len)
 	return apnbuf+1;
 }
 
-static char *gprs_pdpaddr2str(uint8_t *pdpa, uint8_t len)
+char *gprs_pdpaddr2str(uint8_t *pdpa, uint8_t len)
 {
 	static char str[INET6_ADDRSTRLEN + 10];
 
