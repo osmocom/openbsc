@@ -176,6 +176,26 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['mtype'], 'ERROR')
         self.assertEquals(r['error'], 'Error while resolving object')
 
+    def testTrxPowerRed(self):
+        r = self.do_get('bts.0.trx.0.max-power-reduction')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.trx.0.max-power-reduction')
+        self.assertEquals(r['value'], '20')
+
+        r = self.do_set('bts.0.trx.0.max-power-reduction', '22')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.trx.0.max-power-reduction')
+        self.assertEquals(r['value'], '22')
+        
+        r = self.do_get('bts.0.trx.0.max-power-reduction')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.trx.0.max-power-reduction')
+        self.assertEquals(r['value'], '22')
+        
+        r = self.do_set('bts.0.trx.0.max-power-reduction', '1')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Value must be even')
+
     def testRfLock(self):
         r = self.do_get('bts.0.rf_state')
         self.assertEquals(r['mtype'], 'GET_REPLY')

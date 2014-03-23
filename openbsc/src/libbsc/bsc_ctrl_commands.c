@@ -151,6 +151,27 @@ oom:
 }
 CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
 
+/* TRX related commands below here */
+CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
+CTRL_HELPER_SET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
+static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
+{
+	int tmp = atoi(value);
+
+	if (tmp < 0 || tmp > 22) {
+		cmd->reply = "Value must be between 0 and 22";
+		return -1;
+	}
+
+	if (tmp & 1) {
+		cmd->reply = "Value must be even";
+		return -1;
+	}
+
+	return 0;
+}
+CTRL_CMD_DEFINE(trx_max_power, "max-power-reduction");
+
 int bsc_base_ctrl_cmds_install(void)
 {
 	int rc = 0;
@@ -161,5 +182,6 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
 
+	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	return rc;
 }
