@@ -380,7 +380,7 @@ struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port)
 	int rc;
 
 
-	ctrl = controlif_setup(NULL, 4250);
+	ctrl = bsc_controlif_setup(NULL, 4250);
 	if (!ctrl) {
 		fprintf(stderr, "Failed to initialize the control interface. Exiting.\n");
 		return NULL;

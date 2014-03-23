@@ -284,7 +284,7 @@ int main(int argc, char **argv)
 #endif
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
-	bsc_gsmnet->ctrl = controlif_setup(bsc_gsmnet, 4249);
+	bsc_gsmnet->ctrl = bsc_controlif_setup(bsc_gsmnet, 4249);
 	if (!bsc_gsmnet->ctrl) {
 		printf("Failed to initialize control interface. Exiting.\n");
 		return -1;
