@@ -140,11 +140,40 @@ static int set_subscriber_delete(struct ctrl_cmd *cmd, void *data)
 }
 CTRL_CMD_DEFINE(subscriber_delete, "subscriber-delete-v1");
 
+static int verify_subscriber_list(struct ctrl_cmd *cmd, const char *value, void *d)
+{
+	return 1;
+}
+
+static int set_subscriber_list(struct ctrl_cmd *cmd, void *d)
+{
+	cmd->reply = "Get only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static void list_cb(struct gsm_subscriber *subscr, void *d)
+{
+	char **data = (char **) d;
+	*data = talloc_asprintf_append(*data, "%s,%s\n",
+				subscr->imsi, subscr->extension);
+}
+
+static int get_subscriber_list(struct ctrl_cmd *cmd, void *d)
+{
+	cmd->reply = talloc_strdup(cmd, "");
+
+	db_subscriber_list_active(list_cb, &cmd->reply);
+	printf("%s\n", cmd->reply);
+	return CTRL_CMD_REPLY;
+}
+CTRL_CMD_DEFINE(subscriber_list, "subscriber-list-active-v1");
+
 int msc_ctrl_cmds_install(void)
 {
 	int rc = 0;
 
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_modify);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_delete);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_list);
 	return rc;
 }

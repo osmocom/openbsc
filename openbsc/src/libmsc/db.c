@@ -902,6 +902,39 @@ int db_subscriber_delete(struct gsm_subscriber *subscr)
 	return 0;
 }
 
+/**
+ * List all the authorized and non-expired subscribers. The callback will
+ * be called one by one. The subscr argument is not fully initialize and
+ * subscr_get/subscr_put must not be called. The passed in pointer will be
+ * deleted after the callback by the database call.
+ */
+int db_subscriber_list_active(void (*cb)(struct gsm_subscriber*,void*), void *closure)
+{
+	dbi_result result;
+
+	result = dbi_conn_queryf(conn,
+			"SELECT * from Subscriber WHERE LAC != 0 AND authorized = 1");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR, "Failed to list active subscribers\n");
+		return -1;
+	}
+
+	while (dbi_result_next_row(result)) {
+		struct gsm_subscriber *subscr;
+
+		subscr = subscr_alloc();
+		subscr->id = dbi_result_get_ulonglong(result, "id");
+		db_set_from_query(subscr, result);
+		cb(subscr, closure);
+		OSMO_ASSERT(subscr->use_count == 1);
+		llist_del(&subscr->entry);
+		talloc_free(subscr);
+	}
+
+	dbi_result_free(result);
+	return 0;
+}
+
 int db_sync_equipment(struct gsm_equipment *equip)
 {
 	dbi_result result;

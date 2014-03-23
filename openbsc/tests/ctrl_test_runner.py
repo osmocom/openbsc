@@ -341,6 +341,13 @@ class TestCtrlNITB(TestCtrlBase):
         self.assertEquals(r['mtype'], 'ERROR')
         self.assertEquals(r['error'], 'Failed to find subscriber')
 
+    def testSubscriberList(self):
+        # TODO. Add command to mark a subscriber as active
+        r = self.do_get('subscriber-list-active-v1')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'subscriber-list-active-v1')
+        self.assertEquals(r['value'], None)
+
 class TestCtrlNAT(TestCtrlBase):
 
     def ctrl_command(self):
