@@ -44,6 +44,7 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber);
 int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber);
 int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t* token);
 int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char *imei);
+int db_subscriber_delete(struct gsm_subscriber *subscriber);
 int db_sync_equipment(struct gsm_equipment *equip);
 int db_subscriber_update(struct gsm_subscriber *subscriber);
 

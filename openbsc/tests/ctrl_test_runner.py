@@ -319,7 +319,7 @@ class TestCtrlNITB(TestCtrlBase):
     def ctrl_app(self):
         return (4249, "./src/osmo-nitb/osmo-nitb", "OsmoBSC", "nitb")
 
-    def testSubscriberAdd(self):
+    def testSubscriberAddRemove(self):
         r = self.do_set('subscriber-modify-v1', '2620345,445566')
         self.assertEquals(r['mtype'], 'SET_REPLY')
         self.assertEquals(r['var'], 'subscriber-modify-v1')
@@ -332,6 +332,14 @@ class TestCtrlNITB(TestCtrlBase):
 
         # TODO. verify that the entry has been created and modified? Invoke
         # the sqlite3 CLI or do it through the DB libraries?
+
+        r = self.do_set('subscriber-delete-v1', '2620345')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['value'], 'Removed')
+
+        r = self.do_set('subscriber-delete-v1', '2620345')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Failed to find subscriber')
 
 class TestCtrlNAT(TestCtrlBase):
 

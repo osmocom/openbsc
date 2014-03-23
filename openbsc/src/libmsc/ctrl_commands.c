@@ -22,6 +22,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/db.h>
+#include <openbsc/debug.h>
 
 static int verify_subscriber_modify(struct ctrl_cmd *cmd, const char *value, void *d)
 {
@@ -97,10 +98,53 @@ fail:
 
 CTRL_CMD_DEFINE(subscriber_modify, "subscriber-modify-v1");
 
+static int verify_subscriber_delete(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int get_subscriber_delete(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Set only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_subscriber_delete(struct ctrl_cmd *cmd, void *data)
+{
+	int was_used = 0;
+	int rc;
+	struct gsm_subscriber *subscr;
+	struct gsm_network *net = cmd->node;
+
+	subscr = subscr_get_by_imsi(net, cmd->value);
+	if (!subscr) {
+		cmd->reply = "Failed to find subscriber";
+		return CTRL_CMD_ERROR;
+	}
+
+	if (subscr->use_count != 1) {
+		LOGP(DCTRL, LOGL_NOTICE, "Going to remove active subscriber.\n");
+		was_used = 1;
+	}
+
+	rc = db_subscriber_delete(subscr);
+	subscr_put(subscr);
+
+	if (rc != 0) {
+		cmd->reply = "Failed to remove subscriber";
+		return CTRL_CMD_ERROR;
+	}
+
+	cmd->reply = was_used ? "Removed active subscriber" : "Removed";
+	return CTRL_CMD_REPLY;
+}
+CTRL_CMD_DEFINE(subscriber_delete, "subscriber-delete-v1");
+
 int msc_ctrl_cmds_install(void)
 {
 	int rc = 0;
 
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_modify);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_delete);
 	return rc;
 }

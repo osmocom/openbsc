@@ -815,6 +815,93 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 	return 0;
 }
 
+int db_subscriber_delete(struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+
+	result = dbi_conn_queryf(conn,
+			"DELETE FROM AuthKeys WHERE subscriber_id=%llu",
+			subscr->id);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to delete Authkeys for %llu\n", subscr->id);
+		return -1;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_queryf(conn,
+			"DELETE FROM AuthLastTuples WHERE subscriber_id=%llu",
+			subscr->id);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to delete AuthLastTuples for %llu\n", subscr->id);
+		return -1;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_queryf(conn,
+			"DELETE FROM AuthToken WHERE subscriber_id=%llu",
+			subscr->id);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to delete AuthToken for %llu\n", subscr->id);
+		return -1;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_queryf(conn,
+			"DELETE FROM EquipmentWatch WHERE subscriber_id=%llu",
+			subscr->id);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to delete EquipmentWatch for %llu\n", subscr->id);
+		return -1;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_queryf(conn,
+			"DELETE FROM SMS WHERE sender_id=%llu OR receiver_id=%llu",
+			subscr->id, subscr->id);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to delete SMS for %llu\n", subscr->id);
+		return -1;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_queryf(conn,
+			"DELETE FROM VLR WHERE subscriber_id=%llu",
+			subscr->id);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to delete VLR for %llu\n", subscr->id);
+		return -1;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_queryf(conn,
+			"DELETE FROM ApduBlobs WHERE subscriber_id=%llu",
+			subscr->id);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to delete ApduBlobs for %llu\n", subscr->id);
+		return -1;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_queryf(conn,
+			"DELETE FROM Subscriber WHERE id=%llu",
+			subscr->id);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to delete Subscriber for %llu\n", subscr->id);
+		return -1;
+	}
+	dbi_result_free(result);
+
+	return 0;
+}
+
 int db_sync_equipment(struct gsm_equipment *equip)
 {
 	dbi_result result;
