@@ -291,7 +291,12 @@ int main(int argc, char **argv)
 	}
 
 	if (bsc_base_ctrl_cmds_install() != 0) {
-		printf("Failed to initialize the control commands. Exiting.\n");
+		printf("Failed to initialize the BSC control commands.\n");
+		return -1;
+	}
+
+	if (msc_ctrl_cmds_install() != 0) {
+		printf("Failed to initialize the MSC control commands.\n");
 		return -1;
 	}
 

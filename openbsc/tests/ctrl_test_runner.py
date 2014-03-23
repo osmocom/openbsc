@@ -306,6 +306,33 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['var'], 'mcc')
         self.assertEquals(r['value'], '201')
 
+class TestCtrlNITB(TestCtrlBase):
+
+    def tearDown(self):
+        TestCtrlBase.tearDown(self)
+        os.unlink("test_hlr.sqlite3")
+
+    def ctrl_command(self):
+        return ["./src/osmo-nitb/osmo-nitb", "-c",
+                "doc/examples/osmo-nitb/nanobts/openbsc.cfg", "-l", "test_hlr.sqlite3"]
+
+    def ctrl_app(self):
+        return (4249, "./src/osmo-nitb/osmo-nitb", "OsmoBSC", "nitb")
+
+    def testSubscriberAdd(self):
+        r = self.do_set('subscriber-modify-v1', '2620345,445566')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'subscriber-modify-v1')
+        self.assertEquals(r['value'], 'OK')
+
+        r = self.do_set('subscriber-modify-v1', '2620345,445567')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'subscriber-modify-v1')
+        self.assertEquals(r['value'], 'OK')
+
+        # TODO. verify that the entry has been created and modified? Invoke
+        # the sqlite3 CLI or do it through the DB libraries?
+
 class TestCtrlNAT(TestCtrlBase):
 
     def ctrl_command(self):
@@ -348,6 +375,10 @@ def add_bsc_test(suite, workdir):
     test = unittest.TestLoader().loadTestsFromTestCase(TestCtrlBSC)
     suite.addTest(test)
 
+def add_nitb_test(suite, workdir):
+    test = unittest.TestLoader().loadTestsFromTestCase(TestCtrlNITB)
+    suite.addTest(test)
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")
@@ -386,6 +417,7 @@ if __name__ == '__main__':
     print "Running tests for specific control commands"
     suite = unittest.TestSuite()
     add_bsc_test(suite, workdir)
+    add_nitb_test(suite, workdir)
     add_nat_test(suite, workdir)
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
     sys.exit(len(res.errors) + len(res.failures))
