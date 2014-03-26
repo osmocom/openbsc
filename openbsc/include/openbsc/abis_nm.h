@@ -183,4 +183,7 @@ int abis_nm_parse_sw_config(const uint8_t *data, const size_t len,
 			struct abis_nm_sw_descr *res, const int res_len);
 int abis_nm_select_newest_sw(const struct abis_nm_sw_descr *sw, const size_t len);
 
+/* Helper functions for updating attributes */
+int abis_nm_update_max_power_red(struct gsm_bts_trx *trx);
+
 #endif /* _NM_H */

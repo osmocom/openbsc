@@ -22,6 +22,8 @@
 #include <openbsc/control_cmd.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/abis_nm.h>
+#include <openbsc/debug.h>
 
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
 	CTRL_HELPER_GET_STRING(cmdname, dtype, element) \
@@ -153,7 +155,6 @@ CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
 
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
-CTRL_HELPER_SET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
 static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
 {
 	int tmp = atoi(value);
@@ -169,6 +170,26 @@ static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_
 	}
 
 	return 0;
+}
+
+static int set_trx_max_power(struct ctrl_cmd *cmd, void *_data)
+{
+	struct gsm_bts_trx *trx = cmd->node;
+	int old_power;
+
+	/* remember the old value, set the new one */
+	old_power = trx->max_power_red;
+	trx->max_power_red = atoi(cmd->value);
+
+	/* Maybe update the value */
+	if (old_power != trx->max_power_red) {
+		LOGP(DCTRL, LOGL_NOTICE,
+			"%s updating max_pwr_red(%d)\n",
+			gsm_trx_name(trx), trx->max_power_red);
+		abis_nm_update_max_power_red(trx);
+	}
+
+	return get_trx_max_power(cmd, _data);
 }
 CTRL_CMD_DEFINE(trx_max_power, "max-power-reduction");
 

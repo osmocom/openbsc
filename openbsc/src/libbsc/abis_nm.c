@@ -1466,6 +1466,12 @@ int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, uint8_t *attr, int attr_len)
 	return abis_nm_sendmsg(trx->bts, msg);
 }
 
+int abis_nm_update_max_power_red(struct gsm_bts_trx *trx)
+{
+	uint8_t attr[] = { NM_ATT_RF_MAXPOWR_R, trx->max_power_red / 2 };
+	return abis_nm_set_radio_attr(trx, attr, ARRAY_SIZE(attr));
+}
+
 static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb,
 			const char **reason)
 {
