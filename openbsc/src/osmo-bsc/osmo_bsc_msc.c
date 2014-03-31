@@ -247,13 +247,15 @@ static void osmo_ext_handle(struct osmo_msc_data *msc, struct msgb *msg)
 
 static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 {
-	struct msgb *msg;
+	struct msgb *msg = NULL;
 	struct ipaccess_head *hh;
 	struct osmo_msc_data *data = (struct osmo_msc_data *) bfd->data;
 	int ret;
 
-	ret = ipa_msg_recv(bfd->fd, &msg);
+	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &data->msc_con->pending_msg);
 	if (ret <= 0) {
+		if (ret == -EAGAIN)
+			return 0;
 		if (ret == 0) {
 			LOGP(DMSC, LOGL_ERROR, "The connection to the MSC was lost.\n");
 			bsc_msc_lost(data->msc_con);

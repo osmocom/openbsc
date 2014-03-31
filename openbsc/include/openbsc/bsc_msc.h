@@ -48,6 +48,8 @@ struct bsc_msc_connection {
 	void (*connected) (struct bsc_msc_connection *);
 	struct osmo_timer_list reconnect_timer;
 	struct osmo_timer_list timeout_timer;
+
+	struct msgb *pending_msg;
 };
 
 struct bsc_msc_connection *bsc_msc_create(void *ctx, struct llist_head *dest);

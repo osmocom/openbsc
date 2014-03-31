@@ -66,6 +66,8 @@ static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 	osmo_fd_unregister(&con->queue.bfd);
 	osmo_timer_del(&con->auth_timeout);
 	osmo_wqueue_clear(&con->queue);
+
+	msgb_free(con->pending_msg);
 	talloc_free(con);
 }
 
@@ -117,12 +119,14 @@ static int forward_sccp(struct bsc_nat *nat, struct msgb *msg)
 static int ussd_read_cb(struct osmo_fd *bfd)
 {
 	struct bsc_nat_ussd_con *conn = bfd->data;
-	struct msgb *msg;
+	struct msgb *msg = NULL;
 	struct ipaccess_head *hh;
 	int ret;
 
-	ret = ipa_msg_recv(bfd->fd, &msg);
+	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &conn->pending_msg);
 	if (ret <= 0) {
+		if (ret == -EAGAIN)
+			return 0;
 		LOGP(DNAT, LOGL_ERROR, "USSD Connection was lost.\n");
 		bsc_nat_ussd_destroy(conn);
 		return -1;

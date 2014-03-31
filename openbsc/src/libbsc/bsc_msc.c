@@ -42,6 +42,13 @@ static void connection_loss(struct bsc_msc_connection *con)
 
 	fd = &con->write_queue.bfd;
 
+	if (con->pending_msg) {
+		LOGP(DMSC, LOGL_ERROR,
+		     "MSC(%s) dropping incomplete message.\n", con->name);
+		msgb_free(con->pending_msg);
+		con->pending_msg = NULL;
+	}
+
 	close(fd->fd);
 	fd->fd = -1;
 	fd->cb = osmo_wqueue_bfd_cb;
@@ -161,6 +168,9 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 		con->name, dest->ip, dest->port);
 
 	con->is_connected = 0;
+
+	msgb_free(con->pending_msg);
+	con->pending_msg = NULL;
 
 	fd = &con->write_queue.bfd;
 	fd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

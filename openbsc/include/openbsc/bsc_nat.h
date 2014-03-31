@@ -97,6 +97,9 @@ struct bsc_connection {
 	/* the fd we use to communicate */
 	struct osmo_wqueue write_queue;
 
+	/* incoming message buffer */
+	struct msgb *pending_msg;
+
 	/* the BSS associated */
 	struct bsc_config *cfg;
 
@@ -342,6 +345,8 @@ struct bsc_nat_ussd_con {
 	struct osmo_wqueue queue;
 	struct bsc_nat *nat;
 	int authorized;
+
+	struct msgb *pending_msg;
 
 	struct osmo_timer_list auth_timeout;
 };

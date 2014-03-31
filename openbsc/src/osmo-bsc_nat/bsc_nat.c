@@ -796,14 +796,16 @@ static void msc_send_reset(struct bsc_msc_connection *msc_con)
 static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 {
 	struct bsc_msc_connection *msc_con;
-	struct msgb *msg;
+	struct msgb *msg = NULL;
 	struct ipaccess_head *hh;
 	int ret;
 
 	msc_con = (struct bsc_msc_connection *) bfd->data;
 
-	ret = ipa_msg_recv(bfd->fd, &msg);
+	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &msc_con->pending_msg);
 	if (ret <= 0) {
+		if (ret == -EAGAIN)
+			return 0;
 		if (ret == 0)
 			LOGP(DNAT, LOGL_FATAL,
 				"The connection the MSC(%s) was lost, exiting\n",
@@ -911,6 +913,13 @@ void bsc_close_connection(struct bsc_connection *connection)
 	close(connection->write_queue.bfd.fd);
 	osmo_wqueue_clear(&connection->write_queue);
 	llist_del(&connection->list_entry);
+
+	if (connection->pending_msg) {
+		LOGP(DNAT, LOGL_ERROR, "Dropping partial message on connection %d.\n",
+		     connection->cfg->nr);
+		msgb_free(connection->pending_msg);
+		connection->pending_msg = NULL;
+	}
 
 	talloc_free(connection);
 }
@@ -1206,13 +1215,15 @@ exit3:
 static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 {
 	struct bsc_connection *bsc = bfd->data;
-	struct msgb *msg;
+	struct msgb *msg = NULL;
 	struct ipaccess_head *hh;
 	struct ipaccess_head_ext *hh_ext;
 	int ret;
 
-	ret = ipa_msg_recv(bfd->fd, &msg);
+	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &bsc->pending_msg);
 	if (ret <= 0) {
+		if (ret == -EAGAIN)
+			return 0;
 		if (ret == 0)
 			LOGP(DNAT, LOGL_ERROR,
 			     "The connection to the BSC Nr: %d was lost. Cleaning it\n",
