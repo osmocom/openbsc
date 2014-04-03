@@ -1462,9 +1462,11 @@ static void sccp_close_unconfirmed(void *_data)
 		if (diff < SCCP_CLOSE_TIME_TIMEOUT)
 			continue;
 
-		LOGP(DNAT, LOGL_ERROR, "SCCP connection 0x%x/0x%x was never confirmed.\n",
-		     sccp_src_ref_to_int(&conn->real_ref),
-		     sccp_src_ref_to_int(&conn->patched_ref));
+		LOGP(DNAT, LOGL_ERROR,
+			"SCCP connection 0x%x/0x%x was never confirmed on bsc nr. %d\n",
+			sccp_src_ref_to_int(&conn->real_ref),
+			sccp_src_ref_to_int(&conn->patched_ref),
+			conn->bsc->cfg->nr);
 		sccp_connection_destroy(conn);
 		destroyed = 1;
 	}
