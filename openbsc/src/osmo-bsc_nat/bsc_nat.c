@@ -916,7 +916,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 
 	if (connection->pending_msg) {
 		LOGP(DNAT, LOGL_ERROR, "Dropping partial message on connection %d.\n",
-		     connection->cfg->nr);
+		     connection->cfg ? connection->cfg->nr : -1);
 		msgb_free(connection->pending_msg);
 		connection->pending_msg = NULL;
 	}
