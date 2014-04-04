@@ -185,7 +185,6 @@ static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t
 			unsigned int len)
 {
 	struct sndcp_common_hdr *sch;
-	struct sndcp_comp_hdr *scomph = NULL;
 	struct sndcp_udata_hdr *suh;
 	uint16_t npdu_num;
 	uint8_t *data;
@@ -193,7 +192,6 @@ static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t
 
 	sch = (struct sndcp_common_hdr *) hdr;
 	if (sch->first) {
-		scomph = (struct sndcp_comp_hdr *) (hdr + 1);
 		suh = (struct sndcp_udata_hdr *) (hdr + 1 + sizeof(struct sndcp_common_hdr));
 	} else
 		suh = (struct sndcp_udata_hdr *) (hdr + sizeof(struct sndcp_common_hdr));
@@ -509,7 +507,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
 	struct sndcp_comp_hdr *scomph = NULL;
 	struct sndcp_udata_hdr *suh;
 	uint8_t *npdu;
-	uint16_t npdu_num;
+	uint16_t npdu_num __attribute__((unused));
 	int npdu_len;
 
 	sch = (struct sndcp_common_hdr *) hdr;
@@ -561,6 +559,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
 	return sgsn_rx_sndcp_ud_ind(&sne->ra_id, lle->llme->tlli, sne->nsapi, msg, npdu_len, npdu);
 }
 
+#if 0
 /* Section 5.1.2.1 LL-RESET.ind */
 static int sndcp_ll_reset_ind(struct gprs_sndcp_entity *se)
 {
@@ -577,7 +576,6 @@ static int sndcp_ll_status_ind()
 	return 0;
 }
 
-#if 0
 static struct sndcp_state_list {{
 	uint32_t	states;
 	unsigned int	type;
