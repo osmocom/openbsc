@@ -1221,7 +1221,7 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 	pdp->lib->eua.v[0] |= 0xf0;
 
 	/* Optional: Protocol configuration options (FIXME: why 'req') */
-	if (pdp->lib->pco_req.l && pdp->lib->pco_req.v)
+	if (pdp->lib->pco_req.l)
 		msgb_tlv_put(msg, GSM48_IE_GSM_PROTO_CONF_OPT,
 			     pdp->lib->pco_req.l, pdp->lib->pco_req.v);
 
