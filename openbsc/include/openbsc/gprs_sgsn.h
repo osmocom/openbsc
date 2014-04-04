@@ -235,4 +235,8 @@ int sgsn_ctrl_cmds_install(void);
 struct imsi_acl_entry;
 struct imsi_acl_entry *sgsn_acl_lookup(const char *imsi);
 
+int gprs_sndcp_vty_init(void);
+struct sgsn_instance;
+int sgsn_gtp_init(struct sgsn_instance *sgi);
+
 #endif /* _GPRS_SGSN_H */
