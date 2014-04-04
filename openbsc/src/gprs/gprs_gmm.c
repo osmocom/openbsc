@@ -347,7 +347,10 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_attach_ack *aa;
-	uint8_t *ptsig, *mid;
+	uint8_t *mid;
+#if 0
+	uint8_t *ptsig;
+#endif
 
 	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT (new P-TMSI=0x%08x)\n", mm->p_tmsi);
 
@@ -454,6 +457,7 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	return gsm48_gmm_sendmsg(msg, 1, mm);
 }
 
+#if 0
 /* Section 9.4.9: Authentication and Ciphering Request */
 static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 				      uint8_t key_seq, uint8_t algo)
@@ -513,6 +517,7 @@ static int gsm48_tx_gmm_auth_ciph_rej(struct sgsn_mm_ctx *mm)
 
 	return gsm48_gmm_sendmsg(msg, 0, mm);
 }
+#endif
 
 /* Section 9.4.10: Authentication and Ciphering Response */
 static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
@@ -521,11 +526,10 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct gsm48_auth_ciph_resp *acr = (struct gsm48_auth_ciph_resp *)gh->data;
 	struct tlv_parsed tp;
-	int rc;
 
 	/* FIXME: Stop T3360 */
 
-	rc = tlv_parse(&tp, &gsm48_gmm_att_tlvdef, acr->data,
+	tlv_parse(&tp, &gsm48_gmm_att_tlvdef, acr->data,
 			(msg->data + msg->len) - acr->data, 0, 0);
 
 	/* FIXME: compare ac_ref? */
@@ -629,7 +633,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 				struct gprs_llc_llme *llme)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	uint8_t *cur = gh->data, *msnc, *mi, *old_ra_info, *ms_ra_acc_cap;
+	uint8_t *cur = gh->data, *msnc, *mi, *ms_ra_acc_cap;
 	uint8_t msnc_len, att_type, mi_len, mi_type, ms_ra_acc_cap_len;
 	uint16_t drx_par;
 	uint32_t tmsi;
@@ -672,8 +676,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	DEBUGPC(DMM, "MI(%s) type=\"%s\" ", mi_string,
 		get_value_string(gprs_att_t_strs, att_type));
 
-	/* Old routing area identification 10.5.5.15 */
-	old_ra_info = cur;
+	/* Old routing area identification 10.5.5.15. Skip it */
 	cur += 6;
 
 	/* MS Radio Access Capability 10.5.5.12a */
@@ -907,12 +910,10 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t *cur = gh->data;
-	uint8_t *ms_ra_acc_cap;
 	uint8_t ms_ra_acc_cap_len;
 	struct gprs_ra_id old_ra_id;
 	struct tlv_parsed tp;
 	uint8_t upd_type;
-	int rc;
 
 	/* Update Type 10.5.5.18 */
 	upd_type = *cur++ & 0x0f;
@@ -926,14 +927,13 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 	/* MS Radio Access Capability 10.5.5.12a */
 	ms_ra_acc_cap_len = *cur++;
-	ms_ra_acc_cap = cur;
 	if (ms_ra_acc_cap_len > 52)
 		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_PROTO_ERR_UNSPEC);
 	cur += ms_ra_acc_cap_len;
 
 	/* Optional: Old P-TMSI Signature, Requested READY timer, TMSI Status,
 	 * DRX parameter, MS network capability */
-	rc = tlv_parse(&tp, &gsm48_gmm_att_tlvdef, cur,
+	tlv_parse(&tp, &gsm48_gmm_att_tlvdef, cur,
 			(msg->data + msg->len) - cur, 0, 0);
 
 	switch (upd_type) {
@@ -1165,7 +1165,7 @@ static void pdpctx_timer_start(struct sgsn_pdp_ctx *pdp, unsigned int T,
 	osmo_timer_schedule(&pdp->timer, seconds, 0);
 }
 
-
+#if 0
 static void msgb_put_pdp_addr_ipv4(struct msgb *msg, uint32_t ipaddr)
 {
 	uint8_t v[6];
@@ -1186,6 +1186,7 @@ static void msgb_put_pdp_addr_ppp(struct msgb *msg)
 
 	msgb_tlv_put(msg, GSM48_IE_GSM_PDP_ADDR, sizeof(v), v);
 }
+#endif
 
 /* Section 9.5.2: Ativate PDP Context Accept */
 int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)

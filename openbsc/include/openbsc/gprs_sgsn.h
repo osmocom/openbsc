@@ -229,4 +229,10 @@ struct gsm_network;
 struct ctrl_handle *sgsn_controlif_setup(struct gsm_network *, uint16_t port);
 int sgsn_ctrl_cmds_install(void);
 
+/*
+ * ACL handling
+ */
+struct imsi_acl_entry;
+struct imsi_acl_entry *sgsn_acl_lookup(const char *imsi);
+
 #endif /* _GPRS_SGSN_H */
