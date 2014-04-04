@@ -62,7 +62,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 		subscr->authorized, VTY_NEWLINE);
 	if (strlen(subscr->name))
 		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
-	if (subscr->extension)
+	if (strlen(subscr->extension))
 		vty_out(vty, "    Extension: %s%s", subscr->extension,
 			VTY_NEWLINE);
 	vty_out(vty, "    LAC: %d/0x%x%s",
