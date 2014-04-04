@@ -829,6 +829,11 @@ static int is_last_line(FILE *stream)
 
 	/* check if we're sending the last line */
 	pos = ftell(stream);
+
+	/* Did ftell fail? Then we are at the end for sure */
+	if (pos < 0)
+		return 1;
+
 	if (!fgets(next_seg_buf, sizeof(next_seg_buf)-2, stream)) {
 		fseek(stream, pos, SEEK_SET);
 		return 1;
