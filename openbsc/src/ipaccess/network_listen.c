@@ -142,7 +142,8 @@ static int test_rep(void *_msg)
 	DEBUGPC(DNM, "test_no=0x%02x ", foh->data[1]);
 	/* data[2] == NM_ATT_TEST_REPORT */
 	/* data[3..4]: test_rep_len */
-	test_rep_len = ntohs(*(uint16_t *) &foh->data[3]);
+	memcpy(&test_rep_len, &foh->data[3], sizeof(uint16_t));
+	test_rep_len = ntohs(test_rep_len);
 	/* data[5]: ip.access test result */
 	DEBUGPC(DNM, "tst_res=%s\n", ipacc_testres_name(foh->data[5]));
 
@@ -150,7 +151,8 @@ static int test_rep(void *_msg)
 	switch (foh->data[6]) {
 	case NM_IPAC_EIE_FREQ_ERR_LIST:
 		/* data[7..8]: length of ferr_list */
-		ferr_list_len = ntohs(*(uint16_t *) &foh->data[7]);
+		memcpy(&ferr_list_len, &foh->data[7], sizeof(uint16_t));
+		ferr_list_len = ntohs(ferr_list_len);
 
 		/* data[9...]: frequency error list elements */
 		for (i = 0; i < ferr_list_len; i+= sizeof(*ife)) {
@@ -161,7 +163,8 @@ static int test_rep(void *_msg)
 		break;
 	case NM_IPAC_EIE_CHAN_USE_LIST:
 		/* data[7..8]: length of ferr_list */
-		ferr_list_len = ntohs(*(uint16_t *) &foh->data[7]);
+		memcpy(&ferr_list_len, &foh->data[7], sizeof(uint16_t));
+		ferr_list_len = ntohs(ferr_list_len);
 
 		/* data[9...]: channel usage list elements */
 		for (i = 0; i < ferr_list_len; i+= 2) {
