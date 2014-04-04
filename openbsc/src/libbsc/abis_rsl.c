@@ -1718,6 +1718,7 @@ static uint8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 		default:
 			break;
 		}
+		break;
 	case GSM48_CMODE_SPEECH_EFR:
 		switch (lchan->type) {
 		case GSM_LCHAN_TCH_F:
@@ -1726,6 +1727,7 @@ static uint8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 		default:
 			break;
 		}
+		break;
 	case GSM48_CMODE_SPEECH_AMR:
 		switch (lchan->type) {
 		case GSM_LCHAN_TCH_F:
@@ -1735,6 +1737,7 @@ static uint8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 		default:
 			break;
 		}
+		break;
 	default:
 		break;
 	}
@@ -1755,6 +1758,7 @@ static uint8_t ipa_rtp_pt_for_lchan(struct gsm_lchan *lchan)
 		default:
 			break;
 		}
+		break;
 	case GSM48_CMODE_SPEECH_EFR:
 		switch (lchan->type) {
 		case GSM_LCHAN_TCH_F:
@@ -1763,6 +1767,7 @@ static uint8_t ipa_rtp_pt_for_lchan(struct gsm_lchan *lchan)
 		default:
 			break;
 		}
+		break;
 	case GSM48_CMODE_SPEECH_AMR:
 		switch (lchan->type) {
 		case GSM_LCHAN_TCH_F:
@@ -1771,6 +1776,7 @@ static uint8_t ipa_rtp_pt_for_lchan(struct gsm_lchan *lchan)
 		default:
 			break;
 		}
+		break;
 	default:
 		break;
 	}
