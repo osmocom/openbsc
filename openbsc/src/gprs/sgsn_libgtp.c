@@ -259,7 +259,6 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
 	struct sgsn_pdp_ctx *pctx = cbp;
 	uint8_t reject_cause;
-	int rc;
 
 	DEBUGP(DGPRS, "Received CREATE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
@@ -304,7 +303,7 @@ reject:
 	if (pdp)
 		pdp_freepdp(pdp);
 	/* Send PDP CTX ACT REJ to MS */
-	rc = gsm48_tx_gsm_act_pdp_rej(pctx->mm, pctx->ti, reject_cause,
+	gsm48_tx_gsm_act_pdp_rej(pctx->mm, pctx->ti, reject_cause,
 					0, NULL);
 	sgsn_pdp_ctx_free(pctx);
 
@@ -429,7 +428,6 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 	struct sgsn_mm_ctx *mm;
 	struct msgb *msg;
 	uint8_t *ud;
-	int rc;
 
 	DEBUGP(DGPRS, "GTP DATA IND from GGSN, length=%u\n", len);
 
@@ -465,7 +463,7 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 		pinfo.ptmsi = &mm->p_tmsi;
 		pinfo.drx_params = mm->drx_parms;
 		pinfo.qos[0] = 0; // FIXME
-		rc = bssgp_tx_paging(mm->nsei, 0, &pinfo);
+		bssgp_tx_paging(mm->nsei, 0, &pinfo);
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PAGING_PS]);
 		/* FIXME: queue the packet we received from GTP */
 		break;
