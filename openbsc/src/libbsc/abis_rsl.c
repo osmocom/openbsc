@@ -52,6 +52,7 @@ enum sacch_deact {
 };
 
 static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
+static void error_timeout_cb(void *data);
 
 static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 			      struct gsm_meas_rep *resp)
@@ -64,9 +65,15 @@ static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 
 static void do_lchan_free(struct gsm_lchan *lchan)
 {
-	/* we have an error timer pending to release that */
-	if (lchan->state != LCHAN_S_REL_ERR)
+	/* we start an error timer pending to release the channel */
+	if (lchan->state == LCHAN_S_REL_ERR) {
+		lchan->error_timer.data = lchan;
+		lchan->error_timer.cb = error_timeout_cb;
+		osmo_timer_schedule(&lchan->error_timer,
+				   lchan->ts->trx->bts->network->T3111 + 2, 0);
+	} else {
 		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	}
 	lchan_free(lchan);
 }
 
@@ -679,8 +686,6 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 	DEBUGP(DRSL, "%s RF Channel Release CMD due error %d\n", gsm_lchan_name(lchan), error);
 
 	if (error) {
-		struct e1inp_sign_link *sign_link = msg->dst;
-
 		/*
 		 * FIXME: GSM 04.08 gives us two options for the abnormal
 		 * chanel release. This can be either like in the non-existent
@@ -708,10 +713,6 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 		 * TODO: start T3109 now.
 		 */
 		rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
-		lchan->error_timer.data = lchan;
-		lchan->error_timer.cb = error_timeout_cb;
-		osmo_timer_schedule(&lchan->error_timer,
-				   sign_link->trx->bts->network->T3111 + 2, 0);
 	}
 
 	/* Start another timer or assume the BTS sends a ACK/NACK? */
