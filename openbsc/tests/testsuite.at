@@ -27,6 +27,13 @@ cat $abs_srcdir/mgcp/mgcp_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/mgcp/mgcp_test], [], [expout], [ignore])
 AT_CLEANUP
 
+AT_SETUP([mgcp-trans])
+AT_KEYWORDS([mgcp-trans])
+AT_CHECK([test "$enable_mgcp_transcoding_test" == yes || exit 77])
+cat $abs_srcdir/mgcp/mgcp_transcoding_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/mgcp/mgcp_transcoding_test], [], [expout], [ignore])
+AT_CLEANUP
+
 AT_SETUP([gprs])
 AT_KEYWORDS([gprs])
 cat $abs_srcdir/gprs/gprs_test.ok > expout
