@@ -362,6 +362,24 @@ class TestCtrlNITB(TestCtrlBase):
     def ctrl_app(self):
         return (4249, "./src/osmo-nitb/osmo-nitb", "OsmoBSC", "nitb")
 
+    def testAuthPolicy(self):
+        policies = ['token', 'closed', 'accept-all']
+
+        for policy in policies:
+            r = self.do_set('auth-policy', policy)
+            self.assertEquals(r['mtype'], 'SET_REPLY')
+            self.assertEquals(r['var'], 'auth-policy')
+            self.assertEquals(r['value'], policy)
+
+            r = self.do_get('auth-policy')
+            self.assertEquals(r['mtype'], 'GET_REPLY')
+            self.assertEquals(r['var'], 'auth-policy')
+            self.assertEquals(r['value'], policy)
+
+        r = self.do_set('auth-policy', 'qwerty')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Value failed verification.')
+
     def testSubscriberAddRemove(self):
         r = self.do_set('subscriber-modify-v1', '2620345,445566')
         self.assertEquals(r['mtype'], 'SET_REPLY')

@@ -66,6 +66,36 @@ CTRL_CMD_DEFINE_RANGE(net_mcc, "mcc", struct gsm_network, country_code, 1, 999);
 CTRL_CMD_VTY_STRING(net_short_name, "short-name", struct gsm_network, name_short);
 CTRL_CMD_VTY_STRING(net_long_name, "long-name", struct gsm_network, name_long);
 
+static int verify_net_auth_policy(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+
+	if ((int)gsm_auth_policy_parse(value) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
+static int get_net_auth_policy(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	cmd->reply = talloc_asprintf(cmd, "%s", gsm_auth_policy_name(net->auth_policy));
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+	return CTRL_CMD_REPLY;
+}
+
+static int set_net_auth_policy(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	net->auth_policy = gsm_auth_policy_parse(cmd->value);
+	return get_net_auth_policy(cmd, data);
+}
+
+CTRL_CMD_DEFINE(net_auth_policy, "auth-policy");
+
 static int verify_net_apply_config(struct ctrl_cmd *cmd, const char *v, void *d)
 {
 	return 0;
@@ -200,6 +230,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_short_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_auth_policy);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
 
