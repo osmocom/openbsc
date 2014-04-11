@@ -380,6 +380,25 @@ class TestCtrlNITB(TestCtrlBase):
         self.assertEquals(r['mtype'], 'ERROR')
         self.assertEquals(r['error'], 'Value failed verification.')
 
+    def testBtsBand(self):
+        bands = ['GSM450', 'GSM480', 'GSM750', 'GSM810',
+                 'GSM850', 'GSM900', 'DCS1800', 'PCS1900']
+
+        for band in bands:
+            r = self.do_set('bts.0.band', band)
+            self.assertEquals(r['mtype'], 'SET_REPLY')
+            self.assertEquals(r['var'], 'bts.0.band')
+            self.assertEquals(r['value'], band)
+
+            r = self.do_get('bts.0.band')
+            self.assertEquals(r['mtype'], 'GET_REPLY')
+            self.assertEquals(r['var'], 'bts.0.band')
+            self.assertEquals(r['value'], band)
+
+        r = self.do_set('bts.0.band', 'qwerty')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Value failed verification.')
+
     def testSubscriberAddRemove(self):
         r = self.do_set('subscriber-modify-v1', '2620345,445566')
         self.assertEquals(r['mtype'], 'SET_REPLY')

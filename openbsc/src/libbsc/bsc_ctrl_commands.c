@@ -183,6 +183,37 @@ oom:
 }
 CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
 
+/* BTS related commands below here */
+static int verify_bts_band(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+
+	if ((int)gsm_band_parse(value) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
+static int get_bts_band(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+	cmd->reply = talloc_asprintf(cmd, "%s", gsm_band_name(bts->band));
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+	return CTRL_CMD_REPLY;
+}
+
+static int set_bts_band(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+	bts->band = gsm_band_parse(cmd->value);
+	return get_bts_band(cmd, data);
+}
+
+CTRL_CMD_DEFINE(bts_band, "band");
+
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
 static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
@@ -233,6 +264,8 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_auth_policy);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
+
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_band);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	return rc;
