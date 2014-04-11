@@ -1464,7 +1464,7 @@ DEFUN(cfg_net_pag_any_tch,
       cfg_net_T##number##_cmd,					\
       "timer t" #number  " <0-65535>",				\
       "Configure GSM Timers\n"					\
-      doc "Timer Value\n")					\
+      doc "Timer Value in seconds\n")				\
 {								\
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);	\
 	int value = atoi(argv[0]);				\
