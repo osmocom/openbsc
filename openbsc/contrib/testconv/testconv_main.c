@@ -46,6 +46,10 @@ int main(int argc, char **argv)
 	struct mgcp_endpoint endp = {0};
 	struct mgcp_process_rtp_state *state;
 	int in_size;
+	int in_samples = 160;
+	int out_samples = 0;
+	uint32_t ts = 0;
+	uint16_t seq = 0;
 
 	osmo_init_logging(&log_info);
 
@@ -58,12 +62,20 @@ int main(int argc, char **argv)
 	src_end = &endp.net_end;
 
 	if (argc <= 2)
-		errx(1, "Usage: {gsm|g729|pcma|l16} {gsm|g729|pcma|l16}");
+		errx(1, "Usage: {gsm|g729|pcma|l16} {gsm|g729|pcma|l16} [SPP]");
 
 	if ((src_end->payload_type = audio_name_to_type(argv[1])) == -1)
 		errx(1, "invalid input format '%s'", argv[1]);
 	if ((dst_end->payload_type = audio_name_to_type(argv[2])) == -1)
 		errx(1, "invalid output format '%s'", argv[2]);
+	if (argc > 3)
+		out_samples = atoi(argv[3]);
+
+	if (out_samples) {
+		dst_end->frame_duration_den = dst_end->rate;
+		dst_end->frame_duration_num = out_samples;
+		dst_end->frames_per_packet = 1;
+	}
 
 	rc = mgcp_transcoding_setup(&endp, dst_end, src_end);
 	if (rc < 0)
@@ -72,7 +84,7 @@ int main(int argc, char **argv)
 	state = dst_end->rtp_process_data;
 	OSMO_ASSERT(state != NULL);
 
-	in_size = mgcp_transcoding_get_frame_size(state, 160, 0);
+	in_size = mgcp_transcoding_get_frame_size(state, in_samples, 0);
 	OSMO_ASSERT(sizeof(buf) >= in_size + 12);
 
 	buf[1] = src_end->payload_type;
@@ -87,13 +99,19 @@ int main(int argc, char **argv)
 		if (cc != in_size)
 			err(1, "read");
 
+		*(uint16_t*)(buf+2) = htonl(seq);
+		*(uint32_t*)(buf+4) = htonl(ts);
+
+		seq += 1;
+		ts += in_samples;
+
 		cc += 12; /* include RTP header */
 
 		len = cc;
 
 		do {
 			cont = mgcp_transcoding_process_rtp(&endp, dst_end,
-							buf, &len, sizeof(buf));
+							    buf, &len, sizeof(buf));
 			if (cont == -EAGAIN) {
 				fprintf(stderr, "Got EAGAIN\n");
 				break;
