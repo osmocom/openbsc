@@ -88,6 +88,17 @@ struct ctrl_cmd *ctrl_cmd_cpy(void *ctx, struct ctrl_cmd *cmd);
 struct ctrl_cmd *ctrl_cmd_create(void *ctx, enum ctrl_type);
 struct ctrl_cmd *ctrl_cmd_trap(struct ctrl_cmd *cmd);
 
+#define CTRL_HELPER_SET_STATUS(cmdname) \
+static int set_##cmdname(struct ctrl_cmd *cmd, void *_data) \
+{ \
+	cmd->reply = "Read only attribute"; \
+	return CTRL_CMD_ERROR; \
+}
+#define CTRL_HELPER_VERIFY_STATUS(cmdname) \
+static int verify_##cmdname(struct ctrl_cmd *cmd, const char *value, void *_data) \
+{ \
+	return 0;\
+}
 
 #define CTRL_HELPER_GET_INT(cmdname, dtype, element) \
 static int get_##cmdname(struct ctrl_cmd *cmd, void *_data) \

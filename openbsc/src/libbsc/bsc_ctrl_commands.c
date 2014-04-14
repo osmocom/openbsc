@@ -23,6 +23,7 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/chan_alloc.h>
 #include <openbsc/debug.h>
 
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
@@ -183,6 +184,47 @@ oom:
 }
 CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
 
+CTRL_HELPER_VERIFY_STATUS(net_channels_load);
+CTRL_HELPER_SET_STATUS(net_channels_load);
+
+static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct pchan_load pl;
+	network_chan_load(&pl, net);
+	struct pchan_load* pl_ptr = &pl;
+
+	int i;
+
+	if (!strcmp(cmd->variable,"channels-load"))
+		cmd->reply = talloc_strdup(cmd, "\n");
+
+	for (i = 0; i < ARRAY_SIZE(pl_ptr->pchan); i++) {
+		const struct load_counter *lc = &pl_ptr->pchan[i];
+		unsigned int percent;
+
+		if (lc->total == 0)
+			continue;
+
+		percent = (lc->used * 100) / lc->total;
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"channel_load.percent.%s,%u\n", gsm_pchan_name(i), percent);
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"channel_load.lc_used.%s,%u\n", gsm_pchan_name(i), lc->used);
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"channel_load.lc_total.%s,%u\n", gsm_pchan_name(i), lc->total);
+	}
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_channels_load, "channels-load");
+
 /* BTS related commands below here */
 static int verify_bts_band(struct ctrl_cmd *cmd, const char *value, void *data)
 {
@@ -265,6 +307,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_auth_policy);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_channels_load);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_band);
 
