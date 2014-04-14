@@ -40,6 +40,7 @@
 #include <osmocom/core/talloc.h>
 
 #include <osmocom/vty/vty.h>
+#include <openbsc/control_cmd.h>
 
 /*
  * One pending SMS that we wait for.
@@ -489,6 +490,17 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 		LOGP(DLSMS, LOGL_ERROR, "Unhandled result: %d\n",
 		     sig_sms->paging_result);
 	}
+
+	return 0;
+}
+
+/* Ctrl interface helper function */
+int sms_queue_pending_stat(struct gsm_network *net, struct ctrl_cmd *cmd)
+{
+	cmd->reply = talloc_asprintf_append(cmd->reply, "smsqueue.max_pending,%u\n",
+		net->sms_queue->max_pending);
+	cmd->reply = talloc_asprintf_append(cmd->reply, "smsqueue.pending,%u\n",
+		net->sms_queue->pending);
 
 	return 0;
 }

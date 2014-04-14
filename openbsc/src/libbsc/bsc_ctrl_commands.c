@@ -24,6 +24,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/sms_queue.h>
 #include <openbsc/debug.h>
 
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
@@ -376,6 +377,89 @@ static int get_net_lchan(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_lchan, "lchan");
 
+CTRL_HELPER_VERIFY_STATUS(net_paging);
+CTRL_HELPER_SET_STATUS(net_paging);
+
+static int get_net_paging(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts;
+	int bts_nr;
+
+	if (!strcmp(cmd->variable,"paging"))
+		cmd->reply = talloc_strdup(cmd, "\n");
+
+	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+		bts = gsm_bts_num(net, bts_nr);
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"paging.pending_requests.bts.%u,%u\n", bts_nr,
+			paging_pending_requests_nr(bts));
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"paging.available_slots.bts.%u,%u\n", bts_nr,
+			bts->paging.available_slots);
+	}
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_paging, "paging");
+
+
+CTRL_HELPER_VERIFY_STATUS(net_oml_link);
+CTRL_HELPER_SET_STATUS(net_oml_link);
+
+static int get_net_oml_link(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts;
+	int bts_nr;
+
+	if (!strcmp(cmd->variable,"oml_link"))
+		cmd->reply = talloc_strdup(cmd, "\n");
+
+	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+		bts = gsm_bts_num(net, bts_nr);
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+			"oml_link.bts.%u,%u\n", bts_nr, bts->oml_link ? 1 : 0);
+	}
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_oml_link, "oml_link");
+
+CTRL_HELPER_VERIFY_STATUS(net_smsqueue);
+CTRL_HELPER_SET_STATUS(net_smsqueue);
+
+static int get_net_smsqueue(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+
+	if (!strcmp(cmd->variable,"smsqueue"))
+		cmd->reply = talloc_strdup(cmd, "\n");
+
+	sms_queue_pending_stat(net, cmd);
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_smsqueue, "smsqueue");
+
 /* BTS related commands below here */
 static int verify_bts_band(struct ctrl_cmd *cmd, const char *value, void *data)
 {
@@ -460,6 +544,9 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_channels_load);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_lchan);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_paging);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_oml_link);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_smsqueue);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_band);
 
