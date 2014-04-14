@@ -460,6 +460,39 @@ static int get_net_smsqueue(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_smsqueue, "smsqueue");
 
+static int print_counter(struct osmo_counter *counter, struct ctrl_cmd *cmd)
+{
+	cmd->reply = talloc_asprintf_append(cmd->reply, "%s,%lu\n", counter->name,
+																counter->value);
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_HELPER_VERIFY_STATUS(net_counters);
+CTRL_HELPER_SET_STATUS(net_counters);
+
+static int get_net_counters(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+
+	if (!strcmp(cmd->variable,"counters")) {
+		cmd->reply = talloc_strdup(cmd, "\n");
+		osmo_counters_for_each(print_counter, cmd);
+	}
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_counters, "counters");
+
 /* BTS related commands below here */
 static int verify_bts_band(struct ctrl_cmd *cmd, const char *value, void *data)
 {
@@ -547,6 +580,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_paging);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_oml_link);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_smsqueue);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_counters);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_band);
 
