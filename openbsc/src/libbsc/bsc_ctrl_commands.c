@@ -480,8 +480,9 @@ static int get_net_counters(struct ctrl_cmd *cmd, void *data)
 
 	if (!strcmp(cmd->variable,"counters")) {
 		cmd->reply = talloc_strdup(cmd, "\n");
-		osmo_counters_for_each(print_counter, cmd);
 	}
+
+	osmo_counters_for_each(print_counter, cmd);
 
 	if (!cmd->reply) {
 		cmd->reply = "OOM";
@@ -492,6 +493,26 @@ static int get_net_counters(struct ctrl_cmd *cmd, void *data)
 }
 
 CTRL_CMD_DEFINE(net_counters, "counters");
+
+CTRL_HELPER_VERIFY_STATUS(net_status);
+CTRL_HELPER_SET_STATUS(net_status);
+
+static int get_net_status(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	cmd->reply = talloc_strdup(cmd, "\n");
+	cmd->reply = talloc_asprintf_append(cmd->reply,"time,%u\n", (unsigned)time(NULL));
+	get_net_counters(cmd, net);
+	get_net_channels_load(cmd, net);
+	get_net_paging(cmd, net);
+	get_net_oml_link(cmd, net);
+	get_net_smsqueue(cmd, net);
+	get_net_lchan(cmd, net);
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_status, "network-status");
 
 /* BTS related commands below here */
 static int verify_bts_band(struct ctrl_cmd *cmd, const char *value, void *data)
@@ -581,6 +602,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_oml_link);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_smsqueue);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_counters);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_status);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_band);
 
