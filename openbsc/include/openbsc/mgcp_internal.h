@@ -89,6 +89,7 @@ struct mgcp_rtp_end {
 	char *audio_name;
 	char *subtype_name;
 	int output_enabled;
+	int force_output_ptime;
 
 	/* RTP patching */
 	int force_constant_ssrc; /* -1: always, 0: don't, 1: once */
@@ -210,7 +211,7 @@ void mgcp_state_calc_loss(struct mgcp_rtp_state *s, struct mgcp_rtp_end *,
 uint32_t mgcp_state_calc_jitter(struct mgcp_rtp_state *);
 
 /* payload processing default functions */
-int mgcp_rtp_processing_default(struct mgcp_rtp_end *dst_end,
+int mgcp_rtp_processing_default(struct mgcp_endpoint *endp, struct mgcp_rtp_end *dst_end,
 				char *data, int *len, int buf_size);
 
 int mgcp_setup_rtp_processing_default(struct mgcp_endpoint *endp,

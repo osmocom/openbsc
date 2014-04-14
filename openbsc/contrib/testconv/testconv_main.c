@@ -38,10 +38,10 @@ int mgcp_get_trans_frame_size(void *state_, int nsamples, int dst);
 
 int main(int argc, char **argv)
 {
-	char buf[4096] = {0};
+	char buf[4096] = {0x80, 0};
 	int cc, rc;
-	struct mgcp_rtp_end dst_end = {0};
-	struct mgcp_rtp_end src_end = {0};
+	struct mgcp_rtp_end *dst_end;
+	struct mgcp_rtp_end *src_end;
 	struct mgcp_trunk_config tcfg = {{0}};
 	struct mgcp_endpoint endp = {0};
 	struct mgcp_process_rtp_state *state;
@@ -52,39 +52,63 @@ int main(int argc, char **argv)
 	tcfg.endpoints = &endp;
 	tcfg.number_endpoints = 1;
 	endp.tcfg = &tcfg;
+	mgcp_free_endp(&endp);
+
+	dst_end = &endp.bts_end;
+	src_end = &endp.net_end;
 
 	if (argc <= 2)
 		errx(1, "Usage: {gsm|g729|pcma|l16} {gsm|g729|pcma|l16}");
 
-	if ((src_end.payload_type = audio_name_to_type(argv[1])) == -1)
+	if ((src_end->payload_type = audio_name_to_type(argv[1])) == -1)
 		errx(1, "invalid input format '%s'", argv[1]);
-	if ((dst_end.payload_type = audio_name_to_type(argv[2])) == -1)
+	if ((dst_end->payload_type = audio_name_to_type(argv[2])) == -1)
 		errx(1, "invalid output format '%s'", argv[2]);
 
-	rc = mgcp_transcoding_setup(&endp, &dst_end, &src_end);
+	rc = mgcp_transcoding_setup(&endp, dst_end, src_end);
 	if (rc < 0)
 		errx(1, "setup failed: %s", strerror(-rc));
 
-	state = dst_end.rtp_process_data;
+	state = dst_end->rtp_process_data;
 	OSMO_ASSERT(state != NULL);
 
 	in_size = mgcp_transcoding_get_frame_size(state, 160, 0);
 	OSMO_ASSERT(sizeof(buf) >= in_size + 12);
 
+	buf[1] = src_end->payload_type;
+	*(uint16_t*)(buf+2) = htons(1);
+	*(uint32_t*)(buf+4) = htonl(0);
+	*(uint32_t*)(buf+8) = htonl(0xaabbccdd);
+
 	while ((cc = read(0, buf + 12, in_size))) {
+		int cont;
+		int len;
+
 		if (cc != in_size)
 			err(1, "read");
 
 		cc += 12; /* include RTP header */
 
-		rc = mgcp_transcoding_process_rtp(&endp, &dst_end,
-						  buf, &cc, sizeof(buf));
-		if (rc < 0)
-			errx(1, "processing failed: %s", strerror(-rc));
+		len = cc;
 
-		cc -= 12; /* ignore RTP header */
-		if (write(1, buf + 12, cc) != cc)
-			err(1, "write");
+		do {
+			cont = mgcp_transcoding_process_rtp(&endp, dst_end,
+							buf, &len, sizeof(buf));
+			if (cont == -EAGAIN) {
+				fprintf(stderr, "Got EAGAIN\n");
+				break;
+			}
+
+			if (cont < 0)
+				errx(1, "processing failed: %s", strerror(-cont));
+
+			len -= 12; /* ignore RTP header */
+
+			if (write(1, buf + 12, len) != len)
+				err(1, "write");
+
+			len = cont;
+		} while (len > 0);
 	}
 	return 0;
 }

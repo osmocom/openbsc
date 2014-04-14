@@ -340,7 +340,7 @@ static int align_rtp_timestamp_offset(struct mgcp_endpoint *endp,
 	return timestamp_error;
 }
 
-int mgcp_rtp_processing_default(struct mgcp_rtp_end *dst_end,
+int mgcp_rtp_processing_default(struct mgcp_endpoint *endp, struct mgcp_rtp_end *dst_end,
 				char *data, int *len, int buf_size)
 {
 	return 0;
@@ -614,12 +614,28 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	if (!rtp_end->output_enabled)
 		rtp_end->dropped_packets += 1;
 	else if (is_rtp) {
-		mgcp_patch_and_count(endp, rtp_state, rtp_end, addr, buf, rc);
-		endp->cfg->rtp_processing_cb(rtp_end, buf, &rc, RTP_BUF_SIZE);
-		forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx], buf, rc);
-		return mgcp_udp_send(rtp_end->rtp.fd,
-				     &rtp_end->addr,
-				     rtp_end->rtp_port, buf, rc);
+		int cont;
+		int nbytes = 0;
+		int len = rc;
+		mgcp_patch_and_count(endp, rtp_state, rtp_end, addr, buf, len);
+		do {
+			cont = endp->cfg->rtp_processing_cb(endp, rtp_end,
+							buf, &len, RTP_BUF_SIZE);
+			if (cont < 0)
+				break;
+
+			forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx],
+				     buf, len);
+			rc = mgcp_udp_send(rtp_end->rtp.fd,
+					   &rtp_end->addr,
+					   rtp_end->rtp_port, buf, len);
+
+			if (rc <= 0)
+				return rc;
+			nbytes += rc;
+			len = cont;
+		} while (len > 0);
+		return nbytes;
 	} else if (!tcfg->omit_rtcp) {
 		return mgcp_udp_send(rtp_end->rtcp.fd,
 				     &rtp_end->addr,

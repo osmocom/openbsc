@@ -621,6 +621,15 @@ static int set_audio_info(void *ctx, struct mgcp_rtp_end *rtp,
 	rtp->channels = channels;
 	rtp->subtype_name = talloc_strdup(ctx, audio_codec);
 	rtp->audio_name = talloc_strdup(ctx, audio_name);
+
+	if (!strcmp(audio_codec, "G729")) {
+		rtp->frame_duration_num = 10;
+		rtp->frame_duration_den = 1000;
+	} else {
+		rtp->frame_duration_num = DEFAULT_RTP_AUDIO_FRAME_DUR_NUM;
+		rtp->frame_duration_den = DEFAULT_RTP_AUDIO_FRAME_DUR_DEN;
+	}
+
 	if (channels != 1)
 		LOGP(DMGCP, LOGL_NOTICE,
 		     "Channels != 1 in SDP: '%s'\n", audio_name);
@@ -944,10 +953,15 @@ mgcp_header_done:
 	set_audio_info(p->cfg, &endp->bts_end, tcfg->audio_payload, tcfg->audio_name);
 	endp->bts_end.fmtp_extra = talloc_strdup(tcfg->endpoints,
 						tcfg->audio_fmtp_extra);
-	if (have_sdp) {
+	if (have_sdp)
 		parse_sdp_data(&endp->net_end, p);
-		setup_rtp_processing(endp);
+
+	if (p->cfg->bts_force_ptime) {
+		endp->bts_end.packet_duration_ms = p->cfg->bts_force_ptime;
+		endp->bts_end.force_output_ptime = 1;
 	}
+
+	setup_rtp_processing(endp);
 
 	/* policy CB */
 	if (p->cfg->policy_cb) {

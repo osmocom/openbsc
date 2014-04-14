@@ -87,7 +87,8 @@ typedef int (*mgcp_policy)(struct mgcp_trunk_config *cfg, int endpoint, int stat
 typedef int (*mgcp_reset)(struct mgcp_trunk_config *cfg);
 typedef int (*mgcp_rqnt)(struct mgcp_endpoint *endp, char tone);
 
-typedef int (*mgcp_processing)(struct mgcp_rtp_end *dst_end,
+typedef int (*mgcp_processing)(struct mgcp_endpoint *endp,
+			       struct mgcp_rtp_end *dst_end,
 			       char *data, int *len, int buf_size);
 typedef int (*mgcp_processing_setup)(struct mgcp_endpoint *endp,
 				     struct mgcp_rtp_end *dst_end,
@@ -180,6 +181,8 @@ struct mgcp_config {
 	struct mgcp_port_range net_ports;
 	struct mgcp_port_range transcoder_ports;
 	int endp_dscp;
+
+	int bts_force_ptime;
 
 	mgcp_change change_cb;
 	mgcp_policy policy_cb;
