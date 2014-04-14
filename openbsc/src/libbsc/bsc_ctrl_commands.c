@@ -37,6 +37,27 @@ static struct ctrl_cmd_element cmd_##cmdname = { \
 	.verify = verify_vty_description_string, \
 }
 
+#define PRINT_LCHAN_INT_INFO(name, element) \
+cmd->reply = talloc_asprintf_append(cmd->reply, \
+"lchan_status.bts.%u.trx.%u.ts.%u.lchan.%u."#name, \
+lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, lchan->nr); \
+if (sizeof(element) == sizeof(int)) \
+	cmd->reply = talloc_asprintf_append(cmd->reply, ",%d\n", element); \
+else \
+	cmd->reply = talloc_asprintf_append(cmd->reply, ",%u\n", element);
+
+#define PRINT_LCHAN_LLUINT_INFO(name, element) \
+cmd->reply = talloc_asprintf_append(cmd->reply, \
+"lchan_status.bts.%u.trx.%u.ts.%u.lchan.%u."#name, \
+lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, lchan->nr); \
+cmd->reply = talloc_asprintf_append(cmd->reply, ",%llu\n", element);
+
+#define PRINT_LCHAN_STR_INFO(name, element) \
+cmd->reply = talloc_asprintf_append(cmd->reply, \
+"lchan_status.bts.%u.trx.%u.ts.%u.lchan.%u."#name, \
+lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, lchan->nr); \
+cmd->reply = talloc_asprintf_append(cmd->reply, ",%s\n", element);
+
 /**
  * Check that there are no newlines or comments or other things
  * that could make the VTY configuration unparsable.
@@ -225,6 +246,136 @@ static int get_net_channels_load(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_channels_load, "channels-load");
 
+static int print_lchan_trx_ts(struct ctrl_cmd *cmd, struct gsm_bts_trx_ts *ts)
+{
+	int lchan_nr;
+
+	for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN; lchan_nr++) {
+
+		struct gsm_lchan * lchan = &ts->lchan[lchan_nr];
+
+		if ((lchan->type == GSM_LCHAN_NONE) &&
+			(lchan->state == LCHAN_S_NONE))
+			continue;
+
+		PRINT_LCHAN_STR_INFO(type, gsm_lchant_name(lchan->type));
+		PRINT_LCHAN_INT_INFO(conn, lchan->conn ? 1: 0);
+		PRINT_LCHAN_STR_INFO(state, gsm_lchans_name(lchan->state));
+
+		if (lchan->conn && lchan->conn->subscr) {
+			struct gsm_subscriber *subscr = lchan->conn->subscr;
+			PRINT_LCHAN_LLUINT_INFO(subscr_id, subscr->id);
+			PRINT_LCHAN_INT_INFO(subscr_auth, subscr->authorized);
+			if (strlen(subscr->name)) {
+				PRINT_LCHAN_STR_INFO(subscr_name, subscr->name);
+			}
+			if (subscr->extension) {
+				PRINT_LCHAN_STR_INFO(subscr_ext, subscr->extension);
+			}
+			PRINT_LCHAN_STR_INFO(subscr_imsi, subscr->imsi);
+			if (subscr->tmsi != GSM_RESERVED_TMSI) {
+				PRINT_LCHAN_INT_INFO(subscr_tmsi, subscr->tmsi);
+			}
+			PRINT_LCHAN_INT_INFO(subscr_use_count, subscr->use_count);
+		}
+
+		if (is_ipaccess_bts(lchan->ts->trx->bts)) {
+			struct in_addr ia;
+			ia.s_addr = htonl(lchan->abis_ip.bound_ip);
+			PRINT_LCHAN_STR_INFO(bound_ip, inet_ntoa(ia));
+			PRINT_LCHAN_INT_INFO(bound_port, lchan->abis_ip.bound_port);
+			PRINT_LCHAN_INT_INFO(rtp_type2, lchan->abis_ip.rtp_payload2);
+			PRINT_LCHAN_INT_INFO(conn_id, lchan->abis_ip.conn_id);
+		}
+
+		PRINT_LCHAN_INT_INFO(bs_power, lchan->ts->trx->nominal_power
+				 - lchan->ts->trx->max_power_red- lchan->bs_power*2);
+		PRINT_LCHAN_INT_INFO(ms_power,
+						ms_pwr_dbm(lchan->ts->trx->bts->band,
+						lchan->ms_power));
+
+		/* we want to report the last measurement report */
+		int idx = calc_initial_idx(ARRAY_SIZE(lchan->meas_rep),
+									lchan->meas_rep_idx, 1);
+		struct gsm_meas_rep *mr = &lchan->meas_rep[idx];
+
+		if (mr->flags & MEAS_REP_F_MS_TO) {
+			PRINT_LCHAN_INT_INFO(ms_timing_offset,
+								mr->ms_timing_offset);
+		}
+
+		if (mr->flags & MEAS_REP_F_MS_L1) {
+			PRINT_LCHAN_INT_INFO(l1_ms_power, mr->ms_l1.pwr);
+			PRINT_LCHAN_INT_INFO(timing_advance, mr->ms_l1.ta);
+		}
+
+		struct gsm_meas_rep_unidir *mru_dl = &mr->dl;
+		struct gsm_meas_rep_unidir *mru_ul = &mr->ul;
+		if (mr->flags & MEAS_REP_F_DL_VALID) {
+			PRINT_LCHAN_INT_INFO(rxl_full.dl, rxlev2dbm(mru_dl->full.rx_lev));
+			PRINT_LCHAN_INT_INFO(rxl_sub.dl, rxlev2dbm(mru_dl->sub.rx_lev));
+			PRINT_LCHAN_INT_INFO(rxq_full.dl, mru_dl->full.rx_qual);
+			PRINT_LCHAN_INT_INFO(rxq_sub.dl, mru_dl->sub.rx_qual);
+		}
+		PRINT_LCHAN_INT_INFO(rxl_full.ul, rxlev2dbm(mru_ul->full.rx_lev));
+		PRINT_LCHAN_INT_INFO(rxl_sub.ul, rxlev2dbm(mru_ul->sub.rx_lev));
+		PRINT_LCHAN_INT_INFO(rxq_full.ul, mru_ul->full.rx_qual);
+		PRINT_LCHAN_INT_INFO(rxq_sub.ul, mru_ul->sub.rx_qual);
+	}
+
+	return CMD_SUCCESS;
+}
+
+static int print_lchan_trx(struct ctrl_cmd *cmd, struct gsm_bts_trx *trx)
+{
+	int ts_nr;
+
+	for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+		print_lchan_trx_ts(cmd, ts);
+	}
+
+	return CMD_SUCCESS;
+}
+
+static int print_lchan_bts(struct ctrl_cmd *cmd, struct gsm_bts *bts)
+{
+	int trx_nr;
+
+	for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_nr);
+		print_lchan_trx(cmd, trx);
+	}
+
+	return CMD_SUCCESS;
+}
+
+CTRL_HELPER_VERIFY_STATUS(net_lchan);
+CTRL_HELPER_SET_STATUS(net_lchan);
+
+static int get_net_lchan(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	int bts_nr;
+
+	if (!strcmp(cmd->variable,"lchan"))
+		cmd->reply = talloc_strdup(cmd, "\n");
+
+	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+		struct gsm_bts *bts = gsm_bts_num(net, bts_nr);
+		print_lchan_bts(cmd, bts);
+	}
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_lchan, "lchan");
+
 /* BTS related commands below here */
 static int verify_bts_band(struct ctrl_cmd *cmd, const char *value, void *data)
 {
@@ -308,6 +459,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_channels_load);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_lchan);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_band);
 
