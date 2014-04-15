@@ -427,8 +427,8 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	/* FIXME: This looks very wrong */
 	send_signal(0, NULL, gsms, 0);
 
-	rc = sms_queue_try_deliver(conn, msg, gsms, sms_mti);
-	if (rc == GSM411_RP_CAUSE_MO_NUM_UNASSIGNED) {
+//	rc = sms_queue_try_deliver(conn, msg, gsms, sms_mti);
+//	if (rc == GSM411_RP_CAUSE_MO_NUM_UNASSIGNED) {
 #ifdef BUILD_SMPP
 		rc = smpp_try_deliver(gsms, conn);
 		if (rc == GSM411_RP_CAUSE_MO_NUM_UNASSIGNED) {
@@ -441,7 +441,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
 #endif
 		goto out;
-	}
+//	}
 
 out:
 	sms_free(gsms);
