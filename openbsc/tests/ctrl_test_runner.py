@@ -443,6 +443,21 @@ class TestCtrlNITB(TestCtrlBase):
         self.assertEquals(r['var'], 'subscriber-list-active-v1')
         self.assertEquals(r['value'], None)
 
+    def testSmsQueueMaxFailure(self):
+        r = self.do_get('sms-queue-max-failure')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'sms-queue-max-failure')
+        self.assertEquals(r['value'], '1')
+
+        r = self.do_set('sms-queue-max-failure', '5')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'sms-queue-max-failure')
+        self.assertEquals(r['value'], '5')
+
+        r = self.do_set('sms-queue-max-failure', '555')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Value must be between 1 and 500')
+
 class TestCtrlNAT(TestCtrlBase):
 
     def ctrl_command(self):

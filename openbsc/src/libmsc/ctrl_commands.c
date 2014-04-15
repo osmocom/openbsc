@@ -21,6 +21,7 @@
 #include <openbsc/control_cmd.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/sms_queue.h>
 #include <openbsc/db.h>
 #include <openbsc/debug.h>
 
@@ -168,6 +169,38 @@ static int get_subscriber_list(struct ctrl_cmd *cmd, void *d)
 }
 CTRL_CMD_DEFINE(subscriber_list, "subscriber-list-active-v1");
 
+static int verify_sms_queue_max_failure(struct ctrl_cmd *cmd, const char *value, void *d)
+{
+	int tmp = atoi(value);
+
+	if (tmp < 1 || tmp > 500) {
+		cmd->reply = "Value must be between 1 and 500";
+		return -1;
+	}
+
+	return 0;
+}
+
+static int get_sms_queue_max_failure(struct ctrl_cmd *cmd, void *d)
+{
+	struct gsm_network *net = cmd->node;
+	cmd->reply = talloc_asprintf(cmd, "%i", sms_queue_get_max_failure(net->sms_queue));
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+	return CTRL_CMD_REPLY;
+}
+
+static int set_sms_queue_max_failure(struct ctrl_cmd *cmd, void *d)
+{
+	struct gsm_network *net = cmd->node;
+	sms_queue_set_max_failure(net->sms_queue, atoi(cmd->value));
+	return get_sms_queue_max_failure(cmd, d);
+}
+
+CTRL_CMD_DEFINE(sms_queue_max_failure, "sms-queue-max-failure");
+
 int msc_ctrl_cmds_install(void)
 {
 	int rc = 0;
@@ -175,5 +208,6 @@ int msc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_modify);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_delete);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_list);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_sms_queue_max_failure);
 	return rc;
 }

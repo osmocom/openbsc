@@ -505,6 +505,11 @@ int sms_queue_pending_stat(struct gsm_network *net, struct ctrl_cmd *cmd)
 	return 0;
 }
 
+int sms_queue_get_max_failure(struct gsm_sms_queue *smsq)
+{
+	return smsq->max_fail;
+}
+
 /* VTY helper functions */
 int sms_queue_stats(struct gsm_sms_queue *smsq, struct vty *vty)
 {

@@ -11,6 +11,7 @@ int sms_queue_trigger(struct gsm_sms_queue *);
 
 /* Ctrl interface helper function */
 int sms_queue_pending_stat(struct gsm_network *net, struct ctrl_cmd *cmd);
+int sms_queue_get_max_failure(struct gsm_sms_queue *smsq);
 
 /* vty helper functions */
 int sms_queue_stats(struct gsm_sms_queue *, struct vty* vty);
