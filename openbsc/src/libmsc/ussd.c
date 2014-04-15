@@ -82,6 +82,7 @@ static int send_own_number(struct gsm_subscriber_connection *conn, const struct 
 	char response_string[GSM_EXTENSION_LENGTH + 20];
 
 	/* Need trailing CR as EOT character */
-	snprintf(response_string, sizeof(response_string), "Your extension is %s\r", own_number);
+//	snprintf(response_string, sizeof(response_string), "Your extension is %s\r", own_number);
+	snprintf(response_string, sizeof(response_string), "Numero kiu naka %s\r", own_number);
 	return gsm0480_send_ussd_response(conn, msg, response_string, req);
 }
