@@ -726,6 +726,16 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 	return rc;
 }
 
+/*
+ * Special handling for channel releases in the error case.
+ */
+static int rsl_rf_chan_release_err(struct gsm_lchan *lchan)
+{
+	if (lchan->state != LCHAN_S_ACTIVE)
+		return 0;
+	return rsl_rf_chan_release(lchan, 1, SACCH_DEACTIVATE);
+}
+
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 {
 
@@ -1017,12 +1027,6 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	     gsm_lchan_name(msg->lchan),
 	     gsm_lchans_name(msg->lchan->state));
 
-	/* We might have already received an ERROR INDICATION */
-	if (msg->lchan->state != LCHAN_S_ACTIVE) {
-		LOGPC(DRSL, LOGL_NOTICE, "\n");
-		return 0;
-	}
-
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
 	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
@@ -1031,7 +1035,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 
 	LOGPC(DRSL, LOGL_NOTICE, "\n");
 	osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
-	return rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
+	return rsl_rf_chan_release_err(msg->lchan);
 }
 
 static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
@@ -1598,19 +1602,11 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 		rsl_rlm_cause_name(rlm_cause),
 		gsm_lchans_name(msg->lchan->state));
 
-	/* If the channel is already failing no need to inform anyone. */
-	if (msg->lchan->state != LCHAN_S_ACTIVE)
-		return 0;
-
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
-
-	/* The channel might have been released already. */
-	if (msg->lchan->state != LCHAN_S_ACTIVE)
-		return 0;
 
 	if (rlm_cause == RLL_CAUSE_T200_EXPIRED) {
 		osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
-		return rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
+		return rsl_rf_chan_release_err(msg->lchan);
 	}
 
 	return 0;
