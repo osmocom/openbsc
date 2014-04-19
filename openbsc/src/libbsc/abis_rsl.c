@@ -1013,9 +1013,15 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	/* FIXME: print which channel */
-	LOGP(DRSL, LOGL_NOTICE, "%s CONNECTION FAIL: RELEASING ",
-	     gsm_lchan_name(msg->lchan));
+	LOGP(DRSL, LOGL_NOTICE, "%s CONNECTION FAIL: RELEASING state %s ",
+	     gsm_lchan_name(msg->lchan),
+	     gsm_lchans_name(msg->lchan->state));
+
+	/* We might have already received an ERROR INDICATION */
+	if (msg->lchan->state != LCHAN_S_ACTIVE) {
+		LOGPC(DRSL, LOGL_NOTICE, "\n");
+		return 0;
+	}
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
@@ -1587,11 +1593,20 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	}
 
 	rlm_cause = *TLVP_VAL(&tp, RSL_IE_RLM_CAUSE);
-	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=%s\n",
+	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=%s in state=%s\n",
 		gsm_lchan_name(msg->lchan),
-		rsl_rlm_cause_name(rlm_cause));
+		rsl_rlm_cause_name(rlm_cause),
+		gsm_lchans_name(msg->lchan->state));
+
+	/* If the channel is already failing no need to inform anyone. */
+	if (msg->lchan->state != LCHAN_S_ACTIVE)
+		return 0;
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
+
+	/* The channel might have been released already. */
+	if (msg->lchan->state != LCHAN_S_ACTIVE)
+		return 0;
 
 	if (rlm_cause == RLL_CAUSE_T200_EXPIRED) {
 		osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
