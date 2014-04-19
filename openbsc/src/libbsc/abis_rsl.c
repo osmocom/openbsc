@@ -1024,7 +1024,6 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
 	LOGPC(DRSL, LOGL_NOTICE, "\n");
-	/* FIXME: only free it after channel release ACK */
 	osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
 	return rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
 }
