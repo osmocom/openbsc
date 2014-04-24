@@ -264,6 +264,33 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['var'], 'bts.0.timezone')
         self.assertEquals(r['value'], 'off')
 
+    def testMcc(self):
+        r = self.do_set('mcc', '23')
+        r = self.do_get('mcc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mcc')
+        self.assertEquals(r['value'], '23')
+
+        r = self.do_set('mcc', '023')
+        r = self.do_get('mcc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mcc')
+        self.assertEquals(r['value'], '23')
+
+    def testMnc(self):
+        r = self.do_set('mnc', '9')
+        r = self.do_get('mnc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mnc')
+        self.assertEquals(r['value'], '9')
+
+        r = self.do_set('mnc', '09')
+        r = self.do_get('mnc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mnc')
+        self.assertEquals(r['value'], '9')
+
+
     def testMccMncApply(self):
         # Test some invalid input
         r = self.do_set('mcc-mnc-apply', 'WRONG')
@@ -305,6 +332,22 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'mcc')
         self.assertEquals(r['value'], '201')
+
+        # Change it
+        r = self.do_set('mcc-mnc-apply', '202,03')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'mcc-mnc-apply')
+        self.assertEquals(r['value'], 'Tried to drop the BTS')
+
+        r = self.do_get('mnc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mnc')
+        self.assertEquals(r['value'], '3')
+
+        r = self.do_get('mcc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mcc')
+        self.assertEquals(r['value'], '202')
 
 class TestCtrlNITB(TestCtrlBase):
 
