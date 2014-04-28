@@ -371,6 +371,7 @@ struct gsm_bts_trx {
 	uint16_t arfcn;
 	int nominal_power;		/* in dBm */
 	unsigned int max_power_red;	/* in actual dB */
+	unsigned int power_reduce;	/* in dB */
 
 	struct {
 		void *l1h;
