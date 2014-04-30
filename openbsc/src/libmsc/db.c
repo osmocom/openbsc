@@ -1042,8 +1042,8 @@ int db_subscriber_delete(struct gsm_subscriber *subscr)
 	dbi_result_free(result);
 
 	result = dbi_conn_queryf(conn,
-			"DELETE FROM SMS WHERE sender_id=%llu OR receiver_id=%llu",
-			subscr->id, subscr->id);
+			"DELETE FROM SMS WHERE src_addr=%s OR dest_addr=%s",
+			subscr->extension, subscr->extension);
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR,
 			"Failed to delete SMS for %llu\n", subscr->id);
