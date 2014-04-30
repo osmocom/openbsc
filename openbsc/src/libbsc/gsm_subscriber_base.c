@@ -72,6 +72,12 @@ static void subscr_free(struct gsm_subscriber *subscr)
 	talloc_free(subscr);
 }
 
+void subscr_direct_free(struct gsm_subscriber *subscr)
+{
+	OSMO_ASSERT(subscr->use_count == 1);
+	subscr_free(subscr);
+}
+
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr)
 {
 	subscr->use_count++;

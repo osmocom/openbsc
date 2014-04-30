@@ -21,6 +21,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/db.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/gsm_04_11.h>
 
 #include <osmocom/core/application.h>
 
@@ -58,6 +59,97 @@ static struct gsm_network dummy_net;
 	if (strcmp(original->extension, copy->extension) != 0) \
 		printf("Extensions do not match in %s:%d '%s' '%s'\n", \
 			__FUNCTION__, __LINE__, original->extension, copy->extension); \
+
+/*
+ * Create/Store a SMS and then try to load it.
+ */
+static void test_sms(void)
+{
+	int rc;
+	struct gsm_sms *sms;
+	struct gsm_subscriber *subscr;
+	subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, "9993245423445");
+	OSMO_ASSERT(subscr);
+	subscr->net = &dummy_net;
+
+	sms = sms_alloc();
+	sms->receiver = subscr_get(subscr);
+
+	sms->src.ton = 0x23;
+	sms->src.npi = 0x24;
+	memcpy(sms->src.addr, "1234", strlen("1234") + 1);
+
+	sms->dst.ton = 0x32;
+	sms->dst.npi = 0x42;
+	memcpy(sms->dst.addr, subscr->extension, sizeof(subscr->extension));
+
+	memcpy(sms->text, "Text123", strlen("Text123") + 1);
+	memcpy(sms->user_data, "UserData123", strlen("UserData123") + 1);
+	sms->user_data_len = strlen("UserData123");
+
+	/* random values */
+	sms->reply_path_req = 1;
+	sms->status_rep_req = 2;
+	sms->ud_hdr_ind = 3;
+	sms->protocol_id = 4;
+	sms->data_coding_scheme = 5;
+
+	rc = db_sms_store(sms);
+	sms_free(sms);
+	OSMO_ASSERT(rc == 0);
+
+	/* now query */
+	sms = db_sms_get_unsent_for_subscr(subscr);
+	OSMO_ASSERT(sms);
+	OSMO_ASSERT(sms->receiver == subscr);
+	OSMO_ASSERT(sms->reply_path_req == 1);
+	OSMO_ASSERT(sms->status_rep_req == 2);
+	OSMO_ASSERT(sms->ud_hdr_ind == 3);
+	OSMO_ASSERT(sms->protocol_id == 4);
+	OSMO_ASSERT(sms->data_coding_scheme == 5);
+	OSMO_ASSERT(sms->src.ton == 0x23);
+	OSMO_ASSERT(sms->src.npi == 0x24);
+	OSMO_ASSERT(sms->dst.ton == 0x32);
+	OSMO_ASSERT(sms->dst.npi == 0x42);
+	OSMO_ASSERT(strcmp((char *) sms->text, "Text123") == 0);
+	OSMO_ASSERT(sms->user_data_len == strlen("UserData123"));
+	OSMO_ASSERT(strcmp((char *) sms->user_data, "UserData123") == 0);
+
+	subscr_put(subscr);
+}
+
+static void test_sms_migrate(void)
+{
+	struct gsm_subscriber *rcv_subscr;
+	struct gsm_sms *sms;
+	static const uint8_t user_data_1[] = {
+		0x41, 0xf1, 0xd8, 0x05, 0x22, 0x96, 0xcd, 0x2e,
+		0x90, 0xf1, 0xfd, 0x06, 0x00 };
+	static const uint8_t user_data_2[] = {
+		0x41, 0xf1, 0xd8, 0x05, 0x22, 0x96, 0xcd, 0x2e,
+		0xd0, 0xf1, 0xfd, 0x06, 0x00 };
+
+	rcv_subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, "901010000001111");
+	rcv_subscr->net = &dummy_net;
+
+	sms = db_sms_get(&dummy_net, 1);
+	OSMO_ASSERT(sms->id == 1);
+	OSMO_ASSERT(sms->receiver == rcv_subscr);
+	OSMO_ASSERT(strcmp(sms->text, "Abc. Def. Foo") == 0);
+	OSMO_ASSERT(sms->user_data_len == ARRAY_SIZE(user_data_1));
+	OSMO_ASSERT(memcmp(sms->user_data, user_data_1, ARRAY_SIZE(user_data_1)) == 0);
+	sms_free(sms);
+
+	sms = db_sms_get(&dummy_net, 2);
+	OSMO_ASSERT(sms->id == 2);
+	OSMO_ASSERT(sms->receiver == rcv_subscr);
+	OSMO_ASSERT(strcmp(sms->text, "Abc. Def. Goo") == 0);
+	OSMO_ASSERT(sms->user_data_len == ARRAY_SIZE(user_data_2));
+	OSMO_ASSERT(memcmp(sms->user_data, user_data_2, ARRAY_SIZE(user_data_2)) == 0);
+	sms_free(sms);
+
+	subscr_put(rcv_subscr);
+}
 
 int main()
 {
@@ -141,6 +233,9 @@ int main()
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);
 	SUBSCR_PUT(alice);
+
+	test_sms();
+	test_sms_migrate();
 
 	db_fini();
 

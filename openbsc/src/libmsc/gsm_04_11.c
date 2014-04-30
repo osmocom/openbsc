@@ -73,8 +73,6 @@ struct gsm_sms *sms_alloc(void)
 void sms_free(struct gsm_sms *sms)
 {
 	/* drop references to subscriber structure */
-	if (sms->sender)
-		subscr_put(sms->sender);
 	if (sms->receiver)
 		subscr_put(sms->receiver);
 #ifdef BUILD_SMPP
@@ -97,8 +95,7 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver,
 	sms->receiver = subscr_get(receiver);
 	strncpy(sms->text, text, sizeof(sms->text)-1);
 
-	sms->sender = subscr_get(sender);
-	strncpy(sms->src.addr, sms->sender->extension, sizeof(sms->src.addr)-1);
+	strncpy(sms->src.addr, sender->extension, sizeof(sms->src.addr)-1);
 	sms->reply_path_req = 0;
 	sms->status_rep_req = 0;
 	sms->ud_hdr_ind = 0;
@@ -378,12 +375,12 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 		}
 	}
 
-	gsms->sender = subscr_get(conn->subscr);
+	strncpy(gsms->src.addr, conn->subscr->extension, sizeof(gsms->src.addr)-1);
 
 	LOGP(DLSMS, LOGL_INFO, "RX SMS: Sender: %s, MTI: 0x%02x, VPF: 0x%02x, "
 	     "MR: 0x%02x PID: 0x%02x, DCS: 0x%02x, DA: %s, "
 	     "UserDataLength: 0x%02x, UserData: \"%s\"\n",
-	     subscr_name(gsms->sender), sms_mti, sms_vpf, gsms->msg_ref,
+	     subscr_name(conn->subscr), sms_mti, sms_vpf, gsms->msg_ref,
 	     gsms->protocol_id, gsms->data_coding_scheme, gsms->dst.addr,
 	     gsms->user_data_len,
 			sms_alphabet == DCS_7BIT_DEFAULT ? gsms->text :
