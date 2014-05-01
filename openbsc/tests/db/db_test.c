@@ -157,6 +157,7 @@ int main()
 
 	printf("Testing subscriber database code.\n");
 	osmo_init_logging(&log_info);
+	log_set_print_filename(osmo_stderr_target, 0);
 
 	if (db_init("hlr.sqlite3")) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
