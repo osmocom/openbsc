@@ -52,6 +52,7 @@ enum sacch_deact {
 };
 
 static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
+static void error_timeout_cb(void *data);
 
 static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 			      struct gsm_meas_rep *resp)
@@ -64,9 +65,15 @@ static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 
 static void do_lchan_free(struct gsm_lchan *lchan)
 {
-	/* we have an error timer pending to release that */
-	if (lchan->state != LCHAN_S_REL_ERR)
+	/* we start an error timer pending to release the channel */
+	if (lchan->state == LCHAN_S_REL_ERR) {
+		lchan->error_timer.data = lchan;
+		lchan->error_timer.cb = error_timeout_cb;
+		osmo_timer_schedule(&lchan->error_timer,
+				   lchan->ts->trx->bts->network->T3111 + 2, 0);
+	} else {
 		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	}
 	lchan_free(lchan);
 }
 
@@ -679,8 +686,6 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 	DEBUGP(DRSL, "%s RF Channel Release CMD due error %d\n", gsm_lchan_name(lchan), error);
 
 	if (error) {
-		struct e1inp_sign_link *sign_link = msg->dst;
-
 		/*
 		 * FIXME: GSM 04.08 gives us two options for the abnormal
 		 * chanel release. This can be either like in the non-existent
@@ -708,10 +713,6 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 		 * TODO: start T3109 now.
 		 */
 		rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
-		lchan->error_timer.data = lchan;
-		lchan->error_timer.cb = error_timeout_cb;
-		osmo_timer_schedule(&lchan->error_timer,
-				   sign_link->trx->bts->network->T3111 + 2, 0);
 	}
 
 	/* Start another timer or assume the BTS sends a ACK/NACK? */
@@ -723,6 +724,16 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 
 	/* BTS will respond by RF CHAN REL ACK */
 	return rc;
+}
+
+/*
+ * Special handling for channel releases in the error case.
+ */
+static int rsl_rf_chan_release_err(struct gsm_lchan *lchan)
+{
+	if (lchan->state != LCHAN_S_ACTIVE)
+		return 0;
+	return rsl_rf_chan_release(lchan, 1, SACCH_DEACTIVATE);
 }
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
@@ -1012,9 +1023,9 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	/* FIXME: print which channel */
-	LOGP(DRSL, LOGL_NOTICE, "%s CONNECTION FAIL: RELEASING ",
-	     gsm_lchan_name(msg->lchan));
+	LOGP(DRSL, LOGL_NOTICE, "%s CONNECTION FAIL: RELEASING state %s ",
+	     gsm_lchan_name(msg->lchan),
+	     gsm_lchans_name(msg->lchan->state));
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
@@ -1023,9 +1034,8 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
 	LOGPC(DRSL, LOGL_NOTICE, "\n");
-	/* FIXME: only free it after channel release ACK */
 	osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
-	return rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
+	return rsl_rf_chan_release_err(msg->lchan);
 }
 
 static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
@@ -1587,15 +1597,16 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	}
 
 	rlm_cause = *TLVP_VAL(&tp, RSL_IE_RLM_CAUSE);
-	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=%s\n",
+	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=%s in state=%s\n",
 		gsm_lchan_name(msg->lchan),
-		rsl_rlm_cause_name(rlm_cause));
+		rsl_rlm_cause_name(rlm_cause),
+		gsm_lchans_name(msg->lchan->state));
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 
 	if (rlm_cause == RLL_CAUSE_T200_EXPIRED) {
 		osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
-		return rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
+		return rsl_rf_chan_release_err(msg->lchan);
 	}
 
 	return 0;
