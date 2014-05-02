@@ -1,3 +1,10 @@
+openbsc (0.13.0+git1-rhizo3) precise; urgency=low
+
+  * Rebased everything against current master
+  * Merged the hfreyther/fixes/channel-release-handling branch
+
+ -- ciaby <ciaby@autistici.org>  Fri, 02 May 2014 12:49:17 +0200
+
 openbsc (0.13.0+git1-rhizo1) precise; urgency=low
 
   * Bumped version number, added SMPP support.
