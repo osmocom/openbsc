@@ -30,7 +30,6 @@ struct ipac_ext_lac_cmd {
 /*
  * methods for parsing and sending a message
  */
-int ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd);
 void ipaccess_prepend_header(struct msgb *msg, int proto);
 void ipaccess_prepend_header_ext(struct msgb *msg, int proto);
 int ipaccess_send_pong(int fd);

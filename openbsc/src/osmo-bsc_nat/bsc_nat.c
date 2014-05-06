@@ -825,10 +825,10 @@ static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;
-	ipaccess_rcvmsg_base(msg, bfd);
 
 	/* initialize the networking. This includes sending a GSM08.08 message */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
+		ipaccess_rcvmsg_base(msg, bfd);
 		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
 			initialize_msc_if_needed(msc_con);
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET)
