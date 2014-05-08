@@ -17,7 +17,7 @@
 #error "Requires MGCP transcoding enabled (see --enable-mgcp-transcoding)"
 #endif
 
-#include "src/osmo-bsc_mgcp/mgcp_transcode.h"
+#include "openbsc/mgcp_transcode.h"
 
 uint8_t *audio_frame_l16[] = {
 };

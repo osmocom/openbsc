@@ -1,5 +1,5 @@
 
-OBJS = testconv_main.o mgcp_transcode.o
+OBJS = testconv_main.o
 
 CC = gcc
 CFLAGS = -O0 -ggdb -Wall
@@ -11,7 +11,6 @@ testconv: $(OBJS)
 	$(CC)  -o $@ $^ $(LDFLAGS) $(LIBS)
 
 testconv_main.o: testconv_main.c
-mgcp_transcode.o: ../../src/osmo-bsc_mgcp/mgcp_transcode.c
 
 $(OBJS):
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<

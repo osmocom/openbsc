@@ -18,7 +18,7 @@ mgcp_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
 		$(LIBOSMOCORE_LIBS) -lrt -lm $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS) \
 		$(LIBRARY_DL) $(LIBOSMONETIF_LIBS)
 
-mgcp_transcoding_test_SOURCES = mgcp_transcoding_test.c $(top_builddir)/src/osmo-bsc_mgcp/mgcp_transcode.c
+mgcp_transcoding_test_SOURCES = mgcp_transcoding_test.c
 
 mgcp_transcoding_test_LDADD = \
 		$(top_builddir)/src/libbsc/libbsc.a \

@@ -50,7 +50,7 @@
 #include "../../bscconfig.h"
 
 #ifdef BUILD_MGCP_TRANSCODING
-#include "mgcp_transcode.h"
+#include "openbsc/mgcp_transcode.h"
 #endif
 
 /* this is here for the vty... it will never be called */

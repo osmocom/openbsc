@@ -17,7 +17,7 @@
 #error "Requires MGCP transcoding enabled (see --enable-mgcp-transcoding)"
 #endif
 
-#include "src/osmo-bsc_mgcp/mgcp_transcode.h"
+#include "openbsc/mgcp_transcode.h"
 
 static int audio_name_to_type(const char *name)
 {
