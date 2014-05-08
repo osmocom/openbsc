@@ -41,8 +41,13 @@ static int udp_sock(const char *ifname)
 		return fd;
 
 	if (ifname) {
+#ifdef __FreeBSD__
+		rc = setsockopt(fd, SOL_SOCKET, IP_RECVIF, ifname,
+				strlen(ifname));
+#else
 		rc = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, ifname,
 				strlen(ifname));
+#endif
 		if (rc < 0)
 			goto err;
 	}
