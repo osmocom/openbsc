@@ -25,6 +25,8 @@
 #include <osmocom/core/write_queue.h>
 #include <osmocom/core/timer.h>
 
+#include <netinet/in.h>
+
 struct bsc_msc_dest {
 	struct llist_head list;
 
