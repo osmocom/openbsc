@@ -80,6 +80,8 @@ char *strline_r(char *str, char **saveptr)
 #define DEFAULT_RTP_AUDIO_DEFAULT_RATE  8000
 #define DEFAULT_RTP_AUDIO_DEFAULT_CHANNELS 1
 
+#define PTYPE_UNDEFINED (-1)
+
 static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end);
 
 struct mgcp_parse_data {
@@ -598,7 +600,8 @@ static int set_audio_info(void *ctx, struct mgcp_rtp_end *rtp,
 	talloc_free(rtp->audio_name);
 	rtp->audio_name = NULL;
 
-	rtp->payload_type = payload_type;
+	if (payload_type != PTYPE_UNDEFINED)
+		rtp->payload_type = payload_type;
 
 	if (!audio_name) {
 		switch (payload_type) {
@@ -614,7 +617,7 @@ static int set_audio_info(void *ctx, struct mgcp_rtp_end *rtp,
 	}
 
 	if (sscanf(audio_name, "%63[^/]/%d/%d",
-		   audio_codec, &rate, &channels) < 2)
+		   audio_codec, &rate, &channels) < 1)
 		return -EINVAL;
 
 	rtp->rate = rate;
@@ -628,6 +631,20 @@ static int set_audio_info(void *ctx, struct mgcp_rtp_end *rtp,
 	} else {
 		rtp->frame_duration_num = DEFAULT_RTP_AUDIO_FRAME_DUR_NUM;
 		rtp->frame_duration_den = DEFAULT_RTP_AUDIO_FRAME_DUR_DEN;
+	}
+
+	if (payload_type < 0) {
+		payload_type = 96;
+		if (rate == 8000 && channels == 1) {
+			if (!strcmp(audio_codec, "GSM"))
+				payload_type = 3;
+			else if (!strcmp(audio_codec, "PCMA"))
+				payload_type = 8;
+			else if (!strcmp(audio_codec, "G729"))
+				payload_type = 18;
+		}
+
+		rtp->payload_type = payload_type;
 	}
 
 	if (channels != 1)
@@ -801,9 +818,12 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 static void set_local_cx_options(void *ctx, struct mgcp_lco *lco,
 				 const char *options)
 {
-	char *p_opt;
+	char *p_opt, *a_opt;
+	char codec[9];
 
 	talloc_free(lco->string);
+	talloc_free(lco->codec);
+	lco->codec = NULL;
 	lco->pkt_period_min = lco->pkt_period_max = 0;
 	lco->string = talloc_strdup(ctx, options ? options : "");
 
@@ -811,6 +831,10 @@ static void set_local_cx_options(void *ctx, struct mgcp_lco *lco,
 	if (p_opt && sscanf(p_opt, "p:%d-%d",
 			    &lco->pkt_period_min, &lco->pkt_period_max) == 1)
 		lco->pkt_period_max = lco->pkt_period_min;
+
+	a_opt = strstr(lco->string, "a:");
+	if (a_opt && sscanf(a_opt, "a:%8[^,]", codec) == 1)
+		lco->codec = talloc_strdup(ctx, codec);
 }
 
 void mgcp_rtp_end_config(struct mgcp_endpoint *endp, int expect_ssrc_change,
@@ -955,6 +979,9 @@ mgcp_header_done:
 						tcfg->audio_fmtp_extra);
 	if (have_sdp)
 		parse_sdp_data(&endp->net_end, p);
+	else if (endp->local_options.codec)
+		set_audio_info(p->cfg, &endp->net_end,
+			       PTYPE_UNDEFINED, endp->local_options.codec);
 
 	if (p->cfg->bts_force_ptime) {
 		endp->bts_end.packet_duration_ms = p->cfg->bts_force_ptime;
@@ -1012,6 +1039,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 	struct mgcp_endpoint *endp = p->endp;
 	int error_code = 500;
 	int silent = 0, osmux = 0;
+	int have_sdp = 0;
 	char *line;
 	const char *local_options = NULL;
 
@@ -1058,6 +1086,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			break;
 		case '\0':
 			/* SDP file begins */
+			have_sdp = 1;
 			parse_sdp_data(&endp->net_end, p);
 			/* This will exhaust p->save, so the loop will
 			 * terminate next time.
@@ -1087,6 +1116,10 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 
 	set_local_cx_options(endp->tcfg->endpoints, &endp->local_options,
 			     local_options);
+
+	if (!have_sdp && endp->local_options.codec)
+		set_audio_info(p->cfg, &endp->net_end,
+			       PTYPE_UNDEFINED, endp->local_options.codec);
 
 	setup_rtp_processing(endp);
 
@@ -1462,6 +1495,8 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	talloc_free(endp->local_options.string);
 	endp->local_options.string = NULL;
+	talloc_free(endp->local_options.codec);
+	endp->local_options.codec = NULL;
 
 	mgcp_rtp_end_reset(&endp->bts_end);
 	mgcp_rtp_end_reset(&endp->net_end);

@@ -123,6 +123,7 @@ struct mgcp_rtp_tap {
 
 struct mgcp_lco {
 	char *string;
+	char *codec;
 	int pkt_period_min; /* time in ms */
 	int pkt_period_max; /* time in ms */
 };
