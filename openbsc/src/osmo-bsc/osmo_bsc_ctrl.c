@@ -58,7 +58,7 @@ void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con
 	talloc_free(trap);
 }
 
-CTRL_CMD_DEFINE(msc_connection_status, "msc_connection_status");
+CTRL_CMD_DEFINE_RO(msc_connection_status, "msc_connection_status");
 static int msc_connection_status = 0;
 
 static int get_msc_connection_status(struct ctrl_cmd *cmd, void *data)
@@ -68,17 +68,6 @@ static int get_msc_connection_status(struct ctrl_cmd *cmd, void *data)
 	else
 		cmd->reply = "disconnected";
 	return CTRL_CMD_REPLY;
-}
-
-static int set_msc_connection_status(struct ctrl_cmd *cmd, void *data)
-{
-	return CTRL_CMD_ERROR;
-}
-
-static int verify_msc_connection_status(struct ctrl_cmd *cmd, const char *value, void *data)
-{
-	cmd->reply = "Read-only property";
-	return 1;
 }
 
 static int msc_connection_status_trap_cb(unsigned int subsys, unsigned int signal, void *handler_data, void *signal_data)
@@ -114,7 +103,7 @@ static int msc_connection_status_trap_cb(unsigned int subsys, unsigned int signa
 	return 0;
 }
 
-CTRL_CMD_DEFINE(bts_connection_status, "bts_connection_status");
+CTRL_CMD_DEFINE_RO(bts_connection_status, "bts_connection_status");
 static int bts_connection_status = 0;
 
 static int get_bts_connection_status(struct ctrl_cmd *cmd, void *data)
@@ -124,17 +113,6 @@ static int get_bts_connection_status(struct ctrl_cmd *cmd, void *data)
 	else
 		cmd->reply = "disconnected";
 	return CTRL_CMD_REPLY;
-}
-
-static int set_bts_connection_status(struct ctrl_cmd *cmd, void *data)
-{
-	return CTRL_CMD_ERROR;
-}
-
-static int verify_bts_connection_status(struct ctrl_cmd *cmd, const char *value, void *data)
-{
-	cmd->reply = "Read-only property";
-	return 1;
 }
 
 static int bts_connection_status_trap_cb(unsigned int subsys, unsigned int signal, void *handler_data, void *signal_data)
@@ -496,7 +474,7 @@ err:
 	return 1;
 }
 
-CTRL_CMD_DEFINE(bts_rf_state, "rf_state");
+CTRL_CMD_DEFINE_RO(bts_rf_state, "rf_state");
 static int get_bts_rf_state(struct ctrl_cmd *cmd, void *data)
 {
 	const char *oper, *admin, *policy;
@@ -520,16 +498,6 @@ static int get_bts_rf_state(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-static int set_bts_rf_state(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "set is unimplemented";
-	return CTRL_CMD_ERROR;
-}
-
-static int verify_bts_rf_state(struct ctrl_cmd *cmd, const char *value, void *data)
-{
-	return 0;
-}
 
 CTRL_CMD_DEFINE(net_rf_lock, "rf_locked");
 static int get_net_rf_lock(struct ctrl_cmd *cmd, void *data)
