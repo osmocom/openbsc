@@ -30,7 +30,6 @@
 	CTRL_HELPER_SET_STRING(cmdname, dtype, element) \
 static struct ctrl_cmd_element cmd_##cmdname = { \
 	.name = cmdstr, \
-	.param = NULL, \
 	.get = get_##cmdname, \
 	.set = set_##cmdname, \
 	.verify = verify_vty_description_string, \
