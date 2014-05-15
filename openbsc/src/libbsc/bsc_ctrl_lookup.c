@@ -150,11 +150,19 @@ int bsc_ctrl_cmd_handle(struct ctrl_cmd *cmd, void *data)
 
 err:
 	if (!cmd->reply) {
-		LOGP(DCTRL, LOGL_ERROR, "cmd->reply has not been set.\n");
-		if (ret == CTRL_CMD_ERROR)
+		if (ret == CTRL_CMD_ERROR) {
 			cmd->reply = "An error has occured.";
-		else
+			LOGP(DCTRL, LOGL_NOTICE,
+			     "%s: cmd->reply has not been set (ERROR).\n",
+			     cmd->variable);
+		} else if (ret == CTRL_CMD_REPLY) {
+			LOGP(DCTRL, LOGL_NOTICE,
+			     "%s: cmd->reply has not been set (type = %d).\n",
+			     cmd->variable, cmd->type);
+			cmd->reply = "";
+		} else {
 			cmd->reply = "Command has been handled.";
+		}
 	}
 
 	if (ret == CTRL_CMD_ERROR)
