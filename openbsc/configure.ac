@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script
 AC_INIT([openbsc],
 	m4_esyscmd([./git-version-gen .tarball-version]),
-	[openbsc-devel@lists.openbsc.org])
+	[openbsc@lists.osmocom.org])
 
 AM_INIT_AUTOMAKE([dist-bzip2])
 AC_CONFIG_TESTDIR(tests)
