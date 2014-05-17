@@ -105,6 +105,9 @@ struct rtp_x_hdr {
 
 #define RTP_VERSION	2
 
+/* 33 for FR, all other codecs have smaller size */
+#define MAX_RTP_PAYLOAD_LEN	33
+
 /* decode an rtp frame and create a new buffer with payload */
 static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 {
@@ -112,7 +115,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 	struct gsm_data_frame *frame;
 	struct rtp_hdr *rtph = (struct rtp_hdr *)msg->data;
 	struct rtp_x_hdr *rtpxh;
-	uint8_t *payload;
+	uint8_t *payload, *payload_out;
 	int payload_len;
 	int msg_type;
 	int x_len;
@@ -200,33 +203,31 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		return -EINVAL;
 	}
 
-	if (payload_len > 33) {
+	if (payload_len > MAX_RTP_PAYLOAD_LEN) {
 		DEBUGPC(DLMUX, "RTP payload too large (%d octets)\n",
 			payload_len);
 		return -EINVAL;
 	}
 
-	if (rtph->payload_type == RTP_PT_AMR) {
-		new_msg = msgb_alloc(sizeof(struct gsm_data_frame) + 1
-				     + payload_len, "GSM-DATA (AMR)");
-	} else {
-		new_msg = msgb_alloc(sizeof(struct gsm_data_frame)
-				     + payload_len, "GSM-DATA");
-	}
+	/* always allocate for the maximum possible size to avoid
+	 * fragmentation */
+	new_msg = msgb_alloc(sizeof(struct gsm_data_frame) +
+			     MAX_RTP_PAYLOAD_LEN, "GSM-DATA (TCH)");
+
 	if (!new_msg)
 		return -ENOMEM;
-	frame = (struct gsm_data_frame *)(new_msg->data);
+	frame = msgb_put(new_msg, sizeof(struct gsm_data_frame));
 	frame->msg_type = msg_type;
 	frame->callref = callref;
 	if (rtph->payload_type == RTP_PT_AMR) {
-		frame->data[0] = payload_len;
-		msgb_put(new_msg, sizeof(struct gsm_data_frame) + 1
-					 + payload_len);
-		memcpy(frame->data + 1, payload, payload_len);
-	} else {
-		msgb_put(new_msg, sizeof(struct gsm_data_frame) + payload_len);
-		memcpy(frame->data, payload, payload_len);
+		/* for FR/HR/EFR the length is implicit.  In AMR, we
+		 * need to make it explicit by using the first byte of
+		 * the data[] buffer as length byte */
+		uint8_t *data0 = msgb_put(new_msg, 1);
+		*data0 = payload_len;
 	}
+	payload_out = msgb_put(new_msg, payload_len);
+	memcpy(payload_out, payload, payload_len);
 
 	*data = new_msg;
 	return 0;
@@ -256,6 +257,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	struct rtp_sub_socket *rss = &rs->rtp;
 	struct msgb *msg;
 	struct rtp_hdr *rtph;
+	uint8_t *payload;
 	int payload_type;
 	int payload_len;
 	int duration; /* in samples */
@@ -316,21 +318,16 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		}
 	}
 
-	if (payload_len > 33) {
+	if (payload_len > MAX_RTP_PAYLOAD_LEN) {
 		DEBUGPC(DLMUX, "RTP payload too large (%d octets)\n",
 			payload_len);
 		return -EINVAL;
 	}
 
-	if (frame->msg_type == GSM_TCH_FRAME_AMR)
-		msg = msgb_alloc(sizeof(struct rtp_hdr) + payload_len,
-			"RTP-GSM (AMR)");
-	else
-		msg = msgb_alloc(sizeof(struct rtp_hdr) + payload_len,
-			"RTP-GSM");
+	msg = msgb_alloc(sizeof(struct rtp_hdr) + payload_len, "RTP-GSM");
 	if (!msg)
 		return -ENOMEM;
-	rtph = (struct rtp_hdr *)msg->data;
+	rtph = (struct rtp_hdr *) msgb_put(msg, sizeof(struct rtp_hdr));
 	rtph->version = RTP_VERSION;
 	rtph->padding = 0;
 	rtph->extension = 0;
@@ -341,13 +338,12 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	rtph->timestamp = htonl(rs->transmit.timestamp);
 	rs->transmit.timestamp += duration;
 	rtph->ssrc = htonl(rs->transmit.ssrc);
+
+	payload = msgb_put(msg, payload_len);
 	if (frame->msg_type == GSM_TCH_FRAME_AMR)
-		memcpy(msg->data + sizeof(struct rtp_hdr), frame->data + 1,
-			payload_len);
+		memcpy(payload, frame->data + 1, payload_len);
 	else
-		memcpy(msg->data + sizeof(struct rtp_hdr), frame->data,
-			payload_len);
-	msgb_put(msg, sizeof(struct rtp_hdr) + payload_len);
+		memcpy(payload, frame->data, payload_len);
 	msgb_enqueue(&rss->tx_queue, msg);
 	rss->bfd.when |= BSC_FD_WRITE;
 
