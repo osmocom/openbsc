@@ -196,6 +196,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		}
 		break;
 	case RTP_PT_AMR:
+		msg_type = GSM_TCH_FRAME_AMR;
 		break;
 	default:
 		DEBUGPC(DLMUX, "received RTP frame with unknown payload "
