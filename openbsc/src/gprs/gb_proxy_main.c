@@ -66,7 +66,7 @@ const char *openbsc_copyright =
 	"There is NO WARRANTY, to the extent permitted by law.\r\n";
 
 static char *config_file = "osmo_gbproxy.cfg";
-struct gbproxy_config gbcfg;
+struct gbproxy_config gbcfg = {0};
 static int daemonize = 0;
 
 /* Pointer to the SGSN peer */

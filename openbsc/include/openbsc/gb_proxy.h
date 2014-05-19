@@ -13,6 +13,10 @@ struct gbproxy_config {
 
 	/* misc */
 	struct gprs_ns_inst *nsi;
+
+	/* force mcc/mnc */
+	int core_mnc;
+	int core_mcc;
 };
 
 extern struct gbproxy_config gbcfg;

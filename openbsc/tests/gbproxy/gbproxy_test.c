@@ -810,6 +810,8 @@ static void test_gbproxy_ra_patching()
 	bssgp_nsi = nsi;
 	gbcfg.nsi = bssgp_nsi;
 	gbcfg.nsip_sgsn_nsei = SGSN_NSEI;
+	gbcfg.core_mcc = 123;
+	gbcfg.core_mnc = 456;
 
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
