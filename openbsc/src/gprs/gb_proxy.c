@@ -43,6 +43,10 @@
 #include <openbsc/debug.h>
 #include <openbsc/gb_proxy.h>
 
+#include <openbsc/gprs_llc.h>
+#include <openbsc/gsm_04_08.h>
+#include <openbsc/gsm_04_08_gprs.h>
+
 enum gbprox_global_ctr {
 	GBPROX_GLOB_CTR_INV_BVCI,
 	GBPROX_GLOB_CTR_INV_LAI,
@@ -55,6 +59,9 @@ enum gbprox_global_ctr {
 	GBPROX_GLOB_CTR_RESTART_RESET_SGSN,
 	GBPROX_GLOB_CTR_TX_ERR_SGSN,
 	GBPROX_GLOB_CTR_OTHER_ERR,
+	GBPROX_GLOB_CTR_RAID_PATCHED_BSS,
+	GBPROX_GLOB_CTR_RAID_PATCHED_SGSN,
+	GBPROX_GLOB_CTR_PATCH_ERR,
 };
 
 static const struct rate_ctr_desc global_ctr_description[] = {
@@ -69,6 +76,9 @@ static const struct rate_ctr_desc global_ctr_description[] = {
 	{ "restart.sgsn",   "Restarted RESET procedure (SGSN)" },
 	{ "tx-err.sgsn",    "NS Transmission error     (SGSN)" },
 	{ "error",          "Other error                     " },
+	{ "raid-mod.bss",   "RAID patched              (BSS )" },
+	{ "raid-mod.sgsn",  "RAID patched              (SGSN)" },
+	{ "mod-err",        "Patching error                  " },
 };
 
 static const struct rate_ctr_group_desc global_ctrg_desc = {
@@ -111,6 +121,11 @@ static const struct rate_ctr_group_desc peer_ctrg_desc = {
 	.num_ctr = ARRAY_SIZE(peer_ctr_description),
 	.ctr_desc = peer_ctr_description,
 };
+
+static struct gbprox_patch_state {
+	int local_mnc;
+	int local_mcc;
+} gbprox_patch_state = {0};
 
 struct gbprox_peer {
 	struct llist_head list;
@@ -260,6 +275,119 @@ static void strip_ns_hdr(struct msgb *msg)
 	msgb_pull(msg, strip_len);
 }
 
+/* patch RA identifier in place, update peer accordingly */
+static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_patch_state *state,
+			      int to_bss, const char *log_text)
+{
+	int old_local_mcc = state->local_mcc;
+	int old_local_mnc = state->local_mnc;
+	int old_mcc;
+	int old_mnc;
+	struct gprs_ra_id raid;
+
+	gsm48_parse_ra(&raid, raid_enc);
+
+	old_mcc = raid.mcc;
+	old_mnc = raid.mnc;
+
+	if (!to_bss) {
+		/* BSS -> SGSN */
+		/* save BSS side MCC/MNC */
+		if (!gbcfg.core_mcc || raid.mcc == gbcfg.core_mcc) {
+			state->local_mcc = 0;
+		} else {
+			state->local_mcc = raid.mcc;
+			raid.mcc = gbcfg.core_mcc;
+		}
+
+		if (!gbcfg.core_mnc || raid.mnc == gbcfg.core_mnc) {
+			state->local_mnc = 0;
+		} else {
+			state->local_mnc = raid.mnc;
+			raid.mnc = gbcfg.core_mnc;
+		}
+	} else {
+		/* SGSN -> BSS */
+		if (state->local_mcc)
+			raid.mcc = state->local_mcc;
+
+		if (state->local_mnc)
+			raid.mnc = state->local_mnc;
+	}
+
+	if (old_local_mcc != state->local_mcc ||
+	    old_local_mnc != state->local_mnc)
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "Patching RAID %sactivated, msg: %s, "
+		     "local: %d-%d, core: %d-%d, to %s\n",
+		     state->local_mcc || state->local_mnc ?
+		     "" : "de",
+		     log_text,
+		     state->local_mcc, state->local_mnc,
+		     gbcfg.core_mcc, gbcfg.core_mnc,
+		     to_bss ? "BSS" : "SGSN");
+
+	if (state->local_mcc || state->local_mnc) {
+		enum gbprox_global_ctr counter =
+			to_bss ?
+			GBPROX_GLOB_CTR_RAID_PATCHED_SGSN :
+			GBPROX_GLOB_CTR_RAID_PATCHED_BSS;
+
+		LOGP(DGPRS, LOGL_DEBUG,
+		       "Patching %s to %s: "
+		       "%d-%d-%d-%d -> %d-%d-%d-%d\n",
+		       log_text,
+		       to_bss ? "BSS" : "SGSN",
+		       old_mcc, old_mnc, raid.lac, raid.rac,
+		       raid.mcc, raid.mnc, raid.lac, raid.rac);
+
+		gsm48_construct_ra(raid_enc, &raid);
+		rate_ctr_inc(&get_global_ctrg()->ctr[counter]);
+	}
+}
+
+/* patch BSSGP message to use core_mcc/mnc on the SGSN side */
+static void gbprox_patch_bssgp_message(struct msgb *msg, int to_bss)
+{
+	struct bssgp_normal_hdr *bgph;
+	struct bssgp_ud_hdr *budh;
+	struct tlv_parsed tp;
+	uint8_t pdu_type;
+	struct gbprox_patch_state *state = &gbprox_patch_state;
+	uint8_t *data;
+	size_t data_len;
+
+	if (!gbcfg.core_mcc && !gbcfg.core_mnc)
+		return;
+
+	bgph = (struct bssgp_normal_hdr *) msgb_bssgph(msg);
+	budh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
+	pdu_type = bgph->pdu_type;
+
+	if (to_bss && !state->local_mcc && !state->local_mnc)
+		return;
+
+	if (pdu_type == BSSGP_PDUT_UL_UNITDATA ||
+	    pdu_type == BSSGP_PDUT_DL_UNITDATA) {
+		data = budh->data;
+		data_len = msgb_bssgp_len(msg) - sizeof(*budh);
+	} else {
+		data = bgph->data;
+		data_len = msgb_bssgp_len(msg) - sizeof(*bgph);
+	}
+
+	/* fix BSSGP */
+	bssgp_tlv_parse(&tp, data, data_len);
+
+	if (TLVP_PRESENT(&tp, BSSGP_IE_ROUTEING_AREA))
+		gbprox_patch_raid((uint8_t *)TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
+				  state, to_bss, "ROUTING_AREA");
+
+	if (TLVP_PRESENT(&tp, BSSGP_IE_CELL_ID))
+		gbprox_patch_raid((uint8_t *)TLVP_VAL(&tp, BSSGP_IE_CELL_ID),
+				  state, to_bss, "CELL_ID");
+}
+
 /* feed a message down the NS-VC associated with the specified peer */
 static int gbprox_relay2sgsn(struct msgb *old_msg, uint16_t ns_bvci)
 {
@@ -275,6 +403,8 @@ static int gbprox_relay2sgsn(struct msgb *old_msg, uint16_t ns_bvci)
 	msgb_nsei(msg) = gbcfg.nsip_sgsn_nsei;
 
 	strip_ns_hdr(msg);
+
+	gbprox_patch_bssgp_message(msg, 0);
 
 	rc = gprs_ns_sendmsg(bssgp_nsi, msg);
 	if (rc < 0)
@@ -678,6 +808,9 @@ int gbprox_rcvmsg(struct msgb *msg, uint16_t nsei, uint16_t ns_bvci, uint16_t ns
 	int rc;
 	struct gbprox_peer *peer;
 	int remote_end_is_sgsn = nsei == gbcfg.nsip_sgsn_nsei;
+
+	if (remote_end_is_sgsn)
+		gbprox_patch_bssgp_message(msg, 1);
 
 	/* Only BVCI=0 messages need special treatment */
 	if (ns_bvci == 0 || ns_bvci == 1) {

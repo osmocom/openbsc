@@ -9,6 +9,8 @@ noinst_PROGRAMS = gbproxy_test
 gbproxy_test_SOURCES = gbproxy_test.c
 gbproxy_test_LDADD = \
 			$(top_builddir)/src/gprs/gb_proxy.o \
+			$(top_builddir)/src/gprs/gprs_llc_parse.o \
+			$(top_builddir)/src/gprs/crc24.o \
 			$(top_builddir)/src/libcommon/libcommon.a \
 			$(top_builddir)/src/libbsc/libbsc.a \
 			$(top_builddir)/src/libtrau/libtrau.a \

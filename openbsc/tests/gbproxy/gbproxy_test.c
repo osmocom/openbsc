@@ -809,6 +809,8 @@ static void test_gbproxy_ra_patching()
 	bssgp_nsi = nsi;
 	gbcfg.nsi = bssgp_nsi;
 	gbcfg.nsip_sgsn_nsei = SGSN_NSEI;
+	gbcfg.core_mcc = 123;
+	gbcfg.core_mnc = 456;
 
 	sgsn_peer.sin_family = AF_INET;
 	sgsn_peer.sin_port = htons(32000);

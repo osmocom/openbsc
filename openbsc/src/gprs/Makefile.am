@@ -13,7 +13,8 @@ else
 bin_PROGRAMS = osmo-gbproxy
 endif
 
-osmo_gbproxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c
+osmo_gbproxy_SOURCES =  gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
+			gprs_llc_parse.c crc24.c
 osmo_gbproxy_LDADD = 	$(top_builddir)/src/libcommon/libcommon.a \
 			$(OSMO_LIBS)
 

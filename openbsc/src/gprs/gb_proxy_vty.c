@@ -51,6 +51,13 @@ static int config_write_gbproxy(struct vty *vty)
 	vty_out(vty, " sgsn nsei %u%s", g_cfg->nsip_sgsn_nsei,
 		VTY_NEWLINE);
 
+	if (g_cfg->core_mcc > 0)
+		vty_out(vty, " core-mobile-country-code %d%s",
+			g_cfg->core_mcc, VTY_NEWLINE);
+	if (g_cfg->core_mnc > 0)
+		vty_out(vty, " core-mobile-network-code %d%s",
+			g_cfg->core_mnc, VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -76,6 +83,47 @@ DEFUN(cfg_nsip_sgsn_nsei,
 	return CMD_SUCCESS;
 }
 
+#define GBPROXY_CORE_MNC_STR "Use this network code for the backbone\n"
+
+DEFUN(cfg_gbproxy_core_mnc,
+      cfg_gbproxy_core_mnc_cmd,
+      "core-mobile-network-code <1-999>",
+      GBPROXY_CORE_MNC_STR "NCC value\n")
+{
+	g_cfg->core_mnc = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_no_core_mnc,
+      cfg_gbproxy_no_core_mnc_cmd,
+      "no core-mobile-network-code",
+      NO_STR GBPROXY_CORE_MNC_STR)
+{
+	g_cfg->core_mnc = 0;
+	return CMD_SUCCESS;
+}
+
+#define GBPROXY_CORE_MCC_STR "Use this country code for the backbone\n"
+
+DEFUN(cfg_gbproxy_core_mcc,
+      cfg_gbproxy_core_mcc_cmd,
+      "core-mobile-country-code <1-999>",
+      GBPROXY_CORE_MCC_STR "MCC value\n")
+{
+	g_cfg->core_mcc = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_no_core_mcc,
+      cfg_gbproxy_no_core_mcc_cmd,
+      "no core-mobile-country-code",
+      NO_STR GBPROXY_CORE_MCC_STR)
+{
+	g_cfg->core_mcc = 0;
+	return CMD_SUCCESS;
+}
+
+
 int gbproxy_vty_init(void)
 {
 	install_element_ve(&show_gbproxy_cmd);
@@ -87,6 +135,10 @@ int gbproxy_vty_init(void)
 	install_node(&gbproxy_node, config_write_gbproxy);
 	vty_install_default(GBPROXY_NODE);
 	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_nsei_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mcc_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mnc_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
 
 	return 0;
 }
