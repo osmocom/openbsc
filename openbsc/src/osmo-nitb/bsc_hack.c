@@ -148,10 +148,10 @@ static void handle_options(int argc, char **argv)
 			daemonize = 1;
 			break;
 		case 'l':
-			database_name = strdup(optarg);
+			database_name = optarg;
 			break;
 		case 'c':
-			config_file = strdup(optarg);
+			config_file = optarg;
 			break;
 		case 'p':
 			create_pcap_file(optarg);
