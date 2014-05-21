@@ -374,7 +374,7 @@ static int rtcp_sdes_cname_mangle(struct msgb *msg, struct rtcp_hdr *rh,
 			tag = *cur++;
 			if (tag == 0) {
 				/* end of chunk, skip additional zero */
-				while (*cur++ == 0) { }
+				while ((*cur++ == 0) && (cur < rtcp_end)) { }
 				break;
 			}
 			len = *cur++;
