@@ -579,22 +579,10 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		rtp_end = &endp->net_end;
 		rtp_state = &endp->bts_state;
 		tap_idx = MGCP_TAP_NET_OUT;
-
-			LOGP(DMGCP, LOGL_DEBUG, "delivering RTP to Network"
-						"via addr=%s, port=%u\n",
-				inet_ntoa(endp->net_end.addr),
-				ntohs(endp->net_end.rtp_port));
-
 	} else {
 		rtp_end = &endp->bts_end;
 		rtp_state = &endp->net_state;
 		tap_idx = MGCP_TAP_BTS_OUT;
-
-			LOGP(DMGCP, LOGL_DEBUG, "delivering RTP to BTS"
-						"via addr=%s, port=%u\n",
-				inet_ntoa(endp->bts_end.addr),
-				ntohs(endp->bts_end.rtp_port));
-
 	}
 
 	if (!rtp_end->output_enabled)
