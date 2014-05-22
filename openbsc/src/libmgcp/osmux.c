@@ -119,6 +119,7 @@ int osmux_xfrm_to_osmux(int type, char *buf, int rc, struct mgcp_endpoint *endp)
 	default:
 		/* Should not ever happen */
 		LOGP(DMGCP, LOGL_ERROR, "Bad type %d. Fix your code.\n", type);
+		msgb_free(msg);
 		return 0;
 	}
 
@@ -126,6 +127,7 @@ int osmux_xfrm_to_osmux(int type, char *buf, int rc, struct mgcp_endpoint *endp)
 	in = osmux_handle_lookup(endp->cfg, addr);
 	if (!in) {
 		LOGP(DMGCP, LOGL_ERROR, "No osmux handle, aborting\n");
+		msgb_free(msg);
 		return 0;
 	}
 
