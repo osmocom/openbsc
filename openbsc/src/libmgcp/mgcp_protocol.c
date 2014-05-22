@@ -109,6 +109,19 @@ static void delete_transcoder(struct mgcp_endpoint *endp);
 
 static int mgcp_analyze_header(struct mgcp_parse_data *parse, char *data);
 
+static int mgcp_check_param(const struct mgcp_endpoint *endp, const char *line)
+{
+	const size_t line_len = strlen(line);
+	if (line[0] != '\0' && line_len < 2) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Wrong MGCP option format: '%s' on 0x%x\n",
+			line, ENDPOINT_NUMBER(endp));
+		return 0;
+	}
+
+	return 1;
+}
+
 static uint32_t generate_call_id(struct mgcp_config *cfg)
 {
 	int i;
@@ -750,6 +763,9 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 
 	/* parse CallID C: and LocalParameters L: */
 	for_each_line(line, p->save) {
+		if (!mgcp_check_param(endp, line))
+			continue;
+
 		switch (line[0]) {
 		case 'L':
 			local_options = (const char *) line + 3;
@@ -901,6 +917,9 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 	}
 
 	for_each_line(line, p->save) {
+		if (!mgcp_check_param(endp, line))
+			continue;
+
 		switch (line[0]) {
 		case 'C': {
 			if (verify_call_id(endp, line + 3) != 0)
@@ -1028,6 +1047,9 @@ static struct msgb *handle_delete_con(struct mgcp_parse_data *p)
 	}
 
 	for_each_line(line, p->save) {
+		if (!mgcp_check_param(endp, line))
+			continue;
+
 		switch (line[0]) {
 		case 'C':
 			if (verify_call_id(endp, line + 3) != 0)

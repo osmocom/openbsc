@@ -177,6 +177,7 @@ static void test_strline(void)
 #define CRCX	 "CRCX 2 1@mgw MGCP 1.0\r\n"	\
 		 "M: recvonly\r\n"		\
 		 "C: 2\r\n"			\
+		 "X\r\n"			\
 		 "L: p:20\r\n"		\
 		 "\r\n"				\
 		 "v=0\r\n"			\
