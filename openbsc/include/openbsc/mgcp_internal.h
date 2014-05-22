@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef OPENBSC_MGCP_DATA_H
-#define OPENBSC_MGCP_DATA_H
+#pragma once
 
 #include <osmocom/core/select.h>
 
@@ -213,4 +212,3 @@ enum {
 
 #define MGCP_DUMMY_LOAD 0x23
 
-#endif
