@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 #include <osmocom/core/talloc.h>
 
@@ -50,6 +51,7 @@ static const struct value_string patch_modes[] = {
 	{GBPROX_PATCH_LLC_ATTACH_REQ, "llc-attach-req"},
 	{GBPROX_PATCH_LLC_ATTACH, "llc-attach"},
 	{GBPROX_PATCH_LLC_GMM, "llc-gmm"},
+	{GBPROX_PATCH_LLC_GSM, "llc-gsm"},
 	{GBPROX_PATCH_LLC, "llc"},
 	{0, NULL}
 };
@@ -67,6 +69,18 @@ static int config_write_gbproxy(struct vty *vty)
 	if (g_cfg->core_mnc > 0)
 		vty_out(vty, " core-mobile-network-code %d%s",
 			g_cfg->core_mnc, VTY_NEWLINE);
+	if (g_cfg->core_apn != NULL) {
+	       if (g_cfg->core_apn_size > 0) {
+		       char str[500] = {0};
+		       vty_out(vty, " core-access-point-name %s%s",
+			       gbprox_apn_to_str(str, g_cfg->core_apn,
+						 g_cfg->core_apn_size),
+			       VTY_NEWLINE);
+	       } else {
+		       vty_out(vty, " core-access-point-name%s",
+			       VTY_NEWLINE);
+	       }
+	}
 
 	if (g_cfg->patch_mode != GBPROX_PATCH_DEFAULT)
 		vty_out(vty, " patch-mode %s%s",
@@ -138,15 +152,61 @@ DEFUN(cfg_gbproxy_no_core_mcc,
 	return CMD_SUCCESS;
 }
 
+#define GBPROXY_CORE_APN_STR "Use this access point name (APN) for the backbone\n"
+
+DEFUN(cfg_gbproxy_core_apn_remove,
+      cfg_gbproxy_core_apn_remove_cmd,
+      "core-access-point-name",
+      GBPROXY_CORE_APN_STR)
+{
+	talloc_free(g_cfg->core_apn);
+	/* TODO: replace NULL */
+	g_cfg->core_apn = talloc_zero_size(NULL, 2);
+	g_cfg->core_apn_size = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_core_apn,
+      cfg_gbproxy_core_apn_cmd,
+      "core-access-point-name APN",
+      GBPROXY_CORE_APN_STR "Replacement APN\n")
+{
+	int apn_len = strlen(argv[0]) + 1;
+
+	if (apn_len > 100) {
+		vty_out(vty, "APN string too long (max 99 chars)%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* TODO: replace NULL */
+	g_cfg->core_apn = talloc_realloc_size(NULL, g_cfg->core_apn, apn_len);
+	g_cfg->core_apn_size = gbprox_str_to_apn(g_cfg->core_apn, argv[0], apn_len);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_no_core_apn,
+      cfg_gbproxy_no_core_apn_cmd,
+      "no core-access-point-name",
+      NO_STR GBPROXY_CORE_APN_STR)
+{
+	talloc_free(g_cfg->core_apn);
+	g_cfg->core_apn = NULL;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_gbproxy_patch_mode,
       cfg_gbproxy_patch_mode_cmd,
-      "patch-mode (default|bssgp|llc-attach-req|llc-attach|llc)",
+      "patch-mode (default|bssgp|llc-attach-req|llc-attach|llc-gmm|llc-gsm|llc)",
       "Set patch mode\n"
-      "Use build-in default (at least llc-attach-req)\n"
+      "Use build-in default (best effort, try to patch everything)\n"
       "Only patch BSSGP headers\n"
       "Patch BSSGP headers and LLC Attach Request messages\n"
       "Patch BSSGP headers and LLC Attach Request/Accept messages\n"
-      "Patch BSSGP headers and all supported GMM LLC messages\n"
+      "Patch BSSGP headers and LLC GMM messages\n"
+      "Patch BSSGP headers, LLC GMM, and LLC GSM messages\n"
+      "Patch BSSGP headers and all supported LLC messages\n"
       )
 {
 	int val = get_string_value(patch_modes, argv[0]);
@@ -170,8 +230,11 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_nsei_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mnc_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_remove_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_apn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_mode_cmd);
 
 	return 0;

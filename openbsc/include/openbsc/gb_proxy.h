@@ -13,6 +13,7 @@ enum gbproxy_patch_mode {
 	GBPROX_PATCH_LLC_ATTACH_REQ,	/*!< BSSGP and Attach Request */
 	GBPROX_PATCH_LLC_ATTACH,	/*!< BSSGP and Attach Request/Response */
 	GBPROX_PATCH_LLC_GMM,		/*!< BSSGP and all GMM msgs */
+	GBPROX_PATCH_LLC_GSM,		/*!< BSSGP and all GMM and GSM msgs */
 	GBPROX_PATCH_LLC,		/*!< BSSGP and all supported LLC msgs */
 };
 
@@ -26,6 +27,8 @@ struct gbproxy_config {
 	/* force mcc/mnc */
 	int core_mnc;
 	int core_mcc;
+	uint8_t* core_apn;
+	size_t core_apn_size;
 	enum gbproxy_patch_mode patch_mode;
 };
 
@@ -54,4 +57,7 @@ int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi);
 int gbprox_dump_global(FILE *stream, int indent, int verbose);
 int gbprox_dump_peers(FILE *stream, int indent, int verbose);
 void gbprox_reset();
+
+char *gbprox_apn_to_str(char *str, const uint8_t *apn_enc, size_t max_chars);
+int gbprox_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars);
 #endif

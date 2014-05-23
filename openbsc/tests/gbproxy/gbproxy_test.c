@@ -811,6 +811,8 @@ static void test_gbproxy_ra_patching()
 	gbcfg.nsip_sgsn_nsei = SGSN_NSEI;
 	gbcfg.core_mcc = 123;
 	gbcfg.core_mnc = 456;
+	gbcfg.core_apn = talloc_zero_size(NULL, 100);
+	gbcfg.core_apn_size = gbprox_str_to_apn(gbcfg.core_apn, "foo.bar", 100);
 
 	sgsn_peer.sin_family = AF_INET;
 	sgsn_peer.sin_port = htons(32000);
@@ -862,7 +864,8 @@ static void test_gbproxy_ra_patching()
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
-	/* TODO: Re-configure to test APN IE removal */
+	gbcfg.core_apn[0] = 0;
+	gbcfg.core_apn_size = 0;
 
 	/* Remove APN */
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], 0x1002,

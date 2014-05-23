@@ -61,6 +61,7 @@ enum gbprox_global_ctr {
 	GBPROX_GLOB_CTR_OTHER_ERR,
 	GBPROX_GLOB_CTR_RAID_PATCHED_BSS,
 	GBPROX_GLOB_CTR_RAID_PATCHED_SGSN,
+	GBPROX_GLOB_CTR_APN_PATCHED,
 	GBPROX_GLOB_CTR_PATCH_CRYPT_ERR,
 	GBPROX_GLOB_CTR_PATCH_ERR,
 };
@@ -79,6 +80,7 @@ static const struct rate_ctr_desc global_ctr_description[] = {
 	{ "error",          "Other error                     " },
 	{ "raid-mod.bss",   "RAID patched              (BSS )" },
 	{ "raid-mod.sgsn",  "RAID patched              (SGSN)" },
+	{ "apn-mod.sgsn",   "APN patched                     " },
 	{ "mod-crypt-err",  "Patch error: encrypted          " },
 	{ "mod-err",        "Patch error: other              " },
 };
@@ -277,6 +279,89 @@ static void strip_ns_hdr(struct msgb *msg)
 	msgb_pull(msg, strip_len);
 }
 
+/* TODO: Move this to libosmocore/msgb.c */
+static int msgb_resize_area(struct msgb *msg, uint8_t *area,
+			    size_t old_size, size_t new_size)
+{
+	int rc;
+	uint8_t *rest = area + old_size;
+	int rest_len = msg->len - old_size - (area - msg->data);
+	int delta_size = (int)new_size - (int)old_size;
+
+	if (delta_size == 0)
+		return 0;
+
+	if (delta_size > 0) {
+		rc = msgb_trim(msg, msg->len + delta_size);
+		if (rc < 0)
+			return rc;
+	}
+
+	memmove(area + new_size, area + old_size, rest_len);
+
+	if (msg->l1h >= rest)
+		msg->l1h += delta_size;
+	if (msg->l2h >= rest)
+		msg->l2h += delta_size;
+	if (msg->l3h >= rest)
+		msg->l3h += delta_size;
+	if (msg->l4h >= rest)
+		msg->l4h += delta_size;
+
+	if (delta_size < 0)
+		msgb_trim(msg, msg->len + delta_size);
+
+	return 0;
+}
+
+/* TODO: Move these conversion functions to a utils file. */
+char * gbprox_apn_to_str(char *out_str, const uint8_t *apn_enc, size_t rest_chars)
+{
+	char *str = out_str;
+
+	while (rest_chars > 0 && apn_enc[0]) {
+		size_t label_size = apn_enc[0];
+		if (label_size + 1 > rest_chars)
+			return NULL;
+
+		memmove(str, apn_enc + 1, label_size);
+		str += label_size;
+		rest_chars -= label_size + 1;
+		apn_enc += label_size + 1;
+
+		if (rest_chars)
+			*(str++) = '.';
+	}
+	str[0] = '\0';
+
+	return out_str;
+}
+
+int gbprox_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars)
+{
+	uint8_t *last_len_field = apn_enc;
+	int len = 1;
+	apn_enc += 1;
+
+	while (str[0]) {
+		if (str[0] == '.') {
+			*last_len_field = (apn_enc - last_len_field) - 1;
+			last_len_field = apn_enc;
+		} else {
+			*apn_enc = str[0];
+		}
+		apn_enc += 1;
+		str += 1;
+		len += 1;
+		if (len > max_chars)
+			return -1;
+	}
+
+	*last_len_field = (apn_enc - last_len_field) - 1;
+
+	return len;
+}
+
 /* patch RA identifier in place, update peer accordingly */
 static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_patch_state *state,
 			      int to_bss, const char *log_text)
@@ -346,6 +431,56 @@ static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_patch_state *stat
 		gsm48_construct_ra(raid_enc, &raid);
 		rate_ctr_inc(&get_global_ctrg()->ctr[counter]);
 	}
+}
+
+static void gbprox_patch_apn_ie(struct msgb *msg,
+				uint8_t *apn_ie, size_t apn_ie_len,
+				size_t *new_apn_ie_len, const char *log_text)
+{
+	struct apn_ie_hdr {
+		uint8_t iei;
+		uint8_t apn_len;
+		uint8_t apn[0];
+	} *hdr = (void *)apn_ie;
+
+	size_t apn_len = hdr->apn_len;
+	uint8_t *apn = hdr->apn;
+
+	OSMO_ASSERT(apn_ie_len == apn_len + sizeof(struct apn_ie_hdr));
+	OSMO_ASSERT(apn_ie_len > 2 && apn_ie_len <= 102);
+
+	if (gbcfg.core_apn_size == 0) {
+		char str1[110];
+		/* Remove the IE */
+		LOGP(DGPRS, LOGL_DEBUG,
+		     "Patching %s to SGSN: Removing APN '%s'\n",
+		     log_text,
+		     gbprox_apn_to_str(str1, apn, apn_len));
+
+		*new_apn_ie_len = 0;
+		msgb_resize_area(msg, apn_ie, apn_ie_len, 0);
+	} else {
+		/* Resize the IE */
+		char str1[110];
+		char str2[110];
+
+		OSMO_ASSERT(gbcfg.core_apn_size <= 100);
+
+		LOGP(DGPRS, LOGL_DEBUG,
+		     "Patching %s to SGSN: "
+		     "Replacing APN '%s' -> '%s'\n",
+		     log_text,
+		     gbprox_apn_to_str(str1, apn, apn_len),
+		     gbprox_apn_to_str(str2, gbcfg.core_apn,
+				       gbcfg.core_apn_size));
+
+		*new_apn_ie_len = gbcfg.core_apn_size + 2;
+		msgb_resize_area(msg, apn, apn_len, gbcfg.core_apn_size);
+		memcpy(apn, gbcfg.core_apn, gbcfg.core_apn_size);
+		hdr->apn_len = gbcfg.core_apn_size;
+	}
+
+	rate_ctr_inc(&get_global_ctrg()->ctr[GBPROX_GLOB_CTR_APN_PATCHED]);
 }
 
 static int gbprox_patch_gmm_attach_req(struct msgb *msg,
@@ -464,6 +599,60 @@ static int gbprox_patch_gmm_ptmsi_reall_cmd(struct msgb *msg,
 	return 1;
 }
 
+static int gbprox_patch_gsm_act_pdp_req(struct msgb *msg,
+					uint8_t *data, size_t data_len,
+					struct gbprox_patch_state *state,
+					int to_bss, int *len_change)
+{
+	size_t new_len, old_len;
+
+	/* Check minimum length, always contains length field of
+	 * Requested QoS */
+	if (data_len < 9)
+		return 0;
+
+	/* Skip Requested NSAPI */
+	/* Skip Requested LLC SAPI */
+	data_len -= 2;
+	data += 2;
+
+	/* Skip Requested QoS (support 04.08 and 24.008) */
+	if (data[0] < 4 || data[0] > 14 ||
+	    data_len - (data[0] + 1) < 0)
+		/* invalid */
+		return 0;
+	data_len -= data[0] + 1;
+	data += data[0] + 1;
+
+	/* Skip Requested PDP address */
+	if (data_len < 1 ||
+	    data[0] < 2 || data[0] > 18 ||
+	    data_len - (data[0] + 1) < 0)
+		/* invalid */
+		return 0;
+	data_len -= data[0] + 1;
+	data += data[0] + 1;
+
+	/* Access point name */
+	if (data_len < 2 || data[0] != GSM48_IE_GSM_APN)
+		return 0;
+
+	if (data[1] < 1 || data[1] > 100 ||
+	    data_len - (data[1] + 2) < 0)
+		/* invalid */
+		return 0;
+
+	old_len = data[1] + 2;
+
+	gbprox_patch_apn_ie(msg, data, old_len, &new_len, "LLC/ACT_PDP_REQ");
+
+	*len_change += (int)new_len - (int)old_len;
+	data_len -= old_len;
+	data += new_len;
+
+	return 1;
+}
+
 static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 			     struct gbprox_patch_state *state,
 			     enum gbproxy_patch_mode patch_mode, int to_bss,
@@ -514,6 +703,13 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 		return gbprox_patch_gmm_ptmsi_reall_cmd(msg, data, data_len,
 							state, to_bss, len_change);
 
+	case GSM48_MT_GSM_ACT_PDP_REQ:
+		if (patch_mode < GBPROX_PATCH_LLC_GSM)
+			break;
+		if (gbcfg.core_apn == NULL)
+			break;
+		return gbprox_patch_gsm_act_pdp_req(msg, data, data_len,
+						    state, to_bss, len_change);
 	default:
 		break;
 	};
@@ -624,7 +820,7 @@ static void gbprox_patch_bssgp_message(struct msgb *msg, int to_bss)
 	size_t data_len;
 	enum gbproxy_patch_mode patch_mode;
 
-	if (!gbcfg.core_mcc && !gbcfg.core_mnc)
+	if (!gbcfg.core_mcc && !gbcfg.core_mnc && !gbcfg.core_apn)
 		return;
 
 	bgph = (struct bssgp_normal_hdr *) msgb_bssgph(msg);
