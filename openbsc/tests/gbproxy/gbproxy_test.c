@@ -917,11 +917,11 @@ static void test_gbproxy_ra_patching()
 
 	printf("--- Bad cases ---\n\n");
 
-	printf("TLLI is already detached, shouldn't patch (expected failure)\n");
+	printf("Invalid BVCI, shouldn't patch\n");
 	send_ns_unitdata(nsi, "ACT PDP CTX REQ", &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
-	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1eee);
+	printf("Invalid RAI, shouldn't patch\n");
 	send_bssgp_suspend_ack(nsi, &sgsn_peer, &rai_unknown);
 
 	gbprox_dump_global(stdout, 0);

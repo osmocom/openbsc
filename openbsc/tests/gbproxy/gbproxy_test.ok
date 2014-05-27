@@ -1520,6 +1520,7 @@ Current NS-VCIs:
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 1
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
@@ -1557,10 +1558,10 @@ MESSAGE to BSS at 0x01020304:1111, msg length 22
 result (BVC_SUSPEND_ACK) = 22
 
 Gbproxy global:
-    RAID patched              (BSS ): 2
-    RAID patched              (SGSN): 1
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 2
+    RAID patched              (SGSN): 1
 --- Send message from BSS 1 to SGSN, BVCI 0x1002 ---
 
 PROCESSING ATTACH REQUEST from 0x01020304:1111
@@ -1672,14 +1673,14 @@ MESSAGE to BSS at 0x01020304:1111, msg length 71
 result (DETACH ACC) = 71
 
 Gbproxy global:
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 9
     RAID patched              (SGSN): 3
     APN patched                     : 2
-Peers:
-  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Bad cases ---
 
-TLLI is already detached, shouldn't patch (expected failure)
+Invalid BVCI, shouldn't patch
 PROCESSING ACT PDP CTX REQ from 0x01020304:1111
 00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
 
@@ -1692,14 +1693,7 @@ MESSAGE to SGSN at 0x05060708:32000, msg length 75
 
 result (ACT PDP CTX REQ) = 75
 
-PROCESSING BVC_RESET_ACK from 0x05060708:32000
-00 00 00 00 23 04 82 1e ee 
-
-CALLBACK, event 0, msg length 5, bvci 0x0000
-00 00 00 00 23 04 82 1e ee 
-
-result (BVC_RESET_ACK) = -2
-
+Invalid RAI, shouldn't patch
 PROCESSING BVC_SUSPEND_ACK from 0x05060708:32000
 00 00 00 00 0c 1f 84 cc d1 75 8b 1b 86 00 f1 99 00 63 60 1d 81 01 
 
@@ -1708,17 +1702,17 @@ CALLBACK, event 0, msg length 18, bvci 0x0000
 
 NS UNITDATA MESSAGE to SGSN, BVCI 0x0000, msg length 24 (gprs_ns_sendmsg)
 MESSAGE to SGSN at 0x05060708:32000, msg length 28
-00 00 00 00 41 07 81 05 15 92 0c 1f 84 cc d1 75 8b 1b 86 11 22 33 00 63 60 1d 81 01 
+00 00 00 00 41 07 81 05 15 92 0c 1f 84 cc d1 75 8b 1b 86 00 f1 99 00 63 60 1d 81 01 
 
 result (BVC_SUSPEND_ACK) = 28
 
 Gbproxy global:
-    Invalid BVC Identifier          : 1
     Invalid Routing Area Identifier : 1
-    RAID patched              (BSS ): 10
-    RAID patched              (SGSN): 4
-    APN patched                     : 3
+    Patch error: no peer            : 1
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 10
+    RAID patched              (SGSN): 3
+    APN patched                     : 3
 ===== GbProxy test END
 
