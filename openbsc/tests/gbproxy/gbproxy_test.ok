@@ -1621,6 +1621,7 @@ Current NS-VCIs:
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 1
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
@@ -1664,10 +1665,10 @@ MESSAGE to BSS at 0x01020304:1111, msg length 22
 result (BVC_SUSPEND_ACK) = 22
 
 Gbproxy global:
-    RAID patched              (BSS ): 2
-    RAID patched              (SGSN): 1
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 2
+    RAID patched              (SGSN): 1
 --- Send message from BSS 1 to SGSN, BVCI 0x1002 ---
 
 PROCESSING UNITDATA from 0x01020304:1111
@@ -1755,11 +1756,11 @@ MESSAGE to SGSN at 0x05060708:32000, msg length 75
 result (UNITDATA) = 75
 
 Gbproxy global:
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 8
     RAID patched              (SGSN): 3
     APN patched                     : 2
-Peers:
-  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Bad cases ---
 
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
@@ -1777,20 +1778,21 @@ CALLBACK, event 0, msg length 18, bvci 0x0000
 0c 1f 84 cc d1 75 8b 1b 86 00 f1 99 00 63 60 1d 81 01 
 
 NS UNITDATA MESSAGE to SGSN, BVCI 0x0000, msg length 24
-41 07 81 05 15 92 0c 1f 84 cc d1 75 8b 1b 86 11 22 33 00 63 60 1d 81 01 
+41 07 81 05 15 92 0c 1f 84 cc d1 75 8b 1b 86 00 f1 99 00 63 60 1d 81 01 
 
 MESSAGE to SGSN at 0x05060708:32000, msg length 28
-00 00 00 00 41 07 81 05 15 92 0c 1f 84 cc d1 75 8b 1b 86 11 22 33 00 63 60 1d 81 01 
+00 00 00 00 41 07 81 05 15 92 0c 1f 84 cc d1 75 8b 1b 86 00 f1 99 00 63 60 1d 81 01 
 
 result (BVC_SUSPEND_ACK) = 28
 
 Gbproxy global:
     Invalid BVC Identifier          : 1
     Invalid Routing Area Identifier : 1
-    RAID patched              (BSS ): 8
-    RAID patched              (SGSN): 4
-    APN patched                     : 2
+    Patch error: no peer            : 2
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 8
+    RAID patched              (SGSN): 3
+    APN patched                     : 2
 ===== GbProxy test END
 
