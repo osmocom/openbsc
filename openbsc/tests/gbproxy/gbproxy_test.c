@@ -883,7 +883,28 @@ static void test_gbproxy_ra_patching()
 }
 
 
-static struct log_info info = {};
+static struct log_info_cat gprs_categories[] = {
+	[DGPRS] = {
+		.name = "DGPRS",
+		.description = "GPRS Packet Service",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
+	[DNS] = {
+		.name = "DNS",
+		.description = "GPRS Network Service (NS)",
+		.enabled = 1, .loglevel = LOGL_INFO,
+	},
+	[DBSSGP] = {
+		.name = "DBSSGP",
+		.description = "GPRS BSS Gateway Protocol (BSSGP)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
+};
+
+static struct log_info info = {
+	.cat = gprs_categories,
+	.num_cat = ARRAY_SIZE(gprs_categories),
+};
 
 int main(int argc, char **argv)
 {
@@ -893,7 +914,8 @@ int main(int argc, char **argv)
 	osmo_signal_register_handler(SS_L_NS, &test_signal, NULL);
 
 	log_set_print_filename(osmo_stderr_target, 0);
-	log_set_log_level(osmo_stderr_target, LOGL_INFO);
+	log_set_log_level(osmo_stderr_target, LOGL_DEBUG);
+	log_set_all_filter(osmo_stderr_target, 1);
 
 	rate_ctr_init(NULL);
 
