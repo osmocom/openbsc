@@ -46,9 +46,12 @@ static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, vo
 }
 
 /* mock object for testing, directly invoke the cb... maybe later through the timer */
-void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscriber, int type, gsm_cbfn *cbfn, void *data)
+int paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscriber, int type, gsm_cbfn *cbfn, void *data)
 {
 	cbfn(101, 200, (void*)0x1323L, &s_conn, data);
+
+	/* claim we have patched */
+	return 1;
 }
 
 
