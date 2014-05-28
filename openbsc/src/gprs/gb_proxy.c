@@ -61,6 +61,7 @@ enum gbprox_global_ctr {
 	GBPROX_GLOB_CTR_OTHER_ERR,
 	GBPROX_GLOB_CTR_RAID_PATCHED_BSS,
 	GBPROX_GLOB_CTR_RAID_PATCHED_SGSN,
+	GBPROX_GLOB_CTR_PATCH_CRYPT_ERR,
 	GBPROX_GLOB_CTR_PATCH_ERR,
 };
 
@@ -78,7 +79,8 @@ static const struct rate_ctr_desc global_ctr_description[] = {
 	{ "error",          "Other error                     " },
 	{ "raid-mod.bss",   "RAID patched              (BSS )" },
 	{ "raid-mod.sgsn",  "RAID patched              (SGSN)" },
-	{ "mod-err",        "Patching error                  " },
+	{ "mod-crypt-err",  "Patch error: encrypted          " },
+	{ "mod-err",        "Patch error: other              " },
 };
 
 static const struct rate_ctr_group_desc global_ctrg_desc = {
@@ -275,6 +277,22 @@ static void strip_ns_hdr(struct msgb *msg)
 	msgb_pull(msg, strip_len);
 }
 
+/* check whether patching is enabled at this level */
+static int patching_is_enabled(enum gbproxy_patch_mode need_at_least)
+{
+	enum gbproxy_patch_mode patch_mode = gbcfg.patch_mode;
+	if (patch_mode == GBPROX_PATCH_DEFAULT)
+		patch_mode = GBPROX_PATCH_LLC;
+
+	return need_at_least <= patch_mode;
+}
+
+/* check whether patching is enabled at this level */
+static int patching_is_required(enum gbproxy_patch_mode need_at_least)
+{
+	return need_at_least <= gbcfg.patch_mode;
+}
+
 /* patch RA identifier in place, update peer accordingly */
 static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_patch_state *state,
 			      int to_bss, const char *log_text)
@@ -346,6 +364,271 @@ static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_patch_state *stat
 	}
 }
 
+static int gbprox_patch_gmm_attach_req(struct msgb *msg,
+				       uint8_t *data, size_t data_len,
+				       struct gbprox_patch_state *state,
+				       int to_bss, int *len_change)
+{
+	/* Check minimum length, always includes the RAI */
+	if (data_len < 23)
+		return 0;
+
+	/* Skip MS network capability */
+	if (data[0] < 1 || data[0] > 2)
+		/* invalid */
+		return 0;
+	data_len -= data[0] + 1;
+	data += data[0] + 1;
+
+	/* Skip Attach type */
+	/* Skip Ciphering key sequence number */
+	/* Skip DRX parameter */
+	data_len -= 3;
+	data += 3;
+
+	/* Skip Mobile identity */
+	if (data[0] < 5 || data[0] > 8)
+		/* invalid */
+		return 0;
+	data_len -= data[0] + 1;
+	data += data[0] + 1;
+
+	gbprox_patch_raid(data, state, to_bss, "LLC/ATTACH_REQ");
+
+	return 1;
+}
+
+static int gbprox_patch_gmm_attach_ack(struct msgb *msg,
+				       uint8_t *data, size_t data_len,
+				       struct gbprox_patch_state *state,
+				       int to_bss, int *len_change)
+{
+	/* Check minimum length, always includes the RAI */
+	if (data_len < 9)
+		return 0;
+
+	/* Skip Attach result */
+	/* Skip Force to standby */
+	/* Skip Periodic RA update timer */
+	/* Skip Radio priority for SMS */
+	/* Skip Spare half octet */
+	data_len -= 3;
+	data += 3;
+
+	gbprox_patch_raid(data, state, to_bss, "LLC/ATTACH_ACK");
+
+	return 1;
+}
+
+static int gbprox_patch_gmm_ra_upd_req(struct msgb *msg,
+				       uint8_t *data, size_t data_len,
+				       struct gbprox_patch_state *state,
+				       int to_bss, int *len_change)
+{
+	/* Check minimum length, always includes the RAI */
+	if (data_len < 13)
+		return 0;
+
+	/* Skip Update type */
+	/* Skip GPRS ciphering key sequence number */
+	data_len -= 1;
+	data += 1;
+
+	gbprox_patch_raid(data, state, to_bss, "LLC/RA_UPD_REQ");
+
+	return 1;
+}
+
+static int gbprox_patch_gmm_ra_upd_ack(struct msgb *msg,
+				       uint8_t *data, size_t data_len,
+				       struct gbprox_patch_state *state,
+				       int to_bss, int *len_change)
+{
+	/* Check minimum length, always includes the RAI */
+	if (data_len < 8)
+		return 0;
+
+	/* Skip Force to standby */
+	/* Skip Update result */
+	/* Skip Periodic RA update timer */
+	data_len -= 2;
+	data += 2;
+
+	gbprox_patch_raid(data, state, to_bss, "LLC/RA_UPD_ACK");
+
+	return 1;
+}
+
+static int gbprox_patch_gmm_ptmsi_reall_cmd(struct msgb *msg,
+					    uint8_t *data, size_t data_len,
+					    struct gbprox_patch_state *state,
+					    int to_bss, int *len_change)
+{
+	/* Check minimum length, always includes the RAI */
+	if (data_len < 12)
+		return 0;
+
+	/* Skip Allocated P-TMSI */
+	if (data[0] != 5)
+		/* invalid */
+		return 0;
+	data_len -= 6;
+	data += 6;
+
+	gbprox_patch_raid(data, state, to_bss, "LLC/PTMSI_REALL_CMD");
+
+	return 1;
+}
+
+static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
+			     struct gbprox_patch_state *state, int to_bss,
+			     int *len_change)
+{
+	struct gsm48_hdr *g48h;
+
+	*len_change = 0;
+
+	if (data_len < 2)
+		return 0;
+
+	g48h = (struct gsm48_hdr *)data;
+
+	data += sizeof(struct gsm48_hdr);
+	data_len -= sizeof(struct gsm48_hdr);
+
+	if ((g48h->proto_discr & 0x0f) != GSM48_PDISC_MM_GPRS &&
+	    (g48h->proto_discr & 0x0f) != GSM48_PDISC_SM_GPRS)
+		return 0;
+
+	switch (g48h->msg_type) {
+	case GSM48_MT_GMM_ATTACH_REQ:
+		return gbprox_patch_gmm_attach_req(msg, data, data_len,
+						   state, to_bss, len_change);
+
+	case GSM48_MT_GMM_ATTACH_ACK:
+		if (!patching_is_enabled(GBPROX_PATCH_LLC_ATTACH))
+			break;
+		return gbprox_patch_gmm_attach_ack(msg, data, data_len,
+						   state, to_bss, len_change);
+
+	case GSM48_MT_GMM_RA_UPD_REQ:
+		if (!patching_is_enabled(GBPROX_PATCH_LLC_GMM))
+			break;
+		return gbprox_patch_gmm_ra_upd_req(msg, data, data_len,
+						   state, to_bss, len_change);
+
+	case GSM48_MT_GMM_RA_UPD_ACK:
+		if (!patching_is_enabled(GBPROX_PATCH_LLC_GMM))
+			break;
+		return gbprox_patch_gmm_ra_upd_ack(msg, data, data_len,
+						   state, to_bss, len_change);
+
+	case GSM48_MT_GMM_PTMSI_REALL_CMD:
+		if (!patching_is_enabled(GBPROX_PATCH_LLC_GMM))
+			break;
+		return gbprox_patch_gmm_ptmsi_reall_cmd(msg, data, data_len,
+							state, to_bss, len_change);
+
+	default:
+		break;
+	};
+
+	return 0;
+}
+
+static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
+			     struct gbprox_patch_state *state, int to_bss)
+{
+	struct gprs_llc_hdr_parsed ghp = {0};
+	int rc;
+	uint8_t *data;
+	size_t data_len;
+	int fcs;
+	int len_change = 0;
+	const char *err_info = NULL;
+	int err_ctr = -1;
+
+	/* parse LLC */
+	rc = gprs_llc_hdr_parse(&ghp, llc, llc_len);
+	gprs_llc_hdr_dump(&ghp);
+	if (rc != 0) {
+		LOGP(DLLC, LOGL_NOTICE, "Error during LLC header parsing\n");
+		return;
+	}
+
+	fcs = gprs_llc_fcs(llc, ghp.crc_length);
+	LOGP(DLLC, LOGL_DEBUG, "Got LLC message, CRC: %06x (computed %06x)\n",
+	     ghp.fcs, fcs);
+
+	if (!ghp.data)
+		return;
+
+	if (ghp.sapi != GPRS_SAPI_GMM)
+		return;
+
+	if (ghp.cmd != GPRS_LLC_UI)
+		return;
+
+	if (ghp.is_encrypted) {
+		if (patching_is_required(GBPROX_PATCH_LLC_ATTACH)) {
+			/* Patching LLC messages has been requested explicitly,
+			 * but the message (including the type) is encrypted,
+			 * so we possibly fail to patch the LLC part of the
+			 * message. */
+
+			err_info = "GMM message is encrypted";
+			err_ctr = GBPROX_GLOB_CTR_PATCH_CRYPT_ERR;
+			goto patch_error;
+		}
+
+		return;
+	}
+
+	/* fix DTAP GMM/GSM */
+	data = ghp.data;
+	data_len = ghp.data_len;
+
+	rc = gbprox_patch_dtap(msg, data, data_len, state, to_bss, &len_change);
+
+	if (rc > 0) {
+		llc_len += len_change;
+		ghp.crc_length += len_change;
+
+		/* Fix LLC IE len */
+		if (llc[-2] == BSSGP_IE_LLC_PDU && llc[-1] & 0x80) {
+			/* most probably a one byte length */
+			if (llc_len > 127) {
+				err_info = "Cannot increase size";
+				err_ctr = GBPROX_GLOB_CTR_PATCH_ERR;
+				goto patch_error;
+			}
+			llc[-1] = llc_len | 0x80;
+		} else {
+			llc[-2] = (llc_len >> 8) & 0x7f;
+			llc[-1] = llc_len & 0xff;
+		}
+
+		/* Fix FCS */
+		fcs = gprs_llc_fcs(llc, ghp.crc_length);
+		LOGP(DLLC, LOGL_DEBUG, "Updated LLC message, CRC: %06x -> %06x\n",
+		     ghp.fcs, fcs);
+
+		llc[llc_len - 3] = fcs & 0xff;
+		llc[llc_len - 2] = (fcs >> 8) & 0xff;
+		llc[llc_len - 1] = (fcs >> 16) & 0xff;
+	}
+
+	return;
+
+patch_error:
+	OSMO_ASSERT(err_ctr >= 0);
+	rate_ctr_inc(&get_global_ctrg()->ctr[err_ctr]);
+	LOGP(DGPRS, LOGL_ERROR,
+	     "Failed to patch BSSGP/GMM message as requested: %s.\n", err_info);
+
+	return;
+}
+
 /* patch BSSGP message to use core_mcc/mnc on the SGSN side */
 static void gbprox_patch_bssgp_message(struct msgb *msg, int to_bss)
 {
@@ -385,6 +668,15 @@ static void gbprox_patch_bssgp_message(struct msgb *msg, int to_bss)
 	if (TLVP_PRESENT(&tp, BSSGP_IE_CELL_ID))
 		gbprox_patch_raid((uint8_t *)TLVP_VAL(&tp, BSSGP_IE_CELL_ID),
 				  state, to_bss, "CELL_ID");
+
+	if (TLVP_PRESENT(&tp, BSSGP_IE_LLC_PDU) &&
+	    patching_is_enabled(GBPROX_PATCH_LLC_ATTACH_REQ)) {
+		uint8_t *llc = (uint8_t *)TLVP_VAL(&tp, BSSGP_IE_LLC_PDU);
+		size_t llc_len = TLVP_LEN(&tp, BSSGP_IE_LLC_PDU);
+		gbprox_patch_llc(msg, llc, llc_len, state, to_bss);
+		/* Note that the tp struct might contain invalid pointers here
+		 * if the LLC field has changed its size */
+	}
 }
 
 /* feed a message down the NS-VC associated with the specified peer */

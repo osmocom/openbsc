@@ -44,6 +44,16 @@ static struct cmd_node gbproxy_node = {
 	1,
 };
 
+static const struct value_string patch_modes[] = {
+	{GBPROX_PATCH_DEFAULT, "default"},
+	{GBPROX_PATCH_BSSGP, "bssgp"},
+	{GBPROX_PATCH_LLC_ATTACH_REQ, "llc-attach-req"},
+	{GBPROX_PATCH_LLC_ATTACH, "llc-attach"},
+	{GBPROX_PATCH_LLC_GMM, "llc-gmm"},
+	{GBPROX_PATCH_LLC, "llc"},
+	{0, NULL}
+};
+
 static int config_write_gbproxy(struct vty *vty)
 {
 	vty_out(vty, "gbproxy%s", VTY_NEWLINE);
@@ -57,6 +67,11 @@ static int config_write_gbproxy(struct vty *vty)
 	if (g_cfg->core_mnc > 0)
 		vty_out(vty, " core-mobile-network-code %d%s",
 			g_cfg->core_mnc, VTY_NEWLINE);
+
+	if (g_cfg->patch_mode != GBPROX_PATCH_DEFAULT)
+		vty_out(vty, " patch-mode %s%s",
+			get_value_string(patch_modes, g_cfg->patch_mode),
+			VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -123,6 +138,24 @@ DEFUN(cfg_gbproxy_no_core_mcc,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_gbproxy_patch_mode,
+      cfg_gbproxy_patch_mode_cmd,
+      "patch-mode (default|bssgp|llc-attach-req|llc-attach|llc)",
+      "Set patch mode\n"
+      "Use build-in default (at least llc-attach-req)\n"
+      "Only patch BSSGP headers\n"
+      "Patch BSSGP headers and LLC Attach Request messages\n"
+      "Patch BSSGP headers and LLC Attach Request/Accept messages\n"
+      "Patch BSSGP headers and all supported GMM LLC messages\n"
+      )
+{
+	int val = get_string_value(patch_modes, argv[0]);
+	OSMO_ASSERT(val >= 0);
+	g_cfg->patch_mode = val;
+	return CMD_SUCCESS;
+}
+
+
 
 int gbproxy_vty_init(void)
 {
@@ -139,6 +172,7 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mnc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_mode_cmd);
 
 	return 0;
 }

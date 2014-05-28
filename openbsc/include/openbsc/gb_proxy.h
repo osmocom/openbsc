@@ -7,6 +7,15 @@
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/vty/command.h>
 
+enum gbproxy_patch_mode {
+	GBPROX_PATCH_DEFAULT,
+	GBPROX_PATCH_BSSGP,		/*!< BSGGP messages only */
+	GBPROX_PATCH_LLC_ATTACH_REQ,	/*!< BSSGP and Attach Request */
+	GBPROX_PATCH_LLC_ATTACH,	/*!< BSSGP and Attach Request/Response */
+	GBPROX_PATCH_LLC_GMM,		/*!< BSSGP and all GMM msgs */
+	GBPROX_PATCH_LLC,		/*!< BSSGP and all supported LLC msgs */
+};
+
 struct gbproxy_config {
 	/* parsed from config file */
 	uint16_t nsip_sgsn_nsei;
@@ -17,6 +26,7 @@ struct gbproxy_config {
 	/* force mcc/mnc */
 	int core_mnc;
 	int core_mcc;
+	enum gbproxy_patch_mode patch_mode;
 };
 
 extern struct gbproxy_config gbcfg;
