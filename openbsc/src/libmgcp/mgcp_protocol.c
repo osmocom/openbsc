@@ -621,7 +621,7 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 			if (audio_payload == -1)
 				break;
 
-			if (sscanf(line, "a=rtpmap:%d %64s",
+			if (sscanf(line, "a=rtpmap:%d %63s",
 				   &payload, audio_name) == 2) {
 				if (payload != audio_payload)
 					break;
