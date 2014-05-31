@@ -552,6 +552,47 @@ static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *dat
 	return 0;
 }
 
+CTRL_CMD_DEFINE(net_notification, "notification");
+static int get_net_notification(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "There is nothing to read";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_net_notification(struct ctrl_cmd *cmd, void *data)
+{
+	struct ctrl_cmd *trap;
+	struct gsm_network *net;
+
+	net = cmd->node;
+
+	trap = ctrl_cmd_create(tall_bsc_ctx, CTRL_TYPE_TRAP);
+	if (!trap) {
+		LOGP(DCTRL, LOGL_ERROR, "Trap creation failed\n");
+		goto handled;
+	}
+
+	trap->id = "0";
+	trap->variable = "notification";
+	trap->reply = talloc_strdup(trap, cmd->value);
+
+	/*
+	 * This should only be sent to local systems. In the future
+	 * we might even ask for systems to register to receive
+	 * the notifications.
+	 */
+	ctrl_cmd_send_to_all(net->ctrl, trap);
+	talloc_free(trap);
+
+handled:
+	return CTRL_CMD_HANDLED;
+}
+
+static int verify_net_notification(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	return 0;
+}
+
 static int msc_signal_handler(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
@@ -602,6 +643,9 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_bts_connection_status);
+	if (rc)
+		goto end;
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_notification);
 	if (rc)
 		goto end;
 	rc = osmo_signal_register_handler(SS_L_INPUT, &bts_connection_status_trap_cb, net);
