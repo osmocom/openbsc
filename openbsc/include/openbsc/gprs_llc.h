@@ -165,6 +165,39 @@ struct gprs_llc_llme {
 
 extern struct llist_head gprs_llc_llmes;
 
+/* LLC low level types */
+
+enum gprs_llc_cmd {
+	GPRS_LLC_NULL,
+	GPRS_LLC_RR,
+	GPRS_LLC_ACK,
+	GPRS_LLC_RNR,
+	GPRS_LLC_SACK,
+	GPRS_LLC_DM,
+	GPRS_LLC_DISC,
+	GPRS_LLC_UA,
+	GPRS_LLC_SABM,
+	GPRS_LLC_FRMR,
+	GPRS_LLC_XID,
+	GPRS_LLC_UI,
+};
+
+struct gprs_llc_hdr_parsed {
+	uint8_t sapi;
+	uint8_t is_cmd:1,
+		 ack_req:1,
+		 is_encrypted:1;
+	uint32_t seq_rx;
+	uint32_t seq_tx;
+	uint32_t fcs;
+	uint32_t fcs_calc;
+	uint8_t *data;
+	uint16_t data_len;
+	uint16_t crc_length;
+	enum gprs_llc_cmd cmd;
+};
+
+
 /* BSSGP-UL-UNITDATA.ind */
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv);
 
@@ -198,5 +231,13 @@ static inline int gprs_llc_is_retransmit(uint16_t nu, uint16_t vur)
 	int delta = (vur - nu) & 0x1ff;
 	return 0 < delta && delta < 32;
 }
+
+/* LLC low level functions */
+
+/* parse a GPRS LLC header, also check for invalid frames */
+int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
+		       uint8_t *llc_hdr, int len);
+void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph);
+int gprs_llc_fcs(uint8_t *data, unsigned int len);
 
 #endif

@@ -36,52 +36,6 @@
 #include <openbsc/crc24.h>
 #include <openbsc/sgsn.h>
 
-enum gprs_llc_cmd {
-	GPRS_LLC_NULL,
-	GPRS_LLC_RR,
-	GPRS_LLC_ACK,
-	GPRS_LLC_RNR,
-	GPRS_LLC_SACK,
-	GPRS_LLC_DM,
-	GPRS_LLC_DISC,
-	GPRS_LLC_UA,
-	GPRS_LLC_SABM,
-	GPRS_LLC_FRMR,
-	GPRS_LLC_XID,
-	GPRS_LLC_UI,
-};
-
-static const struct value_string llc_cmd_strs[] = {
-	{ GPRS_LLC_NULL,	"NULL" },
-	{ GPRS_LLC_RR,		"RR" },
-	{ GPRS_LLC_ACK,		"ACK" },
-	{ GPRS_LLC_RNR,		"RNR" },
-	{ GPRS_LLC_SACK,	"SACK" },
-	{ GPRS_LLC_DM,		"DM" },
-	{ GPRS_LLC_DISC,	"DISC" },
-	{ GPRS_LLC_UA,		"UA" },
-	{ GPRS_LLC_SABM,	"SABM" },
-	{ GPRS_LLC_FRMR,	"FRMR" },
-	{ GPRS_LLC_XID,		"XID" },
-	{ GPRS_LLC_UI,		"UI" },
-	{ 0, NULL }
-};
-
-struct gprs_llc_hdr_parsed {
-	uint8_t sapi;
-	uint8_t is_cmd:1,
-		 ack_req:1,
-		 is_encrypted:1;
-	uint32_t seq_rx;
-	uint32_t seq_tx;
-	uint32_t fcs;
-	uint32_t fcs_calc;
-	uint8_t *data;
-	uint16_t data_len;
-	uint16_t crc_length;
-	enum gprs_llc_cmd cmd;
-};
-
 static struct gprs_llc_llme *llme_alloc(uint32_t tlli);
 
 /* If the TLLI is foreign, return its local version */
@@ -290,22 +244,6 @@ static void llme_free(struct gprs_llc_llme *llme)
 {
 	llist_del(&llme->list);
 	talloc_free(llme);
-}
-
-#define LLC_ALLOC_SIZE 16384
-#define UI_HDR_LEN	3
-#define N202		4
-#define CRC24_LENGTH	3
-
-static int gprs_llc_fcs(uint8_t *data, unsigned int len)
-{
-	uint32_t fcs_calc;
-
-	fcs_calc = crc24_calc(INIT_CRC24, data, len);
-	fcs_calc = ~fcs_calc;
-	fcs_calc &= 0xffffff;
-
-	return fcs_calc;
 }
 
 #if 0
@@ -550,20 +488,6 @@ static void rx_llc_xid(struct gprs_llc_lle *lle,
 	}
 }
 
-static void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
-{
-	DEBUGP(DLLC, "LLC SAPI=%u %c %c FCS=0x%06x",
-		gph->sapi, gph->is_cmd ? 'C' : 'R', gph->ack_req ? 'A' : ' ',
-		gph->fcs);
-
-	if (gph->cmd)
-		DEBUGPC(DLLC, "CMD=%s ", get_value_string(llc_cmd_strs, gph->cmd));
-
-	if (gph->data)
-		DEBUGPC(DLLC, "DATA ");
-
-	DEBUGPC(DLLC, "\n");
-}
 static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 			   struct gprs_llc_lle *lle)
 {
@@ -629,166 +553,6 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 	default:
 		LOGP(DLLC, LOGL_NOTICE, "Unhandled command: %d\n", gph->cmd);
 		break;
-	}
-
-	return 0;
-}
-
-/* parse a GPRS LLC header, also check for invalid frames */
-static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
-			      uint8_t *llc_hdr, int len)
-{
-	uint8_t *ctrl = llc_hdr+1;
-
-	if (len <= CRC24_LENGTH)
-		return -EIO;
-
-	ghp->crc_length = len - CRC24_LENGTH;
-
-	ghp->ack_req = 0;
-
-	/* Section 5.5: FCS */
-	ghp->fcs = *(llc_hdr + len - 3);
-	ghp->fcs |= *(llc_hdr + len - 2) << 8;
-	ghp->fcs |= *(llc_hdr + len - 1) << 16;
-
-	/* Section 6.2.1: invalid PD field */
-	if (llc_hdr[0] & 0x80)
-		return -EIO;
-
-	/* This only works for the MS->SGSN direction */
-	if (llc_hdr[0] & 0x40)
-		ghp->is_cmd = 0;
-	else
-		ghp->is_cmd = 1;
-
-	ghp->sapi = llc_hdr[0] & 0xf;
-
-	/* Section 6.2.3: check for reserved SAPI */
-	switch (ghp->sapi) {
-	case 0:
-	case 4:
-	case 6:
-	case 0xa:
-	case 0xc:
-	case 0xd:
-	case 0xf:
-		return -EINVAL;
-	}
-
-	if ((ctrl[0] & 0x80) == 0) {
-		/* I (Information transfer + Supervisory) format */
-		uint8_t k;
-
-		ghp->data = ctrl + 3;
-
-		if (ctrl[0] & 0x40)
-			ghp->ack_req = 1;
-
-		ghp->seq_tx  = (ctrl[0] & 0x1f) << 4;
-		ghp->seq_tx |= (ctrl[1] >> 4);
-
-		ghp->seq_rx  = (ctrl[1] & 0x7) << 6;
-		ghp->seq_rx |= (ctrl[2] >> 2);
-
-		switch (ctrl[2] & 0x03) {
-		case 0:
-			ghp->cmd = GPRS_LLC_RR;
-			break;
-		case 1:
-			ghp->cmd = GPRS_LLC_ACK;
-			break;
-		case 2:
-			ghp->cmd = GPRS_LLC_RNR;
-			break;
-		case 3:
-			ghp->cmd = GPRS_LLC_SACK;
-			k = ctrl[3] & 0x1f;
-			ghp->data += 1 + k;
-			break;
-		}
-		ghp->data_len = (llc_hdr + len - 3) - ghp->data;
-	} else if ((ctrl[0] & 0xc0) == 0x80) {
-		/* S (Supervisory) format */
-		ghp->data = NULL;
-		ghp->data_len = 0;
-
-		if (ctrl[0] & 0x20)
-			ghp->ack_req = 1;
-		ghp->seq_rx  = (ctrl[0] & 0x7) << 6;
-		ghp->seq_rx |= (ctrl[1] >> 2);
-
-		switch (ctrl[1] & 0x03) {
-		case 0:
-			ghp->cmd = GPRS_LLC_RR;
-			break;
-		case 1:
-			ghp->cmd = GPRS_LLC_ACK;
-			break;
-		case 2:
-			ghp->cmd = GPRS_LLC_RNR;
-			break;
-		case 3:
-			ghp->cmd = GPRS_LLC_SACK;
-			break;
-		}
-	} else if ((ctrl[0] & 0xe0) == 0xc0) {
-		/* UI (Unconfirmed Inforamtion) format */
-		ghp->cmd = GPRS_LLC_UI;
-		ghp->data = ctrl + 2;
-		ghp->data_len = (llc_hdr + len - 3) - ghp->data;
-
-		ghp->seq_tx  = (ctrl[0] & 0x7) << 6;
-		ghp->seq_tx |= (ctrl[1] >> 2);
-		if (ctrl[1] & 0x02) {
-			ghp->is_encrypted = 1;
-			/* FIXME: encryption */
-		}
-		if (ctrl[1] & 0x01) {
-			/* FCS over hdr + all inf fields */
-		} else {
-			/* FCS over hdr + N202 octets (4) */
-			if (ghp->crc_length > UI_HDR_LEN + N202)
-				ghp->crc_length = UI_HDR_LEN + N202;
-		}
-	} else {
-		/* U (Unnumbered) format: 1 1 1 P/F M4 M3 M2 M1 */
-		ghp->data = NULL;
-		ghp->data_len = 0;
-
-		switch (ctrl[0] & 0xf) {
-		case GPRS_LLC_U_NULL_CMD:
-			ghp->cmd = GPRS_LLC_NULL;
-			break;
-		case GPRS_LLC_U_DM_RESP:
-			ghp->cmd = GPRS_LLC_DM;
-			break;
-		case GPRS_LLC_U_DISC_CMD:
-			ghp->cmd = GPRS_LLC_DISC;
-			break;
-		case GPRS_LLC_U_UA_RESP:
-			ghp->cmd = GPRS_LLC_UA;
-			break;
-		case GPRS_LLC_U_SABM_CMD:
-			ghp->cmd = GPRS_LLC_SABM;
-			break;
-		case GPRS_LLC_U_FRMR_RESP:
-			ghp->cmd = GPRS_LLC_FRMR;
-			break;
-		case GPRS_LLC_U_XID:
-			ghp->cmd = GPRS_LLC_XID;
-			ghp->data = ctrl + 1;
-			ghp->data_len = (llc_hdr + len - 3) - ghp->data;
-			break;
-		default:
-			return -EIO;
-		}
-	}
-
-	/* FIXME: parse sack frame */
-	if (ghp->cmd == GPRS_LLC_SACK) {
-		LOGP(DLLC, LOGL_NOTICE, "Unsupported SACK frame\n");
-		return -EIO;
 	}
 
 	return 0;
