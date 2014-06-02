@@ -45,8 +45,8 @@
 
 enum gbprox_global_ctr {
 	GBPROX_GLOB_CTR_INV_BVCI,
-	GBPROX_GLOB_CTR_INV_LAC,
-	GBPROX_GLOB_CTR_INV_RAC,
+	GBPROX_GLOB_CTR_INV_LAI,
+	GBPROX_GLOB_CTR_INV_RAI,
 	GBPROX_GLOB_CTR_INV_NSEI,
 	GBPROX_GLOB_CTR_PROTO_ERR_BSS,
 	GBPROX_GLOB_CTR_PROTO_ERR_SGSN,
@@ -59,8 +59,8 @@ enum gbprox_global_ctr {
 
 static const struct rate_ctr_desc global_ctr_description[] = {
 	{ "inv-bvci",	    "Invalid BVC Identifier          " },
-	{ "inv-lac",	    "Invalid Location Area Code      " },
-	{ "inv-rac",	    "Invalid Routing Area Code       " },
+	{ "inv-lai",	    "Invalid Location Area Identifier" },
+	{ "inv-rai",	    "Invalid Routing Area Identifier " },
 	{ "inv-nsei",	    "No BVC established for NSEI     " },
 	{ "proto-err.bss",  "BSSGP protocol error      (BSS )" },
 	{ "proto-err.sgsn", "BSSGP protocol error      (SGSN)" },
@@ -154,8 +154,8 @@ static struct gbprox_peer *peer_by_nsei(uint16_t nsei)
 	return NULL;
 }
 
-/* look-up a peer by its Routeing Area Code (RAC) */
-static struct gbprox_peer *peer_by_rac(const uint8_t *ra)
+/* look-up a peer by its Routeing Area Identification (RAI) */
+static struct gbprox_peer *peer_by_rai(const uint8_t *ra)
 {
 	struct gbprox_peer *peer;
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
@@ -165,8 +165,8 @@ static struct gbprox_peer *peer_by_rac(const uint8_t *ra)
 	return NULL;
 }
 
-/* look-up a peer by its Location Area Code (LAC) */
-static struct gbprox_peer *peer_by_lac(const uint8_t *la)
+/* look-up a peer by its Location Area Identification (LAI) */
+static struct gbprox_peer *peer_by_lai(const uint8_t *la)
 {
 	struct gbprox_peer *peer;
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
@@ -389,11 +389,11 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 	switch (pdu_type) {
 	case BSSGP_PDUT_SUSPEND:
 	case BSSGP_PDUT_RESUME:
-		/* We implement RAC snooping during SUSPEND/RESUME, since
-		 * it establishes a relationsip between BVCI/peer and the
-		 * routeing area code.  The snooped information is then
-		 * used for routing the {SUSPEND,RESUME}_[N]ACK back to
-		 * the correct BSSGP */
+		/* We implement RAI snooping during SUSPEND/RESUME, since it
+		 * establishes a relationsip between BVCI/peer and the routeing
+		 * area identification.  The snooped information is then used
+		 * for routing the {SUSPEND,RESUME}_[N]ACK back to the correct
+		 * BSSGP */
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_ROUTEING_AREA))
 			goto err_mand_ie;
 		from_peer = peer_by_nsei(nsei);
@@ -403,7 +403,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 			sizeof(from_peer->ra));
 		gsm48_parse_ra(&raid, from_peer->ra);
 		LOGP(DGPRS, LOGL_INFO, "NSEI=%u BSSGP SUSPEND/RESUME "
-			"RAC snooping: RAC %u-%u-%u-%u behind BVCI=%u\n",
+			"RAI snooping: RAI %u-%u-%u-%u behind BVCI=%u\n",
 			nsei, raid.mcc, raid.mnc, raid.lac,
 			raid.rac , from_peer->bvci);
 		/* FIXME: This only supports one BSS per RA */
@@ -485,15 +485,15 @@ static int gbprox_rx_paging(struct msgb *msg, struct tlv_parsed *tp,
 			bvci);
 		errctr = GBPROX_GLOB_CTR_OTHER_ERR;
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_ROUTEING_AREA)) {
-		peer = peer_by_rac(TLVP_VAL(tp, BSSGP_IE_ROUTEING_AREA));
-		LOGPC(DGPRS, LOGL_INFO, "routing by RAC to peer BVCI=%u\n",
+		peer = peer_by_rai(TLVP_VAL(tp, BSSGP_IE_ROUTEING_AREA));
+		LOGPC(DGPRS, LOGL_INFO, "routing by RAI to peer BVCI=%u\n",
 			peer ? peer->bvci : -1);
-		errctr = GBPROX_GLOB_CTR_INV_RAC;
+		errctr = GBPROX_GLOB_CTR_INV_RAI;
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_LOCATION_AREA)) {
-		peer = peer_by_lac(TLVP_VAL(tp, BSSGP_IE_LOCATION_AREA));
-		LOGPC(DGPRS, LOGL_INFO, "routing by LAC to peer BVCI=%u\n",
+		peer = peer_by_lai(TLVP_VAL(tp, BSSGP_IE_LOCATION_AREA));
+		LOGPC(DGPRS, LOGL_INFO, "routing by LAI to peer BVCI=%u\n",
 			peer ? peer->bvci : -1);
-		errctr = GBPROX_GLOB_CTR_INV_LAC;
+		errctr = GBPROX_GLOB_CTR_INV_LAI;
 	} else
 		LOGPC(DGPRS, LOGL_INFO, "\n");
 
@@ -590,7 +590,7 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, uint32_t nsei,
 		break;
 	case BSSGP_PDUT_PAGING_PS:
 	case BSSGP_PDUT_PAGING_CS:
-		/* process the paging request (LAC/RAC lookup) */
+		/* process the paging request (LAI/RAI lookup) */
 		rc = gbprox_rx_paging(msg, &tp, nsei, ns_bvci);
 		break;
 	case BSSGP_PDUT_STATUS:
@@ -616,10 +616,10 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, uint32_t nsei,
 	case BSSGP_PDUT_SUSPEND_NACK:
 	case BSSGP_PDUT_RESUME_ACK:
 	case BSSGP_PDUT_RESUME_NACK:
-		/* RAC IE is mandatory */
+		/* RAI IE is mandatory */
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_ROUTEING_AREA))
 			goto err_mand_ie;
-		peer = peer_by_rac(TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA));
+		peer = peer_by_rai(TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA));
 		if (!peer)
 			goto err_no_peer;
 		rc = gbprox_relay2peer(msg, peer, ns_bvci);
@@ -666,9 +666,9 @@ err_mand_ie:
 		     ctr[GBPROX_GLOB_CTR_PROTO_ERR_SGSN]);
 	return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE, NULL, msg);
 err_no_peer:
-	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(SGSN) cannot find peer based on RAC\n",
+	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(SGSN) cannot find peer based on RAI\n",
 		nsei);
-	rate_ctr_inc(&get_global_ctrg()-> ctr[GBPROX_GLOB_CTR_INV_RAC]);
+	rate_ctr_inc(&get_global_ctrg()-> ctr[GBPROX_GLOB_CTR_INV_RAI]);
 	return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI, NULL, msg);
 }
 
@@ -853,7 +853,7 @@ int gbprox_dump_peers(FILE *stream, int indent, int verbose)
 		gsm48_parse_ra(&raid, peer->ra);
 
 		rc = fprintf(stream, "%*s  NSEI %u, BVCI %u, %sblocked, "
-			     "RAC %u-%u-%u-%u\n",
+			     "RAI %u-%u-%u-%u\n",
 			     indent, "",
 			     peer->nsei, peer->bvci,
 			     peer->blocked ? "" : "not ",
@@ -921,7 +921,7 @@ static void gbprox_vty_print_peer(struct vty *vty, struct gbprox_peer *peer)
 	gsm48_parse_ra(&raid, peer->ra);
 
 	vty_out(vty, "NSEI %5u, PTP-BVCI %5u, "
-		"RAC %u-%u-%u-%u",
+		"RAI %u-%u-%u-%u",
 		peer->nsei, peer->bvci,
 		raid.mcc, raid.mnc, raid.lac, raid.rac);
 	if (peer->blocked)

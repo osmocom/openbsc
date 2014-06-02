@@ -101,7 +101,7 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
@@ -179,8 +179,8 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 20 02 
 
@@ -242,8 +242,8 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Move BSS 2 to former BSS 1 port ---
 
 Setup NS-VC: remote 0x01020304:1111, NSVCI 0x2001(8193), NSEI 0x2000(8192)
@@ -291,8 +291,8 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Move BSS 1 to current BSS 2 port ---
 
 Setup NS-VC: remote 0x01020304:1111, NSVCI 0x2001(8193), NSEI 0x2000(8192)
@@ -340,8 +340,8 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Move BSS 2 to new port ---
 
 Setup NS-VC: remote 0x01020304:4444, NSVCI 0x2001(8193), NSEI 0x2000(8192)
@@ -389,8 +389,8 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Move BSS 2 to former BSS 1 port ---
 
 Setup NS-VC: remote 0x01020304:3333, NSVCI 0x2001(8193), NSEI 0x2000(8192)
@@ -441,8 +441,8 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Move BSS 1 to original BSS 1 port ---
 
 Setup NS-VC: remote 0x01020304:1111, NSVCI 0x1001(4097), NSEI 0x1000(4096)
@@ -491,8 +491,8 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Reset BSS 1 with a new BVCI ---
 
 Setup BSSGP: remote 0x01020304:1111, BVCI 0x1012(4114)
@@ -519,9 +519,9 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 4096, BVCI 4114, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 4096, BVCI 4114, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 12 
 
@@ -562,9 +562,9 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 4096, BVCI 4114, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 4096, BVCI 4114, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
@@ -605,9 +605,9 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 4096, BVCI 4114, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 4096, BVCI 4114, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
@@ -744,10 +744,10 @@ Current NS-VCIs:
          NS-VC Block count         : 1
 
 Peers:
-  NSEI 4096, BVCI 4114, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 8194, not blocked, RAC 112-332-16464-96
+  NSEI 4096, BVCI 4114, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 Gbproxy global:
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
@@ -932,7 +932,7 @@ MESSAGE to BSS at 0x01020304:1111, msg length 9
 result (BVC_RESET_ACK) = 9
 
 Peers:
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Setup BVCI 2 ---
 
 Setup BSSGP: remote 0x01020304:1111, BVCI 0x2002(8194)
@@ -966,8 +966,8 @@ MESSAGE to BSS at 0x01020304:1111, msg length 9
 result (BVC_RESET_ACK) = 9
 
 Peers:
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
 --- Send message from BSS 1 to SGSN and back, BVCI 1 ---
 
 PROCESSING UNITDATA from 0x01020304:1111
@@ -1107,8 +1107,8 @@ MESSAGE to BSS at 0x01020304:1111, msg length 9
 result (BVC_RESET_ACK) = 9
 
 Peers:
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 --- Setup BVCI 3 ---
 
@@ -1143,9 +1143,9 @@ MESSAGE to BSS at 0x01020304:1111, msg length 9
 result (BVC_RESET_ACK) = 9
 
 Peers:
-  NSEI 8192, BVCI 12290, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 --- Send message from BSS 1 to SGSN and back, BVCI 1 ---
 
@@ -1194,10 +1194,10 @@ MESSAGE to SGSN at 0x05060708:32000, msg length 4
 result (UNITDATA) = 4
 
 Peers:
-  NSEI 8192, BVCI 12290, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 PROCESSING UNITDATA from 0x05060708:32000
 00 00 20 02 
@@ -1211,11 +1211,11 @@ NS UNITDATA MESSAGE to BSS, BVCI 0x2002, msg length 0
 result (UNITDATA) = -22
 
 Peers:
-  NSEI 8192, BVCI 12290, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
     NS Transmission error           : 1
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 --- Send message from BSS 1 to SGSN and back, BVCI 3 ---
 
@@ -1330,11 +1330,11 @@ MESSAGE to BSS at 0x01020304:1111, msg length 9
 result (BVC_RESET_ACK) = 9
 
 Peers:
-  NSEI 8192, BVCI 12290, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
     NS Transmission error           : 1
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 --- Setup BVCI 4 ---
 
@@ -1369,12 +1369,12 @@ MESSAGE to BSS at 0x01020304:1111, msg length 9
 result (BVC_RESET_ACK) = 9
 
 Peers:
-  NSEI 8192, BVCI 16386, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 12290, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 16386, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
     NS Transmission error           : 1
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 --- Send message from BSS 1 to SGSN and back, BVCI 1 ---
 
@@ -1423,12 +1423,12 @@ MESSAGE to SGSN at 0x05060708:32000, msg length 4
 result (UNITDATA) = 4
 
 Peers:
-  NSEI 8192, BVCI 16386, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 12290, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 16386, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 2
     NS Transmission error           : 1
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 PROCESSING UNITDATA from 0x05060708:32000
 00 00 20 02 
@@ -1442,12 +1442,12 @@ NS UNITDATA MESSAGE to BSS, BVCI 0x2002, msg length 0
 result (UNITDATA) = -22
 
 Peers:
-  NSEI 8192, BVCI 16386, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 12290, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 16386, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 2
     NS Transmission error           : 2
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 --- Send message from BSS 1 to SGSN and back, BVCI 3 ---
 
@@ -1511,12 +1511,12 @@ result (UNITDATA) = 4
 
 Gbproxy global:
 Peers:
-  NSEI 8192, BVCI 16386, not blocked, RAC 112-332-16464-96
-  NSEI 8192, BVCI 12290, not blocked, RAC 112-332-16464-96
-  NSEI 4096, BVCI 8194, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 16386, not blocked, RAI 112-332-16464-96
+  NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+  NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 2
     NS Transmission error           : 2
-  NSEI 8192, BVCI 4098, not blocked, RAC 112-332-16464-96
+  NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
 ===== GbProxy test END
 
