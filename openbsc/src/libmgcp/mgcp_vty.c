@@ -1068,7 +1068,7 @@ DEFUN(reset_all_endp, reset_all_endp_cmd,
 	return CMD_SUCCESS;
 }
 
-#define OSMUX_STR "RTP multiplexing"
+#define OSMUX_STR "RTP multiplexing\n"
 DEFUN(cfg_mgcp_osmux,
       cfg_mgcp_osmux_cmd,
       "osmux (on|off)",
