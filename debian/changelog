@@ -1,3 +1,10 @@
+openbsc (0.13.0+git1-rhizo4) precise; urgency=low
+
+  * Rebased against master, should include the channel fix.
+  * Bumped version to -rhizo4.
+
+ -- ciaby <ciaby@autistici.org>  Thu, 05 Jun 2014 11:48:46 +0200
+
 openbsc (0.13.0+git1-rhizo3) precise; urgency=low
 
   * Rebased everything against current master
