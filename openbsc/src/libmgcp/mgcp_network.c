@@ -79,6 +79,7 @@ struct rtp_hdr {
 #define RTP_SEQ_MOD		(1 << 16)
 #define RTP_MAX_DROPOUT		3000
 #define RTP_MAX_MISORDER	100
+#define RTP_BUF_SIZE		4096
 
 enum {
 	MGCP_PROTO_RTP,
@@ -339,6 +340,31 @@ static int align_rtp_timestamp_offset(struct mgcp_endpoint *endp,
 	return timestamp_error;
 }
 
+int mgcp_rtp_processing_default(struct mgcp_endpoint *endp, struct mgcp_rtp_end *dst_end,
+				char *data, int *len, int buf_size)
+{
+	return 0;
+}
+
+int mgcp_setup_rtp_processing_default(struct mgcp_endpoint *endp,
+				      struct mgcp_rtp_end *dst_end,
+				      struct mgcp_rtp_end *src_end)
+{
+	return 0;
+}
+
+void mgcp_get_net_downlink_format_default(struct mgcp_endpoint *endp,
+					  int *payload_type,
+					  const char**audio_name,
+					  const char**fmtp_extra)
+{
+	/* Use the BTS side parameters when passing the SDP data (for
+	 * downlink) to the net peer.
+	 */
+	*payload_type = endp->bts_end.payload_type;
+	*audio_name = endp->bts_end.audio_name;
+	*fmtp_extra = endp->bts_end.fmtp_extra;
+}
 
 /**
  * The RFC 3550 Appendix A assumes there are multiple sources but
@@ -588,11 +614,28 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	if (!rtp_end->output_enabled)
 		rtp_end->dropped_packets += 1;
 	else if (is_rtp) {
-		mgcp_patch_and_count(endp, rtp_state, rtp_end, addr, buf, rc);
-		forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx], buf, rc);
-		return mgcp_udp_send(rtp_end->rtp.fd,
-				     &rtp_end->addr,
-				     rtp_end->rtp_port, buf, rc);
+		int cont;
+		int nbytes = 0;
+		int len = rc;
+		mgcp_patch_and_count(endp, rtp_state, rtp_end, addr, buf, len);
+		do {
+			cont = endp->cfg->rtp_processing_cb(endp, rtp_end,
+							buf, &len, RTP_BUF_SIZE);
+			if (cont < 0)
+				break;
+
+			forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx],
+				     buf, len);
+			rc = mgcp_udp_send(rtp_end->rtp.fd,
+					   &rtp_end->addr,
+					   rtp_end->rtp_port, buf, len);
+
+			if (rc <= 0)
+				return rc;
+			nbytes += rc;
+			len = cont;
+		} while (len > 0);
+		return nbytes;
 	} else if (!tcfg->omit_rtcp) {
 		return mgcp_udp_send(rtp_end->rtcp.fd,
 				     &rtp_end->addr,
@@ -627,7 +670,7 @@ static int receive_from(struct mgcp_endpoint *endp, int fd, struct sockaddr_in *
 
 static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 {
-	char buf[4096];
+	char buf[RTP_BUF_SIZE];
 	struct sockaddr_in addr;
 	struct mgcp_endpoint *endp;
 	int rc, proto;
@@ -723,7 +766,7 @@ static void discover_bts(struct mgcp_endpoint *endp, int proto, struct sockaddr_
 
 static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 {
-	char buf[4096];
+	char buf[RTP_BUF_SIZE];
 	struct sockaddr_in addr;
 	struct mgcp_endpoint *endp;
 	int rc, proto;
@@ -790,7 +833,7 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 static int rtp_data_transcoder(struct mgcp_rtp_end *end, struct mgcp_endpoint *_endp,
 			      int dest, struct osmo_fd *fd)
 {
-	char buf[4096];
+	char buf[RTP_BUF_SIZE];
 	struct sockaddr_in addr;
 	struct mgcp_config *cfg;
 	int rc, proto;

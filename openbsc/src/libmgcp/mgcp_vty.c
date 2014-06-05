@@ -366,6 +366,26 @@ ALIAS_DEPRECATED(cfg_mgcp_rtp_ip_dscp, cfg_mgcp_rtp_ip_tos_cmd,
       RTP_STR
       "Apply IP_TOS to the audio stream\n" "The DSCP value\n")
 
+#define FORCE_PTIME_STR "Force a fixed ptime for packets sent to the BTS"
+DEFUN(cfg_mgcp_rtp_force_ptime,
+      cfg_mgcp_rtp_force_ptime_cmd,
+      "rtp force-ptime (10|20|40)",
+      RTP_STR FORCE_PTIME_STR
+      "The required ptime (packet duration) in ms\n")
+{
+	g_cfg->bts_force_ptime = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_no_rtp_force_ptime,
+      cfg_mgcp_no_rtp_force_ptime_cmd,
+      "no rtp force-ptime",
+      NO_STR RTP_STR FORCE_PTIME_STR)
+{
+	g_cfg->bts_force_ptime = 0;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_mgcp_sdp_fmtp_extra,
       cfg_mgcp_sdp_fmtp_extra_cmd,
       "sdp audio fmtp-extra .NAME",
@@ -1123,6 +1143,8 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_transcoder_base_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_dscp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_tos_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_force_ptime_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_rtp_force_ptime_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_keepalive_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_keepalive_once_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_rtp_keepalive_cmd);

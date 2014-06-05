@@ -49,6 +49,11 @@ Testing MDCX4_SO
 Detected packet duration: 40
 Requested packetetization period: 20-20
 Connection mode: 2: SEND
+Testing MDCX4_RO
+Dummy packets: 1
+Packet duration not set
+Requested packetetization period: 20-20
+Connection mode: 1: RECV
 Testing DLCX
 Detected packet duration: 20
 Requested packetization period not set

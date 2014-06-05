@@ -80,16 +80,21 @@ struct mgcp_rtp_end {
 	/* per endpoint data */
 	int payload_type;
 	uint32_t rate;
+	int channels;
 	uint32_t frame_duration_num;
 	uint32_t frame_duration_den;
 	int  frames_per_packet;
 	uint32_t packet_duration_ms;
 	char *fmtp_extra;
+	char *audio_name;
+	char *subtype_name;
 	int output_enabled;
+	int force_output_ptime;
 
 	/* RTP patching */
 	int force_constant_ssrc; /* -1: always, 0: don't, 1: once */
 	int force_aligned_timing;
+	void *rtp_process_data;
 
 	/*
 	 * Each end has a socket...
@@ -118,6 +123,7 @@ struct mgcp_rtp_tap {
 
 struct mgcp_lco {
 	char *string;
+	char *codec;
 	int pkt_period_min; /* time in ms */
 	int pkt_period_max; /* time in ms */
 };
@@ -204,6 +210,19 @@ uint32_t mgcp_rtp_packet_duration(struct mgcp_endpoint *endp,
 void mgcp_state_calc_loss(struct mgcp_rtp_state *s, struct mgcp_rtp_end *,
 			uint32_t *expected, int *loss);
 uint32_t mgcp_state_calc_jitter(struct mgcp_rtp_state *);
+
+/* payload processing default functions */
+int mgcp_rtp_processing_default(struct mgcp_endpoint *endp, struct mgcp_rtp_end *dst_end,
+				char *data, int *len, int buf_size);
+
+int mgcp_setup_rtp_processing_default(struct mgcp_endpoint *endp,
+				      struct mgcp_rtp_end *dst_end,
+				      struct mgcp_rtp_end *src_end);
+
+void mgcp_get_net_downlink_format_default(struct mgcp_endpoint *endp,
+					  int *payload_type,
+					  const char**subtype_name,
+					  const char**fmtp_extra);
 
 enum {
 	MGCP_DEST_NET = 0,

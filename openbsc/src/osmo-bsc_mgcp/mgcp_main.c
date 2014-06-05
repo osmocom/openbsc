@@ -49,6 +49,10 @@
 
 #include "../../bscconfig.h"
 
+#ifdef BUILD_MGCP_TRANSCODING
+#include "openbsc/mgcp_transcode.h"
+#endif
+
 /* this is here for the vty... it will never be called */
 void subscr_put() { abort(); }
 
@@ -206,6 +210,12 @@ int main(int argc, char **argv)
 	cfg = mgcp_config_alloc();
 	if (!cfg)
 		return -1;
+
+#ifdef BUILD_MGCP_TRANSCODING
+	cfg->setup_rtp_processing_cb = &mgcp_transcoding_setup;
+	cfg->rtp_processing_cb = &mgcp_transcoding_process_rtp;
+	cfg->get_net_downlink_format_cb = &mgcp_transcoding_net_downlink_format;
+#endif
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);

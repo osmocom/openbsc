@@ -168,6 +168,12 @@ static void test_strline(void)
 		 "a=rtpmap:99 AMR/8000\r\n"	\
 		 "a=ptime:40\r\n"
 
+#define MDCX4_RO "MDCX 18983221 1@mgw MGCP 1.0\r\n" \
+		 "M: recvonly\r"		\
+		 "C: 2\r\n"          \
+		 "I: 1\r\n"                    \
+		 "L: p:20, a:AMR, nt:IN\r\n"
+
 #define SHORT2	"CRCX 1"
 #define SHORT2_RET "510 000000 FAIL\r\n"
 #define SHORT3	"CRCX 1 1@mgw"
@@ -258,6 +264,7 @@ static const struct mgcp_test tests[] = {
 	{ "MDCX4_PT2", MDCX4_PT2, MDCX4_RET("18983218"), 99, 126 },
 	{ "MDCX4_PT3", MDCX4_PT3, MDCX4_RET("18983219"), 99, 126 },
 	{ "MDCX4_SO", MDCX4_SO, MDCX4_RET("18983220"), 99, 126 },
+	{ "MDCX4_RO", MDCX4_RO, MDCX4_RET("18983221"), PTYPE_IGNORE, 126 },
 	{ "DLCX", DLCX, DLCX_RET, -1, -1 },
 	{ "CRCX_ZYN", CRCX_ZYN, CRCX_ZYN_RET, 97, 126 },
 	{ "EMPTY", EMPTY, EMPTY_RET },

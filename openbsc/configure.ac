@@ -57,6 +57,21 @@ fi
 AM_CONDITIONAL(BUILD_SMPP, test "x$osmo_ac_build_smpp" = "xyes")
 AC_SUBST(osmo_ac_build_smpp)
 
+# Enable/disable transcoding within osmo-bsc_mgcp?
+AC_ARG_ENABLE([mgcp-transcoding], [AS_HELP_STRING([--enable-mgcp-transcoding], [Build the MGCP gateway with internal transcoding enabled.])],
+    [osmo_ac_mgcp_transcoding="$enableval"],[osmo_ac_mgcp_transcoding="no"])
+AC_ARG_WITH([g729], [AS_HELP_STRING([--with-g729], [Enable G.729 encoding/decoding.])], [osmo_ac_with_g729="$withval"],[osmo_ac_with_g729="no"])
+
+if test "$osmo_ac_mgcp_transcoding" = "yes" ; then
+    AC_SEARCH_LIBS(gsm_create, gsm)
+    if test "$osmo_ac_with_g729" = "yes" ; then
+	PKG_CHECK_MODULES(LIBBCG729, libbcg729 >= 0.1, [AC_DEFINE([HAVE_BCG729], [1], [Use bgc729 decoder/encoder])])
+    fi
+    AC_DEFINE(BUILD_MGCP_TRANSCODING, 1, [Define if we want to build the MGCP gateway with transcoding support])
+fi
+AM_CONDITIONAL(BUILD_MGCP_TRANSCODING, test "x$osmo_ac_mgcp_transcoding" = "xyes")
+AC_SUBST(osmo_ac_mgcp_transcoding)
+
 
 found_libgtp=yes
 PKG_CHECK_MODULES(LIBGTP, libgtp, , found_libgtp=no)
