@@ -29,6 +29,7 @@
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
+#include <time.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
@@ -38,6 +39,8 @@
 
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
+
+#include <osmocom/gsm/gsm_utils.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
@@ -128,9 +131,18 @@ static const struct rate_ctr_group_desc peer_ctrg_desc = {
 	.ctr_desc = peer_ctr_description,
 };
 
+struct {
+	int check_imsi;
+	regex_t imsi_re_comp;
+} gbprox_global_patch_state = {0,};
+
 struct gbprox_patch_state {
 	int local_mnc;
 	int local_mcc;
+
+	/* List of TLLIs for which patching is enabled */
+	struct llist_head enabled_tllis;
+	int enabled_tllis_count;
 };
 
 struct gbprox_peer {
@@ -154,6 +166,8 @@ struct gbprox_peer {
 
 /* Linked list of all Gb peers (except SGSN) */
 static LLIST_HEAD(gbprox_bts_peers);
+
+static void gbprox_delete_tllis(struct gbprox_peer *peer);
 
 /* Find the gbprox_peer by its BVCI */
 static struct gbprox_peer *peer_by_bvci(uint16_t bvci)
@@ -237,6 +251,8 @@ static struct gbprox_peer *peer_alloc(uint16_t bvci)
 
 	llist_add(&peer->list, &gbprox_bts_peers);
 
+	INIT_LLIST_HEAD(&peer->patch_state.enabled_tllis);
+
 	return peer;
 }
 
@@ -244,6 +260,9 @@ static void peer_free(struct gbprox_peer *peer)
 {
 	rate_ctr_group_free(peer->ctrg);
 	llist_del(&peer->list);
+
+	gbprox_delete_tllis(peer);
+
 	talloc_free(peer);
 }
 
@@ -376,6 +395,292 @@ int gbprox_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars)
 	*last_len_field = (apn_enc - last_len_field) - 1;
 
 	return len;
+}
+
+struct gbprox_tlli_info {
+	struct llist_head list;
+
+	uint32_t tlli;
+	time_t timestamp;
+	uint8_t *mi_data;
+	size_t mi_data_len;
+};
+
+static struct gbprox_tlli_info *gbprox_find_tlli(struct gbprox_peer *peer,
+						 uint32_t tlli)
+{
+	struct gbprox_tlli_info *tlli_info;
+	struct gbprox_patch_state *state = &peer->patch_state;
+
+	llist_for_each_entry(tlli_info, &state->enabled_tllis, list)
+		if (tlli_info->tlli == tlli)
+			return tlli_info;
+
+	return NULL;
+}
+
+static struct gbprox_tlli_info *gbprox_find_tlli_by_mi(
+	struct gbprox_peer *peer,
+	const uint8_t *mi_data,
+	size_t mi_data_len)
+{
+	struct gbprox_tlli_info *tlli_info;
+	struct gbprox_patch_state *state = &peer->patch_state;
+
+	llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
+		if (tlli_info->mi_data_len != mi_data_len)
+			continue;
+		if (memcmp(tlli_info->mi_data, mi_data, mi_data_len) != 0)
+			continue;
+
+		return tlli_info;
+	}
+
+	return NULL;
+}
+
+static void gbprox_delete_tlli(struct gbprox_peer *peer,
+			       struct gbprox_tlli_info *tlli_info)
+{
+	struct gbprox_patch_state *state = &peer->patch_state;
+
+	llist_del(&tlli_info->list);
+	talloc_free(tlli_info);
+	state->enabled_tllis_count -= 1;
+}
+
+static void gbprox_delete_tllis(struct gbprox_peer *peer)
+{
+	struct gbprox_tlli_info *tlli_info, *nxt;
+	struct gbprox_patch_state *state = &peer->patch_state;
+
+	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
+		llist_del(&tlli_info->list);
+		talloc_free(tlli_info);
+	}
+
+	OSMO_ASSERT(llist_empty(&state->enabled_tllis));
+}
+
+int gbprox_set_patch_filter(const char *filter, const char **err_msg)
+{
+	static char err_buf[300];
+	int rc;
+
+	if (gbprox_global_patch_state.check_imsi) {
+		regfree(&gbprox_global_patch_state.imsi_re_comp);
+		gbprox_global_patch_state.check_imsi = 0;
+	}
+
+	if (!filter)
+		return 0;
+
+	rc = regcomp(&gbprox_global_patch_state.imsi_re_comp, filter,
+		     REG_EXTENDED | REG_NOSUB | REG_ICASE);
+
+	if (rc == 0) {
+		gbprox_global_patch_state.check_imsi = 1;
+		return 0;
+	}
+
+	if (err_msg) {
+		regerror(rc, &gbprox_global_patch_state.imsi_re_comp,
+			 err_buf, sizeof(err_buf));
+		*err_msg = err_buf;
+	}
+
+	return -1;
+}
+
+static int gbprox_check_imsi(struct gbprox_peer *peer,
+			     const uint8_t *imsi, size_t imsi_len)
+{
+	char mi_buf[200];
+	int rc;
+
+	if (!gbprox_global_patch_state.check_imsi)
+		return 1;
+
+	rc = gsm48_mi_to_string(mi_buf, sizeof(mi_buf), imsi, imsi_len);
+	if (rc < 1) {
+		LOGP(DGPRS, LOGL_NOTICE, "Invalid IMSI %s\n",
+		     osmo_hexdump(imsi, imsi_len));
+		return -1;
+	}
+
+	LOGP(DGPRS, LOGL_DEBUG, "Checking IMSI '%s' (%d)\n", mi_buf, rc);
+
+	rc = regexec(&gbprox_global_patch_state.imsi_re_comp, mi_buf, 0, NULL, 0);
+	if (rc == REG_NOMATCH) {
+		LOGP(DGPRS, LOGL_INFO,
+		       "IMSI '%s' doesn't match pattern '%s'\n",
+		       mi_buf, gbcfg.match_re);
+		return 0;
+	}
+
+	return 1;
+}
+
+static int gbprox_remove_stale_ttlis(struct gbprox_peer *peer, time_t now)
+{
+	struct gbprox_patch_state *state = &peer->patch_state;
+	struct gbprox_tlli_info *tlli_info = NULL, *nxt;
+	int count = 0;
+	int deleted_count = 0;
+
+	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
+		int is_stale = 0;
+		time_t age = now - tlli_info->timestamp;
+
+		count += 1;
+
+		if (gbcfg.tlli_max_len > 0)
+			is_stale = is_stale || count > gbcfg.tlli_max_len;
+
+		if (gbcfg.tlli_max_age > 0)
+			is_stale = is_stale || age > gbcfg.tlli_max_age;
+
+		if (!is_stale)
+			continue;
+
+		LOGP(DGPRS, LOGL_INFO,
+		     "Removing TLLI %08x from list (stale)\n",
+		     tlli_info->tlli);
+
+		gbprox_delete_tlli(peer, tlli_info);
+		tlli_info = NULL;
+
+		deleted_count += 1;
+	}
+
+	return deleted_count;
+}
+
+static void gbprox_register_tlli(struct gbprox_peer *peer, uint32_t tlli,
+				 const uint8_t *imsi, size_t imsi_len)
+{
+	struct gbprox_patch_state *state = &peer->patch_state;
+	struct gbprox_tlli_info *tlli_info;
+	int enable_patching;
+	time_t now = 0;
+
+	if (gprs_tlli_type(tlli) != TLLI_LOCAL)
+		return;
+
+	if (!imsi || (imsi[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_IMSI)
+		return;
+
+	if (!gbprox_global_patch_state.check_imsi)
+		return;
+
+	tlli_info = gbprox_find_tlli(peer, tlli);
+
+#ifdef ENABLE_SAME_IMSI_OPTIMIZATION
+	/* Optimization: Check whether the binary representation of the
+	 * IMSI didn't change. If it didn't change, assume patching is enabled.
+	 */
+	/* TODO: This duplicates code and only avoids the IMSI lookup and the
+	 * realloc/memcpy() below. It's probably not worth the effort. */
+	if (tlli_info &&
+	    imsi_len == tlli_info->mi_data_len &&
+	    memcmp(imsi, tlli_info->mi_data, imsi_len) == 0) {
+		/* Move the entry to the start of the list */
+		llist_del(&tlli_info->list);
+		llist_add(&tlli_info->list, &state->enabled_tllis);
+		tlli_info->timestamp = time(NULL);
+		return;
+	}
+#endif
+
+	/* Check, whether the IMSI matches */
+	enable_patching = gbprox_check_imsi(peer, imsi, imsi_len);
+
+	if (enable_patching < 0)
+		return;
+
+	if (!tlli_info) {
+		tlli_info = gbprox_find_tlli_by_mi(peer, imsi, imsi_len);
+
+		if (tlli_info) {
+			/* TLLI has changed somehow, adjust it */
+			LOGP(DGPRS, LOGL_INFO,
+			     "The TLLI has changed from %08x to %08x\n",
+			     tlli_info->tlli, tlli);
+			tlli_info->tlli = tlli;
+		}
+	}
+
+	if (!tlli_info) {
+		if (!enable_patching)
+			return;
+
+		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
+		tlli_info = talloc_zero(peer, struct gbprox_tlli_info);
+		tlli_info->tlli = tlli;
+	} else {
+		llist_del(&tlli_info->list);
+		OSMO_ASSERT(state->enabled_tllis_count > 0);
+		state->enabled_tllis_count -= 1;
+	}
+
+	OSMO_ASSERT(tlli_info != NULL);
+
+	if (enable_patching) {
+		now = time(NULL);
+
+		tlli_info->timestamp = now;
+		llist_add(&tlli_info->list, &state->enabled_tllis);
+		state->enabled_tllis_count += 1;
+
+		gbprox_remove_stale_ttlis(peer, now);
+
+		if (tlli_info != llist_entry(state->enabled_tllis.next,
+					     struct gbprox_tlli_info, list)) {
+			LOGP(DGPRS, LOGL_ERROR,
+			     "Unexpectedly removed new TLLI entry as stale, "
+			     "TLLI %08x\n", tlli);
+			tlli_info = NULL;
+		}
+	} else {
+		LOGP(DGPRS, LOGL_INFO,
+		     "Removing TLLI %08x from list (patching no longer enabled)\n",
+		     tlli);
+		talloc_free(tlli_info);
+		tlli_info = NULL;
+	}
+
+	if (tlli_info) {
+		tlli_info->mi_data_len = imsi_len;
+		tlli_info->mi_data =
+			talloc_realloc_size(tlli_info, tlli_info->mi_data, imsi_len);
+		OSMO_ASSERT(tlli_info->mi_data != NULL);
+		memcpy(tlli_info->mi_data, imsi, imsi_len);
+	}
+}
+
+static void gbprox_unregister_tlli(struct gbprox_peer *peer, uint32_t tlli)
+{
+	struct gbprox_tlli_info *tlli_info;
+
+	tlli_info = gbprox_find_tlli(peer, tlli);
+	if (tlli_info) {
+		LOGP(DGPRS, LOGL_INFO,
+		     "Removing TLLI %08x from list\n",
+		     tlli);
+		llist_del(&tlli_info->list);
+		talloc_free(tlli_info);
+	}
+}
+
+static int gbprox_check_tlli(struct gbprox_peer *peer, uint32_t tlli)
+{
+	LOGP(DGPRS, LOGL_INFO, "Checking TLLI %08x, class: %d\n",
+	     tlli, gprs_tlli_type(tlli));
+	if (gprs_tlli_type(tlli) != TLLI_LOCAL)
+		return 0;
+
+	return !gbprox_global_patch_state.check_imsi ||
+		gbprox_find_tlli(peer, tlli) != NULL;
 }
 
 /* patch RA identifier in place, update peer accordingly */
@@ -697,6 +1002,7 @@ struct gbprox_peer *peer_by_bssgp_tlv(struct tlv_parsed *tp)
 static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 			     struct gbprox_peer *peer,
 			     enum gbproxy_patch_mode patch_mode, int to_bss,
+			     uint32_t tlli,
 			     int *len_change)
 {
 	struct gsm48_hdr *g48h;
@@ -749,8 +1055,16 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 			break;
 		if (gbcfg.core_apn == NULL)
 			break;
+		if (!gbprox_check_tlli(peer, tlli))
+			break;
 		return gbprox_patch_gsm_act_pdp_req(msg, data, data_len,
 						    peer, to_bss, len_change);
+
+	case GSM48_MT_GMM_DETACH_ACK:
+	case GSM48_MT_GMM_DETACH_REQ:
+		gbprox_unregister_tlli(peer, tlli);
+		break;
+
 	default:
 		break;
 	};
@@ -760,7 +1074,9 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 
 static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 			     struct gbprox_peer *peer,
-			     enum gbproxy_patch_mode patch_mode, int to_bss)
+			     enum gbproxy_patch_mode patch_mode, int to_bss,
+			     struct bssgp_ud_hdr *budh,
+			     struct tlv_parsed *bssgp_tp)
 {
 	struct gprs_llc_hdr_parsed ghp = {0};
 	int rc;
@@ -770,6 +1086,7 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	int len_change = 0;
 	const char *err_info = NULL;
 	int err_ctr = -1;
+	uint32_t tlli = budh ? ntohl(budh->tlli) : 0;
 
 	/* parse LLC */
 	rc = gprs_llc_hdr_parse(&ghp, llc, llc_len);
@@ -788,6 +1105,12 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 
 	if (ghp.sapi != GPRS_SAPI_GMM)
 		return;
+
+	if (gbcfg.core_apn && to_bss && tlli &&
+	    TLVP_PRESENT(bssgp_tp, BSSGP_IE_IMSI))
+		gbprox_register_tlli(peer, tlli,
+				     TLVP_VAL(bssgp_tp, BSSGP_IE_IMSI),
+				     TLVP_LEN(bssgp_tp, BSSGP_IE_IMSI));
 
 	if (ghp.cmd != GPRS_LLC_UI)
 		return;
@@ -808,7 +1131,7 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	data_len = ghp.data_len;
 
 	rc = gbprox_patch_dtap(msg, data, data_len, peer, patch_mode, to_bss,
-			       &len_change);
+			       tlli, &len_change);
 
 	if (rc > 0) {
 		llc_len += len_change;
@@ -854,10 +1177,9 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 				       struct gbprox_peer *peer, int to_bss)
 {
 	struct bssgp_normal_hdr *bgph;
-	struct bssgp_ud_hdr *budh;
+	struct bssgp_ud_hdr *budh = NULL;
 	struct tlv_parsed tp;
 	uint8_t pdu_type;
-	struct gbprox_patch_state *state = NULL;
 	uint8_t *data;
 	size_t data_len;
 	enum gbproxy_patch_mode patch_mode;
@@ -866,7 +1188,6 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 		return;
 
 	bgph = (struct bssgp_normal_hdr *) msgb_bssgph(msg);
-	budh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
 	pdu_type = bgph->pdu_type;
 	patch_mode = gbcfg.patch_mode;
 	if (patch_mode == GBPROX_PATCH_DEFAULT)
@@ -874,6 +1195,8 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 
 	if (pdu_type == BSSGP_PDUT_UL_UNITDATA ||
 	    pdu_type == BSSGP_PDUT_DL_UNITDATA) {
+		budh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
+		bgph = NULL;
 		data = budh->data;
 		data_len = msgb_bssgp_len(msg) - sizeof(*budh);
 	} else {
@@ -903,11 +1226,6 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 		return;
 	}
 
-	state = &peer->patch_state;
-
-	if (to_bss && !state->local_mcc && !state->local_mnc)
-		return;
-
 	if (TLVP_PRESENT(&tp, BSSGP_IE_ROUTEING_AREA)) {
 		gbprox_patch_raid((uint8_t *)TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
 				  peer, to_bss, "ROUTING_AREA");
@@ -921,7 +1239,8 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 	    patch_mode >= GBPROX_PATCH_LLC_ATTACH_REQ) {
 		uint8_t *llc = (uint8_t *)TLVP_VAL(&tp, BSSGP_IE_LLC_PDU);
 		size_t llc_len = TLVP_LEN(&tp, BSSGP_IE_LLC_PDU);
-		gbprox_patch_llc(msg, llc, llc_len, peer, patch_mode, to_bss);
+		gbprox_patch_llc(msg, llc, llc_len, peer, patch_mode,
+				 to_bss, budh, &tp);
 		/* Note that the tp struct might contain invalid pointers here
 		 * if the LLC field has changed its size */
 	}

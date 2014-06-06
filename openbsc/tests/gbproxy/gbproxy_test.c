@@ -841,6 +841,7 @@ static void test_gbproxy_ra_patching()
 		{.mcc = 123, .mnc = 456, .lac = 16464, .rac = 96};
 	struct  gprs_ra_id rai_unknown =
 		{.mcc = 1, .mnc = 99, .lac = 99, .rac = 96};
+	const char *err_msg = NULL;
 
 	bssgp_nsi = nsi;
 	gbcfg.nsi = bssgp_nsi;
@@ -849,6 +850,13 @@ static void test_gbproxy_ra_patching()
 	gbcfg.core_mnc = 456;
 	gbcfg.core_apn = talloc_zero_size(NULL, 100);
 	gbcfg.core_apn_size = gbprox_str_to_apn(gbcfg.core_apn, "foo.bar", 100);
+
+	gbcfg.match_re = talloc_strdup(NULL, "^9898|^121314");
+	if (gbprox_set_patch_filter(gbcfg.match_re, &err_msg) != 0) {
+		fprintf(stderr, "Failed to compile RE '%s': %s\n",
+			gbcfg.match_re, err_msg);
+		exit(1);
+	}
 
 	sgsn_peer.sin_family = AF_INET;
 	sgsn_peer.sin_port = htons(32000);
