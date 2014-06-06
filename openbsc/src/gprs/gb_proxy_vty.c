@@ -72,15 +72,24 @@ static int config_write_gbproxy(struct vty *vty)
 	if (g_cfg->core_apn != NULL) {
 	       if (g_cfg->core_apn_size > 0) {
 		       char str[500] = {0};
-		       vty_out(vty, " core-access-point-name %s%s",
+		       vty_out(vty, " core-access-point-name %s",
 			       gbprox_apn_to_str(str, g_cfg->core_apn,
-						 g_cfg->core_apn_size),
-			       VTY_NEWLINE);
+						 g_cfg->core_apn_size));
 	       } else {
-		       vty_out(vty, " core-access-point-name%s",
-			       VTY_NEWLINE);
+		       vty_out(vty, " core-access-point-name none");
 	       }
+	       if (g_cfg->match_re)
+		       vty_out(vty, " match-imsi %s%s",
+			       g_cfg->match_re, VTY_NEWLINE);
+	       else
+		       vty_out(vty, "%s", VTY_NEWLINE);
 	}
+	if (g_cfg->tlli_max_age > 0)
+		vty_out(vty, " tlli-list max-age %d%s",
+			g_cfg->tlli_max_age, VTY_NEWLINE);
+	if (g_cfg->tlli_max_len > 0)
+		vty_out(vty, " tlli-list max-length %d%s",
+			g_cfg->tlli_max_len, VTY_NEWLINE);
 
 	if (g_cfg->patch_mode != GBPROX_PATCH_DEFAULT)
 		vty_out(vty, " patch-mode %s%s",
@@ -153,37 +162,82 @@ DEFUN(cfg_gbproxy_no_core_mcc,
 }
 
 #define GBPROXY_CORE_APN_STR "Use this access point name (APN) for the backbone\n"
+#define GBPROXY_CORE_APN_ARG_STR "Replace APN by this string\n" "Remove APN\n"
 
-DEFUN(cfg_gbproxy_core_apn_remove,
-      cfg_gbproxy_core_apn_remove_cmd,
-      "core-access-point-name",
-      GBPROXY_CORE_APN_STR)
+static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 {
-	talloc_free(g_cfg->core_apn);
-	/* TODO: replace NULL */
-	g_cfg->core_apn = talloc_zero_size(NULL, 2);
-	g_cfg->core_apn_size = 0;
-	return CMD_SUCCESS;
-}
+	const char *err_msg = NULL;
+	int apn_len;
 
-DEFUN(cfg_gbproxy_core_apn,
-      cfg_gbproxy_core_apn_cmd,
-      "core-access-point-name APN",
-      GBPROXY_CORE_APN_STR "Replacement APN\n")
-{
-	int apn_len = strlen(argv[0]) + 1;
+	if (!apn) {
+		talloc_free(g_cfg->core_apn);
+		g_cfg->core_apn = NULL;
+		g_cfg->core_apn_size = 0;
+		gbprox_set_patch_filter(NULL, NULL);
+		return CMD_SUCCESS;
+	}
 
-	if (apn_len > 100) {
+	apn_len = strlen(apn);
+
+	if (apn_len >= 100) {
 		vty_out(vty, "APN string too long (max 99 chars)%s",
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	/* TODO: replace NULL */
-	g_cfg->core_apn = talloc_realloc_size(NULL, g_cfg->core_apn, apn_len);
-	g_cfg->core_apn_size = gbprox_str_to_apn(g_cfg->core_apn, argv[0], apn_len);
+	if (!filter) {
+		gbprox_set_patch_filter(NULL, NULL);
+	} else if (gbprox_set_patch_filter(filter, &err_msg) != 0) {
+		vty_out(vty, "Match expression invalid: %s%s",
+			err_msg, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	talloc_free(g_cfg->match_re);
+	if (filter)
+		/* TODO: replace NULL */
+		g_cfg->match_re = talloc_strdup(NULL, filter);
+	else
+		g_cfg->match_re = NULL;
+
+	if (apn_len == 0) {
+		talloc_free(g_cfg->core_apn);
+		/* TODO: replace NULL */
+		g_cfg->core_apn = talloc_zero_size(NULL, 2);
+		g_cfg->core_apn_size = 0;
+	} else {
+		/* TODO: replace NULL */
+		g_cfg->core_apn =
+			talloc_realloc_size(NULL, g_cfg->core_apn, apn_len + 1);
+		g_cfg->core_apn_size =
+			gbprox_str_to_apn(g_cfg->core_apn, apn, apn_len + 1);
+	}
 
 	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_core_apn,
+      cfg_gbproxy_core_apn_cmd,
+      "core-access-point-name (APN|none)",
+      GBPROXY_CORE_APN_STR GBPROXY_CORE_APN_ARG_STR)
+{
+	if (strcmp(argv[0], "none") == 0)
+		return set_core_apn(vty, "", NULL);
+	else
+		return set_core_apn(vty, argv[0], NULL);
+}
+
+DEFUN(cfg_gbproxy_core_apn_match,
+      cfg_gbproxy_core_apn_match_cmd,
+      "core-access-point-name (APN|none) match-imsi .REGEXP",
+      GBPROXY_CORE_APN_STR GBPROXY_CORE_APN_ARG_STR
+      "Only modify if the IMSI matches\n"
+      "Regular expression for the match\n")
+{
+	if (strcmp(argv[0], "none") == 0)
+		return set_core_apn(vty, "", argv[1]);
+	else
+		return set_core_apn(vty, argv[0], argv[1]);
 }
 
 DEFUN(cfg_gbproxy_no_core_apn,
@@ -191,11 +245,56 @@ DEFUN(cfg_gbproxy_no_core_apn,
       "no core-access-point-name",
       NO_STR GBPROXY_CORE_APN_STR)
 {
-	talloc_free(g_cfg->core_apn);
-	g_cfg->core_apn = NULL;
-	g_cfg->core_apn_size = 0;
+	return set_core_apn(vty, NULL, NULL);
+}
+
+#define GBPROXY_TLLI_LIST_STR "Set TLLI list parameters\n"
+#define GBPROXY_MAX_AGE_STR "Limit maximum age\n"
+
+DEFUN(cfg_gbproxy_tlli_list_max_age,
+      cfg_gbproxy_tlli_list_max_age_cmd,
+      "tlli-list max-age <1-999999>",
+      GBPROXY_TLLI_LIST_STR GBPROXY_MAX_AGE_STR
+      "Maximum age in seconds\n")
+{
+	g_cfg->tlli_max_age = atoi(argv[0]);
+
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_gbproxy_tlli_list_no_max_age,
+      cfg_gbproxy_tlli_list_no_max_age_cmd,
+      "no tlli-list max-age",
+      NO_STR GBPROXY_TLLI_LIST_STR GBPROXY_MAX_AGE_STR)
+{
+	g_cfg->tlli_max_age = 0;
+
+	return CMD_SUCCESS;
+}
+
+#define GBPROXY_MAX_LEN_STR "Limit list length\n"
+
+DEFUN(cfg_gbproxy_tlli_list_max_len,
+      cfg_gbproxy_tlli_list_max_len_cmd,
+      "tlli-list max-length <1-99999>",
+      GBPROXY_TLLI_LIST_STR GBPROXY_MAX_LEN_STR
+      "Maximum number of TLLIs in the list\n")
+{
+	g_cfg->tlli_max_len = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_tlli_list_no_max_len,
+      cfg_gbproxy_tlli_list_no_max_len_cmd,
+      "no tlli-list max-length",
+      NO_STR GBPROXY_TLLI_LIST_STR GBPROXY_MAX_LEN_STR)
+{
+	g_cfg->tlli_max_len = 0;
+
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(cfg_gbproxy_patch_mode,
       cfg_gbproxy_patch_mode_cmd,
@@ -231,11 +330,15 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_nsei_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mnc_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_remove_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_match_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_age_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_apn_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_age_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_mode_cmd);
 
 	return 0;

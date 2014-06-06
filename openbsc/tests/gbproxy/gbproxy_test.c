@@ -842,6 +842,7 @@ static void test_gbproxy_ra_patching()
 		{.mcc = 123, .mnc = 456, .lac = 16464, .rac = 96};
 	struct  gprs_ra_id rai_unknown =
 		{.mcc = 1, .mnc = 99, .lac = 99, .rac = 96};
+	const char *err_msg = NULL;
 
 	bssgp_nsi = nsi;
 	gbcfg.nsi = bssgp_nsi;
@@ -853,6 +854,14 @@ static void test_gbproxy_ra_patching()
 
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
+
+	gbcfg.match_re = talloc_strdup(NULL, "^9898|^121314");
+	if (gbprox_set_patch_filter(gbcfg.match_re, &err_msg) != 0) {
+		fprintf(stderr, "Failed to compile RE '%s': %s\n",
+			gbcfg.match_re, err_msg);
+		exit(1);
+	}
+
 
 	printf("=== %s ===\n", __func__);
 	printf("--- Initialise SGSN ---\n\n");
@@ -917,7 +926,7 @@ static void test_gbproxy_ra_patching()
 
 	printf("--- Bad cases ---\n\n");
 
-	printf("Invalid BVCI, shouldn't patch\n");
+	printf("TLLI is already detached, shouldn't patch\n");
 	send_ns_unitdata(nsi, "ACT PDP CTX REQ", &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 

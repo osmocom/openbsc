@@ -29,7 +29,10 @@ struct gbproxy_config {
 	int core_mcc;
 	uint8_t* core_apn;
 	size_t core_apn_size;
+	char * match_re;
 	enum gbproxy_patch_mode patch_mode;
+	int tlli_max_age;
+	int tlli_max_len;
 };
 
 extern struct gbproxy_config gbcfg;
@@ -60,4 +63,6 @@ void gbprox_reset();
 
 char *gbprox_apn_to_str(char *str, const uint8_t *apn_enc, size_t max_chars);
 int gbprox_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars);
+
+int gbprox_set_patch_filter(const char *filter, const char **err_msg);
 #endif
