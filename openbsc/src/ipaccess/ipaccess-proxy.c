@@ -266,6 +266,7 @@ static int handle_udp_read(struct osmo_fd *bfd)
 		default:
 			DEBUGP(DLINP, "Unknown protocol 0x%02x, sending to "
 				"OML FD\n", hh->proto);
+			/* fall through */
 		case IPAC_PROTO_IPACCESS:
 		case IPAC_PROTO_OML:
 			other_conn = ipbc->bsc_oml_conn;
