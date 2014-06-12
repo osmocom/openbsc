@@ -287,8 +287,7 @@ static int write_response_sdp(struct mgcp_endpoint *endp,
 
 		if (fmtp_extra) {
 			nchars = snprintf(sdp_record + len, size - len,
-					  "a=rtpmap:%d %s\r\n",
-					  payload_type, audio_name);
+					  "%s\r\n", fmtp_extra);
 
 			if (nchars < 0 || nchars >= size - len)
 				goto buffer_too_small;
