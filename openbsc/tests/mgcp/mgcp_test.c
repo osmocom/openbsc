@@ -20,6 +20,7 @@
 #define _GNU_SOURCE
 
 #include <openbsc/mgcp.h>
+#include <openbsc/vty.h>
 #include <openbsc/mgcp_internal.h>
 
 #include <osmocom/core/application.h>
@@ -87,6 +88,17 @@ static void test_strline(void)
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
 		 "a=rtpmap:126 AMR/8000\r\n"	\
+		 "a=ptime:20\r\n"
+#define MDCX3_FMTP_RET "200 18983215 OK\r\n"		\
+		 "I: 3\n"			\
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 3 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 0 RTP/AVP 126\r\n"	\
+		 "a=rtpmap:126 AMR/8000\r\n"	\
+		 "a=fmtp:126 0/1/2\r\n"		\
 		 "a=ptime:20\r\n"
 #define MDCX4 "MDCX 18983216 1@mgw MGCP 1.0\r\n" \
 		 "M: sendrecv\r"		\
@@ -203,6 +215,18 @@ static void test_strline(void)
 		 "a=rtpmap:126 AMR/8000\r\n"	\
 		 "a=ptime:20\r\n"
 
+#define CRCX_FMTP_RET "200 2 OK\r\n"			\
+		 "I: 3\n"			\
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 3 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 0 RTP/AVP 126\r\n"	\
+		 "a=rtpmap:126 AMR/8000\r\n"	\
+		 "a=fmtp:126 0/1/2\r\n"		\
+		 "a=ptime:20\r\n"
+
 #define CRCX_ZYN "CRCX 2 1@mgw MGCP 1.0\r"	\
 		 "M: recvonly\r"		\
 		 "C: 2\r\r"			\
@@ -250,6 +274,8 @@ struct mgcp_test {
 	const char *exp_resp;
 	int exp_net_ptype;
 	int exp_bts_ptype;
+
+	const char *extra_fmtp;
 };
 
 static const struct mgcp_test tests[] = {
@@ -275,6 +301,9 @@ static const struct mgcp_test tests[] = {
 	{ "RQNT1", RQNT, RQNT1_RET },
 	{ "RQNT2", RQNT2, RQNT2_RET },
 	{ "DLCX", DLCX, DLCX_RET, -1, -1 },
+	{ "CRCX", CRCX, CRCX_FMTP_RET, 97, 126, .extra_fmtp = "a=fmtp:126 0/1/2" },
+	{ "MDCX3", MDCX3, MDCX3_FMTP_RET, PTYPE_NONE, 126 , .extra_fmtp = "a=fmtp:126 0/1/2" },
+	{ "DLCX", DLCX, DLCX_RET, -1, -1 , .extra_fmtp = "a=fmtp:126 0/1/2" },
 };
 
 static const struct mgcp_test retransmit[] = {
@@ -397,6 +426,8 @@ static void test_messages(void)
 
 		last_endpoint = -1;
 		dummy_packets = 0;
+
+		bsc_replace_string(cfg, &cfg->trunk.audio_fmtp_extra, t->extra_fmtp);
 
 		inp = create_msg(t->req);
 		msg = mgcp_handle_message(cfg, inp);
