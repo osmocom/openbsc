@@ -37,8 +37,10 @@ struct gbproxy_config {
 
 extern struct gbproxy_config gbcfg;
 extern struct cmd_element show_gbproxy_cmd;
+extern struct cmd_element show_gbproxy_tllis_cmd;
 extern struct cmd_element delete_gb_bvci_cmd;
 extern struct cmd_element delete_gb_nsei_cmd;
+extern struct cmd_element delete_gb_tlli_cmd;
 
 /* gb_proxy_vty .c */
 

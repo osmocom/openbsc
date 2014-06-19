@@ -1931,6 +1931,33 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
 	return CMD_SUCCESS;
 }
 
+gDEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
+       SHOW_STR "Display information about the Gb proxy\n" "Show TLLIs\n")
+{
+	struct gbprox_peer *peer;
+	char mi_buf[200];
+	time_t now = time(NULL);
+
+	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
+		struct gbprox_tlli_info *tlli_info;
+		struct gbprox_patch_state *state = &peer->patch_state;
+
+		gbprox_vty_print_peer(vty, peer);
+
+		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
+			time_t age = now - tlli_info->timestamp;
+			snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
+			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+					   tlli_info->mi_data,
+					   tlli_info->mi_data_len);
+			vty_out(vty, "  TLLI %08x, IMSI %s, AGE %d%s",
+				tlli_info->tlli, mi_buf, (int)age,
+				VTY_NEWLINE);
+		}
+	}
+	return CMD_SUCCESS;
+}
+
 gDEFUN(delete_gb_bvci, delete_gb_bvci_cmd,
 	"delete-gbproxy-peer <0-65534> bvci <2-65534>",
 	"Delete a GBProxy peer by NSEI and optionally BVCI\n"
@@ -2021,3 +2048,86 @@ gDEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 
 	return CMD_SUCCESS;
 }
+
+gDEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
+	"delete-gbproxy-tlli <0-65534> (tlli|imsi|stale) [IDENT]",
+	"Delete a GBProxy TLLI entry by NSEI and identification\n"
+	"NSEI number\n"
+	"Delete entries with a matching TLLI (hex)\n"
+	"Delete entries with a matching IMSI\n"
+	"Identification to match\n")
+{
+	const uint16_t nsei = atoi(argv[0]);
+	enum {MATCH_TLLI = 't', MATCH_IMSI = 'i', MATCH_STALE = 's'} match;
+	uint32_t tlli = 0;
+	const char *imsi = NULL;
+	struct gbprox_peer *peer = 0;
+	struct gbprox_tlli_info *tlli_info, *nxt;
+	struct gbprox_patch_state *state;
+	char mi_buf[200];
+	int found = 0;
+
+	match = argv[1][0];
+
+	switch (match) {
+	case MATCH_TLLI:
+		if (argc < 2 || !argv[2][0]) {
+			vty_out(vty, "%% Missing TLLI%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		tlli = strtoll(argv[2], NULL, 16);
+		break;
+	case MATCH_IMSI:
+		if (argc < 2 || !argv[2][0]) {
+			vty_out(vty, "%% Missing IMSI%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		imsi = argv[2];
+		break;
+	default:
+		break;
+	}
+
+	peer = peer_by_nsei(nsei);
+	if (!peer) {
+		vty_out(vty, "Didn't find peer with NSEI %d%s",
+			nsei, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	state = &peer->patch_state;
+
+	if (match == MATCH_STALE) {
+		found = gbprox_remove_stale_ttlis(peer, time(NULL));
+		if (found)
+			vty_out(vty, "Deleted %d stale TLLI%s%s",
+				found, found == 1 ? "" : "s", VTY_NEWLINE);
+		return CMD_SUCCESS;
+	}
+
+	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
+		if (match == MATCH_TLLI && tlli_info->tlli != tlli)
+			continue;
+
+		if (match == MATCH_IMSI) {
+			mi_buf[0] = '\0';
+			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+					   tlli_info->mi_data,
+					   tlli_info->mi_data_len);
+
+			if (strcmp(mi_buf, imsi) != 0)
+				continue;
+		}
+		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli, VTY_NEWLINE);
+		gbprox_delete_tlli(peer, tlli_info);
+		found += 1;
+	}
+
+	if (!found && argc >= 2) {
+		vty_out(vty, "Didn't find TLLI entry with %s %s%s",
+			argv[1], argv[2], VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
