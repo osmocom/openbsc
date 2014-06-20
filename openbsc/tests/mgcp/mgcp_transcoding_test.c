@@ -9,6 +9,7 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/rtp.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
@@ -153,6 +154,7 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 	int in_size;
 	int in_samples = 160;
 	int len, cont;
+	struct rtp_hdr *rtp;
 
 	printf("== Transcoding test ==\n");
 	printf("converting %s -> %s\n", srcfmt, dstfmt);
@@ -179,6 +181,9 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 	OSMO_ASSERT(sizeof(buf) >= in_size + 12);
 
 	memcpy(buf, src_pkts, src_pkt_size);
+
+	rtp = (struct rtp_hdr *)buf;
+	OSMO_ASSERT(rtp_header_len(rtp) == 12);
 
 	len = src_pkt_size;
 
@@ -223,6 +228,7 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 	uint16_t seq = 0;
 	const char *srcfmt = "pcma";
 	const char *dstfmt = no_transcode ? "pcma" : "l16";
+	struct rtp_hdr *rtp;
 
 	cfg = mgcp_config_alloc();
 
@@ -262,10 +268,13 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 	out_size = mgcp_transcoding_get_frame_size(state, -1, 1);
 	OSMO_ASSERT(sizeof(buf) >= out_size + 12);
 
-	buf[1] = src_end->payload_type;
-	*(uint16_t*)(buf+2) = htons(1);
-	*(uint32_t*)(buf+4) = htonl(0);
-	*(uint32_t*)(buf+8) = htonl(0xaabbccdd);
+	rtp = (struct rtp_hdr *)buf;
+	OSMO_ASSERT(rtp_header_len(rtp) == 12);
+
+	rtp->payload_type = src_end->payload_type;
+	rtp_set_sequence(rtp, 1);
+	rtp_set_timestamp(rtp, 0);
+	rtp_set_ssrc(rtp, 0xaabbccdd);
 
 	for (in_cnt = 0; in_cnt < 16; in_cnt++) {
 		int cont;
@@ -276,8 +285,8 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 		for (cc = 0; cc < in_samples; cc++)
 			buf[12+cc] = cc;
 
-		*(uint16_t*)(buf+2) = htonl(seq);
-		*(uint32_t*)(buf+4) = htonl(ts);
+		rtp_set_sequence(rtp, seq);
+		rtp_set_timestamp(rtp, ts);
 
 		seq += 1;
 		ts += in_samples;
