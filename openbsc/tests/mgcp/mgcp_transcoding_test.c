@@ -155,6 +155,8 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 	int in_samples = 160;
 	int len, cont;
 	struct rtp_hdr *rtp;
+	uint32_t exp_ts;
+	uint16_t exp_seq;
 
 	printf("== Transcoding test ==\n");
 	printf("converting %s -> %s\n", srcfmt, dstfmt);
@@ -184,6 +186,8 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 
 	rtp = (struct rtp_hdr *)buf;
 	OSMO_ASSERT(rtp_header_len(rtp) == 12);
+	exp_ts = rtp_timestamp(rtp);
+	exp_seq = rtp_sequence(rtp);
 
 	len = src_pkt_size;
 
@@ -191,6 +195,12 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 					    buf, &len, sizeof(buf));
 	if (cont < 0)
 		errx(1, "processing failed: %s", strerror(-cont));
+
+	if (exp_ts != rtp_timestamp(rtp) || exp_seq != rtp_sequence(rtp))
+		printf("RTP header fields differ: "
+		       "TS %u (expected %u), SEQ %u (expected %u)\n",
+		       rtp_timestamp(rtp), exp_ts,
+		       rtp_sequence(rtp), exp_seq);
 
 	if (len < 24) {
 		printf("encoded: %s\n", osmo_hexdump((unsigned char *)buf, len));
@@ -226,9 +236,12 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 	int in_size;
 	uint32_t ts = 0;
 	uint16_t seq = 0;
+	uint32_t exp_ts = 0;
+	uint16_t exp_seq = 0;
 	const char *srcfmt = "pcma";
 	const char *dstfmt = no_transcode ? "pcma" : "l16";
 	struct rtp_hdr *rtp;
+	int exp_undefined = 1;
 
 	cfg = mgcp_config_alloc();
 
@@ -305,6 +318,22 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 
 			if (cont < 0)
 				errx(1, "processing failed: %s", strerror(-cont));
+
+			if (exp_undefined) {
+				exp_ts = rtp_timestamp(rtp);
+				exp_seq = rtp_sequence(rtp);
+				exp_undefined = 0;
+			} else {
+				exp_ts += out_samples;
+				exp_seq += 1;
+			}
+
+			if (exp_ts != rtp_timestamp(rtp) ||
+			    exp_seq != rtp_sequence(rtp))
+				printf("RTP header fields differ: "
+				       "TS %u (expected %u), SEQ %u (expected %u)\n",
+				       rtp_timestamp(rtp), exp_ts,
+				       rtp_sequence(rtp), exp_seq);
 
 			len -= 12; /* ignore RTP header */
 
