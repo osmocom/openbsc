@@ -36,6 +36,7 @@
 #include <openbsc/rtp_proxy.h>
 #include <openbsc/mncc.h>
 #include <openbsc/trau_upqueue.h>
+#include <openbsc/rtp.h>
 
 /* attempt to determine byte order */
 #include <sys/param.h>
@@ -75,28 +76,6 @@ struct rtcp_hdr {
 #define RTCP_TYPE_SDES	202
 	
 #define RTCP_IE_CNAME	1
-
-/* according to RFC 3550 */
-struct rtp_hdr {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	uint8_t  csrc_count:4,
-		  extension:1,
-		  padding:1,
-		  version:2;
-	uint8_t  payload_type:7,
-		  marker:1;
-#elif __BYTE_ORDER == __BIG_ENDIAN
-	uint8_t  version:2,
-		  padding:1,
-		  extension:1,
-		  csrc_count:4;
-	uint8_t  marker:1,
-		  payload_type:7;
-#endif
-	uint16_t sequence;
-	uint32_t timestamp;
-	uint32_t ssrc;
-} __attribute__((packed));
 
 struct rtp_x_hdr {
 	uint16_t by_profile;
