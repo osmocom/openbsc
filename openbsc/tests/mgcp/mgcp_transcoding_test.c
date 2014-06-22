@@ -140,38 +140,71 @@ static int audio_name_to_type(const char *name)
 
 int mgcp_get_trans_frame_size(void *state_, int nsamples, int dst);
 
+static int given_configured_endpoint(int in_samples, int out_samples,
+				const char *srcfmt, const char *dstfmt,
+				void **out_ctx, struct mgcp_endpoint **out_endp)
+{
+	int rc;
+	struct mgcp_rtp_end *dst_end;
+	struct mgcp_rtp_end *src_end;
+	struct mgcp_config *cfg;
+	struct mgcp_trunk_config *tcfg;
+	struct mgcp_endpoint *endp;
+
+	cfg = mgcp_config_alloc();
+	tcfg = talloc_zero(cfg, struct mgcp_trunk_config);
+	endp = talloc_zero(tcfg, struct mgcp_endpoint);
+
+
+	tcfg->endpoints = endp;
+	tcfg->number_endpoints = 1;
+	tcfg->cfg = cfg;
+	endp->tcfg = tcfg;
+	endp->cfg = cfg;
+	mgcp_free_endp(endp);
+
+	dst_end = &endp->bts_end;
+	dst_end->payload_type = audio_name_to_type(dstfmt);
+
+	src_end = &endp->net_end;
+	src_end->payload_type = audio_name_to_type(srcfmt);
+
+	if (out_samples) {
+		dst_end->frame_duration_den = dst_end->rate;
+		dst_end->frame_duration_num = out_samples;
+		dst_end->frames_per_packet = 1;
+		dst_end->force_output_ptime = 1;
+	}
+
+	rc = mgcp_transcoding_setup(endp, dst_end, src_end);
+	if (rc < 0)
+		errx(1, "setup failed: %s", strerror(-rc));
+
+	*out_ctx = cfg;
+	*out_endp = endp;
+	return 0;
+}
+
+
 static int transcode_test(const char *srcfmt, const char *dstfmt,
 			  uint8_t *src_pkts, size_t src_pkt_size)
 {
 	char buf[4096] = {0x80, 0};
-	int rc;
+	void *ctx;
+
 	struct mgcp_rtp_end *dst_end;
-	struct mgcp_rtp_end *src_end;
-	struct mgcp_trunk_config tcfg = {{0}};
-	struct mgcp_endpoint endp = {0};
 	struct mgcp_process_rtp_state *state;
+	struct mgcp_endpoint *endp;
 	int in_size;
-	int in_samples = 160;
+	const int in_samples = 160;
 	int len, cont;
 
 	printf("== Transcoding test ==\n");
 	printf("converting %s -> %s\n", srcfmt, dstfmt);
 
-	tcfg.endpoints = &endp;
-	tcfg.number_endpoints = 1;
-	endp.tcfg = &tcfg;
-	mgcp_free_endp(&endp);
+	given_configured_endpoint(in_samples, 0, srcfmt, dstfmt, &ctx, &endp);
 
-	dst_end = &endp.bts_end;
-	src_end = &endp.net_end;
-
-	src_end->payload_type = audio_name_to_type(srcfmt);
-	dst_end->payload_type = audio_name_to_type(dstfmt);
-
-	rc = mgcp_transcoding_setup(&endp, dst_end, src_end);
-	if (rc < 0)
-		errx(1, "setup failed: %s", strerror(-rc));
-
+	dst_end = &endp->bts_end;
 	state = dst_end->rtp_process_data;
 	OSMO_ASSERT(state != NULL);
 
@@ -182,7 +215,7 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 
 	len = src_pkt_size;
 
-	cont = mgcp_transcoding_process_rtp(&endp, dst_end,
+	cont = mgcp_transcoding_process_rtp(endp, dst_end,
 					    buf, &len, sizeof(buf));
 	if (cont < 0)
 		errx(1, "processing failed: %s", strerror(-cont));
@@ -203,18 +236,17 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 			printf("\n");
 		} while (nchars - prefix >= cutlen);
 	}
+	talloc_free(ctx);
 	return 0;
 }
 
 static int test_repacking(int in_samples, int out_samples, int no_transcode)
 {
 	char buf[4096] = {0x80, 0};
-	int cc, rc;
-	struct mgcp_rtp_end *dst_end;
-	struct mgcp_rtp_end *src_end;
-	struct mgcp_config *cfg;
-	struct mgcp_trunk_config tcfg = {{0}};
-	struct mgcp_endpoint endp = {0};
+	int cc;
+	struct mgcp_endpoint *endp;
+	void *ctx;
+
 	struct mgcp_process_rtp_state *state;
 	int in_cnt;
 	int out_size;
@@ -224,36 +256,12 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 	const char *srcfmt = "pcma";
 	const char *dstfmt = no_transcode ? "pcma" : "l16";
 
-	cfg = mgcp_config_alloc();
-
-	tcfg.endpoints = &endp;
-	tcfg.number_endpoints = 1;
-	tcfg.cfg = cfg;
-	endp.tcfg = &tcfg;
-	endp.cfg = cfg;
-	mgcp_free_endp(&endp);
-
-	dst_end = &endp.bts_end;
-	src_end = &endp.net_end;
-
 	printf("== Transcoding test ==\n");
 	printf("converting %s -> %s\n", srcfmt, dstfmt);
 
-	src_end->payload_type = audio_name_to_type(srcfmt);
-	dst_end->payload_type = audio_name_to_type(dstfmt);
+	given_configured_endpoint(in_samples, out_samples, srcfmt, dstfmt, &ctx, &endp);
 
-	if (out_samples) {
-		dst_end->frame_duration_den = dst_end->rate;
-		dst_end->frame_duration_num = out_samples;
-		dst_end->frames_per_packet = 1;
-		dst_end->force_output_ptime = 1;
-	}
-
-	rc = mgcp_transcoding_setup(&endp, dst_end, src_end);
-	if (rc < 0)
-		errx(1, "setup failed: %s", strerror(-rc));
-
-	state = dst_end->rtp_process_data;
+	state = endp->bts_end.rtp_process_data;
 	OSMO_ASSERT(state != NULL);
 
 	in_size = mgcp_transcoding_get_frame_size(state, in_samples, 0);
@@ -262,7 +270,7 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 	out_size = mgcp_transcoding_get_frame_size(state, -1, 1);
 	OSMO_ASSERT(sizeof(buf) >= out_size + 12);
 
-	buf[1] = src_end->payload_type;
+	buf[1] = endp->net_end.payload_type;
 	*(uint16_t*)(buf+2) = htons(1);
 	*(uint32_t*)(buf+4) = htonl(0);
 	*(uint32_t*)(buf+8) = htonl(0xaabbccdd);
@@ -287,7 +295,7 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 		len = cc;
 
 		do {
-			cont = mgcp_transcoding_process_rtp(&endp, dst_end,
+			cont = mgcp_transcoding_process_rtp(endp, &endp->bts_end,
 							    buf, &len, sizeof(buf));
 			if (cont == -EAGAIN) {
 				fprintf(stderr, "Got EAGAIN\n");
@@ -305,6 +313,8 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 			len = cont;
 		} while (len > 0);
 	}
+
+	talloc_free(ctx);
 	return 0;
 }
 
