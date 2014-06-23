@@ -436,6 +436,9 @@ void trau_encode_fr(struct decoded_trau_frame *tf,
 	o = 0; /* offset output bits */
 	while (i < 260) {
 		tf->d_bits[k+o] = (data[j/8] >> (7-(j%8))) & 1;
+		/* to avoid out-of-bounds access in gsm_fr_map[++l] */
+		if (i == 259)
+			break;
 		if (--k < 0) {
 			o += gsm_fr_map[l];
 			k = gsm_fr_map[++l]-1;
