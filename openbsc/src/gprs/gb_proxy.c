@@ -941,31 +941,30 @@ static int gbprox_patch_gmm_attach_req(struct msgb *msg,
 				       struct gbprox_peer *peer,
 				       int to_bss, int *len_change)
 {
-	/* Check minimum length, always includes the RAI */
-	if (data_len < 23)
-		return 0;
+	uint8_t *value;
+	size_t value_len;
 
 	/* Skip MS network capability */
-	if (data[0] < 1 || data[0] > 2)
+	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
+	    value_len < 1 || value_len > 2)
 		/* invalid */
-		return 0;
-	data_len -= data[0] + 1;
-	data += data[0] + 1;
+		return 0;;
 
 	/* Skip Attach type */
 	/* Skip Ciphering key sequence number */
 	/* Skip DRX parameter */
-	data_len -= 3;
-	data += 3;
+	v_fixed_shift(&data, &data_len, 3, NULL);
 
 	/* Skip Mobile identity */
-	if (data[0] < 5 || data[0] > 8)
+	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
+	    value_len < 5 || value_len > 8)
 		/* invalid */
-		return 0;
-	data_len -= data[0] + 1;
-	data += data[0] + 1;
+		return 0;;
 
-	gbprox_patch_raid(data, peer, to_bss, "LLC/ATTACH_REQ");
+	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+		return 0;
+
+	gbprox_patch_raid(value, peer, to_bss, "LLC/ATTACH_REQ");
 
 	return 1;
 }
@@ -975,19 +974,19 @@ static int gbprox_patch_gmm_attach_ack(struct msgb *msg,
 				       struct gbprox_peer *peer,
 				       int to_bss, int *len_change)
 {
-	/* Check minimum length, always includes the RAI */
-	if (data_len < 9)
-		return 0;
+	uint8_t *value;
 
 	/* Skip Attach result */
 	/* Skip Force to standby */
 	/* Skip Periodic RA update timer */
 	/* Skip Radio priority for SMS */
 	/* Skip Spare half octet */
-	data_len -= 3;
-	data += 3;
+	v_fixed_shift(&data, &data_len, 3, NULL);
 
-	gbprox_patch_raid(data, peer, to_bss, "LLC/ATTACH_ACK");
+	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+		return 0;
+
+	gbprox_patch_raid(value, peer, to_bss, "LLC/ATTACH_ACK");
 
 	return 1;
 }
@@ -997,16 +996,16 @@ static int gbprox_patch_gmm_ra_upd_req(struct msgb *msg,
 				       struct gbprox_peer *peer,
 				       int to_bss, int *len_change)
 {
-	/* Check minimum length, always includes the RAI */
-	if (data_len < 13)
-		return 0;
+	uint8_t *value;
 
 	/* Skip Update type */
 	/* Skip GPRS ciphering key sequence number */
-	data_len -= 1;
-	data += 1;
+	v_fixed_shift(&data, &data_len, 1, NULL);
 
-	gbprox_patch_raid(data, peer, to_bss, "LLC/RA_UPD_REQ");
+	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+		return 0;
+
+	gbprox_patch_raid(value, peer, to_bss, "LLC/RA_UPD_REQ");
 
 	return 1;
 }
@@ -1016,17 +1015,18 @@ static int gbprox_patch_gmm_ra_upd_ack(struct msgb *msg,
 				       struct gbprox_peer *peer,
 				       int to_bss, int *len_change)
 {
-	/* Check minimum length, always includes the RAI */
-	if (data_len < 8)
-		return 0;
+	uint8_t *value;
 
 	/* Skip Force to standby */
 	/* Skip Update result */
 	/* Skip Periodic RA update timer */
-	data_len -= 2;
-	data += 2;
+	v_fixed_shift(&data, &data_len, 2, NULL);
 
-	gbprox_patch_raid(data, peer, to_bss, "LLC/RA_UPD_ACK");
+	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+		return 0;
+
+	gbprox_patch_raid(value, peer, to_bss, "LLC/RA_UPD_ACK");
+
 
 	return 1;
 }
@@ -1036,18 +1036,18 @@ static int gbprox_patch_gmm_ptmsi_reall_cmd(struct msgb *msg,
 					    struct gbprox_peer *peer,
 					    int to_bss, int *len_change)
 {
-	/* Check minimum length, always includes the RAI */
-	if (data_len < 12)
-		return 0;
+	uint8_t *value;
+	size_t value_len;
 
 	/* Skip Allocated P-TMSI */
-	if (data[0] != 5)
+	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 || value_len != 5)
 		/* invalid */
 		return 0;
-	data_len -= 6;
-	data += 6;
 
-	gbprox_patch_raid(data, peer, to_bss, "LLC/PTMSI_REALL_CMD");
+	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+		return 0;
+
+	gbprox_patch_raid(value, peer, to_bss, "LLC/PTMSI_REALL_CMD");
 
 	return 1;
 }
@@ -1057,53 +1057,42 @@ static int gbprox_patch_gsm_act_pdp_req(struct msgb *msg,
 					struct gbprox_peer *peer,
 					int to_bss, int *len_change)
 {
-	size_t new_len, old_len;
-
-	/* Check minimum length, always contains length field of
-	 * Requested QoS */
-	if (data_len < 9)
-		return 0;
+	size_t new_len;
+	ssize_t old_len;
+	uint8_t *value;
+	size_t value_len;
+	int have_patched = 0;
 
 	/* Skip Requested NSAPI */
 	/* Skip Requested LLC SAPI */
-	data_len -= 2;
-	data += 2;
+	v_fixed_shift(&data, &data_len, 2, NULL);
 
 	/* Skip Requested QoS (support 04.08 and 24.008) */
-	if (data[0] < 4 || data[0] > 14 ||
-	    data_len - (data[0] + 1) < 0)
+	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
+	    value_len < 4 || value_len > 14)
 		/* invalid */
-		return 0;
-	data_len -= data[0] + 1;
-	data += data[0] + 1;
+		return 0;;
 
 	/* Skip Requested PDP address */
-	if (data_len < 1 ||
-	    data[0] < 2 || data[0] > 18 ||
-	    data_len - (data[0] + 1) < 0)
+	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
+	    value_len < 2 || value_len > 18)
 		/* invalid */
 		return 0;
-	data_len -= data[0] + 1;
-	data += data[0] + 1;
 
 	/* Access point name */
-	if (data_len < 2 || data[0] != GSM48_IE_GSM_APN)
-		return 0;
+	old_len = tlv_match(&data, &data_len,
+			    GSM48_IE_GSM_APN, &value, &value_len);
 
-	if (data[1] < 1 || data[1] > 100 ||
-	    data_len - (data[1] + 2) < 0)
-		/* invalid */
-		return 0;
+	if (old_len > 0 && value_len >=1 && value_len <= 100) {
+		gbprox_patch_apn_ie(msg, data - old_len, old_len, peer,
+				    &new_len, "LLC/ACT_PDP_REQ");
+		*len_change += (int)new_len - (int)old_len;
+		data += *len_change;
 
-	old_len = data[1] + 2;
+		have_patched = 1;
+	}
 
-	gbprox_patch_apn_ie(msg, data, old_len, peer, &new_len, "LLC/ACT_PDP_REQ");
-
-	*len_change += (int)new_len - (int)old_len;
-	data_len -= old_len;
-	data += new_len;
-
-	return 1;
+	return have_patched;
 }
 
 struct gbprox_peer *peer_by_bssgp_tlv(struct tlv_parsed *tp)
@@ -1140,13 +1129,8 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 
 	*len_change = 0;
 
-	if (data_len < 2)
+	if (v_fixed_shift(&data, &data_len, sizeof(*g48h), (uint8_t **)&g48h) <= 0)
 		return 0;
-
-	g48h = (struct gsm48_hdr *)data;
-
-	data += sizeof(struct gsm48_hdr);
-	data_len -= sizeof(struct gsm48_hdr);
 
 	if ((g48h->proto_discr & 0x0f) != GSM48_PDISC_MM_GPRS &&
 	    (g48h->proto_discr & 0x0f) != GSM48_PDISC_SM_GPRS)
