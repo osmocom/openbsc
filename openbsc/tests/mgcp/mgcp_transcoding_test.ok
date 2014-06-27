@@ -23,12 +23,14 @@ encoded:
     5a 9e 40 13 00 00 bf ed a5 62 bf ed 00 00 40 13 
     5a 9e 40 13 00 00 bf ed a5 62 bf ed 00 00 40 13 
     5a 9e 40 13 00 00 bf ed a5 62 bf ed 
+counted: 0
 == Transcoding test ==
 converting l16 -> gsm
 encoded:
     80 0b 00 00 00 00 00 a0 11 22 33 44 d4 7c e3 e9 
     62 50 39 f0 f8 b4 68 ea 6c 0e 81 1b 56 2a d5 bc 
     69 9c d1 f0 66 7a ec 49 7a 33 3d 0a de 
+counted: 12
 == Transcoding test ==
 converting l16 -> pcma
 encoded:
@@ -43,6 +45,7 @@ encoded:
     d5 25 23 25 d5 a5 a3 a5 d5 25 23 25 d5 a5 a3 a5 
     d5 25 23 25 d5 a5 a3 a5 d5 25 23 25 d5 a5 a3 a5 
     d5 25 23 25 d5 a5 a3 a5 d5 25 23 25 
+counted: 12
 == Transcoding test ==
 converting gsm -> l16
 encoded:
@@ -67,12 +70,14 @@ encoded:
     4e 80 3c e0 06 10 cb 90 ae 48 c2 60 f9 58 34 08 
     4d a0 3a a8 06 48 cf 80 b4 60 c3 e8 f7 90 30 18 
     4d a0 3b 98 07 90 cf 18 b4 68 c4 88 
+counted: 12
 == Transcoding test ==
 converting gsm -> gsm
 encoded:
     80 03 00 01 00 00 00 a0 11 22 33 44 d4 7c e3 e9 
     62 50 39 f0 f8 b4 68 ea 6c 0e 81 1b 56 2a d5 bc 
     69 9c d1 f0 66 7a ec 49 7a 33 3d 0a de 
+counted: 0
 == Transcoding test ==
 converting gsm -> pcma
 encoded:
@@ -87,6 +92,7 @@ encoded:
     db 39 20 3b 4a b9 a1 b9 c8 3f 26 38 78 be a1 b8 
     f1 3e 26 38 65 bc a6 bb ed 3f 21 3b 6f bf a6 b8 
     ec 3d 27 3b 15 bd a6 b8 eb 3d 27 38 
+counted: 12
 == Transcoding test ==
 converting pcma -> l16
 encoded:
@@ -111,12 +117,14 @@ encoded:
     5a 00 42 00 00 08 be 00 a6 00 be 00 00 08 42 00 
     5a 00 42 00 00 08 be 00 a6 00 be 00 00 08 42 00 
     5a 00 42 00 00 08 be 00 a6 00 be 00 
+counted: 12
 == Transcoding test ==
 converting pcma -> gsm
 encoded:
     80 08 00 00 00 00 00 a0 11 22 33 44 d4 b9 f4 5d 
     d9 50 5a e1 a0 cd 76 ea 52 0e 87 53 ad d4 ea a2 
     0a 63 ca e9 60 79 e2 2a 25 d2 c0 f3 39 
+counted: 12
 == Transcoding test ==
 converting pcma -> pcma
 encoded:
@@ -131,6 +139,7 @@ encoded:
     d5 25 23 25 d5 a5 a3 a5 d5 25 23 25 d5 a5 a3 a5 
     d5 25 23 25 d5 a5 a3 a5 d5 25 23 25 d5 a5 a3 a5 
     d5 25 23 25 d5 a5 a3 a5 d5 25 23 25 
+counted: 0
 === Transcoding Bad Cases ===
 Invalid size:
 == Transcoding test ==
@@ -139,6 +148,7 @@ encoded:
     80 03 00 01 00 00 00 a0 11 22 33 44 d4 7c e3 e9 
     62 50 39 f0 f8 b4 68 ea 6c 0e 81 1b 56 2a d5 bc 
     69 9c d1 f0 66 7a ec 49 7a 
+counted: 0
 Invalid data:
 == Transcoding test ==
 converting gsm -> pcma
@@ -146,6 +156,7 @@ encoded:
     80 03 00 01 00 00 00 a0 11 22 33 44 ee ee ee ee 
     ee ee ee ee ee ee ee ee ee ee ee ee ee ee ee ee 
     ee ee ee ee ee ee ee ee ee ee ee ee ee 
+counted: 0
 Invalid payload type:
 == Transcoding test ==
 converting gsm -> pcma
@@ -161,374 +172,375 @@ encoded:
     db 39 20 3b 4a b9 a1 b9 c8 3f 26 38 78 be a1 b8 
     f1 3e 26 38 65 bc a6 bb ed 3f 21 3b 6f bf a6 b8 
     ec 3d 27 3b 15 bd a6 b8 eb 3d 27 38 
+counted: 12
 === Repacking ===
 == Transcoding test ==
 converting pcma -> l16
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 generating 160 pcma input samples
-got 2 l16 output frames (320 octets)
+got 2 l16 output frames (320 octets) count=12
 == Transcoding test ==
 converting pcma -> pcma
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 generating 160 pcma input samples
-got 2 pcma output frames (160 octets)
+got 2 pcma output frames (160 octets) count=12
 == Transcoding test ==
 converting pcma -> l16
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
 == Transcoding test ==
 converting pcma -> pcma
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
-== Transcoding test ==
-converting pcma -> l16
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 l16 output frames (640 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 l16 output frames (640 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 l16 output frames (640 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 l16 output frames (640 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 l16 output frames (640 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 l16 output frames (640 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 l16 output frames (640 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 l16 output frames (640 octets)
-== Transcoding test ==
-converting pcma -> pcma
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 pcma output frames (320 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 pcma output frames (320 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 pcma output frames (320 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 pcma output frames (320 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 pcma output frames (320 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 pcma output frames (320 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 pcma output frames (320 octets)
-generating 160 pcma input samples
-generating 160 pcma input samples
-got 4 pcma output frames (320 octets)
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
 == Transcoding test ==
 converting pcma -> l16
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 l16 output frames (480 octets)
+got 4 l16 output frames (640 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 l16 output frames (480 octets)
+got 4 l16 output frames (640 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 l16 output frames (480 octets)
+got 4 l16 output frames (640 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 l16 output frames (480 octets)
+got 4 l16 output frames (640 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 l16 output frames (480 octets)
+got 4 l16 output frames (640 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 l16 output frames (480 octets)
+got 4 l16 output frames (640 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 l16 output frames (480 octets)
+got 4 l16 output frames (640 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 l16 output frames (480 octets)
+got 4 l16 output frames (640 octets) count=12
 == Transcoding test ==
 converting pcma -> pcma
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 pcma output frames (240 octets)
+got 4 pcma output frames (320 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 pcma output frames (240 octets)
+got 4 pcma output frames (320 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 pcma output frames (240 octets)
+got 4 pcma output frames (320 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 pcma output frames (240 octets)
+got 4 pcma output frames (320 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 pcma output frames (240 octets)
+got 4 pcma output frames (320 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 pcma output frames (240 octets)
+got 4 pcma output frames (320 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 pcma output frames (240 octets)
+got 4 pcma output frames (320 octets) count=12
 generating 160 pcma input samples
 generating 160 pcma input samples
-got 3 pcma output frames (240 octets)
+got 4 pcma output frames (320 octets) count=12
 == Transcoding test ==
 converting pcma -> l16
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 3 l16 output frames (480 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 3 l16 output frames (480 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 3 l16 output frames (480 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 3 l16 output frames (480 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 3 l16 output frames (480 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 3 l16 output frames (480 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 3 l16 output frames (480 octets) count=12
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
 generating 160 pcma input samples
-got 1 l16 output frames (160 octets)
-got 1 l16 output frames (160 octets)
+got 3 l16 output frames (480 octets) count=12
 == Transcoding test ==
 converting pcma -> pcma
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 3 pcma output frames (240 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 3 pcma output frames (240 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 3 pcma output frames (240 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 3 pcma output frames (240 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 3 pcma output frames (240 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 3 pcma output frames (240 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 3 pcma output frames (240 octets) count=12
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
 generating 160 pcma input samples
-got 1 pcma output frames (80 octets)
-got 1 pcma output frames (80 octets)
+got 3 pcma output frames (240 octets) count=12
+== Transcoding test ==
+converting pcma -> l16
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+generating 160 pcma input samples
+got 1 l16 output frames (160 octets) count=12
+got 1 l16 output frames (160 octets) count=12
+== Transcoding test ==
+converting pcma -> pcma
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12
+generating 160 pcma input samples
+got 1 pcma output frames (80 octets) count=12
+got 1 pcma output frames (80 octets) count=12

@@ -240,6 +240,7 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 			printf("\n");
 		} while (nchars - prefix >= cutlen);
 	}
+	printf("counted: %d\n", cont);
 	talloc_free(ctx);
 	return 0;
 }
@@ -313,8 +314,8 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 
 			len -= 12; /* ignore RTP header */
 
-			printf("got %d %s output frames (%d octets)\n",
-			       len / out_size, dstfmt, len);
+			printf("got %d %s output frames (%d octets) count=%d\n",
+			       len / out_size, dstfmt, len, cont);
 
 			len = cont;
 		} while (len > 0);
