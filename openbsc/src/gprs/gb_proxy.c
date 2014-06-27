@@ -519,6 +519,21 @@ fail:
 	return -1;
 }
 
+struct gbprox_parse_context {
+	/* Pointer to protocol specific parts */
+	struct gsm48_hdr *g48_hdr;
+	struct gprs_llc_hdr_parsed *llc_hdr_parsed;
+	struct tlv_parsed *bssgp_tp;
+	struct bssgp_ud_hdr *bud_hdr;
+
+	/* Extracted information */
+	int to_bss;
+	uint32_t tlli;
+	const uint8_t *imsi;
+	size_t imsi_len;
+	uint32_t new_ptmsi;
+};
+
 struct gbprox_tlli_info {
 	struct llist_head list;
 
@@ -939,7 +954,8 @@ static void gbprox_patch_apn_ie(struct msgb *msg,
 static int gbprox_patch_gmm_attach_req(struct msgb *msg,
 				       uint8_t *data, size_t data_len,
 				       struct gbprox_peer *peer,
-				       int to_bss, int *len_change)
+				       int *len_change,
+				       struct gbprox_parse_context *parse_ctx)
 {
 	uint8_t *value;
 	size_t value_len;
@@ -964,15 +980,15 @@ static int gbprox_patch_gmm_attach_req(struct msgb *msg,
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
-	gbprox_patch_raid(value, peer, to_bss, "LLC/ATTACH_REQ");
+	gbprox_patch_raid(value, peer, parse_ctx->to_bss, "LLC/ATTACH_REQ");
 
 	return 1;
 }
 
 static int gbprox_patch_gmm_attach_ack(struct msgb *msg,
 				       uint8_t *data, size_t data_len,
-				       struct gbprox_peer *peer,
-				       int to_bss, int *len_change)
+				       struct gbprox_peer *peer, int *len_change,
+				       struct gbprox_parse_context *parse_ctx)
 {
 	uint8_t *value;
 
@@ -986,15 +1002,15 @@ static int gbprox_patch_gmm_attach_ack(struct msgb *msg,
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
-	gbprox_patch_raid(value, peer, to_bss, "LLC/ATTACH_ACK");
+	gbprox_patch_raid(value, peer, parse_ctx->to_bss, "LLC/ATTACH_ACK");
 
 	return 1;
 }
 
 static int gbprox_patch_gmm_ra_upd_req(struct msgb *msg,
 				       uint8_t *data, size_t data_len,
-				       struct gbprox_peer *peer,
-				       int to_bss, int *len_change)
+				       struct gbprox_peer *peer, int *len_change,
+				       struct gbprox_parse_context *parse_ctx)
 {
 	uint8_t *value;
 
@@ -1005,15 +1021,15 @@ static int gbprox_patch_gmm_ra_upd_req(struct msgb *msg,
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
-	gbprox_patch_raid(value, peer, to_bss, "LLC/RA_UPD_REQ");
+	gbprox_patch_raid(value, peer, parse_ctx->to_bss, "LLC/RA_UPD_REQ");
 
 	return 1;
 }
 
 static int gbprox_patch_gmm_ra_upd_ack(struct msgb *msg,
 				       uint8_t *data, size_t data_len,
-				       struct gbprox_peer *peer,
-				       int to_bss, int *len_change)
+				       struct gbprox_peer *peer, int *len_change,
+				       struct gbprox_parse_context *parse_ctx)
 {
 	uint8_t *value;
 
@@ -1025,7 +1041,7 @@ static int gbprox_patch_gmm_ra_upd_ack(struct msgb *msg,
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
-	gbprox_patch_raid(value, peer, to_bss, "LLC/RA_UPD_ACK");
+	gbprox_patch_raid(value, peer, parse_ctx->to_bss, "LLC/RA_UPD_ACK");
 
 
 	return 1;
@@ -1034,7 +1050,8 @@ static int gbprox_patch_gmm_ra_upd_ack(struct msgb *msg,
 static int gbprox_patch_gmm_ptmsi_reall_cmd(struct msgb *msg,
 					    uint8_t *data, size_t data_len,
 					    struct gbprox_peer *peer,
-					    int to_bss, int *len_change)
+					    int *len_change,
+					    struct gbprox_parse_context *parse_ctx)
 {
 	uint8_t *value;
 	size_t value_len;
@@ -1047,15 +1064,15 @@ static int gbprox_patch_gmm_ptmsi_reall_cmd(struct msgb *msg,
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
-	gbprox_patch_raid(value, peer, to_bss, "LLC/PTMSI_REALL_CMD");
+	gbprox_patch_raid(value, peer, parse_ctx->to_bss, "LLC/PTMSI_REALL_CMD");
 
 	return 1;
 }
 
 static int gbprox_patch_gsm_act_pdp_req(struct msgb *msg,
 					uint8_t *data, size_t data_len,
-					struct gbprox_peer *peer,
-					int to_bss, int *len_change)
+					struct gbprox_peer *peer, int *len_change,
+					struct gbprox_parse_context *parse_ctx)
 {
 	size_t new_len;
 	ssize_t old_len;
@@ -1122,8 +1139,8 @@ struct gbprox_peer *peer_by_bssgp_tlv(struct tlv_parsed *tp)
 }
 
 static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
-			     struct gbprox_peer *peer, int to_bss,
-			     uint32_t tlli, int *len_change)
+			     struct gbprox_peer *peer, int *len_change,
+			     struct gbprox_parse_context *parse_ctx)
 {
 	struct gsm48_hdr *g48h;
 
@@ -1140,13 +1157,13 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 	case GSM48_MT_GMM_ATTACH_REQ:
 		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REQS]);
 		return gbprox_patch_gmm_attach_req(msg, data, data_len,
-						   peer, to_bss, len_change);
+						   peer, len_change, parse_ctx);
 
 	case GSM48_MT_GMM_ATTACH_ACK:
 		if (!patching_is_enabled(GBPROX_PATCH_LLC_ATTACH))
 			break;
 		return gbprox_patch_gmm_attach_ack(msg, data, data_len,
-						   peer, to_bss, len_change);
+						   peer, len_change, parse_ctx);
 
 	case GSM48_MT_GMM_ATTACH_REJ:
 		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REJS]);
@@ -1156,33 +1173,34 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 		if (!patching_is_enabled(GBPROX_PATCH_LLC_GMM))
 			break;
 		return gbprox_patch_gmm_ra_upd_req(msg, data, data_len,
-						   peer, to_bss, len_change);
+						   peer, len_change, parse_ctx);
 
 	case GSM48_MT_GMM_RA_UPD_ACK:
 		if (!patching_is_enabled(GBPROX_PATCH_LLC_GMM))
 			break;
 		return gbprox_patch_gmm_ra_upd_ack(msg, data, data_len,
-						   peer, to_bss, len_change);
+						   peer, len_change, parse_ctx);
 
 	case GSM48_MT_GMM_PTMSI_REALL_CMD:
 		if (!patching_is_enabled(GBPROX_PATCH_LLC_GMM))
 			break;
 		return gbprox_patch_gmm_ptmsi_reall_cmd(msg, data, data_len,
-							peer, to_bss, len_change);
+							peer, len_change,
+							parse_ctx);
 
 	case GSM48_MT_GSM_ACT_PDP_REQ:
 		if (!patching_is_enabled(GBPROX_PATCH_LLC_GSM))
 			break;
 		if (gbcfg.core_apn == NULL)
 			break;
-		if (!gbprox_check_tlli(peer, tlli))
+		if (!gbprox_check_tlli(peer, parse_ctx->tlli))
 			break;
 		return gbprox_patch_gsm_act_pdp_req(msg, data, data_len,
-						    peer, to_bss, len_change);
+						    peer, len_change, parse_ctx);
 
 	case GSM48_MT_GMM_DETACH_ACK:
 	case GSM48_MT_GMM_DETACH_REQ:
-		gbprox_unregister_tlli(peer, tlli);
+		gbprox_unregister_tlli(peer, parse_ctx->tlli);
 		break;
 
 	default:
@@ -1193,9 +1211,8 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 }
 
 static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
-			     struct gbprox_peer *peer, int to_bss,
-			     struct bssgp_ud_hdr *budh,
-			     struct tlv_parsed *bssgp_tp)
+			     struct gbprox_peer *peer,
+			     struct gbprox_parse_context *parse_ctx)
 {
 	struct gprs_llc_hdr_parsed ghp = {0};
 	int rc;
@@ -1205,7 +1222,7 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	int len_change = 0;
 	const char *err_info = NULL;
 	int err_ctr = -1;
-	uint32_t tlli = budh ? ntohl(budh->tlli) : 0;
+	uint32_t tlli = parse_ctx->tlli;
 
 	/* parse LLC */
 	rc = gprs_llc_hdr_parse(&ghp, llc, llc_len);
@@ -1225,11 +1242,9 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	if (ghp.sapi != GPRS_SAPI_GMM)
 		return;
 
-	if (gbcfg.core_apn && to_bss && tlli &&
-	    TLVP_PRESENT(bssgp_tp, BSSGP_IE_IMSI))
+	if (gbcfg.core_apn && parse_ctx->to_bss && tlli && parse_ctx->imsi)
 		gbprox_register_tlli(peer, tlli,
-				     TLVP_VAL(bssgp_tp, BSSGP_IE_IMSI),
-				     TLVP_LEN(bssgp_tp, BSSGP_IE_IMSI));
+				     parse_ctx->imsi, parse_ctx->imsi_len);
 
 	if (ghp.cmd != GPRS_LLC_UI)
 		return;
@@ -1253,8 +1268,9 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	data = ghp.data;
 	data_len = ghp.data_len;
 
-	rc = gbprox_patch_dtap(msg, data, data_len, peer, to_bss,
-			       tlli, &len_change);
+	parse_ctx->llc_hdr_parsed = &ghp;
+
+	rc = gbprox_patch_dtap(msg, data, data_len, peer, &len_change, parse_ctx);
 
 	if (rc > 0) {
 		llc_len += len_change;
@@ -1357,7 +1373,18 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 	    patching_is_enabled(GBPROX_PATCH_LLC_ATTACH_REQ)) {
 		uint8_t *llc = (uint8_t *)TLVP_VAL(&tp, BSSGP_IE_LLC_PDU);
 		size_t llc_len = TLVP_LEN(&tp, BSSGP_IE_LLC_PDU);
-		gbprox_patch_llc(msg, llc, llc_len, peer, to_bss, budh, &tp);
+		struct gbprox_parse_context parse_ctx = {0};
+		parse_ctx.bssgp_tp = &tp;
+		parse_ctx.bud_hdr = budh;
+		parse_ctx.tlli = budh ? ntohl(budh->tlli) : 0;
+		parse_ctx.to_bss = to_bss;
+
+		if (TLVP_PRESENT(&tp, BSSGP_IE_IMSI)) {
+			parse_ctx.imsi = TLVP_VAL(&tp, BSSGP_IE_IMSI);
+			parse_ctx.imsi_len = TLVP_LEN(&tp, BSSGP_IE_IMSI);
+		}
+
+		gbprox_patch_llc(msg, llc, llc_len, peer, &parse_ctx);
 		/* Note that the tp struct might contain invalid pointers here
 		 * if the LLC field has changed its size */
 	}
