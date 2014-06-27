@@ -1845,12 +1845,15 @@ int gbprox_dump_peers(FILE *stream, int indent)
 	unsigned int i;
 	const struct rate_ctr_group_desc *desc;
 	int rc;
+	time_t now = time(NULL);
 
 	rc = fprintf(stream, "%*sPeers:\n", indent, "");
 	if (rc < 0)
 		return rc;
 
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
+		struct gbprox_tlli_info *tlli_info;
+		struct gbprox_patch_state *state = &peer->patch_state;
 		gsm48_parse_ra(&raid, peer->ra);
 
 		rc = fprintf(stream, "%*s  NSEI %u, BVCI %u, %sblocked, "
@@ -1876,6 +1879,23 @@ int gbprox_dump_peers(FILE *stream, int indent)
 				if (rc < 0)
 					return rc;
 			}
+		}
+
+		fprintf(stream, "%*s    TLLI-Cache: %d\n",
+			indent, "", state->enabled_tllis_count);
+		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
+			char mi_buf[200];
+			time_t age = now - tlli_info->timestamp;
+			snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
+			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+					   tlli_info->mi_data,
+					   tlli_info->mi_data_len);
+			rc = fprintf(stream,
+				     "%*s      TLLI %08x, IMSI %s, AGE %d\n",
+				     indent, "",
+				     tlli_info->tlli, mi_buf, (int)age);
+			if (rc < 0)
+				return rc;
 		}
 	}
 

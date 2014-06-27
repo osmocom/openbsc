@@ -101,6 +101,7 @@ Current NS-VCIs:
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
@@ -175,7 +176,9 @@ Current NS-VCIs:
 
 Peers:
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 20 02 
 
@@ -236,7 +239,9 @@ Current NS-VCIs:
 
 Peers:
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 --- Move BSS 2 to former BSS 1 port ---
 
 Setup NS-VC: remote 0x01020304:1111, NSVCI 0x2001(8193), NSEI 0x2000(8192)
@@ -285,7 +290,9 @@ Current NS-VCIs:
 
 Peers:
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 --- Move BSS 1 to current BSS 2 port ---
 
 Setup NS-VC: remote 0x01020304:1111, NSVCI 0x2001(8193), NSEI 0x2000(8192)
@@ -334,7 +341,9 @@ Current NS-VCIs:
 
 Peers:
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 --- Move BSS 2 to new port ---
 
 Setup NS-VC: remote 0x01020304:4444, NSVCI 0x2001(8193), NSEI 0x2000(8192)
@@ -383,7 +392,9 @@ Current NS-VCIs:
 
 Peers:
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 --- Move BSS 2 to former BSS 1 port ---
 
 Setup NS-VC: remote 0x01020304:3333, NSVCI 0x2001(8193), NSEI 0x2000(8192)
@@ -435,7 +446,9 @@ Current NS-VCIs:
 
 Peers:
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 --- Move BSS 1 to original BSS 1 port ---
 
 Setup NS-VC: remote 0x01020304:1111, NSVCI 0x1001(4097), NSEI 0x1000(4096)
@@ -485,7 +498,9 @@ Current NS-VCIs:
 
 Peers:
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 --- Reset BSS 1 with a new BVCI ---
 
 Setup BSSGP: remote 0x01020304:1111, BVCI 0x1012(4114)
@@ -511,8 +526,11 @@ Current NS-VCIs:
 
 Peers:
   NSEI 4096, BVCI 4114, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 12 
 
@@ -550,8 +568,11 @@ Current NS-VCIs:
 
 Peers:
   NSEI 4096, BVCI 4114, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
@@ -589,8 +610,11 @@ Current NS-VCIs:
 
 Peers:
   NSEI 4096, BVCI 4114, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
@@ -712,10 +736,13 @@ Current NS-VCIs:
 
 Peers:
   NSEI 4096, BVCI 4114, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 Gbproxy global:
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
@@ -889,6 +916,7 @@ result (BVC_RESET_ACK) = 9
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 --- Setup BVCI 2 ---
 
 Setup BSSGP: remote 0x01020304:1111, BVCI 0x2002(8194)
@@ -919,7 +947,9 @@ result (BVC_RESET_ACK) = 9
 
 Peers:
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
 --- Send message from BSS 1 to SGSN and back, BVCI 1 ---
 
 PROCESSING UNITDATA from 0x01020304:1111
@@ -1048,8 +1078,10 @@ result (BVC_RESET_ACK) = 9
 
 Peers:
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 --- Setup BVCI 3 ---
 
 Setup BSSGP: remote 0x01020304:1111, BVCI 0x3002(12290)
@@ -1080,9 +1112,12 @@ result (BVC_RESET_ACK) = 9
 
 Peers:
   NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 --- Send message from BSS 1 to SGSN and back, BVCI 1 ---
 
 PROCESSING UNITDATA from 0x01020304:1111
@@ -1125,10 +1160,13 @@ result (UNITDATA) = 4
 
 Peers:
   NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 PROCESSING UNITDATA from 0x05060708:32000
 00 00 20 02 
 
@@ -1140,11 +1178,14 @@ result (UNITDATA) = -22
 
 Peers:
   NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
     NS Transmission error           : 1
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 --- Send message from BSS 1 to SGSN and back, BVCI 3 ---
 
 PROCESSING UNITDATA from 0x01020304:1111
@@ -1251,11 +1292,14 @@ result (BVC_RESET_ACK) = 9
 
 Peers:
   NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
     NS Transmission error           : 1
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 --- Setup BVCI 4 ---
 
 Setup BSSGP: remote 0x01020304:1111, BVCI 0x4002(16386)
@@ -1286,12 +1330,16 @@ result (BVC_RESET_ACK) = 9
 
 Peers:
   NSEI 8192, BVCI 16386, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
     NS Transmission error           : 1
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 --- Send message from BSS 1 to SGSN and back, BVCI 1 ---
 
 PROCESSING UNITDATA from 0x01020304:1111
@@ -1334,12 +1382,16 @@ result (UNITDATA) = 4
 
 Peers:
   NSEI 8192, BVCI 16386, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 2
     NS Transmission error           : 1
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 PROCESSING UNITDATA from 0x05060708:32000
 00 00 20 02 
 
@@ -1351,12 +1403,16 @@ result (UNITDATA) = -22
 
 Peers:
   NSEI 8192, BVCI 16386, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 2
     NS Transmission error           : 2
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 --- Send message from BSS 1 to SGSN and back, BVCI 3 ---
 
 PROCESSING UNITDATA from 0x01020304:1111
@@ -1412,12 +1468,16 @@ result (UNITDATA) = 4
 Gbproxy global:
 Peers:
   NSEI 8192, BVCI 16386, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 8192, BVCI 12290, not blocked, RAI 112-332-16464-96
+    TLLI-Cache: 0
   NSEI 4096, BVCI 8194, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 2
     NS Transmission error           : 2
+    TLLI-Cache: 0
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
+    TLLI-Cache: 0
 === test_gbproxy_ra_patching ===
 --- Initialise SGSN ---
 
@@ -1521,6 +1581,7 @@ Current NS-VCIs:
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 1
+    TLLI-Cache: 0
 PROCESSING BVC_RESET_ACK from 0x05060708:32000
 00 00 00 00 23 04 82 10 02 
 
@@ -1562,6 +1623,7 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 2
     RAID patched              (SGSN): 1
+    TLLI-Cache: 0
 --- Send message from BSS 1 to SGSN, BVCI 0x1002 ---
 
 PROCESSING ATTACH REQUEST from 0x01020304:1111
@@ -1577,40 +1639,28 @@ MESSAGE to SGSN at 0x05060708:32000, msg length 79
 result (ATTACH REQUEST) = 79
 
 PROCESSING ATTACH ACCEPT from 0x05060708:32000
-00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9e 41 c0 05 08 02 01 49 04 21 63 54 40 50 60 19 cd d7 08 17 16 18 05 f4 fb c5 47 22 42 67 9a 
+00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9e 41 c0 05 08 02 01 49 04 21 63 54 40 50 60 19 cd d7 08 17 16 18 05 f4 ef e2 b7 00 42 67 9a 
 
 CALLBACK, event 0, msg length 88, bvci 0x1002
-00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9e 41 c0 05 08 02 01 49 04 21 63 54 40 50 60 19 cd d7 08 17 16 18 05 f4 fb c5 47 22 42 67 9a 
+00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9e 41 c0 05 08 02 01 49 04 21 63 54 40 50 60 19 cd d7 08 17 16 18 05 f4 ef e2 b7 00 42 67 9a 
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 88 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 92
-00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9e 41 c0 05 08 02 01 49 04 11 22 33 40 50 60 19 cd d7 08 17 16 18 05 f4 fb c5 47 22 af 3d ab 
+00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9e 41 c0 05 08 02 01 49 04 11 22 33 40 50 60 19 cd d7 08 17 16 18 05 f4 ef e2 b7 00 be 38 c0 
 
 result (ATTACH ACCEPT) = 92
 
-PROCESSING UPDATE REQ from 0x01020304:1111
-00 00 10 02 01 bb c5 46 79 00 00 04 08 88 11 22 33 40 50 60 70 80 00 80 0e 00 3e 01 c0 15 08 08 10 11 22 33 40 50 60 1d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 19 8b b2 92 17 16 27 07 04 31 02 e5 e0 32 02 20 00 96 3e 97 
+PROCESSING ACT PDP CTX REQ (REPLACE APN) from 0x01020304:1111
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
 
-CALLBACK, event 0, msg length 85, bvci 0x1002
-00 00 10 02 01 bb c5 46 79 00 00 04 08 88 11 22 33 40 50 60 70 80 00 80 0e 00 3e 01 c0 15 08 08 10 11 22 33 40 50 60 1d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 19 8b b2 92 17 16 27 07 04 31 02 e5 e0 32 02 20 00 96 3e 97 
+CALLBACK, event 0, msg length 76, bvci 0x1002
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
 
-NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 85 (gprs_ns_sendmsg)
-MESSAGE to SGSN at 0x05060708:32000, msg length 89
-00 00 10 02 01 bb c5 46 79 00 00 04 08 88 21 63 54 40 50 60 70 80 00 80 0e 00 3e 01 c0 15 08 08 10 21 63 54 40 50 60 1d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 19 8b b2 92 17 16 27 07 04 31 02 e5 e0 32 02 20 00 1d f0 41 
+NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 76 (gprs_ns_sendmsg)
+MESSAGE to SGSN at 0x05060708:32000, msg length 80
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 21 63 54 40 50 60 75 30 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
 
-result (UPDATE REQ) = 89
-
-PROCESSING RA UPD ACC from 0x05060708:32000
-00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 9d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 0a 82 07 04 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9d 41 c0 19 08 09 00 49 21 63 54 40 50 60 19 54 ab b3 18 05 f4 ef e2 81 17 17 16 c3 bf cc 
-
-CALLBACK, event 0, msg length 91, bvci 0x1002
-00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 9d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 0a 82 07 04 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9d 41 c0 19 08 09 00 49 21 63 54 40 50 60 19 54 ab b3 18 05 f4 ef e2 81 17 17 16 c3 bf cc 
-
-NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 91 (gprs_ns_sendmsg)
-MESSAGE to BSS at 0x01020304:1111, msg length 95
-00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 9d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 0a 82 07 04 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9d 41 c0 19 08 09 00 49 11 22 33 40 50 60 19 54 ab b3 18 05 f4 ef e2 81 17 17 16 2e e5 fd 
-
-result (RA UPD ACC) = 95
+result (ACT PDP CTX REQ (REPLACE APN)) = 80
 
 PROCESSING GMM INFO from 0x05060708:32000
 00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 88 41 c0 09 08 21 04 ba 3d 
@@ -1648,6 +1698,93 @@ MESSAGE to SGSN at 0x05060708:32000, msg length 75
 
 result (ACT PDP CTX REQ (REMOVE APN)) = 75
 
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 7
+    RAID patched              (SGSN): 2
+    APN patched                     : 2
+    Attach Request count            : 1
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI efe2b700, IMSI 12131415161718, AGE 0
+PROCESSING DETACH REQ from 0x01020304:1111
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 15 01 c0 19 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 7e e1 41 
+
+CALLBACK, event 0, msg length 44, bvci 0x1002
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 15 01 c0 19 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 7e e1 41 
+
+NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 44 (gprs_ns_sendmsg)
+MESSAGE to SGSN at 0x05060708:32000, msg length 48
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 21 63 54 40 50 60 75 30 00 80 0e 00 15 01 c0 19 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 7e e1 41 
+
+result (DETACH REQ) = 48
+
+PROCESSING DETACH ACC from 0x05060708:32000
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 15 08 06 00 f7 35 f0 
+
+CALLBACK, event 0, msg length 67, bvci 0x1002
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 15 08 06 00 f7 35 f0 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 67 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 71
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 15 08 06 00 f7 35 f0 
+
+result (DETACH ACC) = 71
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 8
+    RAID patched              (SGSN): 2
+    APN patched                     : 2
+    Attach Request count            : 1
+    TLLI cache size                 : 2
+    TLLI-Cache: 2
+--- RA update ---
+
+PROCESSING RA UPD REQ from 0x01020304:1111
+00 00 10 02 01 bb c5 46 79 00 00 04 08 88 11 22 33 40 50 60 70 80 00 80 0e 00 3e 01 c0 15 08 08 10 11 22 33 40 50 60 1d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 19 8b b2 92 17 16 27 07 04 31 02 e5 e0 32 02 20 00 96 3e 97 
+
+CALLBACK, event 0, msg length 85, bvci 0x1002
+00 00 10 02 01 bb c5 46 79 00 00 04 08 88 11 22 33 40 50 60 70 80 00 80 0e 00 3e 01 c0 15 08 08 10 11 22 33 40 50 60 1d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 19 8b b2 92 17 16 27 07 04 31 02 e5 e0 32 02 20 00 96 3e 97 
+
+NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 85 (gprs_ns_sendmsg)
+MESSAGE to SGSN at 0x05060708:32000, msg length 89
+00 00 10 02 01 bb c5 46 79 00 00 04 08 88 21 63 54 40 50 60 70 80 00 80 0e 00 3e 01 c0 15 08 08 10 21 63 54 40 50 60 1d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 19 8b b2 92 17 16 27 07 04 31 02 e5 e0 32 02 20 00 1d f0 41 
+
+result (RA UPD REQ) = 89
+
+PROCESSING RA UPD ACC from 0x05060708:32000
+00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 9d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 0a 82 07 04 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9d 41 c0 19 08 09 00 49 21 63 54 40 50 60 19 54 ab b3 18 05 f4 ef e2 81 17 17 16 c3 bf cc 
+
+CALLBACK, event 0, msg length 91, bvci 0x1002
+00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 9d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 0a 82 07 04 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9d 41 c0 19 08 09 00 49 21 63 54 40 50 60 19 54 ab b3 18 05 f4 ef e2 81 17 17 16 c3 bf cc 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 91 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 95
+00 00 10 02 00 bb c5 46 79 00 50 20 16 82 02 58 13 9d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 0a 82 07 04 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9d 41 c0 19 08 09 00 49 11 22 33 40 50 60 19 54 ab b3 18 05 f4 ef e2 81 17 17 16 2e e5 fd 
+
+result (RA UPD ACC) = 95
+
+PROCESSING ACT PDP CTX REQ (REMOVE APN) from 0x01020304:1111
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
+
+CALLBACK, event 0, msg length 76, bvci 0x1002
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
+
+NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 76 (gprs_ns_sendmsg)
+MESSAGE to SGSN at 0x05060708:32000, msg length 80
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 21 63 54 40 50 60 75 30 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
+
+result (ACT PDP CTX REQ (REMOVE APN)) = 80
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 11
+    RAID patched              (SGSN): 3
+    APN patched                     : 2
+    Attach Request count            : 1
+    TLLI cache size                 : 2
+    TLLI-Cache: 2
 PROCESSING DETACH REQ from 0x01020304:1111
 00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 15 01 c0 19 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 7e e1 41 
 
@@ -1675,11 +1812,12 @@ result (DETACH ACC) = 71
 Gbproxy global:
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 9
+    RAID patched              (BSS ): 12
     RAID patched              (SGSN): 3
     APN patched                     : 2
     Attach Request count            : 1
-    TLLI cache size                 : 2
+    TLLI cache size                 : 3
+    TLLI-Cache: 3
 --- Bad cases ---
 
 TLLI is already detached, shouldn't patch
@@ -1713,10 +1851,11 @@ Gbproxy global:
     Patch error: no peer            : 1
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 10
+    RAID patched              (BSS ): 13
     RAID patched              (SGSN): 3
     APN patched                     : 2
     Attach Request count            : 1
-    TLLI cache size                 : 2
+    TLLI cache size                 : 3
+    TLLI-Cache: 3
 ===== GbProxy test END
 

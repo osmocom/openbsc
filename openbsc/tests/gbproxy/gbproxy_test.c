@@ -63,7 +63,7 @@ static const unsigned char bssgp_attach_acc[88] = {
 	0x0e, 0x9e, 0x41, 0xc0, 0x05, 0x08, 0x02, 0x01,
 	0x49, 0x04, 0x21, 0x63, 0x54, 0x40, 0x50, 0x60,
 	0x19, 0xcd, 0xd7, 0x08, 0x17, 0x16, 0x18, 0x05,
-	0xf4, 0xfb, 0xc5, 0x47, 0x22, 0x42, 0x67, 0x9a
+	0xf4, 0xef, 0xe2, 0xb7, 0x00, 0x42, 0x67, 0x9a
 };
 
 /* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - GMM Information */
@@ -892,16 +892,15 @@ static void test_gbproxy_ra_patching()
 	send_ns_unitdata(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 			 bssgp_attach_acc, sizeof(bssgp_attach_acc));
 
-	send_ns_unitdata(nsi, "UPDATE REQ", &bss_peer[0], 0x1002,
-			 bssgp_ra_upd_req, sizeof(bssgp_ra_upd_req));
-
-	send_ns_unitdata(nsi, "RA UPD ACC", &sgsn_peer, 0x1002,
-			 bssgp_ra_upd_acc, sizeof(bssgp_ra_upd_acc));
+	/* Replace APN (1) */
+	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REPLACE APN)",
+			 &bss_peer[0], 0x1002,
+			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
 	send_ns_unitdata(nsi, "GMM INFO", &sgsn_peer, 0x1002,
 			 bssgp_gmm_information, sizeof(bssgp_gmm_information));
 
-	/* Replace APN */
+	/* Replace APN (2) */
 	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REPLACE APN)",
 			 &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
@@ -914,12 +913,39 @@ static void test_gbproxy_ra_patching()
 			 &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
+	gbprox_dump_peers(stdout, 0);
+
 	/* Detach */
 	send_ns_unitdata(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
 			 bssgp_detach_req, sizeof(bssgp_detach_req));
 
 	send_ns_unitdata(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
 			 bssgp_detach_acc, sizeof(bssgp_detach_acc));
+
+	gbprox_dump_peers(stdout, 0);
+
+	printf("--- RA update ---\n\n");
+
+	send_ns_unitdata(nsi, "RA UPD REQ", &bss_peer[0], 0x1002,
+			 bssgp_ra_upd_req, sizeof(bssgp_ra_upd_req));
+
+	send_ns_unitdata(nsi, "RA UPD ACC", &sgsn_peer, 0x1002,
+			 bssgp_ra_upd_acc, sizeof(bssgp_ra_upd_acc));
+
+	/* Remove APN */
+	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REMOVE APN)",
+			 &bss_peer[0], 0x1002,
+			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
+
+	gbprox_dump_peers(stdout, 0);
+
+	/* Detach */
+	send_ns_unitdata(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
+			 bssgp_detach_req, sizeof(bssgp_detach_req));
+
+	send_ns_unitdata(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
+			 bssgp_detach_acc, sizeof(bssgp_detach_acc));
+
 
 	gbprox_dump_global(stdout, 0);
 	gbprox_dump_peers(stdout, 0);
