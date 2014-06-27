@@ -135,7 +135,7 @@ static int bssmap_handle_paging(struct osmo_msc_data *msc,
 
 	if (TLVP_PRESENT(&tp, GSM0808_IE_TMSI) &&
 	    TLVP_LEN(&tp, GSM0808_IE_TMSI) == 4) {
-		tmsi = ntohl(*(uint32_t *) TLVP_VAL(&tp, GSM0808_IE_TMSI));
+		tmsi = ntohl(tlvp_val32_unal(&tp, GSM0808_IE_TMSI));
 	}
 
 	/*

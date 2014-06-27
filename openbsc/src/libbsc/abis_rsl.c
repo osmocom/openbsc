@@ -1804,20 +1804,20 @@ static void ipac_parse_rtp(struct gsm_lchan *lchan, struct tlv_parsed *tv)
 	uint16_t port, conn_id;
 
 	if (TLVP_PRESENT(tv, RSL_IE_IPAC_LOCAL_IP)) {
-		ip.s_addr = *((uint32_t *) TLVP_VAL(tv, RSL_IE_IPAC_LOCAL_IP));
+		ip.s_addr = tlvp_val32_unal(tv, RSL_IE_IPAC_LOCAL_IP);
 		DEBUGPC(DRSL, "LOCAL_IP=%s ", inet_ntoa(ip));
 		lchan->abis_ip.bound_ip = ntohl(ip.s_addr);
 	}
 
 	if (TLVP_PRESENT(tv, RSL_IE_IPAC_LOCAL_PORT)) {
-		port = *((uint16_t *) TLVP_VAL(tv, RSL_IE_IPAC_LOCAL_PORT));
+		port = tlvp_val16_unal(tv, RSL_IE_IPAC_LOCAL_PORT);
 		port = ntohs(port);
 		DEBUGPC(DRSL, "LOCAL_PORT=%u ", port);
 		lchan->abis_ip.bound_port = port;
 	}
 
 	if (TLVP_PRESENT(tv, RSL_IE_IPAC_CONN_ID)) {
-		conn_id = *((uint16_t *) TLVP_VAL(tv, RSL_IE_IPAC_CONN_ID));
+		conn_id = tlvp_val16_unal(tv, RSL_IE_IPAC_CONN_ID);
 		conn_id = ntohs(conn_id);
 		DEBUGPC(DRSL, "CON_ID=%u ", conn_id);
 		lchan->abis_ip.conn_id = conn_id;
@@ -1838,13 +1838,13 @@ static void ipac_parse_rtp(struct gsm_lchan *lchan, struct tlv_parsed *tv)
 	}
 
 	if (TLVP_PRESENT(tv, RSL_IE_IPAC_REMOTE_IP)) {
-		ip.s_addr = *((uint32_t *) TLVP_VAL(tv, RSL_IE_IPAC_REMOTE_IP));
+		ip.s_addr = tlvp_val32_unal(tv, RSL_IE_IPAC_REMOTE_IP);
 		DEBUGPC(DRSL, "REMOTE_IP=%s ", inet_ntoa(ip));
 		lchan->abis_ip.connect_ip = ntohl(ip.s_addr);
 	}
 
 	if (TLVP_PRESENT(tv, RSL_IE_IPAC_REMOTE_PORT)) {
-		port = *((uint16_t *) TLVP_VAL(tv, RSL_IE_IPAC_REMOTE_PORT));
+		port = tlvp_val16_unal(tv, RSL_IE_IPAC_REMOTE_PORT);
 		port = ntohs(port);
 		DEBUGPC(DRSL, "REMOTE_PORT=%u ", port);
 		lchan->abis_ip.connect_port = port;

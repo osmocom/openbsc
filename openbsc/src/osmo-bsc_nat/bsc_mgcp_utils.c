@@ -191,7 +191,7 @@ int bsc_mgcp_assign_patch(struct nat_sccp_connection *con, struct msgb *msg)
 		return -1;
 	}
 
-	cic = ntohs(*(uint16_t *)TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
+	cic = ntohs(tlvp_val16_unal(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
 	timeslot = cic & 0x1f;
 	multiplex = (cic & ~0x1f) >> 5;
 
