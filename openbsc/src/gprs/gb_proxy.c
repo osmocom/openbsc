@@ -519,6 +519,23 @@ fail:
 	return -1;
 }
 
+static int parse_mi_tmsi(uint8_t *value, size_t value_len, uint32_t *tmsi)
+{
+	uint32_t tmsi_be;
+
+	if (value_len != GSM48_TMSI_LEN)
+		return 0;
+
+	if ((value[0] & 0x0f) != GSM_MI_TYPE_TMSI)
+		return 0;
+
+	memcpy(&tmsi_be, value + 1, sizeof(tmsi_be));
+
+	*tmsi = ntohl(tmsi_be);
+
+	return 1;
+}
+
 struct gbprox_parse_context {
 	/* Pointer to protocol specific parts */
 	struct gsm48_hdr *g48_hdr;
@@ -991,6 +1008,7 @@ static int gbprox_patch_gmm_attach_ack(struct msgb *msg,
 				       struct gbprox_parse_context *parse_ctx)
 {
 	uint8_t *value;
+	size_t value_len;
 
 	/* Skip Attach result */
 	/* Skip Force to standby */
@@ -1003,6 +1021,17 @@ static int gbprox_patch_gmm_attach_ack(struct msgb *msg,
 		return 0;
 
 	gbprox_patch_raid(value, peer, parse_ctx->to_bss, "LLC/ATTACH_ACK");
+
+	/* Skip P-TMSI signature (P-TMSI signature, opt, TV, length 4) */
+	tv_fixed_match(&data, &data_len, GSM48_IE_GMM_PTMSI_SIG, 3, NULL);
+
+	/* Skip Negotiated READY timer value (GPRS timer, opt, TV, length 2) */
+	tv_fixed_match(&data, &data_len, GSM48_IE_GMM_TIMER_READY, 1, NULL);
+
+	/* Allocated P-TMSI (Mobile identity, opt, TLV, length 7) */
+	if (tlv_match(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
+		      &value, &value_len) > 0)
+		parse_mi_tmsi(value, value_len, &parse_ctx->new_ptmsi);
 
 	return 1;
 }
@@ -1032,6 +1061,7 @@ static int gbprox_patch_gmm_ra_upd_ack(struct msgb *msg,
 				       struct gbprox_parse_context *parse_ctx)
 {
 	uint8_t *value;
+	size_t value_len;
 
 	/* Skip Force to standby */
 	/* Skip Update result */
@@ -1043,6 +1073,13 @@ static int gbprox_patch_gmm_ra_upd_ack(struct msgb *msg,
 
 	gbprox_patch_raid(value, peer, parse_ctx->to_bss, "LLC/RA_UPD_ACK");
 
+	/* Skip P-TMSI signature (P-TMSI signature, opt, TV, length 4) */
+	tv_fixed_match(&data, &data_len, GSM48_IE_GMM_PTMSI_SIG, 3, NULL);
+
+	/* Allocated P-TMSI (Mobile identity, opt, TLV, length 7) */
+	if (tlv_match(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
+		      &value, &value_len) > 0)
+		parse_mi_tmsi(value, value_len, &parse_ctx->new_ptmsi);
 
 	return 1;
 }
@@ -1056,8 +1093,12 @@ static int gbprox_patch_gmm_ptmsi_reall_cmd(struct msgb *msg,
 	uint8_t *value;
 	size_t value_len;
 
-	/* Skip Allocated P-TMSI */
-	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 || value_len != 5)
+	LOGP(DLLC, LOGL_NOTICE,
+	     "Got P-TMSI Reallocation Command which is not covered by unit tests yet.\n");
+
+	/* Allocated P-TMSI */
+	if (lv_shift(&data, &data_len, &value, &value_len) > 0 &&
+	    parse_mi_tmsi(value, value_len, &parse_ctx->new_ptmsi) < 0)
 		/* invalid */
 		return 0;
 
@@ -1271,6 +1312,17 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	parse_ctx->llc_hdr_parsed = &ghp;
 
 	rc = gbprox_patch_dtap(msg, data, data_len, peer, &len_change, parse_ctx);
+
+	if (parse_ctx->new_ptmsi &&
+	    (parse_ctx->new_ptmsi | 0xc000) != (tlli | 0xc000) &&
+	    gbcfg.core_apn && parse_ctx->to_bss && parse_ctx->imsi) {
+		/* A new TLLI (PTMSI) has been signaled in the message */
+		LOGP(DGPRS, LOGL_INFO,
+		     "Got new TLLI/PTMSI %08x (current is %08x)\n",
+		     parse_ctx->new_ptmsi, tlli);
+		gbprox_register_tlli(peer, parse_ctx->new_ptmsi,
+				     parse_ctx->imsi, parse_ctx->imsi_len);
+	}
 
 	if (rc > 0) {
 		llc_len += len_change;
