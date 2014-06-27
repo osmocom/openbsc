@@ -488,7 +488,14 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 	nsamples = state->sample_cnt;
 
 	rc = encode_audio(state, dst, buf_size, max_samples);
-	if (rc <= 0)
+	/*
+	 * There were no samples to encode?
+	 * TODO: how does this work for comfort noise?
+	 */
+	if (rc == 0)
+		return -ENOMSG;
+	/* Any other error during the encoding */
+	if (rc < 0)
 		return rc;
 
 	nsamples -= state->sample_cnt;

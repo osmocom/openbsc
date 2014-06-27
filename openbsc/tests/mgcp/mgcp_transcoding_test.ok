@@ -144,19 +144,11 @@ counted: 0
 Invalid size:
 == Transcoding test ==
 converting gsm -> pcma
-encoded:
-    80 03 00 01 00 00 00 a0 11 22 33 44 d4 7c e3 e9 
-    62 50 39 f0 f8 b4 68 ea 6c 0e 81 1b 56 2a d5 bc 
-    69 9c d1 f0 66 7a ec 49 7a 
-counted: 0
+Nothing encoded due: No message of desired type
 Invalid data:
 == Transcoding test ==
 converting gsm -> pcma
-encoded:
-    80 03 00 01 00 00 00 a0 11 22 33 44 ee ee ee ee 
-    ee ee ee ee ee ee ee ee ee ee ee ee ee ee ee ee 
-    ee ee ee ee ee ee ee ee ee ee ee ee ee 
-counted: 0
+Nothing encoded due: No message of desired type
 Invalid payload type:
 == Transcoding test ==
 converting gsm -> pcma

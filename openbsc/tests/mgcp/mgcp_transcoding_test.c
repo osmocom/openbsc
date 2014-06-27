@@ -120,6 +120,24 @@ struct rtp_packets audio_packets_pcma[] = {
 		"\xD5\xA5\xA3\xA5\xD5\x25\x23\x25\xD5\xA5\xA3\xA5\xD5\x25\x23\x25"
 		"\xD5\xA5\xA3\xA5\xD5\x25\x23\x25\xD5\xA5\xA3\xA5\xD5\x25\x23\x25"
 	},
+	/* RTP: SeqNo=26527, TS=0 */
+	{0.020000, 92,
+		"\x80\x08\x67\x9f\x00\x00\x00\x00\x04\xaa\x67\x9f\xd5\xd5\xd5\xd5"
+		"\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5"
+		"\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5"
+		"\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5\xd5"
+		"\xd5\xd5\xd5\xd5\xd5\xd5\x55\x55\xd5\xd5\x55\x55\xd5\xd5\x55\x55"
+		"\xd5\xd5\xd5\x55\x55\xd5\xd5\xd5\x55\x55\xd5\xd5"
+	},
+	/* RTP: SeqNo=26528, TS=80 */
+	{0.020000, 92,
+		"\x80\x08\x67\xa0\x00\x00\x00\x50\x04\xaa\x67\x9f\x55\xd5\xd5\x55"
+		"\xd5\x55\xd5\xd5\xd5\x55\xd5\x55\xd5\xd5\x55\xd5\x55\xd5\x55\xd5"
+		"\x55\x55\xd5\x55\xd5\xd5\x55\x55\x55\x55\x55\xd5\xd5\x55\xd5\xd5"
+		"\xd5\x55\xd5\xd5\xd5\x55\x54\x55\xd5\xd5\x55\xd5\xd5\xd5\xd5\x55"
+		"\x54\x55\xd5\x55\xd5\x55\x55\x55\x55\x55\xd5\xd5\xd5\xd5\xd5\xd4"
+		"\xd5\x54\x55\xd5\xd4\xd5\x54\xd5\x55\xd5\xd5\xd5"
+	},
 };
 
 
@@ -221,8 +239,9 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 	cont = mgcp_transcoding_process_rtp(endp, dst_end,
 					    buf, &len, sizeof(buf));
 	if (cont < 0) {
-		printf("processing failed: %s", strerror(-cont));
-		abort();
+		printf("Nothing encoded due: %s\n", strerror(-cont));
+		talloc_free(ctx);
+		return -1;
 	}
 
 	if (len < 24) {
@@ -294,6 +313,56 @@ static void test_rtp_seq_state(void)
 	OSMO_ASSERT(htons(seq_no) == 1234);
 
 	talloc_free(ctx);
+}
+
+static void test_transcode_result(void)
+{
+	char buf[4096];
+	int len, res;
+	void *ctx;
+	struct mgcp_endpoint *endp;
+	struct mgcp_process_rtp_state *state;
+
+	{
+		/* from GSM to PCMA and same ptime */
+		given_configured_endpoint(160, 0, "gsm", "pcma", &ctx, &endp);
+		state = endp->bts_end.rtp_process_data;
+
+		/* result */
+		len = audio_packets_gsm[0].len;
+		memcpy(buf, audio_packets_gsm[0].data, len);
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(res == sizeof(struct rtp_hdr));
+		OSMO_ASSERT(state->sample_cnt == 0);
+
+		len = res;
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(res == -ENOMSG);
+
+		talloc_free(ctx);
+	}
+
+	{
+		/* from PCMA to GSM and wrong different ptime */
+		given_configured_endpoint(80, 160, "pcma", "gsm", &ctx, &endp);
+		state = endp->bts_end.rtp_process_data;
+
+		/* Add the first sample */
+		len = audio_packets_pcma[1].len;
+		memcpy(buf, audio_packets_pcma[1].data, len);
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(state->sample_cnt == 80);
+		OSMO_ASSERT(res < 0);
+
+		/* Add the second sample and it should be consumable */
+		len = audio_packets_pcma[2].len;
+		memcpy(buf, audio_packets_pcma[2].data, len);
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(state->sample_cnt == 0);
+		OSMO_ASSERT(res == sizeof(struct rtp_hdr));
+
+		talloc_free(ctx);
+	}
 }
 
 static int test_repacking(int in_samples, int out_samples, int no_transcode)
@@ -378,6 +447,7 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 
 int main(int argc, char **argv)
 {
+	int rc;
 	osmo_init_logging(&log_info);
 
 	printf("=== Transcoding Good Cases ===\n");
@@ -413,19 +483,22 @@ int main(int argc, char **argv)
 	printf("=== Transcoding Bad Cases ===\n");
 
 	printf("Invalid size:\n");
-	transcode_test("gsm", "pcma",
+	rc = transcode_test("gsm", "pcma",
 		       (uint8_t *)audio_packets_gsm_invalid_size[0].data,
 		       audio_packets_gsm_invalid_size[0].len);
+	OSMO_ASSERT(rc < 0);
 
 	printf("Invalid data:\n");
-	transcode_test("gsm", "pcma",
+	rc = transcode_test("gsm", "pcma",
 		       (uint8_t *)audio_packets_gsm_invalid_data[0].data,
 		       audio_packets_gsm_invalid_data[0].len);
+	OSMO_ASSERT(rc < 0);
 
 	printf("Invalid payload type:\n");
-	transcode_test("gsm", "pcma",
+	rc = transcode_test("gsm", "pcma",
 		       (uint8_t *)audio_packets_gsm_invalid_ptype[0].data,
 		       audio_packets_gsm_invalid_ptype[0].len);
+	OSMO_ASSERT(rc == 0);
 
 	printf("=== Repacking ===\n");
 
@@ -440,6 +513,7 @@ int main(int argc, char **argv)
 	test_repacking(160, 100, 0);
 	test_repacking(160, 100, 1);
 	test_rtp_seq_state();
+	test_transcode_result();
 
 	return 0;
 }
