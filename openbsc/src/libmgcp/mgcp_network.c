@@ -205,14 +205,14 @@ static int check_rtp_timestamp(struct mgcp_endpoint *endp,
 		     "The %s timestamp has an alignment error of %d "
 		     "on 0x%x SSRC: %u "
 		     "SeqNo delta: %d, TS delta: %d, dTS/dSeq: %d "
-		     "from %s:%d in %d\n",
+		     "from %s:%d in mode %d. ptime: %d\n",
 		     text, timestamp_error,
 		     ENDPOINT_NUMBER(endp), sstate->ssrc,
 		     (int16_t)(seq - sstate->last_seq),
 		     (int32_t)(timestamp - sstate->last_timestamp),
 		     tsdelta,
 		     inet_ntoa(addr->sin_addr), ntohs(addr->sin_port),
-		     endp->conn_mode);
+		     endp->conn_mode, state->packet_duration);
 	}
 	return 1;
 }
