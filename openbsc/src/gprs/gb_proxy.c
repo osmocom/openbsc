@@ -1252,7 +1252,7 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 }
 
 static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
-			     struct gbprox_peer *peer,
+			     struct gbprox_peer *peer, int *len_change,
 			     struct gbprox_parse_context *parse_ctx)
 {
 	struct gprs_llc_hdr_parsed ghp = {0};
@@ -1260,7 +1260,6 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	uint8_t *data;
 	size_t data_len;
 	int fcs;
-	int len_change = 0;
 	const char *err_info = NULL;
 	int err_ctr = -1;
 	uint32_t tlli = parse_ctx->tlli;
@@ -1311,7 +1310,7 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 
 	parse_ctx->llc_hdr_parsed = &ghp;
 
-	rc = gbprox_patch_dtap(msg, data, data_len, peer, &len_change, parse_ctx);
+	rc = gbprox_patch_dtap(msg, data, data_len, peer, len_change, parse_ctx);
 
 	if (parse_ctx->new_ptmsi &&
 	    (parse_ctx->new_ptmsi | 0xc000) != (tlli | 0xc000) &&
@@ -1325,22 +1324,8 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	}
 
 	if (rc > 0) {
-		llc_len += len_change;
-		ghp.crc_length += len_change;
-
-		/* Fix LLC IE len */
-		if (llc[-2] == BSSGP_IE_LLC_PDU && llc[-1] & 0x80) {
-			/* most probably a one byte length */
-			if (llc_len > 127) {
-				err_info = "Cannot increase size";
-				err_ctr = GBPROX_PEER_CTR_PATCH_ERR;
-				goto patch_error;
-			}
-			llc[-1] = llc_len | 0x80;
-		} else {
-			llc[-2] = (llc_len >> 8) & 0x7f;
-			llc[-1] = llc_len & 0xff;
-		}
+		llc_len += *len_change;
+		ghp.crc_length += *len_change;
 
 		/* Fix FCS */
 		fcs = gprs_llc_fcs(llc, ghp.crc_length);
@@ -1373,6 +1358,8 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 	uint8_t pdu_type;
 	uint8_t *data;
 	size_t data_len;
+	const char *err_info = NULL;
+	int err_ctr = -1;
 
 	if (!gbcfg.core_mcc && !gbcfg.core_mnc && !gbcfg.core_apn)
 		return;
@@ -1426,6 +1413,7 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 		uint8_t *llc = (uint8_t *)TLVP_VAL(&tp, BSSGP_IE_LLC_PDU);
 		size_t llc_len = TLVP_LEN(&tp, BSSGP_IE_LLC_PDU);
 		struct gbprox_parse_context parse_ctx = {0};
+		int len_change = 0;
 		parse_ctx.bssgp_tp = &tp;
 		parse_ctx.bud_hdr = budh;
 		parse_ctx.tlli = budh ? ntohl(budh->tlli) : 0;
@@ -1436,10 +1424,37 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 			parse_ctx.imsi_len = TLVP_LEN(&tp, BSSGP_IE_IMSI);
 		}
 
-		gbprox_patch_llc(msg, llc, llc_len, peer, &parse_ctx);
+		gbprox_patch_llc(msg, llc, llc_len, peer, &len_change, &parse_ctx);
+
+		if (len_change) {
+			llc_len += len_change;
+
+			/* Fix LLC IE len */
+			/* TODO: This is a kludge, but the a pointer to the
+			 * start of the IE is not available here */
+			if (llc[-2] == BSSGP_IE_LLC_PDU && llc[-1] & 0x80) {
+				/* most probably a one byte length */
+				if (llc_len > 127) {
+					err_info = "Cannot increase size";
+					err_ctr = GBPROX_PEER_CTR_PATCH_ERR;
+					goto patch_error;
+				}
+				llc[-1] = llc_len | 0x80;
+			} else {
+				llc[-2] = (llc_len >> 8) & 0x7f;
+				llc[-1] = llc_len & 0xff;
+			}
+		}
 		/* Note that the tp struct might contain invalid pointers here
 		 * if the LLC field has changed its size */
 	}
+	return;
+
+patch_error:
+	OSMO_ASSERT(err_ctr >= 0);
+	rate_ctr_inc(&peer->ctrg->ctr[err_ctr]);
+	LOGP(DGPRS, LOGL_ERROR,
+	     "Failed to patch BSSGP message as requested: %s.\n", err_info);
 }
 
 /* feed a message down the NS-VC associated with the specified peer */
