@@ -1678,6 +1678,8 @@ Peers:
     RAID patched              (BSS ): 9
     RAID patched              (SGSN): 3
     APN patched                     : 2
+    Attach Request count            : 1
+    TLLI cache size                 : 2
 --- Bad cases ---
 
 TLLI is already detached, shouldn't patch
@@ -1714,5 +1716,7 @@ Peers:
     RAID patched              (BSS ): 10
     RAID patched              (SGSN): 3
     APN patched                     : 2
+    Attach Request count            : 1
+    TLLI cache size                 : 2
 ===== GbProxy test END
 

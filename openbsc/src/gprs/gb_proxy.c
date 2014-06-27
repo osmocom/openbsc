@@ -109,6 +109,9 @@ enum gbprox_peer_ctr {
 	GBPROX_PEER_CTR_APN_PATCHED,
 	GBPROX_PEER_CTR_PATCH_CRYPT_ERR,
 	GBPROX_PEER_CTR_PATCH_ERR,
+	GBPROX_PEER_CTR_ATTACH_REQS,
+	GBPROX_PEER_CTR_ATTACH_REJS,
+	GBPROX_PEER_CTR_TLLI_CACHE_SIZE,
 };
 
 static const struct rate_ctr_desc peer_ctr_description[] = {
@@ -122,6 +125,9 @@ static const struct rate_ctr_desc peer_ctr_description[] = {
 	{ "apn-mod.sgsn",  "APN patched                     " },
 	{ "mod-crypt-err", "Patch error: encrypted          " },
 	{ "mod-err",	   "Patch error: other              " },
+	{ "attach-reqs",   "Attach Request count            " },
+	{ "attach-rejs",   "Attach Reject count             " },
+	{ "tlli-cache",    "TLLI cache size                 " },
 };
 
 static const struct rate_ctr_group_desc peer_ctrg_desc = {
@@ -639,6 +645,10 @@ static void gbprox_register_tlli(struct gbprox_peer *peer, uint32_t tlli,
 		OSMO_ASSERT(tlli_info->mi_data != NULL);
 		memcpy(tlli_info->mi_data, imsi, imsi_len);
 	}
+
+	/* TODO: Hack??? */
+	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
+		state->enabled_tllis_count;
 }
 
 static void gbprox_unregister_tlli(struct gbprox_peer *peer, uint32_t tlli)
@@ -1023,6 +1033,7 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 
 	switch (g48h->msg_type) {
 	case GSM48_MT_GMM_ATTACH_REQ:
+		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REQS]);
 		return gbprox_patch_gmm_attach_req(msg, data, data_len,
 						   peer, to_bss, len_change);
 
@@ -1031,6 +1042,10 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 			break;
 		return gbprox_patch_gmm_attach_ack(msg, data, data_len,
 						   peer, to_bss, len_change);
+
+	case GSM48_MT_GMM_ATTACH_REJ:
+		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REJS]);
+		break;
 
 	case GSM48_MT_GMM_RA_UPD_REQ:
 		if (!patching_is_enabled(GBPROX_PATCH_LLC_GMM))
