@@ -464,6 +464,7 @@ static void gbprox_delete_tllis(struct gbprox_peer *peer)
 		llist_del(&tlli_info->list);
 		talloc_free(tlli_info);
 	}
+	state->enabled_tllis_count = 0;
 
 	OSMO_ASSERT(llist_empty(&state->enabled_tllis));
 }
@@ -646,7 +647,6 @@ static void gbprox_register_tlli(struct gbprox_peer *peer, uint32_t tlli,
 		memcpy(tlli_info->mi_data, imsi, imsi_len);
 	}
 
-	/* TODO: Hack??? */
 	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
 		state->enabled_tllis_count;
 }
@@ -654,6 +654,7 @@ static void gbprox_register_tlli(struct gbprox_peer *peer, uint32_t tlli,
 static void gbprox_unregister_tlli(struct gbprox_peer *peer, uint32_t tlli)
 {
 	struct gbprox_tlli_info *tlli_info;
+	struct gbprox_patch_state *state = &peer->patch_state;
 
 	tlli_info = gbprox_find_tlli(peer, tlli);
 	if (tlli_info) {
@@ -662,7 +663,11 @@ static void gbprox_unregister_tlli(struct gbprox_peer *peer, uint32_t tlli)
 		     tlli);
 		llist_del(&tlli_info->list);
 		talloc_free(tlli_info);
+		state->enabled_tllis_count -= 1;
 	}
+
+	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
+		state->enabled_tllis_count;
 }
 
 static int gbprox_check_tlli(struct gbprox_peer *peer, uint32_t tlli)
