@@ -84,7 +84,7 @@ static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
 
 
 /* Section 8.9.9 LLC layer parameter default values */
-static const struct gprs_llc_params llc_default_params[] = {
+static const struct gprs_llc_params llc_default_params[NUM_SAPIS] = {
 	[1] = {
 		.t200_201	= 5,
 		.n200		= 3,
