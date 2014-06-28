@@ -177,8 +177,10 @@ static int given_configured_endpoint(int in_samples, int out_samples,
 	}
 
 	rc = mgcp_transcoding_setup(endp, dst_end, src_end);
-	if (rc < 0)
-		errx(1, "setup failed: %s", strerror(-rc));
+	if (rc < 0) {
+		printf("setup failed: %s", strerror(-rc));
+		abort();
+	}
 
 	*out_ctx = cfg;
 	*out_endp = endp;
@@ -217,8 +219,10 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 
 	cont = mgcp_transcoding_process_rtp(endp, dst_end,
 					    buf, &len, sizeof(buf));
-	if (cont < 0)
-		errx(1, "processing failed: %s", strerror(-cont));
+	if (cont < 0) {
+		printf("processing failed: %s", strerror(-cont));
+		abort();
+	}
 
 	if (len < 24) {
 		printf("encoded: %s\n", osmo_hexdump((unsigned char *)buf, len));
@@ -302,8 +306,10 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 				break;
 			}
 
-			if (cont < 0)
-				errx(1, "processing failed: %s", strerror(-cont));
+			if (cont < 0) {
+				printf("processing failed: %s", strerror(-cont));
+				abort();
+			}
 
 			len -= 12; /* ignore RTP header */
 
