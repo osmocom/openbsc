@@ -500,5 +500,10 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 	state->next_seq += 1;
 	state->next_time = ts_no + nsamples;
 
+	/*
+	 * XXX: At this point we should always have consumed
+	 * samples. So doing OSMO_ASSERT(nsamples > 0) and returning
+	 * rtp_hdr_size should be fine.
+	 */
 	return nsamples ? rtp_hdr_size : 0;
 }
