@@ -428,10 +428,12 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 
 	if (payload_len > 0) {
 		ts_no = ntohl(*(uint32_t*)(data+4));
-		if (!state->is_running)
+		if (!state->is_running) {
 			state->next_seq = ntohs(*(uint16_t*)(data+2));
+			state->next_time = ts_no;
+			state->is_running = 1;
+		}
 
-		state->is_running = 1;
 
 		if (state->sample_cnt > 0) {
 			int32_t delta = ts_no - state->next_time;
