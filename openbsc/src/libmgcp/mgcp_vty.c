@@ -139,6 +139,29 @@ static int config_write_mgcp(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
+static void dump_rtp_end(const char *end_name, struct vty *vty,
+			struct mgcp_rtp_state *state, struct mgcp_rtp_end *end)
+{
+	vty_out(vty,
+		"  %s%s"
+		"   Timestamp Errs: %d->%d%s"
+		"   Dropped Packets: %d%s"
+		"   Payload Type: %d Rate: %u Channels: %d %s"
+		"   Frame Duration: %u Frame Denominator: %u%s"
+		"   FPP: %d Packet Duration: %u%s"
+		"   FMTP-Extra: %s Audio-Name: %s Sub-Type: %s%s"
+		"   Output-Enabled: %d Force-PTIME: %d%s",
+		end_name, VTY_NEWLINE,
+		state->in_stream.err_ts_counter,
+		state->out_stream.err_ts_counter, VTY_NEWLINE,
+		end->dropped_packets, VTY_NEWLINE,
+		end->payload_type, end->rate, end->channels, VTY_NEWLINE,
+		end->frame_duration_num, end->frame_duration_den, VTY_NEWLINE,
+		end->frames_per_packet, end->packet_duration_ms, VTY_NEWLINE,
+		end->fmtp_extra, end->audio_name, end->subtype_name, VTY_NEWLINE,
+		end->output_enabled, end->force_output_ptime, VTY_NEWLINE);
+}
+
 static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg, int verbose)
 {
 	int i;
@@ -165,19 +188,9 @@ static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg, int verbo
 			endp->trans_net.packets, endp->trans_bts.packets,
 			VTY_NEWLINE);
 
-		if (verbose) {
-			vty_out(vty,
-				"  Timestamp Errs: BTS %d->%d, Net %d->%d%s",
-				endp->bts_state.in_stream.err_ts_counter,
-				endp->bts_state.out_stream.err_ts_counter,
-				endp->net_state.in_stream.err_ts_counter,
-				endp->net_state.out_stream.err_ts_counter,
-				VTY_NEWLINE);
-			vty_out(vty,
-				"  Dropped Packets: Net->BTS %d, BTS->Net %d%s",
-				endp->bts_end.dropped_packets,
-				endp->net_end.dropped_packets,
-				VTY_NEWLINE);
+		if (verbose && endp->allocated) {
+			dump_rtp_end("Net->BTS", vty, &endp->bts_state, &endp->bts_end);
+			dump_rtp_end("BTS->Net", vty, &endp->net_state, &endp->net_end);
 		}
 	}
 }
