@@ -486,15 +486,18 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 			int32_t delta = ts_no - state->next_time;
 			/* TODO: check sequence? reordering? packet loss? */
 
-			if (delta > state->sample_cnt)
+			if (delta > state->sample_cnt) {
 				/* There is a time gap between the last packet
 				 * and the current one. Just discard the
 				 * partial data that is left in the buffer.
 				 * TODO: This can be improved by adding silence
 				 * instead if the delta is small enough.
 				 */
+				LOGP(DMGCP, LOGL_NOTICE,
+					"0x%x dropping sample buffer due delta=%d sample_cnt=%d\n",
+					ENDPOINT_NUMBER(endp), delta, state->sample_cnt);
 				state->sample_cnt = 0;
-			else if (delta < 0) {
+			} else if (delta < 0) {
 				LOGP(DMGCP, LOGL_NOTICE,
 				     "RTP time jumps backwards, delta = %d, "
 				     "discarding buffered samples\n",
