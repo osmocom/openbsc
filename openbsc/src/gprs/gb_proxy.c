@@ -495,6 +495,16 @@ static int gbprox_check_imsi(struct gbproxy_peer *peer,
 	return 1;
 }
 
+static void gbprox_attach_tlli_info(struct gbproxy_peer *peer, time_t now,
+				    struct gbproxy_tlli_info *tlli_info)
+{
+	struct gbproxy_patch_state *state = &peer->patch_state;
+
+	tlli_info->timestamp = now;
+	llist_add(&tlli_info->list, &state->enabled_tllis);
+	state->enabled_tllis_count += 1;
+}
+
 int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
@@ -530,6 +540,35 @@ int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
 	return deleted_count;
 }
 
+static struct gbproxy_tlli_info *gbprox_get_detached_tlli_info(
+	struct gbproxy_peer *peer,
+	struct gbproxy_tlli_info *tlli_info,
+	uint32_t tlli)
+{
+	struct gbproxy_patch_state *state = &peer->patch_state;
+
+	if (!tlli_info) {
+		tlli_info = talloc_zero(peer, struct gbproxy_tlli_info);
+		tlli_info->tlli = tlli;
+	} else {
+		llist_del(&tlli_info->list);
+		OSMO_ASSERT(state->enabled_tllis_count > 0);
+		state->enabled_tllis_count -= 1;
+	}
+
+	return tlli_info;
+}
+
+static void gbprox_update_tlli_info(struct gbproxy_tlli_info *tlli_info,
+				    const uint8_t *imsi, size_t imsi_len)
+{
+	tlli_info->mi_data_len = imsi_len;
+	tlli_info->mi_data =
+		talloc_realloc_size(tlli_info, tlli_info->mi_data, imsi_len);
+	OSMO_ASSERT(tlli_info->mi_data != NULL);
+	memcpy(tlli_info->mi_data, imsi, imsi_len);
+}
+
 void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 				 const uint8_t *imsi, size_t imsi_len)
 {
@@ -537,6 +576,7 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 	struct gbproxy_tlli_info *tlli_info;
 	int enable_patching;
 	time_t now = 0;
+	int tlli_already_known;
 
 	if (gprs_tlli_type(tlli) != TLLI_LOCAL)
 		return;
@@ -547,13 +587,13 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 	if (!peer->cfg->check_imsi)
 		return;
 
-	tlli_info = gbprox_find_tlli(peer, tlli);
-
 	/* Check, whether the IMSI matches */
 	enable_patching = gbprox_check_imsi(peer, imsi, imsi_len);
 
 	if (enable_patching < 0)
 		return;
+
+	tlli_info = gbprox_find_tlli(peer, tlli);
 
 	if (!tlli_info) {
 		tlli_info = gbprox_find_tlli_by_mi(peer, imsi, imsi_len);
@@ -567,51 +607,33 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 		}
 	}
 
-	if (!tlli_info) {
-		if (!enable_patching)
-			return;
+	tlli_already_known = tlli_info != NULL;
 
-		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
-		tlli_info = talloc_zero(peer, struct gbproxy_tlli_info);
-		tlli_info->tlli = tlli;
-	} else {
-		llist_del(&tlli_info->list);
-		OSMO_ASSERT(state->enabled_tllis_count > 0);
-		state->enabled_tllis_count -= 1;
-	}
+	if (!tlli_already_known && !enable_patching)
+		return;
 
+	tlli_info = gbprox_get_detached_tlli_info(peer, tlli_info, tlli);
 	OSMO_ASSERT(tlli_info != NULL);
 
 	if (enable_patching) {
+		if (!tlli_already_known)
+			LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
+
 		now = time(NULL);
 
-		tlli_info->timestamp = now;
-		llist_add(&tlli_info->list, &state->enabled_tllis);
-		state->enabled_tllis_count += 1;
+		gbprox_attach_tlli_info(peer, now, tlli_info);
+		gbprox_update_tlli_info(tlli_info, imsi, imsi_len);
 
 		gbprox_remove_stale_tllis(peer, now);
-
-		if (tlli_info != llist_entry(state->enabled_tllis.next,
-					     struct gbproxy_tlli_info, list)) {
-			LOGP(DGPRS, LOGL_ERROR,
-			     "Unexpectedly removed new TLLI entry as stale, "
-			     "TLLI %08x\n", tlli);
-			tlli_info = NULL;
-		}
+		/* Be on the safe side, currently the new tlli_info won't be
+		 * removed, but this not enforced explicitely */
+		tlli_info = NULL;
 	} else {
 		LOGP(DGPRS, LOGL_INFO,
 		     "Removing TLLI %08x from list (patching no longer enabled)\n",
 		     tlli);
 		talloc_free(tlli_info);
 		tlli_info = NULL;
-	}
-
-	if (tlli_info) {
-		tlli_info->mi_data_len = imsi_len;
-		tlli_info->mi_data =
-			talloc_realloc_size(tlli_info, tlli_info->mi_data, imsi_len);
-		OSMO_ASSERT(tlli_info->mi_data != NULL);
-		memcpy(tlli_info->mi_data, imsi, imsi_len);
 	}
 
 	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
