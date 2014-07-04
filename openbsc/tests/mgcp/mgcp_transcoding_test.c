@@ -343,6 +343,25 @@ static void test_transcode_result(void)
 	}
 
 	{
+		/* from GSM to PCMA and same ptime */
+		given_configured_endpoint(160, 160, "gsm", "pcma", &ctx, &endp);
+		state = endp->bts_end.rtp_process_data;
+
+		/* result */
+		len = audio_packets_gsm[0].len;
+		memcpy(buf, audio_packets_gsm[0].data, len);
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(res == sizeof(struct rtp_hdr));
+		OSMO_ASSERT(state->sample_cnt == 0);
+
+		len = res;
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(res == -EAGAIN);
+
+		talloc_free(ctx);
+	}
+
+	{
 		/* from PCMA to GSM and wrong different ptime */
 		given_configured_endpoint(80, 160, "pcma", "gsm", &ctx, &endp);
 		state = endp->bts_end.rtp_process_data;
