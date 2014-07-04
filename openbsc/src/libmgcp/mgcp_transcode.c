@@ -429,7 +429,7 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 	if (payload_len > 0) {
 		ts_no = ntohl(*(uint32_t*)(data+4));
 		if (!state->is_running)
-			state->next_seq = ntohs(*(uint32_t*)(data+4));
+			state->next_seq = ntohs(*(uint16_t*)(data+2));
 
 		state->is_running = 1;
 
@@ -494,7 +494,7 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 	nsamples -= state->sample_cnt;
 
 	*len = rtp_hdr_size + rc;
-	*(uint16_t*)(data+2) = htonl(state->next_seq);
+	*(uint16_t*)(data+2) = htons(state->next_seq);
 	*(uint32_t*)(data+4) = htonl(ts_no);
 
 	state->next_seq += 1;

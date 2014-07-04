@@ -11,6 +11,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
+#include <openbsc/rtp.h>
 
 #include "bscconfig.h"
 #ifndef BUILD_MGCP_TRANSCODING
@@ -245,6 +246,56 @@ static int transcode_test(const char *srcfmt, const char *dstfmt,
 	return 0;
 }
 
+static void test_rtp_seq_state(void)
+{
+	char buf[4096];
+	int len;
+	int cont;
+	void *ctx;
+	struct mgcp_endpoint *endp;
+	struct mgcp_process_rtp_state *state;
+	struct rtp_hdr *hdr;
+	uint32_t ts_no;
+	uint16_t seq_no;
+
+	given_configured_endpoint(160, 0, "pcma", "l16", &ctx, &endp);
+	state = endp->bts_end.rtp_process_data;
+	OSMO_ASSERT(!state->is_running);
+	OSMO_ASSERT(state->next_seq == 0);
+	OSMO_ASSERT(state->next_time == 0);
+
+	/* initialize packet */
+	len = audio_packets_pcma[0].len;
+	memcpy(buf, audio_packets_pcma[0].data, len);
+	cont = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, len);
+	OSMO_ASSERT(cont >= 0);
+	OSMO_ASSERT(state->is_running);
+	OSMO_ASSERT(state->next_seq == 2);
+	OSMO_ASSERT(state->next_time = 240);
+
+	/* verify that the right timestamp was written */
+	OSMO_ASSERT(len == audio_packets_pcma[0].len);
+	hdr = (struct rtp_hdr *) &buf[0];
+
+	memcpy(&ts_no, &hdr->timestamp, sizeof(ts_no));
+	OSMO_ASSERT(htonl(ts_no) == 160);
+	memcpy(&seq_no, &hdr->sequence, sizeof(seq_no));
+	OSMO_ASSERT(htons(seq_no) == 1);
+	/* Check the right sequence number is written */
+	state->next_seq = 1234;
+	len = audio_packets_pcma[0].len;
+	memcpy(buf, audio_packets_pcma[0].data, len);
+	cont = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, len);
+	OSMO_ASSERT(cont >= 0);
+	OSMO_ASSERT(len == audio_packets_pcma[0].len);
+	hdr = (struct rtp_hdr *) &buf[0];
+
+	memcpy(&seq_no, &hdr->sequence, sizeof(seq_no));
+	OSMO_ASSERT(htons(seq_no) == 1234);
+
+	talloc_free(ctx);
+}
+
 static int test_repacking(int in_samples, int out_samples, int no_transcode)
 {
 	char buf[4096] = {0x80, 0};
@@ -388,6 +439,7 @@ int main(int argc, char **argv)
 	test_repacking(160, 240, 1);
 	test_repacking(160, 100, 0);
 	test_repacking(160, 100, 1);
+	test_rtp_seq_state();
 
 	return 0;
 }

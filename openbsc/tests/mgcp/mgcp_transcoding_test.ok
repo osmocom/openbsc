@@ -27,14 +27,14 @@ counted: 0
 == Transcoding test ==
 converting l16 -> gsm
 encoded:
-    80 0b 00 00 00 00 00 a0 11 22 33 44 d4 7c e3 e9 
+    80 0b 00 01 00 00 00 a0 11 22 33 44 d4 7c e3 e9 
     62 50 39 f0 f8 b4 68 ea 6c 0e 81 1b 56 2a d5 bc 
     69 9c d1 f0 66 7a ec 49 7a 33 3d 0a de 
 counted: 12
 == Transcoding test ==
 converting l16 -> pcma
 encoded:
-    80 0b 00 00 00 00 00 a0 11 22 33 44 d5 a5 a3 a5 
+    80 0b 00 01 00 00 00 a0 11 22 33 44 d5 a5 a3 a5 
     d5 25 23 25 d5 a5 a3 a5 d5 25 23 25 d5 a5 a3 a5 
     d5 25 23 25 d5 a5 a3 a5 d5 25 23 25 d5 a5 a3 a5 
     d5 25 23 25 d5 a5 a3 a5 d5 25 23 25 d5 a5 a3 a5 
@@ -49,7 +49,7 @@ counted: 12
 == Transcoding test ==
 converting gsm -> l16
 encoded:
-    80 03 00 00 00 00 00 a0 11 22 33 44 00 00 54 00 
+    80 03 00 01 00 00 00 a0 11 22 33 44 00 00 54 00 
     59 f0 34 20 c4 c8 b9 f8 e2 18 f1 e8 f2 28 f0 e0 
     46 08 4f 80 2c a0 a9 c8 80 00 c0 58 3f 80 63 c0 
     24 b8 fa b8 f6 88 0b a0 c8 70 a8 b0 c8 c0 3b a8 
@@ -81,7 +81,7 @@ counted: 0
 == Transcoding test ==
 converting gsm -> pcma
 encoded:
-    80 03 00 00 00 00 00 a0 11 22 33 44 d5 a0 a3 bf 
+    80 03 00 01 00 00 00 a0 11 22 33 44 d5 a0 a3 bf 
     38 24 08 19 1e 1b a4 a6 b3 20 2a 3a ba ad b7 60 
     17 92 3e 20 3e b8 ac b2 32 2c 20 02 b6 be be 82 
     04 27 26 35 8d a4 a6 b5 35 21 20 31 8d a7 a6 b6 
@@ -96,7 +96,7 @@ counted: 12
 == Transcoding test ==
 converting pcma -> l16
 encoded:
-    80 08 00 00 00 00 00 a0 11 22 33 44 00 08 42 00 
+    80 08 00 01 00 00 00 a0 11 22 33 44 00 08 42 00 
     5a 00 42 00 00 08 be 00 a6 00 be 00 00 08 42 00 
     5a 00 42 00 00 08 be 00 a6 00 be 00 00 08 42 00 
     5a 00 42 00 00 08 be 00 a6 00 be 00 00 08 42 00 
@@ -121,7 +121,7 @@ counted: 12
 == Transcoding test ==
 converting pcma -> gsm
 encoded:
-    80 08 00 00 00 00 00 a0 11 22 33 44 d4 b9 f4 5d 
+    80 08 00 01 00 00 00 a0 11 22 33 44 d4 b9 f4 5d 
     d9 50 5a e1 a0 cd 76 ea 52 0e 87 53 ad d4 ea a2 
     0a 63 ca e9 60 79 e2 2a 25 d2 c0 f3 39 
 counted: 12
@@ -161,7 +161,7 @@ Invalid payload type:
 == Transcoding test ==
 converting gsm -> pcma
 encoded:
-    80 08 00 00 00 00 00 a0 11 22 33 44 d5 a0 a3 bf 
+    80 08 00 01 00 00 00 a0 11 22 33 44 d5 a0 a3 bf 
     38 24 08 19 1e 1b a4 a6 b3 20 2a 3a ba ad b7 60 
     17 92 3e 20 3e b8 ac b2 32 2c 20 02 b6 be be 82 
     04 27 26 35 8d a4 a6 b5 35 21 20 31 8d a7 a6 b6 
