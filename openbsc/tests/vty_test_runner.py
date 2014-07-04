@@ -56,6 +56,27 @@ class TestVTYBase(unittest.TestCase):
         self.vty = None
         osmoutil.end_proc(self.proc)
 
+class TestVTYMGCP(TestVTYBase):
+    def vty_command(self):
+        return ["./src/osmo-bsc_mgcp/osmo-bsc_mgcp", "-c",
+                "doc/examples/osmo-bsc_mgcp/mgcp.cfg"]
+
+    def vty_app(self):
+        return (4243, "./src/osmo-bsc_mgcp/osmo-bsc_mgcp", "OpenBSC MGCP", "mgcp")
+
+    def testForcePtime(self):
+	self.vty.enable()
+	res = self.vty.command("show running-config")
+	self.assert_(res.find('  rtp force-ptime 20\r') > 0)
+	self.assertEquals(res.find('  no rtp force-ptime\r'), -1)
+
+	self.vty.command("configure terminal")
+	self.vty.command("mgcp")
+	self.vty.command("no rtp force-ptime")
+	res = self.vty.command("show running-config")
+	self.assertEquals(res.find('  rtp force-ptime 20\r'), -1)
+	self.assertEquals(res.find('  no rtp force-ptime\r'), -1)
+
 
 class TestVTYGenericBSC(TestVTYBase):
 
@@ -656,6 +677,7 @@ if __name__ == '__main__':
     os.chdir(workdir)
     print "Running tests for specific VTY commands"
     suite = unittest.TestSuite()
+    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYMGCP))
     suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYNITB))
     add_bsc_test(suite, workdir)
     add_nat_test(suite, workdir)

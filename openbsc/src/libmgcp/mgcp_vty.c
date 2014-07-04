@@ -2,7 +2,7 @@
 /* The protocol implementation */
 
 /*
- * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2014 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
@@ -128,6 +128,8 @@ static int config_write_mgcp(struct vty *vty)
 	else
 		vty_out(vty, "  rtp transcoder-range %u %u%s",
 			g_cfg->transcoder_ports.range_start, g_cfg->transcoder_ports.range_end, VTY_NEWLINE);
+	if (g_cfg->bts_force_ptime > 0)
+		vty_out(vty, "  rtp force-ptime %d%s", g_cfg->bts_force_ptime, VTY_NEWLINE);
 	vty_out(vty, "  transcoder-remote-base %u%s", g_cfg->transcoder_remote_base, VTY_NEWLINE);
 	vty_out(vty, "  osmux %s%s",
 		g_cfg->osmux == 1 ? "on" : "off", VTY_NEWLINE);
