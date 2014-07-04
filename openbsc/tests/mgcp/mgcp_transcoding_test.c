@@ -384,6 +384,53 @@ static void test_transcode_result(void)
 
 		talloc_free(ctx);
 	}
+
+	{
+		/* from PCMA to GSM with a big time jump */
+		struct rtp_hdr *hdr;
+		uint32_t ts;
+
+		given_configured_endpoint(80, 160, "pcma", "gsm", &ctx, &endp);
+		state = endp->bts_end.rtp_process_data;
+
+		/* Add the first sample */
+		len = audio_packets_pcma[1].len;
+		memcpy(buf, audio_packets_pcma[1].data, len);
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(state->sample_cnt == 80);
+		OSMO_ASSERT(state->next_time == 232640);
+		OSMO_ASSERT(state->next_seq == 26527);
+		OSMO_ASSERT(res < 0);
+
+		/* Add a skip to the packet to force a 'resync' */
+		len = audio_packets_pcma[2].len;
+		memcpy(buf, audio_packets_pcma[2].data, len);
+		hdr = (struct rtp_hdr *) &buf[0];
+		/* jump the time and add alignment error */
+		ts = ntohl(hdr->timestamp) + 123 * 80 + 2;
+		hdr->timestamp = htonl(ts);
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(res < 0);
+		OSMO_ASSERT(state->sample_cnt == 80);
+		OSMO_ASSERT(state->next_time == ts);
+		OSMO_ASSERT(state->next_seq == 26527);
+		/* TODO: this can create alignment errors */
+
+
+		/* Now attempt to consume 160 samples */
+		len = audio_packets_pcma[2].len;
+		memcpy(buf, audio_packets_pcma[2].data, len);
+		hdr = (struct rtp_hdr *) &buf[0];
+		ts += 80;
+		hdr->timestamp = htonl(ts);
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(res == 12);
+		OSMO_ASSERT(state->sample_cnt == 0);
+		OSMO_ASSERT(state->next_time == ts + 160);
+		OSMO_ASSERT(state->next_seq == 26528);
+
+		talloc_free(ctx);
+	}
 }
 
 static int test_repacking(int in_samples, int out_samples, int no_transcode)

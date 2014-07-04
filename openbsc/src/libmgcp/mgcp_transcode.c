@@ -450,6 +450,7 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 					"0x%x dropping sample buffer due delta=%d sample_cnt=%d\n",
 					ENDPOINT_NUMBER(endp), delta, state->sample_cnt);
 				state->sample_cnt = 0;
+				state->next_time = ts_no;
 			} else if (delta < 0) {
 				LOGP(DMGCP, LOGL_NOTICE,
 				     "RTP time jumps backwards, delta = %d, "
