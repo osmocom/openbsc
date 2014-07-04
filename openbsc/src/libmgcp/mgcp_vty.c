@@ -371,7 +371,8 @@ DEFUN(cfg_mgcp_rtp_force_ptime,
       cfg_mgcp_rtp_force_ptime_cmd,
       "rtp force-ptime (10|20|40)",
       RTP_STR FORCE_PTIME_STR
-      "The required ptime (packet duration) in ms\n")
+      "The required ptime (packet duration) in ms\n"
+      "10 ms\n20 ms\n40 ms\n")
 {
 	g_cfg->bts_force_ptime = atoi(argv[0]);
 	return CMD_SUCCESS;
