@@ -1177,7 +1177,7 @@ DEFUN(show_ussd_connection,
 	return CMD_SUCCESS;
 }
 
-#define OSMUX_STR "RTP multiplexing"
+#define OSMUX_STR "RTP multiplexing\n"
 DEFUN(cfg_bsc_osmux,
       cfg_bsc_osmux_cmd,
       "osmux (on|off)",
