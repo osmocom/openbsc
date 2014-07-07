@@ -656,9 +656,9 @@ static void test_gbproxy()
 
 	gbprox_dump_global(stdout, 0);
 
+	gbprox_reset();
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
-	gbprox_reset();
 }
 
 static void test_gbproxy_ident_changes()
@@ -787,9 +787,9 @@ static void test_gbproxy_ident_changes()
 	gbprox_dump_global(stdout, 0);
 	gbprox_dump_peers(stdout, 0);
 
+	gbprox_reset();
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
-	gbprox_reset();
 }
 
 static void test_gbproxy_ra_patching()
@@ -866,9 +866,9 @@ static void test_gbproxy_ra_patching()
 	gbprox_dump_global(stdout, 0);
 	gbprox_dump_peers(stdout, 0);
 
+	gbprox_reset();
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
-	gbprox_reset();
 }
 
 
