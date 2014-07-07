@@ -420,7 +420,7 @@ static void test_gbproxy()
 	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -429,7 +429,7 @@ static void test_gbproxy()
 	setup_ns(nsi, &bss_peer[1], 0x2001, 0x2000);
 	setup_bssgp(nsi, &bss_peer[1], 0x2002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x2002);
 
@@ -437,43 +437,43 @@ static void test_gbproxy()
 
 	setup_ns(nsi, &bss_peer[2], 0x1001, 0x1000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Move BSS 2 to former BSS 1 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[0], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Move BSS 1 to current BSS 2 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[0], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Move BSS 2 to new port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[3], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Move BSS 2 to former BSS 1 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[2], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Move BSS 1 to original BSS 1 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Reset BSS 1 with a new BVCI ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], 0x1012);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1012);
 
@@ -481,7 +481,7 @@ static void test_gbproxy()
 
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -489,7 +489,7 @@ static void test_gbproxy()
 
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -521,9 +521,9 @@ static void test_gbproxy()
 
 	setup_bssgp(nsi, &bss_peer[2], 0x1002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
-	gbprox_dump_global(stdout, 0, 1);
+	gbprox_dump_global(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -539,7 +539,7 @@ static void test_gbproxy()
 
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, 0x10ff, (uint8_t *)"", 0);
 
-	gbprox_dump_global(stdout, 0, 1);
+	gbprox_dump_global(stdout, 0);
 
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
@@ -585,13 +585,13 @@ static void test_gbproxy_ident_changes()
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[0]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[0]);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Setup BVCI 2 ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[1]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[1]);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 1 ---\n\n");
 
@@ -612,13 +612,13 @@ static void test_gbproxy_ident_changes()
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[0]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[0]);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Setup BVCI 3 ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[2]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[2]);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 1 ---\n\n");
 
@@ -629,9 +629,9 @@ static void test_gbproxy_ident_changes()
 	       " (should fail) ---\n\n");
 
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], bvci[1], (uint8_t *)"", 0);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, bvci[1], (uint8_t *)"", 0);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 3 ---\n\n");
 
@@ -647,13 +647,13 @@ static void test_gbproxy_ident_changes()
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[0]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[0]);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Setup BVCI 4 ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[3]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[3]);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 1 ---\n\n");
 
@@ -664,9 +664,9 @@ static void test_gbproxy_ident_changes()
 	       " (should fail) ---\n\n");
 
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], bvci[1], (uint8_t *)"", 0);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, bvci[1], (uint8_t *)"", 0);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 3 ---\n\n");
 
@@ -678,8 +678,8 @@ static void test_gbproxy_ident_changes()
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], bvci[3], (uint8_t *)"", 0);
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, bvci[3], (uint8_t *)"", 0);
 
-	gbprox_dump_global(stdout, 0, 1);
-	gbprox_dump_peers(stdout, 0, 1);
+	gbprox_dump_global(stdout, 0);
+	gbprox_dump_peers(stdout, 0);
 
 	gprs_ns_destroy(nsi);
 	nsi = NULL;

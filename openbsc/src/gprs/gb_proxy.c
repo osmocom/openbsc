@@ -806,7 +806,7 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-int gbprox_dump_global(FILE *stream, int indent, int verbose)
+int gbprox_dump_global(FILE *stream, int indent)
 {
 	unsigned int i;
 	const struct rate_ctr_group_desc *desc;
@@ -815,9 +815,6 @@ int gbprox_dump_global(FILE *stream, int indent, int verbose)
 	rc = fprintf(stream, "%*sGbproxy global:\n", indent, "");
 	if (rc < 0)
 		return rc;
-
-	if (!verbose)
-		return 0;
 
 	desc = get_global_ctrg()->desc;
 
@@ -837,7 +834,7 @@ int gbprox_dump_global(FILE *stream, int indent, int verbose)
 	return 0;
 }
 
-int gbprox_dump_peers(FILE *stream, int indent, int verbose)
+int gbprox_dump_peers(FILE *stream, int indent)
 {
 	struct gbprox_peer *peer;
 	struct gprs_ra_id raid;
@@ -861,9 +858,6 @@ int gbprox_dump_peers(FILE *stream, int indent, int verbose)
 
 		if (rc < 0)
 			return rc;
-
-		if (!verbose)
-			continue;
 
 		desc = peer->ctrg->desc;
 
