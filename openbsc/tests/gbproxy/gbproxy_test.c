@@ -308,6 +308,24 @@ static void connect_sgsn(struct gprs_ns_inst *nsi, struct sockaddr_in *sgsn_peer
 	send_ns_alive(nsi, sgsn_peer);
 }
 
+static void configure_sgsn_peer(struct sockaddr_in *sgsn_peer)
+{
+	sgsn_peer->sin_family = AF_INET;
+	sgsn_peer->sin_port = htons(32000);
+	sgsn_peer->sin_addr.s_addr = htonl(REMOTE_SGSN_ADDR);
+}
+
+static void configure_bss_peers(struct sockaddr_in *bss_peers, size_t size)
+{
+	size_t i;
+
+	for (i = 0; i < size; ++i) {
+		bss_peers[i].sin_family = AF_INET;
+		bss_peers[i].sin_port = htons((i + 1) * 1111);
+		bss_peers[i].sin_addr.s_addr = htonl(REMOTE_BSS_ADDR);
+	}
+}
+
 int gprs_ns_rcvmsg(struct gprs_ns_inst *nsi, struct msgb *msg,
 		   struct sockaddr_in *saddr, enum gprs_ns_ll ll);
 
@@ -504,22 +522,8 @@ static void test_gbproxy()
 	gbcfg.nsi = bssgp_nsi;
 	gbcfg.nsip_sgsn_nsei = SGSN_NSEI;
 
-	sgsn_peer.sin_family = AF_INET;
-	sgsn_peer.sin_port = htons(32000);
-	sgsn_peer.sin_addr.s_addr = htonl(REMOTE_SGSN_ADDR);
-
-	bss_peer[0].sin_family = AF_INET;
-	bss_peer[0].sin_port = htons(1111);
-	bss_peer[0].sin_addr.s_addr = htonl(REMOTE_BSS_ADDR);
-	bss_peer[1].sin_family = AF_INET;
-	bss_peer[1].sin_port = htons(2222);
-	bss_peer[1].sin_addr.s_addr = htonl(REMOTE_BSS_ADDR);
-	bss_peer[2].sin_family = AF_INET;
-	bss_peer[2].sin_port = htons(3333);
-	bss_peer[2].sin_addr.s_addr = htonl(REMOTE_BSS_ADDR);
-	bss_peer[3].sin_family = AF_INET;
-	bss_peer[3].sin_port = htons(4444);
-	bss_peer[3].sin_addr.s_addr = htonl(REMOTE_BSS_ADDR);
+	configure_sgsn_peer(&sgsn_peer);
+	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
 
 	printf("--- Initialise SGSN ---\n\n");
 
@@ -670,13 +674,8 @@ static void test_gbproxy_ident_changes()
 	gbcfg.nsi = bssgp_nsi;
 	gbcfg.nsip_sgsn_nsei = SGSN_NSEI;
 
-	sgsn_peer.sin_family = AF_INET;
-	sgsn_peer.sin_port = htons(32000);
-	sgsn_peer.sin_addr.s_addr = htonl(REMOTE_SGSN_ADDR);
-
-	bss_peer[0].sin_family = AF_INET;
-	bss_peer[0].sin_port = htons(1111);
-	bss_peer[0].sin_addr.s_addr = htonl(REMOTE_BSS_ADDR);
+	configure_sgsn_peer(&sgsn_peer);
+	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
 
 	printf("--- Initialise SGSN ---\n\n");
 
@@ -809,13 +808,8 @@ static void test_gbproxy_ra_patching()
 	gbcfg.nsi = bssgp_nsi;
 	gbcfg.nsip_sgsn_nsei = SGSN_NSEI;
 
-	sgsn_peer.sin_family = AF_INET;
-	sgsn_peer.sin_port = htons(32000);
-	sgsn_peer.sin_addr.s_addr = htonl(REMOTE_SGSN_ADDR);
-
-	bss_peer[0].sin_family = AF_INET;
-	bss_peer[0].sin_port = htons(1111);
-	bss_peer[0].sin_addr.s_addr = htonl(REMOTE_BSS_ADDR);
+	configure_sgsn_peer(&sgsn_peer);
+	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
 
 	printf("--- Initialise SGSN ---\n\n");
 
