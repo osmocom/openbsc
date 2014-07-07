@@ -154,7 +154,7 @@ static int processing_state_destructor(struct mgcp_process_rtp_state *state)
 {
 	switch (state->src_fmt) {
 	case AF_GSM:
-		if (state->dst.gsm_handle)
+		if (state->src.gsm_handle)
 			gsm_destroy(state->src.gsm_handle);
 		break;
 #ifdef HAVE_BCG729
