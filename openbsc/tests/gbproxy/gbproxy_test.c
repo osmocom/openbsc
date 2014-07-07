@@ -193,6 +193,15 @@ static void setup_bssgp(struct gprs_ns_inst *nsi, struct sockaddr_in *src_addr,
 	send_bssgp_reset(nsi, src_addr, bvci);
 }
 
+static void connect_sgsn(struct gprs_ns_inst *nsi, struct sockaddr_in *sgsn_peer)
+{
+	gprs_ns_nsip_connect(nsi, sgsn_peer, SGSN_NSEI, SGSN_NSEI+1);
+	send_ns_reset_ack(nsi, sgsn_peer, SGSN_NSEI+1, SGSN_NSEI);
+	send_ns_alive_ack(nsi, sgsn_peer);
+	send_ns_unblock_ack(nsi, sgsn_peer);
+	send_ns_alive(nsi, sgsn_peer);
+}
+
 int gprs_ns_rcvmsg(struct gprs_ns_inst *nsi, struct msgb *msg,
 		   struct sockaddr_in *saddr, enum gprs_ns_ll ll);
 
@@ -408,11 +417,7 @@ static void test_gbproxy()
 
 	printf("--- Initialise SGSN ---\n\n");
 
-	gprs_ns_nsip_connect(nsi, &sgsn_peer, SGSN_NSEI, SGSN_NSEI+1);
-	send_ns_reset_ack(nsi, &sgsn_peer, SGSN_NSEI+1, SGSN_NSEI);
-	send_ns_alive_ack(nsi, &sgsn_peer);
-	send_ns_unblock_ack(nsi, &sgsn_peer);
-	send_ns_alive(nsi, &sgsn_peer);
+	connect_sgsn(nsi, &sgsn_peer);
 	gprs_dump_nsi(nsi);
 
 	printf("--- Initialise BSS 1 ---\n\n");
@@ -569,11 +574,7 @@ static void test_gbproxy_ident_changes()
 
 	printf("--- Initialise SGSN ---\n\n");
 
-	gprs_ns_nsip_connect(nsi, &sgsn_peer, SGSN_NSEI, SGSN_NSEI+1);
-	send_ns_reset_ack(nsi, &sgsn_peer, SGSN_NSEI+1, SGSN_NSEI);
-	send_ns_alive_ack(nsi, &sgsn_peer);
-	send_ns_unblock_ack(nsi, &sgsn_peer);
-	send_ns_alive(nsi, &sgsn_peer);
+	connect_sgsn(nsi, &sgsn_peer);
 	gprs_dump_nsi(nsi);
 
 	printf("--- Initialise BSS 1 ---\n\n");
