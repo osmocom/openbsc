@@ -871,8 +871,13 @@ static void test_gbproxy_ra_patching()
 	nsi = NULL;
 }
 
+static const struct log_info_cat all_off_categories[Debug_LastEntry] = {
+};
 
-static struct log_info info = {};
+static struct log_info info = {
+	.cat		= all_off_categories,
+	.num_cat	= ARRAY_SIZE(all_off_categories)
+};
 
 int main(int argc, char **argv)
 {
