@@ -267,6 +267,39 @@ out:
 	return 0;
 }
 
+/*
+ * Try to figure out where it came from and enter the rtp_port
+ */
+static int osmux_handle_dummy(struct mgcp_config *cfg,
+			struct sockaddr_in *addr, struct msgb *msg)
+{
+	struct mgcp_endpoint *endp;
+	uint32_t ci;
+
+	if (msg->len < 1 + sizeof(ci))
+		goto out;
+
+	/* extract the CI from the dummy message */
+	memcpy(&ci, &msg->data[1], sizeof(ci));
+	ci = ntohl(ci);
+
+	endp = endpoint_lookup(cfg, ci & 0xff, &addr->sin_addr, MGCP_DEST_BTS);
+	if (!endp) {
+		LOGP(DMGCP, LOGL_ERROR, "Can not find CI=%d\n", ci & 0xff);
+		goto out;
+	}
+
+	if (endp->bts_end.rtp_port == 0) {
+		endp->bts_end.rtp_port = addr->sin_port;
+		LOGP(DMGCP, LOGL_NOTICE, "0x%x found BTS on endpoint %s:%d\n",
+			ENDPOINT_NUMBER(endp),
+			inet_ntoa(addr->sin_addr), htons(addr->sin_port));
+	}
+out:
+	msgb_free(msg);
+	return 0;
+}
+
 int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct msgb *msg;
@@ -282,7 +315,7 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* not any further processing dummy messages */
 	if (msg->data[0] == MGCP_DUMMY_LOAD)
-		goto out;
+		return osmux_handle_dummy(cfg, &addr, msg);
 
 	osmux_snprintf(buf, sizeof(buf), msg);
 	LOGP(DMGCP, LOGL_DEBUG,
