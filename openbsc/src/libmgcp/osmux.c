@@ -393,11 +393,16 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, int role)
  */
 int osmux_send_dummy(struct mgcp_endpoint *endp)
 {
-	static char buf[] = { MGCP_DUMMY_LOAD };
+	uint32_t ci_be;
+	char buf[1 + sizeof(uint32_t)];
+
+	ci_be = htonl(endp->ci);
+	buf[0] = MGCP_DUMMY_LOAD;
+	memcpy(&buf[1], &ci_be, sizeof(ci_be));
 
 	LOGP(DMGCP, LOGL_DEBUG, "sending OSMUX dummy load to %s\n",
 		inet_ntoa(endp->net_end.addr));
 
 	return mgcp_udp_send(osmux_fd.fd, &endp->net_end.addr,
-			     htons(OSMUX_PORT), buf, 1);
+			     htons(OSMUX_PORT), buf, sizeof(buf));
 }
