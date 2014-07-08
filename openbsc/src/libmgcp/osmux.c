@@ -174,7 +174,7 @@ endpoint_lookup(struct mgcp_config *cfg, int cid,
 			return tmp;
 	}
 
-	LOGP(DMGCP, LOGL_ERROR, "Cannot find endpoint with cid=%d\n!\n", cid);
+	LOGP(DMGCP, LOGL_ERROR, "Cannot find endpoint with cid=%d\n", cid);
 
 	return NULL;
 }
