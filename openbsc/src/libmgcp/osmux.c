@@ -171,7 +171,7 @@ endpoint_lookup(struct mgcp_config *cfg, int cid,
 			return NULL;
 		}
 
-		if (tmp->ci == cid && this->s_addr == from_addr->s_addr)
+		if ((tmp->ci & 0xFF) == cid && this->s_addr == from_addr->s_addr)
 			return tmp;
 	}
 
