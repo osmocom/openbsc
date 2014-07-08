@@ -89,7 +89,7 @@ osmux_handle_lookup(struct mgcp_config *cfg, struct in_addr *addr)
 
 	llist_add(&h->head, &osmux_handle_list);
 
-	LOGP(DMGCP, LOGL_DEBUG, "creating new OSMUX handle for addr=%s\n",
+	LOGP(DMGCP, LOGL_DEBUG, "created new OSMUX handle for addr=%s\n",
 		inet_ntoa(*addr));
 out:
 	return h->in;
