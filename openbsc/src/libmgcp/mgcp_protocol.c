@@ -344,6 +344,14 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	return create_resp(endp, 200, " OK", msg, trans_id, NULL, sdp_record);
 }
 
+static void send_dummy(struct mgcp_endpoint *endp)
+{
+	if (endp->osmux)
+		osmux_send_dummy(endp);
+	else
+		mgcp_send_dummy(endp);
+}
+
 /*
  * handle incoming messages:
  *   - this can be a command (four letters, space, transaction id)
@@ -1019,10 +1027,7 @@ mgcp_header_done:
 		p->cfg->change_cb(tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX);
 
 	if (endp->conn_mode & MGCP_CONN_RECV_ONLY && tcfg->keepalive_interval != 0) {
-		if (endp->osmux)
-			osmux_send_dummy(endp);
-		else
-			mgcp_send_dummy(endp);
+		send_dummy(endp);
 	}
 
 	create_transcoder(endp);
@@ -1156,7 +1161,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 
 	if (endp->conn_mode & MGCP_CONN_RECV_ONLY &&
 	    endp->tcfg->keepalive_interval != 0)
-		mgcp_send_dummy(endp);
+		send_dummy(endp);
 
 	if (silent)
 		goto out_silent;
@@ -1326,7 +1331,7 @@ static void mgcp_keepalive_timer_cb(void *_tcfg)
 	for (i = 1; i < tcfg->number_endpoints; ++i) {
 		struct mgcp_endpoint *endp = &tcfg->endpoints[i];
 		if (endp->conn_mode == MGCP_CONN_RECV_ONLY)
-			mgcp_send_dummy(endp);
+			send_dummy(endp);
 	}
 
 	LOGP(DMGCP, LOGL_DEBUG, "Rescheduling trunk %d keepalive timer.\n",
