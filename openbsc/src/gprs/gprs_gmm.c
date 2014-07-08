@@ -614,7 +614,7 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 				sgsn_mm_ctx_free(ictx);
 			}
 		}
-		strncpy(ctx->imsi, mi_string, sizeof(ctx->imei));
+		strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
 		break;
 	case GSM_MI_TYPE_IMEI:
 		strncpy(ctx->imei, mi_string, sizeof(ctx->imei));
