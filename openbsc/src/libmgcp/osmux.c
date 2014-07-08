@@ -284,8 +284,10 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 		goto out;
 
 	osmux_snprintf(buf, sizeof(buf), msg);
-	LOGP(DMGCP, LOGL_DEBUG, "received OSMUX message "
-				"from BSC (len=%d) %s\n", msg->len, buf);
+	LOGP(DMGCP, LOGL_DEBUG,
+		"received OSMUX message from BSC(%s:%d) (len=%d) %s\n",
+		inet_ntoa(addr.sin_addr), ntohs(addr.sin_port),
+		msg->len, buf);
 
 	while((osmuxh = osmux_xfrm_output_pull(msg)) != NULL) {
 		struct mgcp_endpoint *endp;
