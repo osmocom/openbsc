@@ -27,6 +27,7 @@
 
 static struct osmo_fd osmux_fd;
 
+/* TODO: expire old handles.. */
 static LLIST_HEAD(osmux_handle_list);
 
 struct osmux_handle {
