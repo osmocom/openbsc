@@ -130,6 +130,13 @@ int osmux_xfrm_to_osmux(int type, char *buf, int rc, struct mgcp_endpoint *endp)
 		return 0;
 	}
 
+	if (port == 0) {
+		LOGP(DMGCP, LOGL_ERROR, "0x%x remote end not known yet.\n",
+			ENDPOINT_NUMBER(endp));
+		msgb_free(msg);
+		return 0;
+	}
+
 	/* Lookup for osmux input handle that munches this RTP frame */
 	in = osmux_handle_lookup(endp->cfg, addr, port);
 	if (!in) {
