@@ -335,7 +335,7 @@ int gprs_ns_callback(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 {
 	printf("CALLBACK, event %d, msg length %d, bvci 0x%04x\n%s\n\n",
 			event, msgb_bssgp_len(msg), bvci,
-			osmo_hexdump(msgb_bssgph(msg), msgb_bssgp_len(msg)));
+			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
 	switch (event) {
 	case GPRS_NS_EVT_UNIT_DATA:
@@ -381,18 +381,19 @@ int gprs_ns_sendmsg(struct gprs_ns_inst *nsi, struct msgb *msg)
 	uint16_t bvci = msgb_bvci(msg);
 	uint16_t nsei = msgb_nsei(msg);
 
-	unsigned char *buf = msg->data;
-	size_t len = msg->len;
+	size_t len = msgb_length(msg);
 
 	if (!real_gprs_ns_sendmsg)
 		real_gprs_ns_sendmsg = dlsym(RTLD_NEXT, "gprs_ns_sendmsg");
 
 	if (nsei == SGSN_NSEI)
-		printf("NS UNITDATA MESSAGE to SGSN, BVCI 0x%04x, msg length %d\n%s\n\n",
-		       bvci, len, osmo_hexdump(buf, len));
+		printf("NS UNITDATA MESSAGE to SGSN, BVCI 0x%04x, "
+		       "msg length %d (%s)\n",
+		       bvci, len, __func__);
 	else
-		printf("NS UNITDATA MESSAGE to BSS, BVCI 0x%04x, msg length %d\n%s\n\n",
-		       bvci, len, osmo_hexdump(buf, len));
+		printf("NS UNITDATA MESSAGE to BSS, BVCI 0x%04x, "
+		       "msg length %d (%s)\n",
+		       bvci, len, __func__);
 
 	return real_gprs_ns_sendmsg(nsi, msg);
 }
@@ -525,6 +526,7 @@ static void test_gbproxy()
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
 
+	printf("=== %s ===\n", __func__);
 	printf("--- Initialise SGSN ---\n\n");
 
 	connect_sgsn(nsi, &sgsn_peer);
@@ -677,6 +679,7 @@ static void test_gbproxy_ident_changes()
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
 
+	printf("=== %s ===\n", __func__);
 	printf("--- Initialise SGSN ---\n\n");
 
 	connect_sgsn(nsi, &sgsn_peer);
@@ -811,6 +814,7 @@ static void test_gbproxy_ra_patching()
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
 
+	printf("=== %s ===\n", __func__);
 	printf("--- Initialise SGSN ---\n\n");
 
 	connect_sgsn(nsi, &sgsn_peer);
@@ -833,26 +837,28 @@ static void test_gbproxy_ra_patching()
 
 	printf("--- Send message from BSS 1 to SGSN, BVCI 0x1002 ---\n\n");
 
-	send_ns_unitdata(nsi, NULL, &bss_peer[0], 0x1002,
+	send_ns_unitdata(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
 			 bssgp_attach_req, sizeof(bssgp_attach_req));
 
-	send_ns_unitdata(nsi, NULL, &sgsn_peer, 0x1002,
+	send_ns_unitdata(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 			 bssgp_attach_acc, sizeof(bssgp_attach_acc));
 
-	send_ns_unitdata(nsi, NULL, &bss_peer[0], 0x1002,
+	send_ns_unitdata(nsi, "UPDATE REQ", &bss_peer[0], 0x1002,
 			 bssgp_ra_upd_req, sizeof(bssgp_ra_upd_req));
 
-	send_ns_unitdata(nsi, NULL, &sgsn_peer, 0x1002,
+	send_ns_unitdata(nsi, "RA UPD ACC", &sgsn_peer, 0x1002,
 			 bssgp_ra_upd_acc, sizeof(bssgp_ra_upd_acc));
 
 	/* Replace APN */
-	send_ns_unitdata(nsi, NULL, &bss_peer[0], 0x1002,
+	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REPLACE APN)",
+			 &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
 	/* TODO: Re-configure to test APN IE removal */
 
 	/* Remove APN */
-	send_ns_unitdata(nsi, NULL, &bss_peer[0], 0x1002,
+	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REMOVE APN)",
+			 &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
 	gbprox_dump_global(stdout, 0);
