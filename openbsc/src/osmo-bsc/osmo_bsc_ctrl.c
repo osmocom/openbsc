@@ -593,6 +593,44 @@ static int verify_net_notification(struct ctrl_cmd *cmd, const char *value, void
 	return 0;
 }
 
+CTRL_CMD_DEFINE(net_inform_msc, "inform-msc-v1");
+static int get_net_inform_msc(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "There is nothing to read";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_net_inform_msc(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net;
+	struct osmo_msc_data *msc;
+
+	net = cmd->node;
+	llist_for_each_entry(msc, &net->bsc_data->mscs, entry) {
+		struct ctrl_cmd *trap;
+
+		trap = ctrl_cmd_create(tall_bsc_ctx, CTRL_TYPE_TRAP);
+		if (!trap) {
+			LOGP(DCTRL, LOGL_ERROR, "Trap creation failed\n");
+			continue;
+		}
+
+		trap->id = "0";
+		trap->variable = "inform-msc-v1";
+		trap->reply = talloc_strdup(trap, cmd->value);
+		ctrl_cmd_send(&msc->msc_con->write_queue, trap);
+		talloc_free(trap);
+	}
+
+
+	return CTRL_CMD_HANDLED;
+}
+
+static int verify_net_inform_msc(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	return 0;
+}
+
 static int msc_signal_handler(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
@@ -646,6 +684,9 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_notification);
+	if (rc)
+		goto end;
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_inform_msc);
 	if (rc)
 		goto end;
 	rc = osmo_signal_register_handler(SS_L_INPUT, &bts_connection_status_trap_cb, net);
