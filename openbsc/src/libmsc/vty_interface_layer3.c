@@ -310,9 +310,9 @@ err:
 
 DEFUN(subscriber_silent_sms,
       subscriber_silent_sms_cmd,
-      "subscriber " SUBSCR_TYPES " ID silent-sms send .LINE",
-	SUBSCR_HELP
-	"Silent SMS Operation\n" "Send Silent SMS\n" "Actual SMS text\n")
+
+      "subscriber " SUBSCR_TYPES " ID silent-sms sender " SUBSCR_TYPES " SENDER_ID send .LINE",
+	SUBSCR_HELP "Silent SMS Operations\n" SUBSCR_HELP "Send SMS\n" "Actual SMS Text\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
