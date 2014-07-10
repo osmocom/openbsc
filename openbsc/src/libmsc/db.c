@@ -181,6 +181,7 @@ void db_error_func(dbi_conn conn, void *data)
 	const char *msg;
 	dbi_conn_error(conn, &msg);
 	LOGP(DDB, LOGL_ERROR, "DBI: %s\n", msg);
+	osmo_log_backtrace(DDB, LOGL_ERROR);
 }
 
 static int update_db_revision_2(void)
