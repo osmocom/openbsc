@@ -107,7 +107,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	t = find_tlv(submit->tlv, TLVID_message_payload);
 	if (t) {
 		if (submit->sm_length) {
-			/* ERROR: we cannot have botH! */
+			/* ERROR: we cannot have both! */
 			LOGP(DLSMS, LOGL_ERROR, "SMPP Cannot have payload in "
 				"TLV _and_ in the header\n");
 			return ESME_ROPTPARNOTALLWD;
