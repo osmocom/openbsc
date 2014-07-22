@@ -251,7 +251,7 @@ void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
 
 	for (i = 1; i < nat->mgcp_cfg->trunk.number_endpoints; ++i){
 		bsc_mgcp_free_endpoint(nat, i);
-		mgcp_free_endp(&nat->mgcp_cfg->trunk.endpoints[i]);
+		mgcp_release_endp(&nat->mgcp_cfg->trunk.endpoints[i]);
 	}
 }
 
@@ -621,7 +621,7 @@ static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint
 	}
 
 	bsc_mgcp_free_endpoint(bsc->nat, ENDPOINT_NUMBER(endp));
-	mgcp_free_endp(endp);
+	mgcp_release_endp(endp);
 }
 
 /*
@@ -1065,6 +1065,6 @@ void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc)
 			rate_ctr_inc(ctr);
 
 		bsc_mgcp_free_endpoint(bsc->nat, i);
-		mgcp_free_endp(&bsc->nat->mgcp_cfg->trunk.endpoints[i]);
+		mgcp_release_endp(&bsc->nat->mgcp_cfg->trunk.endpoints[i]);
 	}
 }

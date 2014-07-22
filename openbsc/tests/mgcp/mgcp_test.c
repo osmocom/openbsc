@@ -828,12 +828,7 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 
 	endp.tcfg = &trunk;
 
-	/* This doesn't free endp but resets/frees all fields of the structure
-	 * and invokes mgcp_rtp_end_reset() for each mgcp_rtp_end. OTOH, it
-	 * expects valid pointer fields (either NULL or talloc'ed), so the
-	 * memset is still needed. It also requires that endp.tcfg and
-	 * trunk.endpoints are set up properly. */
-	mgcp_free_endp(&endp);
+	mgcp_initialize_endp(&endp);
 
 	rtp->payload_type = 98;
 

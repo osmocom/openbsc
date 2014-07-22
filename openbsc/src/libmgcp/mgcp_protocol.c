@@ -940,7 +940,7 @@ mgcp_header_done:
 		if (tcfg->force_realloc) {
 			LOGP(DMGCP, LOGL_NOTICE, "Endpoint 0x%x already allocated. Forcing realloc.\n",
 			    ENDPOINT_NUMBER(endp));
-			mgcp_free_endp(endp);
+			mgcp_release_endp(endp);
 			if (p->cfg->realloc_cb)
 				p->cfg->realloc_cb(tcfg, ENDPOINT_NUMBER(endp));
 		} else {
@@ -1006,7 +1006,7 @@ mgcp_header_done:
 		case MGCP_POLICY_REJECT:
 			LOGP(DMGCP, LOGL_NOTICE, "CRCX rejected by policy on 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
-			mgcp_free_endp(endp);
+			mgcp_release_endp(endp);
 			return create_err_response(endp, 400, "CRCX", p->trans);
 			break;
 		case MGCP_POLICY_DEFER:
@@ -1033,7 +1033,7 @@ mgcp_header_done:
 	create_transcoder(endp);
 	return create_response_with_sdp(endp, "CRCX", p->trans);
 error2:
-	mgcp_free_endp(endp);
+	mgcp_release_endp(endp);
 	LOGP(DMGCP, LOGL_NOTICE, "Resource error on 0x%x\n", ENDPOINT_NUMBER(endp));
 	return create_err_response(endp, error_code, "CRCX", p->trans);
 }
@@ -1248,7 +1248,7 @@ static struct msgb *handle_delete_con(struct mgcp_parse_data *p)
 	mgcp_format_stats(endp, stats, sizeof(stats));
 
 	delete_transcoder(endp);
-	mgcp_free_endp(endp);
+	mgcp_release_endp(endp);
 	if (p->cfg->change_cb)
 		p->cfg->change_cb(endp->tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX);
 
@@ -1488,9 +1488,9 @@ int mgcp_endpoints_allocate(struct mgcp_trunk_config *tcfg)
 	return 0;
 }
 
-void mgcp_free_endp(struct mgcp_endpoint *endp)
+void mgcp_release_endp(struct mgcp_endpoint *endp)
 {
-	LOGP(DMGCP, LOGL_DEBUG, "Deleting endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
+	LOGP(DMGCP, LOGL_DEBUG, "Releasing endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
 	endp->ci = CI_UNUSED;
 	endp->allocated = 0;
 
@@ -1514,6 +1514,11 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	endp->conn_mode = endp->orig_mode = MGCP_CONN_NONE;
 
 	memset(&endp->taps, 0, sizeof(endp->taps));
+}
+
+void mgcp_initialize_endp(struct mgcp_endpoint *endp)
+{
+	return mgcp_release_endp(endp);
 }
 
 static int send_trans(struct mgcp_config *cfg, const char *buf, int len)

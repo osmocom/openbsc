@@ -181,7 +181,7 @@ static int read_call_agent(struct osmo_fd *fd, unsigned int what)
 
 		/* is checking in_addr.s_addr == INADDR_LOOPBACK making it more secure? */
 		for (i = 1; i < reset_trunk->number_endpoints; ++i)
-			mgcp_free_endp(&reset_trunk->endpoints[i]);
+			mgcp_release_endp(&reset_trunk->endpoints[i]);
 	}
 
 	return 0;

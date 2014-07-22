@@ -180,7 +180,7 @@ static int given_configured_endpoint(int in_samples, int out_samples,
 	tcfg->cfg = cfg;
 	endp->tcfg = tcfg;
 	endp->cfg = cfg;
-	mgcp_free_endp(endp);
+	mgcp_initialize_endp(endp);
 
 	dst_end = &endp->bts_end;
 	dst_end->payload_type = audio_name_to_type(dstfmt);

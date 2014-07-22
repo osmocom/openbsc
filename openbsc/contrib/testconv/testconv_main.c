@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 	tcfg.endpoints = &endp;
 	tcfg.number_endpoints = 1;
 	endp.tcfg = &tcfg;
-	mgcp_free_endp(&endp);
+	mgcp_initialize_endp(&endp);
 
 	dst_end = &endp.bts_end;
 	src_end = &endp.net_end;
