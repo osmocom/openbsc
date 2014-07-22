@@ -12,36 +12,43 @@ Package: osmocom-bsc
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore, libosmo-sccp
 Description: GSM Base Station Controller; BSC-only version of OpenBSC.  Needs a real MSC!
+ Classical BSC which requires MSC to operate.
 
 Package: osmocom-nitb
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore, libdbd-sqlite3, libdbi1
 Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
+ All the GSM network components bundled together.
 
 Package: osmocom-ipaccess-utils
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore
 Description: Command line utilities for ip.access nanoBTS
+ Utilities specific for ip.access unit.
 
 Package: osmocom-bs11-utils
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore
 Description: Command line utilities for Siemens BS-11 BTS
+ Utilities specific for BS-11 unit.
 
 Package: osmocom-sgsn
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore, libgtp
 Description: Osmocom Serving GPRS Support Node
+ SGSN implementation.
 
 Package: osmocom-gbproxy
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore
 Description: Osmocom GPRS Gb Interface Proxy
+ Proxy for Gb interface.
 
 Package: osmocom-bsc-nat
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore
 Description: Osmocom Base Station Controller Network Address Translation
+ Network address translation for BSC.
 
 Package: osmocom-bsc-dbg
 Architecture: any

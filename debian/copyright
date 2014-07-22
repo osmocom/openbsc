@@ -6,7 +6,7 @@ It was downloaded from:
 
     git://bs11-abis.gnumonks.org/openbsc.git
 
-Upstream Author(s):
+Upstream Authors:
 
     Harald Welte <laforge@gnumonks.org>
     Dieter Spaar <spaar@mirider.augusta.de>
@@ -45,6 +45,3 @@ The Debian packaging is:
 
 and is licensed under the GPL version 3,
 see "/usr/share/common-licenses/GPL-3".
-
-# Please also look if there are files or directories which have a
-# different copyright/license attached and list them here.
