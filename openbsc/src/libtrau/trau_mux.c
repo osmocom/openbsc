@@ -235,6 +235,9 @@ struct msgb *trau_decode_fr(uint32_t callref,
 	o = 0; /* offset input bits */
 	while (i < 260) {
 		data[j/8] |= (tf->d_bits[k+o] << (7-(j%8)));
+		/* to avoid out-of-bounds access in gsm_fr_map[++l] */
+		if (i == 259)
+			break;
 		if (--k < 0) {
 			o += gsm_fr_map[l];
 			k = gsm_fr_map[++l]-1;
