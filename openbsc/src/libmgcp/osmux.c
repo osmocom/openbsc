@@ -33,20 +33,22 @@ static LLIST_HEAD(osmux_handle_list);
 struct osmux_handle {
 	struct llist_head head;
 	struct osmux_in_handle *in;
+	struct in_addr rem_addr;
+	int rem_port;
 };
 
 static void *osmux;
 
 static void osmux_deliver(struct msgb *batch_msg, void *data)
 {
-	struct in_addr *addr = data;
+	struct osmux_handle *handle = data;
 	struct sockaddr_in out = {
 		.sin_family = AF_INET,
-		.sin_port = htons(OSMUX_PORT),
+		.sin_port = handle->rem_port,
 	};
 	char buf[4096];
 
-	memcpy(&out.sin_addr, addr, sizeof(*addr));
+	memcpy(&out.sin_addr, &handle->rem_addr, sizeof(handle->rem_addr));
 
 	osmux_snprintf(buf, sizeof(buf), batch_msg);
 	LOGP(DMGCP, LOGL_DEBUG, "OSMUX delivering batch to addr=%s: %s\n",
@@ -57,16 +59,16 @@ static void osmux_deliver(struct msgb *batch_msg, void *data)
 }
 
 static struct osmux_in_handle *
-osmux_handle_lookup(struct mgcp_config *cfg, struct in_addr *addr)
+osmux_handle_lookup(struct mgcp_config *cfg, struct in_addr *addr, int rem_port)
 {
 	struct osmux_handle *h;
 
 	/* Lookup for existing OSMUX handle for this destination address. */
 	llist_for_each_entry(h, &osmux_handle_list, head) {
-		if (memcmp(h->in->data, addr, sizeof(struct in_addr)) == 0) {
+		if (memcmp(&h->rem_addr, addr, sizeof(struct in_addr)) == 0 && h->rem_port == rem_port) {
 			LOGP(DMGCP, LOGL_DEBUG, "using existing OSMUX handle "
-						"for addr=%s\n",
-				inet_ntoa(*addr));
+						"for addr=%s:%d\n",
+				inet_ntoa(*addr), ntohs(rem_port));
 			goto out;
 		}
 	}
@@ -75,6 +77,8 @@ osmux_handle_lookup(struct mgcp_config *cfg, struct in_addr *addr)
 	h = talloc_zero(osmux, struct osmux_handle);
 	if (!h)
 		return NULL;
+	h->rem_addr = *addr;
+	h->rem_port = rem_port;
 
 	h->in = talloc_zero(osmux, struct osmux_in_handle);
 	if (!h->in) {
@@ -86,19 +90,19 @@ osmux_handle_lookup(struct mgcp_config *cfg, struct in_addr *addr)
 	h->in->batch_factor = cfg->osmux_batch;
 	h->in->deliver = osmux_deliver;
 	osmux_xfrm_input_init(h->in);
-	h->in->data = addr;
+	h->in->data = h;
 
 	llist_add(&h->head, &osmux_handle_list);
 
-	LOGP(DMGCP, LOGL_DEBUG, "created new OSMUX handle for addr=%s\n",
-		inet_ntoa(*addr));
+	LOGP(DMGCP, LOGL_DEBUG, "created new OSMUX handle for addr=%s:%d\n",
+		inet_ntoa(*addr), ntohs(rem_port));
 out:
 	return h->in;
 }
 
 int osmux_xfrm_to_osmux(int type, char *buf, int rc, struct mgcp_endpoint *endp)
 {
-	int ret;
+	int ret, port;
 	struct msgb *msg;
 	struct in_addr *addr;
 	struct osmux_in_handle *in;
@@ -113,9 +117,11 @@ int osmux_xfrm_to_osmux(int type, char *buf, int rc, struct mgcp_endpoint *endp)
 	switch(type) {
 	case MGCP_DEST_NET:
 		addr = &endp->net_end.addr;
+		port = htons(OSMUX_PORT);
 		break;
 	case MGCP_DEST_BTS:
 		addr = &endp->bts_end.addr;
+		port = endp->bts_end.rtp_port;
 		break;
 	default:
 		/* Should not ever happen */
@@ -124,8 +130,15 @@ int osmux_xfrm_to_osmux(int type, char *buf, int rc, struct mgcp_endpoint *endp)
 		return 0;
 	}
 
+	if (port == 0) {
+		LOGP(DMGCP, LOGL_ERROR, "0x%x remote end not known yet.\n",
+			ENDPOINT_NUMBER(endp));
+		msgb_free(msg);
+		return 0;
+	}
+
 	/* Lookup for osmux input handle that munches this RTP frame */
-	in = osmux_handle_lookup(endp->cfg, addr);
+	in = osmux_handle_lookup(endp->cfg, addr, port);
 	if (!in) {
 		LOGP(DMGCP, LOGL_ERROR, "No osmux handle, aborting\n");
 		msgb_free(msg);
@@ -171,7 +184,7 @@ endpoint_lookup(struct mgcp_config *cfg, int cid,
 			return NULL;
 		}
 
-		if (tmp->ci == cid && this->s_addr == from_addr->s_addr)
+		if ((tmp->ci & 0xFF) == cid && this->s_addr == from_addr->s_addr)
 			return tmp;
 	}
 
@@ -267,6 +280,39 @@ out:
 	return 0;
 }
 
+/*
+ * Try to figure out where it came from and enter the rtp_port
+ */
+static int osmux_handle_dummy(struct mgcp_config *cfg,
+			struct sockaddr_in *addr, struct msgb *msg)
+{
+	struct mgcp_endpoint *endp;
+	uint32_t ci;
+
+	if (msg->len < 1 + sizeof(ci))
+		goto out;
+
+	/* extract the CI from the dummy message */
+	memcpy(&ci, &msg->data[1], sizeof(ci));
+	ci = ntohl(ci);
+
+	endp = endpoint_lookup(cfg, ci & 0xff, &addr->sin_addr, MGCP_DEST_BTS);
+	if (!endp) {
+		LOGP(DMGCP, LOGL_ERROR, "Can not find CI=%d\n", ci & 0xff);
+		goto out;
+	}
+
+	if (endp->bts_end.rtp_port == 0) {
+		endp->bts_end.rtp_port = addr->sin_port;
+		LOGP(DMGCP, LOGL_NOTICE, "0x%x found BTS on endpoint %s:%d\n",
+			ENDPOINT_NUMBER(endp),
+			inet_ntoa(addr->sin_addr), htons(addr->sin_port));
+	}
+out:
+	msgb_free(msg);
+	return 0;
+}
+
 int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct msgb *msg;
@@ -282,7 +328,7 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* not any further processing dummy messages */
 	if (msg->data[0] == MGCP_DUMMY_LOAD)
-		goto out;
+		return osmux_handle_dummy(cfg, &addr, msg);
 
 	osmux_snprintf(buf, sizeof(buf), msg);
 	LOGP(DMGCP, LOGL_DEBUG,
@@ -301,6 +347,13 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 			     "Cannot find an endpoint for circuit_id=%d\n",
 			     osmuxh->circuit_id);
 			goto out;
+		}
+
+		if (endp->bts_end.rtp_port == 0) {
+			endp->bts_end.rtp_port = addr.sin_port;
+			LOGP(DMGCP, LOGL_NOTICE, "0x%x found BTS on endpoint %s:%d\n",
+				ENDPOINT_NUMBER(endp),
+				inet_ntoa(addr.sin_addr), htons(addr.sin_port));
 		}
 
 		LOGP(DMGCP, LOGL_DEBUG,
@@ -393,11 +446,16 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, int role)
  */
 int osmux_send_dummy(struct mgcp_endpoint *endp)
 {
-	static char buf[] = { MGCP_DUMMY_LOAD };
+	uint32_t ci_be;
+	char buf[1 + sizeof(uint32_t)];
+
+	ci_be = htonl(endp->ci);
+	buf[0] = MGCP_DUMMY_LOAD;
+	memcpy(&buf[1], &ci_be, sizeof(ci_be));
 
 	LOGP(DMGCP, LOGL_DEBUG, "sending OSMUX dummy load to %s\n",
 		inet_ntoa(endp->net_end.addr));
 
 	return mgcp_udp_send(osmux_fd.fd, &endp->net_end.addr,
-			     htons(OSMUX_PORT), buf, 1);
+			     htons(OSMUX_PORT), buf, sizeof(buf));
 }
