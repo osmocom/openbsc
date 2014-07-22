@@ -428,10 +428,12 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 
 	if (payload_len > 0) {
 		ts_no = ntohl(*(uint32_t*)(data+4));
-		if (!state->is_running)
+		if (!state->is_running) {
 			state->next_seq = ntohs(*(uint16_t*)(data+2));
+			state->next_time = ts_no;
+			state->is_running = 1;
+		}
 
-		state->is_running = 1;
 
 		if (state->sample_cnt > 0) {
 			int32_t delta = ts_no - state->next_time;
@@ -448,6 +450,7 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 					"0x%x dropping sample buffer due delta=%d sample_cnt=%d\n",
 					ENDPOINT_NUMBER(endp), delta, state->sample_cnt);
 				state->sample_cnt = 0;
+				state->next_time = ts_no;
 			} else if (delta < 0) {
 				LOGP(DMGCP, LOGL_NOTICE,
 				     "RTP time jumps backwards, delta = %d, "
@@ -488,7 +491,14 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 	nsamples = state->sample_cnt;
 
 	rc = encode_audio(state, dst, buf_size, max_samples);
-	if (rc <= 0)
+	/*
+	 * There were no samples to encode?
+	 * TODO: how does this work for comfort noise?
+	 */
+	if (rc == 0)
+		return -ENOMSG;
+	/* Any other error during the encoding */
+	if (rc < 0)
 		return rc;
 
 	nsamples -= state->sample_cnt;
