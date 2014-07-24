@@ -196,7 +196,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 
 	if (!new_msg)
 		return -ENOMEM;
-	frame = msgb_put(new_msg, sizeof(struct gsm_data_frame));
+	frame = (struct gsm_data_frame *) msgb_put(new_msg, sizeof(struct gsm_data_frame));
 	frame->msg_type = msg_type;
 	frame->callref = callref;
 	if (rtph->payload_type == RTP_PT_AMR) {
