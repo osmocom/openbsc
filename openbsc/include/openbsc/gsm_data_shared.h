@@ -372,11 +372,23 @@ struct gsm_bts_trx {
 	uint16_t arfcn;
 	int nominal_power;		/* in dBm */
 	unsigned int max_power_red;	/* in actual dB */
+
+#ifndef ROLE_BSC
+	struct {
+		unsigned int max_initial_power;	/* in dBm */
+		uint8_t	step_size;		/* in dB  */
+		int step_interval;		/* in seconds */
+		struct osmo_timer_list step_timer;
+
+		int current_power;		/* in dBm */
+	} pa;
+
 	unsigned int power_reduce;	/* in dB */
 
 	struct {
 		void *l1h;
 	} role_bts;
+#endif
 
 	union {
 		struct {
