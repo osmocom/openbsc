@@ -1241,6 +1241,7 @@ int main(int argc, char **argv)
 	setlinebuf(stdout);
 
 	printf("===== GbProxy test START\n");
+	gbproxy_init_config(&gbcfg);
 	test_tlv_shift_functions();
 	test_gbproxy();
 	test_gbproxy_ident_changes();

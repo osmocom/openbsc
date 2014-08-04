@@ -22,9 +22,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <time.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/rate_ctr.h>
 
+#include <openbsc/gsm_04_08.h>
 #include <osmocom/gprs/gprs_ns.h>
 
 #include <openbsc/debug.h>
@@ -33,6 +36,7 @@
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/vty.h>
+#include <osmocom/vty/misc.h>
 
 static struct gbproxy_config *g_cfg = NULL;
 
@@ -55,6 +59,21 @@ static const struct value_string patch_modes[] = {
 	{GBPROX_PATCH_LLC, "llc"},
 	{0, NULL}
 };
+
+static void gbprox_vty_print_peer(struct vty *vty, struct gbprox_peer *peer)
+{
+	struct gprs_ra_id raid;
+	gsm48_parse_ra(&raid, peer->ra);
+
+	vty_out(vty, "NSEI %5u, PTP-BVCI %5u, "
+		"RAI %u-%u-%u-%u",
+		peer->nsei, peer->bvci,
+		raid.mcc, raid.mnc, raid.lac, raid.rac);
+	if (peer->blocked)
+		vty_out(vty, " [BVC-BLOCKED]");
+
+	vty_out(vty, "%s", VTY_NEWLINE);
+}
 
 static int config_write_gbproxy(struct vty *vty)
 {
@@ -315,7 +334,223 @@ DEFUN(cfg_gbproxy_patch_mode,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
+       SHOW_STR "Display information about the Gb proxy\n" "Show statistics\n")
+{
+	struct gbprox_peer *peer;
+	int show_stats = argc >= 1;
 
+	if (show_stats)
+		vty_out_rate_ctr_group(vty, "", get_global_ctrg());
+
+	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
+		gbprox_vty_print_peer(vty, peer);
+
+		if (show_stats)
+			vty_out_rate_ctr_group(vty, "  ", peer->ctrg);
+	}
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
+       SHOW_STR "Display information about the Gb proxy\n" "Show TLLIs\n")
+{
+	struct gbprox_peer *peer;
+	char mi_buf[200];
+	time_t now = time(NULL);
+
+	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
+		struct gbprox_tlli_info *tlli_info;
+		struct gbprox_patch_state *state = &peer->patch_state;
+
+		gbprox_vty_print_peer(vty, peer);
+
+		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
+			time_t age = now - tlli_info->timestamp;
+			snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
+			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+					   tlli_info->mi_data,
+					   tlli_info->mi_data_len);
+			vty_out(vty, "  TLLI %08x, IMSI %s, AGE %d%s",
+				tlli_info->tlli, mi_buf, (int)age,
+				VTY_NEWLINE);
+		}
+	}
+	return CMD_SUCCESS;
+}
+
+DEFUN(delete_gb_bvci, delete_gb_bvci_cmd,
+	"delete-gbproxy-peer <0-65534> bvci <2-65534>",
+	"Delete a GBProxy peer by NSEI and optionally BVCI\n"
+	"NSEI number\n"
+	"Only delete peer with a matching BVCI\n"
+	"BVCI number\n")
+{
+	const uint16_t nsei = atoi(argv[0]);
+	const uint16_t bvci = atoi(argv[1]);
+	int counter;
+
+	counter = gbprox_cleanup_peers(nsei, bvci);
+
+	if (counter == 0) {
+		vty_out(vty, "BVC not found%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
+	"delete-gbproxy-peer <0-65534> (only-bvc|only-nsvc|all) [dry-run]",
+	"Delete a GBProxy peer by NSEI and optionally BVCI\n"
+	"NSEI number\n"
+	"Only delete BSSGP connections (BVC)\n"
+	"Only delete dynamic NS connections (NS-VC)\n"
+	"Delete BVC and dynamic NS connections\n"
+	"Show what would be deleted instead of actually deleting\n"
+	)
+{
+	const uint16_t nsei = atoi(argv[0]);
+	const char *mode = argv[1];
+	int dry_run = argc > 2;
+	int delete_bvc = 0;
+	int delete_nsvc = 0;
+	int counter;
+
+	if (strcmp(mode, "only-bvc") == 0)
+		delete_bvc = 1;
+	else if (strcmp(mode, "only-nsvc") == 0)
+		delete_nsvc = 1;
+	else
+		delete_bvc = delete_nsvc = 1;
+
+	if (delete_bvc) {
+		if (!dry_run)
+			counter = gbprox_cleanup_peers(nsei, 0);
+		else {
+			struct gbprox_peer *peer;
+			counter = 0;
+			llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
+				if (peer->nsei != nsei)
+					continue;
+
+				vty_out(vty, "BVC: ");
+				gbprox_vty_print_peer(vty, peer);
+				counter += 1;
+			}
+		}
+		vty_out(vty, "%sDeleted %d BVC%s",
+			dry_run ? "Not " : "", counter, VTY_NEWLINE);
+	}
+
+	if (delete_nsvc) {
+		struct gprs_ns_inst *nsi = gbcfg.nsi;
+		struct gprs_nsvc *nsvc, *nsvc2;
+
+		counter = 0;
+		llist_for_each_entry_safe(nsvc, nsvc2, &nsi->gprs_nsvcs, list) {
+			if (nsvc->nsei != nsei)
+				continue;
+			if (nsvc->persistent)
+				continue;
+
+			if (!dry_run)
+				gprs_nsvc_delete(nsvc);
+			else
+				vty_out(vty, "NS-VC: NSEI %5u, NS-VCI %5u, "
+					"remote %s%s",
+					nsvc->nsei, nsvc->nsvci,
+					gprs_ns_ll_str(nsvc), VTY_NEWLINE);
+			counter += 1;
+		}
+		vty_out(vty, "%sDeleted %d NS-VC%s",
+			dry_run ? "Not " : "", counter, VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
+	"delete-gbproxy-tlli <0-65534> (tlli|imsi|stale) [IDENT]",
+	"Delete a GBProxy TLLI entry by NSEI and identification\n"
+	"NSEI number\n"
+	"Delete entries with a matching TLLI (hex)\n"
+	"Delete entries with a matching IMSI\n"
+	"Identification to match\n")
+{
+	const uint16_t nsei = atoi(argv[0]);
+	enum {MATCH_TLLI = 't', MATCH_IMSI = 'i', MATCH_STALE = 's'} match;
+	uint32_t tlli = 0;
+	const char *imsi = NULL;
+	struct gbprox_peer *peer = 0;
+	struct gbprox_tlli_info *tlli_info, *nxt;
+	struct gbprox_patch_state *state;
+	char mi_buf[200];
+	int found = 0;
+
+	match = argv[1][0];
+
+	switch (match) {
+	case MATCH_TLLI:
+		if (argc < 2 || !argv[2][0]) {
+			vty_out(vty, "%% Missing TLLI%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		tlli = strtoll(argv[2], NULL, 16);
+		break;
+	case MATCH_IMSI:
+		if (argc < 2 || !argv[2][0]) {
+			vty_out(vty, "%% Missing IMSI%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		imsi = argv[2];
+		break;
+	default:
+		break;
+	}
+
+	peer = peer_by_nsei(nsei);
+	if (!peer) {
+		vty_out(vty, "Didn't find peer with NSEI %d%s",
+			nsei, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	state = &peer->patch_state;
+
+	if (match == MATCH_STALE) {
+		found = gbprox_remove_stale_ttlis(peer, time(NULL));
+		if (found)
+			vty_out(vty, "Deleted %d stale TLLI%s%s",
+				found, found == 1 ? "" : "s", VTY_NEWLINE);
+		return CMD_SUCCESS;
+	}
+
+	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
+		if (match == MATCH_TLLI && tlli_info->tlli != tlli)
+			continue;
+
+		if (match == MATCH_IMSI) {
+			mi_buf[0] = '\0';
+			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+					   tlli_info->mi_data,
+					   tlli_info->mi_data_len);
+
+			if (strcmp(mi_buf, imsi) != 0)
+				continue;
+		}
+		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli, VTY_NEWLINE);
+		gbprox_delete_tlli(peer, tlli_info);
+		found += 1;
+	}
+
+	if (!found && argc >= 2) {
+		vty_out(vty, "Didn't find TLLI entry with %s %s%s",
+			argv[1], argv[2], VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
 
 int gbproxy_vty_init(void)
 {

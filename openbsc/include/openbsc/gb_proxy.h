@@ -7,6 +7,8 @@
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/vty/command.h>
 
+struct rate_ctr_group;
+
 enum gbproxy_patch_mode {
 	GBPROX_PATCH_DEFAULT,
 	GBPROX_PATCH_BSSGP,		/*!< BSGGP messages only */
@@ -24,6 +26,9 @@ struct gbproxy_config {
 	/* misc */
 	struct gprs_ns_inst *nsi;
 
+	/* Linked list of all Gb peers (except SGSN) */
+	struct llist_head bts_peers;
+
 	/* force mcc/mnc */
 	int core_mnc;
 	int core_mcc;
@@ -35,12 +40,45 @@ struct gbproxy_config {
 	int tlli_max_len;
 };
 
+struct gbprox_patch_state {
+	int local_mnc;
+	int local_mcc;
+
+	/* List of TLLIs for which patching is enabled */
+	struct llist_head enabled_tllis;
+	int enabled_tllis_count;
+};
+
+struct gbprox_peer {
+	struct llist_head list;
+
+	/* NSEI of the peer entity */
+	uint16_t nsei;
+
+	/* BVCI used for Point-to-Point to this peer */
+	uint16_t bvci;
+	int blocked;
+
+	/* Routeing Area that this peer is part of (raw 04.08 encoding) */
+	uint8_t ra[6];
+
+	/* Counter */
+	struct rate_ctr_group *ctrg;
+
+	struct gbprox_patch_state patch_state;
+};
+
+struct gbprox_tlli_info {
+	struct llist_head list;
+
+	uint32_t tlli;
+	time_t timestamp;
+	uint8_t *mi_data;
+	size_t mi_data_len;
+};
+
+
 extern struct gbproxy_config gbcfg;
-extern struct cmd_element show_gbproxy_cmd;
-extern struct cmd_element show_gbproxy_tllis_cmd;
-extern struct cmd_element delete_gb_bvci_cmd;
-extern struct cmd_element delete_gb_nsei_cmd;
-extern struct cmd_element delete_gb_tlli_cmd;
 
 /* gb_proxy_vty .c */
 
@@ -49,6 +87,7 @@ int gbproxy_parse_config(const char *config_file, struct gbproxy_config *cfg);
 
 
 /* gb_proxy.c */
+int gbproxy_init_config(struct gbproxy_config *cfg);
 
 /* Main input function for Gb proxy */
 int gbprox_rcvmsg(struct msgb *msg, uint16_t nsei, uint16_t ns_bvci, uint16_t nsvci);
@@ -67,4 +106,13 @@ char *gbprox_apn_to_str(char *str, const uint8_t *apn_enc, size_t max_chars);
 int gbprox_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars);
 
 int gbprox_set_patch_filter(const char *filter, const char **err_msg);
+
+void gbprox_delete_tlli(struct gbprox_peer *peer,
+			       struct gbprox_tlli_info *tlli_info);
+int gbprox_remove_stale_ttlis(struct gbprox_peer *peer, time_t now);
+int gbprox_cleanup_peers(uint16_t nsei, uint16_t bvci);
+
+/* tmp */
+struct rate_ctr_group *get_global_ctrg(void);
+struct gbprox_peer *peer_by_nsei(uint16_t nsei);
 #endif

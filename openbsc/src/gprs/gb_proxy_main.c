@@ -259,6 +259,7 @@ int main(int argc, char **argv)
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
 		exit(1);
 	}
+	gbproxy_init_config(&gbcfg);
 	gbcfg.nsi = bssgp_nsi;
 	gprs_ns_vty_init(bssgp_nsi);
 	gprs_ns_set_log_ss(DNS);
