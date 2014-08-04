@@ -433,12 +433,10 @@ static void gbprox_delete_tllis(struct gbproxy_peer *peer)
 	struct gbproxy_tlli_info *tlli_info, *nxt;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
-	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
-		llist_del(&tlli_info->list);
-		talloc_free(tlli_info);
-	}
-	state->enabled_tllis_count = 0;
+	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list)
+		gbprox_delete_tlli(peer, tlli_info);
 
+	OSMO_ASSERT(state->enabled_tllis_count == 0);
 	OSMO_ASSERT(llist_empty(&state->enabled_tllis));
 }
 
@@ -634,9 +632,7 @@ static void gbprox_unregister_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 		LOGP(DGPRS, LOGL_INFO,
 		     "Removing TLLI %08x from list\n",
 		     tlli);
-		llist_del(&tlli_info->list);
-		talloc_free(tlli_info);
-		state->enabled_tllis_count -= 1;
+		gbprox_delete_tlli(peer, tlli_info);
 	}
 
 	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
