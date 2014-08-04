@@ -101,8 +101,6 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 /* Reset all persistent NS-VC's */
 int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi);
 
-int gbprox_dump_global(FILE *stream, int indent);
-int gbprox_dump_peers(FILE *stream, int indent);
 void gbprox_reset();
 
 char *gbprox_apn_to_str(char *str, const uint8_t *apn_enc, size_t max_chars);

@@ -13,6 +13,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <dlfcn.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -37,6 +38,98 @@
 #define SGSN_NSEI 0x0100
 
 struct gbproxy_config gbcfg = {0};
+
+static int dump_global(FILE *stream, int indent)
+{
+	unsigned int i;
+	const struct rate_ctr_group_desc *desc;
+	int rc;
+
+	rc = fprintf(stream, "%*sGbproxy global:\n", indent, "");
+	if (rc < 0)
+		return rc;
+
+	desc = gbcfg.ctrg->desc;
+
+	for (i = 0; i < desc->num_ctr; i++) {
+		struct rate_ctr *ctr = &gbcfg.ctrg->ctr[i];
+		if (ctr->current) {
+			rc = fprintf(stream, "%*s    %s: %llu\n",
+				     indent, "",
+				     desc->ctr_desc[i].description,
+				     (long long)ctr->current);
+
+			if (rc < 0)
+				return rc;
+		}
+	}
+
+	return 0;
+}
+
+static int dump_peers(FILE *stream, int indent)
+{
+	struct gbprox_peer *peer;
+	struct gprs_ra_id raid;
+	unsigned int i;
+	const struct rate_ctr_group_desc *desc;
+	int rc;
+	time_t now = time(NULL);
+
+	rc = fprintf(stream, "%*sPeers:\n", indent, "");
+	if (rc < 0)
+		return rc;
+
+	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
+		struct gbprox_tlli_info *tlli_info;
+		struct gbprox_patch_state *state = &peer->patch_state;
+		gsm48_parse_ra(&raid, peer->ra);
+
+		rc = fprintf(stream, "%*s  NSEI %u, BVCI %u, %sblocked, "
+			     "RAI %u-%u-%u-%u\n",
+			     indent, "",
+			     peer->nsei, peer->bvci,
+			     peer->blocked ? "" : "not ",
+			     raid.mcc, raid.mnc, raid.lac, raid.rac);
+
+		if (rc < 0)
+			return rc;
+
+		desc = peer->ctrg->desc;
+
+		for (i = 0; i < desc->num_ctr; i++) {
+			struct rate_ctr *ctr = &peer->ctrg->ctr[i];
+			if (ctr->current) {
+				rc = fprintf(stream, "%*s    %s: %llu\n",
+					     indent, "",
+					     desc->ctr_desc[i].description,
+					     (long long)ctr->current);
+
+				if (rc < 0)
+					return rc;
+			}
+		}
+
+		fprintf(stream, "%*s    TLLI-Cache: %d\n",
+			indent, "", state->enabled_tllis_count);
+		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
+			char mi_buf[200];
+			time_t age = now - tlli_info->timestamp;
+			snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
+			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+					   tlli_info->mi_data,
+					   tlli_info->mi_data_len);
+			rc = fprintf(stream,
+				     "%*s      TLLI %08x, IMSI %s, AGE %d\n",
+				     indent, "",
+				     tlli_info->tlli, mi_buf, (int)age);
+			if (rc < 0)
+				return rc;
+		}
+	}
+
+	return 0;
+}
 
 /* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Attach Request */
 static const unsigned char bssgp_attach_req[75] = {
@@ -574,7 +667,7 @@ static void test_gbproxy()
 	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -583,7 +676,7 @@ static void test_gbproxy()
 	setup_ns(nsi, &bss_peer[1], 0x2001, 0x2000);
 	setup_bssgp(nsi, &bss_peer[1], 0x2002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x2002);
 
@@ -591,43 +684,43 @@ static void test_gbproxy()
 
 	setup_ns(nsi, &bss_peer[2], 0x1001, 0x1000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Move BSS 2 to former BSS 1 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[0], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Move BSS 1 to current BSS 2 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[0], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Move BSS 2 to new port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[3], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Move BSS 2 to former BSS 1 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[2], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Move BSS 1 to original BSS 1 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Reset BSS 1 with a new BVCI ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], 0x1012);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1012);
 
@@ -635,7 +728,7 @@ static void test_gbproxy()
 
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -643,7 +736,7 @@ static void test_gbproxy()
 
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -675,9 +768,9 @@ static void test_gbproxy()
 
 	setup_bssgp(nsi, &bss_peer[2], 0x1002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
-	gbprox_dump_global(stdout, 0);
+	dump_global(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -693,7 +786,7 @@ static void test_gbproxy()
 
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, 0x10ff, (uint8_t *)"", 0);
 
-	gbprox_dump_global(stdout, 0);
+	dump_global(stdout, 0);
 
 	gbprox_reset();
 	gprs_ns_destroy(nsi);
@@ -731,13 +824,13 @@ static void test_gbproxy_ident_changes()
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[0]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[0]);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Setup BVCI 2 ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[1]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[1]);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 1 ---\n\n");
 
@@ -758,13 +851,13 @@ static void test_gbproxy_ident_changes()
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[0]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[0]);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Setup BVCI 3 ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[2]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[2]);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 1 ---\n\n");
 
@@ -775,9 +868,9 @@ static void test_gbproxy_ident_changes()
 	       " (should fail) ---\n\n");
 
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], bvci[1], (uint8_t *)"", 0);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, bvci[1], (uint8_t *)"", 0);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 3 ---\n\n");
 
@@ -793,13 +886,13 @@ static void test_gbproxy_ident_changes()
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[0]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[0]);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Setup BVCI 4 ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[3]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[3]);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 1 ---\n\n");
 
@@ -810,9 +903,9 @@ static void test_gbproxy_ident_changes()
 	       " (should fail) ---\n\n");
 
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], bvci[1], (uint8_t *)"", 0);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, bvci[1], (uint8_t *)"", 0);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 3 ---\n\n");
 
@@ -824,8 +917,8 @@ static void test_gbproxy_ident_changes()
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], bvci[3], (uint8_t *)"", 0);
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, bvci[3], (uint8_t *)"", 0);
 
-	gbprox_dump_global(stdout, 0);
-	gbprox_dump_peers(stdout, 0);
+	dump_global(stdout, 0);
+	dump_peers(stdout, 0);
 
 	gbprox_reset();
 	gprs_ns_destroy(nsi);
@@ -875,15 +968,15 @@ static void test_gbproxy_ra_patching()
 	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
 	send_bssgp_suspend(nsi, &bss_peer[0], &rai_bss);
 	send_bssgp_suspend_ack(nsi, &sgsn_peer, &rai_sgsn);
 
-	gbprox_dump_global(stdout, 0);
-	gbprox_dump_peers(stdout, 0);
+	dump_global(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Send message from BSS 1 to SGSN, BVCI 0x1002 ---\n\n");
 
@@ -914,7 +1007,7 @@ static void test_gbproxy_ra_patching()
 			 &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	/* Detach */
 	send_ns_unitdata(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
@@ -923,7 +1016,7 @@ static void test_gbproxy_ra_patching()
 	send_ns_unitdata(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
 			 bssgp_detach_acc, sizeof(bssgp_detach_acc));
 
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- RA update ---\n\n");
 
@@ -938,7 +1031,7 @@ static void test_gbproxy_ra_patching()
 			 &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
-	gbprox_dump_peers(stdout, 0);
+	dump_peers(stdout, 0);
 
 	/* Detach */
 	send_ns_unitdata(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
@@ -948,8 +1041,8 @@ static void test_gbproxy_ra_patching()
 			 bssgp_detach_acc, sizeof(bssgp_detach_acc));
 
 
-	gbprox_dump_global(stdout, 0);
-	gbprox_dump_peers(stdout, 0);
+	dump_global(stdout, 0);
+	dump_peers(stdout, 0);
 
 	printf("--- Bad cases ---\n\n");
 
@@ -960,8 +1053,8 @@ static void test_gbproxy_ra_patching()
 	printf("Invalid RAI, shouldn't patch\n");
 	send_bssgp_suspend_ack(nsi, &sgsn_peer, &rai_unknown);
 
-	gbprox_dump_global(stdout, 0);
-	gbprox_dump_peers(stdout, 0);
+	dump_global(stdout, 0);
+	dump_peers(stdout, 0);
 
 	gbprox_reset();
 	gprs_ns_destroy(nsi);
