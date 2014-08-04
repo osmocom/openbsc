@@ -1140,7 +1140,6 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	rc = gbprox_patch_dtap(msg, data, data_len, peer, len_change, parse_ctx);
 
 	if (parse_ctx->new_ptmsi &&
-	    (parse_ctx->new_ptmsi | 0xc000) != (tlli | 0xc000) &&
 	    peer->cfg->core_apn && parse_ctx->to_bss && parse_ctx->imsi) {
 		/* A new TLLI (PTMSI) has been signaled in the message */
 		LOGP(DGPRS, LOGL_INFO,
