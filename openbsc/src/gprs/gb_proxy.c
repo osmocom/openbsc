@@ -1005,6 +1005,10 @@ struct gbproxy_peer *peer_by_bssgp_tlv(struct gbproxy_config *cfg, struct tlv_pa
 
 static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 			     struct gbproxy_peer *peer, int *len_change,
+			     struct gbproxy_parse_context *parse_ctx) __attribute__((nonnull));
+
+static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
+			     struct gbproxy_peer *peer, int *len_change,
 			     struct gbproxy_parse_context *parse_ctx)
 {
 	struct gsm48_hdr *g48h;
@@ -1074,6 +1078,10 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 
 	return 0;
 }
+
+static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
+			     struct gbproxy_peer *peer, int *len_change,
+			     struct gbproxy_parse_context *parse_ctx) __attribute__((nonnull));
 
 static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 			     struct gbproxy_peer *peer, int *len_change,
