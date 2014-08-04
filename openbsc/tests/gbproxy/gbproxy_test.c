@@ -69,7 +69,7 @@ static int dump_global(FILE *stream, int indent)
 
 static int dump_peers(FILE *stream, int indent)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	struct gprs_ra_id raid;
 	unsigned int i;
 	const struct rate_ctr_group_desc *desc;
@@ -81,8 +81,8 @@ static int dump_peers(FILE *stream, int indent)
 		return rc;
 
 	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
-		struct gbprox_tlli_info *tlli_info;
-		struct gbprox_patch_state *state = &peer->patch_state;
+		struct gbproxy_tlli_info *tlli_info;
+		struct gbproxy_patch_state *state = &peer->patch_state;
 		gsm48_parse_ra(&raid, peer->ra);
 
 		rc = fprintf(stream, "%*s  NSEI %u, BVCI %u, %sblocked, "

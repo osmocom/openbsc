@@ -130,12 +130,12 @@ struct {
 } gbprox_global_patch_state = {0,};
 
 
-static void gbprox_delete_tllis(struct gbprox_peer *peer);
+static void gbprox_delete_tllis(struct gbproxy_peer *peer);
 
 /* Find the gbprox_peer by its BVCI */
-static struct gbprox_peer *peer_by_bvci(uint16_t bvci)
+static struct gbproxy_peer *peer_by_bvci(uint16_t bvci)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
 		if (peer->bvci == bvci)
 			return peer;
@@ -144,9 +144,9 @@ static struct gbprox_peer *peer_by_bvci(uint16_t bvci)
 }
 
 /* Find the gbprox_peer by its NSEI */
-struct gbprox_peer *gbprox_peer_by_nsei(uint16_t nsei)
+struct gbproxy_peer *gbprox_peer_by_nsei(uint16_t nsei)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
 		if (peer->nsei == nsei)
 			return peer;
@@ -155,9 +155,9 @@ struct gbprox_peer *gbprox_peer_by_nsei(uint16_t nsei)
 }
 
 /* look-up a peer by its Routeing Area Identification (RAI) */
-static struct gbprox_peer *peer_by_rai(const uint8_t *ra)
+static struct gbproxy_peer *peer_by_rai(const uint8_t *ra)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
 		if (!memcmp(peer->ra, ra, 6))
 			return peer;
@@ -166,9 +166,9 @@ static struct gbprox_peer *peer_by_rai(const uint8_t *ra)
 }
 
 /* look-up a peer by its Location Area Identification (LAI) */
-static struct gbprox_peer *peer_by_lai(const uint8_t *la)
+static struct gbproxy_peer *peer_by_lai(const uint8_t *la)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
 		if (!memcmp(peer->ra, la, 5))
 			return peer;
@@ -177,9 +177,9 @@ static struct gbprox_peer *peer_by_lai(const uint8_t *la)
 }
 
 /* look-up a peer by its Location Area Code (LAC) */
-static struct gbprox_peer *peer_by_lac(const uint8_t *la)
+static struct gbproxy_peer *peer_by_lac(const uint8_t *la)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
 		if (!memcmp(peer->ra + 3, la + 3, 2))
 			return peer;
@@ -188,7 +188,7 @@ static struct gbprox_peer *peer_by_lac(const uint8_t *la)
 }
 
 
-static int check_peer_nsei(struct gbprox_peer *peer, uint16_t nsei)
+static int check_peer_nsei(struct gbproxy_peer *peer, uint16_t nsei)
 {
 	if (peer->nsei != nsei) {
 		LOGP(DGPRS, LOGL_NOTICE, "Peer entry doesn't match current NSEI "
@@ -201,11 +201,11 @@ static int check_peer_nsei(struct gbprox_peer *peer, uint16_t nsei)
 	return 1;
 }
 
-static struct gbprox_peer *peer_alloc(uint16_t bvci)
+static struct gbproxy_peer *peer_alloc(uint16_t bvci)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 
-	peer = talloc_zero(tall_bsc_ctx, struct gbprox_peer);
+	peer = talloc_zero(tall_bsc_ctx, struct gbproxy_peer);
 	if (!peer)
 		return NULL;
 
@@ -219,7 +219,7 @@ static struct gbprox_peer *peer_alloc(uint16_t bvci)
 	return peer;
 }
 
-static void peer_free(struct gbprox_peer *peer)
+static void peer_free(struct gbproxy_peer *peer)
 {
 	rate_ctr_group_free(peer->ctrg);
 	llist_del(&peer->list);
@@ -493,7 +493,7 @@ static int parse_mi_tmsi(uint8_t *value, size_t value_len, uint32_t *tmsi)
 	return 1;
 }
 
-struct gbprox_parse_context {
+struct gbproxy_parse_context {
 	/* Pointer to protocol specific parts */
 	struct gsm48_hdr *g48_hdr;
 	struct gprs_llc_hdr_parsed *llc_hdr_parsed;
@@ -508,11 +508,11 @@ struct gbprox_parse_context {
 	uint32_t new_ptmsi;
 };
 
-static struct gbprox_tlli_info *gbprox_find_tlli(struct gbprox_peer *peer,
+static struct gbproxy_tlli_info *gbprox_find_tlli(struct gbproxy_peer *peer,
 						 uint32_t tlli)
 {
-	struct gbprox_tlli_info *tlli_info;
-	struct gbprox_patch_state *state = &peer->patch_state;
+	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	llist_for_each_entry(tlli_info, &state->enabled_tllis, list)
 		if (tlli_info->tlli == tlli)
@@ -521,13 +521,13 @@ static struct gbprox_tlli_info *gbprox_find_tlli(struct gbprox_peer *peer,
 	return NULL;
 }
 
-static struct gbprox_tlli_info *gbprox_find_tlli_by_mi(
-	struct gbprox_peer *peer,
+static struct gbproxy_tlli_info *gbprox_find_tlli_by_mi(
+	struct gbproxy_peer *peer,
 	const uint8_t *mi_data,
 	size_t mi_data_len)
 {
-	struct gbprox_tlli_info *tlli_info;
-	struct gbprox_patch_state *state = &peer->patch_state;
+	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
 		if (tlli_info->mi_data_len != mi_data_len)
@@ -541,20 +541,20 @@ static struct gbprox_tlli_info *gbprox_find_tlli_by_mi(
 	return NULL;
 }
 
-void gbprox_delete_tlli(struct gbprox_peer *peer,
-			       struct gbprox_tlli_info *tlli_info)
+void gbprox_delete_tlli(struct gbproxy_peer *peer,
+			       struct gbproxy_tlli_info *tlli_info)
 {
-	struct gbprox_patch_state *state = &peer->patch_state;
+	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	llist_del(&tlli_info->list);
 	talloc_free(tlli_info);
 	state->enabled_tllis_count -= 1;
 }
 
-static void gbprox_delete_tllis(struct gbprox_peer *peer)
+static void gbprox_delete_tllis(struct gbproxy_peer *peer)
 {
-	struct gbprox_tlli_info *tlli_info, *nxt;
-	struct gbprox_patch_state *state = &peer->patch_state;
+	struct gbproxy_tlli_info *tlli_info, *nxt;
+	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
 		llist_del(&tlli_info->list);
@@ -595,7 +595,7 @@ int gbprox_set_patch_filter(const char *filter, const char **err_msg)
 	return -1;
 }
 
-static int gbprox_check_imsi(struct gbprox_peer *peer,
+static int gbprox_check_imsi(struct gbproxy_peer *peer,
 			     const uint8_t *imsi, size_t imsi_len)
 {
 	char mi_buf[200];
@@ -624,10 +624,10 @@ static int gbprox_check_imsi(struct gbprox_peer *peer,
 	return 1;
 }
 
-int gbprox_remove_stale_tllis(struct gbprox_peer *peer, time_t now)
+int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
 {
-	struct gbprox_patch_state *state = &peer->patch_state;
-	struct gbprox_tlli_info *tlli_info = NULL, *nxt;
+	struct gbproxy_patch_state *state = &peer->patch_state;
+	struct gbproxy_tlli_info *tlli_info = NULL, *nxt;
 	int count = 0;
 	int deleted_count = 0;
 
@@ -659,11 +659,11 @@ int gbprox_remove_stale_tllis(struct gbprox_peer *peer, time_t now)
 	return deleted_count;
 }
 
-static void gbprox_register_tlli(struct gbprox_peer *peer, uint32_t tlli,
+static void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 				 const uint8_t *imsi, size_t imsi_len)
 {
-	struct gbprox_patch_state *state = &peer->patch_state;
-	struct gbprox_tlli_info *tlli_info;
+	struct gbproxy_patch_state *state = &peer->patch_state;
+	struct gbproxy_tlli_info *tlli_info;
 	int enable_patching;
 	time_t now = 0;
 
@@ -701,7 +701,7 @@ static void gbprox_register_tlli(struct gbprox_peer *peer, uint32_t tlli,
 			return;
 
 		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
-		tlli_info = talloc_zero(peer, struct gbprox_tlli_info);
+		tlli_info = talloc_zero(peer, struct gbproxy_tlli_info);
 		tlli_info->tlli = tlli;
 	} else {
 		llist_del(&tlli_info->list);
@@ -721,7 +721,7 @@ static void gbprox_register_tlli(struct gbprox_peer *peer, uint32_t tlli,
 		gbprox_remove_stale_tllis(peer, now);
 
 		if (tlli_info != llist_entry(state->enabled_tllis.next,
-					     struct gbprox_tlli_info, list)) {
+					     struct gbproxy_tlli_info, list)) {
 			LOGP(DGPRS, LOGL_ERROR,
 			     "Unexpectedly removed new TLLI entry as stale, "
 			     "TLLI %08x\n", tlli);
@@ -747,10 +747,10 @@ static void gbprox_register_tlli(struct gbprox_peer *peer, uint32_t tlli,
 		state->enabled_tllis_count;
 }
 
-static void gbprox_unregister_tlli(struct gbprox_peer *peer, uint32_t tlli)
+static void gbprox_unregister_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 {
-	struct gbprox_tlli_info *tlli_info;
-	struct gbprox_patch_state *state = &peer->patch_state;
+	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	tlli_info = gbprox_find_tlli(peer, tlli);
 	if (tlli_info) {
@@ -766,7 +766,7 @@ static void gbprox_unregister_tlli(struct gbprox_peer *peer, uint32_t tlli)
 		state->enabled_tllis_count;
 }
 
-static int gbprox_check_tlli(struct gbprox_peer *peer, uint32_t tlli)
+static int gbprox_check_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 {
 	LOGP(DGPRS, LOGL_INFO, "Checking TLLI %08x, class: %d\n",
 	     tlli, gprs_tlli_type(tlli));
@@ -794,10 +794,10 @@ static int patching_is_required(enum gbproxy_patch_mode need_at_least)
 }
 
 /* patch RA identifier in place, update peer accordingly */
-static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_peer *peer,
+static void gbprox_patch_raid(uint8_t *raid_enc, struct gbproxy_peer *peer,
 			      int to_bss, const char *log_text)
 {
-	struct gbprox_patch_state *state = &peer->patch_state;
+	struct gbproxy_patch_state *state = &peer->patch_state;
 	const int old_local_mcc = state->local_mcc;
 	const int old_local_mnc = state->local_mnc;
 	int old_mcc;
@@ -867,7 +867,7 @@ static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_peer *peer,
 
 static void gbprox_patch_apn_ie(struct msgb *msg,
 				uint8_t *apn_ie, size_t apn_ie_len,
-				struct gbprox_peer *peer,
+				struct gbproxy_peer *peer,
 				size_t *new_apn_ie_len, const char *log_text)
 {
 	struct apn_ie_hdr {
@@ -918,9 +918,9 @@ static void gbprox_patch_apn_ie(struct msgb *msg,
 
 static int gbprox_patch_gmm_attach_req(struct msgb *msg,
 				       uint8_t *data, size_t data_len,
-				       struct gbprox_peer *peer,
+				       struct gbproxy_peer *peer,
 				       int *len_change,
-				       struct gbprox_parse_context *parse_ctx)
+				       struct gbproxy_parse_context *parse_ctx)
 {
 	uint8_t *value;
 	size_t value_len;
@@ -952,8 +952,8 @@ static int gbprox_patch_gmm_attach_req(struct msgb *msg,
 
 static int gbprox_patch_gmm_attach_ack(struct msgb *msg,
 				       uint8_t *data, size_t data_len,
-				       struct gbprox_peer *peer, int *len_change,
-				       struct gbprox_parse_context *parse_ctx)
+				       struct gbproxy_peer *peer, int *len_change,
+				       struct gbproxy_parse_context *parse_ctx)
 {
 	uint8_t *value;
 	size_t value_len;
@@ -986,8 +986,8 @@ static int gbprox_patch_gmm_attach_ack(struct msgb *msg,
 
 static int gbprox_patch_gmm_ra_upd_req(struct msgb *msg,
 				       uint8_t *data, size_t data_len,
-				       struct gbprox_peer *peer, int *len_change,
-				       struct gbprox_parse_context *parse_ctx)
+				       struct gbproxy_peer *peer, int *len_change,
+				       struct gbproxy_parse_context *parse_ctx)
 {
 	uint8_t *value;
 
@@ -1005,8 +1005,8 @@ static int gbprox_patch_gmm_ra_upd_req(struct msgb *msg,
 
 static int gbprox_patch_gmm_ra_upd_ack(struct msgb *msg,
 				       uint8_t *data, size_t data_len,
-				       struct gbprox_peer *peer, int *len_change,
-				       struct gbprox_parse_context *parse_ctx)
+				       struct gbproxy_peer *peer, int *len_change,
+				       struct gbproxy_parse_context *parse_ctx)
 {
 	uint8_t *value;
 	size_t value_len;
@@ -1034,9 +1034,9 @@ static int gbprox_patch_gmm_ra_upd_ack(struct msgb *msg,
 
 static int gbprox_patch_gmm_ptmsi_reall_cmd(struct msgb *msg,
 					    uint8_t *data, size_t data_len,
-					    struct gbprox_peer *peer,
+					    struct gbproxy_peer *peer,
 					    int *len_change,
-					    struct gbprox_parse_context *parse_ctx)
+					    struct gbproxy_parse_context *parse_ctx)
 {
 	uint8_t *value;
 	size_t value_len;
@@ -1060,8 +1060,8 @@ static int gbprox_patch_gmm_ptmsi_reall_cmd(struct msgb *msg,
 
 static int gbprox_patch_gsm_act_pdp_req(struct msgb *msg,
 					uint8_t *data, size_t data_len,
-					struct gbprox_peer *peer, int *len_change,
-					struct gbprox_parse_context *parse_ctx)
+					struct gbproxy_peer *peer, int *len_change,
+					struct gbproxy_parse_context *parse_ctx)
 {
 	size_t new_len;
 	ssize_t old_len;
@@ -1101,7 +1101,7 @@ static int gbprox_patch_gsm_act_pdp_req(struct msgb *msg,
 	return have_patched;
 }
 
-struct gbprox_peer *peer_by_bssgp_tlv(struct tlv_parsed *tp)
+struct gbproxy_peer *peer_by_bssgp_tlv(struct tlv_parsed *tp)
 {
 	if (TLVP_PRESENT(tp, BSSGP_IE_BVCI)) {
 		uint16_t bvci;
@@ -1128,8 +1128,8 @@ struct gbprox_peer *peer_by_bssgp_tlv(struct tlv_parsed *tp)
 }
 
 static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
-			     struct gbprox_peer *peer, int *len_change,
-			     struct gbprox_parse_context *parse_ctx)
+			     struct gbproxy_peer *peer, int *len_change,
+			     struct gbproxy_parse_context *parse_ctx)
 {
 	struct gsm48_hdr *g48h;
 
@@ -1200,8 +1200,8 @@ static int gbprox_patch_dtap(struct msgb *msg, uint8_t *data, size_t data_len,
 }
 
 static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
-			     struct gbprox_peer *peer, int *len_change,
-			     struct gbprox_parse_context *parse_ctx)
+			     struct gbproxy_peer *peer, int *len_change,
+			     struct gbproxy_parse_context *parse_ctx)
 {
 	struct gprs_llc_hdr_parsed ghp = {0};
 	int rc;
@@ -1298,7 +1298,7 @@ patch_error:
 
 /* patch BSSGP message to use core_mcc/mnc on the SGSN side */
 static void gbprox_patch_bssgp_message(struct msgb *msg,
-				       struct gbprox_peer *peer, int to_bss)
+				       struct gbproxy_peer *peer, int to_bss)
 {
 	struct bssgp_normal_hdr *bgph;
 	struct bssgp_ud_hdr *budh = NULL;
@@ -1360,7 +1360,7 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 	    patching_is_enabled(GBPROX_PATCH_LLC_ATTACH_REQ)) {
 		uint8_t *llc = (uint8_t *)TLVP_VAL(&tp, BSSGP_IE_LLC_PDU);
 		size_t llc_len = TLVP_LEN(&tp, BSSGP_IE_LLC_PDU);
-		struct gbprox_parse_context parse_ctx = {0};
+		struct gbproxy_parse_context parse_ctx = {0};
 		int len_change = 0;
 		parse_ctx.bssgp_tp = &tp;
 		parse_ctx.bud_hdr = budh;
@@ -1407,7 +1407,7 @@ patch_error:
 
 /* feed a message down the NS-VC associated with the specified peer */
 static int gbprox_relay2sgsn(struct msgb *old_msg,
-			     struct gbprox_peer *peer, uint16_t ns_bvci)
+			     struct gbproxy_peer *peer, uint16_t ns_bvci)
 {
 	/* create a copy of the message so the old one can
 	 * be free()d safely when we return from gbprox_rcvmsg() */
@@ -1432,7 +1432,7 @@ static int gbprox_relay2sgsn(struct msgb *old_msg,
 }
 
 /* feed a message down the NS-VC associated with the specified peer */
-static int gbprox_relay2peer(struct msgb *old_msg, struct gbprox_peer *peer,
+static int gbprox_relay2peer(struct msgb *old_msg, struct gbproxy_peer *peer,
 			  uint16_t ns_bvci)
 {
 	/* create a copy of the message so the old one can
@@ -1458,7 +1458,7 @@ static int gbprox_relay2peer(struct msgb *old_msg, struct gbprox_peer *peer,
 
 static int block_unblock_peer(uint16_t ptp_bvci, uint8_t pdu_type)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 
 	peer = peer_by_bvci(ptp_bvci);
 	if (!peer) {
@@ -1488,7 +1488,7 @@ static int block_unblock_peer(uint16_t ptp_bvci, uint8_t pdu_type)
 static int gbprox_relay2bvci(struct msgb *msg, uint16_t ptp_bvci,
 			  uint16_t ns_bvci)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 
 	peer = peer_by_bvci(ptp_bvci);
 	if (!peer) {
@@ -1514,7 +1514,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 	struct tlv_parsed tp;
 	uint8_t pdu_type = bgph->pdu_type;
 	int data_len = msgb_bssgp_len(msg) - sizeof(*bgph);
-	struct gbprox_peer *from_peer = NULL;
+	struct gbproxy_peer *from_peer = NULL;
 	struct gprs_ra_id raid;
 
 	if (ns_bvci != 0 && ns_bvci != 1) {
@@ -1622,7 +1622,7 @@ err_mand_ie:
 static int gbprox_rx_paging(struct msgb *msg, struct tlv_parsed *tp,
 			    uint32_t nsei, uint16_t ns_bvci)
 {
-	struct gbprox_peer *peer = NULL;
+	struct gbproxy_peer *peer = NULL;
 	int errctr = GBPROX_GLOB_CTR_PROTO_ERR_SGSN;
 
 	LOGP(DGPRS, LOGL_INFO, "NSEI=%u(SGSN) BSSGP PAGING ",
@@ -1658,7 +1658,7 @@ static int gbprox_rx_paging(struct msgb *msg, struct tlv_parsed *tp,
 static int rx_reset_from_sgsn(struct msgb *msg, struct tlv_parsed *tp,
 			      uint32_t nsei, uint16_t ns_bvci)
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	uint16_t ptp_bvci;
 
 	if (!TLVP_PRESENT(tp, BSSGP_IE_BVCI)) {
@@ -1702,7 +1702,7 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, uint32_t nsei,
 	struct tlv_parsed tp;
 	uint8_t pdu_type = bgph->pdu_type;
 	int data_len = msgb_bssgp_len(msg) - sizeof(*bgph);
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	uint16_t bvci;
 	int rc = 0;
 
@@ -1824,7 +1824,7 @@ err_no_peer:
 int gbprox_rcvmsg(struct msgb *msg, uint16_t nsei, uint16_t ns_bvci, uint16_t nsvci)
 {
 	int rc;
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	int remote_end_is_sgsn = nsei == gbcfg.nsip_sgsn_nsei;
 
 	if (remote_end_is_sgsn)
@@ -1887,7 +1887,7 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 {
 	struct ns_signal_data *nssd = signal_data;
 	struct gprs_nsvc *nsvc = nssd->nsvc;
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 
 	if (subsys != SS_L_NS)
 		return 0;
@@ -1959,7 +1959,7 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 
 void gbprox_reset()
 {
-	struct gbprox_peer *peer, *tmp;
+	struct gbproxy_peer *peer, *tmp;
 
 	llist_for_each_entry_safe(peer, tmp, &gbcfg.bts_peers, list)
 		peer_free(peer);
@@ -1971,7 +1971,7 @@ void gbprox_reset()
 int gbprox_cleanup_peers(uint16_t nsei, uint16_t bvci)
 {
 	int counter = 0;
-	struct gbprox_peer *peer, *tmp;
+	struct gbproxy_peer *peer, *tmp;
 
 	llist_for_each_entry_safe(peer, tmp, &gbcfg.bts_peers, list) {
 		if (peer->nsei != nsei)

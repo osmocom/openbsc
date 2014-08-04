@@ -43,7 +43,7 @@ struct gbproxy_config {
 	int tlli_max_len;
 };
 
-struct gbprox_patch_state {
+struct gbproxy_patch_state {
 	int local_mnc;
 	int local_mcc;
 
@@ -52,7 +52,7 @@ struct gbprox_patch_state {
 	int enabled_tllis_count;
 };
 
-struct gbprox_peer {
+struct gbproxy_peer {
 	struct llist_head list;
 
 	/* NSEI of the peer entity */
@@ -68,10 +68,10 @@ struct gbprox_peer {
 	/* Counter */
 	struct rate_ctr_group *ctrg;
 
-	struct gbprox_patch_state patch_state;
+	struct gbproxy_patch_state patch_state;
 };
 
-struct gbprox_tlli_info {
+struct gbproxy_tlli_info {
 	struct llist_head list;
 
 	uint32_t tlli;
@@ -108,10 +108,10 @@ int gbprox_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars);
 
 int gbprox_set_patch_filter(const char *filter, const char **err_msg);
 
-void gbprox_delete_tlli(struct gbprox_peer *peer,
-			       struct gbprox_tlli_info *tlli_info);
-int gbprox_remove_stale_tllis(struct gbprox_peer *peer, time_t now);
+void gbprox_delete_tlli(struct gbproxy_peer *peer,
+			       struct gbproxy_tlli_info *tlli_info);
+int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now);
 int gbprox_cleanup_peers(uint16_t nsei, uint16_t bvci);
 
-struct gbprox_peer *gbprox_peer_by_nsei(uint16_t nsei);
+struct gbproxy_peer *gbprox_peer_by_nsei(uint16_t nsei);
 #endif

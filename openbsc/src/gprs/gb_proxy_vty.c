@@ -60,7 +60,7 @@ static const struct value_string patch_modes[] = {
 	{0, NULL}
 };
 
-static void gbprox_vty_print_peer(struct vty *vty, struct gbprox_peer *peer)
+static void gbprox_vty_print_peer(struct vty *vty, struct gbproxy_peer *peer)
 {
 	struct gprs_ra_id raid;
 	gsm48_parse_ra(&raid, peer->ra);
@@ -337,7 +337,7 @@ DEFUN(cfg_gbproxy_patch_mode,
 DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
        SHOW_STR "Display information about the Gb proxy\n" "Show statistics\n")
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	int show_stats = argc >= 1;
 
 	if (show_stats)
@@ -355,13 +355,13 @@ DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
 DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
        SHOW_STR "Display information about the Gb proxy\n" "Show TLLIs\n")
 {
-	struct gbprox_peer *peer;
+	struct gbproxy_peer *peer;
 	char mi_buf[200];
 	time_t now = time(NULL);
 
 	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
-		struct gbprox_tlli_info *tlli_info;
-		struct gbprox_patch_state *state = &peer->patch_state;
+		struct gbproxy_tlli_info *tlli_info;
+		struct gbproxy_patch_state *state = &peer->patch_state;
 
 		gbprox_vty_print_peer(vty, peer);
 
@@ -428,7 +428,7 @@ DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 		if (!dry_run)
 			counter = gbprox_cleanup_peers(nsei, 0);
 		else {
-			struct gbprox_peer *peer;
+			struct gbproxy_peer *peer;
 			counter = 0;
 			llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
 				if (peer->nsei != nsei)
@@ -482,9 +482,9 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	enum {MATCH_TLLI = 't', MATCH_IMSI = 'i', MATCH_STALE = 's'} match;
 	uint32_t tlli = 0;
 	const char *imsi = NULL;
-	struct gbprox_peer *peer = 0;
-	struct gbprox_tlli_info *tlli_info, *nxt;
-	struct gbprox_patch_state *state;
+	struct gbproxy_peer *peer = 0;
+	struct gbproxy_tlli_info *tlli_info, *nxt;
+	struct gbproxy_patch_state *state;
 	char mi_buf[200];
 	int found = 0;
 
