@@ -519,7 +519,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	state = &peer->patch_state;
 
 	if (match == MATCH_STALE) {
-		found = gbprox_remove_stale_ttlis(peer, time(NULL));
+		found = gbprox_remove_stale_tllis(peer, time(NULL));
 		if (found)
 			vty_out(vty, "Deleted %d stale TLLI%s%s",
 				found, found == 1 ? "" : "s", VTY_NEWLINE);

@@ -109,7 +109,7 @@ int gbprox_set_patch_filter(const char *filter, const char **err_msg);
 
 void gbprox_delete_tlli(struct gbprox_peer *peer,
 			       struct gbprox_tlli_info *tlli_info);
-int gbprox_remove_stale_ttlis(struct gbprox_peer *peer, time_t now);
+int gbprox_remove_stale_tllis(struct gbprox_peer *peer, time_t now);
 int gbprox_cleanup_peers(uint16_t nsei, uint16_t bvci);
 
 /* tmp */

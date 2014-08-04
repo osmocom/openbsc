@@ -635,7 +635,7 @@ static int gbprox_check_imsi(struct gbprox_peer *peer,
 	return 1;
 }
 
-int gbprox_remove_stale_ttlis(struct gbprox_peer *peer, time_t now)
+int gbprox_remove_stale_tllis(struct gbprox_peer *peer, time_t now)
 {
 	struct gbprox_patch_state *state = &peer->patch_state;
 	struct gbprox_tlli_info *tlli_info = NULL, *nxt;
@@ -729,7 +729,7 @@ static void gbprox_register_tlli(struct gbprox_peer *peer, uint32_t tlli,
 		llist_add(&tlli_info->list, &state->enabled_tllis);
 		state->enabled_tllis_count += 1;
 
-		gbprox_remove_stale_ttlis(peer, now);
+		gbprox_remove_stale_tllis(peer, now);
 
 		if (tlli_info != llist_entry(state->enabled_tllis.next,
 					     struct gbprox_tlli_info, list)) {
