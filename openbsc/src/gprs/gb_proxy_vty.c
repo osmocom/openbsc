@@ -32,6 +32,7 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/gb_proxy.h>
+#include <openbsc/gprs_utils.h>
 #include <openbsc/vty.h>
 
 #include <osmocom/vty/command.h>
@@ -92,7 +93,7 @@ static int config_write_gbproxy(struct vty *vty)
 	       if (g_cfg->core_apn_size > 0) {
 		       char str[500] = {0};
 		       vty_out(vty, " core-access-point-name %s",
-			       gbprox_apn_to_str(str, g_cfg->core_apn,
+			       gprs_apn_to_str(str, g_cfg->core_apn,
 						 g_cfg->core_apn_size));
 	       } else {
 		       vty_out(vty, " core-access-point-name none");
@@ -229,7 +230,7 @@ static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 		g_cfg->core_apn =
 			talloc_realloc_size(NULL, g_cfg->core_apn, apn_len + 1);
 		g_cfg->core_apn_size =
-			gbprox_str_to_apn(g_cfg->core_apn, apn, apn_len + 1);
+			gprs_str_to_apn(g_cfg->core_apn, apn, apn_len + 1);
 	}
 
 	return CMD_SUCCESS;

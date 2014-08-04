@@ -47,6 +47,7 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_08_gprs.h>
+#include <openbsc/gprs_utils.h>
 
 enum gbprox_global_ctr {
 	GBPROX_GLOB_CTR_INV_BVCI,
@@ -229,135 +230,11 @@ static void peer_free(struct gbproxy_peer *peer)
 	talloc_free(peer);
 }
 
-/* FIXME: this needs to go to libosmocore/msgb.c */
-static struct msgb *msgb_copy(const struct msgb *msg, const char *name)
-{
-	struct libgb_msgb_cb *old_cb, *new_cb;
-	struct msgb *new_msg;
-
-	new_msg = msgb_alloc(msg->data_len, name);
-	if (!new_msg)
-		return NULL;
-
-	/* copy data */
-	memcpy(new_msg->_data, msg->_data, new_msg->data_len);
-
-	/* copy header */
-	new_msg->len = msg->len;
-	new_msg->data += msg->data - msg->_data;
-	new_msg->head += msg->head - msg->_data;
-	new_msg->tail += msg->tail - msg->_data;
-
-	new_msg->l1h = new_msg->_data + (msg->l1h - msg->_data);
-	new_msg->l2h = new_msg->_data + (msg->l2h - msg->_data);
-	new_msg->l3h = new_msg->_data + (msg->l3h - msg->_data);
-	new_msg->l4h = new_msg->_data + (msg->l4h - msg->_data);
-
-	/* copy GB specific data */
-	old_cb = LIBGB_MSGB_CB(msg);
-	new_cb = LIBGB_MSGB_CB(new_msg);
-
-	new_cb->bssgph = new_msg->_data + (old_cb->bssgph - msg->_data);
-	new_cb->llch = new_msg->_data + (old_cb->llch - msg->_data);
-
-	/* bssgp_cell_id is a pointer into the old msgb, so we need to make
-	 * it a pointer into the new msgb */
-	new_cb->bssgp_cell_id = new_msg->_data + (old_cb->bssgp_cell_id - msg->_data);
-	new_cb->nsei = old_cb->nsei;
-	new_cb->bvci = old_cb->bvci;
-	new_cb->tlli = old_cb->tlli;
-
-	return new_msg;
-}
-
 /* strip off the NS header */
 static void strip_ns_hdr(struct msgb *msg)
 {
 	int strip_len = msgb_bssgph(msg) - msg->data;
 	msgb_pull(msg, strip_len);
-}
-
-/* TODO: Move this to libosmocore/msgb.c */
-static int msgb_resize_area(struct msgb *msg, uint8_t *area,
-			    size_t old_size, size_t new_size)
-{
-	int rc;
-	uint8_t *rest = area + old_size;
-	int rest_len = msg->len - old_size - (area - msg->data);
-	int delta_size = (int)new_size - (int)old_size;
-
-	if (delta_size == 0)
-		return 0;
-
-	if (delta_size > 0) {
-		rc = msgb_trim(msg, msg->len + delta_size);
-		if (rc < 0)
-			return rc;
-	}
-
-	memmove(area + new_size, area + old_size, rest_len);
-
-	if (msg->l1h >= rest)
-		msg->l1h += delta_size;
-	if (msg->l2h >= rest)
-		msg->l2h += delta_size;
-	if (msg->l3h >= rest)
-		msg->l3h += delta_size;
-	if (msg->l4h >= rest)
-		msg->l4h += delta_size;
-
-	if (delta_size < 0)
-		msgb_trim(msg, msg->len + delta_size);
-
-	return 0;
-}
-
-/* TODO: Move these conversion functions to a utils file. */
-char * gbprox_apn_to_str(char *out_str, const uint8_t *apn_enc, size_t rest_chars)
-{
-	char *str = out_str;
-
-	while (rest_chars > 0 && apn_enc[0]) {
-		size_t label_size = apn_enc[0];
-		if (label_size + 1 > rest_chars)
-			return NULL;
-
-		memmove(str, apn_enc + 1, label_size);
-		str += label_size;
-		rest_chars -= label_size + 1;
-		apn_enc += label_size + 1;
-
-		if (rest_chars)
-			*(str++) = '.';
-	}
-	str[0] = '\0';
-
-	return out_str;
-}
-
-int gbprox_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars)
-{
-	uint8_t *last_len_field = apn_enc;
-	int len = 1;
-	apn_enc += 1;
-
-	while (str[0]) {
-		if (str[0] == '.') {
-			*last_len_field = (apn_enc - last_len_field) - 1;
-			last_len_field = apn_enc;
-		} else {
-			*apn_enc = str[0];
-		}
-		apn_enc += 1;
-		str += 1;
-		len += 1;
-		if (len > max_chars)
-			return -1;
-	}
-
-	*last_len_field = (apn_enc - last_len_field) - 1;
-
-	return len;
 }
 
 /* TODO: Move shift functions to libosmocore */
@@ -888,10 +765,10 @@ static void gbprox_patch_apn_ie(struct msgb *msg,
 		LOGP(DGPRS, LOGL_DEBUG,
 		     "Patching %s to SGSN: Removing APN '%s'\n",
 		     log_text,
-		     gbprox_apn_to_str(str1, apn, apn_len));
+		     gprs_apn_to_str(str1, apn, apn_len));
 
 		*new_apn_ie_len = 0;
-		msgb_resize_area(msg, apn_ie, apn_ie_len, 0);
+		gprs_msgb_resize_area(msg, apn_ie, apn_ie_len, 0);
 	} else {
 		/* Resize the IE */
 		char str1[110];
@@ -903,12 +780,12 @@ static void gbprox_patch_apn_ie(struct msgb *msg,
 		     "Patching %s to SGSN: "
 		     "Replacing APN '%s' -> '%s'\n",
 		     log_text,
-		     gbprox_apn_to_str(str1, apn, apn_len),
-		     gbprox_apn_to_str(str2, gbcfg.core_apn,
+		     gprs_apn_to_str(str1, apn, apn_len),
+		     gprs_apn_to_str(str2, gbcfg.core_apn,
 				       gbcfg.core_apn_size));
 
 		*new_apn_ie_len = gbcfg.core_apn_size + 2;
-		msgb_resize_area(msg, apn, apn_len, gbcfg.core_apn_size);
+		gprs_msgb_resize_area(msg, apn, apn_len, gbcfg.core_apn_size);
 		memcpy(apn, gbcfg.core_apn, gbcfg.core_apn_size);
 		hdr->apn_len = gbcfg.core_apn_size;
 	}
@@ -1411,7 +1288,7 @@ static int gbprox_relay2sgsn(struct msgb *old_msg,
 {
 	/* create a copy of the message so the old one can
 	 * be free()d safely when we return from gbprox_rcvmsg() */
-	struct msgb *msg = msgb_copy(old_msg, "msgb_relay2sgsn");
+	struct msgb *msg = gprs_msgb_copy(old_msg, "msgb_relay2sgsn");
 	int rc;
 
 	gbprox_patch_bssgp_message(msg, peer, 0);
@@ -1437,7 +1314,7 @@ static int gbprox_relay2peer(struct msgb *old_msg, struct gbproxy_peer *peer,
 {
 	/* create a copy of the message so the old one can
 	 * be free()d safely when we return from gbprox_rcvmsg() */
-	struct msgb *msg = msgb_copy(old_msg, "msgb_relay2peer");
+	struct msgb *msg = gprs_msgb_copy(old_msg, "msgb_relay2peer");
 	int rc;
 
 	DEBUGP(DGPRS, "NSEI=%u proxying SGSN->BSS (NS_BVCI=%u, NSEI=%u)\n",
