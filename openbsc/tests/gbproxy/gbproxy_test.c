@@ -470,7 +470,7 @@ int gprs_ns_callback(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 
 	switch (event) {
 	case GPRS_NS_EVT_UNIT_DATA:
-		return gbprox_rcvmsg(msg, nsvc->nsei, bvci, nsvc->nsvci);
+		return gbprox_rcvmsg(&gbcfg, msg, nsvc->nsei, bvci, nsvc->nsvci);
 	default:
 		break;
 	}
@@ -789,7 +789,7 @@ static void test_gbproxy()
 
 	dump_global(stdout, 0);
 
-	gbprox_reset();
+	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
 }
@@ -921,7 +921,7 @@ static void test_gbproxy_ident_changes()
 	dump_global(stdout, 0);
 	dump_peers(stdout, 0);
 
-	gbprox_reset();
+	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
 }
@@ -1057,7 +1057,7 @@ static void test_gbproxy_ra_patching()
 	dump_global(stdout, 0);
 	dump_peers(stdout, 0);
 
-	gbprox_reset();
+	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
 }
@@ -1324,7 +1324,7 @@ int main(int argc, char **argv)
 	osmo_init_logging(&info);
 	log_set_use_color(osmo_stderr_target, 0);
 	log_set_print_filename(osmo_stderr_target, 0);
-	osmo_signal_register_handler(SS_L_NS, &test_signal, NULL);
+	osmo_signal_register_handler(SS_L_NS, &test_signal, &gbcfg);
 
 	log_set_print_filename(osmo_stderr_target, 0);
 	log_set_log_level(osmo_stderr_target, LOGL_DEBUG);

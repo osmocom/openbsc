@@ -342,9 +342,9 @@ DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
 	int show_stats = argc >= 1;
 
 	if (show_stats)
-		vty_out_rate_ctr_group(vty, "", gbcfg.ctrg);
+		vty_out_rate_ctr_group(vty, "", g_cfg->ctrg);
 
-	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
+	llist_for_each_entry(peer, &g_cfg->bts_peers, list) {
 		gbprox_vty_print_peer(vty, peer);
 
 		if (show_stats)
@@ -360,7 +360,7 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 	char mi_buf[200];
 	time_t now = time(NULL);
 
-	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
+	llist_for_each_entry(peer, &g_cfg->bts_peers, list) {
 		struct gbproxy_tlli_info *tlli_info;
 		struct gbproxy_patch_state *state = &peer->patch_state;
 
@@ -391,7 +391,7 @@ DEFUN(delete_gb_bvci, delete_gb_bvci_cmd,
 	const uint16_t bvci = atoi(argv[1]);
 	int counter;
 
-	counter = gbprox_cleanup_peers(nsei, bvci);
+	counter = gbprox_cleanup_peers(g_cfg, nsei, bvci);
 
 	if (counter == 0) {
 		vty_out(vty, "BVC not found%s", VTY_NEWLINE);
@@ -427,11 +427,11 @@ DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 
 	if (delete_bvc) {
 		if (!dry_run)
-			counter = gbprox_cleanup_peers(nsei, 0);
+			counter = gbprox_cleanup_peers(g_cfg, nsei, 0);
 		else {
 			struct gbproxy_peer *peer;
 			counter = 0;
-			llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
+			llist_for_each_entry(peer, &g_cfg->bts_peers, list) {
 				if (peer->nsei != nsei)
 					continue;
 
@@ -445,7 +445,7 @@ DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 	}
 
 	if (delete_nsvc) {
-		struct gprs_ns_inst *nsi = gbcfg.nsi;
+		struct gprs_ns_inst *nsi = g_cfg->nsi;
 		struct gprs_nsvc *nsvc, *nsvc2;
 
 		counter = 0;
@@ -510,7 +510,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 		break;
 	}
 
-	peer = gbprox_peer_by_nsei(nsei);
+	peer = gbprox_peer_by_nsei(g_cfg, nsei);
 	if (!peer) {
 		vty_out(vty, "Didn't find peer with NSEI %d%s",
 			nsei, VTY_NEWLINE);

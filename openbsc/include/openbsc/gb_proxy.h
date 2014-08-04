@@ -55,6 +55,9 @@ struct gbproxy_patch_state {
 struct gbproxy_peer {
 	struct llist_head list;
 
+	/* point back to the config */
+	struct gbproxy_config *cfg;
+
 	/* NSEI of the peer entity */
 	uint16_t nsei;
 
@@ -81,8 +84,6 @@ struct gbproxy_tlli_info {
 };
 
 
-extern struct gbproxy_config gbcfg;
-
 /* gb_proxy_vty .c */
 
 int gbproxy_vty_init(void);
@@ -93,7 +94,7 @@ int gbproxy_parse_config(const char *config_file, struct gbproxy_config *cfg);
 int gbproxy_init_config(struct gbproxy_config *cfg);
 
 /* Main input function for Gb proxy */
-int gbprox_rcvmsg(struct msgb *msg, uint16_t nsei, uint16_t ns_bvci, uint16_t nsvci);
+int gbprox_rcvmsg(struct gbproxy_config *cfg, struct msgb *msg, uint16_t nsei, uint16_t ns_bvci, uint16_t nsvci);
 
 int gbprox_signal(unsigned int subsys, unsigned int signal,
 		  void *handler_data, void *signal_data);
@@ -101,14 +102,14 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 /* Reset all persistent NS-VC's */
 int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi);
 
-void gbprox_reset();
+void gbprox_reset(struct gbproxy_config *cfg);
 
 int gbprox_set_patch_filter(const char *filter, const char **err_msg);
 
 void gbprox_delete_tlli(struct gbproxy_peer *peer,
 			       struct gbproxy_tlli_info *tlli_info);
 int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now);
-int gbprox_cleanup_peers(uint16_t nsei, uint16_t bvci);
+int gbprox_cleanup_peers(struct gbproxy_config *cfg, uint16_t nsei, uint16_t bvci);
 
-struct gbproxy_peer *gbprox_peer_by_nsei(uint16_t nsei);
+struct gbproxy_peer *gbprox_peer_by_nsei(struct gbproxy_config *cfg, uint16_t nsei);
 #endif
