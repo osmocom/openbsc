@@ -230,7 +230,7 @@ static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 		g_cfg->core_apn =
 			talloc_realloc_size(NULL, g_cfg->core_apn, apn_len + 1);
 		g_cfg->core_apn_size =
-			gprs_str_to_apn(g_cfg->core_apn, apn, apn_len + 1);
+			gprs_str_to_apn(g_cfg->core_apn, apn_len + 1, apn);
 	}
 
 	return CMD_SUCCESS;

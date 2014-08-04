@@ -945,7 +945,7 @@ static void test_gbproxy_ra_patching()
 	gbcfg.core_mcc = 123;
 	gbcfg.core_mnc = 456;
 	gbcfg.core_apn = talloc_zero_size(NULL, 100);
-	gbcfg.core_apn_size = gprs_str_to_apn(gbcfg.core_apn, "foo.bar", 100);
+	gbcfg.core_apn_size = gprs_str_to_apn(gbcfg.core_apn, 100, "foo.bar");
 
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));

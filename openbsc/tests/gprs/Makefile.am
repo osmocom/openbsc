@@ -5,4 +5,5 @@ EXTRA_DIST = gprs_test.ok
 
 noinst_PROGRAMS = gprs_test
 
-gprs_test_SOURCES = gprs_test.c
+gprs_test_SOURCES = gprs_test.c $(top_srcdir)/src/gprs/gprs_utils.c
+gprs_test_LDADD = $(LIBOSMOCORE_LIBS)

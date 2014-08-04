@@ -103,6 +103,9 @@ int gprs_msgb_resize_area(struct msgb *msg, uint8_t *area,
 }
 
 /* TODO: Move these conversion functions to a utils file. */
+/**
+ * out_str needs to have rest_chars amount of bytes or 1 whatever is bigger.
+ */
 char * gprs_apn_to_str(char *out_str, const uint8_t *apn_enc, size_t rest_chars)
 {
 	char *str = out_str;
@@ -125,13 +128,24 @@ char * gprs_apn_to_str(char *out_str, const uint8_t *apn_enc, size_t rest_chars)
 	return out_str;
 }
 
-int gprs_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars)
+int gprs_str_to_apn(uint8_t *apn_enc, size_t max_len, const char *str)
 {
-	uint8_t *last_len_field = apn_enc;
-	int len = 1;
+	uint8_t *last_len_field;
+	int len;
+
+	/* Can we even write the length field to the output? */
+	if (max_len == 0)
+		return -1;
+
+	/* Remember where we need to put the length once we know it */
+	last_len_field = apn_enc;
+	len = 1;
 	apn_enc += 1;
 
 	while (str[0]) {
+		if (len >= max_len)
+			return -1;
+
 		if (str[0] == '.') {
 			*last_len_field = (apn_enc - last_len_field) - 1;
 			last_len_field = apn_enc;
@@ -141,8 +155,6 @@ int gprs_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars)
 		apn_enc += 1;
 		str += 1;
 		len += 1;
-		if (len > max_chars)
-			return -1;
 	}
 
 	*last_len_field = (apn_enc - last_len_field) - 1;
