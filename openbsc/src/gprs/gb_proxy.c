@@ -144,7 +144,7 @@ static struct gbprox_peer *peer_by_bvci(uint16_t bvci)
 }
 
 /* Find the gbprox_peer by its NSEI */
-struct gbprox_peer *peer_by_nsei(uint16_t nsei)
+struct gbprox_peer *gbprox_peer_by_nsei(uint16_t nsei)
 {
 	struct gbprox_peer *peer;
 	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
@@ -1332,7 +1332,7 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 		peer = peer_by_bvci(msgb_bvci(msg));
 
 	if (!peer && !to_bss)
-		peer = peer_by_nsei(msgb_nsei(msg));
+		peer = gbprox_peer_by_nsei(msgb_nsei(msg));
 
 	if (!peer)
 		peer = peer_by_bssgp_tlv(&tp);
@@ -1544,7 +1544,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 		 * BSSGP */
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_ROUTEING_AREA))
 			goto err_mand_ie;
-		from_peer = peer_by_nsei(nsei);
+		from_peer = gbprox_peer_by_nsei(nsei);
 		if (!from_peer)
 			goto err_no_peer;
 		memcpy(from_peer->ra, TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
@@ -1911,7 +1911,7 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 
 	if (!nsvc->remote_end_is_sgsn) {
 		/* from BSS to SGSN */
-		peer = peer_by_nsei(nsvc->nsei);
+		peer = gbprox_peer_by_nsei(nsvc->nsei);
 		if (!peer) {
 			LOGP(DGPRS, LOGL_NOTICE, "signal %u for unknown peer "
 			     "NSEI=%u/NSVCI=%u\n", signal, nsvc->nsei,

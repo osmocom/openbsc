@@ -115,6 +115,5 @@ void gbprox_delete_tlli(struct gbprox_peer *peer,
 int gbprox_remove_stale_tllis(struct gbprox_peer *peer, time_t now);
 int gbprox_cleanup_peers(uint16_t nsei, uint16_t bvci);
 
-/* tmp */
-struct gbprox_peer *peer_by_nsei(uint16_t nsei);
+struct gbprox_peer *gbprox_peer_by_nsei(uint16_t nsei);
 #endif

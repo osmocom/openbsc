@@ -509,7 +509,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 		break;
 	}
 
-	peer = peer_by_nsei(nsei);
+	peer = gbprox_peer_by_nsei(nsei);
 	if (!peer) {
 		vty_out(vty, "Didn't find peer with NSEI %d%s",
 			nsei, VTY_NEWLINE);
