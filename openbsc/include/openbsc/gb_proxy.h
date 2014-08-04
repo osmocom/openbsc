@@ -103,9 +103,6 @@ int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi);
 
 void gbprox_reset();
 
-char *gbprox_apn_to_str(char *str, const uint8_t *apn_enc, size_t max_chars);
-int gbprox_str_to_apn(uint8_t *apn_enc, const char *str, size_t max_chars);
-
 int gbprox_set_patch_filter(const char *filter, const char **err_msg);
 
 void gbprox_delete_tlli(struct gbproxy_peer *peer,
