@@ -341,7 +341,7 @@ DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
 	int show_stats = argc >= 1;
 
 	if (show_stats)
-		vty_out_rate_ctr_group(vty, "", get_global_ctrg());
+		vty_out_rate_ctr_group(vty, "", gbcfg.ctrg);
 
 	llist_for_each_entry(peer, &gbcfg.bts_peers, list) {
 		gbprox_vty_print_peer(vty, peer);

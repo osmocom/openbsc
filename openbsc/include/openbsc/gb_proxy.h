@@ -29,6 +29,9 @@ struct gbproxy_config {
 	/* Linked list of all Gb peers (except SGSN) */
 	struct llist_head bts_peers;
 
+	/* Counter */
+	struct rate_ctr_group *ctrg;
+
 	/* force mcc/mnc */
 	int core_mnc;
 	int core_mcc;
@@ -113,6 +116,5 @@ int gbprox_remove_stale_tllis(struct gbprox_peer *peer, time_t now);
 int gbprox_cleanup_peers(uint16_t nsei, uint16_t bvci);
 
 /* tmp */
-struct rate_ctr_group *get_global_ctrg(void);
 struct gbprox_peer *peer_by_nsei(uint16_t nsei);
 #endif
