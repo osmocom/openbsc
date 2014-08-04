@@ -7,6 +7,9 @@
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/vty/command.h>
 
+#include <sys/types.h>
+#include <regex.h>
+
 struct rate_ctr_group;
 
 enum gbproxy_patch_mode {
@@ -41,6 +44,10 @@ struct gbproxy_config {
 	enum gbproxy_patch_mode patch_mode;
 	int tlli_max_age;
 	int tlli_max_len;
+
+	/* IMSI checking/matching */
+	int check_imsi;
+	regex_t imsi_re_comp;
 };
 
 struct gbproxy_patch_state {
@@ -104,7 +111,8 @@ int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi);
 
 void gbprox_reset(struct gbproxy_config *cfg);
 
-int gbprox_set_patch_filter(const char *filter, const char **err_msg);
+int gbprox_set_patch_filter(struct gbproxy_config *cfg, const char *filter,
+		const char **err_msg);
 
 void gbprox_delete_tlli(struct gbproxy_peer *peer,
 			       struct gbproxy_tlli_info *tlli_info);

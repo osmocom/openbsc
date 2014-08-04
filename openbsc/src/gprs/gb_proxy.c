@@ -125,12 +125,6 @@ static const struct rate_ctr_group_desc peer_ctrg_desc = {
 	.ctr_desc = peer_ctr_description,
 };
 
-struct {
-	int check_imsi;
-	regex_t imsi_re_comp;
-} gbprox_global_patch_state = {0,};
-
-
 static void gbprox_delete_tllis(struct gbproxy_peer *peer);
 
 /* Find the gbprox_peer by its BVCI */
@@ -441,29 +435,30 @@ static void gbprox_delete_tllis(struct gbproxy_peer *peer)
 	OSMO_ASSERT(llist_empty(&state->enabled_tllis));
 }
 
-int gbprox_set_patch_filter(const char *filter, const char **err_msg)
+int gbprox_set_patch_filter(struct gbproxy_config *cfg, const char *filter,
+		const char **err_msg)
 {
 	static char err_buf[300];
 	int rc;
 
-	if (gbprox_global_patch_state.check_imsi) {
-		regfree(&gbprox_global_patch_state.imsi_re_comp);
-		gbprox_global_patch_state.check_imsi = 0;
+	if (cfg->check_imsi) {
+		regfree(&cfg->imsi_re_comp);
+		cfg->check_imsi = 0;
 	}
 
 	if (!filter)
 		return 0;
 
-	rc = regcomp(&gbprox_global_patch_state.imsi_re_comp, filter,
+	rc = regcomp(&cfg->imsi_re_comp, filter,
 		     REG_EXTENDED | REG_NOSUB | REG_ICASE);
 
 	if (rc == 0) {
-		gbprox_global_patch_state.check_imsi = 1;
+		cfg->check_imsi = 1;
 		return 0;
 	}
 
 	if (err_msg) {
-		regerror(rc, &gbprox_global_patch_state.imsi_re_comp,
+		regerror(rc, &cfg->imsi_re_comp,
 			 err_buf, sizeof(err_buf));
 		*err_msg = err_buf;
 	}
@@ -477,7 +472,7 @@ static int gbprox_check_imsi(struct gbproxy_peer *peer,
 	char mi_buf[200];
 	int rc;
 
-	if (!gbprox_global_patch_state.check_imsi)
+	if (!peer->cfg->check_imsi)
 		return 1;
 
 	rc = gsm48_mi_to_string(mi_buf, sizeof(mi_buf), imsi, imsi_len);
@@ -489,7 +484,7 @@ static int gbprox_check_imsi(struct gbproxy_peer *peer,
 
 	LOGP(DGPRS, LOGL_DEBUG, "Checking IMSI '%s' (%d)\n", mi_buf, rc);
 
-	rc = regexec(&gbprox_global_patch_state.imsi_re_comp, mi_buf, 0, NULL, 0);
+	rc = regexec(&peer->cfg->imsi_re_comp, mi_buf, 0, NULL, 0);
 	if (rc == REG_NOMATCH) {
 		LOGP(DGPRS, LOGL_INFO,
 		       "IMSI '%s' doesn't match pattern '%s'\n",
@@ -549,7 +544,7 @@ static void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 	if (!imsi || (imsi[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_IMSI)
 		return;
 
-	if (!gbprox_global_patch_state.check_imsi)
+	if (!peer->cfg->check_imsi)
 		return;
 
 	tlli_info = gbprox_find_tlli(peer, tlli);
@@ -647,7 +642,7 @@ static int gbprox_check_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 	if (gprs_tlli_type(tlli) != TLLI_LOCAL)
 		return 0;
 
-	return !gbprox_global_patch_state.check_imsi ||
+	return !peer->cfg->check_imsi ||
 		gbprox_find_tlli(peer, tlli) != NULL;
 }
 

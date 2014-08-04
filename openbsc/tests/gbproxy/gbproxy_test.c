@@ -951,7 +951,7 @@ static void test_gbproxy_ra_patching()
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
 
 	gbcfg.match_re = talloc_strdup(NULL, "^9898|^121314");
-	if (gbprox_set_patch_filter(gbcfg.match_re, &err_msg) != 0) {
+	if (gbprox_set_patch_filter(&gbcfg, gbcfg.match_re, &err_msg) != 0) {
 		fprintf(stderr, "Failed to compile RE '%s': %s\n",
 			gbcfg.match_re, err_msg);
 		exit(1);

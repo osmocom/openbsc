@@ -193,7 +193,7 @@ static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 		talloc_free(g_cfg->core_apn);
 		g_cfg->core_apn = NULL;
 		g_cfg->core_apn_size = 0;
-		gbprox_set_patch_filter(NULL, NULL);
+		gbprox_set_patch_filter(g_cfg, NULL, NULL);
 		return CMD_SUCCESS;
 	}
 
@@ -206,8 +206,8 @@ static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 	}
 
 	if (!filter) {
-		gbprox_set_patch_filter(NULL, NULL);
-	} else if (gbprox_set_patch_filter(filter, &err_msg) != 0) {
+		gbprox_set_patch_filter(g_cfg, NULL, NULL);
+	} else if (gbprox_set_patch_filter(g_cfg, filter, &err_msg) != 0) {
 		vty_out(vty, "Match expression invalid: %s%s",
 			err_msg, VTY_NEWLINE);
 		return CMD_WARNING;
