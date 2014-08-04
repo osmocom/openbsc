@@ -196,7 +196,7 @@ static int check_peer_nsei(struct gbproxy_peer *peer, uint16_t nsei)
 	return 1;
 }
 
-static struct gbproxy_peer *peer_alloc(struct gbproxy_config *cfg, uint16_t bvci)
+struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvci)
 {
 	struct gbproxy_peer *peer;
 
@@ -215,7 +215,7 @@ static struct gbproxy_peer *peer_alloc(struct gbproxy_config *cfg, uint16_t bvci
 	return peer;
 }
 
-static void peer_free(struct gbproxy_peer *peer)
+void gbproxy_peer_free(struct gbproxy_peer *peer)
 {
 	rate_ctr_group_free(peer->ctrg);
 	llist_del(&peer->list);
@@ -393,7 +393,7 @@ static struct gbproxy_tlli_info *gbprox_find_tlli(struct gbproxy_peer *peer,
 	return NULL;
 }
 
-static struct gbproxy_tlli_info *gbprox_find_tlli_by_mi(
+struct gbproxy_tlli_info *gbprox_find_tlli_by_mi(
 	struct gbproxy_peer *peer,
 	const uint8_t *mi_data,
 	size_t mi_data_len)
@@ -530,7 +530,7 @@ int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
 	return deleted_count;
 }
 
-static void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
+void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 				 const uint8_t *imsi, size_t imsi_len)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
@@ -1457,7 +1457,7 @@ static int gbprox_rx_sig_from_bss(struct gbproxy_config *cfg,
 				 * PTP-BVCI yet, we should allocate a new peer */
 				LOGP(DGPRS, LOGL_INFO, "Allocationg new peer for "
 				     "BVCI=%u via NSEI=%u\n", bvci, nsei);
-				from_peer = peer_alloc(cfg, bvci);
+				from_peer = gbproxy_peer_alloc(cfg, bvci);
 				from_peer->nsei = nsei;
 			}
 
@@ -1846,7 +1846,7 @@ void gbprox_reset(struct gbproxy_config *cfg)
 	struct gbproxy_peer *peer, *tmp;
 
 	llist_for_each_entry_safe(peer, tmp, &cfg->bts_peers, list)
-		peer_free(peer);
+		gbproxy_peer_free(peer);
 
 	rate_ctr_group_free(cfg->ctrg);
 	gbproxy_init_config(cfg);
@@ -1863,7 +1863,7 @@ int gbprox_cleanup_peers(struct gbproxy_config *cfg, uint16_t nsei, uint16_t bvc
 		if (bvci && peer->bvci != bvci)
 			continue;
 
-		peer_free(peer);
+		gbproxy_peer_free(peer);
 		counter += 1;
 	}
 
