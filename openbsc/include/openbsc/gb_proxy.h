@@ -120,4 +120,12 @@ int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now);
 int gbprox_cleanup_peers(struct gbproxy_config *cfg, uint16_t nsei, uint16_t bvci);
 
 struct gbproxy_peer *gbprox_peer_by_nsei(struct gbproxy_config *cfg, uint16_t nsei);
+
+struct gbproxy_tlli_info *gbprox_find_tlli_by_mi(struct gbproxy_peer *peer,
+		const uint8_t *mi_data, size_t mi_data_len);
+void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
+		const uint8_t *imsi, size_t imsi_len);
+struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvci);
+void gbproxy_peer_free(struct gbproxy_peer *peer);
+
 #endif

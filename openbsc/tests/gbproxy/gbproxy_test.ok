@@ -1856,5 +1856,42 @@ Peers:
     APN patched                     : 3
     Attach Request count            : 1
     TLLI-Cache: 0
+Test TLLI info expiry
+
+Test TLLI replacement:
+  Add TLLI 1, IMSI 1
+  Add TLLI 2, IMSI 1 (should replace TLLI 1)
+  Peers:
+    NSEI 0, BVCI 20, not blocked, RAI 0-0-0-0
+      TLLI cache size                 : 1
+      TLLI-Cache: 1
+        TLLI c000162e, IMSI 03242526, AGE 0
+
+Test IMSI replacement:
+  Add TLLI 1, IMSI 1
+  Add TLLI 1, IMSI 2 (should replace IMSI 1)
+  Peers:
+    NSEI 0, BVCI 20, not blocked, RAI 0-0-0-0
+      TLLI cache size                 : 1
+      TLLI-Cache: 1
+        TLLI c00004d2, IMSI 06272829, AGE 0
+
+Test TLLI expiry, max_len == 1:
+  Add TLLI 1, IMSI 1
+  Add TLLI 2, IMSI 2 (should replace IMSI 1)
+  Peers:
+    NSEI 0, BVCI 20, not blocked, RAI 0-0-0-0
+      TLLI cache size                 : 1
+      TLLI-Cache: 1
+        TLLI c000162e, IMSI 06272829, AGE 0
+
+Test TLLI expiry, max_age == 1:
+  Add TLLI 1, IMSI 1 (should expire after timeout)
+  Add TLLI 2, IMSI 2 (should expire after timeout)
+  Peers:
+    NSEI 0, BVCI 20, not blocked, RAI 0-0-0-0
+      TLLI cache size                 : 2
+      TLLI-Cache: 0
+
 ===== GbProxy test END
 
