@@ -361,7 +361,7 @@ uint32_t sgsn_alloc_ptmsi(void)
 	uint32_t ptmsi;
 
 restart:
-	ptmsi = rand();
+	ptmsi = rand() | 0xC0000000;
 	llist_for_each_entry(mm, &sgsn_mm_ctxts, list) {
 		if (mm->p_tmsi == ptmsi)
 			goto restart;
