@@ -1057,8 +1057,13 @@ static int gbprox_parse_dtap(uint8_t *data, size_t data_len,
 	case GSM48_MT_GSM_ACT_PDP_REQ:
 		return gbprox_parse_gsm_act_pdp_req(data, data_len, parse_ctx);
 
-	case GSM48_MT_GMM_DETACH_ACK:
 	case GSM48_MT_GMM_DETACH_REQ:
+		/* TODO: Check power off if !to_bss, if yes invalidate */
+		parse_ctx->llc_msg_name = "DETACH_REQ";
+		break;
+
+	case GSM48_MT_GMM_DETACH_ACK:
+		parse_ctx->llc_msg_name = "DETACH_ACK";
 		parse_ctx->invalidate_tlli = 1;
 		break;
 
@@ -1082,6 +1087,11 @@ static int allow_message_patching(struct gbproxy_peer *peer, int msg_type)
 	}
 }
 
+static void gbprox_update_state(struct gbproxy_peer *peer,
+				struct gbproxy_parse_context *parse_ctx);
+static void gbprox_update_state_after(struct gbproxy_peer *peer,
+				      struct gbproxy_parse_context *parse_ctx);
+
 static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 			     struct gbproxy_peer *peer, int *len_change,
 			     struct gbproxy_parse_context *parse_ctx) __attribute__((nonnull));
@@ -1095,9 +1105,6 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	uint8_t *data;
 	size_t data_len;
 	int fcs;
-	const char *err_info = NULL;
-	int err_ctr = -1;
-	uint32_t tlli = parse_ctx->tlli;
 	int have_patched = 0;
 
 	/* parse LLC */
@@ -1118,12 +1125,8 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	if (ghp.sapi != GPRS_SAPI_GMM)
 		return;
 
-	if (peer->cfg->core_apn && parse_ctx->to_bss && tlli && parse_ctx->imsi)
-		gbprox_register_tlli(peer, tlli,
-				     parse_ctx->imsi, parse_ctx->imsi_len);
-
 	if (ghp.cmd != GPRS_LLC_UI)
-		return;
+		goto update_tlli_mapping;
 
 	if (ghp.is_encrypted) {
 		if (patching_is_required(peer, GBPROX_PATCH_LLC_ATTACH)) {
@@ -1132,12 +1135,12 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 			 * so we possibly fail to patch the LLC part of the
 			 * message. */
 
-			err_info = "GMM message is encrypted";
-			err_ctr = GBPROX_PEER_CTR_PATCH_CRYPT_ERR;
-			goto patch_error;
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_PATCH_CRYPT_ERR]);
+			LOGP(DGPRS, LOGL_ERROR,
+			     "Failed to patch BSSGP/GMM message as requested: "
+			     "GMM message is encrypted\n");
 		}
-
-		return;
+		goto update_tlli_mapping;
 	}
 
 	/* fix DTAP GMM/GSM */
@@ -1147,87 +1150,129 @@ static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	parse_ctx->llc_hdr_parsed = &ghp;
 
 	rc = gbprox_parse_dtap(data, data_len, parse_ctx);
-	if (!rc)
-		return;
 
-	switch (parse_ctx->g48_hdr->msg_type) {
-	case GSM48_MT_GMM_ATTACH_REQ:
-		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REQS]);
-		break;
+update_tlli_mapping:
 
-	case GSM48_MT_GMM_ATTACH_REJ:
-		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REJS]);
-		break;
+	gbprox_update_state(peer, parse_ctx);
 
-	default:
-		break;
+	if (parse_ctx->g48_hdr &&
+	    allow_message_patching(peer, parse_ctx->g48_hdr->msg_type)) {
+		if (parse_ctx->raid_enc) {
+			gbprox_patch_raid(parse_ctx->raid_enc, peer,
+					  parse_ctx->to_bss,
+					  parse_ctx->llc_msg_name);
+			have_patched = 1;
+		}
+
+		if (parse_ctx->apn_ie &&
+		    peer->cfg->core_apn &&
+		    !parse_ctx->to_bss &&
+		    gbprox_check_tlli(peer, parse_ctx->tlli)) {
+			size_t new_len;
+			gbprox_patch_apn_ie(msg,
+					    parse_ctx->apn_ie,
+					    parse_ctx->apn_ie_len, peer,
+					    &new_len, parse_ctx->llc_msg_name);
+			*len_change += (int)new_len - (int)parse_ctx->apn_ie_len;
+
+			have_patched = 1;
+		}
+
+		if (have_patched) {
+			llc_len += *len_change;
+			ghp.crc_length += *len_change;
+
+			/* Fix FCS */
+			fcs = gprs_llc_fcs(llc, ghp.crc_length);
+			LOGP(DLLC, LOGL_DEBUG,
+			     "Updated LLC message, CRC: %06x -> %06x\n",
+			     ghp.fcs, fcs);
+
+			llc[llc_len - 3] = fcs & 0xff;
+			llc[llc_len - 2] = (fcs >> 8) & 0xff;
+			llc[llc_len - 1] = (fcs >> 16) & 0xff;
+		}
 	}
 
-	if (parse_ctx->ptmsi_enc &&
-	    peer->cfg->core_apn && parse_ctx->to_bss && parse_ctx->imsi) {
+	gbprox_update_state_after(peer, parse_ctx);
+
+	return;
+}
+
+static void gbprox_update_state(struct gbproxy_peer *peer,
+				struct gbproxy_parse_context *parse_ctx)
+{
+	const char *msg_name = "LLC";
+
+	if (parse_ctx->llc_msg_name)
+		msg_name = parse_ctx->llc_msg_name;
+
+	if (parse_ctx->g48_hdr) {
+		switch (parse_ctx->g48_hdr->msg_type) {
+		case GSM48_MT_GMM_ATTACH_REQ:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REQS]);
+			break;
+
+		case GSM48_MT_GMM_ATTACH_REJ:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REJS]);
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	if (parse_ctx->tlli) {
+		LOGP(DGPRS, LOGL_DEBUG, "%s: Got TLLI %08x\n",
+		     msg_name, parse_ctx->tlli);
+	}
+
+	if (parse_ctx->ptmsi_enc) {
+		uint32_t new_ptmsi = GSM_RESERVED_TMSI;
+		int ok;
+		ok = parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN,
+				   &new_ptmsi);
+		LOGP(DGPRS, LOGL_DEBUG, "%s: Got new PTMSI %08x%s\n",
+		     msg_name, new_ptmsi, ok ? "" : " (parse error)");
+	}
+
+	if (parse_ctx->imsi) {
+		char mi_buf[200];
+		mi_buf[0] = '\0';
+		gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+				   parse_ctx->imsi, parse_ctx->imsi_len);
+		LOGP(DGPRS, LOGL_DEBUG, "%s: Got IMSI %s\n",
+		     msg_name, mi_buf);
+	}
+
+	if (parse_ctx->ptmsi_enc && parse_ctx->to_bss && parse_ctx->imsi) {
 		/* A new TLLI (PTMSI) has been signaled in the message */
 		uint32_t new_ptmsi;
 		if (!parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN,
 				   &new_ptmsi)) {
-			err_info = "Failed to parse new P-TMSI";
-			err_ctr = GBPROX_PEER_CTR_PATCH_ERR;
-			goto patch_error;
+			LOGP(DGPRS, LOGL_ERROR,
+			     "Failed to parse new TLLI/PTMSI (current is %08x)\n",
+			     parse_ctx->tlli);
+			return;
 		}
-
 		LOGP(DGPRS, LOGL_INFO,
 		     "Got new TLLI/PTMSI %08x (current is %08x)\n",
-		     new_ptmsi, tlli);
+		     new_ptmsi, parse_ctx->tlli);
 		gbprox_register_tlli(peer, new_ptmsi,
 				     parse_ctx->imsi, parse_ctx->imsi_len);
-	} else if (parse_ctx->invalidate_tlli) {
+	} else if (parse_ctx->tlli && parse_ctx->imsi) {
+		gbprox_register_tlli(peer, parse_ctx->tlli,
+				     parse_ctx->imsi, parse_ctx->imsi_len);
+	}
+
+	return;
+}
+
+static void gbprox_update_state_after(struct gbproxy_peer *peer,
+				      struct gbproxy_parse_context *parse_ctx)
+{
+	if (parse_ctx->invalidate_tlli)
 		gbprox_unregister_tlli(peer, parse_ctx->tlli);
-	}
-
-	if (!allow_message_patching(peer, parse_ctx->g48_hdr->msg_type))
-		return;
-
-	if (parse_ctx->raid_enc) {
-		gbprox_patch_raid(parse_ctx->raid_enc, peer, parse_ctx->to_bss,
-				  parse_ctx->llc_msg_name);
-		have_patched = 1;
-	}
-
-	if (parse_ctx->apn_ie &&
-	    peer->cfg->core_apn &&
-	    !parse_ctx->to_bss &&
-	    gbprox_check_tlli(peer, parse_ctx->tlli)) {
-		size_t new_len;
-		gbprox_patch_apn_ie(msg,
-				    parse_ctx->apn_ie, parse_ctx->apn_ie_len,
-				    peer, &new_len, parse_ctx->llc_msg_name);
-		*len_change += (int)new_len - (int)parse_ctx->apn_ie_len;
-
-		have_patched = 1;
-	}
-
-	if (have_patched) {
-		llc_len += *len_change;
-		ghp.crc_length += *len_change;
-
-		/* Fix FCS */
-		fcs = gprs_llc_fcs(llc, ghp.crc_length);
-		LOGP(DLLC, LOGL_DEBUG, "Updated LLC message, CRC: %06x -> %06x\n",
-		     ghp.fcs, fcs);
-
-		llc[llc_len - 3] = fcs & 0xff;
-		llc[llc_len - 2] = (fcs >> 8) & 0xff;
-		llc[llc_len - 1] = (fcs >> 16) & 0xff;
-	}
-
-	return;
-
-patch_error:
-	OSMO_ASSERT(err_ctr >= 0);
-	rate_ctr_inc(&peer->ctrg->ctr[err_ctr]);
-	LOGP(DGPRS, LOGL_ERROR,
-	     "Failed to patch BSSGP/GMM message as requested: %s.\n", err_info);
-
-	return;
 }
 
 /* patch BSSGP message to use core_mcc/mnc on the SGSN side */
