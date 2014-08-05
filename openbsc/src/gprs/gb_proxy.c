@@ -578,9 +578,6 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 	time_t now = 0;
 	int tlli_already_known;
 
-	if (gprs_tlli_type(tlli) != TLLI_LOCAL)
-		return;
-
 	if (!imsi || (imsi[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_IMSI)
 		return;
 
@@ -661,8 +658,6 @@ static int gbprox_check_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 {
 	LOGP(DGPRS, LOGL_INFO, "Checking TLLI %08x, class: %d\n",
 	     tlli, gprs_tlli_type(tlli));
-	if (gprs_tlli_type(tlli) != TLLI_LOCAL)
-		return 0;
 
 	return !peer->cfg->check_imsi ||
 		gbprox_find_tlli(peer, tlli) != NULL;
