@@ -368,10 +368,14 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 
 		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
 			time_t age = now - tlli_info->timestamp;
-			snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
-			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
-					   tlli_info->mi_data,
-					   tlli_info->mi_data_len);
+			if (tlli_info->mi_data_len > 0) {
+				snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
+				gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+						   tlli_info->mi_data,
+						   tlli_info->mi_data_len);
+			} else {
+				snprintf(mi_buf, sizeof(mi_buf), "(none)");
+			}
 			vty_out(vty, "  TLLI %08x, IMSI %s, AGE %d%s",
 				tlli_info->tlli, mi_buf, (int)age,
 				VTY_NEWLINE);

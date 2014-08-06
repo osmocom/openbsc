@@ -439,6 +439,9 @@ struct gbproxy_tlli_info *gbprox_find_tlli_by_mi(
 	struct gbproxy_tlli_info *tlli_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
+	if (!is_mi_imsi(mi_data, mi_data_len))
+		return NULL;
+
 	llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
 		if (tlli_info->mi_data_len != mi_data_len)
 			continue;
@@ -600,6 +603,9 @@ static struct gbproxy_tlli_info *gbprox_get_detached_tlli_info(
 static void gbprox_update_tlli_info(struct gbproxy_tlli_info *tlli_info,
 				    const uint8_t *imsi, size_t imsi_len)
 {
+	if (!is_mi_imsi(imsi, imsi_len))
+		return;
+
 	tlli_info->mi_data_len = imsi_len;
 	tlli_info->mi_data =
 		talloc_realloc_size(tlli_info, tlli_info->mi_data, imsi_len);
@@ -607,26 +613,35 @@ static void gbprox_update_tlli_info(struct gbproxy_tlli_info *tlli_info,
 	memcpy(tlli_info->mi_data, imsi, imsi_len);
 }
 
+void gbprox_reassign_tlli(struct gbproxy_tlli_info *tlli_info,
+			  struct gbproxy_peer *peer, uint32_t new_tlli)
+{
+	if (new_tlli == tlli_info->tlli)
+		return;
+
+	LOGP(DGPRS, LOGL_INFO,
+	     "The TLLI has been reassigned from %08x to %08x\n",
+	     tlli_info->tlli, new_tlli);
+
+	/* TODO: Save old TLLI */
+	tlli_info->tlli = new_tlli;
+}
+
 void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 				 const uint8_t *imsi, size_t imsi_len)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
 	struct gbproxy_tlli_info *tlli_info;
-	int enable_patching;
+	int enable_patching = -1;
 	time_t now = 0;
 	int tlli_already_known;
 
-	if (!imsi || (imsi[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_IMSI)
-		return;
-
-	if (!peer->cfg->check_imsi)
-		return;
-
 	/* Check, whether the IMSI matches */
-	enable_patching = gbprox_check_imsi(peer, imsi, imsi_len);
-
-	if (enable_patching < 0)
-		return;
+	if (is_mi_imsi(imsi, imsi_len)) {
+		enable_patching = gbprox_check_imsi(peer, imsi, imsi_len);
+		if (enable_patching < 0)
+			return;
+	}
 
 	tlli_info = gbprox_find_tlli(peer, tlli);
 
@@ -644,32 +659,23 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 
 	tlli_already_known = tlli_info != NULL;
 
-	if (!tlli_already_known && !enable_patching)
-		return;
-
 	tlli_info = gbprox_get_detached_tlli_info(peer, tlli_info, tlli);
 	OSMO_ASSERT(tlli_info != NULL);
 
-	if (enable_patching) {
-		if (!tlli_already_known)
-			LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
+	if (!tlli_already_known)
+		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
 
-		now = time(NULL);
+	now = time(NULL);
 
-		gbprox_attach_tlli_info(peer, now, tlli_info);
-		gbprox_update_tlli_info(tlli_info, imsi, imsi_len);
+	gbprox_attach_tlli_info(peer, now, tlli_info);
+	gbprox_update_tlli_info(tlli_info, imsi, imsi_len);
+	if (enable_patching >= 0)
+		tlli_info->enable_patching = enable_patching;
 
-		gbprox_remove_stale_tllis(peer, now);
-		/* Be on the safe side, currently the new tlli_info won't be
-		 * removed, but this not enforced explicitely */
-		tlli_info = NULL;
-	} else {
-		LOGP(DGPRS, LOGL_INFO,
-		     "Removing TLLI %08x from list (patching no longer enabled)\n",
-		     tlli);
-		talloc_free(tlli_info);
-		tlli_info = NULL;
-	}
+	gbprox_remove_stale_tllis(peer, now);
+	/* Be on the safe side, currently the new tlli_info won't be
+	 * removed, but this not enforced explicitely */
+	tlli_info = NULL;
 
 	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
 		state->enabled_tllis_count;
@@ -694,11 +700,17 @@ static void gbprox_unregister_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 
 static int gbprox_check_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 {
+	struct gbproxy_tlli_info *tlli_info;
+
 	LOGP(DGPRS, LOGL_INFO, "Checking TLLI %08x, class: %d\n",
 	     tlli, gprs_tlli_type(tlli));
 
-	return !peer->cfg->check_imsi ||
-		gbprox_find_tlli(peer, tlli) != NULL;
+	if (!peer->cfg->check_imsi)
+		return 1;
+
+	tlli_info = gbprox_find_tlli(peer, tlli);
+
+	return tlli_info != NULL && tlli_info->enable_patching;
 }
 
 /* check whether patching is enabled at this level */
@@ -1240,6 +1252,13 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 				struct gbproxy_parse_context *parse_ctx)
 {
 	const char *msg_name = "BSSGP";
+	struct gbproxy_tlli_info *tlli_info = NULL;
+
+	if (!peer->cfg->check_imsi)
+		return;
+
+	if (parse_ctx->tlli_enc)
+		tlli_info = gbprox_find_tlli(peer, parse_ctx->tlli);
 
 	if (parse_ctx->llc_msg_name)
 		msg_name = parse_ctx->llc_msg_name;
@@ -1290,7 +1309,8 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 		     msg_name, mi_buf);
 	}
 
-	if (parse_ctx->new_ptmsi_enc && parse_ctx->to_bss && parse_ctx->imsi) {
+	if (parse_ctx->tlli_enc && parse_ctx->new_ptmsi_enc &&
+	    parse_ctx->to_bss) {
 		/* A new PTMSI has been signaled in the message,
 		 * register new TLLI */
 		uint32_t new_ptmsi;
@@ -1306,9 +1326,11 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 		LOGP(DGPRS, LOGL_INFO,
 		     "Got new TLLI/PTMSI %08x/%08x (current is %08x)\n",
 		     new_tlli, new_ptmsi, parse_ctx->tlli);
-		gbprox_register_tlli(peer, new_ptmsi,
+		if (tlli_info)
+			gbprox_reassign_tlli(tlli_info, peer, new_tlli);
+		gbprox_register_tlli(peer, new_tlli,
 				     parse_ctx->imsi, parse_ctx->imsi_len);
-	} else if (parse_ctx->tlli && parse_ctx->imsi) {
+	} else if (parse_ctx->tlli_enc && parse_ctx->llc) {
 		gbprox_register_tlli(peer, parse_ctx->tlli,
 				     parse_ctx->imsi, parse_ctx->imsi_len);
 	}

@@ -88,6 +88,8 @@ struct gbproxy_tlli_info {
 	time_t timestamp;
 	uint8_t *mi_data;
 	size_t mi_data_len;
+
+	int enable_patching;
 };
 
 
