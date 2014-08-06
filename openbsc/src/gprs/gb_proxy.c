@@ -359,6 +359,17 @@ static int is_mi_tmsi(uint8_t *value, size_t value_len)
 	return 1;
 }
 
+static int is_mi_imsi(uint8_t *value, size_t value_len)
+{
+	if (value_len == 0)
+		return 0;
+
+	if (!value || (value[0] & 0x0f) != GSM_MI_TYPE_IMSI)
+		return 0;
+
+	return 1;
+}
+
 static int parse_mi_tmsi(uint8_t *value, size_t value_len, uint32_t *tmsi)
 {
 	uint32_t tmsi_be;
@@ -392,6 +403,7 @@ struct gbproxy_parse_context {
 	uint8_t *apn_ie;
 	size_t apn_ie_len;
 	uint8_t *ptmsi_enc;
+	uint8_t *new_ptmsi_enc;
 	uint8_t *raid_enc;
 	uint8_t *bssgp_raid_enc;
 	uint8_t *bssgp_ptimsi;
@@ -847,11 +859,18 @@ static int gbprox_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 	/* Skip DRX parameter */
 	v_fixed_shift(&data, &data_len, 3, NULL);
 
-	/* Skip Mobile identity */
-	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
+	/* Get Mobile identity */
+	if (lv_shift(&data, &data_len, &value, &value_len) <= 0 ||
 	    value_len < 5 || value_len > 8)
 		/* invalid */
-		return 0;;
+		return 0;
+
+	if (is_mi_tmsi(value, value_len)) {
+		parse_ctx->ptmsi_enc = value;
+	} else if (is_mi_imsi(value, value_len)) {
+		parse_ctx->imsi = value;
+		parse_ctx->imsi_len = value_len;
+	}
 
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
@@ -891,7 +910,7 @@ static int gbprox_parse_gmm_attach_ack(uint8_t *data, size_t data_len,
 	if (tlv_match(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
 		      &value, &value_len) > 0 &&
 	    is_mi_tmsi(value, value_len))
-		parse_ctx->ptmsi_enc = value;
+		parse_ctx->new_ptmsi_enc = value;
 	return 1;
 }
 
@@ -939,7 +958,7 @@ static int gbprox_parse_gmm_ra_upd_ack(uint8_t *data, size_t data_len,
 	if (tlv_match(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
 		      &value, &value_len) > 0 &&
 	    is_mi_tmsi(value, value_len))
-		parse_ctx->ptmsi_enc = value;
+		parse_ctx->new_ptmsi_enc = value;
 
 	return 1;
 }
@@ -958,12 +977,36 @@ static int gbprox_parse_gmm_ptmsi_reall_cmd(uint8_t *data, size_t data_len,
 	/* Allocated P-TMSI */
 	if (lv_shift(&data, &data_len, &value, &value_len) > 0 &&
 	    is_mi_tmsi(value, value_len))
-		parse_ctx->ptmsi_enc = value;
+		parse_ctx->new_ptmsi_enc = value;
 
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
 	parse_ctx->raid_enc = value;
+
+	return 1;
+}
+
+static int gbprox_parse_gmm_id_resp(uint8_t *data, size_t data_len,
+				    struct gbproxy_parse_context *parse_ctx)
+{
+	uint8_t *value;
+	size_t value_len;
+
+	parse_ctx->llc_msg_name = "ID_RESP";
+
+	/* Mobile identity, Mobile identity 10.5.1.4, M LV 2-10 */
+	if (lv_shift(&data, &data_len, &value, &value_len) <= 0 ||
+	    value_len < 1 || value_len > 9)
+		/* invalid */
+		return 0;
+
+	if (is_mi_tmsi(value, value_len)) {
+		parse_ctx->ptmsi_enc = value;
+	} else if (is_mi_imsi(value, value_len)) {
+		parse_ctx->imsi = value;
+		parse_ctx->imsi_len = value_len;
+	}
 
 	return 1;
 }
@@ -1066,6 +1109,10 @@ static int gbprox_parse_dtap(uint8_t *data, size_t data_len,
 
 	case GSM48_MT_GSM_ACT_PDP_REQ:
 		return gbprox_parse_gsm_act_pdp_req(data, data_len, parse_ctx);
+
+	case GSM48_MT_GMM_ID_RESP:
+		return gbprox_parse_gmm_id_resp(data, data_len, parse_ctx);
+		break;
 
 	case GSM48_MT_GMM_DETACH_REQ:
 		/* TODO: Check power off if !to_bss, if yes invalidate */
@@ -1216,9 +1263,17 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 	}
 
 	if (parse_ctx->ptmsi_enc) {
+		uint32_t ptmsi = GSM_RESERVED_TMSI;
+		int ok;
+		ok = parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN, &ptmsi);
+		LOGP(DGPRS, LOGL_DEBUG, "%s: Got PTMSI %08x%s\n",
+		     msg_name, ptmsi, ok ? "" : " (parse error)");
+	}
+
+	if (parse_ctx->new_ptmsi_enc) {
 		uint32_t new_ptmsi = GSM_RESERVED_TMSI;
 		int ok;
-		ok = parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN,
+		ok = parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
 				   &new_ptmsi);
 		LOGP(DGPRS, LOGL_DEBUG, "%s: Got new PTMSI %08x%s\n",
 		     msg_name, new_ptmsi, ok ? "" : " (parse error)");
@@ -1233,10 +1288,10 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 		     msg_name, mi_buf);
 	}
 
-	if (parse_ctx->ptmsi_enc && parse_ctx->to_bss && parse_ctx->imsi) {
+	if (parse_ctx->new_ptmsi_enc && parse_ctx->to_bss && parse_ctx->imsi) {
 		/* A new TLLI (PTMSI) has been signaled in the message */
 		uint32_t new_ptmsi;
-		if (!parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN,
+		if (!parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
 				   &new_ptmsi)) {
 			LOGP(DGPRS, LOGL_ERROR,
 			     "Failed to parse new TLLI/PTMSI (current is %08x)\n",
@@ -1315,6 +1370,12 @@ static int gbprox_parse_bssgp_message(uint8_t *bssgp, size_t bssgp_len,
 		parse_ctx->imsi = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_IMSI);
 		parse_ctx->imsi_len = TLVP_LEN(tp, BSSGP_IE_IMSI);
 	}
+
+	if (TLVP_PRESENT(tp, BSSGP_IE_TLLI))
+		parse_ctx->tlli_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_TLLI);
+
+	if (TLVP_PRESENT(tp, BSSGP_IE_TMSI) && pdu_type == BSSGP_PDUT_PAGING_PS)
+		parse_ctx->ptmsi_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_TMSI);
 
 	if (TLVP_PRESENT(tp, BSSGP_IE_LLC_PDU)) {
 		uint8_t *llc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_LLC_PDU);
