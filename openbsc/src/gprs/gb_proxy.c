@@ -375,23 +375,33 @@ static int parse_mi_tmsi(uint8_t *value, size_t value_len, uint32_t *tmsi)
 struct gbproxy_parse_context {
 	/* Pointer to protocol specific parts */
 	struct gsm48_hdr *g48_hdr;
-	struct gprs_llc_hdr_parsed *llc_hdr_parsed;
-	struct tlv_parsed *bssgp_tp;
+	struct bssgp_normal_hdr *bgp_hdr;
 	struct bssgp_ud_hdr *bud_hdr;
+	uint8_t *bssgp_data;
+	size_t bssgp_data_len;
+	uint8_t *llc;
+	size_t llc_len;
 
 	/* Extracted information */
+	struct gprs_llc_hdr_parsed llc_hdr_parsed;
+	struct tlv_parsed bssgp_tp;
 	int to_bss;
-	uint32_t tlli;
-	const uint8_t *imsi;
+	uint8_t *tlli_enc;
+	uint8_t *imsi;
 	size_t imsi_len;
 	uint8_t *apn_ie;
 	size_t apn_ie_len;
 	uint8_t *ptmsi_enc;
 	uint8_t *raid_enc;
+	uint8_t *bssgp_raid_enc;
+	uint8_t *bssgp_ptimsi;
 
 	/* General info */
 	const char *llc_msg_name;
 	int invalidate_tlli;
+	int need_decryption;
+	uint32_t tlli;
+	int pdu_type;
 };
 
 static struct gbproxy_tlli_info *gbprox_find_tlli(struct gbproxy_peer *peer,
@@ -1087,122 +1097,100 @@ static int allow_message_patching(struct gbproxy_peer *peer, int msg_type)
 	}
 }
 
-static void gbprox_update_state(struct gbproxy_peer *peer,
-				struct gbproxy_parse_context *parse_ctx);
-static void gbprox_update_state_after(struct gbproxy_peer *peer,
-				      struct gbproxy_parse_context *parse_ctx);
+static int gbprox_parse_llc(uint8_t *llc, size_t llc_len,
+			    struct gbproxy_parse_context *parse_ctx) __attribute__((nonnull));
 
-static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
-			     struct gbproxy_peer *peer, int *len_change,
-			     struct gbproxy_parse_context *parse_ctx) __attribute__((nonnull));
-
-static void gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
-			     struct gbproxy_peer *peer, int *len_change,
-			     struct gbproxy_parse_context *parse_ctx)
+static int gbprox_parse_llc(uint8_t *llc, size_t llc_len,
+			    struct gbproxy_parse_context *parse_ctx)
 {
-	struct gprs_llc_hdr_parsed ghp = {0};
+	struct gprs_llc_hdr_parsed *ghp = &parse_ctx->llc_hdr_parsed;
 	int rc;
-	uint8_t *data;
-	size_t data_len;
 	int fcs;
-	int have_patched = 0;
 
 	/* parse LLC */
-	rc = gprs_llc_hdr_parse(&ghp, llc, llc_len);
-	gprs_llc_hdr_dump(&ghp);
+	rc = gprs_llc_hdr_parse(ghp, llc, llc_len);
+	gprs_llc_hdr_dump(ghp);
 	if (rc != 0) {
 		LOGP(DLLC, LOGL_NOTICE, "Error during LLC header parsing\n");
-		return;
+		return 0;
 	}
 
-	fcs = gprs_llc_fcs(llc, ghp.crc_length);
+	fcs = gprs_llc_fcs(llc, ghp->crc_length);
 	LOGP(DLLC, LOGL_DEBUG, "Got LLC message, CRC: %06x (computed %06x)\n",
-	     ghp.fcs, fcs);
+	     ghp->fcs, fcs);
 
-	if (!ghp.data)
-		return;
+	if (!ghp->data)
+		return 0;
 
-	if (ghp.sapi != GPRS_SAPI_GMM)
-		return;
+	if (ghp->sapi != GPRS_SAPI_GMM)
+		return 0;
 
-	if (ghp.cmd != GPRS_LLC_UI)
-		goto update_tlli_mapping;
+	if (ghp->cmd != GPRS_LLC_UI)
+		return 0;
 
-	if (ghp.is_encrypted) {
-		if (patching_is_required(peer, GBPROX_PATCH_LLC_ATTACH)) {
-			/* Patching LLC messages has been requested explicitly,
-			 * but the message (including the type) is encrypted,
-			 * so we possibly fail to patch the LLC part of the
-			 * message. */
-
-			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_PATCH_CRYPT_ERR]);
-			LOGP(DGPRS, LOGL_ERROR,
-			     "Failed to patch BSSGP/GMM message as requested: "
-			     "GMM message is encrypted\n");
-		}
-		goto update_tlli_mapping;
+	if (ghp->is_encrypted) {
+		parse_ctx->need_decryption = 1;
+		return 0;
 	}
 
-	/* fix DTAP GMM/GSM */
-	data = ghp.data;
-	data_len = ghp.data_len;
+	return gbprox_parse_dtap(ghp->data, ghp->data_len, parse_ctx);
+}
 
-	parse_ctx->llc_hdr_parsed = &ghp;
+static int gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
+			    struct gbproxy_peer *peer, int *len_change,
+			    struct gbproxy_parse_context *parse_ctx) __attribute__((nonnull));
 
-	rc = gbprox_parse_dtap(data, data_len, parse_ctx);
+static int gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
+			    struct gbproxy_peer *peer, int *len_change,
+			    struct gbproxy_parse_context *parse_ctx)
+{
+	struct gprs_llc_hdr_parsed *ghp = &parse_ctx->llc_hdr_parsed;
+	int have_patched = 0;
+	int fcs;
 
-update_tlli_mapping:
+	if (!allow_message_patching(peer, parse_ctx->g48_hdr->msg_type))
+		return have_patched;
 
-	gbprox_update_state(peer, parse_ctx);
-
-	if (parse_ctx->g48_hdr &&
-	    allow_message_patching(peer, parse_ctx->g48_hdr->msg_type)) {
-		if (parse_ctx->raid_enc) {
-			gbprox_patch_raid(parse_ctx->raid_enc, peer,
-					  parse_ctx->to_bss,
-					  parse_ctx->llc_msg_name);
-			have_patched = 1;
-		}
-
-		if (parse_ctx->apn_ie &&
-		    peer->cfg->core_apn &&
-		    !parse_ctx->to_bss &&
-		    gbprox_check_tlli(peer, parse_ctx->tlli)) {
-			size_t new_len;
-			gbprox_patch_apn_ie(msg,
-					    parse_ctx->apn_ie,
-					    parse_ctx->apn_ie_len, peer,
-					    &new_len, parse_ctx->llc_msg_name);
-			*len_change += (int)new_len - (int)parse_ctx->apn_ie_len;
-
-			have_patched = 1;
-		}
-
-		if (have_patched) {
-			llc_len += *len_change;
-			ghp.crc_length += *len_change;
-
-			/* Fix FCS */
-			fcs = gprs_llc_fcs(llc, ghp.crc_length);
-			LOGP(DLLC, LOGL_DEBUG,
-			     "Updated LLC message, CRC: %06x -> %06x\n",
-			     ghp.fcs, fcs);
-
-			llc[llc_len - 3] = fcs & 0xff;
-			llc[llc_len - 2] = (fcs >> 8) & 0xff;
-			llc[llc_len - 1] = (fcs >> 16) & 0xff;
-		}
+	if (parse_ctx->raid_enc) {
+		gbprox_patch_raid(parse_ctx->raid_enc, peer, parse_ctx->to_bss,
+				  parse_ctx->llc_msg_name);
+		have_patched = 1;
 	}
 
-	gbprox_update_state_after(peer, parse_ctx);
+	if (parse_ctx->apn_ie &&
+	    peer->cfg->core_apn &&
+	    !parse_ctx->to_bss &&
+	    gbprox_check_tlli(peer, parse_ctx->tlli)) {
+		size_t new_len;
+		gbprox_patch_apn_ie(msg,
+				    parse_ctx->apn_ie, parse_ctx->apn_ie_len,
+				    peer, &new_len, parse_ctx->llc_msg_name);
+		*len_change += (int)new_len - (int)parse_ctx->apn_ie_len;
 
-	return;
+		have_patched = 1;
+	}
+
+	if (have_patched) {
+		llc_len += *len_change;
+		ghp->crc_length += *len_change;
+
+		/* Fix FCS */
+		fcs = gprs_llc_fcs(llc, ghp->crc_length);
+		LOGP(DLLC, LOGL_DEBUG, "Updated LLC message, CRC: %06x -> %06x\n",
+		     ghp->fcs, fcs);
+
+		llc[llc_len - 3] = fcs & 0xff;
+		llc[llc_len - 2] = (fcs >> 8) & 0xff;
+		llc[llc_len - 1] = (fcs >> 16) & 0xff;
+	}
+
+	return have_patched;
 }
 
 static void gbprox_update_state(struct gbproxy_peer *peer,
 				struct gbproxy_parse_context *parse_ctx)
 {
-	const char *msg_name = "LLC";
+	const char *msg_name = "BSSGP";
 
 	if (parse_ctx->llc_msg_name)
 		msg_name = parse_ctx->llc_msg_name;
@@ -1222,7 +1210,7 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 		}
 	}
 
-	if (parse_ctx->tlli) {
+	if (parse_ctx->tlli_enc) {
 		LOGP(DGPRS, LOGL_DEBUG, "%s: Got TLLI %08x\n",
 		     msg_name, parse_ctx->tlli);
 	}
@@ -1275,37 +1263,104 @@ static void gbprox_update_state_after(struct gbproxy_peer *peer,
 		gbprox_unregister_tlli(peer, parse_ctx->tlli);
 }
 
-/* patch BSSGP message to use core_mcc/mnc on the SGSN side */
-static void gbprox_patch_bssgp_message(struct gbproxy_config *cfg, struct msgb *msg,
-				       struct gbproxy_peer *peer, int to_bss)
+static int gbprox_parse_bssgp_message(uint8_t *bssgp, size_t bssgp_len,
+				       struct gbproxy_parse_context *parse_ctx)
 {
 	struct bssgp_normal_hdr *bgph;
 	struct bssgp_ud_hdr *budh = NULL;
-	struct tlv_parsed tp;
+	struct tlv_parsed *tp = &parse_ctx->bssgp_tp;
 	uint8_t pdu_type;
 	uint8_t *data;
 	size_t data_len;
-	const char *err_info = NULL;
-	int err_ctr = -1;
+	int rc;
 
-	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn)
-		return;
+	if (bssgp_len < sizeof(struct bssgp_normal_hdr))
+		return 0;
 
-	bgph = (struct bssgp_normal_hdr *) msgb_bssgph(msg);
+	bgph = (struct bssgp_normal_hdr *)bssgp;
 	pdu_type = bgph->pdu_type;
 
 	if (pdu_type == BSSGP_PDUT_UL_UNITDATA ||
 	    pdu_type == BSSGP_PDUT_DL_UNITDATA) {
-		budh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
+		if (bssgp_len < sizeof(struct bssgp_ud_hdr))
+			return 0;
+		budh = (struct bssgp_ud_hdr *)bssgp;
 		bgph = NULL;
 		data = budh->data;
-		data_len = msgb_bssgp_len(msg) - sizeof(*budh);
+		data_len = bssgp_len - sizeof(*budh);
 	} else {
 		data = bgph->data;
-		data_len = msgb_bssgp_len(msg) - sizeof(*bgph);
+		data_len = bssgp_len - sizeof(*bgph);
 	}
 
-	bssgp_tlv_parse(&tp, data, data_len);
+	if (bssgp_tlv_parse(tp, data, data_len) < 0)
+		return 0;
+
+	parse_ctx->pdu_type = pdu_type;
+	parse_ctx->bud_hdr = budh;
+	parse_ctx->bgp_hdr = bgph;
+	parse_ctx->bssgp_data = data;
+	parse_ctx->bssgp_data_len = data_len;
+
+	if (budh)
+		parse_ctx->tlli_enc = (uint8_t *)&budh->tlli;
+
+	if (TLVP_PRESENT(tp, BSSGP_IE_ROUTEING_AREA))
+		parse_ctx->bssgp_raid_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_ROUTEING_AREA);
+
+	if (TLVP_PRESENT(tp, BSSGP_IE_CELL_ID))
+		parse_ctx->bssgp_raid_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_CELL_ID);
+
+	if (TLVP_PRESENT(tp, BSSGP_IE_IMSI)) {
+		parse_ctx->imsi = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_IMSI);
+		parse_ctx->imsi_len = TLVP_LEN(tp, BSSGP_IE_IMSI);
+	}
+
+	if (TLVP_PRESENT(tp, BSSGP_IE_LLC_PDU)) {
+		uint8_t *llc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_LLC_PDU);
+		size_t llc_len = TLVP_LEN(tp, BSSGP_IE_LLC_PDU);
+
+		rc = gbprox_parse_llc(llc, llc_len, parse_ctx);
+		if (!rc)
+			return 0;
+
+		parse_ctx->llc = llc;
+		parse_ctx->llc_len = llc_len;
+	}
+
+	if (parse_ctx->tlli_enc) {
+		uint32_t tmp_tlli;
+		memcpy(&tmp_tlli, parse_ctx->tlli_enc, sizeof(tmp_tlli));
+		parse_ctx->tlli = ntohl(tmp_tlli);
+	}
+
+	return 1;
+}
+
+/* patch BSSGP message to use core_mcc/mnc on the SGSN side */
+static void gbprox_patch_bssgp_message(struct gbproxy_config *cfg, struct msgb *msg,
+				       struct gbproxy_peer *peer, int to_bss)
+{
+	struct gbproxy_parse_context parse_ctx = {0};
+	const char *err_info = NULL;
+	int err_ctr = -1;
+	int rc;
+
+	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn)
+		return;
+
+	parse_ctx.to_bss = to_bss;
+
+	rc = gbprox_parse_bssgp_message(msgb_bssgph(msg), msgb_bssgp_len(msg),
+					&parse_ctx);
+
+	if (!rc) {
+		if (!parse_ctx.need_decryption) {
+			LOGP(DGPRS, LOGL_ERROR,
+			     "Failed to parse BSSGP/GMM message\n");
+			return;
+		}
+	}
 
 	if (!peer && msgb_bvci(msg) >= 2)
 		peer = peer_by_bvci(cfg, msgb_bvci(msg));
@@ -1314,44 +1369,45 @@ static void gbprox_patch_bssgp_message(struct gbproxy_config *cfg, struct msgb *
 		peer = gbprox_peer_by_nsei(cfg, msgb_nsei(msg));
 
 	if (!peer)
-		peer = peer_by_bssgp_tlv(cfg, &tp);
+		peer = peer_by_bssgp_tlv(cfg, &parse_ctx.bssgp_tp);
 
 	if (!peer) {
 		LOGP(DLLC, LOGL_INFO,
 		     "NSEI=%d(%s) patching: didn't find peer for message, "
 		     "PDU %d\n",
-		     msgb_nsei(msg), to_bss ? "SGSN" : "BSS", pdu_type);
+		     msgb_nsei(msg), to_bss ? "SGSN" : "BSS", parse_ctx.pdu_type);
 		/* Increment counter */
 		rate_ctr_inc(&cfg->ctrg->ctr[GBPROX_GLOB_CTR_PATCH_PEER_ERR]);
 		return;
 	}
 
-	if (TLVP_PRESENT(&tp, BSSGP_IE_ROUTEING_AREA)) {
-		gbprox_patch_raid((uint8_t *)TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
-				  peer, to_bss, "ROUTING_AREA");
+	if (parse_ctx.need_decryption &&
+	    patching_is_required(peer, GBPROX_PATCH_LLC_ATTACH)) {
+		/* Patching LLC messages has been requested
+		 * explicitly, but the message (including the
+		 * type) is encrypted, so we possibly fail to
+		 * patch the LLC part of the message. */
+		err_ctr = GBPROX_PEER_CTR_PATCH_CRYPT_ERR;
+		err_info = "GMM message is encrypted";
+		goto patch_error;
 	}
 
-	if (TLVP_PRESENT(&tp, BSSGP_IE_CELL_ID))
-		gbprox_patch_raid((uint8_t *)TLVP_VAL(&tp, BSSGP_IE_CELL_ID),
-				  peer, to_bss, "CELL_ID");
+	gbprox_update_state(peer, &parse_ctx);
 
-	if (TLVP_PRESENT(&tp, BSSGP_IE_LLC_PDU) &&
+	if (parse_ctx.bssgp_raid_enc)
+		gbprox_patch_raid(parse_ctx.bssgp_raid_enc, peer, to_bss, "BSSGP");
+
+	if (parse_ctx.llc &&
 	    patching_is_enabled(peer, GBPROX_PATCH_LLC_ATTACH_REQ)) {
-		uint8_t *llc = (uint8_t *)TLVP_VAL(&tp, BSSGP_IE_LLC_PDU);
-		size_t llc_len = TLVP_LEN(&tp, BSSGP_IE_LLC_PDU);
-		struct gbproxy_parse_context parse_ctx = {0};
+		uint8_t *llc = parse_ctx.llc;
+		size_t llc_len = parse_ctx.llc_len;
 		int len_change = 0;
-		parse_ctx.bssgp_tp = &tp;
-		parse_ctx.bud_hdr = budh;
-		parse_ctx.tlli = budh ? ntohl(budh->tlli) : 0;
-		parse_ctx.to_bss = to_bss;
-
-		if (TLVP_PRESENT(&tp, BSSGP_IE_IMSI)) {
-			parse_ctx.imsi = TLVP_VAL(&tp, BSSGP_IE_IMSI);
-			parse_ctx.imsi_len = TLVP_LEN(&tp, BSSGP_IE_IMSI);
-		}
 
 		gbprox_patch_llc(msg, llc, llc_len, peer, &len_change, &parse_ctx);
+		/* Note that the APN might have been resized here, but no
+		 * pointer int the parse_ctx will refer to an adress after the
+		 * APN. So it's possible to patch first and do the TLLI
+		 * handling afterwards. */
 
 		if (len_change) {
 			llc_len += len_change;
@@ -1374,7 +1430,11 @@ static void gbprox_patch_bssgp_message(struct gbproxy_config *cfg, struct msgb *
 		}
 		/* Note that the tp struct might contain invalid pointers here
 		 * if the LLC field has changed its size */
+		parse_ctx.llc_len = llc_len;
 	}
+
+	gbprox_update_state_after(peer, &parse_ctx);
+
 	return;
 
 patch_error:
