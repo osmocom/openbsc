@@ -1289,8 +1289,10 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 	}
 
 	if (parse_ctx->new_ptmsi_enc && parse_ctx->to_bss && parse_ctx->imsi) {
-		/* A new TLLI (PTMSI) has been signaled in the message */
+		/* A new PTMSI has been signaled in the message,
+		 * register new TLLI */
 		uint32_t new_ptmsi;
+		uint32_t new_tlli;
 		if (!parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
 				   &new_ptmsi)) {
 			LOGP(DGPRS, LOGL_ERROR,
@@ -1298,9 +1300,10 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 			     parse_ctx->tlli);
 			return;
 		}
+		new_tlli = gprs_tmsi2tlli(new_ptmsi, TLLI_LOCAL);
 		LOGP(DGPRS, LOGL_INFO,
-		     "Got new TLLI/PTMSI %08x (current is %08x)\n",
-		     new_ptmsi, parse_ctx->tlli);
+		     "Got new TLLI/PTMSI %08x/%08x (current is %08x)\n",
+		     new_tlli, new_ptmsi, parse_ctx->tlli);
 		gbprox_register_tlli(peer, new_ptmsi,
 				     parse_ctx->imsi, parse_ctx->imsi_len);
 	} else if (parse_ctx->tlli && parse_ctx->imsi) {
