@@ -217,10 +217,12 @@ struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvc
 
 void gbproxy_peer_free(struct gbproxy_peer *peer)
 {
-	rate_ctr_group_free(peer->ctrg);
 	llist_del(&peer->list);
 
 	gbprox_delete_tllis(peer);
+
+	rate_ctr_group_free(peer->ctrg);
+	peer->ctrg = NULL;
 
 	talloc_free(peer);
 }
@@ -462,6 +464,9 @@ void gbprox_delete_tlli(struct gbproxy_peer *peer,
 	llist_del(&tlli_info->list);
 	talloc_free(tlli_info);
 	state->enabled_tllis_count -= 1;
+
+	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
+		state->enabled_tllis_count;
 }
 
 static void gbprox_delete_tllis(struct gbproxy_peer *peer)
@@ -546,6 +551,9 @@ static void gbprox_attach_tlli_info(struct gbproxy_peer *peer, time_t now,
 	tlli_info->timestamp = now;
 	llist_add(&tlli_info->list, &state->enabled_tllis);
 	state->enabled_tllis_count += 1;
+
+	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
+		state->enabled_tllis_count;
 }
 
 int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
@@ -597,6 +605,9 @@ static struct gbproxy_tlli_info *gbprox_get_detached_tlli_info(
 		llist_del(&tlli_info->list);
 		OSMO_ASSERT(state->enabled_tllis_count > 0);
 		state->enabled_tllis_count -= 1;
+
+		peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
+			state->enabled_tllis_count;
 	}
 
 	return tlli_info;
@@ -632,7 +643,6 @@ void gbprox_reassign_tlli(struct gbproxy_tlli_info *tlli_info,
 void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 				 const uint8_t *imsi, size_t imsi_len)
 {
-	struct gbproxy_patch_state *state = &peer->patch_state;
 	struct gbproxy_tlli_info *tlli_info;
 	int enable_patching = -1;
 	time_t now = 0;
@@ -673,20 +683,11 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 	gbprox_update_tlli_info(tlli_info, imsi, imsi_len);
 	if (enable_patching >= 0)
 		tlli_info->enable_patching = enable_patching;
-
-	gbprox_remove_stale_tllis(peer, now);
-	/* Be on the safe side, currently the new tlli_info won't be
-	 * removed, but this not enforced explicitely */
-	tlli_info = NULL;
-
-	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
-		state->enabled_tllis_count;
 }
 
 static void gbprox_unregister_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 {
 	struct gbproxy_tlli_info *tlli_info;
-	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	tlli_info = gbprox_find_tlli(peer, tlli);
 	if (tlli_info) {
@@ -695,9 +696,6 @@ static void gbprox_unregister_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 		     tlli);
 		gbprox_delete_tlli(peer, tlli_info);
 	}
-
-	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
-		state->enabled_tllis_count;
 }
 
 static int gbprox_check_tlli(struct gbproxy_peer *peer, uint32_t tlli)
@@ -1363,8 +1361,12 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 static void gbprox_update_state_after(struct gbproxy_peer *peer,
 				      struct gbproxy_parse_context *parse_ctx)
 {
+	time_t now = time(NULL);
+
 	if (parse_ctx->invalidate_tlli)
 		gbprox_unregister_tlli(peer, parse_ctx->tlli);
+
+	gbprox_remove_stale_tllis(peer, now);
 }
 
 static int gbprox_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,

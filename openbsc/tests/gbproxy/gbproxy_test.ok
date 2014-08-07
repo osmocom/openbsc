@@ -1922,7 +1922,6 @@ Test TLLI expiry, max_age == 1:
   Add TLLI 2, IMSI 2 (should expire after timeout)
   Peers:
     NSEI 0, BVCI 20, not blocked, RAI 0-0-0-0
-      TLLI cache size                 : 2
       TLLI-Cache: 0
 
 ===== GbProxy test END

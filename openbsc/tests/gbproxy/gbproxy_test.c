@@ -1412,6 +1412,7 @@ static void test_gbproxy_tlli_expire(void)
 
 	{
 		struct gbproxy_tlli_info *tlli_info;
+		int num_removed;
 
 		printf("Test TLLI expiry, max_len == 1:\n");
 
@@ -1427,6 +1428,10 @@ static void test_gbproxy_tlli_expire(void)
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 2 (should replace IMSI 1)\n");
 		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2));
+		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
+
+		num_removed = gbprox_remove_stale_tllis(peer, time(NULL) + 2);
+		OSMO_ASSERT(num_removed == 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		dump_peers(stdout, 2, &cfg);
@@ -1444,7 +1449,7 @@ static void test_gbproxy_tlli_expire(void)
 	}
 
 	{
-		int ret;
+		int num_removed;
 
 		printf("Test TLLI expiry, max_age == 1:\n");
 
@@ -1462,8 +1467,8 @@ static void test_gbproxy_tlli_expire(void)
 		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
-		ret = gbprox_remove_stale_tllis(peer, time(NULL) + 2);
-		OSMO_ASSERT(ret == 2);
+		num_removed = gbprox_remove_stale_tllis(peer, time(NULL) + 2);
+		OSMO_ASSERT(num_removed == 2);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		dump_peers(stdout, 2, &cfg);
