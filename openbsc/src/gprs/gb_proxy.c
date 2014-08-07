@@ -348,7 +348,8 @@ fail:
 	return -1;
 }
 
-static int is_mi_tmsi(uint8_t *value, size_t value_len)
+/* GSM 04.08, 10.5.1.4 */
+static int is_mi_tmsi(const uint8_t *value, size_t value_len)
 {
 	if (value_len != GSM48_TMSI_LEN)
 		return 0;
@@ -359,7 +360,8 @@ static int is_mi_tmsi(uint8_t *value, size_t value_len)
 	return 1;
 }
 
-static int is_mi_imsi(uint8_t *value, size_t value_len)
+/* GSM 04.08, 10.5.1.4 */
+static int is_mi_imsi(const uint8_t *value, size_t value_len)
 {
 	if (value_len == 0)
 		return 0;
@@ -370,7 +372,7 @@ static int is_mi_imsi(uint8_t *value, size_t value_len)
 	return 1;
 }
 
-static int parse_mi_tmsi(uint8_t *value, size_t value_len, uint32_t *tmsi)
+static int parse_mi_tmsi(const uint8_t *value, size_t value_len, uint32_t *tmsi)
 {
 	uint32_t tmsi_be;
 
