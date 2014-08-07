@@ -559,32 +559,50 @@ static void gbprox_attach_tlli_info(struct gbproxy_peer *peer, time_t now,
 int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
-	struct gbproxy_tlli_info *tlli_info = NULL, *nxt;
-	int count = 0;
+	int exceeded_max_len = 0;
 	int deleted_count = 0;
+	int check_for_age;
 
-	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
-		int is_stale = 0;
-		time_t age = now - tlli_info->timestamp;
+	if (peer->cfg->tlli_max_len > 0)
+		exceeded_max_len =
+			state->enabled_tllis_count - peer->cfg->tlli_max_len;
 
-		count += 1;
+	check_for_age = peer->cfg->tlli_max_age > 0;
 
-		if (peer->cfg->tlli_max_len > 0)
-			is_stale = is_stale || count > peer->cfg->tlli_max_len;
-
-		if (peer->cfg->tlli_max_age > 0)
-			is_stale = is_stale || age > peer->cfg->tlli_max_age;
-
-		if (!is_stale)
-			continue;
-
+	for (; exceeded_max_len > 0; exceeded_max_len--) {
+		struct gbproxy_tlli_info *tlli_info;
+		OSMO_ASSERT(!llist_empty(&state->enabled_tllis));
+		tlli_info = llist_entry(state->enabled_tllis.prev,
+					struct gbproxy_tlli_info,
+					list);
 		LOGP(DGPRS, LOGL_INFO,
-		     "Removing TLLI %08x from list (stale)\n",
-		     tlli_info->tlli);
+		     "Removing TLLI %08x from list "
+		     "(stale, length %d, max_len exceeded)\n",
+		     tlli_info->tlli, state->enabled_tllis_count);
 
 		gbprox_delete_tlli(peer, tlli_info);
-		tlli_info = NULL;
+		deleted_count += 1;
+	}
 
+	while (check_for_age && !llist_empty(&state->enabled_tllis)) {
+		time_t age;
+		struct gbproxy_tlli_info *tlli_info;
+		tlli_info = llist_entry(state->enabled_tllis.prev,
+					struct gbproxy_tlli_info,
+					list);
+		age = now - tlli_info->timestamp;
+		/* age < 0 only happens after system time jumps, discard entry */
+		if (age <= peer->cfg->tlli_max_age && age >= 0) {
+			check_for_age = 0;
+			continue;
+		}
+
+		LOGP(DGPRS, LOGL_INFO,
+		     "Removing TLLI %08x from list "
+		     "(stale, age %d, max_age exceeded)\n",
+		     tlli_info->tlli, (int)age);
+
+		gbprox_delete_tlli(peer, tlli_info);
 		deleted_count += 1;
 	}
 
