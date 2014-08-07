@@ -354,7 +354,7 @@ static int is_mi_tmsi(const uint8_t *value, size_t value_len)
 	if (value_len != GSM48_TMSI_LEN)
 		return 0;
 
-	if (!value || (value[0] & 0x0f) != GSM_MI_TYPE_TMSI)
+	if (!value || (value[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_TMSI)
 		return 0;
 
 	return 1;
@@ -366,7 +366,7 @@ static int is_mi_imsi(const uint8_t *value, size_t value_len)
 	if (value_len == 0)
 		return 0;
 
-	if (!value || (value[0] & 0x0f) != GSM_MI_TYPE_IMSI)
+	if (!value || (value[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_IMSI)
 		return 0;
 
 	return 1;
@@ -507,8 +507,8 @@ int gbprox_set_patch_filter(struct gbproxy_config *cfg, const char *filter,
 	return -1;
 }
 
-static int gbprox_check_imsi(struct gbproxy_peer *peer,
-			     const uint8_t *imsi, size_t imsi_len)
+int gbprox_check_imsi(struct gbproxy_peer *peer,
+		      const uint8_t *imsi, size_t imsi_len)
 {
 	char mi_buf[200];
 	int rc;
@@ -516,8 +516,10 @@ static int gbprox_check_imsi(struct gbproxy_peer *peer,
 	if (!peer->cfg->check_imsi)
 		return 1;
 
-	rc = gsm48_mi_to_string(mi_buf, sizeof(mi_buf), imsi, imsi_len);
-	if (rc < 1) {
+	rc = is_mi_imsi(imsi, imsi_len);
+	if (rc > 0)
+		rc = gsm48_mi_to_string(mi_buf, sizeof(mi_buf), imsi, imsi_len);
+	if (rc <= 0) {
 		LOGP(DGPRS, LOGL_NOTICE, "Invalid IMSI %s\n",
 		     osmo_hexdump(imsi, imsi_len));
 		return -1;

@@ -1479,6 +1479,8 @@ Peers:
   NSEI 8192, BVCI 4098, not blocked, RAI 112-332-16464-96
     NSEI mismatch                   : 1
     TLLI-Cache: 0
+=== Test IMSI/TMSI matching ===
+
 === test_gbproxy_ra_patching ===
 --- Initialise SGSN ---
 

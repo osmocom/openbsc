@@ -130,4 +130,6 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvci);
 void gbproxy_peer_free(struct gbproxy_peer *peer);
 
+int gbprox_check_imsi(struct gbproxy_peer *peer,
+		const uint8_t *imsi, size_t imsi_len);
 #endif
