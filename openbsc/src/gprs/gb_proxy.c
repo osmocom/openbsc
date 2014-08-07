@@ -1347,8 +1347,8 @@ static void gbprox_update_state_after(struct gbproxy_peer *peer,
 		gbprox_unregister_tlli(peer, parse_ctx->tlli);
 }
 
-static int gbprox_parse_bssgp_message(uint8_t *bssgp, size_t bssgp_len,
-				       struct gbproxy_parse_context *parse_ctx)
+static int gbprox_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
+			      struct gbproxy_parse_context *parse_ctx)
 {
 	struct bssgp_normal_hdr *bgph;
 	struct bssgp_ud_hdr *budh = NULL;
@@ -1428,21 +1428,99 @@ static int gbprox_parse_bssgp_message(uint8_t *bssgp, size_t bssgp_len,
 }
 
 /* patch BSSGP message to use core_mcc/mnc on the SGSN side */
-static void gbprox_patch_bssgp_message(struct gbproxy_config *cfg, struct msgb *msg,
-				       struct gbproxy_peer *peer, int to_bss)
+static void gbprox_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
+			       struct gbproxy_peer *peer, int *len_change,
+			       struct gbproxy_parse_context *parse_ctx)
+	__attribute__((nonnull));
+static void gbprox_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
+			       struct gbproxy_peer *peer, int *len_change,
+			       struct gbproxy_parse_context *parse_ctx)
 {
-	struct gbproxy_parse_context parse_ctx = {0};
 	const char *err_info = NULL;
 	int err_ctr = -1;
+
+	if (!patching_is_enabled(peer, GBPROX_PATCH_BSSGP))
+		return;
+
+	if (parse_ctx->bssgp_raid_enc)
+		gbprox_patch_raid(parse_ctx->bssgp_raid_enc, peer,
+				  parse_ctx->to_bss, "BSSGP");
+
+	if (!patching_is_enabled(peer, GBPROX_PATCH_LLC_ATTACH_REQ))
+		return;
+
+	if (parse_ctx->need_decryption &&
+	    patching_is_required(peer, GBPROX_PATCH_LLC_ATTACH)) {
+		/* Patching LLC messages has been requested
+		 * explicitly, but the message (including the
+		 * type) is encrypted, so we possibly fail to
+		 * patch the LLC part of the message. */
+		err_ctr = GBPROX_PEER_CTR_PATCH_CRYPT_ERR;
+		err_info = "GMM message is encrypted";
+		goto patch_error;
+	}
+
+	if (parse_ctx->llc) {
+		uint8_t *llc = parse_ctx->llc;
+		size_t llc_len = parse_ctx->llc_len;
+		int llc_len_change = 0;
+
+		gbprox_patch_llc(msg, llc, llc_len, peer, &llc_len_change,
+				 parse_ctx);
+		/* Note that the APN might have been resized here, but no
+		 * pointer int the parse_ctx will refer to an adress after the
+		 * APN. So it's possible to patch first and do the TLLI
+		 * handling afterwards. */
+
+		if (llc_len_change) {
+			llc_len += llc_len_change;
+
+			/* Fix LLC IE len */
+			/* TODO: This is a kludge, but the a pointer to the
+			 * start of the IE is not available here */
+			if (llc[-2] == BSSGP_IE_LLC_PDU && llc[-1] & 0x80) {
+				/* most probably a one byte length */
+				if (llc_len > 127) {
+					err_info = "Cannot increase size";
+					err_ctr = GBPROX_PEER_CTR_PATCH_ERR;
+					goto patch_error;
+				}
+				llc[-1] = llc_len | 0x80;
+			} else {
+				llc[-2] = (llc_len >> 8) & 0x7f;
+				llc[-1] = llc_len & 0xff;
+			}
+			*len_change += llc_len_change;
+		}
+		/* Note that the tp struct might contain invalid pointers here
+		 * if the LLC field has changed its size */
+		parse_ctx->llc_len = llc_len;
+	}
+	return;
+
+patch_error:
+	OSMO_ASSERT(err_ctr >= 0);
+	rate_ctr_inc(&peer->ctrg->ctr[err_ctr]);
+	LOGP(DGPRS, LOGL_ERROR,
+	     "Failed to patch BSSGP message as requested: %s.\n", err_info);
+}
+
+/* patch BSSGP message to use core_mcc/mnc on the SGSN side */
+static void gbprox_process_bssgp_message(struct gbproxy_config *cfg,
+					 struct msgb *msg,
+					 struct gbproxy_peer *peer, int to_bss)
+{
+	struct gbproxy_parse_context parse_ctx = {0};
 	int rc;
+	int len_change = 0;
 
 	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn)
 		return;
 
 	parse_ctx.to_bss = to_bss;
 
-	rc = gbprox_parse_bssgp_message(msgb_bssgph(msg), msgb_bssgp_len(msg),
-					&parse_ctx);
+	rc = gbprox_parse_bssgp(msgb_bssgph(msg), msgb_bssgp_len(msg),
+				&parse_ctx);
 
 	if (!rc) {
 		if (!parse_ctx.need_decryption) {
@@ -1471,67 +1549,14 @@ static void gbprox_patch_bssgp_message(struct gbproxy_config *cfg, struct msgb *
 		return;
 	}
 
-	if (parse_ctx.need_decryption &&
-	    patching_is_required(peer, GBPROX_PATCH_LLC_ATTACH)) {
-		/* Patching LLC messages has been requested
-		 * explicitly, but the message (including the
-		 * type) is encrypted, so we possibly fail to
-		 * patch the LLC part of the message. */
-		err_ctr = GBPROX_PEER_CTR_PATCH_CRYPT_ERR;
-		err_info = "GMM message is encrypted";
-		goto patch_error;
-	}
-
 	gbprox_update_state(peer, &parse_ctx);
 
-	if (parse_ctx.bssgp_raid_enc)
-		gbprox_patch_raid(parse_ctx.bssgp_raid_enc, peer, to_bss, "BSSGP");
-
-	if (parse_ctx.llc &&
-	    patching_is_enabled(peer, GBPROX_PATCH_LLC_ATTACH_REQ)) {
-		uint8_t *llc = parse_ctx.llc;
-		size_t llc_len = parse_ctx.llc_len;
-		int len_change = 0;
-
-		gbprox_patch_llc(msg, llc, llc_len, peer, &len_change, &parse_ctx);
-		/* Note that the APN might have been resized here, but no
-		 * pointer int the parse_ctx will refer to an adress after the
-		 * APN. So it's possible to patch first and do the TLLI
-		 * handling afterwards. */
-
-		if (len_change) {
-			llc_len += len_change;
-
-			/* Fix LLC IE len */
-			/* TODO: This is a kludge, but the a pointer to the
-			 * start of the IE is not available here */
-			if (llc[-2] == BSSGP_IE_LLC_PDU && llc[-1] & 0x80) {
-				/* most probably a one byte length */
-				if (llc_len > 127) {
-					err_info = "Cannot increase size";
-					err_ctr = GBPROX_PEER_CTR_PATCH_ERR;
-					goto patch_error;
-				}
-				llc[-1] = llc_len | 0x80;
-			} else {
-				llc[-2] = (llc_len >> 8) & 0x7f;
-				llc[-1] = llc_len & 0xff;
-			}
-		}
-		/* Note that the tp struct might contain invalid pointers here
-		 * if the LLC field has changed its size */
-		parse_ctx.llc_len = llc_len;
-	}
+	gbprox_patch_bssgp(msg, msgb_bssgph(msg), msgb_bssgp_len(msg),
+			   peer, &len_change, &parse_ctx);
 
 	gbprox_update_state_after(peer, &parse_ctx);
 
 	return;
-
-patch_error:
-	OSMO_ASSERT(err_ctr >= 0);
-	rate_ctr_inc(&peer->ctrg->ctr[err_ctr]);
-	LOGP(DGPRS, LOGL_ERROR,
-	     "Failed to patch BSSGP message as requested: %s.\n", err_info);
 }
 
 /* feed a message down the NS-VC associated with the specified peer */
@@ -1543,7 +1568,7 @@ static int gbprox_relay2sgsn(struct gbproxy_config *cfg, struct msgb *old_msg,
 	struct msgb *msg = gprs_msgb_copy(old_msg, "msgb_relay2sgsn");
 	int rc;
 
-	gbprox_patch_bssgp_message(cfg, msg, peer, 0);
+	gbprox_process_bssgp_message(cfg, msg, peer, 0);
 
 	DEBUGP(DGPRS, "NSEI=%u proxying BTS->SGSN (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, cfg->nsip_sgsn_nsei);
@@ -1961,7 +1986,7 @@ int gbprox_rcvmsg(struct gbproxy_config *cfg, struct msgb *msg, uint16_t nsei,
 	int remote_end_is_sgsn = nsei == cfg->nsip_sgsn_nsei;
 
 	if (remote_end_is_sgsn)
-		gbprox_patch_bssgp_message(cfg, msg, NULL, 1);
+		gbprox_process_bssgp_message(cfg, msg, NULL, 1);
 
 	/* Only BVCI=0 messages need special treatment */
 	if (ns_bvci == 0 || ns_bvci == 1) {
