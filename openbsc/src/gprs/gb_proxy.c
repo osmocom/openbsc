@@ -658,8 +658,16 @@ void gbprox_reassign_tlli(struct gbproxy_tlli_info *tlli_info,
 	tlli_info->tlli = new_tlli;
 }
 
-void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
-			  const uint8_t *imsi, size_t imsi_len, time_t now)
+void gbprox_touch_tlli(struct gbproxy_peer *peer,
+		       struct gbproxy_tlli_info *tlli_info, time_t now)
+{
+	gbprox_get_detached_tlli_info(peer, tlli_info, tlli_info->tlli);
+	gbprox_attach_tlli_info(peer, now, tlli_info);
+}
+
+struct gbproxy_tlli_info *gbprox_register_tlli(
+	struct gbproxy_peer *peer, uint32_t tlli,
+	const uint8_t *imsi, size_t imsi_len, time_t now)
 {
 	struct gbproxy_tlli_info *tlli_info;
 	int enable_patching = -1;
@@ -669,7 +677,7 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 	if (is_mi_imsi(imsi, imsi_len)) {
 		enable_patching = gbprox_check_imsi(peer, imsi, imsi_len);
 		if (enable_patching < 0)
-			return;
+			return NULL;
 	}
 
 	tlli_info = gbprox_find_tlli(peer, tlli);
@@ -696,8 +704,11 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 
 	gbprox_attach_tlli_info(peer, now, tlli_info);
 	gbprox_update_tlli_info(tlli_info, imsi, imsi_len);
+
 	if (enable_patching >= 0)
 		tlli_info->enable_patching = enable_patching;
+
+	return tlli_info;
 }
 
 static void gbprox_unregister_tlli(struct gbproxy_peer *peer, uint32_t tlli)
@@ -1213,11 +1224,13 @@ static int gbprox_parse_llc(uint8_t *llc, size_t llc_len,
 }
 
 static int gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
-			    struct gbproxy_peer *peer, int *len_change,
+			    struct gbproxy_peer *peer,
+			    struct gbproxy_tlli_info *tlli_info, int *len_change,
 			    struct gbproxy_parse_context *parse_ctx) __attribute__((nonnull));
 
 static int gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
-			    struct gbproxy_peer *peer, int *len_change,
+			    struct gbproxy_peer *peer,
+			    struct gbproxy_tlli_info *tlli_info, int *len_change,
 			    struct gbproxy_parse_context *parse_ctx)
 {
 	struct gprs_llc_hdr_parsed *ghp = &parse_ctx->llc_hdr_parsed;
@@ -1316,13 +1329,14 @@ static void gbprox_log_parse_context(struct gbproxy_parse_context *parse_ctx,
 	LOGP(DGPRS, LOGL_DEBUG, "\n");
 }
 
-static void gbprox_update_state(struct gbproxy_peer *peer, time_t now,
-				struct gbproxy_parse_context *parse_ctx)
+static struct gbproxy_tlli_info *gbprox_update_state(
+	struct gbproxy_peer *peer, time_t now,
+	struct gbproxy_parse_context *parse_ctx)
 {
 	struct gbproxy_tlli_info *tlli_info = NULL;
 
 	if (!peer->cfg->check_imsi)
-		return;
+		return NULL;
 
 	if (parse_ctx->tlli_enc)
 		tlli_info = gbprox_find_tlli(peer, parse_ctx->tlli);
@@ -1355,25 +1369,40 @@ static void gbprox_update_state(struct gbproxy_peer *peer, time_t now,
 			LOGP(DGPRS, LOGL_ERROR,
 			     "Failed to parse new TLLI/PTMSI (current is %08x)\n",
 			     parse_ctx->tlli);
-			return;
+			return tlli_info;
 		}
 		new_tlli = gprs_tmsi2tlli(new_ptmsi, TLLI_LOCAL);
 		LOGP(DGPRS, LOGL_INFO,
 		     "Got new TLLI/PTMSI %08x/%08x (current is %08x)\n",
 		     new_tlli, new_ptmsi, parse_ctx->tlli);
-		if (tlli_info)
+		if (tlli_info) {
 			gbprox_reassign_tlli(tlli_info, peer, new_tlli);
-		gbprox_register_tlli(peer, new_tlli,
-				     parse_ctx->imsi, parse_ctx->imsi_len, now);
+			gbprox_touch_tlli(peer, tlli_info, now);
+		} else {
+			tlli_info =
+				gbprox_register_tlli(peer, new_tlli,
+						     parse_ctx->imsi,
+						     parse_ctx->imsi_len, now);
+		}
 	} else if (parse_ctx->tlli_enc && parse_ctx->llc) {
-		gbprox_register_tlli(peer, parse_ctx->tlli,
-				     parse_ctx->imsi, parse_ctx->imsi_len, now);
+		tlli_info =
+			gbprox_register_tlli(peer, parse_ctx->tlli,
+					     parse_ctx->imsi,
+					     parse_ctx->imsi_len, now);
+	} else if (tlli_info) {
+		gbprox_touch_tlli(peer, tlli_info, now);
 	}
 
-	return;
+	if (parse_ctx->imsi && tlli_info && tlli_info->mi_data_len == 0)
+		gbprox_update_tlli_info(tlli_info,
+					parse_ctx->imsi, parse_ctx->imsi_len);
+
+	return tlli_info;
 }
 
-static void gbprox_update_state_after(struct gbproxy_peer *peer, time_t now,
+static void gbprox_update_state_after(struct gbproxy_peer *peer,
+				      struct gbproxy_tlli_info *tlli_info,
+				      time_t now,
 				      struct gbproxy_parse_context *parse_ctx)
 {
 	if (parse_ctx->invalidate_tlli)
@@ -1464,11 +1493,13 @@ static int gbprox_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
 
 /* patch BSSGP message to use core_mcc/mnc on the SGSN side */
 static void gbprox_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
-			       struct gbproxy_peer *peer, int *len_change,
+			       struct gbproxy_peer *peer,
+			       struct gbproxy_tlli_info *tlli_info, int *len_change,
 			       struct gbproxy_parse_context *parse_ctx)
 	__attribute__((nonnull));
 static void gbprox_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
-			       struct gbproxy_peer *peer, int *len_change,
+			       struct gbproxy_peer *peer,
+			       struct gbproxy_tlli_info *tlli_info, int *len_change,
 			       struct gbproxy_parse_context *parse_ctx)
 {
 	const char *err_info = NULL;
@@ -1500,8 +1531,8 @@ static void gbprox_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_le
 		size_t llc_len = parse_ctx->llc_len;
 		int llc_len_change = 0;
 
-		gbprox_patch_llc(msg, llc, llc_len, peer, &llc_len_change,
-				 parse_ctx);
+		gbprox_patch_llc(msg, llc, llc_len, peer, tlli_info,
+				 &llc_len_change, parse_ctx);
 		/* Note that the APN might have been resized here, but no
 		 * pointer int the parse_ctx will refer to an adress after the
 		 * APN. So it's possible to patch first and do the TLLI
@@ -1549,6 +1580,7 @@ static void gbprox_process_bssgp_message(struct gbproxy_config *cfg,
 	int rc;
 	int len_change = 0;
 	time_t now;
+	struct gbproxy_tlli_info *tlli_info;
 
 	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn)
 		return;
@@ -1587,12 +1619,12 @@ static void gbprox_process_bssgp_message(struct gbproxy_config *cfg,
 
 	now = time(NULL);
 
-	gbprox_update_state(peer, now, &parse_ctx);
+	tlli_info = gbprox_update_state(peer, now, &parse_ctx);
 
 	gbprox_patch_bssgp(msg, msgb_bssgph(msg), msgb_bssgp_len(msg),
-			   peer, &len_change, &parse_ctx);
+			   peer, tlli_info, &len_change, &parse_ctx);
 
-	gbprox_update_state_after(peer, now, &parse_ctx);
+	gbprox_update_state_after(peer, tlli_info, now, &parse_ctx);
 
 	return;
 }
