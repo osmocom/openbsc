@@ -1250,10 +1250,62 @@ static int gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	return have_patched;
 }
 
+static void gbprox_log_parse_context(struct gbproxy_parse_context *parse_ctx,
+				     const char *default_msg_name)
+{
+	const char *msg_name = default_msg_name;
+	const char *sep = "";
+
+	if (!parse_ctx->tlli_enc &&
+	    !parse_ctx->ptmsi_enc &&
+	    !parse_ctx->new_ptmsi_enc &&
+	    !parse_ctx->imsi)
+		return;
+
+	if (parse_ctx->llc_msg_name)
+		msg_name = parse_ctx->llc_msg_name;
+
+	LOGP(DGPRS, LOGL_DEBUG, "%s: Got", msg_name);
+
+	if (parse_ctx->tlli_enc) {
+		LOGP(DGPRS, LOGL_DEBUG, "%s TLLI %08x", sep, parse_ctx->tlli);
+		sep = ",";
+	}
+
+	if (parse_ctx->ptmsi_enc) {
+		uint32_t ptmsi = GSM_RESERVED_TMSI;
+		int ok;
+		ok = parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN, &ptmsi);
+		LOGP(DGPRS, LOGL_DEBUG, "%s PTMSI %08x%s",
+		     sep, ptmsi, ok ? "" : " (parse error)");
+		sep = ",";
+	}
+
+	if (parse_ctx->new_ptmsi_enc) {
+		uint32_t new_ptmsi = GSM_RESERVED_TMSI;
+		int ok;
+		ok = parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
+				   &new_ptmsi);
+		LOGP(DGPRS, LOGL_DEBUG, "%s new PTMSI %08x%s",
+		     sep, new_ptmsi, ok ? "" : " (parse error)");
+		sep = ",";
+	}
+
+	if (parse_ctx->imsi) {
+		char mi_buf[200];
+		mi_buf[0] = '\0';
+		gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+				   parse_ctx->imsi, parse_ctx->imsi_len);
+		LOGP(DGPRS, LOGL_DEBUG, "%s IMSI %s",
+		     sep, mi_buf);
+		sep = ",";
+	}
+	LOGP(DGPRS, LOGL_DEBUG, "\n");
+}
+
 static void gbprox_update_state(struct gbproxy_peer *peer,
 				struct gbproxy_parse_context *parse_ctx)
 {
-	const char *msg_name = "BSSGP";
 	struct gbproxy_tlli_info *tlli_info = NULL;
 
 	if (!peer->cfg->check_imsi)
@@ -1261,9 +1313,6 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 
 	if (parse_ctx->tlli_enc)
 		tlli_info = gbprox_find_tlli(peer, parse_ctx->tlli);
-
-	if (parse_ctx->llc_msg_name)
-		msg_name = parse_ctx->llc_msg_name;
 
 	if (parse_ctx->g48_hdr) {
 		switch (parse_ctx->g48_hdr->msg_type) {
@@ -1280,36 +1329,7 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 		}
 	}
 
-	if (parse_ctx->tlli_enc) {
-		LOGP(DGPRS, LOGL_DEBUG, "%s: Got TLLI %08x\n",
-		     msg_name, parse_ctx->tlli);
-	}
-
-	if (parse_ctx->ptmsi_enc) {
-		uint32_t ptmsi = GSM_RESERVED_TMSI;
-		int ok;
-		ok = parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN, &ptmsi);
-		LOGP(DGPRS, LOGL_DEBUG, "%s: Got PTMSI %08x%s\n",
-		     msg_name, ptmsi, ok ? "" : " (parse error)");
-	}
-
-	if (parse_ctx->new_ptmsi_enc) {
-		uint32_t new_ptmsi = GSM_RESERVED_TMSI;
-		int ok;
-		ok = parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
-				   &new_ptmsi);
-		LOGP(DGPRS, LOGL_DEBUG, "%s: Got new PTMSI %08x%s\n",
-		     msg_name, new_ptmsi, ok ? "" : " (parse error)");
-	}
-
-	if (parse_ctx->imsi) {
-		char mi_buf[200];
-		mi_buf[0] = '\0';
-		gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
-				   parse_ctx->imsi, parse_ctx->imsi_len);
-		LOGP(DGPRS, LOGL_DEBUG, "%s: Got IMSI %s\n",
-		     msg_name, mi_buf);
-	}
+	gbprox_log_parse_context(parse_ctx, "BSSGP");
 
 	if (parse_ctx->tlli_enc && parse_ctx->new_ptmsi_enc &&
 	    parse_ctx->to_bss) {
