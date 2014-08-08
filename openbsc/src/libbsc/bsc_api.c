@@ -857,3 +857,8 @@ static __attribute__((constructor)) void on_dso_load_bsc(void)
 {
 	osmo_signal_register_handler(SS_LCHAN, bsc_handle_lchan_signal, NULL);
 }
+
+struct llist_head *bsc_api_sub_connections(struct gsm_network *net)
+{
+	return &sub_connections;
+}

@@ -22,6 +22,9 @@ struct osmo_bsc_sccp_con {
 	struct llist_head entry;
 
 	int ciphering_handled;
+
+	/* for audio handling */
+	uint16_t cic;
 	int rtp_port;
 
 	/* SCCP connection realted */

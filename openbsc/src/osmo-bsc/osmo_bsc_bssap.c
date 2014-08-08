@@ -299,7 +299,6 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	struct osmo_msc_data *msc;
 	struct tlv_parsed tp;
 	uint8_t *data;
-	uint16_t cic;
 	uint8_t timeslot;
 	uint8_t multiplex;
 	enum gsm48_chan_mode chan_mode = GSM48_CMODE_SIGN;
@@ -322,9 +321,9 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 		goto reject;
 	}
 
-	cic = ntohs(read_data16(TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)));
-	timeslot = cic & 0x1f;
-	multiplex = (cic & ~0x1f) >> 5;
+	conn->cic = ntohs(read_data16(TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)));
+	timeslot = conn->cic & 0x1f;
+	multiplex = (conn->cic & ~0x1f) >> 5;
 
 	/*
 	 * Currently we only support a limited subset of all
