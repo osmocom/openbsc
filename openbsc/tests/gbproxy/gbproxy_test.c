@@ -1330,8 +1330,10 @@ static void test_gbproxy_tlli_expire(void)
 	const char *err_msg = NULL;
 	const uint8_t imsi1[] = { GSM_MI_TYPE_IMSI, 0x23, 0x24, 0x25, 0x26 };
 	const uint8_t imsi2[] = { GSM_MI_TYPE_IMSI, 0x26, 0x27, 0x28, 0x29 };
+	const uint8_t imsi3[] = { GSM_MI_TYPE_IMSI | 0x10, 0x32, 0x54, 0x76, 0xf8 };
 	const uint32_t tlli1 = 1234 | 0xc0000000;
 	const uint32_t tlli2 = 5678 | 0xc0000000;
+	const uint32_t tlli3 = 3456 | 0xc0000000;
 	const char *filter_re = ".*";
 	time_t now = 1407479214;
 
@@ -1463,16 +1465,54 @@ static void test_gbproxy_tlli_expire(void)
 		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
-		/* replace the old entry */
-		printf("  Add TLLI 2, IMSI 2 (should expire after timeout)\n");
-		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
+		printf("  Add TLLI 2, IMSI 2 (should not expire after timeout)\n");
+		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
+				     now + 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
 		num_removed = gbprox_remove_stale_tllis(peer, now + 2);
-		OSMO_ASSERT(num_removed == 2);
+		OSMO_ASSERT(num_removed == 1);
+		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+
+		dump_peers(stdout, 2, now + 2, &cfg);
+
+		printf("\n");
+
+		gbproxy_peer_free(peer);
+	}
+
+	{
+		int num_removed;
+
+		printf("Test TLLI expiry, max_len == 2, max_age == 1:\n");
+
+		cfg.tlli_max_len = 0;
+		cfg.tlli_max_age = 1;
+		peer = gbproxy_peer_alloc(&cfg, 20);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
-		dump_peers(stdout, 2, now, &cfg);
+		printf("  Add TLLI 1, IMSI 1 (should expire)\n");
+		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
+		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+
+		printf("  Add TLLI 2, IMSI 2 (should expire after timeout)\n");
+		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
+				     now + 1);
+		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
+
+		printf("  Add TLLI 3, IMSI 3 (should not expire after timeout)\n");
+		gbprox_register_tlli(peer, tlli3, imsi3, ARRAY_SIZE(imsi3),
+				     now + 2);
+		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 3);
+
+		dump_peers(stdout, 2, now + 2, &cfg);
+
+		printf("  Remove stale TLLIs\n");
+		num_removed = gbprox_remove_stale_tllis(peer, now + 3);
+		OSMO_ASSERT(num_removed == 2);
+		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+
+		dump_peers(stdout, 2, now + 2, &cfg);
 
 		printf("\n");
 

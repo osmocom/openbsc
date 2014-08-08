@@ -1919,10 +1919,30 @@ Test TLLI expiry, max_len == 1:
 
 Test TLLI expiry, max_age == 1:
   Add TLLI 1, IMSI 1 (should expire after timeout)
-  Add TLLI 2, IMSI 2 (should expire after timeout)
+  Add TLLI 2, IMSI 2 (should not expire after timeout)
   Peers:
     NSEI 0, BVCI 20, not blocked, RAI 0-0-0-0
-      TLLI-Cache: 0
+      TLLI cache size                 : 1
+      TLLI-Cache: 1
+        TLLI c000162e, IMSI 06272829, AGE 1
+
+Test TLLI expiry, max_len == 2, max_age == 1:
+  Add TLLI 1, IMSI 1 (should expire)
+  Add TLLI 2, IMSI 2 (should expire after timeout)
+  Add TLLI 3, IMSI 3 (should not expire after timeout)
+  Peers:
+    NSEI 0, BVCI 20, not blocked, RAI 0-0-0-0
+      TLLI cache size                 : 3
+      TLLI-Cache: 3
+        TLLI c0000d80, IMSI 12345678, AGE 0
+        TLLI c000162e, IMSI 06272829, AGE 1
+        TLLI c00004d2, IMSI 03242526, AGE 2
+  Remove stale TLLIs
+  Peers:
+    NSEI 0, BVCI 20, not blocked, RAI 0-0-0-0
+      TLLI cache size                 : 1
+      TLLI-Cache: 1
+        TLLI c0000d80, IMSI 12345678, AGE 0
 
 ===== GbProxy test END
 
