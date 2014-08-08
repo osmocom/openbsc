@@ -641,11 +641,10 @@ void gbprox_reassign_tlli(struct gbproxy_tlli_info *tlli_info,
 }
 
 void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
-				 const uint8_t *imsi, size_t imsi_len)
+			  const uint8_t *imsi, size_t imsi_len, time_t now)
 {
 	struct gbproxy_tlli_info *tlli_info;
 	int enable_patching = -1;
-	time_t now = 0;
 	int tlli_already_known;
 
 	/* Check, whether the IMSI matches */
@@ -676,8 +675,6 @@ void gbprox_register_tlli(struct gbproxy_peer *peer, uint32_t tlli,
 
 	if (!tlli_already_known)
 		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
-
-	now = time(NULL);
 
 	gbprox_attach_tlli_info(peer, now, tlli_info);
 	gbprox_update_tlli_info(tlli_info, imsi, imsi_len);
@@ -1301,7 +1298,7 @@ static void gbprox_log_parse_context(struct gbproxy_parse_context *parse_ctx,
 	LOGP(DGPRS, LOGL_DEBUG, "\n");
 }
 
-static void gbprox_update_state(struct gbproxy_peer *peer,
+static void gbprox_update_state(struct gbproxy_peer *peer, time_t now,
 				struct gbproxy_parse_context *parse_ctx)
 {
 	struct gbproxy_tlli_info *tlli_info = NULL;
@@ -1349,20 +1346,18 @@ static void gbprox_update_state(struct gbproxy_peer *peer,
 		if (tlli_info)
 			gbprox_reassign_tlli(tlli_info, peer, new_tlli);
 		gbprox_register_tlli(peer, new_tlli,
-				     parse_ctx->imsi, parse_ctx->imsi_len);
+				     parse_ctx->imsi, parse_ctx->imsi_len, now);
 	} else if (parse_ctx->tlli_enc && parse_ctx->llc) {
 		gbprox_register_tlli(peer, parse_ctx->tlli,
-				     parse_ctx->imsi, parse_ctx->imsi_len);
+				     parse_ctx->imsi, parse_ctx->imsi_len, now);
 	}
 
 	return;
 }
 
-static void gbprox_update_state_after(struct gbproxy_peer *peer,
+static void gbprox_update_state_after(struct gbproxy_peer *peer, time_t now,
 				      struct gbproxy_parse_context *parse_ctx)
 {
-	time_t now = time(NULL);
-
 	if (parse_ctx->invalidate_tlli)
 		gbprox_unregister_tlli(peer, parse_ctx->tlli);
 
@@ -1535,6 +1530,7 @@ static void gbprox_process_bssgp_message(struct gbproxy_config *cfg,
 	struct gbproxy_parse_context parse_ctx = {0};
 	int rc;
 	int len_change = 0;
+	time_t now;
 
 	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn)
 		return;
@@ -1571,12 +1567,14 @@ static void gbprox_process_bssgp_message(struct gbproxy_config *cfg,
 		return;
 	}
 
-	gbprox_update_state(peer, &parse_ctx);
+	now = time(NULL);
+
+	gbprox_update_state(peer, now, &parse_ctx);
 
 	gbprox_patch_bssgp(msg, msgb_bssgph(msg), msgb_bssgp_len(msg),
 			   peer, &len_change, &parse_ctx);
 
-	gbprox_update_state_after(peer, &parse_ctx);
+	gbprox_update_state_after(peer, now, &parse_ctx);
 
 	return;
 }

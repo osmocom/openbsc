@@ -68,14 +68,14 @@ static int dump_global(FILE *stream, int indent)
 	return 0;
 }
 
-static int dump_peers(FILE *stream, int indent, struct gbproxy_config *cfg)
+static int dump_peers(FILE *stream, int indent, time_t now,
+		      struct gbproxy_config *cfg)
 {
 	struct gbproxy_peer *peer;
 	struct gprs_ra_id raid;
 	unsigned int i;
 	const struct rate_ctr_group_desc *desc;
 	int rc;
-	time_t now = time(NULL);
 
 	rc = fprintf(stream, "%*sPeers:\n", indent, "");
 	if (rc < 0)
@@ -115,7 +115,7 @@ static int dump_peers(FILE *stream, int indent, struct gbproxy_config *cfg)
 			indent, "", state->enabled_tllis_count);
 		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
 			char mi_buf[200];
-			time_t age = now - tlli_info->timestamp;
+			time_t age = now ? now - tlli_info->timestamp : 0;
 			if (tlli_info->mi_data_len > 0) {
 				snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
 				gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
@@ -688,7 +688,7 @@ static void test_gbproxy()
 	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -697,7 +697,7 @@ static void test_gbproxy()
 	setup_ns(nsi, &bss_peer[1], 0x2001, 0x2000);
 	setup_bssgp(nsi, &bss_peer[1], 0x2002);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x2002);
 
@@ -705,43 +705,43 @@ static void test_gbproxy()
 
 	setup_ns(nsi, &bss_peer[2], 0x1001, 0x1000);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Move BSS 2 to former BSS 1 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[0], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Move BSS 1 to current BSS 2 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[0], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Move BSS 2 to new port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[3], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Move BSS 2 to former BSS 1 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[2], 0x2001, 0x2000);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Move BSS 1 to original BSS 1 port ---\n\n");
 
 	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Reset BSS 1 with a new BVCI ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], 0x1012);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1012);
 
@@ -749,7 +749,7 @@ static void test_gbproxy()
 
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -757,7 +757,7 @@ static void test_gbproxy()
 
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -789,7 +789,7 @@ static void test_gbproxy()
 
 	setup_bssgp(nsi, &bss_peer[2], 0x1002);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	dump_global(stdout, 0);
 
@@ -845,13 +845,13 @@ static void test_gbproxy_ident_changes()
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[0]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[0]);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Setup BVCI 2 ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[1]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[1]);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 1 ---\n\n");
 
@@ -872,13 +872,13 @@ static void test_gbproxy_ident_changes()
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[0]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[0]);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Setup BVCI 3 ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[2]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[2]);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 1 ---\n\n");
 
@@ -889,9 +889,9 @@ static void test_gbproxy_ident_changes()
 	       " (should fail) ---\n\n");
 
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], bvci[1], (uint8_t *)"", 0);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, bvci[1], (uint8_t *)"", 0);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 3 ---\n\n");
 
@@ -907,13 +907,13 @@ static void test_gbproxy_ident_changes()
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[0]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[0]);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Setup BVCI 4 ---\n\n");
 
 	setup_bssgp(nsi, &bss_peer[0], bvci[3]);
 	send_bssgp_reset_ack(nsi, &sgsn_peer, bvci[3]);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 1 ---\n\n");
 
@@ -924,9 +924,9 @@ static void test_gbproxy_ident_changes()
 	       " (should fail) ---\n\n");
 
 	send_ns_unitdata(nsi, NULL, &bss_peer[0], bvci[1], (uint8_t *)"", 0);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, bvci[1], (uint8_t *)"", 0);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Send message from BSS 1 to SGSN and back, BVCI 3 ---\n\n");
 
@@ -939,7 +939,7 @@ static void test_gbproxy_ident_changes()
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, bvci[3], (uint8_t *)"", 0);
 
 	dump_global(stdout, 0);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
@@ -989,7 +989,7 @@ static void test_gbproxy_ra_patching()
 	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 	gprs_dump_nsi(nsi);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
@@ -997,7 +997,7 @@ static void test_gbproxy_ra_patching()
 	send_bssgp_suspend_ack(nsi, &sgsn_peer, &rai_sgsn);
 
 	dump_global(stdout, 0);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Send message from BSS 1 to SGSN, BVCI 0x1002 ---\n\n");
 
@@ -1034,7 +1034,7 @@ static void test_gbproxy_ra_patching()
 			 &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	/* Detach */
 	send_ns_unitdata(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
@@ -1043,7 +1043,7 @@ static void test_gbproxy_ra_patching()
 	send_ns_unitdata(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
 			 bssgp_detach_acc, sizeof(bssgp_detach_acc));
 
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- RA update ---\n\n");
 
@@ -1058,7 +1058,7 @@ static void test_gbproxy_ra_patching()
 			 &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	/* Detach */
 	send_ns_unitdata(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
@@ -1069,7 +1069,7 @@ static void test_gbproxy_ra_patching()
 
 
 	dump_global(stdout, 0);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Bad cases ---\n\n");
 
@@ -1081,7 +1081,7 @@ static void test_gbproxy_ra_patching()
 	send_bssgp_suspend_ack(nsi, &sgsn_peer, &rai_unknown);
 
 	dump_global(stdout, 0);
-	dump_peers(stdout, 0, &gbcfg);
+	dump_peers(stdout, 0, 0, &gbcfg);
 
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
@@ -1333,6 +1333,7 @@ static void test_gbproxy_tlli_expire(void)
 	const uint32_t tlli1 = 1234 | 0xc0000000;
 	const uint32_t tlli2 = 5678 | 0xc0000000;
 	const char *filter_re = ".*";
+	time_t now = 1407479214;
 
 	printf("Test TLLI info expiry\n\n");
 
@@ -1355,15 +1356,15 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1));
+		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 1 (should replace TLLI 1)\n");
-		gbprox_register_tlli(peer, tlli2, imsi1, ARRAY_SIZE(imsi1));
+		gbprox_register_tlli(peer, tlli2, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
-		dump_peers(stdout, 2, &cfg);
+		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
 		tlli_info = gbprox_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
@@ -1388,15 +1389,15 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1));
+		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* try to replace the old entry */
 		printf("  Add TLLI 1, IMSI 2 (should replace IMSI 1)\n");
-		gbprox_register_tlli(peer, tlli1, imsi2, ARRAY_SIZE(imsi2));
+		gbprox_register_tlli(peer, tlli1, imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
-		dump_peers(stdout, 2, &cfg);
+		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
 		tlli_info = gbprox_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
@@ -1422,19 +1423,19 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1));
+		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 2 (should replace IMSI 1)\n");
-		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2));
+		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
 		num_removed = gbprox_remove_stale_tllis(peer, time(NULL) + 2);
 		OSMO_ASSERT(num_removed == 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
-		dump_peers(stdout, 2, &cfg);
+		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
 		tlli_info = gbprox_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
@@ -1459,19 +1460,19 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1 (should expire after timeout)\n");
-		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1));
+		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 2 (should expire after timeout)\n");
-		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2));
+		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
-		num_removed = gbprox_remove_stale_tllis(peer, time(NULL) + 2);
+		num_removed = gbprox_remove_stale_tllis(peer, now + 2);
 		OSMO_ASSERT(num_removed == 2);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
-		dump_peers(stdout, 2, &cfg);
+		dump_peers(stdout, 2, now, &cfg);
 
 		printf("\n");
 
