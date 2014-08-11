@@ -25,6 +25,7 @@
 #include <osmocom/core/signal.h>
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gprs/gprs_msgb.h>
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
@@ -124,10 +125,12 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 			} else {
 				snprintf(mi_buf, sizeof(mi_buf), "(none)");
 			}
-			rc = fprintf(stream,
-				     "%*s      TLLI %08x, IMSI %s, AGE %d\n",
-				     indent, "",
-				     tlli_info->tlli, mi_buf, (int)age);
+			fprintf(stream, "%*s      TLLI %08x",
+				     indent, "", tlli_info->tlli);
+			if (tlli_info->assigned_tlli)
+				fprintf(stream, "/%08x", tlli_info->assigned_tlli);
+			rc = fprintf(stream, ", IMSI %s, AGE %d\n",
+				     mi_buf, (int)age);
 			if (rc < 0)
 				return rc;
 		}
@@ -179,6 +182,14 @@ static const unsigned char bssgp_attach_acc[88] = {
 	0x49, 0x04, 0x21, 0x63, 0x54, 0x40, 0x50, 0x60,
 	0x19, 0xcd, 0xd7, 0x08, 0x17, 0x16, 0x18, 0x05,
 	0xf4, 0xef, 0xe2, 0xb7, 0x00, 0x42, 0x67, 0x9a
+};
+
+/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Attach Complete */
+static const unsigned char bssgp_attach_complete[] = {
+	0x01, 0xef, 0xe2, 0xb7, 0x00, 0x00, 0x00, 0x04,
+	0x08, 0x88, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
+	0x75, 0x30, 0x00, 0x80, 0x0e, 0x00, 0x08, 0x01,
+	0xc0, 0x11, 0x08, 0x03, 0xff, 0xff, 0xff
 };
 
 /* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - GMM Information */
@@ -970,6 +981,12 @@ static void test_gbproxy_ra_patching()
 	struct  gprs_ra_id rai_unknown =
 		{.mcc = 1, .mnc = 99, .lac = 99, .rac = 96};
 	const char *err_msg = NULL;
+	const uint32_t ptmsi = 0xefe2b700;
+	const uint32_t local_tlli = 0xefe2b700;
+	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_peer *peer;
+
+	OSMO_ASSERT(local_tlli == gprs_tmsi2tlli(ptmsi, TLLI_LOCAL));
 
 	bssgp_nsi = nsi;
 	gbcfg.nsi = bssgp_nsi;
@@ -1003,6 +1020,9 @@ static void test_gbproxy_ra_patching()
 	gprs_dump_nsi(nsi);
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	peer = gbprox_peer_by_nsei(&gbcfg, 0x1000);
+	OSMO_ASSERT(peer != NULL);
+
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
 	send_bssgp_suspend(nsi, &bss_peer[0], &rai_bss);
@@ -1025,13 +1045,42 @@ static void test_gbproxy_ra_patching()
 	send_ns_unitdata(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 			 bssgp_attach_acc, sizeof(bssgp_attach_acc));
 
+	tlli_info = gbprox_find_tlli(peer, local_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->assigned_tlli == local_tlli);
+	OSMO_ASSERT(tlli_info->tlli != local_tlli);
+	OSMO_ASSERT(!tlli_info->bss_validated);
+	OSMO_ASSERT(!tlli_info->net_validated);
+
+	send_ns_unitdata(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
+			 bssgp_attach_complete, sizeof(bssgp_attach_complete));
+
+	tlli_info = gbprox_find_tlli(peer, local_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->assigned_tlli == local_tlli);
+	OSMO_ASSERT(tlli_info->tlli != local_tlli);
+	OSMO_ASSERT(tlli_info->bss_validated);
+	OSMO_ASSERT(!tlli_info->net_validated);
+
 	/* Replace APN (1) */
 	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REPLACE APN)",
 			 &bss_peer[0], 0x1002,
 			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
 
+	tlli_info = gbprox_find_tlli(peer, local_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->assigned_tlli == local_tlli);
+	OSMO_ASSERT(tlli_info->tlli != local_tlli);
+	OSMO_ASSERT(tlli_info->bss_validated);
+	OSMO_ASSERT(!tlli_info->net_validated);
+
 	send_ns_unitdata(nsi, "GMM INFO", &sgsn_peer, 0x1002,
 			 bssgp_gmm_information, sizeof(bssgp_gmm_information));
+
+	tlli_info = gbprox_find_tlli(peer, local_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->assigned_tlli == 0);
+	OSMO_ASSERT(tlli_info->tlli == local_tlli);
 
 	/* Replace APN (2) */
 	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REPLACE APN)",

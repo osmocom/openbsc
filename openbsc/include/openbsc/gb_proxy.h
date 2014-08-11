@@ -85,6 +85,9 @@ struct gbproxy_tlli_info {
 	struct llist_head list;
 
 	uint32_t tlli;
+	uint32_t assigned_tlli;
+	int bss_validated;
+	int net_validated;
 	time_t timestamp;
 	uint8_t *mi_data;
 	size_t mi_data_len;
@@ -124,6 +127,8 @@ int gbprox_cleanup_peers(struct gbproxy_config *cfg, uint16_t nsei, uint16_t bvc
 
 struct gbproxy_peer *gbprox_peer_by_nsei(struct gbproxy_config *cfg, uint16_t nsei);
 
+struct gbproxy_tlli_info *gbprox_find_tlli(struct gbproxy_peer *peer,
+					   uint32_t tlli);
 struct gbproxy_tlli_info *gbprox_find_tlli_by_mi(struct gbproxy_peer *peer,
 						 const uint8_t *mi_data,
 						 size_t mi_data_len);

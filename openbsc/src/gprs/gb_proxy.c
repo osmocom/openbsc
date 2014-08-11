@@ -420,14 +420,14 @@ struct gbproxy_parse_context {
 	int pdu_type;
 };
 
-static struct gbproxy_tlli_info *gbprox_find_tlli(struct gbproxy_peer *peer,
-						 uint32_t tlli)
+struct gbproxy_tlli_info *gbprox_find_tlli(struct gbproxy_peer *peer,
+					   uint32_t tlli)
 {
 	struct gbproxy_tlli_info *tlli_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	llist_for_each_entry(tlli_info, &state->enabled_tllis, list)
-		if (tlli_info->tlli == tlli)
+		if (tlli_info->tlli == tlli || tlli_info->assigned_tlli == tlli)
 			return tlli_info;
 
 	return NULL;
@@ -659,8 +659,41 @@ void gbprox_reassign_tlli(struct gbproxy_tlli_info *tlli_info,
 	     "The TLLI has been reassigned from %08x to %08x\n",
 	     tlli_info->tlli, new_tlli);
 
-	/* TODO: Save old TLLI */
-	tlli_info->tlli = new_tlli;
+	/* Remember assigned TLLI */
+	tlli_info->assigned_tlli = new_tlli;
+	tlli_info->bss_validated = 0;
+	tlli_info->net_validated = 0;
+}
+
+static void gbprox_validate_tlli(struct gbproxy_tlli_info *tlli_info,
+				 uint32_t tlli, int to_bss)
+{
+	LOGP(DGPRS, LOGL_DEBUG,
+	     "%s({tlli = %08x, assigned_tlli = %08x, net_vld = %d, bss_vld = %d}, %08x)\n",
+	     __func__, tlli_info->tlli, tlli_info->assigned_tlli,
+	     tlli_info->net_validated, tlli_info->bss_validated, tlli);
+
+	if (!tlli_info->assigned_tlli || tlli_info->assigned_tlli != tlli)
+		return;
+
+	if (gprs_tlli_type(tlli) != TLLI_LOCAL)
+		return;
+
+	/* See GSM 04.08, 4.7.1.5 */
+	if (to_bss)
+		tlli_info->net_validated = 1;
+	else
+		tlli_info->bss_validated = 1;
+
+	if (!tlli_info->bss_validated || !tlli_info->net_validated)
+		return;
+
+	LOGP(DGPRS, LOGL_INFO,
+	     "The TLLI %08x has been validated (was %08x)\n",
+	     tlli_info->assigned_tlli, tlli_info->tlli);
+
+	tlli_info->tlli = tlli;
+	tlli_info->assigned_tlli = 0;
 }
 
 void gbprox_touch_tlli(struct gbproxy_peer *peer,
@@ -1429,10 +1462,16 @@ static struct gbproxy_tlli_info *gbprox_update_state(
 						     parse_ctx->imsi_len, now);
 		}
 	} else if (parse_ctx->tlli_enc && parse_ctx->llc) {
-		tlli_info =
-			gbprox_register_tlli(peer, parse_ctx->tlli,
-					     parse_ctx->imsi,
-					     parse_ctx->imsi_len, now);
+		if (!tlli_info) {
+			tlli_info =
+				gbprox_register_tlli(peer, parse_ctx->tlli,
+						     parse_ctx->imsi,
+						     parse_ctx->imsi_len, now);
+		} else {
+			gbprox_validate_tlli(tlli_info, parse_ctx->tlli,
+					     parse_ctx->to_bss);
+			gbprox_touch_tlli(peer, tlli_info, now);
+		}
 	} else if (tlli_info) {
 		gbprox_touch_tlli(peer, tlli_info, now);
 	}
