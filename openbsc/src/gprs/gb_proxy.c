@@ -959,6 +959,43 @@ static int gbprox_parse_gmm_attach_ack(uint8_t *data, size_t data_len,
 	return 1;
 }
 
+static int gbprox_parse_gmm_detach_req(uint8_t *data, size_t data_len,
+				       struct gbproxy_parse_context *parse_ctx)
+{
+	uint8_t *value;
+	size_t value_len;
+	int detach_type;
+	int power_off;
+
+	parse_ctx->llc_msg_name = "DETACH_REQ";
+
+	/* Skip spare half octet */
+	/* Get Detach type */
+	if (v_fixed_shift(&data, &data_len, 1, &value) <= 0)
+		/* invalid */
+		return 0;
+
+	detach_type = *value & 0x07;
+	power_off = *value & 0x08 ? 1 : 0;
+
+	if (!parse_ctx->to_bss) {
+		/* Mobile originated */
+
+		if (power_off)
+			parse_ctx->invalidate_tlli = 1;
+
+		/* Get P-TMSI (Mobile identity), see GSM 24.008, 9.4.5.2 */
+		if (tlv_match(&data, &data_len,
+			      GSM48_IE_GMM_ALLOC_PTMSI, &value, &value_len) > 0)
+		{
+			if (is_mi_tmsi(value, value_len))
+				parse_ctx->ptmsi_enc = value;
+		}
+	}
+
+	return 1;
+}
+
 static int gbprox_parse_gmm_ra_upd_req(uint8_t *data, size_t data_len,
 				       struct gbproxy_parse_context *parse_ctx)
 {
@@ -1157,12 +1194,9 @@ static int gbprox_parse_dtap(uint8_t *data, size_t data_len,
 
 	case GSM48_MT_GMM_ID_RESP:
 		return gbprox_parse_gmm_id_resp(data, data_len, parse_ctx);
-		break;
 
 	case GSM48_MT_GMM_DETACH_REQ:
-		/* TODO: Check power off if !to_bss, if yes invalidate */
-		parse_ctx->llc_msg_name = "DETACH_REQ";
-		break;
+		return gbprox_parse_gmm_detach_req(data, data_len, parse_ctx);
 
 	case GSM48_MT_GMM_DETACH_ACK:
 		parse_ctx->llc_msg_name = "DETACH_ACK";
@@ -1331,6 +1365,11 @@ static void gbprox_log_parse_context(struct gbproxy_parse_context *parse_ctx,
 		     sep, mi_buf);
 		sep = ",";
 	}
+	if (parse_ctx->invalidate_tlli) {
+		LOGP(DGPRS, LOGL_DEBUG, "%s invalidate", sep);
+		sep = ",";
+	}
+
 	LOGP(DGPRS, LOGL_DEBUG, "\n");
 }
 
