@@ -446,6 +446,20 @@ struct gbproxy_tlli_info *gbprox_find_tlli(struct gbproxy_peer *peer,
 	return NULL;
 }
 
+static struct gbproxy_tlli_info *gbprox_find_tlli_by_ptmsi(
+	struct gbproxy_peer *peer,
+	uint32_t ptmsi)
+{
+	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_patch_state *state = &peer->patch_state;
+
+	llist_for_each_entry(tlli_info, &state->enabled_tllis, list)
+		if (tlli_info->tlli.ptmsi == ptmsi)
+			return tlli_info;
+
+	return NULL;
+}
+
 struct gbproxy_tlli_info *gbprox_find_tlli_by_sgsn_tlli(
 	struct gbproxy_peer *peer,
 	uint32_t tlli)
@@ -1605,14 +1619,43 @@ static void gbprox_log_parse_context(struct gbproxy_parse_context *parse_ctx,
 static uint32_t gbprox_make_bss_ptmsi(struct gbproxy_peer *peer,
 				      uint32_t sgsn_ptmsi)
 {
-	return sgsn_ptmsi;
+	uint32_t bss_ptmsi;
+	if (!peer->cfg->patch_ptmsi) {
+		bss_ptmsi = sgsn_ptmsi;
+	} else {
+		do {
+			bss_ptmsi = rand_r(&peer->cfg->bss_ptmsi_state);
+			bss_ptmsi = bss_ptmsi | 0xC0000000;
+
+			if (gbprox_find_tlli_by_ptmsi(peer, bss_ptmsi))
+				bss_ptmsi = GSM_RESERVED_TMSI;
+		} while (bss_ptmsi == GSM_RESERVED_TMSI);
+	}
+
+	return bss_ptmsi;
 }
 
 static uint32_t gbprox_make_sgsn_tlli(struct gbproxy_peer *peer,
 				      struct gbproxy_tlli_info *tlli_info,
 				      uint32_t bss_tlli)
 {
-	return bss_tlli;
+	uint32_t sgsn_tlli;
+	if (!peer->cfg->patch_ptmsi) {
+		sgsn_tlli = bss_tlli;
+	} else if (tlli_info->sgsn_tlli.ptmsi != GSM_RESERVED_TMSI) {
+		sgsn_tlli = gprs_tmsi2tlli(tlli_info->sgsn_tlli.ptmsi,
+					   TLLI_FOREIGN);
+	} else {
+		do {
+			/* create random TLLI, 0b01111xxx... */
+			sgsn_tlli = rand_r(&peer->cfg->sgsn_tlli_state);
+			sgsn_tlli = (sgsn_tlli & 0x7fffffff) | 0x78000000;
+
+			if (gbprox_find_tlli_by_sgsn_tlli(peer, sgsn_tlli))
+				sgsn_tlli = 0;
+		} while (!sgsn_tlli);
+	}
+	return sgsn_tlli;
 }
 
 static struct gbproxy_tlli_info *gbprox_update_state_ul(
@@ -2698,7 +2741,11 @@ int gbprox_cleanup_peers(struct gbproxy_config *cfg, uint16_t nsei, uint16_t bvc
 
 int gbproxy_init_config(struct gbproxy_config *cfg)
 {
+	struct timespec tp;
 	INIT_LLIST_HEAD(&cfg->bts_peers);
 	cfg->ctrg = rate_ctr_group_alloc(tall_bsc_ctx, &global_ctrg_desc, 0);
+	clock_gettime(CLOCK_REALTIME, &tp);
+	cfg->bss_ptmsi_state = tp.tv_sec + tp.tv_nsec;
+	cfg->sgsn_tlli_state = tp.tv_sec - tp.tv_nsec;
 	return 0;
 }

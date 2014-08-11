@@ -49,6 +49,10 @@ struct gbproxy_config {
 	/* IMSI checking/matching */
 	int check_imsi;
 	regex_t imsi_re_comp;
+
+	/* Used to generate identifiers */
+	unsigned bss_ptmsi_state;
+	unsigned sgsn_tlli_state;
 };
 
 struct gbproxy_patch_state {
