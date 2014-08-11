@@ -1108,7 +1108,7 @@ static void check_tlv_match(uint8_t **data, size_t *data_len,
 	OSMO_ASSERT(rc == 0);
 
 	rc = tlv_match(data, data_len, tag, &value, &value_len);
-	OSMO_ASSERT(rc == value_len + 2);
+	OSMO_ASSERT(rc == (int)value_len + 2);
 	OSMO_ASSERT(value_len == exp_len);
 	OSMO_ASSERT(memcmp(value, exp_val, exp_len) == 0);
 }
@@ -1123,7 +1123,7 @@ static void check_tv_fixed_match(uint8_t **data, size_t *data_len,
 	OSMO_ASSERT(rc == 0);
 
 	rc = tv_fixed_match(data, data_len, tag, len, &value);
-	OSMO_ASSERT(rc == len + 1);
+	OSMO_ASSERT(rc == (int)len + 1);
 	OSMO_ASSERT(memcmp(value, exp_val, len) == 0);
 }
 
@@ -1134,7 +1134,7 @@ static void check_v_fixed_shift(uint8_t **data, size_t *data_len,
 	int rc;
 
 	rc = v_fixed_shift(data, data_len, len, &value);
-	OSMO_ASSERT(rc == len);
+	OSMO_ASSERT(rc == (int)len);
 	OSMO_ASSERT(memcmp(value, exp_val, len) == 0);
 }
 
@@ -1146,7 +1146,7 @@ static void check_lv_shift(uint8_t **data, size_t *data_len,
 	int rc;
 
 	rc = lv_shift(data, data_len, &value, &value_len);
-	OSMO_ASSERT(rc == value_len + 1);
+	OSMO_ASSERT(rc == (int)value_len + 1);
 	OSMO_ASSERT(value_len == exp_len);
 	OSMO_ASSERT(memcmp(value, exp_val, exp_len) == 0);
 }
@@ -1269,7 +1269,7 @@ static void test_tlv_shift_functions()
 	uint8_t test_data[1024];
 	uint8_t buf[1024];
 	uint8_t *data_end;
-	int i, len;
+	unsigned i, len;
 	uint8_t *data;
 	size_t data_len;
 	const uint8_t tag = 0x1a;
@@ -1280,7 +1280,7 @@ static void test_tlv_shift_functions()
 		test_data[i] = (uint8_t)i;
 
 	for (len = 0; len < 256; len++) {
-		const int iterations = sizeof(buf) / (len + 2) / 4;
+		const unsigned iterations = sizeof(buf) / (len + 2) / 4;
 
 		memset(buf, 0xee, sizeof(buf));
 		data_end = data = buf;
