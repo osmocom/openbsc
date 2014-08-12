@@ -377,7 +377,7 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 				snprintf(mi_buf, sizeof(mi_buf), "(none)");
 			}
 			vty_out(vty, "  TLLI %08x, IMSI %s, AGE %d%s",
-				tlli_info->tlli, mi_buf, (int)age,
+				tlli_info->tlli.current, mi_buf, (int)age,
 				VTY_NEWLINE);
 		}
 	}
@@ -532,7 +532,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	}
 
 	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
-		if (match == MATCH_TLLI && tlli_info->tlli != tlli)
+		if (match == MATCH_TLLI && tlli_info->tlli.current != tlli)
 			continue;
 
 		if (match == MATCH_IMSI) {
@@ -544,7 +544,8 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 			if (strcmp(mi_buf, imsi) != 0)
 				continue;
 		}
-		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli, VTY_NEWLINE);
+		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli.current,
+			VTY_NEWLINE);
 		gbprox_delete_tlli(peer, tlli_info);
 		found += 1;
 	}

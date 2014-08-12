@@ -44,6 +44,7 @@ struct gbproxy_config {
 	enum gbproxy_patch_mode patch_mode;
 	int tlli_max_age;
 	int tlli_max_len;
+	int patch_ptmsi;
 
 	/* IMSI checking/matching */
 	int check_imsi;
@@ -81,16 +82,25 @@ struct gbproxy_peer {
 	struct gbproxy_patch_state patch_state;
 };
 
+struct gbproxy_tlli_state {
+	uint32_t current;
+	uint32_t assigned;
+	int bss_validated;
+	int net_validated;
+
+	uint32_t ptmsi;
+};
+
 struct gbproxy_tlli_info {
 	struct llist_head list;
 
-	uint32_t tlli;
-	uint32_t assigned_tlli;
-	int bss_validated;
-	int net_validated;
+	struct gbproxy_tlli_state tlli;
+	struct gbproxy_tlli_state sgsn_tlli;
+
 	time_t timestamp;
 	uint8_t *mi_data;
 	size_t mi_data_len;
+
 
 	int enable_patching;
 };
@@ -132,6 +142,9 @@ struct gbproxy_tlli_info *gbprox_find_tlli(struct gbproxy_peer *peer,
 struct gbproxy_tlli_info *gbprox_find_tlli_by_mi(struct gbproxy_peer *peer,
 						 const uint8_t *mi_data,
 						 size_t mi_data_len);
+struct gbproxy_tlli_info *gbprox_find_tlli_by_sgsn_tlli(
+	struct gbproxy_peer *peer,
+	uint32_t tlli);
 struct gbproxy_tlli_info *gbprox_register_tlli(
 	struct gbproxy_peer *peer, uint32_t tlli,
 	const uint8_t *imsi, size_t imsi_len, time_t now);

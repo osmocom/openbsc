@@ -1745,7 +1745,7 @@ Peers:
     Attach Request count            : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
-      TLLI efe2b700, IMSI 12131415161718, AGE 0
+      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
 PROCESSING DETACH REQ from 0x01020304:1111
 00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 15 01 c0 19 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 7e e1 41 
 
@@ -1823,7 +1823,7 @@ Peers:
     Attach Request count            : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
-      TLLI bbc54679/efe2b700, IMSI 12131415161718, AGE 0
+      TLLI bbc54679/efe2b700 -> bbc54679/efe2b700, IMSI 12131415161718, AGE 0
 PROCESSING DETACH REQ (PWR OFF) from 0x01020304:1111
 00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 15 01 c0 19 08 05 09 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 84 0c eb 
 
@@ -1883,7 +1883,7 @@ Peers:
     Attach Request count            : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
-      TLLI efe2b700, IMSI (none), AGE 0
+      TLLI efe2b700 -> efe2b700, IMSI (none), AGE 0
 Test TLLI info expiry
 
 Test TLLI replacement:
