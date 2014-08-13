@@ -1437,9 +1437,17 @@ static struct gbproxy_tlli_info *gbprox_update_state(
 		gbprox_touch_tlli(peer, tlli_info, now);
 	}
 
-	if (parse_ctx->imsi && tlli_info && tlli_info->mi_data_len == 0)
+	if (parse_ctx->imsi && tlli_info && tlli_info->mi_data_len == 0) {
+		int enable_patching;
 		gbprox_update_tlli_info(tlli_info,
 					parse_ctx->imsi, parse_ctx->imsi_len);
+
+		/* Check, whether the IMSI matches */
+		enable_patching = gbprox_check_imsi(peer, parse_ctx->imsi,
+						    parse_ctx->imsi_len);
+		if (enable_patching >= 0)
+			tlli_info->enable_patching = enable_patching;
+	}
 
 	return tlli_info;
 }
