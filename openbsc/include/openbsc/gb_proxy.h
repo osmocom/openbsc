@@ -115,6 +115,7 @@ void gbprox_reset(struct gbproxy_config *cfg);
 
 int gbprox_set_patch_filter(struct gbproxy_config *cfg, const char *filter,
 		const char **err_msg);
+void gbprox_clear_patch_filter(struct gbproxy_config *cfg);
 
 void gbprox_delete_tlli(struct gbproxy_peer *peer,
 			       struct gbproxy_tlli_info *tlli_info);

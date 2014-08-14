@@ -481,16 +481,21 @@ static void gbprox_delete_tllis(struct gbproxy_peer *peer)
 	OSMO_ASSERT(llist_empty(&state->enabled_tllis));
 }
 
+void gbprox_clear_patch_filter(struct gbproxy_config *cfg)
+{
+	if (cfg->check_imsi) {
+		regfree(&cfg->imsi_re_comp);
+		cfg->check_imsi = 0;
+	}
+}
+
 int gbprox_set_patch_filter(struct gbproxy_config *cfg, const char *filter,
 		const char **err_msg)
 {
 	static char err_buf[300];
 	int rc;
 
-	if (cfg->check_imsi) {
-		regfree(&cfg->imsi_re_comp);
-		cfg->check_imsi = 0;
-	}
+	gbprox_clear_patch_filter(cfg);
 
 	if (!filter)
 		return 0;

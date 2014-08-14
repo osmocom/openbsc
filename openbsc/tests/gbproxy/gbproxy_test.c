@@ -1571,6 +1571,12 @@ static void test_gbproxy_imsi_matching(void)
 	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, NULL, &err_msg) == 0);
 	OSMO_ASSERT(cfg.check_imsi == 0);
 
+	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
+	OSMO_ASSERT(cfg.check_imsi == 1);
+
+	gbprox_clear_patch_filter(&cfg);
+	OSMO_ASSERT(cfg.check_imsi == 0);
+
 	peer = gbproxy_peer_alloc(&cfg, 20);
 
 	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
