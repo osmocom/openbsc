@@ -32,6 +32,7 @@
 
 #include <openbsc/gb_proxy.h>
 #include <openbsc/gprs_utils.h>
+#include <openbsc/gprs_llc.h>
 #include <openbsc/debug.h>
 
 #define REMOTE_BSS_ADDR 0x01020304
@@ -139,149 +140,90 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 	return 0;
 }
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Attach Request */
-static const unsigned char bssgp_attach_req[75] = {
-	0x01, 0xbb, 0xc5, 0x46, 0x79, 0x00, 0x00, 0x04,
-	0x08, 0x88, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
-	0x75, 0x30, 0x00, 0x80, 0x0e, 0x00, 0x34, 0x01,
-	0xc0, 0x01, 0x08, 0x01, 0x02, 0xf5, 0xe0, 0x21,
-	0x08, 0x02, 0x05, 0xf4, 0xfb, 0xc5, 0x46, 0x79,
-	0x11, 0x22, 0x33, 0x40, 0x50, 0x60, 0x19, 0x18,
-	0xb3, 0x43, 0x2b, 0x25, 0x96, 0x62, 0x00, 0x60,
-	0x80, 0x9a, 0xc2, 0xc6, 0x62, 0x00, 0x60, 0x80,
-	0xba, 0xc8, 0xc6, 0x62, 0x00, 0x60, 0x80, 0x00,
-	0x16, 0x6d, 0x01
+/* DTAP - Attach Request */
+static const unsigned char dtap_attach_req[] = {
+	0x08, 0x01, 0x02, 0xf5, 0xe0, 0x21, 0x08, 0x02,
+	0x05, 0xf4, 0xfb, 0xc5, 0x46, 0x79, 0x11, 0x22,
+	0x33, 0x40, 0x50, 0x60, 0x19, 0x18, 0xb3, 0x43,
+	0x2b, 0x25, 0x96, 0x62, 0x00, 0x60, 0x80, 0x9a,
+	0xc2, 0xc6, 0x62, 0x00, 0x60, 0x80, 0xba, 0xc8,
+	0xc6, 0x62, 0x00, 0x60, 0x80, 0x00,
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Identity Request */
-static const unsigned char bssgp_identity_req[] = {
-	0x00, 0xbb, 0xc5, 0x46, 0x79, 0x00, 0x50, 0x20,
-	0x16, 0x82, 0x02, 0x58, 0x0e, 0x89, 0x41, 0xc0,
-	0x01, 0x08, 0x15, 0x01, 0xff, 0x6c, 0xba
+/* DTAP - Identity Request */
+static const unsigned char dtap_identity_req[] = {
+	0x08, 0x15, 0x01
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Identity Response */
-static const unsigned char bssgp_identity_resp[] = {
-	0x01, 0xbb, 0xc5, 0x46, 0x79, 0x00, 0x00, 0x04,
-	0x08, 0x88, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
-	0x75, 0x30, 0x00, 0x80, 0x0e, 0x00, 0x11, 0x01,
-	0xc0, 0x0d, 0x08, 0x16, 0x08, 0x11, 0x12, 0x13,
-	0x14, 0x15, 0x16, 0x17, 0x18, 0xb7, 0x1b, 0x9a
+/* DTAP - Identity Response */
+static const unsigned char dtap_identity_resp[] = {
+	0x08, 0x16, 0x08, 0x11, 0x12, 0x13, 0x14, 0x15,
+	0x16, 0x17, 0x18
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Attach Accept */
-static const unsigned char bssgp_attach_acc[88] = {
-	0x00, 0xbb, 0xc5, 0x46, 0x79, 0x00, 0x50, 0x20,
-	0x16, 0x82, 0x02, 0x58, 0x13, 0x99, 0x18, 0xb3,
-	0x43, 0x2b, 0x25, 0x96, 0x62, 0x00, 0x60, 0x80,
-	0x9a, 0xc2, 0xc6, 0x62, 0x00, 0x60, 0x80, 0xba,
-	0xc8, 0xc6, 0x62, 0x00, 0x60, 0x80, 0x00, 0x0a,
-	0x82, 0x08, 0x02, 0x0d, 0x88, 0x11, 0x12, 0x13,
-	0x14, 0x15, 0x16, 0x17, 0x18, 0x00, 0x81, 0x00,
-	0x0e, 0x9e, 0x41, 0xc0, 0x05, 0x08, 0x02, 0x01,
-	0x49, 0x04, 0x21, 0x63, 0x54, 0x40, 0x50, 0x60,
-	0x19, 0xcd, 0xd7, 0x08, 0x17, 0x16, 0x18, 0x05,
-	0xf4, 0xef, 0xe2, 0xb7, 0x00, 0x53, 0x62, 0xf1
+/* DTAP - Attach Accept */
+static const unsigned char dtap_attach_acc[] = {
+	0x08, 0x02, 0x01, 0x49, 0x04, 0x21, 0x63, 0x54,
+	0x40, 0x50, 0x60, 0x19, 0xcd, 0xd7, 0x08, 0x17,
+	0x16, 0x18, 0x05, 0xf4, 0xef, 0xe2, 0xb7, 0x00
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Attach Complete */
-static const unsigned char bssgp_attach_complete[] = {
-	0x01, 0xef, 0xe2, 0xb7, 0x00, 0x00, 0x00, 0x04,
-	0x08, 0x88, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
-	0x75, 0x30, 0x00, 0x80, 0x0e, 0x00, 0x08, 0x01,
-	0xc0, 0x11, 0x08, 0x03, 0xea, 0x67, 0x11
+/* DTAP - Attach Complete */
+static const unsigned char dtap_attach_complete[] = {
+	0x08, 0x03
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - GMM Information */
-static const unsigned char bssgp_gmm_information[66] = {
-	0x00, 0xef, 0xe2, 0xb7, 0x00, 0x00, 0x50, 0x20,
-	0x16, 0x82, 0x02, 0x58, 0x13, 0x99, 0x18, 0xb3,
-	0x43, 0x2b, 0x25, 0x96, 0x62, 0x00, 0x60, 0x80,
-	0x9a, 0xc2, 0xc6, 0x62, 0x00, 0x60, 0x80, 0xba,
-	0xc8, 0xc6, 0x62, 0x00, 0x60, 0x80, 0x00, 0x0a,
-	0x82, 0x08, 0x02, 0x0d, 0x88, 0x11, 0x12, 0x13,
-	0x14, 0x15, 0x16, 0x17, 0x18, 0x00, 0x81, 0x00,
-	0x0e, 0x88, 0x41, 0xc0, 0x09, 0x08, 0x21, 0x04,
-	0xba, 0x3d
+/* DTAP - GMM Information */
+static const unsigned char dtap_gmm_information[] = {
+	0x08, 0x21
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Routing Area Update Request */
-static const unsigned char bssgp_ra_upd_req[85] = {
-	0x01, 0xbb, 0xc5, 0x46, 0x79, 0x00, 0x00, 0x04,
-	0x08, 0x88, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
-	0x70, 0x80, 0x00, 0x80, 0x0e, 0x00, 0x3e, 0x01,
-	0xc0, 0x15, 0x08, 0x08, 0x10, 0x11, 0x22, 0x33,
-	0x40, 0x50, 0x60, 0x1d, 0x19, 0x13, 0x42, 0x33,
-	0x57, 0x2b, 0xf7, 0xc8, 0x48, 0x02, 0x13, 0x48,
-	0x50, 0xc8, 0x48, 0x02, 0x14, 0x48, 0x50, 0xc8,
-	0x48, 0x02, 0x17, 0x49, 0x10, 0xc8, 0x48, 0x02,
-	0x00, 0x19, 0x8b, 0xb2, 0x92, 0x17, 0x16, 0x27,
-	0x07, 0x04, 0x31, 0x02, 0xe5, 0xe0, 0x32, 0x02,
-	0x20, 0x00, 0x96, 0x3e, 0x97
+/* DTAP - Routing Area Update Request */
+static const unsigned char dtap_ra_upd_req[] = {
+	0x08, 0x08, 0x10, 0x11, 0x22, 0x33, 0x40, 0x50,
+	0x60, 0x1d, 0x19, 0x13, 0x42, 0x33, 0x57, 0x2b,
+	0xf7, 0xc8, 0x48, 0x02, 0x13, 0x48, 0x50, 0xc8,
+	0x48, 0x02, 0x14, 0x48, 0x50, 0xc8, 0x48, 0x02,
+	0x17, 0x49, 0x10, 0xc8, 0x48, 0x02, 0x00, 0x19,
+	0x8b, 0xb2, 0x92, 0x17, 0x16, 0x27, 0x07, 0x04,
+	0x31, 0x02, 0xe5, 0xe0, 0x32, 0x02, 0x20, 0x00
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Routing Area Update Accept */
-static const unsigned char bssgp_ra_upd_acc[] = {
-	0x00, 0xbb, 0xc5, 0x46, 0x79, 0x00, 0x50, 0x20,
-	0x16, 0x82, 0x02, 0x58, 0x13, 0x99, 0x18, 0xb3,
-	0x43, 0x2b, 0x25, 0x96, 0x62, 0x00, 0x60, 0x80,
-	0x9a, 0xc2, 0xc6, 0x62, 0x00, 0x60, 0x80, 0xba,
-	0xc8, 0xc6, 0x62, 0x00, 0x60, 0x80, 0x00, 0x0a,
-	0x82, 0x08, 0x02, 0x0d, 0x88, 0x11, 0x12, 0x13,
-	0x14, 0x15, 0x16, 0x17, 0x18, 0x00, 0x81, 0x00,
-	0x0e, 0x9d, 0x41, 0xc0, 0x19, 0x08, 0x09, 0x00,
-	0x49, 0x21, 0x63, 0x54, 0x40, 0x50, 0x60, 0x19,
-	0x54, 0xab, 0xb3, 0x18, 0x05, 0xf4, 0xef, 0xe2,
-	0xb7, 0x00, 0x17, 0x16, 0xd7, 0x59, 0x65
+/* DTAP - Routing Area Update Accept */
+static const unsigned char dtap_ra_upd_acc[] = {
+	0x08, 0x09, 0x00, 0x49, 0x21, 0x63, 0x54,
+	0x40, 0x50, 0x60, 0x19, 0x54, 0xab, 0xb3, 0x18,
+	0x05, 0xf4, 0xef, 0xe2, 0xb7, 0x00, 0x17, 0x16,
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Activate PDP Context Request */
-static const unsigned char bssgp_act_pdp_ctx_req[76] = {
-	0x01, 0xef, 0xe2, 0xb7, 0x00, 0x00, 0x00, 0x04,
-	0x08, 0x88, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
-	0x75, 0x30, 0x00, 0x80, 0x0e, 0x00, 0x35, 0x01,
-	0xc0, 0x0d, 0x0a, 0x41, 0x05, 0x03, 0x0c, 0x00,
+/* DTAP - Activate PDP Context Request */
+static const unsigned char dtap_act_pdp_ctx_req[] = {
+	0x0a, 0x41, 0x05, 0x03, 0x0c, 0x00,
 	0x00, 0x1f, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x02, 0x01, 0x21, 0x28, 0x03,
 	0x02, 0x61, 0x62, 0x27, 0x14, 0x80, 0x80, 0x21,
 	0x10, 0x01, 0x00, 0x00, 0x10, 0x81, 0x06, 0x00,
 	0x00, 0x00, 0x00, 0x83, 0x06, 0x00, 0x00, 0x00,
-	0x00, 0x5a, 0xff, 0x02
+	0x00
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Detach Request (MO) */
+/* DTAP - Detach Request (MO) */
 /* normal detach, power_off = 1 */
-static const unsigned char bssgp_detach_po_req[44] = {
-	0x01, 0xef, 0xe2, 0xb7, 0x00, 0x00, 0x00, 0x04,
-	0x08, 0x88, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
-	0x75, 0x30, 0x00, 0x80, 0x0e, 0x00, 0x15, 0x01,
-	0xc0, 0x19, 0x08, 0x05, 0x09, 0x18, 0x05, 0xf4,
-	0xef, 0xe2, 0xb7, 0x00, 0x19, 0x03, 0xb9, 0x97,
-	0xcb, 0x84, 0x0c, 0xeb
+static const unsigned char dtap_detach_po_req[] = {
+	0x08, 0x05, 0x09, 0x18, 0x05, 0xf4, 0xef, 0xe2,
+	0xb7, 0x00, 0x19, 0x03, 0xb9, 0x97, 0xcb
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Detach Request (MO) */
+/* DTAP - Detach Request (MO) */
 /* normal detach, power_off = 0 */
-static const unsigned char bssgp_detach_req[44] = {
-	0x01, 0xef, 0xe2, 0xb7, 0x00, 0x00, 0x00, 0x04,
-	0x08, 0x88, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
-	0x75, 0x30, 0x00, 0x80, 0x0e, 0x00, 0x15, 0x01,
-	0xc0, 0x19, 0x08, 0x05, 0x01, 0x18, 0x05, 0xf4,
-	0xef, 0xe2, 0xb7, 0x00, 0x19, 0x03, 0xb9, 0x97,
-	0xcb, 0x7e, 0xe1, 0x41
+static const unsigned char dtap_detach_req[] = {
+	0x08, 0x05, 0x01, 0x18, 0x05, 0xf4, 0xef, 0xe2,
+	0xb7, 0x00, 0x19, 0x03, 0xb9, 0x97, 0xcb
 };
 
-/* Base Station Subsystem GPRS Protocol: GSM A-I/F DTAP - Detach Accept */
-static const unsigned char bssgp_detach_acc[67] = {
-	0x00, 0xef, 0xe2, 0xb7, 0x00, 0x00, 0x50, 0x20,
-	0x16, 0x82, 0x02, 0x58, 0x13, 0x99, 0x18, 0xb3,
-	0x43, 0x2b, 0x25, 0x96, 0x62, 0x00, 0x60, 0x80,
-	0x9a, 0xc2, 0xc6, 0x62, 0x00, 0x60, 0x80, 0xba,
-	0xc8, 0xc6, 0x62, 0x00, 0x60, 0x80, 0x00, 0x0a,
-	0x82, 0x08, 0x02, 0x0d, 0x88, 0x11, 0x12, 0x13,
-	0x14, 0x15, 0x16, 0x17, 0x18, 0x00, 0x81, 0x00,
-	0x0e, 0x89, 0x41, 0xc0, 0x15, 0x08, 0x06, 0x00,
-	0xf7, 0x35, 0xf0
+/* DTAP - Detach Accept */
+static const unsigned char dtap_detach_acc[] = {
+	0x08, 0x06, 0x00
 };
 
 static int gprs_process_message(struct gprs_ns_inst *nsi, const char *text,
@@ -383,6 +325,106 @@ static void send_ns_unitdata(struct gprs_ns_inst *nsi, const char *text,
 	gprs_process_message(nsi, text ? text : "UNITDATA", src_addr, msg, bssgp_msg_size + 4);
 }
 
+static void send_bssgp_ul_unitdata(
+	struct gprs_ns_inst *nsi, const char *text,
+	struct sockaddr_in *src_addr, uint16_t nsbvci, uint32_t tlli,
+	struct gprs_ra_id *raid, uint16_t cell_id,
+	const uint8_t *llc_msg, size_t llc_msg_size)
+{
+	/* GPRS Network Service, PDU type: NS_UNITDATA */
+	/* Base Station Subsystem GPRS Protocol: UL_UNITDATA */
+	unsigned char msg[4096] = {
+		0x01, /* TLLI */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
+		0x08, 0x88, /* RAI */ 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
+		/* CELL ID */ 0x00, 0x00, 0x00, 0x80, 0x0e, /* LLC LEN */ 0x00, 0x00,
+	};
+
+	size_t bssgp_msg_size = 23 + llc_msg_size;
+
+	OSMO_ASSERT(bssgp_msg_size <= sizeof(msg));
+
+	gsm48_construct_ra(msg + 10, raid);
+	msg[1] = (uint8_t)(tlli >> 24);
+	msg[2] = (uint8_t)(tlli >> 16);
+	msg[3] = (uint8_t)(tlli >> 8);
+	msg[4] = (uint8_t)(tlli >> 0);
+	msg[16] = cell_id / 256;
+	msg[17] = cell_id % 256;
+	msg[21] = llc_msg_size / 256;
+	msg[22] = llc_msg_size % 256;
+	memcpy(msg + 23, llc_msg, llc_msg_size);
+
+	send_ns_unitdata(nsi, text ? text : "BSSGP UL UNITDATA",
+			 src_addr, nsbvci, msg, bssgp_msg_size);
+}
+
+static void send_bssgp_dl_unitdata(
+	struct gprs_ns_inst *nsi, const char *text,
+	struct sockaddr_in *src_addr, uint16_t nsbvci, uint32_t tlli,
+	int with_racap_drx, const uint8_t *imsi, size_t imsi_size,
+	const uint8_t *llc_msg, size_t llc_msg_size)
+{
+	/* Base Station Subsystem GPRS Protocol: DL_UNITDATA */
+	unsigned char msg[4096] = {
+		0x00, /* TLLI */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x50, 0x20,
+		0x16, 0x82, 0x02, 0x58,
+	};
+	unsigned char racap_drx[] = {
+		0x13, 0x99, 0x18, 0xb3, 0x43, 0x2b, 0x25, 0x96,
+		0x62, 0x00, 0x60, 0x80, 0x9a, 0xc2, 0xc6, 0x62,
+		0x00, 0x60, 0x80, 0xba, 0xc8, 0xc6, 0x62, 0x00,
+		0x60, 0x80, 0x00, 0x0a, 0x82, 0x08, 0x02
+	};
+
+	size_t bssgp_msg_size = 0;
+
+	OSMO_ASSERT(51 + imsi_size + llc_msg_size <= sizeof(msg));
+
+	msg[1] = (uint8_t)(tlli >> 24);
+	msg[2] = (uint8_t)(tlli >> 16);
+	msg[3] = (uint8_t)(tlli >> 8);
+	msg[4] = (uint8_t)(tlli >> 0);
+
+	bssgp_msg_size = 12;
+
+	if (with_racap_drx) {
+		memcpy(msg + bssgp_msg_size, racap_drx, sizeof(racap_drx));
+		bssgp_msg_size += sizeof(racap_drx);
+	}
+
+	if (imsi) {
+		OSMO_ASSERT(imsi_size <= 127);
+		msg[bssgp_msg_size] = BSSGP_IE_IMSI;
+		msg[bssgp_msg_size + 1] = 0x80 | imsi_size;
+		memcpy(msg + bssgp_msg_size + 2, imsi, imsi_size);
+		bssgp_msg_size += 2 + imsi_size;
+	}
+
+	if ((bssgp_msg_size % 4) != 0) {
+		size_t abytes = (4 - (bssgp_msg_size + 2) % 4) % 4;
+		msg[bssgp_msg_size] = BSSGP_IE_ALIGNMENT;
+		msg[bssgp_msg_size + 1] = 0x80 | abytes;
+		memset(msg + bssgp_msg_size + 2, 0, abytes);
+		bssgp_msg_size += 2 + abytes;
+	}
+
+	msg[bssgp_msg_size] = BSSGP_IE_LLC_PDU;
+	if (llc_msg_size < 128) {
+		msg[bssgp_msg_size + 1] = 0x80 | llc_msg_size;
+		bssgp_msg_size += 2;
+	} else {
+		msg[bssgp_msg_size + 1] = llc_msg_size / 256;
+		msg[bssgp_msg_size + 2] = llc_msg_size % 256;
+		bssgp_msg_size += 3;
+	}
+	memcpy(msg + bssgp_msg_size, llc_msg, llc_msg_size);
+	bssgp_msg_size += llc_msg_size;
+
+
+	send_ns_unitdata(nsi, text ? text : "BSSGP DL UNITDATA",
+			 src_addr, nsbvci, msg, bssgp_msg_size);
+}
+
 static void send_bssgp_reset(struct gprs_ns_inst *nsi, struct sockaddr_in *src_addr,
 			     uint16_t bvci)
 {
@@ -446,6 +488,82 @@ static void send_bssgp_suspend_ack(struct gprs_ns_inst *nsi,
 
 	send_ns_unitdata(nsi, "BVC_SUSPEND_ACK", src_addr, 0, msg, sizeof(msg));
 }
+
+static void send_llc_ul_ui(
+	struct gprs_ns_inst *nsi, const char *text,
+	struct sockaddr_in *src_addr, uint16_t nsbvci, uint32_t tlli,
+	struct gprs_ra_id *raid, uint16_t cell_id,
+	unsigned sapi, unsigned nu,
+	const uint8_t *msg, size_t msg_size)
+{
+	unsigned char llc_msg[4096] = {
+		0x00, 0xc0, 0x01
+	};
+
+	size_t llc_msg_size = 3 + msg_size + 3;
+	uint8_t e_bit = 0;
+	uint8_t pm_bit = 1;
+	unsigned fcs;
+
+	nu &= 0x01ff;
+
+	OSMO_ASSERT(llc_msg_size <= sizeof(llc_msg));
+
+	llc_msg[0] = (sapi & 0x0f);
+	llc_msg[1] = 0xc0 | (nu >> 6); /* UI frame */
+	llc_msg[2] = (nu << 2) | ((e_bit & 1) << 1) | (pm_bit & 1);
+
+	memcpy(llc_msg + 3, msg, msg_size);
+
+	fcs = gprs_llc_fcs(llc_msg, msg_size + 3);
+	llc_msg[3 + msg_size + 0] = (uint8_t)(fcs >> 0);
+	llc_msg[3 + msg_size + 1] = (uint8_t)(fcs >> 8);
+	llc_msg[3 + msg_size + 2] = (uint8_t)(fcs >> 16);
+
+	send_bssgp_ul_unitdata(nsi, text ? text : "LLC UI",
+			       src_addr, nsbvci, tlli, raid, cell_id,
+			       llc_msg, llc_msg_size);
+}
+
+static void send_llc_dl_ui(
+	struct gprs_ns_inst *nsi, const char *text,
+	struct sockaddr_in *src_addr, uint16_t nsbvci, uint32_t tlli,
+	int with_racap_drx, const uint8_t *imsi, size_t imsi_size,
+	unsigned sapi, unsigned nu,
+	const uint8_t *msg, size_t msg_size)
+{
+	/* GPRS Network Service, PDU type: NS_UNITDATA */
+	/* Base Station Subsystem GPRS Protocol: UL_UNITDATA */
+	unsigned char llc_msg[4096] = {
+		0x00, 0x00, 0x01
+	};
+
+	size_t llc_msg_size = 3 + msg_size + 3;
+	uint8_t e_bit = 0;
+	uint8_t pm_bit = 1;
+	unsigned fcs;
+
+	nu &= 0x01ff;
+
+	OSMO_ASSERT(llc_msg_size <= sizeof(llc_msg));
+
+	llc_msg[0] = 0x40 | (sapi & 0x0f);
+	llc_msg[1] = 0xc0 | (nu >> 6); /* UI frame */
+	llc_msg[2] = (nu << 2) | ((e_bit & 1) << 1) | (pm_bit & 1);
+
+	memcpy(llc_msg + 3, msg, msg_size);
+
+	fcs = gprs_llc_fcs(llc_msg, msg_size + 3);
+	llc_msg[3 + msg_size + 0] = (uint8_t)(fcs >> 0);
+	llc_msg[3 + msg_size + 1] = (uint8_t)(fcs >> 8);
+	llc_msg[3 + msg_size + 2] = (uint8_t)(fcs >> 16);
+
+	send_bssgp_dl_unitdata(nsi, text ? text : "LLC UI",
+			       src_addr, nsbvci, tlli,
+			       with_racap_drx, imsi, imsi_size,
+			       llc_msg, llc_msg_size);
+}
+
 
 static void setup_ns(struct gprs_ns_inst *nsi, struct sockaddr_in *src_addr,
 		     uint16_t nsvci, uint16_t nsei)
@@ -979,9 +1097,12 @@ static void test_gbproxy_ra_patching()
 		{.mcc = 123, .mnc = 456, .lac = 16464, .rac = 96};
 	struct  gprs_ra_id rai_unknown =
 		{.mcc = 1, .mnc = 99, .lac = 99, .rac = 96};
+	uint16_t cell_id = 0x7530;
 	const char *err_msg = NULL;
 	const uint32_t ptmsi = 0xefe2b700;
 	const uint32_t local_tlli = 0xefe2b700;
+	const uint32_t foreign_tlli = 0xbbc54679;
+	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
 	struct gbproxy_tlli_info *tlli_info;
 	struct gbproxy_peer *peer;
 
@@ -1032,17 +1153,25 @@ static void test_gbproxy_ra_patching()
 
 	printf("--- Send message from BSS 1 to SGSN, BVCI 0x1002 ---\n\n");
 
-	send_ns_unitdata(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
-			 bssgp_attach_req, sizeof(bssgp_attach_req));
+	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
+		       foreign_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 0,
+		       dtap_attach_req, sizeof(dtap_attach_req));
 
-	send_ns_unitdata(nsi, "IDENT REQUEST", &sgsn_peer, 0x1002,
-			 bssgp_identity_req, sizeof(bssgp_identity_req));
+	send_llc_dl_ui(nsi, "IDENT REQUEST", &sgsn_peer, 0x1002,
+		       foreign_tlli, 0, NULL, 0,
+		       GPRS_SAPI_GMM, 0,
+		       dtap_identity_req, sizeof(dtap_identity_req));
 
-	send_ns_unitdata(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
-			 bssgp_identity_resp, sizeof(bssgp_identity_resp));
+	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
+		       foreign_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 3,
+		       dtap_identity_resp, sizeof(dtap_identity_resp));
 
-	send_ns_unitdata(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
-			 bssgp_attach_acc, sizeof(bssgp_attach_acc));
+	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
+		       foreign_tlli, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, 1,
+		       dtap_attach_acc, sizeof(dtap_attach_acc));
 
 	tlli_info = gbprox_find_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
@@ -1051,8 +1180,10 @@ static void test_gbproxy_ra_patching()
 	OSMO_ASSERT(!tlli_info->bss_validated);
 	OSMO_ASSERT(!tlli_info->net_validated);
 
-	send_ns_unitdata(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
-			 bssgp_attach_complete, sizeof(bssgp_attach_complete));
+	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 4,
+		       dtap_attach_complete, sizeof(dtap_attach_complete));
 
 	tlli_info = gbprox_find_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
@@ -1062,9 +1193,10 @@ static void test_gbproxy_ra_patching()
 	OSMO_ASSERT(!tlli_info->net_validated);
 
 	/* Replace APN (1) */
-	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REPLACE APN)",
-			 &bss_peer[0], 0x1002,
-			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
+	send_llc_ul_ui(nsi, "ACT PDP CTX REQ (REPLACE APN)", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 3,
+		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
 	tlli_info = gbprox_find_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
@@ -1073,8 +1205,10 @@ static void test_gbproxy_ra_patching()
 	OSMO_ASSERT(tlli_info->bss_validated);
 	OSMO_ASSERT(!tlli_info->net_validated);
 
-	send_ns_unitdata(nsi, "GMM INFO", &sgsn_peer, 0x1002,
-			 bssgp_gmm_information, sizeof(bssgp_gmm_information));
+	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
+		       local_tlli, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, 2,
+		       dtap_gmm_information, sizeof(dtap_gmm_information));
 
 	tlli_info = gbprox_find_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
@@ -1082,47 +1216,60 @@ static void test_gbproxy_ra_patching()
 	OSMO_ASSERT(tlli_info->tlli == local_tlli);
 
 	/* Replace APN (2) */
-	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REPLACE APN)",
-			 &bss_peer[0], 0x1002,
-			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
+	send_llc_ul_ui(nsi, "ACT PDP CTX REQ (REPLACE APN)", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 3,
+		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
 	gbcfg.core_apn[0] = 0;
 	gbcfg.core_apn_size = 0;
 
 	/* Remove APN */
-	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REMOVE APN)",
-			 &bss_peer[0], 0x1002,
-			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
+	send_llc_ul_ui(nsi, "ACT PDP CTX REQ (REMOVE APN)", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 3,
+		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	/* Detach */
-	send_ns_unitdata(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
-			 bssgp_detach_req, sizeof(bssgp_detach_req));
+	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 6,
+		       dtap_detach_req, sizeof(dtap_detach_req));
 
-	send_ns_unitdata(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
-			 bssgp_detach_acc, sizeof(bssgp_detach_acc));
+	send_llc_dl_ui(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
+		       local_tlli, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, 5,
+		       dtap_detach_acc, sizeof(dtap_detach_acc));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- RA update ---\n\n");
 
-	send_ns_unitdata(nsi, "RA UPD REQ", &bss_peer[0], 0x1002,
-			 bssgp_ra_upd_req, sizeof(bssgp_ra_upd_req));
+	send_llc_ul_ui(nsi, "RA UPD REQ", &bss_peer[0], 0x1002,
+		       foreign_tlli, &rai_bss, 0x7080,
+		       GPRS_SAPI_GMM, 5,
+		       dtap_ra_upd_req, sizeof(dtap_ra_upd_req));
 
-	send_ns_unitdata(nsi, "RA UPD ACC", &sgsn_peer, 0x1002,
-			 bssgp_ra_upd_acc, sizeof(bssgp_ra_upd_acc));
+	send_llc_dl_ui(nsi, "RA UPD ACC", &sgsn_peer, 0x1002,
+		       foreign_tlli, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, 6,
+		       dtap_ra_upd_acc, sizeof(dtap_ra_upd_acc));
 
 	/* Remove APN */
-	send_ns_unitdata(nsi, "ACT PDP CTX REQ (REMOVE APN)",
-			 &bss_peer[0], 0x1002,
-			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
+	send_llc_ul_ui(nsi, "ACT PDP CTX REQ (REMOVE APN)", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 3,
+		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	/* Detach (power off -> no Detach Accept) */
-	send_ns_unitdata(nsi, "DETACH REQ (PWR OFF)", &bss_peer[0], 0x1002,
-			 bssgp_detach_po_req, sizeof(bssgp_detach_po_req));
+	send_llc_ul_ui(nsi, "DETACH REQ (PWR OFF)", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 6,
+		       dtap_detach_po_req, sizeof(dtap_detach_po_req));
 
 	dump_global(stdout, 0);
 	dump_peers(stdout, 0, 0, &gbcfg);
@@ -1130,8 +1277,10 @@ static void test_gbproxy_ra_patching()
 	printf("--- Bad cases ---\n\n");
 
 	printf("TLLI is already detached, shouldn't patch\n");
-	send_ns_unitdata(nsi, "ACT PDP CTX REQ", &bss_peer[0], 0x1002,
-			 bssgp_act_pdp_ctx_req, sizeof(bssgp_act_pdp_ctx_req));
+	send_llc_ul_ui(nsi, "ACT PDP CTX REQ", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 3,
+		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
 	printf("Invalid RAI, shouldn't patch\n");
 	send_bssgp_suspend_ack(nsi, &sgsn_peer, &rai_unknown);
