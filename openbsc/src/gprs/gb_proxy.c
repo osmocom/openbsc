@@ -1982,7 +1982,9 @@ patch_error:
 	OSMO_ASSERT(err_ctr >= 0);
 	rate_ctr_inc(&peer->ctrg->ctr[err_ctr]);
 	LOGP(DGPRS, LOGL_ERROR,
-	     "Failed to patch BSSGP message as requested: %s.\n", err_info);
+	     "NSEI=%u(%s) failed to patch BSSGP message as requested: %s.\n",
+	     msgb_nsei(msg), parse_ctx->to_bss ? "SGSN" : "BSS",
+	     err_info);
 }
 
 /* patch BSSGP message */
@@ -2008,7 +2010,9 @@ static void gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	if (!rc) {
 		if (!parse_ctx.need_decryption) {
 			LOGP(DGPRS, LOGL_ERROR,
-			     "Failed to parse BSSGP/GMM message\n");
+			     "NSEI=%u(BSS) patching: "
+			     "failed to parse BSSGP/GMM message\n",
+			     msgb_nsei(msg));
 			return;
 		}
 	}
@@ -2071,7 +2075,9 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 	if (!rc) {
 		if (!parse_ctx.need_decryption) {
 			LOGP(DGPRS, LOGL_ERROR,
-			     "Failed to parse BSSGP/GMM message\n");
+			     "NSEI=%u(SGSN) patching: "
+			     "failed to parse BSSGP/GMM message\n",
+			     msgb_nsei(msg));
 			return;
 		}
 	}
