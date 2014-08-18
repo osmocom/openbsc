@@ -42,6 +42,7 @@
 #include <osmocom/core/select.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/abis/ipa.h>
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/socket.h>
@@ -437,7 +438,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 {
 	struct tlv_parsed tlvp;
 	uint8_t msg_type = *(msg->l2h);
-	uint16_t site_id, bts_id, trx_id;
+	struct ipaccess_unit unit_data;
 	struct ipa_bts_conn *ipbc;
 	int ret = 0;
 
@@ -461,18 +462,19 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 		}
 
 		/* lookup BTS, create sign_link, ... */
-		site_id = bts_id = trx_id = 0;
+		memset(&unit_data, 0, sizeof(unit_data));
 		ipaccess_parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
-				      &site_id, &bts_id, &trx_id);
-		ipbc = find_bts_by_unitid(ipp, site_id, bts_id);
+				      &unit_data);
+		ipbc = find_bts_by_unitid(ipp, unit_data.site_id, unit_data.bts_id);
 		if (!ipbc) {
 			/* We have not found an ipbc (per-bts proxy instance)
 			 * for this BTS yet.  The first connection of a new BTS must
 			 * be a OML connection.  We allocate the associated data structures,
 			 * and try to connect to the remote end */
 
-			return ipbc_alloc_connect(ipc, bfd, site_id, bts_id,
-						  trx_id, &tlvp, msg);
+			return ipbc_alloc_connect(ipc, bfd, unit_data.site_id,
+						  unit_data.bts_id,
+						  unit_data.trx_id, &tlvp, msg);
 			/* if this fails, the caller will clean up bfd */
 		} else {
 			struct sockaddr_in sin;
@@ -481,7 +483,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 			inet_aton(bsc_ipaddr, &sin.sin_addr);
 
 			DEBUGP(DLINP, "Identified BTS %u/%u/%u\n",
-				site_id, bts_id, trx_id);
+				unit_data.site_id, unit_data.bts_id, unit_data.trx_id);
 
 			if ((bfd->priv_nr & 0xff) != RSL_FROM_BTS) {
 				LOGP(DLINP, LOGL_ERROR, "Second OML connection from "
@@ -489,7 +491,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 				return 0;
 			}
 
-			if (trx_id >= MAX_TRX) {
+			if (unit_data.trx_id >= MAX_TRX) {
 				LOGP(DLINP, LOGL_ERROR, "We don't support more "
 				     "than %u TRX\n", MAX_TRX);
 				return -EINVAL;
@@ -497,17 +499,17 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 
 			ipc->bts_conn = ipbc;
 			/* store TRX number in higher 8 bit of the bfd private number */
-			bfd->priv_nr |= trx_id << 8;
-			ipbc->rsl_conn[trx_id] = ipc;
+			bfd->priv_nr |= unit_data.trx_id << 8;
+			ipbc->rsl_conn[unit_data.trx_id] = ipc;
 
 			/* Create RSL TCP connection towards BSC */
 			sin.sin_port = htons(IPA_TCP_PORT_RSL);
-			ipbc->bsc_rsl_conn[trx_id] =
-				connect_bsc(&sin, RSL_TO_BSC | (trx_id << 8), ipbc);
+			ipbc->bsc_rsl_conn[unit_data.trx_id] =
+				connect_bsc(&sin, RSL_TO_BSC | (unit_data.trx_id << 8), ipbc);
 			if (!ipbc->bsc_oml_conn)
 				return -EIO;
 			DEBUGP(DLINP, "(%u/%u/%u) Connected RSL to BSC\n",
-				site_id, bts_id, trx_id);
+				unit_data.site_id, unit_data.bts_id, unit_data.trx_id);
 		}
 		break;
 	case IPAC_MSGT_ID_GET:
@@ -876,7 +878,7 @@ static int handle_tcp_write(struct osmo_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
+static int proxy_ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
@@ -922,7 +924,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	bfd->fd = ret;
 	bfd->data = ipc;
 	bfd->priv_nr = listen_bfd->priv_nr;
-	bfd->cb = ipaccess_fd_cb;
+	bfd->cb = proxy_ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
