@@ -104,6 +104,11 @@ static int config_write_gbproxy(struct vty *vty)
 	       else
 		       vty_out(vty, "%s", VTY_NEWLINE);
 	}
+
+	if (g_cfg->patch_ptmsi > 0)
+		vty_out(vty, " patch-ptmsi%s",
+			VTY_NEWLINE);
+
 	if (g_cfg->tlli_max_age > 0)
 		vty_out(vty, " tlli-list max-age %d%s",
 			g_cfg->tlli_max_age, VTY_NEWLINE);
@@ -266,6 +271,28 @@ DEFUN(cfg_gbproxy_no_core_apn,
       NO_STR GBPROXY_CORE_APN_STR)
 {
 	return set_core_apn(vty, NULL, NULL);
+}
+
+#define GBPROXY_PATCH_PTMSI_STR "Patch P-TMSI/TLLI\n"
+
+DEFUN(cfg_gbproxy_patch_ptmsi,
+      cfg_gbproxy_patch_ptmsi_cmd,
+      "patch-ptmsi",
+      GBPROXY_PATCH_PTMSI_STR)
+{
+	g_cfg->patch_ptmsi = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_no_patch_ptmsi,
+      cfg_gbproxy_no_patch_ptmsi_cmd,
+      "no patch-ptmsi",
+      NO_STR GBPROXY_PATCH_PTMSI_STR)
+{
+	g_cfg->patch_ptmsi = 0;
+
+	return CMD_SUCCESS;
 }
 
 #define GBPROXY_TLLI_LIST_STR "Set TLLI list parameters\n"
@@ -575,11 +602,13 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mnc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_match_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_apn_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_no_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_mode_cmd);
