@@ -409,6 +409,7 @@ struct gbproxy_parse_context {
 	uint8_t *ptmsi_enc;
 	uint8_t *new_ptmsi_enc;
 	uint8_t *raid_enc;
+	uint8_t *old_raid_enc;
 	uint8_t *bssgp_raid_enc;
 	uint8_t *bssgp_ptimsi;
 
@@ -418,6 +419,7 @@ struct gbproxy_parse_context {
 	int need_decryption;
 	uint32_t tlli;
 	int pdu_type;
+	int old_raid_matches;
 };
 
 struct gbproxy_tlli_info *gbprox_find_tlli(struct gbproxy_peer *peer,
@@ -821,13 +823,51 @@ static int patching_is_required(struct gbproxy_peer *peer,
 	return need_at_least <= peer->cfg->patch_mode;
 }
 
-/* patch RA identifier in place, update peer accordingly */
-static void gbprox_patch_raid(uint8_t *raid_enc, struct gbproxy_peer *peer,
-			      int to_bss, const char *log_text)
+/* update peer according to the BSS message */
+static void gbprox_update_current_raid(uint8_t *raid_enc,
+				       struct gbproxy_peer *peer,
+				       const char *log_text)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
 	const int old_local_mcc = state->local_mcc;
 	const int old_local_mnc = state->local_mnc;
+	struct gprs_ra_id raid;
+
+	if (!raid_enc)
+		return;
+
+	gsm48_parse_ra(&raid, raid_enc);
+
+	/* save source side MCC/MNC */
+	if (!peer->cfg->core_mcc || raid.mcc == peer->cfg->core_mcc) {
+		state->local_mcc = 0;
+	} else {
+		state->local_mcc = raid.mcc;
+	}
+
+	if (!peer->cfg->core_mnc || raid.mnc == peer->cfg->core_mnc) {
+		state->local_mnc = 0;
+	} else {
+		state->local_mnc = raid.mnc;
+	}
+
+	if (old_local_mcc != state->local_mcc ||
+	    old_local_mnc != state->local_mnc)
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "Patching RAID %sactivated, msg: %s, "
+		     "local: %d-%d, core: %d-%d\n",
+		     state->local_mcc || state->local_mnc ?
+		     "" : "de",
+		     log_text,
+		     state->local_mcc, state->local_mnc,
+		     peer->cfg->core_mcc, peer->cfg->core_mnc);
+}
+
+/* patch RA identifier in place */
+static void gbprox_patch_raid(uint8_t *raid_enc, struct gbproxy_peer *peer,
+			      int to_bss, const char *log_text)
+{
+	struct gbproxy_patch_state *state = &peer->patch_state;
 	int old_mcc;
 	int old_mnc;
 	struct gprs_ra_id raid;
@@ -839,20 +879,11 @@ static void gbprox_patch_raid(uint8_t *raid_enc, struct gbproxy_peer *peer,
 
 	if (!to_bss) {
 		/* BSS -> SGSN */
-		/* save BSS side MCC/MNC */
-		if (!peer->cfg->core_mcc || raid.mcc == peer->cfg->core_mcc) {
-			state->local_mcc = 0;
-		} else {
-			state->local_mcc = raid.mcc;
+		if (state->local_mcc)
 			raid.mcc = peer->cfg->core_mcc;
-		}
 
-		if (!peer->cfg->core_mnc || raid.mnc == peer->cfg->core_mnc) {
-			state->local_mnc = 0;
-		} else {
-			state->local_mnc = raid.mnc;
+		if (state->local_mnc)
 			raid.mnc = peer->cfg->core_mnc;
-		}
 	} else {
 		/* SGSN -> BSS */
 		if (state->local_mcc)
@@ -861,18 +892,6 @@ static void gbprox_patch_raid(uint8_t *raid_enc, struct gbproxy_peer *peer,
 		if (state->local_mnc)
 			raid.mnc = state->local_mnc;
 	}
-
-	if (old_local_mcc != state->local_mcc ||
-	    old_local_mnc != state->local_mnc)
-		LOGP(DGPRS, LOGL_NOTICE,
-		     "Patching RAID %sactivated, msg: %s, "
-		     "local: %d-%d, core: %d-%d, to %s\n",
-		     state->local_mcc || state->local_mnc ?
-		     "" : "de",
-		     log_text,
-		     state->local_mcc, state->local_mnc,
-		     peer->cfg->core_mcc, peer->cfg->core_mnc,
-		     to_bss ? "BSS" : "SGSN");
 
 	if (state->local_mcc || state->local_mnc) {
 		enum gbprox_peer_ctr counter =
@@ -979,7 +998,7 @@ static int gbprox_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
-	parse_ctx->raid_enc = value;
+	parse_ctx->old_raid_enc = value;
 
 	return 1;
 }
@@ -1069,7 +1088,7 @@ static int gbprox_parse_gmm_ra_upd_req(uint8_t *data, size_t data_len,
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
-	parse_ctx->raid_enc = value;
+	parse_ctx->old_raid_enc = value;
 
 	return 1;
 }
@@ -1339,10 +1358,14 @@ static int gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 		return have_patched;
 
 	if (parse_ctx->raid_enc) {
-		/* TODO: BSS->SGSN: Only patch if matches original BSSGP,
-		 * don't update internal mapping, patch to invalid if P-TMSI
-		 * unknown. */
 		gbprox_patch_raid(parse_ctx->raid_enc, peer, parse_ctx->to_bss,
+				  parse_ctx->llc_msg_name);
+		have_patched = 1;
+	}
+
+	if (parse_ctx->old_raid_enc && parse_ctx->old_raid_matches) {
+		/* TODO: Patch to invalid if P-TMSI unknown. */
+		gbprox_patch_raid(parse_ctx->old_raid_enc, peer, parse_ctx->to_bss,
 				  parse_ctx->llc_msg_name);
 		have_patched = 1;
 	}
@@ -1396,6 +1419,30 @@ static void gbprox_log_parse_context(struct gbproxy_parse_context *parse_ctx,
 
 	if (parse_ctx->tlli_enc) {
 		LOGP(DGPRS, LOGL_DEBUG, "%s TLLI %08x", sep, parse_ctx->tlli);
+		sep = ",";
+	}
+
+	if (parse_ctx->bssgp_raid_enc) {
+		struct gprs_ra_id raid;
+		gsm48_parse_ra(&raid, parse_ctx->bssgp_raid_enc);
+		LOGP(DGPRS, LOGL_DEBUG, "%s BSSGP RAID %u-%u-%u-%u", sep,
+		     raid.mcc, raid.mnc, raid.lac, raid.rac);
+		sep = ",";
+	}
+
+	if (parse_ctx->raid_enc) {
+		struct gprs_ra_id raid;
+		gsm48_parse_ra(&raid, parse_ctx->raid_enc);
+		LOGP(DGPRS, LOGL_DEBUG, "%s RAID %u-%u-%u-%u", sep,
+		     raid.mcc, raid.mnc, raid.lac, raid.rac);
+		sep = ",";
+	}
+
+	if (parse_ctx->old_raid_enc) {
+		struct gprs_ra_id raid;
+		gsm48_parse_ra(&raid, parse_ctx->old_raid_enc);
+		LOGP(DGPRS, LOGL_DEBUG, "%s old RAID %u-%u-%u-%u", sep,
+		     raid.mcc, raid.mnc, raid.lac, raid.rac);
 		sep = ",";
 	}
 
@@ -1839,6 +1886,13 @@ static void gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	}
 
 	now = time(NULL);
+
+	if (parse_ctx.bssgp_raid_enc && parse_ctx.old_raid_enc &&
+	    memcmp(parse_ctx.bssgp_raid_enc, parse_ctx.old_raid_enc, 6) == 0)
+		parse_ctx.old_raid_matches = 1;
+
+	gbprox_update_current_raid(parse_ctx.bssgp_raid_enc, peer,
+				   parse_ctx.llc_msg_name);
 
 	tlli_info = gbprox_update_state_ul(peer, now, &parse_ctx);
 
