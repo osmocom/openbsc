@@ -630,27 +630,30 @@ int gbprox_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
 	return deleted_count;
 }
 
-static struct gbproxy_tlli_info *gbprox_get_detached_tlli_info(
+static struct gbproxy_tlli_info *gbprox_tlli_info_alloc(
+	struct gbproxy_peer *peer)
+{
+	struct gbproxy_tlli_info *tlli_info;
+
+	tlli_info = talloc_zero(peer, struct gbproxy_tlli_info);
+	tlli_info->tlli.ptmsi = GSM_RESERVED_TMSI;
+	tlli_info->sgsn_tlli.ptmsi = GSM_RESERVED_TMSI;
+
+	return tlli_info;
+}
+
+static void gbprox_detach_tlli_info(
 	struct gbproxy_peer *peer,
-	struct gbproxy_tlli_info *tlli_info,
-	uint32_t tlli)
+	struct gbproxy_tlli_info *tlli_info)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
-	if (!tlli_info) {
-		/* move this into an tlli_alloc function */
-		tlli_info = talloc_zero(peer, struct gbproxy_tlli_info);
-		tlli_info->tlli.current = tlli;
-	} else {
-		llist_del(&tlli_info->list);
-		OSMO_ASSERT(state->enabled_tllis_count > 0);
-		state->enabled_tllis_count -= 1;
+	llist_del(&tlli_info->list);
+	OSMO_ASSERT(state->enabled_tllis_count > 0);
+	state->enabled_tllis_count -= 1;
 
-		peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
-			state->enabled_tllis_count;
-	}
-
-	return tlli_info;
+	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
+		state->enabled_tllis_count;
 }
 
 static void gbprox_update_tlli_info(struct gbproxy_tlli_info *tlli_info,
@@ -717,7 +720,7 @@ static void gbprox_validate_tlli(struct gbproxy_tlli_state *tlli_state,
 void gbprox_touch_tlli(struct gbproxy_peer *peer,
 		       struct gbproxy_tlli_info *tlli_info, time_t now)
 {
-	gbprox_get_detached_tlli_info(peer, tlli_info, 0);
+	gbprox_detach_tlli_info(peer, tlli_info);
 	gbprox_attach_tlli_info(peer, now, tlli_info);
 }
 
@@ -750,9 +753,14 @@ struct gbproxy_tlli_info *gbprox_register_tlli(
 		}
 	}
 
-	tlli_already_known = tlli_info != NULL;
+	if (!tlli_info) {
+		tlli_info = gbprox_tlli_info_alloc(peer);
+		tlli_info->tlli.current = tlli;
+	} else {
+		gbprox_detach_tlli_info(peer, tlli_info);
+		tlli_already_known = 1;
+	}
 
-	tlli_info = gbprox_get_detached_tlli_info(peer, tlli_info, tlli);
 	OSMO_ASSERT(tlli_info != NULL);
 
 	if (!tlli_already_known)
