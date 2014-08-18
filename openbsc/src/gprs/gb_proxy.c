@@ -1327,10 +1327,10 @@ static int gbprox_parse_llc(uint8_t *llc, size_t llc_len,
 		return 0;
 
 	if (ghp->sapi != GPRS_SAPI_GMM)
-		return 0;
+		return 1;
 
 	if (ghp->cmd != GPRS_LLC_UI)
-		return 0;
+		return 1;
 
 	if (ghp->is_encrypted) {
 		parse_ctx->need_decryption = 1;
@@ -1354,7 +1354,7 @@ static int gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	int have_patched = 0;
 	int fcs;
 
-	if (!allow_message_patching(peer, parse_ctx->g48_hdr->msg_type))
+	if (parse_ctx->g48_hdr && !allow_message_patching(peer, parse_ctx->g48_hdr->msg_type))
 		return have_patched;
 
 	if (parse_ctx->raid_enc) {
