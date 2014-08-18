@@ -687,6 +687,26 @@ void gbprox_reassign_tlli(struct gbproxy_tlli_state *tlli_state,
 	tlli_state->net_validated = 0;
 }
 
+static uint32_t gbprox_map_tlli(uint32_t other_tlli,
+				struct gbproxy_tlli_info *tlli_info, int to_bss)
+{
+	uint32_t tlli = 0;
+	struct gbproxy_tlli_state *src, *dst;
+	if (to_bss) {
+		src = &tlli_info->sgsn_tlli;
+		dst = &tlli_info->tlli;
+	} else {
+		src = &tlli_info->tlli;
+		dst = &tlli_info->sgsn_tlli;
+	}
+	if (src->current == other_tlli)
+		tlli = dst->current;
+	else if (src->assigned == other_tlli)
+		tlli = dst->assigned;
+
+	return tlli;
+}
+
 static void gbprox_validate_tlli(struct gbproxy_tlli_state *tlli_state,
 				 uint32_t tlli, int to_bss)
 {
@@ -1489,6 +1509,7 @@ static uint32_t gbprox_make_bss_ptmsi(struct gbproxy_peer *peer,
 }
 
 static uint32_t gbprox_make_sgsn_tlli(struct gbproxy_peer *peer,
+				      struct gbproxy_tlli_info *tlli_info,
 				      uint32_t bss_tlli)
 {
 	return bss_tlli;
@@ -1525,16 +1546,14 @@ static struct gbproxy_tlli_info *gbprox_update_state_ul(
 						     parse_ctx->imsi,
 						     parse_ctx->imsi_len, now);
 			/* Setup TLLIs */
-			sgsn_tlli = gbprox_make_sgsn_tlli(peer, parse_ctx->tlli);
+			sgsn_tlli = gbprox_make_sgsn_tlli(peer, tlli_info,
+							  parse_ctx->tlli);
 			tlli_info->sgsn_tlli.current = sgsn_tlli;
 		} else {
-			sgsn_tlli = tlli_info->sgsn_tlli.assigned;
+			sgsn_tlli = gbprox_map_tlli(parse_ctx->tlli, tlli_info, 0);
 			if (!sgsn_tlli)
-				sgsn_tlli = tlli_info->sgsn_tlli.current;
-			if (!sgsn_tlli) {
-				sgsn_tlli = gbprox_make_sgsn_tlli(peer,
+				sgsn_tlli = gbprox_make_sgsn_tlli(peer, tlli_info,
 								  parse_ctx->tlli);
-			}
 
 			gbprox_validate_tlli(&tlli_info->tlli,
 					     parse_ctx->tlli, 0);
@@ -1612,10 +1631,12 @@ static struct gbproxy_tlli_info *gbprox_update_state_dl(
 					     peer, new_bss_tlli);
 			gbprox_touch_tlli(peer, tlli_info, now);
 		} else {
-			tlli_info =
-				gbprox_register_tlli(peer, new_bss_tlli,
-						     parse_ctx->imsi,
-						     parse_ctx->imsi_len, now);
+			tlli_info = gbprox_tlli_info_alloc(peer);
+			LOGP(DGPRS, LOGL_INFO,
+			     "Adding TLLI %08x to list (SGSN, new P-TMSI)\n",
+			     new_sgsn_tlli);
+
+			gbprox_attach_tlli_info(peer, now, tlli_info);
 			/* Setup TLLIs */
 			tlli_info->sgsn_tlli.current = new_sgsn_tlli;
 		}
@@ -1624,13 +1645,13 @@ static struct gbproxy_tlli_info *gbprox_update_state_dl(
 		tlli_info->tlli.ptmsi = new_bss_ptmsi;
 	} else if (parse_ctx->tlli_enc && parse_ctx->llc && !tlli_info) {
 		/* Unknown SGSN TLLI */
-		tlli_info =
-			gbprox_register_tlli(peer, parse_ctx->tlli,
-					     parse_ctx->imsi,
-					     parse_ctx->imsi_len, now);
+		tlli_info = gbprox_tlli_info_alloc(peer);
+		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list (SGSN)\n",
+		     parse_ctx->tlli);
 
+		gbprox_attach_tlli_info(peer, now, tlli_info);
 		/* Setup TLLIs */
-		tlli_info->sgsn_tlli.current = tlli_info->tlli.current;
+		tlli_info->sgsn_tlli.current = parse_ctx->tlli;
 		if (peer->cfg->patch_ptmsi) {
 			/* TODO: We don't know the local TLLI here, perhaps add
 			 * a workaround that derives a PTMSI from the SGSN TLLI
@@ -1640,12 +1661,14 @@ static struct gbproxy_tlli_info *gbprox_update_state_dl(
 			 * length.
 			 */
 			tlli_info->tlli.current = 0;
+		} else {
+			tlli_info->tlli.current = tlli_info->sgsn_tlli.current;
 		}
 	} else if (parse_ctx->tlli_enc && parse_ctx->llc && tlli_info) {
+		uint32_t bss_tlli = gbprox_map_tlli(parse_ctx->tlli,
+						    tlli_info, 1);
 		gbprox_validate_tlli(&tlli_info->sgsn_tlli, parse_ctx->tlli, 1);
-		if (!peer->cfg->patch_ptmsi)
-			gbprox_validate_tlli(&tlli_info->tlli,
-					     parse_ctx->tlli, 1);
+		gbprox_validate_tlli(&tlli_info->tlli, bss_tlli, 1);
 		gbprox_touch_tlli(peer, tlli_info, now);
 	} else if (tlli_info) {
 		gbprox_touch_tlli(peer, tlli_info, now);
@@ -1730,7 +1753,9 @@ static int gbprox_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
 		parse_ctx->imsi_len = TLVP_LEN(tp, BSSGP_IE_IMSI);
 	}
 
-	if (TLVP_PRESENT(tp, BSSGP_IE_TLLI))
+	/* TODO: This is TLLI old, don't confuse with TLLI current, add
+	 * and use tlli_old_enc instead */
+	if (0 && TLVP_PRESENT(tp, BSSGP_IE_TLLI))
 		parse_ctx->tlli_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_TLLI);
 
 	if (TLVP_PRESENT(tp, BSSGP_IE_TMSI) && pdu_type == BSSGP_PDUT_PAGING_PS)
