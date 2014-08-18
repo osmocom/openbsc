@@ -673,7 +673,10 @@ static int ipaccess_sign_link(struct msgb *msg)
 struct e1inp_line_ops ipaccess_e1inp_line_ops = {
 	.cfg = {
 		.ipa = {
+			/* TODO: make those configurable */
 			.addr = "0.0.0.0",
+			.oml_port = IPA_TCP_PORT_OML,
+			.rsl_port = IPA_TCP_PORT_RSL,
 			.role = E1INP_LINE_R_BSC,
 		},
 	},
