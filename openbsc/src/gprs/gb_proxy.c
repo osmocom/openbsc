@@ -95,10 +95,15 @@ enum gbprox_peer_ctr {
 	GBPROX_PEER_CTR_RAID_PATCHED_BSS,
 	GBPROX_PEER_CTR_RAID_PATCHED_SGSN,
 	GBPROX_PEER_CTR_APN_PATCHED,
+	GBPROX_PEER_CTR_TLLI_PATCHED_BSS,
+	GBPROX_PEER_CTR_TLLI_PATCHED_SGSN,
+	GBPROX_PEER_CTR_PTMSI_PATCHED_BSS,
+	GBPROX_PEER_CTR_PTMSI_PATCHED_SGSN,
 	GBPROX_PEER_CTR_PATCH_CRYPT_ERR,
 	GBPROX_PEER_CTR_PATCH_ERR,
 	GBPROX_PEER_CTR_ATTACH_REQS,
 	GBPROX_PEER_CTR_ATTACH_REJS,
+	GBPROX_PEER_CTR_TLLI_UNKNOWN,
 	GBPROX_PEER_CTR_TLLI_CACHE_SIZE,
 };
 
@@ -111,10 +116,15 @@ static const struct rate_ctr_desc peer_ctr_description[] = {
 	{ "raid-mod.bss",  "RAID patched              (BSS )" },
 	{ "raid-mod.sgsn", "RAID patched              (SGSN)" },
 	{ "apn-mod.sgsn",  "APN patched                     " },
+	{ "tlli-mod.bss",  "TLLI patched              (BSS )" },
+	{ "tlli-mod.sgsn", "TLLI patched              (SGSN)" },
+	{ "ptmsi-mod.bss", "P-TMSI patched            (BSS )" },
+	{ "ptmsi-mod.sgsn","P-TMSI patched            (SGSN)" },
 	{ "mod-crypt-err", "Patch error: encrypted          " },
 	{ "mod-err",	   "Patch error: other              " },
 	{ "attach-reqs",   "Attach Request count            " },
 	{ "attach-rejs",   "Attach Reject count             " },
+	{ "tlli-unknown",  "TLLI from SGSN unknown          " },
 	{ "tlli-cache",    "TLLI cache size                 " },
 };
 
@@ -983,6 +993,67 @@ static void gbprox_patch_apn_ie(struct msgb *msg,
 	rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_APN_PATCHED]);
 }
 
+static int gbprox_patch_tlli(uint8_t *tlli_enc,
+			     struct gbproxy_peer *peer,
+			     uint32_t new_tlli,
+			     int to_bss, const char *log_text)
+{
+	uint32_t tlli_be;
+	uint32_t tlli;
+	enum gbprox_peer_ctr counter =
+		to_bss ?
+		GBPROX_PEER_CTR_TLLI_PATCHED_SGSN :
+		GBPROX_PEER_CTR_TLLI_PATCHED_BSS;
+
+	memcpy(&tlli_be, tlli_enc, sizeof(tlli_be));
+	tlli = ntohl(tlli_be);
+
+	if (tlli == new_tlli)
+		return 0;
+
+	LOGP(DGPRS, LOGL_DEBUG,
+	     "Patching %ss: "
+	     "Replacing %08x -> %08x\n",
+	     log_text, tlli, new_tlli);
+
+	tlli_be = htonl(new_tlli);
+	memcpy(tlli_enc, &tlli_be, sizeof(tlli_be));
+
+	rate_ctr_inc(&peer->ctrg->ctr[counter]);
+
+	return 1;
+}
+
+static int gbprox_patch_ptmsi(uint8_t *ptmsi_enc,
+			      struct gbproxy_peer *peer,
+			      uint32_t new_ptmsi,
+			      int to_bss, const char *log_text)
+{
+	uint32_t ptmsi_be;
+	uint32_t ptmsi;
+	enum gbprox_peer_ctr counter =
+		to_bss ?
+		GBPROX_PEER_CTR_PTMSI_PATCHED_SGSN :
+		GBPROX_PEER_CTR_PTMSI_PATCHED_BSS;
+	memcpy(&ptmsi_be, ptmsi_enc + 1, sizeof(ptmsi_be));
+	ptmsi = ntohl(ptmsi_be);
+
+	if (ptmsi == new_ptmsi)
+		return 0;
+
+	LOGP(DGPRS, LOGL_DEBUG,
+	     "Patching %ss: "
+	     "Replacing %08x -> %08x\n",
+	     log_text, ptmsi, new_ptmsi);
+
+	ptmsi_be = htonl(new_ptmsi);
+	memcpy(ptmsi_enc + 1, &ptmsi_be, sizeof(ptmsi_be));
+
+	rate_ctr_inc(&peer->ctrg->ctr[counter]);
+
+	return 1;
+}
+
 static int gbprox_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 				       struct gbproxy_parse_context *parse_ctx)
 {
@@ -1376,6 +1447,35 @@ static int gbprox_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 
 	if (parse_ctx->g48_hdr && !allow_message_patching(peer, parse_ctx->g48_hdr->msg_type))
 		return have_patched;
+
+	if (parse_ctx->ptmsi_enc && tlli_info) {
+		uint32_t ptmsi;
+		if (parse_ctx->to_bss)
+			ptmsi = tlli_info->tlli.ptmsi;
+		else
+			ptmsi = tlli_info->sgsn_tlli.ptmsi;
+
+		if (ptmsi != GSM_RESERVED_TMSI) {
+			if (gbprox_patch_ptmsi(parse_ctx->ptmsi_enc, peer,
+					       ptmsi, parse_ctx->to_bss, "P-TMSI"))
+				have_patched = 1;
+		} else {
+			/* TODO: invalidate old RAI if present (see below) */
+		}
+	}
+
+	if (parse_ctx->new_ptmsi_enc && tlli_info) {
+		uint32_t ptmsi;
+		if (parse_ctx->to_bss)
+			ptmsi = tlli_info->tlli.ptmsi;
+		else
+			ptmsi = tlli_info->sgsn_tlli.ptmsi;
+
+		OSMO_ASSERT(ptmsi);
+		if (gbprox_patch_ptmsi(parse_ctx->new_ptmsi_enc, peer,
+				       ptmsi, parse_ctx->to_bss, "new P-TMSI"))
+			have_patched = 1;
+	}
 
 	if (parse_ctx->raid_enc) {
 		gbprox_patch_raid(parse_ctx->raid_enc, peer, parse_ctx->to_bss,
@@ -1815,6 +1915,29 @@ static void gbprox_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_le
 		err_ctr = GBPROX_PEER_CTR_PATCH_CRYPT_ERR;
 		err_info = "GMM message is encrypted";
 		goto patch_error;
+	}
+
+	if (parse_ctx->tlli_enc && tlli_info) {
+		uint32_t tlli = gbprox_map_tlli(parse_ctx->tlli,
+						tlli_info, parse_ctx->to_bss);
+
+		if (tlli) {
+			gbprox_patch_tlli(parse_ctx->tlli_enc, peer, tlli,
+					  parse_ctx->to_bss, "TLLI");
+			parse_ctx->tlli = tlli;
+		} else if (parse_ctx->to_bss) {
+			/* Happens with unknown (not cached) TLLI coming from
+			 * the SGSN */
+			/* TODO: What shall be done with the message in this case? */
+			err_ctr = GBPROX_PEER_CTR_TLLI_UNKNOWN;
+			err_info = "TLLI sent by the SGSN is unknown";
+			goto patch_error;
+		} else {
+			/* Internal error */
+			err_ctr = GBPROX_PEER_CTR_PATCH_ERR;
+			err_info = "Replacement TLLI is 0";
+			goto patch_error;
+		}
 	}
 
 	if (parse_ctx->llc) {
