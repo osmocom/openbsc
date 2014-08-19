@@ -198,7 +198,7 @@ static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 		talloc_free(g_cfg->core_apn);
 		g_cfg->core_apn = NULL;
 		g_cfg->core_apn_size = 0;
-		gbprox_clear_patch_filter(g_cfg);
+		gbproxy_clear_patch_filter(g_cfg);
 		return CMD_SUCCESS;
 	}
 
@@ -211,8 +211,8 @@ static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 	}
 
 	if (!filter) {
-		gbprox_clear_patch_filter(g_cfg);
-	} else if (gbprox_set_patch_filter(g_cfg, filter, &err_msg) != 0) {
+		gbproxy_clear_patch_filter(g_cfg);
+	} else if (gbproxy_set_patch_filter(g_cfg, filter, &err_msg) != 0) {
 		vty_out(vty, "Match expression invalid: %s%s",
 			err_msg, VTY_NEWLINE);
 		return CMD_WARNING;
@@ -551,7 +551,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	state = &peer->patch_state;
 
 	if (match == MATCH_STALE) {
-		found = gbprox_remove_stale_tllis(peer, time(NULL));
+		found = gbproxy_remove_stale_tllis(peer, time(NULL));
 		if (found)
 			vty_out(vty, "Deleted %d stale TLLI%s%s",
 				found, found == 1 ? "" : "s", VTY_NEWLINE);
@@ -573,7 +573,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 		}
 		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli.current,
 			VTY_NEWLINE);
-		gbprox_delete_tlli(peer, tlli_info);
+		gbproxy_delete_tlli(peer, tlli_info);
 		found += 1;
 	}
 

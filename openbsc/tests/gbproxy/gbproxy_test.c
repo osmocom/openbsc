@@ -1183,7 +1183,7 @@ static void test_gbproxy_ra_patching()
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
 
 	gbcfg.match_re = talloc_strdup(NULL, "^9898|^121314");
-	if (gbprox_set_patch_filter(&gbcfg, gbcfg.match_re, &err_msg) != 0) {
+	if (gbproxy_set_patch_filter(&gbcfg, gbcfg.match_re, &err_msg) != 0) {
 		fprintf(stderr, "Failed to compile RE '%s': %s\n",
 			gbcfg.match_re, err_msg);
 		exit(1);
@@ -1236,7 +1236,7 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 1,
 		       dtap_attach_acc, sizeof(dtap_attach_acc));
 
-	tlli_info = gbprox_find_tlli_by_sgsn_tlli(peer, local_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current != local_tlli);
@@ -1252,7 +1252,7 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 4,
 		       dtap_attach_complete, sizeof(dtap_attach_complete));
 
-	tlli_info = gbprox_find_tlli_by_sgsn_tlli(peer, local_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current != local_tlli);
@@ -1269,7 +1269,7 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 3,
 		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
-	tlli_info = gbprox_find_tlli_by_sgsn_tlli(peer, local_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current != local_tlli);
@@ -1285,7 +1285,7 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 2,
 		       dtap_gmm_information, sizeof(dtap_gmm_information));
 
-	tlli_info = gbprox_find_tlli_by_sgsn_tlli(peer, local_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
 	OSMO_ASSERT(tlli_info->tlli.current == local_tlli);
@@ -1465,7 +1465,7 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbprox_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
@@ -1485,7 +1485,7 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbprox_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
@@ -1503,7 +1503,7 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbprox_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
@@ -1805,7 +1805,7 @@ static void test_gbproxy_tlli_expire(void)
 
 	gbproxy_init_config(&cfg);
 
-	if (gbprox_set_patch_filter(&cfg, filter_re, &err_msg) != 0) {
+	if (gbproxy_set_patch_filter(&cfg, filter_re, &err_msg) != 0) {
 		fprintf(stderr, "gbprox_set_patch_filter: got error: %s\n",
 			err_msg);
 		OSMO_ASSERT(err_msg == NULL);
@@ -1822,16 +1822,16 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		tlli_info = gbprox_register_tlli(peer, tlli1,
-						 imsi1, ARRAY_SIZE(imsi1), now);
+		tlli_info = gbproxy_register_tlli(peer, tlli1,
+						  imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 1 (should replace TLLI 1)\n");
-		tlli_info = gbprox_register_tlli(peer, tlli2,
-						 imsi1, ARRAY_SIZE(imsi1), now);
+		tlli_info = gbproxy_register_tlli(peer, tlli2,
+						  imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
@@ -1839,10 +1839,10 @@ static void test_gbproxy_tlli_expire(void)
 		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(!tlli_info);
 
 		printf("\n");
@@ -1861,16 +1861,16 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		tlli_info = gbprox_register_tlli(peer, tlli1,
-						 imsi1, ARRAY_SIZE(imsi1), now);
+		tlli_info = gbproxy_register_tlli(peer, tlli1,
+						  imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* try to replace the old entry */
 		printf("  Add TLLI 1, IMSI 2 (should replace IMSI 1)\n");
-		tlli_info = gbprox_register_tlli(peer, tlli1,
-						 imsi2, ARRAY_SIZE(imsi2), now);
+		tlli_info = gbproxy_register_tlli(peer, tlli1,
+						  imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
@@ -1878,9 +1878,9 @@ static void test_gbproxy_tlli_expire(void)
 		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
 
@@ -1901,24 +1901,24 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
+		gbproxy_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 2 (should replace IMSI 1)\n");
-		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
+		gbproxy_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
-		num_removed = gbprox_remove_stale_tllis(peer, time(NULL) + 2);
+		num_removed = gbproxy_remove_stale_tllis(peer, time(NULL) + 2);
 		OSMO_ASSERT(num_removed == 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
 
@@ -1939,24 +1939,24 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1 (should expire after timeout)\n");
-		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
+		gbproxy_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		printf("  Add TLLI 2, IMSI 2 (should not expire after timeout)\n");
-		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
+		gbproxy_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
 				     now + 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
-		num_removed = gbprox_remove_stale_tllis(peer, now + 2);
+		num_removed = gbproxy_remove_stale_tllis(peer, now + 2);
 		OSMO_ASSERT(num_removed == 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		dump_peers(stdout, 2, now + 2, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
 
@@ -1977,34 +1977,34 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1 (should expire)\n");
-		gbprox_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
+		gbproxy_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		printf("  Add TLLI 2, IMSI 2 (should expire after timeout)\n");
-		gbprox_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
+		gbproxy_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
 				     now + 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
 		printf("  Add TLLI 3, IMSI 3 (should not expire after timeout)\n");
-		gbprox_register_tlli(peer, tlli3, imsi3, ARRAY_SIZE(imsi3),
-				     now + 2);
+		gbproxy_register_tlli(peer, tlli3, imsi3, ARRAY_SIZE(imsi3),
+				      now + 2);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 3);
 
 		dump_peers(stdout, 2, now + 2, &cfg);
 
 		printf("  Remove stale TLLIs\n");
-		num_removed = gbprox_remove_stale_tllis(peer, now + 3);
+		num_removed = gbproxy_remove_stale_tllis(peer, now + 3);
 		OSMO_ASSERT(num_removed == 2);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		dump_peers(stdout, 2, now + 2, &cfg);
 
 		/* verify that tlli3 has survived */
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbprox_find_tlli_by_mi(peer, imsi3, ARRAY_SIZE(imsi3));
+		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi3, ARRAY_SIZE(imsi3));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli3);
 
@@ -2036,55 +2036,55 @@ static void test_gbproxy_imsi_matching(void)
 	gbproxy_init_config(&cfg);
 	OSMO_ASSERT(cfg.check_imsi == 0);
 
-	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, filter_re1, &err_msg) == 0);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re1, &err_msg) == 0);
 	OSMO_ASSERT(cfg.check_imsi == 1);
 
-	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
 	OSMO_ASSERT(cfg.check_imsi == 1);
 
 	err_msg = NULL;
-	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, filter_re4_bad, &err_msg) == -1);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re4_bad, &err_msg) == -1);
 	OSMO_ASSERT(err_msg != NULL);
 	OSMO_ASSERT(cfg.check_imsi == 0);
 
-	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
 	OSMO_ASSERT(cfg.check_imsi == 1);
 
-	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, NULL, &err_msg) == 0);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, NULL, &err_msg) == 0);
 	OSMO_ASSERT(cfg.check_imsi == 0);
 
-	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
 	OSMO_ASSERT(cfg.check_imsi == 1);
 
-	gbprox_clear_patch_filter(&cfg);
+	gbproxy_clear_patch_filter(&cfg);
 	OSMO_ASSERT(cfg.check_imsi == 0);
 
 	peer = gbproxy_peer_alloc(&cfg, 20);
 
-	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
 	OSMO_ASSERT(cfg.check_imsi == 1);
 
-	OSMO_ASSERT(gbprox_check_imsi(peer, imsi1, ARRAY_SIZE(imsi1)) == 1);
-	OSMO_ASSERT(gbprox_check_imsi(peer, imsi2, ARRAY_SIZE(imsi2)) == 1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi1, ARRAY_SIZE(imsi1)) == 1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi2, ARRAY_SIZE(imsi2)) == 1);
 	/* imsi3_bad contains 0xE and 0xF digits, but the conversion function
-	 * doesn't complain, so gbprox_check_imsi() doesn't return -1 in this
+	 * doesn't complain, so gbproxy_check_imsi() doesn't return -1 in this
 	 * case. */
-	OSMO_ASSERT(gbprox_check_imsi(peer, imsi3_bad, ARRAY_SIZE(imsi3_bad)) == 0);
-	OSMO_ASSERT(gbprox_check_imsi(peer, tmsi1, ARRAY_SIZE(tmsi1)) == -1);
-	OSMO_ASSERT(gbprox_check_imsi(peer, tmsi2_bad, ARRAY_SIZE(tmsi2_bad)) == -1);
-	OSMO_ASSERT(gbprox_check_imsi(peer, imei1, ARRAY_SIZE(imei1)) == -1);
-	OSMO_ASSERT(gbprox_check_imsi(peer, imei2, ARRAY_SIZE(imei2)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi3_bad, ARRAY_SIZE(imsi3_bad)) == 0);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, tmsi1, ARRAY_SIZE(tmsi1)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, tmsi2_bad, ARRAY_SIZE(tmsi2_bad)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imei1, ARRAY_SIZE(imei1)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imei2, ARRAY_SIZE(imei2)) == -1);
 
-	OSMO_ASSERT(gbprox_set_patch_filter(&cfg, filter_re3, &err_msg) == 0);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re3, &err_msg) == 0);
 	OSMO_ASSERT(cfg.check_imsi == 1);
 
-	OSMO_ASSERT(gbprox_check_imsi(peer, imsi1, ARRAY_SIZE(imsi1)) == 0);
-	OSMO_ASSERT(gbprox_check_imsi(peer, imsi2, ARRAY_SIZE(imsi2)) == 0);
-	OSMO_ASSERT(gbprox_check_imsi(peer, imsi3_bad, ARRAY_SIZE(imsi3_bad)) == 0);
-	OSMO_ASSERT(gbprox_check_imsi(peer, tmsi1, ARRAY_SIZE(tmsi1)) == -1);
-	OSMO_ASSERT(gbprox_check_imsi(peer, tmsi2_bad, ARRAY_SIZE(tmsi2_bad)) == -1);
-	OSMO_ASSERT(gbprox_check_imsi(peer, imei1, ARRAY_SIZE(imei1)) == -1);
-	OSMO_ASSERT(gbprox_check_imsi(peer, imei2, ARRAY_SIZE(imei2)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi1, ARRAY_SIZE(imsi1)) == 0);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi2, ARRAY_SIZE(imsi2)) == 0);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi3_bad, ARRAY_SIZE(imsi3_bad)) == 0);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, tmsi1, ARRAY_SIZE(tmsi1)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, tmsi2_bad, ARRAY_SIZE(tmsi2_bad)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imei1, ARRAY_SIZE(imei1)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(peer, imei2, ARRAY_SIZE(imei2)) == -1);
 
 	/* TODO: Check correct length but wrong type with is_mi_tmsi */
 
