@@ -7,3 +7,6 @@ Type=simple
 Restart=always
 ExecStart=/usr/bin/osmo-bsc -c /etc/osmocom/osmo-bsc.cfg -s
 RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

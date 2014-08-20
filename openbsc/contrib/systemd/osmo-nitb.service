@@ -6,3 +6,6 @@ Type=simple
 Restart=always
 ExecStart=/usr/bin/osmo-nitb -s -C -c /etc/osmocom/osmo-nitb.cfg -l /var/lib/osmocom/hlr.sqlite3
 RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
