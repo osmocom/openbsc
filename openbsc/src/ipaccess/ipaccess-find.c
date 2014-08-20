@@ -28,7 +28,8 @@
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
-#include <openbsc/ipaccess.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
+#include <osmocom/gsm/ipa.h>
 #include <openbsc/gsm_data.h>
 
 static int udp_sock(const char *ifname)
@@ -118,7 +119,7 @@ static int parse_response(unsigned char *buf, int len)
 		t_len = *cur++;
 		t_tag = *cur++;
 		
-		printf("%s='%s'  ", ipaccess_idtag_name(t_tag), cur);
+		printf("%s='%s'  ", ipa_ccm_idtag_name(t_tag), cur);
 
 		cur += t_len;
 	}

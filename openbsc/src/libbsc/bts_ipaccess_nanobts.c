@@ -35,6 +35,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/debug.h>
 #include <osmocom/abis/subchan_demux.h>
+#include <osmocom/gsm/ipa.h>
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/logging.h>
 

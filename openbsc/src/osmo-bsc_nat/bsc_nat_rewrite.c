@@ -32,6 +32,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/gsm0808.h>
+#include <osmocom/gsm/ipa.h>
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/protocol/gsm_04_11.h>
@@ -614,7 +615,7 @@ struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct b
 		return msg;
 	}
 
-	ipaccess_prepend_header(sccp, IPAC_PROTO_SCCP);
+	ipa_prepend_header(sccp, IPAC_PROTO_SCCP);
 
 	/* the parsed hangs off from msg but it needs to survive */
 	talloc_steal(sccp, parsed);

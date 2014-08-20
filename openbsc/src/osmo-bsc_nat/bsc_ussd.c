@@ -29,6 +29,7 @@
 #include <osmocom/gsm/gsm0480.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/ipa.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -140,7 +141,7 @@ static int ussd_read_cb(struct osmo_fd *bfd)
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
 			struct tlv_parsed tvp;
 			int ret;
-			ret = ipaccess_idtag_parse(&tvp,
+			ret = ipa_ccm_idtag_parse(&tvp,
 					     (unsigned char *) msg->l2h + 2,
 					     msgb_l2len(msg) - 2);
 			if (ret < 0) {

@@ -32,6 +32,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/gsm0808.h>
+#include <osmocom/gsm/ipa.h>
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/protocol/gsm_04_11.h>
@@ -347,7 +348,7 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int proto)
 {
 	/* prepend the header */
-	ipaccess_prepend_header(msg, proto);
+	ipa_prepend_header(msg, proto);
 	return bsc_write_msg(queue, msg);
 }
 

@@ -171,7 +171,7 @@ static int mgcp_create_port(struct osmo_msc_data *data)
  */
 int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto)
 {
-	ipaccess_prepend_header(msg, proto);
+	ipa_prepend_header(msg, proto);
 	if (osmo_wqueue_enqueue(&conn->write_queue, msg) != 0) {
 		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/%d\n", proto);
 		msgb_free(msg);
@@ -274,7 +274,7 @@ static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 	/* initialize the networking. This includes sending a GSM08.08 message */
 	msg->cb[0] = (unsigned long) data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
-		ipaccess_rcvmsg_base(msg, bfd);
+		ipa_ccm_rcvmsg_base(msg, bfd);
 		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
 			initialize_if_needed(data->msc_con);
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET) {
@@ -401,7 +401,7 @@ static void send_lacs(struct gsm_network *net, struct bsc_msc_connection *conn)
 	}
 
 	lac->nr_extra_lacs = lacs - 1;
-	ipaccess_prepend_header_ext(msg, IPAC_PROTO_EXT_LAC);
+	ipa_prepend_header_ext(msg, IPAC_PROTO_EXT_LAC);
 	msc_queue_write(conn, msg, IPAC_PROTO_OSMO);
 }
 

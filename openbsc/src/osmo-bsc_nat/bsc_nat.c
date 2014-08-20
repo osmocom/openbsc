@@ -243,7 +243,7 @@ static void nat_send_rlsd_msc(struct nat_sccp_connection *conn)
 	if (!msg)
 		return;
 
-	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
+	ipa_prepend_header(msg, IPAC_PROTO_SCCP);
 	queue_for_msc(conn->msc_con, msg);
 }
 
@@ -319,7 +319,7 @@ static void nat_send_rlc(struct bsc_msc_connection *msc_con,
 	rlc->destination_local_reference = *dst;
 	rlc->source_local_reference = *src;
 
-	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
+	ipa_prepend_header(msg, IPAC_PROTO_SCCP);
 
 	queue_for_msc(msc_con, msg);
 }
@@ -335,7 +335,7 @@ static void send_mgcp_reset(struct bsc_connection *bsc)
 
 void bsc_nat_send_mgcp_to_msc(struct bsc_nat *nat, struct msgb *msg)
 {
-	ipaccess_prepend_header(msg, IPAC_PROTO_MGCP_OLD);
+	ipa_prepend_header(msg, IPAC_PROTO_MGCP_OLD);
 	queue_for_msc(nat->msc_con, msg);
 }
 
@@ -359,7 +359,7 @@ static void send_id_get_response(struct bsc_msc_connection *msc_con)
 	if (!msg)
 		return;
 
-	ipaccess_prepend_header(msg, IPAC_PROTO_IPACCESS);
+	ipa_prepend_header(msg, IPAC_PROTO_IPACCESS);
 	queue_for_msc(msc_con, msg);
 }
 
@@ -433,7 +433,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 	if (!rlsd)
 		LOGP(DNAT, LOGL_ERROR, "Failed to create RLSD message.\n");
 	else {
-		ipaccess_prepend_header(rlsd, IPAC_PROTO_SCCP);
+		ipa_prepend_header(rlsd, IPAC_PROTO_SCCP);
 		queue_for_msc(con->msc_con, rlsd);
 	}
 	con->con_local = NAT_CON_END_LOCAL;
@@ -828,7 +828,7 @@ static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 
 	/* initialize the networking. This includes sending a GSM08.08 message */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
-		ipaccess_rcvmsg_base(msg, bfd);
+		ipa_ccm_rcvmsg_base(msg, bfd);
 		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
 			initialize_msc_if_needed(msc_con);
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET)
@@ -1180,7 +1180,7 @@ exit:
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
 			struct tlv_parsed tvp;
 			int ret;
-			ret = ipaccess_idtag_parse(&tvp,
+			ret = ipa_ccm_idtag_parse(&tvp,
 					     (unsigned char *) msg->l2h + 2,
 					     msgb_l2len(msg) - 2);
 			if (ret < 0) {

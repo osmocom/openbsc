@@ -42,7 +42,9 @@
 #include <osmocom/core/select.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/gsm/ipa.h>
 #include <osmocom/abis/ipa.h>
+#include <osmocom/abis/ipaccess.h>
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/socket.h>
@@ -444,7 +446,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
-		ret = ipaccess_send_pong(bfd->fd);
+		ret = ipa_ccm_send_pong(bfd->fd);
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DLMI, "PONG!\n");
@@ -452,7 +454,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DLMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ipaccess_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
+		ipa_ccm_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
 				     msgb_l2len(msg)-2);
 		DEBUGP(DLMI, "\n");
 
@@ -463,7 +465,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 
 		/* lookup BTS, create sign_link, ... */
 		memset(&unit_data, 0, sizeof(unit_data));
-		ipaccess_parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
+		ipa_parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
 				      &unit_data);
 		ipbc = find_bts_by_unitid(ipp, unit_data.site_id, unit_data.bts_id);
 		if (!ipbc) {
@@ -528,7 +530,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DLMI, "ID_ACK? -> ACK!\n");
-		ret = ipaccess_send_id_ack(bfd->fd);
+		ret = ipa_ccm_send_id_ack(bfd->fd);
 		break;
 	default:
 		LOGP(DLMI, LOGL_ERROR, "Unhandled IPA type; %d\n", msg_type);
@@ -935,7 +937,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	}
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = ipaccess_send_id_req(bfd->fd);
+	ret = ipa_ccm_send_id_req(bfd->fd);
 
 	return 0;
 }
