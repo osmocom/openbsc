@@ -50,7 +50,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_gmm.h>
-#include <openbsc/control_if.h>
+#include <osmocom/ctrl/control_if.h>
 
 #include <gtp.h>
 

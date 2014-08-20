@@ -1,5 +1,5 @@
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
-AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOSCCP_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(LIBOSMONETIF_CFLAGS) $(COVERAGE_CFLAGS)
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOCTRL_CFLAGS) $(LIBOSMOSCCP_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(LIBOSMONETIF_CFLAGS) $(COVERAGE_CFLAGS)
 AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
 bin_PROGRAMS = osmo-bsc_nat
@@ -12,7 +12,6 @@ osmo_bsc_nat_LDADD = $(top_builddir)/src/libcommon/libcommon.a \
 		$(top_builddir)/src/libmgcp/libmgcp.a \
 		$(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libtrau/libtrau.a \
-		$(top_builddir)/src/libctrl/libctrl.a \
 		-lrt $(LIBOSMOSCCP_LIBS) $(LIBOSMOCORE_LIBS) \
-		$(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOABIS_LIBS) \
-		$(LIBOSMONETIF_LIBS)
+		$(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOCTRL_LIBS) \
+		$(LIBOSMOABIS_LIBS) $(LIBOSMONETIF_LIBS)

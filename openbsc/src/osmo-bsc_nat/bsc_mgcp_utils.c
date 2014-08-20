@@ -50,7 +50,7 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
-#include <openbsc/control_cmd.h>
+#include <osmocom/ctrl/control_cmd.h>
 
 #include <osmocom/sccp/sccp.h>
 

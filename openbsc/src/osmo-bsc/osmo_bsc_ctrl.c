@@ -18,7 +18,7 @@
  *
  */
 
-#include <openbsc/control_cmd.h>
+#include <osmocom/ctrl/control_cmd.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_bsc.h>

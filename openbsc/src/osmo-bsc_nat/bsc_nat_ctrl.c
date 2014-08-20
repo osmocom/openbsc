@@ -21,12 +21,15 @@
 
 #include <osmocom/core/talloc.h>
 
-#include <openbsc/control_cmd.h>
-#include <openbsc/control_if.h>
+#include <osmocom/ctrl/control_cmd.h>
+#include <osmocom/ctrl/control_if.h>
 
+#include <openbsc/ctrl.h>
 #include <openbsc/bsc_nat.h>
 
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
 
 
 #define NAT_MAX_CTRL_ID 65535

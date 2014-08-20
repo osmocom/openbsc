@@ -21,8 +21,8 @@
  */
 
 #include <openbsc/bsc_nat.h>
-#include <openbsc/control_cmd.h>
-#include <openbsc/control_if.h>
+#include <osmocom/ctrl/control_cmd.h>
+#include <osmocom/ctrl/control_if.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/ipaccess.h>

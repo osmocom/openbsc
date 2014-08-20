@@ -24,6 +24,7 @@ AC_SUBST(LIBRARY_DL)
 
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.6.4)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
+PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl >= 0.0.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.6.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.2.0)
 PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.6.4)
@@ -160,7 +161,6 @@ AC_OUTPUT(
     src/Makefile
     src/libtrau/Makefile
     src/libbsc/Makefile
-    src/libctrl/Makefile
     src/libmsc/Makefile
     src/libmgcp/Makefile
     src/libcommon/Makefile

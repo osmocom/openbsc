@@ -46,7 +46,8 @@
 #include <openbsc/token_auth.h>
 #include <openbsc/handover_decision.h>
 #include <openbsc/rrlp.h>
-#include <openbsc/control_if.h>
+#include <osmocom/ctrl/control_if.h>
+#include <openbsc/ctrl.h>
 #include <openbsc/osmo_bsc_rf.h>
 
 #include "../../bscconfig.h"

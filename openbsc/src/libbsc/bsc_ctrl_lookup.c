@@ -21,8 +21,12 @@
  *
  */
 
-#include <openbsc/control_if.h>
+#include <errno.h>
+
+#include <osmocom/vty/command.h>
+#include <osmocom/ctrl/control_if.h>
 #include <openbsc/debug.h>
+#include <openbsc/gsm_data.h>
 
 extern vector ctrl_node_vec;
 

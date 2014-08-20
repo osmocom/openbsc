@@ -19,8 +19,9 @@
  *
  */
 
-#include <openbsc/control_if.h>
-#include <openbsc/control_cmd.h>
+#include <osmocom/ctrl/control_if.h>
+#include <osmocom/ctrl/control_cmd.h>
+#include <openbsc/gsm_data.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/debug.h>

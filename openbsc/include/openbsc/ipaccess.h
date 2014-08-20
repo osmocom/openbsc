@@ -27,17 +27,6 @@ struct ipac_ext_lac_cmd {
 	uint8_t data[0];
 } __attribute__((packed));
 
-/*
- * methods for parsing and sending a message
- */
-void ipaccess_prepend_header(struct msgb *msg, int proto);
-void ipaccess_prepend_header_ext(struct msgb *msg, int proto);
-int ipaccess_send_pong(int fd);
-int ipaccess_send_id_ack(int fd);
-int ipaccess_send_id_req(int fd);
-
-const char *ipaccess_idtag_name(uint8_t tag);
-
 int ipaccess_drop_oml(struct gsm_bts *bts);
 int ipaccess_drop_rsl(struct gsm_bts_trx *trx);
 
