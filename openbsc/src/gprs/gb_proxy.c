@@ -325,14 +325,12 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 
 /* feed a message down the NS-VC associated with the specified peer */
 static int gbprox_relay2sgsn(struct gbproxy_config *cfg, struct msgb *old_msg,
-			     struct gbproxy_peer *peer, uint16_t ns_bvci)
+			     uint16_t ns_bvci)
 {
 	/* create a copy of the message so the old one can
 	 * be free()d safely when we return from gbprox_rcvmsg() */
 	struct msgb *msg = gprs_msgb_copy(old_msg, "msgb_relay2sgsn");
 	int rc;
-
-	gbprox_process_bssgp_ul(cfg, msg, peer);
 
 	DEBUGP(DGPRS, "NSEI=%u proxying BTS->SGSN (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, cfg->nsip_sgsn_nsei);
@@ -422,6 +420,53 @@ static int gbprox_relay2bvci(struct gbproxy_config *cfg, struct msgb *msg, uint1
 int bssgp_prim_cb(struct osmo_prim_hdr *oph, void *ctx)
 {
 	return 0;
+}
+
+/* Receive an incoming PTP message from a BSS-side NS-VC */
+static int gbprox_rx_ptp_from_bss(struct gbproxy_config *cfg,
+				  struct msgb *msg, uint16_t nsei,
+				  uint16_t nsvci, uint16_t ns_bvci)
+{
+	struct gbproxy_peer *peer;
+
+	peer = gbproxy_peer_by_bvci(cfg, ns_bvci);
+
+	if (peer)
+		check_peer_nsei(peer, nsei);
+
+	gbprox_process_bssgp_ul(cfg, msg, peer);
+
+	return gbprox_relay2sgsn(cfg, msg, ns_bvci);
+}
+
+/* Receive an incoming PTP message from a SGSN-side NS-VC */
+static int gbprox_rx_ptp_from_sgsn(struct gbproxy_config *cfg,
+				   struct msgb *msg, uint16_t nsei,
+				   uint16_t nsvci, uint16_t ns_bvci)
+{
+	struct gbproxy_peer *peer;
+
+	peer = gbproxy_peer_by_bvci(cfg, ns_bvci);
+
+	if (!peer) {
+		LOGP(DGPRS, LOGL_INFO, "Didn't find peer for "
+		     "BVCI=%u for message from NSVC=%u/NSEI=%u (SGSN)\n",
+		     ns_bvci, nsvci, nsei);
+		rate_ctr_inc(&cfg->ctrg->
+			     ctr[GBPROX_GLOB_CTR_INV_BVCI]);
+		return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI,
+				       &ns_bvci, msg);
+	}
+
+	if (peer->blocked) {
+		LOGP(DGPRS, LOGL_NOTICE, "Dropping PDU for "
+		     "blocked BVCI=%u via NSVC=%u/NSEI=%u\n",
+		     ns_bvci, nsvci, nsei);
+		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_DROPPED]);
+		return bssgp_tx_status(BSSGP_CAUSE_BVCI_BLOCKED, NULL, msg);
+	}
+
+	return gbprox_relay2peer(msg, peer, ns_bvci);
 }
 
 /* Receive an incoming signalling message from a BSS-side NS-VC */
@@ -524,7 +569,8 @@ static int gbprox_rx_sig_from_bss(struct gbproxy_config *cfg,
 
 	/* Normally, we can simply pass on all signalling messages from BSS to
 	 * SGSN */
-	return gbprox_relay2sgsn(cfg, msg, from_peer, ns_bvci);
+	gbprox_process_bssgp_ul(cfg, msg, from_peer);
+	return gbprox_relay2sgsn(cfg, msg, ns_bvci);
 err_no_peer:
 	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(BSS) cannot find peer based on NSEI\n",
 		nsei);
@@ -746,7 +792,6 @@ int gbprox_rcvmsg(struct gbproxy_config *cfg, struct msgb *msg, uint16_t nsei,
 		uint16_t ns_bvci, uint16_t nsvci)
 {
 	int rc;
-	struct gbproxy_peer *peer;
 	int remote_end_is_sgsn = nsei == cfg->nsip_sgsn_nsei;
 
 	if (remote_end_is_sgsn)
@@ -759,33 +804,13 @@ int gbprox_rcvmsg(struct gbproxy_config *cfg, struct msgb *msg, uint16_t nsei,
 		else
 			rc = gbprox_rx_sig_from_bss(cfg, msg, nsei, ns_bvci);
 	} else {
-		peer = gbproxy_peer_by_bvci(cfg, ns_bvci);
-
-		/* All other BVCI are PTP and thus can be simply forwarded */
-		if (!remote_end_is_sgsn) {
-			if (peer)
-				check_peer_nsei(peer, nsei);
-			return gbprox_relay2sgsn(cfg, msg, peer, ns_bvci);
-		}
-
-		/* else: SGSN -> BSS direction */
-		if (!peer) {
-			LOGP(DGPRS, LOGL_INFO, "Didn't find peer for "
-			     "BVCI=%u for message from NSVC=%u/NSEI=%u (SGSN)\n",
-			     ns_bvci, nsvci, nsei);
-			rate_ctr_inc(&cfg->ctrg->
-				     ctr[GBPROX_GLOB_CTR_INV_BVCI]);
-			return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI,
-					       &ns_bvci, msg);
-		}
-		if (peer->blocked) {
-			LOGP(DGPRS, LOGL_NOTICE, "Dropping PDU for "
-			     "blocked BVCI=%u via NSVC=%u/NSEI=%u\n",
-			     ns_bvci, nsvci, nsei);
-			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_DROPPED]);
-			return bssgp_tx_status(BSSGP_CAUSE_BVCI_BLOCKED, NULL, msg);
-		}
-		rc = gbprox_relay2peer(msg, peer, ns_bvci);
+		/* All other BVCI are PTP */
+		if (remote_end_is_sgsn)
+			rc = gbprox_rx_ptp_from_sgsn(cfg, msg, nsei, nsvci,
+						     ns_bvci);
+		else
+			rc = gbprox_rx_ptp_from_bss(cfg, msg, nsei, nsvci,
+						    ns_bvci);
 	}
 
 	return rc;
