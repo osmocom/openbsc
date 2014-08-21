@@ -51,7 +51,7 @@ static int bsc_ctrl_node_lookup(void *data, vector vline, int *node_type,
 	 * and/or use strtol to check if number conversion was successful
 	 * Right now something like net.bts_stats will not work */
 	if (!strcmp(token, "bts")) {
-		if (!net)
+		if (*node_type != CTRL_NODE_ROOT || !net)
 			goto err_missing;
 		(*i)++;
 		if (!ctrl_parse_get_num(vline, *i, &num))
@@ -63,8 +63,9 @@ static int bsc_ctrl_node_lookup(void *data, vector vline, int *node_type,
 		*node_data = bts;
 		*node_type = CTRL_NODE_BTS;
 	} else if (!strcmp(token, "trx")) {
-		if (!bts)
+		if (*node_type != CTRL_NODE_BTS || !*node_data)
 			goto err_missing;
+		bts = *node_data;
 		(*i)++;
 		if (!ctrl_parse_get_num(vline, *i, &num))
 			goto err_index;
@@ -75,8 +76,9 @@ static int bsc_ctrl_node_lookup(void *data, vector vline, int *node_type,
 		*node_data = trx;
 		*node_type = CTRL_NODE_TRX;
 	} else if (!strcmp(token, "ts")) {
-		if (!trx)
+		if (*node_type != CTRL_NODE_TRX || !*node_data)
 			goto err_missing;
+		trx = *node_data;
 		(*i)++;
 		if (!ctrl_parse_get_num(vline, *i, &num))
 			goto err_index;
