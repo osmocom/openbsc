@@ -530,10 +530,13 @@ int gprs_gb_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
 		parse_ctx->imsi_len = TLVP_LEN(tp, BSSGP_IE_IMSI);
 	}
 
-	/* TODO: This is TLLI old, don't confuse with TLLI current, add
-	 * and use tlli_old_enc instead */
-	if (0 && TLVP_PRESENT(tp, BSSGP_IE_TLLI))
-		parse_ctx->tlli_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_TLLI);
+	if (TLVP_PRESENT(tp, BSSGP_IE_TLLI)) {
+		if (parse_ctx->tlli_enc)
+			/* This is TLLI old, don't confuse it with TLLI current */
+			parse_ctx->old_tlli_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_TLLI);
+		else
+			parse_ctx->tlli_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_TLLI);
+	}
 
 	if (TLVP_PRESENT(tp, BSSGP_IE_TMSI) && pdu_type == BSSGP_PDUT_PAGING_PS)
 		parse_ctx->ptmsi_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_TMSI);
@@ -578,6 +581,15 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 
 	if (parse_ctx->tlli_enc) {
 		LOGP(DGPRS, LOGL_DEBUG, "%s TLLI %08x", sep, parse_ctx->tlli);
+		sep = ",";
+	}
+
+	if (parse_ctx->old_tlli_enc) {
+		LOGP(DGPRS, LOGL_DEBUG, "%s old TLLI %02x%02x%02x%02x", sep,
+		     parse_ctx->old_tlli_enc[0],
+		     parse_ctx->old_tlli_enc[1],
+		     parse_ctx->old_tlli_enc[2],
+		     parse_ctx->old_tlli_enc[3]);
 		sep = ",";
 	}
 

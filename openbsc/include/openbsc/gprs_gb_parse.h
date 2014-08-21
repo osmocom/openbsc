@@ -19,6 +19,7 @@ struct gprs_gb_parse_context {
 	struct tlv_parsed bssgp_tp;
 	int to_bss;
 	uint8_t *tlli_enc;
+	uint8_t *old_tlli_enc;
 	uint8_t *imsi;
 	size_t imsi_len;
 	uint8_t *apn_ie;

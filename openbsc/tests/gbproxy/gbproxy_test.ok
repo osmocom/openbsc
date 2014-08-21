@@ -2197,7 +2197,7 @@ CALLBACK, event 0, msg length 19, bvci 0x0000
 
 NS UNITDATA MESSAGE to SGSN, BVCI 0x0000, msg length 19 (gprs_ns_sendmsg)
 MESSAGE to SGSN at 0x05060708:32000, msg length 23
-00 00 00 00 2c 1f 84 c0 0f 73 04 0f 81 01 04 82 10 02 25 83 00 00 0c 
+00 00 00 00 2c 1f 84 ef e2 b7 00 0f 81 01 04 82 10 02 25 83 00 00 0c 
 
 result (LLC_DISCARDED) = 23
 
@@ -2205,7 +2205,7 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 6
     RAID patched              (SGSN): 1
-    TLLI patched              (BSS ): 5
+    TLLI patched              (BSS ): 6
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
@@ -2220,7 +2220,7 @@ CALLBACK, event 0, msg length 15, bvci 0x0000
 
 NS UNITDATA MESSAGE to SGSN, BVCI 0x0000, msg length 15 (gprs_ns_sendmsg)
 MESSAGE to SGSN at 0x05060708:32000, msg length 19
-00 00 00 00 0b 1f 84 c0 0f 73 04 1b 86 21 63 54 40 50 60 
+00 00 00 00 0b 1f 84 ef e2 b7 00 1b 86 21 63 54 40 50 60 
 
 result (BVC_SUSPEND) = 19
 
@@ -2228,7 +2228,7 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 7
     RAID patched              (SGSN): 1
-    TLLI patched              (BSS ): 5
+    TLLI patched              (BSS ): 7
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
@@ -2243,7 +2243,7 @@ CALLBACK, event 0, msg length 18, bvci 0x0000
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x0000, msg length 18 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 22
-00 00 00 00 0c 1f 84 ef e2 b7 00 1b 86 11 22 33 40 50 60 1d 81 01 
+00 00 00 00 0c 1f 84 c0 0f 73 04 1b 86 11 22 33 40 50 60 1d 81 01 
 
 result (BVC_SUSPEND_ACK) = 22
 
@@ -2251,8 +2251,8 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 7
     RAID patched              (SGSN): 2
-    TLLI patched              (BSS ): 5
-    TLLI patched              (SGSN): 5
+    TLLI patched              (BSS ): 7
+    TLLI patched              (SGSN): 6
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
     TLLI cache size                 : 1
@@ -2266,7 +2266,7 @@ CALLBACK, event 0, msg length 19, bvci 0x0000
 
 NS UNITDATA MESSAGE to SGSN, BVCI 0x0000, msg length 19 (gprs_ns_sendmsg)
 MESSAGE to SGSN at 0x05060708:32000, msg length 23
-00 00 00 00 2c 1f 84 c0 0f 73 04 0f 81 01 04 82 ee e1 25 83 00 00 0c 
+00 00 00 00 2c 1f 84 ef e2 b7 00 0f 81 01 04 82 ee e1 25 83 00 00 0c 
 
 result (LLC_DISCARDED) = 23
 
@@ -2294,7 +2294,7 @@ CALLBACK, event 0, msg length 18, bvci 0x0000
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x0000, msg length 18 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 22
-00 00 00 00 0c 1f 84 ef e2 b7 00 1b 86 11 22 33 40 50 60 1d 81 01 
+00 00 00 00 0c 1f 84 c0 0f 73 04 1b 86 11 22 33 40 50 60 1d 81 01 
 
 result (BVC_SUSPEND_ACK) = 22
 
@@ -2317,8 +2317,8 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 8
     RAID patched              (SGSN): 3
-    TLLI patched              (BSS ): 6
-    TLLI patched              (SGSN): 5
+    TLLI patched              (BSS ): 9
+    TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
     TLLI cache size                 : 1
@@ -2340,8 +2340,8 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 8
     RAID patched              (SGSN): 3
-    TLLI patched              (BSS ): 6
-    TLLI patched              (SGSN): 6
+    TLLI patched              (BSS ): 9
+    TLLI patched              (SGSN): 8
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
     TLLI-Cache: 0
