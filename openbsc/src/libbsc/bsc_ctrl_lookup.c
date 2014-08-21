@@ -30,7 +30,7 @@
 
 extern vector ctrl_node_vec;
 
-static int get_num(vector vline, int i, long *num)
+int ctrl_parse_get_num(vector vline, int i, long *num)
 {
 	char *token, *tmp;
 
@@ -49,24 +49,87 @@ static int get_num(vector vline, int i, long *num)
 	return 1;
 }
 
-int bsc_ctrl_cmd_handle(struct ctrl_cmd *cmd, void *data)
-{
-	char *token, *request;
-	long num;
-	int i, j, ret, node;
 
+/*! \brief control interface lookup function for bsc/bts gsm_data
+ * \param[in] data Private data passed to controlif_setup()
+ * \param[in] vline Vector of the line holding the command string
+ * \param[out] node_type type (CTRL_NODE_) that was determined
+ * \param[out] node_data private dta of node that was determined
+ * \param i Current index into vline, up to which it is parsed
+ */
+int bsc_ctrl_node_lookup(void *data, vector vline, int *node_type,
+			 void **node_data, int *i)
+{
 	struct gsm_network *net = data;
 	struct gsm_bts *bts = NULL;
 	struct gsm_bts_trx *trx = NULL;
 	struct gsm_bts_trx_ts *ts = NULL;
+	char *token = vector_slot(vline, *i);
+	long num;
+
+	/* TODO: We need to make sure that the following chars are digits
+	 * and/or use strtol to check if number conversion was successful
+	 * Right now something like net.bts_stats will not work */
+	if (!strcmp(token, "bts")) {
+		if (!net)
+			goto err_missing;
+		(*i)++;
+		if (!ctrl_parse_get_num(vline, *i, &num))
+			goto err_index;
+
+		bts = gsm_bts_num(net, num);
+		if (!bts)
+			goto err_missing;
+		*node_data = bts;
+		*node_type = CTRL_NODE_BTS;
+	} else if (!strcmp(token, "trx")) {
+		if (!bts)
+			goto err_missing;
+		(*i)++;
+		if (!ctrl_parse_get_num(vline, *i, &num))
+			goto err_index;
+
+		trx = gsm_bts_trx_num(bts, num);
+		if (!trx)
+			goto err_missing;
+		*node_data = trx;
+		*node_type = CTRL_NODE_TRX;
+	} else if (!strcmp(token, "ts")) {
+		if (!trx)
+			goto err_missing;
+		(*i)++;
+		if (!ctrl_parse_get_num(vline, *i, &num))
+			goto err_index;
+
+		if ((num >= 0) && (num < TRX_NR_TS))
+			ts = &trx->ts[num];
+		if (!ts)
+			goto err_missing;
+		*node_data = ts;
+		*node_type = CTRL_NODE_TS;
+	} else
+		return 0;
+
+	return 1;
+err_missing:
+	return -ENODEV;
+err_index:
+	return -ERANGE;
+}
+
+int bsc_ctrl_cmd_handle(struct ctrl_cmd *cmd, void *data)
+{
+	char *request;
+	int i, j, ret, node;
+
 	vector vline, cmdvec, cmds_vec;
 
 	ret = CTRL_CMD_ERROR;
 	cmd->reply = NULL;
 	node = CTRL_NODE_ROOT;
-	cmd->node = net;
+	cmd->node = data;
 
-	request = talloc_strdup(tall_bsc_ctx, cmd->variable);
+	request = talloc_strdup(cmd, cmd->variable);
 	if (!request)
 		goto err;
 
@@ -83,48 +146,16 @@ int bsc_ctrl_cmd_handle(struct ctrl_cmd *cmd, void *data)
 	}
 
 	for (i=0;i<vector_active(vline);i++) {
-		token = vector_slot(vline, i);
-		/* TODO: We need to make sure that the following chars are digits
-		 * and/or use strtol to check if number conversion was successful
-		 * Right now something like net.bts_stats will not work */
-		if (!strcmp(token, "bts")) {
-			if (!net)
-				goto err_missing;
-			i++;
-			if (!get_num(vline, i, &num))
-				goto err_index;
+		int rc;
 
-			bts = gsm_bts_num(net, num);
-			if (!bts)
-				goto err_missing;
-			cmd->node = bts;
-			node = CTRL_NODE_BTS;
-		} else if (!strcmp(token, "trx")) {
-			if (!bts)
-				goto err_missing;
-			i++;
-			if (!get_num(vline, i, &num))
-				goto err_index;
-
-			trx = gsm_bts_trx_num(bts, num);
-			if (!trx)
-				goto err_missing;
-			cmd->node = trx;
-			node = CTRL_NODE_TRX;
-		} else if (!strcmp(token, "ts")) {
-			if (!trx)
-				goto err_missing;
-			i++;
-			if (!get_num(vline, i, &num))
-				goto err_index;
-
-			if ((num >= 0) && (num < TRX_NR_TS))
-				ts = &trx->ts[num];
-			if (!ts)
-				goto err_missing;
-			cmd->node = ts;
-			node = CTRL_NODE_TS;
-		} else {
+		rc = bsc_ctrl_node_lookup(data, vline, &node, &cmd->node, &i);
+		if (rc == 1) {
+			/* do nothing */
+		} else if (rc == -ENODEV)
+			goto err_missing;
+		else if (rc == -ERANGE)
+			goto err_index;
+		else {
 			/* If we're here the rest must be the command */
 			cmdvec = vector_init(vector_active(vline)-i);
 			for (j=i; j<vector_active(vline); j++) {
