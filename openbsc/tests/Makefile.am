@@ -35,7 +35,7 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) vty_test_runner.py c
 TESTSUITE = $(srcdir)/testsuite
 DISTCLEANFILES = atconfig
 
-if ENABLE_VTY_TESTS
+if ENABLE_EXT_TESTS
 python-tests: $(BUILT_SOURCES)
 	osmotestvty.py -p $(abs_top_srcdir) -w $(abs_top_builddir) -v
 	osmotestconfig.py -p $(abs_top_srcdir) -w $(abs_top_builddir) -v
