@@ -99,5 +99,5 @@ err_index:
 
 struct ctrl_handle *bsc_controlif_setup(struct gsm_network *net, uint16_t port)
 {
-	return controlif_setup(net, port, bsc_ctrl_node_lookup);
+	return ctrl_interface_setup(net, port, bsc_ctrl_node_lookup);
 }

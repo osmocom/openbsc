@@ -75,5 +75,5 @@ int sgsn_ctrl_cmds_install(void)
 
 struct ctrl_handle *sgsn_controlif_setup(struct gsm_network *net, uint16_t port)
 {
-	return controlif_setup(net, port, NULL);
+	return ctrl_interface_setup(net, port, NULL);
 }
