@@ -522,13 +522,19 @@ static void send_bssgp_reset_ack(struct gprs_ns_inst *nsi,
 
 static void send_bssgp_suspend(struct gprs_ns_inst *nsi,
 			       struct sockaddr_in *src_addr,
+			       uint32_t tlli,
 			       struct gprs_ra_id *raid)
 {
 	/* Base Station Subsystem GPRS Protocol, BSSGP SUSPEND */
 	unsigned char msg[15] = {
-		0x0b, 0x1f, 0x84, 0xcc, 0xd1, 0x75, 0x8b, 0x1b,
-		0x86, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60
+		0x0b, 0x1f, 0x84, /* TLLI */ 0xff, 0xff, 0xff, 0xff, 0x1b,
+		0x86, /* RAI */ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 	};
+
+	msg[3] = (uint8_t)(tlli >> 24);
+	msg[4] = (uint8_t)(tlli >> 16);
+	msg[5] = (uint8_t)(tlli >> 8);
+	msg[6] = (uint8_t)(tlli >> 0);
 
 	gsm48_construct_ra(msg + 9, raid);
 
@@ -537,18 +543,50 @@ static void send_bssgp_suspend(struct gprs_ns_inst *nsi,
 
 static void send_bssgp_suspend_ack(struct gprs_ns_inst *nsi,
 				   struct sockaddr_in *src_addr,
+				   uint32_t tlli,
 				   struct gprs_ra_id *raid)
 {
 	/* Base Station Subsystem GPRS Protocol, BSSGP SUSPEND ACK */
 	unsigned char msg[18] = {
-		0x0c, 0x1f, 0x84, 0xcc, 0xd1, 0x75, 0x8b, 0x1b,
-		0x86, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60, 0x1d,
+		0x0c, 0x1f, 0x84, /* TLLI */ 0xff, 0xff, 0xff, 0xff, 0x1b,
+		0x86, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1d,
 		0x81, 0x01
 	};
+
+	msg[3] = (uint8_t)(tlli >> 24);
+	msg[4] = (uint8_t)(tlli >> 16);
+	msg[5] = (uint8_t)(tlli >> 8);
+	msg[6] = (uint8_t)(tlli >> 0);
 
 	gsm48_construct_ra(msg + 9, raid);
 
 	send_ns_unitdata(nsi, "BVC_SUSPEND_ACK", src_addr, 0, msg, sizeof(msg));
+}
+
+static void send_bssgp_llc_discarded(struct gprs_ns_inst *nsi,
+				     struct sockaddr_in *src_addr,
+				     uint16_t bvci, uint32_t tlli,
+				     unsigned n_frames, unsigned n_octets)
+{
+	/* Base Station Subsystem GPRS Protocol: LLC-DISCARDED (0x2c) */
+	unsigned char msg[] = {
+		0x2c, 0x1f, 0x84, /* TLLI */ 0xff, 0xff, 0xff, 0xff, 0x0f,
+		0x81, /* n frames */ 0xff, 0x04, 0x82, /* BVCI */ 0xff, 0xff, 0x25, 0x83,
+		/* n octets */ 0xff, 0xff, 0xff
+	};
+
+	msg[3] = (uint8_t)(tlli >> 24);
+	msg[4] = (uint8_t)(tlli >> 16);
+	msg[5] = (uint8_t)(tlli >> 8);
+	msg[6] = (uint8_t)(tlli >> 0);
+	msg[9] = (uint8_t)(n_frames);
+	msg[12] = (uint8_t)(bvci >> 8);
+	msg[13] = (uint8_t)(bvci >> 0);
+	msg[16] = (uint8_t)(n_octets >> 16);
+	msg[17] = (uint8_t)(n_octets >> 8);
+	msg[18] = (uint8_t)(n_octets >> 0);
+
+	send_ns_unitdata(nsi, "LLC_DISCARDED", src_addr, 0, msg, sizeof(msg));
 }
 
 static void send_llc_ul_ui(
@@ -1208,8 +1246,8 @@ static void test_gbproxy_ra_patching()
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
 
-	send_bssgp_suspend(nsi, &bss_peer[0], &rai_bss);
-	send_bssgp_suspend_ack(nsi, &sgsn_peer, &rai_sgsn);
+	send_bssgp_suspend(nsi, &bss_peer[0], 0xccd1758b, &rai_bss);
+	send_bssgp_suspend_ack(nsi, &sgsn_peer, 0xccd1758b, &rai_sgsn);
 
 	dump_global(stdout, 0);
 	dump_peers(stdout, 0, 0, &gbcfg);
@@ -1360,7 +1398,7 @@ static void test_gbproxy_ra_patching()
 		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
 	printf("Invalid RAI, shouldn't patch\n");
-	send_bssgp_suspend_ack(nsi, &sgsn_peer, &rai_unknown);
+	send_bssgp_suspend_ack(nsi, &sgsn_peer, 0xccd1758b, &rai_unknown);
 
 	dump_global(stdout, 0);
 	dump_peers(stdout, 0, 0, &gbcfg);
@@ -1379,6 +1417,8 @@ static void test_gbproxy_ptmsi_patching()
 		{.mcc = 112, .mnc = 332, .lac = 16464, .rac = 96};
 	struct  gprs_ra_id rai_sgsn =
 		{.mcc = 123, .mnc = 456, .lac = 16464, .rac = 96};
+	struct  gprs_ra_id rai_wrong_mcc_sgsn =
+		{.mcc = 999, .mnc = 456, .lac = 16464, .rac = 96};
 	struct  gprs_ra_id rai_unknown =
 		{.mcc = 1, .mnc = 99, .lac = 99, .rac = 96};
 	uint16_t cell_id = 0x1234;
@@ -1427,9 +1467,6 @@ static void test_gbproxy_ptmsi_patching()
 	OSMO_ASSERT(peer != NULL);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
-
-	send_bssgp_suspend(nsi, &bss_peer[0], &rai_bss);
-	send_bssgp_suspend_ack(nsi, &sgsn_peer, &rai_sgsn);
 
 	gprs_dump_nsi(nsi);
 	dump_global(stdout, 0);
@@ -1531,6 +1568,36 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	/* Other messages */
+	send_bssgp_llc_discarded(nsi, &bss_peer[0], 0x1002,
+				 local_bss_tlli, 1, 12);
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_bssgp_suspend(nsi, &bss_peer[0], local_bss_tlli, &rai_bss);
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli, &rai_sgsn);
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	/* Bad case: Invalid BVCI */
+	send_bssgp_llc_discarded(nsi, &bss_peer[0], 0xeee1,
+				 local_bss_tlli, 1, 12);
+	dump_global(stdout, 0);
+
+	/* Bad case: Invalid RAI */
+	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli, &rai_unknown);
+
+	dump_global(stdout, 0);
+
+	/* Bad case: Invalid MCC (LAC ok) */
+	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli,
+			       &rai_wrong_mcc_sgsn);
+
+	dump_global(stdout, 0);
+
 	/* Detach */
 	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
 		       local_bss_tlli, &rai_bss, cell_id,
@@ -1545,6 +1612,7 @@ static void test_gbproxy_ptmsi_patching()
 		       dtap_detach_acc, sizeof(dtap_detach_acc));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
+
 	dump_global(stdout, 0);
 
 	gbprox_reset(&gbcfg);
