@@ -73,67 +73,7 @@ int sgsn_ctrl_cmds_install(void)
 	return rc;
 }
 
-static int sgsn_cmd_handle(struct ctrl_cmd *cmd, void *data)
-{
-	char *request;
-	cmd->reply = NULL;
-	cmd->node = NULL;
-	vector vline, cmdvec, cmds_vec;
-	int i, ret;
-
-	ret = CTRL_CMD_ERROR;
-
-	request = talloc_strdup(tall_bsc_ctx, cmd->variable);
-	if (!request)
-		goto err;
-
-	for (i = 0; i < strlen(request); ++i) {
-		if (request[i] == '.')
-			request[i] = ' ';
-	}
-
-	vline = cmd_make_strvec(request);
-	talloc_free(request);
-	if (!vline) {
-		cmd->reply = "cmd_make_strvec failed.";
-		goto err;
-	}
-
-	/* If we're here the rest must be the command */
-	cmdvec = vector_init(vector_active(vline));
-	for (i = 0 ; i < vector_active(vline); ++i) {
-		vector_set(cmdvec, vector_slot(vline, i));
-	}
-
-	/* Get the command vector of the right node */
-	cmds_vec = vector_lookup(ctrl_node_vec, CTRL_NODE_ROOT);
-
-	if (!cmds_vec) {
-		cmd->reply = "Command not found.";
-		vector_free(cmdvec);
-		goto err;
-	}
-
-	ret = ctrl_cmd_exec(cmdvec, cmd, cmds_vec, data);
-
-	vector_free(cmdvec);
-	cmd_free_strvec(vline);
-
-err:
-	if (!cmd->reply) {
-		LOGP(DCTRL, LOGL_ERROR, "cmd->reply has not been set.\n");
-		if (ret == CTRL_CMD_ERROR)
-			cmd->reply = "An error has occured.";
-		else
-			cmd->reply = "Command has been handled.";
-	}
-
-	if (ret == CTRL_CMD_ERROR)
-		cmd->type = CTRL_TYPE_ERROR;
-	return ret;
-}
-
 struct ctrl_handle *sgsn_controlif_setup(struct gsm_network *net, uint16_t port)
 {
-	return controlif_setup(net, port, sgsn_cmd_handle);
+	return controlif_setup(net, port, NULL);
 }

@@ -218,7 +218,7 @@ static void handle_ctrl(struct osmo_msc_data *msc, struct msgb *msg)
 		return;
 	}
 
-	ret = bsc_ctrl_cmd_handle(cmd, msc->network);
+	ret = ctrl_cmd_handle(msc->network->ctrl, cmd, msc->network);
 	if (ret != CTRL_CMD_HANDLED)
 		ctrl_cmd_send(&msc->msc_con->write_queue, cmd);
 	talloc_free(cmd);
