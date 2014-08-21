@@ -422,7 +422,7 @@ DEFUN(delete_gb_bvci, delete_gb_bvci_cmd,
 	const uint16_t bvci = atoi(argv[1]);
 	int counter;
 
-	counter = gbprox_cleanup_peers(g_cfg, nsei, bvci);
+	counter = gbproxy_cleanup_peers(g_cfg, nsei, bvci);
 
 	if (counter == 0) {
 		vty_out(vty, "BVC not found%s", VTY_NEWLINE);
@@ -458,7 +458,7 @@ DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 
 	if (delete_bvc) {
 		if (!dry_run)
-			counter = gbprox_cleanup_peers(g_cfg, nsei, 0);
+			counter = gbproxy_cleanup_peers(g_cfg, nsei, 0);
 		else {
 			struct gbproxy_peer *peer;
 			counter = 0;
@@ -541,7 +541,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 		break;
 	}
 
-	peer = gbprox_peer_by_nsei(g_cfg, nsei);
+	peer = gbproxy_peer_by_nsei(g_cfg, nsei);
 	if (!peer) {
 		vty_out(vty, "Didn't find peer with NSEI %d%s",
 			nsei, VTY_NEWLINE);

@@ -1203,7 +1203,7 @@ static void test_gbproxy_ra_patching()
 	gprs_dump_nsi(nsi);
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	peer = gbprox_peer_by_nsei(&gbcfg, 0x1000);
+	peer = gbproxy_peer_by_nsei(&gbcfg, 0x1000);
 	OSMO_ASSERT(peer != NULL);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
@@ -1423,7 +1423,7 @@ static void test_gbproxy_ptmsi_patching()
 	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
 	setup_bssgp(nsi, &bss_peer[0], 0x1002);
 
-	peer = gbprox_peer_by_nsei(&gbcfg, 0x1000);
+	peer = gbproxy_peer_by_nsei(&gbcfg, 0x1000);
 	OSMO_ASSERT(peer != NULL);
 
 	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);

@@ -12,6 +12,7 @@
 
 struct rate_ctr_group;
 struct gprs_gb_parse_context;
+struct tlv_parsed;
 
 enum gbproxy_patch_mode {
 	GBPROX_PATCH_DEFAULT,
@@ -167,13 +168,6 @@ int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi);
 
 void gbprox_reset(struct gbproxy_config *cfg);
 
-int gbprox_cleanup_peers(struct gbproxy_config *cfg, uint16_t nsei, uint16_t bvci);
-
-struct gbproxy_peer *gbprox_peer_by_nsei(struct gbproxy_config *cfg, uint16_t nsei);
-
-struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvci);
-void gbproxy_peer_free(struct gbproxy_peer *peer);
-
 /* TLLI state handling */
 void gbproxy_delete_tllis(struct gbproxy_peer *peer);
 int gbproxy_check_tlli(struct gbproxy_peer *peer, uint32_t tlli);
@@ -236,5 +230,23 @@ int gbproxy_set_patch_filter(
 void gbproxy_clear_patch_filter(struct gbproxy_config *cfg);
 int gbproxy_check_imsi(
 	struct gbproxy_peer *peer, const uint8_t *imsi, size_t imsi_len);
+
+/* Peer handling */
+struct gbproxy_peer *gbproxy_peer_by_bvci(
+	struct gbproxy_config *cfg, uint16_t bvci) __attribute__((nonnull));
+struct gbproxy_peer *gbproxy_peer_by_nsei(
+	struct gbproxy_config *cfg, uint16_t nsei) __attribute__((nonnull));
+struct gbproxy_peer *gbproxy_peer_by_rai(
+	struct gbproxy_config *cfg, const uint8_t *ra) __attribute__((nonnull));
+struct gbproxy_peer *gbproxy_peer_by_lai(
+	struct gbproxy_config *cfg, const uint8_t *la) __attribute__((nonnull));
+struct gbproxy_peer *gbproxy_peer_by_bssgp_tlv(
+	struct gbproxy_config *cfg, struct tlv_parsed *tp)
+	__attribute__((nonnull));
+struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvci)
+	__attribute__((nonnull));
+void gbproxy_peer_free(struct gbproxy_peer *peer) __attribute__((nonnull));
+int gbproxy_cleanup_peers(struct gbproxy_config *cfg, uint16_t nsei, uint16_t bvci)
+	__attribute__((nonnull));
 
 #endif
