@@ -375,6 +375,7 @@ struct gsm_bts_trx {
 	unsigned int max_power_red;	/* in actual dB */
 
 #ifndef ROLE_BSC
+	struct trx_power_params power_params;
 	struct {
 		unsigned int max_initial_power;	/* in dBm */
 		uint8_t	step_size;		/* in dB  */
