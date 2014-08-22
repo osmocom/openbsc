@@ -137,8 +137,16 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 					fprintf(stream, "/%08x",
 						tlli_info->sgsn_tlli.assigned);
 			}
-			rc = fprintf(stream, ", IMSI %s, AGE %d\n",
-				     mi_buf, (int)age);
+			fprintf(stream, ", IMSI %s, AGE %d",
+				mi_buf, (int)age);
+
+			if (tlli_info->imsi_acq_pending)
+				fprintf(stream, ", IMSI acquisition in progress");
+
+			if (!llist_empty(&tlli_info->stored_msgs))
+				fprintf(stream, ", stored messages");
+
+			rc = fprintf(stream, "\n");
 			if (rc < 0)
 				return rc;
 		}
@@ -1659,6 +1667,7 @@ static void test_gbproxy_imsi_acquisition()
 	gbcfg.core_apn = talloc_zero_size(NULL, 100);
 	gbcfg.core_apn_size = gprs_str_to_apn(gbcfg.core_apn, 100, "foo.bar");
 	gbcfg.patch_ptmsi = 1;
+	gbcfg.acquire_imsi = 1;
 	gbcfg.bss_ptmsi_state = 0;
 	gbcfg.sgsn_tlli_state = 1;
 
@@ -1690,6 +1699,13 @@ static void test_gbproxy_imsi_acquisition()
 		       foreign_bss_tlli, &rai_unknown, cell_id,
 		       GPRS_SAPI_GMM, bss_nu++,
 		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_identity_resp, sizeof(dtap_identity_resp));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 

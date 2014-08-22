@@ -295,6 +295,28 @@ DEFUN(cfg_gbproxy_no_patch_ptmsi,
 	return CMD_SUCCESS;
 }
 
+#define GBPROXY_ACQUIRE_IMSI_STR "Acquire the IMSI before establishing a LLC connection (Experimental)\n"
+
+DEFUN(cfg_gbproxy_acquire_imsi,
+      cfg_gbproxy_acquire_imsi_cmd,
+      "acquire-imsi",
+      GBPROXY_ACQUIRE_IMSI_STR)
+{
+	g_cfg->acquire_imsi = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_no_acquire_imsi,
+      cfg_gbproxy_no_acquire_imsi_cmd,
+      "no acquire-imsi",
+      NO_STR GBPROXY_ACQUIRE_IMSI_STR)
+{
+	g_cfg->acquire_imsi = 0;
+
+	return CMD_SUCCESS;
+}
+
 #define GBPROXY_TLLI_LIST_STR "Set TLLI list parameters\n"
 #define GBPROXY_MAX_AGE_STR "Limit maximum age\n"
 
@@ -604,12 +626,14 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_match_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_ptmsi_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_acquire_imsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_apn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_patch_ptmsi_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_no_acquire_imsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_mode_cmd);

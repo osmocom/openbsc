@@ -82,7 +82,10 @@ struct gbproxy_config {
 	enum gbproxy_patch_mode patch_mode;
 	int tlli_max_age;
 	int tlli_max_len;
+
+	/* Experimental config */
 	int patch_ptmsi;
+	int acquire_imsi;
 
 	/* IMSI checking/matching */
 	int check_imsi;
@@ -143,6 +146,8 @@ struct gbproxy_tlli_info {
 	uint8_t *mi_data;
 	size_t mi_data_len;
 
+	int imsi_acq_pending;
+	struct llist_head stored_msgs;
 
 	int enable_patching;
 };

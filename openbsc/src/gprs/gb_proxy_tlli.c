@@ -198,6 +198,8 @@ static struct gbproxy_tlli_info *gbproxy_tlli_info_alloc(
 	tlli_info->tlli.ptmsi = GSM_RESERVED_TMSI;
 	tlli_info->sgsn_tlli.ptmsi = GSM_RESERVED_TMSI;
 
+	INIT_LLIST_HEAD(&tlli_info->stored_msgs);
+
 	return tlli_info;
 }
 
