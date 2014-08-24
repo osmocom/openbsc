@@ -332,8 +332,6 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 				     int (*mncc_recv)(struct gsm_network *, struct msgb *));
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 
-struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
-
 /* Get reference to a neighbor cell on a given BCCH ARFCN */
 struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
 				 uint16_t arfcn, uint8_t bsic);

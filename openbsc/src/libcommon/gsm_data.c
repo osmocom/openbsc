@@ -150,21 +150,6 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	return net;
 }
 
-struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
-{
-	struct gsm_bts *bts;
-
-	if (num >= net->num_bts)
-		return NULL;
-
-	llist_for_each_entry(bts, &net->bts_list, list) {
-		if (bts->nr == num)
-			return bts;
-	}
-
-	return NULL;
-}
-
 /* Get reference to a neighbor cell on a given BCCH ARFCN */
 struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
 				 uint16_t arfcn, uint8_t bsic)

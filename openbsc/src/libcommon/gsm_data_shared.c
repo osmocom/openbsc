@@ -132,6 +132,21 @@ const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 	return get_value_string(chreq_names, c);
 }
 
+struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
+{
+	struct gsm_bts *bts;
+
+	if (num >= net->num_bts)
+		return NULL;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (bts->nr == num)
+			return bts;
+	}
+
+	return NULL;
+}
+
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);

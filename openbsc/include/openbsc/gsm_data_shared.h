@@ -741,8 +741,9 @@ struct gsm_bts {
 
 
 struct gsm_bts *gsm_bts_alloc(void *talloc_ctx);
-struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
+struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 
+struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
 
 
