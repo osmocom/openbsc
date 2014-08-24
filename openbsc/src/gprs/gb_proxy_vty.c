@@ -104,6 +104,11 @@ static int config_write_gbproxy(struct vty *vty)
 	       else
 		       vty_out(vty, "%s", VTY_NEWLINE);
 	}
+
+	if (g_cfg->patch_ptmsi > 0)
+		vty_out(vty, " patch-ptmsi%s",
+			VTY_NEWLINE);
+
 	if (g_cfg->tlli_max_age > 0)
 		vty_out(vty, " tlli-list max-age %d%s",
 			g_cfg->tlli_max_age, VTY_NEWLINE);
@@ -193,7 +198,7 @@ static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 		talloc_free(g_cfg->core_apn);
 		g_cfg->core_apn = NULL;
 		g_cfg->core_apn_size = 0;
-		gbprox_clear_patch_filter(g_cfg);
+		gbproxy_clear_patch_filter(g_cfg);
 		return CMD_SUCCESS;
 	}
 
@@ -206,8 +211,8 @@ static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 	}
 
 	if (!filter) {
-		gbprox_clear_patch_filter(g_cfg);
-	} else if (gbprox_set_patch_filter(g_cfg, filter, &err_msg) != 0) {
+		gbproxy_clear_patch_filter(g_cfg);
+	} else if (gbproxy_set_patch_filter(g_cfg, filter, &err_msg) != 0) {
 		vty_out(vty, "Match expression invalid: %s%s",
 			err_msg, VTY_NEWLINE);
 		return CMD_WARNING;
@@ -266,6 +271,28 @@ DEFUN(cfg_gbproxy_no_core_apn,
       NO_STR GBPROXY_CORE_APN_STR)
 {
 	return set_core_apn(vty, NULL, NULL);
+}
+
+#define GBPROXY_PATCH_PTMSI_STR "Patch P-TMSI/TLLI\n"
+
+DEFUN(cfg_gbproxy_patch_ptmsi,
+      cfg_gbproxy_patch_ptmsi_cmd,
+      "patch-ptmsi",
+      GBPROXY_PATCH_PTMSI_STR)
+{
+	g_cfg->patch_ptmsi = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_no_patch_ptmsi,
+      cfg_gbproxy_no_patch_ptmsi_cmd,
+      "no patch-ptmsi",
+      NO_STR GBPROXY_PATCH_PTMSI_STR)
+{
+	g_cfg->patch_ptmsi = 0;
+
+	return CMD_SUCCESS;
 }
 
 #define GBPROXY_TLLI_LIST_STR "Set TLLI list parameters\n"
@@ -377,7 +404,7 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 				snprintf(mi_buf, sizeof(mi_buf), "(none)");
 			}
 			vty_out(vty, "  TLLI %08x, IMSI %s, AGE %d%s",
-				tlli_info->tlli, mi_buf, (int)age,
+				tlli_info->tlli.current, mi_buf, (int)age,
 				VTY_NEWLINE);
 		}
 	}
@@ -395,7 +422,7 @@ DEFUN(delete_gb_bvci, delete_gb_bvci_cmd,
 	const uint16_t bvci = atoi(argv[1]);
 	int counter;
 
-	counter = gbprox_cleanup_peers(g_cfg, nsei, bvci);
+	counter = gbproxy_cleanup_peers(g_cfg, nsei, bvci);
 
 	if (counter == 0) {
 		vty_out(vty, "BVC not found%s", VTY_NEWLINE);
@@ -431,7 +458,7 @@ DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 
 	if (delete_bvc) {
 		if (!dry_run)
-			counter = gbprox_cleanup_peers(g_cfg, nsei, 0);
+			counter = gbproxy_cleanup_peers(g_cfg, nsei, 0);
 		else {
 			struct gbproxy_peer *peer;
 			counter = 0;
@@ -514,7 +541,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 		break;
 	}
 
-	peer = gbprox_peer_by_nsei(g_cfg, nsei);
+	peer = gbproxy_peer_by_nsei(g_cfg, nsei);
 	if (!peer) {
 		vty_out(vty, "Didn't find peer with NSEI %d%s",
 			nsei, VTY_NEWLINE);
@@ -524,7 +551,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	state = &peer->patch_state;
 
 	if (match == MATCH_STALE) {
-		found = gbprox_remove_stale_tllis(peer, time(NULL));
+		found = gbproxy_remove_stale_tllis(peer, time(NULL));
 		if (found)
 			vty_out(vty, "Deleted %d stale TLLI%s%s",
 				found, found == 1 ? "" : "s", VTY_NEWLINE);
@@ -532,7 +559,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	}
 
 	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
-		if (match == MATCH_TLLI && tlli_info->tlli != tlli)
+		if (match == MATCH_TLLI && tlli_info->tlli.current != tlli)
 			continue;
 
 		if (match == MATCH_IMSI) {
@@ -544,8 +571,9 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 			if (strcmp(mi_buf, imsi) != 0)
 				continue;
 		}
-		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli, VTY_NEWLINE);
-		gbprox_delete_tlli(peer, tlli_info);
+		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli.current,
+			VTY_NEWLINE);
+		gbproxy_delete_tlli(peer, tlli_info);
 		found += 1;
 	}
 
@@ -574,11 +602,13 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mnc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_match_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_apn_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_no_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_mode_cmd);

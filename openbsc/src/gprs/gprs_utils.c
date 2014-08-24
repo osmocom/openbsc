@@ -24,6 +24,8 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/gprs/gprs_ns.h>
 
+#include <osmocom/gsm/protocol/gsm_04_08.h>
+
 #include <string.h>
 
 /* FIXME: this needs to go to libosmocore/msgb.c */
@@ -160,5 +162,42 @@ int gprs_str_to_apn(uint8_t *apn_enc, size_t max_len, const char *str)
 	*last_len_field = (apn_enc - last_len_field) - 1;
 
 	return len;
+}
+
+/* GSM 04.08, 10.5.1.4 */
+int gprs_is_mi_tmsi(const uint8_t *value, size_t value_len)
+{
+	if (value_len != GSM48_TMSI_LEN)
+		return 0;
+
+	if (!value || (value[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_TMSI)
+		return 0;
+
+	return 1;
+}
+
+/* GSM 04.08, 10.5.1.4 */
+int gprs_is_mi_imsi(const uint8_t *value, size_t value_len)
+{
+	if (value_len == 0)
+		return 0;
+
+	if (!value || (value[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_IMSI)
+		return 0;
+
+	return 1;
+}
+
+int gprs_parse_mi_tmsi(const uint8_t *value, size_t value_len, uint32_t *tmsi)
+{
+	uint32_t tmsi_be;
+
+	if (!gprs_is_mi_tmsi(value, value_len))
+		return 0;
+
+	memcpy(&tmsi_be, value + 1, sizeof(tmsi_be));
+
+	*tmsi = ntohl(tmsi_be);
+	return 1;
 }
 

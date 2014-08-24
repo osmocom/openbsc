@@ -31,3 +31,6 @@ int gprs_msgb_resize_area(struct msgb *msg, uint8_t *area,
 			    size_t old_size, size_t new_size);
 char *gprs_apn_to_str(char *out_str, const uint8_t *apn_enc, size_t rest_chars);
 int gprs_str_to_apn(uint8_t *apn_enc, size_t max_len, const char *str);
+int gprs_is_mi_tmsi(const uint8_t *value, size_t value_len);
+int gprs_is_mi_imsi(const uint8_t *value, size_t value_len);
+int gprs_parse_mi_tmsi(const uint8_t *value, size_t value_len, uint32_t *tmsi);
