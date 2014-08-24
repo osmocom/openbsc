@@ -57,9 +57,6 @@ enum gsm_chreq_reason_t {
 #define HARDCODED_BTS1_TS	6
 #define HARDCODED_BTS2_TS	11
 
-/* reserved according to GSM 03.03 § 2.4 */
-#define GSM_RESERVED_TMSI   0xFFFFFFFF
-
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
 	GSM_HOOK_RR_PAGING,
