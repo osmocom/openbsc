@@ -31,6 +31,7 @@
 
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
+#include <osmocom/ctrl/ports.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/linuxlist.h>
@@ -213,7 +214,7 @@ int main(int argc, char **argv)
 	}
 	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
 
-	bsc_gsmnet->ctrl = bsc_controlif_setup(bsc_gsmnet, 4249);
+	bsc_gsmnet->ctrl = bsc_controlif_setup(bsc_gsmnet, OSMO_CTRL_PORT_NITB_BSC);
 	if (!bsc_gsmnet) {
 		fprintf(stderr, "Failed to init the control interface. Exiting.\n");
 		exit(1);

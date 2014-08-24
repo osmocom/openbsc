@@ -57,6 +57,7 @@
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/ports.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -1534,7 +1535,7 @@ int main(int argc, char **argv)
 	rate_ctr_init(tall_bsc_ctx);
 
 	/* init vty and parse */
-	telnet_init(tall_bsc_ctx, NULL, 4244);
+	telnet_init(tall_bsc_ctx, NULL, OSMO_VTY_PORT_BSC_NAT);
 	if (mgcp_parse_config(config_file, nat->mgcp_cfg, MGCP_BSC_NAT) < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return -3;

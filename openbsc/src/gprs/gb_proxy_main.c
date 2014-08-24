@@ -48,6 +48,7 @@
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/ports.h>
 
 #include "../../bscconfig.h"
 
@@ -250,7 +251,7 @@ int main(int argc, char **argv)
 
 	rate_ctr_init(tall_bsc_ctx);
 
-	rc = telnet_init(tall_bsc_ctx, &dummy_network, 4246);
+	rc = telnet_init(tall_bsc_ctx, &dummy_network, OSMO_VTY_PORT_GBPROXY);
 	if (rc < 0)
 		exit(1);
 

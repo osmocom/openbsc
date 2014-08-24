@@ -43,6 +43,7 @@
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/ports.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
@@ -51,6 +52,7 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_gmm.h>
 #include <osmocom/ctrl/control_if.h>
+#include <osmocom/ctrl/ports.h>
 
 #include <gtp.h>
 
@@ -312,11 +314,11 @@ int main(int argc, char **argv)
 	handle_options(argc, argv);
 
 	rate_ctr_init(tall_bsc_ctx);
-	rc = telnet_init(tall_bsc_ctx, &dummy_network, 4245);
+	rc = telnet_init(tall_bsc_ctx, &dummy_network, OSMO_VTY_PORT_SGSN);
 	if (rc < 0)
 		exit(1);
 
-	ctrl = sgsn_controlif_setup(NULL, 4251);
+	ctrl = sgsn_controlif_setup(NULL, OSMO_CTRL_PORT_SGSN);
 	if (!ctrl) {
 		LOGP(DGPRS, LOGL_ERROR, "Failed to create CTRL interface.\n");
 		exit(1);

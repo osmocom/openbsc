@@ -23,6 +23,7 @@
 
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
+#include <osmocom/ctrl/ports.h>
 
 #include <openbsc/ctrl.h>
 #include <openbsc/bsc_nat.h>
@@ -383,7 +384,7 @@ struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port)
 	int rc;
 
 
-	ctrl = bsc_controlif_setup(NULL, 4250);
+	ctrl = bsc_controlif_setup(NULL, OSMO_CTRL_PORT_BSC_NAT);
 	if (!ctrl) {
 		fprintf(stderr, "Failed to initialize the control interface. Exiting.\n");
 		return NULL;
