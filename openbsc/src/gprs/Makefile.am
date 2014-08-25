@@ -17,7 +17,7 @@ osmo_gbproxy_SOURCES =  gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
 			gb_proxy_patch.c gb_proxy_tlli.c gb_proxy_peer.c \
 			gprs_gb_parse.c gprs_llc_parse.c crc24.c gprs_utils.c
 osmo_gbproxy_LDADD = 	$(top_builddir)/src/libcommon/libcommon.a \
-			$(OSMO_LIBS)
+			$(OSMO_LIBS) -lrt
 
 osmo_sgsn_SOURCES =	gprs_gmm.c gprs_sgsn.c gprs_sndcp.c gprs_sndcp_vty.c \
 			sgsn_main.c sgsn_vty.c sgsn_libgtp.c \
