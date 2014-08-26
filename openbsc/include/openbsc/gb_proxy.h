@@ -86,6 +86,8 @@ struct gbproxy_config {
 	/* Experimental config */
 	int patch_ptmsi;
 	int acquire_imsi;
+	int route_to_sgsn2;
+	uint16_t nsip_sgsn2_nsei;
 
 	/* IMSI checking/matching */
 	int check_imsi;

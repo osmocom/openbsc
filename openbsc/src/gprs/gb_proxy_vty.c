@@ -317,6 +317,32 @@ DEFUN(cfg_gbproxy_no_acquire_imsi,
 	return CMD_SUCCESS;
 }
 
+#define GBPROXY_SECOND_SGSN_STR "Route matching LLC connections to a second SGSN (Experimental)\n"
+
+DEFUN(cfg_gbproxy_secondary_sgsn,
+      cfg_gbproxy_secondary_sgsn_cmd,
+      "secondary-sgsn nsei <0-65534>",
+      GBPROXY_SECOND_SGSN_STR
+      "NSEI to be used in the connection with the SGSN\n"
+      "The NSEI\n")
+{
+	g_cfg->route_to_sgsn2 = 1;
+	g_cfg->nsip_sgsn2_nsei = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_no_secondary_sgsn,
+      cfg_gbproxy_no_secondary_sgsn_cmd,
+      "no secondary-sgsn",
+      NO_STR GBPROXY_SECOND_SGSN_STR)
+{
+	g_cfg->route_to_sgsn2 = 0;
+	g_cfg->nsip_sgsn2_nsei = 0xFFFF;
+
+	return CMD_SUCCESS;
+}
+
 #define GBPROXY_TLLI_LIST_STR "Set TLLI list parameters\n"
 #define GBPROXY_MAX_AGE_STR "Limit maximum age\n"
 
@@ -627,6 +653,7 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_match_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_acquire_imsi_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_secondary_sgsn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
@@ -634,6 +661,7 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_apn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_acquire_imsi_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_no_secondary_sgsn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_mode_cmd);
