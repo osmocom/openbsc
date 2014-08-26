@@ -335,7 +335,10 @@ void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 		goto patch_error;
 	}
 
-	if (parse_ctx->tlli_enc && tlli_info) {
+	if (!tlli_info)
+		return;
+
+	if (parse_ctx->tlli_enc) {
 		uint32_t tlli = gbproxy_map_tlli(parse_ctx->tlli,
 						 tlli_info, parse_ctx->to_bss);
 

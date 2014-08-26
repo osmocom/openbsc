@@ -309,7 +309,7 @@ struct gbproxy_tlli_info *gbproxy_register_tlli(
 {
 	struct gbproxy_tlli_info *tlli_info;
 	int enable_patching = -1;
-	int tlli_already_known;
+	int tlli_already_known = 0;
 
 	/* Check, whether the IMSI matches */
 	if (gprs_is_mi_imsi(imsi, imsi_len)) {
