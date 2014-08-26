@@ -272,7 +272,7 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 		     "sending extracted RTP from OSMUX to BSC via endpoint=%u "
 		     "(allocated=%d)\n", ENDPOINT_NUMBER(endp), endp->allocated);
 
-		osmux_xfrm_output(osmuxh, &endp->osmux_out, &list);
+		osmux_xfrm_output(osmuxh, &endp->osmux.out, &list);
 		osmux_tx_sched(&list, scheduled_tx_bts_cb, endp);
 	}
 out:
@@ -360,7 +360,7 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 		     "sending extracted RTP from OSMUX to MSC via endpoint=%u "
 		     "(allocated=%d)\n", ENDPOINT_NUMBER(endp), endp->allocated);
 
-		osmux_xfrm_output(osmuxh, &endp->osmux_out, &list);
+		osmux_xfrm_output(osmuxh, &endp->osmux.out, &list);
 		osmux_tx_sched(&list, scheduled_tx_net_cb, endp);
 	}
 out:
@@ -423,7 +423,7 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, int role)
 		LOGP(DMGCP, LOGL_NOTICE, "OSMUX requested, ENABLING.\n");
 	}
 
-	osmux_xfrm_output_init(&endp->osmux_out,
+	osmux_xfrm_output_init(&endp->osmux.out,
 			       (endp->ci * rtp_ssrc_winlen) +
 			       (random() % rtp_ssrc_winlen));
 
@@ -435,7 +435,7 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, int role)
 			endp->type = MGCP_OSMUX_BSC;
 			break;
 	}
-	endp->osmux = 1;
+	endp->osmux.enable = 1;
 
 	return 0;
 }

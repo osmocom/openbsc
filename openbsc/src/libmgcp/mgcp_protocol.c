@@ -327,7 +327,8 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	len = snprintf(sdp_record, sizeof(sdp_record),
 		       "I: %u%s\n\n",
 			endp->ci,
-			endp->cfg->osmux && endp->osmux ? "\nX-Osmux: On" : "");
+			endp->cfg->osmux && endp->osmux.enable ?
+				"\nX-Osmux: On" : "");
 
 	if (len < 0)
 		return NULL;
@@ -346,7 +347,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 
 static void send_dummy(struct mgcp_endpoint *endp)
 {
-	if (endp->osmux)
+	if (endp->osmux.enable)
 		osmux_send_dummy(endp);
 	else
 		mgcp_send_dummy(endp);

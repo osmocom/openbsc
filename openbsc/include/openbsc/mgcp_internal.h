@@ -173,10 +173,11 @@ struct mgcp_endpoint {
 	/* tap for the endpoint */
 	struct mgcp_rtp_tap taps[MGCP_TAP_COUNT];
 
-	/* osmux is enabled/disabled */
-	int osmux;
-	/* osmux internal to unbatch messages for this endpoint */
-	struct osmux_out_handle osmux_out;
+	struct {
+		int enable;
+		/* handle to unbatch messages */
+		struct osmux_out_handle out;
+	} osmux;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->tcfg->endpoints)
