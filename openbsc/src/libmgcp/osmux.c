@@ -58,29 +58,37 @@ static void osmux_deliver(struct msgb *batch_msg, void *data)
 		(struct sockaddr *)&out, sizeof(out));
 }
 
-static struct osmux_in_handle *
-osmux_handle_lookup(struct mgcp_config *cfg, struct in_addr *addr, int rem_port)
+static struct osmux_handle *
+osmux_handle_find_get(struct in_addr *addr, int rem_port)
 {
 	struct osmux_handle *h;
 
 	/* Lookup for existing OSMUX handle for this destination address. */
 	llist_for_each_entry(h, &osmux_handle_list, head) {
-		if (memcmp(&h->rem_addr, addr, sizeof(struct in_addr)) == 0 && h->rem_port == rem_port) {
+		if (memcmp(&h->rem_addr, addr, sizeof(struct in_addr)) == 0 &&
+		    h->rem_port == rem_port) {
 			LOGP(DMGCP, LOGL_DEBUG, "using existing OSMUX handle "
 						"for addr=%s:%d\n",
 				inet_ntoa(*addr), ntohs(rem_port));
-			goto out;
+			return h;
 		}
 	}
 
-	/* Does not exist, allocate it. */
+	return NULL;
+}
+
+static struct osmux_handle *
+osmux_handle_alloc(struct mgcp_config *cfg, struct in_addr *addr, int rem_port)
+{
+	struct osmux_handle *h;
+
 	h = talloc_zero(osmux, struct osmux_handle);
 	if (!h)
 		return NULL;
 	h->rem_addr = *addr;
 	h->rem_port = rem_port;
 
-	h->in = talloc_zero(osmux, struct osmux_in_handle);
+	h->in = talloc_zero(h, struct osmux_in_handle);
 	if (!h->in) {
 		talloc_free(h);
 		return NULL;
@@ -96,7 +104,23 @@ osmux_handle_lookup(struct mgcp_config *cfg, struct in_addr *addr, int rem_port)
 
 	LOGP(DMGCP, LOGL_DEBUG, "created new OSMUX handle for addr=%s:%d\n",
 		inet_ntoa(*addr), ntohs(rem_port));
-out:
+
+	return h;
+}
+
+static struct osmux_in_handle *
+osmux_handle_lookup(struct mgcp_config *cfg, struct in_addr *addr, int rem_port)
+{
+	struct osmux_handle *h;
+
+	h = osmux_handle_find_get(addr, rem_port);
+	if (h != NULL)
+		return h->in;
+
+	h = osmux_handle_alloc(cfg, addr, rem_port);
+	if (h == NULL)
+		return NULL;
+
 	return h->in;
 }
 
