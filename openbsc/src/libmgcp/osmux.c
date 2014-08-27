@@ -439,14 +439,6 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, int role)
 	 */
 	static const uint32_t rtp_ssrc_winlen = UINT32_MAX / 256;
 
-	if (!endp->cfg->osmux_init) {
-		if (osmux_init(role, endp->cfg) < 0) {
-			LOGP(DMGCP, LOGL_ERROR, "Cannot init OSMUX\n");
-			return -1;
-		}
-		LOGP(DMGCP, LOGL_NOTICE, "OSMUX requested, ENABLING.\n");
-	}
-
 	osmux_xfrm_output_init(&endp->osmux.out,
 			       (endp->ci * rtp_ssrc_winlen) +
 			       (random() % rtp_ssrc_winlen));

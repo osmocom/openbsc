@@ -33,6 +33,7 @@
 #include <osmocom/core/utils.h>
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/misc.h>
+#include <openbsc/osmux.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -1184,11 +1185,26 @@ DEFUN(cfg_bsc_osmux,
        OSMUX_STR "Enable OSMUX\n" "Disable OSMUX\n")
 {
 	struct bsc_config *conf = vty->index;
+	int old = conf->osmux;
 
 	if (strcmp(argv[0], "on") == 0)
 		conf->osmux = 1;
 	else if (strcmp(argv[0], "off") == 0)
 		conf->osmux = 0;
+
+	if (old == 0 && conf->osmux == 1) {
+		if (osmux_init(OSMUX_ROLE_BSC_NAT, conf->nat->mgcp_cfg) < 0) {
+			LOGP(DMGCP, LOGL_ERROR, "Cannot init OSMUX\n");
+			return -1;
+		}
+		LOGP(DMGCP, LOGL_NOTICE, "Setting up OSMUX socket\n");
+	} else if (old == 1 && conf->osmux == 0) {
+		LOGP(DMGCP, LOGL_NOTICE, "Disabling OSMUX socket\n");
+		/* Don't stop the socket, we may already have ongoing voice
+		 * flows already using Osmux. This just switch indicates that
+		 * new upcoming flows should use RTP.
+		 */
+	}
 
 	return CMD_SUCCESS;
 }

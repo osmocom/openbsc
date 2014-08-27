@@ -879,6 +879,24 @@ uint32_t mgcp_rtp_packet_duration(struct mgcp_endpoint *endp,
 	return rtp->rate * f * rtp->frame_duration_num / rtp->frame_duration_den;
 }
 
+static int mgcp_osmux_setup(struct mgcp_endpoint *endp)
+{
+	if (!endp->cfg->osmux_init) {
+		if (osmux_init(OSMUX_ROLE_BSC, endp->cfg) < 0) {
+			LOGP(DMGCP, LOGL_ERROR, "Cannot init OSMUX\n");
+			return -1;
+		}
+		LOGP(DMGCP, LOGL_NOTICE, "OSMUX socket has been set up\n");
+	}
+
+	if (osmux_enable_endpoint(endp, OSMUX_ROLE_BSC) < 0) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Could not activate Osmux in endpoint %d\n",
+		     ENDPOINT_NUMBER(endp));
+	}
+	return 0;
+}
+
 static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 {
 	struct mgcp_trunk_config *tcfg;
@@ -910,12 +928,8 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 			mode = (const char *) line + 3;
 			break;
 		case 'X':
-			if (strcmp("Osmux: on", line + 2) == 0 &&
-			    osmux_enable_endpoint(endp, OSMUX_ROLE_BSC) < 0) {
-				LOGP(DMGCP, LOGL_ERROR,
-				     "Could not activate osmux in endpoint %d\n",
-				     ENDPOINT_NUMBER(endp));
-			}
+			if (strcmp("Osmux: on", line + 2) == 0)
+				mgcp_osmux_setup(endp);
 			break;
 		case '\0':
 			have_sdp = 1;
