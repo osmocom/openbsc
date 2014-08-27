@@ -263,6 +263,8 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	int len_change = 0;
 	time_t now;
 	struct gbproxy_tlli_info *tlli_info = NULL;
+	uint32_t sgsn_nsei = cfg->nsip_sgsn_nsei;
+	int send_msg_directly = 0;
 
 	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn &&
 	    !cfg->acquire_imsi)
@@ -328,6 +330,11 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 
 	tlli_info = gbproxy_update_tlli_state_ul(peer, now, &parse_ctx);
 
+	if (tlli_info && tlli_info->enable_patching && cfg->route_to_sgsn2) {
+		sgsn_nsei = cfg->nsip_sgsn2_nsei;
+		send_msg_directly = 1;
+	}
+
 	if (tlli_info && tlli_info->imsi_acq_pending && parse_ctx.g48_hdr &&
 	    parse_ctx.g48_hdr->proto_discr == GSM48_PDISC_MM_GPRS &&
 	    parse_ctx.g48_hdr->msg_type == GSM48_MT_GMM_ID_RESP &&
@@ -359,7 +366,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 							&tmp_parse_ctx);
 
 			rc = gbprox_relay2sgsn(cfg, stored_msg, msgb_bvci(msg),
-					       cfg->nsip_sgsn_nsei);
+					       sgsn_nsei);
 
 			if (rc < 0)
 				LOGP(DLLC, LOGL_ERROR,
@@ -424,6 +431,13 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 			    peer, tlli_info, &len_change, &parse_ctx);
 
 	gbproxy_update_tlli_state_after(peer, tlli_info, now, &parse_ctx);
+
+	if (send_msg_directly) {
+		/* Send message directly to the selected SGSN */
+		rc = gbprox_relay2sgsn(cfg, msg, msgb_bvci(msg), sgsn_nsei);
+		/* Don't let the calling code handle the transmission */
+		return 0;
+	}
 
 	return 1;
 }
