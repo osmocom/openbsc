@@ -174,7 +174,12 @@ struct mgcp_endpoint {
 	struct mgcp_rtp_tap taps[MGCP_TAP_COUNT];
 
 	struct {
-		int enable;
+		/* Osmux state: disabled, activating, active */
+		enum osmux_state state;
+		/* Allocated Osmux circuit ID for this endpoint */
+		uint8_t cid;
+		/* handle to batch messages */
+		struct osmux_in_handle *in;
 		/* handle to unbatch messages */
 		struct osmux_out_handle out;
 	} osmux;

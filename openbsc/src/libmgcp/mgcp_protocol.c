@@ -320,16 +320,18 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	char sdp_record[4096];
 	int len;
 	int nchars;
+	char osmux_extension[strlen("\nX-Osmux: 255") + 1];
 
 	if (!addr)
 		addr = endp->cfg->source_addr;
 
-	len = snprintf(sdp_record, sizeof(sdp_record),
-		       "I: %u%s\n\n",
-			endp->ci,
-			endp->cfg->osmux && endp->osmux.enable ?
-				"\nX-Osmux: On" : "");
+	if (endp->osmux.state == OSMUX_STATE_ACTIVATING)
+		sprintf(osmux_extension, "\nX-Osmux: %u", endp->osmux.cid);
+	else
+		osmux_extension[0] = '\0';
 
+	len = snprintf(sdp_record, sizeof(sdp_record),
+		       "I: %u%s\n\n", endp->ci, osmux_extension);
 	if (len < 0)
 		return NULL;
 
@@ -347,7 +349,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 
 static void send_dummy(struct mgcp_endpoint *endp)
 {
-	if (endp->osmux.enable)
+	if (endp->osmux.state != OSMUX_STATE_DISABLED)
 		osmux_send_dummy(endp);
 	else
 		mgcp_send_dummy(endp);
@@ -879,7 +881,22 @@ uint32_t mgcp_rtp_packet_duration(struct mgcp_endpoint *endp,
 	return rtp->rate * f * rtp->frame_duration_num / rtp->frame_duration_den;
 }
 
-static int mgcp_osmux_setup(struct mgcp_endpoint *endp)
+static int mgcp_parse_osmux_cid(const char *line)
+{
+	uint32_t osmux_cid;
+
+	sscanf(line + 2, "Osmux: %u", &osmux_cid);
+	if (osmux_cid > OSMUX_CID_MAX) {
+		LOGP(DMGCP, LOGL_ERROR, "Osmux ID too large: %u > %u\n",
+		     osmux_cid, OSMUX_CID_MAX);
+		return -1;
+	}
+	LOGP(DMGCP, LOGL_DEBUG, "bsc-nat offered Osmux CID %u\n", osmux_cid);
+
+	return osmux_cid;
+}
+
+static int mgcp_osmux_setup(struct mgcp_endpoint *endp, const char *line)
 {
 	if (!endp->cfg->osmux_init) {
 		if (osmux_init(OSMUX_ROLE_BSC, endp->cfg) < 0) {
@@ -889,12 +906,7 @@ static int mgcp_osmux_setup(struct mgcp_endpoint *endp)
 		LOGP(DMGCP, LOGL_NOTICE, "OSMUX socket has been set up\n");
 	}
 
-	if (osmux_enable_endpoint(endp, OSMUX_ROLE_BSC) < 0) {
-		LOGP(DMGCP, LOGL_ERROR,
-		     "Could not activate Osmux in endpoint %d\n",
-		     ENDPOINT_NUMBER(endp));
-	}
-	return 0;
+	return mgcp_parse_osmux_cid(line);
 }
 
 static struct msgb *handle_create_con(struct mgcp_parse_data *p)
@@ -907,7 +919,7 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 	const char *callid = NULL;
 	const char *mode = NULL;
 	char *line;
-	int have_sdp = 0;
+	int have_sdp = 0, osmux_cid = -1;
 
 	if (p->found != 0)
 		return create_err_response(NULL, 510, "CRCX", p->trans);
@@ -928,8 +940,14 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 			mode = (const char *) line + 3;
 			break;
 		case 'X':
-			if (strcmp("Osmux: on", line + 2) == 0)
-				mgcp_osmux_setup(endp);
+			/* Osmux is not enabled in this bsc, ignore it so the
+			 * bsc-nat knows that we don't want to use Osmux.
+			 */
+			if (!p->endp->cfg->osmux)
+				break;
+
+			if (strncmp("Osmux: ", line + 2, strlen("Osmux: ")) == 0)
+				osmux_cid = mgcp_osmux_setup(endp, line);
 			break;
 		case '\0':
 			have_sdp = 1;
@@ -992,6 +1010,15 @@ mgcp_header_done:
 	endp->ci = generate_call_id(p->cfg);
 	if (endp->ci == CI_UNUSED)
 		goto error2;
+
+	/* Annotate Osmux circuit ID and set it to activating state until this
+	 * is fully set up from the dummy load.
+	 */
+	endp->osmux.state = OSMUX_STATE_DISABLED;
+	if (osmux_cid >= 0) {
+		endp->osmux.cid = osmux_cid;
+		endp->osmux.state = OSMUX_STATE_ACTIVATING;
+	}
 
 	endp->allocated = 1;
 
@@ -1057,7 +1084,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 {
 	struct mgcp_endpoint *endp = p->endp;
 	int error_code = 500;
-	int silent = 0, osmux = 0;
+	int silent = 0;
 	int have_sdp = 0;
 	char *line;
 	const char *local_options = NULL;
@@ -1096,10 +1123,6 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			}
 			endp->orig_mode = endp->conn_mode;
 			break;
-		case 'X':
-			if (strcmp("Osmux: on", line + 2) == 0)
-				osmux = 1;
-			break;
 		case 'Z':
 			silent = strcmp("noanswer", line + 3) == 0;
 			break;
@@ -1116,21 +1139,6 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 				line[0], line[0], ENDPOINT_NUMBER(endp));
 			break;
 		}
-	}
-
-	/* Re-enable Osmux if we receive a MDCX, we have to set up a new
-	 * RTP flow: this generates a randomly allocated RTP SSRC and sequence
-	 * number.
-	 */
-	if (osmux) {
-		if (osmux_enable_endpoint(endp, OSMUX_ROLE_BSC) < 0) {
-			LOGP(DMGCP, LOGL_ERROR,
-			     "Could not update osmux in endpoint %d\n",
-			     ENDPOINT_NUMBER(endp));
-		}
-		LOGP(DMGCP, LOGL_NOTICE,
-		     "Re-enabling osmux in endpoint %d, we got updated\n",
-		     ENDPOINT_NUMBER(endp));
 	}
 
 	set_local_cx_options(endp->tcfg->endpoints, &endp->local_options,
@@ -1527,6 +1535,9 @@ void mgcp_release_endp(struct mgcp_endpoint *endp)
 	memset(&endp->bts_state, 0, sizeof(endp->bts_state));
 
 	endp->conn_mode = endp->orig_mode = MGCP_CONN_NONE;
+
+	if (endp->osmux.state == OSMUX_STATE_ENABLED)
+		osmux_disable_endpoint(endp);
 
 	memset(&endp->taps, 0, sizeof(endp->taps));
 }
