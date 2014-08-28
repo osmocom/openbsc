@@ -47,14 +47,8 @@ static void osmux_deliver(struct msgb *batch_msg, void *data)
 		.sin_family = AF_INET,
 		.sin_port = handle->rem_port,
 	};
-	char buf[4096];
 
 	memcpy(&out.sin_addr, &handle->rem_addr, sizeof(handle->rem_addr));
-
-	osmux_snprintf(buf, sizeof(buf), batch_msg);
-	LOGP(DMGCP, LOGL_DEBUG, "OSMUX delivering batch to addr=%s: %s\n",
-		inet_ntoa(out.sin_addr), buf);
-
 	sendto(osmux_fd.fd, batch_msg->data, batch_msg->len, 0,
 		(struct sockaddr *)&out, sizeof(out));
 }
@@ -261,7 +255,6 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 	struct llist_head list;
 	struct sockaddr_in addr;
 	struct mgcp_config *cfg = ofd->data;
-	char buf[4096];
 
 	msg = osmux_recv(ofd, &addr);
 	if (!msg)
@@ -270,10 +263,6 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 	/* not any further processing dummy messages */
 	if (msg->data[0] == MGCP_DUMMY_LOAD)
 		goto out;
-
-	osmux_snprintf(buf, sizeof(buf), msg);
-	LOGP(DMGCP, LOGL_DEBUG, "received OSMUX message from "
-				"BSC NAT (len=%d) %s\n", msg->len, buf);
 
 	while((osmuxh = osmux_xfrm_output_pull(msg)) != NULL) {
 		struct mgcp_endpoint *endp;
@@ -287,11 +276,6 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 			     osmuxh->circuit_id);
 			goto out;
 		}
-
-		LOGP(DMGCP, LOGL_DEBUG,
-		     "sending extracted RTP from OSMUX to BSC via endpoint=%u "
-		     "(allocated=%d)\n", ENDPOINT_NUMBER(endp), endp->allocated);
-
 		osmux_xfrm_output(osmuxh, &endp->osmux.out, &list);
 		osmux_tx_sched(&list, scheduled_tx_bts_cb, endp);
 	}
@@ -358,7 +342,6 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 	struct llist_head list;
 	struct sockaddr_in addr;
 	struct mgcp_config *cfg = ofd->data;
-	char buf[4096];
 
 	msg = osmux_recv(ofd, &addr);
 	if (!msg)
@@ -367,12 +350,6 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 	/* not any further processing dummy messages */
 	if (msg->data[0] == MGCP_DUMMY_LOAD)
 		return osmux_handle_dummy(cfg, &addr, msg);
-
-	osmux_snprintf(buf, sizeof(buf), msg);
-	LOGP(DMGCP, LOGL_DEBUG,
-		"received OSMUX message from BSC(%s:%d) (len=%d) %s\n",
-		inet_ntoa(addr.sin_addr), ntohs(addr.sin_port),
-		msg->len, buf);
 
 	while((osmuxh = osmux_xfrm_output_pull(msg)) != NULL) {
 		struct mgcp_endpoint *endp;
@@ -386,11 +363,6 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 			     osmuxh->circuit_id);
 			goto out;
 		}
-
-		LOGP(DMGCP, LOGL_DEBUG,
-		     "sending extracted RTP from OSMUX to MSC via endpoint=%u "
-		     "(allocated=%d)\n", ENDPOINT_NUMBER(endp), endp->allocated);
-
 		osmux_xfrm_output(osmuxh, &endp->osmux.out, &list);
 		osmux_tx_sched(&list, scheduled_tx_net_cb, endp);
 	}
