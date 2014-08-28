@@ -12,6 +12,7 @@
 #include <stdio.h> /* for printf */
 #include <string.h> /* for memcpy */
 #include <stdlib.h> /* for abs */
+#include <inttypes.h> /* for PRIu64 */
 #include <netinet/in.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
@@ -86,10 +87,17 @@ static void osmux_handle_put(struct osmux_in_handle *in)
 	llist_for_each_entry(h, &osmux_handle_list, head) {
 		if (h->in == in) {
 			if (--h->refcnt == 0) {
-				LOGP(DMGCP, LOGL_DEBUG,
+				LOGP(DMGCP, LOGL_INFO,
 				     "Releasing unused osmux handle for %s:%d\n",
 				     inet_ntoa(h->rem_addr),
 				     ntohs(h->rem_port));
+				LOGP(DMGCP, LOGL_INFO, "Stats: "
+				     "input RTP msgs: %u bytes: %"PRIu64" "
+				     "output osmux msgs: %u bytes: %"PRIu64"\n",
+				     in->stats.input_rtp_msgs,
+				     in->stats.input_rtp_bytes,
+				     in->stats.output_osmux_msgs,
+				     in->stats.output_osmux_bytes);
 				llist_del(&h->head);
 				osmux_xfrm_input_fini(h->in);
 				talloc_free(h);
