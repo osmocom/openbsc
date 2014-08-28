@@ -135,6 +135,8 @@ static int config_write_mgcp(struct vty *vty)
 		g_cfg->osmux == 1 ? "on" : "off", VTY_NEWLINE);
 	vty_out(vty, "  osmux batch-factor %d%s",
 		g_cfg->osmux_batch, VTY_NEWLINE);
+	vty_out(vty, "  osmux port %u%s",
+		g_cfg->osmux_port, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
