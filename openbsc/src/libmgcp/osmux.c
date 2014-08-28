@@ -330,8 +330,9 @@ static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
 	if (osmux_enable_endpoint(endp, OSMUX_ROLE_BSC_NAT,
 				  &addr->sin_addr, addr->sin_port) < 0 ){
 		LOGP(DMGCP, LOGL_ERROR,
-		     "Could not update osmux in endpoint %d\n",
+		     "Could not enable osmux in endpoint %d\n",
 		     ENDPOINT_NUMBER(endp));
+		goto out;
 	}
 
 	LOGP(DMGCP, LOGL_INFO, "Enabling osmux in endpoint %d for %s:%u\n",
