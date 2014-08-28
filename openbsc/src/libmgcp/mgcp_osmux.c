@@ -51,6 +51,7 @@ static void osmux_deliver(struct msgb *batch_msg, void *data)
 	memcpy(&out.sin_addr, &handle->rem_addr, sizeof(handle->rem_addr));
 	sendto(osmux_fd.fd, batch_msg->data, batch_msg->len, 0,
 		(struct sockaddr *)&out, sizeof(out));
+	msgb_free(batch_msg);
 }
 
 static struct osmux_handle *
