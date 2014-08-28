@@ -210,7 +210,10 @@ endpoint_lookup(struct mgcp_config *cfg, int cid,
 static void scheduled_tx_net_cb(struct msgb *msg, void *data)
 {
 	struct mgcp_endpoint *endp = data;
-	struct sockaddr_in addr;
+	struct sockaddr_in addr = {
+		.sin_addr = endp->net_end.addr,
+		.sin_port = endp->net_end.rtp_port,
+	};
 
 	mgcp_send(endp, MGCP_DEST_NET, 1, &addr, (char *)msg->data, msg->len);
 	msgb_free(msg);
@@ -219,7 +222,10 @@ static void scheduled_tx_net_cb(struct msgb *msg, void *data)
 static void scheduled_tx_bts_cb(struct msgb *msg, void *data)
 {
 	struct mgcp_endpoint *endp = data;
-	struct sockaddr_in addr;
+	struct sockaddr_in addr = {
+		.sin_addr = endp->bts_end.addr,
+		.sin_port = endp->bts_end.rtp_port,
+	};
 
 	mgcp_send(endp, MGCP_DEST_BTS, 1, &addr, (char *)msg->data, msg->len);
 	msgb_free(msg);
