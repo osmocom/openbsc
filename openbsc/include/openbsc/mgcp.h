@@ -217,6 +217,8 @@ struct mgcp_config {
 	int osmux_init;
 	/* osmux batch factor: from 1 to 4 maximum */
 	int osmux_batch;
+	/* osmux port */
+	uint16_t osmux_port;
 };
 
 /* config management */

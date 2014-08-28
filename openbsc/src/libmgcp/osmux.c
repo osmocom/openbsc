@@ -416,7 +416,10 @@ int osmux_init(int role, struct mgcp_config *cfg)
 	}
 	osmux_fd.data = cfg;
 
-	ret = mgcp_create_bind("0.0.0.0", &osmux_fd, OSMUX_PORT);
+	if (!cfg->osmux_port)
+		cfg->osmux_port = OSMUX_PORT;
+
+	ret = mgcp_create_bind("0.0.0.0", &osmux_fd, cfg->osmux_port);
 	if (ret < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "cannot bind OSMUX socket\n");
 		return ret;

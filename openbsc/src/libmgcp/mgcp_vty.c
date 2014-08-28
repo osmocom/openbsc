@@ -1132,6 +1132,15 @@ DEFUN(cfg_mgcp_osmux_batch_factor,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_osmux_port,
+      cfg_mgcp_osmux_port_cmd,
+      "osmux port <1-65535>",
+      OSMUX_STR "port\n" "UDP port\n")
+{
+	g_cfg->osmux_port = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 int mgcp_vty_init(void)
 {
 	install_element_ve(&show_mgcp_cmd);
@@ -1187,6 +1196,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_no_sdp_payload_send_ptime_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_factor_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_osmux_port_cmd);
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
 	install_node(&trunk_node, config_write_trunk);
