@@ -507,7 +507,7 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 	if (endp->osmux.state == OSMUX_STATE_ACTIVATING) {
 		if (osmux_enable_endpoint(endp, OSMUX_ROLE_BSC,
 					  &endp->net_end.addr,
-					  htons(OSMUX_PORT)) < 0) {
+					  htons(endp->cfg->osmux_port)) < 0) {
 			LOGP(DMGCP, LOGL_ERROR,
 			     "Could not activate osmux in endpoint %d\n",
 			     ENDPOINT_NUMBER(endp));
@@ -515,14 +515,14 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Osmux CID %u for %s:%u is now enabled\n",
 		     endp->osmux.cid, inet_ntoa(endp->net_end.addr),
-		     OSMUX_PORT);
+		     endp->cfg->osmux_port);
 	}
 	LOGP(DMGCP, LOGL_DEBUG,
 	     "sending OSMUX dummy load to %s CID %u\n",
 	     inet_ntoa(endp->net_end.addr), endp->osmux.cid);
 
 	return mgcp_udp_send(osmux_fd.fd, &endp->net_end.addr,
-			     htons(OSMUX_PORT), buf, sizeof(buf));
+			     htons(endp->cfg->osmux_port), buf, sizeof(buf));
 }
 
 /* bsc-nat allocates/releases the Osmux circuit ID */
