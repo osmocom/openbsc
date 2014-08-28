@@ -654,7 +654,7 @@ static void bsc_mgcp_osmux_confirm(struct mgcp_endpoint *endp, const char *str)
 	}
 
 	if (endp->osmux.cid != osmux_cid) {
-		LOGP(DMGCP, LOGL_INFO,
+		LOGP(DMGCP, LOGL_ERROR,
 		     "BSC sent us wrong CID %u, we expected %u",
 		     osmux_cid, endp->osmux.cid);
 		goto err;
@@ -664,8 +664,6 @@ static void bsc_mgcp_osmux_confirm(struct mgcp_endpoint *endp, const char *str)
 	     osmux_cid);
 	return;
 err:
-	LOGP(DMGCP, LOGL_NOTICE, "bsc didn't accept to use Osmux (cid=%u)\n",
-	     osmux_cid);
 	osmux_put_cid(endp->osmux.cid);
 	endp->osmux.cid = -1;
 	endp->osmux.state = OSMUX_STATE_DISABLED;
