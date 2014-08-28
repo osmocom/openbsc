@@ -160,9 +160,6 @@ int osmux_xfrm_to_osmux(int type, char *buf, int rc, struct mgcp_endpoint *endp)
 	memcpy(msg->data, buf, rc);
 	msgb_put(msg, rc);
 
-	LOGP(DMGCP, LOGL_DEBUG, "Osmux uses CID %u from endpoint=%d (active=%d)\n",
-		endp->osmux.cid, ENDPOINT_NUMBER(endp), endp->allocated);
-
 	while ((ret = osmux_xfrm_input(endp->osmux.in, msg, endp->osmux.cid)) > 0) {
 		/* batch full, build and deliver it */
 		osmux_xfrm_input_deliver(endp->osmux.in);
