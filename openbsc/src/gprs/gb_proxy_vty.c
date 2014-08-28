@@ -109,6 +109,14 @@ static int config_write_gbproxy(struct vty *vty)
 		vty_out(vty, " patch-ptmsi%s",
 			VTY_NEWLINE);
 
+	if (g_cfg->acquire_imsi > 0)
+		vty_out(vty, " acquire-imsi%s",
+			VTY_NEWLINE);
+
+	if (g_cfg->route_to_sgsn2)
+		vty_out(vty, " secondary-sgsn nsei %u%s", g_cfg->nsip_sgsn2_nsei,
+			VTY_NEWLINE);
+
 	if (g_cfg->tlli_max_age > 0)
 		vty_out(vty, " tlli-list max-age %d%s",
 			g_cfg->tlli_max_age, VTY_NEWLINE);
