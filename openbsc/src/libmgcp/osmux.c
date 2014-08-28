@@ -91,6 +91,7 @@ static void osmux_handle_put(struct osmux_in_handle *in)
 				     inet_ntoa(h->rem_addr),
 				     ntohs(h->rem_port));
 				llist_del(&h->head);
+				osmux_xfrm_input_fini(h->in);
 				talloc_free(h);
 			}
 			return;
