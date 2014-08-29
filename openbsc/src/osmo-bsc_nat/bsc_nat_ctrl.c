@@ -27,6 +27,7 @@
 
 #include <openbsc/ctrl.h>
 #include <openbsc/bsc_nat.h>
+#include <openbsc/vty.h>
 
 #include <unistd.h>
 #include <string.h>
