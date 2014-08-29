@@ -3,6 +3,8 @@
 
 #include <osmocom/netif/osmux.h>
 
+#define OSMUX_PORT	1984
+
 enum {
 	OSMUX_ROLE_BSC = 0,
 	OSMUX_ROLE_BSC_NAT,

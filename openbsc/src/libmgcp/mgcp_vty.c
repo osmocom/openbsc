@@ -1294,6 +1294,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg,
 	int rc;
 	struct mgcp_trunk_config *trunk;
 
+	cfg->osmux_port = OSMUX_PORT;
 	/* Default to 4 messages */
 	cfg->osmux_batch = 4;
 

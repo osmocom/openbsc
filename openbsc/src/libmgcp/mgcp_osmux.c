@@ -24,8 +24,6 @@
 #include <openbsc/mgcp_internal.h>
 #include <openbsc/osmux.h>
 
-#define OSMUX_PORT	1984
-
 static struct osmo_fd osmux_fd;
 
 static LLIST_HEAD(osmux_handle_list);
@@ -394,9 +392,6 @@ int osmux_init(int role, struct mgcp_config *cfg)
 		return -1;
 	}
 	osmux_fd.data = cfg;
-
-	if (!cfg->osmux_port)
-		cfg->osmux_port = OSMUX_PORT;
 
 	ret = mgcp_create_bind("0.0.0.0", &osmux_fd, cfg->osmux_port);
 	if (ret < 0) {
