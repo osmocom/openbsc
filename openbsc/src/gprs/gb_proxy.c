@@ -909,6 +909,7 @@ static int gbprox_rx_sig_from_sgsn(struct gbproxy_config *cfg,
 	uint16_t bvci;
 	struct msgb *msg;
 	int rc = 0;
+	int cause;
 
 	if (ns_bvci != 0 && ns_bvci != 1) {
 		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u(SGSN) BVCI=%u is not "
@@ -961,13 +962,16 @@ static int gbprox_rx_sig_from_sgsn(struct gbproxy_config *cfg,
 			LOGPC(DGPRS, LOGL_NOTICE, "\n");
 			goto err_mand_ie;
 		}
+		cause = *TLVP_VAL(&tp, BSSGP_IE_CAUSE);
 		LOGPC(DGPRS, LOGL_NOTICE,
 			"cause=0x%02x(%s) ", *TLVP_VAL(&tp, BSSGP_IE_CAUSE),
-			bssgp_cause_str(*TLVP_VAL(&tp, BSSGP_IE_CAUSE)));
+			bssgp_cause_str(cause));
 		if (TLVP_PRESENT(&tp, BSSGP_IE_BVCI)) {
-			uint16_t bvci = tlvp_val16_unal(&tp, BSSGP_IE_BVCI);
-			LOGPC(DGPRS, LOGL_NOTICE,
-				"BVCI=%u\n", ntohs(bvci));
+			bvci = ntohs(tlvp_val16_unal(&tp, BSSGP_IE_BVCI));
+			LOGPC(DGPRS, LOGL_NOTICE, "BVCI=%u\n", bvci);
+
+			if (cause == BSSGP_CAUSE_UNKNOWN_BVCI)
+				rc = gbprox_relay2bvci(cfg, msg, bvci, ns_bvci);
 		} else
 			LOGPC(DGPRS, LOGL_NOTICE, "\n");
 		break;
