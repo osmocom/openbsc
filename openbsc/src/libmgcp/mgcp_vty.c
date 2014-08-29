@@ -133,13 +133,14 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "  transcoder-remote-base %u%s", g_cfg->transcoder_remote_base, VTY_NEWLINE);
 	vty_out(vty, "  osmux %s%s",
 		g_cfg->osmux == 1 ? "on" : "off", VTY_NEWLINE);
-	vty_out(vty, "  osmux batch-factor %d%s",
-		g_cfg->osmux_batch, VTY_NEWLINE);
-	vty_out(vty, "  osmux batch-size %u%s",
-		g_cfg->osmux_batch_size, VTY_NEWLINE);
-	vty_out(vty, "  osmux port %u%s",
-		g_cfg->osmux_port, VTY_NEWLINE);
-
+	if (g_cfg->osmux) {
+		vty_out(vty, "  osmux batch-factor %d%s",
+			g_cfg->osmux_batch, VTY_NEWLINE);
+		vty_out(vty, "  osmux batch-size %u%s",
+			g_cfg->osmux_batch_size, VTY_NEWLINE);
+		vty_out(vty, "  osmux port %u%s",
+			g_cfg->osmux_port, VTY_NEWLINE);
+	}
 	return CMD_SUCCESS;
 }
 
