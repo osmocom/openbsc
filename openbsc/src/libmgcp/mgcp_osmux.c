@@ -121,6 +121,8 @@ osmux_handle_alloc(struct mgcp_config *cfg, struct in_addr *addr, int rem_port)
 
 	h->in->osmux_seq = 0; /* sequence number to start OSmux message from */
 	h->in->batch_factor = cfg->osmux_batch;
+	/* If batch size is zero, the library defaults to 1470 bytes. */
+	h->in->batch_size = cfg->osmux_batch_size;
 	h->in->deliver = osmux_deliver;
 	osmux_xfrm_input_init(h->in);
 	h->in->data = h;

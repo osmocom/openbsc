@@ -135,6 +135,8 @@ static int config_write_mgcp(struct vty *vty)
 		g_cfg->osmux == 1 ? "on" : "off", VTY_NEWLINE);
 	vty_out(vty, "  osmux batch-factor %d%s",
 		g_cfg->osmux_batch, VTY_NEWLINE);
+	vty_out(vty, "  osmux batch-size %u%s",
+		g_cfg->osmux_batch_size, VTY_NEWLINE);
 	vty_out(vty, "  osmux port %u%s",
 		g_cfg->osmux_port, VTY_NEWLINE);
 
@@ -1134,6 +1136,15 @@ DEFUN(cfg_mgcp_osmux_batch_factor,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_osmux_batch_size,
+      cfg_mgcp_osmux_batch_size_cmd,
+      "osmux batch-size <1-65535>",
+      OSMUX_STR "batch size\n" "Batch size in bytes\n")
+{
+	g_cfg->osmux_batch_size = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_mgcp_osmux_port,
       cfg_mgcp_osmux_port_cmd,
       "osmux port <1-65535>",
@@ -1198,6 +1209,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_no_sdp_payload_send_ptime_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_factor_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_size_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_port_cmd);
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
