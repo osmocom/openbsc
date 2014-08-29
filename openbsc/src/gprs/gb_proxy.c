@@ -671,7 +671,7 @@ static int gbprox_rx_ptp_from_sgsn(struct gbproxy_config *cfg,
 		     "blocked BVCI=%u via NSVC=%u/NSEI=%u\n",
 		     ns_bvci, nsvci, nsei);
 		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_DROPPED]);
-		return bssgp_tx_status(BSSGP_CAUSE_BVCI_BLOCKED, NULL, msg);
+		return bssgp_tx_status(BSSGP_CAUSE_BVCI_BLOCKED, &ns_bvci, msg);
 	}
 
 	switch (pdu_type) {
@@ -809,7 +809,7 @@ err_no_peer:
 	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(BSS) cannot find peer based on NSEI\n",
 		nsei);
 	rate_ctr_inc(&cfg->ctrg->ctr[GBPROX_GLOB_CTR_INV_NSEI]);
-	return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI, NULL, msg);
+	return bssgp_tx_status(BSSGP_CAUSE_INV_MAND_INF, NULL, msg);
 err_mand_ie:
 	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(BSS) missing mandatory RA IE\n",
 		nsei);
@@ -880,7 +880,7 @@ static int rx_reset_from_sgsn(struct gbproxy_config *cfg,
 			rate_ctr_inc(&cfg->ctrg->
 				     ctr[GBPROX_GLOB_CTR_INV_BVCI]);
 			return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI,
-					       NULL, orig_msg);
+					       &ptp_bvci, orig_msg);
 		}
 		return gbprox_relay2peer(msg, peer, ns_bvci);
 	}
@@ -1033,7 +1033,7 @@ err_no_peer:
 		nsei);
 	rate_ctr_inc(&cfg->ctrg-> ctr[GBPROX_GLOB_CTR_INV_RAI]);
 	msgb_free(msg);
-	return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI, NULL, orig_msg);
+	return bssgp_tx_status(BSSGP_CAUSE_INV_MAND_INF, NULL, orig_msg);
 }
 
 static int gbproxy_is_sgsn_nsei(struct gbproxy_config *cfg, uint16_t nsei)
