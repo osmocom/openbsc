@@ -883,9 +883,11 @@ uint32_t mgcp_rtp_packet_duration(struct mgcp_endpoint *endp,
 
 static int mgcp_parse_osmux_cid(const char *line)
 {
-	uint32_t osmux_cid;
+	int osmux_cid;
 
-	sscanf(line + 2, "Osmux: %u", &osmux_cid);
+	if (sscanf(line + 2, "Osmux: %u", &osmux_cid) != 1)
+		return -1;
+
 	if (osmux_cid > OSMUX_CID_MAX) {
 		LOGP(DMGCP, LOGL_ERROR, "Osmux ID too large: %u > %u\n",
 		     osmux_cid, OSMUX_CID_MAX);
