@@ -1130,7 +1130,7 @@ DEFUN(cfg_mgcp_osmux,
 
 DEFUN(cfg_mgcp_osmux_batch_factor,
       cfg_mgcp_osmux_batch_factor_cmd,
-      "osmux batch-factor <1-16>",
+      "osmux batch-factor <1-8>",
       OSMUX_STR "Batching factor\n" "Number of messages in the batch\n")
 {
 	g_cfg->osmux_batch = atoi(argv[0]);
