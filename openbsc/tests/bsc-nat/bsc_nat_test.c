@@ -419,7 +419,7 @@ static void test_contrack()
 
 
 	bsc_config_free(con->cfg);
-	talloc_free(nat);
+	bsc_nat_free(nat);
 	msgb_free(msg);
 }
 
@@ -453,7 +453,7 @@ static void test_paging(void)
 		abort();
 	}
 
-	talloc_free(nat);
+	bsc_nat_free(nat);
 }
 
 static void test_mgcp_allocations(void)
@@ -577,7 +577,7 @@ static void test_mgcp_ass_tracking(void)
 	}
 
 	bsc_config_free(bsc->cfg);
-	talloc_free(nat);
+	bsc_nat_free(nat);
 }
 
 /* test the code to find a given connection */
@@ -610,7 +610,7 @@ static void test_mgcp_find(void)
 	}
 
 	/* free everything */
-	talloc_free(nat);
+	bsc_nat_free(nat);
 }
 
 static void test_mgcp_rewrite(void)
@@ -937,7 +937,7 @@ static void test_cr_filter()
 	}
 
 	msgb_free(msg);
-	talloc_free(nat);
+	bsc_nat_free(nat);
 }
 
 static void test_dt_filter()
@@ -994,6 +994,9 @@ static void test_dt_filter()
 		memset(&cause, 0, sizeof(cause));
 		bsc_nat_filter_dt(bsc, msg, con, parsed, &cause);
 	}
+
+	msgb_free(msg);
+	bsc_nat_free(nat);
 }
 
 static void test_setup_rewrite()
@@ -1159,7 +1162,7 @@ static void test_setup_rewrite()
 			ARRAY_SIZE(cc_setup_national_again));
 	msgb_free(out);
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, NULL);
-	talloc_free(nat);
+	bsc_nat_free(nat);
 }
 
 static void test_setup_rewrite_prefix(void)
@@ -1208,7 +1211,7 @@ static void test_setup_rewrite_prefix(void)
 	msgb_free(out);
 
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, NULL);
-	talloc_free(nat);
+	bsc_nat_free(nat);
 }
 
 static void test_setup_rewrite_post(void)
@@ -1267,8 +1270,7 @@ static void test_setup_rewrite_post(void)
 	verify_msg(out, cc_setup_national, ARRAY_SIZE(cc_setup_national));
 	msgb_free(out);
 
-	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, NULL);
-	talloc_free(nat);
+	bsc_nat_free(nat);
 }
 
 static void test_sms_smsc_rewrite()
@@ -1364,6 +1366,7 @@ static void test_sms_smsc_rewrite()
 
 	verify_msg(out, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
 	msgb_free(out);
+	bsc_nat_free(nat);
 }
 
 static void test_sms_number_rewrite(void)
@@ -1436,6 +1439,7 @@ static void test_sms_number_rewrite(void)
 	verify_msg(out, smsc_rewrite_num_patched_tp_srr,
 		   ARRAY_SIZE(smsc_rewrite_num_patched_tp_srr));
 	msgb_free(out);
+	bsc_nat_free(nat);
 }
 
 static void test_barr_list_parsing(void)
@@ -1502,6 +1506,7 @@ static void test_barr_list_parsing(void)
 			entry->cm_reject_cause, entry->lu_reject_cause);
 
 	}
+	rc = bsc_nat_barr_adapt(NULL, &root, NULL);
 }
 
 static void test_nat_extract_lac()
@@ -1535,6 +1540,8 @@ static void test_nat_extract_lac()
 	/* verify the LAC */
 	OSMO_ASSERT(con.lac == 8210);
 	OSMO_ASSERT(con.ci == 50000);
+
+	bsc_nat_free(nat);
 }
 
 int main(int argc, char **argv)

@@ -498,4 +498,10 @@ int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg);
 int bsc_nat_extract_lac(struct bsc_connection *bsc, struct nat_sccp_connection *con,
 				struct bsc_nat_parsed *parsed, struct msgb *msg);
 
+
+/*
+ * Use for testing
+ */
+void bsc_nat_free(struct bsc_nat *nat);
+
 #endif

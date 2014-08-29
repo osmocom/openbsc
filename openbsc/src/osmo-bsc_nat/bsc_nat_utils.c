@@ -120,6 +120,32 @@ struct bsc_nat *bsc_nat_alloc(void)
 	return nat;
 }
 
+void bsc_nat_free(struct bsc_nat *nat)
+{
+	struct bsc_config *cfg, *tmp;
+	struct bsc_nat_acc_lst *lst, *tmp_lst;
+
+	llist_for_each_entry_safe(cfg, tmp, &nat->bsc_configs, entry)
+		bsc_config_free(cfg);
+	llist_for_each_entry_safe(lst, tmp_lst, &nat->access_lists, list)
+		bsc_nat_acc_lst_delete(lst);
+
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, NULL);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr_post, NULL);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->sms_clear_tp_srr, NULL);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->sms_num_rewr, NULL);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->tpdest_match, NULL);
+
+	osmo_counter_free(nat->stats.sccp.conn);
+	osmo_counter_free(nat->stats.sccp.calls);
+	osmo_counter_free(nat->stats.bsc.reconn);
+	osmo_counter_free(nat->stats.bsc.auth_fail);
+	osmo_counter_free(nat->stats.msc.reconn);
+	osmo_counter_free(nat->stats.ussd.reconn);
+	talloc_free(nat->mgcp_cfg);
+	talloc_free(nat);
+}
+
 void bsc_nat_set_msc_ip(struct bsc_nat *nat, const char *ip)
 {
 	bsc_replace_string(nat, &nat->main_dest->ip, ip);
@@ -167,7 +193,9 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token)
 
 void bsc_config_free(struct bsc_config *cfg)
 {
+	llist_del(&cfg->entry);
 	rate_ctr_group_free(cfg->stats.ctrg);
+	talloc_free(cfg);
 }
 
 static void _add_lac(void *ctx, struct llist_head *list, int _lac)
