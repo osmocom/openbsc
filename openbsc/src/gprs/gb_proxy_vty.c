@@ -508,6 +508,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	"NSEI number\n"
 	"Delete entries with a matching TLLI (hex)\n"
 	"Delete entries with a matching IMSI\n"
+	"Delete stale entries\n"
 	"Identification to match\n")
 {
 	const uint16_t nsei = atoi(argv[0]);
