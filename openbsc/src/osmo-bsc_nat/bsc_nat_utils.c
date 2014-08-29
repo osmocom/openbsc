@@ -157,6 +157,7 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token)
 
 	conf->stats.ctrg = rate_ctr_group_alloc(conf, &bsc_cfg_ctrg_desc, conf->nr);
 	if (!conf->stats.ctrg) {
+		llist_del(&conf->entry);
 		talloc_free(conf);
 		return NULL;
 	}
