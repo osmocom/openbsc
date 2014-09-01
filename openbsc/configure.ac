@@ -141,7 +141,7 @@ AC_ARG_ENABLE([vty_tests],
 				[Include the VTY/CTRL tests in make check (deprecated)
 				[default=no]]),
 		[enable_ext_tests="$enableval"],[enable_ext_tests="no"])
-AC_ARG_ENABLE([ext_tests],
+AC_ARG_ENABLE([external_tests],
 		AC_HELP_STRING([--enable-external-tests],
 				[Include the VTY/CTRL tests in make check [default=no]]),
 		[enable_ext_tests="$enableval"],[enable_ext_tests="no"])
