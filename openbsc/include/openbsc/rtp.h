@@ -35,4 +35,5 @@ struct rtp_hdr {
 	uint16_t sequence;
 	uint32_t timestamp;
 	uint32_t ssrc;
+	uint8_t data[0];
 } __attribute__((packed));
