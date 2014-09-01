@@ -216,14 +216,12 @@ int gbproxy_check_imsi(
 void gbproxy_patch_bssgp(
 	struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 	struct gbproxy_peer *peer, struct gbproxy_tlli_info *tlli_info,
-	int *len_change, struct gprs_gb_parse_context *parse_ctx)
-	__attribute__((nonnull));
+	int *len_change, struct gprs_gb_parse_context *parse_ctx);
 
 int gbproxy_patch_llc(
 	struct msgb *msg, uint8_t *llc, size_t llc_len,
 	struct gbproxy_peer *peer, struct gbproxy_tlli_info *tlli_info,
-	int *len_change, struct gprs_gb_parse_context *parse_ctx)
-	__attribute__((nonnull));
+	int *len_change, struct gprs_gb_parse_context *parse_ctx);
 
 int gbproxy_set_patch_filter(
 	struct gbproxy_config *cfg, const char *filter, const char **err_msg);
@@ -233,20 +231,17 @@ int gbproxy_check_imsi(
 
 /* Peer handling */
 struct gbproxy_peer *gbproxy_peer_by_bvci(
-	struct gbproxy_config *cfg, uint16_t bvci) __attribute__((nonnull));
+	struct gbproxy_config *cfg, uint16_t bvci);
 struct gbproxy_peer *gbproxy_peer_by_nsei(
-	struct gbproxy_config *cfg, uint16_t nsei) __attribute__((nonnull));
+	struct gbproxy_config *cfg, uint16_t nsei);
 struct gbproxy_peer *gbproxy_peer_by_rai(
-	struct gbproxy_config *cfg, const uint8_t *ra) __attribute__((nonnull));
+	struct gbproxy_config *cfg, const uint8_t *ra);
 struct gbproxy_peer *gbproxy_peer_by_lai(
-	struct gbproxy_config *cfg, const uint8_t *la) __attribute__((nonnull));
+	struct gbproxy_config *cfg, const uint8_t *la);
 struct gbproxy_peer *gbproxy_peer_by_bssgp_tlv(
-	struct gbproxy_config *cfg, struct tlv_parsed *tp)
-	__attribute__((nonnull));
-struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvci)
-	__attribute__((nonnull));
-void gbproxy_peer_free(struct gbproxy_peer *peer) __attribute__((nonnull));
-int gbproxy_cleanup_peers(struct gbproxy_config *cfg, uint16_t nsei, uint16_t bvci)
-	__attribute__((nonnull));
+	struct gbproxy_config *cfg, struct tlv_parsed *tp);
+struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvci);
+void gbproxy_peer_free(struct gbproxy_peer *peer);
+int gbproxy_cleanup_peers(struct gbproxy_config *cfg, uint16_t nsei, uint16_t bvci);
 
 #endif

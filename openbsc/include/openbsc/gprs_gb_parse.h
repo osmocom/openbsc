@@ -40,13 +40,13 @@ struct gprs_gb_parse_context {
 };
 
 int gprs_gb_parse_dtap(uint8_t *data, size_t data_len,
-		       struct gprs_gb_parse_context *parse_ctx) __attribute__((nonnull));
+		       struct gprs_gb_parse_context *parse_ctx);
 
 int gprs_gb_parse_llc(uint8_t *llc, size_t llc_len,
-		      struct gprs_gb_parse_context *parse_ctx) __attribute__((nonnull));
+		      struct gprs_gb_parse_context *parse_ctx);
 
 int gprs_gb_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
-			struct gprs_gb_parse_context *parse_ctx) __attribute__((nonnull));
+			struct gprs_gb_parse_context *parse_ctx);
 
 void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
-			       const char *default_msg_name) __attribute__((nonnull(1)));
+			       const char *default_msg_name);
