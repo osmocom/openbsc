@@ -397,11 +397,62 @@ static int encode_audio(struct mgcp_process_rtp_state *state,
 	return nbytes;
 }
 
+static struct mgcp_rtp_end *source_for_dest(struct mgcp_endpoint *endp,
+					struct mgcp_rtp_end *dst_end)
+{
+	if (&endp->bts_end == dst_end)
+		return &endp->net_end;
+	else if (&endp->net_end == dst_end)
+		return &endp->bts_end;
+	OSMO_ASSERT(0);
+}
+
+/*
+ * With some modems we get offered multiple codecs
+ * and we have selected one of them. It might not
+ * be the right one and we need to detect this with
+ * the first audio packets. One difficulty is that
+ * we patch the rtp payload type in place, so we
+ * need to discuss this.
+ */
+struct mgcp_process_rtp_state *check_transcode_state(
+				struct mgcp_endpoint *endp,
+				struct mgcp_rtp_end *dst_end,
+				struct rtp_hdr *rtp_hdr)
+{
+	struct mgcp_rtp_end *src_end;
+
+	/* Only deal with messages from net to bts */
+	if (&endp->bts_end != dst_end)
+		goto done;
+
+	src_end = source_for_dest(endp, dst_end);
+
+	/* Already patched */
+	if (rtp_hdr->payload_type == dst_end->codec.payload_type)
+		goto done;
+	/* The payload we expect */
+	if (rtp_hdr->payload_type == src_end->codec.payload_type)
+		goto done;
+	/* The matching alternate payload type? Then switch */
+	if (rtp_hdr->payload_type == src_end->alt_codec.payload_type) {
+		struct mgcp_config *cfg = endp->cfg;
+		struct mgcp_rtp_codec tmp_codec = src_end->alt_codec;
+		src_end->alt_codec = src_end->codec;
+		src_end->codec = tmp_codec;
+		cfg->setup_rtp_processing_cb(endp, &endp->net_end, &endp->bts_end);
+		cfg->setup_rtp_processing_cb(endp, &endp->bts_end, &endp->net_end);
+	}
+
+done:
+	return dst_end->rtp_process_data;
+}
+
 int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 				struct mgcp_rtp_end *dst_end,
 			     char *data, int *len, int buf_size)
 {
-	struct mgcp_process_rtp_state *state = dst_end->rtp_process_data;
+	struct mgcp_process_rtp_state *state;
 	const size_t rtp_hdr_size = sizeof(struct rtp_hdr);
 	struct rtp_hdr *rtp_hdr = (struct rtp_hdr *) data;
 	char *payload_data = (char *) &rtp_hdr->data[0];
@@ -414,6 +465,7 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 	uint32_t ts_no;
 	int rc;
 
+	state = check_transcode_state(endp, dst_end, rtp_hdr);
 	if (!state)
 		return 0;
 

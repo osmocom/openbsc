@@ -174,6 +174,9 @@ static int given_configured_endpoint(int in_samples, int out_samples,
 	tcfg = talloc_zero(cfg, struct mgcp_trunk_config);
 	endp = talloc_zero(tcfg, struct mgcp_endpoint);
 
+	cfg->setup_rtp_processing_cb = mgcp_transcoding_setup;
+	cfg->rtp_processing_cb = mgcp_transcoding_process_rtp;
+	cfg->get_net_downlink_format_cb = mgcp_transcoding_net_downlink_format;
 
 	tcfg->endpoints = endp;
 	tcfg->number_endpoints = 1;
@@ -433,6 +436,63 @@ static void test_transcode_result(void)
 	}
 }
 
+static void test_transcode_change(void)
+{
+	char buf[4096] = {0x80, 0};
+	void *ctx;
+
+	struct mgcp_endpoint *endp;
+	struct mgcp_process_rtp_state *state;
+	struct rtp_hdr *hdr;
+
+	int len, res;
+
+	{
+		/* from GSM to PCMA and same ptime */
+		printf("Testing Initial G729->GSM, PCMA->GSM\n");
+		given_configured_endpoint(160, 0, "g729", "gsm", &ctx, &endp);
+		endp->net_end.alt_codec = endp->net_end.codec;
+		endp->net_end.alt_codec.payload_type = audio_name_to_type("pcma");
+		state = endp->bts_end.rtp_process_data;
+
+		/* initial transcoding work */
+		OSMO_ASSERT(state->src_fmt == AF_G729);
+		OSMO_ASSERT(state->dst_fmt == AF_GSM);
+		OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 8);
+		OSMO_ASSERT(endp->net_end.codec.payload_type == 18);
+
+		/* result */
+		len = audio_packets_pcma[0].len;
+		memcpy(buf, audio_packets_pcma[0].data, len);
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(res == sizeof(struct rtp_hdr));
+		OSMO_ASSERT(state->sample_cnt == 0);
+		OSMO_ASSERT(state->src_fmt == AF_PCMA);
+		OSMO_ASSERT(state->dst_fmt == AF_GSM);
+		OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 18);
+		OSMO_ASSERT(endp->net_end.codec.payload_type == 8);
+
+		len = res;
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(res == -ENOMSG);
+
+
+		/* now check that comfort noise doesn't change anything */
+		len = audio_packets_pcma[1].len;
+		memcpy(buf, audio_packets_pcma[1].data, len);
+		hdr = (struct rtp_hdr *) buf;
+		hdr->payload_type = 11;
+		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(state->sample_cnt == 80);
+		OSMO_ASSERT(state->src_fmt == AF_PCMA);
+		OSMO_ASSERT(state->dst_fmt == AF_GSM);
+		OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 18);
+		OSMO_ASSERT(endp->net_end.codec.payload_type == 8);
+
+		talloc_free(ctx);
+	}
+}
+
 static int test_repacking(int in_samples, int out_samples, int no_transcode)
 {
 	char buf[4096] = {0x80, 0};
@@ -582,6 +642,7 @@ int main(int argc, char **argv)
 	test_repacking(160, 100, 1);
 	test_rtp_seq_state();
 	test_transcode_result();
+	test_transcode_change();
 
 	return 0;
 }
