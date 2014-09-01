@@ -64,16 +64,16 @@ int main(int argc, char **argv)
 	if (argc <= 2)
 		errx(1, "Usage: {gsm|g729|pcma|l16} {gsm|g729|pcma|l16} [SPP]");
 
-	if ((src_end->payload_type = audio_name_to_type(argv[1])) == -1)
+	if ((src_end->codec.payload_type = audio_name_to_type(argv[1])) == -1)
 		errx(1, "invalid input format '%s'", argv[1]);
-	if ((dst_end->payload_type = audio_name_to_type(argv[2])) == -1)
+	if ((dst_end->codec.payload_type = audio_name_to_type(argv[2])) == -1)
 		errx(1, "invalid output format '%s'", argv[2]);
 	if (argc > 3)
 		out_samples = atoi(argv[3]);
 
 	if (out_samples) {
-		dst_end->frame_duration_den = dst_end->rate;
-		dst_end->frame_duration_num = out_samples;
+		dst_end->codec.frame_duration_den = dst_end->codec.rate;
+		dst_end->codec.frame_duration_num = out_samples;
 		dst_end->frames_per_packet = 1;
 	}
 
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 	in_size = mgcp_transcoding_get_frame_size(state, in_samples, 0);
 	OSMO_ASSERT(sizeof(buf) >= in_size + 12);
 
-	buf[1] = src_end->payload_type;
+	buf[1] = src_end->codec.payload_type;
 	*(uint16_t*)(buf+2) = htons(1);
 	*(uint32_t*)(buf+4) = htonl(0);
 	*(uint32_t*)(buf+8) = htonl(0xaabbccdd);

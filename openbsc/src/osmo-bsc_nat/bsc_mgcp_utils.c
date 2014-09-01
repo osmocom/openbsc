@@ -546,7 +546,7 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 				   sccp->bsc_endp, nat->mgcp_cfg->source_addr,
 				   mgcp_endp->bts_end.local_port,
 				   nat->mgcp_cfg->osmux ? sccp->bsc->cfg->osmux : 0,
-				   &mgcp_endp->net_end.payload_type);
+				   &mgcp_endp->net_end.codec.payload_type);
 	if (!bsc_msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
 		return MGCP_POLICY_CONT;
@@ -699,7 +699,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 				  bsc->nat->mgcp_cfg->source_addr,
 				  endp->net_end.local_port,
 				  bsc->nat->mgcp_cfg->osmux ? bsc_endp->bsc->cfg->osmux : 0,
-				  &endp->bts_end.payload_type);
+				  &endp->bts_end.codec.payload_type);
 	if (!output) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");
 		return;

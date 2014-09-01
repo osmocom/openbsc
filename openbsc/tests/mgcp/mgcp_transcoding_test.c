@@ -183,14 +183,14 @@ static int given_configured_endpoint(int in_samples, int out_samples,
 	mgcp_initialize_endp(endp);
 
 	dst_end = &endp->bts_end;
-	dst_end->payload_type = audio_name_to_type(dstfmt);
+	dst_end->codec.payload_type = audio_name_to_type(dstfmt);
 
 	src_end = &endp->net_end;
-	src_end->payload_type = audio_name_to_type(srcfmt);
+	src_end->codec.payload_type = audio_name_to_type(srcfmt);
 
 	if (out_samples) {
-		dst_end->frame_duration_den = dst_end->rate;
-		dst_end->frame_duration_num = out_samples;
+		dst_end->codec.frame_duration_den = dst_end->codec.rate;
+		dst_end->codec.frame_duration_num = out_samples;
 		dst_end->frames_per_packet = 1;
 		dst_end->force_output_ptime = 1;
 	}
@@ -463,7 +463,7 @@ static int test_repacking(int in_samples, int out_samples, int no_transcode)
 	out_size = mgcp_transcoding_get_frame_size(state, -1, 1);
 	OSMO_ASSERT(sizeof(buf) >= out_size + 12);
 
-	buf[1] = endp->net_end.payload_type;
+	buf[1] = endp->net_end.codec.payload_type;
 	*(uint16_t*)(buf+2) = htons(1);
 	*(uint32_t*)(buf+4) = htonl(0);
 	*(uint32_t*)(buf+8) = htonl(0xaabbccdd);
