@@ -1424,6 +1424,19 @@ struct mgcp_trunk_config *mgcp_trunk_num(struct mgcp_config *cfg, int index)
 	return NULL;
 }
 
+static void mgcp_rtp_codec_reset(struct mgcp_rtp_codec *codec)
+{
+	codec->payload_type = -1;
+	talloc_free(codec->subtype_name);
+	codec->subtype_name = NULL;
+	talloc_free(codec->audio_name);
+	codec->audio_name = NULL;
+	codec->frame_duration_num = DEFAULT_RTP_AUDIO_FRAME_DUR_NUM;
+	codec->frame_duration_den = DEFAULT_RTP_AUDIO_FRAME_DUR_DEN;
+	codec->rate               = DEFAULT_RTP_AUDIO_DEFAULT_RATE;
+	codec->channels           = DEFAULT_RTP_AUDIO_DEFAULT_CHANNELS;
+}
+
 static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 {
 	if (end->local_alloc == PORT_ALLOC_DYNAMIC) {
@@ -1436,25 +1449,18 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	end->dropped_packets = 0;
 	memset(&end->addr, 0, sizeof(end->addr));
 	end->rtp_port = end->rtcp_port = 0;
-	end->codec.payload_type = -1;
 	end->local_alloc = -1;
 	talloc_free(end->fmtp_extra);
 	end->fmtp_extra = NULL;
-	talloc_free(end->codec.subtype_name);
-	end->codec.subtype_name = NULL;
-	talloc_free(end->codec.audio_name);
-	end->codec.audio_name = NULL;
 	talloc_free(end->rtp_process_data);
 	end->rtp_process_data = NULL;
 
 	/* Set default values */
-	end->codec.frame_duration_num = DEFAULT_RTP_AUDIO_FRAME_DUR_NUM;
-	end->codec.frame_duration_den = DEFAULT_RTP_AUDIO_FRAME_DUR_DEN;
 	end->frames_per_packet  = 0; /* unknown */
 	end->packet_duration_ms = DEFAULT_RTP_AUDIO_PACKET_DURATION_MS;
-	end->codec.rate               = DEFAULT_RTP_AUDIO_DEFAULT_RATE;
-	end->codec.channels           = DEFAULT_RTP_AUDIO_DEFAULT_CHANNELS;
 	end->output_enabled	= 0;
+
+	mgcp_rtp_codec_reset(&end->codec);
 }
 
 static void mgcp_rtp_end_init(struct mgcp_rtp_end *end)
