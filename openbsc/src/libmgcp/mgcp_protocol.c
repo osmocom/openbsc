@@ -598,20 +598,20 @@ static int parse_conn_mode(const char *msg, struct mgcp_endpoint *endp)
 	return ret;
 }
 
-static int set_audio_info(void *ctx, struct mgcp_rtp_end *rtp,
+static int set_audio_info(void *ctx, struct mgcp_rtp_codec *codec,
 			  int payload_type, const char *audio_name)
 {
-	int rate = rtp->rate;
-	int channels = rtp->channels;
+	int rate = codec->rate;
+	int channels = codec->channels;
 	char audio_codec[64];
 
-	talloc_free(rtp->subtype_name);
-	rtp->subtype_name = NULL;
-	talloc_free(rtp->audio_name);
-	rtp->audio_name = NULL;
+	talloc_free(codec->subtype_name);
+	codec->subtype_name = NULL;
+	talloc_free(codec->audio_name);
+	codec->audio_name = NULL;
 
 	if (payload_type != PTYPE_UNDEFINED)
-		rtp->payload_type = payload_type;
+		codec->payload_type = payload_type;
 
 	if (!audio_name) {
 		switch (payload_type) {
@@ -630,17 +630,17 @@ static int set_audio_info(void *ctx, struct mgcp_rtp_end *rtp,
 		   audio_codec, &rate, &channels) < 1)
 		return -EINVAL;
 
-	rtp->rate = rate;
-	rtp->channels = channels;
-	rtp->subtype_name = talloc_strdup(ctx, audio_codec);
-	rtp->audio_name = talloc_strdup(ctx, audio_name);
+	codec->rate = rate;
+	codec->channels = channels;
+	codec->subtype_name = talloc_strdup(ctx, audio_codec);
+	codec->audio_name = talloc_strdup(ctx, audio_name);
 
 	if (!strcmp(audio_codec, "G729")) {
-		rtp->frame_duration_num = 10;
-		rtp->frame_duration_den = 1000;
+		codec->frame_duration_num = 10;
+		codec->frame_duration_den = 1000;
 	} else {
-		rtp->frame_duration_num = DEFAULT_RTP_AUDIO_FRAME_DUR_NUM;
-		rtp->frame_duration_den = DEFAULT_RTP_AUDIO_FRAME_DUR_DEN;
+		codec->frame_duration_num = DEFAULT_RTP_AUDIO_FRAME_DUR_NUM;
+		codec->frame_duration_den = DEFAULT_RTP_AUDIO_FRAME_DUR_DEN;
 	}
 
 	if (payload_type < 0) {
@@ -654,7 +654,7 @@ static int set_audio_info(void *ctx, struct mgcp_rtp_end *rtp,
 				payload_type = 18;
 		}
 
-		rtp->payload_type = payload_type;
+		codec->payload_type = payload_type;
 	}
 
 	if (channels != 1)
@@ -761,7 +761,7 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 				if (payload != audio_payload)
 					break;
 
-				set_audio_info(p->cfg, rtp, payload, audio_name);
+				set_audio_info(p->cfg, &rtp->codec, payload, audio_name);
 			} else if (sscanf(line, "a=ptime:%d-%d",
 					  &ptime, &ptime2) >= 1) {
 				if (ptime2 > 0 && ptime2 != ptime)
@@ -769,8 +769,8 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 				else
 					rtp->packet_duration_ms = ptime;
 			} else if (sscanf(line, "a=maxptime:%d", &ptime2) == 1) {
-				if (ptime2 * rtp->frame_duration_den >
-				    rtp->frame_duration_num * 1500)
+				if (ptime2 * rtp->codec.frame_duration_den >
+				    rtp->codec.frame_duration_num * 1500)
 					/* more than 1 frame */
 					rtp->packet_duration_ms = 0;
 			}
@@ -785,7 +785,7 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 				rtp->rtp_port = htons(port);
 				rtp->rtcp_port = htons(port + 1);
 				found_media = 1;
-				set_audio_info(p->cfg, rtp, audio_payload, NULL);
+				set_audio_info(p->cfg, &rtp->codec, audio_payload, NULL);
 			}
 			break;
 		}
@@ -814,8 +814,8 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 		LOGP(DMGCP, LOGL_NOTICE,
 		     "Got media info via SDP: port %d, payload %d (%s), "
 		     "duration %d, addr %s\n",
-		     ntohs(rtp->rtp_port), rtp->payload_type,
-		     rtp->subtype_name ? rtp->subtype_name : "unknown",
+		     ntohs(rtp->rtp_port), rtp->codec.payload_type,
+		     rtp->codec.subtype_name ? rtp->codec.subtype_name : "unknown",
 		     rtp->packet_duration_ms, inet_ntoa(rtp->addr));
 
 	return found_media;
@@ -872,13 +872,13 @@ uint32_t mgcp_rtp_packet_duration(struct mgcp_endpoint *endp,
 	/* Get the number of frames per channel and packet */
 	if (rtp->frames_per_packet)
 		f = rtp->frames_per_packet;
-	else if (rtp->packet_duration_ms && rtp->frame_duration_num) {
-		int den = 1000 * rtp->frame_duration_num;
-		f = (rtp->packet_duration_ms * rtp->frame_duration_den + den/2)
+	else if (rtp->packet_duration_ms && rtp->codec.frame_duration_num) {
+		int den = 1000 * rtp->codec.frame_duration_num;
+		f = (rtp->packet_duration_ms * rtp->codec.frame_duration_den + den/2)
 			/ den;
 	}
 
-	return rtp->rate * f * rtp->frame_duration_num / rtp->frame_duration_den;
+	return rtp->codec.rate * f * rtp->codec.frame_duration_num / rtp->codec.frame_duration_den;
 }
 
 static int mgcp_parse_osmux_cid(const char *line)
@@ -1025,13 +1025,13 @@ mgcp_header_done:
 	endp->allocated = 1;
 
 	/* set up RTP media parameters */
-	set_audio_info(p->cfg, &endp->bts_end, tcfg->audio_payload, tcfg->audio_name);
+	set_audio_info(p->cfg, &endp->bts_end.codec, tcfg->audio_payload, tcfg->audio_name);
 	endp->bts_end.fmtp_extra = talloc_strdup(tcfg->endpoints,
 						tcfg->audio_fmtp_extra);
 	if (have_sdp)
 		parse_sdp_data(&endp->net_end, p);
 	else if (endp->local_options.codec)
-		set_audio_info(p->cfg, &endp->net_end,
+		set_audio_info(p->cfg, &endp->net_end.codec,
 			       PTYPE_UNDEFINED, endp->local_options.codec);
 
 	if (p->cfg->bts_force_ptime) {
@@ -1147,7 +1147,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			     local_options);
 
 	if (!have_sdp && endp->local_options.codec)
-		set_audio_info(p->cfg, &endp->net_end,
+		set_audio_info(p->cfg, &endp->net_end.codec,
 			       PTYPE_UNDEFINED, endp->local_options.codec);
 
 	setup_rtp_processing(endp);
@@ -1461,24 +1461,24 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	end->dropped_packets = 0;
 	memset(&end->addr, 0, sizeof(end->addr));
 	end->rtp_port = end->rtcp_port = 0;
-	end->payload_type = -1;
+	end->codec.payload_type = -1;
 	end->local_alloc = -1;
 	talloc_free(end->fmtp_extra);
 	end->fmtp_extra = NULL;
-	talloc_free(end->subtype_name);
-	end->subtype_name = NULL;
-	talloc_free(end->audio_name);
-	end->audio_name = NULL;
+	talloc_free(end->codec.subtype_name);
+	end->codec.subtype_name = NULL;
+	talloc_free(end->codec.audio_name);
+	end->codec.audio_name = NULL;
 	talloc_free(end->rtp_process_data);
 	end->rtp_process_data = NULL;
 
 	/* Set default values */
-	end->frame_duration_num = DEFAULT_RTP_AUDIO_FRAME_DUR_NUM;
-	end->frame_duration_den = DEFAULT_RTP_AUDIO_FRAME_DUR_DEN;
+	end->codec.frame_duration_num = DEFAULT_RTP_AUDIO_FRAME_DUR_NUM;
+	end->codec.frame_duration_den = DEFAULT_RTP_AUDIO_FRAME_DUR_DEN;
 	end->frames_per_packet  = 0; /* unknown */
 	end->packet_duration_ms = DEFAULT_RTP_AUDIO_PACKET_DURATION_MS;
-	end->rate               = DEFAULT_RTP_AUDIO_DEFAULT_RATE;
-	end->channels           = DEFAULT_RTP_AUDIO_DEFAULT_CHANNELS;
+	end->codec.rate               = DEFAULT_RTP_AUDIO_DEFAULT_RATE;
+	end->codec.channels           = DEFAULT_RTP_AUDIO_DEFAULT_CHANNELS;
 	end->output_enabled	= 0;
 }
 

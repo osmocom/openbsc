@@ -45,22 +45,22 @@ int mgcp_transcoding_get_frame_size(void *state_, int nsamples, int dst)
 			1) * state->src_frame_size;
 }
 
-static enum audio_format get_audio_format(const struct mgcp_rtp_end *rtp_end)
+static enum audio_format get_audio_format(const struct mgcp_rtp_codec *codec)
 {
-	if (rtp_end->subtype_name) {
-		if (!strcmp("GSM", rtp_end->subtype_name))
+	if (codec->subtype_name) {
+		if (!strcmp("GSM", codec->subtype_name))
 			return AF_GSM;
-		if (!strcmp("PCMA", rtp_end->subtype_name))
+		if (!strcmp("PCMA", codec->subtype_name))
 			return AF_PCMA;
 #ifdef HAVE_BCG729
-		if (!strcmp("G729", rtp_end->subtype_name))
+		if (!strcmp("G729", codec->subtype_name))
 			return AF_G729;
 #endif
-		if (!strcmp("L16", rtp_end->subtype_name))
+		if (!strcmp("L16", codec->subtype_name))
 			return AF_L16;
 	}
 
-	switch (rtp_end->payload_type) {
+	switch (codec->payload_type) {
 	case 3 /* GSM */:
 		return AF_GSM;
 	case 8 /* PCMA */:
@@ -141,6 +141,8 @@ int mgcp_transcoding_setup(struct mgcp_endpoint *endp,
 {
 	struct mgcp_process_rtp_state *state;
 	enum audio_format src_fmt, dst_fmt;
+	const struct mgcp_rtp_codec *src_codec = &src_end->codec;
+	const struct mgcp_rtp_codec *dst_codec = &dst_end->codec;
 
 	/* cleanup first */
 	if (dst_end->rtp_process_data) {
@@ -151,34 +153,34 @@ int mgcp_transcoding_setup(struct mgcp_endpoint *endp,
 	if (!src_end)
 		return 0;
 
-	src_fmt = get_audio_format(src_end);
-	dst_fmt = get_audio_format(dst_end);
+	src_fmt = get_audio_format(src_codec);
+	dst_fmt = get_audio_format(dst_codec);
 
 	LOGP(DMGCP, LOGL_ERROR,
 	     "Checking transcoding: %s (%d) -> %s (%d)\n",
-	     src_end->subtype_name, src_end->payload_type,
-	     dst_end->subtype_name, dst_end->payload_type);
+	     src_codec->subtype_name, src_codec->payload_type,
+	     dst_codec->subtype_name, dst_codec->payload_type);
 
 	if (src_fmt == AF_INVALID || dst_fmt == AF_INVALID) {
-		if (!src_end->subtype_name || !dst_end->subtype_name)
+		if (!src_codec->subtype_name || !dst_codec->subtype_name)
 			/* Not enough info, do nothing */
 			return 0;
 
-		if (strcmp(src_end->subtype_name, dst_end->subtype_name) == 0)
+		if (strcmp(src_codec->subtype_name, dst_codec->subtype_name) == 0)
 			/* Nothing to do */
 			return 0;
 
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Cannot transcode: %s codec not supported (%s -> %s).\n",
 		     src_fmt != AF_INVALID ? "destination" : "source",
-		     src_end->audio_name, dst_end->audio_name);
+		     src_codec->audio_name, dst_codec->audio_name);
 		return -EINVAL;
 	}
 
-	if (src_end->rate && dst_end->rate && src_end->rate != dst_end->rate) {
+	if (src_codec->rate && dst_codec->rate && src_codec->rate != dst_codec->rate) {
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Cannot transcode: rate conversion (%d -> %d) not supported.\n",
-		     src_end->rate, dst_end->rate);
+		     src_codec->rate, dst_codec->rate);
 		return -EINVAL;
 	}
 
@@ -269,8 +271,8 @@ int mgcp_transcoding_setup(struct mgcp_endpoint *endp,
 	     "Initialized RTP processing on: 0x%x "
 	     "conv: %d (%d, %d, %s) -> %d (%d, %d, %s)\n",
 	     ENDPOINT_NUMBER(endp),
-	     src_fmt, src_end->payload_type, src_end->rate, src_end->fmtp_extra,
-	     dst_fmt, dst_end->payload_type, dst_end->rate, dst_end->fmtp_extra);
+	     src_fmt, src_codec->payload_type, src_codec->rate, src_end->fmtp_extra,
+	     dst_fmt, dst_codec->payload_type, dst_codec->rate, dst_end->fmtp_extra);
 
 	return 0;
 }
@@ -281,16 +283,19 @@ void mgcp_transcoding_net_downlink_format(struct mgcp_endpoint *endp,
 					  const char**fmtp_extra)
 {
 	struct mgcp_process_rtp_state *state = endp->net_end.rtp_process_data;
-	if (!state || endp->net_end.payload_type < 0) {
-		*payload_type = endp->bts_end.payload_type;
-		*audio_name = endp->bts_end.audio_name;
+	struct mgcp_rtp_codec *net_codec = &endp->net_end.codec;
+	struct mgcp_rtp_codec *bts_codec = &endp->bts_end.codec;
+
+	if (!state || net_codec->payload_type < 0) {
+		*payload_type = bts_codec->payload_type;
+		*audio_name = bts_codec->audio_name;
 		*fmtp_extra = endp->bts_end.fmtp_extra;
 		return;
 	}
 
-	*payload_type = endp->net_end.payload_type;
+	*payload_type = net_codec->payload_type;
+	*audio_name = net_codec->audio_name;
 	*fmtp_extra = endp->net_end.fmtp_extra;
-	*audio_name = endp->net_end.audio_name;
 }
 
 static int decode_audio(struct mgcp_process_rtp_state *state,

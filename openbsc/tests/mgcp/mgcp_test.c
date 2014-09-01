@@ -410,7 +410,7 @@ static void test_messages(void)
 	/* reset endpoints */
 	for (i = 0; i < cfg->trunk.number_endpoints; i++) {
 		endp = &cfg->trunk.endpoints[i];
-		endp->net_end.payload_type = PTYPE_NONE;
+		endp->net_end.codec.payload_type = PTYPE_NONE;
 		endp->net_end.packet_duration_ms = -1;
 
 		OSMO_ASSERT(endp->conn_mode == MGCP_CONN_NONE);
@@ -498,18 +498,18 @@ static void test_messages(void)
 			fprintf(stderr, "endpoint %d: "
 				"payload type BTS %d (exp %d), NET %d (exp %d)\n",
 				last_endpoint,
-				endp->bts_end.payload_type, t->exp_bts_ptype,
-				endp->net_end.payload_type, t->exp_net_ptype);
+				endp->bts_end.codec.payload_type, t->exp_bts_ptype,
+				endp->net_end.codec.payload_type, t->exp_net_ptype);
 
 			if (t->exp_bts_ptype != PTYPE_IGNORE)
-				OSMO_ASSERT(endp->bts_end.payload_type ==
+				OSMO_ASSERT(endp->bts_end.codec.payload_type ==
 					    t->exp_bts_ptype);
 			if (t->exp_net_ptype != PTYPE_IGNORE)
-				OSMO_ASSERT(endp->net_end.payload_type ==
+				OSMO_ASSERT(endp->net_end.codec.payload_type ==
 					    t->exp_net_ptype);
 
 			/* Reset them again for next test */
-			endp->net_end.payload_type = PTYPE_NONE;
+			endp->net_end.codec.payload_type = PTYPE_NONE;
 		}
 	}
 
@@ -830,7 +830,7 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 
 	mgcp_initialize_endp(&endp);
 
-	rtp->payload_type = 98;
+	rtp->codec.payload_type = 98;
 
 	for (i = 0; i < ARRAY_SIZE(test_rtp_packets1); ++i) {
 		struct rtp_packet_info *info = test_rtp_packets1 + i;
