@@ -28,6 +28,7 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 #include <openbsc/mgcp_transcode.h>
+#include <openbsc/rtp.h>
 
 #include <osmocom/core/talloc.h>
 
@@ -396,8 +397,9 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 			     char *data, int *len, int buf_size)
 {
 	struct mgcp_process_rtp_state *state = dst_end->rtp_process_data;
-	size_t rtp_hdr_size = 12;
-	char *payload_data = data + rtp_hdr_size;
+	const size_t rtp_hdr_size = sizeof(struct rtp_hdr);
+	struct rtp_hdr *rtp_hdr = (struct rtp_hdr *) data;
+	char *payload_data = (char *) &rtp_hdr->data[0];
 	int payload_len = *len - rtp_hdr_size;
 	uint8_t *src = (uint8_t *)payload_data;
 	uint8_t *dst = (uint8_t *)payload_data;
@@ -427,9 +429,9 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 	/* TODO: check payload type (-> G.711 comfort noise) */
 
 	if (payload_len > 0) {
-		ts_no = ntohl(*(uint32_t*)(data+4));
+		ts_no = ntohl(rtp_hdr->timestamp);
 		if (!state->is_running) {
-			state->next_seq = ntohs(*(uint16_t*)(data+2));
+			state->next_seq = ntohs(rtp_hdr->sequence);
 			state->next_time = ts_no;
 			state->is_running = 1;
 		}
@@ -504,8 +506,8 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 	nsamples -= state->sample_cnt;
 
 	*len = rtp_hdr_size + rc;
-	*(uint16_t*)(data+2) = htons(state->next_seq);
-	*(uint32_t*)(data+4) = htonl(ts_no);
+	rtp_hdr->sequence = htons(state->next_seq);
+	rtp_hdr->timestamp = htonl(ts_no);
 
 	state->next_seq += 1;
 	state->next_time = ts_no + nsamples;
