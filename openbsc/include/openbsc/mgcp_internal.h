@@ -90,6 +90,7 @@ struct mgcp_rtp_end {
 
 	/* audio codec information */
 	struct mgcp_rtp_codec codec;
+	struct mgcp_rtp_codec alt_codec; /* TODO/XXX: make it generic */
 
 	/* per endpoint data */
 	int  frames_per_packet;

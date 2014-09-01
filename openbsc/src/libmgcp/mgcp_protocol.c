@@ -738,7 +738,9 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 {
 	char *line;
 	int found_media = 0;
+	/* TODO/XXX make it more generic */
 	int audio_payload = -1;
+	int audio_payload_alt = -1;
 
 	for_each_line(line, p->save) {
 		switch (line[0]) {
@@ -758,10 +760,12 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 
 			if (sscanf(line, "a=rtpmap:%d %63s",
 				   &payload, audio_name) == 2) {
-				if (payload != audio_payload)
-					break;
-
-				set_audio_info(p->cfg, &rtp->codec, payload, audio_name);
+				if (payload == audio_payload)
+					set_audio_info(p->cfg, &rtp->codec,
+							payload, audio_name);
+				else if (payload == audio_payload_alt)
+					set_audio_info(p->cfg, &rtp->alt_codec,
+							payload, audio_name);
 			} else if (sscanf(line, "a=ptime:%d-%d",
 					  &ptime, &ptime2) >= 1) {
 				if (ptime2 > 0 && ptime2 != ptime)
@@ -769,6 +773,7 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 				else
 					rtp->packet_duration_ms = ptime;
 			} else if (sscanf(line, "a=maxptime:%d", &ptime2) == 1) {
+				/* TODO/XXX: Store this per codec and derive it on use */
 				if (ptime2 * rtp->codec.frame_duration_den >
 				    rtp->codec.frame_duration_num * 1500)
 					/* more than 1 frame */
@@ -777,15 +782,20 @@ static int parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 			break;
 		}
 		case 'm': {
-			int port;
+			int port, rc;
 			audio_payload = -1;
+			audio_payload_alt = -1;
 
-			if (sscanf(line, "m=audio %d RTP/AVP %d",
-				   &port, &audio_payload) == 2) {
+			rc = sscanf(line, "m=audio %d RTP/AVP %d %d",
+				   &port, &audio_payload, &audio_payload_alt);
+			if (rc >= 2) {
 				rtp->rtp_port = htons(port);
 				rtp->rtcp_port = htons(port + 1);
 				found_media = 1;
 				set_audio_info(p->cfg, &rtp->codec, audio_payload, NULL);
+				if (rc == 3)
+					set_audio_info(p->cfg, &rtp->alt_codec,
+							audio_payload_alt, NULL);
 			}
 			break;
 		}
@@ -1486,6 +1496,7 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	end->output_enabled	= 0;
 
 	mgcp_rtp_codec_reset(&end->codec);
+	mgcp_rtp_codec_reset(&end->alt_codec);
 }
 
 static void mgcp_rtp_end_init(struct mgcp_rtp_end *end)
