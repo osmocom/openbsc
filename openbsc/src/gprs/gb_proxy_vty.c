@@ -451,6 +451,11 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 
 		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
 			time_t age = now - tlli_info->timestamp;
+			int stored_msgs = 0;
+			struct llist_head *iter;
+			llist_for_each(iter, &tlli_info->stored_msgs)
+				stored_msgs++;
+
 			if (tlli_info->mi_data_len > 0) {
 				snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
 				gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
@@ -459,9 +464,13 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 			} else {
 				snprintf(mi_buf, sizeof(mi_buf), "(none)");
 			}
-			vty_out(vty, "  TLLI %08x, IMSI %s, AGE %d%s",
-				tlli_info->tlli.current, mi_buf, (int)age,
-				VTY_NEWLINE);
+			vty_out(vty, "  TLLI %08x, IMSI %s, AGE %d",
+				tlli_info->tlli.current, mi_buf, (int)age);
+
+			if (stored_msgs)
+				vty_out(vty, ", STORED %d", stored_msgs);
+
+			vty_out(vty, "%s", VTY_NEWLINE);
 		}
 	}
 	return CMD_SUCCESS;
