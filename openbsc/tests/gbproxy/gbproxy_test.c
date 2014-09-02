@@ -121,6 +121,11 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
 			char mi_buf[200];
 			time_t age = now ? now - tlli_info->timestamp : 0;
+			int stored_msgs = 0;
+			struct llist_head *iter;
+			llist_for_each(iter, &tlli_info->stored_msgs)
+				stored_msgs++;
+
 			if (tlli_info->mi_data_len > 0) {
 				snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
 				gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
@@ -143,14 +148,14 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 			fprintf(stream, ", IMSI %s, AGE %d",
 				mi_buf, (int)age);
 
+			if (stored_msgs)
+				fprintf(stream, ", STORED %d", stored_msgs);
+
 			if (cfg->check_imsi && tlli_info->enable_patching)
 				fprintf(stream, ", IMSI matches");
 
 			if (tlli_info->imsi_acq_pending)
 				fprintf(stream, ", IMSI acquisition in progress");
-
-			if (!llist_empty(&tlli_info->stored_msgs))
-				fprintf(stream, ", stored messages");
 
 			rc = fprintf(stream, "\n");
 			if (rc < 0)
@@ -2033,6 +2038,20 @@ static void test_gbproxy_imsi_acquisition()
 		       local_sgsn_tlli, 1, imsi, sizeof(imsi),
 		       GPRS_SAPI_GMM, sgsn_nu++,
 		       dtap_detach_acc, sizeof(dtap_detach_acc));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	/* Special case: Repeated Attach Requests */
+
+	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli, &rai_unknown, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli, &rai_unknown, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_req, sizeof(dtap_attach_req));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
