@@ -1,8 +1,8 @@
 /*
  * Handle the connection to the MSC. This include ping/timeout/reconnect
  * (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2011 by On-Waves
+ * (C) 2009-2014 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2014 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -46,6 +46,7 @@ static void initialize_if_needed(struct bsc_msc_connection *conn);
 static void send_lacs(struct gsm_network *net, struct bsc_msc_connection *conn);
 static void send_id_get_response(struct osmo_msc_data *data, int fd);
 static void send_ping(struct osmo_msc_data *data);
+static void schedule_ping_pong(struct osmo_msc_data *data);
 
 /*
  * MGCP forwarding code
@@ -181,6 +182,29 @@ int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto
 	return 0;
 }
 
+int msc_queue_write_with_ping(struct bsc_msc_connection *conn,
+			struct msgb *msg, int proto)
+{
+	struct osmo_msc_data *data;
+	uint8_t val;
+
+	/* prepend the header */
+	ipa_prepend_header(msg, proto);
+	if (osmo_wqueue_enqueue(&conn->write_queue, msg) != 0) {
+		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/%d\n", proto);
+		msgb_free(msg);
+		return -1;
+	}
+
+	/* add the ping as the other message */
+	val = IPAC_MSGT_PING;
+	msgb_l16tv_put(msg, 1, IPAC_PROTO_IPACCESS, &val);
+
+	data = (struct osmo_msc_data *) conn->write_queue.bfd.data;
+	schedule_ping_pong(data);
+	return 0;
+}
+
 static int msc_alink_do_write(struct osmo_fd *fd, struct msgb *msg)
 {
 	int ret;
@@ -310,6 +334,15 @@ static void send_ping(struct osmo_msc_data *data)
 	msc_queue_write(data->msc_con, msg, IPAC_PROTO_IPACCESS);
 }
 
+static void schedule_ping_pong(struct osmo_msc_data *data)
+{
+	/* send another ping in 20 seconds */
+	osmo_timer_schedule(&data->ping_timer, data->ping_timeout, 0);
+
+	/* also start a pong timer */
+	osmo_timer_schedule(&data->pong_timer, data->pong_timeout, 0);
+}
+
 static void msc_ping_timeout_cb(void *_data)
 {
 	struct osmo_msc_data *data = (struct osmo_msc_data *) _data;
@@ -317,12 +350,7 @@ static void msc_ping_timeout_cb(void *_data)
 		return;
 
 	send_ping(data);
-
-	/* send another ping in 20 seconds */
-	osmo_timer_schedule(&data->ping_timer, data->ping_timeout, 0);
-
-	/* also start a pong timer */
-	osmo_timer_schedule(&data->pong_timer, data->pong_timeout, 0);
+	schedule_ping_pong(data);
 }
 
 static void msc_pong_timeout_cb(void *_data)

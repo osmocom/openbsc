@@ -63,6 +63,7 @@ struct osmo_msc_data {
 	int pong_timeout;
 	struct osmo_timer_list ping_timer;
 	struct osmo_timer_list pong_timer;
+	int advanced_ping;
 	struct bsc_msc_connection *msc_con;
 	int core_ncc;
 	int core_mcc;
@@ -115,6 +116,7 @@ struct osmo_bsc_data {
 int osmo_bsc_msc_init(struct osmo_msc_data *msc);
 int osmo_bsc_sccp_init(struct gsm_network *gsmnet);
 int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto);
+int msc_queue_write_with_ping(struct bsc_msc_connection *, struct msgb *msg, int proto);
 
 int osmo_bsc_audio_init(struct gsm_network *network);
 

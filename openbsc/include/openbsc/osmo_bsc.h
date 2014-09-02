@@ -27,6 +27,9 @@ struct osmo_bsc_sccp_con {
 	uint16_t cic;
 	int rtp_port;
 
+	/* for advanced ping/pong */
+	int send_ping;
+
 	/* SCCP connection realted */
 	struct sccp_connection *sccp;
 	struct osmo_msc_data *msc;
@@ -45,7 +48,7 @@ struct bsc_api *osmo_bsc_api();
 int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg);
 int bsc_open_connection(struct osmo_bsc_sccp_con *sccp, struct msgb *msg);
 enum bsc_con bsc_create_new_connection(struct gsm_subscriber_connection *conn,
-				       struct osmo_msc_data *msc);
+				       struct osmo_msc_data *msc, int send_ping);
 int bsc_delete_connection(struct osmo_bsc_sccp_con *sccp);
 
 struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn, struct msgb *);
