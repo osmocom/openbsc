@@ -157,13 +157,23 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 static int complete_layer3(struct gsm_subscriber_connection *conn,
 			   struct msgb *msg, struct osmo_msc_data *msc)
 {
+	struct timeval tv;
 	struct msgb *resp;
 	uint16_t network_code;
 	uint16_t country_code;
 	enum bsc_con ret;
+	int send_ping = msc->advanced_ping;
+
+	/* Advanced ping/pong handling */
+	if (osmo_timer_pending(&msc->pong_timer))
+		send_ping = 0;
+	if (msc->ping_timeout == 0)
+		send_ping = 0;
+	if (send_ping && osmo_timer_remaining(&msc->ping_timer, NULL, &tv) == -1)
+		send_ping = 0;
 
 	/* allocate resource for a new connection */
-	ret = bsc_create_new_connection(conn, msc);
+	ret = bsc_create_new_connection(conn, msc, send_ping);
 
 	if (ret != BSC_CON_SUCCESS) {
 		/* allocation has failed */

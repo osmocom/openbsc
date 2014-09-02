@@ -1,7 +1,7 @@
 /* Interaction with the SCCP subsystem */
 /*
- * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2011 by On-Waves
+ * (C) 2009-2014 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2014 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -146,6 +146,11 @@ static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg,
 	if (conn) {
 		struct osmo_bsc_sccp_con *bsc_con = conn->data_ctx;
 		msc_con = bsc_con->msc->msc_con;
+		if (bsc_con->send_ping) {
+			bsc_con->send_ping = 0;
+			msc_queue_write_with_ping(msc_con, msg, IPAC_PROTO_SCCP);
+			return;
+		}
 	} else {
 		msc_con = ctx;
 	}
@@ -189,7 +194,7 @@ int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 }
 
 enum bsc_con bsc_create_new_connection(struct gsm_subscriber_connection *conn,
-			      struct osmo_msc_data *msc)
+			      struct osmo_msc_data *msc, int send_ping)
 {
 	struct osmo_bsc_sccp_con *bsc_con;
 	struct sccp_connection *sccp;
@@ -223,6 +228,8 @@ enum bsc_con bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 	sccp->state_cb = msc_outgoing_sccp_state;
 	sccp->data_cb = msc_outgoing_sccp_data;
 	sccp->data_ctx = bsc_con;
+
+	bsc_con->send_ping = send_ping;
 
 	/* prepare the timers */
 	bsc_con->sccp_it_timeout.cb = sccp_it_timeout;

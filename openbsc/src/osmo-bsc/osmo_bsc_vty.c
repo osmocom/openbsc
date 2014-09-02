@@ -112,6 +112,10 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 	vty_out(vty, " ip.access rtp-base %d%s", msc->rtp_base, VTY_NEWLINE);
 	vty_out(vty, " timeout-ping %d%s", msc->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout-pong %d%s", msc->pong_timeout, VTY_NEWLINE);
+	if (msc->advanced_ping)
+		vty_out(vty, " timeout-ping advanced%s", VTY_NEWLINE);
+	else
+		vty_out(vty, " no timeout-ping advanced%s", VTY_NEWLINE);
 
 	if (msc->ussd_welcome_txt)
 		vty_out(vty, " bsc-welcome-text %s%s", msc->ussd_welcome_txt, VTY_NEWLINE);
@@ -369,6 +373,26 @@ DEFUN(cfg_net_msc_pong_time,
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	data->pong_timeout = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_msc_advanced_ping,
+      cfg_net_msc_advanced_ping_cmd,
+      "timeout-ping advanced",
+      "Ping timeout handling\nEnable advanced mode during SCCP\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	data->advanced_ping = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_net_msc_advanced_ping,
+      cfg_no_net_msc_advanced_ping_cmd,
+      "no timeout-ping advanced",
+      NO_STR "Ping timeout handling\nEnable advanced mode during SCCP\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	data->advanced_ping = 0;
 	return CMD_SUCCESS;
 }
 
@@ -719,6 +743,8 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_no_dest_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_ping_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_advanced_ping_cmd);
+	install_element(MSC_NODE, &cfg_no_net_msc_advanced_ping_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_no_welcome_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_lost_ussd_cmd);
