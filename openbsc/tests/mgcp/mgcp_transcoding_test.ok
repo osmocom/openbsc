@@ -536,4 +536,4 @@ got 1 pcma output frames (80 octets) count=12
 generating 160 pcma input samples
 got 1 pcma output frames (80 octets) count=12
 got 1 pcma output frames (80 octets) count=12
-Testing Initial G729->GSM, PCMA->GSM
+Testing Initial L16->GSM, PCMA->GSM

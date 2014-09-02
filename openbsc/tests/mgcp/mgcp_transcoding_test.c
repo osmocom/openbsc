@@ -449,17 +449,17 @@ static void test_transcode_change(void)
 
 	{
 		/* from GSM to PCMA and same ptime */
-		printf("Testing Initial G729->GSM, PCMA->GSM\n");
-		given_configured_endpoint(160, 0, "g729", "gsm", &ctx, &endp);
+		printf("Testing Initial L16->GSM, PCMA->GSM\n");
+		given_configured_endpoint(160, 0, "l16", "gsm", &ctx, &endp);
 		endp->net_end.alt_codec = endp->net_end.codec;
 		endp->net_end.alt_codec.payload_type = audio_name_to_type("pcma");
 		state = endp->bts_end.rtp_process_data;
 
 		/* initial transcoding work */
-		OSMO_ASSERT(state->src_fmt == AF_G729);
+		OSMO_ASSERT(state->src_fmt == AF_L16);
 		OSMO_ASSERT(state->dst_fmt == AF_GSM);
 		OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 8);
-		OSMO_ASSERT(endp->net_end.codec.payload_type == 18);
+		OSMO_ASSERT(endp->net_end.codec.payload_type == 11);
 
 		/* result */
 		len = audio_packets_pcma[0].len;
@@ -469,7 +469,7 @@ static void test_transcode_change(void)
 		OSMO_ASSERT(state->sample_cnt == 0);
 		OSMO_ASSERT(state->src_fmt == AF_PCMA);
 		OSMO_ASSERT(state->dst_fmt == AF_GSM);
-		OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 18);
+		OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 11);
 		OSMO_ASSERT(endp->net_end.codec.payload_type == 8);
 
 		len = res;
@@ -481,12 +481,12 @@ static void test_transcode_change(void)
 		len = audio_packets_pcma[1].len;
 		memcpy(buf, audio_packets_pcma[1].data, len);
 		hdr = (struct rtp_hdr *) buf;
-		hdr->payload_type = 11;
+		hdr->payload_type = 12;
 		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
 		OSMO_ASSERT(state->sample_cnt == 80);
 		OSMO_ASSERT(state->src_fmt == AF_PCMA);
 		OSMO_ASSERT(state->dst_fmt == AF_GSM);
-		OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 18);
+		OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 11);
 		OSMO_ASSERT(endp->net_end.codec.payload_type == 8);
 
 		talloc_free(ctx);
