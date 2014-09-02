@@ -89,29 +89,23 @@ static int config_write_gbproxy(struct vty *vty)
 	if (g_cfg->core_mnc > 0)
 		vty_out(vty, " core-mobile-network-code %d%s",
 			g_cfg->core_mnc, VTY_NEWLINE);
+
+	if (g_cfg->match_re)
+		vty_out(vty, " match-imsi %s%s",
+			g_cfg->match_re, VTY_NEWLINE);
+
 	if (g_cfg->core_apn != NULL) {
 	       if (g_cfg->core_apn_size > 0) {
 		       char str[500] = {0};
-		       vty_out(vty, " core-access-point-name %s",
+		       vty_out(vty, " core-access-point-name %s%s",
 			       gprs_apn_to_str(str, g_cfg->core_apn,
-						 g_cfg->core_apn_size));
+						 g_cfg->core_apn_size),
+			       VTY_NEWLINE);
 	       } else {
-		       vty_out(vty, " core-access-point-name none");
+		       vty_out(vty, " core-access-point-name none%s",
+			       VTY_NEWLINE);
 	       }
-	       if (g_cfg->match_re)
-		       vty_out(vty, " match-imsi %s%s",
-			       g_cfg->match_re, VTY_NEWLINE);
-	       else
-		       vty_out(vty, "%s", VTY_NEWLINE);
 	}
-
-	if (g_cfg->patch_ptmsi > 0)
-		vty_out(vty, " patch-ptmsi%s",
-			VTY_NEWLINE);
-
-	if (g_cfg->acquire_imsi > 0)
-		vty_out(vty, " acquire-imsi%s",
-			VTY_NEWLINE);
 
 	if (g_cfg->route_to_sgsn2)
 		vty_out(vty, " secondary-sgsn nsei %u%s", g_cfg->nsip_sgsn2_nsei,
@@ -194,19 +188,57 @@ DEFUN(cfg_gbproxy_no_core_mcc,
 	return CMD_SUCCESS;
 }
 
+#define GBPROXY_MATCH_IMSI_STR "Restrict DTAP patching to certain IMSIs\n"
+
+DEFUN(cfg_gbproxy_match_imsi,
+      cfg_gbproxy_match_imsi_cmd,
+      "match-imsi .REGEXP",
+      GBPROXY_MATCH_IMSI_STR
+      "Regular expression for the match\n")
+{
+	const char *filter = argv[0];
+	const char *err_msg = NULL;
+
+	if (gbproxy_set_patch_filter(g_cfg, filter, &err_msg) != 0) {
+		vty_out(vty, "Match expression invalid: %s%s",
+			err_msg, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	talloc_free(g_cfg->match_re);
+	/* TODO: replace NULL */
+	g_cfg->match_re = talloc_strdup(NULL, filter);
+
+	g_cfg->acquire_imsi = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gbproxy_no_match_imsi,
+      cfg_gbproxy_no_match_imsi_cmd,
+      "no match-imsi",
+      NO_STR GBPROXY_MATCH_IMSI_STR)
+{
+	gbproxy_clear_patch_filter(g_cfg);
+
+	talloc_free(g_cfg->match_re);
+	g_cfg->match_re = NULL;
+
+	g_cfg->acquire_imsi = 0;
+
+	return CMD_SUCCESS;
+}
+
 #define GBPROXY_CORE_APN_STR "Use this access point name (APN) for the backbone\n"
 #define GBPROXY_CORE_APN_ARG_STR "Replace APN by this string\n" "Remove APN\n"
 
-static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
+static int set_core_apn(struct vty *vty, const char *apn)
 {
-	const char *err_msg = NULL;
 	int apn_len;
 
 	if (!apn) {
 		talloc_free(g_cfg->core_apn);
 		g_cfg->core_apn = NULL;
 		g_cfg->core_apn_size = 0;
-		gbproxy_clear_patch_filter(g_cfg);
 		return CMD_SUCCESS;
 	}
 
@@ -217,21 +249,6 @@ static int set_core_apn(struct vty *vty, const char *apn, const char *filter)
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-
-	if (!filter) {
-		gbproxy_clear_patch_filter(g_cfg);
-	} else if (gbproxy_set_patch_filter(g_cfg, filter, &err_msg) != 0) {
-		vty_out(vty, "Match expression invalid: %s%s",
-			err_msg, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	talloc_free(g_cfg->match_re);
-	if (filter)
-		/* TODO: replace NULL */
-		g_cfg->match_re = talloc_strdup(NULL, filter);
-	else
-		g_cfg->match_re = NULL;
 
 	if (apn_len == 0) {
 		talloc_free(g_cfg->core_apn);
@@ -255,22 +272,9 @@ DEFUN(cfg_gbproxy_core_apn,
       GBPROXY_CORE_APN_STR GBPROXY_CORE_APN_ARG_STR)
 {
 	if (strcmp(argv[0], "none") == 0)
-		return set_core_apn(vty, "", NULL);
+		return set_core_apn(vty, "");
 	else
-		return set_core_apn(vty, argv[0], NULL);
-}
-
-DEFUN(cfg_gbproxy_core_apn_match,
-      cfg_gbproxy_core_apn_match_cmd,
-      "core-access-point-name (APN|none) match-imsi .REGEXP",
-      GBPROXY_CORE_APN_STR GBPROXY_CORE_APN_ARG_STR
-      "Only modify if the IMSI matches\n"
-      "Regular expression for the match\n")
-{
-	if (strcmp(argv[0], "none") == 0)
-		return set_core_apn(vty, "", argv[1]);
-	else
-		return set_core_apn(vty, argv[0], argv[1]);
+		return set_core_apn(vty, argv[0]);
 }
 
 DEFUN(cfg_gbproxy_no_core_apn,
@@ -278,9 +282,13 @@ DEFUN(cfg_gbproxy_no_core_apn,
       "no core-access-point-name",
       NO_STR GBPROXY_CORE_APN_STR)
 {
-	return set_core_apn(vty, NULL, NULL);
+	return set_core_apn(vty, NULL);
 }
 
+/* TODO: Remove the patch-ptmsi command, since P-TMSI patching is enabled
+ * automatically when needed. This command is only left for manual testing
+ * (e.g. doing P-TMSI patching without using a secondary SGSN)
+ */
 #define GBPROXY_PATCH_PTMSI_STR "Patch P-TMSI/TLLI\n"
 
 DEFUN(cfg_gbproxy_patch_ptmsi,
@@ -303,6 +311,10 @@ DEFUN(cfg_gbproxy_no_patch_ptmsi,
 	return CMD_SUCCESS;
 }
 
+/* TODO: Remove the acquire-imsi command, since that feature is enabled
+ * automatically when IMSI matching is enabled. This command is only left for
+ * manual testing (e.g. doing IMSI acquisition without IMSI based patching)
+ */
 #define GBPROXY_ACQUIRE_IMSI_STR "Acquire the IMSI before establishing a LLC connection (Experimental)\n"
 
 DEFUN(cfg_gbproxy_acquire_imsi,
@@ -337,6 +349,8 @@ DEFUN(cfg_gbproxy_secondary_sgsn,
 	g_cfg->route_to_sgsn2 = 1;
 	g_cfg->nsip_sgsn2_nsei = atoi(argv[0]);
 
+	g_cfg->patch_ptmsi = 1;
+
 	return CMD_SUCCESS;
 }
 
@@ -347,6 +361,8 @@ DEFUN(cfg_gbproxy_no_secondary_sgsn,
 {
 	g_cfg->route_to_sgsn2 = 0;
 	g_cfg->nsip_sgsn2_nsei = 0xFFFF;
+
+	g_cfg->patch_ptmsi = 0;
 
 	return CMD_SUCCESS;
 }
@@ -666,19 +682,20 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_nsei_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_mnc_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_match_imsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_core_apn_match_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_secondary_sgsn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_acquire_imsi_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_secondary_sgsn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_no_match_imsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_apn_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_no_secondary_sgsn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_acquire_imsi_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_no_secondary_sgsn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_len_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_mode_cmd);
