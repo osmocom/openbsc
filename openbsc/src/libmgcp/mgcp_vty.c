@@ -147,6 +147,8 @@ static int config_write_mgcp(struct vty *vty)
 static void dump_rtp_end(const char *end_name, struct vty *vty,
 			struct mgcp_rtp_state *state, struct mgcp_rtp_end *end)
 {
+	struct mgcp_rtp_codec *codec = &end->codec;
+
 	vty_out(vty,
 		"  %s%s"
 		"   Timestamp Errs: %d->%d%s"
@@ -160,10 +162,10 @@ static void dump_rtp_end(const char *end_name, struct vty *vty,
 		state->in_stream.err_ts_counter,
 		state->out_stream.err_ts_counter, VTY_NEWLINE,
 		end->dropped_packets, VTY_NEWLINE,
-		end->payload_type, end->rate, end->channels, VTY_NEWLINE,
-		end->frame_duration_num, end->frame_duration_den, VTY_NEWLINE,
+		codec->payload_type, codec->rate, codec->channels, VTY_NEWLINE,
+		codec->frame_duration_num, codec->frame_duration_den, VTY_NEWLINE,
 		end->frames_per_packet, end->packet_duration_ms, VTY_NEWLINE,
-		end->fmtp_extra, end->audio_name, end->subtype_name, VTY_NEWLINE,
+		end->fmtp_extra, codec->audio_name, codec->subtype_name, VTY_NEWLINE,
 		end->output_enabled, end->force_output_ptime, VTY_NEWLINE);
 }
 

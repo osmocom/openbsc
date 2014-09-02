@@ -1,6 +1,6 @@
 /*
- * (C) 2011-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2011-2012 by On-Waves
+ * (C) 2011-2012,2014 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2011-2012,2014 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -268,6 +268,61 @@ static void test_strline(void)
 #define PTYPE_NONE 128
 #define PTYPE_NYI  PTYPE_NONE
 
+#define CRCX_MULT_1 "CRCX 2 1@mgw MGCP 1.0\r\n"	\
+		 "M: recvonly\r\n"		\
+		 "C: 2\r\n"			\
+		 "X\r\n"			\
+		 "L: p:20\r\n"		\
+		 "\r\n"				\
+		 "v=0\r\n"			\
+		 "c=IN IP4 123.12.12.123\r\n"	\
+		 "m=audio 5904 RTP/AVP 18 97\r\n"\
+		 "a=rtpmap:18 G729/8000\r\n"	\
+		 "a=rtpmap:97 GSM-EFR/8000\r\n"	\
+		 "a=ptime:40\r\n"
+
+#define CRCX_MULT_2 "CRCX 2 2@mgw MGCP 1.0\r\n"	\
+		 "M: recvonly\r\n"		\
+		 "C: 2\r\n"			\
+		 "X\r\n"			\
+		 "L: p:20\r\n"		\
+		 "\r\n"				\
+		 "v=0\r\n"			\
+		 "c=IN IP4 123.12.12.123\r\n"	\
+		 "m=audio 5904 RTP/AVP 18 97 101\r\n"\
+		 "a=rtpmap:18 G729/8000\r\n"	\
+		 "a=rtpmap:97 GSM-EFR/8000\r\n"	\
+		 "a=rtpmap:101 FOO/8000\r\n"	\
+		 "a=ptime:40\r\n"
+
+#define CRCX_MULT_3 "CRCX 2 3@mgw MGCP 1.0\r\n"	\
+		 "M: recvonly\r\n"		\
+		 "C: 2\r\n"			\
+		 "X\r\n"			\
+		 "L: p:20\r\n"		\
+		 "\r\n"				\
+		 "v=0\r\n"			\
+		 "c=IN IP4 123.12.12.123\r\n"	\
+		 "m=audio 5904 RTP/AVP\r\n"	\
+		 "a=rtpmap:18 G729/8000\r\n"	\
+		 "a=rtpmap:97 GSM-EFR/8000\r\n"	\
+		 "a=rtpmap:101 FOO/8000\r\n"	\
+		 "a=ptime:40\r\n"
+
+#define CRCX_MULT_4 "CRCX 2 4@mgw MGCP 1.0\r\n"	\
+		 "M: recvonly\r\n"		\
+		 "C: 2\r\n"			\
+		 "X\r\n"			\
+		 "L: p:20\r\n"		\
+		 "\r\n"				\
+		 "v=0\r\n"			\
+		 "c=IN IP4 123.12.12.123\r\n"	\
+		 "m=audio 5904 RTP/AVP 18\r\n"	\
+		 "a=rtpmap:18 G729/8000\r\n"	\
+		 "a=rtpmap:97 GSM-EFR/8000\r\n"	\
+		 "a=rtpmap:101 FOO/8000\r\n"	\
+		 "a=ptime:40\r\n"
+
 struct mgcp_test {
 	const char *name;
 	const char *req;
@@ -410,7 +465,7 @@ static void test_messages(void)
 	/* reset endpoints */
 	for (i = 0; i < cfg->trunk.number_endpoints; i++) {
 		endp = &cfg->trunk.endpoints[i];
-		endp->net_end.payload_type = PTYPE_NONE;
+		endp->net_end.codec.payload_type = PTYPE_NONE;
 		endp->net_end.packet_duration_ms = -1;
 
 		OSMO_ASSERT(endp->conn_mode == MGCP_CONN_NONE);
@@ -498,18 +553,18 @@ static void test_messages(void)
 			fprintf(stderr, "endpoint %d: "
 				"payload type BTS %d (exp %d), NET %d (exp %d)\n",
 				last_endpoint,
-				endp->bts_end.payload_type, t->exp_bts_ptype,
-				endp->net_end.payload_type, t->exp_net_ptype);
+				endp->bts_end.codec.payload_type, t->exp_bts_ptype,
+				endp->net_end.codec.payload_type, t->exp_net_ptype);
 
 			if (t->exp_bts_ptype != PTYPE_IGNORE)
-				OSMO_ASSERT(endp->bts_end.payload_type ==
+				OSMO_ASSERT(endp->bts_end.codec.payload_type ==
 					    t->exp_bts_ptype);
 			if (t->exp_net_ptype != PTYPE_IGNORE)
-				OSMO_ASSERT(endp->net_end.payload_type ==
+				OSMO_ASSERT(endp->net_end.codec.payload_type ==
 					    t->exp_net_ptype);
 
 			/* Reset them again for next test */
-			endp->net_end.payload_type = PTYPE_NONE;
+			endp->net_end.codec.payload_type = PTYPE_NONE;
 		}
 	}
 
@@ -830,7 +885,7 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 
 	mgcp_initialize_endp(&endp);
 
-	rtp->payload_type = 98;
+	rtp->codec.payload_type = 98;
 
 	for (i = 0; i < ARRAY_SIZE(test_rtp_packets1); ++i) {
 		struct rtp_packet_info *info = test_rtp_packets1 + i;
@@ -877,6 +932,72 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 	force_monotonic_time_us = -1;
 }
 
+static void test_multilple_codec(void)
+{
+	struct mgcp_config *cfg;
+	struct mgcp_endpoint *endp;
+	struct msgb *inp, *resp;
+
+	printf("Testing multiple payload types\n");
+
+	cfg = mgcp_config_alloc();
+	cfg->trunk.number_endpoints = 64;
+	mgcp_endpoints_allocate(&cfg->trunk);
+	cfg->policy_cb = mgcp_test_policy_cb;
+	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
+
+	/* Allocate endpoint 1@mgw with two codecs */
+	last_endpoint = -1;
+	inp = create_msg(CRCX_MULT_1);
+	resp = mgcp_handle_message(cfg, inp);
+	msgb_free(inp);
+	msgb_free(resp);
+
+	OSMO_ASSERT(last_endpoint == 1);
+	endp = &cfg->trunk.endpoints[last_endpoint];
+	OSMO_ASSERT(endp->net_end.codec.payload_type == 18);
+	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 97);
+
+	/* Allocate 2@mgw with three codecs, last one ignored */
+	last_endpoint = -1;
+	inp = create_msg(CRCX_MULT_2);
+	resp = mgcp_handle_message(cfg, inp);
+	msgb_free(inp);
+	msgb_free(resp);
+
+	OSMO_ASSERT(last_endpoint == 2);
+	endp = &cfg->trunk.endpoints[last_endpoint];
+	OSMO_ASSERT(endp->net_end.codec.payload_type == 18);
+	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 97);
+
+	/* Allocate 3@mgw with no codecs, check for PT == -1 */
+	last_endpoint = -1;
+	inp = create_msg(CRCX_MULT_3);
+	resp = mgcp_handle_message(cfg, inp);
+	msgb_free(inp);
+	msgb_free(resp);
+
+	OSMO_ASSERT(last_endpoint == 3);
+	endp = &cfg->trunk.endpoints[last_endpoint];
+	OSMO_ASSERT(endp->net_end.codec.payload_type == -1);
+	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == -1);
+
+	/* Allocate 4@mgw with a single codec */
+	last_endpoint = -1;
+	inp = create_msg(CRCX_MULT_4);
+	resp = mgcp_handle_message(cfg, inp);
+	msgb_free(inp);
+	msgb_free(resp);
+
+	OSMO_ASSERT(last_endpoint == 4);
+	endp = &cfg->trunk.endpoints[last_endpoint];
+	OSMO_ASSERT(endp->net_end.codec.payload_type == 18);
+	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == -1);
+
+
+	talloc_free(cfg);
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
@@ -892,6 +1013,7 @@ int main(int argc, char **argv)
 	test_packet_error_detection(0, 0);
 	test_packet_error_detection(0, 1);
 	test_packet_error_detection(1, 1);
+	test_multilple_codec();
 
 	printf("Done\n");
 	return EXIT_SUCCESS;

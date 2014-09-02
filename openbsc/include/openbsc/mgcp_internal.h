@@ -67,6 +67,17 @@ struct mgcp_rtp_state {
 	struct mgcp_rtp_stream_state out_stream;
 };
 
+struct mgcp_rtp_codec {
+	uint32_t rate;
+	int channels;
+	uint32_t frame_duration_num;
+	uint32_t frame_duration_den;
+
+	int payload_type;
+	char *audio_name;
+	char *subtype_name;
+};
+
 struct mgcp_rtp_end {
 	/* statistics */
 	unsigned int packets;
@@ -77,17 +88,14 @@ struct mgcp_rtp_end {
 	/* in network byte order */
 	int rtp_port, rtcp_port;
 
+	/* audio codec information */
+	struct mgcp_rtp_codec codec;
+	struct mgcp_rtp_codec alt_codec; /* TODO/XXX: make it generic */
+
 	/* per endpoint data */
-	int payload_type;
-	uint32_t rate;
-	int channels;
-	uint32_t frame_duration_num;
-	uint32_t frame_duration_den;
 	int  frames_per_packet;
 	uint32_t packet_duration_ms;
 	char *fmtp_extra;
-	char *audio_name;
-	char *subtype_name;
 	int output_enabled;
 	int force_output_ptime;
 
