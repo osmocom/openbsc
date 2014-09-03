@@ -113,6 +113,9 @@ struct sgsn_mm_ctx {
 	uint8_t			t3370_id_type;
 };
 
+#define LOGMMCTXP(level, mm, fmt, args...) \
+	LOGP(DMM, level, "MM(%s/%08x) " fmt, (mm)->imsi, (mm)->p_tmsi, ## args)
+
 /* look-up a SGSN MM context based on TLLI + RAI */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid);
@@ -176,6 +179,8 @@ struct sgsn_pdp_ctx {
 	unsigned int		num_T_exp;	/* number of consecutive T expirations */
 };
 
+#define LOGPDPCTXP(level, pdp, fmt, args...) \
+	LOGP(DGPRS, level, "PDP(%s/%u) " fmt, (pdp)->mm->imsi, (pdp)->ti, ## args)
 
 /* look up PDP context by MM context and NSAPI */
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,
