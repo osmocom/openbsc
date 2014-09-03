@@ -254,7 +254,7 @@ void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp)
 	 * sgsn_libgtp:cb_data_ind() */
 	if (pdp->lib) {
 		struct pdp_t *lib = pdp->lib;
-		LOGP(DGPRS, LOGL_NOTICE, "freeing PDP context that still "
+		LOGPDPCTXP(LOGL_NOTICE, pdp, "freeing PDP context that still "
 		     "has a libgtp handle attached to it, this shouldn't "
 		     "happen!\n");
 		osmo_generate_backtrace();
@@ -376,7 +376,7 @@ static void drop_one_pdp(struct sgsn_pdp_ctx *pdp)
 		gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_NET_FAIL);
 	else  {
 		/* FIXME: GPRS paging in case MS is SUSPENDED */
-		LOGP(DGPRS, LOGL_NOTICE, "Hard-dropping PDP ctx due to GGSN "
+		LOGPDPCTXP(LOGL_NOTICE, pdp, "Hard-dropping PDP ctx due to GGSN "
 			"recovery\n");
 		/* FIXME: how to tell this to libgtp? */
 		sgsn_pdp_ctx_free(pdp);

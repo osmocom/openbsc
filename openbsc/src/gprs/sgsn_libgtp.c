@@ -209,7 +209,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 /* SGSN wants to delete a PDP context */
 int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx)
 {
-	LOGP(DGPRS, LOGL_ERROR, "Delete PDP Context\n");
+	LOGPDPCTXP(LOGL_ERROR, pctx, "Delete PDP Context\n");
 
 	/* FIXME: decide if we need teardown or not ! */
 	return gtp_delete_context_req(pctx->ggsn->gsn, pctx->lib, pctx, 1);
@@ -260,7 +260,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	struct sgsn_pdp_ctx *pctx = cbp;
 	uint8_t reject_cause;
 
-	DEBUGP(DGPRS, "Received CREATE PDP CTX CONF, cause=%d(%s)\n",
+	LOGPDPCTXP(LOGL_INFO, pctx, "Received CREATE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
 
 	/* Check for cause value if it was really successful */
@@ -316,7 +316,7 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	struct sgsn_pdp_ctx *pctx = cbp;
 	int rc;
 
-	DEBUGP(DGPRS, "Received DELETE PDP CTX CONF, cause=%d(%s)\n",
+	LOGPDPCTXP(LOGL_INFO, pctx, "Received DELETE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
 
 	/* Deactivate the SNDCP layer */
@@ -338,7 +338,7 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 static int echo_conf(struct pdp_t *pdp, void *cbp, int recovery)
 {
 	if (recovery < 0) {
-		DEBUGP(DGPRS, "GTP Echo Request timed out\n");
+		LOGP(DGPRS, LOGL_NOTICE, "GTP Echo Request timed out\n");
 		/* FIXME: if version == 1, retry with version 0 */
 	} else {
 		DEBUGP(DGPRS, "GTP Rx Echo Response\n");
@@ -353,7 +353,7 @@ static int cb_recovery(struct sockaddr_in *peer, uint8_t recovery)
 	
 	ggsn = sgsn_ggsn_ctx_by_addr(&peer->sin_addr);
 	if (!ggsn) {
-		DEBUGP(DGPRS, "Received Recovery IE for unknown GGSN\n");
+		LOGP(DGPRS, LOGL_NOTICE, "Received Recovery IE for unknown GGSN\n");
 		return -EINVAL;
 	}
 

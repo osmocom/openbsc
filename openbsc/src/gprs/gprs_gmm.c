@@ -352,7 +352,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	uint8_t *ptsig;
 #endif
 
-	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT (new P-TMSI=0x%08x)\n", mm->p_tmsi);
+	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS ATTACH ACCEPT (new P-TMSI=0x%08x)\n", mm->p_tmsi);
 
 	mmctx2msgid(msg, mm);
 
@@ -396,7 +396,7 @@ static int _tx_gmm_att_rej(struct msgb *msg, uint8_t gmm_cause)
 {
 	struct gsm48_hdr *gh;
 
-	DEBUGP(DMM, "<- GPRS ATTACH REJECT\n");
+	LOGP(DMM, LOGL_NOTICE, "<- GPRS ATTACH REJECT: %s\n", get_value_string(gmm_cause_names, gmm_cause));
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -426,7 +426,7 @@ static int gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	DEBUGP(DMM, "<- GPRS DETACH ACCEPT\n");
+	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS DETACH ACCEPT\n");
 
 	mmctx2msgid(msg, mm);
 
@@ -444,7 +444,7 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	DEBUGP(DMM, "<- GPRS IDENTITY REQUEST: mi_type=%02x\n", id_type);
+	LOGMMCTXP(LOGL_DEBUG, mm, "<- GPRS IDENTITY REQUEST: mi_type=%02x\n", id_type);
 
 	mmctx2msgid(msg, mm);
 
@@ -467,7 +467,7 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 	struct gsm48_auth_ciph_req *acreq;
 	uint8_t *m_rand, *m_cksn;
 
-	DEBUGP(DMM, "<- GPRS AUTH AND CIPHERING REQ (rand = %s)\n",
+	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS AUTH AND CIPHERING REQ (rand = %s)\n",
 		osmo_hexdump(rand, 16));
 
 	mmctx2msgid(msg, mm);
@@ -507,7 +507,7 @@ static int gsm48_tx_gmm_auth_ciph_rej(struct sgsn_mm_ctx *mm)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	DEBUGP(DMM, "<- GPRS AUTH AND CIPH REJECT\n");
+	LOGMMCTXP(LOGL_NOTICE, mm, "<- GPRS AUTH AND CIPH REJECT\n");
 
 	mmctx2msgid(msg, mm);
 
@@ -582,11 +582,11 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	char mi_string[GSM48_MI_SIZE];
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
-	DEBUGP(DMM, "-> GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s) ",
+	LOGMMCTXP(LOGL_DEBUG, ctx, "-> GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
 	if (!ctx) {
-		DEBUGP(DMM, "from unknown TLLI 0x%08x?!?\n", msgb_tlli(msg));
+		DEBUGP(DMM, "from unknown TLLI 0x%08x?!? This should not happen\n", msgb_tlli(msg));
 		return -EINVAL;
 	}
 
@@ -603,9 +603,9 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 			struct sgsn_mm_ctx *ictx;
 			ictx = sgsn_mm_ctx_by_imsi(mi_string);
 			if (ictx) {
-				DEBUGP(DMM, "Deleting old MM Context for same IMSI "
-				       "p_tmsi_old=0x%08x, p_tmsi_new=0x%08x\n",
-					ictx->p_tmsi, ctx->p_tmsi);
+				LOGMMCTXP(LOGL_NOTICE, ctx, "Deleting old MM Context for same IMSI "
+				       "p_tmsi_old=0x%08x\n",
+					ictx->p_tmsi);
 				gprs_llgmm_assign(ictx->llme, ictx->tlli,
 						  0xffffffff, GPRS_ALGO_GEA0, NULL);
 				/* FIXME: this is a hard free, we don't
@@ -623,7 +623,6 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		break;
 	}
 
-	DEBUGPC(DMM, "\n");
 	/* Check if we can let the mobile station enter */
 	return gsm48_gmm_authorize(ctx, ctx->t3350_mode);
 }
@@ -641,7 +640,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	struct gprs_ra_id ra_id;
 	uint16_t cid;
 
-	DEBUGP(DMM, "-> GMM ATTACH REQUEST ");
+	LOGP(DMM, LOGL_INFO, "-> GMM ATTACH REQUEST ");
 
 	/* As per TS 04.08 Chapter 4.7.1.4, the attach request arrives either
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
@@ -686,6 +685,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		goto err_inval;
 	cur += ms_ra_acc_cap_len;
 
+	LOGPC(DMM, LOGL_INFO, "\n");
+
 	/* Optional: Old P-TMSI Signature, Requested READY timer, TMSI Status */
 
 	switch (mi_type) {
@@ -704,7 +705,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			if (strncmp(mccmnc, mi_string, 5) &&
 			    (sgsn->cfg.acl_enabled &&
 			     !sgsn_acl_lookup(mi_string))) {
-				LOGP(DMM, LOGL_INFO, "Rejecting ATTACH REQUESET IMSI=%s\n",
+				LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST IMSI=%s\n",
 				     mi_string);
 				return gsm48_tx_gmm_att_rej_oldmsg(msg,
 								GMM_CAUSE_GPRS_NOTALLOWED);
@@ -764,11 +765,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	gprs_llgmm_assign(ctx->llme, ctx->tlli, ctx->tlli_new,
 			  GPRS_ALGO_GEA0, NULL);
 
-	DEBUGPC(DMM, "\n");
 	return gsm48_gmm_authorize(ctx, GMM_T3350_MODE_ATT);
 
 err_inval:
-	DEBUGPC(DMM, "\n");
+	LOGPC(DMM, LOGL_INFO, "\n");
 	return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_SEM_INCORR_MSG);
 }
 
@@ -785,7 +785,7 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 
 	/* FIXME: In 24.008 there is an optional P-TMSI and P-TMSI signature IE */
 
-	DEBUGP(DMM, "-> GMM DETACH REQUEST TLLI=0x%08x type=%s %s\n",
+	LOGMMCTXP(LOGL_INFO, ctx, "-> GMM DETACH REQUEST TLLI=0x%08x type=%s %s\n",
 		msgb_tlli(msg), get_value_string(gprs_det_t_mo_strs, detach_type),
 		power_off ? "Power-off" : "");
 
@@ -794,7 +794,7 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 
 	/* delete all existing PDP contexts for this MS */
 	llist_for_each_entry_safe(pdp, pdp2, &ctx->pdp_list, list) {
-		LOGP(DMM, LOGL_NOTICE, "Dropping PDP context for NSAPI=%u "
+		LOGMMCTXP(LOGL_NOTICE, ctx, "Dropping PDP context for NSAPI=%u "
 		     "due to GPRS DETACH REQUEST\n", pdp->nsapi);
 		sgsn_delete_pdp_ctx(pdp);
 		/* FIXME: the callback wants to transmit a DEACT PDP CTX ACK,
@@ -819,7 +819,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 	struct gsm48_ra_upd_ack *rua;
 	uint8_t *mid;
 
-	DEBUGP(DMM, "<- ROUTING AREA UPDATE ACCEPT\n");
+	LOGMMCTXP(LOGL_INFO, mm, "<- ROUTING AREA UPDATE ACCEPT\n");
 
 	mmctx2msgid(msg, mm);
 
@@ -860,7 +860,7 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	DEBUGP(DMM, "<- ROUTING AREA UPDATE REJECT\n");
+	LOGP(DMM, LOGL_NOTICE, "<- ROUTING AREA UPDATE REJECT\n");
 
 	gmm_copy_id(msg, old_msg);
 
@@ -888,14 +888,14 @@ static void process_ms_ctx_status(struct sgsn_mm_ctx *mmctx,
 	llist_for_each_entry_safe(pdp, pdp2, &mmctx->pdp_list, list) {
 		if (pdp->nsapi < 8) {
 			if (!(pdp_status[0] & (1 << pdp->nsapi))) {
-				LOGP(DMM, LOGL_NOTICE, "Dropping PDP context for NSAPI=%u "
+				LOGMMCTXP(LOGL_NOTICE, mmctx, "Dropping PDP context for NSAPI=%u "
 					"due to PDP CTX STATUS IE= 0x%02x%02x\n",
 					pdp->nsapi, pdp_status[1], pdp_status[0]);
 				sgsn_delete_pdp_ctx(pdp);
 			}
 		} else {
 			if (!(pdp_status[1] & (1 << (pdp->nsapi - 8)))) {
-				LOGP(DMM, LOGL_NOTICE, "Dropping PDP context for NSAPI=%u "
+				LOGMMCTXP(LOGL_NOTICE, mmctx, "Dropping PDP context for NSAPI=%u "
 					"due to PDP CTX STATUS IE= 0x%02x%02x\n",
 					pdp->nsapi, pdp_status[1], pdp_status[0]);
 				sgsn_delete_pdp_ctx(pdp);
@@ -918,7 +918,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	/* Update Type 10.5.5.18 */
 	upd_type = *cur++ & 0x0f;
 
-	DEBUGP(DMM, "-> GMM RA UPDATE REQUEST type=\"%s\" ",
+	LOGP(DMM, LOGL_INFO, "-> GMM RA UPDATE REQUEST type=\"%s\"\n",
 		get_value_string(gprs_upd_t_strs, upd_type));
 
 	/* Old routing area identification 10.5.5.15 */
@@ -939,7 +939,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	switch (upd_type) {
 	case GPRS_UPD_T_RA_LA:
 	case GPRS_UPD_T_RA_LA_IMSI_ATT:
-		DEBUGPC(DMM, " unsupported in Mode III, is your SI13 corrupt?\n");
+		LOGP(DMM, LOGL_NOTICE, "Update type %i unsupported in Mode III, is your SI13 corrupt?\n", upd_type);
 		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_PROTO_ERR_UNSPEC);
 		break;
 	case GPRS_UPD_T_RA:
@@ -952,10 +952,9 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	if (!mmctx || mmctx->mm_state == GMM_DEREGISTERED) {
 		/* send a XID reset to re-set all LLC sequence numbers
 		 * in the MS */
-		DEBUGPC(DMM, " LLC XID RESET ");
+		LOGP(DMM, LOGL_NOTICE, "LLC XID RESET\n");
 		gprs_llgmm_reset(llme);
 		/* The MS has to perform GPRS attach */
-		DEBUGPC(DMM, " REJECT\n");
 		/* Device is still IMSI atached for CS but initiate GPRS ATTACH */
 		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
 	}
@@ -974,7 +973,6 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_RA_UPDATE]);
 
-	DEBUGPC(DMM, " ACCEPT\n");
 #ifdef PTMSI_ALLOC
 	mmctx->p_tmsi_old = mmctx->p_tmsi;
 	mmctx->p_tmsi = sgsn_alloc_ptmsi();
@@ -1008,7 +1006,7 @@ static int gsm48_rx_gmm_status(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
-	DEBUGP(DMM, "-> GPRS MM STATUS (cause: %s)\n",
+	LOGMMCTXP(LOGL_INFO, mmctx, "-> GPRS MM STATUS (cause: %s)\n",
 		get_value_string(gmm_cause_names, gh->data[0]));
 
 	return 0;
@@ -1038,6 +1036,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	case GSM48_MT_GMM_ATTACH_REQ:
 		rc = gsm48_rx_gmm_att_req(mmctx, msg, llme);
 		break;
+	/* For all the following types mmctx can not be NULL */
 	case GSM48_MT_GMM_ID_RESP:
 		rc = gsm48_rx_gmm_id_resp(mmctx, msg);
 		break;
@@ -1049,7 +1048,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		break;
 	case GSM48_MT_GMM_ATTACH_COMPL:
 		/* only in case SGSN offered new P-TMSI */
-		DEBUGP(DMM, "-> ATTACH COMPLETE\n");
+		LOGMMCTXP(LOGL_INFO, mmctx, "-> ATTACH COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
 		/* Unassign the old TLLI */
@@ -1060,7 +1059,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
-		DEBUGP(DMM, "-> ROUTEING AREA UPDATE COMPLETE\n");
+		LOGMMCTXP(LOGL_INFO, mmctx, "-> ROUTEING AREA UPDATE COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
 		/* Unassign the old TLLI */
@@ -1070,7 +1069,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		rc = 0;
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
-		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
+		LOGMMCTXP(LOGL_INFO, mmctx, "-> PTMSI REALLLICATION COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
 		/* Unassign the old TLLI */
@@ -1082,7 +1081,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		rc = gsm48_rx_gmm_auth_ciph_resp(mmctx, msg);
 		break;
 	default:
-		DEBUGP(DMM, "Unknown GSM 04.08 GMM msg type 0x%02x\n",
+		LOGMMCTXP(LOGL_NOTICE, mmctx, "Unknown GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
 		rc = gsm48_tx_gmm_status(mmctx, GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		break;
@@ -1100,7 +1099,7 @@ static void mmctx_timer_cb(void *_mm)
 	switch (mm->T) {
 	case 3350:	/* waiting for ATTACH COMPLETE */
 		if (mm->num_T_exp >= 5) {
-			LOGP(DMM, LOGL_NOTICE, "T3350 expired >= 5 times\n");
+			LOGMMCTXP(LOGL_NOTICE, mm, "T3350 expired >= 5 times\n");
 			mm->mm_state = GMM_DEREGISTERED;
 			/* FIXME: should we return some error? */
 			break;
@@ -1121,7 +1120,7 @@ static void mmctx_timer_cb(void *_mm)
 		break;
 	case 3360:	/* waiting for AUTH AND CIPH RESP */
 		if (mm->num_T_exp >= 5) {
-			LOGP(DMM, LOGL_NOTICE, "T3360 expired >= 5 times\n");
+			LOGMMCTXP(LOGL_NOTICE, mm, "T3360 expired >= 5 times\n");
 			mm->mm_state = GMM_DEREGISTERED;
 			break;
 		}
@@ -1130,7 +1129,7 @@ static void mmctx_timer_cb(void *_mm)
 		break;
 	case 3370:	/* waiting for IDENTITY RESPONSE */
 		if (mm->num_T_exp >= 5) {
-			LOGP(DMM, LOGL_NOTICE, "T3370 expired >= 5 times\n");
+			LOGMMCTXP(LOGL_NOTICE, mm, "T3370 expired >= 5 times\n");
 			gsm48_tx_gmm_att_rej(mm, GMM_CAUSE_MS_ID_NOT_DERIVED);
 			mm->mm_state = GMM_DEREGISTERED;
 			break;
@@ -1140,7 +1139,7 @@ static void mmctx_timer_cb(void *_mm)
 		osmo_timer_schedule(&mm->timer, GSM0408_T3370_SECS, 0);
 		break;
 	default:
-		LOGP(DMM, LOGL_ERROR, "timer expired in unknown mode %u\n",
+		LOGMMCTXP(LOGL_ERROR, mm, "timer expired in unknown mode %u\n",
 			mm->T);
 	}
 }
@@ -1195,7 +1194,7 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = pdp->ti ^ 0x8; /* flip */
 
-	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT ACK\n");
+	LOGPDPCTXP(LOGL_INFO, pdp, "<- ACTIVATE PDP CONTEXT ACK\n");
 
 	mmctx2msgid(msg, pdp->mm);
 
@@ -1239,7 +1238,7 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
-	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT REJ(cause=%u)\n", cause);
+	LOGMMCTXP(LOGL_NOTICE, mm, "<- ACTIVATE PDP CONTEXT REJ(cause=%u)\n", cause);
 
 	mmctx2msgid(msg, mm);
 
@@ -1262,7 +1261,7 @@ static int _gsm48_tx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, uint8_t tid,
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
-	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT REQ\n");
+	LOGMMCTXP(LOGL_INFO, mm, "<- DEACTIVATE PDP CONTEXT REQ\n");
 
 	mmctx2msgid(msg, mm);
 
@@ -1288,7 +1287,7 @@ static int _gsm48_tx_gsm_deact_pdp_acc(struct sgsn_mm_ctx *mm, uint8_t tid)
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
-	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT ACK\n");
+	LOGMMCTXP(LOGL_INFO, mm, "<- DEACTIVATE PDP CONTEXT ACK\n");
 
 	mmctx2msgid(msg, mm);
 
@@ -1316,7 +1315,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	struct sgsn_ggsn_ctx *ggsn;
 	struct sgsn_pdp_ctx *pdp;
 
-	DEBUGP(DMM, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
+	LOGMMCTXP(LOGL_INFO, mmctx, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
 		act_req->req_llc_sapi, act_req->req_nsapi);
 
 	/* FIXME: length checks! */
@@ -1364,7 +1363,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 		break;
 	}
 
-	DEBUGPC(DMM, "\n");
+	LOGPC(DMM, LOGL_INFO, "\n");
 
 	/* put the non-TLV elements in the TLV parser structure to
 	 * pass them on to the SGSN / GTP code */
@@ -1429,12 +1428,12 @@ static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, struct msgb *msg)
 	uint8_t transaction_id = (gh->proto_discr >> 4);
 	struct sgsn_pdp_ctx *pdp;
 
-	DEBUGP(DMM, "-> DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
+	LOGMMCTXP(LOGL_INFO, mm, "-> DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
 		get_value_string(gsm_cause_names, gh->data[0]));
 
 	pdp = sgsn_pdp_ctx_by_tid(mm, transaction_id);
 	if (!pdp) {
-		LOGP(DMM, LOGL_NOTICE, "Deactivate PDP Context Request for "
+		LOGMMCTXP(LOGL_NOTICE, mm, "Deactivate PDP Context Request for "
 			"non-existing PDP Context (IMSI=%s, TI=%u)\n",
 			mm->imsi, transaction_id);
 		return _gsm48_tx_gsm_deact_pdp_acc(mm, transaction_id);
@@ -1450,11 +1449,11 @@ static int gsm48_rx_gsm_deact_pdp_ack(struct sgsn_mm_ctx *mm, struct msgb *msg)
 	uint8_t transaction_id = (gh->proto_discr >> 4);
 	struct sgsn_pdp_ctx *pdp;
 
-	DEBUGP(DMM, "-> DEACTIVATE PDP CONTEXT ACK\n");
+	LOGMMCTXP(LOGL_INFO, mm, "-> DEACTIVATE PDP CONTEXT ACK\n");
 
 	pdp = sgsn_pdp_ctx_by_tid(mm, transaction_id);
 	if (!pdp) {
-		LOGP(DMM, LOGL_NOTICE, "Deactivate PDP Context Accept for "
+		LOGMMCTXP(LOGL_NOTICE, mm, "Deactivate PDP Context Accept for "
 			"non-existing PDP Context (IMSI=%s, TI=%u)\n",
 			mm->imsi, transaction_id);
 		return 0;
@@ -1467,7 +1466,7 @@ static int gsm48_rx_gsm_status(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
-	DEBUGP(DMM, "-> GPRS SM STATUS (cause: %s)\n",
+	LOGMMCTXP(LOGL_INFO, ctx, "-> GPRS SM STATUS (cause: %s)\n",
 		get_value_string(gsm_cause_names, gh->data[0]));
 
 	return 0;
@@ -1482,7 +1481,7 @@ static void pdpctx_timer_cb(void *_pdp)
 	switch (pdp->T) {
 	case 3395:	/* waiting for PDP CTX DEACT ACK */
 		if (pdp->num_T_exp >= 4) {
-			LOGP(DMM, LOGL_NOTICE, "T3395 expired >= 5 times\n");
+			LOGPDPCTXP(LOGL_NOTICE, pdp, "T3395 expired >= 5 times\n");
 			pdp->state = PDP_STATE_INACTIVE;
 			sgsn_delete_pdp_ctx(pdp);
 			break;
@@ -1491,7 +1490,7 @@ static void pdpctx_timer_cb(void *_pdp)
 		osmo_timer_schedule(&pdp->timer, GSM0408_T3395_SECS, 0);
 		break;
 	default:
-		LOGP(DMM, LOGL_ERROR, "timer expired in unknown mode %u\n",
+		LOGPDPCTXP(LOGL_ERROR, pdp, "timer expired in unknown mode %u\n",
 			pdp->T);
 	}
 }
@@ -1528,12 +1527,12 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	case GSM48_MT_GSM_REQ_PDP_ACT_REJ:
 	case GSM48_MT_GSM_ACT_AA_PDP_REQ:
 	case GSM48_MT_GSM_DEACT_AA_PDP_REQ:
-		DEBUGP(DMM, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
+		LOGMMCTXP(LOGL_NOTICE, mmctx, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
 			gh->msg_type);
 		rc = gsm48_tx_sm_status(mmctx, GSM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		break;
 	default:
-		DEBUGP(DMM, "Unknown GSM 04.08 GSM msg type 0x%02x\n",
+		LOGMMCTXP(LOGL_NOTICE, mmctx, "Unknown GSM 04.08 GSM msg type 0x%02x\n",
 			gh->msg_type);
 		rc = gsm48_tx_sm_status(mmctx, GSM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		break;
@@ -1570,7 +1569,7 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg, struct gprs_llc_llme *llme)
 		rc = gsm0408_rcv_gsm(mmctx, msg, llme);
 		break;
 	default:
-		DEBUGP(DMM, "Unknown GSM 04.08 discriminator 0x%02x\n",
+		LOGP(DMM, LOGL_NOTICE, "Unknown GSM 04.08 discriminator 0x%02x\n",
 			pdisc);
 		/* FIXME: return status message */
 		break;
@@ -1591,7 +1590,7 @@ int gprs_gmm_rx_suspend(struct gprs_ra_id *raid, uint32_t tlli)
 	}
 
 	if (mmctx->mm_state != GMM_REGISTERED_NORMAL) {
-		LOGP(DMM, LOGL_NOTICE, "SUSPEND request while state "
+		LOGMMCTXP(LOGL_NOTICE, mmctx, "SUSPEND request while state "
 			"!= REGISTERED (TLLI=%08x)\n", tlli);
 		return -EINVAL;
 	}
@@ -1616,7 +1615,7 @@ int gprs_gmm_rx_resume(struct gprs_ra_id *raid, uint32_t tlli,
 	}
 
 	if (mmctx->mm_state != GMM_REGISTERED_SUSPENDED) {
-		LOGP(DMM, LOGL_NOTICE, "RESUME request while state "
+		LOGMMCTXP(LOGL_NOTICE, mmctx, "RESUME request while state "
 			"!= SUSPENDED (TLLI=%08x)\n", tlli);
 		/* FIXME: should we not simply ignore it? */
 		return -EINVAL;
