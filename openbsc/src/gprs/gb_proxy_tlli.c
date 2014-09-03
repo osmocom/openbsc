@@ -98,10 +98,22 @@ struct gbproxy_tlli_info *gbproxy_find_tlli_by_mi(
 	return NULL;
 }
 
+void gbproxy_tlli_info_discard_messages(struct gbproxy_tlli_info *tlli_info)
+{
+	struct msgb *msg, *nxt;
+
+	llist_for_each_entry_safe(msg, nxt, &tlli_info->stored_msgs, list) {
+		llist_del(&msg->list);
+		msgb_free(msg);
+	}
+}
+
 void gbproxy_delete_tlli(struct gbproxy_peer *peer,
 			 struct gbproxy_tlli_info *tlli_info)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
+
+	gbproxy_tlli_info_discard_messages(tlli_info);
 
 	llist_del(&tlli_info->list);
 	talloc_free(tlli_info);

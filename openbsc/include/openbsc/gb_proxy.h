@@ -150,6 +150,7 @@ struct gbproxy_tlli_info {
 
 	int imsi_acq_pending;
 	struct llist_head stored_msgs;
+	int imsi_acq_retries;
 
 	int enable_patching;
 };
@@ -197,6 +198,7 @@ void gbproxy_update_tlli_state_after(
 int gbproxy_remove_stale_tllis(struct gbproxy_peer *peer, time_t now);
 void gbproxy_delete_tlli(struct gbproxy_peer *peer,
 			 struct gbproxy_tlli_info *tlli_info);
+void gbproxy_tlli_info_discard_messages(struct gbproxy_tlli_info *tlli_info);
 
 struct gbproxy_tlli_info *gbproxy_register_tlli(
 	struct gbproxy_peer *peer, uint32_t tlli,

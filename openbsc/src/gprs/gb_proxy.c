@@ -253,6 +253,22 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 	return sgsn_tlli;
 }
 
+/* Returns != 0 iff IMSI acquisition was in progress */
+int gbproxy_reset_imsi_acquisition(struct gbproxy_tlli_info* tlli_info)
+{
+	int in_progress = 0;
+	if (!tlli_info)
+		return 0;
+
+	if (tlli_info->imsi_acq_pending)
+		in_progress = 1;
+
+	gbproxy_tlli_info_discard_messages(tlli_info);
+	tlli_info->imsi_acq_pending = 0;
+
+	return in_progress;
+}
+
 /* patch BSSGP message */
 static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 				   struct msgb *msg,
@@ -315,20 +331,27 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	gbprox_update_current_raid(parse_ctx.bssgp_raid_enc, peer,
 				   parse_ctx.llc_msg_name);
 
+	gprs_gb_log_parse_context(&parse_ctx, "BSSGP");
+
+	tlli_info = gbproxy_update_tlli_state_ul(peer, now, &parse_ctx);
+
 	if (parse_ctx.g48_hdr) {
 		switch (parse_ctx.g48_hdr->msg_type) {
 		case GSM48_MT_GMM_ATTACH_REQ:
 			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REQS]);
+			if (gbproxy_reset_imsi_acquisition(tlli_info)) {
+				LOGP(DLLC, LOGL_INFO,
+				     "NSEI=%d(BSS) IMSI acquisition was in progress "
+				     "when receiving an ATTACH_REQ.\n",
+				     msgb_nsei(msg));
+				tlli_info->imsi_acq_retries += 1;
+			}
 			break;
 
 		default:
 			break;
 		}
 	}
-
-	gprs_gb_log_parse_context(&parse_ctx, "BSSGP");
-
-	tlli_info = gbproxy_update_tlli_state_ul(peer, now, &parse_ctx);
 
 	if (tlli_info && cfg->route_to_sgsn2 && gbproxy_check_tlli(peer, tlli_info)) {
 		sgsn_nsei = cfg->nsip_sgsn2_nsei;
@@ -415,8 +438,15 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 		/* Send IDENT REQ */
 		idreq_msg = gsm48_msgb_alloc();
 		gprs_put_identity_req(idreq_msg, GSM_MI_TYPE_IMSI);
+		/* Workaround to avoid N(U) collisions and to enable a restart
+		 * of the IMSI acquisition procedure. This will work unless the
+		 * SGSN has an initial V(UT) within [256-32, 256+n_retries]
+		 * (see GSM 04.64, 8.4.2).
+		 * TODO: Check whether it is sensible to rely on this, it might
+		 * be an issue when P-TMSI patching is _not_ enabled and the SGSN
+		 * doesn't reset V(UT) after a detach. */
 		gprs_push_llc_ui(idreq_msg, 0, GPRS_SAPI_GMM,
-				 /* TODO: use a real N(U) */0);
+				 (tlli_info->imsi_acq_retries + 256) % 512);
 		gprs_push_bssgp_dl_unitdata(idreq_msg, tlli_info->tlli.current);
 		gbprox_relay2peer(idreq_msg, peer, msgb_bvci(msg));
 		msgb_free(idreq_msg);
