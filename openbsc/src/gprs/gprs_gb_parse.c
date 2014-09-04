@@ -224,7 +224,6 @@ static int gprs_gb_parse_gmm_detach_req(uint8_t *data, size_t data_len,
 {
 	uint8_t *value;
 	size_t value_len;
-	int detach_type;
 	int power_off;
 
 	parse_ctx->llc_msg_name = "DETACH_REQ";
@@ -235,7 +234,6 @@ static int gprs_gb_parse_gmm_detach_req(uint8_t *data, size_t data_len,
 		/* invalid */
 		return 0;
 
-	detach_type = *value & 0x07;
 	power_off = *value & 0x08 ? 1 : 0;
 
 	if (!parse_ctx->to_bss) {

@@ -116,7 +116,6 @@ static void gprs_push_llc_ui(struct msgb *msg,
 	const uint8_t e_bit = 0;
 	const uint8_t pm_bit = 1;
 	const uint8_t cr_bit = is_uplink ? 0 : 1;
-	size_t msg_size = msgb_length(msg);
 	uint8_t *llc;
 	uint8_t *fcs_field;
 	uint32_t fcs;
