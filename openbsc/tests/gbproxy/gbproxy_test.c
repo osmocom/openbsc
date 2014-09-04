@@ -166,6 +166,13 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 	return 0;
 }
 
+const uint8_t *convert_ra(struct gprs_ra_id *raid)
+{
+	static uint8_t buf[6];
+	gsm48_construct_ra(buf, raid);
+	return buf;
+}
+
 /* DTAP - Attach Request */
 static const unsigned char dtap_attach_req[] = {
 	0x08, 0x01, 0x02, 0xf5, 0xe0, 0x21, 0x08, 0x02,
@@ -1149,6 +1156,24 @@ static void test_gbproxy()
 
 	send_ns_unitdata(nsi, NULL, &sgsn_peer, 0x10ff, (uint8_t *)"", 0);
 
+	/* Find peer */
+	OSMO_ASSERT(gbproxy_peer_by_bvci(&gbcfg, 0xeeee) == NULL);
+	OSMO_ASSERT(gbproxy_peer_by_bvci(&gbcfg, 0x1000) == NULL);
+	OSMO_ASSERT(gbproxy_peer_by_bvci(&gbcfg, 0x1012) != NULL);
+	OSMO_ASSERT(gbproxy_peer_by_nsei(&gbcfg, 0xeeee) == NULL);
+	OSMO_ASSERT(gbproxy_peer_by_nsei(&gbcfg, 0x1012) == NULL);
+	OSMO_ASSERT(gbproxy_peer_by_nsei(&gbcfg, 0x1000) != NULL);
+
+
+	/* Cleanup */
+	OSMO_ASSERT(gbproxy_cleanup_peers(&gbcfg, 0, 0) == 0);
+	OSMO_ASSERT(gbproxy_cleanup_peers(&gbcfg, 0x1000, 0xeeee) == 0);
+	OSMO_ASSERT(gbproxy_cleanup_peers(&gbcfg, 0, 0x1002) == 0);
+	OSMO_ASSERT(gbproxy_cleanup_peers(&gbcfg, 0x1000, 0x1012) == 1);
+	OSMO_ASSERT(gbproxy_cleanup_peers(&gbcfg, 0x1000, 0x1012) == 0);
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
 	dump_global(stdout, 0);
 
 	gbprox_reset(&gbcfg);
@@ -1376,6 +1401,18 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 1,
 		       dtap_attach_acc, sizeof(dtap_attach_acc));
 
+	OSMO_ASSERT(gbproxy_peer_by_rai(&gbcfg, convert_ra(&rai_bss)) != NULL);
+	OSMO_ASSERT(gbproxy_peer_by_rai(&gbcfg, convert_ra(&rai_sgsn)) == NULL);
+	OSMO_ASSERT(gbproxy_peer_by_rai(&gbcfg, convert_ra(&rai_unknown)) == NULL);
+
+	OSMO_ASSERT(gbproxy_peer_by_lai(&gbcfg, convert_ra(&rai_bss)) != NULL);
+	OSMO_ASSERT(gbproxy_peer_by_lai(&gbcfg, convert_ra(&rai_sgsn)) == NULL);
+	OSMO_ASSERT(gbproxy_peer_by_lai(&gbcfg, convert_ra(&rai_unknown)) == NULL);
+
+	OSMO_ASSERT(gbproxy_peer_by_lac(&gbcfg, convert_ra(&rai_bss)) != NULL);
+	OSMO_ASSERT(gbproxy_peer_by_lac(&gbcfg, convert_ra(&rai_sgsn)) != NULL);
+	OSMO_ASSERT(gbproxy_peer_by_lac(&gbcfg, convert_ra(&rai_unknown)) == NULL);
+
 	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
@@ -1532,6 +1569,7 @@ static void test_gbproxy_ptmsi_patching()
 	const uint32_t local_sgsn_tlli2 = 0xe0987654;
 	const uint32_t local_sgsn_tlli3 = 0xe0543210;
 	const uint32_t random_sgsn_tlli = 0x7c69fb81;
+	const uint32_t unknown_sgsn_tlli = 0xeebadbad;
 
 	const uint32_t bss_ptmsi = 0xc00f7304;
 	const uint32_t bss_ptmsi2 = 0xe656aa1f;
@@ -1540,6 +1578,7 @@ static void test_gbproxy_ptmsi_patching()
 	const uint32_t local_bss_tlli2 = 0xe656aa1f;
 	const uint32_t local_bss_tlli3 = 0xead4775a;
 	const uint32_t foreign_bss_tlli = 0x8000dead;
+
 
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
 	struct gbproxy_tlli_info *tlli_info;
@@ -1800,6 +1839,18 @@ static void test_gbproxy_ptmsi_patching()
 			       &rai_wrong_mcc_sgsn);
 
 	dump_global(stdout, 0);
+
+	/* Bad case: Invalid TLLI from SGSN (IMSI unknown) */
+	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
+		       unknown_sgsn_tlli, 1, NULL, 0,
+		       GPRS_SAPI_GMM, 2,
+		       dtap_gmm_information, sizeof(dtap_gmm_information));
+
+	/* Bad case: Invalid TLLI from SGSN (IMSI known) */
+	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
+		       unknown_sgsn_tlli, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, 3,
+		       dtap_gmm_information, sizeof(dtap_gmm_information));
 
 	/* Detach */
 	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,

@@ -249,6 +249,8 @@ struct gbproxy_peer *gbproxy_peer_by_rai(
 	struct gbproxy_config *cfg, const uint8_t *ra);
 struct gbproxy_peer *gbproxy_peer_by_lai(
 	struct gbproxy_config *cfg, const uint8_t *la);
+struct gbproxy_peer *gbproxy_peer_by_lac(
+	struct gbproxy_config *cfg, const uint8_t *la);
 struct gbproxy_peer *gbproxy_peer_by_bssgp_tlv(
 	struct gbproxy_config *cfg, struct tlv_parsed *tp);
 struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvci);
