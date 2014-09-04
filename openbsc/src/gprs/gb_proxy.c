@@ -283,7 +283,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	int send_msg_directly = 0;
 
 	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn &&
-	    !cfg->acquire_imsi)
+	    !cfg->acquire_imsi && !cfg->patch_ptmsi && !cfg->route_to_sgsn2)
 		return 1;
 
 	parse_ctx.to_bss = 0;
@@ -482,6 +482,10 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 	int len_change = 0;
 	time_t now;
 	struct gbproxy_tlli_info *tlli_info = NULL;
+
+	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn &&
+	    !cfg->acquire_imsi && !cfg->patch_ptmsi && !cfg->route_to_sgsn2)
+		return;
 
 	parse_ctx.to_bss = 1;
 

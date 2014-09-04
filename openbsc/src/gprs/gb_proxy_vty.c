@@ -50,17 +50,6 @@ static struct cmd_node gbproxy_node = {
 	1,
 };
 
-static const struct value_string patch_modes[] = {
-	{GBPROX_PATCH_DEFAULT, "default"},
-	{GBPROX_PATCH_BSSGP, "bssgp"},
-	{GBPROX_PATCH_LLC_ATTACH_REQ, "llc-attach-req"},
-	{GBPROX_PATCH_LLC_ATTACH, "llc-attach"},
-	{GBPROX_PATCH_LLC_GMM, "llc-gmm"},
-	{GBPROX_PATCH_LLC_GSM, "llc-gsm"},
-	{GBPROX_PATCH_LLC, "llc"},
-	{0, NULL}
-};
-
 static void gbprox_vty_print_peer(struct vty *vty, struct gbproxy_peer *peer)
 {
 	struct gprs_ra_id raid;
@@ -117,11 +106,6 @@ static int config_write_gbproxy(struct vty *vty)
 	if (g_cfg->tlli_max_len > 0)
 		vty_out(vty, " tlli-list max-length %d%s",
 			g_cfg->tlli_max_len, VTY_NEWLINE);
-
-	if (g_cfg->patch_mode != GBPROX_PATCH_DEFAULT)
-		vty_out(vty, " patch-mode %s%s",
-			get_value_string(patch_modes, g_cfg->patch_mode),
-			VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -415,25 +399,6 @@ DEFUN(cfg_gbproxy_tlli_list_no_max_len,
 }
 
 
-DEFUN(cfg_gbproxy_patch_mode,
-      cfg_gbproxy_patch_mode_cmd,
-      "patch-mode (default|bssgp|llc-attach-req|llc-attach|llc-gmm|llc-gsm|llc)",
-      "Set patch mode\n"
-      "Use build-in default (best effort, try to patch everything)\n"
-      "Only patch BSSGP headers\n"
-      "Patch BSSGP headers and LLC Attach Request messages\n"
-      "Patch BSSGP headers and LLC Attach Request/Accept messages\n"
-      "Patch BSSGP headers and LLC GMM messages\n"
-      "Patch BSSGP headers, LLC GMM, and LLC GSM messages\n"
-      "Patch BSSGP headers and all supported LLC messages\n"
-      )
-{
-	int val = get_string_value(patch_modes, argv[0]);
-	OSMO_ASSERT(val >= 0);
-	g_cfg->patch_mode = val;
-	return CMD_SUCCESS;
-}
-
 DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
        SHOW_STR "Display information about the Gb proxy\n" "Show statistics\n")
 {
@@ -698,7 +663,6 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_acquire_imsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_len_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_mode_cmd);
 
 	return 0;
 }

@@ -14,16 +14,6 @@ struct rate_ctr_group;
 struct gprs_gb_parse_context;
 struct tlv_parsed;
 
-enum gbproxy_patch_mode {
-	GBPROX_PATCH_DEFAULT,
-	GBPROX_PATCH_BSSGP,		/*!< BSGGP messages only */
-	GBPROX_PATCH_LLC_ATTACH_REQ,	/*!< BSSGP and Attach Request */
-	GBPROX_PATCH_LLC_ATTACH,	/*!< BSSGP and Attach Request/Response */
-	GBPROX_PATCH_LLC_GMM,		/*!< BSSGP and all GMM msgs */
-	GBPROX_PATCH_LLC_GSM,		/*!< BSSGP and all GMM and GSM msgs */
-	GBPROX_PATCH_LLC,		/*!< BSSGP and all supported LLC msgs */
-};
-
 enum gbproxy_global_ctr {
 	GBPROX_GLOB_CTR_INV_BVCI,
 	GBPROX_GLOB_CTR_INV_LAI,
@@ -79,7 +69,6 @@ struct gbproxy_config {
 	uint8_t* core_apn;
 	size_t core_apn_size;
 	char * match_re;
-	enum gbproxy_patch_mode patch_mode;
 	int tlli_max_age;
 	int tlli_max_len;
 

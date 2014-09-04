@@ -29,37 +29,6 @@
 #include <osmocom/gprs/protocol/gsm_08_18.h>
 #include <osmocom/core/rate_ctr.h>
 
-/* check whether patching is enabled at this level */
-static int patching_is_enabled(struct gbproxy_peer *peer,
-			       enum gbproxy_patch_mode need_at_least)
-{
-	enum gbproxy_patch_mode patch_mode = peer->cfg->patch_mode;
-	if (patch_mode == GBPROX_PATCH_DEFAULT)
-		patch_mode = GBPROX_PATCH_LLC;
-
-	return need_at_least <= patch_mode;
-}
-
-/* check whether patching is enabled at this level */
-static int patching_is_required(struct gbproxy_peer *peer,
-				enum gbproxy_patch_mode need_at_least)
-{
-	return need_at_least <= peer->cfg->patch_mode;
-}
-
-static int allow_message_patching(struct gbproxy_peer *peer, int msg_type)
-{
-	if (msg_type >= GSM48_MT_GSM_ACT_PDP_REQ) {
-		return patching_is_enabled(peer, GBPROX_PATCH_LLC_GSM);
-	} else if (msg_type > GSM48_MT_GMM_ATTACH_REJ) {
-		return patching_is_enabled(peer, GBPROX_PATCH_LLC);
-	} else if (msg_type > GSM48_MT_GMM_ATTACH_REQ) {
-		return patching_is_enabled(peer, GBPROX_PATCH_LLC_ATTACH);
-	} else {
-		return patching_is_enabled(peer, GBPROX_PATCH_LLC_ATTACH_REQ);
-	}
-}
-
 /* patch RA identifier in place */
 static void gbproxy_patch_raid(uint8_t *raid_enc, struct gbproxy_peer *peer,
 			       int to_bss, const char *log_text)
@@ -230,9 +199,6 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	int have_patched = 0;
 	int fcs;
 
-	if (parse_ctx->g48_hdr && !allow_message_patching(peer, parse_ctx->g48_hdr->msg_type))
-		return have_patched;
-
 	if (parse_ctx->ptmsi_enc && tlli_info) {
 		uint32_t ptmsi;
 		if (parse_ctx->to_bss)
@@ -314,18 +280,12 @@ void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 	const char *err_info = NULL;
 	int err_ctr = -1;
 
-	if (!patching_is_enabled(peer, GBPROX_PATCH_BSSGP))
-		return;
-
 	if (parse_ctx->bssgp_raid_enc)
 		gbproxy_patch_raid(parse_ctx->bssgp_raid_enc, peer,
 				   parse_ctx->to_bss, "BSSGP");
 
-	if (!patching_is_enabled(peer, GBPROX_PATCH_LLC_ATTACH_REQ))
-		return;
-
 	if (parse_ctx->need_decryption &&
-	    patching_is_required(peer, GBPROX_PATCH_LLC_ATTACH)) {
+	    (peer->cfg->patch_ptmsi || peer->cfg->core_apn)) {
 		/* Patching LLC messages has been requested
 		 * explicitly, but the message (including the
 		 * type) is encrypted, so we possibly fail to
