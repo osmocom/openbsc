@@ -444,9 +444,7 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 		/* A new P-TMSI has been signalled in the message,
 		 * register new TLLI */
 		uint32_t new_sgsn_ptmsi;
-		uint32_t new_sgsn_tlli;
 		uint32_t new_bss_ptmsi;
-		uint32_t new_bss_tlli = 0;
 		if (!gprs_parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
 					&new_sgsn_ptmsi)) {
 			LOGP(DGPRS, LOGL_ERROR,
@@ -454,19 +452,11 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 			     parse_ctx->tlli);
 			return tlli_info;
 		}
-		new_sgsn_tlli = gprs_tmsi2tlli(new_sgsn_ptmsi, TLLI_LOCAL);
 		new_bss_ptmsi = gbproxy_make_bss_ptmsi(peer, new_sgsn_ptmsi);
-		if (new_bss_ptmsi != GSM_RESERVED_TMSI)
-			new_bss_tlli = gprs_tmsi2tlli(new_bss_ptmsi, TLLI_LOCAL);
-		LOGP(DGPRS, LOGL_INFO,
-		     "Got new TLLI(PTMSI) %08x(%08x) from SGSN, using %08x(%08x)\n",
-		     new_sgsn_tlli, new_sgsn_ptmsi, new_bss_tlli, new_bss_ptmsi);
 
-		gbproxy_reassign_tlli(&tlli_info->sgsn_tlli,
-				      peer, new_sgsn_tlli);
-		gbproxy_reassign_tlli(&tlli_info->tlli,
-				      peer, new_bss_tlli);
-		gbproxy_touch_tlli(peer, tlli_info, now);
+		LOGP(DGPRS, LOGL_INFO,
+		     "Got new PTMSI %08x from SGSN, using %08x for BSS\n",
+		     new_sgsn_ptmsi, new_bss_ptmsi);
 		/* Setup PTMSIs */
 		tlli_info->sgsn_tlli.ptmsi = new_sgsn_ptmsi;
 		tlli_info->tlli.ptmsi = new_bss_ptmsi;
@@ -553,8 +543,29 @@ void gbproxy_update_tlli_state_after(
 	time_t now,
 	struct gprs_gb_parse_context *parse_ctx)
 {
-	if (parse_ctx->invalidate_tlli)
+	if (parse_ctx->invalidate_tlli) {
 		gbproxy_unregister_tlli(peer, parse_ctx->tlli);
+	} else if (parse_ctx->to_bss && parse_ctx->tlli_enc &&
+		   parse_ctx->new_ptmsi_enc && tlli_info) {
+		/* A new PTMSI has been signaled in the message,
+		 * register new TLLI */
+		uint32_t new_sgsn_ptmsi = tlli_info->sgsn_tlli.ptmsi;
+		uint32_t new_bss_ptmsi = tlli_info->tlli.ptmsi;
+		uint32_t new_sgsn_tlli;
+		uint32_t new_bss_tlli = 0;
+
+		new_sgsn_tlli = gprs_tmsi2tlli(new_sgsn_ptmsi, TLLI_LOCAL);
+		if (new_bss_ptmsi != GSM_RESERVED_TMSI)
+			new_bss_tlli = gprs_tmsi2tlli(new_bss_ptmsi, TLLI_LOCAL);
+		LOGP(DGPRS, LOGL_INFO,
+		     "Assigning new TLLI %08x to SGSN, %08x to BSS\n",
+		     new_sgsn_tlli, new_bss_tlli);
+
+		gbproxy_reassign_tlli(&tlli_info->sgsn_tlli,
+				      peer, new_sgsn_tlli);
+		gbproxy_reassign_tlli(&tlli_info->tlli,
+				      peer, new_bss_tlli);
+	}
 
 	gbproxy_remove_stale_tllis(peer, now);
 }
