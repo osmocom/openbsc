@@ -189,7 +189,7 @@ int msc_queue_write_with_ping(struct bsc_msc_connection *conn,
 	uint8_t val;
 
 	/* prepend the header */
-	ipa_prepend_header(msg, proto);
+	ipaccess_prepend_header(msg, proto);
 	if (osmo_wqueue_enqueue(&conn->write_queue, msg) != 0) {
 		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/%d\n", proto);
 		msgb_free(msg);
