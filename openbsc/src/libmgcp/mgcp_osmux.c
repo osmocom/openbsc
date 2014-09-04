@@ -216,6 +216,9 @@ static void scheduled_tx_net_cb(struct msgb *msg, void *data)
 		.sin_port = endp->net_end.rtp_port,
 	};
 
+	endp->bts_end.octets += msg->len;
+	endp->bts_end.packets++;
+
 	mgcp_send(endp, MGCP_DEST_NET, 1, &addr, (char *)msg->data, msg->len);
 	msgb_free(msg);
 }
@@ -227,6 +230,9 @@ static void scheduled_tx_bts_cb(struct msgb *msg, void *data)
 		.sin_addr = endp->bts_end.addr,
 		.sin_port = endp->bts_end.rtp_port,
 	};
+
+	endp->net_end.octets += msg->len;
+	endp->net_end.packets++;
 
 	mgcp_send(endp, MGCP_DEST_BTS, 1, &addr, (char *)msg->data, msg->len);
 	msgb_free(msg);
