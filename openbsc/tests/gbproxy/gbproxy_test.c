@@ -195,7 +195,7 @@ static const unsigned char dtap_attach_acc[] = {
 	0x16, 0x18, 0x05, 0xf4, 0xef, 0xe2, 0xb7, 0x00
 };
 
-/* DTAP - Attach Accept, IMSI 2 */
+/* DTAP - Attach Accept, P-TMSI 2 */
 static const unsigned char dtap_attach_acc2[] = {
 	0x08, 0x02, 0x01, 0x49, 0x04, 0x21, 0x63, 0x54,
 	0x40, 0x50, 0x60, 0x19, 0xcd, 0xd7, 0x08, 0x17,
@@ -229,6 +229,26 @@ static const unsigned char dtap_ra_upd_acc[] = {
 	0x40, 0x50, 0x60, 0x19, 0x54, 0xab, 0xb3, 0x18,
 	0x05, 0xf4, 0xef, 0xe2, 0xb7, 0x00, 0x17, 0x16,
 };
+
+/* DTAP - Routing Area Update Accept, P-TMSI 2 */
+static const unsigned char dtap_ra_upd_acc2[] = {
+	0x08, 0x09, 0x00, 0x49, 0x21, 0x63, 0x54,
+	0x40, 0x50, 0x60, 0x19, 0x54, 0xab, 0xb3, 0x18,
+	0x05, 0xf4, 0xe0, 0x98, 0x76, 0x54, 0x17, 0x16,
+};
+
+/* DTAP - Routing Area Update Accept, P-TMSI 3 */
+static const unsigned char dtap_ra_upd_acc3[] = {
+	0x08, 0x09, 0x00, 0x49, 0x21, 0x63, 0x54,
+	0x40, 0x50, 0x60, 0x19, 0x54, 0xab, 0xb3, 0x18,
+	0x05, 0xf4, 0xe0, 0x54, 0x32, 0x10, 0x17, 0x16,
+};
+
+/* DTAP - Routing Area Update Complete */
+static const unsigned char dtap_ra_upd_complete[] = {
+	0x08, 0x0a
+};
+
 
 /* DTAP - Activate PDP Context Request */
 static const unsigned char dtap_act_pdp_ctx_req[] = {
@@ -1501,11 +1521,19 @@ static void test_gbproxy_ptmsi_patching()
 	uint16_t cell_id = 0x1234;
 
 	const uint32_t sgsn_ptmsi = 0xefe2b700;
+	const uint32_t sgsn_ptmsi2 = 0xe0987654;
+	const uint32_t sgsn_ptmsi3 = 0xe0543210;
 	const uint32_t local_sgsn_tlli = 0xefe2b700;
+	const uint32_t local_sgsn_tlli2 = 0xe0987654;
+	const uint32_t local_sgsn_tlli3 = 0xe0543210;
 	const uint32_t random_sgsn_tlli = 0x7c69fb81;
 
 	const uint32_t bss_ptmsi = 0xc00f7304;
+	const uint32_t bss_ptmsi2 = 0xe656aa1f;
+	const uint32_t bss_ptmsi3 = 0xead4775a;
 	const uint32_t local_bss_tlli = 0xc00f7304;
+	const uint32_t local_bss_tlli2 = 0xe656aa1f;
+	const uint32_t local_bss_tlli3 = 0xead4775a;
 	const uint32_t foreign_bss_tlli = 0x8000dead;
 
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
@@ -1515,6 +1543,11 @@ static void test_gbproxy_ptmsi_patching()
 	unsigned sgsn_nu = 0;
 
 	OSMO_ASSERT(local_sgsn_tlli == gprs_tmsi2tlli(sgsn_ptmsi, TLLI_LOCAL));
+	OSMO_ASSERT(local_sgsn_tlli2 == gprs_tmsi2tlli(sgsn_ptmsi2, TLLI_LOCAL));
+	OSMO_ASSERT(local_sgsn_tlli3 == gprs_tmsi2tlli(sgsn_ptmsi3, TLLI_LOCAL));
+	OSMO_ASSERT(local_bss_tlli == gprs_tmsi2tlli(bss_ptmsi, TLLI_LOCAL));
+	OSMO_ASSERT(local_bss_tlli2 == gprs_tmsi2tlli(bss_ptmsi2, TLLI_LOCAL));
+	OSMO_ASSERT(local_bss_tlli3 == gprs_tmsi2tlli(bss_ptmsi3, TLLI_LOCAL));
 
 	bssgp_nsi = nsi;
 	gbcfg.nsi = bssgp_nsi;
@@ -1652,46 +1685,127 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	/* Repeated RA Update Requests */
+	send_llc_ul_ui(nsi, "RA UPD REQ (P-TMSI 2)", &bss_peer[0], 0x1002,
+		       local_bss_tlli, &rai_bss, 0x7080,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_ra_upd_req, sizeof(dtap_ra_upd_req));
+
+	send_llc_dl_ui(nsi, "RA UDP ACC (P-TMSI 2)", &sgsn_peer, 0x1002,
+		       local_sgsn_tlli, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_ra_upd_acc2, sizeof(dtap_ra_upd_acc2));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	OSMO_ASSERT(gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2) != NULL);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli2);
+	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
+	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->tlli.net_validated);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi2);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli2);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi2);
+
+	send_llc_ul_ui(nsi, "RA UPD REQ (P-TMSI 3)", &bss_peer[0], 0x1002,
+		       local_bss_tlli2, &rai_bss, 0x7080,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_ra_upd_req, sizeof(dtap_ra_upd_req));
+
+	send_llc_dl_ui(nsi, "RA UDP ACC (P-TMSI 3)", &sgsn_peer, 0x1002,
+		       local_sgsn_tlli2, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_ra_upd_acc3, sizeof(dtap_ra_upd_acc3));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	OSMO_ASSERT(gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2) == NULL);
+	OSMO_ASSERT(gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli3) != NULL);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli3);
+	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
+	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->tlli.net_validated);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi3);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli3);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi3);
+
+	send_llc_ul_ui(nsi, "RA UPD COMPLETE", &bss_peer[0], 0x1002,
+		       local_bss_tlli3, &rai_bss, 0x7080,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_ra_upd_complete, sizeof(dtap_ra_upd_complete));
+
+	tlli_info = gbproxy_find_tlli(peer, local_bss_tlli3);
+
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->tlli.net_validated);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+
+	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
+		       local_sgsn_tlli3, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_gmm_information, sizeof(dtap_gmm_information));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli3);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli3);
+	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli3);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
+
 	/* Other messages */
 	send_bssgp_llc_discarded(nsi, &bss_peer[0], 0x1002,
-				 local_bss_tlli, 1, 12);
+				 local_bss_tlli3, 1, 12);
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	send_bssgp_suspend(nsi, &bss_peer[0], local_bss_tlli, &rai_bss);
+	send_bssgp_suspend(nsi, &bss_peer[0], local_bss_tlli3, &rai_bss);
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli, &rai_sgsn);
+	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli3, &rai_sgsn);
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	/* Bad case: Invalid BVCI */
 	send_bssgp_llc_discarded(nsi, &bss_peer[0], 0xeee1,
-				 local_bss_tlli, 1, 12);
+				 local_bss_tlli3, 1, 12);
 	dump_global(stdout, 0);
 
 	/* Bad case: Invalid RAI */
-	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli, &rai_unknown);
+	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli3, &rai_unknown);
 
 	dump_global(stdout, 0);
 
 	/* Bad case: Invalid MCC (LAC ok) */
-	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli,
+	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli3,
 			       &rai_wrong_mcc_sgsn);
 
 	dump_global(stdout, 0);
 
 	/* Detach */
 	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
-		       local_bss_tlli, &rai_bss, cell_id,
+		       local_bss_tlli3, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, bss_nu++,
 		       dtap_detach_req, sizeof(dtap_detach_req));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	send_llc_dl_ui(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
-		       local_sgsn_tlli, 1, imsi, sizeof(imsi),
+		       local_sgsn_tlli3, 1, imsi, sizeof(imsi),
 		       GPRS_SAPI_GMM, sgsn_nu++,
 		       dtap_detach_acc, sizeof(dtap_detach_acc));
 
