@@ -1626,6 +1626,7 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 2
     RAID patched              (SGSN): 1
+    TLLI from SGSN unknown          : 1
     TLLI-Cache: 0
 --- Send message from BSS 1 to SGSN, BVCI 0x1002 ---
 
@@ -1743,6 +1744,7 @@ Peers:
     RAID patched              (SGSN): 2
     APN patched                     : 3
     Attach Request count            : 1
+    TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0, IMSI matches
@@ -1776,6 +1778,7 @@ Peers:
     RAID patched              (SGSN): 2
     APN patched                     : 3
     Attach Request count            : 1
+    TLLI from SGSN unknown          : 1
     TLLI-Cache: 0
 --- RA update ---
 
@@ -1821,6 +1824,7 @@ Peers:
     RAID patched              (SGSN): 3
     APN patched                     : 4
     Attach Request count            : 1
+    TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI bbc54679/efe2b700 -> bbc54679/efe2b700, IMSI 12131415161718, AGE 0, IMSI matches
@@ -1843,6 +1847,7 @@ Peers:
     RAID patched              (SGSN): 3
     APN patched                     : 4
     Attach Request count            : 1
+    TLLI from SGSN unknown          : 1
     TLLI-Cache: 0
 --- Bad cases ---
 
@@ -1881,6 +1886,7 @@ Peers:
     RAID patched              (SGSN): 3
     APN patched                     : 4
     Attach Request count            : 1
+    TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI (none), AGE 0
@@ -2282,8 +2288,8 @@ Peers:
     TLLI patched              (BSS ): 8
     TLLI patched              (SGSN): 6
     P-TMSI patched            (SGSN): 2
+    Patch error: other              : 1
     Attach Request count            : 1
-    TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c00f7304/ead4775a -> efe2b700/e0543210, IMSI 12131415161718, AGE 0, IMSI matches
@@ -2319,8 +2325,8 @@ Peers:
     TLLI patched              (BSS ): 9
     TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 2
+    Patch error: other              : 1
     Attach Request count            : 1
-    TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI ead4775a -> e0543210, IMSI 12131415161718, AGE 0, IMSI matches
@@ -2344,8 +2350,8 @@ Peers:
     TLLI patched              (BSS ): 10
     TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 2
+    Patch error: other              : 1
     Attach Request count            : 1
-    TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI ead4775a -> e0543210, IMSI 12131415161718, AGE 0, IMSI matches
@@ -2369,8 +2375,8 @@ Peers:
     TLLI patched              (BSS ): 11
     TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 2
+    Patch error: other              : 1
     Attach Request count            : 1
-    TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI ead4775a -> e0543210, IMSI 12131415161718, AGE 0, IMSI matches
@@ -2394,8 +2400,8 @@ Peers:
     TLLI patched              (BSS ): 11
     TLLI patched              (SGSN): 8
     P-TMSI patched            (SGSN): 2
+    Patch error: other              : 1
     Attach Request count            : 1
-    TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI ead4775a -> e0543210, IMSI 12131415161718, AGE 0, IMSI matches
@@ -2463,8 +2469,8 @@ Peers:
     TLLI patched              (SGSN): 9
     P-TMSI patched            (BSS ): 1
     P-TMSI patched            (SGSN): 2
+    Patch error: other              : 1
     Attach Request count            : 1
-    TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI ead4775a -> e0543210, IMSI 12131415161718, AGE 0, IMSI matches
@@ -2489,8 +2495,8 @@ Peers:
     TLLI patched              (SGSN): 10
     P-TMSI patched            (BSS ): 1
     P-TMSI patched            (SGSN): 2
+    Patch error: other              : 1
     Attach Request count            : 1
-    TLLI from SGSN unknown          : 1
     TLLI-Cache: 0
 Gbproxy global:
     Invalid Routing Area Identifier : 1

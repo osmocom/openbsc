@@ -440,8 +440,8 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 	if (parse_ctx->tlli_enc)
 		tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, parse_ctx->tlli);
 
-	if (parse_ctx->tlli_enc && parse_ctx->new_ptmsi_enc) {
-		/* A new PTMSI has been signaled in the message,
+	if (parse_ctx->tlli_enc && parse_ctx->new_ptmsi_enc && tlli_info) {
+		/* A new P-TMSI has been signalled in the message,
 		 * register new TLLI */
 		uint32_t new_sgsn_ptmsi;
 		uint32_t new_sgsn_tlli;
@@ -461,46 +461,67 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 		LOGP(DGPRS, LOGL_INFO,
 		     "Got new TLLI(PTMSI) %08x(%08x) from SGSN, using %08x(%08x)\n",
 		     new_sgsn_tlli, new_sgsn_ptmsi, new_bss_tlli, new_bss_ptmsi);
-		if (tlli_info) {
-			gbproxy_reassign_tlli(&tlli_info->sgsn_tlli,
-					      peer, new_sgsn_tlli);
-			gbproxy_reassign_tlli(&tlli_info->tlli,
-					      peer, new_bss_tlli);
-			gbproxy_touch_tlli(peer, tlli_info, now);
-		} else {
-			tlli_info = gbproxy_tlli_info_alloc(peer);
-			LOGP(DGPRS, LOGL_INFO,
-			     "Adding TLLI %08x to list (SGSN, new P-TMSI)\n",
-			     new_sgsn_tlli);
 
-			gbproxy_attach_tlli_info(peer, now, tlli_info);
-			/* Setup TLLIs */
-			tlli_info->sgsn_tlli.current = new_sgsn_tlli;
-		}
+		gbproxy_reassign_tlli(&tlli_info->sgsn_tlli,
+				      peer, new_sgsn_tlli);
+		gbproxy_reassign_tlli(&tlli_info->tlli,
+				      peer, new_bss_tlli);
+		gbproxy_touch_tlli(peer, tlli_info, now);
 		/* Setup PTMSIs */
 		tlli_info->sgsn_tlli.ptmsi = new_sgsn_ptmsi;
 		tlli_info->tlli.ptmsi = new_bss_ptmsi;
-	} else if (parse_ctx->tlli_enc && parse_ctx->llc && !tlli_info) {
-		/* Unknown SGSN TLLI */
+	} else if (parse_ctx->tlli_enc && parse_ctx->new_ptmsi_enc && !tlli_info &&
+		   !peer->cfg->patch_ptmsi) {
+		/* A new P-TMSI has been signalled in the message with an unknown
+		 * TLLI, create a new tlli_info */
+		uint32_t new_ptmsi;
+		if (!gprs_parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
+					&new_ptmsi)) {
+			LOGP(DGPRS, LOGL_ERROR,
+			     "Failed to parse new PTMSI (TLLI is %08x)\n",
+			     parse_ctx->tlli);
+			return tlli_info;
+		}
+
+		LOGP(DGPRS, LOGL_INFO,
+		     "Adding TLLI %08x to list (SGSN, new P-TMSI is %08x)\n",
+		     parse_ctx->tlli, new_ptmsi);
+
+		tlli_info = gbproxy_tlli_info_alloc(peer);
+		tlli_info->sgsn_tlli.current = parse_ctx->tlli;;
+		tlli_info->tlli.current = parse_ctx->tlli;;
+		tlli_info->sgsn_tlli.ptmsi = new_ptmsi;
+		tlli_info->tlli.ptmsi = new_ptmsi;
+	} else if (parse_ctx->tlli_enc && parse_ctx->llc && !tlli_info &&
+		   !peer->cfg->patch_ptmsi) {
+		/* Unknown SGSN TLLI, create a new tlli_info */
+		uint32_t new_ptmsi;
 		tlli_info = gbproxy_tlli_info_alloc(peer);
 		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list (SGSN)\n",
 		     parse_ctx->tlli);
 
 		gbproxy_attach_tlli_info(peer, now, tlli_info);
+
 		/* Setup TLLIs */
 		tlli_info->sgsn_tlli.current = parse_ctx->tlli;
-		if (peer->cfg->patch_ptmsi) {
-			/* TODO: We don't know the local TLLI here, perhaps add
-			 * a workaround that derives a PTMSI from the SGSN TLLI
-			 * and use that to get the missing values. This may
-			 * only happen when the gbproxy has been restarted or a
-			 * tlli_info has been discarded due to age or queue
-			 * length.
-			 */
-			tlli_info->tlli.current = 0;
-		} else {
-			tlli_info->tlli.current = tlli_info->sgsn_tlli.current;
+		tlli_info->tlli.current = parse_ctx->tlli;
+
+		if (!parse_ctx->new_ptmsi_enc)
+			return tlli_info;
+		/* A new P-TMSI has been signalled in the message */
+
+		if (!gprs_parse_mi_tmsi(parse_ctx->new_ptmsi_enc,
+					GSM48_TMSI_LEN, &new_ptmsi)) {
+			LOGP(DGPRS, LOGL_ERROR,
+			     "Failed to parse new PTMSI (TLLI is %08x)\n",
+			     parse_ctx->tlli);
+			return tlli_info;
 		}
+		LOGP(DGPRS, LOGL_INFO,
+		     "Assigning new P-TMSI %08x\n", new_ptmsi);
+		/* Setup P-TMSIs */
+		tlli_info->sgsn_tlli.ptmsi = new_ptmsi;
+		tlli_info->tlli.ptmsi = new_ptmsi;
 	} else if (parse_ctx->tlli_enc && parse_ctx->llc && tlli_info) {
 		uint32_t bss_tlli = gbproxy_map_tlli(parse_ctx->tlli,
 						     tlli_info, 1);

@@ -335,6 +335,15 @@ void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 		goto patch_error;
 	}
 
+	if (!tlli_info && parse_ctx->tlli_enc && parse_ctx->to_bss) {
+		/* Happens with unknown (not cached) TLLI coming from
+		 * the SGSN */
+		/* TODO: What shall be done with the message in this case? */
+		err_ctr = GBPROX_PEER_CTR_TLLI_UNKNOWN;
+		err_info = "TLLI sent by the SGSN is unknown";
+		goto patch_error;
+	}
+
 	if (!tlli_info)
 		return;
 
@@ -346,13 +355,6 @@ void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 			gbproxy_patch_tlli(parse_ctx->tlli_enc, peer, tlli,
 					   parse_ctx->to_bss, "TLLI");
 			parse_ctx->tlli = tlli;
-		} else if (parse_ctx->to_bss) {
-			/* Happens with unknown (not cached) TLLI coming from
-			 * the SGSN */
-			/* TODO: What shall be done with the message in this case? */
-			err_ctr = GBPROX_PEER_CTR_TLLI_UNKNOWN;
-			err_info = "TLLI sent by the SGSN is unknown";
-			goto patch_error;
 		} else {
 			/* Internal error */
 			err_ctr = GBPROX_PEER_CTR_PATCH_ERR;
