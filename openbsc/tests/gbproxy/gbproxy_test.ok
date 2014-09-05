@@ -2130,6 +2130,29 @@ Peers:
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c00f7304 -> efe2b700, IMSI 12131415161718, AGE 0, IMSI matches
+PROCESSING ACT PDP CTX REQ (REPLACE APN) from 0x01020304:1111
+00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
+
+CALLBACK, event 0, msg length 76, bvci 0x1002
+00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
+
+NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 76 (gprs_ns_sendmsg)
+MESSAGE to SGSN at 0x05060708:32000, msg length 80
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 21 63 54 40 50 60 12 34 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
+
+result (ACT PDP CTX REQ (REPLACE APN)) = 80
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 5
+    RAID patched              (SGSN): 1
+    TLLI patched              (BSS ): 4
+    TLLI patched              (SGSN): 3
+    P-TMSI patched            (SGSN): 1
+    Attach Request count            : 1
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI c00f7304 -> efe2b700, IMSI 12131415161718, AGE 0, IMSI matches
 PROCESSING XID (UL) from 0x01020304:1111
 00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 0f 41 fb 01 00 0e 00 64 11 05 16 01 90 66 b3 28 
 
@@ -2180,9 +2203,9 @@ result (LL11 DNS RESP (DL)) = 271
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 6
+    RAID patched              (BSS ): 7
     RAID patched              (SGSN): 1
-    TLLI patched              (BSS ): 5
+    TLLI patched              (BSS ): 6
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
@@ -2203,9 +2226,9 @@ result (LLC_DISCARDED) = 23
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 6
+    RAID patched              (BSS ): 7
     RAID patched              (SGSN): 1
-    TLLI patched              (BSS ): 6
+    TLLI patched              (BSS ): 7
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
@@ -2226,9 +2249,9 @@ result (BVC_SUSPEND) = 19
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 7
+    RAID patched              (BSS ): 8
     RAID patched              (SGSN): 1
-    TLLI patched              (BSS ): 7
+    TLLI patched              (BSS ): 8
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
@@ -2249,9 +2272,9 @@ result (BVC_SUSPEND_ACK) = 22
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 7
+    RAID patched              (BSS ): 8
     RAID patched              (SGSN): 2
-    TLLI patched              (BSS ): 7
+    TLLI patched              (BSS ): 8
     TLLI patched              (SGSN): 6
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
@@ -2302,22 +2325,22 @@ Gbproxy global:
     Invalid Routing Area Identifier : 1
     Patch error: no peer            : 1
 PROCESSING DETACH REQ from 0x01020304:1111
-00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 0d 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 37 67 c6 
+00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 11 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 6d b1 de 
 
 CALLBACK, event 0, msg length 44, bvci 0x1002
-00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 0d 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 37 67 c6 
+00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 11 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 6d b1 de 
 
 NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 44 (gprs_ns_sendmsg)
 MESSAGE to SGSN at 0x05060708:32000, msg length 48
-00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 21 63 54 40 50 60 12 34 00 80 0e 00 15 01 c0 0d 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 37 67 c6 
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 21 63 54 40 50 60 12 34 00 80 0e 00 15 01 c0 11 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 6d b1 de 
 
 result (DETACH REQ) = 48
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 8
+    RAID patched              (BSS ): 9
     RAID patched              (SGSN): 3
-    TLLI patched              (BSS ): 9
+    TLLI patched              (BSS ): 10
     TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
@@ -2338,9 +2361,9 @@ result (DETACH ACC) = 71
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 8
+    RAID patched              (BSS ): 9
     RAID patched              (SGSN): 3
-    TLLI patched              (BSS ): 9
+    TLLI patched              (BSS ): 10
     TLLI patched              (SGSN): 8
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1

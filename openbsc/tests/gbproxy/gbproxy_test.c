@@ -1624,6 +1624,13 @@ static void test_gbproxy_ptmsi_patching()
 	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
 	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
 
+	send_llc_ul_ui(nsi, "ACT PDP CTX REQ (REPLACE APN)", &bss_peer[0], 0x1002,
+		       local_bss_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
 	/* Non-DTAP */
 	send_bssgp_ul_unitdata(nsi, "XID (UL)", &bss_peer[0], 0x1002,
 			       local_bss_tlli, &rai_bss, cell_id,
