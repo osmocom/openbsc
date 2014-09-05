@@ -229,6 +229,9 @@ int drop_all_pdp_for_ggsn(struct sgsn_ggsn_ctx *ggsn);
 
 char *gprs_pdpaddr2str(uint8_t *pdpa, uint8_t len);
 
+/* Force re-attachment based on msgb meta data */
+int sgsn_force_reattach_oldmsg(struct msgb *oldmsg);
+
 /*
  * ctrl interface related work
  */

@@ -608,8 +608,19 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 
 	/* find the LLC Entity for this TLLI+SAPI tuple */
 	lle = lle_for_rx_by_tlli_sapi(msgb_tlli(msg), llhp.sapi, llhp.cmd);
-	if (!lle)
+	if (!lle) {
+		switch (llhp.sapi) {
+		case GPRS_SAPI_SNDCP3:
+		case GPRS_SAPI_SNDCP5:
+		case GPRS_SAPI_SNDCP9:
+		case GPRS_SAPI_SNDCP11:
+			/* Ask an upper layer for help. */
+			return sgsn_force_reattach_oldmsg(msg);
+		default:
+			break;
+		}
 		return 0;
+	}
 
 	/* decrypt information field + FCS, if needed! */
 	if (llhp.is_encrypted) {
@@ -771,6 +782,25 @@ int gprs_llgmm_reset(struct gprs_llc_llme *llme)
 
 	/* FIXME: Start T200, wait for XID response */
 	return gprs_llc_tx_xid(lle, msg, 1);
+}
+
+int gprs_llgmm_reset_oldmsg(struct msgb* oldmsg, uint8_t sapi)
+{
+	struct msgb *msg = msgb_alloc_headroom(4096, 1024, "LLC_XID");
+	int random = rand();
+
+	/* First XID component must be RESET */
+	msgb_put_xid_par(msg, GPRS_LLC_XID_T_RESET, 0, NULL);
+	/* randomly select new IOV-UI */
+	msgb_put_xid_par(msg, GPRS_LLC_XID_T_IOV_UI, 4, (uint8_t *) &random);
+
+	/* FIXME: Start T200, wait for XID response */
+
+	msgb_tlli(msg) = msgb_tlli(oldmsg);
+	msgb_bvci(msg) = msgb_bvci(oldmsg);
+	msgb_nsei(msg) = msgb_nsei(oldmsg);
+
+	return gprs_llc_tx_u(msg, sapi, 1, GPRS_LLC_U_XID, 1);
 }
 
 int gprs_llc_init(const char *cipher_plugin_path)

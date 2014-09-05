@@ -171,6 +171,13 @@ const struct value_string gprs_det_t_mo_strs[] = {
 	{ 0, NULL }
 };
 
+const struct value_string gprs_det_t_mt_strs[] = {
+	{ GPRS_DET_T_MT_REATT_REQ,	"re-attach required" },
+	{ GPRS_DET_T_MT_REATT_NOTREQ,	"re-attach not required" },
+	{ GPRS_DET_T_MT_IMSI,		"IMSI detach (after VLR failure)" },
+	{ 0, NULL }
+};
+
 static const struct tlv_definition gsm48_gmm_att_tlvdef = {
 	.def = {
 		[GSM48_IE_GMM_CIPH_CKSN]	= { TLV_TYPE_FIXED, 1 },
@@ -265,20 +272,28 @@ static void mmctx2msgid(struct msgb *msg, const struct sgsn_mm_ctx *mm)
 	msgb_nsei(msg) = mm->nsei;
 }
 
+static void delete_pdp_contexts(struct sgsn_mm_ctx *ctx, const char *log_text)
+{
+	struct sgsn_pdp_ctx *pdp, *pdp2;
+
+	/* delete all existing PDP contexts for this MS */
+	llist_for_each_entry_safe(pdp, pdp2, &ctx->pdp_list, list) {
+		LOGMMCTXP(LOGL_NOTICE, ctx,
+			  "Dropping PDP context for NSAPI=%u due to %s\n",
+			  pdp->nsapi, log_text);
+		sgsn_pdp_ctx_terminate(pdp);
+	}
+}
+
 static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
 {
 	struct gprs_llc_llme *llme = ctx->llme;
 	uint32_t tlli = ctx->tlli;
-	struct sgsn_pdp_ctx *pdp, *pdp2;
 
 	/* Mark MM state as deregistered */
 	ctx->mm_state = GMM_DEREGISTERED;
 
-	llist_for_each_entry_safe(pdp, pdp2, &ctx->pdp_list, list) {
-		LOGMMCTXP(LOGL_NOTICE, ctx, "Dropping PDP context for NSAPI=%u "
-		     "due to %s\n", pdp->nsapi, log_text);
-		sgsn_pdp_ctx_terminate(pdp);
-	}
+	delete_pdp_contexts(ctx, log_text);
 
 	sgsn_mm_ctx_free(ctx);
 	ctx = NULL;
@@ -339,6 +354,45 @@ static int gsm48_tx_sm_status_oldmsg(struct msgb *oldmsg, uint8_t cause)
 	return _tx_status(msg, cause, NULL, 1);
 }
 
+static int _tx_detach_req(struct msgb *msg, uint8_t detach_type, uint8_t cause,
+			  struct sgsn_mm_ctx *mmctx)
+{
+	struct gsm48_hdr *gh;
+
+	/* MMCTX might be NULL! */
+
+	DEBUGP(DMM, "<- GPRS MM DETACH REQ (type: %s, cause: %s)\n",
+		get_value_string(gprs_det_t_mt_strs, detach_type),
+		get_value_string(gmm_cause_names, cause));
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+
+	gh->proto_discr = GSM48_PDISC_MM_GPRS;
+	gh->msg_type = GSM48_MT_GMM_DETACH_REQ;
+	gh->data[0] = detach_type & 0x07;
+
+	msgb_tv_put(msg, GSM48_IE_GMM_CAUSE, cause);
+
+	return gsm48_gmm_sendmsg(msg, 0, mmctx);
+}
+
+static int gsm48_tx_gmm_detach_req(struct sgsn_mm_ctx *mmctx,
+				   uint8_t detach_type, uint8_t cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+
+	mmctx2msgid(msg, mmctx);
+	return _tx_detach_req(msg, detach_type, cause, mmctx);
+}
+
+static int gsm48_tx_gmm_detach_req_oldmsg(struct msgb *oldmsg,
+					  uint8_t detach_type, uint8_t cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+
+	gmm_copy_id(msg, oldmsg);
+	return _tx_detach_req(msg, detach_type, cause, NULL);
+}
 
 static struct gsm48_qos default_qos = {
 	.delay_class = 4,	/* best effort */
@@ -963,8 +1017,9 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		LOGP(DMM, LOGL_NOTICE, "LLC XID RESET\n");
 		gprs_llgmm_reset(llme);
 		/* The MS has to perform GPRS attach */
-		/* Device is still IMSI atached for CS but initiate GPRS ATTACH */
-		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
+		/* Device is still IMSI attached for CS but initiate GPRS ATTACH,
+		 * see GSM 04.08, 4.7.5.1.4 and G.6 */
+		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_IMPL_DETACHED);
 	}
 
 	/* Store new BVCI/NSEI in MM context (FIXME: delay until we ack?) */
@@ -1033,8 +1088,33 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
 	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
+		/* 4.7.10 */
+		if (gh->msg_type == GSM48_MT_GMM_STATUS)
+			return 0;
+
 		gprs_llgmm_reset(llme);
-		return gsm48_tx_gmm_status_oldmsg(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
+
+		/* Don't reply or establish a LLME on DETACH_ACK */
+		if (gh->msg_type == GSM48_MT_GMM_DETACH_ACK) {
+			/* TLLI unassignment */
+			return gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
+						 GPRS_ALGO_GEA0, NULL);
+		}
+
+		/* Don't force it into re-attachment */
+		if (gh->msg_type == GSM48_MT_GMM_DETACH_REQ) {
+			rc = gsm48_tx_gmm_detach_req_oldmsg(
+				msg, GPRS_DET_T_MT_REATT_NOTREQ,
+				GMM_CAUSE_IMPL_DETACHED);
+
+			/* TLLI unassignment */
+			gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
+					  GPRS_ALGO_GEA0, NULL);
+			return rc;
+		}
+
+		/* Force the MS to re-attach */
+		return sgsn_force_reattach_oldmsg(msg);
 	}
 
 	switch (gh->msg_type) {
@@ -1053,6 +1133,11 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		break;
 	case GSM48_MT_GMM_DETACH_REQ:
 		rc = gsm48_rx_gmm_det_req(mmctx, msg);
+		break;
+	case GSM48_MT_GMM_DETACH_ACK:
+		LOGMMCTXP(LOGL_INFO, mmctx, "-> DETACH ACK\n");
+		mm_ctx_cleanup_free(mmctx, "GPRS DETACH ACK");
+		rc = 0;
 		break;
 	case GSM48_MT_GMM_ATTACH_COMPL:
 		/* only in case SGSN offered new P-TMSI */
@@ -1515,8 +1600,11 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 	if (!mmctx) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle SM for unknown MM CTX\n");
-		gsm48_tx_gmm_status_oldmsg(msg, GMM_CAUSE_IMPL_DETACHED);
-		return gsm48_tx_sm_status_oldmsg(msg, GSM_CAUSE_PROTO_ERR_UNSPEC);
+		/* 6.1.3.6 */
+		if (gh->msg_type == GSM48_MT_GSM_STATUS)
+			return 0;
+
+		return sgsn_force_reattach_oldmsg(msg);
 	}
 
 	switch (gh->msg_type) {
@@ -1548,6 +1636,28 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	}
 
 	return rc;
+}
+
+int gsm0408_gprs_force_reattach(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
+{
+	gprs_llgmm_reset_oldmsg(msg, GPRS_SAPI_GMM);
+
+	if (!mmctx)
+		return gsm48_tx_gmm_detach_req_oldmsg(
+			msg, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
+
+	/* Mark MM state as deregistered initiated */
+	mmctx->mm_state = GMM_DEREGISTERED_INIT;
+
+	/* Delete all existing PDP contexts for this MS */
+	delete_pdp_contexts(mmctx, "forced reattach");
+
+	/* TODO:
+	 * properly start detach procedure (timeout, wait for ACK) and
+	 * do nothing if a re-attach is in progress */
+
+	return gsm48_tx_gmm_detach_req(
+			mmctx, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
 }
 
 /* Main entry point for incoming 04.08 GPRS messages */

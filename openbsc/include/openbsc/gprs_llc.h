@@ -207,6 +207,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 
 /* Chapter 7.2.1.2 LLGMM-RESET.req */
 int gprs_llgmm_reset(struct gprs_llc_llme *llme);
+int gprs_llgmm_reset_oldmsg(struct msgb* oldmsg, uint8_t sapi);
 
 /* 04.64 Chapter 7.2.1.1 LLGMM-ASSIGN */
 int gprs_llgmm_assign(struct gprs_llc_llme *llme,
