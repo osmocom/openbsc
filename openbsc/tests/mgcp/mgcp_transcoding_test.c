@@ -465,6 +465,7 @@ static void test_transcode_change(void)
 		len = audio_packets_pcma[0].len;
 		memcpy(buf, audio_packets_pcma[0].data, len);
 		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		state = endp->bts_end.rtp_process_data;
 		OSMO_ASSERT(res == sizeof(struct rtp_hdr));
 		OSMO_ASSERT(state->sample_cnt == 0);
 		OSMO_ASSERT(state->src_fmt == AF_PCMA);
@@ -475,6 +476,7 @@ static void test_transcode_change(void)
 		len = res;
 		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
 		OSMO_ASSERT(res == -ENOMSG);
+		OSMO_ASSERT(state == endp->bts_end.rtp_process_data);
 
 
 		/* now check that comfort noise doesn't change anything */
@@ -483,6 +485,7 @@ static void test_transcode_change(void)
 		hdr = (struct rtp_hdr *) buf;
 		hdr->payload_type = 12;
 		res = mgcp_transcoding_process_rtp(endp, &endp->bts_end, buf, &len, ARRAY_SIZE(buf));
+		OSMO_ASSERT(state == endp->bts_end.rtp_process_data);
 		OSMO_ASSERT(state->sample_cnt == 80);
 		OSMO_ASSERT(state->src_fmt == AF_PCMA);
 		OSMO_ASSERT(state->dst_fmt == AF_GSM);
