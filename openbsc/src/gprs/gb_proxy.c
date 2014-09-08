@@ -659,6 +659,7 @@ static int gbprox_rx_sig_from_bss(struct gbproxy_config *cfg,
 	int data_len = msgb_bssgp_len(msg) - sizeof(*bgph);
 	struct gbproxy_peer *from_peer = NULL;
 	struct gprs_ra_id raid;
+	int rc;
 
 	if (ns_bvci != 0 && ns_bvci != 1) {
 		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u BVCI=%u is not signalling\n",
@@ -748,7 +749,9 @@ static int gbprox_rx_sig_from_bss(struct gbproxy_config *cfg,
 
 	/* Normally, we can simply pass on all signalling messages from BSS to
 	 * SGSN */
-	gbprox_process_bssgp_ul(cfg, msg, from_peer);
+	rc = gbprox_process_bssgp_ul(cfg, msg, from_peer);
+	if (!rc)
+		return 0;
 	return gbprox_relay2sgsn(cfg, msg, ns_bvci);
 err_no_peer:
 	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(BSS) cannot find peer based on NSEI\n",
