@@ -330,7 +330,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 
 	tlli_info = gbproxy_update_tlli_state_ul(peer, now, &parse_ctx);
 
-	if (tlli_info && tlli_info->enable_patching && cfg->route_to_sgsn2) {
+	if (tlli_info && cfg->route_to_sgsn2 && gbproxy_check_tlli(peer, tlli_info)) {
 		sgsn_nsei = cfg->nsip_sgsn2_nsei;
 		send_msg_directly = 1;
 	}

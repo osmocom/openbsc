@@ -177,7 +177,9 @@ void gbprox_reset(struct gbproxy_config *cfg);
 
 /* TLLI state handling */
 void gbproxy_delete_tllis(struct gbproxy_peer *peer);
-int gbproxy_check_tlli(struct gbproxy_peer *peer, uint32_t tlli);
+int gbproxy_check_tlli(
+	struct gbproxy_peer *peer,
+	struct gbproxy_tlli_info *tlli_info);
 struct gbproxy_tlli_info *gbprox_find_tlli_by_ptmsi(
 	struct gbproxy_peer *peer,
 	uint32_t ptmsi);

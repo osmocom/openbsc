@@ -369,17 +369,11 @@ static void gbproxy_unregister_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 	}
 }
 
-int gbproxy_check_tlli(struct gbproxy_peer *peer, uint32_t tlli)
+int gbproxy_check_tlli(struct gbproxy_peer *peer,
+		       struct gbproxy_tlli_info *tlli_info)
 {
-	struct gbproxy_tlli_info *tlli_info;
-
-	LOGP(DGPRS, LOGL_INFO, "Checking TLLI %08x, class: %d\n",
-	     tlli, gprs_tlli_type(tlli));
-
 	if (!peer->cfg->check_imsi)
 		return 1;
-
-	tlli_info = gbproxy_find_tlli(peer, tlli);
 
 	return tlli_info != NULL && tlli_info->enable_patching;
 }
