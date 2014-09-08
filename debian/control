@@ -34,7 +34,7 @@ Description: Command line utilities for Siemens BS-11 BTS
 
 Package: osmocom-sgsn
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore, libgtp
+Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore, libgtp0
 Description: Osmocom Serving GPRS Support Node
  SGSN implementation.
 

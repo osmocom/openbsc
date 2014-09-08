@@ -1,4 +1,15 @@
-openbsc (0.13.0+z25) UNRELEASED; urgency=low
+openbsc (0.13.1+z6) UNRELEASED; urgency=medium
+
+  * Osmux and GBProxy changes
+  * Requires newer libosmocore/libosmo-abis/libosmo-netif
+  * Re-base with SGSN enabled
+  * Separate patching.
+  * Accept newer versions of the standard.
+  * SGSN crash fixes.
+
+ -- Holger Hans Peter Freyther <holger@freyther.de>  Mon, 08 Sep 2014 08:05:47 +0200
+
+openbsc (0.13.0+z25) unstable; urgency=low
 
   * New upstream tag and additional patches.
   * Add experimental osmux patches
