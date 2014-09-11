@@ -738,14 +738,21 @@ int gprs_llgmm_reset(struct gprs_llc_llme *llme)
 {
 	struct msgb *msg = msgb_alloc_headroom(4096, 1024, "LLC_XID");
 	int random = rand();
+	struct gprs_llc_lle *lle = &llme->lle[1];
 
 	/* First XID component must be RESET */
 	msgb_put_xid_par(msg, GPRS_LLC_XID_T_RESET, 0, NULL);
 	/* randomly select new IOV-UI */
 	msgb_put_xid_par(msg, GPRS_LLC_XID_T_IOV_UI, 4, (uint8_t *) &random);
 
+	/* Reset some of the LLC parameters. See GSM 04.64, 8.5.3.1 */
+	lle->vu_recv = 0;
+	lle->vu_send = 0;
+	lle->oc_ui_send = 0;
+	lle->oc_ui_recv = 0;
+
 	/* FIXME: Start T200, wait for XID response */
-	return gprs_llc_tx_xid(&llme->lle[1], msg, 1);
+	return gprs_llc_tx_xid(lle, msg, 1);
 }
 
 int gprs_llc_init(const char *cipher_plugin_path)
