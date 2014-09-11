@@ -37,7 +37,7 @@ struct gprs_gb_parse_context {
 	int need_decryption;
 	uint32_t tlli;
 	int pdu_type;
-	int old_raid_matches;
+	int old_raid_is_foreign;
 };
 
 int gprs_gb_parse_dtap(uint8_t *data, size_t data_len,

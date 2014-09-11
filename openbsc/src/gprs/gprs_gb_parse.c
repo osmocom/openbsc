@@ -557,6 +557,10 @@ int gprs_gb_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
 		parse_ctx->tlli = ntohl(tmp_tlli);
 	}
 
+	if (parse_ctx->bssgp_raid_enc && parse_ctx->old_raid_enc &&
+	    memcmp(parse_ctx->bssgp_raid_enc, parse_ctx->old_raid_enc, 6) != 0)
+		parse_ctx->old_raid_is_foreign = 1;
+
 	return 1;
 }
 

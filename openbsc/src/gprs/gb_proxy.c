@@ -494,10 +494,6 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 
 	now = time(NULL);
 
-	if (parse_ctx.bssgp_raid_enc && parse_ctx.old_raid_enc &&
-	    memcmp(parse_ctx.bssgp_raid_enc, parse_ctx.old_raid_enc, 6) == 0)
-		parse_ctx.old_raid_matches = 1;
-
 	gbprox_update_current_raid(parse_ctx.bssgp_raid_enc, peer,
 				   parse_ctx.llc_msg_name);
 

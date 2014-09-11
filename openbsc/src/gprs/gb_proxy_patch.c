@@ -199,7 +199,8 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	int have_patched = 0;
 	int fcs;
 
-	if (parse_ctx->ptmsi_enc && tlli_info) {
+	if (parse_ctx->ptmsi_enc && tlli_info &&
+	    !parse_ctx->old_raid_is_foreign) {
 		uint32_t ptmsi;
 		if (parse_ctx->to_bss)
 			ptmsi = tlli_info->tlli.ptmsi;
@@ -234,7 +235,7 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 		have_patched = 1;
 	}
 
-	if (parse_ctx->old_raid_enc && parse_ctx->old_raid_matches) {
+	if (parse_ctx->old_raid_enc && !parse_ctx->old_raid_is_foreign) {
 		/* TODO: Patch to invalid if P-TMSI unknown. */
 		gbproxy_patch_raid(parse_ctx->old_raid_enc, peer, parse_ctx->to_bss,
 				   parse_ctx->llc_msg_name);

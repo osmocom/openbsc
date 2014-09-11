@@ -1390,12 +1390,17 @@ static void test_gbproxy_ra_patching()
 	dump_global(stdout, 0);
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	OSMO_ASSERT(2 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
+	OSMO_ASSERT(1 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_SGSN].current);
+
 	printf("--- Send message from BSS 1 to SGSN, BVCI 0x1002 ---\n\n");
 
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
 		       foreign_tlli, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, 0,
 		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	OSMO_ASSERT(4 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
 	send_llc_dl_ui(nsi, "IDENT REQUEST", &sgsn_peer, 0x1002,
 		       foreign_tlli, 0, NULL, 0,
@@ -1407,10 +1412,15 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 3,
 		       dtap_identity_resp, sizeof(dtap_identity_resp));
 
+	OSMO_ASSERT(5 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
+	OSMO_ASSERT(1 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_SGSN].current);
+
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
 		       GPRS_SAPI_GMM, 1,
 		       dtap_attach_acc, sizeof(dtap_attach_acc));
+
+	OSMO_ASSERT(2 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_SGSN].current);
 
 	OSMO_ASSERT(gbproxy_peer_by_rai(&gbcfg, convert_ra(&rai_bss)) != NULL);
 	OSMO_ASSERT(gbproxy_peer_by_rai(&gbcfg, convert_ra(&rai_sgsn)) == NULL);
@@ -1440,6 +1450,8 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 4,
 		       dtap_attach_complete, sizeof(dtap_attach_complete));
 
+	OSMO_ASSERT(6 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
+
 	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
@@ -1457,6 +1469,8 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 3,
 		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
+	OSMO_ASSERT(7 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
+
 	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
@@ -1473,6 +1487,8 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 2,
 		       dtap_gmm_information, sizeof(dtap_gmm_information));
 
+	OSMO_ASSERT(2 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_SGSN].current);
+
 	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
@@ -1486,6 +1502,8 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 3,
 		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
+	OSMO_ASSERT(8 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
+
 	gbcfg.core_apn[0] = 0;
 	gbcfg.core_apn_size = 0;
 
@@ -1495,6 +1513,8 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 3,
 		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
+	OSMO_ASSERT(9 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
+
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	/* Detach */
@@ -1502,6 +1522,9 @@ static void test_gbproxy_ra_patching()
 		       local_tlli, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, 6,
 		       dtap_detach_req, sizeof(dtap_detach_req));
+
+	OSMO_ASSERT(10 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
+	OSMO_ASSERT(2 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_SGSN].current);
 
 	send_llc_dl_ui(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
 		       local_tlli, 1, imsi, sizeof(imsi),
@@ -1517,16 +1540,22 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 5,
 		       dtap_ra_upd_req, sizeof(dtap_ra_upd_req));
 
+	OSMO_ASSERT(12 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
+
 	send_llc_dl_ui(nsi, "RA UPD ACC", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
 		       GPRS_SAPI_GMM, 6,
 		       dtap_ra_upd_acc, sizeof(dtap_ra_upd_acc));
+
+	OSMO_ASSERT(3 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_SGSN].current);
 
 	/* Remove APN */
 	send_llc_ul_ui(nsi, "ACT PDP CTX REQ (REMOVE APN)", &bss_peer[0], 0x1002,
 		       local_tlli, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, 3,
 		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
+
+	OSMO_ASSERT(13 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
@@ -1535,6 +1564,8 @@ static void test_gbproxy_ra_patching()
 		       local_tlli, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, 6,
 		       dtap_detach_po_req, sizeof(dtap_detach_po_req));
+
+	OSMO_ASSERT(14 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
 	dump_global(stdout, 0);
 	dump_peers(stdout, 0, 0, &gbcfg);
@@ -1548,6 +1579,8 @@ static void test_gbproxy_ra_patching()
 		       foreign_tlli2, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, 0,
 		       dtap_attach_req2, sizeof(dtap_attach_req2));
+
+	OSMO_ASSERT(15 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
 	printf("TLLI is already detached, shouldn't patch\n");
 	send_llc_ul_ui(nsi, "ACT PDP CTX REQ", &bss_peer[0], 0x1002,
