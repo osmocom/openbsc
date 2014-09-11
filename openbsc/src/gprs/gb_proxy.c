@@ -357,7 +357,12 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 				    struct gbproxy_tlli_info* tlli_info,
 				    struct gprs_gb_parse_context *parse_ctx)
 {
+	struct msgb *stored_msg;
+
 	if (!tlli_info)
+		return 1;
+
+	if (!tlli_info->imsi_acq_pending && tlli_info->mi_data_len > 0)
 		return 1;
 
 	if (parse_ctx->g48_hdr &&
@@ -371,58 +376,53 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 		}
 	}
 
-	if (tlli_info->imsi_acq_pending && parse_ctx->g48_hdr &&
-	    parse_ctx->g48_hdr->proto_discr == GSM48_PDISC_MM_GPRS &&
-	    parse_ctx->g48_hdr->msg_type == GSM48_MT_GMM_ID_RESP &&
-	    parse_ctx->imsi_len > 0) {
+	if (tlli_info->imsi_acq_pending && tlli_info->mi_data_len > 0) {
+		int is_ident_resp =
+			parse_ctx->g48_hdr &&
+			parse_ctx->g48_hdr->proto_discr == GSM48_PDISC_MM_GPRS &&
+			parse_ctx->g48_hdr->msg_type == GSM48_MT_GMM_ID_RESP;
+
 		/* The IMSI is now available */
 		gbproxy_flush_stored_messages(peer, msg, sgsn_nsei, now,
 					      tlli_info, parse_ctx);
 
 		gbproxy_reset_imsi_acquisition(tlli_info);
-		return 0;
+
+		/* This message is most probably the response to the ident
+		 * request sent by gbproxy_acquire_imsi(). Don't forward it to
+		 * the SGSN. */
+		return !is_ident_resp;
 	}
 
-	if (tlli_info->imsi_acq_pending) {
-		struct msgb *stored_msg;
+	/* The message cannot be processed since the IMSI is still missing */
 
-		LOGP(DLLC, LOGL_DEBUG,
-		     "NSEI=%d(BSS) IMSI acquisition in progess, "
-		     "storing message (%s)\n",
-		     msgb_nsei(msg),
-		     parse_ctx->llc_msg_name ? parse_ctx->llc_msg_name : "BSSGP");
+	/* Enqueue unpatched messages */
+	LOGP(DLLC, LOGL_INFO,
+	     "NSEI=%d(BSS) IMSI acquisition in progress, "
+	     "storing message (%s)\n",
+	     msgb_nsei(msg),
+	     parse_ctx->llc_msg_name ? parse_ctx->llc_msg_name : "BSSGP");
 
-		/* Enqueue unpatched messages */
-		stored_msg = gprs_msgb_copy(msg, "process_bssgp_ul");
-		msgb_enqueue(&tlli_info->stored_msgs, stored_msg);
+	stored_msg = gprs_msgb_copy(msg, "process_bssgp_ul");
+	msgb_enqueue(&tlli_info->stored_msgs, stored_msg);
 
-		return 0;
-	}
-
-	if (tlli_info->mi_data_len == 0) {
-		struct msgb *stored_msg = gprs_msgb_copy(msg, "process_bssgp_ul");
-
-		LOGP(DLLC, LOGL_DEBUG,
+	if (!tlli_info->imsi_acq_pending) {
+		LOGP(DLLC, LOGL_INFO,
 		     "NSEI=%d(BSS) IMSI is required but not available, "
-		     "storing message (%s)\n",
+		     "initiating identification procedure (%s)\n",
 		     msgb_nsei(msg),
 		     parse_ctx->llc_msg_name ? parse_ctx->llc_msg_name : "BSSGP");
-
-		/* Enqueue message */
-		msgb_enqueue(&tlli_info->stored_msgs, stored_msg);
 
 		gbproxy_acquire_imsi(peer, tlli_info, msgb_bvci(msg));
-
-		tlli_info->imsi_acq_pending = 1;
 
 		/* There is no explicit retransmission handling, the
 		 * implementation relies on the MS doing proper retransmissions
 		 * of the triggering message instead */
 
-		return 0;
+		tlli_info->imsi_acq_pending = 1;
 	}
 
-	return 1;
+	return 0;
 }
 
 struct gbproxy_peer *gbproxy_find_peer(struct gbproxy_config *cfg,
