@@ -75,21 +75,21 @@ struct gbproxy_tlli_info *gbproxy_find_tlli_by_sgsn_tlli(
 	return NULL;
 }
 
-struct gbproxy_tlli_info *gbproxy_find_tlli_by_mi(
+struct gbproxy_tlli_info *gbproxy_find_tlli_by_imsi(
 	struct gbproxy_peer *peer,
-	const uint8_t *mi_data,
-	size_t mi_data_len)
+	const uint8_t *imsi,
+	size_t imsi_len)
 {
 	struct gbproxy_tlli_info *tlli_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
-	if (!gprs_is_mi_imsi(mi_data, mi_data_len))
+	if (!gprs_is_mi_imsi(imsi, imsi_len))
 		return NULL;
 
 	llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
-		if (tlli_info->mi_data_len != mi_data_len)
+		if (tlli_info->imsi_len != imsi_len)
 			continue;
-		if (memcmp(tlli_info->mi_data, mi_data, mi_data_len) != 0)
+		if (memcmp(tlli_info->imsi, imsi, imsi_len) != 0)
 			continue;
 
 		return tlli_info;
@@ -235,11 +235,11 @@ static void gbproxy_update_tlli_info(struct gbproxy_tlli_info *tlli_info,
 	if (!gprs_is_mi_imsi(imsi, imsi_len))
 		return;
 
-	tlli_info->mi_data_len = imsi_len;
-	tlli_info->mi_data =
-		talloc_realloc_size(tlli_info, tlli_info->mi_data, imsi_len);
-	OSMO_ASSERT(tlli_info->mi_data != NULL);
-	memcpy(tlli_info->mi_data, imsi, imsi_len);
+	tlli_info->imsi_len = imsi_len;
+	tlli_info->imsi =
+		talloc_realloc_size(tlli_info, tlli_info->imsi, imsi_len);
+	OSMO_ASSERT(tlli_info->imsi != NULL);
+	memcpy(tlli_info->imsi, imsi, imsi_len);
 }
 
 void gbproxy_reassign_tlli(struct gbproxy_tlli_state *tlli_state,
@@ -335,7 +335,7 @@ struct gbproxy_tlli_info *gbproxy_register_tlli(
 	tlli_info = gbproxy_find_tlli(peer, tlli);
 
 	if (!tlli_info) {
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi, imsi_len);
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi, imsi_len);
 
 		if (tlli_info) {
 			/* TLLI has changed somehow, adjust it */
@@ -427,7 +427,7 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_ul(
 		gbproxy_touch_tlli(peer, tlli_info, now);
 	}
 
-	if (parse_ctx->imsi && tlli_info && tlli_info->mi_data_len == 0) {
+	if (parse_ctx->imsi && tlli_info && tlli_info->imsi_len == 0) {
 		int enable_patching;
 		gbproxy_update_tlli_info(tlli_info,
 					 parse_ctx->imsi, parse_ctx->imsi_len);
@@ -534,7 +534,7 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 		gbproxy_touch_tlli(peer, tlli_info, now);
 	}
 
-	if (parse_ctx->imsi && tlli_info && tlli_info->mi_data_len == 0) {
+	if (parse_ctx->imsi && tlli_info && tlli_info->imsi_len == 0) {
 		int enable_patching;
 		gbproxy_update_tlli_info(tlli_info,
 					 parse_ctx->imsi, parse_ctx->imsi_len);

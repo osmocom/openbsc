@@ -134,8 +134,8 @@ struct gbproxy_tlli_info {
 	struct gbproxy_tlli_state sgsn_tlli;
 
 	time_t timestamp;
-	uint8_t *mi_data;
-	size_t mi_data_len;
+	uint8_t *imsi;
+	size_t imsi_len;
 
 	int imsi_acq_pending;
 	struct llist_head stored_msgs;
@@ -195,8 +195,8 @@ struct gbproxy_tlli_info *gbproxy_register_tlli(
 
 struct gbproxy_tlli_info *gbproxy_find_tlli(
 	struct gbproxy_peer *peer, uint32_t tlli);
-struct gbproxy_tlli_info *gbproxy_find_tlli_by_mi(
-	struct gbproxy_peer *peer, const uint8_t *mi_data, size_t mi_data_len);
+struct gbproxy_tlli_info *gbproxy_find_tlli_by_imsi(
+	struct gbproxy_peer *peer, const uint8_t *imsi, size_t imsi_len);
 struct gbproxy_tlli_info *gbproxy_find_tlli_by_sgsn_tlli(
 	struct gbproxy_peer *peer,
 	uint32_t tlli);

@@ -437,11 +437,11 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 			llist_for_each(iter, &tlli_info->stored_msgs)
 				stored_msgs++;
 
-			if (tlli_info->mi_data_len > 0) {
+			if (tlli_info->imsi > 0) {
 				snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
 				gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
-						   tlli_info->mi_data,
-						   tlli_info->mi_data_len);
+						   tlli_info->imsi,
+						   tlli_info->imsi_len);
 			} else {
 				snprintf(mi_buf, sizeof(mi_buf), "(none)");
 			}
@@ -612,8 +612,8 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 		if (match == MATCH_IMSI) {
 			mi_buf[0] = '\0';
 			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
-					   tlli_info->mi_data,
-					   tlli_info->mi_data_len);
+					   tlli_info->imsi,
+					   tlli_info->imsi_len);
 
 			if (strcmp(mi_buf, imsi) != 0)
 				continue;

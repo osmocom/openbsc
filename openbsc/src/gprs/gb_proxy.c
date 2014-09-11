@@ -362,7 +362,7 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 	if (!tlli_info)
 		return 1;
 
-	if (!tlli_info->imsi_acq_pending && tlli_info->mi_data_len > 0)
+	if (!tlli_info->imsi_acq_pending && tlli_info->imsi_len > 0)
 		return 1;
 
 	if (parse_ctx->g48_hdr &&
@@ -376,7 +376,7 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 		}
 	}
 
-	if (tlli_info->imsi_acq_pending && tlli_info->mi_data_len > 0) {
+	if (tlli_info->imsi_acq_pending && tlli_info->imsi_len > 0) {
 		int is_ident_resp =
 			parse_ctx->g48_hdr &&
 			parse_ctx->g48_hdr->proto_discr == GSM48_PDISC_MM_GPRS &&

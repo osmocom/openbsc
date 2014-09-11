@@ -126,11 +126,11 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 			llist_for_each(iter, &tlli_info->stored_msgs)
 				stored_msgs++;
 
-			if (tlli_info->mi_data_len > 0) {
+			if (tlli_info->imsi_len > 0) {
 				snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
 				gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
-						   tlli_info->mi_data,
-						   tlli_info->mi_data_len);
+						   tlli_info->imsi,
+						   tlli_info->imsi_len);
 			} else {
 				snprintf(mi_buf, sizeof(mi_buf), "(none)");
 			}
@@ -2780,10 +2780,10 @@ static void test_gbproxy_tlli_expire(void)
 		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(!tlli_info);
 
 		printf("\n");
@@ -2819,9 +2819,9 @@ static void test_gbproxy_tlli_expire(void)
 		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
 
@@ -2857,9 +2857,9 @@ static void test_gbproxy_tlli_expire(void)
 		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
 
@@ -2895,9 +2895,9 @@ static void test_gbproxy_tlli_expire(void)
 		dump_peers(stdout, 2, now + 2, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
 
@@ -2941,11 +2941,11 @@ static void test_gbproxy_tlli_expire(void)
 		dump_peers(stdout, 2, now + 2, &cfg);
 
 		/* verify that tlli3 has survived */
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi1, ARRAY_SIZE(imsi1));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi2, ARRAY_SIZE(imsi2));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
 		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_find_tlli_by_mi(peer, imsi3, ARRAY_SIZE(imsi3));
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi3, ARRAY_SIZE(imsi3));
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli3);
 
