@@ -189,9 +189,13 @@ void gbproxy_delete_tlli(struct gbproxy_peer *peer,
 			 struct gbproxy_tlli_info *tlli_info);
 void gbproxy_tlli_info_discard_messages(struct gbproxy_tlli_info *tlli_info);
 
-struct gbproxy_tlli_info *gbproxy_register_tlli(
-	struct gbproxy_peer *peer, uint32_t tlli,
-	const uint8_t *imsi, size_t imsi_len, time_t now);
+void gbproxy_attach_tlli_info(struct gbproxy_peer *peer, time_t now,
+			      struct gbproxy_tlli_info *tlli_info);
+void gbproxy_update_tlli_info(struct gbproxy_tlli_info *tlli_info,
+			      const uint8_t *imsi, size_t imsi_len);
+void gbproxy_detach_tlli_info(struct gbproxy_peer *peer,
+			      struct gbproxy_tlli_info *tlli_info);
+struct gbproxy_tlli_info *gbproxy_tlli_info_alloc( struct gbproxy_peer *peer);
 
 struct gbproxy_tlli_info *gbproxy_find_tlli(
 	struct gbproxy_peer *peer, uint32_t tlli);

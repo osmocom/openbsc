@@ -135,8 +135,8 @@ void gbproxy_delete_tllis(struct gbproxy_peer *peer)
 	OSMO_ASSERT(llist_empty(&state->enabled_tllis));
 }
 
-static void gbproxy_attach_tlli_info(struct gbproxy_peer *peer, time_t now,
-				     struct gbproxy_tlli_info *tlli_info)
+void gbproxy_attach_tlli_info(struct gbproxy_peer *peer, time_t now,
+			      struct gbproxy_tlli_info *tlli_info)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
@@ -201,8 +201,7 @@ int gbproxy_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
 	return deleted_count;
 }
 
-static struct gbproxy_tlli_info *gbproxy_tlli_info_alloc(
-	struct gbproxy_peer *peer)
+struct gbproxy_tlli_info *gbproxy_tlli_info_alloc( struct gbproxy_peer *peer)
 {
 	struct gbproxy_tlli_info *tlli_info;
 
@@ -215,7 +214,7 @@ static struct gbproxy_tlli_info *gbproxy_tlli_info_alloc(
 	return tlli_info;
 }
 
-static void gbproxy_detach_tlli_info(
+void gbproxy_detach_tlli_info(
 	struct gbproxy_peer *peer,
 	struct gbproxy_tlli_info *tlli_info)
 {
@@ -229,8 +228,8 @@ static void gbproxy_detach_tlli_info(
 		state->enabled_tllis_count;
 }
 
-static void gbproxy_update_tlli_info(struct gbproxy_tlli_info *tlli_info,
-				     const uint8_t *imsi, size_t imsi_len)
+void gbproxy_update_tlli_info(struct gbproxy_tlli_info *tlli_info,
+			      const uint8_t *imsi, size_t imsi_len)
 {
 	if (!gprs_is_mi_imsi(imsi, imsi_len))
 		return;
@@ -317,57 +316,6 @@ void gbproxy_touch_tlli(struct gbproxy_peer *peer,
 	gbproxy_attach_tlli_info(peer, now, tlli_info);
 }
 
-struct gbproxy_tlli_info *gbproxy_register_tlli(
-	struct gbproxy_peer *peer, uint32_t tlli,
-	const uint8_t *imsi, size_t imsi_len, time_t now)
-{
-	struct gbproxy_tlli_info *tlli_info;
-	int enable_patching = -1;
-	int tlli_already_known = 0;
-
-	/* Check, whether the IMSI matches */
-	if (gprs_is_mi_imsi(imsi, imsi_len)) {
-		enable_patching = gbproxy_check_imsi(peer, imsi, imsi_len);
-		if (enable_patching < 0)
-			return NULL;
-	}
-
-	tlli_info = gbproxy_find_tlli(peer, tlli);
-
-	if (!tlli_info) {
-		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi, imsi_len);
-
-		if (tlli_info) {
-			/* TLLI has changed somehow, adjust it */
-			LOGP(DGPRS, LOGL_INFO,
-			     "The TLLI has changed from %08x to %08x\n",
-			     tlli_info->tlli.current, tlli);
-			tlli_info->tlli.current = tlli;
-		}
-	}
-
-	if (!tlli_info) {
-		tlli_info = gbproxy_tlli_info_alloc(peer);
-		tlli_info->tlli.current = tlli;
-	} else {
-		gbproxy_detach_tlli_info(peer, tlli_info);
-		tlli_already_known = 1;
-	}
-
-	OSMO_ASSERT(tlli_info != NULL);
-
-	if (!tlli_already_known)
-		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
-
-	gbproxy_attach_tlli_info(peer, now, tlli_info);
-	gbproxy_update_tlli_info(tlli_info, imsi, imsi_len);
-
-	if (enable_patching >= 0)
-		tlli_info->enable_patching = enable_patching;
-
-	return tlli_info;
-}
-
 static void gbproxy_unregister_tlli(struct gbproxy_peer *peer, uint32_t tlli)
 {
 	struct gbproxy_tlli_info *tlli_info;
@@ -397,20 +345,27 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_ul(
 {
 	struct gbproxy_tlli_info *tlli_info = NULL;
 
-	if (parse_ctx->tlli_enc)
+	if (parse_ctx->tlli_enc) {
 		tlli_info = gbproxy_find_tlli(peer, parse_ctx->tlli);
+
+		if (!tlli_info && parse_ctx->imsi)
+			tlli_info = gbproxy_find_tlli_by_imsi(
+				peer, parse_ctx->imsi, parse_ctx->imsi_len);
+	}
 
 	if (parse_ctx->tlli_enc && parse_ctx->llc) {
 		uint32_t sgsn_tlli;
 		if (!tlli_info) {
-			tlli_info =
-				gbproxy_register_tlli(peer, parse_ctx->tlli,
-						      parse_ctx->imsi,
-						      parse_ctx->imsi_len, now);
+			LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n",
+			    parse_ctx->tlli);
+			tlli_info = gbproxy_tlli_info_alloc(peer);
+			gbproxy_attach_tlli_info(peer, now, tlli_info);
+
 			/* Setup TLLIs */
 			sgsn_tlli = gbproxy_make_sgsn_tlli(peer, tlli_info,
 							   parse_ctx->tlli);
 			tlli_info->sgsn_tlli.current = sgsn_tlli;
+			tlli_info->tlli.current = parse_ctx->tlli;;
 		} else {
 			sgsn_tlli = gbproxy_map_tlli(parse_ctx->tlli, tlli_info, 0);
 			if (!sgsn_tlli)
@@ -476,6 +431,7 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 		   !peer->cfg->patch_ptmsi) {
 		/* A new P-TMSI has been signalled in the message with an unknown
 		 * TLLI, create a new tlli_info */
+		/* TODO: Add a test case for this branch */
 		uint32_t new_ptmsi;
 		if (!gprs_parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
 					&new_ptmsi)) {
@@ -494,6 +450,7 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 		tlli_info->tlli.current = parse_ctx->tlli;;
 		tlli_info->sgsn_tlli.ptmsi = new_ptmsi;
 		tlli_info->tlli.ptmsi = new_ptmsi;
+		gbproxy_attach_tlli_info(peer, now, tlli_info);
 	} else if (parse_ctx->tlli_enc && parse_ctx->llc && !tlli_info &&
 		   !peer->cfg->patch_ptmsi) {
 		/* Unknown SGSN TLLI, create a new tlli_info */

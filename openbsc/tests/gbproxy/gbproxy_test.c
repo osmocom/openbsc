@@ -2795,6 +2795,57 @@ static void test_tlv_shift_functions()
 	}
 }
 
+struct gbproxy_tlli_info *register_tlli(
+	struct gbproxy_peer *peer, uint32_t tlli,
+	const uint8_t *imsi, size_t imsi_len, time_t now)
+{
+	struct gbproxy_tlli_info *tlli_info;
+	int enable_patching = -1;
+	int tlli_already_known = 0;
+
+	/* Check, whether the IMSI matches */
+	if (gprs_is_mi_imsi(imsi, imsi_len)) {
+		enable_patching = gbproxy_check_imsi(peer, imsi, imsi_len);
+		if (enable_patching < 0)
+			return NULL;
+	}
+
+	tlli_info = gbproxy_find_tlli(peer, tlli);
+
+	if (!tlli_info) {
+		tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi, imsi_len);
+
+		if (tlli_info) {
+			/* TLLI has changed somehow, adjust it */
+			LOGP(DGPRS, LOGL_INFO,
+			     "The TLLI has changed from %08x to %08x\n",
+			     tlli_info->tlli.current, tlli);
+			tlli_info->tlli.current = tlli;
+		}
+	}
+
+	if (!tlli_info) {
+		tlli_info = gbproxy_tlli_info_alloc(peer);
+		tlli_info->tlli.current = tlli;
+	} else {
+		gbproxy_detach_tlli_info(peer, tlli_info);
+		tlli_already_known = 1;
+	}
+
+	OSMO_ASSERT(tlli_info != NULL);
+
+	if (!tlli_already_known)
+		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
+
+	gbproxy_attach_tlli_info(peer, now, tlli_info);
+	gbproxy_update_tlli_info(tlli_info, imsi, imsi_len);
+
+	if (enable_patching >= 0)
+		tlli_info->enable_patching = enable_patching;
+
+	return tlli_info;
+}
+
 static void test_gbproxy_tlli_expire(void)
 {
 	struct gbproxy_config cfg = {0};
@@ -2830,7 +2881,7 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		tlli_info = gbproxy_register_tlli(peer, tlli1,
+		tlli_info = register_tlli(peer, tlli1,
 						  imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
@@ -2838,7 +2889,7 @@ static void test_gbproxy_tlli_expire(void)
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 1 (should replace TLLI 1)\n");
-		tlli_info = gbproxy_register_tlli(peer, tlli2,
+		tlli_info = register_tlli(peer, tlli2,
 						  imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
@@ -2869,7 +2920,7 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		tlli_info = gbproxy_register_tlli(peer, tlli1,
+		tlli_info = register_tlli(peer, tlli1,
 						  imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
@@ -2877,7 +2928,7 @@ static void test_gbproxy_tlli_expire(void)
 
 		/* try to replace the old entry */
 		printf("  Add TLLI 1, IMSI 2 (should replace IMSI 1)\n");
-		tlli_info = gbproxy_register_tlli(peer, tlli1,
+		tlli_info = register_tlli(peer, tlli1,
 						  imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(tlli_info);
 		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
@@ -2909,12 +2960,12 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		gbproxy_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
+		register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 2 (should replace IMSI 1)\n");
-		gbproxy_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
+		register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
 		num_removed = gbproxy_remove_stale_tllis(peer, time(NULL) + 2);
@@ -2947,11 +2998,11 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1 (should expire after timeout)\n");
-		gbproxy_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
+		register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		printf("  Add TLLI 2, IMSI 2 (should not expire after timeout)\n");
-		gbproxy_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
+		register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
 				     now + 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
@@ -2985,16 +3036,16 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1 (should expire)\n");
-		gbproxy_register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
+		register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		printf("  Add TLLI 2, IMSI 2 (should expire after timeout)\n");
-		gbproxy_register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
+		register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
 				     now + 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
 		printf("  Add TLLI 3, IMSI 3 (should not expire after timeout)\n");
-		gbproxy_register_tlli(peer, tlli3, imsi3, ARRAY_SIZE(imsi3),
+		register_tlli(peer, tlli3, imsi3, ARRAY_SIZE(imsi3),
 				      now + 2);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 3);
 
