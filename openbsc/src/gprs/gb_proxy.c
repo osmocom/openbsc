@@ -110,6 +110,17 @@ static void gprs_put_identity_req(struct msgb *msg, uint8_t id_type)
 	gh->data[0] = id_type;
 }
 
+/* Transmit Chapter 9.4.6.2 Detach Accept (mobile originated detach) */
+static void gprs_put_mo_detach_acc(struct msgb *msg)
+{
+	struct gsm48_hdr *gh;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_MM_GPRS;
+	gh->msg_type = GSM48_MT_GMM_DETACH_ACK;
+	gh->data[0] = 0; /* no force to standby */
+}
+
 static void gprs_push_llc_ui(struct msgb *msg,
 			     int is_uplink, unsigned sapi, unsigned nu)
 {
@@ -348,6 +359,21 @@ static void gbproxy_acquire_imsi(struct gbproxy_peer *peer,
 	msgb_free(idreq_msg);
 }
 
+static void gbproxy_tx_detach_acc(struct gbproxy_peer *peer,
+				  struct gbproxy_tlli_info* tlli_info,
+				  uint16_t bvci)
+{
+	struct msgb *detacc_msg;
+
+	/* Send DETACH ACC */
+	detacc_msg = gsm48_msgb_alloc();
+	gprs_put_mo_detach_acc(detacc_msg);
+	gprs_push_llc_ui(detacc_msg, 0, GPRS_SAPI_GMM,
+			 (tlli_info->imsi_acq_retries + 256) % 512);
+	gprs_push_bssgp_dl_unitdata(detacc_msg, tlli_info->tlli.current);
+	gbprox_relay2peer(detacc_msg, peer, bvci);
+	msgb_free(detacc_msg);
+}
 
 /* Return != 0 iff msg still needs to be processed */
 static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
@@ -365,16 +391,38 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 	if (!tlli_info->imsi_acq_pending && tlli_info->imsi_len > 0)
 		return 1;
 
-	if (parse_ctx->g48_hdr &&
-	    parse_ctx->g48_hdr->msg_type == GSM48_MT_GMM_ATTACH_REQ)
-	{
-		if (gbproxy_restart_imsi_acquisition(tlli_info)) {
-			LOGP(DLLC, LOGL_INFO,
-			     "NSEI=%d(BSS) IMSI acquisition was in progress "
-			     "when receiving an ATTACH_REQ.\n",
-			     msgb_nsei(msg));
+	if (parse_ctx->g48_hdr)
+		switch (parse_ctx->g48_hdr->msg_type)
+		{
+		case GSM48_MT_GMM_ATTACH_REQ:
+			if (gbproxy_restart_imsi_acquisition(tlli_info)) {
+				LOGP(DLLC, LOGL_INFO,
+				     "NSEI=%d(BSS) IMSI acquisition was in progress "
+				     "when receiving an ATTACH_REQ.\n",
+				     msgb_nsei(msg));
+			}
+			break;
+		case GSM48_MT_GMM_DETACH_REQ:
+			/* Nothing has been sent to the SGSN yet */
+			if (tlli_info->imsi_acq_pending) {
+				LOGP(DLLC, LOGL_INFO,
+				     "NSEI=%d(BSS) IMSI acquisition was in progress "
+				     "when receiving a DETACH_REQ.\n",
+				     msgb_nsei(msg));
+			}
+			if (!parse_ctx->invalidate_tlli) {
+				LOGP(DLLC, LOGL_INFO,
+				     "NSEI=%d(BSS) IMSI not yet acquired, "
+				     "faking a DETACH_ACC.\n",
+				     msgb_nsei(msg));
+				gbproxy_tx_detach_acc(peer, tlli_info, msgb_bvci(msg));
+				parse_ctx->invalidate_tlli = 1;
+			}
+			gbproxy_reset_imsi_acquisition(tlli_info);
+			gbproxy_update_tlli_state_after(peer, tlli_info, now,
+							parse_ctx);
+			return 0;
 		}
-	}
 
 	if (tlli_info->imsi_acq_pending && tlli_info->imsi_len > 0) {
 		int is_ident_resp =

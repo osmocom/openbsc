@@ -3076,6 +3076,10 @@ PROCESSING DETACH REQ from 0x01020304:1111
 CALLBACK, event 0, msg length 44, bvci 0x1002
 00 00 10 02 01 80 00 de ad 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 1d 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb aa cc a3 
 
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 28
+00 00 10 02 00 80 00 de ad 00 50 20 16 82 02 58 0e 00 09 41 c4 05 08 06 00 29 4a 68 
+
 result (DETACH REQ) = 0
 
 Peers:
@@ -3086,9 +3090,7 @@ Peers:
     TLLI patched              (SGSN): 9
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 3
-    TLLI cache size                 : 1
-    TLLI-Cache: 1
-      TLLI 8000dead -> 7eb52dfb, IMSI (none), AGE 0, STORED 2, IMSI acquisition in progress
+    TLLI-Cache: 0
 PROCESSING DETACH REQ (unknown TLLI) from 0x01020304:1111
 00 00 10 02 01 80 00 be ef 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 21 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb ca 4d 70 
 
@@ -3097,7 +3099,7 @@ CALLBACK, event 0, msg length 44, bvci 0x1002
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 28
-00 00 10 02 00 80 00 be ef 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 15 01 b7 f8 36 
+00 00 10 02 00 80 00 be ef 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 06 00 11 f5 c0 
 
 result (DETACH REQ (unknown TLLI)) = 0
 
@@ -3109,10 +3111,7 @@ Peers:
     TLLI patched              (SGSN): 9
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 3
-    TLLI cache size                 : 2
-    TLLI-Cache: 2
-      TLLI 8000beef -> 7e23ef54, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
-      TLLI 8000dead -> 7eb52dfb, IMSI (none), AGE 0, STORED 2, IMSI acquisition in progress
+    TLLI-Cache: 0
 Gbproxy global:
     Invalid Routing Area Identifier : 1
     BSSGP protocol error      (SGSN): 1
