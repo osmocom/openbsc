@@ -1858,6 +1858,18 @@ Peers:
     TLLI-Cache: 0
 --- Bad cases ---
 
+PROCESSING ATTACH REQUEST (foreign RAI) from 0x01020304:1111
+00 00 10 02 01 bb 00 be ef 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 34 01 c0 01 08 01 02 f5 e0 21 08 02 05 f4 fb 00 be ef 99 99 99 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 2d c7 df 
+
+CALLBACK, event 0, msg length 75, bvci 0x1002
+00 00 10 02 01 bb 00 be ef 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 34 01 c0 01 08 01 02 f5 e0 21 08 02 05 f4 fb 00 be ef 99 99 99 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 2d c7 df 
+
+NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 75 (gprs_ns_sendmsg)
+MESSAGE to SGSN at 0x05060708:32000, msg length 79
+00 00 10 02 01 bb 00 be ef 00 00 04 08 88 21 63 54 40 50 60 75 30 00 80 0e 00 34 01 c0 01 08 01 02 f5 e0 21 08 02 05 f4 fb 00 be ef 99 99 99 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 2d c7 df 
+
+result (ATTACH REQUEST (foreign RAI)) = 79
+
 TLLI is already detached, shouldn't patch
 PROCESSING ACT PDP CTX REQ from 0x01020304:1111
 00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 75 30 00 80 0e 00 35 01 c0 0d 0a 41 05 03 0c 00 00 1f 10 00 00 00 00 00 00 00 00 02 01 21 28 03 02 61 62 27 14 80 80 21 10 01 00 00 10 81 06 00 00 00 00 83 06 00 00 00 00 5a ff 02 
@@ -1889,14 +1901,15 @@ Gbproxy global:
     Patch error: no peer            : 1
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 15
+    RAID patched              (BSS ): 16
     RAID patched              (SGSN): 3
     APN patched                     : 4
-    Attach Request count            : 1
+    Attach Request count            : 2
     TLLI from SGSN unknown          : 1
-    TLLI cache size                 : 1
-    TLLI-Cache: 1
+    TLLI cache size                 : 2
+    TLLI-Cache: 2
       TLLI efe2b700 -> efe2b700, IMSI (none), AGE 0
+      TLLI bb00beef -> bb00beef, IMSI (none), AGE 0
 === test_gbproxy_ptmsi_patching ===
 --- Initialise SGSN ---
 
@@ -2643,10 +2656,10 @@ Peers:
 --- Send message from BSS 1 to SGSN, BVCI 0x1002 ---
 
 PROCESSING ATTACH REQUEST from 0x01020304:1111
-00 00 10 02 01 80 00 de ad 00 00 04 08 88 00 f1 99 00 63 60 12 34 00 80 0e 00 34 01 c0 01 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 16 6d 01 
+00 00 10 02 01 80 00 de ad 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 01 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 16 6d 01 
 
 CALLBACK, event 0, msg length 75, bvci 0x1002
-00 00 10 02 01 80 00 de ad 00 00 04 08 88 00 f1 99 00 63 60 12 34 00 80 0e 00 34 01 c0 01 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 16 6d 01 
+00 00 10 02 01 80 00 de ad 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 01 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 16 6d 01 
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 28
@@ -2669,7 +2682,7 @@ CALLBACK, event 0, msg length 40, bvci 0x1002
 
 NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 75 (gprs_ns_sendmsg)
 MESSAGE to SGSN at 0x05060708:32000, msg length 79
-00 00 10 02 01 7c 69 fb 81 00 00 04 08 88 21 63 54 00 63 60 12 34 00 80 0e 00 34 01 c0 01 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 16 6d 01 
+00 00 10 02 01 7c 69 fb 81 00 00 04 08 88 21 63 54 40 50 60 12 34 00 80 0e 00 34 01 c0 01 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 16 6d 01 
 
 result (IDENT RESPONSE) = 0
 
@@ -3057,6 +3070,14 @@ MESSAGE to BSS at 0x01020304:1111, msg length 28
 
 result (ATTACH REQUEST) = 0
 
+PROCESSING DETACH REQ from 0x01020304:1111
+00 00 10 02 01 80 00 de ad 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 1d 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb aa cc a3 
+
+CALLBACK, event 0, msg length 44, bvci 0x1002
+00 00 10 02 01 80 00 de ad 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 1d 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb aa cc a3 
+
+result (DETACH REQ) = 0
+
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 8
@@ -3067,7 +3088,31 @@ Peers:
     Attach Request count            : 3
     TLLI cache size                 : 1
     TLLI-Cache: 1
-      TLLI 8000dead -> 7eb52dfb, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
+      TLLI 8000dead -> 7eb52dfb, IMSI (none), AGE 0, STORED 2, IMSI acquisition in progress
+PROCESSING DETACH REQ (unknown TLLI) from 0x01020304:1111
+00 00 10 02 01 80 00 be ef 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 21 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb ca 4d 70 
+
+CALLBACK, event 0, msg length 44, bvci 0x1002
+00 00 10 02 01 80 00 be ef 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 21 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb ca 4d 70 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 28
+00 00 10 02 00 80 00 be ef 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 15 01 b7 f8 36 
+
+result (DETACH REQ (unknown TLLI)) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 8
+    RAID patched              (SGSN): 3
+    TLLI patched              (BSS ): 9
+    TLLI patched              (SGSN): 9
+    P-TMSI patched            (SGSN): 1
+    Attach Request count            : 3
+    TLLI cache size                 : 2
+    TLLI-Cache: 2
+      TLLI 8000beef -> 7e23ef54, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
+      TLLI 8000dead -> 7eb52dfb, IMSI (none), AGE 0, STORED 2, IMSI acquisition in progress
 Gbproxy global:
     Invalid Routing Area Identifier : 1
     BSSGP protocol error      (SGSN): 1

@@ -183,6 +183,16 @@ static const unsigned char dtap_attach_req[] = {
 	0xc6, 0x62, 0x00, 0x60, 0x80, 0x00,
 };
 
+/* DTAP - Attach Request (invalid RAI) */
+static const unsigned char dtap_attach_req2[] = {
+	0x08, 0x01, 0x02, 0xf5, 0xe0, 0x21, 0x08, 0x02,
+	0x05, 0xf4, 0xfb, 0x00, 0xbe, 0xef, 0x99, 0x99,
+	0x99, 0x40, 0x50, 0x60, 0x19, 0x18, 0xb3, 0x43,
+	0x2b, 0x25, 0x96, 0x62, 0x00, 0x60, 0x80, 0x9a,
+	0xc2, 0xc6, 0x62, 0x00, 0x60, 0x80, 0xba, 0xc8,
+	0xc6, 0x62, 0x00, 0x60, 0x80, 0x00,
+};
+
 /* DTAP - Identity Request */
 static const unsigned char dtap_identity_req[] = {
 	0x08, 0x15, 0x01
@@ -1329,6 +1339,7 @@ static void test_gbproxy_ra_patching()
 	const uint32_t ptmsi = 0xefe2b700;
 	const uint32_t local_tlli = 0xefe2b700;
 	const uint32_t foreign_tlli = 0xbbc54679;
+	const uint32_t foreign_tlli2 = 0xbb00beef;
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
 	struct gbproxy_tlli_info *tlli_info;
 	struct gbproxy_peer *peer;
@@ -1529,6 +1540,14 @@ static void test_gbproxy_ra_patching()
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	printf("--- Bad cases ---\n\n");
+
+	/* The RAI in the Attach Request message differs from the RAI in the
+	 * BSSGP message, only patch the latter */
+
+	send_llc_ul_ui(nsi, "ATTACH REQUEST (foreign RAI)", &bss_peer[0], 0x1002,
+		       foreign_tlli2, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, 0,
+		       dtap_attach_req2, sizeof(dtap_attach_req2));
 
 	printf("TLLI is already detached, shouldn't patch\n");
 	send_llc_ul_ui(nsi, "ACT PDP CTX REQ", &bss_peer[0], 0x1002,
@@ -1896,6 +1915,7 @@ static void test_gbproxy_imsi_acquisition()
 	const uint32_t bss_ptmsi = 0xc00f7304;
 	const uint32_t local_bss_tlli = 0xc00f7304;
 	const uint32_t foreign_bss_tlli = 0x8000dead;
+	const uint32_t other_bss_tlli = 0x8000beef;
 
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
 	struct gbproxy_tlli_info *tlli_info;
@@ -1942,7 +1962,7 @@ static void test_gbproxy_imsi_acquisition()
 	printf("--- Send message from BSS 1 to SGSN, BVCI 0x1002 ---\n\n");
 
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
-		       foreign_bss_tlli, &rai_unknown, cell_id,
+		       foreign_bss_tlli, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, bss_nu++,
 		       dtap_attach_req, sizeof(dtap_attach_req));
 
@@ -2103,6 +2123,20 @@ static void test_gbproxy_imsi_acquisition()
 		       foreign_bss_tlli, &rai_unknown, cell_id,
 		       GPRS_SAPI_GMM, bss_nu++,
 		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_detach_req, sizeof(dtap_detach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	/* Special case: Detach from an unknown TLLI */
+
+	send_llc_ul_ui(nsi, "DETACH REQ (unknown TLLI)", &bss_peer[0], 0x1002,
+		       other_bss_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_detach_req, sizeof(dtap_detach_req));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
