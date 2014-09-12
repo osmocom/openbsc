@@ -316,17 +316,28 @@ void gbproxy_touch_tlli(struct gbproxy_peer *peer,
 	gbproxy_attach_tlli_info(peer, now, tlli_info);
 }
 
-static void gbproxy_unregister_tlli(struct gbproxy_peer *peer, uint32_t tlli)
+static void gbproxy_unregister_tlli(struct gbproxy_peer *peer,
+				    struct gbproxy_tlli_info *tlli_info)
 {
-	struct gbproxy_tlli_info *tlli_info;
+	if (!tlli_info)
+		return;
 
-	tlli_info = gbproxy_find_tlli(peer, tlli);
-	if (tlli_info) {
+	if (tlli_info->tlli.ptmsi == GSM_RESERVED_TMSI && !tlli_info->imsi_len) {
 		LOGP(DGPRS, LOGL_INFO,
-		     "Removing TLLI %08x from list\n",
-		     tlli);
+		     "Removing TLLI %08x from list (P-TMSI or IMSI are not set)\n",
+		     tlli_info->tlli.current);
 		gbproxy_delete_tlli(peer, tlli_info);
+		return;
 	}
+
+	tlli_info->tlli.current = 0;
+	tlli_info->tlli.assigned = 0;
+	tlli_info->sgsn_tlli.current = 0;
+	tlli_info->sgsn_tlli.assigned = 0;
+
+	tlli_info->is_deregistered = 1;
+
+	return;
 }
 
 int gbproxy_check_tlli(struct gbproxy_peer *peer,
@@ -338,20 +349,44 @@ int gbproxy_check_tlli(struct gbproxy_peer *peer,
 	return tlli_info != NULL && tlli_info->enable_patching;
 }
 
+struct gbproxy_tlli_info *gbproxy_get_tlli_info_ul(
+	struct gbproxy_peer *peer,
+	struct gprs_gb_parse_context *parse_ctx)
+{
+	struct gbproxy_tlli_info *tlli_info = NULL;
+
+	if (parse_ctx->tlli_enc)
+		tlli_info = gbproxy_find_tlli(peer, parse_ctx->tlli);
+
+	if (!tlli_info && parse_ctx->imsi)
+		tlli_info = gbproxy_find_tlli_by_imsi(
+			peer, parse_ctx->imsi, parse_ctx->imsi_len);
+
+	if (!tlli_info && parse_ctx->ptmsi_enc && !parse_ctx->old_raid_is_foreign) {
+		uint32_t bss_ptmsi;
+		if (!gprs_parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN,
+					&bss_ptmsi))
+			LOGP(DGPRS, LOGL_ERROR,
+			     "Failed to parse P-TMSI (TLLI is %08x)\n",
+			     parse_ctx->tlli);
+		else
+			tlli_info = gbproxy_find_tlli_by_ptmsi(peer, bss_ptmsi);
+	}
+
+	if (tlli_info)
+		tlli_info->is_deregistered = 0;
+
+	return tlli_info;
+}
+
 struct gbproxy_tlli_info *gbproxy_update_tlli_state_ul(
 	struct gbproxy_peer *peer,
 	time_t now,
 	struct gprs_gb_parse_context *parse_ctx)
 {
-	struct gbproxy_tlli_info *tlli_info = NULL;
+	struct gbproxy_tlli_info *tlli_info;
 
-	if (parse_ctx->tlli_enc) {
-		tlli_info = gbproxy_find_tlli(peer, parse_ctx->tlli);
-
-		if (!tlli_info && parse_ctx->imsi)
-			tlli_info = gbproxy_find_tlli_by_imsi(
-				peer, parse_ctx->imsi, parse_ctx->imsi_len);
-	}
+	tlli_info = gbproxy_get_tlli_info_ul(peer, parse_ctx);
 
 	if (parse_ctx->tlli_enc && parse_ctx->llc) {
 		uint32_t sgsn_tlli;
@@ -366,6 +401,13 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_ul(
 							   parse_ctx->tlli);
 			tlli_info->sgsn_tlli.current = sgsn_tlli;
 			tlli_info->tlli.current = parse_ctx->tlli;;
+		} else if (!tlli_info->tlli.current) {
+			/* New TLLI (info found by IMSI or P-TMSI) */
+			tlli_info->tlli.current = parse_ctx->tlli;
+			tlli_info->sgsn_tlli.current =
+				gbproxy_make_sgsn_tlli(peer, tlli_info,
+						       parse_ctx->tlli);
+			gbproxy_touch_tlli(peer, tlli_info, now);
 		} else {
 			sgsn_tlli = gbproxy_map_tlli(parse_ctx->tlli, tlli_info, 0);
 			if (!sgsn_tlli)
@@ -512,8 +554,22 @@ void gbproxy_update_tlli_state_after(
 	time_t now,
 	struct gprs_gb_parse_context *parse_ctx)
 {
-	if (parse_ctx->invalidate_tlli) {
-		gbproxy_unregister_tlli(peer, parse_ctx->tlli);
+	if (parse_ctx->invalidate_tlli && tlli_info) {
+		int keep_info =
+			peer->cfg->keep_tlli_infos == GBPROX_KEEP_ALWAYS ||
+			(peer->cfg->keep_tlli_infos == GBPROX_KEEP_REATTACH &&
+			 parse_ctx->await_reattach) ||
+			(peer->cfg->keep_tlli_infos == GBPROX_KEEP_IDENTIFIED &&
+			 tlli_info->imsi_len > 0);
+		if (keep_info) {
+			LOGP(DGPRS, LOGL_INFO, "Unregistering TLLI %08x\n",
+			     tlli_info->tlli.current);
+			gbproxy_unregister_tlli(peer, tlli_info);
+		} else {
+			LOGP(DGPRS, LOGL_INFO, "Removing TLLI %08x from list\n",
+			     tlli_info->tlli.current);
+			gbproxy_delete_tlli(peer, tlli_info);
+		}
 	} else if (parse_ctx->to_bss && parse_ctx->tlli_enc &&
 		   parse_ctx->new_ptmsi_enc && tlli_info) {
 		/* A new PTMSI has been signaled in the message,

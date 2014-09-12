@@ -34,6 +34,7 @@ struct gprs_gb_parse_context {
 	/* General info */
 	const char *llc_msg_name;
 	int invalidate_tlli;
+	int await_reattach;
 	int need_decryption;
 	uint32_t tlli;
 	int pdu_type;

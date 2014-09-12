@@ -50,6 +50,14 @@ static struct cmd_node gbproxy_node = {
 	1,
 };
 
+static const struct value_string keep_modes[] = {
+	{GBPROX_KEEP_NEVER, "never"},
+	{GBPROX_KEEP_REATTACH, "re-attach"},
+	{GBPROX_KEEP_IDENTIFIED, "identified"},
+	{GBPROX_KEEP_ALWAYS, "always"},
+	{0, NULL}
+};
+
 static void gbprox_vty_print_peer(struct vty *vty, struct gbproxy_peer *peer)
 {
 	struct gprs_ra_id raid;
@@ -106,6 +114,10 @@ static int config_write_gbproxy(struct vty *vty)
 	if (g_cfg->tlli_max_len > 0)
 		vty_out(vty, " tlli-list max-length %d%s",
 			g_cfg->tlli_max_len, VTY_NEWLINE);
+	vty_out(vty, " tlli-list keep-mode %s%s",
+		get_value_string(keep_modes, g_cfg->keep_tlli_infos),
+		VTY_NEWLINE);
+
 
 	return CMD_SUCCESS;
 }
@@ -398,6 +410,22 @@ DEFUN(cfg_gbproxy_tlli_list_no_max_len,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_gbproxy_tlli_list_keep_mode,
+      cfg_gbproxy_tlli_list_keep_mode_cmd,
+      "tlli-list keep-mode (never|re-attach|identified|always)",
+      GBPROXY_TLLI_LIST_STR "How to keep entries for detached TLLIs\n"
+      "Discard entry immediately after detachment\n"
+      "Keep entry if a re-attachment has be requested\n"
+      "Keep entry if it associated with an IMSI\n"
+      "Don't discard entries after detachment\n")
+{
+	int val = get_string_value(keep_modes, argv[0]);
+	OSMO_ASSERT(val >= GBPROX_KEEP_NEVER && val <= GBPROX_KEEP_ALWAYS);
+	g_cfg->keep_tlli_infos = val;
+
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
        SHOW_STR "Display information about the Gb proxy\n" "Show statistics\n")
@@ -654,6 +682,7 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_acquire_imsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_len_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_keep_mode_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_match_imsi_cmd);

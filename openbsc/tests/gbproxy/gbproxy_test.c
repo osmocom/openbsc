@@ -157,6 +157,9 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 			if (tlli_info->imsi_acq_pending)
 				fprintf(stream, ", IMSI acquisition in progress");
 
+			if (tlli_info->is_deregistered)
+				fprintf(stream, ", DE-REGISTERED");
+
 			rc = fprintf(stream, "\n");
 			if (rc < 0)
 				return rc;
@@ -2606,7 +2609,7 @@ static void test_gbproxy_keep_info()
 	const uint32_t foreign_tlli = 0xafe2b700;
 
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
-	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_tlli_info *tlli_info, *tlli_info2;
 	struct gbproxy_peer *peer;
 	unsigned bss_nu = 0;
 	unsigned sgsn_nu = 0;
@@ -2626,6 +2629,7 @@ static void test_gbproxy_keep_info()
 	gbcfg.core_apn_size = 0;
 	gbcfg.route_to_sgsn2 = 0;
 	gbcfg.nsip_sgsn2_nsei = 0xffff;
+	gbcfg.keep_tlli_infos = GBPROX_KEEP_ALWAYS;
 
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
@@ -2661,6 +2665,8 @@ static void test_gbproxy_keep_info()
 	tlli_info = gbproxy_find_tlli(peer, foreign_tlli);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->imsi_len == 0);
+	OSMO_ASSERT(!tlli_info->is_deregistered);
+	OSMO_ASSERT(tlli_info->imsi_acq_pending);
 
 	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
 		       foreign_tlli, &rai_bss, cell_id,
@@ -2668,6 +2674,11 @@ static void test_gbproxy_keep_info()
 		       dtap_identity_resp, sizeof(dtap_identity_resp));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info = gbproxy_find_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->imsi_len > 0);
+	OSMO_ASSERT(!tlli_info->imsi_acq_pending);
 
 	send_llc_dl_ui(nsi, "IDENT REQUEST", &sgsn_peer, 0x1002,
 		       foreign_tlli, 0, NULL, 0,
@@ -2730,8 +2741,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info == NULL);
+	OSMO_ASSERT(!gbproxy_find_tlli(peer, local_tlli));
+	tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->is_deregistered);
 
 	/* Re-Attach */
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
@@ -2740,6 +2753,14 @@ static void test_gbproxy_keep_info()
 		       dtap_attach_req3, sizeof(dtap_attach_req3));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info2 = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	tlli_info = gbproxy_find_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info == tlli_info2);
+	OSMO_ASSERT(tlli_info->imsi_len != 0);
+	OSMO_ASSERT(!tlli_info->is_deregistered);
+	OSMO_ASSERT(!tlli_info->imsi_acq_pending);
 
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
@@ -2774,6 +2795,9 @@ static void test_gbproxy_keep_info()
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	OSMO_ASSERT(!gbproxy_find_tlli(peer, local_tlli));
+	tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->is_deregistered);
 
 	/* Re-Attach */
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
@@ -2782,6 +2806,14 @@ static void test_gbproxy_keep_info()
 		       dtap_attach_req3, sizeof(dtap_attach_req3));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info2 = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	tlli_info = gbproxy_find_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info == tlli_info2);
+	OSMO_ASSERT(tlli_info->imsi_len != 0);
+	OSMO_ASSERT(!tlli_info->is_deregistered);
+	OSMO_ASSERT(!tlli_info->imsi_acq_pending);
 
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
@@ -2816,6 +2848,9 @@ static void test_gbproxy_keep_info()
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	OSMO_ASSERT(!gbproxy_find_tlli(peer, local_tlli));
+	tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->is_deregistered);
 
 	/* Re-Attach */
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
@@ -2824,6 +2859,14 @@ static void test_gbproxy_keep_info()
 		       dtap_attach_req3, sizeof(dtap_attach_req3));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info2 = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	tlli_info = gbproxy_find_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info == tlli_info2);
+	OSMO_ASSERT(tlli_info->imsi_len != 0);
+	OSMO_ASSERT(!tlli_info->is_deregistered);
+	OSMO_ASSERT(!tlli_info->imsi_acq_pending);
 
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
@@ -2852,6 +2895,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	/* TODO: This should have de-registered the TLLI which it did not. Add
+	 *       assertions when this is fixed.
+	 */
+
 	/* Bad case: Re-Attach with wrong (initial) P-TMSI */
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
 		       foreign_tlli, &rai_bss, cell_id,
@@ -2860,12 +2907,32 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	tlli_info2 = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	tlli_info = gbproxy_find_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info != tlli_info2);
+	OSMO_ASSERT(tlli_info->imsi_len == 0);
+	OSMO_ASSERT(!tlli_info->is_deregistered);
+	OSMO_ASSERT(tlli_info->imsi_acq_pending);
+
+	/* This wouldn't happen in reality, since the Attach Request hadn't
+	 * been forwarded to the SGSN.
+	 * TODO: Add the missing messages.
+	 */
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
 		       GPRS_SAPI_GMM, sgsn_nu++,
 		       dtap_attach_acc, sizeof(dtap_attach_acc));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info2 = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	tlli_info = gbproxy_find_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info == tlli_info2);
+	OSMO_ASSERT(tlli_info->imsi_len >= 0);
+	OSMO_ASSERT(!tlli_info->is_deregistered);
+	OSMO_ASSERT(tlli_info->imsi_acq_pending);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_tlli, &rai_bss, cell_id,
@@ -2891,6 +2958,11 @@ static void test_gbproxy_keep_info()
 		       dtap_mt_detach_acc, sizeof(dtap_mt_detach_acc));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
+
+	/* TODO: There is one entry with this TLLI left (since there were 2
+	 *       before the detach precedure started. Add assertions when
+	 *       this is fixed.
+	 */
 
 	dump_global(stdout, 0);
 

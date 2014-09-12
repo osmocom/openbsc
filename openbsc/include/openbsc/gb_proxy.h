@@ -50,6 +50,13 @@ enum gbproxy_peer_ctr {
 	GBPROX_PEER_CTR_TLLI_CACHE_SIZE,
 };
 
+enum gbproxy_keep_mode {
+	GBPROX_KEEP_NEVER,
+	GBPROX_KEEP_REATTACH,
+	GBPROX_KEEP_IDENTIFIED,
+	GBPROX_KEEP_ALWAYS,
+};
+
 struct gbproxy_config {
 	/* parsed from config file */
 	uint16_t nsip_sgsn_nsei;
@@ -77,6 +84,7 @@ struct gbproxy_config {
 	int acquire_imsi;
 	int route_to_sgsn2;
 	uint16_t nsip_sgsn2_nsei;
+	enum gbproxy_keep_mode keep_tlli_infos;
 
 	/* IMSI checking/matching */
 	int check_imsi;
@@ -140,6 +148,8 @@ struct gbproxy_tlli_info {
 	int imsi_acq_pending;
 	struct llist_head stored_msgs;
 	int imsi_acq_retries;
+
+	int is_deregistered;
 
 	int enable_patching;
 };
