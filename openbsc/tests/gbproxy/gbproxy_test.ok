@@ -4645,10 +4645,9 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 5
-    TLLI cache size                 : 2
-    TLLI-Cache: 2
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0, STORED 1, IMSI acquisition in progress
-      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
 PROCESSING ATTACH COMPLETE from 0x01020304:1111
 00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 3d 08 03 48 76 ea 
 
@@ -4668,10 +4667,9 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 5
-    TLLI cache size                 : 2
-    TLLI-Cache: 2
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
-      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
 PROCESSING DETACH REQ from 0x05060708:32000
 00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 8b 41 c0 2d 08 05 02 25 0a 59 61 41 
 
@@ -4687,9 +4685,8 @@ result (DETACH REQ) = 73
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 5
-    TLLI cache size                 : 2
-    TLLI-Cache: 2
-      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
 PROCESSING DETACH ACC from 0x05060708:32000
 00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 41 08 06 ae ff 70 
@@ -4706,10 +4703,9 @@ result (DETACH ACC) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 5
-    TLLI cache size                 : 2
-    TLLI-Cache: 2
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
-      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
 Gbproxy global:
 Test TLLI info expiry
 

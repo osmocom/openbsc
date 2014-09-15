@@ -2959,10 +2959,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	/* TODO: There is one entry with this TLLI left (since there were 2
-	 *       before the detach precedure started. Add assertions when
-	 *       this is fixed.
-	 */
+	OSMO_ASSERT(!gbproxy_find_tlli(peer, local_tlli));
+	tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->is_deregistered);
 
 	dump_global(stdout, 0);
 

@@ -349,6 +349,39 @@ int gbproxy_check_tlli(struct gbproxy_peer *peer,
 	return tlli_info != NULL && tlli_info->enable_patching;
 }
 
+void gbproxy_assign_imsi(struct gbproxy_peer *peer,
+			 struct gbproxy_tlli_info *tlli_info,
+			 struct gprs_gb_parse_context *parse_ctx)
+{
+	int enable_patching;
+	struct gbproxy_tlli_info *other_tlli_info;
+
+	/* Make sure that there is a second entry with the same IMSI */
+	other_tlli_info = gbproxy_find_tlli_by_imsi(
+		peer, parse_ctx->imsi, parse_ctx->imsi_len);
+
+	if (other_tlli_info && other_tlli_info != tlli_info) {
+		char mi_buf[200];
+		mi_buf[0] = '\0';
+		gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+				   parse_ctx->imsi, parse_ctx->imsi_len);
+		LOGP(DGPRS, LOGL_INFO,
+		     "Removing TLLI %08x from list (IMSI %s re-used)\n",
+		     other_tlli_info->tlli.current, mi_buf);
+		gbproxy_delete_tlli(peer, other_tlli_info);
+	}
+
+	/* Update the IMSI field */
+	gbproxy_update_tlli_info(tlli_info,
+				 parse_ctx->imsi, parse_ctx->imsi_len);
+
+	/* Check, whether the IMSI matches */
+	enable_patching = gbproxy_check_imsi(peer, parse_ctx->imsi,
+					     parse_ctx->imsi_len);
+	if (enable_patching >= 0)
+		tlli_info->enable_patching = enable_patching;
+}
+
 struct gbproxy_tlli_info *gbproxy_get_tlli_info_ul(
 	struct gbproxy_peer *peer,
 	struct gprs_gb_parse_context *parse_ctx)
@@ -424,17 +457,8 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_ul(
 		gbproxy_touch_tlli(peer, tlli_info, now);
 	}
 
-	if (parse_ctx->imsi && tlli_info && tlli_info->imsi_len == 0) {
-		int enable_patching;
-		gbproxy_update_tlli_info(tlli_info,
-					 parse_ctx->imsi, parse_ctx->imsi_len);
-
-		/* Check, whether the IMSI matches */
-		enable_patching = gbproxy_check_imsi(peer, parse_ctx->imsi,
-						     parse_ctx->imsi_len);
-		if (enable_patching >= 0)
-			tlli_info->enable_patching = enable_patching;
-	}
+	if (parse_ctx->imsi && tlli_info && tlli_info->imsi_len == 0)
+		gbproxy_assign_imsi(peer, tlli_info, parse_ctx);
 
 	return tlli_info;
 }
@@ -533,17 +557,8 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 		gbproxy_touch_tlli(peer, tlli_info, now);
 	}
 
-	if (parse_ctx->imsi && tlli_info && tlli_info->imsi_len == 0) {
-		int enable_patching;
-		gbproxy_update_tlli_info(tlli_info,
-					 parse_ctx->imsi, parse_ctx->imsi_len);
-
-		/* Check, whether the IMSI matches */
-		enable_patching = gbproxy_check_imsi(peer, parse_ctx->imsi,
-						     parse_ctx->imsi_len);
-		if (enable_patching >= 0)
-			tlli_info->enable_patching = enable_patching;
-	}
+	if (parse_ctx->imsi && tlli_info && tlli_info->imsi_len == 0)
+		gbproxy_assign_imsi(peer, tlli_info, parse_ctx);
 
 	return tlli_info;
 }
