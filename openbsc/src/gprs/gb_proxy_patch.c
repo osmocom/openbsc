@@ -37,6 +37,13 @@ static void gbproxy_patch_raid(uint8_t *raid_enc, struct gbproxy_peer *peer,
 	int old_mcc;
 	int old_mnc;
 	struct gprs_ra_id raid;
+	enum gbproxy_peer_ctr counter =
+		to_bss ?
+		GBPROX_PEER_CTR_RAID_PATCHED_SGSN :
+		GBPROX_PEER_CTR_RAID_PATCHED_BSS;
+
+	if (!state->local_mcc || !state->local_mnc)
+		return;
 
 	gsm48_parse_ra(&raid, raid_enc);
 
@@ -59,23 +66,16 @@ static void gbproxy_patch_raid(uint8_t *raid_enc, struct gbproxy_peer *peer,
 			raid.mnc = state->local_mnc;
 	}
 
-	if (state->local_mcc || state->local_mnc) {
-		enum gbproxy_peer_ctr counter =
-			to_bss ?
-			GBPROX_PEER_CTR_RAID_PATCHED_SGSN :
-			GBPROX_PEER_CTR_RAID_PATCHED_BSS;
+	LOGP(DGPRS, LOGL_DEBUG,
+	     "Patching %s to %s: "
+	     "%d-%d-%d-%d -> %d-%d-%d-%d\n",
+	     log_text,
+	     to_bss ? "BSS" : "SGSN",
+	     old_mcc, old_mnc, raid.lac, raid.rac,
+	     raid.mcc, raid.mnc, raid.lac, raid.rac);
 
-		LOGP(DGPRS, LOGL_DEBUG,
-		       "Patching %s to %s: "
-		       "%d-%d-%d-%d -> %d-%d-%d-%d\n",
-		       log_text,
-		       to_bss ? "BSS" : "SGSN",
-		       old_mcc, old_mnc, raid.lac, raid.rac,
-		       raid.mcc, raid.mnc, raid.lac, raid.rac);
-
-		gsm48_construct_ra(raid_enc, &raid);
-		rate_ctr_inc(&peer->ctrg->ctr[counter]);
-	}
+	gsm48_construct_ra(raid_enc, &raid);
+	rate_ctr_inc(&peer->ctrg->ctr[counter]);
 }
 
 static void gbproxy_patch_apn_ie(struct msgb *msg,
@@ -200,7 +200,7 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	int fcs;
 
 	if (parse_ctx->ptmsi_enc && tlli_info &&
-	    !parse_ctx->old_raid_is_foreign) {
+	    !parse_ctx->old_raid_is_foreign && peer->cfg->patch_ptmsi) {
 		uint32_t ptmsi;
 		if (parse_ctx->to_bss)
 			ptmsi = tlli_info->tlli.ptmsi;
@@ -216,7 +216,7 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 		}
 	}
 
-	if (parse_ctx->new_ptmsi_enc && tlli_info) {
+	if (parse_ctx->new_ptmsi_enc && tlli_info && peer->cfg->patch_ptmsi) {
 		uint32_t ptmsi;
 		if (parse_ctx->to_bss)
 			ptmsi = tlli_info->tlli.ptmsi;
@@ -245,7 +245,7 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	if (parse_ctx->apn_ie &&
 	    peer->cfg->core_apn &&
 	    !parse_ctx->to_bss &&
-	    gbproxy_check_tlli(peer, tlli_info)) {
+	    gbproxy_check_tlli(peer, tlli_info) && peer->cfg->core_apn) {
 		size_t new_len;
 		gbproxy_patch_apn_ie(msg,
 				     parse_ctx->apn_ie, parse_ctx->apn_ie_len,
@@ -308,7 +308,7 @@ void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 	if (!tlli_info)
 		return;
 
-	if (parse_ctx->tlli_enc) {
+	if (parse_ctx->tlli_enc && peer->cfg->patch_ptmsi) {
 		uint32_t tlli = gbproxy_map_tlli(parse_ctx->tlli,
 						 tlli_info, parse_ctx->to_bss);
 
