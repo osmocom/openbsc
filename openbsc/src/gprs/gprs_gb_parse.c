@@ -279,6 +279,36 @@ static int gprs_gb_parse_gmm_ra_upd_req(uint8_t *data, size_t data_len,
 	return 1;
 }
 
+static int gprs_gb_parse_gmm_ra_upd_rej(uint8_t *data, size_t data_len,
+					struct gprs_gb_parse_context *parse_ctx)
+{
+	uint8_t *value;
+	uint8_t cause;
+	int force_standby;
+
+	parse_ctx->llc_msg_name = "RA_UPD_REJ";
+
+	/* GMM cause */
+	if (v_fixed_shift(&data, &data_len, 1, &value) <= 0)
+		return 0;
+
+	cause = value[0];
+
+	/* Force to standby, 1/2 */
+	/* spare bits, 1/2 */
+	if (v_fixed_shift(&data, &data_len, 1, &value) <= 0)
+		return 0;
+
+	force_standby = (value[0] & 0x07) == 0x01;
+
+	if (cause == GMM_CAUSE_IMPL_DETACHED && !force_standby)
+		parse_ctx->await_reattach = 1;
+
+	parse_ctx->invalidate_tlli = 1;
+
+	return 1;
+}
+
 static int gprs_gb_parse_gmm_ra_upd_ack(uint8_t *data, size_t data_len,
 					struct gprs_gb_parse_context *parse_ctx)
 {
@@ -417,6 +447,9 @@ int gprs_gb_parse_dtap(uint8_t *data, size_t data_len,
 
 	case GSM48_MT_GMM_RA_UPD_REQ:
 		return gprs_gb_parse_gmm_ra_upd_req(data, data_len, parse_ctx);
+
+	case GSM48_MT_GMM_RA_UPD_REJ:
+		return gprs_gb_parse_gmm_ra_upd_rej(data, data_len, parse_ctx);
 
 	case GSM48_MT_GMM_RA_UPD_ACK:
 		return gprs_gb_parse_gmm_ra_upd_ack(data, data_len, parse_ctx);

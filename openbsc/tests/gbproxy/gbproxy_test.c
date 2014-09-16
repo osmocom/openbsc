@@ -2895,9 +2895,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	/* TODO: This should have de-registered the TLLI which it did not. Add
-	 *       assertions when this is fixed.
-	 */
+	OSMO_ASSERT(!gbproxy_find_tlli(peer, local_tlli));
+	tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->is_deregistered);
 
 	/* Bad case: Re-Attach with wrong (initial) P-TMSI */
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
