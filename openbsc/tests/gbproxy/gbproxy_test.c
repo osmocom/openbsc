@@ -1833,10 +1833,10 @@ static void test_gbproxy_ptmsi_assignment()
 	tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
-	/* OSMO_ASSERT(!gbproxy_find_tlli_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1))); */
+	OSMO_ASSERT(!gbproxy_find_tlli_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1)));
 
 	tlli_info2 = gbproxy_find_tlli(peer, local_tlli);
-	/* OSMO_ASSERT(tlli_info == tlli_info2); */
+	OSMO_ASSERT(tlli_info == tlli_info2);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
 	OSMO_ASSERT(tlli_info->tlli.current == local_tlli);
 	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);

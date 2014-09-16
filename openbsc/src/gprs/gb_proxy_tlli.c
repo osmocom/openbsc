@@ -382,6 +382,43 @@ void gbproxy_assign_imsi(struct gbproxy_peer *peer,
 		tlli_info->enable_patching = enable_patching;
 }
 
+static int gbproxy_tlli_match(const struct gbproxy_tlli_state *a,
+			      const struct gbproxy_tlli_state *b)
+{
+	if (a->current && a->current == b->current)
+		return 1;
+
+	if (a->assigned && a->assigned == b->assigned)
+		return 1;
+
+	if (a->ptmsi != GSM_RESERVED_TMSI && a->ptmsi == b->ptmsi)
+		return 1;
+
+	return 0;
+}
+
+static void gbproxy_remove_matching_tllis(struct gbproxy_peer *peer,
+					  struct gbproxy_tlli_info *tlli_info)
+{
+	struct gbproxy_tlli_info *info, *nxt;
+	struct gbproxy_patch_state *state = &peer->patch_state;
+
+	/* Make sure that there is no second entry with the same P-TMSI or TLLI */
+	llist_for_each_entry_safe(info, nxt, &state->enabled_tllis, list) {
+		if (info == tlli_info)
+			continue;
+
+		if (!gbproxy_tlli_match(&tlli_info->tlli, &info->tlli) &&
+		    !gbproxy_tlli_match(&tlli_info->sgsn_tlli, &info->sgsn_tlli))
+			continue;
+
+		LOGP(DGPRS, LOGL_INFO,
+		     "Removing TLLI %08x from list (P-TMSI/TLLI re-used)\n",
+		     info->tlli.current);
+		gbproxy_delete_tlli(peer, info);
+	}
+}
+
 struct gbproxy_tlli_info *gbproxy_get_tlli_info_ul(
 	struct gbproxy_peer *peer,
 	struct gprs_gb_parse_context *parse_ctx)
@@ -605,6 +642,7 @@ void gbproxy_update_tlli_state_after(
 				      peer, new_sgsn_tlli);
 		gbproxy_reassign_tlli(&tlli_info->tlli,
 				      peer, new_bss_tlli);
+		gbproxy_remove_matching_tllis(peer, tlli_info);
 	}
 
 	gbproxy_remove_stale_tllis(peer, now);

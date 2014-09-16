@@ -1784,10 +1784,9 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
-    TLLI cache size                 : 2
-    TLLI-Cache: 2
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
       TLLI 8000beef/efe2b700 -> 8000beef/efe2b700, IMSI 12199999961718, AGE 0
-      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
 PROCESSING ATTACH COMPLETE from 0x01020304:1111
 00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 15 08 03 86 ac 47 
 
@@ -1803,10 +1802,9 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
-    TLLI cache size                 : 2
-    TLLI-Cache: 2
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
       TLLI 8000beef/efe2b700 -> 8000beef/efe2b700, IMSI 12199999961718, AGE 0
-      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
 PROCESSING GMM INFO from 0x05060708:32000
 00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 16 17 18 00 81 00 0e 88 41 c0 15 08 21 bb c1 c6 
 
@@ -1822,10 +1820,9 @@ result (GMM INFO) = 70
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
-    TLLI cache size                 : 2
-    TLLI-Cache: 2
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12199999961718, AGE 0
-      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
 Gbproxy global:
 === test_gbproxy_ra_patching ===
 --- Initialise SGSN ---
