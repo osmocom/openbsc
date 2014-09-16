@@ -479,6 +479,9 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 			if (stored_msgs)
 				vty_out(vty, ", STORED %d", stored_msgs);
 
+			if (tlli_info->is_deregistered)
+				vty_out(vty, ", DE-REGISTERED");
+
 			vty_out(vty, "%s", VTY_NEWLINE);
 		}
 	}
@@ -576,17 +579,18 @@ DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
-	"delete-gbproxy-tlli <0-65534> (tlli|imsi|stale) [IDENT]",
-	"Delete a GBProxy TLLI entry by NSEI and identification\n"
-	"NSEI number\n"
+#define GBPROXY_DELETE_TLLI_STR \
+	"Delete a GBProxy TLLI entry by NSEI and identification\nNSEI number\n"
+
+DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
+	"delete-gbproxy-tlli <0-65534> (tlli|imsi) IDENT",
+	GBPROXY_DELETE_TLLI_STR
 	"Delete entries with a matching TLLI (hex)\n"
 	"Delete entries with a matching IMSI\n"
-	"Delete stale entries\n"
 	"Identification to match\n")
 {
 	const uint16_t nsei = atoi(argv[0]);
-	enum {MATCH_TLLI = 't', MATCH_IMSI = 'i', MATCH_STALE = 's'} match;
+	enum {MATCH_TLLI = 't', MATCH_IMSI = 'i'} match;
 	uint32_t tlli = 0;
 	const char *imsi = NULL;
 	struct gbproxy_peer *peer = 0;
@@ -597,24 +601,62 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 
 	match = argv[1][0];
 
-	switch (match) {
-	case MATCH_TLLI:
-		if (argc < 2 || !argv[2][0]) {
-			vty_out(vty, "%% Missing TLLI%s", VTY_NEWLINE);
-			return CMD_WARNING;
-		}
+	if (match == MATCH_TLLI)
 		tlli = strtoll(argv[2], NULL, 16);
-		break;
-	case MATCH_IMSI:
-		if (argc < 2 || !argv[2][0]) {
-			vty_out(vty, "%% Missing IMSI%s", VTY_NEWLINE);
-			return CMD_WARNING;
-		}
+	else
 		imsi = argv[2];
-		break;
-	default:
-		break;
+
+	peer = gbproxy_peer_by_nsei(g_cfg, nsei);
+	if (!peer) {
+		vty_out(vty, "Didn't find peer with NSEI %d%s",
+			nsei, VTY_NEWLINE);
+		return CMD_WARNING;
 	}
+
+	state = &peer->patch_state;
+
+	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
+		if (match == MATCH_TLLI) {
+			if (tlli_info->tlli.current != tlli)
+				continue;
+		} else {
+			mi_buf[0] = '\0';
+			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
+					   tlli_info->imsi,
+					   tlli_info->imsi_len);
+
+			if (strcmp(mi_buf, imsi) != 0)
+				continue;
+		}
+
+		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli.current,
+			VTY_NEWLINE);
+		gbproxy_delete_tlli(peer, tlli_info);
+		found += 1;
+	}
+
+	if (!found && argc >= 2) {
+		vty_out(vty, "Didn't find TLLI entry with %s %s%s",
+			argv[1], argv[2], VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
+	"delete-gbproxy-tlli <0-65534> (stale|de-registered)",
+	GBPROXY_DELETE_TLLI_STR
+	"Delete stale entries\n"
+	"Delete de-registered entries\n")
+{
+	const uint16_t nsei = atoi(argv[0]);
+	enum {MATCH_STALE = 's', MATCH_DEREGISTERED = 'd'} match;
+	struct gbproxy_peer *peer = 0;
+	struct gbproxy_tlli_info *tlli_info, *nxt;
+	struct gbproxy_patch_state *state;
+	int found = 0;
+
+	match = argv[1][0];
 
 	peer = gbproxy_peer_by_nsei(g_cfg, nsei);
 	if (!peer) {
@@ -630,32 +672,20 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 		if (found)
 			vty_out(vty, "Deleted %d stale TLLI%s%s",
 				found, found == 1 ? "" : "s", VTY_NEWLINE);
-		return CMD_SUCCESS;
-	}
-
-	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
-		if (match == MATCH_TLLI && tlli_info->tlli.current != tlli)
-			continue;
-
-		if (match == MATCH_IMSI) {
-			mi_buf[0] = '\0';
-			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
-					   tlli_info->imsi,
-					   tlli_info->imsi_len);
-
-			if (strcmp(mi_buf, imsi) != 0)
+	} else {
+		llist_for_each_entry_safe(tlli_info, nxt,
+					  &state->enabled_tllis, list) {
+			if (!tlli_info->is_deregistered)
 				continue;
+
+			gbproxy_delete_tlli(peer, tlli_info);
+			found += 1;
 		}
-		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli.current,
-			VTY_NEWLINE);
-		gbproxy_delete_tlli(peer, tlli_info);
-		found += 1;
 	}
 
-	if (!found && argc >= 2) {
-		vty_out(vty, "Didn't find TLLI entry with %s %s%s",
-			argv[1], argv[2], VTY_NEWLINE);
-	}
+	if (found)
+		vty_out(vty, "Deleted %d %s TLLI%s%s",
+			found, argv[1], found == 1 ? "" : "s", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -667,6 +697,7 @@ int gbproxy_vty_init(void)
 
 	install_element(ENABLE_NODE, &delete_gb_bvci_cmd);
 	install_element(ENABLE_NODE, &delete_gb_nsei_cmd);
+	install_element(ENABLE_NODE, &delete_gb_tlli_by_id_cmd);
 	install_element(ENABLE_NODE, &delete_gb_tlli_cmd);
 
 	install_element(CONFIG_NODE, &cfg_gbproxy_cmd);
