@@ -97,7 +97,6 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -l --database db-name The database to use\n");
 	printf("  -a --authorize-everyone. Authorize every new subscriber. Dangerous!.\n");
-	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -T --timestamp Prefix every log line with a timestamp\n");
 	printf("  -V --version. Print the version of OpenBSC.\n");
 	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
