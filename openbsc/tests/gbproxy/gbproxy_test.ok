@@ -4306,19 +4306,44 @@ Peers:
     TLLI-Cache: 2
       TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
       TLLI c00f7304 -> efe2b700, IMSI 12131415161718, AGE 0
---- Shutdown GPRS connection (SGSN 1) ---
+--- Establish GPRS connection (SGSN 2, P-TMSI collision) ---
 
-PROCESSING DETACH REQ from 0x01020304:1111
-00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 21 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb ca 4d 70 
+PROCESSING ATTACH REQUEST from 0x01020304:1111
+00 00 10 02 01 80 00 fe ed 00 00 04 08 88 00 f1 99 00 63 60 12 34 00 80 0e 00 34 01 c0 21 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 44 b6 bb 
 
-CALLBACK, event 0, msg length 44, bvci 0x1002
-00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 21 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb ca 4d 70 
+CALLBACK, event 0, msg length 75, bvci 0x1002
+00 00 10 02 01 80 00 fe ed 00 00 04 08 88 00 f1 99 00 63 60 12 34 00 80 0e 00 34 01 c0 21 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 44 b6 bb 
 
-NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 44 (gprs_ns_sendmsg)
-MESSAGE to SGSN at 0x05060708:32000, msg length 48
-00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 21 63 54 40 50 60 12 34 00 80 0e 00 15 01 c0 21 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb ca 4d 70 
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 28
+00 00 10 02 00 80 00 fe ed 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 15 01 b7 f8 36 
 
-result (DETACH REQ) = 48
+result (ATTACH REQUEST) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 13
+    RAID patched              (SGSN): 4
+    TLLI patched              (BSS ): 14
+    TLLI patched              (SGSN): 14
+    P-TMSI patched            (SGSN): 2
+    Attach Request count            : 3
+    TLLI cache size                 : 3
+    TLLI-Cache: 3
+      TLLI 8000feed -> 7e23ef54, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
+      TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
+      TLLI c00f7304 -> efe2b700, IMSI 12131415161718, AGE 0
+PROCESSING IDENT RESPONSE from 0x01020304:1111
+00 00 10 02 01 80 00 fe ed 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 11 01 c0 25 08 16 08 11 12 99 99 99 26 27 28 58 c7 cb 
+
+CALLBACK, event 0, msg length 40, bvci 0x1002
+00 00 10 02 01 80 00 fe ed 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 11 01 c0 25 08 16 08 11 12 99 99 99 26 27 28 58 c7 cb 
+
+NS UNITDATA MESSAGE to SGSN 2, BVCI 0x1002, msg length 75 (gprs_ns_sendmsg)
+MESSAGE to SGSN 2 at 0x15161718:32001, msg length 79
+00 00 10 02 01 7e 23 ef 54 00 00 04 08 88 21 63 54 00 63 60 12 34 00 80 0e 00 34 01 c0 21 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 44 b6 bb 
+
+result (IDENT RESPONSE) = 0
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
@@ -4327,22 +4352,23 @@ Peers:
     TLLI patched              (BSS ): 15
     TLLI patched              (SGSN): 14
     P-TMSI patched            (SGSN): 2
-    Attach Request count            : 2
-    TLLI cache size                 : 2
-    TLLI-Cache: 2
-      TLLI c00f7304 -> efe2b700, IMSI 12131415161718, AGE 0
+    Attach Request count            : 3
+    TLLI cache size                 : 3
+    TLLI-Cache: 3
+      TLLI 8000feed -> 7e23ef54, IMSI 12199999962728, AGE 0, IMSI matches
       TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
-PROCESSING DETACH ACC from 0x05060708:32000
-00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 19 08 06 00 04 ff 52 
+      TLLI c00f7304 -> efe2b700, IMSI 12131415161718, AGE 0
+PROCESSING IDENT REQUEST from 0x15161718:32001
+00 00 10 02 00 7e 23 ef 54 00 50 20 16 82 02 58 0e 89 41 c0 19 08 15 01 a2 f2 a4 
 
-CALLBACK, event 0, msg length 67, bvci 0x1002
-00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 19 08 06 00 04 ff 52 
+CALLBACK, event 0, msg length 23, bvci 0x1002
+00 00 10 02 00 7e 23 ef 54 00 50 20 16 82 02 58 0e 89 41 c0 19 08 15 01 a2 f2 a4 
 
-NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 67 (gprs_ns_sendmsg)
-MESSAGE to BSS at 0x01020304:1111, msg length 71
-00 00 10 02 00 c0 0f 73 04 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 19 08 06 00 04 ff 52 
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 23 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 27
+00 00 10 02 00 80 00 fe ed 00 50 20 16 82 02 58 0e 89 41 c0 19 08 15 01 a2 f2 a4 
 
-result (DETACH ACC) = 71
+result (IDENT REQUEST) = 27
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
@@ -4351,23 +4377,23 @@ Peers:
     TLLI patched              (BSS ): 15
     TLLI patched              (SGSN): 15
     P-TMSI patched            (SGSN): 2
-    Attach Request count            : 2
-    TLLI cache size                 : 1
-    TLLI-Cache: 1
+    Attach Request count            : 3
+    TLLI cache size                 : 3
+    TLLI-Cache: 3
+      TLLI 8000feed -> 7e23ef54, IMSI 12199999962728, AGE 0, IMSI matches
       TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
---- Shutdown GPRS connection (SGSN 2) ---
+      TLLI c00f7304 -> efe2b700, IMSI 12131415161718, AGE 0
+PROCESSING IDENT RESPONSE from 0x01020304:1111
+00 00 10 02 01 80 00 fe ed 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 11 01 c0 29 08 16 08 11 12 99 99 99 26 27 28 4f d6 20 
 
-PROCESSING DETACH REQ from 0x01020304:1111
-00 00 10 02 01 e6 56 aa 1f 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 25 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 1e 60 92 
+CALLBACK, event 0, msg length 40, bvci 0x1002
+00 00 10 02 01 80 00 fe ed 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 11 01 c0 29 08 16 08 11 12 99 99 99 26 27 28 4f d6 20 
 
-CALLBACK, event 0, msg length 44, bvci 0x1002
-00 00 10 02 01 e6 56 aa 1f 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 25 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 1e 60 92 
+NS UNITDATA MESSAGE to SGSN 2, BVCI 0x1002, msg length 40 (gprs_ns_sendmsg)
+MESSAGE to SGSN 2 at 0x15161718:32001, msg length 44
+00 00 10 02 01 7e 23 ef 54 00 00 04 08 88 21 63 54 40 50 60 12 34 00 80 0e 00 11 01 c0 29 08 16 08 11 12 99 99 99 26 27 28 4f d6 20 
 
-NS UNITDATA MESSAGE to SGSN 2, BVCI 0x1002, msg length 44 (gprs_ns_sendmsg)
-MESSAGE to SGSN 2 at 0x15161718:32001, msg length 48
-00 00 10 02 01 e0 98 76 54 00 00 04 08 88 21 63 54 40 50 60 12 34 00 80 0e 00 15 01 c0 25 08 05 01 18 05 f4 e0 98 76 54 19 03 b9 97 cb 29 9a 54 
-
-result (DETACH REQ) = 0
+result (IDENT RESPONSE) = 0
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
@@ -4375,33 +4401,228 @@ Peers:
     RAID patched              (SGSN): 4
     TLLI patched              (BSS ): 16
     TLLI patched              (SGSN): 15
-    P-TMSI patched            (BSS ): 1
     P-TMSI patched            (SGSN): 2
-    Attach Request count            : 2
-    TLLI cache size                 : 1
-    TLLI-Cache: 1
+    Attach Request count            : 3
+    TLLI cache size                 : 3
+    TLLI-Cache: 3
+      TLLI 8000feed -> 7e23ef54, IMSI 12199999962728, AGE 0, IMSI matches
       TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
-PROCESSING DETACH ACC from 0x15161718:32001
-00 00 10 02 00 e0 98 76 54 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 16 17 18 00 81 00 0e 89 41 c0 1d 08 06 00 3c 40 fa 
+      TLLI c00f7304 -> efe2b700, IMSI 12131415161718, AGE 0
+PROCESSING ATTACH ACCEPT (P-TMSI 1) from 0x15161718:32001
+00 00 10 02 00 7e 23 ef 54 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 26 27 28 00 81 00 0e 9e 41 c0 1d 08 02 01 49 04 21 63 54 40 50 60 19 cd d7 08 17 16 18 05 f4 ef e2 b7 00 74 91 01 
+
+CALLBACK, event 0, msg length 88, bvci 0x1002
+00 00 10 02 00 7e 23 ef 54 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 26 27 28 00 81 00 0e 9e 41 c0 1d 08 02 01 49 04 21 63 54 40 50 60 19 cd d7 08 17 16 18 05 f4 ef e2 b7 00 74 91 01 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 88 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 92
+00 00 10 02 00 80 00 fe ed 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 26 27 28 00 81 00 0e 9e 41 c0 1d 08 02 01 49 04 11 22 33 40 50 60 19 cd d7 08 17 16 18 05 f4 ea d4 77 5a c4 f8 6d 
+
+result (ATTACH ACCEPT (P-TMSI 1)) = 92
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 15
+    RAID patched              (SGSN): 5
+    TLLI patched              (BSS ): 16
+    TLLI patched              (SGSN): 16
+    P-TMSI patched            (SGSN): 3
+    Attach Request count            : 3
+    TLLI cache size                 : 2
+    TLLI-Cache: 2
+      TLLI 8000feed/ead4775a -> 7e23ef54/efe2b700, IMSI 12199999962728, AGE 0, IMSI matches
+      TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
+PROCESSING ATTACH COMPLETE from 0x01020304:1111
+00 00 10 02 01 ea d4 77 5a 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 2d 08 03 43 50 ea 
+
+CALLBACK, event 0, msg length 31, bvci 0x1002
+00 00 10 02 01 ea d4 77 5a 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 2d 08 03 43 50 ea 
+
+NS UNITDATA MESSAGE to SGSN 2, BVCI 0x1002, msg length 31 (gprs_ns_sendmsg)
+MESSAGE to SGSN 2 at 0x15161718:32001, msg length 35
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 21 63 54 40 50 60 12 34 00 80 0e 00 08 01 c0 2d 08 03 43 50 ea 
+
+result (ATTACH COMPLETE) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 16
+    RAID patched              (SGSN): 5
+    TLLI patched              (BSS ): 17
+    TLLI patched              (SGSN): 16
+    P-TMSI patched            (SGSN): 3
+    Attach Request count            : 3
+    TLLI cache size                 : 2
+    TLLI-Cache: 2
+      TLLI 8000feed/ead4775a -> 7e23ef54/efe2b700, IMSI 12199999962728, AGE 0, IMSI matches
+      TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
+PROCESSING GMM INFO from 0x15161718:32001
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 26 27 28 00 81 00 0e 88 41 c0 21 08 21 ca 60 90 
+
+CALLBACK, event 0, msg length 66, bvci 0x1002
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 26 27 28 00 81 00 0e 88 41 c0 21 08 21 ca 60 90 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 66 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 70
+00 00 10 02 00 ea d4 77 5a 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 26 27 28 00 81 00 0e 88 41 c0 21 08 21 ca 60 90 
+
+result (GMM INFO) = 70
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 16
+    RAID patched              (SGSN): 5
+    TLLI patched              (BSS ): 17
+    TLLI patched              (SGSN): 17
+    P-TMSI patched            (SGSN): 3
+    Attach Request count            : 3
+    TLLI cache size                 : 2
+    TLLI-Cache: 2
+      TLLI ead4775a -> efe2b700, IMSI 12199999962728, AGE 0, IMSI matches
+      TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
+--- Shutdown GPRS connection (SGSN 1) ---
+
+PROCESSING DETACH REQ from 0x01020304:1111
+00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 31 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 57 e6 15 
+
+CALLBACK, event 0, msg length 44, bvci 0x1002
+00 00 10 02 01 c0 0f 73 04 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 31 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 57 e6 15 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 28
+00 00 10 02 00 c0 0f 73 04 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 06 00 11 f5 c0 
+
+result (DETACH REQ) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 16
+    RAID patched              (SGSN): 5
+    TLLI patched              (BSS ): 17
+    TLLI patched              (SGSN): 17
+    P-TMSI patched            (SGSN): 3
+    Attach Request count            : 3
+    TLLI cache size                 : 2
+    TLLI-Cache: 2
+      TLLI ead4775a -> efe2b700, IMSI 12199999962728, AGE 0, IMSI matches
+      TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
+PROCESSING DETACH ACC from 0x05060708:32000
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 25 08 06 00 4d 09 cd 
 
 CALLBACK, event 0, msg length 67, bvci 0x1002
-00 00 10 02 00 e0 98 76 54 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 16 17 18 00 81 00 0e 89 41 c0 1d 08 06 00 3c 40 fa 
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 25 08 06 00 4d 09 cd 
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 67 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 71
-00 00 10 02 00 e6 56 aa 1f 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 16 17 18 00 81 00 0e 89 41 c0 1d 08 06 00 3c 40 fa 
+00 00 10 02 00 ea d4 77 5a 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 25 08 06 00 4d 09 cd 
 
 result (DETACH ACC) = 71
 
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
-    RAID patched              (BSS ): 15
-    RAID patched              (SGSN): 4
-    TLLI patched              (BSS ): 16
-    TLLI patched              (SGSN): 16
+    RAID patched              (BSS ): 16
+    RAID patched              (SGSN): 5
+    TLLI patched              (BSS ): 17
+    TLLI patched              (SGSN): 18
+    P-TMSI patched            (SGSN): 3
+    Attach Request count            : 3
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
+--- Shutdown GPRS connection (SGSN 2) ---
+
+PROCESSING DETACH REQ from 0x01020304:1111
+00 00 10 02 01 e6 56 aa 1f 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 35 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 83 cb f7 
+
+CALLBACK, event 0, msg length 44, bvci 0x1002
+00 00 10 02 01 e6 56 aa 1f 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 35 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 83 cb f7 
+
+NS UNITDATA MESSAGE to SGSN 2, BVCI 0x1002, msg length 44 (gprs_ns_sendmsg)
+MESSAGE to SGSN 2 at 0x15161718:32001, msg length 48
+00 00 10 02 01 e0 98 76 54 00 00 04 08 88 21 63 54 40 50 60 12 34 00 80 0e 00 15 01 c0 35 08 05 01 18 05 f4 e0 98 76 54 19 03 b9 97 cb b4 31 31 
+
+result (DETACH REQ) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 17
+    RAID patched              (SGSN): 5
+    TLLI patched              (BSS ): 18
+    TLLI patched              (SGSN): 18
     P-TMSI patched            (BSS ): 1
-    P-TMSI patched            (SGSN): 2
-    Attach Request count            : 2
+    P-TMSI patched            (SGSN): 3
+    Attach Request count            : 3
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI e656aa1f -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches
+PROCESSING DETACH ACC from 0x15161718:32001
+00 00 10 02 00 e0 98 76 54 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 16 17 18 00 81 00 0e 89 41 c0 29 08 06 00 be c3 6f 
+
+CALLBACK, event 0, msg length 67, bvci 0x1002
+00 00 10 02 00 e0 98 76 54 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 16 17 18 00 81 00 0e 89 41 c0 29 08 06 00 be c3 6f 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 67 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 71
+00 00 10 02 00 e6 56 aa 1f 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 16 17 18 00 81 00 0e 89 41 c0 29 08 06 00 be c3 6f 
+
+result (DETACH ACC) = 71
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 17
+    RAID patched              (SGSN): 5
+    TLLI patched              (BSS ): 18
+    TLLI patched              (SGSN): 19
+    P-TMSI patched            (BSS ): 1
+    P-TMSI patched            (SGSN): 3
+    Attach Request count            : 3
+    TLLI-Cache: 0
+--- Shutdown GPRS connection (SGSN 2, P-TMSI 1) ---
+
+PROCESSING DETACH REQ from 0x01020304:1111
+00 00 10 02 01 ea d4 77 5a 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 39 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 44 b6 8a 
+
+CALLBACK, event 0, msg length 44, bvci 0x1002
+00 00 10 02 01 ea d4 77 5a 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 39 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 44 b6 8a 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 28
+00 00 10 02 00 ea d4 77 5a 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 06 00 11 f5 c0 
+
+result (DETACH REQ) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 17
+    RAID patched              (SGSN): 5
+    TLLI patched              (BSS ): 18
+    TLLI patched              (SGSN): 19
+    P-TMSI patched            (BSS ): 1
+    P-TMSI patched            (SGSN): 3
+    Attach Request count            : 3
+    TLLI-Cache: 0
+PROCESSING DETACH ACC from 0x15161718:32001
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 26 27 28 00 81 00 0e 89 41 c0 2d 08 06 00 86 7c c7 
+
+CALLBACK, event 0, msg length 67, bvci 0x1002
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 26 27 28 00 81 00 0e 89 41 c0 2d 08 06 00 86 7c c7 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 67 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 71
+00 00 10 02 00 ef e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 99 99 99 26 27 28 00 81 00 0e 89 41 c0 2d 08 06 00 86 7c c7 
+
+result (DETACH ACC) = 71
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 17
+    RAID patched              (SGSN): 5
+    TLLI patched              (BSS ): 18
+    TLLI patched              (SGSN): 19
+    P-TMSI patched            (BSS ): 1
+    P-TMSI patched            (SGSN): 3
+    Attach Request count            : 3
+    TLLI from SGSN unknown          : 1
     TLLI-Cache: 0
 Gbproxy global:
     Invalid BVC Identifier          : 1

@@ -223,6 +223,12 @@ static const unsigned char dtap_identity2_resp[] = {
 	0x16, 0x17, 0x18
 };
 
+/* DTAP - Identity Response, IMSI 3 */
+static const unsigned char dtap_identity3_resp[] = {
+	0x08, 0x16, 0x08, 0x11, 0x12, 0x99, 0x99, 0x99,
+	0x26, 0x27, 0x28
+};
+
 /* DTAP - Attach Accept */
 static const unsigned char dtap_attach_acc[] = {
 	0x08, 0x02, 0x01, 0x49, 0x04, 0x21, 0x63, 0x54,
@@ -2457,8 +2463,13 @@ static void test_gbproxy_secondary_sgsn()
 	const uint32_t local_bss_tlli2 = 0xe656aa1f;
 	const uint32_t foreign_bss_tlli2 = 0x8000beef;
 
+	const uint32_t random_sgsn_tlli3 = 0x7e23ef54;
+	const uint32_t local_bss_tlli3 = 0xead4775a;
+	const uint32_t foreign_bss_tlli3 = 0x8000feed;
+
 	const uint8_t imsi1[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
 	const uint8_t imsi2[] = {0x11, 0x12, 0x99, 0x99, 0x99, 0x16, 0x17, 0x18};
+	const uint8_t imsi3[] = {0x11, 0x12, 0x99, 0x99, 0x99, 0x26, 0x27, 0x28};
 	struct gbproxy_tlli_info *tlli_info;
 	struct gbproxy_peer *peer;
 	unsigned bss_nu = 0;
@@ -2769,6 +2780,57 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	printf("--- Establish GPRS connection (SGSN 2, P-TMSI collision) ---\n\n");
+
+	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli3, &rai_unknown, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli3, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_identity3_resp, sizeof(dtap_identity3_resp));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "IDENT REQUEST", &sgsn_peer[1], 0x1002,
+		       random_sgsn_tlli3, 0, NULL, 0,
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_identity_req, sizeof(dtap_identity_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli3, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_identity3_resp, sizeof(dtap_identity3_resp));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "ATTACH ACCEPT (P-TMSI 1)", &sgsn_peer[1], 0x1002,
+		       random_sgsn_tlli3, 1, imsi3, sizeof(imsi3),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_attach_acc, sizeof(dtap_attach_acc));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
+		       local_bss_tlli3, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_complete, sizeof(dtap_attach_complete));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer[1], 0x1002,
+		       local_sgsn_tlli, 1, imsi3, sizeof(imsi3),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_gmm_information, sizeof(dtap_gmm_information));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
 	printf("--- Shutdown GPRS connection (SGSN 1) ---\n\n");
 
 	/* Detach */
@@ -2797,6 +2859,22 @@ static void test_gbproxy_secondary_sgsn()
 
 	send_llc_dl_ui(nsi, "DETACH ACC", &sgsn_peer[1], 0x1002,
 		       local_sgsn_tlli2, 1, imsi2, sizeof(imsi2),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_detach_acc, sizeof(dtap_detach_acc));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	printf("--- Shutdown GPRS connection (SGSN 2, P-TMSI 1) ---\n\n");
+
+	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
+		       local_bss_tlli3, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_detach_req, sizeof(dtap_detach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "DETACH ACC", &sgsn_peer[1], 0x1002,
+		       local_sgsn_tlli, 1, imsi3, sizeof(imsi3),
 		       GPRS_SAPI_GMM, sgsn_nu++,
 		       dtap_detach_acc, sizeof(dtap_detach_acc));
 
