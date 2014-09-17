@@ -2673,7 +2673,7 @@ static void test_gbproxy_secondary_sgsn()
 	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
 		       foreign_bss_tlli2, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, bss_nu++,
-		       dtap_identity_resp, sizeof(dtap_identity_resp));
+		       dtap_identity2_resp, sizeof(dtap_identity2_resp));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
