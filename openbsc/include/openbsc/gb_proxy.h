@@ -140,6 +140,7 @@ struct gbproxy_tlli_info {
 
 	struct gbproxy_tlli_state tlli;
 	struct gbproxy_tlli_state sgsn_tlli;
+	uint32_t sgsn_nsei;
 
 	time_t timestamp;
 	uint8_t *imsi;
@@ -211,9 +212,11 @@ struct gbproxy_tlli_info *gbproxy_find_tlli(
 	struct gbproxy_peer *peer, uint32_t tlli);
 struct gbproxy_tlli_info *gbproxy_find_tlli_by_imsi(
 	struct gbproxy_peer *peer, const uint8_t *imsi, size_t imsi_len);
+struct gbproxy_tlli_info *gbproxy_find_tlli_by_any_sgsn_tlli(
+	struct gbproxy_peer *peer, uint32_t tlli);
 struct gbproxy_tlli_info *gbproxy_find_tlli_by_sgsn_tlli(
 	struct gbproxy_peer *peer,
-	uint32_t tlli);
+	uint32_t tlli, uint32_t sgsn_nsei);
 struct gbproxy_tlli_info *gbproxy_find_tlli_by_ptmsi(
 	struct gbproxy_peer *peer,
 	uint32_t ptmsi);

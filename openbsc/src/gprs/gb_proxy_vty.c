@@ -479,6 +479,10 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 			if (stored_msgs)
 				vty_out(vty, ", STORED %d", stored_msgs);
 
+			if (g_cfg->route_to_sgsn2)
+				vty_out(vty, ", SGSN NSEI %d",
+					tlli_info->sgsn_nsei);
+
 			if (tlli_info->is_deregistered)
 				vty_out(vty, ", DE-REGISTERED");
 
@@ -583,15 +587,15 @@ DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 	"Delete a GBProxy TLLI entry by NSEI and identification\nNSEI number\n"
 
 DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
-	"delete-gbproxy-tlli <0-65534> (tlli|imsi) IDENT",
+	"delete-gbproxy-tlli <0-65534> (tlli|imsi|sgsn-nsei) IDENT",
 	GBPROXY_DELETE_TLLI_STR
 	"Delete entries with a matching TLLI (hex)\n"
 	"Delete entries with a matching IMSI\n"
 	"Identification to match\n")
 {
 	const uint16_t nsei = atoi(argv[0]);
-	enum {MATCH_TLLI = 't', MATCH_IMSI = 'i'} match;
-	uint32_t tlli = 0;
+	enum {MATCH_TLLI = 't', MATCH_IMSI = 'i', MATCH_SGSN = 's'} match;
+	uint32_t ident = 0;
 	const char *imsi = NULL;
 	struct gbproxy_peer *peer = 0;
 	struct gbproxy_tlli_info *tlli_info, *nxt;
@@ -601,10 +605,11 @@ DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
 
 	match = argv[1][0];
 
-	if (match == MATCH_TLLI)
-		tlli = strtoll(argv[2], NULL, 16);
-	else
-		imsi = argv[2];
+	switch (match) {
+	case MATCH_TLLI: ident = strtoll(argv[2], NULL, 16); break;
+	case MATCH_IMSI: imsi = argv[2]; break;
+	case MATCH_SGSN: ident = strtoll(argv[2], NULL, 0); break;
+	};
 
 	peer = gbproxy_peer_by_nsei(g_cfg, nsei);
 	if (!peer) {
@@ -616,10 +621,16 @@ DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
 	state = &peer->patch_state;
 
 	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
-		if (match == MATCH_TLLI) {
-			if (tlli_info->tlli.current != tlli)
+		switch (match) {
+		case MATCH_TLLI:
+			if (tlli_info->tlli.current != ident)
 				continue;
-		} else {
+			break;
+		case MATCH_SGSN:
+			if (tlli_info->sgsn_nsei != ident)
+				continue;
+			break;
+		case MATCH_IMSI:
 			mi_buf[0] = '\0';
 			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
 					   tlli_info->imsi,
@@ -627,6 +638,7 @@ DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
 
 			if (strcmp(mi_buf, imsi) != 0)
 				continue;
+			break;
 		}
 
 		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli.current,

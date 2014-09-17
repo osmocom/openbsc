@@ -157,6 +157,10 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 			if (tlli_info->imsi_acq_pending)
 				fprintf(stream, ", IMSI acquisition in progress");
 
+			if (cfg->route_to_sgsn2)
+				fprintf(stream, ", SGSN NSEI %d",
+					tlli_info->sgsn_nsei);
+
 			if (tlli_info->is_deregistered)
 				fprintf(stream, ", DE-REGISTERED");
 
@@ -1475,7 +1479,7 @@ static void test_gbproxy_ra_patching()
 	OSMO_ASSERT(gbproxy_peer_by_lac(&gbcfg, convert_ra(&rai_sgsn)) != NULL);
 	OSMO_ASSERT(gbproxy_peer_by_lac(&gbcfg, convert_ra(&rai_unknown)) == NULL);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current != local_tlli);
@@ -1493,7 +1497,7 @@ static void test_gbproxy_ra_patching()
 
 	OSMO_ASSERT(6 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current != local_tlli);
@@ -1512,7 +1516,7 @@ static void test_gbproxy_ra_patching()
 
 	OSMO_ASSERT(7 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current != local_tlli);
@@ -1530,7 +1534,7 @@ static void test_gbproxy_ra_patching()
 
 	OSMO_ASSERT(2 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_SGSN].current);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
 	OSMO_ASSERT(tlli_info->tlli.current == local_tlli);
@@ -1963,7 +1967,7 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
@@ -1983,7 +1987,7 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
@@ -2001,7 +2005,7 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
@@ -2049,8 +2053,8 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2) != NULL);
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	OSMO_ASSERT(gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI) != NULL);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli2);
 	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
@@ -2075,9 +2079,9 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2) == NULL);
-	OSMO_ASSERT(gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli3) != NULL);
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	OSMO_ASSERT(gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI) == NULL);
+	OSMO_ASSERT(gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli3, SGSN_NSEI) != NULL);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli3);
 	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
@@ -2110,7 +2114,7 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli3);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli3, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli3);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
@@ -2284,7 +2288,7 @@ static void test_gbproxy_imsi_acquisition()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
@@ -2304,7 +2308,7 @@ static void test_gbproxy_imsi_acquisition()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
@@ -2322,7 +2326,7 @@ static void test_gbproxy_imsi_acquisition()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
@@ -2464,6 +2468,7 @@ static void test_gbproxy_secondary_sgsn()
 	const uint32_t foreign_bss_tlli2 = 0x8000beef;
 
 	const uint32_t random_sgsn_tlli3 = 0x7e23ef54;
+	const uint32_t bss_ptmsi3 = 0xead4775a;
 	const uint32_t local_bss_tlli3 = 0xead4775a;
 	const uint32_t foreign_bss_tlli3 = 0x8000feed;
 
@@ -2471,6 +2476,7 @@ static void test_gbproxy_secondary_sgsn()
 	const uint8_t imsi2[] = {0x11, 0x12, 0x99, 0x99, 0x99, 0x16, 0x17, 0x18};
 	const uint8_t imsi3[] = {0x11, 0x12, 0x99, 0x99, 0x99, 0x26, 0x27, 0x28};
 	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_tlli_info *other_info;
 	struct gbproxy_peer *peer;
 	unsigned bss_nu = 0;
 	unsigned sgsn_nu = 0;
@@ -2573,7 +2579,8 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli);
+	OSMO_ASSERT(!gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI));
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
@@ -2593,7 +2600,8 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	OSMO_ASSERT(!gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI));
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
@@ -2611,7 +2619,8 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli);
+	OSMO_ASSERT(!gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI));
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
@@ -2695,7 +2704,8 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli2);
+	OSMO_ASSERT(!gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli2, SGSN_NSEI));
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli2, SGSN2_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli2);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli2);
@@ -2715,7 +2725,8 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2);
+	OSMO_ASSERT(!gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI));
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN2_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli2);
 	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli2);
@@ -2733,7 +2744,8 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2);
+	OSMO_ASSERT(!gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI));
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN2_NSEI);
 	OSMO_ASSERT(tlli_info);
 	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli2);
 	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
@@ -2817,6 +2829,20 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	OSMO_ASSERT(!gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli3, SGSN_NSEI));
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, random_sgsn_tlli3, SGSN2_NSEI);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli3);
+	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli3);
+	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->tlli.net_validated);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi3);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli3);
+	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi);
+
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_bss_tlli3, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, bss_nu++,
@@ -2824,12 +2850,37 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	other_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(other_info);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info != other_info);
+	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli3);
+	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli3);
+	OSMO_ASSERT(tlli_info->tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->tlli.net_validated);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli3);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer[1], 0x1002,
 		       local_sgsn_tlli, 1, imsi3, sizeof(imsi3),
 		       GPRS_SAPI_GMM, sgsn_nu++,
 		       dtap_gmm_information, sizeof(dtap_gmm_information));
 
 	dump_peers(stdout, 0, 0, &gbcfg);
+
+	other_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(other_info);
+	tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info != other_info);
+	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli3);
+	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
+
 
 	printf("--- Shutdown GPRS connection (SGSN 1) ---\n\n");
 

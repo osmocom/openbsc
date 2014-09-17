@@ -60,16 +60,33 @@ struct gbproxy_tlli_info *gbproxy_find_tlli_by_ptmsi(
 	return NULL;
 }
 
-struct gbproxy_tlli_info *gbproxy_find_tlli_by_sgsn_tlli(
+struct gbproxy_tlli_info *gbproxy_find_tlli_by_any_sgsn_tlli(
 	struct gbproxy_peer *peer,
 	uint32_t tlli)
 {
 	struct gbproxy_tlli_info *tlli_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
+	/* Don't care about the NSEI */
 	llist_for_each_entry(tlli_info, &state->enabled_tllis, list)
 		if (tlli_info->sgsn_tlli.current == tlli ||
-		    tlli_info->sgsn_tlli.assigned == tlli)
+		     tlli_info->sgsn_tlli.assigned == tlli)
+			return tlli_info;
+
+	return NULL;
+}
+
+struct gbproxy_tlli_info *gbproxy_find_tlli_by_sgsn_tlli(
+	struct gbproxy_peer *peer,
+	uint32_t tlli, uint32_t sgsn_nsei)
+{
+	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_patch_state *state = &peer->patch_state;
+
+	llist_for_each_entry(tlli_info, &state->enabled_tllis, list)
+		if ((tlli_info->sgsn_tlli.current == tlli ||
+		     tlli_info->sgsn_tlli.assigned == tlli) &&
+		    tlli_info->sgsn_nsei == sgsn_nsei)
 			return tlli_info;
 
 	return NULL;
@@ -409,7 +426,8 @@ static void gbproxy_remove_matching_tllis(struct gbproxy_peer *peer,
 			continue;
 
 		if (!gbproxy_tlli_match(&tlli_info->tlli, &info->tlli) &&
-		    !gbproxy_tlli_match(&tlli_info->sgsn_tlli, &info->sgsn_tlli))
+		    (tlli_info->sgsn_nsei != info->sgsn_nsei ||
+		     !gbproxy_tlli_match(&tlli_info->sgsn_tlli, &info->sgsn_tlli)))
 			continue;
 
 		LOGP(DGPRS, LOGL_INFO,
@@ -508,7 +526,8 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 	struct gbproxy_tlli_info *tlli_info = NULL;
 
 	if (parse_ctx->tlli_enc)
-		tlli_info = gbproxy_find_tlli_by_sgsn_tlli(peer, parse_ctx->tlli);
+		tlli_info = gbproxy_find_tlli_by_sgsn_tlli(
+			peer, parse_ctx->tlli, parse_ctx->peer_nsei);
 
 	if (parse_ctx->tlli_enc && parse_ctx->new_ptmsi_enc && tlli_info) {
 		/* A new P-TMSI has been signalled in the message,

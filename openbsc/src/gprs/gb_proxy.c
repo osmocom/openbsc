@@ -257,7 +257,7 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 			sgsn_tlli = rand_r(&peer->cfg->sgsn_tlli_state);
 			sgsn_tlli = (sgsn_tlli & 0x7fffffff) | 0x78000000;
 
-			if (gbproxy_find_tlli_by_sgsn_tlli(peer, sgsn_tlli))
+			if (gbproxy_find_tlli_by_any_sgsn_tlli(peer, sgsn_tlli))
 				sgsn_tlli = 0;
 		} while (!sgsn_tlli);
 	}
@@ -309,6 +309,7 @@ static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 	while ((stored_msg = msgb_dequeue(&tlli_info->stored_msgs))) {
 		struct gprs_gb_parse_context tmp_parse_ctx = {0};
 		tmp_parse_ctx.to_bss = 0;
+		tmp_parse_ctx.peer_nsei = msgb_nsei(stored_msg);
 		int len_change = 0;
 
 		gprs_gb_parse_bssgp(msgb_bssgph(stored_msg),
@@ -511,13 +512,13 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	time_t now;
 	struct gbproxy_tlli_info *tlli_info = NULL;
 	uint32_t sgsn_nsei = cfg->nsip_sgsn_nsei;
-	int send_msg_directly = 0;
 
 	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn &&
 	    !cfg->acquire_imsi && !cfg->patch_ptmsi && !cfg->route_to_sgsn2)
 		return 1;
 
 	parse_ctx.to_bss = 0;
+	parse_ctx.peer_nsei = msgb_nsei(msg);
 
 	/* Parse BSSGP/LLC */
 	rc = gprs_gb_parse_bssgp(msgb_bssgph(msg), msgb_bssgp_len(msg),
@@ -560,10 +561,15 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 		}
 	}
 
-	if (tlli_info && cfg->route_to_sgsn2 && gbproxy_check_tlli(peer, tlli_info)) {
-		sgsn_nsei = cfg->nsip_sgsn2_nsei;
-		send_msg_directly = 1;
+	if (tlli_info && cfg->route_to_sgsn2) {
+		if (cfg->acquire_imsi && tlli_info->imsi_len == 0)
+			sgsn_nsei = 0xffff;
+		else if (gbproxy_check_tlli(peer, tlli_info))
+			sgsn_nsei = cfg->nsip_sgsn2_nsei;
 	}
+
+	if (tlli_info)
+		tlli_info->sgsn_nsei = sgsn_nsei;
 
 	/* Handle IMSI acquisition */
 	if (cfg->acquire_imsi) {
@@ -578,7 +584,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 
 	gbproxy_update_tlli_state_after(peer, tlli_info, now, &parse_ctx);
 
-	if (send_msg_directly) {
+	if (sgsn_nsei != cfg->nsip_sgsn_nsei) {
 		/* Send message directly to the selected SGSN */
 		rc = gbprox_relay2sgsn(cfg, msg, msgb_bvci(msg), sgsn_nsei);
 		/* Don't let the calling code handle the transmission */
@@ -604,6 +610,7 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 		return;
 
 	parse_ctx.to_bss = 1;
+	parse_ctx.peer_nsei = msgb_nsei(msg);
 
 	rc = gprs_gb_parse_bssgp(msgb_bssgph(msg), msgb_bssgp_len(msg),
 				 &parse_ctx);
