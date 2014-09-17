@@ -261,6 +261,8 @@ static struct msgb *osmux_recv(struct osmo_fd *ofd, struct sockaddr_in *addr)
 	return msg;
 }
 
+#define osmux_chunk_length(msg, rem) (rem - msg->len);
+
 int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct msgb *msg;
@@ -268,6 +270,7 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 	struct llist_head list;
 	struct sockaddr_in addr;
 	struct mgcp_config *cfg = ofd->data;
+	uint32_t rem;
 
 	msg = osmux_recv(ofd, &addr);
 	if (!msg)
@@ -277,6 +280,7 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 	if (msg->data[0] == MGCP_DUMMY_LOAD)
 		goto out;
 
+	rem = msg->len;
 	while((osmuxh = osmux_xfrm_output_pull(msg)) != NULL) {
 		struct mgcp_endpoint *endp;
 
@@ -289,6 +293,10 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 			     osmuxh->circuit_id);
 			goto out;
 		}
+		endp->osmux.stats.octets += osmux_chunk_length(msg, rem);
+		endp->osmux.stats.chunks++;
+		rem = msg->len;
+
 		osmux_xfrm_output(osmuxh, &endp->osmux.out, &list);
 		osmux_tx_sched(&list, scheduled_tx_bts_cb, endp);
 	}
@@ -355,6 +363,7 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 	struct llist_head list;
 	struct sockaddr_in addr;
 	struct mgcp_config *cfg = ofd->data;
+	uint32_t rem;
 
 	msg = osmux_recv(ofd, &addr);
 	if (!msg)
@@ -364,6 +373,7 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 	if (msg->data[0] == MGCP_DUMMY_LOAD)
 		return osmux_handle_dummy(cfg, &addr, msg);
 
+	rem = msg->len;
 	while((osmuxh = osmux_xfrm_output_pull(msg)) != NULL) {
 		struct mgcp_endpoint *endp;
 
@@ -376,6 +386,10 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 			     osmuxh->circuit_id);
 			goto out;
 		}
+		endp->osmux.stats.octets += osmux_chunk_length(msg, rem);
+		endp->osmux.stats.chunks++;
+		rem = msg->len;
+
 		osmux_xfrm_output(osmuxh, &endp->osmux.out, &list);
 		osmux_tx_sched(&list, scheduled_tx_net_cb, endp);
 	}

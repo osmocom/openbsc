@@ -190,6 +190,11 @@ struct mgcp_endpoint {
 		struct osmux_in_handle *in;
 		/* handle to unbatch messages */
 		struct osmux_out_handle out;
+		/* statistics */
+		struct {
+			uint32_t chunks;
+			uint32_t octets;
+		} stats;
 	} osmux;
 };
 

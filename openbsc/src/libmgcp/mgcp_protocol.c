@@ -1745,12 +1745,24 @@ void mgcp_format_stats(struct mgcp_endpoint *endp, char *msg, size_t size)
 	size -= nchars;
 
 	/* Error Counter */
-	snprintf(msg, size,
-		 "\r\nX-Osmo-CP: EC TIS=%u, TOS=%u, TIR=%u, TOR=%u",
-		 endp->net_state.in_stream.err_ts_counter,
-		 endp->net_state.out_stream.err_ts_counter,
-		 endp->bts_state.in_stream.err_ts_counter,
-		 endp->bts_state.out_stream.err_ts_counter);
+	nchars = snprintf(msg, size,
+			  "\r\nX-Osmo-CP: EC TIS=%u, TOS=%u, TIR=%u, TOR=%u",
+			  endp->net_state.in_stream.err_ts_counter,
+			  endp->net_state.out_stream.err_ts_counter,
+			  endp->bts_state.in_stream.err_ts_counter,
+			  endp->bts_state.out_stream.err_ts_counter);
+	if (nchars < 0 || nchars >= size)
+		goto truncate;
+
+	msg += nchars;
+	size -= nchars;
+
+	if (endp->osmux.state == OSMUX_STATE_ENABLED) {
+		snprintf(msg, size,
+			 "\r\nX-Osmux-ST: CR=%u, BR=%u",
+			 endp->osmux.stats.chunks,
+			 endp->osmux.stats.octets);
+	}
 truncate:
 	msg[size - 1] = '\0';
 }
