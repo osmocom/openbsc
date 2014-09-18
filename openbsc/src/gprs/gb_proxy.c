@@ -395,12 +395,13 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 	if (parse_ctx->g48_hdr)
 		switch (parse_ctx->g48_hdr->msg_type)
 		{
+		case GSM48_MT_GMM_RA_UPD_REQ:
 		case GSM48_MT_GMM_ATTACH_REQ:
 			if (gbproxy_restart_imsi_acquisition(tlli_info)) {
 				LOGP(DLLC, LOGL_INFO,
 				     "NSEI=%d(BSS) IMSI acquisition was in progress "
-				     "when receiving an ATTACH_REQ.\n",
-				     msgb_nsei(msg));
+				     "when receiving an %s.\n",
+				     msgb_nsei(msg), parse_ctx->llc_msg_name);
 			}
 			break;
 		case GSM48_MT_GMM_DETACH_REQ:
