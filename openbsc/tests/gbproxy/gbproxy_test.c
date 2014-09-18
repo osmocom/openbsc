@@ -1634,6 +1634,220 @@ static void test_gbproxy_ra_patching()
 	nsi = NULL;
 }
 
+static void test_gbproxy_ptmsi_assignment()
+{
+	struct gprs_ns_inst *nsi = gprs_ns_instantiate(gprs_ns_callback, NULL);
+	struct sockaddr_in bss_peer[1] = {{0},};
+	struct sockaddr_in sgsn_peer= {0};
+	struct  gprs_ra_id rai_bss =
+		{.mcc = 112, .mnc = 332, .lac = 16464, .rac = 96};
+	struct  gprs_ra_id rai_unknown =
+		{.mcc = 1, .mnc = 99, .lac = 99, .rac = 96};
+	uint16_t cell_id = 0x1234;
+
+	const uint32_t ptmsi = 0xefe2b700;
+	const uint32_t local_tlli = 0xefe2b700;
+
+	const uint32_t foreign_tlli1 = 0x8000dead;
+	const uint32_t foreign_tlli2 = 0x8000beef;
+
+	const uint8_t imsi1[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
+	const uint8_t imsi2[] = {0x11, 0x12, 0x99, 0x99, 0x99, 0x16, 0x17, 0x18};
+
+	struct gbproxy_tlli_info *tlli_info, *tlli_info2;
+	struct gbproxy_peer *peer;
+	unsigned bss_nu = 0;
+	unsigned sgsn_nu = 0;
+
+	OSMO_ASSERT(local_tlli == gprs_tmsi2tlli(ptmsi, TLLI_LOCAL));
+
+	bssgp_nsi = nsi;
+	gbcfg.nsi = bssgp_nsi;
+	gbcfg.nsip_sgsn_nsei = SGSN_NSEI;
+	gbcfg.core_mcc = 0;
+	gbcfg.core_mnc = 0;
+	gbcfg.core_apn = talloc_zero_size(NULL, 100);
+	gbcfg.core_apn_size = gprs_str_to_apn(gbcfg.core_apn, 100, "foo.bar");
+	gbcfg.patch_ptmsi = 0;
+	gbcfg.bss_ptmsi_state = 0;
+	gbcfg.sgsn_tlli_state = 1;
+
+	configure_sgsn_peer(&sgsn_peer);
+	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
+
+	printf("=== %s ===\n", __func__);
+	printf("--- Initialise SGSN ---\n\n");
+
+	connect_sgsn(nsi, &sgsn_peer, SGSN_NSEI);
+
+	printf("--- Initialise BSS 1 ---\n\n");
+
+	setup_ns(nsi, &bss_peer[0], 0x1001, 0x1000);
+	setup_bssgp(nsi, &bss_peer[0], 0x1002);
+
+	peer = gbproxy_peer_by_nsei(&gbcfg, 0x1000);
+	OSMO_ASSERT(peer != NULL);
+
+	send_bssgp_reset_ack(nsi, &sgsn_peer, 0x1002);
+
+	gprs_dump_nsi(nsi);
+	dump_global(stdout, 0);
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	printf("--- Establish first LLC connection ---\n\n");
+
+	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
+		       foreign_tlli1, &rai_unknown, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "IDENT REQUEST", &sgsn_peer, 0x1002,
+		       foreign_tlli1, 0, NULL, 0,
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_identity_req, sizeof(dtap_identity_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
+		       foreign_tlli1, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_identity_resp, sizeof(dtap_identity_resp));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
+		       foreign_tlli1, 1, imsi1, sizeof(imsi1),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_attach_acc, sizeof(dtap_attach_acc));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info = gbproxy_find_tlli(peer, foreign_tlli1);
+	tlli_info2 = gbproxy_find_tlli(peer, local_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info == tlli_info2);
+	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(tlli_info->tlli.current == foreign_tlli1);
+	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->tlli.net_validated);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+
+	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_complete, sizeof(dtap_attach_complete));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info = gbproxy_find_tlli(peer, local_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(tlli_info->tlli.current == foreign_tlli1);
+	OSMO_ASSERT(tlli_info->tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->tlli.net_validated);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+
+
+	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
+		       local_tlli, 1, imsi1, sizeof(imsi1),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_gmm_information, sizeof(dtap_gmm_information));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+	OSMO_ASSERT(!gbproxy_find_tlli_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2)));
+
+	tlli_info2 = gbproxy_find_tlli(peer, local_tlli);
+	OSMO_ASSERT(tlli_info == tlli_info2);
+	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
+	OSMO_ASSERT(tlli_info->tlli.current == local_tlli);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+
+	printf("--- Establish second LLC connection with the same P-TMSI ---\n\n");
+
+	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
+		       foreign_tlli2, &rai_unknown, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "IDENT REQUEST", &sgsn_peer, 0x1002,
+		       foreign_tlli2, 0, NULL, 0,
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_identity_req, sizeof(dtap_identity_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
+		       foreign_tlli2, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_identity2_resp, sizeof(dtap_identity2_resp));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
+		       foreign_tlli2, 1, imsi2, sizeof(imsi2),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_attach_acc, sizeof(dtap_attach_acc));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info = gbproxy_find_tlli(peer, foreign_tlli2);
+	tlli_info2 = gbproxy_find_tlli(peer, local_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info == tlli_info2);
+	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(tlli_info->tlli.current == foreign_tlli2);
+	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->tlli.net_validated);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+
+	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
+		       local_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_complete, sizeof(dtap_attach_complete));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info = gbproxy_find_tlli(peer, local_tlli);
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(tlli_info->tlli.current == foreign_tlli2);
+	OSMO_ASSERT(tlli_info->tlli.bss_validated);
+	OSMO_ASSERT(!tlli_info->tlli.net_validated);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+
+	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
+		       local_tlli, 1, imsi2, sizeof(imsi2),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_gmm_information, sizeof(dtap_gmm_information));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	tlli_info = gbproxy_find_tlli_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
+	OSMO_ASSERT(tlli_info);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+	/* OSMO_ASSERT(!gbproxy_find_tlli_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1))); */
+
+	tlli_info2 = gbproxy_find_tlli(peer, local_tlli);
+	/* OSMO_ASSERT(tlli_info == tlli_info2); */
+	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
+	OSMO_ASSERT(tlli_info->tlli.current == local_tlli);
+	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+
+	dump_global(stdout, 0);
+
+	gbprox_reset(&gbcfg);
+	gprs_ns_destroy(nsi);
+	nsi = NULL;
+}
+
 static void test_gbproxy_ptmsi_patching()
 {
 	struct gprs_ns_inst *nsi = gprs_ns_instantiate(gprs_ns_callback, NULL);
@@ -3606,6 +3820,7 @@ int main(int argc, char **argv)
 	test_gbproxy();
 	test_gbproxy_ident_changes();
 	test_gbproxy_imsi_matching();
+	test_gbproxy_ptmsi_assignment();
 	test_gbproxy_ra_patching();
 	test_gbproxy_ptmsi_patching();
 	test_gbproxy_imsi_acquisition();
