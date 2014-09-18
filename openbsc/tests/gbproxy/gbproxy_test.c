@@ -2203,6 +2203,7 @@ static void test_gbproxy_imsi_acquisition()
 	const uint32_t sgsn_ptmsi = 0xefe2b700;
 	const uint32_t local_sgsn_tlli = 0xefe2b700;
 	const uint32_t random_sgsn_tlli = 0x7c69fb81;
+	const uint32_t random_sgsn_tlli2 = 0x7eb52dfb;
 
 	const uint32_t bss_ptmsi = 0xc00f7304;
 	const uint32_t local_bss_tlli = 0xc00f7304;
@@ -2404,6 +2405,43 @@ static void test_gbproxy_imsi_acquisition()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	/* RA Update request */
+
+	send_llc_ul_ui(nsi, "RA UPD REQ", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli, &rai_unknown, 0x7080,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_ra_upd_req, sizeof(dtap_ra_upd_req));
+
+	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_identity_resp, sizeof(dtap_identity_resp));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "RA UDP ACC", &sgsn_peer, 0x1002,
+		       random_sgsn_tlli2, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_ra_upd_acc, sizeof(dtap_ra_upd_acc));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	/* Detach */
+
+	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
+		       local_bss_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_detach_req, sizeof(dtap_detach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	send_llc_dl_ui(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
+		       local_sgsn_tlli, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_detach_acc, sizeof(dtap_detach_acc));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
 	/* Special case: Repeated Attach Requests */
 
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
@@ -2427,6 +2465,25 @@ static void test_gbproxy_imsi_acquisition()
 
 	send_llc_ul_ui(nsi, "DETACH REQ (unknown TLLI)", &bss_peer[0], 0x1002,
 		       other_bss_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_detach_req, sizeof(dtap_detach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	/* Special case: Repeated RA Update Requests */
+
+	send_llc_ul_ui(nsi, "RA UPD REQ", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli, &rai_unknown, 0x7080,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_ra_upd_req, sizeof(dtap_ra_upd_req));
+
+	send_llc_ul_ui(nsi, "RA UPD REQ", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli, &rai_unknown, 0x7080,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_ra_upd_req, sizeof(dtap_ra_upd_req));
+
+	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
+		       foreign_bss_tlli, &rai_bss, cell_id,
 		       GPRS_SAPI_GMM, bss_nu++,
 		       dtap_detach_req, sizeof(dtap_detach_req));
 
