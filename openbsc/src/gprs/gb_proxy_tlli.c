@@ -38,6 +38,9 @@ struct gbproxy_link_info *gbproxy_link_info_by_tlli(struct gbproxy_peer *peer,
 	struct gbproxy_link_info *link_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
+	if (!tlli)
+		return NULL;
+
 	llist_for_each_entry(link_info, &state->logical_links, list)
 		if (link_info->tlli.current == tlli ||
 		    link_info->tlli.assigned == tlli)
@@ -53,6 +56,9 @@ struct gbproxy_link_info *gbproxy_link_info_by_ptmsi(
 	struct gbproxy_link_info *link_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
+	if (ptmsi == GSM_RESERVED_TMSI)
+		return NULL;
+
 	llist_for_each_entry(link_info, &state->logical_links, list)
 		if (link_info->tlli.ptmsi == ptmsi)
 			return link_info;
@@ -66,6 +72,9 @@ struct gbproxy_link_info *gbproxy_link_info_by_any_sgsn_tlli(
 {
 	struct gbproxy_link_info *link_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
+
+	if (!tlli)
+		return NULL;
 
 	/* Don't care about the NSEI */
 	llist_for_each_entry(link_info, &state->logical_links, list)
@@ -82,6 +91,9 @@ struct gbproxy_link_info *gbproxy_link_info_by_sgsn_tlli(
 {
 	struct gbproxy_link_info *link_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
+
+	if (!tlli)
+		return NULL;
 
 	llist_for_each_entry(link_info, &state->logical_links, list)
 		if ((link_info->sgsn_tlli.current == tlli ||
