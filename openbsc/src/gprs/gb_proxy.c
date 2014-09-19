@@ -299,7 +299,6 @@ static void gbproxy_reset_imsi_acquisition(struct gbproxy_tlli_info* tlli_info)
 
 static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 					  struct msgb *msg,
-					  uint16_t sgsn_nsei,
 					  time_t now,
 					  struct gbproxy_tlli_info* tlli_info,
 					  struct gprs_gb_parse_context *parse_ctx)
@@ -333,7 +332,7 @@ static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 						&tmp_parse_ctx);
 
 		rc = gbprox_relay2sgsn(peer->cfg, stored_msg,
-				       msgb_bvci(msg), sgsn_nsei);
+				       msgb_bvci(msg), tlli_info->sgsn_nsei);
 
 		if (rc < 0)
 			LOGP(DLLC, LOGL_ERROR,
@@ -388,7 +387,6 @@ static void gbproxy_tx_detach_acc(struct gbproxy_peer *peer,
 /* Return != 0 iff msg still needs to be processed */
 static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 				    struct msgb *msg,
-				    uint16_t sgsn_nsei,
 				    time_t now,
 				    struct gbproxy_tlli_info* tlli_info,
 				    struct gprs_gb_parse_context *parse_ctx)
@@ -442,8 +440,8 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 			parse_ctx->g48_hdr->msg_type == GSM48_MT_GMM_ID_RESP;
 
 		/* The IMSI is now available */
-		gbproxy_flush_stored_messages(peer, msg, sgsn_nsei, now,
-					      tlli_info, parse_ctx);
+		gbproxy_flush_stored_messages(peer, msg, now, tlli_info,
+					      parse_ctx);
 
 		gbproxy_reset_imsi_acquisition(tlli_info);
 
@@ -583,8 +581,8 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 
 	/* Handle IMSI acquisition */
 	if (cfg->acquire_imsi) {
-		rc = gbproxy_imsi_acquisition(peer, msg, sgsn_nsei, now,
-					      tlli_info, &parse_ctx);
+		rc = gbproxy_imsi_acquisition(peer, msg, now, tlli_info,
+					      &parse_ctx);
 		if (rc <= 0)
 			return rc;
 	}
