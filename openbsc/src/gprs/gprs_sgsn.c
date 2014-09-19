@@ -359,15 +359,23 @@ uint32_t sgsn_alloc_ptmsi(void)
 {
 	struct sgsn_mm_ctx *mm;
 	uint32_t ptmsi;
+	int max_retries = 23;
 
 restart:
 	ptmsi = rand() | 0xC0000000;
 	llist_for_each_entry(mm, &sgsn_mm_ctxts, list) {
-		if (mm->p_tmsi == ptmsi)
+		if (mm->p_tmsi == ptmsi) {
+			if (!max_retries--)
+				goto failed;
 			goto restart;
+		}
 	}
 
 	return ptmsi;
+
+failed:
+	LOGP(DGPRS, LOGL_ERROR, "Failed to allocate a P-TMSI\n");
+	return GSM_RESERVED_TMSI;
 }
 
 static void drop_one_pdp(struct sgsn_pdp_ctx *pdp)

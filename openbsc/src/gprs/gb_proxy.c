@@ -226,6 +226,7 @@ uint32_t gbproxy_make_bss_ptmsi(struct gbproxy_peer *peer,
 				uint32_t sgsn_ptmsi)
 {
 	uint32_t bss_ptmsi;
+	int max_retries = 23;
 	if (!peer->cfg->patch_ptmsi) {
 		bss_ptmsi = sgsn_ptmsi;
 	} else {
@@ -235,8 +236,11 @@ uint32_t gbproxy_make_bss_ptmsi(struct gbproxy_peer *peer,
 
 			if (gbproxy_find_tlli_by_ptmsi(peer, bss_ptmsi))
 				bss_ptmsi = GSM_RESERVED_TMSI;
-		} while (bss_ptmsi == GSM_RESERVED_TMSI);
+		} while (bss_ptmsi == GSM_RESERVED_TMSI && max_retries--);
 	}
+
+	if (bss_ptmsi == GSM_RESERVED_TMSI)
+		LOGP(DGPRS, LOGL_ERROR, "Failed to allocate a BSS P-TMSI\n");
 
 	return bss_ptmsi;
 }
@@ -246,6 +250,7 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 				uint32_t bss_tlli)
 {
 	uint32_t sgsn_tlli;
+	int max_retries = 23;
 	if (!peer->cfg->patch_ptmsi) {
 		sgsn_tlli = bss_tlli;
 	} else if (tlli_info->sgsn_tlli.ptmsi != GSM_RESERVED_TMSI) {
@@ -259,8 +264,12 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 
 			if (gbproxy_find_tlli_by_any_sgsn_tlli(peer, sgsn_tlli))
 				sgsn_tlli = 0;
-		} while (!sgsn_tlli);
+		} while (!sgsn_tlli && max_retries--);
 	}
+
+	if (!sgsn_tlli)
+		LOGP(DGPRS, LOGL_ERROR, "Failed to allocate an SGSN TLLI\n");
+
 	return sgsn_tlli;
 }
 
