@@ -3780,7 +3780,7 @@ static void test_gbproxy_tlli_expire(void)
 		register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(peer->patch_state.logical_link_count == 2);
 
-		num_removed = gbproxy_remove_stale_link_infos(peer, time(NULL) + 2);
+		num_removed = gbproxy_remove_stale_link_infos(peer, now + 2);
 		OSMO_ASSERT(num_removed == 1);
 		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
