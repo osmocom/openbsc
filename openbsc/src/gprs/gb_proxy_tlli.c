@@ -32,7 +32,7 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/talloc.h>
 
-struct gbproxy_tlli_info *gbproxy_find_tlli(struct gbproxy_peer *peer,
+struct gbproxy_tlli_info *gbproxy_tlli_info_by_tlli(struct gbproxy_peer *peer,
 					    uint32_t tlli)
 {
 	struct gbproxy_tlli_info *tlli_info;
@@ -46,7 +46,7 @@ struct gbproxy_tlli_info *gbproxy_find_tlli(struct gbproxy_peer *peer,
 	return NULL;
 }
 
-struct gbproxy_tlli_info *gbproxy_find_tlli_by_ptmsi(
+struct gbproxy_tlli_info *gbproxy_tlli_info_by_ptmsi(
 	struct gbproxy_peer *peer,
 	uint32_t ptmsi)
 {
@@ -60,7 +60,7 @@ struct gbproxy_tlli_info *gbproxy_find_tlli_by_ptmsi(
 	return NULL;
 }
 
-struct gbproxy_tlli_info *gbproxy_find_tlli_by_any_sgsn_tlli(
+struct gbproxy_tlli_info *gbproxy_tlli_info_by_any_sgsn_tlli(
 	struct gbproxy_peer *peer,
 	uint32_t tlli)
 {
@@ -76,7 +76,7 @@ struct gbproxy_tlli_info *gbproxy_find_tlli_by_any_sgsn_tlli(
 	return NULL;
 }
 
-struct gbproxy_tlli_info *gbproxy_find_tlli_by_sgsn_tlli(
+struct gbproxy_tlli_info *gbproxy_tlli_info_by_sgsn_tlli(
 	struct gbproxy_peer *peer,
 	uint32_t tlli, uint32_t sgsn_nsei)
 {
@@ -92,7 +92,7 @@ struct gbproxy_tlli_info *gbproxy_find_tlli_by_sgsn_tlli(
 	return NULL;
 }
 
-struct gbproxy_tlli_info *gbproxy_find_tlli_by_imsi(
+struct gbproxy_tlli_info *gbproxy_tlli_info_by_imsi(
 	struct gbproxy_peer *peer,
 	const uint8_t *imsi,
 	size_t imsi_len)
@@ -125,7 +125,7 @@ void gbproxy_tlli_info_discard_messages(struct gbproxy_tlli_info *tlli_info)
 	}
 }
 
-void gbproxy_delete_tlli(struct gbproxy_peer *peer,
+void gbproxy_delete_tlli_info(struct gbproxy_peer *peer,
 			 struct gbproxy_tlli_info *tlli_info)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
@@ -140,13 +140,13 @@ void gbproxy_delete_tlli(struct gbproxy_peer *peer,
 		state->enabled_tllis_count;
 }
 
-void gbproxy_delete_tllis(struct gbproxy_peer *peer)
+void gbproxy_delete_tlli_infos(struct gbproxy_peer *peer)
 {
 	struct gbproxy_tlli_info *tlli_info, *nxt;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list)
-		gbproxy_delete_tlli(peer, tlli_info);
+		gbproxy_delete_tlli_info(peer, tlli_info);
 
 	OSMO_ASSERT(state->enabled_tllis_count == 0);
 	OSMO_ASSERT(llist_empty(&state->enabled_tllis));
@@ -165,7 +165,7 @@ void gbproxy_attach_tlli_info(struct gbproxy_peer *peer, time_t now,
 		state->enabled_tllis_count;
 }
 
-int gbproxy_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
+int gbproxy_remove_stale_tlli_infos(struct gbproxy_peer *peer, time_t now)
 {
 	struct gbproxy_patch_state *state = &peer->patch_state;
 	int exceeded_max_len = 0;
@@ -189,7 +189,7 @@ int gbproxy_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
 		     "(stale, length %d, max_len exceeded)\n",
 		     tlli_info->tlli.current, state->enabled_tllis_count);
 
-		gbproxy_delete_tlli(peer, tlli_info);
+		gbproxy_delete_tlli_info(peer, tlli_info);
 		deleted_count += 1;
 	}
 
@@ -211,7 +211,7 @@ int gbproxy_remove_stale_tllis(struct gbproxy_peer *peer, time_t now)
 		     "(stale, age %d, max_age exceeded)\n",
 		     tlli_info->tlli.current, (int)age);
 
-		gbproxy_delete_tlli(peer, tlli_info);
+		gbproxy_delete_tlli_info(peer, tlli_info);
 		deleted_count += 1;
 	}
 
@@ -326,15 +326,16 @@ static void gbproxy_validate_tlli(struct gbproxy_tlli_state *tlli_state,
 	tlli_state->assigned = 0;
 }
 
-void gbproxy_touch_tlli(struct gbproxy_peer *peer,
-			struct gbproxy_tlli_info *tlli_info, time_t now)
+static void gbproxy_touch_tlli_info(struct gbproxy_peer *peer,
+				    struct gbproxy_tlli_info *tlli_info,
+				    time_t now)
 {
 	gbproxy_detach_tlli_info(peer, tlli_info);
 	gbproxy_attach_tlli_info(peer, now, tlli_info);
 }
 
-static void gbproxy_unregister_tlli(struct gbproxy_peer *peer,
-				    struct gbproxy_tlli_info *tlli_info)
+static void gbproxy_unregister_tlli_info(struct gbproxy_peer *peer,
+					 struct gbproxy_tlli_info *tlli_info)
 {
 	if (!tlli_info)
 		return;
@@ -343,7 +344,7 @@ static void gbproxy_unregister_tlli(struct gbproxy_peer *peer,
 		LOGP(DGPRS, LOGL_INFO,
 		     "Removing TLLI %08x from list (P-TMSI or IMSI are not set)\n",
 		     tlli_info->tlli.current);
-		gbproxy_delete_tlli(peer, tlli_info);
+		gbproxy_delete_tlli_info(peer, tlli_info);
 		return;
 	}
 
@@ -374,7 +375,7 @@ void gbproxy_assign_imsi(struct gbproxy_peer *peer,
 	struct gbproxy_tlli_info *other_tlli_info;
 
 	/* Make sure that there is a second entry with the same IMSI */
-	other_tlli_info = gbproxy_find_tlli_by_imsi(
+	other_tlli_info = gbproxy_tlli_info_by_imsi(
 		peer, parse_ctx->imsi, parse_ctx->imsi_len);
 
 	if (other_tlli_info && other_tlli_info != tlli_info) {
@@ -385,7 +386,7 @@ void gbproxy_assign_imsi(struct gbproxy_peer *peer,
 		LOGP(DGPRS, LOGL_INFO,
 		     "Removing TLLI %08x from list (IMSI %s re-used)\n",
 		     other_tlli_info->tlli.current, mi_buf);
-		gbproxy_delete_tlli(peer, other_tlli_info);
+		gbproxy_delete_tlli_info(peer, other_tlli_info);
 	}
 
 	/* Update the IMSI field */
@@ -414,8 +415,8 @@ static int gbproxy_tlli_match(const struct gbproxy_tlli_state *a,
 	return 0;
 }
 
-static void gbproxy_remove_matching_tllis(struct gbproxy_peer *peer,
-					  struct gbproxy_tlli_info *tlli_info)
+static void gbproxy_remove_matching_tlli_infos(
+	struct gbproxy_peer *peer, struct gbproxy_tlli_info *tlli_info)
 {
 	struct gbproxy_tlli_info *info, *nxt;
 	struct gbproxy_patch_state *state = &peer->patch_state;
@@ -433,7 +434,7 @@ static void gbproxy_remove_matching_tllis(struct gbproxy_peer *peer,
 		LOGP(DGPRS, LOGL_INFO,
 		     "Removing TLLI %08x from list (P-TMSI/TLLI re-used)\n",
 		     info->tlli.current);
-		gbproxy_delete_tlli(peer, info);
+		gbproxy_delete_tlli_info(peer, info);
 	}
 }
 
@@ -444,10 +445,10 @@ struct gbproxy_tlli_info *gbproxy_get_tlli_info_ul(
 	struct gbproxy_tlli_info *tlli_info = NULL;
 
 	if (parse_ctx->tlli_enc)
-		tlli_info = gbproxy_find_tlli(peer, parse_ctx->tlli);
+		tlli_info = gbproxy_tlli_info_by_tlli(peer, parse_ctx->tlli);
 
 	if (!tlli_info && parse_ctx->imsi)
-		tlli_info = gbproxy_find_tlli_by_imsi(
+		tlli_info = gbproxy_tlli_info_by_imsi(
 			peer, parse_ctx->imsi, parse_ctx->imsi_len);
 
 	if (!tlli_info && parse_ctx->ptmsi_enc && !parse_ctx->old_raid_is_foreign) {
@@ -458,7 +459,7 @@ struct gbproxy_tlli_info *gbproxy_get_tlli_info_ul(
 			     "Failed to parse P-TMSI (TLLI is %08x)\n",
 			     parse_ctx->tlli);
 		else
-			tlli_info = gbproxy_find_tlli_by_ptmsi(peer, bss_ptmsi);
+			tlli_info = gbproxy_tlli_info_by_ptmsi(peer, bss_ptmsi);
 	}
 
 	if (tlli_info)
@@ -495,7 +496,7 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_ul(
 			tlli_info->sgsn_tlli.current =
 				gbproxy_make_sgsn_tlli(peer, tlli_info,
 						       parse_ctx->tlli);
-			gbproxy_touch_tlli(peer, tlli_info, now);
+			gbproxy_touch_tlli_info(peer, tlli_info, now);
 		} else {
 			sgsn_tlli = gbproxy_map_tlli(parse_ctx->tlli, tlli_info, 0);
 			if (!sgsn_tlli)
@@ -506,10 +507,10 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_ul(
 					      parse_ctx->tlli, 0);
 			gbproxy_validate_tlli(&tlli_info->sgsn_tlli,
 					      sgsn_tlli, 0);
-			gbproxy_touch_tlli(peer, tlli_info, now);
+			gbproxy_touch_tlli_info(peer, tlli_info, now);
 		}
 	} else if (tlli_info) {
-		gbproxy_touch_tlli(peer, tlli_info, now);
+		gbproxy_touch_tlli_info(peer, tlli_info, now);
 	}
 
 	if (parse_ctx->imsi && tlli_info && tlli_info->imsi_len == 0)
@@ -526,7 +527,7 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 	struct gbproxy_tlli_info *tlli_info = NULL;
 
 	if (parse_ctx->tlli_enc)
-		tlli_info = gbproxy_find_tlli_by_sgsn_tlli(
+		tlli_info = gbproxy_tlli_info_by_sgsn_tlli(
 			peer, parse_ctx->tlli, parse_ctx->peer_nsei);
 
 	if (parse_ctx->tlli_enc && parse_ctx->new_ptmsi_enc && tlli_info) {
@@ -608,9 +609,9 @@ struct gbproxy_tlli_info *gbproxy_update_tlli_state_dl(
 						     tlli_info, 1);
 		gbproxy_validate_tlli(&tlli_info->sgsn_tlli, parse_ctx->tlli, 1);
 		gbproxy_validate_tlli(&tlli_info->tlli, bss_tlli, 1);
-		gbproxy_touch_tlli(peer, tlli_info, now);
+		gbproxy_touch_tlli_info(peer, tlli_info, now);
 	} else if (tlli_info) {
-		gbproxy_touch_tlli(peer, tlli_info, now);
+		gbproxy_touch_tlli_info(peer, tlli_info, now);
 	}
 
 	if (parse_ctx->imsi && tlli_info && tlli_info->imsi_len == 0)
@@ -635,11 +636,11 @@ void gbproxy_update_tlli_state_after(
 		if (keep_info) {
 			LOGP(DGPRS, LOGL_INFO, "Unregistering TLLI %08x\n",
 			     tlli_info->tlli.current);
-			gbproxy_unregister_tlli(peer, tlli_info);
+			gbproxy_unregister_tlli_info(peer, tlli_info);
 		} else {
 			LOGP(DGPRS, LOGL_INFO, "Removing TLLI %08x from list\n",
 			     tlli_info->tlli.current);
-			gbproxy_delete_tlli(peer, tlli_info);
+			gbproxy_delete_tlli_info(peer, tlli_info);
 		}
 	} else if (parse_ctx->to_bss && parse_ctx->tlli_enc &&
 		   parse_ctx->new_ptmsi_enc && tlli_info) {
@@ -661,10 +662,10 @@ void gbproxy_update_tlli_state_after(
 				      peer, new_sgsn_tlli);
 		gbproxy_reassign_tlli(&tlli_info->tlli,
 				      peer, new_bss_tlli);
-		gbproxy_remove_matching_tllis(peer, tlli_info);
+		gbproxy_remove_matching_tlli_infos(peer, tlli_info);
 	}
 
-	gbproxy_remove_stale_tllis(peer, now);
+	gbproxy_remove_stale_tlli_infos(peer, now);
 }
 
 

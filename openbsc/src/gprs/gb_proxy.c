@@ -234,7 +234,7 @@ uint32_t gbproxy_make_bss_ptmsi(struct gbproxy_peer *peer,
 			bss_ptmsi = rand_r(&peer->cfg->bss_ptmsi_state);
 			bss_ptmsi = bss_ptmsi | 0xC0000000;
 
-			if (gbproxy_find_tlli_by_ptmsi(peer, bss_ptmsi))
+			if (gbproxy_tlli_info_by_ptmsi(peer, bss_ptmsi))
 				bss_ptmsi = GSM_RESERVED_TMSI;
 		} while (bss_ptmsi == GSM_RESERVED_TMSI && max_retries--);
 	}
@@ -262,7 +262,7 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 			sgsn_tlli = rand_r(&peer->cfg->sgsn_tlli_state);
 			sgsn_tlli = (sgsn_tlli & 0x7fffffff) | 0x78000000;
 
-			if (gbproxy_find_tlli_by_any_sgsn_tlli(peer, sgsn_tlli))
+			if (gbproxy_tlli_info_by_any_sgsn_tlli(peer, sgsn_tlli))
 				sgsn_tlli = 0;
 		} while (!sgsn_tlli && max_retries--);
 	}

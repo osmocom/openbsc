@@ -643,7 +643,7 @@ DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
 
 		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli.current,
 			VTY_NEWLINE);
-		gbproxy_delete_tlli(peer, tlli_info);
+		gbproxy_delete_tlli_info(peer, tlli_info);
 		found += 1;
 	}
 
@@ -680,7 +680,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	state = &peer->patch_state;
 
 	if (match == MATCH_STALE) {
-		found = gbproxy_remove_stale_tllis(peer, time(NULL));
+		found = gbproxy_remove_stale_tlli_infos(peer, time(NULL));
 		if (found)
 			vty_out(vty, "Deleted %d stale TLLI%s%s",
 				found, found == 1 ? "" : "s", VTY_NEWLINE);
@@ -690,7 +690,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 			if (!tlli_info->is_deregistered)
 				continue;
 
-			gbproxy_delete_tlli(peer, tlli_info);
+			gbproxy_delete_tlli_info(peer, tlli_info);
 			found += 1;
 		}
 	}
