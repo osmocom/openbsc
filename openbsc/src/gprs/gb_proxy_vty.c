@@ -109,12 +109,12 @@ static int config_write_gbproxy(struct vty *vty)
 			VTY_NEWLINE);
 
 	if (g_cfg->tlli_max_age > 0)
-		vty_out(vty, " tlli-list max-age %d%s",
+		vty_out(vty, " link-list max-age %d%s",
 			g_cfg->tlli_max_age, VTY_NEWLINE);
 	if (g_cfg->tlli_max_len > 0)
-		vty_out(vty, " tlli-list max-length %d%s",
+		vty_out(vty, " link-list max-length %d%s",
 			g_cfg->tlli_max_len, VTY_NEWLINE);
-	vty_out(vty, " tlli-list keep-mode %s%s",
+	vty_out(vty, " link-list keep-mode %s%s",
 		get_value_string(keep_modes, g_cfg->keep_link_infos),
 		VTY_NEWLINE);
 
@@ -363,13 +363,13 @@ DEFUN(cfg_gbproxy_no_secondary_sgsn,
 	return CMD_SUCCESS;
 }
 
-#define GBPROXY_TLLI_LIST_STR "Set TLLI list parameters\n"
+#define GBPROXY_LINK_LIST_STR "Set TLLI list parameters\n"
 #define GBPROXY_MAX_AGE_STR "Limit maximum age\n"
 
-DEFUN(cfg_gbproxy_tlli_list_max_age,
-      cfg_gbproxy_tlli_list_max_age_cmd,
-      "tlli-list max-age <1-999999>",
-      GBPROXY_TLLI_LIST_STR GBPROXY_MAX_AGE_STR
+DEFUN(cfg_gbproxy_link_list_max_age,
+      cfg_gbproxy_link_list_max_age_cmd,
+      "link-list max-age <1-999999>",
+      GBPROXY_LINK_LIST_STR GBPROXY_MAX_AGE_STR
       "Maximum age in seconds\n")
 {
 	g_cfg->tlli_max_age = atoi(argv[0]);
@@ -377,10 +377,10 @@ DEFUN(cfg_gbproxy_tlli_list_max_age,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_gbproxy_tlli_list_no_max_age,
-      cfg_gbproxy_tlli_list_no_max_age_cmd,
-      "no tlli-list max-age",
-      NO_STR GBPROXY_TLLI_LIST_STR GBPROXY_MAX_AGE_STR)
+DEFUN(cfg_gbproxy_link_list_no_max_age,
+      cfg_gbproxy_link_list_no_max_age_cmd,
+      "no link-list max-age",
+      NO_STR GBPROXY_LINK_LIST_STR GBPROXY_MAX_AGE_STR)
 {
 	g_cfg->tlli_max_age = 0;
 
@@ -389,31 +389,31 @@ DEFUN(cfg_gbproxy_tlli_list_no_max_age,
 
 #define GBPROXY_MAX_LEN_STR "Limit list length\n"
 
-DEFUN(cfg_gbproxy_tlli_list_max_len,
-      cfg_gbproxy_tlli_list_max_len_cmd,
-      "tlli-list max-length <1-99999>",
-      GBPROXY_TLLI_LIST_STR GBPROXY_MAX_LEN_STR
-      "Maximum number of TLLIs in the list\n")
+DEFUN(cfg_gbproxy_link_list_max_len,
+      cfg_gbproxy_link_list_max_len_cmd,
+      "link-list max-length <1-99999>",
+      GBPROXY_LINK_LIST_STR GBPROXY_MAX_LEN_STR
+      "Maximum number of logical links in the list\n")
 {
 	g_cfg->tlli_max_len = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_gbproxy_tlli_list_no_max_len,
-      cfg_gbproxy_tlli_list_no_max_len_cmd,
-      "no tlli-list max-length",
-      NO_STR GBPROXY_TLLI_LIST_STR GBPROXY_MAX_LEN_STR)
+DEFUN(cfg_gbproxy_link_list_no_max_len,
+      cfg_gbproxy_link_list_no_max_len_cmd,
+      "no link-list max-length",
+      NO_STR GBPROXY_LINK_LIST_STR GBPROXY_MAX_LEN_STR)
 {
 	g_cfg->tlli_max_len = 0;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_gbproxy_tlli_list_keep_mode,
-      cfg_gbproxy_tlli_list_keep_mode_cmd,
-      "tlli-list keep-mode (never|re-attach|identified|always)",
-      GBPROXY_TLLI_LIST_STR "How to keep entries for detached TLLIs\n"
+DEFUN(cfg_gbproxy_link_list_keep_mode,
+      cfg_gbproxy_link_list_keep_mode_cmd,
+      "link-list keep-mode (never|re-attach|identified|always)",
+      GBPROXY_LINK_LIST_STR "How to keep entries for detached logical links\n"
       "Discard entry immediately after detachment\n"
       "Keep entry if a re-attachment has be requested\n"
       "Keep entry if it associated with an IMSI\n"
@@ -445,8 +445,8 @@ DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy [stats]",
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
-       SHOW_STR "Display information about the Gb proxy\n" "Show TLLIs\n")
+DEFUN(show_gbproxy_links, show_gbproxy_links_cmd, "show gbproxy links",
+       SHOW_STR "Display information about the Gb proxy\n" "Show logical links\n")
 {
 	struct gbproxy_peer *peer;
 	char mi_buf[200];
@@ -583,12 +583,12 @@ DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 	return CMD_SUCCESS;
 }
 
-#define GBPROXY_DELETE_TLLI_STR \
-	"Delete a GBProxy TLLI entry by NSEI and identification\nNSEI number\n"
+#define GBPROXY_DELETE_LINK_STR \
+	"Delete a GBProxy logical link entry by NSEI and identification\nNSEI number\n"
 
-DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
-	"delete-gbproxy-tlli <0-65534> (tlli|imsi|sgsn-nsei) IDENT",
-	GBPROXY_DELETE_TLLI_STR
+DEFUN(delete_gb_link_by_id, delete_gb_link_by_id_cmd,
+	"delete-gbproxy-link <0-65534> (tlli|imsi|sgsn-nsei) IDENT",
+	GBPROXY_DELETE_LINK_STR
 	"Delete entries with a matching TLLI (hex)\n"
 	"Delete entries with a matching IMSI\n"
 	"Identification to match\n")
@@ -641,23 +641,23 @@ DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
 			break;
 		}
 
-		vty_out(vty, "Deleting TLLI %08x%s", link_info->tlli.current,
+		vty_out(vty, "Deleting link with TLLI %08x%s", link_info->tlli.current,
 			VTY_NEWLINE);
 		gbproxy_delete_link_info(peer, link_info);
 		found += 1;
 	}
 
 	if (!found && argc >= 2) {
-		vty_out(vty, "Didn't find TLLI entry with %s %s%s",
+		vty_out(vty, "Didn't find link entry with %s %s%s",
 			argv[1], argv[2], VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
-	"delete-gbproxy-tlli <0-65534> (stale|de-registered)",
-	GBPROXY_DELETE_TLLI_STR
+DEFUN(delete_gb_link, delete_gb_link_cmd,
+	"delete-gbproxy-link <0-65534> (stale|de-registered)",
+	GBPROXY_DELETE_LINK_STR
 	"Delete stale entries\n"
 	"Delete de-registered entries\n")
 {
@@ -682,7 +682,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	if (match == MATCH_STALE) {
 		found = gbproxy_remove_stale_link_infos(peer, time(NULL));
 		if (found)
-			vty_out(vty, "Deleted %d stale TLLI%s%s",
+			vty_out(vty, "Deleted %d stale logical link%s%s",
 				found, found == 1 ? "" : "s", VTY_NEWLINE);
 	} else {
 		llist_for_each_entry_safe(link_info, nxt,
@@ -696,7 +696,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	}
 
 	if (found)
-		vty_out(vty, "Deleted %d %s TLLI%s%s",
+		vty_out(vty, "Deleted %d %s logical link%s%s",
 			found, argv[1], found == 1 ? "" : "s", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
@@ -705,12 +705,12 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 int gbproxy_vty_init(void)
 {
 	install_element_ve(&show_gbproxy_cmd);
-	install_element_ve(&show_gbproxy_tllis_cmd);
+	install_element_ve(&show_gbproxy_links_cmd);
 
 	install_element(ENABLE_NODE, &delete_gb_bvci_cmd);
 	install_element(ENABLE_NODE, &delete_gb_nsei_cmd);
-	install_element(ENABLE_NODE, &delete_gb_tlli_by_id_cmd);
-	install_element(ENABLE_NODE, &delete_gb_tlli_cmd);
+	install_element(ENABLE_NODE, &delete_gb_link_by_id_cmd);
+	install_element(ENABLE_NODE, &delete_gb_link_cmd);
 
 	install_element(CONFIG_NODE, &cfg_gbproxy_cmd);
 	install_node(&gbproxy_node, config_write_gbproxy);
@@ -723,9 +723,9 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_secondary_sgsn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_acquire_imsi_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_age_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_max_len_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_keep_mode_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_link_list_max_age_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_link_list_max_len_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_link_list_keep_mode_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mcc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_core_mnc_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_match_imsi_cmd);
@@ -733,8 +733,8 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_secondary_sgsn_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_patch_ptmsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_acquire_imsi_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_age_cmd);
-	install_element(GBPROXY_NODE, &cfg_gbproxy_tlli_list_no_max_len_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_link_list_no_max_age_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_link_list_no_max_len_cmd);
 
 	return 0;
 }
