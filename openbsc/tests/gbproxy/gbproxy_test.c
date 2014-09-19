@@ -87,7 +87,7 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 		return rc;
 
 	llist_for_each_entry(peer, &cfg->bts_peers, list) {
-		struct gbproxy_tlli_info *tlli_info;
+		struct gbproxy_link_info *link_info;
 		struct gbproxy_patch_state *state = &peer->patch_state;
 		gsm48_parse_ra(&raid, peer->ra);
 
@@ -118,32 +118,32 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 
 		fprintf(stream, "%*s    TLLI-Cache: %d\n",
 			indent, "", state->enabled_tllis_count);
-		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
+		llist_for_each_entry(link_info, &state->enabled_tllis, list) {
 			char mi_buf[200];
-			time_t age = now ? now - tlli_info->timestamp : 0;
+			time_t age = now ? now - link_info->timestamp : 0;
 			int stored_msgs = 0;
 			struct llist_head *iter;
-			llist_for_each(iter, &tlli_info->stored_msgs)
+			llist_for_each(iter, &link_info->stored_msgs)
 				stored_msgs++;
 
-			if (tlli_info->imsi_len > 0) {
+			if (link_info->imsi_len > 0) {
 				snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
 				gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
-						   tlli_info->imsi,
-						   tlli_info->imsi_len);
+						   link_info->imsi,
+						   link_info->imsi_len);
 			} else {
 				snprintf(mi_buf, sizeof(mi_buf), "(none)");
 			}
 			fprintf(stream, "%*s      TLLI %08x",
-				     indent, "", tlli_info->tlli.current);
-			if (tlli_info->tlli.assigned)
-				fprintf(stream, "/%08x", tlli_info->tlli.assigned);
-			if (tlli_info->sgsn_tlli.current) {
+				     indent, "", link_info->tlli.current);
+			if (link_info->tlli.assigned)
+				fprintf(stream, "/%08x", link_info->tlli.assigned);
+			if (link_info->sgsn_tlli.current) {
 				fprintf(stream, " -> %08x",
-					tlli_info->sgsn_tlli.current);
-				if (tlli_info->sgsn_tlli.assigned)
+					link_info->sgsn_tlli.current);
+				if (link_info->sgsn_tlli.assigned)
 					fprintf(stream, "/%08x",
-						tlli_info->sgsn_tlli.assigned);
+						link_info->sgsn_tlli.assigned);
 			}
 			fprintf(stream, ", IMSI %s, AGE %d",
 				mi_buf, (int)age);
@@ -151,17 +151,17 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 			if (stored_msgs)
 				fprintf(stream, ", STORED %d", stored_msgs);
 
-			if (cfg->check_imsi && tlli_info->imsi_matches)
+			if (cfg->check_imsi && link_info->imsi_matches)
 				fprintf(stream, ", IMSI matches");
 
-			if (tlli_info->imsi_acq_pending)
+			if (link_info->imsi_acq_pending)
 				fprintf(stream, ", IMSI acquisition in progress");
 
 			if (cfg->route_to_sgsn2)
 				fprintf(stream, ", SGSN NSEI %d",
-					tlli_info->sgsn_nsei);
+					link_info->sgsn_nsei);
 
-			if (tlli_info->is_deregistered)
+			if (link_info->is_deregistered)
 				fprintf(stream, ", DE-REGISTERED");
 
 			rc = fprintf(stream, "\n");
@@ -1386,7 +1386,7 @@ static void test_gbproxy_ra_patching()
 	const uint32_t foreign_tlli = 0xbbc54679;
 	const uint32_t foreign_tlli2 = 0xbb00beef;
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
-	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_link_info *link_info;
 	struct gbproxy_peer *peer;
 
 	OSMO_ASSERT(local_tlli == gprs_tmsi2tlli(ptmsi, TLLI_LOCAL));
@@ -1479,16 +1479,16 @@ static void test_gbproxy_ra_patching()
 	OSMO_ASSERT(gbproxy_peer_by_lac(&gbcfg, convert_ra(&rai_sgsn)) != NULL);
 	OSMO_ASSERT(gbproxy_peer_by_lac(&gbcfg, convert_ra(&rai_unknown)) == NULL);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current != local_tlli);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current != local_tlli);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->tlli.current != local_tlli);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current != local_tlli);
+	OSMO_ASSERT(!link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_tlli, &rai_bss, cell_id,
@@ -1497,16 +1497,16 @@ static void test_gbproxy_ra_patching()
 
 	OSMO_ASSERT(6 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current != local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current != local_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->tlli.current != local_tlli);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current != local_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	/* Replace APN (1) */
 	send_llc_ul_ui(nsi, "ACT PDP CTX REQ (REPLACE APN)", &bss_peer[0], 0x1002,
@@ -1516,16 +1516,16 @@ static void test_gbproxy_ra_patching()
 
 	OSMO_ASSERT(7 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current != local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current != local_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->tlli.current != local_tlli);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current != local_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
 		       local_tlli, 1, imsi, sizeof(imsi),
@@ -1534,12 +1534,12 @@ static void test_gbproxy_ra_patching()
 
 	OSMO_ASSERT(2 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_SGSN].current);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->tlli.current == local_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_tlli);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->tlli.current == local_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_tlli);
 
 	/* Replace APN (2) */
 	send_llc_ul_ui(nsi, "ACT PDP CTX REQ (REPLACE APN)", &bss_peer[0], 0x1002,
@@ -1664,7 +1664,7 @@ static void test_gbproxy_ptmsi_assignment()
 	const uint8_t imsi1[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
 	const uint8_t imsi2[] = {0x11, 0x12, 0x99, 0x99, 0x99, 0x16, 0x17, 0x18};
 
-	struct gbproxy_tlli_info *tlli_info, *tlli_info2;
+	struct gbproxy_link_info *link_info, *link_info2;
 	struct gbproxy_peer *peer;
 	unsigned bss_nu = 0;
 	unsigned sgsn_nu = 0;
@@ -1734,15 +1734,15 @@ static void test_gbproxy_ptmsi_assignment()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli1);
-	tlli_info2 = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info == tlli_info2);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_tlli1);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli1);
+	link_info2 = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_tlli1);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == ptmsi);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_tlli, &rai_bss, cell_id,
@@ -1751,13 +1751,13 @@ static void test_gbproxy_ptmsi_assignment()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_tlli1);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+	link_info = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_tlli1);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == ptmsi);
 
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
@@ -1767,16 +1767,16 @@ static void test_gbproxy_ptmsi_assignment()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
-	OSMO_ASSERT(!gbproxy_tlli_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2)));
+	link_info = gbproxy_link_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.ptmsi == ptmsi);
+	OSMO_ASSERT(!gbproxy_link_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2)));
 
-	tlli_info2 = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info == tlli_info2);
-	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->tlli.current == local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+	link_info2 = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->tlli.current == local_tlli);
+	OSMO_ASSERT(link_info->tlli.ptmsi == ptmsi);
 
 	printf("--- Establish second LLC connection with the same P-TMSI ---\n\n");
 
@@ -1808,15 +1808,15 @@ static void test_gbproxy_ptmsi_assignment()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli2);
-	tlli_info2 = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info == tlli_info2);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_tlli2);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli2);
+	link_info2 = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_tlli2);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == ptmsi);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_tlli, &rai_bss, cell_id,
@@ -1825,13 +1825,13 @@ static void test_gbproxy_ptmsi_assignment()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_tlli2);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+	link_info = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_tlli2);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == ptmsi);
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
 		       local_tlli, 1, imsi2, sizeof(imsi2),
@@ -1840,16 +1840,16 @@ static void test_gbproxy_ptmsi_assignment()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
-	OSMO_ASSERT(!gbproxy_tlli_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1)));
+	link_info = gbproxy_link_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.ptmsi == ptmsi);
+	OSMO_ASSERT(!gbproxy_link_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1)));
 
-	tlli_info2 = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info == tlli_info2);
-	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->tlli.current == local_tlli);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == ptmsi);
+	link_info2 = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->tlli.current == local_tlli);
+	OSMO_ASSERT(link_info->tlli.ptmsi == ptmsi);
 
 	dump_global(stdout, 0);
 
@@ -1892,7 +1892,7 @@ static void test_gbproxy_ptmsi_patching()
 
 
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
-	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_link_info *link_info;
 	struct gbproxy_peer *peer;
 	unsigned bss_nu = 0;
 	unsigned sgsn_nu = 0;
@@ -1967,18 +1967,18 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == bss_ptmsi);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli);
+	OSMO_ASSERT(!link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.ptmsi == sgsn_ptmsi);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_bss_tlli, &rai_bss, cell_id,
@@ -1987,16 +1987,16 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
 		       local_sgsn_tlli, 1, imsi, sizeof(imsi),
@@ -2005,12 +2005,12 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.current == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
 
 	send_llc_ul_ui(nsi, "ACT PDP CTX REQ (REPLACE APN)", &bss_peer[0], 0x1002,
 		       local_bss_tlli, &rai_bss, cell_id,
@@ -2053,19 +2053,19 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI) != NULL);
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli2);
-	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi2);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli2);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi2);
+	OSMO_ASSERT(gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI) != NULL);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli2);
+	OSMO_ASSERT(link_info->tlli.current == local_bss_tlli);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == bss_ptmsi2);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli2);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(!link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.ptmsi == sgsn_ptmsi2);
 
 	send_llc_ul_ui(nsi, "RA UPD REQ (P-TMSI 3)", &bss_peer[0], 0x1002,
 		       local_bss_tlli2, &rai_bss, 0x7080,
@@ -2079,33 +2079,33 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI) == NULL);
-	OSMO_ASSERT(gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli3, SGSN_NSEI) != NULL);
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli3);
-	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi3);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli3);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi3);
+	OSMO_ASSERT(gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI) == NULL);
+	OSMO_ASSERT(gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli3, SGSN_NSEI) != NULL);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli3);
+	OSMO_ASSERT(link_info->tlli.current == local_bss_tlli);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == bss_ptmsi3);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli3);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(!link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.ptmsi == sgsn_ptmsi3);
 
 	send_llc_ul_ui(nsi, "RA UPD COMPLETE", &bss_peer[0], 0x1002,
 		       local_bss_tlli3, &rai_bss, 0x7080,
 		       GPRS_SAPI_GMM, bss_nu++,
 		       dtap_ra_upd_complete, sizeof(dtap_ra_upd_complete));
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, local_bss_tlli3);
+	link_info = gbproxy_link_info_by_tlli(peer, local_bss_tlli3);
 
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
 		       local_sgsn_tlli3, 1, imsi, sizeof(imsi),
@@ -2114,12 +2114,12 @@ static void test_gbproxy_ptmsi_patching()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli3, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli3);
-	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli3);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli3, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.current == local_bss_tlli3);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli3);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
 
 	/* Other messages */
 	send_bssgp_llc_discarded(nsi, &bss_peer[0], 0x1002,
@@ -2211,7 +2211,7 @@ static void test_gbproxy_imsi_acquisition()
 	const uint32_t other_bss_tlli = 0x8000beef;
 
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
-	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_link_info *link_info;
 	struct gbproxy_peer *peer;
 	unsigned bss_nu = 0;
 	unsigned sgsn_nu = 0;
@@ -2289,18 +2289,18 @@ static void test_gbproxy_imsi_acquisition()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == bss_ptmsi);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli);
+	OSMO_ASSERT(!link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.ptmsi == sgsn_ptmsi);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_bss_tlli, &rai_bss, cell_id,
@@ -2309,16 +2309,16 @@ static void test_gbproxy_imsi_acquisition()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
 		       local_sgsn_tlli, 1, imsi, sizeof(imsi),
@@ -2327,12 +2327,12 @@ static void test_gbproxy_imsi_acquisition()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.current == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
 
 	/* Non-DTAP */
 	send_bssgp_ul_unitdata(nsi, "XID (UL)", &bss_peer[0], 0x1002,
@@ -2532,8 +2532,8 @@ static void test_gbproxy_secondary_sgsn()
 	const uint8_t imsi1[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
 	const uint8_t imsi2[] = {0x11, 0x12, 0x99, 0x99, 0x99, 0x16, 0x17, 0x18};
 	const uint8_t imsi3[] = {0x11, 0x12, 0x99, 0x99, 0x99, 0x26, 0x27, 0x28};
-	struct gbproxy_tlli_info *tlli_info;
-	struct gbproxy_tlli_info *other_info;
+	struct gbproxy_link_info *link_info;
+	struct gbproxy_link_info *other_info;
 	struct gbproxy_peer *peer;
 	unsigned bss_nu = 0;
 	unsigned sgsn_nu = 0;
@@ -2636,19 +2636,19 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI));
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi);
+	OSMO_ASSERT(!gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI));
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == bss_ptmsi);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli);
+	OSMO_ASSERT(!link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.ptmsi == sgsn_ptmsi);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_bss_tlli, &rai_bss, cell_id,
@@ -2657,17 +2657,17 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI));
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(!gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI));
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer[0], 0x1002,
 		       local_sgsn_tlli, 1, imsi1, sizeof(imsi1),
@@ -2676,13 +2676,13 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI));
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli);
-	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
+	OSMO_ASSERT(!gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI));
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.current == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
 
 	/* Non-DTAP */
 	send_bssgp_ul_unitdata(nsi, "XID (UL)", &bss_peer[0], 0x1002,
@@ -2761,19 +2761,19 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_sgsn_tlli(peer, random_sgsn_tlli2, SGSN_NSEI));
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, random_sgsn_tlli2, SGSN2_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli2);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli2);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi2);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli2);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli2);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi2);
+	OSMO_ASSERT(!gbproxy_link_info_by_sgsn_tlli(peer, random_sgsn_tlli2, SGSN_NSEI));
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, random_sgsn_tlli2, SGSN2_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli2);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli2);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == bss_ptmsi2);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli2);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli2);
+	OSMO_ASSERT(!link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.ptmsi == sgsn_ptmsi2);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_bss_tlli2, &rai_bss, cell_id,
@@ -2782,17 +2782,17 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI));
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN2_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli2);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli2);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli2);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli2);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(!gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI));
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN2_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli2);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli2);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli2);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli2);
+	OSMO_ASSERT(link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer[1], 0x1002,
 		       local_sgsn_tlli2, 1, imsi2, sizeof(imsi2),
@@ -2801,13 +2801,13 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI));
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN2_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli2);
-	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli2);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
+	OSMO_ASSERT(!gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN_NSEI));
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli2, SGSN2_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.current == local_bss_tlli2);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli2);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
 
 	/* Non-DTAP */
 	send_bssgp_ul_unitdata(nsi, "XID (UL)", &bss_peer[0], 0x1002,
@@ -2886,19 +2886,19 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_sgsn_tlli(peer, random_sgsn_tlli3, SGSN_NSEI));
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, random_sgsn_tlli3, SGSN2_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli3);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli3);
-	OSMO_ASSERT(!tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->tlli.ptmsi == bss_ptmsi3);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli3);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.ptmsi == sgsn_ptmsi);
+	OSMO_ASSERT(!gbproxy_link_info_by_sgsn_tlli(peer, random_sgsn_tlli3, SGSN_NSEI));
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, random_sgsn_tlli3, SGSN2_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli3);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli3);
+	OSMO_ASSERT(!link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->tlli.ptmsi == bss_ptmsi3);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli3);
+	OSMO_ASSERT(!link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.ptmsi == sgsn_ptmsi);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_bss_tlli3, &rai_bss, cell_id,
@@ -2907,19 +2907,19 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	other_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	other_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(other_info);
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info != other_info);
-	OSMO_ASSERT(tlli_info->tlli.assigned == local_bss_tlli3);
-	OSMO_ASSERT(tlli_info->tlli.current == foreign_bss_tlli3);
-	OSMO_ASSERT(tlli_info->tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->tlli.net_validated);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == random_sgsn_tlli3);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.bss_validated);
-	OSMO_ASSERT(!tlli_info->sgsn_tlli.net_validated);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info != other_info);
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli3);
+	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli3);
+	OSMO_ASSERT(link_info->tlli.bss_validated);
+	OSMO_ASSERT(!link_info->tlli.net_validated);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli3);
+	OSMO_ASSERT(link_info->sgsn_tlli.bss_validated);
+	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer[1], 0x1002,
 		       local_sgsn_tlli, 1, imsi3, sizeof(imsi3),
@@ -2928,15 +2928,15 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	other_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
+	other_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(other_info);
-	tlli_info = gbproxy_tlli_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info != other_info);
-	OSMO_ASSERT(tlli_info->tlli.current == local_bss_tlli3);
-	OSMO_ASSERT(tlli_info->tlli.assigned == 0);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.current == local_sgsn_tlli);
-	OSMO_ASSERT(tlli_info->sgsn_tlli.assigned == 0);
+	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN2_NSEI);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info != other_info);
+	OSMO_ASSERT(link_info->tlli.current == local_bss_tlli3);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
 
 
 	printf("--- Shutdown GPRS connection (SGSN 1) ---\n\n");
@@ -3009,7 +3009,7 @@ static void test_gbproxy_keep_info()
 	const uint32_t foreign_tlli = 0xafe2b700;
 
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
-	struct gbproxy_tlli_info *tlli_info, *tlli_info2;
+	struct gbproxy_link_info *link_info, *link_info2;
 	struct gbproxy_peer *peer;
 	unsigned bss_nu = 0;
 	unsigned sgsn_nu = 0;
@@ -3029,7 +3029,7 @@ static void test_gbproxy_keep_info()
 	gbcfg.core_apn_size = 0;
 	gbcfg.route_to_sgsn2 = 0;
 	gbcfg.nsip_sgsn2_nsei = 0xffff;
-	gbcfg.keep_tlli_infos = GBPROX_KEEP_ALWAYS;
+	gbcfg.keep_link_infos = GBPROX_KEEP_ALWAYS;
 
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
@@ -3062,11 +3062,11 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->imsi_len == 0);
-	OSMO_ASSERT(!tlli_info->is_deregistered);
-	OSMO_ASSERT(tlli_info->imsi_acq_pending);
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->imsi_len == 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(link_info->imsi_acq_pending);
 
 	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
 		       foreign_tlli, &rai_bss, cell_id,
@@ -3075,10 +3075,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->imsi_len > 0);
-	OSMO_ASSERT(!tlli_info->imsi_acq_pending);
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->imsi_len > 0);
+	OSMO_ASSERT(!link_info->imsi_acq_pending);
 
 	send_llc_dl_ui(nsi, "IDENT REQUEST", &sgsn_peer, 0x1002,
 		       foreign_tlli, 0, NULL, 0,
@@ -3094,10 +3094,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->imsi_len > 0);
-	OSMO_ASSERT(gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi)));
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->imsi_len > 0);
+	OSMO_ASSERT(gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi)));
 
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
@@ -3120,8 +3120,8 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info);
+	link_info = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
 
 	/* Detach (MO) */
 	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
@@ -3129,8 +3129,8 @@ static void test_gbproxy_keep_info()
 		       GPRS_SAPI_GMM, bss_nu++,
 		       dtap_detach_req, sizeof(dtap_detach_req));
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info);
+	link_info = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
@@ -3141,10 +3141,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_tlli(peer, local_tlli));
-	tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->is_deregistered);
+	OSMO_ASSERT(!gbproxy_link_info_by_tlli(peer, local_tlli));
+	link_info = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->is_deregistered);
 
 	/* Re-Attach */
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
@@ -3154,13 +3154,13 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info2 = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info == tlli_info2);
-	OSMO_ASSERT(tlli_info->imsi_len != 0);
-	OSMO_ASSERT(!tlli_info->is_deregistered);
-	OSMO_ASSERT(!tlli_info->imsi_acq_pending);
+	link_info2 = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->imsi_len != 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(!link_info->imsi_acq_pending);
 
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
@@ -3184,8 +3184,8 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info);
+	link_info = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
 
 	send_llc_ul_ui(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
 		       local_tlli, &rai_bss, cell_id,
@@ -3194,10 +3194,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_tlli(peer, local_tlli));
-	tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->is_deregistered);
+	OSMO_ASSERT(!gbproxy_link_info_by_tlli(peer, local_tlli));
+	link_info = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->is_deregistered);
 
 	/* Re-Attach */
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
@@ -3207,13 +3207,13 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info2 = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info == tlli_info2);
-	OSMO_ASSERT(tlli_info->imsi_len != 0);
-	OSMO_ASSERT(!tlli_info->is_deregistered);
-	OSMO_ASSERT(!tlli_info->imsi_acq_pending);
+	link_info2 = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->imsi_len != 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(!link_info->imsi_acq_pending);
 
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
@@ -3237,8 +3237,8 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info);
+	link_info = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
 
 	send_llc_ul_ui(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
 		       local_tlli, &rai_bss, cell_id,
@@ -3247,10 +3247,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_tlli(peer, local_tlli));
-	tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->is_deregistered);
+	OSMO_ASSERT(!gbproxy_link_info_by_tlli(peer, local_tlli));
+	link_info = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->is_deregistered);
 
 	/* Re-Attach */
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
@@ -3260,13 +3260,13 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info2 = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info == tlli_info2);
-	OSMO_ASSERT(tlli_info->imsi_len != 0);
-	OSMO_ASSERT(!tlli_info->is_deregistered);
-	OSMO_ASSERT(!tlli_info->imsi_acq_pending);
+	link_info2 = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->imsi_len != 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(!link_info->imsi_acq_pending);
 
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
@@ -3295,10 +3295,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_tlli(peer, local_tlli));
-	tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->is_deregistered);
+	OSMO_ASSERT(!gbproxy_link_info_by_tlli(peer, local_tlli));
+	link_info = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->is_deregistered);
 
 	/* Bad case: Re-Attach with wrong (initial) P-TMSI */
 	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
@@ -3308,13 +3308,13 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info2 = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info != tlli_info2);
-	OSMO_ASSERT(tlli_info->imsi_len == 0);
-	OSMO_ASSERT(!tlli_info->is_deregistered);
-	OSMO_ASSERT(tlli_info->imsi_acq_pending);
+	link_info2 = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info != link_info2);
+	OSMO_ASSERT(link_info->imsi_len == 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(link_info->imsi_acq_pending);
 
 	/* This wouldn't happen in reality, since the Attach Request hadn't
 	 * been forwarded to the SGSN.
@@ -3327,13 +3327,13 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info2 = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, foreign_tlli);
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info == tlli_info2);
-	OSMO_ASSERT(tlli_info->imsi_len >= 0);
-	OSMO_ASSERT(!tlli_info->is_deregistered);
-	OSMO_ASSERT(tlli_info->imsi_acq_pending);
+	link_info2 = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->imsi_len >= 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(link_info->imsi_acq_pending);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_tlli, &rai_bss, cell_id,
@@ -3350,8 +3350,8 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, local_tlli);
-	OSMO_ASSERT(tlli_info);
+	link_info = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
 
 	send_llc_ul_ui(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
 		       local_tlli, &rai_bss, cell_id,
@@ -3360,10 +3360,10 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
-	OSMO_ASSERT(!gbproxy_tlli_info_by_tlli(peer, local_tlli));
-	tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi, sizeof(imsi));
-	OSMO_ASSERT(tlli_info);
-	OSMO_ASSERT(tlli_info->is_deregistered);
+	OSMO_ASSERT(!gbproxy_link_info_by_tlli(peer, local_tlli));
+	link_info = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->is_deregistered);
 
 	dump_global(stdout, 0);
 
@@ -3607,11 +3607,11 @@ static void test_tlv_shift_functions()
 	}
 }
 
-struct gbproxy_tlli_info *register_tlli(
+struct gbproxy_link_info *register_tlli(
 	struct gbproxy_peer *peer, uint32_t tlli,
 	const uint8_t *imsi, size_t imsi_len, time_t now)
 {
-	struct gbproxy_tlli_info *tlli_info;
+	struct gbproxy_link_info *link_info;
 	int imsi_matches = -1;
 	int tlli_already_known = 0;
 
@@ -3622,40 +3622,40 @@ struct gbproxy_tlli_info *register_tlli(
 			return NULL;
 	}
 
-	tlli_info = gbproxy_tlli_info_by_tlli(peer, tlli);
+	link_info = gbproxy_link_info_by_tlli(peer, tlli);
 
-	if (!tlli_info) {
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi, imsi_len);
+	if (!link_info) {
+		link_info = gbproxy_link_info_by_imsi(peer, imsi, imsi_len);
 
-		if (tlli_info) {
+		if (link_info) {
 			/* TLLI has changed somehow, adjust it */
 			LOGP(DGPRS, LOGL_INFO,
 			     "The TLLI has changed from %08x to %08x\n",
-			     tlli_info->tlli.current, tlli);
-			tlli_info->tlli.current = tlli;
+			     link_info->tlli.current, tlli);
+			link_info->tlli.current = tlli;
 		}
 	}
 
-	if (!tlli_info) {
-		tlli_info = gbproxy_tlli_info_alloc(peer);
-		tlli_info->tlli.current = tlli;
+	if (!link_info) {
+		link_info = gbproxy_link_info_alloc(peer);
+		link_info->tlli.current = tlli;
 	} else {
-		gbproxy_detach_tlli_info(peer, tlli_info);
+		gbproxy_detach_link_info(peer, link_info);
 		tlli_already_known = 1;
 	}
 
-	OSMO_ASSERT(tlli_info != NULL);
+	OSMO_ASSERT(link_info != NULL);
 
 	if (!tlli_already_known)
 		LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n", tlli);
 
-	gbproxy_attach_tlli_info(peer, now, tlli_info);
-	gbproxy_update_tlli_info(tlli_info, imsi, imsi_len);
+	gbproxy_attach_link_info(peer, now, link_info);
+	gbproxy_update_link_info(link_info, imsi, imsi_len);
 
 	if (imsi_matches >= 0)
-		tlli_info->imsi_matches = imsi_matches;
+		link_info->imsi_matches = imsi_matches;
 
-	return tlli_info;
+	return link_info;
 }
 
 static void test_gbproxy_tlli_expire(void)
@@ -3683,7 +3683,7 @@ static void test_gbproxy_tlli_expire(void)
 	}
 
 	{
-		struct gbproxy_tlli_info *tlli_info;
+		struct gbproxy_link_info *link_info;
 
 		printf("Test TLLI replacement:\n");
 
@@ -3693,28 +3693,28 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		tlli_info = register_tlli(peer, tlli1,
+		link_info = register_tlli(peer, tlli1,
 						  imsi1, ARRAY_SIZE(imsi1), now);
-		OSMO_ASSERT(tlli_info);
-		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
+		OSMO_ASSERT(link_info);
+		OSMO_ASSERT(link_info->tlli.current == tlli1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 1 (should replace TLLI 1)\n");
-		tlli_info = register_tlli(peer, tlli2,
+		link_info = register_tlli(peer, tlli2,
 						  imsi1, ARRAY_SIZE(imsi1), now);
-		OSMO_ASSERT(tlli_info);
-		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
+		OSMO_ASSERT(link_info);
+		OSMO_ASSERT(link_info->tlli.current == tlli2);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
-		OSMO_ASSERT(tlli_info);
-		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
-		OSMO_ASSERT(!tlli_info);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
+		OSMO_ASSERT(link_info);
+		OSMO_ASSERT(link_info->tlli.current == tlli2);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
+		OSMO_ASSERT(!link_info);
 
 		printf("\n");
 
@@ -3722,7 +3722,7 @@ static void test_gbproxy_tlli_expire(void)
 	}
 
 	{
-		struct gbproxy_tlli_info *tlli_info;
+		struct gbproxy_link_info *link_info;
 
 		printf("Test IMSI replacement:\n");
 
@@ -3732,28 +3732,28 @@ static void test_gbproxy_tlli_expire(void)
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
-		tlli_info = register_tlli(peer, tlli1,
+		link_info = register_tlli(peer, tlli1,
 						  imsi1, ARRAY_SIZE(imsi1), now);
-		OSMO_ASSERT(tlli_info);
-		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
+		OSMO_ASSERT(link_info);
+		OSMO_ASSERT(link_info->tlli.current == tlli1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		/* try to replace the old entry */
 		printf("  Add TLLI 1, IMSI 2 (should replace IMSI 1)\n");
-		tlli_info = register_tlli(peer, tlli1,
+		link_info = register_tlli(peer, tlli1,
 						  imsi2, ARRAY_SIZE(imsi2), now);
-		OSMO_ASSERT(tlli_info);
-		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
+		OSMO_ASSERT(link_info);
+		OSMO_ASSERT(link_info->tlli.current == tlli1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
-		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
-		OSMO_ASSERT(tlli_info);
-		OSMO_ASSERT(tlli_info->tlli.current == tlli1);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
+		OSMO_ASSERT(!link_info);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
+		OSMO_ASSERT(link_info);
+		OSMO_ASSERT(link_info->tlli.current == tlli1);
 
 		printf("\n");
 
@@ -3761,7 +3761,7 @@ static void test_gbproxy_tlli_expire(void)
 	}
 
 	{
-		struct gbproxy_tlli_info *tlli_info;
+		struct gbproxy_link_info *link_info;
 		int num_removed;
 
 		printf("Test TLLI expiry, max_len == 1:\n");
@@ -3780,18 +3780,18 @@ static void test_gbproxy_tlli_expire(void)
 		register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
-		num_removed = gbproxy_remove_stale_tlli_infos(peer, time(NULL) + 2);
+		num_removed = gbproxy_remove_stale_link_infos(peer, time(NULL) + 2);
 		OSMO_ASSERT(num_removed == 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		dump_peers(stdout, 2, now, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
-		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
-		OSMO_ASSERT(tlli_info);
-		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
+		OSMO_ASSERT(!link_info);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
+		OSMO_ASSERT(link_info);
+		OSMO_ASSERT(link_info->tlli.current == tlli2);
 
 		printf("\n");
 
@@ -3799,7 +3799,7 @@ static void test_gbproxy_tlli_expire(void)
 	}
 
 	{
-		struct gbproxy_tlli_info *tlli_info;
+		struct gbproxy_link_info *link_info;
 		int num_removed;
 
 		printf("Test TLLI expiry, max_age == 1:\n");
@@ -3818,18 +3818,18 @@ static void test_gbproxy_tlli_expire(void)
 				     now + 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
 
-		num_removed = gbproxy_remove_stale_tlli_infos(peer, now + 2);
+		num_removed = gbproxy_remove_stale_link_infos(peer, now + 2);
 		OSMO_ASSERT(num_removed == 1);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		dump_peers(stdout, 2, now + 2, &cfg);
 
 		/* verify that 5678 has survived */
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
-		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
-		OSMO_ASSERT(tlli_info);
-		OSMO_ASSERT(tlli_info->tlli.current == tlli2);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
+		OSMO_ASSERT(!link_info);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
+		OSMO_ASSERT(link_info);
+		OSMO_ASSERT(link_info->tlli.current == tlli2);
 
 		printf("\n");
 
@@ -3837,7 +3837,7 @@ static void test_gbproxy_tlli_expire(void)
 	}
 
 	{
-		struct gbproxy_tlli_info *tlli_info;
+		struct gbproxy_link_info *link_info;
 		int num_removed;
 
 		printf("Test TLLI expiry, max_len == 2, max_age == 1:\n");
@@ -3864,20 +3864,20 @@ static void test_gbproxy_tlli_expire(void)
 		dump_peers(stdout, 2, now + 2, &cfg);
 
 		printf("  Remove stale TLLIs\n");
-		num_removed = gbproxy_remove_stale_tlli_infos(peer, now + 3);
+		num_removed = gbproxy_remove_stale_link_infos(peer, now + 3);
 		OSMO_ASSERT(num_removed == 2);
 		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
 
 		dump_peers(stdout, 2, now + 2, &cfg);
 
 		/* verify that tlli3 has survived */
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
-		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
-		OSMO_ASSERT(!tlli_info);
-		tlli_info = gbproxy_tlli_info_by_imsi(peer, imsi3, ARRAY_SIZE(imsi3));
-		OSMO_ASSERT(tlli_info);
-		OSMO_ASSERT(tlli_info->tlli.current == tlli3);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi1, ARRAY_SIZE(imsi1));
+		OSMO_ASSERT(!link_info);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi2, ARRAY_SIZE(imsi2));
+		OSMO_ASSERT(!link_info);
+		link_info = gbproxy_link_info_by_imsi(peer, imsi3, ARRAY_SIZE(imsi3));
+		OSMO_ASSERT(link_info);
+		OSMO_ASSERT(link_info->tlli.current == tlli3);
 
 		printf("\n");
 

@@ -172,7 +172,7 @@ void gbproxy_peer_free(struct gbproxy_peer *peer)
 {
 	llist_del(&peer->list);
 
-	gbproxy_delete_tlli_infos(peer);
+	gbproxy_delete_link_infos(peer);
 
 	rate_ctr_group_free(peer->ctrg);
 	peer->ctrg = NULL;

@@ -234,7 +234,7 @@ uint32_t gbproxy_make_bss_ptmsi(struct gbproxy_peer *peer,
 			bss_ptmsi = rand_r(&peer->cfg->bss_ptmsi_state);
 			bss_ptmsi = bss_ptmsi | 0xC0000000;
 
-			if (gbproxy_tlli_info_by_ptmsi(peer, bss_ptmsi))
+			if (gbproxy_link_info_by_ptmsi(peer, bss_ptmsi))
 				bss_ptmsi = GSM_RESERVED_TMSI;
 		} while (bss_ptmsi == GSM_RESERVED_TMSI && max_retries--);
 	}
@@ -246,15 +246,15 @@ uint32_t gbproxy_make_bss_ptmsi(struct gbproxy_peer *peer,
 }
 
 uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
-				struct gbproxy_tlli_info *tlli_info,
+				struct gbproxy_link_info *link_info,
 				uint32_t bss_tlli)
 {
 	uint32_t sgsn_tlli;
 	int max_retries = 23;
 	if (!peer->cfg->patch_ptmsi) {
 		sgsn_tlli = bss_tlli;
-	} else if (tlli_info->sgsn_tlli.ptmsi != GSM_RESERVED_TMSI) {
-		sgsn_tlli = gprs_tmsi2tlli(tlli_info->sgsn_tlli.ptmsi,
+	} else if (link_info->sgsn_tlli.ptmsi != GSM_RESERVED_TMSI) {
+		sgsn_tlli = gprs_tmsi2tlli(link_info->sgsn_tlli.ptmsi,
 					   TLLI_FOREIGN);
 	} else {
 		do {
@@ -262,7 +262,7 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 			sgsn_tlli = rand_r(&peer->cfg->sgsn_tlli_state);
 			sgsn_tlli = (sgsn_tlli & 0x7fffffff) | 0x78000000;
 
-			if (gbproxy_tlli_info_by_any_sgsn_tlli(peer, sgsn_tlli))
+			if (gbproxy_link_info_by_any_sgsn_tlli(peer, sgsn_tlli))
 				sgsn_tlli = 0;
 		} while (!sgsn_tlli && max_retries--);
 	}
@@ -274,33 +274,33 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 }
 
 /* Returns != 0 iff IMSI acquisition was in progress */
-static int gbproxy_restart_imsi_acquisition(struct gbproxy_tlli_info* tlli_info)
+static int gbproxy_restart_imsi_acquisition(struct gbproxy_link_info* link_info)
 {
 	int in_progress = 0;
-	if (!tlli_info)
+	if (!link_info)
 		return 0;
 
-	if (tlli_info->imsi_acq_pending) {
+	if (link_info->imsi_acq_pending) {
 		in_progress = 1;
-		tlli_info->imsi_acq_retries += 1;
+		link_info->imsi_acq_retries += 1;
 	}
 
-	gbproxy_tlli_info_discard_messages(tlli_info);
-	tlli_info->imsi_acq_pending = 0;
+	gbproxy_link_info_discard_messages(link_info);
+	link_info->imsi_acq_pending = 0;
 
 	return in_progress;
 }
 
-static void gbproxy_reset_imsi_acquisition(struct gbproxy_tlli_info* tlli_info)
+static void gbproxy_reset_imsi_acquisition(struct gbproxy_link_info* link_info)
 {
-	gbproxy_restart_imsi_acquisition(tlli_info);
-	tlli_info->imsi_acq_retries = 0;
+	gbproxy_restart_imsi_acquisition(link_info);
+	link_info->imsi_acq_retries = 0;
 }
 
 static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 					  struct msgb *msg,
 					  time_t now,
-					  struct gbproxy_tlli_info* tlli_info,
+					  struct gbproxy_link_info* link_info,
 					  struct gprs_gb_parse_context *parse_ctx)
 {
 	int rc;
@@ -314,7 +314,7 @@ static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 	     msgb_nsei(msg));
 
 	/* Patch and flush stored messages towards the SGSN */
-	while ((stored_msg = msgb_dequeue(&tlli_info->stored_msgs))) {
+	while ((stored_msg = msgb_dequeue(&link_info->stored_msgs))) {
 		struct gprs_gb_parse_context tmp_parse_ctx = {0};
 		tmp_parse_ctx.to_bss = 0;
 		tmp_parse_ctx.peer_nsei = msgb_nsei(stored_msg);
@@ -325,14 +325,14 @@ static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 				    &tmp_parse_ctx);
 		gbproxy_patch_bssgp(msg, msgb_bssgph(stored_msg),
 				    msgb_bssgp_len(stored_msg),
-				    peer, tlli_info, &len_change,
+				    peer, link_info, &len_change,
 				    &tmp_parse_ctx);
 
-		gbproxy_update_tlli_state_after(peer, tlli_info, now,
+		gbproxy_update_link_state_after(peer, link_info, now,
 						&tmp_parse_ctx);
 
 		rc = gbprox_relay2sgsn(peer->cfg, stored_msg,
-				       msgb_bvci(msg), tlli_info->sgsn_nsei);
+				       msgb_bvci(msg), link_info->sgsn_nsei);
 
 		if (rc < 0)
 			LOGP(DLLC, LOGL_ERROR,
@@ -346,7 +346,7 @@ static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 }
 
 static void gbproxy_acquire_imsi(struct gbproxy_peer *peer,
-				 struct gbproxy_tlli_info* tlli_info,
+				 struct gbproxy_link_info* link_info,
 				 uint16_t bvci)
 {
 	struct msgb *idreq_msg;
@@ -362,14 +362,14 @@ static void gbproxy_acquire_imsi(struct gbproxy_peer *peer,
 	 * be an issue when P-TMSI patching is _not_ enabled and the SGSN
 	 * doesn't reset V(UT) after a detach. */
 	gprs_push_llc_ui(idreq_msg, 0, GPRS_SAPI_GMM,
-			 (tlli_info->imsi_acq_retries + 256) % 512);
-	gprs_push_bssgp_dl_unitdata(idreq_msg, tlli_info->tlli.current);
+			 (link_info->imsi_acq_retries + 256) % 512);
+	gprs_push_bssgp_dl_unitdata(idreq_msg, link_info->tlli.current);
 	gbprox_relay2peer(idreq_msg, peer, bvci);
 	msgb_free(idreq_msg);
 }
 
 static void gbproxy_tx_detach_acc(struct gbproxy_peer *peer,
-				  struct gbproxy_tlli_info* tlli_info,
+				  struct gbproxy_link_info* link_info,
 				  uint16_t bvci)
 {
 	struct msgb *detacc_msg;
@@ -378,8 +378,8 @@ static void gbproxy_tx_detach_acc(struct gbproxy_peer *peer,
 	detacc_msg = gsm48_msgb_alloc();
 	gprs_put_mo_detach_acc(detacc_msg);
 	gprs_push_llc_ui(detacc_msg, 0, GPRS_SAPI_GMM,
-			 (tlli_info->imsi_acq_retries + 256) % 512);
-	gprs_push_bssgp_dl_unitdata(detacc_msg, tlli_info->tlli.current);
+			 (link_info->imsi_acq_retries + 256) % 512);
+	gprs_push_bssgp_dl_unitdata(detacc_msg, link_info->tlli.current);
 	gbprox_relay2peer(detacc_msg, peer, bvci);
 	msgb_free(detacc_msg);
 }
@@ -388,15 +388,15 @@ static void gbproxy_tx_detach_acc(struct gbproxy_peer *peer,
 static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 				    struct msgb *msg,
 				    time_t now,
-				    struct gbproxy_tlli_info* tlli_info,
+				    struct gbproxy_link_info* link_info,
 				    struct gprs_gb_parse_context *parse_ctx)
 {
 	struct msgb *stored_msg;
 
-	if (!tlli_info)
+	if (!link_info)
 		return 1;
 
-	if (!tlli_info->imsi_acq_pending && tlli_info->imsi_len > 0)
+	if (!link_info->imsi_acq_pending && link_info->imsi_len > 0)
 		return 1;
 
 	if (parse_ctx->g48_hdr)
@@ -404,7 +404,7 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 		{
 		case GSM48_MT_GMM_RA_UPD_REQ:
 		case GSM48_MT_GMM_ATTACH_REQ:
-			if (gbproxy_restart_imsi_acquisition(tlli_info)) {
+			if (gbproxy_restart_imsi_acquisition(link_info)) {
 				LOGP(DLLC, LOGL_INFO,
 				     "NSEI=%d(BSS) IMSI acquisition was in progress "
 				     "when receiving an %s.\n",
@@ -413,7 +413,7 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 			break;
 		case GSM48_MT_GMM_DETACH_REQ:
 			/* Nothing has been sent to the SGSN yet */
-			if (tlli_info->imsi_acq_pending) {
+			if (link_info->imsi_acq_pending) {
 				LOGP(DLLC, LOGL_INFO,
 				     "NSEI=%d(BSS) IMSI acquisition was in progress "
 				     "when receiving a DETACH_REQ.\n",
@@ -424,26 +424,26 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 				     "NSEI=%d(BSS) IMSI not yet acquired, "
 				     "faking a DETACH_ACC.\n",
 				     msgb_nsei(msg));
-				gbproxy_tx_detach_acc(peer, tlli_info, msgb_bvci(msg));
+				gbproxy_tx_detach_acc(peer, link_info, msgb_bvci(msg));
 				parse_ctx->invalidate_tlli = 1;
 			}
-			gbproxy_reset_imsi_acquisition(tlli_info);
-			gbproxy_update_tlli_state_after(peer, tlli_info, now,
+			gbproxy_reset_imsi_acquisition(link_info);
+			gbproxy_update_link_state_after(peer, link_info, now,
 							parse_ctx);
 			return 0;
 		}
 
-	if (tlli_info->imsi_acq_pending && tlli_info->imsi_len > 0) {
+	if (link_info->imsi_acq_pending && link_info->imsi_len > 0) {
 		int is_ident_resp =
 			parse_ctx->g48_hdr &&
 			parse_ctx->g48_hdr->proto_discr == GSM48_PDISC_MM_GPRS &&
 			parse_ctx->g48_hdr->msg_type == GSM48_MT_GMM_ID_RESP;
 
 		/* The IMSI is now available */
-		gbproxy_flush_stored_messages(peer, msg, now, tlli_info,
+		gbproxy_flush_stored_messages(peer, msg, now, link_info,
 					      parse_ctx);
 
-		gbproxy_reset_imsi_acquisition(tlli_info);
+		gbproxy_reset_imsi_acquisition(link_info);
 
 		/* This message is most probably the response to the ident
 		 * request sent by gbproxy_acquire_imsi(). Don't forward it to
@@ -461,22 +461,22 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 	     parse_ctx->llc_msg_name ? parse_ctx->llc_msg_name : "BSSGP");
 
 	stored_msg = gprs_msgb_copy(msg, "process_bssgp_ul");
-	msgb_enqueue(&tlli_info->stored_msgs, stored_msg);
+	msgb_enqueue(&link_info->stored_msgs, stored_msg);
 
-	if (!tlli_info->imsi_acq_pending) {
+	if (!link_info->imsi_acq_pending) {
 		LOGP(DLLC, LOGL_INFO,
 		     "NSEI=%d(BSS) IMSI is required but not available, "
 		     "initiating identification procedure (%s)\n",
 		     msgb_nsei(msg),
 		     parse_ctx->llc_msg_name ? parse_ctx->llc_msg_name : "BSSGP");
 
-		gbproxy_acquire_imsi(peer, tlli_info, msgb_bvci(msg));
+		gbproxy_acquire_imsi(peer, link_info, msgb_bvci(msg));
 
 		/* There is no explicit retransmission handling, the
 		 * implementation relies on the MS doing proper retransmissions
 		 * of the triggering message instead */
 
-		tlli_info->imsi_acq_pending = 1;
+		link_info->imsi_acq_pending = 1;
 	}
 
 	return 0;
@@ -518,7 +518,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	int rc;
 	int len_change = 0;
 	time_t now;
-	struct gbproxy_tlli_info *tlli_info = NULL;
+	struct gbproxy_link_info *link_info = NULL;
 	uint32_t sgsn_nsei = cfg->nsip_sgsn_nsei;
 
 	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn &&
@@ -556,7 +556,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 
 	gprs_gb_log_parse_context(&parse_ctx, "BSSGP");
 
-	tlli_info = gbproxy_update_tlli_state_ul(peer, now, &parse_ctx);
+	link_info = gbproxy_update_link_state_ul(peer, now, &parse_ctx);
 
 	if (parse_ctx.g48_hdr) {
 		switch (parse_ctx.g48_hdr->msg_type) {
@@ -569,28 +569,28 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 		}
 	}
 
-	if (tlli_info && cfg->route_to_sgsn2) {
-		if (cfg->acquire_imsi && tlli_info->imsi_len == 0)
+	if (link_info && cfg->route_to_sgsn2) {
+		if (cfg->acquire_imsi && link_info->imsi_len == 0)
 			sgsn_nsei = 0xffff;
-		else if (gbproxy_imsi_matches(peer, tlli_info))
+		else if (gbproxy_imsi_matches(peer, link_info))
 			sgsn_nsei = cfg->nsip_sgsn2_nsei;
 	}
 
-	if (tlli_info)
-		tlli_info->sgsn_nsei = sgsn_nsei;
+	if (link_info)
+		link_info->sgsn_nsei = sgsn_nsei;
 
 	/* Handle IMSI acquisition */
 	if (cfg->acquire_imsi) {
-		rc = gbproxy_imsi_acquisition(peer, msg, now, tlli_info,
+		rc = gbproxy_imsi_acquisition(peer, msg, now, link_info,
 					      &parse_ctx);
 		if (rc <= 0)
 			return rc;
 	}
 
 	gbproxy_patch_bssgp(msg, msgb_bssgph(msg), msgb_bssgp_len(msg),
-			    peer, tlli_info, &len_change, &parse_ctx);
+			    peer, link_info, &len_change, &parse_ctx);
 
-	gbproxy_update_tlli_state_after(peer, tlli_info, now, &parse_ctx);
+	gbproxy_update_link_state_after(peer, link_info, now, &parse_ctx);
 
 	if (sgsn_nsei != cfg->nsip_sgsn_nsei) {
 		/* Send message directly to the selected SGSN */
@@ -611,7 +611,7 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 	int rc;
 	int len_change = 0;
 	time_t now;
-	struct gbproxy_tlli_info *tlli_info = NULL;
+	struct gbproxy_link_info *link_info = NULL;
 
 	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn &&
 	    !cfg->acquire_imsi && !cfg->patch_ptmsi && !cfg->route_to_sgsn2)
@@ -655,12 +655,12 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 
 	gprs_gb_log_parse_context(&parse_ctx, "BSSGP");
 
-	tlli_info = gbproxy_update_tlli_state_dl(peer, now, &parse_ctx);
+	link_info = gbproxy_update_link_state_dl(peer, now, &parse_ctx);
 
 	gbproxy_patch_bssgp(msg, msgb_bssgph(msg), msgb_bssgp_len(msg),
-			    peer, tlli_info, &len_change, &parse_ctx);
+			    peer, link_info, &len_change, &parse_ctx);
 
-	gbproxy_update_tlli_state_after(peer, tlli_info, now, &parse_ctx);
+	gbproxy_update_link_state_after(peer, link_info, now, &parse_ctx);
 
 	return;
 }

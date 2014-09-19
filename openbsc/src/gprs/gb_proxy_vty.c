@@ -115,7 +115,7 @@ static int config_write_gbproxy(struct vty *vty)
 		vty_out(vty, " tlli-list max-length %d%s",
 			g_cfg->tlli_max_len, VTY_NEWLINE);
 	vty_out(vty, " tlli-list keep-mode %s%s",
-		get_value_string(keep_modes, g_cfg->keep_tlli_infos),
+		get_value_string(keep_modes, g_cfg->keep_link_infos),
 		VTY_NEWLINE);
 
 
@@ -421,7 +421,7 @@ DEFUN(cfg_gbproxy_tlli_list_keep_mode,
 {
 	int val = get_string_value(keep_modes, argv[0]);
 	OSMO_ASSERT(val >= GBPROX_KEEP_NEVER && val <= GBPROX_KEEP_ALWAYS);
-	g_cfg->keep_tlli_infos = val;
+	g_cfg->keep_link_infos = val;
 
 	return CMD_SUCCESS;
 }
@@ -453,37 +453,37 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 	time_t now = time(NULL);
 
 	llist_for_each_entry(peer, &g_cfg->bts_peers, list) {
-		struct gbproxy_tlli_info *tlli_info;
+		struct gbproxy_link_info *link_info;
 		struct gbproxy_patch_state *state = &peer->patch_state;
 
 		gbprox_vty_print_peer(vty, peer);
 
-		llist_for_each_entry(tlli_info, &state->enabled_tllis, list) {
-			time_t age = now - tlli_info->timestamp;
+		llist_for_each_entry(link_info, &state->enabled_tllis, list) {
+			time_t age = now - link_info->timestamp;
 			int stored_msgs = 0;
 			struct llist_head *iter;
-			llist_for_each(iter, &tlli_info->stored_msgs)
+			llist_for_each(iter, &link_info->stored_msgs)
 				stored_msgs++;
 
-			if (tlli_info->imsi > 0) {
+			if (link_info->imsi > 0) {
 				snprintf(mi_buf, sizeof(mi_buf), "(invalid)");
 				gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
-						   tlli_info->imsi,
-						   tlli_info->imsi_len);
+						   link_info->imsi,
+						   link_info->imsi_len);
 			} else {
 				snprintf(mi_buf, sizeof(mi_buf), "(none)");
 			}
 			vty_out(vty, "  TLLI %08x, IMSI %s, AGE %d",
-				tlli_info->tlli.current, mi_buf, (int)age);
+				link_info->tlli.current, mi_buf, (int)age);
 
 			if (stored_msgs)
 				vty_out(vty, ", STORED %d", stored_msgs);
 
 			if (g_cfg->route_to_sgsn2)
 				vty_out(vty, ", SGSN NSEI %d",
-					tlli_info->sgsn_nsei);
+					link_info->sgsn_nsei);
 
-			if (tlli_info->is_deregistered)
+			if (link_info->is_deregistered)
 				vty_out(vty, ", DE-REGISTERED");
 
 			vty_out(vty, "%s", VTY_NEWLINE);
@@ -598,7 +598,7 @@ DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
 	uint32_t ident = 0;
 	const char *imsi = NULL;
 	struct gbproxy_peer *peer = 0;
-	struct gbproxy_tlli_info *tlli_info, *nxt;
+	struct gbproxy_link_info *link_info, *nxt;
 	struct gbproxy_patch_state *state;
 	char mi_buf[200];
 	int found = 0;
@@ -620,30 +620,30 @@ DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
 
 	state = &peer->patch_state;
 
-	llist_for_each_entry_safe(tlli_info, nxt, &state->enabled_tllis, list) {
+	llist_for_each_entry_safe(link_info, nxt, &state->enabled_tllis, list) {
 		switch (match) {
 		case MATCH_TLLI:
-			if (tlli_info->tlli.current != ident)
+			if (link_info->tlli.current != ident)
 				continue;
 			break;
 		case MATCH_SGSN:
-			if (tlli_info->sgsn_nsei != ident)
+			if (link_info->sgsn_nsei != ident)
 				continue;
 			break;
 		case MATCH_IMSI:
 			mi_buf[0] = '\0';
 			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
-					   tlli_info->imsi,
-					   tlli_info->imsi_len);
+					   link_info->imsi,
+					   link_info->imsi_len);
 
 			if (strcmp(mi_buf, imsi) != 0)
 				continue;
 			break;
 		}
 
-		vty_out(vty, "Deleting TLLI %08x%s", tlli_info->tlli.current,
+		vty_out(vty, "Deleting TLLI %08x%s", link_info->tlli.current,
 			VTY_NEWLINE);
-		gbproxy_delete_tlli_info(peer, tlli_info);
+		gbproxy_delete_link_info(peer, link_info);
 		found += 1;
 	}
 
@@ -664,7 +664,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	const uint16_t nsei = atoi(argv[0]);
 	enum {MATCH_STALE = 's', MATCH_DEREGISTERED = 'd'} match;
 	struct gbproxy_peer *peer = 0;
-	struct gbproxy_tlli_info *tlli_info, *nxt;
+	struct gbproxy_link_info *link_info, *nxt;
 	struct gbproxy_patch_state *state;
 	int found = 0;
 
@@ -680,17 +680,17 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 	state = &peer->patch_state;
 
 	if (match == MATCH_STALE) {
-		found = gbproxy_remove_stale_tlli_infos(peer, time(NULL));
+		found = gbproxy_remove_stale_link_infos(peer, time(NULL));
 		if (found)
 			vty_out(vty, "Deleted %d stale TLLI%s%s",
 				found, found == 1 ? "" : "s", VTY_NEWLINE);
 	} else {
-		llist_for_each_entry_safe(tlli_info, nxt,
+		llist_for_each_entry_safe(link_info, nxt,
 					  &state->enabled_tllis, list) {
-			if (!tlli_info->is_deregistered)
+			if (!link_info->is_deregistered)
 				continue;
 
-			gbproxy_delete_tlli_info(peer, tlli_info);
+			gbproxy_delete_link_info(peer, link_info);
 			found += 1;
 		}
 	}

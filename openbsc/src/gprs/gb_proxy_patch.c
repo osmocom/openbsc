@@ -192,20 +192,20 @@ static int gbproxy_patch_ptmsi(uint8_t *ptmsi_enc,
 
 int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 		     struct gbproxy_peer *peer,
-		     struct gbproxy_tlli_info *tlli_info, int *len_change,
+		     struct gbproxy_link_info *link_info, int *len_change,
 		     struct gprs_gb_parse_context *parse_ctx)
 {
 	struct gprs_llc_hdr_parsed *ghp = &parse_ctx->llc_hdr_parsed;
 	int have_patched = 0;
 	int fcs;
 
-	if (parse_ctx->ptmsi_enc && tlli_info &&
+	if (parse_ctx->ptmsi_enc && link_info &&
 	    !parse_ctx->old_raid_is_foreign && peer->cfg->patch_ptmsi) {
 		uint32_t ptmsi;
 		if (parse_ctx->to_bss)
-			ptmsi = tlli_info->tlli.ptmsi;
+			ptmsi = link_info->tlli.ptmsi;
 		else
-			ptmsi = tlli_info->sgsn_tlli.ptmsi;
+			ptmsi = link_info->sgsn_tlli.ptmsi;
 
 		if (ptmsi != GSM_RESERVED_TMSI) {
 			if (gbproxy_patch_ptmsi(parse_ctx->ptmsi_enc, peer,
@@ -216,12 +216,12 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 		}
 	}
 
-	if (parse_ctx->new_ptmsi_enc && tlli_info && peer->cfg->patch_ptmsi) {
+	if (parse_ctx->new_ptmsi_enc && link_info && peer->cfg->patch_ptmsi) {
 		uint32_t ptmsi;
 		if (parse_ctx->to_bss)
-			ptmsi = tlli_info->tlli.ptmsi;
+			ptmsi = link_info->tlli.ptmsi;
 		else
-			ptmsi = tlli_info->sgsn_tlli.ptmsi;
+			ptmsi = link_info->sgsn_tlli.ptmsi;
 
 		OSMO_ASSERT(ptmsi);
 		if (gbproxy_patch_ptmsi(parse_ctx->new_ptmsi_enc, peer,
@@ -245,7 +245,7 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	if (parse_ctx->apn_ie &&
 	    peer->cfg->core_apn &&
 	    !parse_ctx->to_bss &&
-	    gbproxy_imsi_matches(peer, tlli_info) && peer->cfg->core_apn) {
+	    gbproxy_imsi_matches(peer, link_info) && peer->cfg->core_apn) {
 		size_t new_len;
 		gbproxy_patch_apn_ie(msg,
 				     parse_ctx->apn_ie, parse_ctx->apn_ie_len,
@@ -275,7 +275,7 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 /* patch BSSGP message to use core_mcc/mnc on the SGSN side */
 void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 			 struct gbproxy_peer *peer,
-			 struct gbproxy_tlli_info *tlli_info, int *len_change,
+			 struct gbproxy_link_info *link_info, int *len_change,
 			 struct gprs_gb_parse_context *parse_ctx)
 {
 	const char *err_info = NULL;
@@ -296,7 +296,7 @@ void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 		goto patch_error;
 	}
 
-	if (!tlli_info && parse_ctx->tlli_enc && parse_ctx->to_bss) {
+	if (!link_info && parse_ctx->tlli_enc && parse_ctx->to_bss) {
 		/* Happens with unknown (not cached) TLLI coming from
 		 * the SGSN */
 		/* TODO: What shall be done with the message in this case? */
@@ -305,12 +305,12 @@ void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 		goto patch_error;
 	}
 
-	if (!tlli_info)
+	if (!link_info)
 		return;
 
 	if (parse_ctx->tlli_enc && peer->cfg->patch_ptmsi) {
 		uint32_t tlli = gbproxy_map_tlli(parse_ctx->tlli,
-						 tlli_info, parse_ctx->to_bss);
+						 link_info, parse_ctx->to_bss);
 
 		if (tlli) {
 			gbproxy_patch_tlli(parse_ctx->tlli_enc, peer, tlli,
@@ -329,7 +329,7 @@ void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 		size_t llc_len = parse_ctx->llc_len;
 		int llc_len_change = 0;
 
-		gbproxy_patch_llc(msg, llc, llc_len, peer, tlli_info,
+		gbproxy_patch_llc(msg, llc, llc_len, peer, link_info,
 				  &llc_len_change, parse_ctx);
 		/* Note that the APN might have been resized here, but no
 		 * pointer int the parse_ctx will refer to an adress after the
