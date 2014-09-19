@@ -458,7 +458,7 @@ DEFUN(show_gbproxy_tllis, show_gbproxy_tllis_cmd, "show gbproxy tllis",
 
 		gbprox_vty_print_peer(vty, peer);
 
-		llist_for_each_entry(link_info, &state->enabled_tllis, list) {
+		llist_for_each_entry(link_info, &state->logical_links, list) {
 			time_t age = now - link_info->timestamp;
 			int stored_msgs = 0;
 			struct llist_head *iter;
@@ -620,7 +620,7 @@ DEFUN(delete_gb_tlli_by_id, delete_gb_tlli_by_id_cmd,
 
 	state = &peer->patch_state;
 
-	llist_for_each_entry_safe(link_info, nxt, &state->enabled_tllis, list) {
+	llist_for_each_entry_safe(link_info, nxt, &state->logical_links, list) {
 		switch (match) {
 		case MATCH_TLLI:
 			if (link_info->tlli.current != ident)
@@ -686,7 +686,7 @@ DEFUN(delete_gb_tlli, delete_gb_tlli_cmd,
 				found, found == 1 ? "" : "s", VTY_NEWLINE);
 	} else {
 		llist_for_each_entry_safe(link_info, nxt,
-					  &state->enabled_tllis, list) {
+					  &state->logical_links, list) {
 			if (!link_info->is_deregistered)
 				continue;
 

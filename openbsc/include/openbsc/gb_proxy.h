@@ -100,8 +100,8 @@ struct gbproxy_patch_state {
 	int local_mcc;
 
 	/* List of TLLIs for which patching is enabled */
-	struct llist_head enabled_tllis;
-	int enabled_tllis_count;
+	struct llist_head logical_links;
+	int logical_link_count;
 };
 
 struct gbproxy_peer {

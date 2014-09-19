@@ -163,7 +163,7 @@ struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvc
 
 	llist_add(&peer->list, &cfg->bts_peers);
 
-	INIT_LLIST_HEAD(&peer->patch_state.enabled_tllis);
+	INIT_LLIST_HEAD(&peer->patch_state.logical_links);
 
 	return peer;
 }

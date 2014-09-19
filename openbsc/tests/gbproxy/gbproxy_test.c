@@ -117,8 +117,8 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 		}
 
 		fprintf(stream, "%*s    TLLI-Cache: %d\n",
-			indent, "", state->enabled_tllis_count);
-		llist_for_each_entry(link_info, &state->enabled_tllis, list) {
+			indent, "", state->logical_link_count);
+		llist_for_each_entry(link_info, &state->logical_links, list) {
 			char mi_buf[200];
 			time_t age = now ? now - link_info->timestamp : 0;
 			int stored_msgs = 0;
@@ -3690,14 +3690,14 @@ static void test_gbproxy_tlli_expire(void)
 		cfg.tlli_max_len = 0;
 		cfg.tlli_max_age = 0;
 		peer = gbproxy_peer_alloc(&cfg, 20);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
 		link_info = register_tlli(peer, tlli1,
 						  imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(link_info);
 		OSMO_ASSERT(link_info->tlli.current == tlli1);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 1 (should replace TLLI 1)\n");
@@ -3705,7 +3705,7 @@ static void test_gbproxy_tlli_expire(void)
 						  imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(link_info);
 		OSMO_ASSERT(link_info->tlli.current == tlli2);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		dump_peers(stdout, 2, now, &cfg);
 
@@ -3729,14 +3729,14 @@ static void test_gbproxy_tlli_expire(void)
 		cfg.tlli_max_len = 0;
 		cfg.tlli_max_age = 0;
 		peer = gbproxy_peer_alloc(&cfg, 20);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
 		link_info = register_tlli(peer, tlli1,
 						  imsi1, ARRAY_SIZE(imsi1), now);
 		OSMO_ASSERT(link_info);
 		OSMO_ASSERT(link_info->tlli.current == tlli1);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		/* try to replace the old entry */
 		printf("  Add TLLI 1, IMSI 2 (should replace IMSI 1)\n");
@@ -3744,7 +3744,7 @@ static void test_gbproxy_tlli_expire(void)
 						  imsi2, ARRAY_SIZE(imsi2), now);
 		OSMO_ASSERT(link_info);
 		OSMO_ASSERT(link_info->tlli.current == tlli1);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		dump_peers(stdout, 2, now, &cfg);
 
@@ -3769,20 +3769,20 @@ static void test_gbproxy_tlli_expire(void)
 		cfg.tlli_max_len = 1;
 		cfg.tlli_max_age = 0;
 		peer = gbproxy_peer_alloc(&cfg, 20);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1\n");
 		register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		/* replace the old entry */
 		printf("  Add TLLI 2, IMSI 2 (should replace IMSI 1)\n");
 		register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2), now);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 2);
 
 		num_removed = gbproxy_remove_stale_link_infos(peer, time(NULL) + 2);
 		OSMO_ASSERT(num_removed == 1);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		dump_peers(stdout, 2, now, &cfg);
 
@@ -3807,20 +3807,20 @@ static void test_gbproxy_tlli_expire(void)
 		cfg.tlli_max_len = 0;
 		cfg.tlli_max_age = 1;
 		peer = gbproxy_peer_alloc(&cfg, 20);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1 (should expire after timeout)\n");
 		register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		printf("  Add TLLI 2, IMSI 2 (should not expire after timeout)\n");
 		register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
 				     now + 1);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 2);
 
 		num_removed = gbproxy_remove_stale_link_infos(peer, now + 2);
 		OSMO_ASSERT(num_removed == 1);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		dump_peers(stdout, 2, now + 2, &cfg);
 
@@ -3845,28 +3845,28 @@ static void test_gbproxy_tlli_expire(void)
 		cfg.tlli_max_len = 0;
 		cfg.tlli_max_age = 1;
 		peer = gbproxy_peer_alloc(&cfg, 20);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 0);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 0);
 
 		printf("  Add TLLI 1, IMSI 1 (should expire)\n");
 		register_tlli(peer, tlli1, imsi1, ARRAY_SIZE(imsi1), now);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		printf("  Add TLLI 2, IMSI 2 (should expire after timeout)\n");
 		register_tlli(peer, tlli2, imsi2, ARRAY_SIZE(imsi2),
 				     now + 1);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 2);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 2);
 
 		printf("  Add TLLI 3, IMSI 3 (should not expire after timeout)\n");
 		register_tlli(peer, tlli3, imsi3, ARRAY_SIZE(imsi3),
 				      now + 2);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 3);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 3);
 
 		dump_peers(stdout, 2, now + 2, &cfg);
 
 		printf("  Remove stale TLLIs\n");
 		num_removed = gbproxy_remove_stale_link_infos(peer, now + 3);
 		OSMO_ASSERT(num_removed == 2);
-		OSMO_ASSERT(peer->patch_state.enabled_tllis_count == 1);
+		OSMO_ASSERT(peer->patch_state.logical_link_count == 1);
 
 		dump_peers(stdout, 2, now + 2, &cfg);
 

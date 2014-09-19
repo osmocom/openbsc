@@ -38,7 +38,7 @@ struct gbproxy_link_info *gbproxy_link_info_by_tlli(struct gbproxy_peer *peer,
 	struct gbproxy_link_info *link_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
-	llist_for_each_entry(link_info, &state->enabled_tllis, list)
+	llist_for_each_entry(link_info, &state->logical_links, list)
 		if (link_info->tlli.current == tlli ||
 		    link_info->tlli.assigned == tlli)
 			return link_info;
@@ -53,7 +53,7 @@ struct gbproxy_link_info *gbproxy_link_info_by_ptmsi(
 	struct gbproxy_link_info *link_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
-	llist_for_each_entry(link_info, &state->enabled_tllis, list)
+	llist_for_each_entry(link_info, &state->logical_links, list)
 		if (link_info->tlli.ptmsi == ptmsi)
 			return link_info;
 
@@ -68,7 +68,7 @@ struct gbproxy_link_info *gbproxy_link_info_by_any_sgsn_tlli(
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	/* Don't care about the NSEI */
-	llist_for_each_entry(link_info, &state->enabled_tllis, list)
+	llist_for_each_entry(link_info, &state->logical_links, list)
 		if (link_info->sgsn_tlli.current == tlli ||
 		     link_info->sgsn_tlli.assigned == tlli)
 			return link_info;
@@ -83,7 +83,7 @@ struct gbproxy_link_info *gbproxy_link_info_by_sgsn_tlli(
 	struct gbproxy_link_info *link_info;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
-	llist_for_each_entry(link_info, &state->enabled_tllis, list)
+	llist_for_each_entry(link_info, &state->logical_links, list)
 		if ((link_info->sgsn_tlli.current == tlli ||
 		     link_info->sgsn_tlli.assigned == tlli) &&
 		    link_info->sgsn_nsei == sgsn_nsei)
@@ -103,7 +103,7 @@ struct gbproxy_link_info *gbproxy_link_info_by_imsi(
 	if (!gprs_is_mi_imsi(imsi, imsi_len))
 		return NULL;
 
-	llist_for_each_entry(link_info, &state->enabled_tllis, list) {
+	llist_for_each_entry(link_info, &state->logical_links, list) {
 		if (link_info->imsi_len != imsi_len)
 			continue;
 		if (memcmp(link_info->imsi, imsi, imsi_len) != 0)
@@ -134,10 +134,10 @@ void gbproxy_delete_link_info(struct gbproxy_peer *peer,
 
 	llist_del(&link_info->list);
 	talloc_free(link_info);
-	state->enabled_tllis_count -= 1;
+	state->logical_link_count -= 1;
 
 	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
-		state->enabled_tllis_count;
+		state->logical_link_count;
 }
 
 void gbproxy_delete_link_infos(struct gbproxy_peer *peer)
@@ -145,11 +145,11 @@ void gbproxy_delete_link_infos(struct gbproxy_peer *peer)
 	struct gbproxy_link_info *link_info, *nxt;
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
-	llist_for_each_entry_safe(link_info, nxt, &state->enabled_tllis, list)
+	llist_for_each_entry_safe(link_info, nxt, &state->logical_links, list)
 		gbproxy_delete_link_info(peer, link_info);
 
-	OSMO_ASSERT(state->enabled_tllis_count == 0);
-	OSMO_ASSERT(llist_empty(&state->enabled_tllis));
+	OSMO_ASSERT(state->logical_link_count == 0);
+	OSMO_ASSERT(llist_empty(&state->logical_links));
 }
 
 void gbproxy_attach_link_info(struct gbproxy_peer *peer, time_t now,
@@ -158,11 +158,11 @@ void gbproxy_attach_link_info(struct gbproxy_peer *peer, time_t now,
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	link_info->timestamp = now;
-	llist_add(&link_info->list, &state->enabled_tllis);
-	state->enabled_tllis_count += 1;
+	llist_add(&link_info->list, &state->logical_links);
+	state->logical_link_count += 1;
 
 	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
-		state->enabled_tllis_count;
+		state->logical_link_count;
 }
 
 int gbproxy_remove_stale_link_infos(struct gbproxy_peer *peer, time_t now)
@@ -174,29 +174,29 @@ int gbproxy_remove_stale_link_infos(struct gbproxy_peer *peer, time_t now)
 
 	if (peer->cfg->tlli_max_len > 0)
 		exceeded_max_len =
-			state->enabled_tllis_count - peer->cfg->tlli_max_len;
+			state->logical_link_count - peer->cfg->tlli_max_len;
 
 	check_for_age = peer->cfg->tlli_max_age > 0;
 
 	for (; exceeded_max_len > 0; exceeded_max_len--) {
 		struct gbproxy_link_info *link_info;
-		OSMO_ASSERT(!llist_empty(&state->enabled_tllis));
-		link_info = llist_entry(state->enabled_tllis.prev,
+		OSMO_ASSERT(!llist_empty(&state->logical_links));
+		link_info = llist_entry(state->logical_links.prev,
 					struct gbproxy_link_info,
 					list);
 		LOGP(DGPRS, LOGL_INFO,
 		     "Removing TLLI %08x from list "
 		     "(stale, length %d, max_len exceeded)\n",
-		     link_info->tlli.current, state->enabled_tllis_count);
+		     link_info->tlli.current, state->logical_link_count);
 
 		gbproxy_delete_link_info(peer, link_info);
 		deleted_count += 1;
 	}
 
-	while (check_for_age && !llist_empty(&state->enabled_tllis)) {
+	while (check_for_age && !llist_empty(&state->logical_links)) {
 		time_t age;
 		struct gbproxy_link_info *link_info;
-		link_info = llist_entry(state->enabled_tllis.prev,
+		link_info = llist_entry(state->logical_links.prev,
 					struct gbproxy_link_info,
 					list);
 		age = now - link_info->timestamp;
@@ -238,11 +238,11 @@ void gbproxy_detach_link_info(
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	llist_del(&link_info->list);
-	OSMO_ASSERT(state->enabled_tllis_count > 0);
-	state->enabled_tllis_count -= 1;
+	OSMO_ASSERT(state->logical_link_count > 0);
+	state->logical_link_count -= 1;
 
 	peer->ctrg->ctr[GBPROX_PEER_CTR_TLLI_CACHE_SIZE].current =
-		state->enabled_tllis_count;
+		state->logical_link_count;
 }
 
 void gbproxy_update_link_info(struct gbproxy_link_info *link_info,
@@ -422,7 +422,7 @@ static void gbproxy_remove_matching_link_infos(
 	struct gbproxy_patch_state *state = &peer->patch_state;
 
 	/* Make sure that there is no second entry with the same P-TMSI or TLLI */
-	llist_for_each_entry_safe(info, nxt, &state->enabled_tllis, list) {
+	llist_for_each_entry_safe(info, nxt, &state->logical_links, list) {
 		if (info == link_info)
 			continue;
 
