@@ -450,7 +450,11 @@ DEFUN(show_gbproxy_links, show_gbproxy_links_cmd, "show gbproxy links",
 {
 	struct gbproxy_peer *peer;
 	char mi_buf[200];
-	time_t now = time(NULL);
+	time_t now;
+	struct timespec ts = {0,};
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	now = ts.tv_sec;
 
 	llist_for_each_entry(peer, &g_cfg->bts_peers, list) {
 		struct gbproxy_link_info *link_info;
@@ -666,6 +670,9 @@ DEFUN(delete_gb_link, delete_gb_link_cmd,
 	struct gbproxy_peer *peer = 0;
 	struct gbproxy_link_info *link_info, *nxt;
 	struct gbproxy_patch_state *state;
+	time_t now;
+	struct timespec ts = {0,};
+
 	int found = 0;
 
 	match = argv[1][0];
@@ -679,8 +686,11 @@ DEFUN(delete_gb_link, delete_gb_link_cmd,
 
 	state = &peer->patch_state;
 
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	now = ts.tv_sec;
+
 	if (match == MATCH_STALE) {
-		found = gbproxy_remove_stale_link_infos(peer, time(NULL));
+		found = gbproxy_remove_stale_link_infos(peer, now);
 		if (found)
 			vty_out(vty, "Deleted %d stale logical link%s%s",
 				found, found == 1 ? "" : "s", VTY_NEWLINE);

@@ -518,6 +518,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	int rc;
 	int len_change = 0;
 	time_t now;
+	struct timespec ts = {0,};
 	struct gbproxy_link_info *link_info = NULL;
 	uint32_t sgsn_nsei = cfg->nsip_sgsn_nsei;
 
@@ -549,7 +550,9 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	if (!peer)
 		return 0;
 
-	now = time(NULL);
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	now = ts.tv_sec;
 
 	gbprox_update_current_raid(parse_ctx.bssgp_raid_enc, peer,
 				   parse_ctx.llc_msg_name);
@@ -611,6 +614,7 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 	int rc;
 	int len_change = 0;
 	time_t now;
+	struct timespec ts = {0,};
 	struct gbproxy_link_info *link_info = NULL;
 
 	if (!cfg->core_mcc && !cfg->core_mnc && !cfg->core_apn &&
@@ -640,7 +644,8 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 	if (!peer)
 		return;
 
-	now = time(NULL);
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	now = ts.tv_sec;
 
 	if (parse_ctx.g48_hdr) {
 		switch (parse_ctx.g48_hdr->msg_type) {
