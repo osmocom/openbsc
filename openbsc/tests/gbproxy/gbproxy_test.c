@@ -151,7 +151,7 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 			if (stored_msgs)
 				fprintf(stream, ", STORED %d", stored_msgs);
 
-			if (cfg->check_imsi && tlli_info->enable_patching)
+			if (cfg->check_imsi && tlli_info->imsi_matches)
 				fprintf(stream, ", IMSI matches");
 
 			if (tlli_info->imsi_acq_pending)
@@ -3612,13 +3612,13 @@ struct gbproxy_tlli_info *register_tlli(
 	const uint8_t *imsi, size_t imsi_len, time_t now)
 {
 	struct gbproxy_tlli_info *tlli_info;
-	int enable_patching = -1;
+	int imsi_matches = -1;
 	int tlli_already_known = 0;
 
 	/* Check, whether the IMSI matches */
 	if (gprs_is_mi_imsi(imsi, imsi_len)) {
-		enable_patching = gbproxy_check_imsi(peer, imsi, imsi_len);
-		if (enable_patching < 0)
+		imsi_matches = gbproxy_check_imsi(peer, imsi, imsi_len);
+		if (imsi_matches < 0)
 			return NULL;
 	}
 
@@ -3652,8 +3652,8 @@ struct gbproxy_tlli_info *register_tlli(
 	gbproxy_attach_tlli_info(peer, now, tlli_info);
 	gbproxy_update_tlli_info(tlli_info, imsi, imsi_len);
 
-	if (enable_patching >= 0)
-		tlli_info->enable_patching = enable_patching;
+	if (imsi_matches >= 0)
+		tlli_info->imsi_matches = imsi_matches;
 
 	return tlli_info;
 }

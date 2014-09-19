@@ -357,20 +357,20 @@ static void gbproxy_unregister_tlli(struct gbproxy_peer *peer,
 	return;
 }
 
-int gbproxy_check_tlli(struct gbproxy_peer *peer,
+int gbproxy_imsi_matches(struct gbproxy_peer *peer,
 		       struct gbproxy_tlli_info *tlli_info)
 {
 	if (!peer->cfg->check_imsi)
 		return 1;
 
-	return tlli_info != NULL && tlli_info->enable_patching;
+	return tlli_info != NULL && tlli_info->imsi_matches;
 }
 
 void gbproxy_assign_imsi(struct gbproxy_peer *peer,
 			 struct gbproxy_tlli_info *tlli_info,
 			 struct gprs_gb_parse_context *parse_ctx)
 {
-	int enable_patching;
+	int imsi_matches;
 	struct gbproxy_tlli_info *other_tlli_info;
 
 	/* Make sure that there is a second entry with the same IMSI */
@@ -393,10 +393,10 @@ void gbproxy_assign_imsi(struct gbproxy_peer *peer,
 				 parse_ctx->imsi, parse_ctx->imsi_len);
 
 	/* Check, whether the IMSI matches */
-	enable_patching = gbproxy_check_imsi(peer, parse_ctx->imsi,
+	imsi_matches = gbproxy_check_imsi(peer, parse_ctx->imsi,
 					     parse_ctx->imsi_len);
-	if (enable_patching >= 0)
-		tlli_info->enable_patching = enable_patching;
+	if (imsi_matches >= 0)
+		tlli_info->imsi_matches = imsi_matches;
 }
 
 static int gbproxy_tlli_match(const struct gbproxy_tlli_state *a,

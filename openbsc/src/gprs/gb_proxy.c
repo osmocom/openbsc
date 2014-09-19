@@ -574,7 +574,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	if (tlli_info && cfg->route_to_sgsn2) {
 		if (cfg->acquire_imsi && tlli_info->imsi_len == 0)
 			sgsn_nsei = 0xffff;
-		else if (gbproxy_check_tlli(peer, tlli_info))
+		else if (gbproxy_imsi_matches(peer, tlli_info))
 			sgsn_nsei = cfg->nsip_sgsn2_nsei;
 	}
 

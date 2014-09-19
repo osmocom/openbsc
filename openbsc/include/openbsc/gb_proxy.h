@@ -152,7 +152,7 @@ struct gbproxy_tlli_info {
 
 	int is_deregistered;
 
-	int enable_patching;
+	int imsi_matches;
 };
 
 
@@ -178,7 +178,7 @@ void gbprox_reset(struct gbproxy_config *cfg);
 
 /* TLLI state handling */
 void gbproxy_delete_tllis(struct gbproxy_peer *peer);
-int gbproxy_check_tlli(
+int gbproxy_imsi_matches(
 	struct gbproxy_peer *peer,
 	struct gbproxy_tlli_info *tlli_info);
 struct gbproxy_tlli_info *gbprox_find_tlli_by_ptmsi(

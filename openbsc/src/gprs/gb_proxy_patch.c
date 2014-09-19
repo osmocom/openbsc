@@ -245,7 +245,7 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	if (parse_ctx->apn_ie &&
 	    peer->cfg->core_apn &&
 	    !parse_ctx->to_bss &&
-	    gbproxy_check_tlli(peer, tlli_info) && peer->cfg->core_apn) {
+	    gbproxy_imsi_matches(peer, tlli_info) && peer->cfg->core_apn) {
 		size_t new_len;
 		gbproxy_patch_apn_ie(msg,
 				     parse_ctx->apn_ie, parse_ctx->apn_ie_len,
