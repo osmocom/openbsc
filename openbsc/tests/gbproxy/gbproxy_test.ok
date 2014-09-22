@@ -3516,7 +3516,7 @@ CALLBACK, event 0, msg length 44, bvci 0x1002
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 28
-00 00 10 02 00 80 00 de ad 00 50 20 16 82 02 58 0e 00 09 41 c4 05 08 06 00 29 4a 68 
+00 00 10 02 00 80 00 de ad 00 50 20 16 82 02 58 0e 00 09 41 c4 09 08 06 00 da 80 ca 
 
 result (DETACH REQ) = 0
 
@@ -3582,7 +3582,7 @@ CALLBACK, event 0, msg length 44, bvci 0x1002
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 28
-00 00 10 02 00 80 00 de ad 00 50 20 16 82 02 58 0e 00 09 41 c4 05 08 06 00 29 4a 68 
+00 00 10 02 00 80 00 de ad 00 50 20 16 82 02 58 0e 00 09 41 c4 09 08 06 00 da 80 ca 
 
 result (DETACH REQ) = 0
 
@@ -5515,7 +5515,7 @@ CALLBACK, event 0, msg length 44, bvci 0x1002
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 28
-00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 06 00 11 f5 c0 
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 0e 00 09 41 c4 05 08 06 00 29 4a 68 
 
 result (DETACH REQ (MO)) = 0
 

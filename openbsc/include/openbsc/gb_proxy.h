@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <regex.h>
 
+#define GBPROXY_INIT_VU_GEN_TX 256
+
 struct rate_ctr_group;
 struct gprs_gb_parse_context;
 struct tlv_parsed;
@@ -148,11 +150,12 @@ struct gbproxy_link_info {
 
 	int imsi_acq_pending;
 	struct llist_head stored_msgs;
-	int imsi_acq_retries;
+	unsigned vu_gen_tx_bss;
 
 	int is_deregistered;
 
 	int imsi_matches;
+
 };
 
 

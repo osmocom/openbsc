@@ -238,6 +238,8 @@ struct gbproxy_link_info *gbproxy_link_info_alloc( struct gbproxy_peer *peer)
 	link_info->tlli.ptmsi = GSM_RESERVED_TMSI;
 	link_info->sgsn_tlli.ptmsi = GSM_RESERVED_TMSI;
 
+	link_info->vu_gen_tx_bss = GBPROXY_INIT_VU_GEN_TX;
+
 	INIT_LLIST_HEAD(&link_info->stored_msgs);
 
 	return link_info;
