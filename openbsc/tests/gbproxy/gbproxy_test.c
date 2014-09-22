@@ -33,6 +33,8 @@
 #include <openbsc/gb_proxy.h>
 #include <openbsc/gprs_utils.h>
 #include <openbsc/gprs_llc.h>
+#include <openbsc/gprs_gb_parse.h>
+#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/debug.h>
 
 #define REMOTE_BSS_ADDR 0x01020304
@@ -43,7 +45,11 @@
 #define REMOTE_SGSN2_ADDR 0x15161718
 #define SGSN2_NSEI 0x0102
 
+#define MATCH_ANY (-1)
+
 struct gbproxy_config gbcfg = {0};
+
+struct llist_head *received_messages = NULL;
 
 static int dump_global(FILE *stream, int indent)
 {
@@ -955,7 +961,156 @@ int gprs_ns_sendmsg(struct gprs_ns_inst *nsi, struct msgb *msg)
 		       "msg length %d (%s)\n",
 		       bvci, len, __func__);
 
+	if (received_messages) {
+		struct msgb *msg_copy;
+		msg_copy = gprs_msgb_copy(msg, "received_messages");
+		llist_add_tail(&msg_copy->list, received_messages);
+	}
+
 	return real_gprs_ns_sendmsg(nsi, msg);
+}
+
+/* Get the next message from the receive FIFO
+ *
+ * \returns a pointer to the message which will be invalidated at the next call
+ *          to expect_msg. Returns NULL, if there is no message left.
+ */
+static struct msgb *expect_msg(void)
+{
+	static struct msgb *msg = NULL;
+
+	msgb_free(msg);
+	msg = NULL;
+
+	if (!received_messages)
+		return NULL;
+
+	if (llist_empty(received_messages))
+		return NULL;
+
+	msg = llist_entry(received_messages->next, struct msgb, list);
+	llist_del(&msg->list);
+
+	return msg;
+}
+
+struct expect_result {
+	struct msgb *msg;
+	struct gprs_gb_parse_context parse_ctx;
+};
+
+static struct expect_result *expect_bssgp_msg(
+	int match_nsei, int match_bvci, int match_pdu_type)
+{
+	static struct expect_result result;
+	static const struct expect_result empty_result = {0,};
+	static struct msgb *msg;
+	uint16_t nsei;
+	int rc;
+
+	memcpy(&result, &empty_result, sizeof(result));
+
+	msg = expect_msg();
+	if (!msg)
+		return NULL;
+
+	nsei = msgb_nsei(msg);
+
+	if (match_nsei != MATCH_ANY && match_nsei != nsei) {
+		fprintf(stderr, "%s: NSEI mismatch (expected %u, got %u)\n",
+			__func__, match_nsei, nsei);
+		return NULL;
+	}
+
+	if (match_bvci != MATCH_ANY && match_bvci != msgb_bvci(msg)) {
+		fprintf(stderr, "%s: BVCI mismatch (expected %u, got %u)\n",
+			__func__, match_bvci, msgb_bvci(msg));
+		return NULL;
+	}
+
+	result.msg = msg;
+
+	result.parse_ctx.to_bss = nsei != SGSN_NSEI && nsei != SGSN2_NSEI;
+	result.parse_ctx.peer_nsei = nsei;
+
+	if (!msgb_bssgph(msg)) {
+		fprintf(stderr, "%s: Expected BSSGP\n", __func__);
+		return NULL;
+	}
+
+	rc = gprs_gb_parse_bssgp(msgb_bssgph(msg), msgb_bssgp_len(msg),
+				 &result.parse_ctx);
+
+	if (!rc) {
+		fprintf(stderr, "%s: Failed to parse message\n", __func__);
+		return NULL;
+	}
+
+	if (match_pdu_type != MATCH_ANY &&
+	    match_pdu_type != result.parse_ctx.pdu_type) {
+		fprintf(stderr, "%s: PDU type mismatch (expected %u, got %u)\n",
+			__func__, match_pdu_type, result.parse_ctx.pdu_type);
+		return NULL;
+	}
+
+	return &result;
+}
+
+static struct expect_result *expect_llc_msg(
+	int match_nsei, int match_bvci, int match_sapi, int match_type)
+{
+	static struct expect_result *result;
+
+	result = expect_bssgp_msg(match_nsei, match_bvci, MATCH_ANY);
+	if (!result)
+		return NULL;
+
+	if (!result->parse_ctx.llc) {
+		fprintf(stderr, "%s: Expected LLC message\n", __func__);
+		return NULL;
+	}
+
+	if (match_sapi != MATCH_ANY &&
+	    match_sapi != result->parse_ctx.llc_hdr_parsed.sapi) {
+		fprintf(stderr, "%s: LLC SAPI mismatch (expected %u, got %u)\n",
+			__func__, match_sapi, result->parse_ctx.llc_hdr_parsed.sapi);
+		return NULL;
+	}
+
+	if (match_type != MATCH_ANY &&
+	    match_type != result->parse_ctx.llc_hdr_parsed.cmd) {
+		fprintf(stderr,
+			"%s: LLC command/type mismatch (expected %u, got %u)\n",
+			__func__, match_type, result->parse_ctx.llc_hdr_parsed.cmd);
+		return NULL;
+	}
+
+	return result;
+}
+
+static struct expect_result *expect_gmm_msg(int match_nsei, int match_bvci,
+					    int match_type)
+{
+	static struct expect_result *result;
+
+	result = expect_llc_msg(match_nsei, match_bvci, GPRS_SAPI_GMM, GPRS_LLC_UI);
+	if (!result)
+		return NULL;
+
+	if (!result->parse_ctx.g48_hdr) {
+		fprintf(stderr, "%s: Expected GSM 04.08 message\n", __func__);
+		return NULL;
+	}
+
+	if (match_type != MATCH_ANY &&
+	    match_type != result->parse_ctx.g48_hdr->msg_type) {
+		fprintf(stderr,
+			"%s: GSM 04.08 message type mismatch (expected %u, got %u)\n",
+			__func__, match_type, result->parse_ctx.g48_hdr->msg_type);
+		return NULL;
+	}
+
+	return result;
 }
 
 static void dump_rate_ctr_group(FILE *stream, const char *prefix,
