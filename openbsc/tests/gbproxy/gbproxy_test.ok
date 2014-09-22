@@ -5343,6 +5343,24 @@ Peers:
     TLLI-Cache: 2
       TLLI afe2b700 -> afe2b700, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
+PROCESSING IDENT RESPONSE from 0x01020304:1111
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 11 01 c0 3d 08 16 08 11 12 13 14 15 16 17 18 26 43 db 
+
+CALLBACK, event 0, msg length 40, bvci 0x1002
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 11 01 c0 3d 08 16 08 11 12 13 14 15 16 17 18 26 43 db 
+
+NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 75 (gprs_ns_sendmsg)
+MESSAGE to SGSN at 0x05060708:32000, msg length 79
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 39 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 e4 e8 65 
+
+result (IDENT RESPONSE) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    Attach Request count            : 5
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
 PROCESSING ATTACH ACCEPT from 0x05060708:32000
 00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9e 41 c0 29 08 02 01 49 04 21 63 54 40 50 60 19 cd d7 08 17 16 18 05 f4 ef e2 b7 00 d2 d1 3e 
 
@@ -5360,20 +5378,16 @@ Peers:
     Attach Request count            : 5
     TLLI cache size                 : 1
     TLLI-Cache: 1
-      TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0, STORED 1, IMSI acquisition in progress
+      TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
 PROCESSING ATTACH COMPLETE from 0x01020304:1111
-00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 3d 08 03 48 76 ea 
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 41 08 03 cd d9 11 
 
 CALLBACK, event 0, msg length 31, bvci 0x1002
-00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 3d 08 03 48 76 ea 
-
-NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 75 (gprs_ns_sendmsg)
-MESSAGE to SGSN at 0x05060708:32000, msg length 79
-00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 39 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 e4 e8 65 
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 41 08 03 cd d9 11 
 
 NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 31 (gprs_ns_sendmsg)
 MESSAGE to SGSN at 0x05060708:32000, msg length 35
-00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 3d 08 03 48 76 ea 
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 41 08 03 cd d9 11 
 
 result (ATTACH COMPLETE) = 35
 
@@ -5402,14 +5416,14 @@ Peers:
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
 PROCESSING DETACH ACC from 0x05060708:32000
-00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 41 08 06 ae ff 70 
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 45 08 06 c2 34 26 
 
 CALLBACK, event 0, msg length 31, bvci 0x1002
-00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 41 08 06 ae ff 70 
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 45 08 06 c2 34 26 
 
 NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 31 (gprs_ns_sendmsg)
 MESSAGE to BSS at 0x01020304:1111, msg length 35
-00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 41 08 06 ae ff 70 
+00 00 10 02 01 ef e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 45 08 06 c2 34 26 
 
 result (DETACH ACC) = 35
 
@@ -5419,6 +5433,154 @@ Peers:
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
+PROCESSING ATTACH REQUEST from 0x01020304:1111
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 49 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 00 e3 ac 
+
+CALLBACK, event 0, msg length 75, bvci 0x1002
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 49 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 00 e3 ac 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 28
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 15 01 b7 f8 36 
+
+result (ATTACH REQUEST) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    Attach Request count            : 6
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI afe2b700 -> afe2b700, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
+PROCESSING IDENT RESPONSE from 0x01020304:1111
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 11 01 c0 4d 08 16 08 11 12 13 14 15 16 17 18 8b c5 66 
+
+CALLBACK, event 0, msg length 40, bvci 0x1002
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 11 01 c0 4d 08 16 08 11 12 13 14 15 16 17 18 8b c5 66 
+
+NS UNITDATA MESSAGE to SGSN, BVCI 0x1002, msg length 75 (gprs_ns_sendmsg)
+MESSAGE to SGSN at 0x05060708:32000, msg length 79
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 49 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 00 e3 ac 
+
+result (IDENT RESPONSE) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    Attach Request count            : 6
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
+PROCESSING ATTACH REJECT from 0x05060708:32000
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 31 08 04 07 b7 ff e2 
+
+CALLBACK, event 0, msg length 67, bvci 0x1002
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 31 08 04 07 b7 ff e2 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 67 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 71
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 89 41 c0 31 08 04 07 b7 ff e2 
+
+result (ATTACH REJECT) = 71
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    Attach Request count            : 6
+    Attach Reject count             : 1
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
+PROCESSING ATTACH REQUEST from 0x01020304:1111
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 51 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 a0 bd 72 
+
+CALLBACK, event 0, msg length 75, bvci 0x1002
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 51 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 a0 bd 72 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 28
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 15 01 b7 f8 36 
+
+result (ATTACH REQUEST) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    Attach Request count            : 7
+    Attach Reject count             : 1
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI afe2b700 -> afe2b700, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
+PROCESSING DETACH REQ (MO) from 0x01020304:1111
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 55 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 76 39 f1 
+
+CALLBACK, event 0, msg length 44, bvci 0x1002
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 55 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 76 39 f1 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 28
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 06 00 11 f5 c0 
+
+result (DETACH REQ (MO)) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    Attach Request count            : 7
+    Attach Reject count             : 1
+    TLLI-Cache: 0
+PROCESSING ATTACH REQUEST from 0x01020304:1111
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 59 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 a9 8e f1 
+
+CALLBACK, event 0, msg length 75, bvci 0x1002
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 59 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 a9 8e f1 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 24 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 28
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 0e 00 09 41 c4 01 08 15 01 b7 f8 36 
+
+result (ATTACH REQUEST) = 0
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    Attach Request count            : 8
+    Attach Reject count             : 1
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI afe2b700 -> afe2b700, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
+PROCESSING DETACH REQ (MT) from 0x05060708:32000
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 8b 41 c0 35 08 05 02 25 0a 9b fa 57 
+
+CALLBACK, event 0, msg length 69, bvci 0x1002
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 8b 41 c0 35 08 05 02 25 0a 9b fa 57 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 69 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 73
+00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 8b 41 c0 35 08 05 02 25 0a 9b fa 57 
+
+result (DETACH REQ (MT)) = 73
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    Attach Request count            : 8
+    Attach Reject count             : 1
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0, STORED 1, IMSI acquisition in progress
+PROCESSING DETACH ACC from 0x05060708:32000
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 5d 08 06 11 84 8b 
+
+CALLBACK, event 0, msg length 31, bvci 0x1002
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 5d 08 06 11 84 8b 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x1002, msg length 31 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 35
+00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 08 01 c0 5d 08 06 11 84 8b 
+
+result (DETACH ACC) = 35
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    Attach Request count            : 8
+    Attach Reject count             : 1
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI 00000000, IMSI 12131415161718, AGE 0, STORED 1, IMSI acquisition in progress, DE-REGISTERED
 Gbproxy global:
 Test TLLI info expiry
 

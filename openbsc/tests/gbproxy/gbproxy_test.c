@@ -252,6 +252,11 @@ static const unsigned char dtap_attach_complete[] = {
 	0x08, 0x03
 };
 
+/* DTAP - Attach Reject (GPRS services not allowed) */
+static const unsigned char dtap_attach_rej7[] = {
+	0x08, 0x04, 0x07
+};
+
 /* DTAP - GMM Information */
 static const unsigned char dtap_gmm_information[] = {
 	0x08, 0x21
@@ -3316,10 +3321,21 @@ static void test_gbproxy_keep_info()
 	OSMO_ASSERT(!link_info->is_deregistered);
 	OSMO_ASSERT(link_info->imsi_acq_pending);
 
-	/* This wouldn't happen in reality, since the Attach Request hadn't
-	 * been forwarded to the SGSN.
-	 * TODO: Add the missing messages.
-	 */
+	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
+		       foreign_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_identity_resp, sizeof(dtap_identity_resp));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	link_info2 = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->imsi_len != 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(!link_info->imsi_acq_pending);
+
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
 		       foreign_tlli, 1, imsi, sizeof(imsi),
 		       GPRS_SAPI_GMM, sgsn_nu++,
@@ -3332,8 +3348,6 @@ static void test_gbproxy_keep_info()
 	OSMO_ASSERT(link_info);
 	OSMO_ASSERT(link_info == link_info2);
 	OSMO_ASSERT(link_info->imsi_len > 0);
-	OSMO_ASSERT(!link_info->is_deregistered);
-	OSMO_ASSERT(link_info->imsi_acq_pending);
 
 	send_llc_ul_ui(nsi, "ATTACH COMPLETE", &bss_peer[0], 0x1002,
 		       local_tlli, &rai_bss, cell_id,
@@ -3361,6 +3375,108 @@ static void test_gbproxy_keep_info()
 	dump_peers(stdout, 0, 0, &gbcfg);
 
 	OSMO_ASSERT(!gbproxy_link_info_by_tlli(peer, local_tlli));
+	link_info = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->is_deregistered);
+
+	/* Attach rejected */
+
+	gbproxy_delete_link_infos(peer);
+
+	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
+		       foreign_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->imsi_len == 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(link_info->imsi_acq_pending);
+
+	send_llc_ul_ui(nsi, "IDENT RESPONSE", &bss_peer[0], 0x1002,
+		       foreign_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_identity_resp, sizeof(dtap_identity_resp));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	link_info2 = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info == link_info2);
+	OSMO_ASSERT(link_info->imsi_len != 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(!link_info->imsi_acq_pending);
+
+	send_llc_dl_ui(nsi, "ATTACH REJECT", &sgsn_peer, 0x1002,
+		       foreign_tlli, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_attach_rej7, sizeof(dtap_attach_rej7));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	/* Attach (incomplete) and Detach (MO) */
+
+	gbproxy_delete_link_infos(peer);
+
+	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
+		       foreign_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->imsi_len == 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(link_info->imsi_acq_pending);
+
+	send_llc_ul_ui(nsi, "DETACH REQ (MO)", &bss_peer[0], 0x1002,
+		       foreign_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_detach_req, sizeof(dtap_detach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	/* Attach (incomplete) and Detach (MT) */
+
+	gbproxy_delete_link_infos(peer);
+
+	send_llc_ul_ui(nsi, "ATTACH REQUEST", &bss_peer[0], 0x1002,
+		       foreign_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_attach_req, sizeof(dtap_attach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+	OSMO_ASSERT(link_info->imsi_len == 0);
+	OSMO_ASSERT(!link_info->is_deregistered);
+	OSMO_ASSERT(link_info->imsi_acq_pending);
+
+	send_llc_dl_ui(nsi, "DETACH REQ (MT)", &sgsn_peer, 0x1002,
+		       foreign_tlli, 1, imsi, sizeof(imsi),
+		       GPRS_SAPI_GMM, sgsn_nu++,
+		       dtap_mt_detach_req, sizeof(dtap_mt_detach_req));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
+	OSMO_ASSERT(link_info);
+
+	send_llc_ul_ui(nsi, "DETACH ACC", &sgsn_peer, 0x1002,
+		       foreign_tlli, &rai_bss, cell_id,
+		       GPRS_SAPI_GMM, bss_nu++,
+		       dtap_mt_detach_acc, sizeof(dtap_mt_detach_acc));
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	OSMO_ASSERT(!gbproxy_link_info_by_tlli(peer, foreign_tlli));
 	link_info = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
 	OSMO_ASSERT(link_info);
 	OSMO_ASSERT(link_info->is_deregistered);
