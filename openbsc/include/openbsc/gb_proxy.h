@@ -224,6 +224,7 @@ uint32_t gbproxy_make_bss_ptmsi(struct gbproxy_peer *peer, uint32_t sgsn_ptmsi);
 uint32_t gbproxy_make_sgsn_tlli(
 	struct gbproxy_peer *peer, struct gbproxy_link_info *link_info,
 	uint32_t bss_tlli);
+void gbproxy_reset_link(struct gbproxy_link_info *link_info);
 int gbproxy_check_imsi(
 	struct gbproxy_peer *peer, const uint8_t *imsi, size_t imsi_len);
 

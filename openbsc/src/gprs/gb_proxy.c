@@ -76,6 +76,7 @@ static int gbprox_relay2peer(struct msgb *old_msg, struct gbproxy_peer *peer,
 			  uint16_t ns_bvci);
 static int gbprox_relay2sgsn(struct gbproxy_config *cfg, struct msgb *old_msg,
 			     uint16_t ns_bvci, uint16_t sgsn_nsei);
+static void gbproxy_reset_imsi_acquisition(struct gbproxy_link_info* link_info);
 
 static int check_peer_nsei(struct gbproxy_peer *peer, uint16_t nsei)
 {
@@ -271,6 +272,11 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 		LOGP(DGPRS, LOGL_ERROR, "Failed to allocate an SGSN TLLI\n");
 
 	return sgsn_tlli;
+}
+
+void gbproxy_reset_link(struct gbproxy_link_info *link_info)
+{
+	gbproxy_reset_imsi_acquisition(link_info);
 }
 
 /* Returns != 0 iff IMSI acquisition was in progress */

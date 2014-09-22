@@ -5580,7 +5580,7 @@ Peers:
     Attach Reject count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
-      TLLI 00000000, IMSI 12131415161718, AGE 0, STORED 1, IMSI acquisition in progress, DE-REGISTERED
+      TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
 Gbproxy global:
 Test TLLI info expiry
 

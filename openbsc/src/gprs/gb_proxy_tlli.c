@@ -367,6 +367,8 @@ static void gbproxy_unregister_link_info(struct gbproxy_peer *peer,
 
 	link_info->is_deregistered = 1;
 
+	gbproxy_reset_link(link_info);
+
 	return;
 }
 
