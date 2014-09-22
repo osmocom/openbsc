@@ -3418,6 +3418,8 @@ static void test_gbproxy_keep_info()
 
 	dump_peers(stdout, 0, 0, &gbcfg);
 
+	OSMO_ASSERT(!gbproxy_link_info_by_tlli(peer, foreign_tlli));
+
 	/* Attach (incomplete) and Detach (MO) */
 
 	gbproxy_delete_link_infos(peer);

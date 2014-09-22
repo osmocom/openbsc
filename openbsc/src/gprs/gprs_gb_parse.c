@@ -219,6 +219,23 @@ static int gprs_gb_parse_gmm_attach_ack(uint8_t *data, size_t data_len,
 	return 1;
 }
 
+static int gprs_gb_parse_gmm_attach_rej(uint8_t *data, size_t data_len,
+					struct gprs_gb_parse_context *parse_ctx)
+{
+	uint8_t *value;
+
+	parse_ctx->llc_msg_name = "ATTACH_REJ";
+
+	/* GMM cause */
+	if (v_fixed_shift(&data, &data_len, 1, &value) <= 0)
+		return 0;
+
+	parse_ctx->invalidate_tlli = 1;
+
+	return 1;
+}
+
+
 static int gprs_gb_parse_gmm_detach_req(uint8_t *data, size_t data_len,
 					struct gprs_gb_parse_context *parse_ctx)
 {
@@ -441,6 +458,9 @@ int gprs_gb_parse_dtap(uint8_t *data, size_t data_len,
 	switch (g48h->msg_type) {
 	case GSM48_MT_GMM_ATTACH_REQ:
 		return gprs_gb_parse_gmm_attach_req(data, data_len, parse_ctx);
+
+	case GSM48_MT_GMM_ATTACH_REJ:
+		return gprs_gb_parse_gmm_attach_rej(data, data_len, parse_ctx);
 
 	case GSM48_MT_GMM_ATTACH_ACK:
 		return gprs_gb_parse_gmm_attach_ack(data, data_len, parse_ctx);
