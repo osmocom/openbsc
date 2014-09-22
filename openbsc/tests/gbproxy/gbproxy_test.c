@@ -3331,7 +3331,7 @@ static void test_gbproxy_keep_info()
 	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
 	OSMO_ASSERT(link_info);
 	OSMO_ASSERT(link_info == link_info2);
-	OSMO_ASSERT(link_info->imsi_len >= 0);
+	OSMO_ASSERT(link_info->imsi_len > 0);
 	OSMO_ASSERT(!link_info->is_deregistered);
 	OSMO_ASSERT(link_info->imsi_acq_pending);
 
