@@ -582,13 +582,13 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	char mi_string[GSM48_MI_SIZE];
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
-	LOGMMCTXP(LOGL_DEBUG, ctx, "-> GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
-		mi_type, mi_string);
-
 	if (!ctx) {
 		DEBUGP(DMM, "from unknown TLLI 0x%08x?!? This should not happen\n", msgb_tlli(msg));
 		return -EINVAL;
 	}
+
+	LOGMMCTXP(LOGL_DEBUG, ctx, "-> GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
+		mi_type, mi_string);
 
 	if (mi_type == ctx->t3370_id_type)
 		mmctx_timer_stop(ctx, 3370);
