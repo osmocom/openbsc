@@ -374,13 +374,18 @@ static void gbproxy_unregister_link_info(struct gbproxy_peer *peer,
 	return;
 }
 
-int gbproxy_imsi_matches(struct gbproxy_peer *peer,
-		       struct gbproxy_link_info *link_info)
+int gbproxy_imsi_matches(struct gbproxy_config *cfg,
+			 enum gbproxy_match_id match_id,
+			 struct gbproxy_link_info *link_info)
 {
-	if (!peer->cfg->check_imsi)
+	struct gbproxy_match *match;
+	OSMO_ASSERT(match_id >= 0 && match_id < ARRAY_SIZE(cfg->matches));
+
+	match = &cfg->matches[match_id];
+	if (!match->enable)
 		return 1;
 
-	return link_info != NULL && link_info->imsi_matches;
+	return link_info != NULL && link_info->is_matching[match_id];
 }
 
 void gbproxy_assign_imsi(struct gbproxy_peer *peer,
@@ -389,6 +394,7 @@ void gbproxy_assign_imsi(struct gbproxy_peer *peer,
 {
 	int imsi_matches;
 	struct gbproxy_link_info *other_link_info;
+	enum gbproxy_match_id match_id;
 
 	/* Make sure that there is a second entry with the same IMSI */
 	other_link_info = gbproxy_link_info_by_imsi(
@@ -410,10 +416,16 @@ void gbproxy_assign_imsi(struct gbproxy_peer *peer,
 				 parse_ctx->imsi, parse_ctx->imsi_len);
 
 	/* Check, whether the IMSI matches */
-	imsi_matches = gbproxy_check_imsi(peer, parse_ctx->imsi,
-					     parse_ctx->imsi_len);
-	if (imsi_matches >= 0)
-		link_info->imsi_matches = imsi_matches;
+	OSMO_ASSERT(ARRAY_SIZE(link_info->is_matching) ==
+		    ARRAY_SIZE(peer->cfg->matches));
+	for (match_id = 0; match_id < ARRAY_SIZE(link_info->is_matching);
+	     ++match_id) {
+		imsi_matches = gbproxy_check_imsi(
+			&peer->cfg->matches[match_id],
+			parse_ctx->imsi, parse_ctx->imsi_len);
+		if (imsi_matches >= 0)
+			link_info->is_matching[match_id] = imsi_matches;
+	}
 }
 
 static int gbproxy_tlli_match(const struct gbproxy_tlli_state *a,

@@ -75,6 +75,8 @@ static void gbprox_vty_print_peer(struct vty *vty, struct gbproxy_peer *peer)
 
 static int config_write_gbproxy(struct vty *vty)
 {
+	enum gbproxy_match_id match_id;
+
 	vty_out(vty, "gbproxy%s", VTY_NEWLINE);
 
 	vty_out(vty, " sgsn nsei %u%s", g_cfg->nsip_sgsn_nsei,
@@ -87,9 +89,12 @@ static int config_write_gbproxy(struct vty *vty)
 		vty_out(vty, " core-mobile-network-code %d%s",
 			g_cfg->core_mnc, VTY_NEWLINE);
 
-	if (g_cfg->match_re)
-		vty_out(vty, " match-imsi %s%s",
-			g_cfg->match_re, VTY_NEWLINE);
+	for (match_id = 0; match_id < ARRAY_SIZE(g_cfg->matches); ++match_id) {
+		struct gbproxy_match *match = &g_cfg->matches[match_id];
+		if (match->re_str)
+			vty_out(vty, " match-imsi %s%s",
+				match->re_str, VTY_NEWLINE);
+	}
 
 	if (g_cfg->core_apn != NULL) {
 	       if (g_cfg->core_apn_size > 0) {
@@ -194,15 +199,13 @@ DEFUN(cfg_gbproxy_match_imsi,
 {
 	const char *filter = argv[0];
 	const char *err_msg = NULL;
+	struct gbproxy_match *match = &g_cfg->matches[GBPROX_MATCH_PATCHING];
 
-	if (gbproxy_set_patch_filter(g_cfg, filter, &err_msg) != 0) {
+	if (gbproxy_set_patch_filter(match, filter, &err_msg) != 0) {
 		vty_out(vty, "Match expression invalid: %s%s",
 			err_msg, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	talloc_free(g_cfg->match_re);
-	/* TODO: replace NULL */
-	g_cfg->match_re = talloc_strdup(NULL, filter);
 
 	g_cfg->acquire_imsi = 1;
 
@@ -214,10 +217,9 @@ DEFUN(cfg_gbproxy_no_match_imsi,
       "no match-imsi",
       NO_STR GBPROXY_MATCH_IMSI_STR)
 {
-	gbproxy_clear_patch_filter(g_cfg);
+	struct gbproxy_match *match = &g_cfg->matches[GBPROX_MATCH_PATCHING];
 
-	talloc_free(g_cfg->match_re);
-	g_cfg->match_re = NULL;
+	gbproxy_clear_patch_filter(match);
 
 	g_cfg->acquire_imsi = 0;
 

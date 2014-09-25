@@ -129,6 +129,7 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 			time_t age = now ? now - link_info->timestamp : 0;
 			int stored_msgs = 0;
 			struct llist_head *iter;
+			enum gbproxy_match_id match_id;
 			llist_for_each(iter, &link_info->stored_msgs)
 				stored_msgs++;
 
@@ -157,8 +158,14 @@ static int dump_peers(FILE *stream, int indent, time_t now,
 			if (stored_msgs)
 				fprintf(stream, ", STORED %d", stored_msgs);
 
-			if (cfg->check_imsi && link_info->imsi_matches)
-				fprintf(stream, ", IMSI matches");
+			for (match_id = 0; match_id < ARRAY_SIZE(cfg->matches);
+			     ++match_id) {
+				if (cfg->matches[match_id].enable &&
+				    link_info->is_matching[match_id]) {
+					fprintf(stream, ", IMSI matches");
+					break;
+				}
+			}
 
 			if (link_info->imsi_acq_pending)
 				fprintf(stream, ", IMSI acquisition in progress");
@@ -1546,6 +1553,7 @@ static void test_gbproxy_ra_patching()
 	const uint32_t foreign_tlli = 0xbbc54679;
 	const uint32_t foreign_tlli2 = 0xbb00beef;
 	const uint8_t imsi[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
+	const char *patch_re = "^9898|^121314";
 	struct gbproxy_link_info *link_info;
 	struct gbproxy_peer *peer;
 	LLIST_HEAD(rcv_list);
@@ -1565,10 +1573,10 @@ static void test_gbproxy_ra_patching()
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
 
-	gbcfg.match_re = talloc_strdup(NULL, "^9898|^121314");
-	if (gbproxy_set_patch_filter(&gbcfg, gbcfg.match_re, &err_msg) != 0) {
+	if (gbproxy_set_patch_filter(&gbcfg.matches[GBPROX_MATCH_PATCHING],
+				     patch_re, &err_msg) != 0) {
 		fprintf(stderr, "Failed to compile RE '%s': %s\n",
-			gbcfg.match_re, err_msg);
+			patch_re, err_msg);
 		exit(1);
 	}
 
@@ -2777,7 +2785,8 @@ static void test_gbproxy_secondary_sgsn()
 	gbcfg.route_to_sgsn2 = 1;
 	gbcfg.nsip_sgsn2_nsei = SGSN2_NSEI;
 
-	if (gbproxy_set_patch_filter(&gbcfg, filter_re, &err_msg) != 0) {
+	if (gbproxy_set_patch_filter(&gbcfg.matches[GBPROX_MATCH_PATCHING],
+				     filter_re, &err_msg) != 0) {
 		fprintf(stderr, "gbprox_set_patch_filter: got error: %s\n",
 			err_msg);
 		OSMO_ASSERT(err_msg == NULL);
@@ -3946,10 +3955,12 @@ struct gbproxy_link_info *register_tlli(
 	struct gbproxy_link_info *link_info;
 	int imsi_matches = -1;
 	int tlli_already_known = 0;
+	struct gbproxy_config *cfg = peer->cfg;
 
 	/* Check, whether the IMSI matches */
 	if (gprs_is_mi_imsi(imsi, imsi_len)) {
-		imsi_matches = gbproxy_check_imsi(peer, imsi, imsi_len);
+		imsi_matches = gbproxy_check_imsi(
+			&cfg->matches[GBPROX_MATCH_PATCHING], imsi, imsi_len);
 		if (imsi_matches < 0)
 			return NULL;
 	}
@@ -3985,7 +3996,7 @@ struct gbproxy_link_info *register_tlli(
 	gbproxy_update_link_info(link_info, imsi, imsi_len);
 
 	if (imsi_matches >= 0)
-		link_info->imsi_matches = imsi_matches;
+		link_info->is_matching[GBPROX_MATCH_PATCHING] = imsi_matches;
 
 	return link_info;
 }
@@ -4008,7 +4019,8 @@ static void test_gbproxy_tlli_expire(void)
 
 	gbproxy_init_config(&cfg);
 
-	if (gbproxy_set_patch_filter(&cfg, filter_re, &err_msg) != 0) {
+	if (gbproxy_set_patch_filter(&cfg.matches[GBPROX_MATCH_PATCHING],
+				     filter_re, &err_msg) != 0) {
 		fprintf(stderr, "gbprox_set_patch_filter: got error: %s\n",
 			err_msg);
 		OSMO_ASSERT(err_msg == NULL);
@@ -4219,8 +4231,6 @@ static void test_gbproxy_tlli_expire(void)
 
 static void test_gbproxy_imsi_matching(void)
 {
-	struct gbproxy_config cfg = {0};
-	struct gbproxy_peer *peer;
 	const char *err_msg = NULL;
 	const uint8_t imsi1[] = { GSM_MI_TYPE_IMSI | 0x10, 0x32, 0x54, 0xf6 };
 	const uint8_t imsi2[] = { GSM_MI_TYPE_IMSI | GSM_MI_ODD | 0x10, 0x32, 0x54, 0x76 };
@@ -4233,65 +4243,61 @@ static void test_gbproxy_imsi_matching(void)
 	const char *filter_re2 = "^1234";
 	const char *filter_re3 = "^4321";
 	const char *filter_re4_bad = "^12[";
+	struct gbproxy_match match = {0,};
 
 	printf("=== Test IMSI/TMSI matching ===\n\n");
 
-	gbproxy_init_config(&cfg);
-	OSMO_ASSERT(cfg.check_imsi == 0);
+	OSMO_ASSERT(match.enable == 0);
 
-	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re1, &err_msg) == 0);
-	OSMO_ASSERT(cfg.check_imsi == 1);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&match, filter_re1, &err_msg) == 0);
+	OSMO_ASSERT(match.enable == 1);
 
-	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
-	OSMO_ASSERT(cfg.check_imsi == 1);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&match, filter_re2, &err_msg) == 0);
+	OSMO_ASSERT(match.enable == 1);
 
 	err_msg = NULL;
-	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re4_bad, &err_msg) == -1);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&match, filter_re4_bad, &err_msg) == -1);
 	OSMO_ASSERT(err_msg != NULL);
-	OSMO_ASSERT(cfg.check_imsi == 0);
+	OSMO_ASSERT(match.enable == 0);
 
-	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
-	OSMO_ASSERT(cfg.check_imsi == 1);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&match, filter_re2, &err_msg) == 0);
+	OSMO_ASSERT(match.enable == 1);
 
-	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, NULL, &err_msg) == 0);
-	OSMO_ASSERT(cfg.check_imsi == 0);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&match, NULL, &err_msg) == 0);
+	OSMO_ASSERT(match.enable == 0);
 
-	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
-	OSMO_ASSERT(cfg.check_imsi == 1);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&match, filter_re2, &err_msg) == 0);
+	OSMO_ASSERT(match.enable == 1);
 
-	gbproxy_clear_patch_filter(&cfg);
-	OSMO_ASSERT(cfg.check_imsi == 0);
+	gbproxy_clear_patch_filter(&match);
+	OSMO_ASSERT(match.enable == 0);
 
-	peer = gbproxy_peer_alloc(&cfg, 20);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&match, filter_re2, &err_msg) == 0);
+	OSMO_ASSERT(match.enable == 1);
 
-	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re2, &err_msg) == 0);
-	OSMO_ASSERT(cfg.check_imsi == 1);
-
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi1, ARRAY_SIZE(imsi1)) == 1);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi2, ARRAY_SIZE(imsi2)) == 1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imsi1, ARRAY_SIZE(imsi1)) == 1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imsi2, ARRAY_SIZE(imsi2)) == 1);
 	/* imsi3_bad contains 0xE and 0xF digits, but the conversion function
 	 * doesn't complain, so gbproxy_check_imsi() doesn't return -1 in this
 	 * case. */
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi3_bad, ARRAY_SIZE(imsi3_bad)) == 0);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, tmsi1, ARRAY_SIZE(tmsi1)) == -1);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, tmsi2_bad, ARRAY_SIZE(tmsi2_bad)) == -1);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imei1, ARRAY_SIZE(imei1)) == -1);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imei2, ARRAY_SIZE(imei2)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imsi3_bad, ARRAY_SIZE(imsi3_bad)) == 0);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, tmsi1, ARRAY_SIZE(tmsi1)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, tmsi2_bad, ARRAY_SIZE(tmsi2_bad)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imei1, ARRAY_SIZE(imei1)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imei2, ARRAY_SIZE(imei2)) == -1);
 
-	OSMO_ASSERT(gbproxy_set_patch_filter(&cfg, filter_re3, &err_msg) == 0);
-	OSMO_ASSERT(cfg.check_imsi == 1);
+	OSMO_ASSERT(gbproxy_set_patch_filter(&match, filter_re3, &err_msg) == 0);
+	OSMO_ASSERT(match.enable == 1);
 
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi1, ARRAY_SIZE(imsi1)) == 0);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi2, ARRAY_SIZE(imsi2)) == 0);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imsi3_bad, ARRAY_SIZE(imsi3_bad)) == 0);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, tmsi1, ARRAY_SIZE(tmsi1)) == -1);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, tmsi2_bad, ARRAY_SIZE(tmsi2_bad)) == -1);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imei1, ARRAY_SIZE(imei1)) == -1);
-	OSMO_ASSERT(gbproxy_check_imsi(peer, imei2, ARRAY_SIZE(imei2)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imsi1, ARRAY_SIZE(imsi1)) == 0);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imsi2, ARRAY_SIZE(imsi2)) == 0);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imsi3_bad, ARRAY_SIZE(imsi3_bad)) == 0);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, tmsi1, ARRAY_SIZE(tmsi1)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, tmsi2_bad, ARRAY_SIZE(tmsi2_bad)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imei1, ARRAY_SIZE(imei1)) == -1);
+	OSMO_ASSERT(gbproxy_check_imsi(&match, imei2, ARRAY_SIZE(imei2)) == -1);
 
 	/* TODO: Check correct length but wrong type with is_mi_tmsi */
-
-	gbproxy_peer_free(peer);
 }
 
 static struct log_info_cat gprs_categories[] = {

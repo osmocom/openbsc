@@ -584,7 +584,8 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	if (link_info && cfg->route_to_sgsn2) {
 		if (cfg->acquire_imsi && link_info->imsi_len == 0)
 			sgsn_nsei = 0xffff;
-		else if (gbproxy_imsi_matches(peer, link_info))
+		else if (gbproxy_imsi_matches(cfg, GBPROX_MATCH_PATCHING,
+					      link_info))
 			sgsn_nsei = cfg->nsip_sgsn2_nsei;
 	}
 
@@ -1346,10 +1347,12 @@ void gbprox_reset(struct gbproxy_config *cfg)
 int gbproxy_init_config(struct gbproxy_config *cfg)
 {
 	struct timespec tp;
+
 	INIT_LLIST_HEAD(&cfg->bts_peers);
 	cfg->ctrg = rate_ctr_group_alloc(tall_bsc_ctx, &global_ctrg_desc, 0);
 	clock_gettime(CLOCK_REALTIME, &tp);
 	cfg->bss_ptmsi_state = tp.tv_sec + tp.tv_nsec;
 	cfg->sgsn_tlli_state = tp.tv_sec - tp.tv_nsec;
+
 	return 0;
 }

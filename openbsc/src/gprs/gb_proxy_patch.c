@@ -24,6 +24,7 @@
 #include <openbsc/gprs_gb_parse.h>
 
 #include <openbsc/gsm_04_08_gprs.h>
+#include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 
 #include <osmocom/gprs/protocol/gsm_08_18.h>
@@ -198,6 +199,7 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	struct gprs_llc_hdr_parsed *ghp = &parse_ctx->llc_hdr_parsed;
 	int have_patched = 0;
 	int fcs;
+	struct gbproxy_config *cfg = peer->cfg;
 
 	if (parse_ctx->ptmsi_enc && link_info &&
 	    !parse_ctx->old_raid_is_foreign && peer->cfg->patch_ptmsi) {
@@ -216,7 +218,7 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 		}
 	}
 
-	if (parse_ctx->new_ptmsi_enc && link_info && peer->cfg->patch_ptmsi) {
+	if (parse_ctx->new_ptmsi_enc && link_info && cfg->patch_ptmsi) {
 		uint32_t ptmsi;
 		if (parse_ctx->to_bss)
 			ptmsi = link_info->tlli.ptmsi;
@@ -243,9 +245,10 @@ int gbproxy_patch_llc(struct msgb *msg, uint8_t *llc, size_t llc_len,
 	}
 
 	if (parse_ctx->apn_ie &&
-	    peer->cfg->core_apn &&
+	    cfg->core_apn &&
 	    !parse_ctx->to_bss &&
-	    gbproxy_imsi_matches(peer, link_info) && peer->cfg->core_apn) {
+	    gbproxy_imsi_matches(cfg, GBPROX_MATCH_PATCHING, link_info) &&
+	    cfg->core_apn) {
 		size_t new_len;
 		gbproxy_patch_apn_ie(msg,
 				     parse_ctx->apn_ie, parse_ctx->apn_ie_len,
@@ -371,35 +374,38 @@ patch_error:
 	     err_info);
 }
 
-void gbproxy_clear_patch_filter(struct gbproxy_config *cfg)
+void gbproxy_clear_patch_filter(struct gbproxy_match *match)
 {
-	if (cfg->check_imsi) {
-		regfree(&cfg->imsi_re_comp);
-		cfg->check_imsi = 0;
+	if (match->enable) {
+		regfree(&match->re_comp);
+		match->enable = 0;
 	}
+	talloc_free(match->re_str);
+	match->re_str = NULL;
 }
 
-int gbproxy_set_patch_filter(struct gbproxy_config *cfg, const char *filter,
+int gbproxy_set_patch_filter(struct gbproxy_match *match, const char *filter,
 		const char **err_msg)
 {
 	static char err_buf[300];
 	int rc;
 
-	gbproxy_clear_patch_filter(cfg);
+	gbproxy_clear_patch_filter(match);
 
 	if (!filter)
 		return 0;
 
-	rc = regcomp(&cfg->imsi_re_comp, filter,
+	rc = regcomp(&match->re_comp, filter,
 		     REG_EXTENDED | REG_NOSUB | REG_ICASE);
 
 	if (rc == 0) {
-		cfg->check_imsi = 1;
+		match->enable = 1;
+		match->re_str = talloc_strdup(tall_bsc_ctx, filter);
 		return 0;
 	}
 
 	if (err_msg) {
-		regerror(rc, &cfg->imsi_re_comp,
+		regerror(rc, &match->re_comp,
 			 err_buf, sizeof(err_buf));
 		*err_msg = err_buf;
 	}
@@ -407,13 +413,13 @@ int gbproxy_set_patch_filter(struct gbproxy_config *cfg, const char *filter,
 	return -1;
 }
 
-int gbproxy_check_imsi(struct gbproxy_peer *peer,
+int gbproxy_check_imsi(struct gbproxy_match *match,
 		       const uint8_t *imsi, size_t imsi_len)
 {
 	char mi_buf[200];
 	int rc;
 
-	if (!peer->cfg->check_imsi)
+	if (!match->enable)
 		return 1;
 
 	rc = gprs_is_mi_imsi(imsi, imsi_len);
@@ -427,11 +433,11 @@ int gbproxy_check_imsi(struct gbproxy_peer *peer,
 
 	LOGP(DGPRS, LOGL_DEBUG, "Checking IMSI '%s' (%d)\n", mi_buf, rc);
 
-	rc = regexec(&peer->cfg->imsi_re_comp, mi_buf, 0, NULL, 0);
+	rc = regexec(&match->re_comp, mi_buf, 0, NULL, 0);
 	if (rc == REG_NOMATCH) {
 		LOGP(DGPRS, LOGL_INFO,
 		       "IMSI '%s' doesn't match pattern '%s'\n",
-		       mi_buf, peer->cfg->match_re);
+		       mi_buf, match->re_str);
 		return 0;
 	}
 

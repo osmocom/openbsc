@@ -59,6 +59,17 @@ enum gbproxy_keep_mode {
 	GBPROX_KEEP_ALWAYS,
 };
 
+enum gbproxy_match_id {
+	GBPROX_MATCH_PATCHING,
+	GBPROX_MATCH_LAST
+};
+
+struct gbproxy_match {
+	int   enable;
+	char *re_str;
+	regex_t re_comp;
+};
+
 struct gbproxy_config {
 	/* parsed from config file */
 	uint16_t nsip_sgsn_nsei;
@@ -77,7 +88,6 @@ struct gbproxy_config {
 	int core_mcc;
 	uint8_t* core_apn;
 	size_t core_apn_size;
-	char * match_re;
 	int tlli_max_age;
 	int tlli_max_len;
 
@@ -89,8 +99,7 @@ struct gbproxy_config {
 	enum gbproxy_keep_mode keep_link_infos;
 
 	/* IMSI checking/matching */
-	int check_imsi;
-	regex_t imsi_re_comp;
+	struct gbproxy_match matches[GBPROX_MATCH_LAST];
 
 	/* Used to generate identifiers */
 	unsigned bss_ptmsi_state;
@@ -154,8 +163,7 @@ struct gbproxy_link_info {
 
 	int is_deregistered;
 
-	int imsi_matches;
-
+	int is_matching[GBPROX_MATCH_LAST];
 };
 
 
@@ -217,7 +225,8 @@ struct gbproxy_link_info *gbproxy_link_info_by_ptmsi(
 	uint32_t ptmsi);
 
 int gbproxy_imsi_matches(
-	struct gbproxy_peer *peer,
+	struct gbproxy_config *cfg,
+	enum gbproxy_match_id match_id,
 	struct gbproxy_link_info *link_info);
 uint32_t gbproxy_map_tlli(
 	uint32_t other_tlli, struct gbproxy_link_info *link_info, int to_bss);
@@ -229,7 +238,7 @@ uint32_t gbproxy_make_sgsn_tlli(
 	uint32_t bss_tlli);
 void gbproxy_reset_link(struct gbproxy_link_info *link_info);
 int gbproxy_check_imsi(
-	struct gbproxy_peer *peer, const uint8_t *imsi, size_t imsi_len);
+	struct gbproxy_match *match, const uint8_t *imsi, size_t imsi_len);
 
 /* Message patching */
 void gbproxy_patch_bssgp(
@@ -243,10 +252,8 @@ int gbproxy_patch_llc(
 	int *len_change, struct gprs_gb_parse_context *parse_ctx);
 
 int gbproxy_set_patch_filter(
-	struct gbproxy_config *cfg, const char *filter, const char **err_msg);
-void gbproxy_clear_patch_filter(struct gbproxy_config *cfg);
-int gbproxy_check_imsi(
-	struct gbproxy_peer *peer, const uint8_t *imsi, size_t imsi_len);
+	struct gbproxy_match *match, const char *filter, const char **err_msg);
+void gbproxy_clear_patch_filter(struct gbproxy_match *match);
 
 /* Peer handling */
 struct gbproxy_peer *gbproxy_peer_by_bvci(
