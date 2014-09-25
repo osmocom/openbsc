@@ -60,6 +60,7 @@ static const struct value_string keep_modes[] = {
 
 static const struct value_string match_ids[] = {
 	{GBPROX_MATCH_PATCHING, "patching"},
+	{GBPROX_MATCH_ROUTING, "routing"},
 	{0, NULL}
 };
 
@@ -199,15 +200,16 @@ DEFUN(cfg_gbproxy_no_core_mcc,
 
 DEFUN(cfg_gbproxy_match_imsi,
       cfg_gbproxy_match_imsi_cmd,
-      "match-imsi patching .REGEXP",
+      "match-imsi (patching|routing) .REGEXP",
       GBPROXY_MATCH_IMSI_STR
-      "Patch MS related information elements or route to secondary SGSN on match only\n"
+      "Patch MS related information elements on match only\n"
+      "Route to the secondary SGSN on match only\n"
       "Regular expression for the IMSI match\n")
 {
-	const char *filter = argv[0];
+	const char *filter = argv[1];
 	const char *err_msg = NULL;
 	struct gbproxy_match *match;
-	enum gbproxy_match_id match_id = get_string_value(match_ids, "patching");
+	enum gbproxy_match_id match_id = get_string_value(match_ids, argv[0]);
 
 	OSMO_ASSERT(match_id >= GBPROX_MATCH_PATCHING &&
 		    match_id < GBPROX_MATCH_LAST);

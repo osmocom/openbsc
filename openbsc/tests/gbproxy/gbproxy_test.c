@@ -2786,7 +2786,7 @@ static void test_gbproxy_secondary_sgsn()
 	gbcfg.route_to_sgsn2 = 1;
 	gbcfg.nsip_sgsn2_nsei = SGSN2_NSEI;
 
-	if (gbproxy_set_patch_filter(&gbcfg.matches[GBPROX_MATCH_PATCHING],
+	if (gbproxy_set_patch_filter(&gbcfg.matches[GBPROX_MATCH_ROUTING],
 				     filter_re, &err_msg) != 0) {
 		fprintf(stderr, "gbprox_set_patch_filter: got error: %s\n",
 			err_msg);
@@ -3219,7 +3219,7 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_global(stdout, 0);
 
-	gbproxy_clear_patch_filter(&gbcfg.matches[GBPROX_MATCH_PATCHING]);
+	gbproxy_clear_patch_filter(&gbcfg.matches[GBPROX_MATCH_ROUTING]);
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;

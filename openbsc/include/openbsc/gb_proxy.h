@@ -61,6 +61,7 @@ enum gbproxy_keep_mode {
 
 enum gbproxy_match_id {
 	GBPROX_MATCH_PATCHING,
+	GBPROX_MATCH_ROUTING,
 	GBPROX_MATCH_LAST
 };
 

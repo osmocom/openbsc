@@ -584,7 +584,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	if (link_info && cfg->route_to_sgsn2) {
 		if (cfg->acquire_imsi && link_info->imsi_len == 0)
 			sgsn_nsei = 0xffff;
-		else if (gbproxy_imsi_matches(cfg, GBPROX_MATCH_PATCHING,
+		else if (gbproxy_imsi_matches(cfg, GBPROX_MATCH_ROUTING,
 					      link_info))
 			sgsn_nsei = cfg->nsip_sgsn2_nsei;
 	}
