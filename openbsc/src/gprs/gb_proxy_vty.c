@@ -58,6 +58,11 @@ static const struct value_string keep_modes[] = {
 	{0, NULL}
 };
 
+static const struct value_string match_ids[] = {
+	{GBPROX_MATCH_PATCHING, "patching"},
+	{0, NULL}
+};
+
 static void gbprox_vty_print_peer(struct vty *vty, struct gbproxy_peer *peer)
 {
 	struct gprs_ra_id raid;
@@ -92,7 +97,8 @@ static int config_write_gbproxy(struct vty *vty)
 	for (match_id = 0; match_id < ARRAY_SIZE(g_cfg->matches); ++match_id) {
 		struct gbproxy_match *match = &g_cfg->matches[match_id];
 		if (match->re_str)
-			vty_out(vty, " match-imsi %s%s",
+			vty_out(vty, " match-imsi %s %s%s",
+				get_value_string(match_ids, match_id),
 				match->re_str, VTY_NEWLINE);
 	}
 
@@ -189,17 +195,23 @@ DEFUN(cfg_gbproxy_no_core_mcc,
 	return CMD_SUCCESS;
 }
 
-#define GBPROXY_MATCH_IMSI_STR "Restrict DTAP patching to certain IMSIs\n"
+#define GBPROXY_MATCH_IMSI_STR "Restrict actions to certain IMSIs\n"
 
 DEFUN(cfg_gbproxy_match_imsi,
       cfg_gbproxy_match_imsi_cmd,
-      "match-imsi .REGEXP",
+      "match-imsi patching .REGEXP",
       GBPROXY_MATCH_IMSI_STR
-      "Regular expression for the match\n")
+      "Patch MS related information elements or route to secondary SGSN on match only\n"
+      "Regular expression for the IMSI match\n")
 {
 	const char *filter = argv[0];
 	const char *err_msg = NULL;
-	struct gbproxy_match *match = &g_cfg->matches[GBPROX_MATCH_PATCHING];
+	struct gbproxy_match *match;
+	enum gbproxy_match_id match_id = get_string_value(match_ids, "patching");
+
+	OSMO_ASSERT(match_id >= GBPROX_MATCH_PATCHING &&
+		    match_id < GBPROX_MATCH_LAST);
+	match = &g_cfg->matches[match_id];
 
 	if (gbproxy_set_patch_filter(match, filter, &err_msg) != 0) {
 		vty_out(vty, "Match expression invalid: %s%s",
@@ -217,9 +229,10 @@ DEFUN(cfg_gbproxy_no_match_imsi,
       "no match-imsi",
       NO_STR GBPROXY_MATCH_IMSI_STR)
 {
-	struct gbproxy_match *match = &g_cfg->matches[GBPROX_MATCH_PATCHING];
+	enum gbproxy_match_id match_id;
 
-	gbproxy_clear_patch_filter(match);
+	for (match_id = 0; match_id < ARRAY_SIZE(g_cfg->matches); ++match_id)
+		gbproxy_clear_patch_filter(&g_cfg->matches[match_id]);
 
 	g_cfg->acquire_imsi = 0;
 
