@@ -465,7 +465,38 @@ DEFUN(subscriber_ussd_notify,
 	return CMD_SUCCESS;
 }
 
-DEFUN(ena_subscr_authorizde,
+DEFUN(ena_subscr_delete,
+      ena_subscr_delete_cmd,
+      "subscriber " SUBSCR_TYPES " ID delete",
+	SUBSCR_HELP "Delete subscriber in HLR\n")
+{
+	int rc;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (subscr->use_count != 1) {
+		vty_out(vty, "Removing active subscriber%s", VTY_NEWLINE);
+	}
+
+	rc = db_subscriber_delete(subscr);
+	subscr_put(subscr);
+
+	if (rc != 0) {
+		vty_out(vty, "Failed to remove subscriber%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(ena_subscr_authorized,
       ena_subscr_authorized_cmd,
       "subscriber " SUBSCR_TYPES " ID authorized (0|1)",
 	SUBSCR_HELP "(De-)Authorize subscriber in HLR\n"
@@ -982,6 +1013,7 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&show_stats_cmd);
 	install_element_ve(&show_smsqueue_cmd);
 
+	install_element(ENABLE_NODE, &ena_subscr_delete_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_name_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_extension_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_authorized_cmd);

@@ -247,7 +247,7 @@ class TestVTYNITB(TestVTYGenericBSC):
             if classNum != 10:
                 self.assertEquals(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
 
-    def testSubscriberCreate(self):
+    def testSubscriberCreateDelete(self):
         self.vty.enable()
 
         imsi = "204300854013739"
@@ -262,6 +262,14 @@ class TestVTYNITB(TestVTYGenericBSC):
         # Now we have it
         res = self.vty.command('show subscriber imsi '+imsi)
         self.assert_(res.find("    IMSI: "+imsi) > 0)
+
+        # Delete it
+        res = self.vty.command('subscriber delete imsi '+imsi)
+        self.assert_(res != "")
+
+        # Now it should not be there anymore
+        res = self.vty.command('show subscriber imsi '+imsi)
+        self.assert_(res != '% No subscriber found for imsi '+imsi)
 
     def testShowPagingGroup(self):
         res = self.vty.command("show paging-group 255 1234567")
