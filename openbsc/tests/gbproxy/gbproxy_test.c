@@ -1866,6 +1866,7 @@ static void test_gbproxy_ra_patching()
 	OSMO_ASSERT(!expect_msg());
 	received_messages = NULL;
 
+	gbproxy_clear_patch_filter(&gbcfg.matches[GBPROX_MATCH_PATCHING]);
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
@@ -3218,6 +3219,7 @@ static void test_gbproxy_secondary_sgsn()
 
 	dump_global(stdout, 0);
 
+	gbproxy_clear_patch_filter(&gbcfg.matches[GBPROX_MATCH_PATCHING]);
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
@@ -4227,6 +4229,8 @@ static void test_gbproxy_tlli_expire(void)
 
 		gbproxy_peer_free(peer);
 	}
+	gbproxy_clear_patch_filter(&cfg.matches[GBPROX_MATCH_PATCHING]);
+	gbprox_reset(&cfg);
 }
 
 static void test_gbproxy_imsi_matching(void)
@@ -4298,6 +4302,9 @@ static void test_gbproxy_imsi_matching(void)
 	OSMO_ASSERT(gbproxy_check_imsi(&match, imei2, ARRAY_SIZE(imei2)) == -1);
 
 	/* TODO: Check correct length but wrong type with is_mi_tmsi */
+
+	gbproxy_clear_patch_filter(&match);
+	OSMO_ASSERT(match.enable == 0);
 }
 
 static struct log_info_cat gprs_categories[] = {
