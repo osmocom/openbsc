@@ -155,7 +155,7 @@ static int gprs_gb_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 
 	/* Skip MS network capability */
 	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
-	    value_len < 1 || value_len > 2)
+	    value_len < 1 || value_len > 8)
 		/* invalid */
 		return 0;;
 
