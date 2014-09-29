@@ -157,7 +157,7 @@ static int gprs_gb_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
 	    value_len < 1 || value_len > 8)
 		/* invalid */
-		return 0;;
+		return 0;
 
 	/* Skip Attach type */
 	/* Skip Ciphering key sequence number */
@@ -421,7 +421,7 @@ static int gprs_gb_parse_gsm_act_pdp_req(uint8_t *data, size_t data_len,
 	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
 	    value_len < 4 || value_len > 14)
 		/* invalid */
-		return 0;;
+		return 0;
 
 	/* Skip Requested PDP address */
 	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||

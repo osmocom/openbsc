@@ -517,7 +517,7 @@ struct gbproxy_link_info *gbproxy_update_link_state_ul(
 			sgsn_tlli = gbproxy_make_sgsn_tlli(peer, link_info,
 							   parse_ctx->tlli);
 			link_info->sgsn_tlli.current = sgsn_tlli;
-			link_info->tlli.current = parse_ctx->tlli;;
+			link_info->tlli.current = parse_ctx->tlli;
 		} else if (!link_info->tlli.current) {
 			/* New TLLI (info found by IMSI or P-TMSI) */
 			link_info->tlli.current = parse_ctx->tlli;
@@ -597,8 +597,8 @@ struct gbproxy_link_info *gbproxy_update_link_state_dl(
 		     parse_ctx->tlli, new_ptmsi);
 
 		link_info = gbproxy_link_info_alloc(peer);
-		link_info->sgsn_tlli.current = parse_ctx->tlli;;
-		link_info->tlli.current = parse_ctx->tlli;;
+		link_info->sgsn_tlli.current = parse_ctx->tlli;
+		link_info->tlli.current = parse_ctx->tlli;
 		link_info->sgsn_tlli.ptmsi = new_ptmsi;
 		link_info->tlli.ptmsi = new_ptmsi;
 		gbproxy_attach_link_info(peer, now, link_info);
