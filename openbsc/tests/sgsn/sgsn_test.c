@@ -19,6 +19,12 @@
  *
  */
 
+/* TODO:
+ * - add test cases for Detach(reattach)
+ * - add test cases for PDP context deletion
+ * - add test cases for Cancel pending timer in sgsn_mm_ctx_cleanup_free
+ */
+
 #include <openbsc/gprs_llc.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_gmm.h>
