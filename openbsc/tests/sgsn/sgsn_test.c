@@ -141,9 +141,7 @@ static void test_gmm_detach(void)
 	/* verify that things are gone */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
-	/* this is still wrong and needs to be changed */
-	OSMO_ASSERT(ictx);
-	OSMO_ASSERT(ictx->llme == lle->llme);
+	OSMO_ASSERT(!ictx);
 }
 
 static struct log_info_cat gprs_categories[] = {

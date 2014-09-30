@@ -808,6 +808,8 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	gprs_llgmm_assign(ctx->llme, ctx->tlli, 0xffffffff,
 			  GPRS_ALGO_GEA0, NULL);
 
+	sgsn_mm_ctx_free(ctx);
+
 	return rc;
 }
 
@@ -1574,6 +1576,8 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg, struct gprs_llc_llme *llme)
 		/* FIXME: return status message */
 		break;
 	}
+
+	/* MMCTX can be invalid */
 
 	return rc;
 }
