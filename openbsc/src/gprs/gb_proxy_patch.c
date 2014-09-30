@@ -327,6 +327,19 @@ void gbproxy_patch_bssgp(struct msgb *msg, uint8_t *bssgp, size_t bssgp_len,
 		}
 	}
 
+	if (parse_ctx->bssgp_ptmsi_enc && peer->cfg->patch_ptmsi) {
+		uint32_t ptmsi;
+		if (parse_ctx->to_bss)
+			ptmsi = link_info->tlli.ptmsi;
+		else
+			ptmsi = link_info->sgsn_tlli.ptmsi;
+
+		if (ptmsi != GSM_RESERVED_TMSI)
+			gbproxy_patch_ptmsi(
+				parse_ctx->bssgp_ptmsi_enc, peer,
+				ptmsi, parse_ctx->to_bss, "BSSGP P-TMSI");
+	}
+
 	if (parse_ctx->llc) {
 		uint8_t *llc = parse_ctx->llc;
 		size_t llc_len = parse_ctx->llc_len;

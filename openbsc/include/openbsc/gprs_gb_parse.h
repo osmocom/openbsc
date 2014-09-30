@@ -29,7 +29,7 @@ struct gprs_gb_parse_context {
 	uint8_t *raid_enc;
 	uint8_t *old_raid_enc;
 	uint8_t *bssgp_raid_enc;
-	uint8_t *bssgp_ptimsi;
+	uint8_t *bssgp_ptmsi_enc;
 
 	/* General info */
 	const char *llc_msg_name;

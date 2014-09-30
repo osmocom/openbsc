@@ -721,6 +721,53 @@ static void send_bssgp_llc_discarded(struct gprs_ns_inst *nsi,
 	send_ns_unitdata(nsi, "LLC_DISCARDED", src_addr, 0, msg, sizeof(msg));
 }
 
+static void send_bssgp_paging(struct gprs_ns_inst *nsi,
+			      struct sockaddr_in *src_addr,
+			      const uint8_t *imsi, size_t imsi_size,
+			      struct gprs_ra_id *raid, uint32_t ptmsi)
+{
+	/* Base Station Subsystem GPRS Protocol, BSSGP SUSPEND */
+	unsigned char msg[100] = {
+		0x06,
+	};
+
+	const unsigned char drx_ie[] = {0x0a, 0x82, 0x07, 0x04};
+	const unsigned char qos_ie[] = {0x18, 0x83, 0x00, 0x00, 0x00};
+
+	size_t bssgp_msg_size = 1;
+
+	if (imsi) {
+		OSMO_ASSERT(imsi_size <= 127);
+		msg[bssgp_msg_size] = BSSGP_IE_IMSI;
+		msg[bssgp_msg_size + 1] = 0x80 | imsi_size;
+		memcpy(msg + bssgp_msg_size + 2, imsi, imsi_size);
+		bssgp_msg_size += 2 + imsi_size;
+	}
+
+	memcpy(msg + bssgp_msg_size, drx_ie, sizeof(drx_ie));
+	bssgp_msg_size += sizeof(drx_ie);
+
+	if (raid) {
+		msg[bssgp_msg_size] = BSSGP_IE_ROUTEING_AREA;
+		msg[bssgp_msg_size+1] = 0x86;
+		gsm48_construct_ra(msg + bssgp_msg_size + 2, raid);
+		bssgp_msg_size += 8;
+	}
+
+	memcpy(msg + bssgp_msg_size, qos_ie, sizeof(qos_ie));
+	bssgp_msg_size += sizeof(qos_ie);
+
+	if (ptmsi != GSM_RESERVED_TMSI) {
+		const uint32_t ptmsi_be = htonl(ptmsi);
+		msg[bssgp_msg_size] = BSSGP_IE_TMSI;
+		msg[bssgp_msg_size+1] = 0x84;
+		memcpy(msg + bssgp_msg_size + 2, &ptmsi_be, 4);
+		bssgp_msg_size += 6;
+	}
+
+	send_ns_unitdata(nsi, "PAGING_PS", src_addr, 0, msg, bssgp_msg_size);
+}
+
 static void send_bssgp_flow_control_bvc(struct gprs_ns_inst *nsi,
 					struct sockaddr_in *src_addr,
 					uint16_t bvci, uint8_t tag)
@@ -2127,6 +2174,7 @@ static void test_gbproxy_ptmsi_patching()
 	struct gbproxy_peer *peer;
 	unsigned bss_nu = 0;
 	unsigned sgsn_nu = 0;
+	int old_ctr;
 
 	OSMO_ASSERT(local_sgsn_tlli == gprs_tmsi2tlli(sgsn_ptmsi, TLLI_LOCAL));
 	OSMO_ASSERT(local_sgsn_tlli2 == gprs_tmsi2tlli(sgsn_ptmsi2, TLLI_LOCAL));
@@ -2365,6 +2413,15 @@ static void test_gbproxy_ptmsi_patching()
 	send_bssgp_suspend_ack(nsi, &sgsn_peer, local_sgsn_tlli3, &rai_sgsn);
 
 	dump_peers(stdout, 0, 0, &gbcfg);
+
+	old_ctr = peer->ctrg->ctr[GBPROX_PEER_CTR_PTMSI_PATCHED_SGSN].current;
+
+	send_bssgp_paging(nsi, &sgsn_peer, imsi, sizeof(imsi), &rai_bss, sgsn_ptmsi3);
+
+	dump_peers(stdout, 0, 0, &gbcfg);
+
+	OSMO_ASSERT(old_ctr + 1 ==
+		    peer->ctrg->ctr[GBPROX_PEER_CTR_PTMSI_PATCHED_SGSN].current);
 
 	/* Bad case: Invalid BVCI */
 	send_bssgp_llc_discarded(nsi, &bss_peer[0], 0xeee1,

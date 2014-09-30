@@ -2756,6 +2756,30 @@ Peers:
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI ead4775a -> e0543210, IMSI 12131415161718, AGE 0
+PROCESSING PAGING_PS from 0x05060708:32000
+00 00 00 00 06 0d 88 11 12 13 14 15 16 17 18 0a 82 07 04 1b 86 11 22 33 40 50 60 18 83 00 00 00 20 84 e0 54 32 10 
+
+CALLBACK, event 0, msg length 34, bvci 0x0000
+00 00 00 00 06 0d 88 11 12 13 14 15 16 17 18 0a 82 07 04 1b 86 11 22 33 40 50 60 18 83 00 00 00 20 84 e0 54 32 10 
+
+NS UNITDATA MESSAGE to BSS, BVCI 0x0000, msg length 34 (gprs_ns_sendmsg)
+MESSAGE to BSS at 0x01020304:1111, msg length 38
+00 00 00 00 06 0d 88 11 12 13 14 15 16 17 18 0a 82 07 04 1b 86 11 22 33 40 50 60 18 83 00 00 00 20 84 ea d4 77 5a 
+
+result (PAGING_PS) = 38
+
+Peers:
+  NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
+    RAID patched              (BSS ): 13
+    RAID patched              (SGSN): 5
+    APN patched                     : 1
+    TLLI patched              (BSS ): 11
+    TLLI patched              (SGSN): 9
+    P-TMSI patched            (SGSN): 4
+    Attach Request count            : 1
+    TLLI cache size                 : 1
+    TLLI-Cache: 1
+      TLLI ead4775a -> e0543210, IMSI 12131415161718, AGE 0
 PROCESSING LLC_DISCARDED from 0x01020304:1111
 00 00 00 00 2c 1f 84 ea d4 77 5a 0f 81 01 04 82 ee e1 25 83 00 00 0c 
 
@@ -2838,12 +2862,12 @@ result (DETACH REQ) = 48
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 14
-    RAID patched              (SGSN): 5
+    RAID patched              (SGSN): 6
     APN patched                     : 1
     TLLI patched              (BSS ): 13
     TLLI patched              (SGSN): 10
     P-TMSI patched            (BSS ): 1
-    P-TMSI patched            (SGSN): 3
+    P-TMSI patched            (SGSN): 4
     Attach Request count            : 1
     TLLI from SGSN unknown          : 2
     TLLI cache size                 : 1
@@ -2864,12 +2888,12 @@ result (DETACH ACC) = 71
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     RAID patched              (BSS ): 14
-    RAID patched              (SGSN): 5
+    RAID patched              (SGSN): 6
     APN patched                     : 1
     TLLI patched              (BSS ): 13
     TLLI patched              (SGSN): 11
     P-TMSI patched            (BSS ): 1
-    P-TMSI patched            (SGSN): 3
+    P-TMSI patched            (SGSN): 4
     Attach Request count            : 1
     TLLI from SGSN unknown          : 2
     TLLI-Cache: 0

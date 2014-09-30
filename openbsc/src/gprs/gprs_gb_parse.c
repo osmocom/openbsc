@@ -596,7 +596,7 @@ int gprs_gb_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
 	}
 
 	if (TLVP_PRESENT(tp, BSSGP_IE_TMSI) && pdu_type == BSSGP_PDUT_PAGING_PS)
-		parse_ctx->ptmsi_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_TMSI);
+		parse_ctx->bssgp_ptmsi_enc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_TMSI);
 
 	if (TLVP_PRESENT(tp, BSSGP_IE_LLC_PDU)) {
 		uint8_t *llc = (uint8_t *)TLVP_VAL(tp, BSSGP_IE_LLC_PDU);
@@ -633,6 +633,7 @@ void gprs_gb_log_parse_context(int log_level,
 	if (!parse_ctx->tlli_enc &&
 	    !parse_ctx->ptmsi_enc &&
 	    !parse_ctx->new_ptmsi_enc &&
+	    !parse_ctx->bssgp_ptmsi_enc &&
 	    !parse_ctx->imsi)
 		return;
 
@@ -678,6 +679,13 @@ void gprs_gb_log_parse_context(int log_level,
 		gsm48_parse_ra(&raid, parse_ctx->old_raid_enc);
 		LOGPC(DGPRS, log_level, "%s old RAID %u-%u-%u-%u", sep,
 		     raid.mcc, raid.mnc, raid.lac, raid.rac);
+		sep = ",";
+	}
+
+	if (parse_ctx->bssgp_ptmsi_enc) {
+		uint32_t ptmsi = GSM_RESERVED_TMSI;
+		gprs_parse_tmsi(parse_ctx->bssgp_ptmsi_enc, &ptmsi);
+		LOGPC(DGPRS, log_level, "%s BSSGP PTMSI %08x", sep, ptmsi);
 		sep = ",";
 	}
 

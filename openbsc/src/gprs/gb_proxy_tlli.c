@@ -542,6 +542,30 @@ struct gbproxy_link_info *gbproxy_update_link_state_ul(
 	return link_info;
 }
 
+static struct gbproxy_link_info *gbproxy_get_link_info_dl(
+	struct gbproxy_peer *peer,
+	struct gprs_gb_parse_context *parse_ctx)
+{
+	struct gbproxy_link_info *link_info = NULL;
+
+	/* Which key to use depends on its availability only, if that fails, do
+	 * not retry it with another key (e.g. IMSI). */
+	if (parse_ctx->tlli_enc)
+		link_info = gbproxy_link_info_by_sgsn_tlli(peer, parse_ctx->tlli,
+							   parse_ctx->peer_nsei);
+
+	/* TODO: Get link_info by (SGSN) P-TMSI if that is available (see
+	 * GSM 08.18, 7.2) instead of using the IMSI as key. */
+	else if (parse_ctx->imsi)
+		link_info = gbproxy_link_info_by_imsi(
+			peer, parse_ctx->imsi, parse_ctx->imsi_len);
+
+	if (link_info)
+		link_info->is_deregistered = 0;
+
+	return link_info;
+}
+
 struct gbproxy_link_info *gbproxy_update_link_state_dl(
 	struct gbproxy_peer *peer,
 	time_t now,
@@ -549,9 +573,7 @@ struct gbproxy_link_info *gbproxy_update_link_state_dl(
 {
 	struct gbproxy_link_info *link_info = NULL;
 
-	if (parse_ctx->tlli_enc)
-		link_info = gbproxy_link_info_by_sgsn_tlli(
-			peer, parse_ctx->tlli, parse_ctx->peer_nsei);
+	link_info = gbproxy_get_link_info_dl(peer, parse_ctx);
 
 	if (parse_ctx->tlli_enc && parse_ctx->new_ptmsi_enc && link_info) {
 		/* A new P-TMSI has been signalled in the message,
