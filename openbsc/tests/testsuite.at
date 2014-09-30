@@ -90,3 +90,10 @@ AT_KEYWORDS([trau])
 cat $abs_srcdir/trau/trau_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/trau/trau_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([sgsn])
+AT_KEYWORDS([sgsn])
+AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
+cat $abs_srcdir/sgsn/sgsn_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/sgsn/sgsn_test], [], [expout], [ignore])
+AT_CLEANUP

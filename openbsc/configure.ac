@@ -77,6 +77,7 @@ AC_SUBST(osmo_ac_mgcp_transcoding)
 found_libgtp=yes
 PKG_CHECK_MODULES(LIBGTP, libgtp, , found_libgtp=no)
 AM_CONDITIONAL(HAVE_LIBGTP, test "$found_libgtp" = yes)
+AC_SUBST(found_libgtp)
 
 dnl checks for header files
 AC_HEADER_STDC
@@ -190,6 +191,7 @@ AC_OUTPUT(
     tests/abis/Makefile
     tests/smpp/Makefile
     tests/trau/Makefile
+    tests/sgsn/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)
