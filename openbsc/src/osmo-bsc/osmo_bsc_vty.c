@@ -357,7 +357,7 @@ DEFUN(cfg_net_msc_no_dest,
 
 DEFUN(cfg_net_msc_ping_time,
       cfg_net_msc_ping_time_cmd,
-      "timeout-ping NR",
+      "timeout-ping <1-2147483647>",
       "Set the PING interval, negative for not sending PING\n"
       "Timeout in seconds\n")
 {
@@ -368,7 +368,7 @@ DEFUN(cfg_net_msc_ping_time,
 
 DEFUN(cfg_net_msc_pong_time,
       cfg_net_msc_pong_time_cmd,
-      "timeout-pong NR",
+      "timeout-pong <1-2147483647>",
       "Set the time to wait for a PONG\n" "Timeout in seconds\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
