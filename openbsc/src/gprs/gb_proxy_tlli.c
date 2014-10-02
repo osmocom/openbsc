@@ -481,13 +481,8 @@ struct gbproxy_link_info *gbproxy_get_link_info_ul(
 
 	if (!link_info && parse_ctx->ptmsi_enc && !parse_ctx->old_raid_is_foreign) {
 		uint32_t bss_ptmsi;
-		if (!gprs_parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN,
-					&bss_ptmsi))
-			LOGP(DGPRS, LOGL_ERROR,
-			     "Failed to parse P-TMSI (TLLI is %08x)\n",
-			     parse_ctx->tlli);
-		else
-			link_info = gbproxy_link_info_by_ptmsi(peer, bss_ptmsi);
+		gprs_parse_tmsi(parse_ctx->ptmsi_enc, &bss_ptmsi);
+		link_info = gbproxy_link_info_by_ptmsi(peer, bss_ptmsi);
 	}
 
 	if (link_info)
@@ -563,13 +558,7 @@ struct gbproxy_link_info *gbproxy_update_link_state_dl(
 		 * register new TLLI */
 		uint32_t new_sgsn_ptmsi;
 		uint32_t new_bss_ptmsi;
-		if (!gprs_parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
-					&new_sgsn_ptmsi)) {
-			LOGP(DGPRS, LOGL_ERROR,
-			     "Failed to parse new TLLI/PTMSI (current is %08x)\n",
-			     parse_ctx->tlli);
-			return link_info;
-		}
+		gprs_parse_tmsi(parse_ctx->new_ptmsi_enc, &new_sgsn_ptmsi);
 		new_bss_ptmsi = gbproxy_make_bss_ptmsi(peer, new_sgsn_ptmsi);
 
 		LOGP(DGPRS, LOGL_INFO,
@@ -584,13 +573,7 @@ struct gbproxy_link_info *gbproxy_update_link_state_dl(
 		 * TLLI, create a new link_info */
 		/* TODO: Add a test case for this branch */
 		uint32_t new_ptmsi;
-		if (!gprs_parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
-					&new_ptmsi)) {
-			LOGP(DGPRS, LOGL_ERROR,
-			     "Failed to parse new PTMSI (TLLI is %08x)\n",
-			     parse_ctx->tlli);
-			return link_info;
-		}
+		gprs_parse_tmsi(parse_ctx->new_ptmsi_enc, &new_ptmsi);
 
 		LOGP(DGPRS, LOGL_INFO,
 		     "Adding TLLI %08x to list (SGSN, new P-TMSI is %08x)\n",
@@ -620,13 +603,7 @@ struct gbproxy_link_info *gbproxy_update_link_state_dl(
 			return link_info;
 		/* A new P-TMSI has been signalled in the message */
 
-		if (!gprs_parse_mi_tmsi(parse_ctx->new_ptmsi_enc,
-					GSM48_TMSI_LEN, &new_ptmsi)) {
-			LOGP(DGPRS, LOGL_ERROR,
-			     "Failed to parse new PTMSI (TLLI is %08x)\n",
-			     parse_ctx->tlli);
-			return link_info;
-		}
+		gprs_parse_tmsi(parse_ctx->new_ptmsi_enc, &new_ptmsi);
 		LOGP(DGPRS, LOGL_INFO,
 		     "Assigning new P-TMSI %08x\n", new_ptmsi);
 		/* Setup P-TMSIs */

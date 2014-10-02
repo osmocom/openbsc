@@ -209,3 +209,11 @@ int gprs_parse_mi_tmsi(const uint8_t *value, size_t value_len, uint32_t *tmsi)
 	return 1;
 }
 
+void gprs_parse_tmsi(const uint8_t *value, uint32_t *tmsi)
+{
+	uint32_t tmsi_be;
+
+	memcpy(&tmsi_be, value, sizeof(tmsi_be));
+
+	*tmsi = ntohl(tmsi_be);
+}

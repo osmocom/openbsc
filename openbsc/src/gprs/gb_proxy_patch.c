@@ -172,7 +172,7 @@ static int gbproxy_patch_ptmsi(uint8_t *ptmsi_enc,
 		to_bss ?
 		GBPROX_PEER_CTR_PTMSI_PATCHED_SGSN :
 		GBPROX_PEER_CTR_PTMSI_PATCHED_BSS;
-	memcpy(&ptmsi_be, ptmsi_enc + 1, sizeof(ptmsi_be));
+	memcpy(&ptmsi_be, ptmsi_enc, sizeof(ptmsi_be));
 	ptmsi = ntohl(ptmsi_be);
 
 	if (ptmsi == new_ptmsi)
@@ -184,7 +184,7 @@ static int gbproxy_patch_ptmsi(uint8_t *ptmsi_enc,
 	     log_text, ptmsi, new_ptmsi);
 
 	ptmsi_be = htonl(new_ptmsi);
-	memcpy(ptmsi_enc + 1, &ptmsi_be, sizeof(ptmsi_be));
+	memcpy(ptmsi_enc, &ptmsi_be, sizeof(ptmsi_be));
 
 	rate_ctr_inc(&peer->ctrg->ctr[counter]);
 

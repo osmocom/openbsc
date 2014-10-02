@@ -34,3 +34,4 @@ int gprs_str_to_apn(uint8_t *apn_enc, size_t max_len, const char *str);
 int gprs_is_mi_tmsi(const uint8_t *value, size_t value_len);
 int gprs_is_mi_imsi(const uint8_t *value, size_t value_len);
 int gprs_parse_mi_tmsi(const uint8_t *value, size_t value_len, uint32_t *tmsi);
+void gprs_parse_tmsi(const uint8_t *value, uint32_t *tmsi);

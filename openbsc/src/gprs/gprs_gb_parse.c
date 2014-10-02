@@ -171,7 +171,7 @@ static int gprs_gb_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 		return 0;
 
 	if (gprs_is_mi_tmsi(value, value_len)) {
-		parse_ctx->ptmsi_enc = value;
+		parse_ctx->ptmsi_enc = value + 1;
 	} else if (gprs_is_mi_imsi(value, value_len)) {
 		parse_ctx->imsi = value;
 		parse_ctx->imsi_len = value_len;
@@ -215,7 +215,7 @@ static int gprs_gb_parse_gmm_attach_ack(uint8_t *data, size_t data_len,
 	if (tlv_match(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
 		      &value, &value_len) > 0 &&
 	    gprs_is_mi_tmsi(value, value_len))
-		parse_ctx->new_ptmsi_enc = value;
+		parse_ctx->new_ptmsi_enc = value + 1;
 	return 1;
 }
 
@@ -270,7 +270,7 @@ static int gprs_gb_parse_gmm_detach_req(uint8_t *data, size_t data_len,
 			      GSM48_IE_GMM_ALLOC_PTMSI, &value, &value_len) > 0)
 		{
 			if (gprs_is_mi_tmsi(value, value_len))
-				parse_ctx->ptmsi_enc = value;
+				parse_ctx->ptmsi_enc = value + 1;
 		}
 	}
 
@@ -351,7 +351,7 @@ static int gprs_gb_parse_gmm_ra_upd_ack(uint8_t *data, size_t data_len,
 	if (tlv_match(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
 		      &value, &value_len) > 0 &&
 	    gprs_is_mi_tmsi(value, value_len))
-		parse_ctx->new_ptmsi_enc = value;
+		parse_ctx->new_ptmsi_enc = value + 1;
 
 	return 1;
 }
@@ -370,7 +370,7 @@ static int gprs_gb_parse_gmm_ptmsi_reall_cmd(uint8_t *data, size_t data_len,
 	/* Allocated P-TMSI */
 	if (lv_shift(&data, &data_len, &value, &value_len) > 0 &&
 	    gprs_is_mi_tmsi(value, value_len))
-		parse_ctx->new_ptmsi_enc = value;
+		parse_ctx->new_ptmsi_enc = value + 1;
 
 	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
 		return 0;
@@ -395,7 +395,7 @@ static int gprs_gb_parse_gmm_id_resp(uint8_t *data, size_t data_len,
 		return 0;
 
 	if (gprs_is_mi_tmsi(value, value_len)) {
-		parse_ctx->ptmsi_enc = value;
+		parse_ctx->ptmsi_enc = value + 1;
 	} else if (gprs_is_mi_imsi(value, value_len)) {
 		parse_ctx->imsi = value;
 		parse_ctx->imsi_len = value_len;
@@ -680,20 +680,15 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 
 	if (parse_ctx->ptmsi_enc) {
 		uint32_t ptmsi = GSM_RESERVED_TMSI;
-		int ok;
-		ok = gprs_parse_mi_tmsi(parse_ctx->ptmsi_enc, GSM48_TMSI_LEN, &ptmsi);
-		LOGPC(DGPRS, LOGL_DEBUG, "%s PTMSI %08x%s",
-		     sep, ptmsi, ok ? "" : " (parse error)");
+		gprs_parse_tmsi(parse_ctx->ptmsi_enc, &ptmsi);
+		LOGPC(DGPRS, LOGL_DEBUG, "%s PTMSI %08x", sep, ptmsi);
 		sep = ",";
 	}
 
 	if (parse_ctx->new_ptmsi_enc) {
 		uint32_t new_ptmsi = GSM_RESERVED_TMSI;
-		int ok;
-		ok = gprs_parse_mi_tmsi(parse_ctx->new_ptmsi_enc, GSM48_TMSI_LEN,
-					&new_ptmsi);
-		LOGPC(DGPRS, LOGL_DEBUG, "%s new PTMSI %08x%s",
-		     sep, new_ptmsi, ok ? "" : " (parse error)");
+		gprs_parse_tmsi(parse_ctx->new_ptmsi_enc, &new_ptmsi);
+		LOGPC(DGPRS, LOGL_DEBUG, "%s new PTMSI %08x", sep, new_ptmsi);
 		sep = ",";
 	}
 
