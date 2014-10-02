@@ -791,12 +791,19 @@ static int gbprox_rx_ptp_from_bss(struct gbproxy_config *cfg,
 
 	peer = gbproxy_peer_by_bvci(cfg, ns_bvci);
 
-	if (peer)
-		check_peer_nsei(peer, nsei);
-
+	check_peer_nsei(peer, nsei);
 	rc = gbprox_process_bssgp_ul(cfg, msg, peer);
-	if (!rc)
+	if (!rc) {
+		if (!peer) {
+			LOGP(DGPRS, LOGL_NOTICE, "Didn't find peer for "
+			     "BVCI=%u for PTP message from NSVC=%u/NSEI=%u (BSS)\n",
+			     ns_bvci, nsvci, nsei);
+			return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI,
+					       &ns_bvci, msg);
+		}
+
 		return 0;
+	}
 
 	switch (pdu_type) {
 	case BSSGP_PDUT_FLOW_CONTROL_BVC:
