@@ -166,6 +166,31 @@ static struct gprs_llc_lle *lle_by_tlli_sapi(const uint32_t tlli, uint8_t sapi)
 	return NULL;
 }
 
+struct gprs_llc_lle *gprs_lle_get_or_create(const uint32_t tlli, uint8_t sapi)
+{
+	struct gprs_llc_llme *llme;
+	struct gprs_llc_lle *lle;
+
+	lle = lle_by_tlli_sapi(tlli, sapi);
+	if (lle)
+		return lle;
+
+	lle = lle_by_tlli_sapi(tlli_foreign2local(tlli), sapi);
+	if (lle)
+		return lle;
+
+	LOGP(DLLC, LOGL_NOTICE, "LLC: unknown TLLI 0x%08x, "
+		"creating LLME on the fly\n", tlli);
+	llme = llme_alloc(tlli);
+	lle = &llme->lle[sapi];
+	return lle;
+}
+
+struct llist_head *gprs_llme_list(void)
+{
+	return &gprs_llc_llmes;
+}
+
 /* lookup LLC Entity for RX based on DLCI (TLLI+SAPI tuple) */
 static struct gprs_llc_lle *lle_for_rx_by_tlli_sapi(const uint32_t tlli,
 					uint8_t sapi, enum gprs_llc_cmd cmd)
@@ -352,16 +377,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
 
 	/* look-up or create the LL Entity for this (TLLI, SAPI) tuple */
-	lle = lle_by_tlli_sapi(msgb_tlli(msg), sapi);
-	if (!lle) 
-		lle = lle_by_tlli_sapi(tlli_foreign2local(msgb_tlli(msg)), sapi);
-	if (!lle) {
-		struct gprs_llc_llme *llme;
-		LOGP(DLLC, LOGL_NOTICE, "LLC TX: unknown TLLI 0x%08x, "
-			"creating LLME on the fly\n", msgb_tlli(msg));
-		llme = llme_alloc(msgb_tlli(msg));
-		lle = &llme->lle[sapi];
-	}
+	lle = gprs_lle_get_or_create(msgb_tlli(msg), sapi);
 
 	if (msg->len > lle->params.n201_u) {
 		LOGP(DLLC, LOGL_ERROR, "Cannot Tx %u bytes (N201-U=%u)\n",

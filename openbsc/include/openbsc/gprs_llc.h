@@ -240,4 +240,10 @@ int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph);
 int gprs_llc_fcs(uint8_t *data, unsigned int len);
 
+
+/* LLME handling routines */
+struct llist_head *gprs_llme_list(void);
+struct gprs_llc_lle *gprs_lle_get_or_create(const uint32_t tlli, uint8_t sapi);
+
+
 #endif

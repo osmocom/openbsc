@@ -6,5 +6,17 @@ EXTRA_DIST = sgsn_test.ok
 noinst_PROGRAMS = sgsn_test
 
 sgsn_test_SOURCES = sgsn_test.c
-sgsn_test_LDADD = $(LIBOSMOCORE_LIBS)
+sgsn_test_LDADD = \
+	$(top_builddir)/src/gprs/gprs_llc_parse.o \
+	$(top_builddir)/src/gprs/gprs_llc.o \
+	$(top_builddir)/src/gprs/crc24.o \
+	$(top_builddir)/src/gprs/gprs_sndcp.o \
+	$(top_builddir)/src/gprs/gprs_gmm.o \
+	$(top_builddir)/src/gprs/gprs_sgsn.o \
+	$(top_builddir)/src/gprs/sgsn_vty.o \
+	$(top_builddir)/src/gprs/sgsn_libgtp.o \
+	$(LIBOSMOCORE_LIBS) \
+	$(LIBOSMOGSM_LIBS) \
+	$(LIBOSMOGB_LIBS) \
+	-lgtp
 
