@@ -142,6 +142,21 @@ static void test_gmm_detach(void)
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
 	OSMO_ASSERT(!ictx);
+
+	/* and inject it again, e.g. the response was lost */
+	lle = gprs_lle_get_or_create(local_tlli, 3);
+	msg = create_msg(detach_req, ARRAY_SIZE(detach_req));
+	msgb_tlli(msg) = local_tlli;
+	gsm0408_gprs_rcvmsg(msg, lle->llme);
+	msgb_free(msg);
+
+	/* No context */
+	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
+	OSMO_ASSERT(!ictx);
+
+	/* TODO: Expected failure on re-transmission */
+	OSMO_ASSERT(count(gprs_llme_list()) == 1);
+	/* TODO: check the output we get */
 }
 
 static struct log_info_cat gprs_categories[] = {
