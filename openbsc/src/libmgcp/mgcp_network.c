@@ -334,9 +334,9 @@ void mgcp_get_net_downlink_format_default(struct mgcp_endpoint *endp,
 /**
  * The RFC 3550 Appendix A assumes there are multiple sources but
  * some of the supported endpoints (e.g. the nanoBTS) can only handle
- * one source and this code will patch packages to appear as if there
+ * one source and this code will patch RTP header to appear as if there
  * is only one source.
- * There is also no probation period for new sources. Every package
+ * There is also no probation period for new sources. Every RTP header
  * we receive will be seen as a switch in streams.
  */
 void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
