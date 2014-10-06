@@ -331,6 +331,60 @@ void mgcp_get_net_downlink_format_default(struct mgcp_endpoint *endp,
 	*fmtp_extra = endp->bts_end.fmtp_extra;
 }
 
+
+void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
+			const uint16_t seq, const int32_t transit,
+			const uint32_t ssrc)
+{
+	uint16_t udelta;
+	int32_t d;
+
+	/* initialize or re-initialize */
+	if (!state->stats_initialized || state->stats_ssrc != ssrc) {
+		state->stats_initialized = 1;
+		state->stats_base_seq = seq;
+		state->stats_max_seq = seq - 1;
+		state->stats_ssrc = ssrc;
+		state->stats_jitter = 0;
+		state->stats_transit = transit;
+		state->stats_cycles = 0;
+	}
+
+	/*
+	 * The below takes the shape of the validation of
+	 * Appendix A. Check if there is something weird with
+	 * the sequence number, otherwise check for a wrap
+	 * around in the sequence number.
+	 * It can't wrap during the initialization so let's
+	 * skip it here. The Appendix A probably doesn't have
+	 * this issue because of the probation.
+	 */
+	udelta = seq - state->stats_max_seq;
+	if (udelta < RTP_MAX_DROPOUT) {
+		if (seq < state->stats_max_seq)
+			state->stats_cycles += RTP_SEQ_MOD;
+	} else if (udelta <= RTP_SEQ_MOD - RTP_MAX_MISORDER) {
+		LOGP(DMGCP, LOGL_NOTICE,
+			"RTP seqno made a very large jump on 0x%x delta: %u\n",
+			ENDPOINT_NUMBER(endp), udelta);
+	}
+
+	/*
+	 * Calculate the jitter between the two packages. The TS should be
+	 * taken closer to the read function. This was taken from the
+	 * Appendix A of RFC 3550. Timestamp and arrival_time have a 1/rate
+	 * resolution.
+	 */
+	d = transit - state->stats_transit;
+	state->stats_transit = transit;
+	if (d < 0)
+		d = -d;
+	state->stats_jitter += d - ((state->stats_jitter + 8) >> 4);
+	state->stats_max_seq = seq;
+}
+
+
+
 /**
  * The RFC 3550 Appendix A assumes there are multiple sources but
  * some of the supported endpoints (e.g. the nanoBTS) can only handle
@@ -344,8 +398,8 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 			  char *data, int len)
 {
 	uint32_t arrival_time;
-	int32_t transit, d;
-	uint16_t seq, udelta;
+	int32_t transit;
+	uint16_t seq;
 	uint32_t timestamp, ssrc;
 	struct rtp_hdr *rtp_hdr;
 	int payload = rtp_end->codec.payload_type;
@@ -361,13 +415,10 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	transit = arrival_time - timestamp;
 
 	if (!state->initialized) {
+		state->initialized = 1;
 		state->in_stream.last_seq = seq - 1;
 		state->in_stream.ssrc = state->orig_ssrc = ssrc;
 		state->in_stream.last_tsdelta = 0;
-		state->base_seq = seq;
-		state->initialized = 1;
-		state->jitter = 0;
-		state->transit = transit;
 		state->packet_duration = mgcp_rtp_packet_duration(endp, rtp_end);
 		state->out_stream = state->in_stream;
 		state->out_stream.last_timestamp = timestamp;
@@ -398,8 +449,6 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 			endp->conn_mode);
 
 		state->in_stream.ssrc = ssrc;
-		state->jitter = 0;
-		state->transit = transit;
 		if (rtp_end->force_constant_ssrc) {
 			int16_t delta_seq;
 
@@ -470,34 +519,7 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 				    addr, seq, timestamp, "output",
 				    &state->out_stream.last_tsdelta);
 
-	/*
-	 * The below takes the shape of the validation from Appendix A. Check
-	 * if there is something weird with the sequence number, otherwise check
-	 * for a wrap around in the sequence number.
-	 *
-	 * Note that last_seq is used where the appendix mentions max_seq.
-	 */
-	udelta = seq - state->out_stream.last_seq;
-	if (udelta < RTP_MAX_DROPOUT) {
-		if (seq < state->out_stream.last_seq)
-			state->cycles += RTP_SEQ_MOD;
-	} else if (udelta <= RTP_SEQ_MOD - RTP_MAX_MISORDER) {
-		LOGP(DMGCP, LOGL_NOTICE,
-			"RTP seqno made a very large jump on 0x%x delta: %u\n",
-			ENDPOINT_NUMBER(endp), udelta);
-	}
-
-	/*
-	 * Calculate the jitter between the two packages. The TS should be
-	 * taken closer to the read function. This was taken from the
-	 * Appendix A of RFC 3550. Timestamp and arrival_time have a 1/rate
-	 * resolution.
-	 */
-	d = transit - state->transit;
-	state->transit = transit;
-	if (d < 0)
-		d = -d;
-	state->jitter += d - ((state->jitter + 8) >> 4);
+	mgcp_rtp_annex_count(endp, state, seq, transit, ssrc);
 
 	/* Save output values */
 	state->out_stream.last_seq = seq;
@@ -998,10 +1020,10 @@ void mgcp_state_calc_loss(struct mgcp_rtp_state *state,
 			struct mgcp_rtp_end *end, uint32_t *expected,
 			int *loss)
 {
-	*expected = state->cycles + state->out_stream.last_seq;
-	*expected = *expected - state->base_seq + 1;
+	*expected = state->stats_cycles + state->stats_max_seq;
+	*expected = *expected - state->stats_base_seq + 1;
 
-	if (!state->initialized) {
+	if (!state->stats_initialized) {
 		*expected = 0;
 		*loss = 0;
 		return;
@@ -1023,7 +1045,7 @@ void mgcp_state_calc_loss(struct mgcp_rtp_state *state,
 
 uint32_t mgcp_state_calc_jitter(struct mgcp_rtp_state *state)
 {
-	if (!state->initialized)
+	if (!state->stats_initialized)
 		return 0;
-	return state->jitter >> 4;
+	return state->stats_jitter >> 4;
 }

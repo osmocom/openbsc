@@ -699,10 +699,10 @@ static void test_packet_loss_calc(void)
 		memset(&state, 0, sizeof(state));
 		memset(&rtp, 0, sizeof(rtp));
 
-		state.initialized = 1;
-		state.base_seq = pl_test_dat[i].base_seq;
-		state.out_stream.last_seq = pl_test_dat[i].max_seq;
-		state.cycles = pl_test_dat[i].cycles;
+		state.stats_initialized = 1;
+		state.stats_base_seq = pl_test_dat[i].base_seq;
+		state.stats_max_seq = pl_test_dat[i].max_seq;
+		state.stats_cycles = pl_test_dat[i].cycles;
 
 		rtp.packets = pl_test_dat[i].packets;
 		mgcp_state_calc_loss(&state, &rtp, &expected, &loss);
@@ -921,7 +921,7 @@ static void test_packet_error_detection(int patch_ssrc, int patch_ts)
 		       state.out_stream.err_ts_counter - last_out_ts_err_cnt);
 
 		printf("Stats: Jitter = %u, Transit = %d\n",
-		       mgcp_state_calc_jitter(&state), state.transit);
+		       mgcp_state_calc_jitter(&state), state.stats_transit);
 
 		last_in_ts_err_cnt = state.in_stream.err_ts_counter;
 		last_out_ts_err_cnt = state.out_stream.err_ts_counter;

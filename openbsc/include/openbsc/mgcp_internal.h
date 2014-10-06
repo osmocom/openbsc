@@ -54,17 +54,22 @@ struct mgcp_rtp_state {
 
 	uint32_t orig_ssrc;
 
-	uint16_t base_seq;
 	int seq_offset;
-	int cycles;
 
 	int32_t  timestamp_offset;
 	uint32_t packet_duration;
-	uint32_t jitter;
-	int32_t transit;
 
 	struct mgcp_rtp_stream_state in_stream;
 	struct mgcp_rtp_stream_state out_stream;
+
+	/* jitter and packet loss calculation */
+	int stats_initialized;
+	uint16_t stats_base_seq;
+	uint16_t stats_max_seq;
+	uint32_t stats_ssrc;
+	uint32_t stats_jitter;
+	int32_t stats_transit;
+	int stats_cycles;
 };
 
 struct mgcp_rtp_codec {
