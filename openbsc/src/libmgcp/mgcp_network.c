@@ -336,7 +336,6 @@ void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 			const uint16_t seq, const int32_t transit,
 			const uint32_t ssrc)
 {
-	uint16_t udelta;
 	int32_t d;
 
 	/* initialize or re-initialize */
@@ -348,25 +347,27 @@ void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		state->stats_jitter = 0;
 		state->stats_transit = transit;
 		state->stats_cycles = 0;
-	}
+	} else {
+		uint16_t udelta;
 
-	/*
-	 * The below takes the shape of the validation of
-	 * Appendix A. Check if there is something weird with
-	 * the sequence number, otherwise check for a wrap
-	 * around in the sequence number.
-	 * It can't wrap during the initialization so let's
-	 * skip it here. The Appendix A probably doesn't have
-	 * this issue because of the probation.
-	 */
-	udelta = seq - state->stats_max_seq;
-	if (udelta < RTP_MAX_DROPOUT) {
-		if (seq < state->stats_max_seq)
-			state->stats_cycles += RTP_SEQ_MOD;
-	} else if (udelta <= RTP_SEQ_MOD - RTP_MAX_MISORDER) {
-		LOGP(DMGCP, LOGL_NOTICE,
-			"RTP seqno made a very large jump on 0x%x delta: %u\n",
-			ENDPOINT_NUMBER(endp), udelta);
+		/*
+		 * The below takes the shape of the validation of
+		 * Appendix A. Check if there is something weird with
+		 * the sequence number, otherwise check for a wrap
+		 * around in the sequence number.
+		 * It can't wrap during the initialization so let's
+		 * skip it here. The Appendix A probably doesn't have
+		 * this issue because of the probation.
+		 */
+		udelta = seq - state->stats_max_seq;
+		if (udelta < RTP_MAX_DROPOUT) {
+			if (seq < state->stats_max_seq)
+				state->stats_cycles += RTP_SEQ_MOD;
+		} else if (udelta <= RTP_SEQ_MOD - RTP_MAX_MISORDER) {
+			LOGP(DMGCP, LOGL_NOTICE,
+				"RTP seqno made a very large jump on 0x%x delta: %u\n",
+				ENDPOINT_NUMBER(endp), udelta);
+		}
 	}
 
 	/*

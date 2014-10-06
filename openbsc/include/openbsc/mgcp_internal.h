@@ -248,6 +248,11 @@ void mgcp_get_net_downlink_format_default(struct mgcp_endpoint *endp,
 					  const char**subtype_name,
 					  const char**fmtp_extra);
 
+/* internal RTP Annex A counting */
+void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
+			const uint16_t seq, const int32_t transit,
+			const uint32_t ssrc);
+
 enum {
 	MGCP_DEST_NET = 0,
 	MGCP_DEST_BTS,

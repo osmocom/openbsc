@@ -998,6 +998,45 @@ static void test_multilple_codec(void)
 	talloc_free(cfg);
 }
 
+static void test_no_cycle(void)
+{
+	struct mgcp_config *cfg;
+	struct mgcp_endpoint *endp;
+
+	printf("Testing no sequence flow on initial packet\n");
+
+	cfg = mgcp_config_alloc();
+	cfg->trunk.number_endpoints = 64;
+	mgcp_endpoints_allocate(&cfg->trunk);
+
+	endp = &cfg->trunk.endpoints[1];
+	OSMO_ASSERT(endp->net_state.stats_initialized == 0);
+
+	mgcp_rtp_annex_count(endp, &endp->net_state, 0, 0, 2342);
+	OSMO_ASSERT(endp->net_state.stats_initialized == 1);
+	OSMO_ASSERT(endp->net_state.stats_cycles == 0);
+	OSMO_ASSERT(endp->net_state.stats_max_seq == 0);
+
+	mgcp_rtp_annex_count(endp, &endp->net_state, 1, 0, 2342);
+	OSMO_ASSERT(endp->net_state.stats_initialized == 1);
+	OSMO_ASSERT(endp->net_state.stats_cycles == 0);
+	OSMO_ASSERT(endp->net_state.stats_max_seq == 1);
+
+	/* now jump.. */
+	mgcp_rtp_annex_count(endp, &endp->net_state, UINT16_MAX, 0, 2342);
+	OSMO_ASSERT(endp->net_state.stats_initialized == 1);
+	OSMO_ASSERT(endp->net_state.stats_cycles == 0);
+	OSMO_ASSERT(endp->net_state.stats_max_seq == UINT16_MAX);
+
+	/* and wrap */
+	mgcp_rtp_annex_count(endp, &endp->net_state, 0, 0, 2342);
+	OSMO_ASSERT(endp->net_state.stats_initialized == 1);
+	OSMO_ASSERT(endp->net_state.stats_cycles == UINT16_MAX + 1);
+	OSMO_ASSERT(endp->net_state.stats_max_seq == 0);
+
+	talloc_free(cfg);
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
@@ -1014,6 +1053,7 @@ int main(int argc, char **argv)
 	test_packet_error_detection(0, 1);
 	test_packet_error_detection(1, 1);
 	test_multilple_codec();
+	test_no_cycle();
 
 	printf("Done\n");
 	return EXIT_SUCCESS;
