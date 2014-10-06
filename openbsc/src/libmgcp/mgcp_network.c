@@ -415,6 +415,8 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	ssrc = ntohl(rtp_hdr->ssrc);
 	transit = arrival_time - timestamp;
 
+	mgcp_rtp_annex_count(endp, state, seq, transit, ssrc);
+
 	if (!state->initialized) {
 		state->initialized = 1;
 		state->in_stream.last_seq = seq - 1;
@@ -519,8 +521,6 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		check_rtp_timestamp(endp, state, &state->out_stream, rtp_end,
 				    addr, seq, timestamp, "output",
 				    &state->out_stream.last_tsdelta);
-
-	mgcp_rtp_annex_count(endp, state, seq, transit, ssrc);
 
 	/* Save output values */
 	state->out_stream.last_seq = seq;
