@@ -150,9 +150,15 @@ DEFUN(cfg_nsip_sgsn_nsei,
       "NSEI to be used in the connection with the SGSN\n"
       "The NSEI\n")
 {
-	unsigned int port = atoi(argv[0]);
+	unsigned int nsei = atoi(argv[0]);
 
-	g_cfg->nsip_sgsn_nsei = port;
+	if (g_cfg->route_to_sgsn2 && g_cfg->nsip_sgsn2_nsei == nsei) {
+		vty_out(vty, "SGSN NSEI %d conflicts with secondary SGSN NSEI%s",
+			nsei, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	g_cfg->nsip_sgsn_nsei = nsei;
 	return CMD_SUCCESS;
 }
 
@@ -359,8 +365,16 @@ DEFUN(cfg_gbproxy_secondary_sgsn,
       "NSEI to be used in the connection with the SGSN\n"
       "The NSEI\n")
 {
+	unsigned int nsei = atoi(argv[0]);
+
+	if (g_cfg->nsip_sgsn_nsei == nsei) {
+		vty_out(vty, "Secondary SGSN NSEI %d conflicts with primary SGSN NSEI%s",
+			nsei, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	g_cfg->route_to_sgsn2 = 1;
-	g_cfg->nsip_sgsn2_nsei = atoi(argv[0]);
+	g_cfg->nsip_sgsn2_nsei = nsei;
 
 	g_cfg->patch_ptmsi = 1;
 
