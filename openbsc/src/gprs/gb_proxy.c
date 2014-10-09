@@ -566,7 +566,7 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	gbprox_update_current_raid(parse_ctx.bssgp_raid_enc, peer,
 				   parse_ctx.llc_msg_name);
 
-	gprs_gb_log_parse_context(&parse_ctx, "BSSGP");
+	gprs_gb_log_parse_context(LOGL_DEBUG, &parse_ctx, "NS_UNITDATA");
 
 	link_info = gbproxy_update_link_state_ul(peer, now, &parse_ctx);
 
@@ -668,7 +668,7 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 		}
 	}
 
-	gprs_gb_log_parse_context(&parse_ctx, "BSSGP");
+	gprs_gb_log_parse_context(LOGL_DEBUG, &parse_ctx, "NS_UNITDATA");
 
 	link_info = gbproxy_update_link_state_dl(peer, now, &parse_ctx);
 

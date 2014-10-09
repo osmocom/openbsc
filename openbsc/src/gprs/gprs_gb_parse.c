@@ -623,7 +623,8 @@ int gprs_gb_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
 	return 1;
 }
 
-void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
+void gprs_gb_log_parse_context(int log_level,
+			       struct gprs_gb_parse_context *parse_ctx,
 			       const char *default_msg_name)
 {
 	const char *msg_name;
@@ -640,15 +641,15 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 	if (parse_ctx->llc_msg_name)
 		msg_name = parse_ctx->llc_msg_name;
 
-	LOGP(DGPRS, LOGL_DEBUG, "%s: Got", msg_name);
+	LOGP(DGPRS, log_level, "%s: Got", msg_name);
 
 	if (parse_ctx->tlli_enc) {
-		LOGPC(DGPRS, LOGL_DEBUG, "%s TLLI %08x", sep, parse_ctx->tlli);
+		LOGPC(DGPRS, log_level, "%s TLLI %08x", sep, parse_ctx->tlli);
 		sep = ",";
 	}
 
 	if (parse_ctx->old_tlli_enc) {
-		LOGPC(DGPRS, LOGL_DEBUG, "%s old TLLI %02x%02x%02x%02x", sep,
+		LOGPC(DGPRS, log_level, "%s old TLLI %02x%02x%02x%02x", sep,
 		     parse_ctx->old_tlli_enc[0],
 		     parse_ctx->old_tlli_enc[1],
 		     parse_ctx->old_tlli_enc[2],
@@ -659,7 +660,7 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 	if (parse_ctx->bssgp_raid_enc) {
 		struct gprs_ra_id raid;
 		gsm48_parse_ra(&raid, parse_ctx->bssgp_raid_enc);
-		LOGPC(DGPRS, LOGL_DEBUG, "%s BSSGP RAID %u-%u-%u-%u", sep,
+		LOGPC(DGPRS, log_level, "%s BSSGP RAID %u-%u-%u-%u", sep,
 		     raid.mcc, raid.mnc, raid.lac, raid.rac);
 		sep = ",";
 	}
@@ -667,7 +668,7 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 	if (parse_ctx->raid_enc) {
 		struct gprs_ra_id raid;
 		gsm48_parse_ra(&raid, parse_ctx->raid_enc);
-		LOGPC(DGPRS, LOGL_DEBUG, "%s RAID %u-%u-%u-%u", sep,
+		LOGPC(DGPRS, log_level, "%s RAID %u-%u-%u-%u", sep,
 		     raid.mcc, raid.mnc, raid.lac, raid.rac);
 		sep = ",";
 	}
@@ -675,7 +676,7 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 	if (parse_ctx->old_raid_enc) {
 		struct gprs_ra_id raid;
 		gsm48_parse_ra(&raid, parse_ctx->old_raid_enc);
-		LOGPC(DGPRS, LOGL_DEBUG, "%s old RAID %u-%u-%u-%u", sep,
+		LOGPC(DGPRS, log_level, "%s old RAID %u-%u-%u-%u", sep,
 		     raid.mcc, raid.mnc, raid.lac, raid.rac);
 		sep = ",";
 	}
@@ -683,14 +684,14 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 	if (parse_ctx->ptmsi_enc) {
 		uint32_t ptmsi = GSM_RESERVED_TMSI;
 		gprs_parse_tmsi(parse_ctx->ptmsi_enc, &ptmsi);
-		LOGPC(DGPRS, LOGL_DEBUG, "%s PTMSI %08x", sep, ptmsi);
+		LOGPC(DGPRS, log_level, "%s PTMSI %08x", sep, ptmsi);
 		sep = ",";
 	}
 
 	if (parse_ctx->new_ptmsi_enc) {
 		uint32_t new_ptmsi = GSM_RESERVED_TMSI;
 		gprs_parse_tmsi(parse_ctx->new_ptmsi_enc, &new_ptmsi);
-		LOGPC(DGPRS, LOGL_DEBUG, "%s new PTMSI %08x", sep, new_ptmsi);
+		LOGPC(DGPRS, log_level, "%s new PTMSI %08x", sep, new_ptmsi);
 		sep = ",";
 	}
 
@@ -699,20 +700,20 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 		mi_buf[0] = '\0';
 		gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
 				   parse_ctx->imsi, parse_ctx->imsi_len);
-		LOGPC(DGPRS, LOGL_DEBUG, "%s IMSI %s",
+		LOGPC(DGPRS, log_level, "%s IMSI %s",
 		     sep, mi_buf);
 		sep = ",";
 	}
 	if (parse_ctx->invalidate_tlli) {
-		LOGPC(DGPRS, LOGL_DEBUG, "%s invalidate", sep);
+		LOGPC(DGPRS, log_level, "%s invalidate", sep);
 		sep = ",";
 	}
 	if (parse_ctx->await_reattach) {
-		LOGPC(DGPRS, LOGL_DEBUG, "%s re-attach", sep);
+		LOGPC(DGPRS, log_level, "%s re-attach", sep);
 		sep = ",";
 	}
 
-	LOGPC(DGPRS, LOGL_DEBUG, "\n");
+	LOGPC(DGPRS, log_level, "\n");
 }
 
 const char *gprs_gb_message_name(const struct gprs_gb_parse_context *parse_ctx,
