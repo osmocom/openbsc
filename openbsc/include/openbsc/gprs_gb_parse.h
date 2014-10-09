@@ -51,5 +51,8 @@ int gprs_gb_parse_llc(uint8_t *llc, size_t llc_len,
 int gprs_gb_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
 			struct gprs_gb_parse_context *parse_ctx);
 
+const char *gprs_gb_message_name(const struct gprs_gb_parse_context *parse_ctx,
+				 const char *default_msg_name);
+
 void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 			       const char *default_msg_name);

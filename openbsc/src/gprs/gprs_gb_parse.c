@@ -564,14 +564,14 @@ int gprs_gb_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
 		data_len = bssgp_len - sizeof(*bgph);
 	}
 
-	if (bssgp_tlv_parse(tp, data, data_len) < 0)
-		return 0;
-
 	parse_ctx->pdu_type = pdu_type;
 	parse_ctx->bud_hdr = budh;
 	parse_ctx->bgp_hdr = bgph;
 	parse_ctx->bssgp_data = data;
 	parse_ctx->bssgp_data_len = data_len;
+
+	if (bssgp_tlv_parse(tp, data, data_len) < 0)
+		return 0;
 
 	if (budh)
 		parse_ctx->tlli_enc = (uint8_t *)&budh->tlli;
@@ -626,7 +626,7 @@ int gprs_gb_parse_bssgp(uint8_t *bssgp, size_t bssgp_len,
 void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 			       const char *default_msg_name)
 {
-	const char *msg_name = default_msg_name;
+	const char *msg_name;
 	const char *sep = "";
 
 	if (!parse_ctx->tlli_enc &&
@@ -634,6 +634,8 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 	    !parse_ctx->new_ptmsi_enc &&
 	    !parse_ctx->imsi)
 		return;
+
+	msg_name = gprs_gb_message_name(parse_ctx, default_msg_name);
 
 	if (parse_ctx->llc_msg_name)
 		msg_name = parse_ctx->llc_msg_name;
@@ -713,3 +715,23 @@ void gprs_gb_log_parse_context(struct gprs_gb_parse_context *parse_ctx,
 	LOGPC(DGPRS, LOGL_DEBUG, "\n");
 }
 
+const char *gprs_gb_message_name(const struct gprs_gb_parse_context *parse_ctx,
+				 const char *default_msg_name)
+{
+	if (parse_ctx->llc_msg_name)
+		return parse_ctx->llc_msg_name;
+
+	if (parse_ctx->g48_hdr)
+		return "GMM";
+
+	if (parse_ctx->llc)
+		return "LLC";
+
+	if (parse_ctx->bud_hdr)
+		return "BSSGP-UNITDATA";
+
+	if (parse_ctx->bgp_hdr)
+		return "BSSGP";
+
+	return "unknown";
+}
