@@ -542,14 +542,15 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 	rc = gprs_gb_parse_bssgp(msgb_bssgph(msg), msgb_bssgp_len(msg),
 				 &parse_ctx);
 
-	if (!rc) {
-		if (!parse_ctx.need_decryption) {
-			LOGP(DGPRS, LOGL_ERROR,
-			     "NSEI=%u(BSS) patching: "
-			     "failed to parse BSSGP/GMM message\n",
-			     msgb_nsei(msg));
-			return 0;
-		}
+	if (!rc && !parse_ctx.need_decryption) {
+		LOGP(DGPRS, LOGL_ERROR,
+		     "NSEI=%u(BSS) patching: failed to parse invalid %s message\n",
+		     msgb_nsei(msg), gprs_gb_message_name(&parse_ctx, "NS_UNITDATA"));
+		gprs_gb_log_parse_context(LOGL_NOTICE, &parse_ctx, "NS_UNITDATA");
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "NSEI=%u(BSS) invalid message was: %s\n",
+		     msgb_nsei(msg), msgb_hexdump(msg));
+		return 0;
 	}
 
 	/* Get peer */
@@ -637,14 +638,15 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 	rc = gprs_gb_parse_bssgp(msgb_bssgph(msg), msgb_bssgp_len(msg),
 				 &parse_ctx);
 
-	if (!rc) {
-		if (!parse_ctx.need_decryption) {
-			LOGP(DGPRS, LOGL_ERROR,
-			     "NSEI=%u(SGSN) patching: "
-			     "failed to parse BSSGP/GMM message\n",
-			     msgb_nsei(msg));
-			return;
-		}
+	if (!rc && !parse_ctx.need_decryption) {
+		LOGP(DGPRS, LOGL_ERROR,
+		     "NSEI=%u(SGSN) patching: failed to parse invalid %s message\n",
+		     msgb_nsei(msg), gprs_gb_message_name(&parse_ctx, "NS_UNITDATA"));
+		gprs_gb_log_parse_context(LOGL_NOTICE, &parse_ctx, "NS_UNITDATA");
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "NSEI=%u(SGSN) invalid message was: %s\n",
+		     msgb_nsei(msg), msgb_hexdump(msg));
+		return;
 	}
 
 	/* Get peer */
