@@ -358,8 +358,10 @@ static int sndcp_send_ud_frag(struct sndcp_frag_state *fs)
 
 	fmsg = msgb_alloc_headroom(fs->sne->lle->params.n201_u+256, 128,
 				   "SNDCP Frag");
-	if (!fmsg)
+	if (!fmsg) {
+		msgb_free(fs->msg);
 		return -ENOMEM;
+	}
 
 	/* make sure lower layers route the fragment like the original */
 	msgb_tlli(fmsg) = msgb_tlli(fs->msg);
@@ -416,9 +418,9 @@ static int sndcp_send_ud_frag(struct sndcp_frag_state *fs)
 	sch->more = more;
 
 	rc = gprs_llc_tx_ui(fmsg, lle->sapi, 0, fs->mmcontext);
+	/* abort in case of error, do not advance frag_nr / next_byte */
 	if (rc < 0) {
-		/* abort in case of error, do not advance frag_nr / next_byte */
-		msgb_free(fmsg);
+		msgb_free(fs->msg);
 		return rc;
 	}
 
@@ -450,6 +452,7 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 	sne = gprs_sndcp_entity_by_lle(lle, nsapi);
 	if (!sne) {
 		LOGP(DSNDCP, LOGL_ERROR, "Cannot find SNDCP Entity\n");
+		msgb_free(msg);
 		return -EIO;
 	}
 

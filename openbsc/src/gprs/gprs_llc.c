@@ -382,6 +382,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 	if (msg->len > lle->params.n201_u) {
 		LOGP(DLLC, LOGL_ERROR, "Cannot Tx %u bytes (N201-U=%u)\n",
 			msg->len, lle->params.n201_u);
+		msgb_free(msg);
 		return -EFBIG;
 	}
 
@@ -439,6 +440,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 				     kc, iv, GPRS_CIPH_SGSN2MS);
 		if (rc < 0) {
 			LOGP(DLLC, LOGL_ERROR, "Error crypting UI frame: %d\n", rc);
+			msgb_free(msg);
 			return rc;
 		}
 
