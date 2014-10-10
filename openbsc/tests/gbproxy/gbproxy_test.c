@@ -1557,7 +1557,7 @@ static void test_gbproxy_ra_patching()
 	struct gbproxy_link_info *link_info;
 	struct gbproxy_peer *peer;
 	LLIST_HEAD(rcv_list);
-	struct expect_result *er;
+	struct expect_result *expect_res;
 
 	OSMO_ASSERT(local_tlli == gprs_tmsi2tlli(ptmsi, TLLI_LOCAL));
 
@@ -1742,8 +1742,9 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 3,
 		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
-	OSMO_ASSERT(er = expect_gmm_msg(SGSN_NSEI, 0x1002, GSM48_MT_GSM_ACT_PDP_REQ));
-	OSMO_ASSERT(er->parse_ctx.apn_ie_len == gbcfg.core_apn_size + 2);
+	expect_res = expect_gmm_msg(SGSN_NSEI, 0x1002, GSM48_MT_GSM_ACT_PDP_REQ);
+	OSMO_ASSERT(expect_res != NULL);
+	OSMO_ASSERT(expect_res->parse_ctx.apn_ie_len == gbcfg.core_apn_size + 2);
 
 	OSMO_ASSERT(8 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
@@ -1756,8 +1757,9 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 3,
 		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
-	OSMO_ASSERT(er = expect_gmm_msg(SGSN_NSEI, 0x1002, GSM48_MT_GSM_ACT_PDP_REQ));
-	OSMO_ASSERT(er->parse_ctx.apn_ie_len == 0);
+	expect_res = expect_gmm_msg(SGSN_NSEI, 0x1002, GSM48_MT_GSM_ACT_PDP_REQ);
+	OSMO_ASSERT(expect_res != NULL);
+	OSMO_ASSERT(expect_res->parse_ctx.apn_ie_len == 0);
 
 	OSMO_ASSERT(9 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
@@ -1809,8 +1811,9 @@ static void test_gbproxy_ra_patching()
 		       GPRS_SAPI_GMM, 3,
 		       dtap_act_pdp_ctx_req, sizeof(dtap_act_pdp_ctx_req));
 
-	OSMO_ASSERT(er = expect_gmm_msg(SGSN_NSEI, 0x1002, GSM48_MT_GSM_ACT_PDP_REQ));
-	OSMO_ASSERT(er->parse_ctx.apn_ie_len == 0);
+	expect_res = expect_gmm_msg(SGSN_NSEI, 0x1002, GSM48_MT_GSM_ACT_PDP_REQ);
+	OSMO_ASSERT(expect_res != NULL);
+	OSMO_ASSERT(expect_res->parse_ctx.apn_ie_len == 0);
 
 	OSMO_ASSERT(13 == peer->ctrg->ctr[GBPROX_PEER_CTR_RAID_PATCHED_BSS].current);
 
