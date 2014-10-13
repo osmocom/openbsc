@@ -263,6 +263,12 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	LOGPDPCTXP(LOGL_INFO, pctx, "Received CREATE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
 
+	if (!pctx->mm) {
+		LOGP(DGPRS, LOGL_INFO,
+		     "No MM context, aborting CREATE PDP CTX CONF\n");
+		return -EIO;
+	}
+
 	/* Check for cause value if it was really successful */
 	if (cause < 0) {
 		LOGP(DGPRS, LOGL_NOTICE, "Create PDP ctx req timed out\n");
@@ -314,16 +320,22 @@ reject:
 static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
 	struct sgsn_pdp_ctx *pctx = cbp;
-	int rc;
+	int rc = 0;
 
 	LOGPDPCTXP(LOGL_INFO, pctx, "Received DELETE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
 
-	/* Deactivate the SNDCP layer */
-	sndcp_sm_deactivate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
+	if (pctx->mm) {
+		/* Deactivate the SNDCP layer */
+		sndcp_sm_deactivate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
 
-	/* Confirm deactivation of PDP context to MS */
-	rc = gsm48_tx_gsm_deact_pdp_acc(pctx);
+		/* Confirm deactivation of PDP context to MS */
+		rc = gsm48_tx_gsm_deact_pdp_acc(pctx);
+	} else {
+		LOGPDPCTXP(LOGL_NOTICE, pctx,
+			   "Not deactivating SNDCP layer since the MM context "
+			   "is not available\n");
+	}
 
 	/* unlink the now non-existing library handle from the pdp
 	 * context */

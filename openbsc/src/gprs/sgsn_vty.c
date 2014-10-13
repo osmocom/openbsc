@@ -222,8 +222,9 @@ const struct value_string gprs_mm_st_strs[] = {
 static void vty_dump_pdp(struct vty *vty, const char *pfx,
 			 struct sgsn_pdp_ctx *pdp)
 {
+	const char *imsi = pdp->mm ? pdp->mm->imsi : "(detaching)";
 	vty_out(vty, "%sPDP Context IMSI: %s, SAPI: %u, NSAPI: %u%s",
-		pfx, pdp->mm->imsi, pdp->sapi, pdp->nsapi, VTY_NEWLINE);
+		pfx, imsi, pdp->sapi, pdp->nsapi, VTY_NEWLINE);
 	vty_out(vty, "%s  APN: %s%s", pfx,
 		gprs_apn2str(pdp->lib->apn_use.v, pdp->lib->apn_use.l),
 		VTY_NEWLINE);

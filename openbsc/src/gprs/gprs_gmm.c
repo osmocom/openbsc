@@ -265,6 +265,28 @@ static void mmctx2msgid(struct msgb *msg, const struct sgsn_mm_ctx *mm)
 	msgb_nsei(msg) = mm->nsei;
 }
 
+static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
+{
+	struct gprs_llc_llme *llme = ctx->llme;
+	uint32_t tlli = ctx->tlli;
+	struct sgsn_pdp_ctx *pdp, *pdp2;
+
+	/* Mark MM state as deregistered */
+	ctx->mm_state = GMM_DEREGISTERED;
+
+	llist_for_each_entry_safe(pdp, pdp2, &ctx->pdp_list, list) {
+		LOGMMCTXP(LOGL_NOTICE, ctx, "Dropping PDP context for NSAPI=%u "
+		     "due to %s\n", pdp->nsapi, log_text);
+		sgsn_pdp_ctx_terminate(pdp);
+	}
+
+	sgsn_mm_ctx_free(ctx);
+	ctx = NULL;
+
+	/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
+	gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+}
+
 /* Chapter 9.4.18 */
 static int _tx_status(struct msgb *msg, uint8_t cause,
 		      struct sgsn_mm_ctx *mmctx, int sm)
@@ -603,15 +625,16 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 			struct sgsn_mm_ctx *ictx;
 			ictx = sgsn_mm_ctx_by_imsi(mi_string);
 			if (ictx) {
+				/* Handle it like in gsm48_rx_gmm_det_req,
+				 * except that no messages are sent to the BSS */
+
 				LOGMMCTXP(LOGL_NOTICE, ctx, "Deleting old MM Context for same IMSI "
 				       "p_tmsi_old=0x%08x\n",
 					ictx->p_tmsi);
-				gprs_llgmm_assign(ictx->llme, ictx->tlli,
-						  0xffffffff, GPRS_ALGO_GEA0, NULL);
-				/* FIXME: this is a hard free, we don't
-				 * clean-up any PDP contexts on the
-				 * libgtp side */
-				sgsn_mm_ctx_free(ictx);
+
+				ictx->mm_state = GMM_DEREGISTERED;
+
+				mm_ctx_cleanup_free(ictx, "GPRS IMSI re-use");
 			}
 		}
 		strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
@@ -776,7 +799,6 @@ err_inval:
 static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	struct sgsn_pdp_ctx *pdp, *pdp2;
 	uint8_t detach_type, power_off;
 	int rc;
 
@@ -789,26 +811,10 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		msgb_tlli(msg), get_value_string(gprs_det_t_mo_strs, detach_type),
 		power_off ? "Power-off" : "");
 
-	/* Mark MM state as deregistered */
-	ctx->mm_state = GMM_DEREGISTERED;
-
-	/* delete all existing PDP contexts for this MS */
-	llist_for_each_entry_safe(pdp, pdp2, &ctx->pdp_list, list) {
-		LOGMMCTXP(LOGL_NOTICE, ctx, "Dropping PDP context for NSAPI=%u "
-		     "due to GPRS DETACH REQUEST\n", pdp->nsapi);
-		sgsn_delete_pdp_ctx(pdp);
-		/* FIXME: the callback wants to transmit a DEACT PDP CTX ACK,
-		 * which is quite stupid for a MS that has just detached.. */
-	}
-
 	/* force_stby = 0 */
 	rc = gsm48_tx_gmm_det_ack(ctx, 0);
 
-	/* TLLI unassignment */
-	gprs_llgmm_assign(ctx->llme, ctx->tlli, 0xffffffff,
-			  GPRS_ALGO_GEA0, NULL);
-
-	sgsn_mm_ctx_free(ctx);
+	mm_ctx_cleanup_free(ctx, "GPRS DETACH REQUEST");
 
 	return rc;
 }
