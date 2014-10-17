@@ -65,16 +65,27 @@ static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
 	 * not yet have a MMC context (e.g. XID negotiation of primarly
 	 * LLC connection fro GMM sapi). */
 	if (mmctx) {
-		dup.imsi = mmctx->imsi;
-		dup.drx_parms = mmctx->drx_parms;
-		dup.ms_ra_cap.len = mmctx->ms_radio_access_capa.len;
-		dup.ms_ra_cap.v = mmctx->ms_radio_access_capa.buf;
-
 		/* make sure we only send it to the right llme */
-		OSMO_ASSERT(msgb_tlli(msg) == mmctx->llme->tlli
-				|| msgb_tlli(msg) == mmctx->llme->old_tlli
-				|| tlli_foreign2local(msgb_tlli(msg)) == mmctx->llme->tlli
-				|| tlli_foreign2local(msgb_tlli(msg)) == mmctx->llme->old_tlli);
+		if (msgb_tlli(msg) != mmctx->llme->tlli &&
+		    msgb_tlli(msg) != mmctx->llme->old_tlli &&
+		    tlli_foreign2local(msgb_tlli(msg)) != mmctx->llme->tlli &&
+		    tlli_foreign2local(msgb_tlli(msg)) != mmctx->llme->old_tlli)
+		{
+			LOGP(DLLC, LOGL_ERROR,
+			     "MM context TLLI mismatch when sending DL unitdata, "
+			     "msg TLLI = %08x, ctx TLLI = %08x, "
+			     "ctx old TLLI = %08x. "
+			     "Using default values for IMSI, DRX, RA CAP\n",
+			     msgb_tlli(msg),
+			     mmctx->llme->tlli,
+			     mmctx->llme->old_tlli);
+			osmo_log_backtrace(DLLC, LOGL_INFO);
+		} else {
+			dup.imsi = mmctx->imsi;
+			dup.drx_parms = mmctx->drx_parms;
+			dup.ms_ra_cap.len = mmctx->ms_radio_access_capa.len;
+			dup.ms_ra_cap.v = mmctx->ms_radio_access_capa.buf;
+		}
 	}
 	memcpy(&dup.qos_profile, qos_profile_default,
 		sizeof(qos_profile_default));
