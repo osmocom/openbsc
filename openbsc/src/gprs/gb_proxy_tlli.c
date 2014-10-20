@@ -557,9 +557,14 @@ struct gbproxy_link_info *gbproxy_update_link_state_dl(
 		/* A new P-TMSI has been signalled in the message,
 		 * register new TLLI */
 		uint32_t new_sgsn_ptmsi;
-		uint32_t new_bss_ptmsi;
+		uint32_t new_bss_ptmsi = GSM_RESERVED_TMSI;
 		gprs_parse_tmsi(parse_ctx->new_ptmsi_enc, &new_sgsn_ptmsi);
-		new_bss_ptmsi = gbproxy_make_bss_ptmsi(peer, new_sgsn_ptmsi);
+
+		if (link_info->sgsn_tlli.ptmsi == new_sgsn_ptmsi)
+			new_bss_ptmsi = link_info->tlli.ptmsi;
+
+		if (new_bss_ptmsi == GSM_RESERVED_TMSI)
+			new_bss_ptmsi = gbproxy_make_bss_ptmsi(peer, new_sgsn_ptmsi);
 
 		LOGP(DGPRS, LOGL_INFO,
 		     "Got new PTMSI %08x from SGSN, using %08x for BSS\n",

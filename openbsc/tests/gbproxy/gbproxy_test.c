@@ -2530,11 +2530,11 @@ static void test_gbproxy_ptmsi_patching_bad_cases()
 
 	link_info = gbproxy_link_info_by_sgsn_tlli(peer, random_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(link_info);
-	/* OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli); */
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli);
 	OSMO_ASSERT(!link_info->tlli.bss_validated);
 	OSMO_ASSERT(!link_info->tlli.net_validated);
-	/* OSMO_ASSERT(link_info->tlli.ptmsi == bss_ptmsi); */
+	OSMO_ASSERT(link_info->tlli.ptmsi == bss_ptmsi);
 	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
 	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli);
 	OSMO_ASSERT(!link_info->sgsn_tlli.bss_validated);
@@ -2550,13 +2550,13 @@ static void test_gbproxy_ptmsi_patching_bad_cases()
 
 	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(link_info);
-	/* OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli); */
+	OSMO_ASSERT(link_info->tlli.assigned == local_bss_tlli);
 	OSMO_ASSERT(link_info->tlli.current == foreign_bss_tlli);
-	/* OSMO_ASSERT(link_info->tlli.bss_validated); */
+	OSMO_ASSERT(link_info->tlli.bss_validated);
 	OSMO_ASSERT(!link_info->tlli.net_validated);
 	OSMO_ASSERT(link_info->sgsn_tlli.assigned == local_sgsn_tlli);
 	OSMO_ASSERT(link_info->sgsn_tlli.current == random_sgsn_tlli);
-	/* OSMO_ASSERT(link_info->sgsn_tlli.bss_validated); */
+	OSMO_ASSERT(link_info->sgsn_tlli.bss_validated);
 	OSMO_ASSERT(!link_info->sgsn_tlli.net_validated);
 
 	send_llc_dl_ui(nsi, "GMM INFO", &sgsn_peer, 0x1002,
@@ -2568,10 +2568,10 @@ static void test_gbproxy_ptmsi_patching_bad_cases()
 
 	link_info = gbproxy_link_info_by_sgsn_tlli(peer, local_sgsn_tlli, SGSN_NSEI);
 	OSMO_ASSERT(link_info);
-	/* OSMO_ASSERT(link_info->tlli.current == local_bss_tlli); */
-	/* OSMO_ASSERT(link_info->tlli.assigned == 0); */
-	/* OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli); */
-	/* OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0); */
+	OSMO_ASSERT(link_info->tlli.current == local_bss_tlli);
+	OSMO_ASSERT(link_info->tlli.assigned == 0);
+	OSMO_ASSERT(link_info->sgsn_tlli.current == local_sgsn_tlli);
+	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
 
 	/* Detach */
 	send_llc_ul_ui(nsi, "DETACH REQ", &bss_peer[0], 0x1002,
