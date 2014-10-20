@@ -666,6 +666,8 @@ DEFUN(delete_gb_link_by_id, delete_gb_link_by_id_cmd,
 				continue;
 			break;
 		case MATCH_IMSI:
+			if (!link_info->imsi)
+				continue;
 			mi_buf[0] = '\0';
 			gsm48_mi_to_string(mi_buf, sizeof(mi_buf),
 					   link_info->imsi,
