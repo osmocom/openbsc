@@ -180,6 +180,11 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 {
 	struct sgsn_pdp_ctx *pdp, *pdp2;
 
+	if (osmo_timer_pending(&mm->timer)) {
+		LOGMMCTXP(LOGL_INFO, mm, "Cancelling MM timer %u\n", mm->T);
+		osmo_timer_del(&mm->timer);
+	}
+
 	/* Unlink from global list of MM contexts */
 	llist_del(&mm->list);
 
