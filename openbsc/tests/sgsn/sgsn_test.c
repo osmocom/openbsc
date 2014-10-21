@@ -221,6 +221,41 @@ static void test_gmm_detach_power_off(void)
 	OSMO_ASSERT(!ictx);
 }
 
+/*
+ * Test that a GMM Detach will remove the associated LLME if there is no MMCTX.
+ */
+static void test_gmm_detach_no_mmctx(void)
+{
+	struct gprs_llc_lle *lle;
+	uint32_t local_tlli;
+	struct msgb *msg;
+
+	printf("Testing GMM detach (no MMCTX)\n");
+
+	/* DTAP - Detach Request (MO) */
+	/* normal detach, power_off = 0 */
+	static const unsigned char detach_req[] = {
+		0x08, 0x05, 0x01, 0x18, 0x05, 0xf4, 0xef, 0xe2,
+		0xb7, 0x00, 0x19, 0x03, 0xb9, 0x97, 0xcb
+	};
+
+	/* Create an LLME  */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	local_tlli = gprs_tmsi2tlli(0x23, TLLI_LOCAL);
+	lle = gprs_lle_get_or_create(local_tlli, 3);
+
+	OSMO_ASSERT(count(gprs_llme_list()) == 1);
+
+	/* inject the detach */
+	msg = create_msg(detach_req, ARRAY_SIZE(detach_req));
+	msgb_tlli(msg) = local_tlli;
+	gsm0408_gprs_rcvmsg(msg, lle->llme);
+	msgb_free(msg);
+
+	/* verify that the LLME is gone */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+}
+
 static struct log_info_cat gprs_categories[] = {
 	[DMM] = {
 		.name = "DMM",
@@ -285,6 +320,7 @@ int main(int argc, char **argv)
 	test_llme();
 	test_gmm_detach();
 	test_gmm_detach_power_off();
+	test_gmm_detach_no_mmctx();
 	printf("Done\n");
 	return 0;
 }

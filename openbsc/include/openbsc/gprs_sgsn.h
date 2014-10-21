@@ -114,7 +114,8 @@ struct sgsn_mm_ctx {
 };
 
 #define LOGMMCTXP(level, mm, fmt, args...) \
-	LOGP(DMM, level, "MM(%s/%08x) " fmt, (mm)->imsi, (mm)->p_tmsi, ## args)
+	LOGP(DMM, level, "MM(%s/%08x) " fmt, (mm) ? (mm)->imsi : "---", \
+	     (mm) ? (mm)->p_tmsi : GSM_RESERVED_TMSI, ## args)
 
 /* look-up a SGSN MM context based on TLLI + RAI */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,

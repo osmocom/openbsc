@@ -497,14 +497,14 @@ static int gsm48_tx_gmm_att_rej(struct sgsn_mm_ctx *mm,
 }
 
 /* Chapter 9.4.6.2 Detach accept */
-static int gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
+static int _tx_detach_ack(struct msgb *msg, uint8_t force_stby,
+			  struct sgsn_mm_ctx *mm)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS DETACH ACCEPT\n");
+	/* MMCTX might be NULL! */
 
-	mmctx2msgid(msg, mm);
+	DEBUGP(DMM, "<- GPRS MM DETACH ACC (force-standby: %d)\n", force_stby);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -512,6 +512,22 @@ static int gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
 	gh->data[0] = force_stby;
 
 	return gsm48_gmm_sendmsg(msg, 0, mm);
+}
+
+static int gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+
+	mmctx2msgid(msg, mm);
+	return _tx_detach_ack(msg, force_stby, mm);
+}
+
+static int gsm48_tx_gmm_det_ack_oldmsg(struct msgb *oldmsg, uint8_t force_stby)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+
+	gmm_copy_id(msg, oldmsg);
+	return _tx_detach_ack(msg, force_stby, NULL);
 }
 
 /* Transmit Chapter 9.4.12 Identity Request */
@@ -864,7 +880,7 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t detach_type, power_off;
-	int rc;
+	int rc = 0;
 
 	detach_type = gh->data[0] & 0x7;
 	power_off = gh->data[0] & 0x8;
@@ -875,14 +891,18 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		msgb_tlli(msg), get_value_string(gprs_det_t_mo_strs, detach_type),
 		power_off ? "Power-off" : "");
 
-	/* Only sent the Detach Accept (MO) if power off isn't indicated,
+	/* Only send the Detach Accept (MO) if power off isn't indicated,
 	 * see 04.08, 4.7.4.1.2/3 for details */
 	if (!power_off) {
 		/* force_stby = 0 */
-		rc = gsm48_tx_gmm_det_ack(ctx, 0);
+		if (ctx)
+			rc = gsm48_tx_gmm_det_ack(ctx, 0);
+		else
+			rc = gsm48_tx_gmm_det_ack_oldmsg(msg, 0);
 	}
 
-	mm_ctx_cleanup_free(ctx, "GPRS DETACH REQUEST");
+	if (ctx)
+		mm_ctx_cleanup_free(ctx, "GPRS DETACH REQUEST");
 
 	return rc;
 }
@@ -1117,9 +1137,8 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 		/* Don't force it into re-attachment */
 		if (gh->msg_type == GSM48_MT_GMM_DETACH_REQ) {
-			rc = gsm48_tx_gmm_detach_req_oldmsg(
-				msg, GPRS_DET_T_MT_REATT_NOTREQ,
-				GMM_CAUSE_IMPL_DETACHED);
+			/* Handle Detach Request */
+			rc = gsm48_rx_gmm_det_req(NULL, msg);
 
 			/* TLLI unassignment */
 			gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
