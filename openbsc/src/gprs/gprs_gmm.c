@@ -875,8 +875,12 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		msgb_tlli(msg), get_value_string(gprs_det_t_mo_strs, detach_type),
 		power_off ? "Power-off" : "");
 
-	/* force_stby = 0 */
-	rc = gsm48_tx_gmm_det_ack(ctx, 0);
+	/* Only sent the Detach Accept (MO) if power off isn't indicated,
+	 * see 04.08, 4.7.4.1.2/3 for details */
+	if (!power_off) {
+		/* force_stby = 0 */
+		rc = gsm48_tx_gmm_det_ack(ctx, 0);
+	}
 
 	mm_ctx_cleanup_free(ctx, "GPRS DETACH REQUEST");
 

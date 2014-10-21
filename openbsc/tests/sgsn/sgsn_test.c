@@ -213,7 +213,7 @@ static void test_gmm_detach_power_off(void)
 
 	/* verify that no message (and therefore no Detach Accept) has been
 	 * sent by the SGSN */
-	/* OSMO_ASSERT(sgsn_tx_counter_old == sgsn_tx_counter); */
+	OSMO_ASSERT(sgsn_tx_counter_old == sgsn_tx_counter);
 
 	/* verify that things are gone */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
