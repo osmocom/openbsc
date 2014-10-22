@@ -29,16 +29,6 @@
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0808.h>
 
-#include <arpa/inet.h>
-
-static uint16_t read_data16(const uint8_t *data)
-{
-	uint16_t res;
-
-	memcpy(&res, data, sizeof(res));
-	return res;
-}
-
 /*
  * helpers for the assignment command
  */
@@ -154,7 +144,7 @@ static int bssmap_handle_paging(struct osmo_msc_data *msc,
 	 * Support paging to all network or one BTS at one LAC
 	 */
 	if (data_length == 3 && data[0] == CELL_IDENT_LAC) {
-		lac = ntohs(read_data16(&data[1]));
+		lac = osmo_load16be(&data[1]);
 	} else if (data_length > 1 || (data[0] & 0x0f) != CELL_IDENT_BSS) {
 		LOGP(DMSC, LOGL_ERROR, "Unsupported Cell Identifier List: %s\n", osmo_hexdump(data, data_length));
 		return -1;
@@ -321,7 +311,7 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 		goto reject;
 	}
 
-	conn->cic = ntohs(read_data16(TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)));
+	conn->cic = osmo_load16be(TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
 	timeslot = conn->cic & 0x1f;
 	multiplex = (conn->cic & ~0x1f) >> 5;
 
