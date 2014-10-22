@@ -626,6 +626,8 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx,
 {
 	if (strlen(ctx->imei) && strlen(ctx->imsi)) {
 #ifdef PTMSI_ALLOC
+		ctx->t3370_id_type = GSM_MI_TYPE_NONE;
+
 		/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
 		ctx->t3350_mode = t3350_mode;
 		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
@@ -665,6 +667,14 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 
 	LOGMMCTXP(LOGL_DEBUG, ctx, "-> GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
+
+	if (ctx->t3370_id_type == GSM_MI_TYPE_NONE) {
+		LOGMMCTXP(LOGL_NOTICE, ctx,
+			  "Got unexpected IDENTITY RESPONSE: mi_type=0x%02x MI(%s), "
+			  "ignoring message\n",
+			  mi_type, mi_string);
+		return -EINVAL;
+	}
 
 	if (mi_type == ctx->t3370_id_type)
 		mmctx_timer_stop(ctx, 3370);
