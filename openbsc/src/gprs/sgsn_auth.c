@@ -21,6 +21,16 @@
 
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
+#include <openbsc/gprs_gmm.h>
+
+#include <openbsc/debug.h>
+
+const struct value_string auth_state_names[] = {
+	{ SGSN_AUTH_ACCEPTED,	"accepted"},
+	{ SGSN_AUTH_REJECTED,	"rejected"},
+	{ SGSN_AUTH_UNKNOWN,	"unknown"},
+	{ 0, NULL }
+};
 
 void sgsn_auth_init(struct sgsn_instance *sgi)
 {
@@ -69,3 +79,66 @@ int sgsn_acl_del(const char *imsi, struct sgsn_config *cfg)
 	return 0;
 }
 
+enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx,
+				     struct sgsn_config *cfg)
+{
+	char mccmnc[16];
+
+	OSMO_ASSERT(mmctx);
+
+	if (!sgsn->cfg.acl_enabled)
+		return SGSN_AUTH_ACCEPTED;
+
+	if (!strlen(mmctx->imsi)) {
+		LOGMMCTXP(LOGL_NOTICE, mmctx,
+			  "Missing IMSI, authorization state not known\n");
+		return SGSN_AUTH_UNKNOWN;
+	}
+
+	/* As a temorary hack, we simply assume that the IMSI exists,
+	 * as long as it is part of 'our' network */
+	snprintf(mccmnc, sizeof(mccmnc), "%03d%02d", mmctx->ra.mcc, mmctx->ra.mnc);
+	if (strncmp(mccmnc, mmctx->imsi, 5) == 0)
+		return SGSN_AUTH_ACCEPTED;
+
+	if (sgsn_acl_lookup(mmctx->imsi, &sgsn->cfg))
+		return SGSN_AUTH_ACCEPTED;
+
+	return SGSN_AUTH_REJECTED;
+}
+
+int sgsn_auth_request(struct sgsn_mm_ctx *mmctx, struct sgsn_config *cfg)
+{
+	struct sgsn_subscriber_data sd = {0};
+
+	sd.auth_state = sgsn_auth_state(mmctx, cfg);
+
+	if (sd.auth_state == SGSN_AUTH_UNKNOWN) {
+		LOGMMCTXP(LOGL_ERROR, mmctx,
+			  "Missing information, authorization not possible\n");
+		sd.auth_state = SGSN_AUTH_REJECTED;
+	}
+
+	/* This will call sgsn_auth_update if auth_state has changed */
+	sgsn_update_subscriber_data(mmctx, &sd);
+	return 0;
+}
+
+void sgsn_auth_update(struct sgsn_mm_ctx *mmctx, struct sgsn_subscriber_data *sd)
+{
+	LOGMMCTXP(LOGL_INFO, mmctx, "Got authorization update: state %s\n",
+		  get_value_string(auth_state_names, sd->auth_state));
+
+	mmctx->auth_state = sd->auth_state;
+
+	switch (sd->auth_state) {
+	case SGSN_AUTH_ACCEPTED:
+		gsm0408_gprs_access_granted(mmctx);
+		break;
+	case SGSN_AUTH_REJECTED:
+		gsm0408_gprs_access_denied(mmctx);
+		break;
+	default:
+		break;
+	}
+}

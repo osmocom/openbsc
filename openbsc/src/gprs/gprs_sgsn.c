@@ -451,3 +451,11 @@ int sgsn_force_reattach_oldmsg(struct msgb *oldmsg)
 	return gsm0408_gprs_force_reattach_oldmsg(oldmsg);
 }
 
+void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
+				 struct sgsn_subscriber_data *sd)
+{
+	OSMO_ASSERT(mmctx);
+
+	if (sd->auth_state != mmctx->auth_state)
+		sgsn_auth_update(mmctx, sd);
+}

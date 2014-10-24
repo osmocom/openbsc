@@ -54,6 +54,13 @@ enum gprs_t3350_mode {
 	GMM_T3350_MODE_PTMSI_REALL,
 };
 
+/* Authorization/ACL handling */
+enum sgsn_auth_state {
+	SGSN_AUTH_UNKNOWN,
+	SGSN_AUTH_ACCEPTED,
+	SGSN_AUTH_REJECTED
+};
+
 #define MS_RADIO_ACCESS_CAPA
 
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
@@ -118,7 +125,7 @@ struct sgsn_mm_ctx {
 	 * where mm->T == 3350 => mm->t3350_mode == f(mm->pending_req). Check
 	 * whether one of them can be dropped. */
 
-	int			is_authorized;
+	enum sgsn_auth_state	auth_state;
 };
 
 #define LOGMMCTXP(level, mm, fmt, args...) \
@@ -249,12 +256,17 @@ struct ctrl_handle *sgsn_controlif_setup(struct gsm_network *, uint16_t port);
 int sgsn_ctrl_cmds_install(void);
 
 /*
- * ACL handling
+ * Authorization/ACL handling
  */
 struct imsi_acl_entry {
 	struct llist_head list;
 	char imsi[16+1];
 };
+
+struct sgsn_subscriber_data {
+	enum sgsn_auth_state auth_state;
+};
+
 struct sgsn_config;
 struct sgsn_instance;
 
@@ -262,6 +274,15 @@ void sgsn_auth_init(struct sgsn_instance *sgi);
 struct imsi_acl_entry *sgsn_acl_lookup(const char *imsi, struct sgsn_config *cfg);
 int sgsn_acl_add(const char *imsi, struct sgsn_config *cfg);
 int sgsn_acl_del(const char *imsi, struct sgsn_config *cfg);
+/* Request authorization */
+int sgsn_auth_request(struct sgsn_mm_ctx *mm, struct sgsn_config *cfg);
+enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mm,
+				     struct sgsn_config *cfg);
+void sgsn_auth_update(struct sgsn_mm_ctx *mm, struct sgsn_subscriber_data *sd);
+
+/* Called on subscriber data updates */
+void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
+				 struct sgsn_subscriber_data *sd);
 
 int gprs_sndcp_vty_init(void);
 struct sgsn_instance;

@@ -642,24 +642,22 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	/* All information required for authentication is available */
 	ctx->t3370_id_type = GSM_MI_TYPE_NONE;
 
-	if (!ctx->is_authorized) {
-		/* As a temorary hack, we simply assume that the IMSI exists,
-		 * as long as it is part of 'our' network */
-		char mccmnc[16];
-		int rc;
-		snprintf(mccmnc, sizeof(mccmnc), "%03d%02d",
-			 ctx->ra.mcc, ctx->ra.mnc);
-		if (strncmp(mccmnc, ctx->imsi, 5) &&
-		    (sgsn->cfg.acl_enabled &&
-		     !sgsn_acl_lookup(ctx->imsi, &sgsn->cfg))) {
-			LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST IMSI=%s\n",
-			     ctx->imsi);
-			rc = gsm48_tx_gmm_att_rej(ctx,
-						  GMM_CAUSE_GPRS_NOTALLOWED);
-			mm_ctx_cleanup_free(ctx, "ATTACH REJECT");
-			return rc;
-		}
-		ctx->is_authorized = 1;
+	if (ctx->auth_state == SGSN_AUTH_UNKNOWN) {
+		/* Request authorization, this leads to a call to
+		 * sgsn_update_subscriber_data which in turn calls
+		 * gsm0408_gprs_access_granted or gsm0408_gprs_access_denied */
+
+		sgsn_auth_request(ctx, &sgsn->cfg);
+		/* Note that gsm48_gmm_authorize can be called recursively via
+		 * sgsn_auth_request iff ctx->auth_info changes to AUTH_ACCEPTED
+		 */
+		return 0;
+	}
+
+	if (ctx->auth_state != SGSN_AUTH_ACCEPTED) {
+		LOGMMCTXP(LOGL_NOTICE, ctx,
+			  "authorization is denied, aborting procedure\n");
+		return -EACCES;
 	}
 
 	/* The MS is authorized */
@@ -687,6 +685,50 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	}
 
 	return 0;
+}
+
+void gsm0408_gprs_access_granted(struct sgsn_mm_ctx *ctx)
+{
+	switch (ctx->mm_state) {
+	case GMM_COMMON_PROC_INIT:
+		LOGP(DMM, LOGL_NOTICE,
+		     "Authorized, continuing procedure, IMSI=%s\n",
+		     ctx->imsi);
+		/* Continue with the authorization */
+		gsm48_gmm_authorize(ctx);
+		break;
+	default:
+		LOGP(DMM, LOGL_INFO,
+		     "Authorized, ignored, IMSI=%s\n",
+		     ctx->imsi);
+	}
+}
+
+void gsm0408_gprs_access_denied(struct sgsn_mm_ctx *ctx)
+{
+	switch (ctx->mm_state) {
+	case GMM_COMMON_PROC_INIT:
+		LOGP(DMM, LOGL_NOTICE,
+		     "Not authorized, rejecting ATTACH REQUEST, IMSI=%s\n",
+		     ctx->imsi);
+		gsm48_tx_gmm_att_rej(ctx, GMM_CAUSE_GPRS_NOTALLOWED);
+		mm_ctx_cleanup_free(ctx, "GPRS ATTACH REJECT");
+		break;
+	case GMM_REGISTERED_NORMAL:
+	case GMM_REGISTERED_SUSPENDED:
+		LOGP(DMM, LOGL_NOTICE,
+		     "Authorization lost, detaching, IMSI=%s\n",
+		     ctx->imsi);
+		gsm48_tx_gmm_detach_req(
+			ctx, GPRS_DET_T_MT_REATT_NOTREQ, GMM_CAUSE_GPRS_NOTALLOWED);
+
+		mm_ctx_cleanup_free(ctx, "auth lost");
+		break;
+	default:
+		LOGP(DMM, LOGL_INFO,
+		     "Authorization lost, ignored, IMSI=%s\n",
+		     ctx->imsi);
+	}
 }
 
 /* Parse Chapter 9.4.13 Identity Response */
