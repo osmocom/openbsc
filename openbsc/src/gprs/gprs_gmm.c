@@ -791,7 +791,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			snprintf(mccmnc, sizeof(mccmnc), "%03d%02d", ra_id.mcc, ra_id.mnc);
 			if (strncmp(mccmnc, mi_string, 5) &&
 			    (sgsn->cfg.acl_enabled &&
-			     !sgsn_acl_lookup(mi_string))) {
+			     !sgsn_acl_lookup(mi_string, &sgsn->cfg))) {
 				LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST IMSI=%s\n",
 				     mi_string);
 				return gsm48_tx_gmm_att_rej_oldmsg(msg,

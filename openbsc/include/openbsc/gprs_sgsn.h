@@ -242,8 +242,17 @@ int sgsn_ctrl_cmds_install(void);
 /*
  * ACL handling
  */
-struct imsi_acl_entry;
-struct imsi_acl_entry *sgsn_acl_lookup(const char *imsi);
+struct imsi_acl_entry {
+	struct llist_head list;
+	char imsi[16+1];
+};
+struct sgsn_config;
+struct sgsn_instance;
+
+void sgsn_auth_init(struct sgsn_instance *sgi);
+struct imsi_acl_entry *sgsn_acl_lookup(const char *imsi, struct sgsn_config *cfg);
+int sgsn_acl_add(const char *imsi, struct sgsn_config *cfg);
+int sgsn_acl_del(const char *imsi, struct sgsn_config *cfg);
 
 int gprs_sndcp_vty_init(void);
 struct sgsn_instance;

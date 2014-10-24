@@ -41,11 +41,6 @@
 
 static struct sgsn_config *g_cfg = NULL;
 
-struct imsi_acl_entry {
-	struct llist_head list;
-	char imsi[16+1];
-};
-
 #define GSM48_MAX_APN_LEN	102	/* 10.5.6.1 */
 static char *gprs_apn2str(uint8_t *apn, unsigned int len)
 {
@@ -328,48 +323,6 @@ DEFUN(show_pdpctx_all, show_pdpctx_all_cmd,
 	return CMD_SUCCESS;
 }
 
-/* temporary IMSI ACL hack */
-struct imsi_acl_entry *sgsn_acl_lookup(const char *imsi)
-{
-	struct imsi_acl_entry *acl;
-	llist_for_each_entry(acl, &g_cfg->imsi_acl, list) {
-		if (!strcmp(imsi, acl->imsi))
-			return acl;
-	}
-	return NULL;
-}
-
-int sgsn_acl_add(const char *imsi)
-{
-	struct imsi_acl_entry *acl;
-
-	if (sgsn_acl_lookup(imsi))
-		return -EEXIST;
-
-	acl = talloc_zero(NULL, struct imsi_acl_entry);
-	if (!acl)
-		return -ENOMEM;
-	strncpy(acl->imsi, imsi, sizeof(acl->imsi));
-
-	llist_add(&acl->list, &g_cfg->imsi_acl);
-
-	return 0;
-}
-
-int sgsn_acl_del(const char *imsi)
-{
-	struct imsi_acl_entry *acl;
-
-	acl = sgsn_acl_lookup(imsi);
-	if (!acl)
-		return -ENODEV;
-
-	llist_del(&acl->list);
-	talloc_free(acl);
-
-	return 0;
-}
-
 
 DEFUN(imsi_acl, cfg_imsi_acl_cmd,
 	"imsi-acl (add|del) IMSI",
@@ -383,9 +336,9 @@ DEFUN(imsi_acl, cfg_imsi_acl_cmd,
 	int rc;
 
 	if (!strcmp(op, "add"))
-		rc = sgsn_acl_add(imsi);
+		rc = sgsn_acl_add(imsi, g_cfg);
 	else
-		rc = sgsn_acl_del(imsi);
+		rc = sgsn_acl_del(imsi, g_cfg);
 
 	if (rc < 0) {
 		vty_out(vty, "%% unable to %s ACL\n", op);
@@ -435,7 +388,6 @@ int sgsn_parse_config(const char *config_file, struct sgsn_config *cfg)
 	int rc;
 
 	g_cfg = cfg;
-	INIT_LLIST_HEAD(&g_cfg->imsi_acl);
 
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {

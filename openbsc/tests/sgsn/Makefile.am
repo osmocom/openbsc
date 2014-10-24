@@ -15,6 +15,7 @@ sgsn_test_LDADD = \
 	$(top_builddir)/src/gprs/gprs_sgsn.o \
 	$(top_builddir)/src/gprs/sgsn_vty.o \
 	$(top_builddir)/src/gprs/sgsn_libgtp.o \
+	$(top_builddir)/src/gprs/sgsn_auth.o \
 	$(LIBOSMOCORE_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBOSMOGB_LIBS) \
