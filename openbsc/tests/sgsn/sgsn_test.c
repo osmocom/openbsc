@@ -24,10 +24,13 @@
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/debug.h>
 
+#include <osmocom/gprs/gprs_bssgp.h>
+
 #include <osmocom/gsm/gsm_utils.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/rate_ctr.h>
 
 #include <stdio.h>
 
@@ -42,6 +45,15 @@ static struct sgsn_instance sgsn_inst = {
 	},
 };
 struct sgsn_instance *sgsn = &sgsn_inst;
+unsigned sgsn_tx_counter = 0;
+
+/* override */
+int bssgp_tx_dl_ud(struct msgb *msg, uint16_t pdu_lifetime,
+		   struct bssgp_dl_ud_par *dup)
+{
+	sgsn_tx_counter += 1;
+	return 0;
+}
 
 static int count(struct llist_head *head)
 {
@@ -131,6 +143,7 @@ static void test_gmm_detach(void)
 	struct sgsn_mm_ctx *ctx, *ictx;
 	uint32_t local_tlli;
 	struct msgb *msg;
+	int sgsn_tx_counter_old;
 
 	printf("Testing GMM detach\n");
 
@@ -148,10 +161,59 @@ static void test_gmm_detach(void)
 	ctx = alloc_mm_ctx(local_tlli, &raid);
 
 	/* inject the detach */
+	sgsn_tx_counter_old = sgsn_tx_counter;
 	msg = create_msg(detach_req, ARRAY_SIZE(detach_req));
 	msgb_tlli(msg) = local_tlli;
 	gsm0408_gprs_rcvmsg(msg, ctx->llme);
 	msgb_free(msg);
+
+	/* verify that a single message (hopefully the Detach Accept) has been
+	 * sent by the SGSN */
+	OSMO_ASSERT(sgsn_tx_counter_old + 1 == sgsn_tx_counter);
+
+	/* verify that things are gone */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
+	OSMO_ASSERT(!ictx);
+}
+
+/*
+ * Test that a GMM Detach will remove the MMCTX and the associated LLME but
+ * will not sent a Detach Accept message (power_off = 1)
+ */
+static void test_gmm_detach_power_off(void)
+{
+	struct gprs_ra_id raid = { 0, };
+	struct sgsn_mm_ctx *ctx, *ictx;
+	uint32_t local_tlli;
+	struct msgb *msg;
+	int sgsn_tx_counter_old;
+
+	printf("Testing GMM detach (power off)\n");
+
+	/* DTAP - Detach Request (MO) */
+	/* normal detach, power_off = 1 */
+	static const unsigned char detach_req[] = {
+		0x08, 0x05, 0x09, 0x18, 0x05, 0xf4, 0xef, 0xe2,
+		0xb7, 0x00, 0x19, 0x03, 0xb9, 0x97, 0xcb
+	};
+
+	local_tlli = gprs_tmsi2tlli(0x23, TLLI_LOCAL);
+
+	/* Create a context */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	ctx = alloc_mm_ctx(local_tlli, &raid);
+
+	/* inject the detach */
+	sgsn_tx_counter_old = sgsn_tx_counter;
+	msg = create_msg(detach_req, ARRAY_SIZE(detach_req));
+	msgb_tlli(msg) = local_tlli;
+	gsm0408_gprs_rcvmsg(msg, ctx->llme);
+	msgb_free(msg);
+
+	/* verify that no message (and therefore no Detach Accept) has been
+	 * sent by the SGSN */
+	/* OSMO_ASSERT(sgsn_tx_counter_old == sgsn_tx_counter); */
 
 	/* verify that things are gone */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
@@ -222,6 +284,7 @@ int main(int argc, char **argv)
 
 	test_llme();
 	test_gmm_detach();
+	test_gmm_detach_power_off();
 	printf("Done\n");
 	return 0;
 }
