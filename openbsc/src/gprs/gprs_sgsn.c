@@ -392,7 +392,7 @@ static void drop_one_pdp(struct sgsn_pdp_ctx *pdp)
 }
 
 /* High-level function to be called in case a GGSN has disappeared or
- * ottherwise lost state (recovery procedure) */
+ * otherwise lost state (recovery procedure) */
 int drop_all_pdp_for_ggsn(struct sgsn_ggsn_ctx *ggsn)
 {
 	struct sgsn_mm_ctx *mm;
