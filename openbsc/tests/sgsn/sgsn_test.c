@@ -66,6 +66,28 @@ static struct msgb *create_msg(const uint8_t *data, size_t len)
 	return msg;
 }
 
+/*
+ * Create a context and search for it
+ */
+static struct sgsn_mm_ctx *alloc_mm_ctx(uint32_t tlli, struct gprs_ra_id *raid)
+{
+	struct sgsn_mm_ctx *ctx, *ictx;
+	struct gprs_llc_lle *lle;
+	int old_count = count(gprs_llme_list());
+
+	lle = gprs_lle_get_or_create(tlli, 3);
+	ctx = sgsn_mm_ctx_alloc(tlli, raid);
+	ctx->mm_state = GMM_REGISTERED_NORMAL;
+	ctx->llme = lle->llme;
+
+	ictx = sgsn_mm_ctx_by_tlli(tlli, raid);
+	OSMO_ASSERT(ictx == ctx);
+
+	OSMO_ASSERT(count(gprs_llme_list()) == old_count + 1);
+
+	return ctx;
+}
+
 static void test_llme(void)
 {
 	struct gprs_llc_lle *lle, *lle_copy;
@@ -107,7 +129,6 @@ static void test_gmm_detach(void)
 {
 	struct gprs_ra_id raid = { 0, };
 	struct sgsn_mm_ctx *ctx, *ictx;
-	struct gprs_llc_lle *lle;
 	uint32_t local_tlli;
 	struct msgb *msg;
 
@@ -120,17 +141,11 @@ static void test_gmm_detach(void)
 		0xb7, 0x00, 0x19, 0x03, 0xb9, 0x97, 0xcb
 	};
 
-	/* Create a conext and search for it */
-	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	local_tlli = gprs_tmsi2tlli(0x23, TLLI_LOCAL);
-	lle = gprs_lle_get_or_create(local_tlli, 3);
-	ctx = sgsn_mm_ctx_alloc(local_tlli, &raid);
-	ctx->mm_state = GMM_REGISTERED_NORMAL;
-	ctx->llme = lle->llme;
 
-	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
-	OSMO_ASSERT(ictx == ctx);
-	OSMO_ASSERT(count(gprs_llme_list()) == 1);
+	/* Create a context */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	ctx = alloc_mm_ctx(local_tlli, &raid);
 
 	/* inject the detach */
 	msg = create_msg(detach_req, ARRAY_SIZE(detach_req));
