@@ -27,6 +27,7 @@
 static int verify_subscriber_modify(struct ctrl_cmd *cmd, const char *value, void *d)
 {
 	char *tmp, *imsi, *msisdn, *saveptr = NULL;
+	int rc = 0;
 
 	tmp = talloc_strdup(cmd, value);
 	if (!tmp)
@@ -34,15 +35,16 @@ static int verify_subscriber_modify(struct ctrl_cmd *cmd, const char *value, voi
 
 	imsi = strtok_r(tmp, ",", &saveptr);
 	msisdn = strtok_r(NULL, ",", &saveptr);
-	talloc_free(tmp);
 
 	if (!imsi || !msisdn)
-		return 1;
-	if (strlen(imsi) >= GSM_IMSI_LENGTH)
-		return 1;
-	if (strlen(msisdn) >= GSM_EXTENSION_LENGTH)
-		return 1;
-	return 0;
+		rc = 1;
+	else if (strlen(imsi) >= GSM_IMSI_LENGTH)
+		rc = 1;
+	else if (strlen(msisdn) >= GSM_EXTENSION_LENGTH)
+		rc = 1;
+
+	talloc_free(tmp);
+	return rc;
 }
 
 static int get_subscriber_modify(struct ctrl_cmd *cmd, void *data)
