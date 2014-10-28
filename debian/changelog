@@ -1,3 +1,20 @@
+openbsc (0.13.1+z8f) UNRELEASED; urgency=medium
+
+  * Don't abort on TLLI mismatch.
+  * SGSN timer freeze fixes.
+  * Only send Detach Accept (MO) if power_off isn't set
+  * Handle Detach Requests even when there is no mmctx
+  * Avoid duplicated Attach Accept messages
+  * Unassign the LLME after GMM Status without mmctx
+  * gbproxy: Reset TLLIs when the link_info is found by IMSI/P-TMSI
+  * gbproxy: Honour the BSS TLLI type when creating an SGSN TLLI
+  * sgsn: Cleanup GMM state transitions
+  * sgsn: Call mm_ctx_cleanup_free to deregister MM context
+  * sgsn: Fix LLME leak when forcing a reattach
+  * sgsn: Do not die in _bssgp_tx_dl_ud on TLLI mismatch
+
+ -- Jacob Erlbeck <jerlbeck@sysmocom.de>  Tue, 21 Sep 2014 08:05:47 +0200
+
 openbsc (0.13.1+z8) UNRELEASED; urgency=medium
 
   * Osmux and GBProxy changes
