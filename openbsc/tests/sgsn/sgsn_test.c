@@ -376,11 +376,7 @@ static void test_gmm_attach(void)
 	 * authorization */
 	OSMO_ASSERT(ctx == sgsn_mm_ctx_by_tlli(foreign_tlli, &raid));
 
-	/* FIXME: If we were authorized, the state should be
-	 * GMM_COMMON_PROC_INIT until the Attach Complete is received, since a
-	 * P-TMSI is included, fix state handling in gprs_gmm.c */
-
-	/* OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT); */
+	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
 
 	/* we expect an attach accept/reject */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
