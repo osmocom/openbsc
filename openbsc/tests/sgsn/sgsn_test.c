@@ -256,6 +256,44 @@ static void test_gmm_detach_no_mmctx(void)
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 }
 
+/*
+ * Test that a GMM Status will remove the associated LLME if there is no MMCTX.
+ */
+static void test_gmm_status_no_mmctx(void)
+{
+	struct gprs_llc_lle *lle;
+	uint32_t local_tlli;
+	struct msgb *msg;
+	int sgsn_tx_counter_old;
+
+	printf("Testing GMM Status (no MMCTX)\n");
+
+	/* DTAP - GMM Status, protocol error */
+	static const unsigned char gmm_status[] = {
+		0x08, 0x20, 0x6f
+	};
+
+	/* Create an LLME  */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	local_tlli = gprs_tmsi2tlli(0x23, TLLI_LOCAL);
+	lle = gprs_lle_get_or_create(local_tlli, 3);
+
+	OSMO_ASSERT(count(gprs_llme_list()) == 1);
+
+	/* inject the detach */
+	sgsn_tx_counter_old = sgsn_tx_counter;
+	msg = create_msg(gmm_status, ARRAY_SIZE(gmm_status));
+	msgb_tlli(msg) = local_tlli;
+	gsm0408_gprs_rcvmsg(msg, lle->llme);
+	msgb_free(msg);
+
+	/* verify that no message has been sent by the SGSN */
+	OSMO_ASSERT(sgsn_tx_counter_old == sgsn_tx_counter);
+
+	/* verify that the LLME is gone */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+}
+
 static struct log_info_cat gprs_categories[] = {
 	[DMM] = {
 		.name = "DMM",
@@ -321,6 +359,7 @@ int main(int argc, char **argv)
 	test_gmm_detach();
 	test_gmm_detach_power_off();
 	test_gmm_detach_no_mmctx();
+	test_gmm_status_no_mmctx();
 	printf("Done\n");
 	return 0;
 }
