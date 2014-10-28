@@ -629,13 +629,11 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
 	/* Request IMSI and IMEI from the MS if they are unknown */
 	if (!strlen(ctx->imei)) {
-		ctx->mm_state = GMM_COMMON_PROC_INIT;
 		ctx->t3370_id_type = GSM_MI_TYPE_IMEI;
 		mmctx_timer_start(ctx, 3370, GSM0408_T3370_SECS);
 		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMEI);
 	}
 	if (!strlen(ctx->imsi)) {
-		ctx->mm_state = GMM_COMMON_PROC_INIT;
 		ctx->t3370_id_type = GSM_MI_TYPE_IMSI;
 		mmctx_timer_start(ctx, 3370, GSM0408_T3370_SECS);
 		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMSI);
@@ -655,9 +653,10 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
 		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
 		ctx->t3350_mode = GMM_T3350_MODE_ATT;
+#else
+		ctx->mm_state = GMM_REGISTERED_NORMAL;
 #endif
 
-		ctx->mm_state = GMM_REGISTERED_NORMAL;
 		return gsm48_tx_gmm_att_ack(ctx);
 	default:
 		LOGMMCTXP(LOGL_ERROR, ctx,
@@ -860,6 +859,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	/* Allocate a new P-TMSI (+ P-TMSI signature) and update TLLI */
 	ctx->p_tmsi_old = ctx->p_tmsi;
 	ctx->p_tmsi = sgsn_alloc_ptmsi();
+	ctx->mm_state = GMM_COMMON_PROC_INIT;
 #endif
 	/* Even if there is no P-TMSI allocated, the MS will switch from
 	 * foreign TLLI to local TLLI */
@@ -1078,6 +1078,11 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
 	mmctx->t3350_mode = GMM_T3350_MODE_RAU;
 	mmctx_timer_start(mmctx, 3350, GSM0408_T3350_SECS);
+
+	mmctx->mm_state = GMM_COMMON_PROC_INIT;
+#else
+	/* Make sure we are NORMAL (i.e. not SUSPENDED anymore) */
+	mmctx->mm_state = GMM_REGISTERED_NORMAL;
 #endif
 	/* Even if there is no P-TMSI allocated, the MS will switch from
 	 * foreign TLLI to local TLLI */
@@ -1093,9 +1098,6 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		const uint8_t *pdp_status = TLVP_VAL(&tp, GSM48_IE_GMM_PDP_CTX_STATUS);
 		process_ms_ctx_status(mmctx, pdp_status);
 	}
-
-	/* Make sure we are NORMAL (i.e. not SUSPENDED anymore) */
-	mmctx->mm_state = GMM_REGISTERED_NORMAL;
 
 	/* Send RA UPDATE ACCEPT */
 	return gsm48_tx_gmm_ra_upd_ack(mmctx);
@@ -1189,6 +1191,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->tlli = mmctx->tlli_new;
 		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
 				  GPRS_ALGO_GEA0, NULL);
+		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		rc = 0;
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
@@ -1202,6 +1205,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->tlli = mmctx->tlli_new;
 		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
 				  GPRS_ALGO_GEA0, NULL);
+		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		rc = 0;
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
