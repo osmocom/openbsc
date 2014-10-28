@@ -1111,8 +1111,12 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
 		/* 4.7.10 */
-		if (gh->msg_type == GSM48_MT_GMM_STATUS)
+		if (gh->msg_type == GSM48_MT_GMM_STATUS) {
+			/* TLLI unassignment */
+			gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
+					  GPRS_ALGO_GEA0, NULL);
 			return 0;
+		}
 
 		gprs_llgmm_reset(llme);
 
