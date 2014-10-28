@@ -625,32 +625,45 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 }
 
 /* Check if we can already authorize a subscriber */
-static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx,
-				enum gprs_t3350_mode t3350_mode)
+static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
-	if (strlen(ctx->imei) && strlen(ctx->imsi)) {
-#ifdef PTMSI_ALLOC
-		ctx->t3370_id_type = GSM_MI_TYPE_NONE;
-
-		/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
-		ctx->t3350_mode = t3350_mode;
-		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
-#endif
-		ctx->mm_state = GMM_REGISTERED_NORMAL;
-		return gsm48_tx_gmm_att_ack(ctx);
-	} 
+	/* Request IMSI and IMEI from the MS if they are unknown */
 	if (!strlen(ctx->imei)) {
 		ctx->mm_state = GMM_COMMON_PROC_INIT;
 		ctx->t3370_id_type = GSM_MI_TYPE_IMEI;
 		mmctx_timer_start(ctx, 3370, GSM0408_T3370_SECS);
 		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMEI);
 	}
-
 	if (!strlen(ctx->imsi)) {
 		ctx->mm_state = GMM_COMMON_PROC_INIT;
 		ctx->t3370_id_type = GSM_MI_TYPE_IMSI;
 		mmctx_timer_start(ctx, 3370, GSM0408_T3370_SECS);
 		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMSI);
+	}
+
+	/* All information required for authentication is available */
+
+	ctx->t3370_id_type = GSM_MI_TYPE_NONE;
+
+	switch (ctx->pending_req) {
+	case 0:
+		LOGMMCTXP(LOGL_INFO, ctx,
+			  "no pending request, authorization completed\n");
+		break;
+	case GSM48_MT_GMM_ATTACH_REQ:
+#ifdef PTMSI_ALLOC
+		/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
+		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
+		ctx->t3350_mode = GMM_T3350_MODE_ATT;
+#endif
+
+		ctx->mm_state = GMM_REGISTERED_NORMAL;
+		return gsm48_tx_gmm_att_ack(ctx);
+	default:
+		LOGMMCTXP(LOGL_ERROR, ctx,
+			  "only Attach Request is supported yet, "
+			  "got request type %u\n", ctx->pending_req);
+		break;
 	}
 
 	return 0;
@@ -715,7 +728,7 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	}
 
 	/* Check if we can let the mobile station enter */
-	return gsm48_gmm_authorize(ctx, ctx->t3350_mode);
+	return gsm48_gmm_authorize(ctx);
 }
 
 /* Section 9.4.1 Attach request */
@@ -856,7 +869,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	gprs_llgmm_assign(ctx->llme, ctx->tlli, ctx->tlli_new,
 			  GPRS_ALGO_GEA0, NULL);
 
-	return gsm48_gmm_authorize(ctx, GMM_T3350_MODE_ATT);
+	ctx->pending_req = GSM48_MT_GMM_ATTACH_REQ;
+	return gsm48_gmm_authorize(ctx);
 
 err_inval:
 	LOGPC(DMM, LOGL_INFO, "\n");
@@ -1168,7 +1182,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		/* only in case SGSN offered new P-TMSI */
 		LOGMMCTXP(LOGL_INFO, mmctx, "-> ATTACH COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
+		mmctx->t3350_mode = GMM_T3350_MODE_NONE;
 		mmctx->p_tmsi_old = 0;
+		mmctx->pending_req = 0;
 		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
 		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
@@ -1179,7 +1195,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		/* only in case SGSN offered new P-TMSI */
 		LOGMMCTXP(LOGL_INFO, mmctx, "-> ROUTEING AREA UPDATE COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
+		mmctx->t3350_mode = GMM_T3350_MODE_NONE;
 		mmctx->p_tmsi_old = 0;
+		mmctx->pending_req = 0;
 		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
 		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
@@ -1189,7 +1207,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 		LOGMMCTXP(LOGL_INFO, mmctx, "-> PTMSI REALLLICATION COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
+		mmctx->t3350_mode = GMM_T3350_MODE_NONE;
 		mmctx->p_tmsi_old = 0;
+		mmctx->pending_req = 0;
 		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
 		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, GPRS_ALGO_GEA0, NULL);
@@ -1219,6 +1239,8 @@ static void mmctx_timer_cb(void *_mm)
 		if (mm->num_T_exp >= 5) {
 			LOGMMCTXP(LOGL_NOTICE, mm, "T3350 expired >= 5 times\n");
 			mm->mm_state = GMM_DEREGISTERED;
+			mm->t3350_mode = GMM_T3350_MODE_NONE;
+			mm->pending_req = 0;
 			/* FIXME: should we return some error? */
 			break;
 		}
@@ -1232,6 +1254,10 @@ static void mmctx_timer_cb(void *_mm)
 			break;
 		case GMM_T3350_MODE_PTMSI_REALL:
 			/* FIXME */
+			break;
+		case GMM_T3350_MODE_NONE:
+			LOGMMCTXP(LOGL_NOTICE, mm,
+				  "T3350 mode wasn't set, ignoring timeout\n");
 			break;
 		}
 		osmo_timer_schedule(&mm->timer, GSM0408_T3350_SECS, 0);

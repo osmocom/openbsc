@@ -48,6 +48,7 @@ enum gprs_pdp_ctx {
 };
 
 enum gprs_t3350_mode {
+	GMM_T3350_MODE_NONE,
 	GMM_T3350_MODE_ATT,
 	GMM_T3350_MODE_RAU,
 	GMM_T3350_MODE_PTMSI_REALL,
@@ -111,6 +112,11 @@ struct sgsn_mm_ctx {
 
 	enum gprs_t3350_mode	t3350_mode;
 	uint8_t			t3370_id_type;
+	uint8_t			pending_req;	/* the request's message type */
+	/* TODO: There isn't much semantic difference between t3350_mode
+	 * (refers to the timer) and pending_req (refers to the procedure),
+	 * where mm->T == 3350 => mm->t3350_mode == f(mm->pending_req). Check
+	 * whether one of them can be dropped. */
 };
 
 #define LOGMMCTXP(level, mm, fmt, args...) \
