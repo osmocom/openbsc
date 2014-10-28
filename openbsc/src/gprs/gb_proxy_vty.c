@@ -626,6 +626,7 @@ DEFUN(delete_gb_link_by_id, delete_gb_link_by_id_cmd,
 	GBPROXY_DELETE_LINK_STR
 	"Delete entries with a matching TLLI (hex)\n"
 	"Delete entries with a matching IMSI\n"
+	"Delete entries with a matching SGSN NSEI\n"
 	"Identification to match\n")
 {
 	const uint16_t nsei = atoi(argv[0]);
