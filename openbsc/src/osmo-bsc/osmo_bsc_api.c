@@ -167,7 +167,7 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 	/* Advanced ping/pong handling */
 	if (osmo_timer_pending(&msc->pong_timer))
 		send_ping = 0;
-	if (msc->ping_timeout == 0)
+	if (msc->ping_timeout <= 0)
 		send_ping = 0;
 	if (send_ping && osmo_timer_remaining(&msc->ping_timer, NULL, &tv) == -1)
 		send_ping = 0;

@@ -346,7 +346,7 @@ static void schedule_ping_pong(struct osmo_msc_data *data)
 static void msc_ping_timeout_cb(void *_data)
 {
 	struct osmo_msc_data *data = (struct osmo_msc_data *) _data;
-	if (data->ping_timeout < 0)
+	if (data->ping_timeout <= 0)
 		return;
 
 	send_ping(data);

@@ -419,6 +419,48 @@ class TestVTYBSC(TestVTYGenericBSC):
         res = self.vty.command("show network")
         self.assert_(res.startswith('BSC is on Country Code') >= 0)
 
+    def testPingPongConfiguration(self):
+        self.vty.enable()
+        self.vty.verify("configure terminal", [''])
+        self.vty.verify("network", [''])
+        self.vty.verify("msc 0", [''])
+
+        self.vty.verify("timeout-ping 12", [''])
+        self.vty.verify("timeout-pong 14", [''])
+        res = self.vty.command("show running-config")
+        self.assert_(res.find(" timeout-ping 12") > 0)
+        self.assert_(res.find(" timeout-pong 14") > 0)
+        self.assert_(res.find(" no timeout-ping advanced") > 0)
+
+        self.vty.verify("timeout-ping advanced", [''])
+        res = self.vty.command("show running-config")
+        self.assert_(res.find(" timeout-ping 12") > 0)
+        self.assert_(res.find(" timeout-pong 14") > 0)
+        self.assert_(res.find(" timeout-ping advanced") > 0)
+
+        self.vty.verify("no timeout-ping advanced", [''])
+        res = self.vty.command("show running-config")
+        self.assert_(res.find(" timeout-ping 12") > 0)
+        self.assert_(res.find(" timeout-pong 14") > 0)
+        self.assert_(res.find(" no timeout-ping advanced") > 0)
+
+        self.vty.verify("no timeout-ping", [''])
+        res = self.vty.command("show running-config")
+        self.assertEquals(res.find(" timeout-ping 12"), -1)
+        self.assertEquals(res.find(" timeout-pong 14"), -1)
+        self.assertEquals(res.find(" no timeout-ping advanced"), -1)
+        self.assert_(res.find(" no timeout-ping") > 0)
+
+        self.vty.verify("timeout-ping advanced", ['%ping handling is disabled. Enable it first.'])
+
+        # And back to enabling it
+        self.vty.verify("timeout-ping 12", [''])
+        self.vty.verify("timeout-pong 14", [''])
+        res = self.vty.command("show running-config")
+        self.assert_(res.find(" timeout-ping 12") > 0)
+        self.assert_(res.find(" timeout-pong 14") > 0)
+        self.assert_(res.find(" timeout-ping advanced") > 0)
+
 class TestVTYNAT(TestVTYGenericBSC):
 
     def vty_command(self):
