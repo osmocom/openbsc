@@ -3,4 +3,5 @@ Testing GMM detach
 Testing GMM detach (power off)
 Testing GMM detach (no MMCTX)
 Testing GMM Status (no MMCTX)
+Testing GMM attach
 Done
