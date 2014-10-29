@@ -117,6 +117,8 @@ struct sgsn_mm_ctx {
 	 * (refers to the timer) and pending_req (refers to the procedure),
 	 * where mm->T == 3350 => mm->t3350_mode == f(mm->pending_req). Check
 	 * whether one of them can be dropped. */
+
+	int			is_authorized;
 };
 
 #define LOGMMCTXP(level, mm, fmt, args...) \

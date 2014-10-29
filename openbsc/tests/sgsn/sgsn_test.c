@@ -340,6 +340,8 @@ static void test_gmm_attach(void)
 	/* reset the PRNG used by sgsn_alloc_ptmsi */
 	srand(1);
 
+	sgsn_acl_add("123456789012345", &sgsn->cfg);
+
 	foreign_tlli = gprs_tmsi2tlli(0xc0000023, TLLI_FOREIGN);
 
 	/* Create a LLE/LLME */
@@ -368,9 +370,6 @@ static void test_gmm_attach(void)
 	/* inject the identity response (IMSI) */
 	send_0408_message(ctx->llme, foreign_tlli,
 			  ident_resp_imsi, ARRAY_SIZE(ident_resp_imsi));
-
-	/* FIXME: We are not authorized and should get an Attach Reject, fix
-	 * authorization in gprs_gmm.c */
 
 	/* check that the MM context has not been removed due to a failed
 	 * authorization */
@@ -401,6 +400,8 @@ static void test_gmm_attach(void)
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
 	OSMO_ASSERT(!ictx);
+
+	sgsn_acl_del("123456789012345", &sgsn->cfg);
 }
 
 static struct log_info_cat gprs_categories[] = {
