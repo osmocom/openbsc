@@ -325,33 +325,21 @@ static int _tx_status(struct msgb *msg, uint8_t cause,
 
 	return gsm48_gmm_sendmsg(msg, 0, mmctx);
 }
+
 static int gsm48_tx_gmm_status(struct sgsn_mm_ctx *mmctx, uint8_t cause)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 
 	mmctx2msgid(msg, mmctx);
 	return _tx_status(msg, cause, mmctx, 0);
-};
-static int gsm48_tx_gmm_status_oldmsg(struct msgb *oldmsg, uint8_t cause)
-{
-	struct msgb *msg = gsm48_msgb_alloc();
-
-	gmm_copy_id(msg, oldmsg);
-	return _tx_status(msg, cause, NULL, 0);
 }
+
 static int gsm48_tx_sm_status(struct sgsn_mm_ctx *mmctx, uint8_t cause)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 
 	mmctx2msgid(msg, mmctx);
 	return _tx_status(msg, cause, mmctx, 1);
-};
-static int gsm48_tx_sm_status_oldmsg(struct msgb *oldmsg, uint8_t cause)
-{
-	struct msgb *msg = gsm48_msgb_alloc();
-
-	gmm_copy_id(msg, oldmsg);
-	return _tx_status(msg, cause, NULL, 1);
 }
 
 static int _tx_detach_req(struct msgb *msg, uint8_t detach_type, uint8_t cause,
