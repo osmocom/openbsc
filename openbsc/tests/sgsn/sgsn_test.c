@@ -289,12 +289,130 @@ static void test_gmm_status_no_mmctx(void)
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 }
 
+/*
+ * Test the GMM Attach procedure
+ */
+static void test_gmm_attach(void)
+{
+	struct gprs_ra_id raid = { 0, };
+	struct sgsn_mm_ctx *ctx = NULL;
+	struct sgsn_mm_ctx *ictx;
+	uint32_t foreign_tlli;
+	uint32_t local_tlli = 0;
+	struct gprs_llc_lle *lle;
+
+	/* DTAP - Attach Request */
+	/* The P-TMSI is not known by the SGSN */
+	static const unsigned char attach_req[] = {
+		0x08, 0x01, 0x02, 0xf5, 0xe0, 0x21, 0x08, 0x02, 0x05, 0xf4,
+		0xfb, 0xc5, 0x46, 0x79, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60,
+		0x19, 0x18, 0xb3, 0x43, 0x2b, 0x25, 0x96, 0x62, 0x00, 0x60,
+		0x80, 0x9a, 0xc2, 0xc6, 0x62, 0x00, 0x60, 0x80, 0xba, 0xc8,
+		0xc6, 0x62, 0x00, 0x60, 0x80, 0x00
+	};
+
+	/* DTAP - Identity Response IMEI */
+	static const unsigned char ident_resp_imei[] = {
+		0x08, 0x16, 0x08, 0x9a, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78,
+		0x56
+	};
+
+	/* DTAP - Identity Response IMSI */
+	static const unsigned char ident_resp_imsi[] = {
+		0x08, 0x16, 0x08, 0x19, 0x32, 0x54, 0x76, 0x98, 0x10, 0x32,
+		0x54
+	};
+
+	/* DTAP - Attach Complete */
+	static const unsigned char attach_compl[] = {
+		0x08, 0x03
+	};
+
+	/* DTAP - Detach Request (MO) */
+	/* normal detach, power_off = 0 */
+	static const unsigned char detach_req[] = {
+		0x08, 0x05, 0x01, 0x18, 0x05, 0xf4, 0xeb, 0x8b,
+		0x45, 0x67, 0x19, 0x03, 0xb9, 0x97, 0xcb
+	};
+
+	printf("Testing GMM attach\n");
+
+	/* reset the PRNG used by sgsn_alloc_ptmsi */
+	srand(1);
+
+	foreign_tlli = gprs_tmsi2tlli(0xc0000023, TLLI_FOREIGN);
+
+	/* Create a LLE/LLME */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	lle = gprs_lle_get_or_create(foreign_tlli, 3);
+	OSMO_ASSERT(count(gprs_llme_list()) == 1);
+
+	/* inject the attach request */
+	send_0408_message(lle->llme, foreign_tlli,
+			  attach_req, ARRAY_SIZE(attach_req));
+
+	ctx = sgsn_mm_ctx_by_tlli(foreign_tlli, &raid);
+	OSMO_ASSERT(ctx != NULL);
+	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+
+	/* we expect an identity request (IMEI) */
+	OSMO_ASSERT(sgsn_tx_counter == 1);
+
+	/* inject the identity response (IMEI) */
+	send_0408_message(ctx->llme, foreign_tlli,
+			  ident_resp_imei, ARRAY_SIZE(ident_resp_imei));
+
+	/* we expect an identity request (IMSI) */
+	OSMO_ASSERT(sgsn_tx_counter == 1);
+
+	/* inject the identity response (IMSI) */
+	send_0408_message(ctx->llme, foreign_tlli,
+			  ident_resp_imsi, ARRAY_SIZE(ident_resp_imsi));
+
+	/* FIXME: We are not authorized and should get an Attach Reject, fix
+	 * authorization in gprs_gmm.c */
+
+	/* check that the MM context has not been removed due to a failed
+	 * authorization */
+	OSMO_ASSERT(ctx == sgsn_mm_ctx_by_tlli(foreign_tlli, &raid));
+
+	/* FIXME: If we were authorized, the state should be
+	 * GMM_COMMON_PROC_INIT until the Attach Complete is received, since a
+	 * P-TMSI is included, fix state handling in gprs_gmm.c */
+
+	/* OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT); */
+
+	/* we expect an attach accept/reject */
+	OSMO_ASSERT(sgsn_tx_counter == 1);
+
+	/* this has been randomly assigned by the SGSN */
+	local_tlli = gprs_tmsi2tlli(0xeb8b4567, TLLI_LOCAL);
+
+	/* inject the attach complete */
+	send_0408_message(ctx->llme, local_tlli,
+			  attach_compl, ARRAY_SIZE(attach_compl));
+
+	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+
+	/* we don't expect a response */
+	OSMO_ASSERT(sgsn_tx_counter == 0);
+
+	/* inject the detach */
+	send_0408_message(ctx->llme, local_tlli,
+			  detach_req, ARRAY_SIZE(detach_req));
+
+	/* verify that things are gone */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
+	OSMO_ASSERT(!ictx);
+}
+
 static struct log_info_cat gprs_categories[] = {
 	[DMM] = {
 		.name = "DMM",
 		.description = "Layer3 Mobility Management (MM)",
 		.color = "\033[1;33m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DPAG]	= {
 		.name = "DPAG",
@@ -350,11 +468,14 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");
 	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
 
+	sgsn_auth_init(sgsn);
+
 	test_llme();
 	test_gmm_detach();
 	test_gmm_detach_power_off();
 	test_gmm_detach_no_mmctx();
 	test_gmm_status_no_mmctx();
+	test_gmm_attach();
 	printf("Done\n");
 	return 0;
 }
