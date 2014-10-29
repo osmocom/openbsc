@@ -640,8 +640,29 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	}
 
 	/* All information required for authentication is available */
-
 	ctx->t3370_id_type = GSM_MI_TYPE_NONE;
+
+	if (!ctx->is_authorized) {
+		/* As a temorary hack, we simply assume that the IMSI exists,
+		 * as long as it is part of 'our' network */
+		char mccmnc[16];
+		int rc;
+		snprintf(mccmnc, sizeof(mccmnc), "%03d%02d",
+			 ctx->ra.mcc, ctx->ra.mnc);
+		if (strncmp(mccmnc, ctx->imsi, 5) &&
+		    (sgsn->cfg.acl_enabled &&
+		     !sgsn_acl_lookup(ctx->imsi, &sgsn->cfg))) {
+			LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST IMSI=%s\n",
+			     ctx->imsi);
+			rc = gsm48_tx_gmm_att_rej(ctx,
+						  GMM_CAUSE_GPRS_NOTALLOWED);
+			mm_ctx_cleanup_free(ctx, "ATTACH REJECT");
+			return rc;
+		}
+		ctx->is_authorized = 1;
+	}
+
+	/* The MS is authorized */
 
 	switch (ctx->pending_req) {
 	case 0:
@@ -799,18 +820,6 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 #if 0
 			return gsm48_tx_gmm_att_rej(msg, GMM_CAUSE_IMSI_UNKNOWN);
 #else
-			/* As a temorary hack, we simply assume that the IMSI exists,
-			 * as long as it is part of 'our' network */
-			char mccmnc[16];
-			snprintf(mccmnc, sizeof(mccmnc), "%03d%02d", ra_id.mcc, ra_id.mnc);
-			if (strncmp(mccmnc, mi_string, 5) &&
-			    (sgsn->cfg.acl_enabled &&
-			     !sgsn_acl_lookup(mi_string, &sgsn->cfg))) {
-				LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST IMSI=%s\n",
-				     mi_string);
-				return gsm48_tx_gmm_att_rej_oldmsg(msg,
-								GMM_CAUSE_GPRS_NOTALLOWED);
-			}
 			ctx = sgsn_mm_ctx_alloc(0, &ra_id);
 			if (!ctx)
 				return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_NET_FAIL);
