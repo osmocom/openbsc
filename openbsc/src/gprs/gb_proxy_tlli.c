@@ -466,18 +466,28 @@ static void gbproxy_remove_matching_link_infos(
 	}
 }
 
-struct gbproxy_link_info *gbproxy_get_link_info_ul(
+static struct gbproxy_link_info *gbproxy_get_link_info_ul(
 	struct gbproxy_peer *peer,
+	int *tlli_is_valid,
 	struct gprs_gb_parse_context *parse_ctx)
 {
 	struct gbproxy_link_info *link_info = NULL;
 
-	if (parse_ctx->tlli_enc)
+	if (parse_ctx->tlli_enc) {
 		link_info = gbproxy_link_info_by_tlli(peer, parse_ctx->tlli);
 
-	if (!link_info && parse_ctx->imsi)
+		if (link_info) {
+			*tlli_is_valid = 1;
+			return link_info;
+		}
+	}
+
+	*tlli_is_valid = 0;
+
+	if (!link_info && parse_ctx->imsi) {
 		link_info = gbproxy_link_info_by_imsi(
 			peer, parse_ctx->imsi, parse_ctx->imsi_len);
+	}
 
 	if (!link_info && parse_ctx->ptmsi_enc && !parse_ctx->old_raid_is_foreign) {
 		uint32_t bss_ptmsi;
@@ -485,8 +495,10 @@ struct gbproxy_link_info *gbproxy_get_link_info_ul(
 		link_info = gbproxy_link_info_by_ptmsi(peer, bss_ptmsi);
 	}
 
-	if (link_info)
-		link_info->is_deregistered = 0;
+	if (!link_info)
+		return NULL;
+
+	link_info->is_deregistered = 0;
 
 	return link_info;
 }
@@ -497,11 +509,13 @@ struct gbproxy_link_info *gbproxy_update_link_state_ul(
 	struct gprs_gb_parse_context *parse_ctx)
 {
 	struct gbproxy_link_info *link_info;
+	int tlli_is_valid;
 
-	link_info = gbproxy_get_link_info_ul(peer, parse_ctx);
+	link_info = gbproxy_get_link_info_ul(peer, &tlli_is_valid, parse_ctx);
 
 	if (parse_ctx->tlli_enc && parse_ctx->llc) {
 		uint32_t sgsn_tlli;
+
 		if (!link_info) {
 			LOGP(DGPRS, LOGL_INFO, "Adding TLLI %08x to list\n",
 			    parse_ctx->tlli);
@@ -513,12 +527,14 @@ struct gbproxy_link_info *gbproxy_update_link_state_ul(
 							   parse_ctx->tlli);
 			link_info->sgsn_tlli.current = sgsn_tlli;
 			link_info->tlli.current = parse_ctx->tlli;
-		} else if (!link_info->tlli.current) {
+		} else if (!tlli_is_valid) {
 			/* New TLLI (info found by IMSI or P-TMSI) */
 			link_info->tlli.current = parse_ctx->tlli;
+			link_info->tlli.assigned = 0;
 			link_info->sgsn_tlli.current =
 				gbproxy_make_sgsn_tlli(peer, link_info,
 						       parse_ctx->tlli);
+			link_info->sgsn_tlli.assigned = 0;
 			gbproxy_touch_link_info(peer, link_info, now);
 		} else {
 			sgsn_tlli = gbproxy_map_tlli(parse_ctx->tlli, link_info, 0);
