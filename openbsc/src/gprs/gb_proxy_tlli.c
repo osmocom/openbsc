@@ -471,13 +471,21 @@ struct gbproxy_link_info *gbproxy_get_link_info_ul(
 	struct gprs_gb_parse_context *parse_ctx)
 {
 	struct gbproxy_link_info *link_info = NULL;
+	int tlli_is_invalid = 0;
 
-	if (parse_ctx->tlli_enc)
+	if (parse_ctx->tlli_enc) {
 		link_info = gbproxy_link_info_by_tlli(peer, parse_ctx->tlli);
 
-	if (!link_info && parse_ctx->imsi)
+		if (link_info)
+			return link_info;
+
+		tlli_is_invalid = 1;
+	}
+
+	if (!link_info && parse_ctx->imsi) {
 		link_info = gbproxy_link_info_by_imsi(
 			peer, parse_ctx->imsi, parse_ctx->imsi_len);
+	}
 
 	if (!link_info && parse_ctx->ptmsi_enc && !parse_ctx->old_raid_is_foreign) {
 		uint32_t bss_ptmsi;
@@ -485,8 +493,18 @@ struct gbproxy_link_info *gbproxy_get_link_info_ul(
 		link_info = gbproxy_link_info_by_ptmsi(peer, bss_ptmsi);
 	}
 
-	if (link_info)
-		link_info->is_deregistered = 0;
+	if (!link_info)
+		return NULL;
+
+	/* Found by IMSI or P-TMSI */
+	link_info->is_deregistered = 0;
+
+	if (tlli_is_invalid) {
+		link_info->tlli.assigned = 0;
+		link_info->sgsn_tlli.assigned = 0;
+		link_info->tlli.current = 0;
+		link_info->sgsn_tlli.current = 0;
+	}
 
 	return link_info;
 }

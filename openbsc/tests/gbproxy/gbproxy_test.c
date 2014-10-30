@@ -4116,16 +4116,12 @@ static void test_gbproxy_keep_info()
 
 	link_info2 = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
 	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
-	/* FIXME: The gbproxy still uses local_tlli instead of foreign_tlli.
-	 * Uncomment the assertions below and remove the
-	 * gbproxy_link_info_by_tlli line below when this is fixed. */
-	/* OSMO_ASSERT(link_info); */
-	link_info = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
 	OSMO_ASSERT(link_info == link_info2);
 	OSMO_ASSERT(link_info->imsi_len != 0);
 	OSMO_ASSERT(!link_info->is_deregistered);
 	OSMO_ASSERT(!link_info->imsi_acq_pending);
-	/* OSMO_ASSERT(link_info->sgsn_tlli.current == foreign_tlli); */
+	OSMO_ASSERT(link_info->sgsn_tlli.current == foreign_tlli);
 	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
 
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,
@@ -4231,16 +4227,12 @@ static void test_gbproxy_keep_info()
 
 	link_info2 = gbproxy_link_info_by_imsi(peer, imsi, sizeof(imsi));
 	link_info = gbproxy_link_info_by_tlli(peer, foreign_tlli);
-	/* FIXME: The gbproxy still uses local_tlli instead of foreign_tlli.
-	 * Uncomment the assertions below and remove the
-	 * gbproxy_link_info_by_tlli line below when this is fixed. */
-	/* OSMO_ASSERT(link_info); */
-	link_info = gbproxy_link_info_by_tlli(peer, local_tlli);
+	OSMO_ASSERT(link_info);
 	OSMO_ASSERT(link_info == link_info2);
 	OSMO_ASSERT(link_info->imsi_len != 0);
 	OSMO_ASSERT(!link_info->is_deregistered);
 	OSMO_ASSERT(!link_info->imsi_acq_pending);
-	/* OSMO_ASSERT(link_info->sgsn_tlli.current == foreign_tlli); */
+	OSMO_ASSERT(link_info->sgsn_tlli.current == foreign_tlli);
 	OSMO_ASSERT(link_info->sgsn_tlli.assigned == 0);
 
 	send_llc_dl_ui(nsi, "ATTACH ACCEPT", &sgsn_peer, 0x1002,

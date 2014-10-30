@@ -6040,7 +6040,7 @@ Peers:
     Attach Request count            : 9
     TLLI cache size                 : 1
     TLLI-Cache: 1
-      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
+      TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
 PROCESSING ATTACH ACCEPT from 0x05060708:32000
 00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9e 41 c0 49 08 02 01 49 04 21 63 54 40 50 60 19 cd d7 08 17 16 18 05 f4 ef e2 b7 00 83 01 10 
 
@@ -6202,7 +6202,7 @@ Peers:
     Attach Request count            : 11
     TLLI cache size                 : 1
     TLLI-Cache: 1
-      TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
+      TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
 PROCESSING ATTACH ACCEPT from 0x05060708:32000
 00 00 10 02 00 af e2 b7 00 00 50 20 16 82 02 58 13 99 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 0a 82 08 02 0d 88 11 12 13 14 15 16 17 18 00 81 00 0e 9e 41 c0 59 08 02 01 49 04 21 63 54 40 50 60 19 cd d7 08 17 16 18 05 f4 ef e2 b7 00 b9 a3 b0 
 
