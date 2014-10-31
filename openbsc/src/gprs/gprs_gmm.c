@@ -1153,7 +1153,12 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		}
 
 		/* Force the MS to re-attach */
-		return sgsn_force_reattach_oldmsg(msg);
+		rc = sgsn_force_reattach_oldmsg(msg);
+
+		/* TLLI unassignment */
+		gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
+				  GPRS_ALGO_GEA0, NULL);
+		return rc;
 	}
 
 	switch (gh->msg_type) {
@@ -1705,15 +1710,12 @@ int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx)
 	int rc;
 	gprs_llgmm_reset(mmctx->llme);
 
-	/* Delete all existing PDP contexts for this MS */
-	delete_pdp_contexts(mmctx, "forced reattach");
+	rc = gsm48_tx_gmm_detach_req(
+		mmctx, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
 
-	/* TODO:
-	 * properly start detach procedure (timeout, wait for ACK) and
-	 * do nothing if a re-attach is in progress */
+	mm_ctx_cleanup_free(mmctx, "forced reattach");
 
-	return gsm48_tx_gmm_detach_req(
-			mmctx, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
+	return rc;
 }
 
 /* Main entry point for incoming 04.08 GPRS messages */
