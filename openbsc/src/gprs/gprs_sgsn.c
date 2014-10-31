@@ -448,6 +448,6 @@ int drop_all_pdp_for_ggsn(struct sgsn_ggsn_ctx *ggsn)
 
 int sgsn_force_reattach_oldmsg(struct msgb *oldmsg)
 {
-	return gsm0408_gprs_force_reattach(oldmsg, NULL);
+	return gsm0408_gprs_force_reattach_oldmsg(oldmsg);
 }
 
