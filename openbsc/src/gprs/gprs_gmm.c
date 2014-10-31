@@ -1689,16 +1689,21 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	return rc;
 }
 
-int gsm0408_gprs_force_reattach(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
+int gsm0408_gprs_force_reattach_oldmsg(struct msgb *msg)
 {
+	int rc;
 	gprs_llgmm_reset_oldmsg(msg, GPRS_SAPI_GMM);
 
-	if (!mmctx)
-		return gsm48_tx_gmm_detach_req_oldmsg(
-			msg, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
+	rc = gsm48_tx_gmm_detach_req_oldmsg(
+		msg, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
 
-	/* Mark MM state as deregistered initiated */
-	mmctx->mm_state = GMM_DEREGISTERED_INIT;
+	return rc;
+}
+
+int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx)
+{
+	int rc;
+	gprs_llgmm_reset(mmctx->llme);
 
 	/* Delete all existing PDP contexts for this MS */
 	delete_pdp_contexts(mmctx, "forced reattach");
