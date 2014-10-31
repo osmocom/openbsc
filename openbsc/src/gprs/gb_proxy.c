@@ -254,9 +254,14 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 	int max_retries = 23;
 	if (!peer->cfg->patch_ptmsi) {
 		sgsn_tlli = bss_tlli;
-	} else if (link_info->sgsn_tlli.ptmsi != GSM_RESERVED_TMSI) {
+	} else if (link_info->sgsn_tlli.ptmsi != GSM_RESERVED_TMSI &&
+		   gprs_tlli_type(bss_tlli) == TLLI_FOREIGN) {
 		sgsn_tlli = gprs_tmsi2tlli(link_info->sgsn_tlli.ptmsi,
 					   TLLI_FOREIGN);
+	} else if (link_info->sgsn_tlli.ptmsi != GSM_RESERVED_TMSI &&
+		   gprs_tlli_type(bss_tlli) == TLLI_LOCAL) {
+		sgsn_tlli = gprs_tmsi2tlli(link_info->sgsn_tlli.ptmsi,
+					   TLLI_LOCAL);
 	} else {
 		do {
 			/* create random TLLI, 0b01111xxx... */
