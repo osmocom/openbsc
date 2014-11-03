@@ -712,8 +712,6 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 				       "p_tmsi_old=0x%08x\n",
 					ictx->p_tmsi);
 
-				ictx->mm_state = GMM_DEREGISTERED;
-
 				mm_ctx_cleanup_free(ictx, "GPRS IMSI re-use");
 			}
 		}
@@ -1242,9 +1240,7 @@ static void mmctx_timer_cb(void *_mm)
 	case 3350:	/* waiting for ATTACH COMPLETE */
 		if (mm->num_T_exp >= 5) {
 			LOGMMCTXP(LOGL_NOTICE, mm, "T3350 expired >= 5 times\n");
-			mm->mm_state = GMM_DEREGISTERED;
-			mm->t3350_mode = GMM_T3350_MODE_NONE;
-			mm->pending_req = 0;
+			mm_ctx_cleanup_free(mm, "T3350");
 			/* FIXME: should we return some error? */
 			break;
 		}
@@ -1269,7 +1265,7 @@ static void mmctx_timer_cb(void *_mm)
 	case 3360:	/* waiting for AUTH AND CIPH RESP */
 		if (mm->num_T_exp >= 5) {
 			LOGMMCTXP(LOGL_NOTICE, mm, "T3360 expired >= 5 times\n");
-			mm->mm_state = GMM_DEREGISTERED;
+			mm_ctx_cleanup_free(mm, "T3360");
 			break;
 		}
 		/* FIXME: re-transmit the respective msg and re-start timer */
@@ -1279,7 +1275,7 @@ static void mmctx_timer_cb(void *_mm)
 		if (mm->num_T_exp >= 5) {
 			LOGMMCTXP(LOGL_NOTICE, mm, "T3370 expired >= 5 times\n");
 			gsm48_tx_gmm_att_rej(mm, GMM_CAUSE_MS_ID_NOT_DERIVED);
-			mm->mm_state = GMM_DEREGISTERED;
+			mm_ctx_cleanup_free(mm, "GPRS ATTACH REJECT (T3370)");
 			break;
 		}
 		/* re-tranmit IDENTITY REQUEST and re-start timer */
