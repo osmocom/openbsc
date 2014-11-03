@@ -565,6 +565,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	struct e1inp_sign_link *sign_link = mb->dst;
 	uint8_t mt = foh->msg_type;
+	/* sign_link might get deleted via osmo_signal_dispatch -> save bts */
+	struct gsm_bts *bts = sign_link->trx->bts;
 	int ret = 0;
 
 	/* check for unsolicited message */
@@ -593,7 +595,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		nack_data.mt = mt;
 		nack_data.bts = sign_link->trx->bts;
 		osmo_signal_dispatch(SS_NM, S_NM_NACK, &nack_data);
-		abis_nm_queue_send_next(sign_link->trx->bts);
+		abis_nm_queue_send_next(bts);
 		return 0;
 	}
 #if 0
@@ -636,7 +638,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		break;
 	}
 
-	abis_nm_queue_send_next(sign_link->trx->bts);
+	abis_nm_queue_send_next(bts);
 	return ret;
 }
 
