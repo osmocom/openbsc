@@ -677,6 +677,51 @@ class TestVTYGbproxy(TestVTYGenericBSC):
         self.assert_(res.find('Deleted 0 BVC') >= 0)
         self.assert_(res.find('Deleted 0 NS-VC') >= 0)
 
+class TestVTYSGSN(TestVTYGenericBSC):
+
+    def vty_command(self):
+        return ["./src/gprs/osmo-sgsn", "-c",
+                "doc/examples/osmo-sgsn/osmo-sgsn.cfg"]
+
+    def vty_app(self):
+        return (4245, "./src/gprs/osmo-sgsn", "OsmoSGSN", "sgsn")
+
+    def testVtyTree(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify('configure terminal', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify('ns', ['']))
+        self.assertEquals(self.vty.node(), 'config-ns')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify('exit', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify('sgsn', ['']))
+        self.assertEquals(self.vty.node(), 'config-sgsn')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify('exit', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+
+    def testVtyShow(self):
+        res = self.vty.command("show ns")
+        self.assert_(res.find('Encapsulation NS-UDP-IP') >= 0)
+        self.assertTrue(self.vty.verify('show bssgp', ['']))
+        self.assertTrue(self.vty.verify('show bssgp stats', ['']))
+        # TODO: uncomment when the command does not segfault anymore
+        # self.assertTrue(self.vty.verify('show bssgp nsei 123', ['']))
+        # self.assertTrue(self.vty.verify('show bssgp nsei 123 stats', ['']))
+
+        self.assertTrue(self.vty.verify('show sgsn', ['']))
+        self.assertTrue(self.vty.verify('show mm-context all', ['']))
+        self.assertTrue(self.vty.verify('show mm-context imsi 000001234567', ['No MM context for IMSI 000001234567']))
+        self.assertTrue(self.vty.verify('show pdp-context all', ['']))
+
+        res = self.vty.command("show sndcp")
+        self.assert_(res.find('State of SNDCP Entities') >= 0)
+
+        res = self.vty.command("show llc")
+        self.assert_(res.find('State of LLC Entities') >= 0)
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")
@@ -696,6 +741,13 @@ def add_gbproxy_test(suite, workdir):
         print("Skipping the Gb-Proxy test")
         return
     test = unittest.TestLoader().loadTestsFromTestCase(TestVTYGbproxy)
+    suite.addTest(test)
+
+def add_sgsn_test(suite, workdir):
+    if not os.path.isfile(os.path.join(workdir, "src/gprs/osmo-sgsn")):
+        print("Skipping the SGSN test")
+        return
+    test = unittest.TestLoader().loadTestsFromTestCase(TestVTYSGSN)
     suite.addTest(test)
 
 if __name__ == '__main__':
@@ -732,5 +784,6 @@ if __name__ == '__main__':
     add_bsc_test(suite, workdir)
     add_nat_test(suite, workdir)
     add_gbproxy_test(suite, workdir)
+    add_sgsn_test(suite, workdir)
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
     sys.exit(len(res.errors) + len(res.failures))
