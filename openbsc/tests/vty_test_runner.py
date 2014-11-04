@@ -722,6 +722,22 @@ class TestVTYSGSN(TestVTYGenericBSC):
         res = self.vty.command("show llc")
         self.assert_(res.find('State of LLC Entities') >= 0)
 
+    def testVtyAuth(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify('configure terminal', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify('sgsn', ['']))
+        self.assertEquals(self.vty.node(), 'config-sgsn')
+        self.assertTrue(self.vty.verify('auth-policy accept-all', ['']))
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('auth-policy accept-all') > 0)
+        self.assertTrue(self.vty.verify('auth-policy acl-only', ['']))
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('auth-policy acl-only') > 0)
+        self.assertTrue(self.vty.verify('auth-policy closed', ['']))
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('auth-policy closed') > 0)
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")

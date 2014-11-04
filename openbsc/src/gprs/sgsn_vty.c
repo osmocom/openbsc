@@ -41,6 +41,14 @@
 
 static struct sgsn_config *g_cfg = NULL;
 
+const struct value_string sgsn_auth_pol_strs[] = {
+	{ SGSN_AUTH_POLICY_OPEN,	"accept-all" },
+	{ SGSN_AUTH_POLICY_CLOSED,	"closed" },
+	{ SGSN_AUTH_POLICY_ACL_ONLY,    "acl-only" },
+	{ 0, NULL }
+};
+
+
 #define GSM48_MAX_APN_LEN	102	/* 10.5.6.1 */
 static char *gprs_apn2str(uint8_t *apn, unsigned int len)
 {
@@ -127,7 +135,8 @@ static int config_write_sgsn(struct vty *vty)
 	}
 
 	vty_out(vty, " auth-policy %s%s",
-		g_cfg->acl_enabled ? "closed" : "accept-all", VTY_NEWLINE);
+		get_value_string(sgsn_auth_pol_strs, g_cfg->auth_policy),
+		VTY_NEWLINE);
 	llist_for_each_entry(acl, &g_cfg->imsi_acl, list)
 		vty_out(vty, " imsi-acl add %s%s", acl->imsi, VTY_NEWLINE);
 
@@ -349,15 +358,15 @@ DEFUN(imsi_acl, cfg_imsi_acl_cmd,
 }
 
 DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
-	"auth-policy (accept-all|closed)",
+	"auth-policy (accept-all|closed|acl-only)",
 	"Autorization Policy of SGSN\n"
-	"Accept all IMSIs (DANGEROUS\n"
-	"Accept only home network subscribers or those in ACL\n")
+	"Accept all IMSIs (DANGEROUS)\n"
+	"Accept only home network subscribers or those in the ACL\n"
+	"Accept only subscribers in the ACL\n")
 {
-	if (!strcmp(argv[0], "accept-all"))
-		g_cfg->acl_enabled = 0;
-	else
-		g_cfg->acl_enabled = 1;
+	int val = get_string_value(sgsn_auth_pol_strs, argv[0]);
+	OSMO_ASSERT(val >= SGSN_AUTH_POLICY_OPEN && val <= SGSN_AUTH_POLICY_ACL_ONLY);
+	g_cfg->auth_policy = val;
 
 	return CMD_SUCCESS;
 }

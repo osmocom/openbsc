@@ -83,11 +83,24 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx,
 				     struct sgsn_config *cfg)
 {
 	char mccmnc[16];
+	int check_net = 0;
+	int check_acl = 0;
 
 	OSMO_ASSERT(mmctx);
 
-	if (!sgsn->cfg.acl_enabled)
+	switch (sgsn->cfg.auth_policy) {
+	case SGSN_AUTH_POLICY_OPEN:
 		return SGSN_AUTH_ACCEPTED;
+
+	case SGSN_AUTH_POLICY_CLOSED:
+		check_net = 1;
+		check_acl = 1;
+		break;
+
+	case SGSN_AUTH_POLICY_ACL_ONLY:
+		check_acl = 1;
+		break;
+	}
 
 	if (!strlen(mmctx->imsi)) {
 		LOGMMCTXP(LOGL_NOTICE, mmctx,
@@ -95,13 +108,16 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx,
 		return SGSN_AUTH_UNKNOWN;
 	}
 
-	/* As a temorary hack, we simply assume that the IMSI exists,
-	 * as long as it is part of 'our' network */
-	snprintf(mccmnc, sizeof(mccmnc), "%03d%02d", mmctx->ra.mcc, mmctx->ra.mnc);
-	if (strncmp(mccmnc, mmctx->imsi, 5) == 0)
-		return SGSN_AUTH_ACCEPTED;
+	if (check_net) {
+		/* We simply assume that the IMSI exists, as long as it is part
+		 * of 'our' network */
+		snprintf(mccmnc, sizeof(mccmnc), "%03d%02d",
+			 mmctx->ra.mcc, mmctx->ra.mnc);
+		if (strncmp(mccmnc, mmctx->imsi, 5) == 0)
+			return SGSN_AUTH_ACCEPTED;
+	}
 
-	if (sgsn_acl_lookup(mmctx->imsi, &sgsn->cfg))
+	if (check_acl && sgsn_acl_lookup(mmctx->imsi, &sgsn->cfg))
 		return SGSN_AUTH_ACCEPTED;
 
 	return SGSN_AUTH_REJECTED;

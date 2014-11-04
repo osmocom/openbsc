@@ -7,6 +7,12 @@
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 
+enum sgsn_auth_policy {
+	SGSN_AUTH_POLICY_OPEN,
+	SGSN_AUTH_POLICY_CLOSED,
+	SGSN_AUTH_POLICY_ACL_ONLY
+};
+
 struct sgsn_config {
 	/* parsed from config file */
 
@@ -16,7 +22,7 @@ struct sgsn_config {
 	/* misc */
 	struct gprs_ns_inst *nsi;
 
-	int acl_enabled;
+	enum sgsn_auth_policy auth_policy;
 	struct llist_head imsi_acl;
 };
 
