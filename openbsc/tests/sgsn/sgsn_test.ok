@@ -4,4 +4,10 @@ Testing GMM detach (power off)
 Testing GMM detach (no MMCTX)
 Testing GMM Status (no MMCTX)
 Testing GMM attach
+Testing GMM reject
+  - Attach Request (invalid MI length)
+  - Attach Request (invalid MI type)
+  - Routing Area Update Request (valid)
+  - Routing Area Update Request (invalid type)
+  - Routing Area Update Request (invalid CAP length)
 Done
