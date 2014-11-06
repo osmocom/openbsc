@@ -27,8 +27,8 @@ struct ipac_ext_lac_cmd {
 	uint8_t data[0];
 } __attribute__((packed));
 
-int ipaccess_drop_oml(struct gsm_bts *bts);
-int ipaccess_drop_rsl(struct gsm_bts_trx *trx);
+void ipaccess_drop_oml(struct gsm_bts *bts);
+void ipaccess_drop_rsl(struct gsm_bts_trx *trx);
 
 struct sdp_header_item {
 	struct sdp_header_entry header_entry;
