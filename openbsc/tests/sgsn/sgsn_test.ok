@@ -10,4 +10,8 @@ Testing GMM reject
   - Routing Area Update Request (valid)
   - Routing Area Update Request (invalid type)
   - Routing Area Update Request (invalid CAP length)
+Testing P-TMSI allocation
+  - sgsn_alloc_ptmsi
+  - Repeated Attach Request
+  - Repeated RA Update Request
 Done

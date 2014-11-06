@@ -546,6 +546,197 @@ static void test_gmm_reject(void)
 	}
 }
 
+/*
+ * Test the dynamic allocation of P-TMSIs
+ */
+static void test_gmm_ptmsi_allocation(void)
+{
+	struct gprs_ra_id raid = { 0, };
+	struct sgsn_mm_ctx *ctx = NULL;
+	struct sgsn_mm_ctx *ictx;
+	uint32_t foreign_tlli;
+	uint32_t ptmsi1;
+	uint32_t ptmsi2;
+	uint32_t old_ptmsi;
+	uint32_t local_tlli = 0;
+	struct gprs_llc_lle *lle;
+	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
+
+	/* DTAP - Attach Request (IMSI 12131415161718) */
+	static const unsigned char attach_req[] = {
+		0x08, 0x01, 0x02, 0xf5, 0xe0, 0x21, 0x08, 0x02,
+		0x08, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+		0x18, 0x11, 0x22, 0x33, 0x40, 0x50, 0x60, 0x19,
+		0x18, 0xb3, 0x43, 0x2b, 0x25, 0x96, 0x62, 0x00,
+		0x60, 0x80, 0x9a, 0xc2, 0xc6, 0x62, 0x00, 0x60,
+		0x80, 0xba, 0xc8, 0xc6, 0x62, 0x00, 0x60, 0x80,
+		0x00,
+	};
+
+	/* DTAP - Identity Response IMEI */
+	static const unsigned char ident_resp_imei[] = {
+		0x08, 0x16, 0x08, 0x9a, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78,
+		0x56
+	};
+
+	/* DTAP - Attach Complete */
+	static const unsigned char attach_compl[] = {
+		0x08, 0x03
+	};
+
+	/* DTAP - Routing Area Update Request */
+	static const unsigned char ra_upd_req[] = {
+		0x08, 0x08, 0x10, 0x11, 0x22, 0x33, 0x40, 0x50,
+		0x60, 0x1d, 0x19, 0x13, 0x42, 0x33, 0x57, 0x2b,
+		0xf7, 0xc8, 0x48, 0x02, 0x13, 0x48, 0x50, 0xc8,
+		0x48, 0x02, 0x14, 0x48, 0x50, 0xc8, 0x48, 0x02,
+		0x17, 0x49, 0x10, 0xc8, 0x48, 0x02, 0x00, 0x19,
+		0x8b, 0xb2, 0x92, 0x17, 0x16, 0x27, 0x07, 0x04,
+		0x31, 0x02, 0xe5, 0xe0, 0x32, 0x02, 0x20, 0x00
+	};
+
+	/* DTAP - Routing Area Update Complete */
+	static const unsigned char ra_upd_complete[] = {
+		0x08, 0x0a
+	};
+
+	/* DTAP - Detach Request (MO) */
+	/* normal detach, power_off = 1 */
+	static const unsigned char detach_req[] = {
+		0x08, 0x05, 0x09, 0x18, 0x05, 0xf4, 0xef, 0xe2,
+		0xb7, 0x00, 0x19, 0x03, 0xb9, 0x97, 0xcb
+	};
+
+	sgsn->cfg.auth_policy = SGSN_AUTH_POLICY_OPEN;
+
+	printf("Testing P-TMSI allocation\n");
+
+	printf("  - sgsn_alloc_ptmsi\n");
+
+	/* reset the PRNG used by sgsn_alloc_ptmsi */
+	srand(1);
+
+	ptmsi1 = sgsn_alloc_ptmsi();
+	OSMO_ASSERT(ptmsi1 != GSM_RESERVED_TMSI);
+
+	ptmsi2 = sgsn_alloc_ptmsi();
+	OSMO_ASSERT(ptmsi2 != GSM_RESERVED_TMSI);
+
+	OSMO_ASSERT(ptmsi1 != ptmsi2);
+
+	printf("  - Repeated Attach Request\n");
+
+	/* reset the PRNG, so that the same P-TMSI will be generated
+	 * again */
+	srand(1);
+
+	foreign_tlli = gprs_tmsi2tlli(0xc0000023, TLLI_FOREIGN);
+
+	/* Create a LLE/LLME */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	lle = gprs_lle_get_or_create(foreign_tlli, 3);
+	OSMO_ASSERT(count(gprs_llme_list()) == 1);
+
+	/* inject the attach request */
+	send_0408_message(lle->llme, foreign_tlli,
+			  attach_req, ARRAY_SIZE(attach_req));
+
+	ctx = sgsn_mm_ctx_by_tlli(foreign_tlli, &raid);
+	OSMO_ASSERT(ctx != NULL);
+	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
+
+	old_ptmsi = ctx->p_tmsi_old;
+
+	/* we expect an identity request (IMEI) */
+	OSMO_ASSERT(sgsn_tx_counter == 1);
+
+	/* inject the identity response (IMEI) */
+	send_0408_message(ctx->llme, foreign_tlli,
+			  ident_resp_imei, ARRAY_SIZE(ident_resp_imei));
+
+	/* check that the MM context has not been removed due to a failed
+	 * authorization */
+	OSMO_ASSERT(ctx == sgsn_mm_ctx_by_tlli(foreign_tlli, &raid));
+
+	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
+
+	/* we expect an attach accept */
+	OSMO_ASSERT(sgsn_tx_counter == 1);
+
+	/* we ignore this and send the attach again */
+	send_0408_message(lle->llme, foreign_tlli,
+			  attach_req, ARRAY_SIZE(attach_req));
+
+	/* the allocated P-TMSI should be the same */
+	ctx = sgsn_mm_ctx_by_tlli(foreign_tlli, &raid);
+	OSMO_ASSERT(ctx != NULL);
+	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->p_tmsi_old == old_ptmsi);
+	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
+
+	/* inject the attach complete */
+	local_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
+	send_0408_message(ctx->llme, local_tlli,
+			  attach_compl, ARRAY_SIZE(attach_compl));
+
+	/* we don't expect a response */
+	OSMO_ASSERT(sgsn_tx_counter == 0);
+
+	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->p_tmsi_old == 0);
+	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
+
+	printf("  - Repeated RA Update Request\n");
+
+	/* inject the RA update request */
+	send_0408_message(ctx->llme, local_tlli,
+			  ra_upd_req, ARRAY_SIZE(ra_upd_req));
+
+	/* we expect an RA update accept */
+	OSMO_ASSERT(sgsn_tx_counter == 1);
+
+	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->p_tmsi_old == ptmsi1);
+	OSMO_ASSERT(ctx->p_tmsi == ptmsi2);
+
+	/* repeat the RA update request */
+	send_0408_message(ctx->llme, local_tlli,
+			  ra_upd_req, ARRAY_SIZE(ra_upd_req));
+
+	/* we expect an RA update accept */
+	OSMO_ASSERT(sgsn_tx_counter == 1);
+
+	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->p_tmsi_old == ptmsi1);
+	OSMO_ASSERT(ctx->p_tmsi == ptmsi2);
+
+	/* inject the RA update complete */
+	local_tlli = gprs_tmsi2tlli(ptmsi2, TLLI_LOCAL);
+	send_0408_message(ctx->llme, local_tlli,
+			  ra_upd_complete, ARRAY_SIZE(ra_upd_complete));
+
+	/* we don't expect a response */
+	OSMO_ASSERT(sgsn_tx_counter == 0);
+
+	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->p_tmsi_old == 0);
+	OSMO_ASSERT(ctx->p_tmsi == ptmsi2);
+
+	/* inject the detach */
+	send_0408_message(ctx->llme, local_tlli,
+			  detach_req, ARRAY_SIZE(detach_req));
+
+	/* verify that things are gone */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
+	OSMO_ASSERT(!ictx);
+
+	sgsn->cfg.auth_policy = saved_auth_policy;
+}
+
+
 static struct log_info_cat gprs_categories[] = {
 	[DMM] = {
 		.name = "DMM",
@@ -616,6 +807,7 @@ int main(int argc, char **argv)
 	test_gmm_status_no_mmctx();
 	test_gmm_attach();
 	test_gmm_reject();
+	test_gmm_ptmsi_allocation();
 	printf("Done\n");
 	return 0;
 }

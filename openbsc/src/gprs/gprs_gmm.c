@@ -911,8 +911,11 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 
 #ifdef PTMSI_ALLOC
 	/* Allocate a new P-TMSI (+ P-TMSI signature) and update TLLI */
-	ctx->p_tmsi_old = ctx->p_tmsi;
-	ctx->p_tmsi = sgsn_alloc_ptmsi();
+	/* Don't change the P-TMSI if a P-TMSI re-assignment is under way */
+	if (ctx->mm_state != GMM_COMMON_PROC_INIT) {
+		ctx->p_tmsi_old = ctx->p_tmsi;
+		ctx->p_tmsi = sgsn_alloc_ptmsi();
+	}
 	ctx->mm_state = GMM_COMMON_PROC_INIT;
 #endif
 	/* Even if there is no P-TMSI allocated, the MS will switch from
@@ -1147,8 +1150,11 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_RA_UPDATE]);
 
 #ifdef PTMSI_ALLOC
-	mmctx->p_tmsi_old = mmctx->p_tmsi;
-	mmctx->p_tmsi = sgsn_alloc_ptmsi();
+	/* Don't change the P-TMSI if a P-TMSI re-assignment is under way */
+	if (mmctx->mm_state != GMM_COMMON_PROC_INIT) {
+		mmctx->p_tmsi_old = mmctx->p_tmsi;
+		mmctx->p_tmsi = sgsn_alloc_ptmsi();
+	}
 	/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
 	mmctx->t3350_mode = GMM_T3350_MODE_RAU;
 	mmctx_timer_start(mmctx, 3350, GSM0408_T3350_SECS);
