@@ -761,6 +761,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	char mi_string[GSM48_MI_SIZE];
 	struct gprs_ra_id ra_id;
 	uint16_t cid;
+	enum gsm48_gmm_cause reject_cause;
+	int rc;
 
 	LOGP(DMM, LOGL_INFO, "-> GMM ATTACH REQUEST ");
 
@@ -821,8 +823,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			return gsm48_tx_gmm_att_rej(msg, GMM_CAUSE_IMSI_UNKNOWN);
 #else
 			ctx = sgsn_mm_ctx_alloc(0, &ra_id);
-			if (!ctx)
-				return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_NET_FAIL);
+			if (!ctx) {
+				reject_cause = GMM_CAUSE_NET_FAIL;
+				goto rejected;
+			}
 			strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
 #endif
 		}
@@ -849,7 +853,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	default:
 		LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST with "
 			"MI type %u\n", mi_type);
-		return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
+		reject_cause = GMM_CAUSE_MS_ID_NOT_DERIVED;
+		goto rejected;
 	}
 	/* Update MM Context with currient RA and Cell ID */
 	ctx->ra = ra_id;
@@ -881,7 +886,22 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 
 err_inval:
 	LOGPC(DMM, LOGL_INFO, "\n");
-	return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_SEM_INCORR_MSG);
+	reject_cause = GMM_CAUSE_SEM_INCORR_MSG;
+
+rejected:
+	/* Send ATTACH REJECT */
+	LOGMMCTXP(LOGL_NOTICE, ctx,
+		  "Rejecting Attach Request with cause '%s' (%d)\n",
+		  get_value_string(gmm_cause_names, reject_cause), reject_cause);
+	rc = gsm48_tx_gmm_att_rej_oldmsg(msg, reject_cause);
+	if (ctx)
+		mm_ctx_cleanup_free(ctx, "GPRS ATTACH REJ");
+	else
+		/* TLLI unassignment */
+		gprs_llgmm_assign(llme, llme->tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+
+	return rc;
+
 }
 
 /* Section 4.7.4.1 / 9.4.5.2 MO Detach request */
@@ -1019,6 +1039,8 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	struct gprs_ra_id old_ra_id;
 	struct tlv_parsed tp;
 	uint8_t upd_type;
+	enum gsm48_gmm_cause reject_cause;
+	int rc;
 
 	/* Update Type 10.5.5.18 */
 	upd_type = *cur++ & 0x0f;
@@ -1045,8 +1067,8 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	case GPRS_UPD_T_RA_LA:
 	case GPRS_UPD_T_RA_LA_IMSI_ATT:
 		LOGP(DMM, LOGL_NOTICE, "Update type %i unsupported in Mode III, is your SI13 corrupt?\n", upd_type);
-		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_PROTO_ERR_UNSPEC);
-		break;
+		reject_cause = GMM_CAUSE_PROTO_ERR_UNSPEC;
+		goto rejected;
 	case GPRS_UPD_T_RA:
 	case GPRS_UPD_T_PERIODIC:
 		break;
@@ -1062,7 +1084,8 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		/* The MS has to perform GPRS attach */
 		/* Device is still IMSI attached for CS but initiate GPRS ATTACH,
 		 * see GSM 04.08, 4.7.5.1.4 and G.6 */
-		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_IMPL_DETACHED);
+		reject_cause = GMM_CAUSE_IMPL_DETACHED;
+		goto rejected;
 	}
 
 	/* Store new BVCI/NSEI in MM context (FIXME: delay until we ack?) */
@@ -1108,6 +1131,21 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 	/* Send RA UPDATE ACCEPT */
 	return gsm48_tx_gmm_ra_upd_ack(mmctx);
+
+rejected:
+	/* Send RA UPDATE REJECT */
+	LOGMMCTXP(LOGL_NOTICE, mmctx,
+		  "Rejecting RA Update Request with cause '%s' (%d)\n",
+		  get_value_string(gmm_cause_names, reject_cause), reject_cause);
+	rc = gsm48_tx_gmm_ra_upd_rej(msg, reject_cause);
+	if (mmctx)
+		mm_ctx_cleanup_free(mmctx, "GPRS RA UPDATE REJ");
+	else
+		/* TLLI unassignment */
+		gprs_llgmm_assign(llme, llme->tlli, 0xffffffff, GPRS_ALGO_GEA0,
+				  NULL);
+
+	return rc;
 }
 
 static int gsm48_rx_gmm_status(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
