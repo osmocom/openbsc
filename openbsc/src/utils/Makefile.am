@@ -9,9 +9,9 @@ noinst_PROGRAMS = smpp_mirror
 endif
 
 bs11_config_SOURCES = bs11_config.c
-bs11_config_LDADD = $(top_builddir)/src/libcommon/libcommon.a \
-		    $(top_builddir)/src/libbsc/libbsc.a \
+bs11_config_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
 		    $(top_builddir)/src/libtrau/libtrau.a \
+		    $(top_builddir)/src/libcommon/libcommon.a \
 		    $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOABIS_LIBS)
 
 isdnsync_SOURCES = isdnsync.c
