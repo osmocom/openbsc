@@ -32,6 +32,8 @@ const struct value_string auth_state_names[] = {
 	{ 0, NULL }
 };
 
+const struct value_string *sgsn_auth_state_names = auth_state_names;
+
 void sgsn_auth_init(struct sgsn_instance *sgi)
 {
 	INIT_LLIST_HEAD(&sgi->cfg.imsi_acl);
@@ -125,29 +127,37 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx,
 
 int sgsn_auth_request(struct sgsn_mm_ctx *mmctx, struct sgsn_config *cfg)
 {
-	struct sgsn_subscriber_data sd = {0};
+	/* TODO: Add remote subscriber update requests here */
 
-	sd.auth_state = sgsn_auth_state(mmctx, cfg);
+	sgsn_auth_update(mmctx, sgsn);
 
-	if (sd.auth_state == SGSN_AUTH_UNKNOWN) {
-		LOGMMCTXP(LOGL_ERROR, mmctx,
-			  "Missing information, authorization not possible\n");
-		sd.auth_state = SGSN_AUTH_REJECTED;
-	}
-
-	/* This will call sgsn_auth_update if auth_state has changed */
-	sgsn_update_subscriber_data(mmctx, &sd);
 	return 0;
 }
 
-void sgsn_auth_update(struct sgsn_mm_ctx *mmctx, struct sgsn_subscriber_data *sd)
+void sgsn_auth_update(struct sgsn_mm_ctx *mmctx, struct sgsn_instance *sgi)
 {
-	LOGMMCTXP(LOGL_INFO, mmctx, "Got authorization update: state %s\n",
-		  get_value_string(auth_state_names, sd->auth_state));
+	enum sgsn_auth_state auth_state;
 
-	mmctx->auth_state = sd->auth_state;
+	LOGMMCTXP(LOGL_DEBUG, mmctx, "Updating authorization\n");
 
-	switch (sd->auth_state) {
+	auth_state = sgsn_auth_state(mmctx, &sgi->cfg);
+	if (auth_state == SGSN_AUTH_UNKNOWN) {
+		/* Reject requests since remote updates are NYI */
+		LOGMMCTXP(LOGL_ERROR, mmctx,
+			  "Missing information, authorization not possible\n");
+		auth_state = SGSN_AUTH_REJECTED;
+	}
+
+	if (mmctx->auth_state == auth_state)
+		return;
+
+	LOGMMCTXP(LOGL_INFO, mmctx, "Got authorization update: state %s -> %s\n",
+		  get_value_string(sgsn_auth_state_names, mmctx->auth_state),
+		  get_value_string(sgsn_auth_state_names, auth_state));
+
+	mmctx->auth_state = auth_state;
+
+	switch (auth_state) {
 	case SGSN_AUTH_ACCEPTED:
 		gsm0408_gprs_access_granted(mmctx);
 		break;

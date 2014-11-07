@@ -644,7 +644,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 
 	if (ctx->auth_state == SGSN_AUTH_UNKNOWN) {
 		/* Request authorization, this leads to a call to
-		 * sgsn_update_subscriber_data which in turn calls
+		 * sgsn_auth_update which in turn calls
 		 * gsm0408_gprs_access_granted or gsm0408_gprs_access_denied */
 
 		sgsn_auth_request(ctx, &sgsn->cfg);

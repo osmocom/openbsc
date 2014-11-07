@@ -269,6 +269,7 @@ struct sgsn_subscriber_data {
 
 struct sgsn_config;
 struct sgsn_instance;
+extern const struct value_string *sgsn_auth_state_names;
 
 void sgsn_auth_init(struct sgsn_instance *sgi);
 struct imsi_acl_entry *sgsn_acl_lookup(const char *imsi, struct sgsn_config *cfg);
@@ -278,11 +279,10 @@ int sgsn_acl_del(const char *imsi, struct sgsn_config *cfg);
 int sgsn_auth_request(struct sgsn_mm_ctx *mm, struct sgsn_config *cfg);
 enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mm,
 				     struct sgsn_config *cfg);
-void sgsn_auth_update(struct sgsn_mm_ctx *mm, struct sgsn_subscriber_data *sd);
+void sgsn_auth_update(struct sgsn_mm_ctx *mm, struct sgsn_instance *sgi);
 
 /* Called on subscriber data updates */
-void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
-				 struct sgsn_subscriber_data *sd);
+void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx);
 
 int gprs_sndcp_vty_init(void);
 struct sgsn_instance;
