@@ -38,6 +38,7 @@
 #include <osmocom/gsm/ipa.h>
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/logging.h>
+#include <openbsc/ipaccess.h>
 
 extern struct gsm_network *bsc_gsmnet;
 
@@ -354,7 +355,10 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 		    new_state->availability == NM_AVSTATE_DEPENDENCY) {
 			enum abis_nm_chan_comb ccomb =
 						abis_nm_chcomb4pchan(ts->pchan);
-			abis_nm_set_channel_attr(ts, ccomb);
+			if (abis_nm_set_channel_attr(ts, ccomb) == -EINVAL) {
+				ipaccess_drop_oml(trx->bts);
+				return -1;
+			}
 			abis_nm_chg_adm_state(trx->bts, obj_class,
 					      trx->bts->bts_nr, trx->nr, ts->nr,
 					      NM_STATE_UNLOCKED);
