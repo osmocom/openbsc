@@ -565,6 +565,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	struct e1inp_sign_link *sign_link = mb->dst;
 	uint8_t mt = foh->msg_type;
+	/* sign_link might get deleted via osmo_signal_dispatch -> save bts */
+	struct gsm_bts *bts = sign_link->trx->bts;
 	int ret = 0;
 
 	/* check for unsolicited message */
@@ -582,7 +584,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 		DEBUGPC(DNM, "%s NACK ", abis_nm_nack_name(mt));
 
-		abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
+		abis_nm_tlv_parse(&tp, bts, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, "CAUSE=%s\n",
 				abis_nm_nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
@@ -591,9 +593,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 		nack_data.msg = mb;
 		nack_data.mt = mt;
-		nack_data.bts = sign_link->trx->bts;
+		nack_data.bts = bts;
 		osmo_signal_dispatch(SS_NM, S_NM_NACK, &nack_data);
-		abis_nm_queue_send_next(sign_link->trx->bts);
+		abis_nm_queue_send_next(bts);
 		return 0;
 	}
 #if 0
@@ -636,7 +638,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		break;
 	}
 
-	abis_nm_queue_send_next(sign_link->trx->bts);
+	abis_nm_queue_send_next(bts);
 	return ret;
 }
 
