@@ -6,7 +6,9 @@ EXTRA_DIST = channel_test.ok
 noinst_PROGRAMS = channel_test
 
 channel_test_SOURCES = channel_test.c
-channel_test_LDADD = $(LIBOSMOCORE_LIBS) \
-	$(top_builddir)/src/libcommon/libcommon.a \
+channel_test_LDADD = \
 	$(top_builddir)/src/libbsc/libbsc.a \
-	$(top_builddir)/src/libmsc/libmsc.a -ldbi $(LIBOSMOGSM_LIBS)
+	$(top_builddir)/src/libmsc/libmsc.a \
+	$(top_builddir)/src/libcommon/libcommon.a \
+	$(LIBOSMOCORE_LIBS) \
+	-ldbi $(LIBOSMOGSM_LIBS)
