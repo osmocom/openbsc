@@ -176,6 +176,26 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['mtype'], 'ERROR')
         self.assertEquals(r['error'], 'Error while resolving object')
 
+    def testBtsLac(self):
+        r = self.do_get('bts.0.location-area-code')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.location-area-code')
+        self.assertEquals(r['value'], '1')
+
+        r = self.do_set('bts.0.location-area-code', '23')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.location-area-code')
+        self.assertEquals(r['value'], '23')
+
+        r = self.do_get('bts.0.location-area-code')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.location-area-code')
+        self.assertEquals(r['value'], '23')
+
+        r = self.do_set('bts.0.location-area-code', '-1')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Input not within the range')
+
     def testTrxPowerRed(self):
         r = self.do_get('bts.0.trx.0.max-power-reduction')
         self.assertEquals(r['mtype'], 'GET_REPLY')

@@ -153,6 +153,9 @@ oom:
 }
 CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
 
+/* BTS related commands below */
+CTRL_CMD_DEFINE_RANGE(bts_lac, "location-area-code", struct gsm_bts, location_area_code, 0, 65535);
+
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
 static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
@@ -202,6 +205,8 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
+
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_lac);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	return rc;
