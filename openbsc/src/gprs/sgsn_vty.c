@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <time.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
@@ -373,6 +374,143 @@ DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
 	return CMD_SUCCESS;
 }
 
+/* Subscriber */
+#include <openbsc/gsm_subscriber.h>
+
+static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr, int pending)
+{
+	char expire_time[200];
+
+	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
+		subscr->authorized, VTY_NEWLINE);
+	if (strlen(subscr->name))
+		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
+	if (strlen(subscr->extension))
+		vty_out(vty, "    Extension: %s%s", subscr->extension,
+			VTY_NEWLINE);
+	vty_out(vty, "    LAC: %d/0x%x%s",
+		subscr->lac, subscr->lac, VTY_NEWLINE);
+	vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
+	if (subscr->tmsi != GSM_RESERVED_TMSI)
+		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
+			VTY_NEWLINE);
+
+	if (strlen(subscr->equipment.imei) > 0)
+		vty_out(vty, "    IMEI: %s%s", subscr->equipment.imei, VTY_NEWLINE);
+
+	/* print the expiration time of a subscriber */
+	if (subscr->expire_lu) {
+		strftime(expire_time, sizeof(expire_time),
+			 "%a, %d %b %Y %T %z", localtime(&subscr->expire_lu));
+		expire_time[sizeof(expire_time) - 1] = '\0';
+		vty_out(vty, "    Expiration Time: %s%s", expire_time, VTY_NEWLINE);
+	}
+
+	if (subscr->flags)
+		vty_out(vty, "    Flags: %s%s%s%s",
+			subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT ?
+			"FIRST_CONTACT " : "",
+			subscr->flags & GPRS_SUBSCRIBER_CANCELLED ?
+			"CANCELLED " : "",
+			subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING ?
+			"UPDATE_PENDING " : "",
+			VTY_NEWLINE);
+
+	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
+}
+
+DEFUN(show_subscr_cache,
+      show_subscr_cache_cmd,
+      "show subscriber cache",
+	SHOW_STR "Show information about subscribers\n"
+	"Display contents of subscriber cache\n")
+{
+	struct gsm_subscriber *subscr;
+
+	llist_for_each_entry(subscr, &active_subscribers, entry) {
+		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
+		subscr_dump_full_vty(vty, subscr, 0);
+	}
+
+	return CMD_SUCCESS;
+}
+
+#define UPDATE_SUBSCR_STR "update-subscriber imsi IMSI "
+#define UPDATE_SUBSCR_HELP "Update subscriber list\n" \
+	"Use the IMSI to select the subscriber\n" \
+	"The IMSI\n"
+
+DEFUN(update_subscr_insert, update_subscr_insert_cmd,
+	UPDATE_SUBSCR_STR "insert authorized (0|1)",
+	UPDATE_SUBSCR_HELP
+	"Insert data into the subscriber record\n"
+	"Authorize the subscriber to attach\n"
+	"New option value\n")
+{
+	const char *imsi = argv[0];
+	const char *option = "authorized";
+	const char *value = argv[1];
+
+	struct gsm_subscriber *subscr;
+
+	subscr = gprs_subscr_get_or_create(imsi);
+	if (!subscr) {
+		vty_out(vty, "%% unable get subscriber record for %s\n", imsi);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(option, "authorized"))
+		subscr->authorized = atoi(value);
+
+	gprs_subscr_update(subscr);
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(update_subscr_cancel, update_subscr_cancel_cmd,
+	UPDATE_SUBSCR_STR "cancel",
+	UPDATE_SUBSCR_HELP
+	"Cancel (remove) subscriber record\n")
+{
+	const char *imsi = argv[0];
+
+	struct gsm_subscriber *subscr;
+
+	subscr = gprs_subscr_get_by_imsi(imsi);
+	if (!subscr) {
+		vty_out(vty, "%% no subscriber record for %s\n", imsi);
+		return CMD_WARNING;
+	}
+
+	gprs_subscr_put_and_cancel(subscr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(update_subscr_commit, update_subscr_commit_cmd,
+	UPDATE_SUBSCR_STR "commit",
+	UPDATE_SUBSCR_HELP
+	"Apply the changes made by the insert commands\n")
+{
+	const char *imsi = argv[0];
+
+	struct gsm_subscriber *subscr;
+
+	subscr = gprs_subscr_get_by_imsi(imsi);
+	if (!subscr) {
+		vty_out(vty, "%% unable to get subscriber record for %s\n", imsi);
+		return CMD_WARNING;
+	}
+
+	gprs_subscr_update(subscr);
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
 int sgsn_vty_init(void)
 {
 	install_element_ve(&show_sgsn_cmd);
@@ -380,6 +518,11 @@ int sgsn_vty_init(void)
 	install_element_ve(&show_mmctx_imsi_cmd);
 	install_element_ve(&show_mmctx_all_cmd);
 	install_element_ve(&show_pdpctx_all_cmd);
+	install_element_ve(&show_subscr_cache_cmd);
+
+	install_element(ENABLE_NODE, &update_subscr_insert_cmd);
+	install_element(ENABLE_NODE, &update_subscr_cancel_cmd);
+	install_element(ENABLE_NODE, &update_subscr_commit_cmd);
 
 	install_element(CONFIG_NODE, &cfg_sgsn_cmd);
 	install_node(&sgsn_node, config_write_sgsn);

@@ -756,6 +756,22 @@ class TestVTYSGSN(TestVTYGenericBSC):
         res = self.vty.command("show running-config")
         self.assert_(res.find('auth-policy remote') > 0)
 
+    def testVtySubscriber(self):
+        self.vty.enable()
+        res = self.vty.command('show subscriber cache')
+        self.assert_(res.find('1234567890') < 0)
+        self.assertTrue(self.vty.verify('update-subscriber imsi 1234567890 insert authorized 1', ['']))
+        res = self.vty.command('show subscriber cache')
+        self.assert_(res.find('1234567890') >= 0)
+        self.assert_(res.find('Authorized: 1') >= 0)
+        self.assertTrue(self.vty.verify('update-subscriber imsi 1234567890 insert authorized 0', ['']))
+        res = self.vty.command('show subscriber cache')
+        self.assert_(res.find('Authorized: 0') >= 0)
+        self.assertTrue(self.vty.verify('update-subscriber imsi 1234567890 commit', ['']))
+        self.assertTrue(self.vty.verify('update-subscriber imsi 1234567890 cancel', ['']))
+        res = self.vty.command('show subscriber cache')
+        self.assert_(res.find('1234567890') < 0)
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")
