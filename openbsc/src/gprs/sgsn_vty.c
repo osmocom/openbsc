@@ -462,8 +462,6 @@ DEFUN(update_subscr_insert, update_subscr_insert_cmd,
 	if (!strcmp(option, "authorized"))
 		subscr->authorized = atoi(value);
 
-	gprs_subscr_update(subscr);
-
 	subscr_put(subscr);
 
 	return CMD_SUCCESS;
