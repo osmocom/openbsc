@@ -1,6 +1,6 @@
 [Unit]
 Description=OpenBSC BSC
-Requires=osmo-bsc-mgcp.service
+Wants=osmo-bsc-mgcp.service
 
 [Service]
 Type=simple
