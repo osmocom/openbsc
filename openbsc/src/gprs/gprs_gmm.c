@@ -1223,14 +1223,14 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 			return 0;
 		}
 
-		gprs_llgmm_reset(llme);
-
 		/* Don't reply or establish a LLME on DETACH_ACK */
 		if (gh->msg_type == GSM48_MT_GMM_DETACH_ACK) {
 			/* TLLI unassignment */
 			return gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
 						 GPRS_ALGO_GEA0, NULL);
 		}
+
+		gprs_llgmm_reset(llme);
 
 		/* Don't force it into re-attachment */
 		if (gh->msg_type == GSM48_MT_GMM_DETACH_REQ) {
