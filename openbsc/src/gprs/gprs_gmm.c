@@ -756,6 +756,33 @@ void gsm0408_gprs_access_denied(struct sgsn_mm_ctx *ctx)
 	}
 }
 
+void gsm0408_gprs_access_cancelled(struct sgsn_mm_ctx *ctx)
+{
+	switch (ctx->mm_state) {
+#if 0
+	case GMM_COMMON_PROC_INIT:
+		LOGP(DMM, LOGL_NOTICE,
+		     "Cancelled, rejecting ATTACH REQUEST, IMSI=%s\n",
+		     ctx->imsi);
+		gsm48_tx_gmm_att_rej(ctx, GMM_CAUSE_IMPL_DETACHED);
+		break;
+	case GMM_REGISTERED_NORMAL:
+	case GMM_REGISTERED_SUSPENDED:
+		LOGP(DMM, LOGL_NOTICE,
+		     "Cancelled, detaching, IMSI=%s\n",
+		     ctx->imsi);
+		gsm48_tx_gmm_detach_req(
+			ctx, GPRS_DET_T_MT_REATT_NOTREQ, GMM_CAUSE_IMPL_DETACHED);
+		break;
+#endif
+	default:
+		LOGP(DMM, LOGL_INFO,
+		     "Cancelled, deleting context, IMSI=%s\n",
+		     ctx->imsi);
+	}
+	mm_ctx_cleanup_free(ctx, "access cancelled");
+}
+
 /* Parse Chapter 9.4.13 Identity Response */
 static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {

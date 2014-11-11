@@ -184,7 +184,10 @@ void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 		gsm0408_gprs_access_granted(mmctx);
 		break;
 	case SGSN_AUTH_REJECTED:
-		gsm0408_gprs_access_denied(mmctx);
+		if (subscr && (subscr->flags & GPRS_SUBSCRIBER_CANCELLED) != 0)
+			gsm0408_gprs_access_cancelled(mmctx);
+		else
+			gsm0408_gprs_access_denied(mmctx);
 		break;
 	default:
 		break;
