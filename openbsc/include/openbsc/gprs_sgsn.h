@@ -16,6 +16,7 @@
 
 struct gprs_llc_lle;
 struct ctrl_handle;
+struct gsm_subscriber;
 
 /* TS 04.08 4.1.3.3 GMM mobility management states on the network side */
 enum gprs_mm_state {
@@ -126,6 +127,8 @@ struct sgsn_mm_ctx {
 	 * whether one of them can be dropped. */
 
 	enum sgsn_auth_state	auth_state;
+
+	struct gsm_subscriber   *subscr;
 };
 
 #define LOGMMCTXP(level, mm, fmt, args...) \

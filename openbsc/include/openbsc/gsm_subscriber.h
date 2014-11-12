@@ -18,6 +18,7 @@
 #define GSM_SUBSCRIBER_NO_EXPIRATION	0x0
 
 struct vty;
+struct sgsn_mm_ctx;
 
 struct gsm_equipment {
 	long long unsigned int id;
@@ -56,6 +57,9 @@ struct gsm_subscriber {
 	/* pending requests */
 	int in_callback;
 	struct llist_head requests;
+
+	/* GPRS/SGSN related fields */
+	struct sgsn_mm_ctx *mm;
 };
 
 enum gsm_subscriber_field {
