@@ -58,9 +58,6 @@
 
 #include "../../bscconfig.h"
 
-/* this is here for the vty... it will never be called */
-void subscr_put() { abort(); }
-
 #define _GNU_SOURCE
 #include <getopt.h>
 

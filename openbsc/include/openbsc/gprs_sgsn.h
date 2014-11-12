@@ -287,8 +287,23 @@ int sgsn_auth_request(struct sgsn_mm_ctx *mm);
 enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mm);
 void sgsn_auth_update(struct sgsn_mm_ctx *mm);
 
+/*
+ * GPRS subscriber data
+ */
+#define GPRS_SUBSCRIBER_UPDATE_PENDING (1 << 16)
+#define GPRS_SUBSCRIBER_CANCELLED      (1 << 17)
+
+void gprs_subscr_init(struct sgsn_instance *sgi);
+int gprs_subscr_request_update(struct sgsn_mm_ctx *mmctx);
+void gprs_subscr_delete(struct gsm_subscriber *subscr);
+struct gsm_subscriber *gprs_subscr_get_or_create(const char *imsi);
+struct gsm_subscriber *gprs_subscr_get_by_imsi(const char *imsi);
+void gprs_subscr_put_and_cancel(struct gsm_subscriber *subscr);
+void gprs_subscr_update(struct gsm_subscriber *subscr);
+
 /* Called on subscriber data updates */
-void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx);
+void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
+				 struct gsm_subscriber *subscr);
 
 int gprs_sndcp_vty_init(void);
 struct sgsn_instance;

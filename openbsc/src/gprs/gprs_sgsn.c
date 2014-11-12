@@ -452,7 +452,8 @@ int sgsn_force_reattach_oldmsg(struct msgb *oldmsg)
 	return gsm0408_gprs_force_reattach_oldmsg(oldmsg);
 }
 
-void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)
+void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
+				 struct gsm_subscriber *subscr)
 {
 	OSMO_ASSERT(mmctx);
 

@@ -23,6 +23,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/debug.h>
+#include <openbsc/gsm_subscriber.h>
 
 #include <osmocom/gprs/gprs_bssgp.h>
 
@@ -54,6 +55,18 @@ int bssgp_tx_dl_ud(struct msgb *msg, uint16_t pdu_lifetime,
 	sgsn_tx_counter += 1;
 	return 0;
 }
+
+/* override, requires '-Wl,--wrap=sgsn_update_subscriber_data' */
+void __real_sgsn_update_subscriber_data(struct sgsn_mm_ctx *, struct gsm_subscriber *);
+void (*update_subscriber_data_cb)(struct sgsn_mm_ctx *, struct gsm_subscriber *) =
+    &__real_sgsn_update_subscriber_data;
+
+void __wrap_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
+					struct gsm_subscriber *subscr)
+{
+	(*update_subscriber_data_cb)(mmctx, subscr);
+}
+
 
 static int count(struct llist_head *head)
 {
@@ -144,6 +157,88 @@ static void test_llme(void)
 
 	/* Check that everything was cleaned up */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+}
+
+struct gsm_subscriber *last_updated_subscr = NULL;
+void my_dummy_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
+					  struct gsm_subscriber *subscr)
+{
+	fprintf(stderr, "Called %s, mmctx = %p, subscr = %p\n",
+		__func__, mmctx, subscr);
+	last_updated_subscr = subscr;
+}
+
+static void test_subscriber(void)
+{
+	struct gsm_subscriber *s1, *s2, *s1found, *s2found;
+	const char *imsi1 = "1234567890";
+	const char *imsi2 = "9876543210";
+
+	update_subscriber_data_cb = my_dummy_sgsn_update_subscriber_data;
+
+	printf("Testing core subscriber data API\n");
+
+	/* Check for emptiness */
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
+
+	/* Allocate entry 1 */
+	s1 = gprs_subscr_get_or_create(imsi1);
+	s1->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+	s1found = gprs_subscr_get_by_imsi(imsi1);
+	OSMO_ASSERT(s1found == s1);
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
+	subscr_put(s1found);
+
+	/* Allocate entry 2 */
+	s2 = gprs_subscr_get_or_create(imsi2);
+	s2->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+	s1found = gprs_subscr_get_by_imsi(imsi1);
+	s2found = gprs_subscr_get_by_imsi(imsi2);
+	OSMO_ASSERT(s1found == s1);
+	OSMO_ASSERT(s2found == s2);
+	subscr_put(s1found);
+	subscr_put(s2found);
+
+	/* Update entry 1 */
+	last_updated_subscr = NULL;
+	gprs_subscr_update(s1);
+	OSMO_ASSERT(last_updated_subscr == s1);
+
+	/* Because of the update, it won't be freed on delete now */
+	gprs_subscr_delete(s1);
+	s1found = gprs_subscr_get_by_imsi(imsi1);
+	OSMO_ASSERT(s1found != NULL);
+	s1 = s1found;
+
+	/* Cancel it, so that delete will free it.
+	 * Refcount it to make sure s1 won't be freed here */
+	last_updated_subscr = NULL;
+	gprs_subscr_put_and_cancel(subscr_get(s1));
+	OSMO_ASSERT(last_updated_subscr == s1);
+
+	/* Cancelled entries are still being found */
+	s1found = gprs_subscr_get_by_imsi(imsi1);
+	OSMO_ASSERT(s1found != NULL);
+	subscr_put(s1found);
+
+	/* Free entry 1 */
+	gprs_subscr_delete(s1);
+	s1 = NULL;
+	s2found = gprs_subscr_get_by_imsi(imsi2);
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
+	OSMO_ASSERT(s2found == s2);
+	subscr_put(s2found);
+
+	/* Free entry 2 */
+	gprs_subscr_delete(s2);
+	s2 = NULL;
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
+
+	OSMO_ASSERT(llist_empty(&active_subscribers));
+
+	update_subscriber_data_cb = __real_sgsn_update_subscriber_data;
 }
 
 /*
@@ -778,7 +873,6 @@ static void test_gmm_ptmsi_allocation(void)
 	sgsn->cfg.auth_policy = saved_auth_policy;
 }
 
-
 static struct log_info_cat gprs_categories[] = {
 	[DMM] = {
 		.name = "DMM",
@@ -841,8 +935,10 @@ int main(int argc, char **argv)
 	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
 
 	sgsn_auth_init();
+	gprs_subscr_init(sgsn);
 
 	test_llme();
+	test_subscriber();
 	test_gmm_detach();
 	test_gmm_detach_power_off();
 	test_gmm_detach_no_mmctx();

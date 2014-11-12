@@ -1,4 +1,5 @@
 Testing LLME allocations
+Testing core subscriber data API
 Testing GMM detach
 Testing GMM detach (power off)
 Testing GMM detach (no MMCTX)

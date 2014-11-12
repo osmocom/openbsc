@@ -6,6 +6,9 @@ EXTRA_DIST = sgsn_test.ok
 noinst_PROGRAMS = sgsn_test
 
 sgsn_test_SOURCES = sgsn_test.c
+sgsn_test_LDFLAGS = \
+	-Wl,--wrap=sgsn_update_subscriber_data
+
 sgsn_test_LDADD = \
 	$(top_builddir)/src/gprs/gprs_llc_parse.o \
 	$(top_builddir)/src/gprs/gprs_llc.o \
@@ -16,6 +19,8 @@ sgsn_test_LDADD = \
 	$(top_builddir)/src/gprs/sgsn_vty.o \
 	$(top_builddir)/src/gprs/sgsn_libgtp.o \
 	$(top_builddir)/src/gprs/sgsn_auth.o \
+	$(top_builddir)/src/gprs/gprs_subscriber.o \
+	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOCORE_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBOSMOGB_LIBS) \
