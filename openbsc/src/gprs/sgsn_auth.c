@@ -22,6 +22,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
+#include <openbsc/gsm_subscriber.h>
 
 #include <openbsc/debug.h>
 
@@ -101,6 +102,18 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx)
 	case SGSN_AUTH_POLICY_ACL_ONLY:
 		check_acl = 1;
 		break;
+
+	case SGSN_AUTH_POLICY_REMOTE:
+		if (!mmctx->subscr)
+			return mmctx->auth_state;
+
+		if (mmctx->subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING)
+			return mmctx->auth_state;
+
+		if (mmctx->subscr->authorized)
+			return SGSN_AUTH_ACCEPTED;
+
+		return SGSN_AUTH_REJECTED;
 	}
 
 	if (!strlen(mmctx->imsi)) {
@@ -126,7 +139,15 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx)
 
 int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 {
-	/* TODO: Add remote subscriber update requests here */
+	LOGMMCTXP(LOGL_DEBUG, mmctx, "Requesting authorization\n");
+
+	if (sgsn->cfg.auth_policy == SGSN_AUTH_POLICY_REMOTE && !mmctx->subscr) {
+		if (gprs_subscr_request_update(mmctx) >= 0) {
+			LOGMMCTXP(LOGL_INFO, mmctx,
+				  "Missing information, requesting subscriber data\n");
+			return 0;
+		}
+	}
 
 	sgsn_auth_update(mmctx);
 
@@ -136,12 +157,14 @@ int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 {
 	enum sgsn_auth_state auth_state;
+	struct gsm_subscriber *subscr = mmctx->subscr;
 
 	LOGMMCTXP(LOGL_DEBUG, mmctx, "Updating authorization\n");
 
 	auth_state = sgsn_auth_state(mmctx);
-	if (auth_state == SGSN_AUTH_UNKNOWN) {
-		/* Reject requests since remote updates are NYI */
+	if (auth_state == SGSN_AUTH_UNKNOWN && subscr &&
+	    !(subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING)) {
+		/* Reject requests if gprs_subscr_request_update fails */
 		LOGMMCTXP(LOGL_ERROR, mmctx,
 			  "Missing information, authorization not possible\n");
 		auth_state = SGSN_AUTH_REJECTED;

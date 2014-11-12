@@ -187,6 +187,14 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 		osmo_timer_del(&mm->timer);
 	}
 
+	/* Detach from subscriber which is possibly freed then */
+	if (mm->subscr) {
+		struct gsm_subscriber *subscr =  mm->subscr;
+		mm->subscr = NULL;
+		subscr->mm = NULL;
+		gprs_subscr_delete(subscr);
+	}
+
 	/* Unlink from global list of MM contexts */
 	llist_del(&mm->list);
 
@@ -455,7 +463,24 @@ int sgsn_force_reattach_oldmsg(struct msgb *oldmsg)
 void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
 				 struct gsm_subscriber *subscr)
 {
-	OSMO_ASSERT(mmctx);
+	if (!mmctx && subscr && strlen(subscr->imsi) > 0) {
+		mmctx = sgsn_mm_ctx_by_imsi(subscr->imsi);
+		OSMO_ASSERT(!mmctx || !mmctx->subscr || mmctx->subscr == subscr);
+	}
+
+	if (!mmctx) {
+		LOGP(DMM, LOGL_INFO,
+		     "Subscriber data update for unregistered MM context, IMSI %s\n",
+		     subscr->imsi);
+		return;
+	}
+
+	LOGMMCTXP(LOGL_INFO, mmctx, "Subscriber data update");
+
+	if (!subscr->mm && !mmctx->subscr) {
+		mmctx->subscr =	subscr_get(subscr);
+		mmctx->subscr->mm = mmctx;
+	}
 
 	sgsn_auth_update(mmctx);
 }

@@ -5,7 +5,8 @@ Testing GMM detach (power off)
 Testing GMM detach (no MMCTX)
 Testing GMM detach accept (unexpected)
 Testing GMM Status (no MMCTX)
-Testing GMM attach
+Auth policy 'closed': Testing GMM attach
+Auth policy 'remote': Testing GMM attach
 Testing GMM reject
   - Attach Request (invalid MI length)
   - Attach Request (invalid MI type)

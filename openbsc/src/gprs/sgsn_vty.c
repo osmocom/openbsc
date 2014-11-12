@@ -45,6 +45,7 @@ const struct value_string sgsn_auth_pol_strs[] = {
 	{ SGSN_AUTH_POLICY_OPEN,	"accept-all" },
 	{ SGSN_AUTH_POLICY_CLOSED,	"closed" },
 	{ SGSN_AUTH_POLICY_ACL_ONLY,    "acl-only" },
+	{ SGSN_AUTH_POLICY_REMOTE,      "remote" },
 	{ 0, NULL }
 };
 
@@ -358,14 +359,15 @@ DEFUN(imsi_acl, cfg_imsi_acl_cmd,
 }
 
 DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
-	"auth-policy (accept-all|closed|acl-only)",
+	"auth-policy (accept-all|closed|acl-only|remote)",
 	"Autorization Policy of SGSN\n"
 	"Accept all IMSIs (DANGEROUS)\n"
 	"Accept only home network subscribers or those in the ACL\n"
-	"Accept only subscribers in the ACL\n")
+	"Accept only subscribers in the ACL\n"
+	"Use remote subscription data only (HLR)\n")
 {
 	int val = get_string_value(sgsn_auth_pol_strs, argv[0]);
-	OSMO_ASSERT(val >= SGSN_AUTH_POLICY_OPEN && val <= SGSN_AUTH_POLICY_ACL_ONLY);
+	OSMO_ASSERT(val >= SGSN_AUTH_POLICY_OPEN && val <= SGSN_AUTH_POLICY_REMOTE);
 	g_cfg->auth_policy = val;
 
 	return CMD_SUCCESS;

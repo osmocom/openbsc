@@ -67,6 +67,14 @@ void __wrap_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
 	(*update_subscriber_data_cb)(mmctx, subscr);
 }
 
+/* override, requires '-Wl,--wrap=gprs_subscr_request_update' */
+int __real_gprs_subscr_request_update(struct sgsn_mm_ctx *mmctx);
+int (*subscr_request_update_cb)(struct sgsn_mm_ctx *mmctx) =
+	&__real_gprs_subscr_request_update;
+
+int __wrap_gprs_subscr_request_update(struct sgsn_mm_ctx *mmctx) {
+	return (*subscr_request_update_cb)(mmctx);
+};
 
 static int count(struct llist_head *head)
 {
@@ -477,8 +485,6 @@ static void test_gmm_attach(void)
 	 * again */
 	srand(1);
 
-	sgsn_acl_add("123456789012345", &sgsn->cfg);
-
 	foreign_tlli = gprs_tmsi2tlli(0xc0000023, TLLI_FOREIGN);
 
 	/* Create a LLE/LLME */
@@ -537,8 +543,52 @@ static void test_gmm_attach(void)
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
 	OSMO_ASSERT(!ictx);
+}
 
+static void test_gmm_attach_acl(void)
+{
+	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
+
+	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_CLOSED;
+	sgsn_acl_add("123456789012345", &sgsn->cfg);
+	printf("Auth policy 'closed': ");
+	test_gmm_attach();
 	sgsn_acl_del("123456789012345", &sgsn->cfg);
+
+	sgsn->cfg.auth_policy = saved_auth_policy;
+}
+
+int my_subscr_request_update(struct sgsn_mm_ctx *mmctx) {
+	int rc;
+	rc = __real_gprs_subscr_request_update(mmctx);
+	if (rc == -ENOTSUP) {
+		OSMO_ASSERT(mmctx->subscr);
+		gprs_subscr_update(mmctx->subscr);
+	}
+	return rc;
+};
+
+static void test_gmm_attach_subscr(void)
+{
+	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
+	struct gsm_subscriber *subscr;
+
+	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
+	subscr_request_update_cb = my_subscr_request_update;
+
+	subscr = gprs_subscr_get_or_create("123456789012345");
+	subscr->authorized = 1;
+	subscr_put(subscr);
+
+	printf("Auth policy 'remote': ");
+	test_gmm_attach();
+
+	subscr = gprs_subscr_get_by_imsi("123456789012345");
+	OSMO_ASSERT(subscr != NULL);
+	gprs_subscr_delete(subscr);
+
+	sgsn->cfg.auth_policy = saved_auth_policy;
+	subscr_request_update_cb = __real_gprs_subscr_request_update;
 }
 
 /*
@@ -944,7 +994,8 @@ int main(int argc, char **argv)
 	test_gmm_detach_no_mmctx();
 	test_gmm_detach_accept_unexpected();
 	test_gmm_status_no_mmctx();
-	test_gmm_attach();
+	test_gmm_attach_acl();
+	test_gmm_attach_subscr();
 	test_gmm_reject();
 	test_gmm_ptmsi_allocation();
 	printf("Done\n");

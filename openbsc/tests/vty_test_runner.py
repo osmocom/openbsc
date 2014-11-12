@@ -752,6 +752,9 @@ class TestVTYSGSN(TestVTYGenericBSC):
         self.assertTrue(self.vty.verify('auth-policy closed', ['']))
         res = self.vty.command("show running-config")
         self.assert_(res.find('auth-policy closed') > 0)
+        self.assertTrue(self.vty.verify('auth-policy remote', ['']))
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('auth-policy remote') > 0)
 
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
