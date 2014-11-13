@@ -34,9 +34,9 @@ const struct value_string auth_state_names[] = {
 
 const struct value_string *sgsn_auth_state_names = auth_state_names;
 
-void sgsn_auth_init(struct sgsn_instance *sgi)
+void sgsn_auth_init(void)
 {
-	INIT_LLIST_HEAD(&sgi->cfg.imsi_acl);
+	INIT_LLIST_HEAD(&sgsn->cfg.imsi_acl);
 }
 
 /* temporary IMSI ACL hack */
@@ -81,8 +81,7 @@ int sgsn_acl_del(const char *imsi, struct sgsn_config *cfg)
 	return 0;
 }
 
-enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx,
-				     struct sgsn_config *cfg)
+enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx)
 {
 	char mccmnc[16];
 	int check_net = 0;
@@ -125,22 +124,22 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx,
 	return SGSN_AUTH_REJECTED;
 }
 
-int sgsn_auth_request(struct sgsn_mm_ctx *mmctx, struct sgsn_config *cfg)
+int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 {
 	/* TODO: Add remote subscriber update requests here */
 
-	sgsn_auth_update(mmctx, sgsn);
+	sgsn_auth_update(mmctx);
 
 	return 0;
 }
 
-void sgsn_auth_update(struct sgsn_mm_ctx *mmctx, struct sgsn_instance *sgi)
+void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 {
 	enum sgsn_auth_state auth_state;
 
 	LOGMMCTXP(LOGL_DEBUG, mmctx, "Updating authorization\n");
 
-	auth_state = sgsn_auth_state(mmctx, &sgi->cfg);
+	auth_state = sgsn_auth_state(mmctx);
 	if (auth_state == SGSN_AUTH_UNKNOWN) {
 		/* Reject requests since remote updates are NYI */
 		LOGMMCTXP(LOGL_ERROR, mmctx,

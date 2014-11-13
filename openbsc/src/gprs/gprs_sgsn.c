@@ -455,5 +455,5 @@ void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)
 {
 	OSMO_ASSERT(mmctx);
 
-	sgsn_auth_update(mmctx, sgsn);
+	sgsn_auth_update(mmctx);
 }

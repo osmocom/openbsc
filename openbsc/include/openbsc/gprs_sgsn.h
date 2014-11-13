@@ -271,15 +271,14 @@ struct sgsn_config;
 struct sgsn_instance;
 extern const struct value_string *sgsn_auth_state_names;
 
-void sgsn_auth_init(struct sgsn_instance *sgi);
+void sgsn_auth_init(void);
 struct imsi_acl_entry *sgsn_acl_lookup(const char *imsi, struct sgsn_config *cfg);
 int sgsn_acl_add(const char *imsi, struct sgsn_config *cfg);
 int sgsn_acl_del(const char *imsi, struct sgsn_config *cfg);
 /* Request authorization */
-int sgsn_auth_request(struct sgsn_mm_ctx *mm, struct sgsn_config *cfg);
-enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mm,
-				     struct sgsn_config *cfg);
-void sgsn_auth_update(struct sgsn_mm_ctx *mm, struct sgsn_instance *sgi);
+int sgsn_auth_request(struct sgsn_mm_ctx *mm);
+enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mm);
+void sgsn_auth_update(struct sgsn_mm_ctx *mm);
 
 /* Called on subscriber data updates */
 void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx);

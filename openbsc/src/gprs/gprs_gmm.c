@@ -647,7 +647,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		 * sgsn_auth_update which in turn calls
 		 * gsm0408_gprs_access_granted or gsm0408_gprs_access_denied */
 
-		sgsn_auth_request(ctx, &sgsn->cfg);
+		sgsn_auth_request(ctx);
 		/* Note that gsm48_gmm_authorize can be called recursively via
 		 * sgsn_auth_request iff ctx->auth_info changes to AUTH_ACCEPTED
 		 */

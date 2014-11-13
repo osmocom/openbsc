@@ -798,7 +798,7 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");
 	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
 
-	sgsn_auth_init(sgsn);
+	sgsn_auth_init();
 
 	test_llme();
 	test_gmm_detach();
