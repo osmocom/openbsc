@@ -67,6 +67,9 @@ static int use_db_counter = 1;
 #define DB_SYNC_INTERVAL	60, 0
 #define EXPIRE_INTERVAL		10, 0
 
+/* for token auth */
+char * auth_token_sms_text = "";
+
 static struct osmo_timer_list db_sync_timer;
 
 static void create_pcap_file(char *file)
@@ -321,6 +324,8 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	printf("DB: Database prepared.\n");
+
+	auth_token_sms_text = db_get_text("auth_token_sms");
 
 	/* setup the timer */
 	db_sync_timer.cb = db_sync_timer_cb;
