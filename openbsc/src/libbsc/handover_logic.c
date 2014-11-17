@@ -100,6 +100,10 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	if (bsc_ho_by_old_lchan(old_lchan))
 		return -EBUSY;
 
+    /* Don't do handover of a already closed channel */
+    if (!old_lchan->conn->subscr)
+        return -EBUSY;
+
 	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
 		old_lchan->ts->trx->bts->nr, bts->nr);
 
