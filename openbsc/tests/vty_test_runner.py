@@ -77,6 +77,21 @@ class TestVTYMGCP(TestVTYBase):
 	self.assertEquals(res.find('  rtp force-ptime 20\r'), -1)
 	self.assertEquals(res.find('  no rtp force-ptime\r'), -1)
 
+    def testOmitAudio(self):
+        self.vty.enable()
+	res = self.vty.command("show running-config")
+	self.assert_(res.find('  sdp audio-payload send-name\r') > 0)
+	self.assertEquals(res.find('  no sdp audio-payload send-name\r'), -1)
+
+	self.vty.command("configure terminal")
+	self.vty.command("mgcp")
+	self.vty.command("no sdp audio-payload send-name")
+	res = self.vty.command("show running-config")
+	self.assertEquals(res.find('  rtp sdp audio-payload send-name\r'), -1)
+	self.assert_(res.find('  no sdp audio-payload send-name\r') > 0)
+
+        # TODO: test it for the trunk!
+
 
 class TestVTYGenericBSC(TestVTYBase):
 

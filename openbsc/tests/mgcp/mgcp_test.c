@@ -215,6 +215,16 @@ static void test_strline(void)
 		 "a=rtpmap:126 AMR/8000\r\n"	\
 		 "a=ptime:20\r\n"
 
+#define CRCX_RET_NO_RTPMAP "200 2 OK\r\n"	\
+		 "I: 1\n"			\
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 0 RTP/AVP 126\r\n"	\
+		 "a=ptime:20\r\n"
+
 #define CRCX_FMTP_RET "200 2 OK\r\n"			\
 		 "I: 3\n"			\
 		 "\n"				\
@@ -1037,6 +1047,46 @@ static void test_no_cycle(void)
 	talloc_free(cfg);
 }
 
+static void test_no_name(void)
+{
+	struct mgcp_config *cfg;
+	struct mgcp_endpoint *endp;
+	struct msgb *inp, *msg;
+	int i;
+
+	printf("Testing no rtpmap name\n");
+	cfg = mgcp_config_alloc();
+
+	cfg->trunk.number_endpoints = 64;
+	cfg->trunk.audio_send_name = 0;
+	mgcp_endpoints_allocate(&cfg->trunk);
+
+	cfg->policy_cb = mgcp_test_policy_cb;
+
+	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
+
+	/* reset endpoints */
+	for (i = 0; i < cfg->trunk.number_endpoints; i++) {
+		endp = &cfg->trunk.endpoints[i];
+		endp->net_end.codec.payload_type = PTYPE_NONE;
+		endp->net_end.packet_duration_ms = -1;
+
+		OSMO_ASSERT(endp->conn_mode == MGCP_CONN_NONE);
+		endp->conn_mode |= CONN_UNMODIFIED;
+	}
+
+	inp = create_msg(CRCX);
+	msg = mgcp_handle_message(cfg, inp);
+	if (strcmp((char *) msg->data, CRCX_RET_NO_RTPMAP) != 0)
+		printf("FAILED: there should not be a RTPMAP: %s\n",
+			(char *) msg->data);
+	msgb_free(inp);
+	msgb_free(msg);
+
+	mgcp_release_endp(&cfg->trunk.endpoints[1]);
+	talloc_free(cfg);
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
@@ -1054,6 +1104,7 @@ int main(int argc, char **argv)
 	test_packet_error_detection(1, 1);
 	test_multilple_codec();
 	test_no_cycle();
+	test_no_name();
 
 	printf("Done\n");
 	return EXIT_SUCCESS;

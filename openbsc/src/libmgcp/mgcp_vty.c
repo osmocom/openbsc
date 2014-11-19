@@ -116,6 +116,8 @@ static int config_write_mgcp(struct vty *vty)
 			g_cfg->trunk.audio_fmtp_extra, VTY_NEWLINE);
 	vty_out(vty, "  %ssdp audio-payload send-ptime%s",
 		g_cfg->trunk.audio_send_ptime ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, "  %ssdp audio-payload send-name%s",
+		g_cfg->trunk.audio_send_name ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, "  loop %u%s", !!g_cfg->trunk.audio_loop, VTY_NEWLINE);
 	vty_out(vty, "  number endpoints %u%s", g_cfg->trunk.number_endpoints - 1, VTY_NEWLINE);
 	if (g_cfg->call_agent_addr)
@@ -475,6 +477,26 @@ DEFUN(cfg_mgcp_no_sdp_payload_send_ptime,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_sdp_payload_send_name,
+      cfg_mgcp_sdp_payload_send_name_cmd,
+      "sdp audio-payload send-name",
+      SDP_STR AUDIO_STR
+      "Send SDP rtpmap with the audio name\n")
+{
+	g_cfg->trunk.audio_send_name = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_no_sdp_payload_send_name,
+      cfg_mgcp_no_sdp_payload_send_name_cmd,
+      "no sdp audio-payload send-name",
+      NO_STR SDP_STR AUDIO_STR
+      "Send SDP rtpmap with the audio name\n")
+{
+	g_cfg->trunk.audio_send_name = 0;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_mgcp_loop,
       cfg_mgcp_loop_cmd,
       "loop (0|1)",
@@ -691,6 +713,8 @@ static int config_write_trunk(struct vty *vty)
 			trunk->audio_name, VTY_NEWLINE);
 		vty_out(vty, "  %ssdp audio-payload send-ptime%s",
 			trunk->audio_send_ptime ? "" : "no ", VTY_NEWLINE);
+		vty_out(vty, "  %ssdp audio-payload send-name%s",
+			trunk->audio_send_name ? "" : "no ", VTY_NEWLINE);
 
 		if (trunk->keepalive_interval == MGCP_KEEPALIVE_ONCE)
 			vty_out(vty, "  rtp keep-alive once%s", VTY_NEWLINE);
@@ -804,6 +828,28 @@ DEFUN(cfg_trunk_no_sdp_payload_send_ptime,
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 	trunk->audio_send_ptime = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_sdp_payload_send_name,
+      cfg_trunk_sdp_payload_send_name_cmd,
+      "sdp audio-payload send-name",
+      SDP_STR AUDIO_STR
+      "Send SDP rtpmap with the audio name\n")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->audio_send_name = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_no_sdp_payload_send_name,
+      cfg_trunk_no_sdp_payload_send_name_cmd,
+      "no sdp audio-payload send-name",
+      NO_STR SDP_STR AUDIO_STR
+      "Send SDP rtpmap with the audio name\n")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->audio_send_name = 0;
 	return CMD_SUCCESS;
 }
 
@@ -1210,6 +1256,8 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_fmtp_extra_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_send_ptime_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_sdp_payload_send_ptime_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_send_name_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_sdp_payload_send_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_factor_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_size_cmd);
@@ -1236,6 +1284,8 @@ int mgcp_vty_init(void)
 	install_element(TRUNK_NODE, &cfg_trunk_sdp_fmtp_extra_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_sdp_payload_send_ptime_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_no_sdp_payload_send_ptime_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_sdp_payload_send_name_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_no_sdp_payload_send_name_cmd);
 
 	return 0;
 }

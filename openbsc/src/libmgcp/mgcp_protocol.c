@@ -274,7 +274,7 @@ static int write_response_sdp(struct mgcp_endpoint *endp,
 
 		len += nchars;
 
-		if (audio_name) {
+		if (audio_name && endp->tcfg->audio_send_name) {
 			nchars = snprintf(sdp_record + len, size - len,
 					  "a=rtpmap:%d %s\r\n",
 					  payload_type, audio_name);
@@ -1417,6 +1417,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->trunk.audio_name = talloc_strdup(cfg, "AMR/8000");
 	cfg->trunk.audio_payload = 126;
 	cfg->trunk.audio_send_ptime = 1;
+	cfg->trunk.audio_send_name = 1;
 	cfg->trunk.omit_rtcp = 0;
 	mgcp_trunk_set_keepalive(&cfg->trunk, MGCP_KEEPALIVE_ONCE);
 
@@ -1441,6 +1442,7 @@ struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int nr)
 	trunk->audio_name = talloc_strdup(cfg, "AMR/8000");
 	trunk->audio_payload = 126;
 	trunk->audio_send_ptime = 1;
+	trunk->audio_send_name = 1;
 	trunk->number_endpoints = 33;
 	trunk->omit_rtcp = 0;
 	mgcp_trunk_set_keepalive(trunk, MGCP_KEEPALIVE_ONCE);
