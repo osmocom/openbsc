@@ -84,6 +84,7 @@ static void test_strline(void)
 		 "\n"				\
 		 "v=0\r\n"			\
 		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "s=-\r\n"			\
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
@@ -94,6 +95,7 @@ static void test_strline(void)
 		 "\n"				\
 		 "v=0\r\n"			\
 		 "o=- 3 23 IN IP4 0.0.0.0\r\n"	\
+		 "s=-\r\n"			\
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
@@ -118,6 +120,7 @@ static void test_strline(void)
 		 "\n"				\
 		 "v=0\r\n"			\
 		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "s=-\r\n"			\
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
@@ -209,6 +212,7 @@ static void test_strline(void)
 		 "\n"				\
 		 "v=0\r\n"			\
 		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "s=-\r\n"			\
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
@@ -220,6 +224,7 @@ static void test_strline(void)
 		 "\n"				\
 		 "v=0\r\n"			\
 		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "s=-\r\n"			\
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
@@ -230,6 +235,7 @@ static void test_strline(void)
 		 "\n"				\
 		 "v=0\r\n"			\
 		 "o=- 3 23 IN IP4 0.0.0.0\r\n"	\
+		 "s=-\r\n"			\
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\
@@ -250,6 +256,7 @@ static void test_strline(void)
 		 "\n"				\
 		 "v=0\r\n"			\
 		 "o=- 2 23 IN IP4 0.0.0.0\r\n"	\
+		 "s=-\r\n"			\
 		 "c=IN IP4 0.0.0.0\r\n"		\
 		 "t=0 0\r\n"			\
 		 "m=audio 0 RTP/AVP 126\r\n"	\

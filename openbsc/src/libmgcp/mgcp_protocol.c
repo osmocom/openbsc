@@ -258,6 +258,7 @@ static int write_response_sdp(struct mgcp_endpoint *endp,
 	len = snprintf(sdp_record, size,
 			"v=0\r\n"
 			"o=- %u 23 IN IP4 %s\r\n"
+			"s=-\r\n"
 			"c=IN IP4 %s\r\n"
 			"t=0 0\r\n",
 			endp->ci, addr, addr);
