@@ -184,6 +184,41 @@ static int set_bts_apply_config(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(bts_apply_config, "apply-configuration");
 
+static int verify_bts_si(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+    return 0;
+}
+
+static int get_bts_si(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Write only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_bts_si(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+	struct gsm_bts_trx *trx;
+
+	/* Generate a new ID */
+	bts->bcch_change_mark += 1;
+	bts->bcch_change_mark %= 0x7;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		int rc;
+
+		rc = gsm_bts_trx_set_system_infos(trx);
+		if (rc != 0) {
+			cmd->reply = "Failed to generate SI";
+			return CTRL_CMD_ERROR;
+		}
+	}
+
+	cmd->reply = "Generated new System Information";
+	return CTRL_CMD_REPLY;
+}
+CTRL_CMD_DEFINE(bts_si, "send-new-system-informations");
+
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
 static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
@@ -237,6 +272,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_lac);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ci);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_apply_config);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_si);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	return rc;

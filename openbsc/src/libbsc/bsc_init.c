@@ -121,7 +121,7 @@ static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 }
 
 /* set all system information types */
-static int set_system_infos(struct gsm_bts_trx *trx)
+int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx)
 {
 	int i, rc;
 	struct gsm_bts *bts = trx->bts;
@@ -269,7 +269,7 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 		rsl_nokia_si_begin(trx);
 	}
 
-	set_system_infos(trx);
+	gsm_bts_trx_set_system_infos(trx);
 
 	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
 		/* channel unspecific, power reduction in 2 dB steps */

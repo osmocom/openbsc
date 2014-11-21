@@ -423,6 +423,7 @@ void set_ts_e1link(struct gsm_bts_trx_ts *ts, uint8_t e1_nr,
 void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 int gsm_bts_has_feature(struct gsm_bts *bts, enum gsm_bts_features feat);
 struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
+int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx);
 
 /* generic E1 line operations for all ISDN-based BTS. */
 extern struct e1inp_line_ops bts_isdn_e1inp_line_ops;

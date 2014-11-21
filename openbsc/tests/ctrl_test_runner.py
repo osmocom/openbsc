@@ -216,6 +216,16 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['mtype'], 'ERROR')
         self.assertEquals(r['error'], 'Input not within the range')
 
+    def testBtsGenerateSystemInformation(self):
+        r = self.do_get('bts.0.send-new-system-informations')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Write only attribute')
+
+        # No RSL links so it will fail
+        r = self.do_set('bts.0.send-new-system-informations', '1')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Failed to generate SI')
+
     def testTrxPowerRed(self):
         r = self.do_get('bts.0.trx.0.max-power-reduction')
         self.assertEquals(r['mtype'], 'GET_REPLY')
