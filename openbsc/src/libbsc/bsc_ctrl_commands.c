@@ -155,6 +155,7 @@ CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
 
 /* BTS related commands below */
 CTRL_CMD_DEFINE_RANGE(bts_lac, "location-area-code", struct gsm_bts, location_area_code, 0, 65535);
+CTRL_CMD_DEFINE_RANGE(bts_ci, "cell-identity", struct gsm_bts, cell_identity, 0, 65535);
 
 static int verify_bts_apply_config(struct ctrl_cmd *cmd, const char *v, void *d)
 {
@@ -234,6 +235,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_lac);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ci);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_apply_config);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
