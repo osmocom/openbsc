@@ -411,6 +411,15 @@ class TestCtrlNITB(TestCtrlBase):
         self.assertEquals(r['var'], 'subscriber-list-active-v1')
         self.assertEquals(r['value'], None)
 
+    def testApplyConfiguration(self):
+        r = self.do_get('bts.0.apply-configuration')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Write only attribute')
+
+        r = self.do_set('bts.0.apply-configuration', '1')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['value'], 'Tried to drop the BTS')
+
 class TestCtrlNAT(TestCtrlBase):
 
     def ctrl_command(self):

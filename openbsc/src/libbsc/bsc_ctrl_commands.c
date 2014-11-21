@@ -1,6 +1,6 @@
 /*
- * (C) 2013 by Holger Hans Peter Freyther
- * (C) 2013 by sysmocom s.f.m.c. GmbH
+ * (C) 2013-2014 by Holger Hans Peter Freyther
+ * (C) 2013-2014 by sysmocom s.f.m.c. GmbH
  *
  * All Rights Reserved
  *
@@ -156,6 +156,33 @@ CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
 /* BTS related commands below */
 CTRL_CMD_DEFINE_RANGE(bts_lac, "location-area-code", struct gsm_bts, location_area_code, 0, 65535);
 
+static int verify_bts_apply_config(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int get_bts_apply_config(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Write only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_bts_apply_config(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+
+	if (!is_ipaccess_bts(bts)) {
+		cmd->reply = "BTS is not IP based";
+		return CTRL_CMD_ERROR;
+	}
+
+	ipaccess_drop_oml(bts);
+	cmd->reply = "Tried to drop the BTS";
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(bts_apply_config, "apply-configuration");
+
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
 static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
@@ -207,6 +234,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_lac);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_apply_config);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	return rc;
