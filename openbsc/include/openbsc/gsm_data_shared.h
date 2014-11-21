@@ -686,8 +686,9 @@ struct gsm_bts {
 	int num_trx;
 	struct llist_head trx_list;
 
-	/* SI compatibility hacks */
+	/* SI related items */
 	int force_combined_si;
+	int bcch_change_mark;
 
 #ifdef ROLE_BSC
 	/* Abis NM queue */

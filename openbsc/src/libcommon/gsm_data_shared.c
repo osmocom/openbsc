@@ -276,6 +276,9 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 	bts->rach_ldavg_slots = -1;
 	bts->paging.free_chans_need = -1;
 
+	/* si handling */
+	bts->bcch_change_mark = 1;
+
 	return bts;
 }
 

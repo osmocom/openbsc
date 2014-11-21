@@ -792,6 +792,9 @@ static int generate_si13(uint8_t *output, struct gsm_bts *bts)
 	si13_default.no_pbcch.rac = bts->gprs.rac;
 	si13_default.no_pbcch.net_ctrl_ord = bts->gprs.net_ctrl_ord;
 
+	/* Information about the other SIs */
+	si13_default.bcch_change_mark = bts->bcch_change_mark;
+
 	ret = rest_octets_si13(si13->rest_octets, &si13_default);
 	if (ret < 0)
 		return ret;
