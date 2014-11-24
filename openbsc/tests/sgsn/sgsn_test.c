@@ -257,6 +257,40 @@ static void test_gmm_detach_no_mmctx(void)
 }
 
 /*
+ * Test that a single GMM Detach Accept message will not cause the SGSN to send
+ * any message or leave an MM context at the SGSN.
+ */
+static void test_gmm_detach_accept_unexpected(void)
+{
+	struct gprs_llc_lle *lle;
+	uint32_t local_tlli;
+
+	printf("Testing GMM detach accept (unexpected)\n");
+
+	/* DTAP - Detach Accept (MT) */
+	/* normal detach */
+	static const unsigned char detach_acc[] = {
+		0x08, 0x06
+	};
+
+	/* Create an LLME  */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	local_tlli = gprs_tmsi2tlli(0x23, TLLI_LOCAL);
+	lle = gprs_lle_get_or_create(local_tlli, 3);
+
+	/* inject the detach */
+	send_0408_message(lle->llme, local_tlli,
+			  detach_acc, ARRAY_SIZE(detach_acc));
+
+	/* verify that no message (and therefore no Status or XID reset) has been
+	 * sent by the SGSN */
+	OSMO_ASSERT(sgsn_tx_counter == 0);
+
+	/* verify that things are gone */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+}
+
+/*
  * Test that a GMM Status will remove the associated LLME if there is no MMCTX.
  */
 static void test_gmm_status_no_mmctx(void)
@@ -812,6 +846,7 @@ int main(int argc, char **argv)
 	test_gmm_detach();
 	test_gmm_detach_power_off();
 	test_gmm_detach_no_mmctx();
+	test_gmm_detach_accept_unexpected();
 	test_gmm_status_no_mmctx();
 	test_gmm_attach();
 	test_gmm_reject();

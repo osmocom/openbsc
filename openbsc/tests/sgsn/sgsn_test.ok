@@ -2,6 +2,7 @@ Testing LLME allocations
 Testing GMM detach
 Testing GMM detach (power off)
 Testing GMM detach (no MMCTX)
+Testing GMM detach accept (unexpected)
 Testing GMM Status (no MMCTX)
 Testing GMM attach
 Testing GMM reject
