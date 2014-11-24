@@ -297,6 +297,7 @@ static void test_gmm_attach(void)
 	struct gprs_ra_id raid = { 0, };
 	struct sgsn_mm_ctx *ctx = NULL;
 	struct sgsn_mm_ctx *ictx;
+	uint32_t ptmsi1;
 	uint32_t foreign_tlli;
 	uint32_t local_tlli = 0;
 	struct gprs_llc_lle *lle;
@@ -340,6 +341,13 @@ static void test_gmm_attach(void)
 	/* reset the PRNG used by sgsn_alloc_ptmsi */
 	srand(1);
 
+	ptmsi1 = sgsn_alloc_ptmsi();
+	OSMO_ASSERT(ptmsi1 != GSM_RESERVED_TMSI);
+
+	/* reset the PRNG, so that the same P-TMSI sequence will be generated
+	 * again */
+	srand(1);
+
 	sgsn_acl_add("123456789012345", &sgsn->cfg);
 
 	foreign_tlli = gprs_tmsi2tlli(0xc0000023, TLLI_FOREIGN);
@@ -381,7 +389,7 @@ static void test_gmm_attach(void)
 	OSMO_ASSERT(sgsn_tx_counter == 1);
 
 	/* this has been randomly assigned by the SGSN */
-	local_tlli = gprs_tmsi2tlli(0xeb8b4567, TLLI_LOCAL);
+	local_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
 
 	/* inject the attach complete */
 	send_0408_message(ctx->llme, local_tlli,
