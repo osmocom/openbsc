@@ -428,13 +428,15 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 	}
 
 	if (subscr->flags)
-		vty_out(vty, "    Flags: %s%s%s%s",
+		vty_out(vty, "    Flags: %s%s%s%s%s",
 			subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT ?
 			"FIRST_CONTACT " : "",
 			subscr->flags & GPRS_SUBSCRIBER_CANCELLED ?
 			"CANCELLED " : "",
-			subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING ?
-			"UPDATE_PENDING " : "",
+			subscr->flags & GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING ?
+			"UPDATE_LOCATION_PENDING " : "",
+			subscr->flags & GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING ?
+			"AUTH_INFO_PENDING " : "",
 			VTY_NEWLINE);
 
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
@@ -587,6 +589,68 @@ DEFUN(update_subscr_commit, update_subscr_commit_cmd,
 	return CMD_SUCCESS;
 }
 
+#define UL_ERR_STR "system-failure|data-missing|unexpected-data-value|" \
+		   "unknown-subscriber|roaming-not-allowed"
+
+#define UL_ERR_HELP \
+		"Force error code SystemFailure\n" \
+		"Force error code DataMissing\n" \
+		"Force error code UnexpectedDataValue\n" \
+		"Force error code UnknownSubscriber\n" \
+		"Force error code RoamingNotAllowed\n"
+
+DEFUN(update_subscr_update_location_result, update_subscr_update_location_result_cmd,
+	UPDATE_SUBSCR_STR "update-location-result (ok|" UL_ERR_STR ")",
+	UPDATE_SUBSCR_HELP
+	"Complete the update location procedure\n"
+	"The update location request succeeded\n"
+	UL_ERR_HELP)
+{
+	const char *imsi = argv[0];
+	const char *ret_code_str = argv[1];
+
+	struct gsm_subscriber *subscr;
+
+	subscr = gprs_subscr_get_by_imsi(imsi);
+	if (!subscr) {
+		vty_out(vty, "%% unable to get subscriber record for %s\n", imsi);
+		return CMD_WARNING;
+	}
+	if (strcmp(ret_code_str, "ok") == 0)
+		subscr->authorized = 1;
+	else
+		subscr->authorized = 0;
+
+	gprs_subscr_update(subscr);
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(update_subscr_update_auth_info, update_subscr_update_auth_info_cmd,
+	UPDATE_SUBSCR_STR "update-auth-info",
+	UPDATE_SUBSCR_HELP
+	"Complete the send authentication info procedure\n")
+{
+	const char *imsi = argv[0];
+
+	struct gsm_subscriber *subscr;
+
+	subscr = gprs_subscr_get_by_imsi(imsi);
+	if (!subscr) {
+		vty_out(vty, "%% unable to get subscriber record for %s\n", imsi);
+		return CMD_WARNING;
+	}
+
+	gprs_subscr_update_auth_info(subscr);
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
+
 int sgsn_vty_init(void)
 {
 	install_element_ve(&show_sgsn_cmd);
@@ -600,6 +664,8 @@ int sgsn_vty_init(void)
 	install_element(ENABLE_NODE, &update_subscr_insert_auth_triplet_cmd);
 	install_element(ENABLE_NODE, &update_subscr_cancel_cmd);
 	install_element(ENABLE_NODE, &update_subscr_commit_cmd);
+	install_element(ENABLE_NODE, &update_subscr_update_location_result_cmd);
+	install_element(ENABLE_NODE, &update_subscr_update_auth_info_cmd);
 
 	install_element(CONFIG_NODE, &cfg_sgsn_cmd);
 	install_node(&sgsn_node, config_write_sgsn);

@@ -8,7 +8,8 @@ noinst_PROGRAMS = sgsn_test
 sgsn_test_SOURCES = sgsn_test.c
 sgsn_test_LDFLAGS = \
 	-Wl,--wrap=sgsn_update_subscriber_data \
-	-Wl,--wrap=gprs_subscr_request_update
+	-Wl,--wrap=gprs_subscr_request_update_location \
+	-Wl,--wrap=gprs_subscr_request_auth_info
 
 sgsn_test_LDADD = \
 	$(top_builddir)/src/gprs/gprs_llc_parse.o \

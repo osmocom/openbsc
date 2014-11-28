@@ -92,9 +92,18 @@ void gprs_subscr_put_and_cancel(struct gsm_subscriber *subscr)
 	gprs_subscr_delete(subscr);
 }
 
-int gprs_subscr_query(struct gsm_subscriber *subscr)
+int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
 {
-	/* TODO: Implement remote query to MSC, ... */
+	/* TODO: Implement remote query to HLR, ... */
+
+	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
+		  "subscriber auth info is not available (remote query NYI)\n");
+	return -ENOTSUP;
+}
+
+int gprs_subscr_location_update(struct gsm_subscriber *subscr)
+{
+	/* TODO: Implement remote query to HLR, ... */
 
 	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
 		  "subscriber data is not available (remote query NYI)\n");
@@ -105,56 +114,80 @@ void gprs_subscr_update(struct gsm_subscriber *subscr)
 {
 	LOGMMCTXP(LOGL_DEBUG, subscr->sgsn_data->mm, "Updating subscriber data\n");
 
-	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_PENDING;
+	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING;
 	subscr->flags &= ~GSM_SUBSCRIBER_FIRST_CONTACT;
 
 	sgsn_update_subscriber_data(subscr->sgsn_data->mm, subscr);
 }
 
-int gprs_subscr_request_update(struct sgsn_mm_ctx *mmctx)
+void gprs_subscr_update_auth_info(struct gsm_subscriber *subscr)
+{
+	LOGMMCTXP(LOGL_DEBUG, subscr->sgsn_data->mm,
+		  "Updating subscriber authentication info\n");
+
+	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING;
+	subscr->flags &= ~GSM_SUBSCRIBER_FIRST_CONTACT;
+
+	sgsn_update_subscriber_data(subscr->sgsn_data->mm, subscr);
+}
+
+struct gsm_subscriber *gprs_subscr_get_or_create_by_mmctx(struct sgsn_mm_ctx *mmctx)
 {
 	struct gsm_subscriber *subscr = NULL;
-	int need_update = 0;
-	int rc;
 
-	LOGMMCTXP(LOGL_DEBUG, mmctx, "Requesting subscriber data update\n");
+	if (mmctx->subscr)
+		return subscr_get(mmctx->subscr);
 
-	if (mmctx->subscr) {
-		subscr = subscr_get(mmctx->subscr);
-	} else if (mmctx->imsi[0]) {
+	if (mmctx->imsi[0])
 		subscr = gprs_subscr_get_by_imsi(mmctx->imsi);
-		need_update = 1;
-	}
 
 	if (!subscr) {
 		subscr = gprs_subscr_get_or_create(mmctx->imsi);
 		subscr->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
-		need_update = 1;
 	}
 
 	if (strcpy(subscr->equipment.imei, mmctx->imei) != 0) {
 		strncpy(subscr->equipment.imei, mmctx->imei, GSM_IMEI_LENGTH-1);
 		subscr->equipment.imei[GSM_IMEI_LENGTH-1] = 0;
-		need_update = 1;
 	}
 
-	if (subscr->lac != mmctx->ra.lac) {
+	if (subscr->lac != mmctx->ra.lac)
 		subscr->lac = mmctx->ra.lac;
-		need_update = 1;
-	}
 
-	if (need_update) {
-		subscr->flags |= GPRS_SUBSCRIBER_UPDATE_PENDING;
-		if (!mmctx->subscr) {
-			subscr->sgsn_data->mm = mmctx;
-			mmctx->subscr = subscr_get(subscr);
-		}
+	subscr->sgsn_data->mm = mmctx;
+	mmctx->subscr = subscr_get(subscr);
 
-		rc = gprs_subscr_query(subscr);
-		subscr_put(subscr);
-		return rc;
-	}
-	gprs_subscr_update(subscr);
+	return subscr;
+}
+
+int gprs_subscr_request_update_location(struct sgsn_mm_ctx *mmctx)
+{
+	struct gsm_subscriber *subscr = NULL;
+	int rc;
+
+	LOGMMCTXP(LOGL_DEBUG, mmctx, "Requesting subscriber data update\n");
+
+	subscr = gprs_subscr_get_or_create_by_mmctx(mmctx);
+
+	subscr->flags |= GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING;
+
+	rc = gprs_subscr_location_update(subscr);
 	subscr_put(subscr);
-	return 0;
+	return rc;
+}
+
+int gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx)
+{
+	struct gsm_subscriber *subscr = NULL;
+	int rc;
+
+	LOGMMCTXP(LOGL_DEBUG, mmctx, "Requesting subscriber authentication info\n");
+
+	subscr = gprs_subscr_get_or_create_by_mmctx(mmctx);
+
+	subscr->flags |= GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING;
+
+	rc = gprs_subscr_query_auth_info(subscr);
+	subscr_put(subscr);
+	return rc;
 }

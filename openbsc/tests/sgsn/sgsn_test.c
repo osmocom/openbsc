@@ -67,13 +67,22 @@ void __wrap_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
 	(*update_subscriber_data_cb)(mmctx, subscr);
 }
 
-/* override, requires '-Wl,--wrap=gprs_subscr_request_update' */
-int __real_gprs_subscr_request_update(struct sgsn_mm_ctx *mmctx);
-int (*subscr_request_update_cb)(struct sgsn_mm_ctx *mmctx) =
-	&__real_gprs_subscr_request_update;
+/* override, requires '-Wl,--wrap=gprs_subscr_request_update_location' */
+int __real_gprs_subscr_request_update_location(struct sgsn_mm_ctx *mmctx);
+int (*subscr_request_update_location_cb)(struct sgsn_mm_ctx *mmctx) =
+	&__real_gprs_subscr_request_update_location;
 
-int __wrap_gprs_subscr_request_update(struct sgsn_mm_ctx *mmctx) {
-	return (*subscr_request_update_cb)(mmctx);
+int __wrap_gprs_subscr_request_update_location(struct sgsn_mm_ctx *mmctx) {
+	return (*subscr_request_update_location_cb)(mmctx);
+};
+
+/* override, requires '-Wl,--wrap=gprs_subscr_request_auth_info' */
+int __real_gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx);
+int (*subscr_request_auth_info_cb)(struct sgsn_mm_ctx *mmctx) =
+	&__real_gprs_subscr_request_auth_info;
+
+int __wrap_gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx) {
+	return (*subscr_request_auth_info_cb)(mmctx);
 };
 
 static int count(struct llist_head *head)
@@ -525,6 +534,12 @@ static void test_gmm_attach(void)
 		0x54
 	};
 
+	/* DTAP - Authentication and Ciphering Resp */
+	static const unsigned char auth_ciph_resp[] = {
+		0x08, 0x13, 0x00, 0x22, 0x51, 0xe5, 0x51, 0xe5, 0x23, 0x09,
+		0x9a, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x01
+	};
+
 	/* DTAP - Attach Complete */
 	static const unsigned char attach_compl[] = {
 		0x08, 0x03
@@ -584,6 +599,19 @@ static void test_gmm_attach(void)
 
 	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
 
+	if (ctx->auth_state == SGSN_AUTH_AUTHENTICATE) {
+		/* we expect an auth & ciph request */
+		OSMO_ASSERT(sgsn_tx_counter == 1);
+
+		/* inject the auth & ciph response */
+		send_0408_message(ctx->llme, foreign_tlli,
+				  auth_ciph_resp, ARRAY_SIZE(auth_ciph_resp));
+
+		/* check that the MM context has not been removed due to a
+		 * failed authorization */
+		OSMO_ASSERT(ctx == sgsn_mm_ctx_by_tlli(foreign_tlli, &raid));
+	}
+
 	/* we expect an attach accept/reject */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
 
@@ -622,14 +650,19 @@ static void test_gmm_attach_acl(void)
 	sgsn->cfg.auth_policy = saved_auth_policy;
 }
 
-int my_subscr_request_update(struct sgsn_mm_ctx *mmctx) {
+int my_subscr_request_update_location(struct sgsn_mm_ctx *mmctx) {
 	int rc;
-	rc = __real_gprs_subscr_request_update(mmctx);
+	rc = __real_gprs_subscr_request_update_location(mmctx);
 	if (rc == -ENOTSUP) {
 		OSMO_ASSERT(mmctx->subscr);
 		gprs_subscr_update(mmctx->subscr);
 	}
 	return rc;
+};
+
+int my_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx) {
+	gprs_subscr_update(mmctx->subscr);
+	return 0;
 };
 
 static void test_gmm_attach_subscr(void)
@@ -638,7 +671,8 @@ static void test_gmm_attach_subscr(void)
 	struct gsm_subscriber *subscr;
 
 	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
-	subscr_request_update_cb = my_subscr_request_update;
+	subscr_request_update_location_cb = my_subscr_request_update_location;
+	subscr_request_auth_info_cb = my_subscr_request_auth_info;
 
 	subscr = gprs_subscr_get_or_create("123456789012345");
 	subscr->authorized = 1;
@@ -652,37 +686,18 @@ static void test_gmm_attach_subscr(void)
 	gprs_subscr_delete(subscr);
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
-	subscr_request_update_cb = __real_gprs_subscr_request_update;
+	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
+	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
 }
 
-int my_subscr_request_update_fake_auth(struct sgsn_mm_ctx *mmctx) {
-	int rc;
-	rc = __real_gprs_subscr_request_update(mmctx);
-	if (rc == -ENOTSUP) {
-		struct gsm_subscriber *subscr;
-		int old_sgsn_tx_counter = sgsn_tx_counter;
+int my_subscr_request_auth_info_fake_auth(struct sgsn_mm_ctx *mmctx)
+{
+	/* Fake an authentication */
+	OSMO_ASSERT(mmctx->subscr);
+	mmctx->is_authenticated = 1;
+	gprs_subscr_update_auth_info(mmctx->subscr);
 
-		OSMO_ASSERT(mmctx->subscr);
-		/* Prevent subscr from being deleted */
-		subscr = subscr_get(mmctx->subscr);
-
-		/* Start authentication procedure */
-		gprs_subscr_update(subscr);
-
-		/* This will cause a GPRS AUTH AND CIPHERING REQ (cksn broken) */
-		OSMO_ASSERT(old_sgsn_tx_counter == sgsn_tx_counter - 1);
-
-		/* Restore sgsn_tx_counter to keep test_gmm_attach happy */
-		sgsn_tx_counter = old_sgsn_tx_counter;
-
-		/* Fake an authentication */
-		OSMO_ASSERT(subscr->sgsn_data->mm);
-		subscr->sgsn_data->mm->is_authenticated = 1;
-		gprs_subscr_update(subscr);
-
-		subscr_put(subscr);
-	}
-	return rc;
+	return 0;
 };
 
 static void test_gmm_attach_subscr_fake_auth(void)
@@ -691,7 +706,8 @@ static void test_gmm_attach_subscr_fake_auth(void)
 	struct gsm_subscriber *subscr;
 
 	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
-	subscr_request_update_cb = my_subscr_request_update_fake_auth;
+	subscr_request_update_location_cb = my_subscr_request_update_location;
+	subscr_request_auth_info_cb = my_subscr_request_auth_info_fake_auth;
 
 	subscr = gprs_subscr_get_or_create("123456789012345");
 	subscr->authorized = 1;
@@ -706,7 +722,50 @@ static void test_gmm_attach_subscr_fake_auth(void)
 	gprs_subscr_delete(subscr);
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
-	subscr_request_update_cb = __real_gprs_subscr_request_update;
+	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
+	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
+}
+
+int my_subscr_request_auth_info_real_auth(struct sgsn_mm_ctx *mmctx)
+{
+	struct gsm_auth_tuple at = {
+		.sres = {0x51, 0xe5, 0x51, 0xe5},
+		.key_seq = 0
+	};
+
+	/* Fake an authentication */
+	OSMO_ASSERT(mmctx->subscr);
+	mmctx->subscr->sgsn_data->auth_triplets[0] = at;
+
+	gprs_subscr_update_auth_info(mmctx->subscr);
+
+	return 0;
+};
+
+static void test_gmm_attach_subscr_real_auth(void)
+{
+	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
+	struct gsm_subscriber *subscr;
+
+	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
+	subscr_request_update_location_cb = my_subscr_request_update_location;
+	subscr_request_auth_info_cb = my_subscr_request_auth_info_real_auth;
+
+	subscr = gprs_subscr_get_or_create("123456789012345");
+	subscr->authorized = 1;
+	subscr->sgsn_data->authenticate = 1;
+	subscr_put(subscr);
+
+	printf("Auth policy 'remote', triplet based auth: ");
+	test_gmm_attach();
+
+	subscr = gprs_subscr_get_by_imsi("123456789012345");
+	OSMO_ASSERT(subscr != NULL);
+	gprs_subscr_delete(subscr);
+
+	sgsn->cfg.auth_policy = saved_auth_policy;
+	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
+	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
 }
 
 /*
@@ -1232,6 +1291,7 @@ int main(int argc, char **argv)
 	test_gmm_attach_acl();
 	test_gmm_attach_subscr();
 	test_gmm_attach_subscr_fake_auth();
+	test_gmm_attach_subscr_real_auth();
 	test_gmm_reject();
 	test_gmm_cancel();
 	test_gmm_ptmsi_allocation();

@@ -23,7 +23,7 @@
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gsm_subscriber.h>
-
+#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/debug.h>
 
 const struct value_string auth_state_names[] = {
@@ -107,11 +107,12 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx)
 		if (!mmctx->subscr)
 			return mmctx->auth_state;
 
-		if (mmctx->subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING)
+		if (mmctx->subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING_MASK)
 			return mmctx->auth_state;
 
 		if (mmctx->subscr->sgsn_data->authenticate &&
-		    !mmctx->is_authenticated)
+		    (!mmctx->is_authenticated ||
+		     mmctx->subscr->sgsn_data->auth_triplets_updated))
 			return SGSN_AUTH_AUTHENTICATE;
 
 		if (mmctx->subscr->authorized)
@@ -141,20 +142,60 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx)
 	return SGSN_AUTH_REJECTED;
 }
 
+/*
+ * This function is directly called by e.g. the GMM layer. It returns either
+ * after calling sgsn_auth_update directly or after triggering an asynchronous
+ * procedure which will call sgsn_auth_update later on.
+ */
 int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 {
+	struct gsm_subscriber *subscr;
+	struct gsm_auth_tuple *at;
+	int need_update_location;
+	int rc;
+
 	LOGMMCTXP(LOGL_DEBUG, mmctx, "Requesting authorization\n");
 
-	if (sgsn->cfg.auth_policy == SGSN_AUTH_POLICY_REMOTE && !mmctx->subscr) {
-		if (gprs_subscr_request_update(mmctx) >= 0) {
+	if (sgsn->cfg.auth_policy != SGSN_AUTH_POLICY_REMOTE) {
+		sgsn_auth_update(mmctx);
+		return 0;
+	}
+
+	need_update_location =
+		mmctx->subscr == NULL ||
+		mmctx->pending_req == GSM48_MT_GMM_ATTACH_REQ;
+
+	/* This has the side effect of registering the subscr with the mmctx */
+	subscr = gprs_subscr_get_or_create_by_mmctx(mmctx);
+	subscr_put(subscr);
+
+	OSMO_ASSERT(mmctx->subscr != NULL);
+
+	if (mmctx->subscr->sgsn_data->authenticate && !mmctx->is_authenticated) {
+		/* Find next tuple */
+		at = sgsn_auth_get_tuple(mmctx, mmctx->auth_triplet.key_seq);
+
+		if (!at) {
+			/* No valid tuple found, request fresh ones */
+			mmctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 			LOGMMCTXP(LOGL_INFO, mmctx,
-				  "Missing information, requesting subscriber data\n");
-			return 0;
+				  "Requesting authentication tuples\n");
+			rc = gprs_subscr_request_auth_info(mmctx);
+			if (rc >= 0)
+				return 0;
+
+			return rc;
 		}
+
+		mmctx->auth_triplet = *at;
+	} else if (need_update_location) {
+		LOGMMCTXP(LOGL_INFO, mmctx,
+			  "Missing information, requesting subscriber data\n");
+		if (gprs_subscr_request_update_location(mmctx) >= 0)
+			return 0;
 	}
 
 	sgsn_auth_update(mmctx);
-
 	return 0;
 }
 
@@ -162,6 +203,7 @@ void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 {
 	enum sgsn_auth_state auth_state;
 	struct gsm_subscriber *subscr = mmctx->subscr;
+	struct gsm_auth_tuple *at;
 
 	auth_state = sgsn_auth_state(mmctx);
 
@@ -170,11 +212,25 @@ void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 		  get_value_string(sgsn_auth_state_names, auth_state));
 
 	if (auth_state == SGSN_AUTH_UNKNOWN && subscr &&
-	    !(subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING)) {
-		/* Reject requests if gprs_subscr_request_update fails */
+	    !(subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING_MASK)) {
+		/* Reject requests if gprs_subscr_request_update_location fails */
 		LOGMMCTXP(LOGL_ERROR, mmctx,
 			  "Missing information, authorization not possible\n");
 		auth_state = SGSN_AUTH_REJECTED;
+	}
+
+	if (auth_state == SGSN_AUTH_AUTHENTICATE &&
+	    mmctx->auth_triplet.key_seq == GSM_KEY_SEQ_INVAL) {
+		/* The current tuple is not valid, but we are possibly called
+		 * because new auth tuples have been received */
+		at = sgsn_auth_get_tuple(mmctx, mmctx->auth_triplet.key_seq);
+		if (!at) {
+			LOGMMCTXP(LOGL_ERROR, mmctx,
+				  "Missing auth tuples, authorization not possible\n");
+			auth_state = SGSN_AUTH_REJECTED;
+		} else {
+			mmctx->auth_triplet = *at;
+		}
 	}
 
 	if (mmctx->auth_state == auth_state)
@@ -188,6 +244,9 @@ void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 
 	switch (auth_state) {
 	case SGSN_AUTH_AUTHENTICATE:
+		if (subscr)
+			subscr->sgsn_data->auth_triplets_updated = 0;
+
 		gsm0408_gprs_authenticate(mmctx);
 		break;
 	case SGSN_AUTH_ACCEPTED:
