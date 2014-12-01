@@ -10,6 +10,8 @@
 
 #include <osmocom/crypt/gprs_cipher.h>
 
+#include <openbsc/gsm_data.h>
+
 #define GSM_IMSI_LENGTH 17
 #define GSM_IMEI_LENGTH 17
 #define GSM_EXTENSION_LENGTH 15
@@ -84,7 +86,8 @@ struct sgsn_mm_ctx {
 	uint32_t		sac_age;/* Iu: Service Area Code age */
 	/* VLR number */
 	uint32_t		new_sgsn_addr;
-	/* Authentication Triplets */
+	/* Authentication Triplet */
+	struct gsm_auth_tuple	auth_triplet;
 	/* Kc */
 	/* Iu: CK, IK, KSI */
 	/* CKSN */

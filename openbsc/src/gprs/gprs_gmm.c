@@ -571,9 +571,6 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 		m_cksn[0] = (GSM48_IE_GMM_CIPH_CKSN << 4) | (key_seq & 0x07);
 	}
 
-	/* Start T3360 */
-	mmctx_timer_start(mm, 3360, GSM0408_T3360_SECS);
-
 	/* FIXME: make sure we don't send any other messages to the MS */
 
 	return gsm48_gmm_sendmsg(msg, 1, mm);
@@ -604,7 +601,8 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	struct gsm48_auth_ciph_resp *acr = (struct gsm48_auth_ciph_resp *)gh->data;
 	struct tlv_parsed tp;
 
-	/* FIXME: Stop T3360 */
+	/* Stop T3360 */
+	mmctx_timer_stop(ctx, 3360);
 
 	tlv_parse(&tp, &gsm48_gmm_att_tlvdef, acr->data,
 			(msg->data + msg->len) - acr->data, 0, 0);
@@ -1332,6 +1330,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 static void mmctx_timer_cb(void *_mm)
 {
 	struct sgsn_mm_ctx *mm = _mm;
+	struct gsm_auth_tuple *at;
 
 	mm->num_T_exp++;
 
@@ -1367,7 +1366,16 @@ static void mmctx_timer_cb(void *_mm)
 			mm_ctx_cleanup_free(mm, "T3360");
 			break;
 		}
-		/* FIXME: re-transmit the respective msg and re-start timer */
+		/* Re-transmit the respective msg and re-start timer */
+		if (mm->auth_triplet.key_seq == GSM_KEY_SEQ_INVAL) {
+			LOGMMCTXP(LOGL_ERROR, mm,
+				  "timeout: invalid auth triplet reference\n");
+			mm_ctx_cleanup_free(mm, "T3360");
+			break;
+		}
+		at = &mm->auth_triplet;
+
+		gsm48_tx_gmm_auth_ciph_req(mm, at->rand, at->key_seq, GPRS_ALGO_GEA0);
 		osmo_timer_schedule(&mm->timer, GSM0408_T3360_SECS, 0);
 		break;
 	case 3370:	/* waiting for IDENTITY RESPONSE */
