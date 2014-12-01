@@ -600,6 +600,16 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct gsm48_auth_ciph_resp *acr = (struct gsm48_auth_ciph_resp *)gh->data;
 	struct tlv_parsed tp;
+	struct gsm_auth_tuple *at;
+	int rc;
+
+	LOGMMCTXP(LOGL_INFO, ctx, "-> GPRS AUTH AND CIPH RESPONSE\n");
+
+	if (ctx->auth_triplet.key_seq == GSM_KEY_SEQ_INVAL) {
+		LOGMMCTXP(LOGL_NOTICE, ctx,
+			  "Unexpected Auth & Ciph Response (ignored)\n");
+		return 0;
+	}
 
 	/* Stop T3360 */
 	mmctx_timer_stop(ctx, 3360);
@@ -611,10 +621,30 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 
 	if (!TLVP_PRESENT(&tp, GSM48_IE_GMM_AUTH_SRES) ||
 	    !TLVP_PRESENT(&tp, GSM48_IE_GMM_IMEISV)) {
-		/* FIXME: missing mandatory IE */
+		/* TODO: missing mandatory IE, return STATUS or REJ? */
+		LOGMMCTXP(LOGL_ERROR, ctx, "Missing mandantory IE\n");
+		return -EINVAL;
 	}
 
-	/* FIXME: compare SRES with what we expected */
+	/* Compare SRES with what we expected */
+	LOGMMCTXP(LOGL_DEBUG, ctx, "checking received auth info, SRES = %s\n",
+		  osmo_hexdump(TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES),
+			       TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_SRES)));
+
+	at = &ctx->auth_triplet;
+
+	if (TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_SRES) != sizeof(at->sres) ||
+	    memcmp(TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES), at->sres,
+		   sizeof(at->sres)) != 0) {
+
+		LOGMMCTXP(LOGL_NOTICE, ctx, "Received SRES doesn't match\n");
+		rc = gsm48_tx_gmm_auth_ciph_rej(ctx);
+		mm_ctx_cleanup_free(ctx, "GPRS AUTH AND CIPH REJECT");
+		return rc;
+	}
+
+	ctx->is_authenticated = 1;
+
 	/* FIXME: enable LLC cipheirng */
 	return 0;
 }

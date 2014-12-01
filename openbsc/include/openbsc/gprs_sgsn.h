@@ -130,6 +130,7 @@ struct sgsn_mm_ctx {
 	 * whether one of them can be dropped. */
 
 	enum sgsn_auth_state	auth_state;
+	int			is_authenticated;
 
 	struct gsm_subscriber   *subscr;
 };
