@@ -537,7 +537,6 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	return gsm48_gmm_sendmsg(msg, 1, mm);
 }
 
-#if 0
 /* Section 9.4.9: Authentication and Ciphering Request */
 static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 				      uint8_t key_seq, uint8_t algo)
@@ -568,9 +567,8 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 		m_rand[0] = GSM48_IE_GMM_AUTH_RAND;
 		memcpy(m_rand+1, rand, 16);
 
-		m_cksn = msgb_put(msg, 1+1);
-		m_cksn[0] = GSM48_IE_GMM_CIPH_CKSN;
-		m_cksn[1] = key_seq;
+		m_cksn = msgb_put(msg, 1);
+		m_cksn[0] = (GSM48_IE_GMM_CIPH_CKSN << 4) | (key_seq & 0x07);
 	}
 
 	/* Start T3360 */
@@ -597,7 +595,6 @@ static int gsm48_tx_gmm_auth_ciph_rej(struct sgsn_mm_ctx *mm)
 
 	return gsm48_gmm_sendmsg(msg, 0, mm);
 }
-#endif
 
 /* Section 9.4.10: Authentication and Ciphering Response */
 static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
