@@ -33,11 +33,12 @@ void *tall_trans_ctx;
 
 void _gsm48_cc_trans_free(struct gsm_trans *trans);
 
-struct gsm_trans *trans_find_by_id(struct gsm_subscriber *subscr,
+struct gsm_trans *trans_find_by_id(struct gsm_subscriber_connection *conn,
 				   uint8_t proto, uint8_t trans_id)
 {
 	struct gsm_trans *trans;
-	struct gsm_network *net = subscr->net;
+	struct gsm_network *net = conn->bts->network;
+	struct gsm_subscriber *subscr = conn->subscr;
 
 	llist_for_each_entry(trans, &net->trans_list, entry) {
 		if (trans->subscr == subscr &&
@@ -121,10 +122,9 @@ void trans_free(struct gsm_trans *trans)
 
 /* allocate an unused transaction ID for the given subscriber
  * in the given protocol using the ti_flag specified */
-int trans_assign_trans_id(struct gsm_subscriber *subscr,
+int trans_assign_trans_id(struct gsm_network *net, struct gsm_subscriber *subscr,
 			  uint8_t protocol, uint8_t ti_flag)
 {
-	struct gsm_network *net = subscr->net;
 	struct gsm_trans *trans;
 	unsigned int used_tid_bitmask = 0;
 	int i, j, h;

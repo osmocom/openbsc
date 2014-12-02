@@ -1924,7 +1924,8 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	}
 	
 	/* Get free transaction_id */
-	trans_id = trans_assign_trans_id(trans->subscr, GSM48_PDISC_CC, 0);
+	trans_id = trans_assign_trans_id(trans->net, trans->subscr,
+					 GSM48_PDISC_CC, 0);
 	if (trans_id < 0) {
 		/* no free transaction ID */
 		rc = mncc_release_ind(trans->net, trans, trans->callref,
@@ -3240,7 +3241,7 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 	}
 
 	/* Find transaction */
-	trans = trans_find_by_id(conn->subscr, GSM48_PDISC_CC, transaction_id);
+	trans = trans_find_by_id(conn, GSM48_PDISC_CC, transaction_id);
 
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 		"Received '%s' from MS in state %d (%s)\n",

@@ -749,8 +749,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		/* FIXME: send some error message */
 
 	DEBUGP(DLSMS, "receiving data (trans_id=%x)\n", transaction_id);
-	trans = trans_find_by_id(conn->subscr, GSM48_PDISC_SMS,
-				 transaction_id);
+	trans = trans_find_by_id(conn, GSM48_PDISC_SMS, transaction_id);
 
 	/*
 	 * A transaction we created but don't know about?
@@ -795,8 +794,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 			if (i == transaction_id)
 				continue;
 
-			ptrans = trans_find_by_id(conn->subscr,
-			                          GSM48_PDISC_SMS, i);
+			ptrans = trans_find_by_id(conn, GSM48_PDISC_SMS, i);
 			if (!ptrans)
 				continue;
 
@@ -827,7 +825,8 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	int rc;
 
 	transaction_id =
-		trans_assign_trans_id(conn->subscr, GSM48_PDISC_SMS, 0);
+		trans_assign_trans_id(conn->bts->network, conn->subscr,
+				      GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DLSMS, LOGL_ERROR, "No available transaction ids\n");
 		send_signal(S_SMS_UNKNOWN_ERROR, NULL, sms, 0);
