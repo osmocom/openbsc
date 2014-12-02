@@ -20,6 +20,7 @@
 
 struct vty;
 struct sgsn_mm_ctx;
+struct sgsn_subscriber_data;
 
 struct gsm_subscriber_group {
 	struct gsm_network *net;
@@ -69,7 +70,7 @@ struct gsm_subscriber {
 	struct llist_head requests;
 
 	/* GPRS/SGSN related fields */
-	struct sgsn_mm_ctx *mm;
+	struct sgsn_subscriber_data *sgsn_data;
 };
 
 enum gsm_subscriber_field {

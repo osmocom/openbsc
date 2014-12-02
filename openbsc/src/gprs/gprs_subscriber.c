@@ -33,6 +33,15 @@ void gprs_subscr_init(struct sgsn_instance *sgi)
 {
 }
 
+static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
+{
+	struct sgsn_subscriber_data *sdata;
+
+	sdata = talloc_zero(ctx, struct sgsn_subscriber_data);
+
+	return sdata;
+}
+
 struct gsm_subscriber *gprs_subscr_get_or_create(const char *imsi)
 {
 	struct gsm_subscriber *subscr;
@@ -40,6 +49,9 @@ struct gsm_subscriber *gprs_subscr_get_or_create(const char *imsi)
 	subscr = subscr_get_or_create(NULL, imsi);
 	if (!subscr)
 		return NULL;
+
+	if (!subscr->sgsn_data)
+		subscr->sgsn_data = sgsn_subscriber_data_alloc(subscr);
 
 	subscr->keep_in_ram = 1;
 
@@ -53,10 +65,10 @@ struct gsm_subscriber *gprs_subscr_get_by_imsi(const char *imsi)
 
 void gprs_subscr_delete(struct gsm_subscriber *subscr)
 {
-	if (subscr->mm) {
-		subscr_put(subscr->mm->subscr);
-		subscr->mm->subscr = NULL;
-		subscr->mm = NULL;
+	if (subscr->sgsn_data->mm) {
+		subscr_put(subscr->sgsn_data->mm->subscr);
+		subscr->sgsn_data->mm->subscr = NULL;
+		subscr->sgsn_data->mm = NULL;
 	}
 
 	if ((subscr->flags & GPRS_SUBSCRIBER_CANCELLED) ||
@@ -80,19 +92,19 @@ int gprs_subscr_query(struct gsm_subscriber *subscr)
 {
 	/* TODO: Implement remote query to MSC, ... */
 
-	LOGMMCTXP(LOGL_INFO, subscr->mm,
+	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
 		  "subscriber data is not available (remote query NYI)\n");
 	return -ENOTSUP;
 }
 
 void gprs_subscr_update(struct gsm_subscriber *subscr)
 {
-	LOGMMCTXP(LOGL_DEBUG, subscr->mm, "Updating subscriber data\n");
+	LOGMMCTXP(LOGL_DEBUG, subscr->sgsn_data->mm, "Updating subscriber data\n");
 
 	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_PENDING;
 	subscr->flags &= ~GSM_SUBSCRIBER_FIRST_CONTACT;
 
-	sgsn_update_subscriber_data(subscr->mm, subscr);
+	sgsn_update_subscriber_data(subscr->sgsn_data->mm, subscr);
 }
 
 int gprs_subscr_request_update(struct sgsn_mm_ctx *mmctx)
@@ -130,7 +142,7 @@ int gprs_subscr_request_update(struct sgsn_mm_ctx *mmctx)
 	if (need_update) {
 		subscr->flags |= GPRS_SUBSCRIBER_UPDATE_PENDING;
 		if (!mmctx->subscr) {
-			subscr->mm = mmctx;
+			subscr->sgsn_data->mm = mmctx;
 			mmctx->subscr = subscr_get(subscr);
 		}
 

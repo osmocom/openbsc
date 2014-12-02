@@ -191,7 +191,7 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 	if (mm->subscr) {
 		struct gsm_subscriber *subscr =  mm->subscr;
 		mm->subscr = NULL;
-		subscr->mm = NULL;
+		subscr->sgsn_data->mm = NULL;
 		gprs_subscr_delete(subscr);
 	}
 
@@ -477,9 +477,9 @@ void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
 
 	LOGMMCTXP(LOGL_INFO, mmctx, "Subscriber data update");
 
-	if (!subscr->mm && !mmctx->subscr) {
+	if (!subscr->sgsn_data->mm && !mmctx->subscr) {
 		mmctx->subscr =	subscr_get(subscr);
-		mmctx->subscr->mm = mmctx;
+		mmctx->subscr->sgsn_data->mm = mmctx;
 	}
 
 	sgsn_auth_update(mmctx);

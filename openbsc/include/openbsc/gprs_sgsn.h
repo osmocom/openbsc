@@ -271,6 +271,7 @@ struct imsi_acl_entry {
 };
 
 struct sgsn_subscriber_data {
+	struct sgsn_mm_ctx *mm;
 	enum sgsn_auth_state auth_state;
 };
 
