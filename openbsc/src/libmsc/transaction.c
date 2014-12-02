@@ -65,8 +65,9 @@ struct gsm_trans *trans_alloc(struct gsm_subscriber *subscr,
 			      uint32_t callref)
 {
 	struct gsm_trans *trans;
+	struct gsm_network *net = subscr->net;
 
-	DEBUGP(DCC, "subscr=%p, subscr->net=%p\n", subscr, subscr->net);
+	DEBUGP(DCC, "subscr=%p, net=%p\n", subscr, net);
 
 	trans = talloc_zero(tall_trans_ctx, struct gsm_trans);
 	if (!trans)
@@ -79,7 +80,8 @@ struct gsm_trans *trans_alloc(struct gsm_subscriber *subscr,
 	trans->transaction_id = trans_id;
 	trans->callref = callref;
 
-	llist_add_tail(&trans->entry, &subscr->net->trans_list);
+	trans->net = net;
+	llist_add_tail(&trans->entry, &net->trans_list);
 
 	return trans;
 }

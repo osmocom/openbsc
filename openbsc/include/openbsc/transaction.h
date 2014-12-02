@@ -14,6 +14,9 @@ struct gsm_trans {
 	/* Entry in list of all transactions */
 	struct llist_head entry;
 
+	/* Back pointer to the netweork struct */
+	struct gsm_network *net;
+
 	/* The protocol within which we live */
 	uint8_t protocol;
 
