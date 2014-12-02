@@ -765,7 +765,8 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 
 	if (!trans) {
 		DEBUGP(DLSMS, " -> (new transaction)\n");
-		trans = trans_alloc(conn->subscr, GSM48_PDISC_SMS,
+		trans = trans_alloc(conn->bts->network, conn->subscr,
+				    GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {
 			DEBUGP(DLSMS, " -> No memory for trans\n");
@@ -838,7 +839,8 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	DEBUGP(DLSMS, "send_sms_lchan()\n");
 
 	/* FIXME: allocate transaction with message reference */
-	trans = trans_alloc(conn->subscr, GSM48_PDISC_SMS,
+	trans = trans_alloc(conn->bts->network, conn->subscr,
+			    GSM48_PDISC_SMS,
 			    transaction_id, new_callref++);
 	if (!trans) {
 		LOGP(DLSMS, LOGL_ERROR, "No memory for trans\n");

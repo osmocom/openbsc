@@ -66,7 +66,8 @@ struct gsm_trans *trans_find_by_id(struct gsm_subscriber_connection *conn,
 struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 					uint32_t callref);
 
-struct gsm_trans *trans_alloc(struct gsm_subscriber *subscr,
+struct gsm_trans *trans_alloc(struct gsm_network *net,
+			      struct gsm_subscriber *subscr,
 			      uint8_t protocol, uint8_t trans_id,
 			      uint32_t callref);
 void trans_free(struct gsm_trans *trans);

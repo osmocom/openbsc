@@ -3078,7 +3078,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 						GSM48_CC_CAUSE_DEST_OOO);
 		}
 		/* Create transaction */
-		trans = trans_alloc(subscr, GSM48_PDISC_CC, 0xff, data->callref);
+		trans = trans_alloc(net, subscr, GSM48_PDISC_CC, 0xff, data->callref);
 		if (!trans) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			subscr_put(subscr);
@@ -3262,7 +3262,8 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 		DEBUGP(DCC, "Unknown transaction ID %x, "
 			"creating new trans.\n", transaction_id);
 		/* Create transaction */
-		trans = trans_alloc(conn->subscr, GSM48_PDISC_CC,
+		trans = trans_alloc(conn->bts->network, conn->subscr,
+				    GSM48_PDISC_CC,
 				    transaction_id, new_callref++);
 		if (!trans) {
 			DEBUGP(DCC, "No memory for trans.\n");

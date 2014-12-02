@@ -61,12 +61,12 @@ struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 	return NULL;
 }
 
-struct gsm_trans *trans_alloc(struct gsm_subscriber *subscr,
+struct gsm_trans *trans_alloc(struct gsm_network *net,
+			      struct gsm_subscriber *subscr,
 			      uint8_t protocol, uint8_t trans_id,
 			      uint32_t callref)
 {
 	struct gsm_trans *trans;
-	struct gsm_network *net = subscr->group->net;
 
 	DEBUGP(DCC, "subscr=%p, net=%p\n", subscr, net);
 
