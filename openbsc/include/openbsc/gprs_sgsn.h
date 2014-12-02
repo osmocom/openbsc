@@ -60,6 +60,7 @@ enum gprs_t3350_mode {
 /* Authorization/ACL handling */
 enum sgsn_auth_state {
 	SGSN_AUTH_UNKNOWN,
+	SGSN_AUTH_AUTHENTICATE,
 	SGSN_AUTH_ACCEPTED,
 	SGSN_AUTH_REJECTED
 };

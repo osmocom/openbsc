@@ -209,6 +209,8 @@ static const struct tlv_definition gsm48_sm_att_tlvdef = {
 	},
 };
 
+static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx);
+
 /* Our implementation, should be kept in SGSN */
 
 static void mmctx_timer_cb(void *_mm);
@@ -646,7 +648,9 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	ctx->is_authenticated = 1;
 
 	/* FIXME: enable LLC cipheirng */
-	return 0;
+
+	/* Check if we can let the mobile station enter */
+	return gsm48_gmm_authorize(ctx);
 }
 
 /* Check if we can already authorize a subscriber */
@@ -676,6 +680,21 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		/* Note that gsm48_gmm_authorize can be called recursively via
 		 * sgsn_auth_request iff ctx->auth_info changes to AUTH_ACCEPTED
 		 */
+		return 0;
+	}
+
+	if (ctx->auth_state == SGSN_AUTH_AUTHENTICATE && !ctx->is_authenticated) {
+		struct gsm_auth_tuple *at = &ctx->auth_triplet;
+
+		mmctx_timer_start(ctx, 3360, GSM0408_T3360_SECS);
+		return gsm48_tx_gmm_auth_ciph_req(ctx, at->rand, at->key_seq,
+						  GPRS_ALGO_GEA0);
+	}
+
+	if (ctx->auth_state == SGSN_AUTH_AUTHENTICATE && ctx->is_authenticated &&
+	    ctx->auth_triplet.key_seq != GSM_KEY_SEQ_INVAL) {
+		/* Check again for authorization */
+		sgsn_auth_request(ctx);
 		return 0;
 	}
 
@@ -710,6 +729,13 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	}
 
 	return 0;
+}
+
+void gsm0408_gprs_authenticate(struct sgsn_mm_ctx *ctx)
+{
+	ctx->is_authenticated = 0;
+
+	gsm48_gmm_authorize(ctx);
 }
 
 void gsm0408_gprs_access_granted(struct sgsn_mm_ctx *ctx)
