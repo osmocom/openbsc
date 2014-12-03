@@ -192,6 +192,7 @@ AC_OUTPUT(
     tests/smpp/Makefile
     tests/trau/Makefile
     tests/sgsn/Makefile
+    tests/subscr/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)
