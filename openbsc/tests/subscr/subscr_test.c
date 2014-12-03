@@ -83,6 +83,22 @@ static void test_subscr(void)
 	subscr_purge_inactive(&dummy_sgrp);
 
 	OSMO_ASSERT(llist_empty(&active_subscribers));
+
+	/* Test force_no_keep */
+
+	dummy_sgrp.keep_subscr = 0;
+
+	subscr = subscr_get_or_create(&dummy_sgrp, imsi);
+	OSMO_ASSERT(subscr);
+	subscr->keep_in_ram = 1;
+
+	OSMO_ASSERT(!llist_empty(&active_subscribers));
+	OSMO_ASSERT(subscr->use_count == 1);
+
+	subscr->keep_in_ram = 0;
+
+	subscr_put(subscr);
+	OSMO_ASSERT(llist_empty(&active_subscribers));
 }
 
 int main()

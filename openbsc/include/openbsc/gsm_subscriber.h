@@ -49,6 +49,9 @@ struct gsm_subscriber {
 	int authorized;
 	time_t expire_lu;
 
+	/* Don't delete subscribers even if group->keep_subscr is not set */
+	int keep_in_ram;
+
 	/* Temporary field which is not stored in the DB/HLR */
 	uint32_t flags;
 
