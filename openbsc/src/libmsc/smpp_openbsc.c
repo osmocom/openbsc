@@ -55,11 +55,11 @@ static struct gsm_subscriber *subscr_by_dst(struct gsm_network *net,
 
 	switch (npi) {
 	case NPI_Land_Mobile_E212:
-		subscr = subscr_get_by_imsi(net, addr);
+		subscr = subscr_get_by_imsi(net->subscr_group, addr);
 		break;
 	case NPI_ISDN_E163_E164:
 	case NPI_Private:
-		subscr = subscr_get_by_extension(net, addr);
+		subscr = subscr_get_by_extension(net->subscr_group, addr);
 		break;
 	default:
 		LOGP(DSMPP, LOGL_NOTICE, "Unsupported NPI: %u\n", npi);

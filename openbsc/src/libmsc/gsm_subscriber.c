@@ -78,12 +78,12 @@ enum {
 	REQ_STATE_DISPATCHED,
 };
 
-static struct gsm_subscriber *get_subscriber(struct gsm_network *net,
+static struct gsm_subscriber *get_subscriber(struct gsm_subscriber_group *sgrp,
 						int type, const char *ident)
 {
 	struct gsm_subscriber *subscr = db_get_subscriber(type, ident);
 	if (subscr)
-		subscr->net = net;
+		subscr->group = sgrp;
 	return subscr;
 }
 
@@ -199,12 +199,13 @@ static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 {
 	struct subscr_request *request;
 	int rc;
+	struct gsm_network *net = subscr->group->net;
 
 	assert(!llist_empty(&subscr->requests));
 
 	request = (struct subscr_request *)subscr->requests.next;
 	request->state = REQ_STATE_PAGED;
-	rc = paging_request(subscr->net, subscr, request->channel_type,
+	rc = paging_request(net, subscr, request->channel_type,
 			    subscr_paging_cb, subscr);
 
 	/* paging failed, quit now */
@@ -275,16 +276,16 @@ void subscr_put_channel(struct gsm_subscriber *subscr)
 		subscr_send_paging_request(subscr);
 }
 
-struct gsm_subscriber *subscr_create_subscriber(struct gsm_network *net,
+struct gsm_subscriber *subscr_create_subscriber(struct gsm_subscriber_group *sgrp,
 					const char *imsi)
 {
 	struct gsm_subscriber *subscr = db_create_subscriber(imsi);
 	if (subscr)
-		subscr->net = net;
+		subscr->group = sgrp;
 	return subscr;
 }
 
-struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_subscriber_group *sgrp,
 					  uint32_t tmsi)
 {
 	char tmsi_string[14];
@@ -297,10 +298,10 @@ struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
 	}
 
 	sprintf(tmsi_string, "%u", tmsi);
-	return get_subscriber(net, GSM_SUBSCRIBER_TMSI, tmsi_string);
+	return get_subscriber(sgrp, GSM_SUBSCRIBER_TMSI, tmsi_string);
 }
 
-struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_by_imsi(struct gsm_subscriber_group *sgrp,
 					  const char *imsi)
 {
 	struct gsm_subscriber *subscr;
@@ -310,10 +311,10 @@ struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
 			return subscr_get(subscr);
 	}
 
-	return get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi);
+	return get_subscriber(sgrp, GSM_SUBSCRIBER_IMSI, imsi);
 }
 
-struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_by_extension(struct gsm_subscriber_group *sgrp,
 					       const char *ext)
 {
 	struct gsm_subscriber *subscr;
@@ -323,10 +324,10 @@ struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 			return subscr_get(subscr);
 	}
 
-	return get_subscriber(net, GSM_SUBSCRIBER_EXTENSION, ext);
+	return get_subscriber(sgrp, GSM_SUBSCRIBER_EXTENSION, ext);
 }
 
-struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_by_id(struct gsm_subscriber_group *sgrp,
 					unsigned long long id)
 {
 	struct gsm_subscriber *subscr;
@@ -338,7 +339,7 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
 			return subscr_get(subscr);
 	}
 
-	return get_subscriber(net, GSM_SUBSCRIBER_ID, buf);
+	return get_subscriber(sgrp, GSM_SUBSCRIBER_ID, buf);
 }
 
 int subscr_update_expire_lu(struct gsm_subscriber *s, struct gsm_bts *bts)
@@ -370,7 +371,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 	/* FIXME: Migrate pending requests from one BSC to another */
 	switch (reason) {
 	case GSM_SUBSCRIBER_UPDATE_ATTACHED:
-		s->net = bts->network;
+		s->group = bts->network->subscr_group;
 		/* Indicate "attached to LAC" */
 		s->lac = bts->location_area_code;
 
@@ -412,7 +413,7 @@ void subscr_update_from_db(struct gsm_subscriber *sub)
 static void subscr_expire_callback(void *data, long long unsigned int id)
 {
 	struct gsm_network *net = data;
-	struct gsm_subscriber *s = subscr_get_by_id(net, id);
+	struct gsm_subscriber *s = subscr_get_by_id(net->subscr_group, id);
 	struct gsm_subscriber_connection *conn = connection_for_subscr(s);
 
 	/*
@@ -438,9 +439,9 @@ static void subscr_expire_callback(void *data, long long unsigned int id)
 	subscr_put(s);
 }
 
-void subscr_expire(struct gsm_network *net)
+void subscr_expire(struct gsm_subscriber_group *sgrp)
 {
-	db_subscriber_expire(net, subscr_expire_callback);
+	db_subscriber_expire(sgrp->net, subscr_expire_callback);
 }
 
 int subscr_pending_requests(struct gsm_subscriber *sub)

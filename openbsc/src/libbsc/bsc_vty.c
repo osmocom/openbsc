@@ -709,7 +709,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
 	vty_out(vty, " dtx-used %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
 	vty_out(vty, " subscriber-keep-in-ram %d%s",
-		gsmnet->keep_subscr, VTY_NEWLINE);
+		gsmnet->subscr_group->keep_subscr, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1510,7 +1510,7 @@ DEFUN(cfg_net_subscr_keep,
       "Delete unused subscribers\n" "Keep unused subscribers\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->keep_subscr = atoi(argv[0]);
+	gsmnet->subscr_group->keep_subscr = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 

@@ -91,18 +91,18 @@ struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr)
 	subscr->use_count--;
 	DEBUGP(DREF, "subscr %s usage decreased usage to: %d\n",
 			subscr->extension, subscr->use_count);
-	if (subscr->use_count <= 0 && !subscr->net->keep_subscr)
+	if (subscr->use_count <= 0 && !subscr->group->keep_subscr)
 		subscr_free(subscr);
 	return NULL;
 }
 
-struct gsm_subscriber *subscr_get_or_create(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_or_create(struct gsm_subscriber_group *sgrp,
 					    const char *imsi)
 {
 	struct gsm_subscriber *subscr;
 
 	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
-		if (strcmp(subscr->imsi, imsi) == 0 && subscr->net == net)
+		if (strcmp(subscr->imsi, imsi) == 0 && subscr->group == sgrp)
 			return subscr_get(subscr);
 	}
 
@@ -112,41 +112,43 @@ struct gsm_subscriber *subscr_get_or_create(struct gsm_network *net,
 
 	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH);
 	subscr->imsi[GSM_IMSI_LENGTH - 1] = '\0';
-	subscr->net = net;
+	subscr->group = sgrp;
 	return subscr;
 }
 
-struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_network *net, uint32_t tmsi)
+struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_subscriber_group *sgrp,
+					     uint32_t tmsi)
 {
 	struct gsm_subscriber *subscr;
 
 	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
-		if (subscr->tmsi == tmsi && subscr->net == net)
+		if (subscr->tmsi == tmsi && subscr->group == sgrp)
 			return subscr_get(subscr);
 	}
 
 	return NULL;
 }
 
-struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net, const char *imsi)
+struct gsm_subscriber *subscr_active_by_imsi(struct gsm_subscriber_group *sgrp,
+					     const char *imsi)
 {
 	struct gsm_subscriber *subscr;
 
 	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
-		if (strcmp(subscr->imsi, imsi) == 0 && subscr->net == net)
+		if (strcmp(subscr->imsi, imsi) == 0 && subscr->group == sgrp)
 			return subscr_get(subscr);
 	}
 
 	return NULL;
 }
 
-int subscr_purge_inactive(struct gsm_network *net)
+int subscr_purge_inactive(struct gsm_subscriber_group *sgrp)
 {
 	struct gsm_subscriber *subscr, *tmp;
 	int purged = 0;
 
 	llist_for_each_entry_safe(subscr, tmp, subscr_bsc_active_subscribers(), entry) {
-		if (subscr->net == net && subscr->use_count <= 0) {
+		if (subscr->group == sgrp && subscr->use_count <= 0) {
 			subscr_free(subscr);
 			purged += 1;
 		}

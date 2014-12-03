@@ -392,7 +392,8 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	send_signal(0, NULL, gsms, 0);
 
 	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dst.addr);
+	gsms->receiver = subscr_get_by_extension(conn->bts->network->subscr_group,
+						 gsms->dst.addr);
 	if (!gsms->receiver) {
 #ifdef BUILD_SMPP
 		rc = smpp_try_deliver(gsms, conn);

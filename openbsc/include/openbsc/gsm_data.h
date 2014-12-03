@@ -14,6 +14,7 @@
 #define OBSC_NM_W_ACK_CB(__msgb) (__msgb)->cb[3]
 
 struct mncc_sock_state;
+struct gsm_subscriber_group;
 
 #define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
 
@@ -277,7 +278,7 @@ struct gsm_network {
 	struct osmo_bsc_data *bsc_data;
 
 	/* subscriber related features */
-	int keep_subscr;
+	struct gsm_subscriber_group *subscr_group;
 	struct gsm_sms_queue *sms_queue;
 
 	/* control interface */

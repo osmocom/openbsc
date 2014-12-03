@@ -66,7 +66,7 @@ struct gsm_trans *trans_alloc(struct gsm_subscriber *subscr,
 			      uint32_t callref)
 {
 	struct gsm_trans *trans;
-	struct gsm_network *net = subscr->net;
+	struct gsm_network *net = subscr->group->net;
 
 	DEBUGP(DCC, "subscr=%p, net=%p\n", subscr, net);
 

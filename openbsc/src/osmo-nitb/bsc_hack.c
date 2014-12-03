@@ -228,7 +228,7 @@ static void db_sync_timer_cb(void *data)
 
 static void subscr_expire_cb(void *data)
 {
-	subscr_expire(bsc_gsmnet);
+	subscr_expire(bsc_gsmnet->subscr_group);
 	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
 }
 

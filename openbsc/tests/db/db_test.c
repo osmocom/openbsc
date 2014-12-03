@@ -31,9 +31,10 @@
 #include <inttypes.h>
 
 static struct gsm_network dummy_net;
+static struct gsm_subscriber_group dummy_sgrp;
 
 #define SUBSCR_PUT(sub) \
-	sub->net = &dummy_net;	\
+	sub->group = &dummy_sgrp;	\
 	subscr_put(sub);
 
 #define COMPARE(original, copy) \
@@ -70,7 +71,7 @@ static void test_sms(void)
 	struct gsm_subscriber *subscr;
 	subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, "9993245423445");
 	OSMO_ASSERT(subscr);
-	subscr->net = &dummy_net;
+	subscr->group = &dummy_sgrp;
 
 	sms = sms_alloc();
 	sms->receiver = subscr_get(subscr);
@@ -130,7 +131,7 @@ static void test_sms_migrate(void)
 		0xd0, 0xf1, 0xfd, 0x06, 0x00 };
 
 	rcv_subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, "901010000001111");
-	rcv_subscr->net = &dummy_net;
+	rcv_subscr->group = &dummy_sgrp;
 
 	sms = db_sms_get(&dummy_net, 1);
 	OSMO_ASSERT(sms->id == 1);
@@ -158,6 +159,9 @@ int main()
 	printf("Testing subscriber database code.\n");
 	osmo_init_logging(&log_info);
 	log_set_print_filename(osmo_stderr_target, 0);
+
+	dummy_net.subscr_group = &dummy_sgrp;
+	dummy_sgrp.net         = &dummy_net;
 
 	if (db_init("hlr.sqlite3")) {
 		printf("DB: Failed to init database. Please check the option settings.\n");

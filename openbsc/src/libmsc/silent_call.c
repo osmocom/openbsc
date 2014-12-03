@@ -120,7 +120,7 @@ int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
 {
 	int rc;
 
-	rc = paging_request(subscr->net, subscr, type,
+	rc = paging_request(subscr->group->net, subscr, type,
 			    paging_cb_silent, data);
 	return rc;
 }

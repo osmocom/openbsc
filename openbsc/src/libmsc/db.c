@@ -1470,7 +1470,7 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 		strncpy(sms->dst.addr, daddr, sizeof(sms->dst.addr));
 		sms->dst.addr[sizeof(sms->dst.addr)-1] = '\0';
 	}
-	sms->receiver = subscr_get_by_extension(net, sms->dst.addr);
+	sms->receiver = subscr_get_by_extension(net->subscr_group, sms->dst.addr);
 
 	sms->src.npi = dbi_result_get_ulonglong(result, "src_npi");
 	sms->src.ton = dbi_result_get_ulonglong(result, "src_ton");
@@ -1597,7 +1597,7 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 		return NULL;
 	}
 
-	sms = sms_from_result(subscr->net, result);
+	sms = sms_from_result(subscr->group->net, result);
 
 	dbi_result_free(result);
 

@@ -20,6 +20,12 @@
 struct vty;
 struct sgsn_mm_ctx;
 
+struct gsm_subscriber_group {
+	struct gsm_network *net;
+
+	int keep_subscr;
+};
+
 struct gsm_equipment {
 	long long unsigned int id;
 	char imei[GSM_IMEI_LENGTH];
@@ -33,7 +39,7 @@ struct gsm_equipment {
 };
 
 struct gsm_subscriber {
-	struct gsm_network *net;
+	struct gsm_subscriber_group *group;
 	long long unsigned int id;
 	char imsi[GSM_IMSI_LENGTH];
 	uint32_t tmsi;
@@ -77,25 +83,25 @@ enum gsm_subscriber_update_reason {
 
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
-struct gsm_subscriber *subscr_create_subscriber(struct gsm_network *net,
+struct gsm_subscriber *subscr_create_subscriber(struct gsm_subscriber_group *sgrp,
 						const char *imsi);
-struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_subscriber_group *sgrp,
 					  uint32_t tmsi);
-struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_by_imsi(struct gsm_subscriber_group *sgrp,
 					  const char *imsi);
-struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_by_extension(struct gsm_subscriber_group *sgrp,
 					       const char *ext);
-struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_by_id(struct gsm_subscriber_group *sgrp,
 					unsigned long long id);
-struct gsm_subscriber *subscr_get_or_create(struct gsm_network *net,
+struct gsm_subscriber *subscr_get_or_create(struct gsm_subscriber_group *sgrp,
 					const char *imsi);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
 void subscr_put_channel(struct gsm_subscriber *subscr);
 void subscr_get_channel(struct gsm_subscriber *subscr,
                         int type, gsm_cbfn *cbfn, void *param);
-struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_network *net,
+struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_subscriber_group *sgrp,
 					     uint32_t tmsi);
-struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net,
+struct gsm_subscriber *subscr_active_by_imsi(struct gsm_subscriber_group *sgrp,
 					     const char *imsi);
 
 int subscr_pending_requests(struct gsm_subscriber *subscr);
@@ -105,9 +111,9 @@ int subscr_pending_kick(struct gsm_subscriber *subscr);
 
 char *subscr_name(struct gsm_subscriber *subscr);
 
-int subscr_purge_inactive(struct gsm_network *net);
+int subscr_purge_inactive(struct gsm_subscriber_group *sgrp);
 void subscr_update_from_db(struct gsm_subscriber *subscr);
-void subscr_expire(struct gsm_network *net);
+void subscr_expire(struct gsm_subscriber_group *sgrp);
 int subscr_update_expire_lu(struct gsm_subscriber *subscr, struct gsm_bts *bts);
 
 /* internal */

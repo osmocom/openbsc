@@ -19,6 +19,7 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_msc_data.h>
+#include <openbsc/gsm_subscriber.h>
 
 struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, struct msgb *))
@@ -35,10 +36,17 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 		return NULL;
 	}
 
+	net->subscr_group = talloc_zero(net, struct gsm_subscriber_group);
+	if (!net->subscr_group) {
+		talloc_free(net);
+		return NULL;
+	}
+
 	/* Init back pointer */
 	net->bsc_data->auto_off_timeout = -1;
 	net->bsc_data->network = net;
 	INIT_LLIST_HEAD(&net->bsc_data->mscs);
+	net->subscr_group->net = net;
 
 	net->country_code = country_code;
 	net->network_code = network_code;

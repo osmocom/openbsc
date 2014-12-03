@@ -41,7 +41,7 @@ int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
 {
 	struct gsm_bts *bts = NULL;
 
-	if (subscr->net->bsc_data->rf_ctrl->policy == S_RF_ON)
+	if (subscr->group->net->bsc_data->rf_ctrl->policy == S_RF_ON)
 		goto page;
 
 	/*
@@ -49,7 +49,7 @@ int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
 	 * with NULL and iterate through all bts.
 	 */
 	do {
-		bts = gsm_bts_by_lac(subscr->net, subscr->lac, bts);
+		bts = gsm_bts_by_lac(subscr->group->net, subscr->lac, bts);
 		if (!bts)
 			break;
 
@@ -68,7 +68,8 @@ int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
 	/* All bts are either off or in the grace period */
 	return 0;
 page:
-	return paging_request(subscr->net, subscr, chan_needed, NULL, msc);
+	return paging_request(subscr->group->net, subscr, chan_needed, NULL,
+			      msc);
 }
 
 static int handle_sub(struct gsm_lchan *lchan, const char *text)

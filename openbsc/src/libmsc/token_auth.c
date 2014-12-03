@@ -59,7 +59,7 @@ static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 	if (signal != S_SUBSCR_ATTACHED)
 		return 0;
 
-	if (subscr->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
+	if (subscr->group->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
 		return 0;
 
 	if (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
@@ -82,7 +82,7 @@ static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 
 
 		/* FIXME: don't use ID 1 static */
-		sender = subscr_get_by_id(subscr->net, 1);
+		sender = subscr_get_by_id(subscr->group, 1);
 
 		sms = sms_from_text(subscr, sender, 0, sms_str);
 
@@ -136,7 +136,7 @@ static int token_sms_cb(unsigned int subsys, unsigned int signal,
 		return 0;
 
 
-	if (sms->receiver->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
+	if (sms->receiver->group->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
 		return 0;
 
 

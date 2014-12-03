@@ -135,7 +135,7 @@ static void sms_pending_resend(struct gsm_sms_pending *pending)
 
 	pending->resend = 1;
 
-	smsq = pending->subscr->net->sms_queue;
+	smsq = pending->subscr->group->net->sms_queue;
 	if (osmo_timer_pending(&smsq->resend_pending))
 		return;
 
@@ -149,7 +149,7 @@ static void sms_pending_failed(struct gsm_sms_pending *pending, int paging_error
 	LOGP(DLSMS, LOGL_NOTICE, "Sending SMS %llu failed %d times.\n",
 	     pending->sms_id, pending->failed_attempts);
 
-	smsq = pending->subscr->net->sms_queue;
+	smsq = pending->subscr->group->net->sms_queue;
 	if (++pending->failed_attempts < smsq->max_fail)
 		return sms_pending_resend(pending);
 
@@ -285,7 +285,7 @@ static void sms_submit_pending(void *_data)
  */
 static void sms_send_next(struct gsm_subscriber *subscr)
 {
-	struct gsm_sms_queue *smsq = subscr->net->sms_queue;
+	struct gsm_sms_queue *smsq = subscr->group->net->sms_queue;
 	struct gsm_sms_pending *pending;
 	struct gsm_sms *sms;
 
@@ -316,7 +316,7 @@ static void sms_send_next(struct gsm_subscriber *subscr)
 
 no_pending_sms:
 	/* Try to send the SMS to avoid the queue being stuck */
-	sms_submit_pending(subscr->net->sms_queue);
+	sms_submit_pending(subscr->group->net->sms_queue);
 }
 
 /*

@@ -78,11 +78,12 @@ static struct gsm_subscriber *extract_sub(struct gsm_subscriber_connection *conn
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_active_by_tmsi(conn->bts->network,
+		subscr = subscr_active_by_tmsi(conn->bts->network->subscr_group,
 					       tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
-		subscr = subscr_active_by_imsi(conn->bts->network, mi_string);
+		subscr = subscr_active_by_imsi(conn->bts->network->subscr_group,
+					       mi_string);
 		break;
 	default:
 		subscr = NULL;

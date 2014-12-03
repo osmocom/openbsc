@@ -67,9 +67,9 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 	imsi = strtok_r(tmp, ",", &saveptr);
 	msisdn = strtok_r(NULL, ",", &saveptr);
 
-	subscr = subscr_get_by_imsi(net, imsi);
+	subscr = subscr_get_by_imsi(net->subscr_group, imsi);
 	if (!subscr)
-		subscr = subscr_create_subscriber(net, imsi);
+		subscr = subscr_create_subscriber(net->subscr_group, imsi);
 	if (!subscr)
 		goto fail;
 
@@ -118,7 +118,7 @@ static int set_subscriber_delete(struct ctrl_cmd *cmd, void *data)
 	struct gsm_subscriber *subscr;
 	struct gsm_network *net = cmd->node;
 
-	subscr = subscr_get_by_imsi(net, cmd->value);
+	subscr = subscr_get_by_imsi(net->subscr_group, cmd->value);
 	if (!subscr) {
 		cmd->reply = "Failed to find subscriber";
 		return CTRL_CMD_ERROR;

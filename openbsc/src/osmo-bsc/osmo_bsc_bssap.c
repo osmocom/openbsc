@@ -167,7 +167,7 @@ static int bssmap_handle_paging(struct osmo_msc_data *msc,
 		LOGP(DMSC, LOGL_ERROR, "eMLPP is not handled\n");
 	}
 
-	subscr = subscr_get_or_create(msc->network, mi_string);
+	subscr = subscr_get_or_create(msc->network->subscr_group, mi_string);
 	if (!subscr) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to allocate a subscriber for %s\n", mi_string);
 		return -1;

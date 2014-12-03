@@ -255,7 +255,7 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei))
 		return 0;
 
-	switch (subscriber->net->auth_policy) {
+	switch (subscriber->group->net->auth_policy) {
 	case GSM_AUTH_POLICY_CLOSED:
 		return subscriber->authorized;
 	case GSM_AUTH_POLICY_TOKEN:
@@ -498,9 +498,11 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 	case GSM_MI_TYPE_IMSI:
 		/* look up subscriber based on IMSI, create if not found */
 		if (!conn->subscr) {
-			conn->subscr = subscr_get_by_imsi(net, mi_string);
+			conn->subscr = subscr_get_by_imsi(net->subscr_group,
+							  mi_string);
 			if (!conn->subscr)
-				conn->subscr = subscr_create_subscriber(net, mi_string);
+				conn->subscr = subscr_create_subscriber(
+					net->subscr_group, mi_string);
 		}
 		if (conn->loc_operation)
 			conn->loc_operation->waiting_for_imsi = 0;
@@ -610,15 +612,16 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 		conn->loc_operation->waiting_for_imei = 1;
 
 		/* look up subscriber based on IMSI, create if not found */
-		subscr = subscr_get_by_imsi(bts->network, mi_string);
+		subscr = subscr_get_by_imsi(bts->network->subscr_group, mi_string);
 		if (!subscr) {
-			subscr = subscr_create_subscriber(bts->network, mi_string);
+			subscr = subscr_create_subscriber(
+				bts->network->subscr_group, mi_string);
 		}
 		break;
 	case GSM_MI_TYPE_TMSI:
 		DEBUGPC(DMM, "\n");
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
-		subscr = subscr_get_by_tmsi(bts->network,
+		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
 					    tmsi_from_string(mi_string));
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
@@ -948,7 +951,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);
 
-	subscr = subscr_get_by_tmsi(bts->network,
+	subscr = subscr_get_by_tmsi(bts->network->subscr_group,
 				    tmsi_from_string(mi_string));
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
@@ -995,12 +998,13 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
 		DEBUGPC(DMM, "\n");
-		subscr = subscr_get_by_tmsi(bts->network,
+		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
 					    tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
 		DEBUGPC(DMM, "\n");
-		subscr = subscr_get_by_imsi(bts->network, mi_string);
+		subscr = subscr_get_by_imsi(bts->network->subscr_group,
+					    mi_string);
 		break;
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
@@ -1145,11 +1149,12 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(bts->network,
+		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
 					    tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
-		subscr = subscr_get_by_imsi(bts->network, mi_string);
+		subscr = subscr_get_by_imsi(bts->network->subscr_group,
+					    mi_string);
 		break;
 	}
 
@@ -3040,10 +3045,11 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		}
 		/* New transaction due to setup, find subscriber */
 		if (data->called.number[0])
-			subscr = subscr_get_by_extension(net,
+			subscr = subscr_get_by_extension(net->subscr_group,
 							data->called.number);
 		else
-			subscr = subscr_get_by_imsi(net, data->imsi);
+			subscr = subscr_get_by_imsi(net->subscr_group,
+						    data->imsi);
 
 		/* update the subscriber we deal with */
 		log_set_context(BSC_CTX_SUBSCR, subscr);
@@ -3107,7 +3113,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
 			/* Get a channel */
-			trans->paging_request = talloc_zero(subscr->net, struct gsm_network*);
+			trans->paging_request = talloc_zero(subscr->group->net,
+							    struct gsm_network*);
 			if (!trans->paging_request) {
 				LOGP(DCC, LOGL_ERROR, "Failed to allocate paging token.\n");
 				subscr_put(subscr);
@@ -3115,7 +3122,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 				return 0;
 			}
 
-			*trans->paging_request = subscr->net;
+			*trans->paging_request = subscr->group->net;
 			subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, setup_trig_pag_evt, trans->paging_request);
 
 			subscr_put(subscr);

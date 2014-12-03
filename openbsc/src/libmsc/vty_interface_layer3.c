@@ -169,7 +169,7 @@ static int _send_sms_str(struct gsm_subscriber *receiver,
 	}
 
 	sms_free(sms);
-	sms_queue_trigger(receiver->net->sms_queue);
+	sms_queue_trigger(receiver->group->net->sms_queue);
 	return CMD_SUCCESS;
 }
 
@@ -178,13 +178,13 @@ static struct gsm_subscriber *get_subscr_by_argv(struct gsm_network *gsmnet,
 						 const char *id)
 {
 	if (!strcmp(type, "extension"))
-		return subscr_get_by_extension(gsmnet, id);
+		return subscr_get_by_extension(gsmnet->subscr_group, id);
 	else if (!strcmp(type, "imsi"))
-		return subscr_get_by_imsi(gsmnet, id);
+		return subscr_get_by_imsi(gsmnet->subscr_group, id);
 	else if (!strcmp(type, "tmsi"))
-		return subscr_get_by_tmsi(gsmnet, atoi(id));
+		return subscr_get_by_tmsi(gsmnet->subscr_group, atoi(id));
 	else if (!strcmp(type, "id"))
-		return subscr_get_by_id(gsmnet, atoi(id));
+		return subscr_get_by_id(gsmnet->subscr_group, atoi(id));
 
 	return NULL;
 }
@@ -229,7 +229,7 @@ DEFUN(subscriber_create,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr;
 
-	subscr = subscr_create_subscriber(gsmnet, argv[0]);
+	subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0]);
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber created for IMSI %s%s",
 			argv[0], VTY_NEWLINE);
@@ -779,7 +779,7 @@ DEFUN(subscriber_purge,
 	struct gsm_network *net = gsmnet_from_vty(vty);
 	int purged;
 
-	purged = subscr_purge_inactive(net);
+	purged = subscr_purge_inactive(net->subscr_group);
 	vty_out(vty, "%d subscriber(s) were purged.%s", purged, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }

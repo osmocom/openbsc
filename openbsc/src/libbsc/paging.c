@@ -389,7 +389,7 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 		 * location area of the _bts as reconfiguration of the
 		 * network is probably happening less often.
 		 */
-		bts = gsm_bts_by_lac(subscr->net, subscr->lac, bts);
+		bts = gsm_bts_by_lac(subscr->group->net, subscr->lac, bts);
 		if (!bts)
 			break;
 

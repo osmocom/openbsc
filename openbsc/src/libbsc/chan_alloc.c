@@ -436,7 +436,7 @@ static struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *
 struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *subscr)
 {
 	struct gsm_bts *bts;
-	struct gsm_network *net = subscr->net;
+	struct gsm_network *net = subscr->group->net;
 	struct gsm_lchan *lchan;
 
 	llist_for_each_entry(bts, &net->bts_list, list) {
