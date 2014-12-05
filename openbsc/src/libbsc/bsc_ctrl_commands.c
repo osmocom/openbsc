@@ -271,6 +271,32 @@ static int set_bts_chan_load(struct ctrl_cmd *cmd, void *data)
 }
 CTRL_CMD_DEFINE(bts_chan_load, "channel-load");
 
+static int verify_bts_oml_conn(struct ctrl_cmd *cmd, const char *value, void *_data)
+{
+	struct gsm_bts *bts = cmd->node;
+
+	if (!is_ipaccess_bts(bts)) {
+		cmd->reply = "";
+		return -1;
+	}
+	return 0;
+}
+
+static int get_bts_oml_conn(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+
+	cmd->reply = bts->oml_link ? "connected" : "disconnected";
+	return CTRL_CMD_REPLY;
+}
+
+static int set_bts_oml_conn(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Read only attribute";
+	return CTRL_CMD_ERROR;
+}
+CTRL_CMD_DEFINE(bts_oml_conn, "oml-connection-state");
+
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
 static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
@@ -327,6 +353,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_si);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_chan_load);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_oml_conn);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_arfcn);
