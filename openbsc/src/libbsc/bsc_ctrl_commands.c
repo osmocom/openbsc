@@ -25,6 +25,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/debug.h>
+#include <openbsc/chan_alloc.h>
 
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
 	CTRL_HELPER_GET_STRING(cmdname, dtype, element) \
@@ -219,6 +220,57 @@ static int set_bts_si(struct ctrl_cmd *cmd, void *data)
 }
 CTRL_CMD_DEFINE(bts_si, "send-new-system-informations");
 
+static int verify_bts_chan_load(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int get_bts_chan_load(struct ctrl_cmd *cmd, void *data)
+{
+	int i;
+	struct pchan_load pl;
+	struct gsm_bts *bts;
+	const char *space = "";
+
+	bts = cmd->node;
+	memset(&pl, 0, sizeof(pl));
+	bts_chan_load(&pl, bts);
+
+	cmd->reply = talloc_strdup(cmd, "");
+
+	for (i = 0; i < ARRAY_SIZE(pl.pchan); ++i) {
+		const struct load_counter *lc = &pl.pchan[i];
+
+		/* These can never have user load */
+		if (i == GSM_PCHAN_NONE)
+			continue;
+		if (i == GSM_PCHAN_CCCH)
+			continue;
+		if (i == GSM_PCHAN_PDCH)
+			continue;
+
+		cmd->reply = talloc_asprintf_append(cmd->reply,
+					"%s%s,%u,%u",
+					space, gsm_pchan_name(i), lc->used, lc->total);
+		if (!cmd->reply)
+			goto error;
+		space = " ";
+	}
+
+	return CTRL_CMD_REPLY;
+
+error:
+	cmd->reply = "Memory allocation failure";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_bts_chan_load(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Read only attribute";
+	return CTRL_CMD_ERROR;
+}
+CTRL_CMD_DEFINE(bts_chan_load, "channel-load");
+
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
 static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
@@ -274,6 +326,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ci);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_si);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_chan_load);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_arfcn);

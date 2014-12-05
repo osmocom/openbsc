@@ -226,6 +226,16 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['mtype'], 'ERROR')
         self.assertEquals(r['error'], 'Failed to generate SI')
 
+    def testBtsChannelLoad(self):
+        r = self.do_set('bts.0.channel-load', '1')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Read only attribute')
+
+        # No RSL link so everything is 0
+        r = self.do_get('bts.0.channel-load')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['value'], 'CCCH+SDCCH4,0,0 TCH/F,0,0 TCH/H,0,0 SDCCH8,0,0 TCH/F_PDCH,0,0')
+
     def testTrxPowerRed(self):
         r = self.do_get('bts.0.trx.0.max-power-reduction')
         self.assertEquals(r['mtype'], 'GET_REPLY')
