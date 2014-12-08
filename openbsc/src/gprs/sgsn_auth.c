@@ -110,6 +110,10 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx)
 		if (mmctx->subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING)
 			return mmctx->auth_state;
 
+		if (mmctx->subscr->sgsn_data->authenticate &&
+		    !mmctx->is_authenticated)
+			return SGSN_AUTH_AUTHENTICATE;
+
 		if (mmctx->subscr->authorized)
 			return SGSN_AUTH_ACCEPTED;
 
@@ -180,6 +184,9 @@ void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 	mmctx->auth_state = auth_state;
 
 	switch (auth_state) {
+	case SGSN_AUTH_AUTHENTICATE:
+		gsm0408_gprs_authenticate(mmctx);
+		break;
 	case SGSN_AUTH_ACCEPTED:
 		gsm0408_gprs_access_granted(mmctx);
 		break;

@@ -591,6 +591,60 @@ static void test_gmm_attach_subscr(void)
 	subscr_request_update_cb = __real_gprs_subscr_request_update;
 }
 
+int my_subscr_request_update_fake_auth(struct sgsn_mm_ctx *mmctx) {
+	int rc;
+	rc = __real_gprs_subscr_request_update(mmctx);
+	if (rc == -ENOTSUP) {
+		struct gsm_subscriber *subscr;
+		int old_sgsn_tx_counter = sgsn_tx_counter;
+
+		OSMO_ASSERT(mmctx->subscr);
+		/* Prevent subscr from being deleted */
+		subscr = subscr_get(mmctx->subscr);
+
+		/* Start authentication procedure */
+		gprs_subscr_update(subscr);
+
+		/* This will cause a GPRS AUTH AND CIPHERING REQ (cksn broken) */
+		OSMO_ASSERT(old_sgsn_tx_counter == sgsn_tx_counter - 1);
+
+		/* Restore sgsn_tx_counter to keep test_gmm_attach happy */
+		sgsn_tx_counter = old_sgsn_tx_counter;
+
+		/* Fake an authentication */
+		OSMO_ASSERT(subscr->sgsn_data->mm);
+		subscr->sgsn_data->mm->is_authenticated = 1;
+		gprs_subscr_update(subscr);
+
+		subscr_put(subscr);
+	}
+	return rc;
+};
+
+static void test_gmm_attach_subscr_fake_auth(void)
+{
+	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
+	struct gsm_subscriber *subscr;
+
+	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
+	subscr_request_update_cb = my_subscr_request_update_fake_auth;
+
+	subscr = gprs_subscr_get_or_create("123456789012345");
+	subscr->authorized = 1;
+	subscr->sgsn_data->authenticate = 1;
+	subscr_put(subscr);
+
+	printf("Auth policy 'remote', auth faked: ");
+	test_gmm_attach();
+
+	subscr = gprs_subscr_get_by_imsi("123456789012345");
+	OSMO_ASSERT(subscr != NULL);
+	gprs_subscr_delete(subscr);
+
+	sgsn->cfg.auth_policy = saved_auth_policy;
+	subscr_request_update_cb = __real_gprs_subscr_request_update;
+}
+
 /*
  * Test the GMM Rejects
  */
@@ -1112,6 +1166,7 @@ int main(int argc, char **argv)
 	test_gmm_status_no_mmctx();
 	test_gmm_attach_acl();
 	test_gmm_attach_subscr();
+	test_gmm_attach_subscr_fake_auth();
 	test_gmm_reject();
 	test_gmm_cancel();
 	test_gmm_ptmsi_allocation();

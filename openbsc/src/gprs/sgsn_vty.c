@@ -441,15 +441,15 @@ DEFUN(show_subscr_cache,
 	"The IMSI\n"
 
 DEFUN(update_subscr_insert, update_subscr_insert_cmd,
-	UPDATE_SUBSCR_STR "insert authorized (0|1)",
+	UPDATE_SUBSCR_STR "insert (authorized|authenticate) (0|1)",
 	UPDATE_SUBSCR_HELP
 	"Insert data into the subscriber record\n"
 	"Authorize the subscriber to attach\n"
 	"New option value\n")
 {
 	const char *imsi = argv[0];
-	const char *option = "authorized";
-	const char *value = argv[1];
+	const char *option = argv[1];
+	const char *value = argv[2];
 
 	struct gsm_subscriber *subscr;
 
@@ -461,6 +461,8 @@ DEFUN(update_subscr_insert, update_subscr_insert_cmd,
 
 	if (!strcmp(option, "authorized"))
 		subscr->authorized = atoi(value);
+	else
+		subscr->sgsn_data->authenticate = atoi(value);
 
 	subscr_put(subscr);
 

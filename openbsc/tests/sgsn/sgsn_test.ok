@@ -7,6 +7,7 @@ Testing GMM detach accept (unexpected)
 Testing GMM Status (no MMCTX)
 Auth policy 'closed': Testing GMM attach
 Auth policy 'remote': Testing GMM attach
+Auth policy 'remote', auth faked: Testing GMM attach
 Testing GMM reject
   - Attach Request (invalid MI length)
   - Attach Request (invalid MI type)
