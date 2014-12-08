@@ -35,7 +35,6 @@ static struct gsm_subscriber_group dummy_sgrp;
 
 static void test_subscr(void)
 {
-	int rc;
 	struct gsm_subscriber *subscr;
 	const char *imsi = "1234567890";
 
@@ -88,8 +87,6 @@ static void test_subscr(void)
 
 int main()
 {
-	char scratch_str[256];
-
 	printf("Testing subscriber core code.\n");
 	osmo_init_logging(&log_info);
 	log_set_print_filename(osmo_stderr_target, 0);
