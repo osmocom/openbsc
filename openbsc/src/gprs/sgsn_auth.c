@@ -203,3 +203,40 @@ void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 		break;
 	}
 }
+
+struct gsm_auth_tuple *sgsn_auth_get_tuple(struct sgsn_mm_ctx *mmctx,
+					   unsigned key_seq)
+{
+	unsigned count;
+	unsigned idx;
+	struct gsm_auth_tuple *at = NULL;
+
+	struct sgsn_subscriber_data *sdata;
+
+	if (!mmctx->subscr)
+		return NULL;
+
+	if (key_seq == GSM_KEY_SEQ_INVAL)
+		/* Start with 0 after increment module array size */
+		idx = ARRAY_SIZE(sdata->auth_triplets) - 1;
+	else
+		idx = key_seq;
+
+	sdata = mmctx->subscr->sgsn_data;
+
+	/* Find next tuple */
+	for (count = ARRAY_SIZE(sdata->auth_triplets); count > 0; count--) {
+		idx = (idx + 1) % ARRAY_SIZE(sdata->auth_triplets);
+
+		if (sdata->auth_triplets[idx].key_seq == GSM_KEY_SEQ_INVAL)
+			continue;
+
+		if (sdata->auth_triplets[idx].use_count == 0) {
+			at = &sdata->auth_triplets[idx];
+			at->use_count = 1;
+			return at;
+		}
+	}
+
+	return NULL;
+}

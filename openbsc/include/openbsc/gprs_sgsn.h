@@ -273,6 +273,8 @@ struct imsi_acl_entry {
 
 struct sgsn_subscriber_data {
 	struct sgsn_mm_ctx	*mm;
+	struct gsm_auth_tuple	auth_triplets[5];
+	int			auth_triplets_updated;
 	int			authenticate;
 };
 
@@ -288,6 +290,8 @@ int sgsn_acl_del(const char *imsi, struct sgsn_config *cfg);
 int sgsn_auth_request(struct sgsn_mm_ctx *mm);
 enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mm);
 void sgsn_auth_update(struct sgsn_mm_ctx *mm);
+struct gsm_auth_tuple *sgsn_auth_get_tuple(struct sgsn_mm_ctx *mmctx,
+					   unsigned key_seq);
 
 /*
  * GPRS subscriber data

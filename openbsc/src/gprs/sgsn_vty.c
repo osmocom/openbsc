@@ -380,6 +380,8 @@ DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
 static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr, int pending)
 {
 	char expire_time[200];
+	struct gsm_auth_tuple *at;
+	int at_idx;
 
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
@@ -397,6 +399,25 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 
 	if (strlen(subscr->equipment.imei) > 0)
 		vty_out(vty, "    IMEI: %s%s", subscr->equipment.imei, VTY_NEWLINE);
+
+	for (at_idx = 0; at_idx < ARRAY_SIZE(subscr->sgsn_data->auth_triplets);
+	     at_idx++) {
+		at = &subscr->sgsn_data->auth_triplets[at_idx];
+		if (at->key_seq == GSM_KEY_SEQ_INVAL)
+			continue;
+
+		vty_out(vty, "    A3A8 tuple (used %d times): ",
+			at->use_count);
+		vty_out(vty, "     seq # : %d, ",
+			at->key_seq);
+		vty_out(vty, "     RAND  : %s, ",
+			osmo_hexdump(at->rand, sizeof(at->rand)));
+		vty_out(vty, "     SRES  : %s, ",
+			osmo_hexdump(at->sres, sizeof(at->sres)));
+		vty_out(vty, "     Kc    : %s%s",
+			osmo_hexdump(at->kc, sizeof(at->kc)),
+			VTY_NEWLINE);
+	}
 
 	/* print the expiration time of a subscriber */
 	if (subscr->expire_lu) {
@@ -440,10 +461,12 @@ DEFUN(show_subscr_cache,
 	"Use the IMSI to select the subscriber\n" \
 	"The IMSI\n"
 
+#define UPDATE_SUBSCR_INSERT_HELP "Insert data into the subscriber record\n"
+
 DEFUN(update_subscr_insert, update_subscr_insert_cmd,
 	UPDATE_SUBSCR_STR "insert (authorized|authenticate) (0|1)",
 	UPDATE_SUBSCR_HELP
-	"Insert data into the subscriber record\n"
+	UPDATE_SUBSCR_INSERT_HELP
 	"Authorize the subscriber to attach\n"
 	"New option value\n")
 {
@@ -466,6 +489,59 @@ DEFUN(update_subscr_insert, update_subscr_insert_cmd,
 
 	subscr_put(subscr);
 
+	return CMD_SUCCESS;
+}
+
+DEFUN(update_subscr_insert_auth_triplet, update_subscr_insert_auth_triplet_cmd,
+	UPDATE_SUBSCR_STR "insert auth-triplet <1-5> sres SRES rand RAND kc KC",
+	UPDATE_SUBSCR_HELP
+	UPDATE_SUBSCR_INSERT_HELP
+	"Update authentication triplet\n"
+	"Triplet index\n"
+	"Set SRES value\nSRES value (4 byte) in hex\n"
+	"Set RAND value\nRAND value (16 byte) in hex\n"
+	"Set Kc value\nKc value (8 byte) in hex\n")
+{
+	const char *imsi = argv[0];
+	const int cksn = atoi(argv[1]) - 1;
+	const char *sres_str = argv[2];
+	const char *rand_str = argv[3];
+	const char *kc_str = argv[4];
+	struct gsm_auth_tuple at = {0,};
+
+	struct gsm_subscriber *subscr;
+
+	subscr = gprs_subscr_get_or_create(imsi);
+	if (!subscr) {
+		vty_out(vty, "%% unable get subscriber record for %s\n", imsi);
+		return CMD_WARNING;
+	}
+
+	OSMO_ASSERT(subscr->sgsn_data);
+
+	if (!osmo_hexparse(sres_str, &at.sres[0], sizeof(at.sres)) < 0) {
+		vty_out(vty, "%% invalid SRES value '%s'\n", sres_str);
+		goto failed;
+	}
+	if (!osmo_hexparse(rand_str, &at.rand[0], sizeof(at.rand)) < 0) {
+		vty_out(vty, "%% invalid RAND value '%s'\n", rand_str);
+		goto failed;
+	}
+	if (!osmo_hexparse(kc_str, &at.kc[0], sizeof(at.kc)) < 0) {
+		vty_out(vty, "%% invalid Kc value '%s'\n", kc_str);
+		goto failed;
+	}
+	at.key_seq = cksn;
+
+	subscr->sgsn_data->auth_triplets[cksn] = at;
+	subscr->sgsn_data->auth_triplets_updated = 1;
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+
+failed:
+	subscr_put(subscr);
 	return CMD_SUCCESS;
 }
 
@@ -521,6 +597,7 @@ int sgsn_vty_init(void)
 	install_element_ve(&show_subscr_cache_cmd);
 
 	install_element(ENABLE_NODE, &update_subscr_insert_cmd);
+	install_element(ENABLE_NODE, &update_subscr_insert_auth_triplet_cmd);
 	install_element(ENABLE_NODE, &update_subscr_cancel_cmd);
 	install_element(ENABLE_NODE, &update_subscr_commit_cmd);
 

@@ -36,8 +36,12 @@ void gprs_subscr_init(struct sgsn_instance *sgi)
 static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
 {
 	struct sgsn_subscriber_data *sdata;
+	int idx;
 
 	sdata = talloc_zero(ctx, struct sgsn_subscriber_data);
+
+	for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
+	     sdata->auth_triplets[idx].key_seq = GSM_KEY_SEQ_INVAL;
 
 	return sdata;
 }

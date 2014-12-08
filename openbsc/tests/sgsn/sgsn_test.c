@@ -249,6 +249,70 @@ static void test_subscriber(void)
 	update_subscriber_data_cb = __real_sgsn_update_subscriber_data;
 }
 
+static void test_auth_triplets(void)
+{
+	struct gsm_subscriber *s1, *s1found;
+	const char *imsi1 = "1234567890";
+	struct gsm_auth_tuple *at;
+	struct sgsn_mm_ctx *ctx;
+	struct gprs_ra_id raid = { 0, };
+	uint32_t local_tlli = 0xffeeddcc;
+	struct gprs_llc_llme *llme;
+
+	printf("Testing authentication triplet handling\n");
+
+	/* Check for emptiness */
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
+
+	/* Allocate entry 1 */
+	s1 = gprs_subscr_get_or_create(imsi1);
+	s1->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+	s1found = gprs_subscr_get_by_imsi(imsi1);
+	OSMO_ASSERT(s1found == s1);
+	subscr_put(s1found);
+
+	/* Create a context */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	ctx = alloc_mm_ctx(local_tlli, &raid);
+
+	/* Attach s1 to ctx */
+	ctx->subscr = subscr_get(s1);
+	ctx->subscr->sgsn_data->mm = ctx;
+
+	/* Try to get auth tuple */
+	at = sgsn_auth_get_tuple(ctx, GSM_KEY_SEQ_INVAL);
+	OSMO_ASSERT(at == NULL);
+
+	/* Add triplets */
+	s1->sgsn_data->auth_triplets[0].key_seq = 0;
+	s1->sgsn_data->auth_triplets[1].key_seq = 1;
+	s1->sgsn_data->auth_triplets[2].key_seq = 2;
+
+	/* Try to get auth tuple */
+	at = sgsn_auth_get_tuple(ctx, GSM_KEY_SEQ_INVAL);
+	OSMO_ASSERT(at != NULL);
+	OSMO_ASSERT(at->key_seq == 0);
+	OSMO_ASSERT(at->use_count == 1);
+	at = sgsn_auth_get_tuple(ctx, at->key_seq);
+	OSMO_ASSERT(at != NULL);
+	OSMO_ASSERT(at->key_seq == 1);
+	OSMO_ASSERT(at->use_count == 1);
+	at = sgsn_auth_get_tuple(ctx, at->key_seq);
+	OSMO_ASSERT(at != NULL);
+	OSMO_ASSERT(at->key_seq == 2);
+	OSMO_ASSERT(at->use_count == 1);
+	at = sgsn_auth_get_tuple(ctx, at->key_seq);
+	OSMO_ASSERT(at == NULL);
+
+	/* Free MM context and subscriber */
+	subscr_put(s1);
+	llme = ctx->llme;
+	sgsn_mm_ctx_free(ctx);
+	s1found = gprs_subscr_get_by_imsi(imsi1);
+	OSMO_ASSERT(s1found == NULL);
+	gprs_llgmm_assign(llme, local_tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+}
+
 /*
  * Test that a GMM Detach will remove the MMCTX and the
  * associated LLME.
@@ -1159,6 +1223,7 @@ int main(int argc, char **argv)
 
 	test_llme();
 	test_subscriber();
+	test_auth_triplets();
 	test_gmm_detach();
 	test_gmm_detach_power_off();
 	test_gmm_detach_no_mmctx();
