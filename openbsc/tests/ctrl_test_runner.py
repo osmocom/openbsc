@@ -521,8 +521,8 @@ class TestCtrlNAT(TestCtrlBase):
         self.assertEquals(r['var'], 'net')
         self.assertEquals(r['value'], None)
 
-        r = self.do_set('net.0.bsc_cfg.0.no-access-list-name', '1')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
+        r = self.do_get('net.0.bsc_cfg.0.access-list-name')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'net')
         self.assertEquals(r['value'], None)
 
