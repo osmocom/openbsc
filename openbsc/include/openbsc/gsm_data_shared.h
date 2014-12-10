@@ -369,16 +369,6 @@ struct gsm_bts_trx {
 
 #ifndef ROLE_BSC
 	struct trx_power_params power_params;
-	struct {
-		unsigned int max_initial_power;	/* in dBm */
-		uint8_t	step_size;		/* in dB  */
-		int step_interval;		/* in seconds */
-		struct osmo_timer_list step_timer;
-
-		int current_power;		/* in dBm */
-	} pa;
-
-	unsigned int power_reduce;	/* in dB */
 
 	struct {
 		void *l1h;
