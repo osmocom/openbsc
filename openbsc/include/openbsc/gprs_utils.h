@@ -40,6 +40,8 @@ int gprs_shift_v_fixed(uint8_t **data, size_t *data_len,
 		       size_t len, uint8_t **value);
 int gprs_match_tv_fixed(uint8_t **data, size_t *data_len,
 			uint8_t tag, size_t len, uint8_t **value);
+int gprs_shift_tlv(uint8_t **data, size_t *data_len,
+		   uint8_t *tag, uint8_t **value, size_t *value_len);
 int gprs_match_tlv(uint8_t **data, size_t *data_len,
 		   uint8_t tag, uint8_t **value, size_t *value_len);
 int gprs_shift_lv(uint8_t **data, size_t *data_len,

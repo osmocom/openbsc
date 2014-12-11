@@ -139,18 +139,31 @@ static void test_gsm_03_03_apn(void)
 }
 
 /* TODO: Move tlv testing to libosmocore */
-static void check_tlv_match(uint8_t **data, size_t *data_len,
-			    uint8_t tag, size_t exp_len, const uint8_t *exp_val)
+static void check_tlv_parse(uint8_t **data, size_t *data_len,
+			    uint8_t exp_tag, size_t exp_len, const uint8_t *exp_val)
 {
 	uint8_t *value;
 	size_t value_len;
+	uint8_t tag;
 	int rc;
+	uint8_t *saved_data = *data;
+	size_t saved_data_len = *data_len;
 
-	rc = gprs_match_tlv(data, data_len, tag ^ 1, NULL, NULL);
+	rc = gprs_match_tlv(data, data_len, exp_tag ^ 1, NULL, NULL);
 	OSMO_ASSERT(rc == 0);
 
-	rc = gprs_match_tlv(data, data_len, tag, &value, &value_len);
+	rc = gprs_match_tlv(data, data_len, exp_tag, &value, &value_len);
 	OSMO_ASSERT(rc == (int)value_len + 2);
+	OSMO_ASSERT(value_len == exp_len);
+	OSMO_ASSERT(memcmp(value, exp_val, exp_len) == 0);
+
+	/* restore data/data_len */
+	*data = saved_data;
+	*data_len = saved_data_len;
+
+	rc = gprs_shift_tlv(data, data_len, &tag, &value, &value_len);
+	OSMO_ASSERT(rc == (int)value_len + 2);
+	OSMO_ASSERT(tag == exp_tag);
 	OSMO_ASSERT(value_len == exp_len);
 	OSMO_ASSERT(memcmp(value, exp_val, exp_len) == 0);
 }
@@ -340,7 +353,7 @@ static void test_tlv_shift_functions()
 		OSMO_ASSERT(data_len <= sizeof(buf));
 
 		for (i = 0; i < iterations; i++) {
-			check_tlv_match(&data, &data_len, tag, len, test_data);
+			check_tlv_parse(&data, &data_len, tag, len, test_data);
 			check_tv_fixed_match(&data, &data_len, tag, len, test_data);
 			check_v_fixed_shift(&data, &data_len, len, test_data);
 			check_lv_shift(&data, &data_len, len, test_data);

@@ -271,7 +271,26 @@ fail:
 }
 
 int gprs_match_tlv(uint8_t **data, size_t *data_len,
-	      uint8_t tag, uint8_t **value, size_t *value_len)
+	      uint8_t expected_tag, uint8_t **value, size_t *value_len)
+{
+	int rc;
+	uint8_t tag;
+	uint8_t *old_data = *data;
+	size_t old_data_len = *data_len;
+
+	rc = gprs_shift_tlv(data, data_len, &tag, value, value_len);
+
+	if (rc > 0 && tag != expected_tag) {
+		*data = old_data;
+		*data_len = old_data_len;
+		return 0;
+	}
+
+	return rc;
+}
+
+int gprs_shift_tlv(uint8_t **data, size_t *data_len,
+	      uint8_t *tag, uint8_t **value, size_t *value_len)
 {
 	size_t len;
 	size_t ie_len;
@@ -279,13 +298,12 @@ int gprs_match_tlv(uint8_t **data, size_t *data_len,
 	if (*data_len < 2)
 		goto fail;
 
-	if ((*data)[0] != tag)
-		return 0;
-
 	len = (*data)[1];
 	if (len > *data_len - 2)
 		goto fail;
 
+	if (tag)
+		*tag = (*data)[0];
 	if (value)
 		*value = *data + 2;
 	if (value_len)
