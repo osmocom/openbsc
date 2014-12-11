@@ -5,6 +5,8 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_utils.h>
 
+#include <openbsc/gprs_gsup_messages.h>
+
 #define ASSERT_FALSE(x) if (x)  { printf("Should have returned false.\n"); abort(); }
 #define ASSERT_TRUE(x)  if (!x) { printf("Should have returned true.\n"); abort(); }
 
@@ -378,11 +380,146 @@ static void test_tlv_shift_functions()
 	}
 }
 
+/* Tests for gprs_gsup_messages.c */
+
+#define TEST_IMSI_IE 0x01, 0x08, 0x21, 0x43, 0x65, 0x87, 0x09, 0x21, 0x43, 0xf5
+#define TEST_IMSI_STR "123456789012345"
+
+static void test_gsup_messages_dec_enc(void)
+{
+	int test_idx;
+	int rc;
+
+	static const uint8_t send_auth_info_req[] = {
+		0x08,
+		TEST_IMSI_IE
+	};
+
+	static const uint8_t send_auth_info_err[] = {
+		0x09,
+		TEST_IMSI_IE,
+		0x02, 0x01, 0x07 /* GPRS no allowed */
+	};
+
+	static const uint8_t send_auth_info_res[] = {
+		0x0a,
+		TEST_IMSI_IE,
+		0x03, 0x22, /* Auth tuple */
+			0x20, 0x10,
+				0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+				0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+			0x21, 0x04,
+				0x21, 0x22, 0x23, 0x24,
+			0x22, 0x08,
+				0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+		0x03, 0x22, /* Auth tuple */
+			0x20, 0x10,
+				0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88,
+				0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f, 0x90,
+			0x21, 0x04,
+				0xa1, 0xa2, 0xa3, 0xa4,
+			0x22, 0x08,
+				0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8,
+	};
+
+	static const uint8_t update_location_req[] = {
+		0x04,
+		TEST_IMSI_IE,
+	};
+
+	static const uint8_t update_location_err[] = {
+		0x05,
+		TEST_IMSI_IE,
+		0x02, 0x01, 0x07 /* GPRS no allowed */
+	};
+
+	static const uint8_t update_location_res[] = {
+		0x06,
+		TEST_IMSI_IE,
+		0x04, 0x00, /* PDP info complete */
+		0x05, 0x12,
+			0x10, 0x01, 0x01,
+			0x11, 0x02, 0xf1, 0x21, /* IPv4 */
+			0x12, 0x09, 0x04, 't', 'e', 's', 't', 0x03, 'a', 'p', 'n',
+		0x05, 0x11,
+			0x10, 0x01, 0x02,
+			0x11, 0x02, 0xf1, 0x21, /* IPv4 */
+			0x12, 0x08, 0x03, 'f', 'o', 'o', 0x03, 'a', 'p', 'n',
+	};
+
+	static const uint8_t location_cancellation_req[] = {
+		0x1c,
+		TEST_IMSI_IE,
+		0x06, 0x01, 0x00,
+	};
+
+	static const uint8_t location_cancellation_err[] = {
+		0x1d,
+		TEST_IMSI_IE,
+		0x02, 0x01, 0x03 /* Illegal MS */
+	};
+
+	static const uint8_t location_cancellation_res[] = {
+		0x1e,
+		TEST_IMSI_IE,
+	};
+
+	static const struct test {
+		char *name;
+		const uint8_t *data;
+		size_t data_len;
+	} test_messages[] = {
+		{"Send Authentication Info Request",
+			send_auth_info_req, sizeof(send_auth_info_req)},
+		{"Send Authentication Info Error",
+			send_auth_info_err, sizeof(send_auth_info_err)},
+		{"Send Authentication Info Result",
+			send_auth_info_res, sizeof(send_auth_info_res)},
+		{"Update Location Request",
+			update_location_req, sizeof(update_location_req)},
+		{"Update Location Error",
+			update_location_err, sizeof(update_location_err)},
+		{"Update Location Result",
+			update_location_res, sizeof(update_location_res)},
+		{"Location Cancellation Request",
+			location_cancellation_req, sizeof(location_cancellation_req)},
+		{"Location Cancellation Error",
+			location_cancellation_err, sizeof(location_cancellation_err)},
+		{"Location Cancellation Result",
+			location_cancellation_res, sizeof(location_cancellation_res)},
+	};
+
+	printf("Test GSUP message decoding/encoding\n");
+
+	for (test_idx = 0; test_idx < ARRAY_SIZE(test_messages); test_idx++) {
+		const struct test *t = &test_messages[test_idx];
+		struct gprs_gsup_message gm = {0};
+		struct msgb *msg = msgb_alloc(4096, "gsup_test");
+
+		printf("  Testing %s\n", t->name);
+
+		rc = gprs_gsup_decode(t->data, t->data_len, &gm);
+		OSMO_ASSERT(rc >= 0);
+
+		gprs_gsup_encode(msg, &gm);
+
+		fprintf(stderr, "  generated message: %s\n", msgb_hexdump(msg));
+		fprintf(stderr, "  original message:  %s\n", osmo_hexdump(t->data, t->data_len));
+		fprintf(stderr, "  IMSI:              %s\n", gm.imsi);
+		OSMO_ASSERT(strcmp(gm.imsi, TEST_IMSI_STR) == 0);
+		OSMO_ASSERT(msgb_length(msg) == t->data_len);
+		OSMO_ASSERT(memcmp(msgb_data(msg), t->data, t->data_len) == 0);
+
+		msgb_free(msg);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	test_8_4_2();
 	test_gsm_03_03_apn();
 	test_tlv_shift_functions();
+	test_gsup_messages_dec_enc();
 
 	printf("Done.\n");
 	return EXIT_SUCCESS;
