@@ -29,122 +29,6 @@
 
 #include <osmocom/gprs/gprs_bssgp.h>
 
-/* TODO: Move shift functions to libosmocore */
-
-int v_fixed_shift(uint8_t **data, size_t *data_len,
-		  size_t len, uint8_t **value)
-{
-	if (len > *data_len)
-		goto fail;
-
-	if (value)
-		*value = *data;
-
-	*data += len;
-	*data_len -= len;
-
-	return len;
-
-fail:
-	*data += *data_len;
-	*data_len = 0;
-	return -1;
-}
-
-int tv_fixed_match(uint8_t **data, size_t *data_len,
-		   uint8_t tag, size_t len,
-		   uint8_t **value)
-{
-	size_t ie_len;
-
-	if (*data_len == 0)
-		goto fail;
-
-	if ((*data)[0] != tag)
-		return 0;
-
-	if (len > *data_len - 1)
-		goto fail;
-
-	if (value)
-		*value = *data + 1;
-
-	ie_len = len + 1;
-	*data += ie_len;
-	*data_len -= ie_len;
-
-	return ie_len;
-
-fail:
-	*data += *data_len;
-	*data_len = 0;
-	return -1;
-}
-
-int tlv_match(uint8_t **data, size_t *data_len,
-	      uint8_t tag, uint8_t **value, size_t *value_len)
-{
-	size_t len;
-	size_t ie_len;
-
-	if (*data_len < 2)
-		goto fail;
-
-	if ((*data)[0] != tag)
-		return 0;
-
-	len = (*data)[1];
-	if (len > *data_len - 2)
-		goto fail;
-
-	if (value)
-		*value = *data + 2;
-	if (value_len)
-		*value_len = len;
-
-	ie_len = len + 2;
-
-	*data += ie_len;
-	*data_len -= ie_len;
-
-	return ie_len;
-
-fail:
-	*data += *data_len;
-	*data_len = 0;
-	return -1;
-}
-
-int lv_shift(uint8_t **data, size_t *data_len,
-	     uint8_t **value, size_t *value_len)
-{
-	size_t len;
-	size_t ie_len;
-
-	if (*data_len < 1)
-		goto fail;
-
-	len = (*data)[0];
-	if (len > *data_len - 1)
-		goto fail;
-
-	if (value)
-		*value = *data + 1;
-	if (value_len)
-		*value_len = len;
-
-	ie_len = len + 1;
-	*data += ie_len;
-	*data_len -= ie_len;
-
-	return ie_len;
-
-fail:
-	*data += *data_len;
-	*data_len = 0;
-	return -1;
-}
-
 static int gprs_gb_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 					struct gprs_gb_parse_context *parse_ctx)
 {
@@ -154,7 +38,7 @@ static int gprs_gb_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 	parse_ctx->llc_msg_name = "ATTACH_REQ";
 
 	/* Skip MS network capability */
-	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
+	if (gprs_shift_lv(&data, &data_len, NULL, &value_len) <= 0 ||
 	    value_len < 1 || value_len > 8)
 		/* invalid */
 		return 0;
@@ -162,10 +46,10 @@ static int gprs_gb_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 	/* Skip Attach type */
 	/* Skip Ciphering key sequence number */
 	/* Skip DRX parameter */
-	v_fixed_shift(&data, &data_len, 3, NULL);
+	gprs_shift_v_fixed(&data, &data_len, 3, NULL);
 
 	/* Get Mobile identity */
-	if (lv_shift(&data, &data_len, &value, &value_len) <= 0 ||
+	if (gprs_shift_lv(&data, &data_len, &value, &value_len) <= 0 ||
 	    value_len < 5 || value_len > 8)
 		/* invalid */
 		return 0;
@@ -177,7 +61,7 @@ static int gprs_gb_parse_gmm_attach_req(uint8_t *data, size_t data_len,
 		parse_ctx->imsi_len = value_len;
 	}
 
-	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
 	parse_ctx->old_raid_enc = value;
@@ -198,21 +82,21 @@ static int gprs_gb_parse_gmm_attach_ack(uint8_t *data, size_t data_len,
 	/* Skip Periodic RA update timer */
 	/* Skip Radio priority for SMS */
 	/* Skip Spare half octet */
-	v_fixed_shift(&data, &data_len, 3, NULL);
+	gprs_shift_v_fixed(&data, &data_len, 3, NULL);
 
-	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
 	parse_ctx->raid_enc = value;
 
 	/* Skip P-TMSI signature (P-TMSI signature, opt, TV, length 4) */
-	tv_fixed_match(&data, &data_len, GSM48_IE_GMM_PTMSI_SIG, 3, NULL);
+	gprs_match_tv_fixed(&data, &data_len, GSM48_IE_GMM_PTMSI_SIG, 3, NULL);
 
 	/* Skip Negotiated READY timer value (GPRS timer, opt, TV, length 2) */
-	tv_fixed_match(&data, &data_len, GSM48_IE_GMM_TIMER_READY, 1, NULL);
+	gprs_match_tv_fixed(&data, &data_len, GSM48_IE_GMM_TIMER_READY, 1, NULL);
 
 	/* Allocated P-TMSI (Mobile identity, opt, TLV, length 7) */
-	if (tlv_match(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
+	if (gprs_match_tlv(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
 		      &value, &value_len) > 0 &&
 	    gprs_is_mi_tmsi(value, value_len))
 		parse_ctx->new_ptmsi_enc = value + 1;
@@ -227,7 +111,7 @@ static int gprs_gb_parse_gmm_attach_rej(uint8_t *data, size_t data_len,
 	parse_ctx->llc_msg_name = "ATTACH_REJ";
 
 	/* GMM cause */
-	if (v_fixed_shift(&data, &data_len, 1, &value) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, 1, &value) <= 0)
 		return 0;
 
 	parse_ctx->invalidate_tlli = 1;
@@ -248,7 +132,7 @@ static int gprs_gb_parse_gmm_detach_req(uint8_t *data, size_t data_len,
 
 	/* Skip spare half octet */
 	/* Get Detach type */
-	if (v_fixed_shift(&data, &data_len, 1, &value) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, 1, &value) <= 0)
 		/* invalid */
 		return 0;
 
@@ -266,7 +150,7 @@ static int gprs_gb_parse_gmm_detach_req(uint8_t *data, size_t data_len,
 			parse_ctx->invalidate_tlli = 1;
 
 		/* Get P-TMSI (Mobile identity), see GSM 24.008, 9.4.5.2 */
-		if (tlv_match(&data, &data_len,
+		if (gprs_match_tlv(&data, &data_len,
 			      GSM48_IE_GMM_ALLOC_PTMSI, &value, &value_len) > 0)
 		{
 			if (gprs_is_mi_tmsi(value, value_len))
@@ -286,9 +170,9 @@ static int gprs_gb_parse_gmm_ra_upd_req(uint8_t *data, size_t data_len,
 
 	/* Skip Update type */
 	/* Skip GPRS ciphering key sequence number */
-	v_fixed_shift(&data, &data_len, 1, NULL);
+	gprs_shift_v_fixed(&data, &data_len, 1, NULL);
 
-	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
 	parse_ctx->old_raid_enc = value;
@@ -306,14 +190,14 @@ static int gprs_gb_parse_gmm_ra_upd_rej(uint8_t *data, size_t data_len,
 	parse_ctx->llc_msg_name = "RA_UPD_REJ";
 
 	/* GMM cause */
-	if (v_fixed_shift(&data, &data_len, 1, &value) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, 1, &value) <= 0)
 		return 0;
 
 	cause = value[0];
 
 	/* Force to standby, 1/2 */
 	/* spare bits, 1/2 */
-	if (v_fixed_shift(&data, &data_len, 1, &value) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, 1, &value) <= 0)
 		return 0;
 
 	force_standby = (value[0] & 0x07) == 0x01;
@@ -337,18 +221,18 @@ static int gprs_gb_parse_gmm_ra_upd_ack(uint8_t *data, size_t data_len,
 	/* Skip Force to standby */
 	/* Skip Update result */
 	/* Skip Periodic RA update timer */
-	v_fixed_shift(&data, &data_len, 2, NULL);
+	gprs_shift_v_fixed(&data, &data_len, 2, NULL);
 
-	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
 	parse_ctx->raid_enc = value;
 
 	/* Skip P-TMSI signature (P-TMSI signature, opt, TV, length 4) */
-	tv_fixed_match(&data, &data_len, GSM48_IE_GMM_PTMSI_SIG, 3, NULL);
+	gprs_match_tv_fixed(&data, &data_len, GSM48_IE_GMM_PTMSI_SIG, 3, NULL);
 
 	/* Allocated P-TMSI (Mobile identity, opt, TLV, length 7) */
-	if (tlv_match(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
+	if (gprs_match_tlv(&data, &data_len, GSM48_IE_GMM_ALLOC_PTMSI,
 		      &value, &value_len) > 0 &&
 	    gprs_is_mi_tmsi(value, value_len))
 		parse_ctx->new_ptmsi_enc = value + 1;
@@ -368,11 +252,11 @@ static int gprs_gb_parse_gmm_ptmsi_reall_cmd(uint8_t *data, size_t data_len,
 	     "Got P-TMSI Reallocation Command which is not covered by unit tests yet.\n");
 
 	/* Allocated P-TMSI */
-	if (lv_shift(&data, &data_len, &value, &value_len) > 0 &&
+	if (gprs_shift_lv(&data, &data_len, &value, &value_len) > 0 &&
 	    gprs_is_mi_tmsi(value, value_len))
 		parse_ctx->new_ptmsi_enc = value + 1;
 
-	if (v_fixed_shift(&data, &data_len, 6, &value) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, 6, &value) <= 0)
 		return 0;
 
 	parse_ctx->raid_enc = value;
@@ -389,7 +273,7 @@ static int gprs_gb_parse_gmm_id_resp(uint8_t *data, size_t data_len,
 	parse_ctx->llc_msg_name = "ID_RESP";
 
 	/* Mobile identity, Mobile identity 10.5.1.4, M LV 2-10 */
-	if (lv_shift(&data, &data_len, &value, &value_len) <= 0 ||
+	if (gprs_shift_lv(&data, &data_len, &value, &value_len) <= 0 ||
 	    value_len < 1 || value_len > 9)
 		/* invalid */
 		return 0;
@@ -415,22 +299,22 @@ static int gprs_gb_parse_gsm_act_pdp_req(uint8_t *data, size_t data_len,
 
 	/* Skip Requested NSAPI */
 	/* Skip Requested LLC SAPI */
-	v_fixed_shift(&data, &data_len, 2, NULL);
+	gprs_shift_v_fixed(&data, &data_len, 2, NULL);
 
 	/* Skip Requested QoS (support 04.08 and 24.008) */
-	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
+	if (gprs_shift_lv(&data, &data_len, NULL, &value_len) <= 0 ||
 	    value_len < 4 || value_len > 14)
 		/* invalid */
 		return 0;
 
 	/* Skip Requested PDP address */
-	if (lv_shift(&data, &data_len, NULL, &value_len) <= 0 ||
+	if (gprs_shift_lv(&data, &data_len, NULL, &value_len) <= 0 ||
 	    value_len < 2 || value_len > 18)
 		/* invalid */
 		return 0;
 
 	/* Access point name */
-	old_len = tlv_match(&data, &data_len,
+	old_len = gprs_match_tlv(&data, &data_len,
 			    GSM48_IE_GSM_APN, &value, &value_len);
 
 	if (old_len > 0 && value_len >=1 && value_len <= 100) {
@@ -446,7 +330,7 @@ int gprs_gb_parse_dtap(uint8_t *data, size_t data_len,
 {
 	struct gsm48_hdr *g48h;
 
-	if (v_fixed_shift(&data, &data_len, sizeof(*g48h), (uint8_t **)&g48h) <= 0)
+	if (gprs_shift_v_fixed(&data, &data_len, sizeof(*g48h), (uint8_t **)&g48h) <= 0)
 		return 0;
 
 	parse_ctx->g48_hdr = g48h;
