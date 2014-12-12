@@ -315,6 +315,7 @@ struct gsm_subscriber *gprs_subscr_get_by_imsi(const char *imsi);
 void gprs_subscr_put_and_cancel(struct gsm_subscriber *subscr);
 void gprs_subscr_update(struct gsm_subscriber *subscr);
 void gprs_subscr_update_auth_info(struct gsm_subscriber *subscr);
+int gprs_subscr_rx_gsup_message(struct msgb *msg);
 
 /* Called on subscriber data updates */
 void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,

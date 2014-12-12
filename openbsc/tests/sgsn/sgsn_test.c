@@ -322,6 +322,170 @@ static void test_auth_triplets(void)
 	gprs_llgmm_assign(llme, local_tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
 }
 
+#define TEST_GSUP_IMSI1_IE 0x01, 0x05, 0x21, 0x43, 0x65, 0x87, 0x09
+
+static void test_subscriber_gsup(void)
+{
+	struct gsm_subscriber *s1, *s1found;
+	const char *imsi1 = "1234567890";
+	struct sgsn_mm_ctx *ctx;
+	struct gprs_ra_id raid = { 0, };
+	uint32_t local_tlli = 0xffeeddcc;
+	struct gprs_llc_llme *llme;
+	struct msgb *msg;
+	int rc;
+
+	static const uint8_t send_auth_info_res[] = {
+		0x0a,
+		TEST_GSUP_IMSI1_IE,
+		0x03, 0x22, /* Auth tuple */
+			0x20, 0x10,
+				0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+				0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+			0x21, 0x04,
+				0x21, 0x22, 0x23, 0x24,
+			0x22, 0x08,
+				0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+		0x03, 0x22, /* Auth tuple */
+			0x20, 0x10,
+				0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88,
+				0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f, 0x90,
+			0x21, 0x04,
+				0xa1, 0xa2, 0xa3, 0xa4,
+			0x22, 0x08,
+				0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8,
+	};
+
+	static const uint8_t send_auth_info_err[] = {
+		0x09,
+		TEST_GSUP_IMSI1_IE,
+		0x02, 0x01, 0x07 /* GPRS not allowed */
+	};
+
+	static const uint8_t update_location_res[] = {
+		0x06,
+		TEST_GSUP_IMSI1_IE,
+		0x04, 0x00, /* PDP info complete */
+		0x05, 0x12,
+			0x10, 0x01, 0x01,
+			0x11, 0x02, 0xf1, 0x21, /* IPv4 */
+			0x12, 0x09, 0x04, 't', 'e', 's', 't', 0x03, 'a', 'p', 'n',
+		0x05, 0x11,
+			0x10, 0x01, 0x02,
+			0x11, 0x02, 0xf1, 0x21, /* IPv4 */
+			0x12, 0x08, 0x03, 'f', 'o', 'o', 0x03, 'a', 'p', 'n',
+	};
+
+	static const uint8_t update_location_err[] = {
+		0x05,
+		TEST_GSUP_IMSI1_IE,
+		0x02, 0x01, 0x07 /* GPRS not allowed */
+	};
+
+	static const uint8_t location_cancellation_req[] = {
+		0x1c,
+		TEST_GSUP_IMSI1_IE,
+		0x06, 0x01, 0x00,
+	};
+
+	printf("Testing subcriber GSUP handling\n");
+
+	update_subscriber_data_cb = my_dummy_sgsn_update_subscriber_data;
+
+	/* Check for emptiness */
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
+
+	/* Allocate entry 1 */
+	s1 = gprs_subscr_get_or_create(imsi1);
+	s1->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+	s1found = gprs_subscr_get_by_imsi(imsi1);
+	OSMO_ASSERT(s1found == s1);
+	subscr_put(s1found);
+
+	/* Create a context */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	ctx = alloc_mm_ctx(local_tlli, &raid);
+	llme = ctx->llme;
+
+	/* Attach s1 to ctx */
+	ctx->subscr = subscr_get(s1);
+	ctx->subscr->sgsn_data->mm = ctx;
+
+	/* Inject SendAuthInfoReq GSUP message */
+	msg = msgb_alloc(1024, __func__);
+	msg->l2h = msgb_put(msg, sizeof(send_auth_info_res));
+	memcpy(msg->l2h, send_auth_info_res, sizeof(send_auth_info_res));
+	rc = gprs_subscr_rx_gsup_message(msg);
+	msgb_free(msg);
+	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(last_updated_subscr == s1);
+
+	/* Check triplets */
+	OSMO_ASSERT(s1->sgsn_data->auth_triplets[0].key_seq == 0);
+	OSMO_ASSERT(s1->sgsn_data->auth_triplets[1].key_seq == 1);
+	OSMO_ASSERT(s1->sgsn_data->auth_triplets[2].key_seq == GSM_KEY_SEQ_INVAL);
+
+	/* Inject SendAuthInfoErr GSUP message */
+	msg = msgb_alloc(1024, __func__);
+	msg->l2h = msgb_put(msg, sizeof(send_auth_info_err));
+	memcpy(msg->l2h, send_auth_info_err, sizeof(send_auth_info_err));
+	rc = gprs_subscr_rx_gsup_message(msg);
+	msgb_free(msg);
+	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(last_updated_subscr == s1);
+
+	/* Check triplets */
+	OSMO_ASSERT(s1->sgsn_data->auth_triplets[0].key_seq == GSM_KEY_SEQ_INVAL);
+	OSMO_ASSERT(s1->sgsn_data->auth_triplets[1].key_seq == GSM_KEY_SEQ_INVAL);
+	OSMO_ASSERT(s1->sgsn_data->auth_triplets[2].key_seq == GSM_KEY_SEQ_INVAL);
+
+	/* Inject UpdateLocReq GSUP message */
+	msg = msgb_alloc(1024, __func__);
+	msg->l2h = msgb_put(msg, sizeof(update_location_res));
+	memcpy(msg->l2h, update_location_res, sizeof(update_location_res));
+	rc = gprs_subscr_rx_gsup_message(msg);
+	msgb_free(msg);
+	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(last_updated_subscr == s1);
+
+	/* Check authorization */
+	OSMO_ASSERT(s1->authorized == 1);
+
+	/* Inject UpdateLocErr GSUP message */
+	msg = msgb_alloc(1024, __func__);
+	msg->l2h = msgb_put(msg, sizeof(update_location_err));
+	memcpy(msg->l2h, update_location_err, sizeof(update_location_err));
+	rc = gprs_subscr_rx_gsup_message(msg);
+	msgb_free(msg);
+	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(last_updated_subscr == s1);
+
+	/* Check authorization */
+	OSMO_ASSERT(s1->authorized == 0);
+
+	/* Inject UpdateLocReq GSUP message */
+	msg = msgb_alloc(1024, __func__);
+	msg->l2h = msgb_put(msg, sizeof(location_cancellation_req));
+	memcpy(msg->l2h,
+	       location_cancellation_req, sizeof(location_cancellation_req));
+	rc = gprs_subscr_rx_gsup_message(msg);
+	msgb_free(msg);
+	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(last_updated_subscr == s1);
+
+	/* Check cancellation result */
+	OSMO_ASSERT(s1->flags & GPRS_SUBSCRIBER_CANCELLED);
+	OSMO_ASSERT(s1->sgsn_data->mm == NULL);
+
+	/* Free MM context and subscriber */
+	subscr_put(s1);
+	s1found = gprs_subscr_get_by_imsi(imsi1);
+	OSMO_ASSERT(s1found == NULL);
+	gprs_llgmm_assign(llme, local_tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+
+	update_subscriber_data_cb = __real_sgsn_update_subscriber_data;
+}
+
 /*
  * Test that a GMM Detach will remove the MMCTX and the
  * associated LLME.
@@ -1283,6 +1447,7 @@ int main(int argc, char **argv)
 	test_llme();
 	test_subscriber();
 	test_auth_triplets();
+	test_subscriber_gsup();
 	test_gmm_detach();
 	test_gmm_detach_power_off();
 	test_gmm_detach_no_mmctx();

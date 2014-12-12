@@ -24,6 +24,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
+#include <openbsc/gprs_gsup_messages.h>
 
 #include <openbsc/debug.h>
 
@@ -92,22 +93,220 @@ void gprs_subscr_put_and_cancel(struct gsm_subscriber *subscr)
 	gprs_subscr_delete(subscr);
 }
 
-int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
+static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
+				       struct gprs_gsup_message *gsup_msg)
 {
-	/* TODO: Implement remote query to HLR, ... */
+	struct msgb *msg = msgb_alloc(4096, __func__);
+
+	strncpy(gsup_msg->imsi, subscr->imsi, sizeof(gsup_msg->imsi) - 1);
+
+	gprs_gsup_encode(msg, gsup_msg);
 
 	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
-		  "subscriber auth info is not available (remote query NYI)\n");
+		  "Sending GSUP NYI, would send: %s\n", msgb_hexdump(msg));
+	msgb_free(msg);
+
 	return -ENOTSUP;
+}
+
+static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
+					    struct gprs_gsup_message *gsup_msg)
+{
+	unsigned idx;
+	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
+
+	LOGP(DGPRS, LOGL_INFO,
+	     "Got SendAuthenticationInfoResult, num_auth_tuples = %d\n",
+	     gsup_msg->num_auth_tuples);
+
+	if (gsup_msg->num_auth_tuples > 0) {
+		memset(sdata->auth_triplets, 0, sizeof(sdata->auth_triplets));
+
+		for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
+			sdata->auth_triplets[idx].key_seq = GSM_KEY_SEQ_INVAL;
+	}
+
+	for (idx = 0; idx < gsup_msg->num_auth_tuples; idx++) {
+		size_t key_seq = gsup_msg->auth_tuples[idx].key_seq;
+		LOGP(DGPRS, LOGL_DEBUG, "Adding auth tuple, cksn = %d\n", key_seq);
+		if (key_seq >= ARRAY_SIZE(sdata->auth_triplets)) {
+			LOGP(DGPRS, LOGL_NOTICE,
+			     "Skipping auth triplet with invalid cksn %d\n",
+			     key_seq);
+			continue;
+		}
+		sdata->auth_triplets[key_seq] = gsup_msg->auth_tuples[idx];
+	}
+
+	sdata->auth_triplets_updated = 1;
+
+	gprs_subscr_update_auth_info(subscr);
+
+	return 0;
+}
+
+static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
+					       struct gprs_gsup_message *gsup_msg)
+{
+	unsigned idx;
+
+	if (gsup_msg->pdp_info_compl) {
+		LOGP(DGPRS, LOGL_INFO, "Would clear existing PDP info\n");
+
+		/* TODO: clear existing PDP info entries */
+	}
+
+	for (idx = 0; idx < gsup_msg->num_pdp_infos; idx++) {
+		struct gprs_gsup_pdp_info *pdp_info = &gsup_msg->pdp_infos[idx];
+		size_t ctx_id = pdp_info->context_id;
+
+		LOGP(DGPRS, LOGL_INFO,
+		     "Would set PDP info, context id = %d, APN = %s\n",
+		     ctx_id, osmo_hexdump(pdp_info->apn_enc, pdp_info->apn_enc_len));
+
+		/* TODO: set PDP info [ctx_id] */
+	}
+
+	subscr->authorized = 1;
+
+	gprs_subscr_update(subscr);
+	return 0;
+}
+
+static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
+					    struct gprs_gsup_message *gsup_msg)
+{
+	unsigned idx;
+	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
+
+	LOGP(DGPRS, LOGL_INFO,
+	     "Send authentication info has failed for IMSI %s with cause %d\n",
+	     gsup_msg->imsi, gsup_msg->cause);
+
+	/* Clear auth tuples */
+	memset(sdata->auth_triplets, 0, sizeof(sdata->auth_triplets));
+	for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
+		sdata->auth_triplets[idx].key_seq = GSM_KEY_SEQ_INVAL;
+
+	subscr->authorized = 0;
+
+	gprs_subscr_update_auth_info(subscr);
+	return 0;
+}
+
+static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
+					       struct gprs_gsup_message *gsup_msg)
+{
+	LOGP(DGPRS, LOGL_INFO,
+	     "Update location has failed for IMSI %s with cause %d\n",
+	     gsup_msg->imsi, gsup_msg->cause);
+
+	subscr->authorized = 0;
+
+	gprs_subscr_update(subscr);
+	return 0;
+}
+
+int gprs_subscr_rx_gsup_message(struct msgb *msg)
+{
+	uint8_t *data = msgb_l2(msg);
+	size_t data_len = msgb_l2len(msg);
+	int rc = 0;
+
+	struct gprs_gsup_message gsup_msg = {0};
+	struct gsm_subscriber *subscr;
+
+	rc = gprs_gsup_decode(data, data_len, &gsup_msg);
+	if (rc < 0) {
+		LOGP(DGPRS, LOGL_ERROR,
+		     "decoding GSUP message fails with error code %d\n", -rc);
+		return rc;
+	}
+
+	if (!gsup_msg.imsi[0])
+		return -GMM_CAUSE_INV_MAND_INFO;
+
+	if (gsup_msg.message_type == GPRS_GSUP_MSGT_INSERT_DATA_REQUEST)
+		subscr = gprs_subscr_get_or_create(gsup_msg.imsi);
+	else
+		subscr = gprs_subscr_get_by_imsi(gsup_msg.imsi);
+
+	if (!subscr) {
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "Unknown IMSI %s, discarding GSUP message\n", gsup_msg.imsi);
+		return -GMM_CAUSE_IMSI_UNKNOWN;
+	}
+
+	LOGP(DGPRS, LOGL_INFO,
+	     "Received GSUP message of type 0x%02x for IMSI %s\n",
+	     gsup_msg.message_type, gsup_msg.imsi);
+
+	switch (gsup_msg.message_type) {
+	case GPRS_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
+		gprs_subscr_put_and_cancel(subscr);
+		subscr = NULL;
+		break;
+
+	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_RESULT:
+		gprs_subscr_handle_gsup_auth_res(subscr, &gsup_msg);
+		break;
+
+	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_ERROR:
+		gprs_subscr_handle_gsup_auth_err(subscr, &gsup_msg);
+		break;
+
+	case GPRS_GSUP_MSGT_UPDATE_LOCATION_RESULT:
+		gprs_subscr_handle_gsup_upd_loc_res(subscr, &gsup_msg);
+		break;
+
+	case GPRS_GSUP_MSGT_UPDATE_LOCATION_ERROR:
+		gprs_subscr_handle_gsup_upd_loc_err(subscr, &gsup_msg);
+		break;
+
+	case GPRS_GSUP_MSGT_PURGE_MS_ERROR:
+	case GPRS_GSUP_MSGT_PURGE_MS_RESULT:
+	case GPRS_GSUP_MSGT_INSERT_DATA_REQUEST:
+	case GPRS_GSUP_MSGT_DELETE_DATA_REQUEST:
+		LOGP(DGPRS, LOGL_ERROR,
+		     "Rx GSUP message type %d not yet implemented\n",
+		     gsup_msg.message_type);
+		rc = -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
+		break;
+
+	default:
+		LOGP(DGPRS, LOGL_ERROR,
+		     "Rx GSUP message type %d not valid at SGSN\n",
+		     gsup_msg.message_type);
+		rc = -GMM_CAUSE_MSGT_INCOMP_P_STATE;
+		break;
+	};
+
+	if (subscr)
+		subscr_put(subscr);
+
+	return rc;
+}
+
+int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
+{
+	struct gprs_gsup_message gsup_msg = {0};
+
+	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
+		  "subscriber auth info is not available\n");
+
+	gsup_msg.message_type = GPRS_GSUP_MSGT_SEND_AUTH_INFO_REQUEST;
+	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 
 int gprs_subscr_location_update(struct gsm_subscriber *subscr)
 {
-	/* TODO: Implement remote query to HLR, ... */
+	struct gprs_gsup_message gsup_msg = {0};
 
 	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
-		  "subscriber data is not available (remote query NYI)\n");
-	return -ENOTSUP;
+		  "subscriber data is not available\n");
+
+	gsup_msg.message_type = GPRS_GSUP_MSGT_UPDATE_LOCATION_REQUEST;
+	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 
 void gprs_subscr_update(struct gsm_subscriber *subscr)
