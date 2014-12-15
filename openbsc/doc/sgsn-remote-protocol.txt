@@ -21,6 +21,12 @@ that understands the protocol natively or a wrapper service that maps the
 messages to/from real MAP messages that can be used to directly communicate
 with an HLR.
 
+2.1. Using IPA
+
+By default, the following identifiers should be used:
+  - IPA protocol: 0xee (OSMO)
+  - IPA OSMO protocol extension: 0x05
+
 2. Procedures
 
 2.1. Authentication management
