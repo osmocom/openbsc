@@ -14,6 +14,8 @@ src/osmo-bsc/osmo-bsc
 *.sw?
 .libs
 *.pyc
+*.gcda
+*.gcno
 
 #configure
 aclocal.m4
