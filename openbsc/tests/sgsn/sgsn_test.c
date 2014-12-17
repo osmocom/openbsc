@@ -383,6 +383,7 @@ static void test_subscriber_gsup(void)
 	struct sgsn_mm_ctx *ctx;
 	struct gprs_ra_id raid = { 0, };
 	uint32_t local_tlli = 0xffeeddcc;
+	struct sgsn_subscriber_pdp_data *pdpd;
 	int rc;
 
 	static const uint8_t send_auth_info_res[] = {
@@ -520,12 +521,19 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(s1->sgsn_data->auth_triplets[1].key_seq == GSM_KEY_SEQ_INVAL);
 	OSMO_ASSERT(s1->sgsn_data->auth_triplets[2].key_seq == GSM_KEY_SEQ_INVAL);
 
-	/* Inject UpdateLocReq GSUP message */
+	/* Inject UpdateLocRes GSUP message */
 	rc = rx_gsup_message(update_location_res, sizeof(update_location_res));
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(last_updated_subscr == s1);
 	OSMO_ASSERT(s1->flags & GPRS_SUBSCRIBER_ENABLE_PURGE);
 	OSMO_ASSERT(s1->sgsn_data->error_cause == SGSN_ERROR_CAUSE_NONE);
+	OSMO_ASSERT(!llist_empty(&s1->sgsn_data->pdp_list));
+	pdpd = llist_entry(s1->sgsn_data->pdp_list.next,
+		struct sgsn_subscriber_pdp_data, list);
+	OSMO_ASSERT(strcmp(pdpd->apn_str, "test.apn") == 0);
+	pdpd = llist_entry(pdpd->list.next,
+		struct sgsn_subscriber_pdp_data, list);
+	OSMO_ASSERT(strcmp(pdpd->apn_str, "foo.apn") == 0);
 
 	/* Check authorization */
 	OSMO_ASSERT(s1->authorized == 1);

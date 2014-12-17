@@ -26,6 +26,7 @@
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gprs_gsup_messages.h>
+#include <openbsc/gprs_utils.h>
 
 #include <openbsc/debug.h>
 
@@ -111,7 +112,21 @@ static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
 	for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
 	     sdata->auth_triplets[idx].key_seq = GSM_KEY_SEQ_INVAL;
 
+	INIT_LLIST_HEAD(&sdata->pdp_list);
+
 	return sdata;
+}
+
+struct sgsn_subscriber_pdp_data* sgsn_subscriber_pdp_data_alloc(
+	struct sgsn_subscriber_data *sdata)
+{
+	struct sgsn_subscriber_pdp_data* pdata;
+
+	pdata = talloc_zero(sdata, struct sgsn_subscriber_pdp_data);
+
+	llist_add_tail(&pdata->list, &sdata->pdp_list);
+
+	return pdata;
 }
 
 struct gsm_subscriber *gprs_subscr_get_or_create(const char *imsi)
@@ -229,27 +244,80 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
-					       struct gprs_gsup_message *gsup_msg)
+static int gprs_subscr_pdp_data_clear(struct gsm_subscriber *subscr)
+{
+	struct sgsn_subscriber_pdp_data *pdp, *pdp2;
+	int count = 0;
+
+	llist_for_each_entry_safe(pdp, pdp2, &subscr->sgsn_data->pdp_list, list) {
+		llist_del(&pdp->list);
+		count += 1;
+	}
+
+	return count;
+}
+
+static struct sgsn_subscriber_pdp_data *gprs_subscr_pdp_data_get_by_id(
+	struct gsm_subscriber *subscr, unsigned context_id)
+{
+	struct sgsn_subscriber_pdp_data *pdp;
+
+	llist_for_each_entry(pdp, &subscr->sgsn_data->pdp_list, list) {
+		if (pdp->context_id == context_id)
+			return pdp;
+	}
+
+	return NULL;
+}
+
+
+static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
+					 struct gprs_gsup_message *gsup_msg)
 {
 	unsigned idx;
+	int rc;
 
 	if (gsup_msg->pdp_info_compl) {
-		LOGP(DGPRS, LOGL_INFO, "Would clear existing PDP info\n");
-
-		/* TODO: clear existing PDP info entries */
+		rc = gprs_subscr_pdp_data_clear(subscr);
+		if (rc > 0)
+			LOGP(DGPRS, LOGL_INFO, "Cleared existing PDP info\n");
 	}
 
 	for (idx = 0; idx < gsup_msg->num_pdp_infos; idx++) {
 		struct gprs_gsup_pdp_info *pdp_info = &gsup_msg->pdp_infos[idx];
 		size_t ctx_id = pdp_info->context_id;
+		struct sgsn_subscriber_pdp_data *pdp_data;
 
-		LOGP(DGPRS, LOGL_INFO,
-		     "Would set PDP info, context id = %d, APN = %s\n",
+		if (pdp_info->apn_enc_len >= sizeof(pdp_data->apn_str)-1) {
+			LOGGSUBSCRP(LOGL_ERROR, subscr,
+			     "APN too long, context id = %d, APN = %s\n",
+			     ctx_id, osmo_hexdump(pdp_info->apn_enc,
+						  pdp_info->apn_enc_len));
+			continue;
+		}
+
+		LOGGSUBSCRP(LOGL_INFO, subscr,
+		     "Will set PDP info, context id = %d, APN = %s\n",
 		     ctx_id, osmo_hexdump(pdp_info->apn_enc, pdp_info->apn_enc_len));
 
-		/* TODO: set PDP info [ctx_id] */
+		/* Set PDP info [ctx_id] */
+		pdp_data = gprs_subscr_pdp_data_get_by_id(subscr, ctx_id);
+		if (!pdp_data) {
+			pdp_data = sgsn_subscriber_pdp_data_alloc(subscr->sgsn_data);
+			pdp_data->context_id = ctx_id;
+		}
+
+		OSMO_ASSERT(pdp_data != NULL);
+		pdp_data->pdp_type = pdp_info->pdp_type;
+		gprs_apn_to_str(pdp_data->apn_str,
+				pdp_info->apn_enc, pdp_info->apn_enc_len);
 	}
+}
+
+static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
+					       struct gprs_gsup_message *gsup_msg)
+{
+	gprs_subscr_gsup_insert_data(subscr, gsup_msg);
 
 	subscr->authorized = 1;
 	subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;

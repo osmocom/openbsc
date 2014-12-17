@@ -402,6 +402,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 	char expire_time[200];
 	struct gsm_auth_tuple *at;
 	int at_idx;
+	struct sgsn_subscriber_pdp_data *pdp;
 
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
@@ -436,6 +437,12 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 			osmo_hexdump(at->sres, sizeof(at->sres)));
 		vty_out(vty, "     Kc    : %s%s",
 			osmo_hexdump(at->kc, sizeof(at->kc)),
+			VTY_NEWLINE);
+	}
+
+	llist_for_each_entry(pdp, &subscr->sgsn_data->pdp_list, list) {
+		vty_out(vty, "    PDP info: Id: %d, Type: 0x%04x, APN: '%s'%s",
+			pdp->context_id, pdp->pdp_type, pdp->apn_str,
 			VTY_NEWLINE);
 	}
 
