@@ -172,7 +172,21 @@ static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
 	for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
 	     sdata->auth_triplets[idx].key_seq = GSM_KEY_SEQ_INVAL;
 
+	INIT_LLIST_HEAD(&sdata->pdp_list);
+
 	return sdata;
+}
+
+struct sgsn_subscriber_pdp_data* sgsn_subscriber_pdp_data_alloc(
+	struct sgsn_subscriber_data *sdata)
+{
+	struct sgsn_subscriber_pdp_data* pdata;
+
+	pdata = talloc_zero(sdata, struct sgsn_subscriber_pdp_data);
+
+	llist_add(&sdata->pdp_list, &pdata->list);
+
+	return pdata;
 }
 
 struct gsm_subscriber *gprs_subscr_get_or_create(const char *imsi)

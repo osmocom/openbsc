@@ -271,6 +271,22 @@ struct imsi_acl_entry {
 	char imsi[16+1];
 };
 
+/* see GSM 09.02, 17.7.1, PDP-Context and GPRSSubscriptionData */
+/* see GSM 09.02, B.1, gprsSubscriptionData */
+struct sgsn_subscriber_pdp_data {
+	struct llist_head	list;
+
+	/* raw binary data */
+	int		pdp_context_id;
+	uint8_t		pdp_type[2];
+	uint8_t		pdp_address[16];
+	size_t		pdp_address_size;	/* 0: not present */
+	uint8_t		qos_subscribed[3];
+	int		vplmn_address_allowed;
+	uint8_t		apn[63];
+	size_t		apn_size;
+};
+
 enum sgsn_subscriber_proc {
 	SGSN_SUBSCR_PROC_NONE = 0,
 	SGSN_SUBSCR_PROC_PURGE,
@@ -282,6 +298,7 @@ struct sgsn_subscriber_data {
 	struct sgsn_mm_ctx	*mm;
 	struct gsm_auth_tuple	auth_triplets[5];
 	int			auth_triplets_updated;
+	struct llist_head	pdp_list;
 	int			error_cause;
 	struct osmo_timer_list	timer;
 	int			retries;
