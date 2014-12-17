@@ -376,6 +376,7 @@ DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
 	int val = get_string_value(sgsn_auth_pol_strs, argv[0]);
 	OSMO_ASSERT(val >= SGSN_AUTH_POLICY_OPEN && val <= SGSN_AUTH_POLICY_REMOTE);
 	g_cfg->auth_policy = val;
+	g_cfg->require_authentication = (val == SGSN_AUTH_POLICY_REMOTE);
 
 	return CMD_SUCCESS;
 }
@@ -472,15 +473,14 @@ DEFUN(show_subscr_cache,
 #define UPDATE_SUBSCR_INSERT_HELP "Insert data into the subscriber record\n"
 
 DEFUN(update_subscr_insert, update_subscr_insert_cmd,
-	UPDATE_SUBSCR_STR "insert (authorized|authenticate) (0|1)",
+	UPDATE_SUBSCR_STR "insert authorized <0-1>)",
 	UPDATE_SUBSCR_HELP
 	UPDATE_SUBSCR_INSERT_HELP
 	"Authorize the subscriber to attach\n"
 	"New option value\n")
 {
 	const char *imsi = argv[0];
-	const char *option = argv[1];
-	const char *value = argv[2];
+	const char *value = argv[1];
 
 	struct gsm_subscriber *subscr;
 
@@ -490,10 +490,7 @@ DEFUN(update_subscr_insert, update_subscr_insert_cmd,
 		return CMD_WARNING;
 	}
 
-	if (!strcmp(option, "authorized"))
-		subscr->authorized = atoi(value);
-	else
-		subscr->sgsn_data->authenticate = atoi(value);
+	subscr->authorized = atoi(value);
 
 	subscr_put(subscr);
 

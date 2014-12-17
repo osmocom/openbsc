@@ -110,7 +110,7 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx)
 		if (mmctx->subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING_MASK)
 			return mmctx->auth_state;
 
-		if (mmctx->subscr->sgsn_data->authenticate &&
+		if (sgsn->cfg.require_authentication &&
 		    (!mmctx->is_authenticated ||
 		     mmctx->subscr->sgsn_data->auth_triplets_updated))
 			return SGSN_AUTH_AUTHENTICATE;
@@ -171,7 +171,7 @@ int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 
 	OSMO_ASSERT(mmctx->subscr != NULL);
 
-	if (mmctx->subscr->sgsn_data->authenticate && !mmctx->is_authenticated) {
+	if (sgsn->cfg.require_authentication && !mmctx->is_authenticated) {
 		/* Find next tuple */
 		at = sgsn_auth_get_tuple(mmctx, mmctx->auth_triplet.key_seq);
 

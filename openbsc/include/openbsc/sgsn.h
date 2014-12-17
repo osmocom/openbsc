@@ -30,6 +30,8 @@ struct sgsn_config {
 
 	struct sockaddr_in gsup_server_addr;
 	int gsup_server_port;
+
+	int require_authentication;
 };
 
 struct sgsn_instance {
