@@ -364,3 +364,61 @@ int gsm_parse_reg(void *ctx, regex_t *reg, char **str, int argc, const char **ar
 	return ret;
 }
 
+/* Assume there are only 256 possible bts */
+osmo_static_assert(sizeof(((struct gsm_bts *) 0)->nr) == 1, _bts_nr_is_256);
+static void depends_calc_index_bit(int bts_nr, int *idx, int *bit)
+{
+	*idx = bts_nr / (8 * 4);
+	*bit = bts_nr % (8 * 4);
+}
+
+void bts_depend_mark(struct gsm_bts *bts, int dep)
+{
+	int idx, bit;
+	depends_calc_index_bit(dep, &idx, &bit);
+
+	bts->depends_on[idx] |= 1 << bit;
+}
+
+void bts_depend_clear(struct gsm_bts *bts, int dep)
+{
+	int idx, bit;
+	depends_calc_index_bit(dep, &idx, &bit);
+
+	bts->depends_on[idx] &= ~(1 << bit);
+}
+
+static int bts_depend_is_depedency(struct gsm_bts *base, struct gsm_bts *other)
+{
+	int idx, bit;
+	depends_calc_index_bit(other->nr, &idx, &bit);
+
+	/* Check if there is a depends bit */
+	return (base->depends_on[idx] & (1 << bit)) > 0;
+}
+
+static int bts_is_online(struct gsm_bts *bts)
+{
+	/* TODO: support E1 BTS too */
+	if (!is_ipaccess_bts(bts))
+		return 1;
+
+	if (!bts->oml_link)
+		return 0;
+
+	return bts->mo.nm_state.operational == NM_OPSTATE_ENABLED;
+}
+
+int bts_depend_check(struct gsm_bts *bts)
+{
+	struct gsm_bts *other_bts;
+
+	llist_for_each_entry(other_bts, &bts->network->bts_list, list) {
+		if (!bts_depend_is_depedency(bts, other_bts))
+			continue;
+		if (bts_is_online(other_bts))
+			continue;
+		return 0;
+	}
+	return 1;
+}

@@ -436,4 +436,9 @@ extern const struct value_string bts_type_descs[_NUM_GSM_BTS_TYPE+1];
 int bsc_base_ctrl_cmds_install(void);
 int msc_ctrl_cmds_install(void);
 
+/* dependency handling */
+void bts_depend_mark(struct gsm_bts *bts, int dep);
+void bts_depend_clear(struct gsm_bts *bts, int dep);
+int bts_depend_check(struct gsm_bts *bts);
+
 #endif /* _GSM_DATA_H */

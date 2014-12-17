@@ -720,6 +720,9 @@ struct gsm_bts {
 
 	/* supported codecs beside FR */
 	struct bts_codec_conf codec;
+
+	/* BTS dependencies bit field */
+	uint32_t depends_on[256/(8*4)];
 #endif /* ROLE_BSC */
 	void *role;
 };

@@ -590,6 +590,13 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 		/* remove old OML signal link for this BTS. */
 		ipaccess_drop_oml(bts);
 
+		if (!bts_depend_check(bts)) {
+			LOGP(DLINP, LOGL_NOTICE,
+				"Dependency not full-filled for %u/%u/%u\n",
+				dev->site_id, dev->bts_id, dev->trx_id);
+			return NULL;
+		}
+
 		/* create new OML link. */
 		sign_link = bts->oml_link =
 			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML - 1],
