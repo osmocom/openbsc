@@ -15,6 +15,7 @@
 #define GSM_IMSI_LENGTH 17
 #define GSM_IMEI_LENGTH 17
 #define GSM_EXTENSION_LENGTH 15
+#define GSM_APN_LENGTH 102
 
 struct gprs_llc_lle;
 struct ctrl_handle;
@@ -273,6 +274,16 @@ struct imsi_acl_entry {
 	char imsi[16+1];
 };
 
+/* see GSM 09.02, 17.7.1, PDP-Context and GPRSSubscriptionData */
+/* see GSM 09.02, B.1, gprsSubscriptionData */
+struct sgsn_subscriber_pdp_data {
+	struct llist_head	list;
+
+	unsigned int		context_id;
+	uint16_t		pdp_type;
+	char			apn_str[GSM_APN_LENGTH];
+};
+
 enum sgsn_subscriber_proc {
 	SGSN_SUBSCR_PROC_NONE = 0,
 	SGSN_SUBSCR_PROC_PURGE,
@@ -284,6 +295,7 @@ struct sgsn_subscriber_data {
 	struct sgsn_mm_ctx	*mm;
 	struct gsm_auth_tuple	auth_triplets[5];
 	int			auth_triplets_updated;
+	struct llist_head	pdp_list;
 	int			error_cause;
 	enum sgsn_subscriber_proc blocked_by;
 };
