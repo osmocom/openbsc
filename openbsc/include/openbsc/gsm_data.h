@@ -440,5 +440,6 @@ int msc_ctrl_cmds_install(void);
 void bts_depend_mark(struct gsm_bts *bts, int dep);
 void bts_depend_clear(struct gsm_bts *bts, int dep);
 int bts_depend_check(struct gsm_bts *bts);
+int bts_depend_is_depedency(struct gsm_bts *base, struct gsm_bts *other);
 
 #endif /* _GSM_DATA_H */

@@ -388,7 +388,7 @@ void bts_depend_clear(struct gsm_bts *bts, int dep)
 	bts->depends_on[idx] &= ~(1 << bit);
 }
 
-static int bts_depend_is_depedency(struct gsm_bts *base, struct gsm_bts *other)
+int bts_depend_is_depedency(struct gsm_bts *base, struct gsm_bts *other)
 {
 	int idx, bit;
 	depends_calc_index_bit(other->nr, &idx, &bit);
