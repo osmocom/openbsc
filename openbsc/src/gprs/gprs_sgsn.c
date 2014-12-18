@@ -475,7 +475,7 @@ void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
 		return;
 	}
 
-	LOGMMCTXP(LOGL_INFO, mmctx, "Subscriber data update");
+	LOGMMCTXP(LOGL_INFO, mmctx, "Subscriber data update\n");
 
 	if (!subscr->sgsn_data->mm && !mmctx->subscr) {
 		mmctx->subscr =	subscr_get(subscr);
