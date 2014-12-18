@@ -139,6 +139,12 @@ static int config_write_sgsn(struct vty *vty)
 	vty_out(vty, " auth-policy %s%s",
 		get_value_string(sgsn_auth_pol_strs, g_cfg->auth_policy),
 		VTY_NEWLINE);
+	if (g_cfg->gsup_server_addr.sin_addr.s_addr)
+		vty_out(vty, " gsup remote-ip %s%s",
+			inet_ntoa(g_cfg->gsup_server_addr.sin_addr), VTY_NEWLINE);
+	if (g_cfg->gsup_server_port)
+		vty_out(vty, " gsup remote-port %d%s",
+			g_cfg->gsup_server_port, VTY_NEWLINE);
 	llist_for_each_entry(acl, &g_cfg->imsi_acl, list)
 		vty_out(vty, " imsi-acl add %s%s", acl->imsi, VTY_NEWLINE);
 
@@ -650,6 +656,29 @@ DEFUN(update_subscr_update_auth_info, update_subscr_update_auth_info_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_gsup_remote_ip, cfg_gsup_remote_ip_cmd,
+	"gsup remote-ip A.B.C.D",
+	"GSUP Parameters\n"
+	"Set the IP address of the remote GSUP server\n"
+	"IPv4 Address\n")
+{
+	inet_aton(argv[0], &g_cfg->gsup_server_addr.sin_addr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gsup_remote_port, cfg_gsup_remote_port_cmd,
+	"gsup remote-port <0-65535>",
+	"GSUP Parameters\n"
+	"Set the TCP port of the remote GSUP server\n"
+	"Remote TCP port\n")
+{
+	g_cfg->gsup_server_port = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+
 
 int sgsn_vty_init(void)
 {
@@ -676,6 +705,8 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_ggsn_gtp_version_cmd);
 	install_element(SGSN_NODE, &cfg_imsi_acl_cmd);
 	install_element(SGSN_NODE, &cfg_auth_policy_cmd);
+	install_element(SGSN_NODE, &cfg_gsup_remote_ip_cmd);
+	install_element(SGSN_NODE, &cfg_gsup_remote_port_cmd);
 
 	return 0;
 }

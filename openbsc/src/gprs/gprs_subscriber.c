@@ -20,6 +20,7 @@
  */
 
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/gprs_gsup_client.h>
 
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
@@ -28,10 +29,47 @@
 
 #include <openbsc/debug.h>
 
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 extern void *tall_bsc_ctx;
 
-void gprs_subscr_init(struct sgsn_instance *sgi)
+static int gsup_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg);
+
+/* TODO: Some functions are specific to the SGSN, but this file is more general
+ * (it has gprs_* name). Either move these functions elsewhere, split them and
+ * move a part, or replace the gprs_ prefix by sgsn_. The applies to
+ * gprs_subscr_init, gsup_read_cb, and gprs_subscr_tx_gsup_message.
+ */
+
+int gprs_subscr_init(struct sgsn_instance *sgi)
 {
+	const char *addr_str;
+
+	if (!sgi->cfg.gsup_server_addr.sin_addr.s_addr)
+		return 0;
+
+	addr_str = inet_ntoa(sgi->cfg.gsup_server_addr.sin_addr);
+
+	sgi->gsup_client = gprs_gsup_client_create(
+		addr_str, sgi->cfg.gsup_server_port,
+		&gsup_read_cb);
+
+	if (!sgi->gsup_client)
+		return -1;
+
+	return 1;
+}
+
+static int gsup_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg)
+{
+	int rc;
+
+	rc = gprs_subscr_rx_gsup_message(msg);
+	if (rc < 0)
+		return -1;
+
+	return rc;
 }
 
 static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
@@ -96,17 +134,21 @@ void gprs_subscr_put_and_cancel(struct gsm_subscriber *subscr)
 static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 				       struct gprs_gsup_message *gsup_msg)
 {
-	struct msgb *msg = msgb_alloc(4096, __func__);
+	struct msgb *msg = gprs_gsup_msgb_alloc();
 
 	strncpy(gsup_msg->imsi, subscr->imsi, sizeof(gsup_msg->imsi) - 1);
 
 	gprs_gsup_encode(msg, gsup_msg);
 
 	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
-		  "Sending GSUP NYI, would send: %s\n", msgb_hexdump(msg));
-	msgb_free(msg);
+		  "Sending GSUP, will send: %s\n", msgb_hexdump(msg));
 
-	return -ENOTSUP;
+	if (!sgsn->gsup_client) {
+		msgb_free(msg);
+		return -ENOTSUP;
+	}
+
+	return gprs_gsup_client_send(sgsn->gsup_client, msg);
 }
 
 static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,

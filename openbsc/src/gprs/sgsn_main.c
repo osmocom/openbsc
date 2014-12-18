@@ -357,6 +357,12 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
+	rc = gprs_subscr_init(&sgsn_inst);
+	if (rc < 0) {
+		LOGP(DGPRS, LOGL_FATAL, "Cannot set up subscriber management\n");
+		exit(2);
+	}
+
 	rc = gprs_ns_nsip_listen(sgsn_nsi);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_FATAL, "Cannot bind/listen on NSIP socket\n");

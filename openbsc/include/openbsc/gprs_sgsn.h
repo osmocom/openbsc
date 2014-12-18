@@ -305,7 +305,7 @@ struct gsm_auth_tuple *sgsn_auth_get_tuple(struct sgsn_mm_ctx *mmctx,
 		GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING  \
 )
 
-void gprs_subscr_init(struct sgsn_instance *sgi);
+int gprs_subscr_init(struct sgsn_instance *sgi);
 int gprs_subscr_request_update_location(struct sgsn_mm_ctx *mmctx);
 int gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx);
 void gprs_subscr_delete(struct gsm_subscriber *subscr);

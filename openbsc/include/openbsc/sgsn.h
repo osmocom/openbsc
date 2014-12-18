@@ -7,6 +7,8 @@
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 
+struct gprs_gsup_client;
+
 enum sgsn_auth_policy {
 	SGSN_AUTH_POLICY_OPEN,
 	SGSN_AUTH_POLICY_CLOSED,
@@ -25,6 +27,9 @@ struct sgsn_config {
 
 	enum sgsn_auth_policy auth_policy;
 	struct llist_head imsi_acl;
+
+	struct sockaddr_in gsup_server_addr;
+	int gsup_server_port;
 };
 
 struct sgsn_instance {
@@ -38,6 +43,8 @@ struct sgsn_instance {
 	struct osmo_timer_list gtp_timer;
 	/* GSN instance for libgtp */
 	struct gsn_t *gsn;
+	/* Subscriber */
+	struct gprs_gsup_client *gsup_client;
 };
 
 extern struct sgsn_instance *sgsn;
