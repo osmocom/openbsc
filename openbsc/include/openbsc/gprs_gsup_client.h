@@ -21,6 +21,10 @@
  */
 #pragma once
 
+#include <osmocom/core/timer.h>
+
+#define GPRS_GSUP_RECONNECT_INTERVAL 10
+
 struct msgb;
 struct ipa_client_conn;
 struct gprs_gsup_client;
@@ -32,6 +36,9 @@ struct gprs_gsup_client {
 	struct ipa_client_conn	*link;
 	gprs_gsup_read_cb_t	read_cb;
 	void			*data;
+
+	struct osmo_timer_list	connect_timer;
+	int			is_connected;
 };
 
 struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,

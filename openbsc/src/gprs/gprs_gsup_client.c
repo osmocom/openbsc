@@ -29,14 +29,69 @@
 #include <openbsc/debug.h>
 
 #include <errno.h>
+#include <string.h>
 
 extern void *tall_bsc_ctx;
 
+static int gsup_client_connect(struct gprs_gsup_client *gsupc)
+{
+	int rc;
+
+	if (gsupc->is_connected)
+		return 0;
+
+	if (osmo_timer_pending(&gsupc->connect_timer)) {
+		LOGP(DLINP, LOGL_DEBUG,
+		     "GSUP connect: connect timer already running\n");
+		osmo_timer_del(&gsupc->connect_timer);
+	}
+
+	rc = ipa_client_conn_open(gsupc->link);
+
+	if (rc >= 0)
+		return rc;
+
+	LOGP(DGPRS, LOGL_INFO, "GSUP failed to connect to %s:%d: %s\n",
+	     gsupc->link->addr, gsupc->link->port, strerror(-rc));
+
+	if (rc == -EBADF || rc == -ENOTSOCK || rc == -EAFNOSUPPORT ||
+	    rc == -EINVAL)
+		return rc;
+
+	osmo_timer_schedule(&gsupc->connect_timer, GPRS_GSUP_RECONNECT_INTERVAL, 0);
+
+	return 0;
+}
+
+static void connect_timer_cb(void *gsupc_)
+{
+	struct gprs_gsup_client *gsupc = gsupc_;
+
+	if (gsupc->is_connected)
+		return;
+
+	gsup_client_connect(gsupc);
+}
+
 static void gsup_client_updown_cb(struct ipa_client_conn *link, int up)
 {
+	struct gprs_gsup_client *gsupc = link->data;
+
 	LOGP(DGPRS, LOGL_NOTICE, "GSUP link to %s:%d %s\n",
 		     link->addr, link->port, up ? "UP" : "DOWN");
 
+	gsupc->is_connected = up;
+
+	if (up) {
+		/* TODO: Start ping procedure */
+
+		osmo_timer_del(&gsupc->connect_timer);
+	} else {
+		/* TODO: Stop ping procedure */
+
+		osmo_timer_schedule(&gsupc->connect_timer,
+				    GPRS_GSUP_RECONNECT_INTERVAL, 0);
+	}
 }
 
 static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
@@ -90,26 +145,33 @@ struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,
 	if (!gsupc->link)
 		goto failed;
 
-	rc = ipa_client_conn_open(gsupc->link);
+	gsupc->connect_timer.data = gsupc;
+	gsupc->connect_timer.cb = &connect_timer_cb;
 
-	if (rc < 0 && rc != -EINPROGRESS) {
-		LOGP(DGPRS, LOGL_NOTICE, "GSUP failed to connect to %s:%d\n",
-		     ip_addr, tcp_port);
+	rc = gsup_client_connect(gsupc);
+
+	if (rc < 0 && rc != -EINPROGRESS)
 		goto failed;
-	}
 
 	gsupc->read_cb = read_cb;
 
 	return gsupc;
 
 failed:
-	talloc_free(gsupc);
+	gprs_gsup_client_destroy(gsupc);
 	return NULL;
 }
 
 void gprs_gsup_client_destroy(struct gprs_gsup_client *gsupc)
 {
-	ipa_client_conn_destroy(gsupc->link);
+	osmo_timer_del(&gsupc->connect_timer);
+
+	if (gsupc->link) {
+		ipa_client_conn_close(gsupc->link);
+		ipa_client_conn_destroy(gsupc->link);
+		gsupc->link = NULL;
+	}
+	talloc_free(gsupc);
 }
 
 int gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
