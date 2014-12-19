@@ -94,6 +94,9 @@ static void connect_timer_cb(void *gsupc_)
 {
 	struct gprs_gsup_client *gsupc = gsupc_;
 
+	LOGP(DGPRS, LOGL_INFO, "GSUP timer callback (%s)\n",
+	     gsupc->is_connected ? "connected" : "not connected");
+
 	if (gsupc->is_connected)
 		return;
 
