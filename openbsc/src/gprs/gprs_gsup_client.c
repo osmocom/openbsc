@@ -33,6 +33,18 @@
 
 extern void *tall_bsc_ctx;
 
+static void start_test_procedure(struct gprs_gsup_client *gsupc);
+
+static void gsup_client_send_ping(struct gprs_gsup_client *gsupc)
+{
+	struct msgb *msg = gprs_gsup_msgb_alloc();
+
+	msg->l2h = msgb_put(msg, 1);
+	msg->l2h[0] = IPAC_MSGT_PING;
+	ipa_msg_push_header(msg, IPAC_PROTO_IPACCESS);
+	ipa_client_conn_send(gsupc->link, msg);
+}
+
 static int gsup_client_connect(struct gprs_gsup_client *gsupc)
 {
 	int rc;
@@ -44,6 +56,12 @@ static int gsup_client_connect(struct gprs_gsup_client *gsupc)
 		LOGP(DLINP, LOGL_DEBUG,
 		     "GSUP connect: connect timer already running\n");
 		osmo_timer_del(&gsupc->connect_timer);
+	}
+
+	if (osmo_timer_pending(&gsupc->ping_timer)) {
+		LOGP(DLINP, LOGL_DEBUG,
+		     "GSUP connect: ping timer already running\n");
+		osmo_timer_del(&gsupc->ping_timer);
 	}
 
 	if (ipa_client_conn_clear_queue(gsupc->link) > 0)
@@ -83,17 +101,17 @@ static void gsup_client_updown_cb(struct ipa_client_conn *link, int up)
 {
 	struct gprs_gsup_client *gsupc = link->data;
 
-	LOGP(DGPRS, LOGL_NOTICE, "GSUP link to %s:%d %s\n",
+	LOGP(DGPRS, LOGL_INFO, "GSUP link to %s:%d %s\n",
 		     link->addr, link->port, up ? "UP" : "DOWN");
 
 	gsupc->is_connected = up;
 
 	if (up) {
-		/* TODO: Start ping procedure */
+		start_test_procedure(gsupc);
 
 		osmo_timer_del(&gsupc->connect_timer);
 	} else {
-		/* TODO: Stop ping procedure */
+		osmo_timer_del(&gsupc->ping_timer);
 
 		osmo_timer_schedule(&gsupc->connect_timer,
 				    GPRS_GSUP_RECONNECT_INTERVAL, 0);
@@ -125,7 +143,12 @@ static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	}
 
 	if (rc == 1) {
+		uint8_t msg_type = *(msg->l2h);
 		/* CCM message */
+		if (msg_type == IPAC_MSGT_PONG) {
+			LOGP(DGPRS, LOGL_DEBUG, "GSUP receiving PONG\n");
+			gsupc->got_ipa_pong = 1;
+		}
 
 		msgb_free(msg);
 		return 0;
@@ -153,6 +176,37 @@ invalid:
 
 	msgb_free(msg);
 	return -1;
+}
+
+static void ping_timer_cb(void *gsupc_)
+{
+	struct gprs_gsup_client *gsupc = gsupc_;
+
+	LOGP(DGPRS, LOGL_INFO, "GSUP ping callback (%s, %s PONG)\n",
+	     gsupc->is_connected ? "connected" : "not connected",
+	     gsupc->got_ipa_pong ? "got" : "didn't get");
+
+	if (gsupc->got_ipa_pong) {
+		start_test_procedure(gsupc);
+		return;
+	}
+
+	LOGP(DGPRS, LOGL_NOTICE, "GSUP ping timed out, reconnecting\n");
+	ipa_client_conn_close(gsupc->link);
+	gsupc->is_connected = 0;
+
+	gsup_client_connect(gsupc);
+}
+
+static void start_test_procedure(struct gprs_gsup_client *gsupc)
+{
+	gsupc->ping_timer.data = gsupc;
+	gsupc->ping_timer.cb = &ping_timer_cb;
+
+	gsupc->got_ipa_pong = 0;
+	osmo_timer_schedule(&gsupc->ping_timer, GPRS_GSUP_PING_INTERVAL, 0);
+	LOGP(DGPRS, LOGL_DEBUG, "GSUP sending PING\n");
+	gsup_client_send_ping(gsupc);
 }
 
 struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,
@@ -196,6 +250,7 @@ failed:
 void gprs_gsup_client_destroy(struct gprs_gsup_client *gsupc)
 {
 	osmo_timer_del(&gsupc->connect_timer);
+	osmo_timer_del(&gsupc->ping_timer);
 
 	if (gsupc->link) {
 		ipa_client_conn_close(gsupc->link);
