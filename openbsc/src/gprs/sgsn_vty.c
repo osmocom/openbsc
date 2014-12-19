@@ -33,10 +33,13 @@
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/vty.h>
 #include <openbsc/gsm_04_08_gprs.h>
+#include <openbsc/gprs_gsup_client.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/misc.h>
+
+#include <osmocom/abis/ipa.h>
 
 #include <pdp.h>
 
@@ -272,6 +275,14 @@ static void vty_dump_mmctx(struct vty *vty, const char *pfx,
 DEFUN(show_sgsn, show_sgsn_cmd, "show sgsn",
       SHOW_STR "Display information about the SGSN")
 {
+	if (sgsn->gsup_client) {
+		struct ipa_client_conn *link = sgsn->gsup_client->link;
+		vty_out(vty,
+			"  Remote authorization: %sconnected to %s:%d via GSUP%s",
+			sgsn->gsup_client->is_connected ? "" : "not ",
+			link->addr, link->port,
+			VTY_NEWLINE);
+	}
 	/* FIXME: statistics */
 	return CMD_SUCCESS;
 }
