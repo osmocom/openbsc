@@ -929,6 +929,77 @@ static void test_gmm_attach_subscr_real_auth(void)
 	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
 }
 
+#define TEST_GSUP_IMSI_LONG_IE 0x01, 0x08, \
+			       0x21, 0x43, 0x65, 0x87, 0x09, 0x21, 0x43, 0xf5
+
+int my_subscr_request_auth_info_gsup_auth(struct sgsn_mm_ctx *mmctx)
+{
+	static const uint8_t send_auth_info_res[] = {
+		0x0a,
+		TEST_GSUP_IMSI_LONG_IE,
+		0x03, 0x22, /* Auth tuple */
+			0x20, 0x10,
+				0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+				0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+			0x21, 0x04,
+				0x51, 0xe5, 0x51, 0xe5,
+			0x22, 0x08,
+				0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+	};
+
+	OSMO_ASSERT(mmctx->subscr);
+
+	/* Fake an SendAuthInfoRes */
+	rx_gsup_message(send_auth_info_res, sizeof(send_auth_info_res));
+
+	return 0;
+};
+
+int my_subscr_request_update_gsup_auth(struct sgsn_mm_ctx *mmctx) {
+	static const uint8_t update_location_res[] = {
+		0x06,
+		TEST_GSUP_IMSI_LONG_IE,
+		0x04, 0x00, /* PDP info complete */
+		0x05, 0x12,
+			0x10, 0x01, 0x01,
+			0x11, 0x02, 0xf1, 0x21, /* IPv4 */
+			0x12, 0x09, 0x04, 't', 'e', 's', 't', 0x03, 'a', 'p', 'n',
+	};
+
+	OSMO_ASSERT(mmctx->subscr);
+
+	/* Fake an UpdateLocRes */
+	return rx_gsup_message(update_location_res, sizeof(update_location_res));
+};
+
+
+static void test_gmm_attach_subscr_gsup_auth(void)
+{
+	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
+	struct gsm_subscriber *subscr;
+
+	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
+	subscr_request_update_location_cb = my_subscr_request_update_gsup_auth;
+	subscr_request_auth_info_cb = my_subscr_request_auth_info_gsup_auth;
+
+	subscr = gprs_subscr_get_or_create("123456789012345");
+	subscr->authorized = 1;
+	sgsn->cfg.require_authentication = 1;
+	sgsn->cfg.require_update_location = 1;
+	subscr_put(subscr);
+
+	printf("Auth policy 'remote', GSUP based auth: ");
+	test_gmm_attach();
+
+	subscr = gprs_subscr_get_by_imsi("123456789012345");
+	OSMO_ASSERT(subscr != NULL);
+	gprs_subscr_delete(subscr);
+
+	sgsn->cfg.auth_policy = saved_auth_policy;
+	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
+	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
+}
+
 /*
  * Test the GMM Rejects
  */
@@ -1454,6 +1525,7 @@ int main(int argc, char **argv)
 	test_gmm_attach_subscr();
 	test_gmm_attach_subscr_fake_auth();
 	test_gmm_attach_subscr_real_auth();
+	test_gmm_attach_subscr_gsup_auth();
 	test_gmm_reject();
 	test_gmm_cancel();
 	test_gmm_ptmsi_allocation();
