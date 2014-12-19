@@ -46,6 +46,9 @@ static int gsup_client_connect(struct gprs_gsup_client *gsupc)
 		osmo_timer_del(&gsupc->connect_timer);
 	}
 
+	if (ipa_client_conn_clear_queue(gsupc->link) > 0)
+		LOGP(DLINP, LOGL_DEBUG, "GSUP connect: discarded stored messages\n");
+
 	rc = ipa_client_conn_open(gsupc->link);
 
 	if (rc >= 0)
@@ -179,6 +182,11 @@ int gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 	if (!gsupc) {
 		msgb_free(msg);
 		return -ENOTCONN;
+	}
+
+	if (!gsupc->is_connected) {
+		msgb_free(msg);
+		return -EAGAIN;
 	}
 
 	ipa_prepend_header_ext(msg, IPAC_PROTO_EXT_GSUP);
