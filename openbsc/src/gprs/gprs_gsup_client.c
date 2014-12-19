@@ -51,8 +51,11 @@ static int gsup_client_connect(struct gprs_gsup_client *gsupc)
 
 	rc = ipa_client_conn_open(gsupc->link);
 
-	if (rc >= 0)
-		return rc;
+	if (rc >= 0) {
+		LOGP(DGPRS, LOGL_INFO, "GSUP connecting to %s:%d\n",
+		     gsupc->link->addr, gsupc->link->port);
+		return 0;
+	}
 
 	LOGP(DGPRS, LOGL_INFO, "GSUP failed to connect to %s:%d: %s\n",
 	     gsupc->link->addr, gsupc->link->port, strerror(-rc));
@@ -63,7 +66,7 @@ static int gsup_client_connect(struct gprs_gsup_client *gsupc)
 
 	osmo_timer_schedule(&gsupc->connect_timer, GPRS_GSUP_RECONNECT_INTERVAL, 0);
 
-	return 0;
+	return rc;
 }
 
 static void connect_timer_cb(void *gsupc_)
