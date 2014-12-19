@@ -163,9 +163,12 @@ void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 	enum sgsn_auth_state auth_state;
 	struct gsm_subscriber *subscr = mmctx->subscr;
 
-	LOGMMCTXP(LOGL_DEBUG, mmctx, "Updating authorization\n");
-
 	auth_state = sgsn_auth_state(mmctx);
+
+	LOGMMCTXP(LOGL_DEBUG, mmctx, "Updating authorization (%s -> %s)\n",
+		  get_value_string(sgsn_auth_state_names, mmctx->auth_state),
+		  get_value_string(sgsn_auth_state_names, auth_state));
+
 	if (auth_state == SGSN_AUTH_UNKNOWN && subscr &&
 	    !(subscr->flags & GPRS_SUBSCRIBER_UPDATE_PENDING)) {
 		/* Reject requests if gprs_subscr_request_update fails */
