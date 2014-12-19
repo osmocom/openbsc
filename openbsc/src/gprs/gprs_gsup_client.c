@@ -105,6 +105,31 @@ static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	struct ipaccess_head_ext *he = (struct ipaccess_head_ext *) msgb_l2(msg);
 	struct gprs_gsup_client *gsupc = (struct gprs_gsup_client *)link->data;
+	int rc;
+	static struct ipaccess_unit ipa_dev = {
+		.unit_name = "SGSN"
+	};
+
+	msg->l2h = &hh->data[0];
+
+	rc = ipaccess_bts_handle_ccm(link, &ipa_dev, msg);
+
+	if (rc < 0) {
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "GSUP received an invalid IPA/CCM message from %s:%d\n",
+		     link->addr, link->port);
+		/* Link has been closed */
+		gsupc->is_connected = 0;
+		msgb_free(msg);
+		return -1;
+	}
+
+	if (rc == 1) {
+		/* CCM message */
+
+		msgb_free(msg);
+		return 0;
+	}
 
 	if (hh->proto != IPAC_PROTO_OSMO)
 		goto invalid;

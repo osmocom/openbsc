@@ -66,6 +66,7 @@ static int gsup_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg)
 	int rc;
 
 	rc = gprs_subscr_rx_gsup_message(msg);
+	msgb_free(msg);
 	if (rc < 0)
 		return -1;
 
