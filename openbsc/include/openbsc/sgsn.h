@@ -32,6 +32,7 @@ struct sgsn_config {
 	int gsup_server_port;
 
 	int require_authentication;
+	int require_update_location;
 };
 
 struct sgsn_instance {

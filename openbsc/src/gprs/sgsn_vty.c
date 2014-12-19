@@ -377,6 +377,7 @@ DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
 	OSMO_ASSERT(val >= SGSN_AUTH_POLICY_OPEN && val <= SGSN_AUTH_POLICY_REMOTE);
 	g_cfg->auth_policy = val;
 	g_cfg->require_authentication = (val == SGSN_AUTH_POLICY_REMOTE);
+	g_cfg->require_update_location = (val == SGSN_AUTH_POLICY_REMOTE);
 
 	return CMD_SUCCESS;
 }

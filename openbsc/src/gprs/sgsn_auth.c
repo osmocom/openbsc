@@ -161,9 +161,9 @@ int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 		return 0;
 	}
 
-	need_update_location =
-		mmctx->subscr == NULL ||
-		mmctx->pending_req == GSM48_MT_GMM_ATTACH_REQ;
+	need_update_location = sgsn->cfg.require_update_location &&
+		(mmctx->subscr == NULL ||
+		 mmctx->pending_req == GSM48_MT_GMM_ATTACH_REQ);
 
 	/* This has the side effect of registering the subscr with the mmctx */
 	subscr = gprs_subscr_get_or_create_by_mmctx(mmctx);
@@ -191,8 +191,11 @@ int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 	} else if (need_update_location) {
 		LOGMMCTXP(LOGL_INFO, mmctx,
 			  "Missing information, requesting subscriber data\n");
-		if (gprs_subscr_request_update_location(mmctx) >= 0)
+		rc = gprs_subscr_request_update_location(mmctx);
+		if (rc >= 0)
 			return 0;
+
+		return rc;
 	}
 
 	sgsn_auth_update(mmctx);

@@ -877,6 +877,7 @@ static void test_gmm_attach_subscr_fake_auth(void)
 	subscr = gprs_subscr_get_or_create("123456789012345");
 	subscr->authorized = 1;
 	sgsn->cfg.require_authentication = 1;
+	sgsn->cfg.require_update_location = 1;
 	subscr_put(subscr);
 
 	printf("Auth policy 'remote', auth faked: ");
@@ -919,6 +920,7 @@ static void test_gmm_attach_subscr_real_auth(void)
 	subscr = gprs_subscr_get_or_create("123456789012345");
 	subscr->authorized = 1;
 	sgsn->cfg.require_authentication = 1;
+	sgsn->cfg.require_update_location = 1;
 	subscr_put(subscr);
 
 	printf("Auth policy 'remote', triplet based auth: ");
