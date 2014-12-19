@@ -325,6 +325,21 @@ static void test_auth_triplets(void)
 
 #define TEST_GSUP_IMSI1_IE 0x01, 0x05, 0x21, 0x43, 0x65, 0x87, 0x09
 
+static int rx_gsup_message(const uint8_t *data, size_t data_len)
+{
+	struct msgb *msg;
+	int rc;
+
+	msg = msgb_alloc(1024, __func__);
+	msg->l2h = msgb_put(msg, data_len);
+	OSMO_ASSERT(msg->l2h != NULL);
+	memcpy(msg->l2h, data, data_len);
+	rc = gprs_subscr_rx_gsup_message(msg);
+	msgb_free(msg);
+
+	return rc;
+}
+
 static void test_subscriber_gsup(void)
 {
 	struct gsm_subscriber *s1, *s1found;
@@ -333,7 +348,6 @@ static void test_subscriber_gsup(void)
 	struct gprs_ra_id raid = { 0, };
 	uint32_t local_tlli = 0xffeeddcc;
 	struct gprs_llc_llme *llme;
-	struct msgb *msg;
 	int rc;
 
 	static const uint8_t send_auth_info_res[] = {
@@ -413,11 +427,7 @@ static void test_subscriber_gsup(void)
 	ctx->subscr->sgsn_data->mm = ctx;
 
 	/* Inject SendAuthInfoReq GSUP message */
-	msg = msgb_alloc(1024, __func__);
-	msg->l2h = msgb_put(msg, sizeof(send_auth_info_res));
-	memcpy(msg->l2h, send_auth_info_res, sizeof(send_auth_info_res));
-	rc = gprs_subscr_rx_gsup_message(msg);
-	msgb_free(msg);
+	rc = rx_gsup_message(send_auth_info_res, sizeof(send_auth_info_res));
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(last_updated_subscr == s1);
 
@@ -427,11 +437,7 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(s1->sgsn_data->auth_triplets[2].key_seq == GSM_KEY_SEQ_INVAL);
 
 	/* Inject SendAuthInfoErr GSUP message */
-	msg = msgb_alloc(1024, __func__);
-	msg->l2h = msgb_put(msg, sizeof(send_auth_info_err));
-	memcpy(msg->l2h, send_auth_info_err, sizeof(send_auth_info_err));
-	rc = gprs_subscr_rx_gsup_message(msg);
-	msgb_free(msg);
+	rc = rx_gsup_message(send_auth_info_err, sizeof(send_auth_info_err));
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(last_updated_subscr == s1);
 
@@ -441,11 +447,7 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(s1->sgsn_data->auth_triplets[2].key_seq == GSM_KEY_SEQ_INVAL);
 
 	/* Inject UpdateLocReq GSUP message */
-	msg = msgb_alloc(1024, __func__);
-	msg->l2h = msgb_put(msg, sizeof(update_location_res));
-	memcpy(msg->l2h, update_location_res, sizeof(update_location_res));
-	rc = gprs_subscr_rx_gsup_message(msg);
-	msgb_free(msg);
+	rc = rx_gsup_message(update_location_res, sizeof(update_location_res));
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(last_updated_subscr == s1);
 
@@ -453,11 +455,7 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(s1->authorized == 1);
 
 	/* Inject UpdateLocErr GSUP message */
-	msg = msgb_alloc(1024, __func__);
-	msg->l2h = msgb_put(msg, sizeof(update_location_err));
-	memcpy(msg->l2h, update_location_err, sizeof(update_location_err));
-	rc = gprs_subscr_rx_gsup_message(msg);
-	msgb_free(msg);
+	rc = rx_gsup_message(update_location_err, sizeof(update_location_err));
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(last_updated_subscr == s1);
 
@@ -465,12 +463,8 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(s1->authorized == 0);
 
 	/* Inject UpdateLocReq GSUP message */
-	msg = msgb_alloc(1024, __func__);
-	msg->l2h = msgb_put(msg, sizeof(location_cancellation_req));
-	memcpy(msg->l2h,
-	       location_cancellation_req, sizeof(location_cancellation_req));
-	rc = gprs_subscr_rx_gsup_message(msg);
-	msgb_free(msg);
+	rc = rx_gsup_message(location_cancellation_req,
+			     sizeof(location_cancellation_req));
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(last_updated_subscr == s1);
 
