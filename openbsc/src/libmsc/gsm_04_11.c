@@ -946,7 +946,7 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	}
 
 	/* if not, we have to start paging */
-	subscr_get_channel(subscr, RSL_CHANNEED_SDCCH, paging_cb_send_sms, sms);
+	subscr_get_channel(subscr, RSL_CHANNEED_SDCCH, paging_cb_send_sms, sms, "SEND SMS");
 	return 0;
 }
 

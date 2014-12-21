@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 	OSMO_ASSERT(subscr->group->net == network);
 
 	/* Ask for a channel... */
-	subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
+	subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L, "dummy");
 
 	while (!s_end) {
 		osmo_select_main(0);

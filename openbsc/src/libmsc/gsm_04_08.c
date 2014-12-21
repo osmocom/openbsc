@@ -3123,7 +3123,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			}
 
 			*trans->paging_request = subscr->group->net;
-			subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, setup_trig_pag_evt, trans->paging_request);
+			subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, setup_trig_pag_evt, trans->paging_request, "MNCC RX call");
 
 			subscr_put(subscr);
 			return 0;

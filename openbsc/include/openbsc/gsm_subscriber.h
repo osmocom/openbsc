@@ -71,6 +71,9 @@ struct gsm_subscriber {
 
 	/* GPRS/SGSN related fields */
 	struct sgsn_subscriber_data *sgsn_data;
+
+	/* debugging */
+	const char *last_reason;
 };
 
 enum gsm_subscriber_field {
@@ -103,7 +106,7 @@ struct gsm_subscriber *subscr_get_or_create(struct gsm_subscriber_group *sgrp,
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
 void subscr_put_channel(struct gsm_subscriber *subscr);
 void subscr_get_channel(struct gsm_subscriber *subscr,
-                        int type, gsm_cbfn *cbfn, void *param);
+                        int type, gsm_cbfn *cbfn, void *param, const char *reason);
 struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_subscriber_group *sgrp,
 					     uint32_t tmsi);
 struct gsm_subscriber *subscr_active_by_imsi(struct gsm_subscriber_group *sgrp,
@@ -124,5 +127,39 @@ int subscr_update_expire_lu(struct gsm_subscriber *subscr, struct gsm_bts *bts);
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);
 extern struct llist_head active_subscribers;
+
+/*
+ * Struct for pending channel requests. This is managed in the
+ * llist_head requests of each subscriber. The reference counting
+ * should work in such a way that a subscriber with a pending request
+ * remains in memory.
+ */
+struct subscr_request {
+	struct llist_head entry;
+
+	/* back reference */
+	struct gsm_subscriber *subscr;
+
+	/* the requested channel type */
+	int channel_type;
+
+	/* what did we do */
+	int state;
+
+	/* the callback data */
+	gsm_cbfn *cbfn;
+	void *param;
+
+	/* debugging */
+	const char *reason;
+};
+
+enum {
+	REQ_STATE_INITIAL,
+	REQ_STATE_QUEUED,
+	REQ_STATE_PAGED,
+	REQ_STATE_FAILED_START,
+	REQ_STATE_DISPATCHED,
+};
 
 #endif /* _GSM_SUBSCR_H */

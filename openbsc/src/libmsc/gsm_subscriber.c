@@ -47,37 +47,6 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
                          gsm_cbfn *cb, void *cb_data);
 
 
-/*
- * Struct for pending channel requests. This is managed in the
- * llist_head requests of each subscriber. The reference counting
- * should work in such a way that a subscriber with a pending request
- * remains in memory.
- */
-struct subscr_request {
-	struct llist_head entry;
-
-	/* back reference */
-	struct gsm_subscriber *subscr;
-
-	/* the requested channel type */
-	int channel_type;
-
-	/* what did we do */
-	int state;
-
-	/* the callback data */
-	gsm_cbfn *cbfn;
-	void *param;
-};
-
-enum {
-	REQ_STATE_INITIAL,
-	REQ_STATE_QUEUED,
-	REQ_STATE_PAGED,
-	REQ_STATE_FAILED_START,
-	REQ_STATE_DISPATCHED,
-};
-
 static struct gsm_subscriber *get_subscriber(struct gsm_subscriber_group *sgrp,
 						int type, const char *ident)
 {
@@ -125,6 +94,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	request->state = REQ_STATE_DISPATCHED;
 	llist_del(&request->entry);
 	subscr->in_callback = 1;
+	subscr->last_reason = request->reason;
 	request->cbfn(hooknum, event, msg, data, request->param);
 	subscr->in_callback = 0;
 
@@ -217,7 +187,7 @@ static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 }
 
 void subscr_get_channel(struct gsm_subscriber *subscr,
-			int type, gsm_cbfn *cbfn, void *param)
+			int type, gsm_cbfn *cbfn, void *param, const char *reason)
 {
 	struct subscr_request *request;
 
@@ -235,6 +205,7 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 	request->cbfn = cbfn;
 	request->param = param;
 	request->state = REQ_STATE_INITIAL;
+	request->reason = reason;
 
 	/*
 	 * FIXME: We might be able to assign more than one
