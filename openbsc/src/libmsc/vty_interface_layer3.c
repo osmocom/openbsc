@@ -803,6 +803,25 @@ DEFUN(subscriber_update,
 	return CMD_SUCCESS;
 }
 
+DEFUN(subscriber_show_queue,
+      subscriber_show_queue_cmd,
+      "subscriber " SUBSCR_TYPES " ID show-queue",
+	  SUBSCR_HELP "Display the last reason of the subscriber queue.\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+				get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty_out(vty, "Last reason: %s%s", subscr->last_reason, VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
 static int scall_cbfn(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
@@ -1010,6 +1029,7 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&subscriber_silent_call_stop_cmd);
 	install_element_ve(&subscriber_ussd_notify_cmd);
 	install_element_ve(&subscriber_update_cmd);
+	install_element_ve(&subscriber_show_queue_cmd);
 	install_element_ve(&show_stats_cmd);
 	install_element_ve(&show_smsqueue_cmd);
 
