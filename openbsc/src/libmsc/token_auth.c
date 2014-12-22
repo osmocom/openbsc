@@ -20,6 +20,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/gsm_data.h>
@@ -29,22 +30,29 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/db.h>
 
-#define TOKEN_SMS_TEXT "HAR 2009 GSM.  Register at http://har2009.gnumonks.org/ " \
-			"Your IMSI is %s, auth token is %08X, phone no is %s."
+extern char * auth_token_sms_text;
+
+#define TOKEN_SMS_FORMAT "%s IMSI: %s Token: %08X Ext: %s"
 
 static char *build_sms_string(struct gsm_subscriber *subscr, uint32_t token)
 {
 	char *sms_str;
 	unsigned int len;
 
-	len = strlen(subscr->imsi) + 8 + strlen(TOKEN_SMS_TEXT);
+	len = strlen(TOKEN_SMS_FORMAT) + strlen(subscr->imsi)
+		+ strlen(auth_token_sms_text) + strlen(subscr->extension);
 	sms_str = talloc_size(tall_bsc_ctx, len);
 	if (!sms_str)
 		return NULL;
 
-	snprintf(sms_str, len, TOKEN_SMS_TEXT, subscr->imsi, token,
-		 subscr->extension);
+	snprintf(sms_str, len, TOKEN_SMS_FORMAT, auth_token_sms_text, subscr->imsi,
+		 token, subscr->extension);
 	sms_str[len-1] = '\0';
+
+	if (strlen(sms_str) > 160) {
+		fprintf(stderr, "Token auth sms longer than 160 char: '%s'\n", sms_str);
+		exit(1);
+	}
 
 	return sms_str;
 }

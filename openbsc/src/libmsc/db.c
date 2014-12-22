@@ -45,11 +45,13 @@ static char *db_basename = NULL;
 static char *db_dirname = NULL;
 static dbi_conn conn;
 
-#define SCHEMA_REVISION "4"
+#define SCHEMA_REVISION "5"
 
 enum {
 	SCHEMA_META,
 	INSERT_META,
+	SCHEMA_TEXT,
+	INSERT_TEXT,
 	SCHEMA_SUBSCRIBER,
 	SCHEMA_AUTH,
 	SCHEMA_EQUIPMENT,
@@ -73,6 +75,15 @@ static const char *create_stmts[] = {
 		"(key, value) "
 		"VALUES "
 		"('revision', " SCHEMA_REVISION ")",
+	[SCHEMA_TEXT] = "CREATE TABLE IF NOT EXISTS Text ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"key TEXT UNIQUE NOT NULL, "
+		"value TEXT NOT NULL"
+		")",
+	[INSERT_TEXT] = "INSERT OR IGNORE INTO Text "
+		"(key, value) "
+		"VALUES "
+		"('auth_token_sms', 'Welcome to the GSM network.')",
 	[SCHEMA_SUBSCRIBER] = "CREATE TABLE IF NOT EXISTS Subscriber ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
@@ -367,6 +378,40 @@ rollback:
 	return -EINVAL;
 }
 
+static int update_db_revision_4(void)
+{
+	dbi_result result;
+
+	result = dbi_conn_query(conn, create_stmts[SCHEMA_TEXT]);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			 "Failed to create Text table (upgrade from rev 4).\n");
+		return -EINVAL;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_query(conn, create_stmts[INSERT_TEXT]);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			 "Failed to inserting Text (upgrade from rev 4).\n");
+		return -EINVAL;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_query(conn,
+				"UPDATE Meta "
+				"SET value = '5' "
+				"WHERE key = 'revision'");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to update DB schema revision  (upgrade from rev 4).\n");
+		return -EINVAL;
+	}
+	dbi_result_free(result);
+
+	return 0;
+}
+
 static int check_db_revision(void)
 {
 	dbi_result result;
@@ -394,6 +439,12 @@ static int check_db_revision(void)
 		}
 	} else if (!strcmp(rev_s, "3")) {
 		if (update_db_revision_3()) {
+			LOGP(DDB, LOGL_FATAL, "Failed to update database from schema revision '%s'.\n", rev_s);
+			dbi_result_free(result);
+			return -EINVAL;
+		}
+	} else if (!strcmp(rev_s, "4")) {
+		if (update_db_revision_4()) {
 			LOGP(DDB, LOGL_FATAL, "Failed to update database from schema revision '%s'.\n", rev_s);
 			dbi_result_free(result);
 			return -EINVAL;
@@ -496,6 +547,29 @@ int db_fini(void)
 	free(db_dirname);
 	free(db_basename);
 	return 0;
+}
+
+char * db_get_text(const char *key) {
+	dbi_result result;
+	const char * string;
+	char * text;
+	unsigned int len;
+
+	result = dbi_conn_queryf(conn,
+				"SELECT value FROM Text WHERE key='%s'", key);
+	if (!result)
+		return NULL;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return NULL;
+	}
+	string = dbi_result_get_string(result, "value");
+	text = talloc_strdup(NULL, string);
+
+	dbi_result_free(result);
+
+	return text;
 }
 
 struct gsm_subscriber *db_create_subscriber(const char *imsi)

@@ -1,3 +1,17 @@
+openbsc (0.13.0+rhizo3) precise; urgency=low
+
+  * Rebase on current master
+  * Implement configurable SMS text for Token mode
+  * Apply the handover patch, needs to be tested.
+
+ -- ciaby <ciaby@rhizomatica.org>  Fri, 14 Nov 2014 19:29:03 -0600
+
+openbsc (0.13.0+git1-rhizo1) precise; urgency=low
+
+  * Bumped version number, added SMPP support.
+
+ -- ciaby <ciaby@autistici.org>  Fri, 07 Mar 2014 15:36:59 +0100
+
 openbsc (0.13.0) UNRELEASED; urgency=low
 
   * New upstream tag and additional patches.

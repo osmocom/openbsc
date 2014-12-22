@@ -79,4 +79,6 @@ int db_store_counter(struct osmo_counter *ctr);
 struct rate_ctr_group;
 int db_store_rate_ctr_group(struct rate_ctr_group *ctrg);
 
+char * db_get_text(const char *key);
+
 #endif /* _DB_H */
