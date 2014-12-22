@@ -650,6 +650,23 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  %sforce-combined-si%s",
 		bts->force_combined_si ? "" : "no ", VTY_NEWLINE);
 
+	for (i = 0; i < ARRAY_SIZE(bts->depends_on); ++i) {
+		int j;
+
+		if (bts->depends_on[i] == 0)
+			continue;
+
+		for (j = 0; j < sizeof(bts->depends_on[i]) * 8; ++j) {
+			int bts_nr;
+
+			if ((bts->depends_on[i] & (1<<j)) == 0)
+				continue;
+
+			bts_nr = (i * sizeof(bts->depends_on[i]) * 8) + j;
+			vty_out(vty, "  depends-on-bts %d%s", bts_nr, VTY_NEWLINE);
+		}
+	}
+
 	config_write_bts_model(vty, bts);
 }
 
@@ -2772,6 +2789,50 @@ DEFUN(cfg_bts_codec4, cfg_bts_codec4_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_depends_on, cfg_bts_depends_on_cmd,
+	"depends-on-bts <0-255>",
+	"This BTS can only be started if another one is up\n" "BTS Number\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts *other_bts;
+	int dep = atoi(argv[0]);
+
+
+	if (!is_ipaccess_bts(bts)) {
+		vty_out(vty, "This feature is only available for IP systems.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	other_bts = gsm_bts_num(bts->network, dep);
+	if (!other_bts || !is_ipaccess_bts(other_bts)) {
+		vty_out(vty, "This feature is only available for IP systems.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (dep >= bts->nr) {
+		vty_out(vty, "%%Need to depend on an already declared unit.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts_depend_mark(bts, dep);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_depends_on, cfg_bts_no_depends_on_cmd,
+	"depeneds-on-bts <0-255>",
+	NO_STR "This BTS can only be started if another one is up\n"
+	"BTS Number\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int dep = atoi(argv[0]);
+
+	bts_depend_clear(bts, dep);
+	return CMD_SUCCESS;
+}
+
 #define TRX_TEXT "Radio Transceiver\n"
 
 /* per TRX configuration */
@@ -3383,6 +3444,8 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_codec2_cmd);
 	install_element(BTS_NODE, &cfg_bts_codec3_cmd);
 	install_element(BTS_NODE, &cfg_bts_codec4_cmd);
+	install_element(BTS_NODE, &cfg_bts_depends_on_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_depends_on_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);

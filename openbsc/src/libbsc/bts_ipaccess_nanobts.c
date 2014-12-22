@@ -551,6 +551,7 @@ void ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 
 void ipaccess_drop_oml(struct gsm_bts *bts)
 {
+	struct gsm_bts *rdep_bts;
 	struct gsm_bts_trx *trx;
 
 	if (!bts->oml_link)
@@ -564,6 +565,21 @@ void ipaccess_drop_oml(struct gsm_bts *bts)
 		ipaccess_drop_rsl(trx);
 
 	bts->ip_access.flags = 0;
+
+	/*
+	 * Go through the list and see if we are the depndency of a BTS
+	 * and then drop the BTS. This can lead to some recursion but it
+	 * should be fine in userspace.
+	 * The oml_link is serving as recursion anchor for us and
+	 * it is set to NULL some lines above.
+	 */
+	llist_for_each_entry(rdep_bts, &bts->network->bts_list, list) {
+		if (!bts_depend_is_depedency(rdep_bts, bts))
+			continue;
+		LOGP(DLINP, LOGL_NOTICE, "Dropping BTS(%u) due BTS(%u).\n",
+			rdep_bts->nr, bts->nr);
+		ipaccess_drop_oml(rdep_bts);
+	}
 }
 
 /* This function is called once the OML/RSL link becomes up. */
@@ -589,6 +605,13 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 	case E1INP_SIGN_OML:
 		/* remove old OML signal link for this BTS. */
 		ipaccess_drop_oml(bts);
+
+		if (!bts_depend_check(bts)) {
+			LOGP(DLINP, LOGL_NOTICE,
+				"Dependency not full-filled for %u/%u/%u\n",
+				dev->site_id, dev->bts_id, dev->trx_id);
+			return NULL;
+		}
 
 		/* create new OML link. */
 		sign_link = bts->oml_link =

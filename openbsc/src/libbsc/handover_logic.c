@@ -54,6 +54,13 @@ struct bsc_handover {
 
 static LLIST_HEAD(bsc_handovers);
 
+static void handover_free(struct bsc_handover *ho)
+{
+	osmo_timer_del(&ho->T3103);
+	llist_del(&ho->list);
+	talloc_free(ho);
+}
+
 static struct bsc_handover *bsc_ho_by_new_lchan(struct gsm_lchan *new_lchan)
 {
 	struct bsc_handover *ho;
@@ -130,6 +137,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	new_lchan->bs_power = old_lchan->bs_power;
 	new_lchan->rsl_cmode = old_lchan->rsl_cmode;
 	new_lchan->tch_mode = old_lchan->tch_mode;
+	new_lchan->mr_conf = old_lchan->mr_conf;
 
 	new_lchan->conn = old_lchan->conn;
 	new_lchan->conn->ho_lchan = new_lchan;
@@ -173,9 +181,7 @@ void bsc_clear_handover(struct gsm_subscriber_connection *conn, int free_lchan)
 	if (free_lchan)
 		lchan_release(ho->new_lchan, 0, RSL_REL_LOCAL_END);
 
-	osmo_timer_del(&ho->T3103);
-	llist_del(&ho->list);
-	talloc_free(ho);
+	handover_free(ho);
 }
 
 /* T3103 expired: Handover has failed without HO COMPLETE or HO FAIL */
@@ -190,8 +196,7 @@ static void ho_T3103_cb(void *_ho)
 	ho->new_lchan->conn->ho_lchan = NULL;
 	ho->new_lchan->conn = NULL;
 	lchan_release(ho->new_lchan, 0, RSL_REL_LOCAL_END);
-	llist_del(&ho->list);
-	talloc_free(ho);
+	handover_free(ho);
 }
 
 /* RSL has acknowledged activation of the new lchan */
@@ -238,8 +243,7 @@ static int ho_chan_activ_nack(struct gsm_lchan *new_lchan)
 
 	new_lchan->conn->ho_lchan = NULL;
 	new_lchan->conn = NULL;
-	llist_del(&ho->list);
-	talloc_free(ho);
+	handover_free(ho);
 
 	/* FIXME: maybe we should try to allocate a new LCHAN here? */
 
@@ -286,9 +290,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	rsl_lchan_set_state(ho->old_lchan, LCHAN_S_INACTIVE);
 	lchan_release(ho->old_lchan, 0, RSL_REL_LOCAL_END);
 
-	llist_del(&ho->list);
-	talloc_free(ho);
-
+	handover_free(ho);
 	return 0;
 }
 
@@ -297,6 +299,7 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 {
 	struct gsm_network *net = old_lchan->ts->trx->bts->network;
 	struct bsc_handover *ho;
+	struct gsm_lchan *new_lchan;
 
 	ho = bsc_ho_by_old_lchan(old_lchan);
 	if (!ho) {
@@ -306,15 +309,15 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 
 	osmo_counter_inc(net->stats.handover.failed);
 
-	osmo_timer_del(&ho->T3103);
-	llist_del(&ho->list);
+	new_lchan = ho->new_lchan;
 
 	/* release the channel and forget about it */
 	ho->new_lchan->conn->ho_lchan = NULL;
 	ho->new_lchan->conn = NULL;
-	lchan_release(ho->new_lchan, 0, RSL_REL_LOCAL_END);
+	handover_free(ho);
 
-	talloc_free(ho);
+	lchan_release(new_lchan, 0, RSL_REL_LOCAL_END);
+
 
 	return 0;
 }
