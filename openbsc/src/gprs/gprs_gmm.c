@@ -1952,7 +1952,8 @@ int gprs_gmm_rx_suspend(struct gprs_ra_id *raid, uint32_t tlli)
 		return -EINVAL;
 	}
 
-	if (mmctx->mm_state != GMM_REGISTERED_NORMAL) {
+	if (mmctx->mm_state != GMM_REGISTERED_NORMAL &&
+	    mmctx->mm_state != GMM_REGISTERED_SUSPENDED) {
 		LOGMMCTXP(LOGL_NOTICE, mmctx, "SUSPEND request while state "
 			"!= REGISTERED (TLLI=%08x)\n", tlli);
 		return -EINVAL;
@@ -1977,7 +1978,8 @@ int gprs_gmm_rx_resume(struct gprs_ra_id *raid, uint32_t tlli,
 		return -EINVAL;
 	}
 
-	if (mmctx->mm_state != GMM_REGISTERED_SUSPENDED) {
+	if (mmctx->mm_state != GMM_REGISTERED_NORMAL &&
+	    mmctx->mm_state != GMM_REGISTERED_SUSPENDED) {
 		LOGMMCTXP(LOGL_NOTICE, mmctx, "RESUME request while state "
 			"!= SUSPENDED (TLLI=%08x)\n", tlli);
 		/* FIXME: should we not simply ignore it? */
