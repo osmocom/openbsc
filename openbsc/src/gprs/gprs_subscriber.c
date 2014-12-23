@@ -141,8 +141,8 @@ static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 
 	gprs_gsup_encode(msg, gsup_msg);
 
-	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
-		  "Sending GSUP, will send: %s\n", msgb_hexdump(msg));
+	LOGGSUBSCRP(LOGL_INFO, subscr,
+		"Sending GSUP, will send: %s\n", msgb_hexdump(msg));
 
 	if (!sgsn->gsup_client) {
 		msgb_free(msg);
@@ -158,9 +158,9 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 	unsigned idx;
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
 
-	LOGP(DGPRS, LOGL_INFO,
-	     "Got SendAuthenticationInfoResult, num_auth_tuples = %d\n",
-	     gsup_msg->num_auth_tuples);
+	LOGGSUBSCRP(LOGL_INFO, subscr,
+		"Got SendAuthenticationInfoResult, num_auth_tuples = %d\n",
+		gsup_msg->num_auth_tuples);
 
 	if (gsup_msg->num_auth_tuples > 0) {
 		memset(sdata->auth_triplets, 0, sizeof(sdata->auth_triplets));
@@ -171,11 +171,12 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 
 	for (idx = 0; idx < gsup_msg->num_auth_tuples; idx++) {
 		size_t key_seq = gsup_msg->auth_tuples[idx].key_seq;
-		LOGP(DGPRS, LOGL_DEBUG, "Adding auth tuple, cksn = %d\n", key_seq);
+		LOGGSUBSCRP(LOGL_DEBUG, subscr,
+			"Adding auth tuple, cksn = %d\n", key_seq);
 		if (key_seq >= ARRAY_SIZE(sdata->auth_triplets)) {
-			LOGP(DGPRS, LOGL_NOTICE,
-			     "Skipping auth triplet with invalid cksn %d\n",
-			     key_seq);
+			LOGGSUBSCRP(LOGL_NOTICE, subscr,
+				"Skipping auth triplet with invalid cksn %d\n",
+				key_seq);
 			continue;
 		}
 		sdata->auth_triplets[key_seq] = gsup_msg->auth_tuples[idx];
@@ -243,18 +244,18 @@ static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
 
 	cause_err = check_cause(gsup_msg->cause);
 
-	LOGMMCTXP(LOGL_DEBUG, subscr->sgsn_data->mm,
-	     "Send authentication info has failed with cause %d, "
-	     "handled as: %s\n",
-	     gsup_msg->cause, strerror(cause_err));
+	LOGGSUBSCRP(LOGL_DEBUG, subscr,
+		"Send authentication info has failed with cause %d, "
+		"handled as: %s\n",
+		gsup_msg->cause, strerror(cause_err));
 
 	switch (cause_err) {
 	case EACCES:
-		LOGMMCTXP(LOGL_NOTICE, subscr->sgsn_data->mm,
-			  "GPRS send auth info req failed, access denied, "
-			  "GMM cause = '%s' (%d)\n",
-			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
-			  gsup_msg->cause);
+		LOGGSUBSCRP(LOGL_NOTICE, subscr,
+			"GPRS send auth info req failed, access denied, "
+			"GMM cause = '%s' (%d)\n",
+			get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			gsup_msg->cause);
 		/* Clear auth tuples */
 		memset(sdata->auth_triplets, 0, sizeof(sdata->auth_triplets));
 		for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
@@ -266,18 +267,18 @@ static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
 		break;
 
 	case EAGAIN:
-		LOGMMCTXP(LOGL_NOTICE, subscr->sgsn_data->mm,
-			  "GPRS send auth info req failed, GMM cause = '%s' (%d)\n",
-			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
-			  gsup_msg->cause);
+		LOGGSUBSCRP(LOGL_NOTICE, subscr,
+			"GPRS send auth info req failed, GMM cause = '%s' (%d)\n",
+			get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			gsup_msg->cause);
 		break;
 
 	default:
 	case EINVAL:
-		LOGMMCTXP(LOGL_ERROR, subscr->sgsn_data->mm,
-			  "GSUP protocol remote error, GMM cause = '%s' (%d)\n",
-			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
-			  gsup_msg->cause);
+		LOGGSUBSCRP(LOGL_ERROR, subscr,
+			"GSUP protocol remote error, GMM cause = '%s' (%d)\n",
+			get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			gsup_msg->cause);
 		break;
 	}
 
@@ -291,17 +292,17 @@ static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
 
 	cause_err = check_cause(gsup_msg->cause);
 
-	LOGMMCTXP(LOGL_DEBUG, subscr->sgsn_data->mm,
-	     "Update location has failed with cause %d, handled as: %s\n",
-	     gsup_msg->cause, strerror(cause_err));
+	LOGGSUBSCRP(LOGL_DEBUG, subscr,
+		"Update location has failed with cause %d, handled as: %s\n",
+		gsup_msg->cause, strerror(cause_err));
 
 	switch (cause_err) {
 	case EACCES:
-		LOGMMCTXP(LOGL_NOTICE, subscr->sgsn_data->mm,
-			  "GPRS update location failed, access denied, "
-			  "GMM cause = '%s' (%d)\n",
-			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
-			  gsup_msg->cause);
+		LOGGSUBSCRP(LOGL_NOTICE, subscr,
+			"GPRS update location failed, access denied, "
+			"GMM cause = '%s' (%d)\n",
+			get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			gsup_msg->cause);
 
 		subscr->authorized = 0;
 		subscr->sgsn_data->error_cause = gsup_msg->cause;
@@ -309,18 +310,18 @@ static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
 		break;
 
 	case EAGAIN:
-		LOGMMCTXP(LOGL_NOTICE, subscr->sgsn_data->mm,
-			  "GPRS update location failed, GMM cause = '%s' (%d)\n",
-			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
-			  gsup_msg->cause);
+		LOGGSUBSCRP(LOGL_NOTICE, subscr,
+			"GPRS update location failed, GMM cause = '%s' (%d)\n",
+			get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			gsup_msg->cause);
 		break;
 
 	default:
 	case EINVAL:
-		LOGMMCTXP(LOGL_ERROR, subscr->sgsn_data->mm,
-			  "GSUP protocol remote error, GMM cause = '%s' (%d)\n",
-			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
-			  gsup_msg->cause);
+		LOGGSUBSCRP(LOGL_ERROR, subscr,
+			"GSUP protocol remote error, GMM cause = '%s' (%d)\n",
+			get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			gsup_msg->cause);
 		break;
 	}
 
@@ -358,9 +359,8 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		return -GMM_CAUSE_IMSI_UNKNOWN;
 	}
 
-	LOGP(DGPRS, LOGL_INFO,
-	     "Received GSUP message of type 0x%02x for IMSI %s\n",
-	     gsup_msg.message_type, gsup_msg.imsi);
+	LOGGSUBSCRP(LOGL_INFO, subscr,
+		"Received GSUP message of type 0x%02x\n", gsup_msg.message_type);
 
 	switch (gsup_msg.message_type) {
 	case GPRS_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
@@ -389,16 +389,16 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 	case GPRS_GSUP_MSGT_PURGE_MS_RESULT:
 	case GPRS_GSUP_MSGT_INSERT_DATA_REQUEST:
 	case GPRS_GSUP_MSGT_DELETE_DATA_REQUEST:
-		LOGP(DGPRS, LOGL_ERROR,
-		     "Rx GSUP message type %d not yet implemented\n",
-		     gsup_msg.message_type);
+		LOGGSUBSCRP(LOGL_ERROR, subscr,
+			"Rx GSUP message type %d not yet implemented\n",
+			gsup_msg.message_type);
 		rc = -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
 		break;
 
 	default:
-		LOGP(DGPRS, LOGL_ERROR,
-		     "Rx GSUP message type %d not valid at SGSN\n",
-		     gsup_msg.message_type);
+		LOGGSUBSCRP(LOGL_ERROR, subscr,
+			"Rx GSUP message type %d not valid at SGSN\n",
+			gsup_msg.message_type);
 		rc = -GMM_CAUSE_MSGT_INCOMP_P_STATE;
 		break;
 	};
@@ -413,8 +413,8 @@ int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
 {
 	struct gprs_gsup_message gsup_msg = {0};
 
-	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
-		  "subscriber auth info is not available\n");
+	LOGGSUBSCRP(LOGL_INFO, subscr,
+		"subscriber auth info is not available\n");
 
 	gsup_msg.message_type = GPRS_GSUP_MSGT_SEND_AUTH_INFO_REQUEST;
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
@@ -424,8 +424,8 @@ int gprs_subscr_location_update(struct gsm_subscriber *subscr)
 {
 	struct gprs_gsup_message gsup_msg = {0};
 
-	LOGMMCTXP(LOGL_INFO, subscr->sgsn_data->mm,
-		  "subscriber data is not available\n");
+	LOGGSUBSCRP(LOGL_INFO, subscr,
+		"subscriber data is not available\n");
 
 	gsup_msg.message_type = GPRS_GSUP_MSGT_UPDATE_LOCATION_REQUEST;
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
@@ -433,7 +433,7 @@ int gprs_subscr_location_update(struct gsm_subscriber *subscr)
 
 void gprs_subscr_update(struct gsm_subscriber *subscr)
 {
-	LOGMMCTXP(LOGL_DEBUG, subscr->sgsn_data->mm, "Updating subscriber data\n");
+	LOGGSUBSCRP(LOGL_DEBUG, subscr, "Updating subscriber data\n");
 
 	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING;
 	subscr->flags &= ~GSM_SUBSCRIBER_FIRST_CONTACT;
@@ -443,8 +443,8 @@ void gprs_subscr_update(struct gsm_subscriber *subscr)
 
 void gprs_subscr_update_auth_info(struct gsm_subscriber *subscr)
 {
-	LOGMMCTXP(LOGL_DEBUG, subscr->sgsn_data->mm,
-		  "Updating subscriber authentication info\n");
+	LOGGSUBSCRP(LOGL_DEBUG, subscr,
+		"Updating subscriber authentication info\n");
 
 	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING;
 	subscr->flags &= ~GSM_SUBSCRIBER_FIRST_CONTACT;
