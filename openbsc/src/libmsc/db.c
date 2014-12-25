@@ -1611,7 +1611,9 @@ int db_sms_mark_delivered(struct gsm_sms *sms)
 
 	result = dbi_conn_queryf(conn,
 		"UPDATE SMS "
-		"SET sent = datetime('now') "
+		"SET "
+		"sent = datetime('now'), "
+		"user_data = NULL, header = NULL, text = NULL "
 		"WHERE id = %llu", sms->id);
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR, "Failed to mark SMS %llu as sent.\n", sms->id);
