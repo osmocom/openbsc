@@ -277,27 +277,6 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		return -EINVAL;
 	}
 
-	{
-		struct timeval tv, tv_diff;
-		long int usec_diff, frame_diff;
-
-		gettimeofday(&tv, NULL);
-		tv_difference(&tv_diff, &rs->transmit.last_tv, &tv);
-		rs->transmit.last_tv = tv;
-
-		usec_diff = tv_diff.tv_sec * 1000000 + tv_diff.tv_usec;
-		frame_diff = (usec_diff / 20000);
-
-		if (abs(frame_diff) > 1) {
-			long int frame_diff_excess = frame_diff - 1;
-
-			LOGP(DLMUX, LOGL_NOTICE,
-				"Correcting frame difference of %ld frames\n", frame_diff_excess);
-			rs->transmit.sequence += frame_diff_excess;
-			rs->transmit.timestamp += frame_diff_excess * duration;
-		}
-	}
-
 	if (payload_len > MAX_RTP_PAYLOAD_LEN) {
 		DEBUGPC(DLMUX, "RTP payload too large (%d octets)\n",
 			payload_len);
