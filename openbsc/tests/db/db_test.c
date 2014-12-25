@@ -116,6 +116,13 @@ static void test_sms(void)
 	OSMO_ASSERT(sms->user_data_len == strlen("UserData123"));
 	OSMO_ASSERT(strcmp((char *) sms->user_data, "UserData123") == 0);
 
+	/* Mark the SMS as delivered */
+	db_sms_mark_delivered(sms);
+	sms_free(sms);
+
+	sms = db_sms_get_unsent_for_subscr(subscr);
+	OSMO_ASSERT(!sms);
+
 	subscr_put(subscr);
 }
 
