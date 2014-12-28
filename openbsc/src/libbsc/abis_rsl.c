@@ -207,7 +207,7 @@ static void lchan_act_tmr_cb(void *data)
 		"%s Timeout during activation. Marked as broken.\n",
 		gsm_lchan_name(lchan));
 
-	rsl_lchan_set_state(lchan, LCHAN_S_BROKEN);
+	rsl_lchan_mark_broken(lchan, "activation timeout");
 	lchan_free(lchan);
 }
 
@@ -219,7 +219,7 @@ static void lchan_deact_tmr_cb(void *data)
 		"%s Timeout during deactivation! Marked as broken.\n",
 		gsm_lchan_name(lchan));
 
-	rsl_lchan_set_state(lchan, LCHAN_S_BROKEN);
+	rsl_lchan_mark_broken(lchan, "de-activation timeout");
 	lchan_free(lchan);
 }
 
@@ -940,6 +940,13 @@ int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id,
 	return 0;
 }
 
+int rsl_lchan_mark_broken(struct gsm_lchan *lchan, const char *reason)
+{
+	lchan->state = LCHAN_S_BROKEN;
+	lchan->broken_reason = reason;
+	return 0;
+}
+
 int rsl_lchan_set_state(struct gsm_lchan *lchan, int state)
 {
 	lchan->state = state;
@@ -1010,13 +1017,14 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		print_rsl_cause(LOGL_ERROR, cause,
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 		msg->lchan->error_cause = *cause;
-		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
-			rsl_lchan_set_state(msg->lchan, LCHAN_S_BROKEN);
-		else
+		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC) {
+			rsl_lchan_mark_broken(msg->lchan, "NACK on activation");
+		} else
 			rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
 
-	} else
-		rsl_lchan_set_state(msg->lchan, LCHAN_S_BROKEN);
+	} else {
+		rsl_lchan_mark_broken(msg->lchan, "NACK on activation no IE");
+	}
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
