@@ -959,9 +959,12 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, Lchan %u: Type %s%s",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		lchan->nr, gsm_lchant_name(lchan->type), VTY_NEWLINE);
-	vty_out(vty, "  Connection: %u, State: %s%s",
+	vty_out(vty, "  Connection: %u, State: %s%s%s%s",
 		lchan->conn ? 1: 0,
-		gsm_lchans_name(lchan->state), VTY_NEWLINE);
+		gsm_lchans_name(lchan->state),
+		lchan->state == LCHAN_S_BROKEN ? " Error reason: " : "",
+		lchan->state == LCHAN_S_BROKEN ? lchan->broken_reason : "",
+		VTY_NEWLINE);
 	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",
 		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
 		- lchan->bs_power*2,

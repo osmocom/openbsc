@@ -195,6 +195,7 @@ struct gsm_lchan {
 	enum lchan_csd_mode csd_mode;
 	/* State */
 	enum gsm_lchan_state state;
+	const char *broken_reason;
 	/* Power levels for MS and BTS */
 	uint8_t bs_power;
 	uint8_t ms_power;
