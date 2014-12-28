@@ -65,7 +65,8 @@ struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 	struct gsm_bts_trx_ts *ts = &trx->ts[0];
 
 	if (pchan != GSM_PCHAN_CCCH &&
-	    pchan != GSM_PCHAN_CCCH_SDCCH4)
+	    pchan != GSM_PCHAN_CCCH_SDCCH4 &&
+	    pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
 		return NULL;
 
 	if (ts->pchan != GSM_PCHAN_NONE)
@@ -96,6 +97,7 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 			switch (pchan) {
 			case GSM_PCHAN_CCCH:
 			case GSM_PCHAN_CCCH_SDCCH4:
+			case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 				from = 0; to = 0;
 				break;
 			case GSM_PCHAN_TCH_F:
@@ -103,6 +105,7 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 				from = 1; to = 7;
 				break;
 			case GSM_PCHAN_SDCCH8_SACCH8C:
+			case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 			default:
 				return NULL;
 			}
@@ -110,7 +113,7 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 			/* Every secondary TRX is configured for TCH/F
 			 * and TCH/H only */
 			switch (pchan) {
-			case GSM_PCHAN_SDCCH8_SACCH8C:
+			case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 				from = 1; to = 1;
 			case GSM_PCHAN_TCH_F:
 			case GSM_PCHAN_TCH_H:
@@ -153,6 +156,8 @@ static const uint8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
 	/* FIXME: what about dynamic TCH_F_TCH_H ? */
 	[GSM_PCHAN_TCH_F_PDCH] = 1,
+	[GSM_PCHAN_CCCH_SDCCH4_CBCH] = 4,
+	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH] = 8,
 };
 
 static struct gsm_lchan *
@@ -211,7 +216,9 @@ _lc_find_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
 	}
 
 	/* we cannot allocate more of these */
-	if (pchan == GSM_PCHAN_CCCH_SDCCH4)
+	if (pchan == GSM_PCHAN_CCCH_SDCCH4 ||
+	    pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH ||
+	    pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
 		return NULL;
 
 	/* if we've reached here, we need to allocate a new physical
@@ -229,21 +236,29 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 			      int allow_bigger)
 {
 	struct gsm_lchan *lchan = NULL;
-	enum gsm_phys_chan_config first, second;
+	enum gsm_phys_chan_config first, first_cbch, second, second_cbch;
 
 	switch (type) {
 	case GSM_LCHAN_SDCCH:
 		if (bts->chan_alloc_reverse) {
 			first = GSM_PCHAN_SDCCH8_SACCH8C;
+			first_cbch = GSM_PCHAN_SDCCH8_SACCH8C_CBCH;
 			second = GSM_PCHAN_CCCH_SDCCH4;
+			second_cbch = GSM_PCHAN_CCCH_SDCCH4_CBCH;
 		} else {
 			first = GSM_PCHAN_CCCH_SDCCH4;
+			first_cbch = GSM_PCHAN_CCCH_SDCCH4_CBCH;
 			second = GSM_PCHAN_SDCCH8_SACCH8C;
+			second_cbch = GSM_PCHAN_SDCCH8_SACCH8C_CBCH;
 		}
 
 		lchan = _lc_find_bts(bts, first);
 		if (lchan == NULL)
+			lchan = _lc_find_bts(bts, first_cbch);
+		if (lchan == NULL)
 			lchan = _lc_find_bts(bts, second);
+		if (lchan == NULL)
+			lchan = _lc_find_bts(bts, second_cbch);
 
 		/* allow to assign bigger channels */
 		if (allow_bigger) {

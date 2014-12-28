@@ -127,18 +127,21 @@ struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1c) == 0x04) {
 		lch_idx = cbits & 0x3;	/* SDCCH/4 */
-		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
+		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
+		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
 			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x18) == 0x08) {
 		lch_idx = cbits & 0x7;	/* SDCCH/8 */
-		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C)
+		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C &&
+		    ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
 			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if (cbits == 0x10 || cbits == 0x11 || cbits == 0x12) {
 		lch_idx = 0;
 		if (ts->pchan != GSM_PCHAN_CCCH &&
-		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
+		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
+		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
 			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 		/* FIXME: we should not return first sdcch4 !!! */
@@ -2122,7 +2125,8 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 }
 
 int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,
-		       uint8_t cb_command, const uint8_t *data, int len)
+		       struct rsl_ie_cb_cmd_type cb_command,
+		       const uint8_t *data, int len)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *cb_cmd;
@@ -2131,14 +2135,15 @@ int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,
 	if (!cb_cmd)
 		return -1;
 
-	dh = (struct abis_rsl_dchan_hdr *) msgb_put(cb_cmd, sizeof*dh);
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(cb_cmd, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_SMS_BC_CMD);
-	dh->chan_nr = RSL_CHAN_SDCCH4_ACCH; /* TODO: check the chan config */
+	dh->c.msg_discr = ABIS_RSL_MDISC_COM_CHAN;
+	dh->chan_nr = chan_number; /* TODO: check the chan config */
 
-	msgb_tv_put(cb_cmd, RSL_IE_CB_CMD_TYPE, cb_command);
+	msgb_tv_put(cb_cmd, RSL_IE_CB_CMD_TYPE, *(uint8_t*)&cb_command);
 	msgb_tlv_put(cb_cmd, RSL_IE_SMSCB_MSG, len, data);
 
-	cb_cmd->trx = bts->c0;
+	cb_cmd->dst = bts->c0->rsl_link;
 
 	return abis_rsl_sendmsg(cb_cmd);
 }

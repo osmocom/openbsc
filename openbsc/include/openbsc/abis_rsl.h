@@ -87,7 +87,8 @@ int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm);
 
 /* SMSCB functionality */
 int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,
-		       uint8_t cb_command, const uint8_t *data, int len);
+		       struct rsl_ie_cb_cmd_type cb_command,
+		       const uint8_t *data, int len);
 
 /* some Nokia specific stuff */
 int rsl_nokia_si_begin(struct gsm_bts_trx *trx);

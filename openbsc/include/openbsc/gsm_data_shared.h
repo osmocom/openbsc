@@ -735,9 +735,9 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
 
 
-const struct value_string gsm_pchant_names[10];
-const struct value_string gsm_pchant_descs[10];
-const struct value_string gsm_lchant_names[6];
+const struct value_string gsm_pchant_names[12];
+const struct value_string gsm_pchant_descs[12];
+const struct value_string gsm_lchant_names[8];
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchant_name(enum gsm_chan_t c);

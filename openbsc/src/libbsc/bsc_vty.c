@@ -3246,6 +3246,55 @@ DEFUN(drop_bts,
 	return CMD_SUCCESS;
 }
 
+DEFUN(smscb_cmd, smscb_cmd_cmd,
+	"bts <0-255> smscb-command <1-4> HEXSTRING",
+	"BTS related commands\n" "BTS Number\n"
+	"SMS Cell Broadcast\n" "Last Valid Block\n"
+	"Hex Encoded SMSCB message (up to 88 octets)\n")
+{
+	struct gsm_bts *bts;
+	int bts_nr = atoi(argv[0]);
+	int last_block = atoi(argv[1]);
+	struct rsl_ie_cb_cmd_type cb_cmd;
+	uint8_t buf[88];
+	int rc;
+
+	bts = gsm_bts_num(bsc_gsmnet, bts_nr);
+	if (!bts) {
+		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	rc = osmo_hexparse(argv[2], buf, sizeof(buf));
+	if (rc < 0 || rc > sizeof(buf)) {
+		vty_out(vty, "Error parsing HEXSTRING%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	cb_cmd.spare = 0;
+	cb_cmd.def_bcast = 0;
+	cb_cmd.command = RSL_CB_CMD_TYPE_NORMAL;
+
+	switch (last_block) {
+	case 1:
+		cb_cmd.last_block = RSL_CB_CMD_LASTBLOCK_1;
+		break;
+	case 2:
+		cb_cmd.last_block = RSL_CB_CMD_LASTBLOCK_2;
+		break;
+	case 3:
+		cb_cmd.last_block = RSL_CB_CMD_LASTBLOCK_3;
+		break;
+	case 4:
+		cb_cmd.last_block = RSL_CB_CMD_LASTBLOCK_4;
+		break;
+	}
+
+	rsl_sms_cb_command(bts, RSL_CHAN_SDCCH4_ACCH, cb_cmd, buf, rc);
+
+	return CMD_SUCCESS;
+}
+
+
 DEFUN(pdch_act, pdch_act_cmd,
 	"bts <0-255> trx <0-255> timeslot <0-7> pdch (activate|deactivate)",
 	"BTS related commands\n" "BTS Number\n" "Transceiver\n" "Transceiver Number\n"
@@ -3474,6 +3523,7 @@ int bsc_vty_init(const struct log_info *cat)
 
 	install_element(ENABLE_NODE, &drop_bts_cmd);
 	install_element(ENABLE_NODE, &pdch_act_cmd);
+	install_element(ENABLE_NODE, &smscb_cmd_cmd);
 
 	abis_nm_vty_init();
 	abis_om2k_vty_init();
