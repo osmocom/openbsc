@@ -1163,6 +1163,7 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 		/* FIXME: request id? close channel? */
 		return -EINVAL;
 	}
+	log_set_context(BSC_CTX_SUBSCR, subscr);
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
 		subscr->name && strlen(subscr->name) ? subscr->name : subscr->imsi);
 

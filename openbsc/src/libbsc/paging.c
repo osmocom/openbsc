@@ -77,6 +77,8 @@ static void page_ms(struct gsm_paging_request *request)
 	if (!bts->oml_link)
 		return;
 
+	log_set_context(BSC_CTX_SUBSCR, request->subscr);
+
 	LOGP(DPAG, LOGL_INFO, "Going to send paging commands: imsi: '%s' tmsi: '0x%x'\n",
 		request->subscr->imsi, request->subscr->tmsi);
 
@@ -88,6 +90,7 @@ static void page_ms(struct gsm_paging_request *request)
 	page_group = gsm0502_calc_paging_group(&bts->si_common.chan_desc,
 						str_to_imsi(request->subscr->imsi));
 	gsm0808_page(bts, page_group, mi_len, mi, request->chan_type);
+	log_set_context(BSC_CTX_SUBSCR, NULL);
 }
 
 static void paging_schedule_if_needed(struct gsm_bts_paging_state *paging_bts)
@@ -247,9 +250,12 @@ static int paging_pending_request(struct gsm_bts_paging_state *bts,
 static void paging_T3113_expired(void *data)
 {
 	struct gsm_paging_request *req = (struct gsm_paging_request *)data;
+	struct gsm_subscriber *subscr = subscr_get(req->subscr);
 	void *cbfn_param;
 	gsm_cbfn *cbfn;
 	int msg;
+
+	log_set_context(BSC_CTX_SUBSCR, subscr);
 
 	LOGP(DPAG, LOGL_INFO, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
@@ -268,6 +274,9 @@ static void paging_T3113_expired(void *data)
 	if (cbfn)
 		cbfn(GSM_HOOK_RR_PAGING, msg, NULL, NULL,
 			  cbfn_param);
+
+	log_set_context(BSC_CTX_SUBSCR, NULL);
+	subscr_put(subscr);
 }
 
 static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
@@ -378,6 +387,8 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 			 struct msgb *msg)
 {
 	struct gsm_bts *bts = NULL;
+
+	log_set_context(BSC_CTX_SUBSCR, subscr);
 
 	if (_bts)
 		_paging_request_stop(_bts, subscr, conn, msg);
