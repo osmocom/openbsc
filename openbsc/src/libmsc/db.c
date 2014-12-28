@@ -61,6 +61,8 @@ enum {
 	SCHEMA_RATE,
 	SCHEMA_AUTHKEY,
 	SCHEMA_AUTHLAST,
+	IDX_SUBSCRIBER_EXTENSION,
+	IDX_SMS_SENT,
 };
 
 static const char *create_stmts[] = {
@@ -174,6 +176,10 @@ static const char *create_stmts[] = {
 		"sres BLOB NOT NULL, "
 		"kc BLOB NOT NULL "
 		")",
+	[IDX_SUBSCRIBER_EXTENSION] = "CREATE INDEX IF NOT EXISTS "
+		"subscriber_ext ON Subscriber(extension)",
+	[IDX_SMS_SENT] = "CREATE INDEX IF NOT EXISTS "
+		"sms_sent ON SMS(sent)",
 };
 
 void db_error_func(dbi_conn conn, void *data)
