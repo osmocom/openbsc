@@ -53,9 +53,6 @@
 #include "openbsc/mgcp_transcode.h"
 #endif
 
-/* this is here for the vty... it will never be called */
-void subscr_put() { abort(); }
-
 #define _GNU_SOURCE
 #include <getopt.h>
 

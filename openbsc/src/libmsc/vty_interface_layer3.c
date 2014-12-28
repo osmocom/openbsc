@@ -49,6 +49,8 @@
 #include <openbsc/mncc_int.h>
 #include <openbsc/handover.h>
 
+#include <osmocom/vty/logging.h>
+
 #include "meas_feed.h"
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
@@ -1027,6 +1029,30 @@ DEFUN(meas_feed_scenario, meas_feed_scenario_cmd,
 	return CMD_SUCCESS;
 }
 
+
+DEFUN(logging_fltr_imsi,
+      logging_fltr_imsi_cmd,
+      "logging filter imsi IMSI",
+	LOGGING_STR FILTER_STR
+      "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
+{
+	struct gsm_subscriber *subscr;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct log_target *tgt = osmo_log_vty2tgt(vty);
+
+	if (!tgt)
+		return CMD_WARNING;
+
+	subscr = subscr_get_by_imsi(gsmnet->subscr_group, argv[0]);
+	if (!subscr) {
+		vty_out(vty, "%%no subscriber with IMSI(%s)%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	log_set_imsi_filter(tgt, subscr);
+	return CMD_SUCCESS;
+}
 int bsc_vty_init_extra(void)
 {
 	osmo_signal_register_handler(SS_SCALL, scall_cbfn, NULL);
@@ -1045,6 +1071,7 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&subscriber_update_cmd);
 	install_element_ve(&show_stats_cmd);
 	install_element_ve(&show_smsqueue_cmd);
+	install_element_ve(&logging_fltr_imsi_cmd);
 
 	install_element(ENABLE_NODE, &ena_subscr_delete_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_name_cmd);
@@ -1071,6 +1098,7 @@ int bsc_vty_init_extra(void)
 	install_element(MNCC_INT_NODE, &mnccint_meas_feed_cmd);
 
 	install_element(CFG_LOG_NODE, &log_level_sms_cmd);
+	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);
 
 	return 0;
 }

@@ -22,8 +22,11 @@
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/vty.h>
+#include <openbsc/gsm_subscriber.h>
+#include <openbsc/debug.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/vty/logging.h>
 
 #include <time.h>
 
@@ -739,6 +742,29 @@ DEFUN(gen_position_trap,
 	return CMD_SUCCESS;
 }
 
+DEFUN(logging_fltr_imsi,
+      logging_fltr_imsi_cmd,
+      "logging filter imsi IMSI",
+	LOGGING_STR FILTER_STR
+      "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
+{
+	struct gsm_subscriber *subscr;
+	struct log_target *tgt = osmo_log_vty2tgt(vty);
+
+	if (!tgt)
+		return CMD_WARNING;
+
+	subscr = subscr_get_or_create(bsc_gsmnet->subscr_group, argv[0]);
+	if (!subscr) {
+		vty_out(vty, "%%no subscriber with IMSI(%s)%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	log_set_imsi_filter(tgt, subscr);
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
@@ -789,8 +815,11 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);
 	install_element_ve(&show_pos_cmd);
+	install_element_ve(&logging_fltr_imsi_cmd);
 
 	install_element(ENABLE_NODE, &gen_position_trap_cmd);
+
+	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);
 
 	return 0;
 }

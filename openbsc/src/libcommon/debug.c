@@ -177,7 +177,7 @@ static int filter_fn(const struct log_context *ctx,
 	const struct gprs_nsvc *bvc = ctx->ctx[GPRS_CTX_BVC];
 
 	if ((tar->filter_map & (1 << FLT_IMSI)) != 0
-	    && subscr && strcmp(subscr->imsi, tar->filter_data[FLT_IMSI]) == 0)
+	    && subscr && subscr == tar->filter_data[FLT_IMSI])
 		return 1;
 
 	/* Filter on the NS Virtual Connection */
@@ -199,14 +199,18 @@ const struct log_info log_info = {
 	.num_cat = ARRAY_SIZE(default_categories),
 };
 
-void log_set_imsi_filter(struct log_target *target, const char *imsi)
+void log_set_imsi_filter(struct log_target *target, struct gsm_subscriber *subscr)
 {
-	if (imsi) {
-		target->filter_map |= (1 << FLT_IMSI);
-		target->filter_data[FLT_IMSI] = talloc_strdup(target, imsi);
-	} else if (target->filter_data[FLT_IMSI]) {
-		target->filter_map &= ~(1 << FLT_IMSI);
-		talloc_free(target->filter_data[FLT_IMSI]);
+	/* free the old data */
+	if (target->filter_data[FLT_IMSI]) {
+		subscr_put(target->filter_data[FLT_IMSI]);
 		target->filter_data[FLT_IMSI] = NULL;
+	}
+
+	if (subscr) {
+		target->filter_map |= (1 << FLT_IMSI);
+		target->filter_data[FLT_IMSI] = subscr_get(subscr);
+	} else {
+		target->filter_map &= ~(1 << FLT_IMSI);
 	}
 }

@@ -53,8 +53,9 @@ enum {
 /* we don't need a header dependency for this... */
 struct gprs_nsvc;
 struct bssgp_bvc_ctx;
+struct gsm_subscriber;
 
-void log_set_imsi_filter(struct log_target *target, const char *imsi);
+void log_set_imsi_filter(struct log_target *target, struct gsm_subscriber *subscr);
 void log_set_nsvc_filter(struct log_target *target,
 			 struct gprs_nsvc *nsvc);
 void log_set_bvc_filter(struct log_target *target,
