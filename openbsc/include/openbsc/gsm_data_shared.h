@@ -767,6 +767,9 @@ void gsm_bts_mo_reset(struct gsm_bts *bts);
 uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr);
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
 
+/* return the gsm_lchan for the CBCH (if it exists at all) */
+struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts);
+
 /*
  * help with parsing regexps
  */

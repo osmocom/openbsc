@@ -555,27 +555,6 @@ static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 	return sizeof(*si3) + rc;
 }
 
-/* return the gsm_lchan for the CBCH (if it exists at all) */
-static struct gsm_lchan *bts_get_cbch(struct gsm_bts *bts)
-{
-	struct gsm_lchan *lchan = NULL;
-	struct gsm_bts_trx *trx = bts->c0;
-
-	if (trx->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
-		lchan = &trx->ts[0].lchan[2];
-	else {
-		int i;
-		for (i = 0; i < 8; i++) {
-			if (trx->ts[i].pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH) {
-				lchan = &trx->ts[i].lchan[2];
-				break;
-			}
-		}
-	}
-
-	return lchan;
-}
-
 static int generate_si4(uint8_t *output, struct gsm_bts *bts)
 {
 	int rc;
@@ -600,7 +579,7 @@ static int generate_si4(uint8_t *output, struct gsm_bts *bts)
 	si4->rach_control = bts->si_common.rach_control;
 
 	/* Optional: CBCH Channel Description + CBCH Mobile Allocation */
-	cbch_lchan = bts_get_cbch(bts);
+	cbch_lchan = gsm_bts_get_cbch(bts);
 	if (cbch_lchan) {
 		struct gsm48_chan_desc cd;
 		gsm48_lchan2chan_desc(&cd, cbch_lchan);

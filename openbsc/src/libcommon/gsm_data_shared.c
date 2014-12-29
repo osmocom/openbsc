@@ -544,3 +544,24 @@ uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 {
 	return gsm_ts2chan_nr(lchan->ts, lchan->nr);
 }
+
+/* return the gsm_lchan for the CBCH (if it exists at all) */
+struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts)
+{
+	struct gsm_lchan *lchan = NULL;
+	struct gsm_bts_trx *trx = bts->c0;
+
+	if (trx->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
+		lchan = &trx->ts[0].lchan[2];
+	else {
+		int i;
+		for (i = 0; i < 8; i++) {
+			if (trx->ts[i].pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH) {
+				lchan = &trx->ts[i].lchan[2];
+				break;
+			}
+		}
+	}
+
+	return lchan;
+}
