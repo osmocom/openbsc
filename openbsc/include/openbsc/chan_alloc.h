@@ -54,7 +54,7 @@ struct load_counter {
 };
 
 struct pchan_load {
-	struct load_counter pchan[GSM_PCHAN_UNKNOWN];
+	struct load_counter pchan[_GSM_PCHAN_MAX];
 };
 
 void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts);
