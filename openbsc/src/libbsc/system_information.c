@@ -583,10 +583,10 @@ static int generate_si4(uint8_t *output, struct gsm_bts *bts)
 	if (cbch_lchan) {
 		struct gsm48_chan_desc cd;
 		gsm48_lchan2chan_desc(&cd, cbch_lchan);
-		tv_fixed_put(si4->data, GSM48_IE_CBCH_CHAN_DESC, 4,
+		tv_fixed_put(si4->data, GSM48_IE_CBCH_CHAN_DESC, 3,
 			     (uint8_t *) &cd);
-		l2_plen += 4 + 1;
-		restoct += 4 + 1;
+		l2_plen += 3 + 1;
+		restoct += 3 + 1;
 		/* we don't use hopping and thus don't need a CBCH MA */
 	}
 
