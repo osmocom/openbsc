@@ -116,6 +116,7 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 			case GSM_PCHAN_SDCCH8_SACCH8C:
 			case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 				from = 1; to = 1;
+				break;
 			case GSM_PCHAN_TCH_F:
 			case GSM_PCHAN_TCH_H:
 				from = 1; to = 7;
