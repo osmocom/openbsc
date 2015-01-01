@@ -213,21 +213,6 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 	return 0;
 }
 
-/* "to - from" */
-static void tv_difference(struct timeval *diff, const struct timeval *from,
-			  const struct timeval *__to)
-{
-	struct timeval _to = *__to, *to = &_to;
-
-	if (to->tv_usec < from->tv_usec) {
-		to->tv_sec -= 1;
-		to->tv_usec += 1000000;
-	}
-
-	diff->tv_usec = to->tv_usec - from->tv_usec;
-	diff->tv_sec = to->tv_sec - from->tv_sec;
-}
-
 /*! \brief encode and send a rtp frame
  *  \param[in] rs RTP socket through which we shall send
  *  \param[in] frame GSM RTP frame to be sent
