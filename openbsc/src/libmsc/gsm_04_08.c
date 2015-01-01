@@ -720,7 +720,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		ptr8[2] = 0x80 | name_pad; /* Cell Broadcast DCS, no CI */
 
 		ptr8 = msgb_put(msg, name_len);
-		gsm_7bit_encode(ptr8, net->name_long);
+		gsm_7bit_encode_n(ptr8, name_len, net->name_long, NULL);
 
 	}
 
@@ -748,7 +748,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		ptr8[2] = 0x80 | name_pad; /* Cell Broadcast DCS, no CI */
 
 		ptr8 = msgb_put(msg, name_len);
-		gsm_7bit_encode(ptr8, net->name_short);
+		gsm_7bit_encode_n(ptr8, name_len, net->name_short, NULL);
 
 	}
 

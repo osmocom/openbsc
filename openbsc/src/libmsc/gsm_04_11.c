@@ -366,7 +366,8 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 
 		switch (sms_alphabet) {
 		case DCS_7BIT_DEFAULT:
-			gsm_7bit_decode(gsms->text, smsp, gsms->user_data_len);
+			gsm_7bit_decode_n(gsms->text, sizeof(gsms->text), smsp,
+					  gsms->user_data_len);
 			break;
 		case DCS_8BIT_DATA:
 		case DCS_UCS2:
