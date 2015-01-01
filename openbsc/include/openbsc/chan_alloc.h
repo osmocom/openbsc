@@ -24,17 +24,6 @@
 
 struct gsm_subscriber_connection;
 
-/* Special allocator for C0 of BTS */
-struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
-				   enum gsm_phys_chan_config pchan);
-
-/* Regular physical channel allocator */
-struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
-				enum gsm_phys_chan_config pchan);
-
-/* Regular physical channel (TS) */
-void ts_free(struct gsm_bts_trx_ts *ts);
-
 /* Find an allocated channel for a specified subscriber */
 struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *subscr);
 
