@@ -89,6 +89,7 @@ static uint8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
 		channel = 0x9;
 		break;
 	case GSM_LCHAN_UNKNOWN:
+	default:
 		LOGP(DMSC, LOGL_ERROR, "Unknown lchan type: %p\n", lchan);
 		break;
 	}
@@ -416,7 +417,7 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 
 	gh = msgb_l3(msg);
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
-		LOGP(DMSC, LOGL_ERROR, "Assignment Compl invalid: %u\n",
+		LOGP(DMSC, LOGL_ERROR, "Assignment Compl invalid: %zu\n",
 		     msgb_l3len(msg) - sizeof(*gh));
 		return;
 	}
@@ -461,7 +462,7 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 
 	gh = msgb_l3(msg);
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
-		LOGP(DMSC, LOGL_ERROR, "assignemnt failure unhandled: %u\n",
+		LOGP(DMSC, LOGL_ERROR, "assignemnt failure unhandled: %zu\n",
 		     msgb_l3len(msg) - sizeof(*gh));
 		rr_failure = NULL;
 	} else {

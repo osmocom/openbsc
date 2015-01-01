@@ -50,6 +50,7 @@
 #include <osmocom/ctrl/ports.h>
 #include <openbsc/ctrl.h>
 #include <openbsc/osmo_bsc_rf.h>
+#include <openbsc/smpp.h>
 
 #include "../../bscconfig.h"
 

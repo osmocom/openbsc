@@ -61,11 +61,11 @@ static void test_simple_sw_config(void)
 	}
 
 	if (descr[0].len != 13) {
-		printf("WRONG SIZE: %d\n", descr[0].len);
+		printf("WRONG SIZE: %zu\n", descr[0].len);
 		abort();
 	}
 
-	printf("Start: %u len: %zu\n", descr[0].start - simple_config, descr[0].len);
+	printf("Start: %ld len: %zu\n", descr[0].start - simple_config, descr[0].len);
 	printf("file_id:  %s\n", osmo_hexdump(descr[0].file_id, descr[0].file_id_len));
 	printf("file_ver: %s\n", osmo_hexdump(descr[0].file_ver, descr[0].file_ver_len));
 }
@@ -99,20 +99,20 @@ static void test_dual_sw_config(void)
 	}
 
 	if (descr[0].len != 13) {
-		printf("WRONG SIZE0: %d\n", descr[0].len);
+		printf("WRONG SIZE0: %zu\n", descr[0].len);
 		abort();
 	}
 
 	if (descr[1].len != 13) {
-		printf("WRONG SIZE1: %d\n", descr[1].len);
+		printf("WRONG SIZE1: %zu\n", descr[1].len);
 		abort();
 	}
 
-	printf("Start: %u len: %zu\n", descr[0].start - dual_config, descr[0].len);
+	printf("Start: %ld len: %zu\n", descr[0].start - dual_config, descr[0].len);
 	printf("file_id:  %s\n", osmo_hexdump(descr[0].file_id, descr[0].file_id_len));
 	printf("file_ver: %s\n", osmo_hexdump(descr[0].file_ver, descr[0].file_ver_len));
 
-	printf("Start: %u len: %zu\n", descr[1].start - dual_config, descr[1].len);
+	printf("Start: %ld len: %zu\n", descr[1].start - dual_config, descr[1].len);
 	printf("file_id:  %s\n", osmo_hexdump(descr[1].file_id, descr[1].file_id_len));
 	printf("file_ver: %s\n", osmo_hexdump(descr[1].file_ver, descr[1].file_ver_len));
 }
@@ -129,11 +129,11 @@ static void test_sw_selection(void)
 		abort();
 	}
 
-	printf("Start: %u len: %zu\n", descr[0].start - load_config, descr[0].len);
+	printf("Start: %ld len: %zu\n", descr[0].start - load_config, descr[0].len);
 	printf("file_id:  %s\n", osmo_hexdump(descr[0].file_id, descr[0].file_id_len));
 	printf("file_ver: %s\n", osmo_hexdump(descr[0].file_ver, descr[0].file_ver_len));
 
-	printf("Start: %u len: %zu\n", descr[1].start - load_config, descr[1].len);
+	printf("Start: %ld len: %zu\n", descr[1].start - load_config, descr[1].len);
 	printf("file_id:  %s\n", osmo_hexdump(descr[1].file_id, descr[1].file_id_len));
 	printf("file_ver: %s\n", osmo_hexdump(descr[1].file_ver, descr[1].file_ver_len));
 

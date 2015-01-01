@@ -15,7 +15,7 @@ noinst_HEADERS = abis_nm.h abis_rsl.h db.h gsm_04_08.h gsm_data.h \
 		bss.h gsm_data_shared.h ipaccess.h mncc_int.h \
 		arfcn_range_encode.h nat_rewrite_trie.h bsc_nat_callstats.h \
 		osmux.h mgcp_transcode.h rtp.h gprs_utils.h \
-		 gprs_gb_parse.h
+		 gprs_gb_parse.h smpp.h
 
 openbsc_HEADERS = gsm_04_08.h meas_rep.h bsc_api.h
 openbscdir = $(includedir)/openbsc

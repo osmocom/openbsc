@@ -247,7 +247,7 @@ dead_socket:
 	return 0;
 }
 
-static void esme_write_cb(struct osmo_fd *ofd, struct msgb *msg)
+static int esme_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 {
 	struct esme *esme = ofd->data;
 	int rc;
@@ -260,8 +260,10 @@ static void esme_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 		exit(99);
 	} else if (rc < msgb_length(msg)) {
 		LOGP(DSMPP, LOGL_ERROR, "[%s] Short write\n", esme->system_id);
-		return;
+		return 0;
 	}
+
+	return 0;
 }
 
 static int smpp_esme_init(struct esme *esme, const char *host, uint16_t port)
