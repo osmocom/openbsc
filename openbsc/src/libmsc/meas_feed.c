@@ -85,7 +85,7 @@ static int feed_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 	return write(ofd->fd, msgb_data(msg), msgb_length(msg));
 }
 
-static int feed_read_cb(struct osmo_fd *ofd, struct msgb *msg)
+static int feed_read_cb(struct osmo_fd *ofd)
 {
 	int rc;
 	char buf[256];
