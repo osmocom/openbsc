@@ -10,6 +10,10 @@ openbsc.pc
 src/osmo-nitb/osmo-nitb
 src/osmo-bsc_mgcp/osmo-bsc_mgcp
 src/osmo-bsc/osmo-bsc
+src/utils/meas_vis
+src/utils/osmo-meas-pcap2db
+src/utils/osmo-meas-udp2db
+src/utils/smpp_mirror
 *.*~
 *.sw?
 .libs
