@@ -309,7 +309,7 @@ static int write_response_sdp(struct mgcp_endpoint *endp,
 	return len;
 
 buffer_too_small:
-	LOGP(DMGCP, LOGL_ERROR, "SDP buffer too small: %zd (needed %d)\n",
+	LOGP(DMGCP, LOGL_ERROR, "SDP buffer too small: %zu (needed %d)\n",
 	     size, len);
 	return -1;
 }

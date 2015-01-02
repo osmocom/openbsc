@@ -956,7 +956,7 @@ int gprs_ns_rcvmsg(struct gprs_ns_inst *nsi, struct msgb *msg,
 int gprs_ns_callback(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 			 struct msgb *msg, uint16_t bvci)
 {
-	printf("CALLBACK, event %d, msg length %ld, bvci 0x%04x\n%s\n\n",
+	printf("CALLBACK, event %d, msg length %d, bvci 0x%04x\n%s\n\n",
 			event, msgb_bssgp_len(msg), bvci,
 			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
@@ -983,15 +983,15 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
 		real_sendto = dlsym(RTLD_NEXT, "sendto");
 
 	if (dest_host == REMOTE_BSS_ADDR)
-		printf("MESSAGE to BSS at 0x%08x:%d, msg length %zu\n%s\n\n",
+		printf("MESSAGE to BSS at 0x%08x:%d, msg length %d\n%s\n\n",
 		       dest_host, dest_port,
 		       len, osmo_hexdump(buf, len));
 	else if (dest_host == REMOTE_SGSN_ADDR)
-		printf("MESSAGE to SGSN at 0x%08x:%d, msg length %zu\n%s\n\n",
+		printf("MESSAGE to SGSN at 0x%08x:%d, msg length %d\n%s\n\n",
 		       dest_host, dest_port,
 		       len, osmo_hexdump(buf, len));
 	else if (dest_host == REMOTE_SGSN2_ADDR)
-		printf("MESSAGE to SGSN 2 at 0x%08x:%d, msg length %zu\n%s\n\n",
+		printf("MESSAGE to SGSN 2 at 0x%08x:%d, msg length %d\n%s\n\n",
 		       dest_host, dest_port,
 		       len, osmo_hexdump(buf, len));
 	else
@@ -1015,15 +1015,15 @@ int gprs_ns_sendmsg(struct gprs_ns_inst *nsi, struct msgb *msg)
 
 	if (nsei == SGSN_NSEI)
 		printf("NS UNITDATA MESSAGE to SGSN, BVCI 0x%04x, "
-		       "msg length %zu (%s)\n",
+		       "msg length %d (%s)\n",
 		       bvci, len, __func__);
 	else if (nsei == SGSN2_NSEI)
 		printf("NS UNITDATA MESSAGE to SGSN 2, BVCI 0x%04x, "
-		       "msg length %zu (%s)\n",
+		       "msg length %d (%s)\n",
 		       bvci, len, __func__);
 	else
 		printf("NS UNITDATA MESSAGE to BSS, BVCI 0x%04x, "
-		       "msg length %zu (%s)\n",
+		       "msg length %d (%s)\n",
 		       bvci, len, __func__);
 
 	if (received_messages) {
@@ -1253,7 +1253,7 @@ static int gprs_process_message(struct gprs_ns_inst *nsi, const char *text, stru
 	struct msgb *msg;
 	int ret;
 	if (data_len > NS_ALLOC_SIZE - NS_ALLOC_HEADROOM) {
-		fprintf(stderr, "message too long: %zu\n", data_len);
+		fprintf(stderr, "message too long: %d\n", data_len);
 		return -1;
 	}
 
