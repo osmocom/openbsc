@@ -29,8 +29,6 @@
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 
-#include <cdk/cdk.h>
-
 #include <osmocom/core/socket.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/msgb.h>
