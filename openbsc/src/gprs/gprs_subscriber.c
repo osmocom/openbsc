@@ -182,6 +182,7 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 	}
 
 	sdata->auth_triplets_updated = 1;
+	sdata->error_cause = 0;
 
 	gprs_subscr_update_auth_info(subscr);
 
@@ -211,9 +212,26 @@ static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
 	}
 
 	subscr->authorized = 1;
+	subscr->sgsn_data->error_cause = 0;
 
 	gprs_subscr_update(subscr);
 	return 0;
+}
+
+static int check_cause(int cause)
+{
+	switch (cause) {
+	case GMM_CAUSE_IMSI_UNKNOWN ... GMM_CAUSE_ILLEGAL_ME:
+	case GMM_CAUSE_GPRS_NOTALLOWED ... GMM_CAUSE_NO_GPRS_PLMN:
+		return EACCES;
+
+	case GMM_CAUSE_MSC_TEMP_NOTREACH ... GMM_CAUSE_CONGESTION:
+		return EAGAIN;
+
+	case GMM_CAUSE_SEM_INCORR_MSG ... GMM_CAUSE_PROTO_ERR_UNSPEC:
+	default:
+		return EINVAL;
+	}
 }
 
 static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
@@ -221,33 +239,92 @@ static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
 {
 	unsigned idx;
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
+	int cause_err;
 
-	LOGP(DGPRS, LOGL_INFO,
-	     "Send authentication info has failed for IMSI %s with cause %d\n",
-	     gsup_msg->imsi, gsup_msg->cause);
+	cause_err = check_cause(gsup_msg->cause);
 
-	/* Clear auth tuples */
-	memset(sdata->auth_triplets, 0, sizeof(sdata->auth_triplets));
-	for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
-		sdata->auth_triplets[idx].key_seq = GSM_KEY_SEQ_INVAL;
+	LOGMMCTXP(LOGL_DEBUG, subscr->sgsn_data->mm,
+	     "Send authentication info has failed with cause %d, "
+	     "handled as: %s\n",
+	     gsup_msg->cause, strerror(cause_err));
 
-	subscr->authorized = 0;
+	switch (cause_err) {
+	case EACCES:
+		LOGMMCTXP(LOGL_NOTICE, subscr->sgsn_data->mm,
+			  "GPRS send auth info req failed, access denied, "
+			  "GMM cause = '%s' (%d)\n",
+			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			  gsup_msg->cause);
+		/* Clear auth tuples */
+		memset(sdata->auth_triplets, 0, sizeof(sdata->auth_triplets));
+		for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
+			sdata->auth_triplets[idx].key_seq = GSM_KEY_SEQ_INVAL;
 
-	gprs_subscr_update_auth_info(subscr);
-	return 0;
+		subscr->authorized = 0;
+		sdata->error_cause = gsup_msg->cause;
+		gprs_subscr_update_auth_info(subscr);
+		break;
+
+	case EAGAIN:
+		LOGMMCTXP(LOGL_NOTICE, subscr->sgsn_data->mm,
+			  "GPRS send auth info req failed, GMM cause = '%s' (%d)\n",
+			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			  gsup_msg->cause);
+		break;
+
+	default:
+	case EINVAL:
+		LOGMMCTXP(LOGL_ERROR, subscr->sgsn_data->mm,
+			  "GSUP protocol remote error, GMM cause = '%s' (%d)\n",
+			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			  gsup_msg->cause);
+		break;
+	}
+
+	return -gsup_msg->cause;
 }
 
 static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
 					       struct gprs_gsup_message *gsup_msg)
 {
-	LOGP(DGPRS, LOGL_INFO,
-	     "Update location has failed for IMSI %s with cause %d\n",
-	     gsup_msg->imsi, gsup_msg->cause);
+	int cause_err;
 
-	subscr->authorized = 0;
+	cause_err = check_cause(gsup_msg->cause);
 
-	gprs_subscr_update(subscr);
-	return 0;
+	LOGMMCTXP(LOGL_DEBUG, subscr->sgsn_data->mm,
+	     "Update location has failed with cause %d, handled as: %s\n",
+	     gsup_msg->cause, strerror(cause_err));
+
+	switch (cause_err) {
+	case EACCES:
+		LOGMMCTXP(LOGL_NOTICE, subscr->sgsn_data->mm,
+			  "GPRS update location failed, access denied, "
+			  "GMM cause = '%s' (%d)\n",
+			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			  gsup_msg->cause);
+
+		subscr->authorized = 0;
+		subscr->sgsn_data->error_cause = gsup_msg->cause;
+		gprs_subscr_update_auth_info(subscr);
+		break;
+
+	case EAGAIN:
+		LOGMMCTXP(LOGL_NOTICE, subscr->sgsn_data->mm,
+			  "GPRS update location failed, GMM cause = '%s' (%d)\n",
+			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			  gsup_msg->cause);
+		break;
+
+	default:
+	case EINVAL:
+		LOGMMCTXP(LOGL_ERROR, subscr->sgsn_data->mm,
+			  "GSUP protocol remote error, GMM cause = '%s' (%d)\n",
+			  get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			  gsup_msg->cause);
+		break;
+	}
+
+	return -gsup_msg->cause;
 }
 
 int gprs_subscr_rx_gsup_message(struct msgb *msg)
@@ -286,6 +363,7 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 
 	switch (gsup_msg.message_type) {
 	case GPRS_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
+		subscr->sgsn_data->error_cause = 0;
 		gprs_subscr_put_and_cancel(subscr);
 		subscr = NULL;
 		break;
