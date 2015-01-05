@@ -521,15 +521,15 @@ DEFUN(update_subscr_insert_auth_triplet, update_subscr_insert_auth_triplet_cmd,
 
 	OSMO_ASSERT(subscr->sgsn_data);
 
-	if (!osmo_hexparse(sres_str, &at.sres[0], sizeof(at.sres)) < 0) {
+	if (osmo_hexparse(sres_str, &at.sres[0], sizeof(at.sres)) < 0) {
 		vty_out(vty, "%% invalid SRES value '%s'\n", sres_str);
 		goto failed;
 	}
-	if (!osmo_hexparse(rand_str, &at.rand[0], sizeof(at.rand)) < 0) {
+	if (osmo_hexparse(rand_str, &at.rand[0], sizeof(at.rand)) < 0) {
 		vty_out(vty, "%% invalid RAND value '%s'\n", rand_str);
 		goto failed;
 	}
-	if (!osmo_hexparse(kc_str, &at.kc[0], sizeof(at.kc)) < 0) {
+	if (osmo_hexparse(kc_str, &at.kc[0], sizeof(at.kc)) < 0) {
 		vty_out(vty, "%% invalid Kc value '%s'\n", kc_str);
 		goto failed;
 	}
