@@ -47,6 +47,8 @@
 #define GPRS_ATT_T_ATT_WHILE_IMSI	2
 #define GPRS_ATT_T_COMBINED		3
 
+extern const struct value_string *gprs_att_t_strs;
+
 /* Chapter 10.5.5.5 / Table 10.5.138 */
 #define GPRS_DET_T_MO_GPRS		1
 #define GPRS_DET_T_MO_IMSI		2
@@ -56,11 +58,16 @@
 #define GPRS_DET_T_MT_REATT_NOTREQ	2
 #define GPRS_DET_T_MT_IMSI		3
 
+extern const struct value_string *gprs_det_t_mo_strs;
+extern const struct value_string *gprs_det_t_mt_strs;
+
 /* Chapter 10.5.5.18 / Table 105.150 */
 #define GPRS_UPD_T_RA			0
 #define GPRS_UPD_T_RA_LA		1
 #define GPRS_UPD_T_RA_LA_IMSI_ATT	2
 #define GPRS_UPD_T_PERIODIC		3
+
+extern const struct value_string *gprs_upd_t_strs;
 
 enum gsm48_gprs_ie_mm {
 	GSM48_IE_GMM_CIPH_CKSN		= 0x08, /* 10.5.1.2 */
@@ -171,6 +178,8 @@ enum gsm48_gmm_cause {
 	GMM_CAUSE_PROTO_ERR_UNSPEC	= 0x6f,
 };
 
+extern const struct value_string *gsm48_gmm_cause_names;
+
 /* Chapter 10.4.6.6 / Table 10.5.157 */
 enum gsm48_gsm_cause {
 	GSM_CAUSE_INSUFF_RSRC		= 0x1a,
@@ -198,6 +207,8 @@ enum gsm48_gsm_cause {
 	GSM_CAUSE_MSG_INCOMP_P_STATE	= 0x65,
 	GSM_CAUSE_PROTO_ERR_UNSPEC	= 0x6f,
 };
+
+extern const struct value_string *gsm48_gsm_cause_names;
 
 /* Section 6.1.2.2: Session management states on the network side */
 enum gsm48_pdp_state {

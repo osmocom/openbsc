@@ -75,109 +75,6 @@
 
 extern struct sgsn_instance *sgsn;
 
-/* Protocol related stuff, should go into libosmocore */
-
-/* 10.5.5.14 GPRS MM Cause / Table 10.5.147 */
-const struct value_string gmm_cause_names[] = {
-	{ GMM_CAUSE_IMSI_UNKNOWN, 	"IMSI unknown in HLR" },
-	{ GMM_CAUSE_ILLEGAL_MS, 	"Illegal MS" },
-	{ GMM_CAUSE_ILLEGAL_ME,		"Illegal ME" },
-	{ GMM_CAUSE_GPRS_NOTALLOWED,	"GPRS services not allowed" },
-	{ GMM_CAUSE_GPRS_OTHER_NOTALLOWED,
-			"GPRS services and non-GPRS services not allowed" },
-	{ GMM_CAUSE_MS_ID_NOT_DERIVED,
-			"MS identity cannot be derived by the network" },
-	{ GMM_CAUSE_IMPL_DETACHED,	"Implicitly detached" },
-	{ GMM_CAUSE_PLMN_NOTALLOWED,	"PLMN not allowed" },
-	{ GMM_CAUSE_LA_NOTALLOWED,	"Location Area not allowed" },
-	{ GMM_CAUSE_ROAMING_NOTALLOWED,
-			"Roaming not allowed in this location area" },
-	{ GMM_CAUSE_NO_GPRS_PLMN,
-				"GPRS services not allowed in this PLMN" },
-	{ GMM_CAUSE_MSC_TEMP_NOTREACH,	"MSC temporarily not reachable" },
-	{ GMM_CAUSE_NET_FAIL,		"Network failure" },
-	{ GMM_CAUSE_CONGESTION,		"Congestion" },
-	{ GMM_CAUSE_SEM_INCORR_MSG,	"Semantically incorrect message" },
-	{ GMM_CAUSE_INV_MAND_INFO, "Invalid mandatory information" },
-	{ GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL,
-			"Message type non-existant or not implemented" },
-	{ GMM_CAUSE_MSGT_INCOMP_P_STATE,
-			"Message type not compatible with protocol state" },
-	{ GMM_CAUSE_IE_NOTEXIST_NOTIMPL,
-			"Information element non-existent or not implemented" },
-	{ GMM_CAUSE_COND_IE_ERR,	"Conditional IE error" },
-	{ GMM_CAUSE_MSG_INCOMP_P_STATE,
-				"Message not compatible with protocol state " },
-	{ GMM_CAUSE_PROTO_ERR_UNSPEC,	"Protocol error, unspecified" },
-	{ 0, NULL }
-};
-
-/* 10.5.6.6 SM Cause / Table 10.5.157 */
-const struct value_string gsm_cause_names[] = {
-	{ GSM_CAUSE_INSUFF_RSRC, "Insufficient resources" },
-	{ GSM_CAUSE_MISSING_APN, "Missing or unknown APN" },
-	{ GSM_CAUSE_UNKNOWN_PDP, "Unknown PDP address or PDP type" },
-	{ GSM_CAUSE_AUTH_FAILED, "User Authentication failed" },
-	{ GSM_CAUSE_ACT_REJ_GGSN, "Activation rejected by GGSN" },
-	{ GSM_CAUSE_ACT_REJ_UNSPEC, "Activation rejected, unspecified" },
-	{ GSM_CAUSE_SERV_OPT_NOTSUPP, "Service option not supported" },
-	{ GSM_CAUSE_REQ_SERV_OPT_NOTSUB,
-				"Requested service option not subscribed" },
-	{ GSM_CAUSE_SERV_OPT_TEMP_OOO,
-				"Service option temporarily out of order" },
-	{ GSM_CAUSE_NSAPI_IN_USE, "NSAPI already used" },
-	{ GSM_CAUSE_DEACT_REGULAR, "Regular deactivation" },
-	{ GSM_CAUSE_QOS_NOT_ACCEPTED, "QoS not accepted" },
-	{ GSM_CAUSE_NET_FAIL, "Network Failure" },
-	{ GSM_CAUSE_REACT_RQD, "Reactivation required" },
-	{ GSM_CAUSE_FEATURE_NOTSUPP, "Feature not supported " },
-	{ GSM_CAUSE_INVALID_TRANS_ID, "Invalid transaction identifier" },
-	{ GSM_CAUSE_SEM_INCORR_MSG, "Semantically incorrect message" },
-	{ GSM_CAUSE_INV_MAND_INFO, "Invalid mandatory information" },
-	{ GSM_CAUSE_MSGT_NOTEXIST_NOTIMPL,
-			"Message type non-existant or not implemented" },
-	{ GSM_CAUSE_MSGT_INCOMP_P_STATE,
-			"Message type not compatible with protocol state" },
-	{ GSM_CAUSE_IE_NOTEXIST_NOTIMPL,
-			"Information element non-existent or not implemented" },
-	{ GSM_CAUSE_COND_IE_ERR, "Conditional IE error" },
-	{ GSM_CAUSE_MSG_INCOMP_P_STATE,
-				"Message not compatible with protocol state " },
-	{ GSM_CAUSE_PROTO_ERR_UNSPEC, "Protocol error, unspecified" },
-	{ 0, NULL }
-};
-
-/* 10.5.5.2 */
-const struct value_string gprs_att_t_strs[] = {
-	{ GPRS_ATT_T_ATTACH, 		"GPRS attach" },
-	{ GPRS_ATT_T_ATT_WHILE_IMSI, 	"GPRS attach while IMSI attached" },
-	{ GPRS_ATT_T_COMBINED, 		"Combined GPRS/IMSI attach" },
-	{ 0, NULL }
-};
-
-const struct value_string gprs_upd_t_strs[] = {
-	{ GPRS_UPD_T_RA,		"RA updating" },
-	{ GPRS_UPD_T_RA_LA,		"combined RA/LA updating" },
-	{ GPRS_UPD_T_RA_LA_IMSI_ATT,	"combined RA/LA updating + IMSI attach" },
-	{ GPRS_UPD_T_PERIODIC,		"periodic updating" },
-	{ 0, NULL }
-};
-
-/* 10.5.5.5 */
-const struct value_string gprs_det_t_mo_strs[] = {
-	{ GPRS_DET_T_MO_GPRS,		"GPRS detach" },
-	{ GPRS_DET_T_MO_IMSI,		"IMSI detach" },
-	{ GPRS_DET_T_MO_COMBINED,	"Combined GPRS/IMSI detach" },
-	{ 0, NULL }
-};
-
-const struct value_string gprs_det_t_mt_strs[] = {
-	{ GPRS_DET_T_MT_REATT_REQ,	"re-attach required" },
-	{ GPRS_DET_T_MT_REATT_NOTREQ,	"re-attach not required" },
-	{ GPRS_DET_T_MT_IMSI,		"IMSI detach (after VLR failure)" },
-	{ 0, NULL }
-};
-
 static const struct tlv_definition gsm48_gmm_att_tlvdef = {
 	.def = {
 		[GSM48_IE_GMM_CIPH_CKSN]	= { TLV_TYPE_FIXED, 1 },
@@ -313,7 +210,7 @@ static int _tx_status(struct msgb *msg, uint8_t cause,
 	/* MMCTX might be NULL! */
 
 	DEBUGP(DMM, "<- GPRS MM STATUS (cause: %s)\n",
-		get_value_string(gmm_cause_names, cause));
+		get_value_string(gsm48_gmm_cause_names, cause));
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	if (sm) {
@@ -353,7 +250,7 @@ static int _tx_detach_req(struct msgb *msg, uint8_t detach_type, uint8_t cause,
 
 	DEBUGP(DMM, "<- GPRS MM DETACH REQ (type: %s, cause: %s)\n",
 		get_value_string(gprs_det_t_mt_strs, detach_type),
-		get_value_string(gmm_cause_names, cause));
+		get_value_string(gsm48_gmm_cause_names, cause));
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 
@@ -462,7 +359,7 @@ static int _tx_gmm_att_rej(struct msgb *msg, uint8_t gmm_cause)
 {
 	struct gsm48_hdr *gh;
 
-	LOGP(DMM, LOGL_NOTICE, "<- GPRS ATTACH REJECT: %s\n", get_value_string(gmm_cause_names, gmm_cause));
+	LOGP(DMM, LOGL_NOTICE, "<- GPRS ATTACH REJECT: %s\n", get_value_string(gsm48_gmm_cause_names, gmm_cause));
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -1015,7 +912,7 @@ rejected:
 	/* Send ATTACH REJECT */
 	LOGMMCTXP(LOGL_NOTICE, ctx,
 		  "Rejecting Attach Request with cause '%s' (%d)\n",
-		  get_value_string(gmm_cause_names, reject_cause), reject_cause);
+		  get_value_string(gsm48_gmm_cause_names, reject_cause), reject_cause);
 	rc = gsm48_tx_gmm_att_rej_oldmsg(msg, reject_cause);
 	if (ctx)
 		mm_ctx_cleanup_free(ctx, "GPRS ATTACH REJ");
@@ -1264,7 +1161,7 @@ rejected:
 	/* Send RA UPDATE REJECT */
 	LOGMMCTXP(LOGL_NOTICE, mmctx,
 		  "Rejecting RA Update Request with cause '%s' (%d)\n",
-		  get_value_string(gmm_cause_names, reject_cause), reject_cause);
+		  get_value_string(gsm48_gmm_cause_names, reject_cause), reject_cause);
 	rc = gsm48_tx_gmm_ra_upd_rej(msg, reject_cause);
 	if (mmctx)
 		mm_ctx_cleanup_free(mmctx, "GPRS RA UPDATE REJ");
@@ -1281,7 +1178,7 @@ static int gsm48_rx_gmm_status(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
 	LOGMMCTXP(LOGL_INFO, mmctx, "-> GPRS MM STATUS (cause: %s)\n",
-		get_value_string(gmm_cause_names, gh->data[0]));
+		get_value_string(gsm48_gmm_cause_names, gh->data[0]));
 
 	return 0;
 }
@@ -1763,7 +1660,7 @@ static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, struct msgb *msg)
 	struct sgsn_pdp_ctx *pdp;
 
 	LOGMMCTXP(LOGL_INFO, mm, "-> DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
-		get_value_string(gsm_cause_names, gh->data[0]));
+		get_value_string(gsm48_gsm_cause_names, gh->data[0]));
 
 	pdp = sgsn_pdp_ctx_by_tid(mm, transaction_id);
 	if (!pdp) {
@@ -1801,7 +1698,7 @@ static int gsm48_rx_gsm_status(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
 	LOGMMCTXP(LOGL_INFO, ctx, "-> GPRS SM STATUS (cause: %s)\n",
-		get_value_string(gsm_cause_names, gh->data[0]));
+		get_value_string(gsm48_gsm_cause_names, gh->data[0]));
 
 	return 0;
 }

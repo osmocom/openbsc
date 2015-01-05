@@ -25,6 +25,7 @@ sgsn_test_LDADD = \
 	$(top_builddir)/src/gprs/gprs_gsup_client.o \
 	$(top_builddir)/src/gprs/gprs_utils.o \
 	$(top_builddir)/src/gprs/gprs_subscriber.o \
+	$(top_builddir)/src/gprs/gsm_04_08_gprs.o \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOABIS_LIBS) \
 	$(LIBOSMOCORE_LIBS) \
