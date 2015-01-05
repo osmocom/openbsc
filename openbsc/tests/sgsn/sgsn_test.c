@@ -28,6 +28,7 @@
 #include <osmocom/gprs/gprs_bssgp.h>
 
 #include <osmocom/gsm/gsm_utils.h>
+#include <openbsc/gsm_04_08_gprs.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/msgb.h>
@@ -438,7 +439,7 @@ static void test_subscriber_gsup(void)
 
 	/* Inject SendAuthInfoErr GSUP message */
 	rc = rx_gsup_message(send_auth_info_err, sizeof(send_auth_info_err));
-	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(rc == -GMM_CAUSE_GPRS_NOTALLOWED);
 	OSMO_ASSERT(last_updated_subscr == s1);
 
 	/* Check triplets */
@@ -456,7 +457,7 @@ static void test_subscriber_gsup(void)
 
 	/* Inject UpdateLocErr GSUP message */
 	rc = rx_gsup_message(update_location_err, sizeof(update_location_err));
-	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(rc == -GMM_CAUSE_GPRS_NOTALLOWED);
 	OSMO_ASSERT(last_updated_subscr == s1);
 
 	/* Check authorization */

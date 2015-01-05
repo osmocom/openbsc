@@ -339,7 +339,8 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 	rc = gprs_gsup_decode(data, data_len, &gsup_msg);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_ERROR,
-		     "decoding GSUP message fails with error code %d\n", -rc);
+		     "decoding GSUP message fails with error '%s' (%d)\n",
+		     get_value_string(gsm48_gmm_cause_names, -rc), -rc);
 		return rc;
 	}
 
@@ -369,19 +370,19 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		break;
 
 	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_RESULT:
-		gprs_subscr_handle_gsup_auth_res(subscr, &gsup_msg);
+		rc = gprs_subscr_handle_gsup_auth_res(subscr, &gsup_msg);
 		break;
 
 	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_ERROR:
-		gprs_subscr_handle_gsup_auth_err(subscr, &gsup_msg);
+		rc = gprs_subscr_handle_gsup_auth_err(subscr, &gsup_msg);
 		break;
 
 	case GPRS_GSUP_MSGT_UPDATE_LOCATION_RESULT:
-		gprs_subscr_handle_gsup_upd_loc_res(subscr, &gsup_msg);
+		rc = gprs_subscr_handle_gsup_upd_loc_res(subscr, &gsup_msg);
 		break;
 
 	case GPRS_GSUP_MSGT_UPDATE_LOCATION_ERROR:
-		gprs_subscr_handle_gsup_upd_loc_err(subscr, &gsup_msg);
+		rc = gprs_subscr_handle_gsup_upd_loc_err(subscr, &gsup_msg);
 		break;
 
 	case GPRS_GSUP_MSGT_PURGE_MS_ERROR:

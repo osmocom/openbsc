@@ -74,7 +74,7 @@ static int decode_pdp_info(uint8_t *data, size_t data_len,
 
 		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
 		if (rc < 0)
-			return rc;
+			return -GMM_CAUSE_PROTO_ERR_UNSPEC;
 
 		iei = tag;
 
@@ -116,7 +116,7 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 	while (data_len > 0) {
 		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
 		if (rc < 0)
-			return rc;
+			return -GMM_CAUSE_PROTO_ERR_UNSPEC;
 
 		iei = tag;
 
