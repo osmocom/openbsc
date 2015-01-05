@@ -227,7 +227,7 @@ static int check_cause(int cause)
 		return EACCES;
 
 	case GMM_CAUSE_MSC_TEMP_NOTREACH ... GMM_CAUSE_CONGESTION:
-		return EAGAIN;
+		return EHOSTUNREACH;
 
 	case GMM_CAUSE_SEM_INCORR_MSG ... GMM_CAUSE_PROTO_ERR_UNSPEC:
 	default:
@@ -266,11 +266,14 @@ static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
 		gprs_subscr_update_auth_info(subscr);
 		break;
 
-	case EAGAIN:
+	case EHOSTUNREACH:
 		LOGGSUBSCRP(LOGL_NOTICE, subscr,
 			"GPRS send auth info req failed, GMM cause = '%s' (%d)\n",
 			get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
 			gsup_msg->cause);
+
+		sdata->error_cause = gsup_msg->cause;
+		gprs_subscr_update_auth_info(subscr);
 		break;
 
 	default:
@@ -309,11 +312,14 @@ static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
 		gprs_subscr_update_auth_info(subscr);
 		break;
 
-	case EAGAIN:
+	case EHOSTUNREACH:
 		LOGGSUBSCRP(LOGL_NOTICE, subscr,
 			"GPRS update location failed, GMM cause = '%s' (%d)\n",
 			get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
 			gsup_msg->cause);
+
+		subscr->sgsn_data->error_cause = gsup_msg->cause;
+		gprs_subscr_update_auth_info(subscr);
 		break;
 
 	default:
