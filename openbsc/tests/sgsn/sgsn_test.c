@@ -1278,7 +1278,7 @@ static void test_gmm_cancel(void)
 	OSMO_ASSERT(sgsn_tx_counter == 0);
 
 	/* cancel */
-	gsm0408_gprs_access_cancelled(ctx);
+	gsm0408_gprs_access_cancelled(ctx, 0);
 
 	/* verify that things are gone */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);

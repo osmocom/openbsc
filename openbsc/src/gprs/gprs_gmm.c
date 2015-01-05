@@ -652,57 +652,54 @@ void gsm0408_gprs_access_granted(struct sgsn_mm_ctx *ctx)
 	}
 }
 
-void gsm0408_gprs_access_denied(struct sgsn_mm_ctx *ctx)
+void gsm0408_gprs_access_denied(struct sgsn_mm_ctx *ctx, int gmm_cause)
 {
+	if (gmm_cause == 0)
+		gmm_cause = GMM_CAUSE_GPRS_NOTALLOWED;
+
 	switch (ctx->mm_state) {
 	case GMM_COMMON_PROC_INIT:
-		LOGP(DMM, LOGL_NOTICE,
-		     "Not authorized, rejecting ATTACH REQUEST, IMSI=%s\n",
-		     ctx->imsi);
-		gsm48_tx_gmm_att_rej(ctx, GMM_CAUSE_GPRS_NOTALLOWED);
+		LOGMMCTXP(LOGL_NOTICE, ctx,
+			  "Not authorized, rejecting ATTACH REQUEST "
+			  "with cause '%s' (%d)\n",
+			  get_value_string(gsm48_gmm_cause_names, gmm_cause),
+			  gmm_cause);
+		gsm48_tx_gmm_att_rej(ctx, gmm_cause);
 		mm_ctx_cleanup_free(ctx, "GPRS ATTACH REJECT");
 		break;
 	case GMM_REGISTERED_NORMAL:
 	case GMM_REGISTERED_SUSPENDED:
-		LOGP(DMM, LOGL_NOTICE,
-		     "Authorization lost, detaching, IMSI=%s\n",
-		     ctx->imsi);
+		LOGMMCTXP(LOGL_NOTICE, ctx,
+			  "Authorization lost, detaching "
+			  "with cause '%s' (%d)\n",
+			  get_value_string(gsm48_gmm_cause_names, gmm_cause),
+			  gmm_cause);
 		gsm48_tx_gmm_detach_req(
-			ctx, GPRS_DET_T_MT_REATT_NOTREQ, GMM_CAUSE_GPRS_NOTALLOWED);
+			ctx, GPRS_DET_T_MT_REATT_NOTREQ, gmm_cause);
 
 		mm_ctx_cleanup_free(ctx, "auth lost");
 		break;
 	default:
-		LOGP(DMM, LOGL_INFO,
-		     "Authorization lost, ignored, IMSI=%s\n",
-		     ctx->imsi);
+		LOGMMCTXP(LOGL_INFO, ctx,
+			  "Authorization lost, cause is '%s' (%d)\n",
+			  get_value_string(gsm48_gmm_cause_names, gmm_cause),
+			  gmm_cause);
+		mm_ctx_cleanup_free(ctx, "auth lost");
 	}
 }
 
-void gsm0408_gprs_access_cancelled(struct sgsn_mm_ctx *ctx)
+void gsm0408_gprs_access_cancelled(struct sgsn_mm_ctx *ctx, int gmm_cause)
 {
-	switch (ctx->mm_state) {
-#if 0
-	case GMM_COMMON_PROC_INIT:
-		LOGP(DMM, LOGL_NOTICE,
-		     "Cancelled, rejecting ATTACH REQUEST, IMSI=%s\n",
-		     ctx->imsi);
-		gsm48_tx_gmm_att_rej(ctx, GMM_CAUSE_IMPL_DETACHED);
-		break;
-	case GMM_REGISTERED_NORMAL:
-	case GMM_REGISTERED_SUSPENDED:
-		LOGP(DMM, LOGL_NOTICE,
-		     "Cancelled, detaching, IMSI=%s\n",
-		     ctx->imsi);
-		gsm48_tx_gmm_detach_req(
-			ctx, GPRS_DET_T_MT_REATT_NOTREQ, GMM_CAUSE_IMPL_DETACHED);
-		break;
-#endif
-	default:
-		LOGP(DMM, LOGL_INFO,
-		     "Cancelled, deleting context, IMSI=%s\n",
-		     ctx->imsi);
+	if (gmm_cause != 0) {
+		LOGMMCTXP(LOGL_INFO, ctx,
+			  "Cancelled with cause '%s' (%d), deleting context\n",
+			  get_value_string(gsm48_gmm_cause_names, gmm_cause),
+			  gmm_cause);
+		gsm0408_gprs_access_denied(ctx, gmm_cause);
+		return;
 	}
+
+	LOGMMCTXP(LOGL_INFO, ctx, "Cancelled, deleting context silently\n");
 	mm_ctx_cleanup_free(ctx, "access cancelled");
 }
 
