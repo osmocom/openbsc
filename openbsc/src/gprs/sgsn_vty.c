@@ -151,6 +151,10 @@ static int config_write_sgsn(struct vty *vty)
 	llist_for_each_entry(acl, &g_cfg->imsi_acl, list)
 		vty_out(vty, " imsi-acl add %s%s", acl->imsi, VTY_NEWLINE);
 
+	if (g_cfg->subscriber_expiry_timeout != SGSN_TIMEOUT_NEVER)
+		vty_out(vty, " subscriber-expiry-timeout %d%s",
+			g_cfg->subscriber_expiry_timeout, VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -401,6 +405,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 	char expire_time[200];
 	struct gsm_auth_tuple *at;
 	int at_idx;
+	struct timeval tv;
 
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
@@ -444,6 +449,17 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 			 "%a, %d %b %Y %T %z", localtime(&subscr->expire_lu));
 		expire_time[sizeof(expire_time) - 1] = '\0';
 		vty_out(vty, "    Expiration Time: %s%s", expire_time, VTY_NEWLINE);
+	}
+
+	/* print the expiration time if the timer is active */
+	if (osmo_timer_pending(&subscr->sgsn_data->timer)) {
+		osmo_timer_remaining(&subscr->sgsn_data->timer, NULL, &tv);
+		strftime(expire_time, sizeof(expire_time),
+			 "%a, %d %b %Y %T %z",
+			 localtime(&subscr->sgsn_data->timer.timeout.tv_sec));
+		expire_time[sizeof(expire_time) - 1] = '\0';
+		vty_out(vty, "    Expires in: %ds (%s)%s",
+			(int)tv.tv_sec, expire_time, VTY_NEWLINE);
 	}
 
 	if (subscr->flags)
@@ -687,7 +703,24 @@ DEFUN(cfg_gsup_remote_port, cfg_gsup_remote_port_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_subscriber_expiry_timeout, cfg_subscriber_expiry_timeout_cmd,
+	"subscriber-expiry-timeout <0-999999>",
+	"Set the expiry time for unused subscriber entries\n"
+	"Expiry time in seconds\n")
+{
+	g_cfg->subscriber_expiry_timeout = atoi(argv[0]);
 
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_subscriber_expiry_timeout, cfg_no_subscriber_expiry_timeout_cmd,
+	"no subscriber-expiry-timeout",
+	NO_STR "Set the expiry time for unused subscriber entries\n")
+{
+	g_cfg->subscriber_expiry_timeout = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
 
 int sgsn_vty_init(void)
 {
@@ -716,6 +749,8 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_auth_policy_cmd);
 	install_element(SGSN_NODE, &cfg_gsup_remote_ip_cmd);
 	install_element(SGSN_NODE, &cfg_gsup_remote_port_cmd);
+	install_element(SGSN_NODE, &cfg_subscriber_expiry_timeout_cmd);
+	install_element(SGSN_NODE, &cfg_no_subscriber_expiry_timeout_cmd);
 
 	return 0;
 }

@@ -7,6 +7,8 @@
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 
+#define SGSN_TIMEOUT_NEVER (-1)
+
 struct gprs_gsup_client;
 
 enum sgsn_auth_policy {
@@ -30,6 +32,8 @@ struct sgsn_config {
 
 	struct sockaddr_in gsup_server_addr;
 	int gsup_server_port;
+
+	int subscriber_expiry_timeout;
 
 	int require_authentication;
 	int require_update_location;

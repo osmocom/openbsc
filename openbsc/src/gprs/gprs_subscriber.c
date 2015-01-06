@@ -73,6 +73,43 @@ static int gsup_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg)
 	return rc;
 }
 
+static void sgsn_subscriber_timeout_cb(void *subscr_);
+int gprs_subscr_purge(struct gsm_subscriber *subscr);
+
+void gprs_subscr_stop_timer(struct gsm_subscriber *subscr)
+{
+	if (subscr->sgsn_data->timer.data) {
+		osmo_timer_del(&subscr->sgsn_data->timer);
+		subscr->sgsn_data->timer.cb = NULL;
+		OSMO_ASSERT(subscr->sgsn_data->timer.data == subscr);
+		subscr->sgsn_data->timer.data = NULL;
+		subscr_put(subscr);
+	}
+}
+
+void gprs_subscr_start_timer(struct gsm_subscriber *subscr, unsigned seconds)
+{
+	if (!subscr->sgsn_data->timer.data) {
+		subscr->sgsn_data->timer.cb = sgsn_subscriber_timeout_cb;
+		subscr->sgsn_data->timer.data = subscr_get(subscr);
+	}
+
+	osmo_timer_schedule(&subscr->sgsn_data->timer, seconds, 0);
+}
+
+static void sgsn_subscriber_timeout_cb(void *subscr_)
+{
+	struct gsm_subscriber *subscr = subscr_;
+
+	LOGGSUBSCRP(LOGL_INFO, subscr,
+		    "Expired, deleting subscriber entry\n");
+
+	/* Make sure, the timer is cleaned up */
+	subscr->keep_in_ram = 0;
+	gprs_subscr_stop_timer(subscr);
+	/* The subscr is freed now, if the timer was the last user */
+}
+
 static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
 {
 	struct sgsn_subscriber_data *sdata;
@@ -97,7 +134,7 @@ struct gsm_subscriber *gprs_subscr_get_or_create(const char *imsi)
 	if (!subscr->sgsn_data)
 		subscr->sgsn_data = sgsn_subscriber_data_alloc(subscr);
 
-	subscr->keep_in_ram = 1;
+	gprs_subscr_stop_timer(subscr);
 
 	return subscr;
 }
@@ -116,8 +153,14 @@ void gprs_subscr_delete(struct gsm_subscriber *subscr)
 	}
 
 	if ((subscr->flags & GPRS_SUBSCRIBER_CANCELLED) ||
-	    (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT))
+	    (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT)) {
 		subscr->keep_in_ram = 0;
+		gprs_subscr_stop_timer(subscr);
+	} else if (sgsn->cfg.subscriber_expiry_timeout != SGSN_TIMEOUT_NEVER) {
+		gprs_subscr_start_timer(subscr, sgsn->cfg.subscriber_expiry_timeout);
+	} else {
+		subscr->keep_in_ram = 1;
+	}
 
 	subscr_put(subscr);
 }

@@ -44,6 +44,7 @@ static struct sgsn_instance sgsn_inst = {
 	.cfg = {
 		.gtp_statedir = "./",
 		.auth_policy = SGSN_AUTH_POLICY_CLOSED,
+		.subscriber_expiry_timeout = SGSN_TIMEOUT_NEVER,
 	},
 };
 struct sgsn_instance *sgsn = &sgsn_inst;
@@ -200,9 +201,11 @@ static void assert_subscr(const struct gsm_subscriber *subscr, const char *imsi)
 
 static void test_subscriber(void)
 {
-	struct gsm_subscriber *s1, *s2, *sfound;
+	struct gsm_subscriber *s1, *s2, *s3, *sfound;
 	const char *imsi1 = "1234567890";
 	const char *imsi2 = "9876543210";
+	const char *imsi3 = "5656565656";
+	int saved_expiry_timeout = sgsn->cfg.subscriber_expiry_timeout;
 
 	update_subscriber_data_cb = my_dummy_sgsn_update_subscriber_data;
 
@@ -211,6 +214,7 @@ static void test_subscriber(void)
 	/* Check for emptiness */
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi3) == NULL);
 
 	/* Allocate entry 1 */
 	s1 = gprs_subscr_get_or_create(imsi1);
@@ -222,9 +226,13 @@ static void test_subscriber(void)
 	s2 = gprs_subscr_get_or_create(imsi2);
 	s2->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
 
+	/* Allocate entry 3 */
+	s3 = gprs_subscr_get_or_create(imsi3);
+
 	/* Check entries */
 	assert_subscr(s1, imsi1);
 	assert_subscr(s2, imsi2);
+	assert_subscr(s3, imsi3);
 
 	/* Update entry 1 */
 	last_updated_subscr = NULL;
@@ -251,12 +259,34 @@ static void test_subscriber(void)
 	s1 = NULL;
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
 	assert_subscr(s2, imsi2);
+	assert_subscr(s3, imsi3);
 
 	/* Free entry 2 (GSM_SUBSCRIBER_FIRST_CONTACT is set) */
 	gprs_subscr_delete(s2);
 	s2 = NULL;
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
+	assert_subscr(s3, imsi3);
+
+	/* Try to delete entry 3 */
+	OSMO_ASSERT(sgsn->cfg.subscriber_expiry_timeout == SGSN_TIMEOUT_NEVER);
+	gprs_subscr_delete(s3);
+	assert_subscr(s3, imsi3);
+	/* Process timeouts, this shouldn't delete s3 (SGSN_TIMEOUT_NEVER) */
+	osmo_timers_update();
+	assert_subscr(s3, imsi3);
+	s3 = subscr_get(s3);
+
+	/* Free entry 3 (TIMEOUT == 0) */
+	sgsn->cfg.subscriber_expiry_timeout = 0;
+	gprs_subscr_delete(s3);
+	assert_subscr(s3, imsi3);
+	/* Process timeouts, this should delete s3 */
+	osmo_timers_update();
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi3) == NULL);
+	sgsn->cfg.subscriber_expiry_timeout = saved_expiry_timeout;
 
 	OSMO_ASSERT(llist_empty(&active_subscribers));
 
@@ -862,6 +892,7 @@ static void test_gmm_attach_subscr(void)
 
 	subscr = gprs_subscr_get_or_create("123456789012345");
 	subscr->authorized = 1;
+	subscr->keep_in_ram = 1;
 	subscr_put(subscr);
 
 	printf("Auth policy 'remote': ");
@@ -895,6 +926,7 @@ static void test_gmm_attach_subscr_fake_auth(void)
 
 	subscr = gprs_subscr_get_or_create("123456789012345");
 	subscr->authorized = 1;
+	subscr->keep_in_ram = 1;
 	sgsn->cfg.require_authentication = 1;
 	sgsn->cfg.require_update_location = 1;
 	subscr_put(subscr);
@@ -936,6 +968,7 @@ static void test_gmm_attach_subscr_real_auth(void)
 
 	subscr = gprs_subscr_get_or_create("123456789012345");
 	subscr->authorized = 1;
+	subscr->keep_in_ram = 1;
 	sgsn->cfg.require_authentication = 1;
 	sgsn->cfg.require_update_location = 1;
 	subscr_put(subscr);
