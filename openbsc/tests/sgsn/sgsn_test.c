@@ -1109,12 +1109,16 @@ static void test_gmm_attach_subscr_gsup_auth(int retry)
 
 int my_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 {
-	struct gprs_gsup_message to_peer;
-	struct gprs_gsup_message from_peer;
+	struct gprs_gsup_message to_peer = {0};
+	struct gprs_gsup_message from_peer = {0};
 	struct msgb *reply_msg;
+	int rc;
 
 	/* Simulate the GSUP peer */
-	gprs_gsup_decode(msgb_data(msg), msgb_length(msg), &to_peer);
+	rc = gprs_gsup_decode(msgb_data(msg), msgb_length(msg), &to_peer);
+	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(to_peer.imsi[0] != 0);
+	strncpy(from_peer.imsi, to_peer.imsi, sizeof(from_peer.imsi));
 
 	/* This invalidates the pointers in to_peer */
 	msgb_free(msg);
@@ -1129,13 +1133,13 @@ int my_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 		return my_subscr_request_auth_info_gsup_auth(NULL);
 
 	case GPRS_GSUP_MSGT_PURGE_MS_REQUEST:
-		/* TODO: send RES/ERR */
-		return 0;
+		from_peer.message_type = GPRS_GSUP_MSGT_PURGE_MS_RESULT;
+		break;
 
 	default:
 		if ((to_peer.message_type & 0b00000011) == 0) {
 			/* Unhandled request */
-			/* TODO: send error(NOT_IMPL) */
+			/* Send error(NOT_IMPL) */
 			from_peer.message_type = to_peer.message_type + 1;
 			from_peer.cause = GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
 			break;

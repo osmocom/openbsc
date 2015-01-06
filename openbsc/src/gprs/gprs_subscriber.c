@@ -104,10 +104,27 @@ static void sgsn_subscriber_timeout_cb(void *subscr_)
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		    "Expired, deleting subscriber entry\n");
 
+	subscr_get(subscr);
+
+	/* Check, whether to cleanup immediately */
+	if (!(subscr->flags & GPRS_SUBSCRIBER_ENABLE_PURGE))
+		goto force_cleanup;
+
+	/* Send a 'purge MS' message to the HLR */
+	if (gprs_subscr_purge(subscr) < 0)
+		goto force_cleanup;
+
+	/* Purge request has been sent */
+
+	subscr_put(subscr);
+	return;
+
+force_cleanup:
 	/* Make sure, the timer is cleaned up */
 	subscr->keep_in_ram = 0;
 	gprs_subscr_stop_timer(subscr);
 	/* The subscr is freed now, if the timer was the last user */
+	subscr_put(subscr);
 }
 
 static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
@@ -169,6 +186,7 @@ void gprs_subscr_put_and_cancel(struct gsm_subscriber *subscr)
 {
 	subscr->authorized = 0;
 	subscr->flags |= GPRS_SUBSCRIBER_CANCELLED;
+	subscr->flags &= ~GPRS_SUBSCRIBER_ENABLE_PURGE;
 
 	gprs_subscr_update(subscr);
 
@@ -257,6 +275,8 @@ static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
 
 	subscr->authorized = 1;
 	subscr->sgsn_data->error_cause = 0;
+
+	subscr->flags |= GPRS_SUBSCRIBER_ENABLE_PURGE;
 
 	gprs_subscr_update(subscr);
 	return 0;
@@ -377,6 +397,51 @@ static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
 	return -gsup_msg->cause;
 }
 
+static int gprs_subscr_handle_gsup_purge_res(struct gsm_subscriber *subscr,
+					     struct gprs_gsup_message *gsup_msg)
+{
+	LOGGSUBSCRP(LOGL_INFO, subscr, "Completing purge MS\n");
+
+	/* Force silent cancellation */
+	subscr->sgsn_data->error_cause = 0;
+	gprs_subscr_put_and_cancel(subscr_get(subscr));
+
+	return 0;
+}
+
+static int gprs_subscr_handle_gsup_purge_err(struct gsm_subscriber *subscr,
+					     struct gprs_gsup_message *gsup_msg)
+{
+	LOGGSUBSCRP(LOGL_NOTICE, subscr,
+		    "Purge MS has failed with cause '%s' (%d)\n",
+		    get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+		    gsup_msg->cause);
+
+	/* In GSM 09.02, 19.1.4.4, the text and the SDL diagram imply that
+	 * the subscriber data is not removed if the request has failed. On the
+	 * other hand, keeping the subscriber data in either error case
+	 * (subscriber unknown, syntactical message error, connection error)
+	 * doesn't seem to give any advantage, since the data will be restored
+	 * on the next Attach Request anyway.
+	 * This approach ensures, that the subscriber record will not stick if
+	 * an error happens.
+	 */
+
+	/* TODO: Check whether this behaviour is acceptable and either just
+	 * remove this TODO-notice or change the implementation to not delete
+	 * the subscriber data (eventually resetting the ENABLE_PURGE flag and
+	 * restarting the expiry timer based on the cause).
+	 *
+	 * Subscriber Unknown: cancel subscr
+	 * Temporary network problems: do nothing (handled by timer based retry)
+	 * Message problems (syntax, nyi, ...): cancel subscr (retry won't help)
+	 */
+
+	gprs_subscr_handle_gsup_purge_res(subscr, gsup_msg);
+
+	return -gsup_msg->cause;
+}
+
 int gprs_subscr_rx_gsup_message(struct msgb *msg)
 {
 	uint8_t *data = msgb_l2(msg);
@@ -435,7 +500,13 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		break;
 
 	case GPRS_GSUP_MSGT_PURGE_MS_ERROR:
+		rc = gprs_subscr_handle_gsup_purge_err(subscr, &gsup_msg);
+		break;
+
 	case GPRS_GSUP_MSGT_PURGE_MS_RESULT:
+		rc = gprs_subscr_handle_gsup_purge_res(subscr, &gsup_msg);
+		break;
+
 	case GPRS_GSUP_MSGT_INSERT_DATA_REQUEST:
 	case GPRS_GSUP_MSGT_DELETE_DATA_REQUEST:
 		LOGGSUBSCRP(LOGL_ERROR, subscr,
@@ -456,6 +527,16 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		subscr_put(subscr);
 
 	return rc;
+}
+
+int gprs_subscr_purge(struct gsm_subscriber *subscr)
+{
+	struct gprs_gsup_message gsup_msg = {0};
+
+	LOGGSUBSCRP(LOGL_INFO, subscr, "purging MS subscriber\n");
+
+	gsup_msg.message_type = GPRS_GSUP_MSGT_PURGE_MS_REQUEST;
+	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 
 int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
@@ -514,6 +595,7 @@ struct gsm_subscriber *gprs_subscr_get_or_create_by_mmctx(struct sgsn_mm_ctx *mm
 	if (!subscr) {
 		subscr = gprs_subscr_get_or_create(mmctx->imsi);
 		subscr->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+		subscr->flags &= ~GPRS_SUBSCRIBER_ENABLE_PURGE;
 	}
 
 	if (strcpy(subscr->equipment.imei, mmctx->imei) != 0) {

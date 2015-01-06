@@ -463,7 +463,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 	}
 
 	if (subscr->flags)
-		vty_out(vty, "    Flags: %s%s%s%s%s",
+		vty_out(vty, "    Flags: %s%s%s%s%s%s",
 			subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT ?
 			"FIRST_CONTACT " : "",
 			subscr->flags & GPRS_SUBSCRIBER_CANCELLED ?
@@ -472,6 +472,8 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 			"UPDATE_LOCATION_PENDING " : "",
 			subscr->flags & GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING ?
 			"AUTH_INFO_PENDING " : "",
+			subscr->flags & GPRS_SUBSCRIBER_ENABLE_PURGE ?
+			"ENABLE_PURGE " : "",
 			VTY_NEWLINE);
 
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
