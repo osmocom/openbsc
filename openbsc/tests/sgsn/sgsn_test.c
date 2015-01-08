@@ -842,7 +842,10 @@ static void cleanup_subscr_by_imsi(const char *imsi)
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	OSMO_ASSERT(subscr != NULL);
-	gprs_subscr_delete(subscr);
+	subscr->keep_in_ram = 0;
+	subscr_put(subscr);
+	subscr = gprs_subscr_get_by_imsi(imsi);
+	OSMO_ASSERT(subscr == NULL);
 }
 
 static void test_gmm_attach_subscr(void)
