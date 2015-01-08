@@ -76,6 +76,23 @@ static int gsup_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg)
 	return rc;
 }
 
+static int check_blocking(
+	struct gsm_subscriber *subscr,
+	enum sgsn_subscriber_proc what)
+{
+	if (subscr->sgsn_data->blocked_by == SGSN_SUBSCR_PROC_NONE ||
+	    subscr->sgsn_data->blocked_by == what)
+		return 1;
+
+	return 0;
+}
+
+static void abort_blocking_procedure(struct gsm_subscriber *subscr)
+{
+	/* Best effort, stop retries at least */
+	subscr->sgsn_data->retries = SGSN_SUBSCR_MAX_RETRIES;
+}
+
 static void sgsn_subscriber_timeout_cb(void *subscr_);
 int gprs_subscr_purge(struct gsm_subscriber *subscr);
 
@@ -132,6 +149,10 @@ static void sgsn_subscriber_timeout_cb(void *subscr_)
 	return;
 
 force_cleanup:
+	/* Make sure to clear blocking */
+	if (check_blocking(subscr, SGSN_SUBSCR_PROC_PURGE))
+		subscr->sgsn_data->blocked_by = SGSN_SUBSCR_PROC_NONE;
+
 	/* Make sure, the timer is cleaned up */
 	subscr->keep_in_ram = 0;
 	gprs_subscr_stop_timer(subscr);
@@ -544,16 +565,41 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 int gprs_subscr_purge(struct gsm_subscriber *subscr)
 {
 	struct gprs_gsup_message gsup_msg = {0};
+	int rc;
+
+	if (!check_blocking(subscr, SGSN_SUBSCR_PROC_PURGE)) {
+		LOGGSUBSCRP(
+			LOGL_NOTICE, subscr,
+			"Cannot purge MS subscriber, blocked\n");
+		return -EAGAIN;
+	}
+
+	/* GSM 09.02, 19.4.1.4 requires other MAP requests to be blocked until
+	 * this procedure is completed
+	 */
+	subscr->sgsn_data->blocked_by = SGSN_SUBSCR_PROC_PURGE;
 
 	LOGGSUBSCRP(LOGL_INFO, subscr, "purging MS subscriber\n");
 
 	gsup_msg.message_type = GPRS_GSUP_MSGT_PURGE_MS_REQUEST;
-	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
+	rc = gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
+	if (rc < 0)
+		subscr->sgsn_data->blocked_by = SGSN_SUBSCR_PROC_NONE;
+
+	return rc;
 }
 
 int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
 {
 	struct gprs_gsup_message gsup_msg = {0};
+
+	if (!check_blocking(subscr, SGSN_SUBSCR_PROC_UPD_AUTH)) {
+		LOGGSUBSCRP(
+			LOGL_NOTICE, subscr,
+			"Cannot start update auth info request procedure, blocked\n");
+		abort_blocking_procedure(subscr);
+		return -EAGAIN;
+	}
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		"subscriber auth info is not available\n");
@@ -565,6 +611,14 @@ int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
 int gprs_subscr_location_update(struct gsm_subscriber *subscr)
 {
 	struct gprs_gsup_message gsup_msg = {0};
+
+	if (!check_blocking(subscr, SGSN_SUBSCR_PROC_UPD_LOC)) {
+		LOGGSUBSCRP(
+			LOGL_NOTICE, subscr,
+			"Cannot start update location procedure, blocked\n");
+		abort_blocking_procedure(subscr);
+		return -EAGAIN;
+	}
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		"subscriber data is not available\n");
