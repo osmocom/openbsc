@@ -836,6 +836,15 @@ int my_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx) {
 	return 0;
 };
 
+static void cleanup_subscr_by_imsi(const char *imsi)
+{
+	struct gsm_subscriber *subscr;
+
+	subscr = gprs_subscr_get_by_imsi(imsi);
+	OSMO_ASSERT(subscr != NULL);
+	gprs_subscr_delete(subscr);
+}
+
 static void test_gmm_attach_subscr(void)
 {
 	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
@@ -852,9 +861,7 @@ static void test_gmm_attach_subscr(void)
 	printf("Auth policy 'remote': ");
 	test_gmm_attach(0);
 
-	subscr = gprs_subscr_get_by_imsi("123456789012345");
-	OSMO_ASSERT(subscr != NULL);
-	gprs_subscr_delete(subscr);
+	cleanup_subscr_by_imsi("123456789012345");
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
@@ -889,9 +896,7 @@ static void test_gmm_attach_subscr_fake_auth(void)
 	printf("Auth policy 'remote', auth faked: ");
 	test_gmm_attach(0);
 
-	subscr = gprs_subscr_get_by_imsi("123456789012345");
-	OSMO_ASSERT(subscr != NULL);
-	gprs_subscr_delete(subscr);
+	cleanup_subscr_by_imsi("123456789012345");
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
@@ -932,9 +937,7 @@ static void test_gmm_attach_subscr_real_auth(void)
 	printf("Auth policy 'remote', triplet based auth: ");
 	test_gmm_attach(0);
 
-	subscr = gprs_subscr_get_by_imsi("123456789012345");
-	OSMO_ASSERT(subscr != NULL);
-	gprs_subscr_delete(subscr);
+	cleanup_subscr_by_imsi("123456789012345");
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
