@@ -278,6 +278,10 @@ struct sgsn_subscriber_data {
 	int			error_cause;
 };
 
+#define LOGGSUBSCRP(level, subscr, fmt, args...) \
+	LOGP(DGPRS, level, "SUBSCR(%s) " fmt, (subscr)->imsi, \
+	     ## args)
+
 struct sgsn_config;
 struct sgsn_instance;
 extern const struct value_string *sgsn_auth_state_names;
