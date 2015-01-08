@@ -490,6 +490,22 @@ static int gprs_subscr_handle_gsup_purge_err(struct gsm_subscriber *subscr,
 	return -gsup_msg->cause;
 }
 
+static int gprs_subscr_handle_loc_cancel_req(struct gsm_subscriber *subscr,
+					     struct gprs_gsup_message *gsup_msg)
+{
+	struct gprs_gsup_message gsup_reply = {0};
+
+	LOGGSUBSCRP(LOGL_INFO, subscr, "purging MS subscriber\n");
+
+	gsup_reply.message_type = GPRS_GSUP_MSGT_LOCATION_CANCEL_RESULT;
+	gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
+
+	subscr->sgsn_data->error_cause = 0;
+	gprs_subscr_put_and_cancel(subscr_get(subscr));
+
+	return 0;
+}
+
 static int gprs_subscr_handle_unknown_imsi(struct gprs_gsup_message *gsup_msg)
 {
 	if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg->message_type)) {
@@ -546,9 +562,7 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 
 	switch (gsup_msg.message_type) {
 	case GPRS_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
-		subscr->sgsn_data->error_cause = 0;
-		gprs_subscr_put_and_cancel(subscr);
-		subscr = NULL;
+		rc = gprs_subscr_handle_loc_cancel_req(subscr, &gsup_msg);
 		break;
 
 	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_RESULT:
@@ -596,8 +610,7 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		break;
 	};
 
-	if (subscr)
-		subscr_put(subscr);
+	subscr_put(subscr);
 
 	return rc;
 }
