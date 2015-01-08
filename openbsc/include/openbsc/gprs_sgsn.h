@@ -277,6 +277,7 @@ struct sgsn_subscriber_data {
 	int			auth_triplets_updated;
 	int			error_cause;
 	struct osmo_timer_list	timer;
+	int			retries;
 };
 
 #define LOGGSUBSCRP(level, subscr, fmt, args...) \

@@ -32,6 +32,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#define SGSN_SUBSCR_MAX_RETRIES 3
+#define SGSN_SUBSCR_RETRY_INTERVAL 10
+
 extern void *tall_bsc_ctx;
 
 static int gsup_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg);
@@ -92,6 +95,7 @@ void gprs_subscr_start_timer(struct gsm_subscriber *subscr, unsigned seconds)
 	if (!subscr->sgsn_data->timer.data) {
 		subscr->sgsn_data->timer.cb = sgsn_subscriber_timeout_cb;
 		subscr->sgsn_data->timer.data = subscr_get(subscr);
+		subscr->sgsn_data->retries = 0;
 	}
 
 	osmo_timer_schedule(&subscr->sgsn_data->timer, seconds, 0);
@@ -107,7 +111,8 @@ static void sgsn_subscriber_timeout_cb(void *subscr_)
 	subscr_get(subscr);
 
 	/* Check, whether to cleanup immediately */
-	if (!(subscr->flags & GPRS_SUBSCRIBER_ENABLE_PURGE))
+	if (!(subscr->flags & GPRS_SUBSCRIBER_ENABLE_PURGE) ||
+	    subscr->sgsn_data->retries >= SGSN_SUBSCR_MAX_RETRIES)
 		goto force_cleanup;
 
 	/* Send a 'purge MS' message to the HLR */
@@ -116,6 +121,13 @@ static void sgsn_subscriber_timeout_cb(void *subscr_)
 
 	/* Purge request has been sent */
 
+	/* Check, whether purge is still enabled */
+	if (!(subscr->flags & GPRS_SUBSCRIBER_ENABLE_PURGE))
+		goto force_cleanup;
+
+	/* Make sure this will be tried again if there is no response in time */
+	subscr->sgsn_data->retries += 1;
+	gprs_subscr_start_timer(subscr, SGSN_SUBSCR_RETRY_INTERVAL);
 	subscr_put(subscr);
 	return;
 
