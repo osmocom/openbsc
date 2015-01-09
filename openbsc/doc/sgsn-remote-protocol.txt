@@ -153,13 +153,20 @@ SGSN -> Network peer
 
 Network peer -> SGSN
 
-TODO
+  IEI	Info Element		Type			Pres.	Format	Length
+	Message type		4.2.1			M	V	1
+  01	IMSI			4.2.9			M	TLV	2-10
+  02	Cause			GMM cause,		M	TLV	3
+				04.08: 10.5.5.14
 
 3.2.11. Purge MS Result
 
 Network peer -> SGSN
 
-TODO
+  IEI	Info Element		Type			Pres.	Format	Length
+	Message type		4.2.1			M	V	1
+  01	IMSI			4.2.9			M	TLV	2-10
+  07	Freeze P-TMSI		4.2.8			O	TLV	2
 
 3.2.12. Insert Subscriber Data Request
 
@@ -346,6 +353,7 @@ IEI that shall be used for the encoding.
   | 0x04   PDP info compl 4.2.8                             |
   | 0x05   PDP info       4.2.3                             |
   | 0x06   Cancel type    4.2.6                             |
+  | 0x07   Freeze P-TMSI  4.2.8                             |
   | 0x10   PDP context id big endian int                    |
   | 0x11   PDP type       4.2.4                             |
   | 0x12   APN            04.08, 10.5.6.1                   |
