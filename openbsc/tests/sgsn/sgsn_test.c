@@ -187,9 +187,20 @@ void my_dummy_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
 	last_updated_subscr = subscr;
 }
 
+static void assert_subscr(const struct gsm_subscriber *subscr, const char *imsi)
+{
+	struct gsm_subscriber *sfound;
+
+	sfound = gprs_subscr_get_by_imsi(imsi);
+	OSMO_ASSERT(sfound == subscr);
+	subscr_put(sfound);
+
+	OSMO_ASSERT(strcmp(subscr->imsi, imsi) == 0);
+}
+
 static void test_subscriber(void)
 {
-	struct gsm_subscriber *s1, *s2, *s1found, *s2found;
+	struct gsm_subscriber *s1, *s2, *sfound;
 	const char *imsi1 = "1234567890";
 	const char *imsi2 = "9876543210";
 
@@ -204,20 +215,16 @@ static void test_subscriber(void)
 	/* Allocate entry 1 */
 	s1 = gprs_subscr_get_or_create(imsi1);
 	s1->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
-	s1found = gprs_subscr_get_by_imsi(imsi1);
-	OSMO_ASSERT(s1found == s1);
+	assert_subscr(s1, imsi1);
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
-	subscr_put(s1found);
 
 	/* Allocate entry 2 */
 	s2 = gprs_subscr_get_or_create(imsi2);
 	s2->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
-	s1found = gprs_subscr_get_by_imsi(imsi1);
-	s2found = gprs_subscr_get_by_imsi(imsi2);
-	OSMO_ASSERT(s1found == s1);
-	OSMO_ASSERT(s2found == s2);
-	subscr_put(s1found);
-	subscr_put(s2found);
+
+	/* Check entries */
+	assert_subscr(s1, imsi1);
+	assert_subscr(s2, imsi2);
 
 	/* Update entry 1 */
 	last_updated_subscr = NULL;
@@ -226,9 +233,9 @@ static void test_subscriber(void)
 
 	/* Because of the update, it won't be freed on delete now */
 	gprs_subscr_delete(s1);
-	s1found = gprs_subscr_get_by_imsi(imsi1);
-	OSMO_ASSERT(s1found != NULL);
-	s1 = s1found;
+	sfound = gprs_subscr_get_by_imsi(imsi1);
+	OSMO_ASSERT(sfound != NULL);
+	s1 = sfound;
 
 	/* Cancel it, so that delete will free it.
 	 * Refcount it to make sure s1 won't be freed here */
@@ -237,19 +244,15 @@ static void test_subscriber(void)
 	OSMO_ASSERT(last_updated_subscr == s1);
 
 	/* Cancelled entries are still being found */
-	s1found = gprs_subscr_get_by_imsi(imsi1);
-	OSMO_ASSERT(s1found != NULL);
-	subscr_put(s1found);
+	assert_subscr(s1, imsi1);
 
-	/* Free entry 1 */
+	/* Free entry 1 (GPRS_SUBSCRIBER_CANCELLED is set) */
 	gprs_subscr_delete(s1);
 	s1 = NULL;
-	s2found = gprs_subscr_get_by_imsi(imsi2);
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
-	OSMO_ASSERT(s2found == s2);
-	subscr_put(s2found);
+	assert_subscr(s2, imsi2);
 
-	/* Free entry 2 */
+	/* Free entry 2 (GSM_SUBSCRIBER_FIRST_CONTACT is set) */
 	gprs_subscr_delete(s2);
 	s2 = NULL;
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
