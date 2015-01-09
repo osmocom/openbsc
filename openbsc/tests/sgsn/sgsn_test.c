@@ -24,6 +24,8 @@
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/gprs_gsup_messages.h>
+#include <openbsc/gprs_gsup_client.h>
 
 #include <osmocom/gprs/gprs_bssgp.h>
 
@@ -86,6 +88,16 @@ int (*subscr_request_auth_info_cb)(struct sgsn_mm_ctx *mmctx) =
 
 int __wrap_gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx) {
 	return (*subscr_request_auth_info_cb)(mmctx);
+};
+
+/* override, requires '-Wl,--wrap=gprs_gsup_client_send' */
+int __real_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg);
+int (*gprs_gsup_client_send_cb)(struct gprs_gsup_client *gsupc, struct msgb *msg) =
+	&__real_gprs_gsup_client_send;
+
+int __wrap_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
+{
+	return (*gprs_gsup_client_send_cb)(gsupc, msg);
 };
 
 static int count(struct llist_head *head)
@@ -1004,7 +1016,7 @@ int my_subscr_request_auth_info_gsup_auth(struct sgsn_mm_ctx *mmctx)
 				0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
 	};
 
-	OSMO_ASSERT(mmctx->subscr);
+	OSMO_ASSERT(!mmctx || mmctx->subscr);
 
 	if (auth_info_skip > 0) {
 		auth_info_skip -= 1;
@@ -1028,7 +1040,7 @@ int my_subscr_request_update_gsup_auth(struct sgsn_mm_ctx *mmctx) {
 			0x12, 0x09, 0x04, 't', 'e', 's', 't', 0x03, 'a', 'p', 'n',
 	};
 
-	OSMO_ASSERT(mmctx->subscr);
+	OSMO_ASSERT(!mmctx || mmctx->subscr);
 
 	if (upd_loc_skip > 0) {
 		upd_loc_skip -= 1;
@@ -1071,6 +1083,89 @@ static void test_gmm_attach_subscr_gsup_auth(int retry)
 	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
 	upd_loc_skip = 0;
 	auth_info_skip = 0;
+}
+
+int my_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
+{
+	struct gprs_gsup_message to_peer;
+	struct gprs_gsup_message from_peer;
+	struct msgb *reply_msg;
+
+	/* Simulate the GSUP peer */
+	gprs_gsup_decode(msgb_data(msg), msgb_length(msg), &to_peer);
+
+	/* This invalidates the pointers in to_peer */
+	msgb_free(msg);
+
+	switch (to_peer.message_type) {
+	case GPRS_GSUP_MSGT_UPDATE_LOCATION_REQUEST:
+		/* Send UPDATE_LOCATION_RESULT */
+		return my_subscr_request_update_gsup_auth(NULL);
+
+	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_REQUEST:
+		/* Send SEND_AUTH_INFO_RESULT */
+		return my_subscr_request_auth_info_gsup_auth(NULL);
+
+	case GPRS_GSUP_MSGT_PURGE_MS_REQUEST:
+		/* TODO: send RES/ERR */
+		return 0;
+
+	default:
+		if ((to_peer.message_type & 0b00000011) == 0) {
+			/* Unhandled request */
+			/* TODO: send error(NOT_IMPL) */
+			from_peer.message_type = to_peer.message_type + 1;
+			from_peer.cause = GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
+			break;
+		}
+
+		/* Ignore it */
+		return 0;
+	}
+
+	reply_msg = gprs_gsup_msgb_alloc();
+	reply_msg->l2h = reply_msg->data;
+	gprs_gsup_encode(reply_msg, &from_peer);
+	gprs_subscr_rx_gsup_message(reply_msg);
+	msgb_free(reply_msg);
+
+	return 0;
+};
+
+static void test_gmm_attach_subscr_real_gsup_auth(int retry)
+{
+	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
+	struct gsm_subscriber *subscr;
+
+	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
+	sgsn_inst.cfg.subscriber_expiry_timeout = 0;
+	gprs_gsup_client_send_cb = my_gprs_gsup_client_send;
+
+	sgsn->gsup_client = talloc_zero(tall_bsc_ctx, struct gprs_gsup_client);
+
+	if (retry) {
+		upd_loc_skip = 3;
+		auth_info_skip = 3;
+	}
+
+	printf("Auth policy 'remote', real GSUP based auth: ");
+	test_gmm_attach(retry);
+
+	subscr = gprs_subscr_get_by_imsi("123456789012345");
+	OSMO_ASSERT(subscr != NULL);
+	gprs_subscr_delete(subscr);
+
+	osmo_timers_update();
+
+	OSMO_ASSERT(gprs_subscr_get_by_imsi("123456789012345") == NULL);
+
+	sgsn->cfg.auth_policy = saved_auth_policy;
+	sgsn_inst.cfg.subscriber_expiry_timeout = SGSN_TIMEOUT_NEVER;
+	gprs_gsup_client_send_cb = __real_gprs_gsup_client_send;
+	upd_loc_skip = 0;
+	auth_info_skip = 0;
+	talloc_free(sgsn->gsup_client);
+	sgsn->gsup_client = NULL;
 }
 
 /*
@@ -1600,6 +1695,7 @@ int main(int argc, char **argv)
 	test_gmm_attach_subscr_real_auth();
 	test_gmm_attach_subscr_gsup_auth(0);
 	test_gmm_attach_subscr_gsup_auth(1);
+	test_gmm_attach_subscr_real_gsup_auth(0);
 	test_gmm_reject();
 	test_gmm_cancel();
 	test_gmm_ptmsi_allocation();
