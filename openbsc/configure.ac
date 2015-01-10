@@ -88,6 +88,11 @@ found_cdk=yes
 AC_CHECK_HEADERS(cdk/cdk.h,,found_cdk=no)
 AM_CONDITIONAL(HAVE_LIBCDK, test "$found_cdk" = yes)
 
+found_sqlite3=yes
+PKG_CHECK_MODULES(SQLITE3, sqlite3, ,found_sqlite3=no)
+AM_CONDITIONAL(HAVE_SQLITE3, test "$found_sqlite3" = yes)
+AC_SUBST(found_sqlite3)
+
 
 dnl Checks for typedefs, structures and compiler characteristics
 
