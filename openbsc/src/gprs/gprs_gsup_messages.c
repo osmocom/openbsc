@@ -172,6 +172,9 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 	size_t value_len;
 	static const struct gprs_gsup_pdp_info empty_pdp_info = {0};
 	static const struct gsm_auth_tuple empty_auth_info = {0};
+	static const struct gprs_gsup_message empty_gsup_message = {0};
+
+	*gsup_msg = empty_gsup_message;
 
 	/* generic part */
 	rc = gprs_shift_v_fixed(&data, &data_len, 1, &value);
@@ -197,9 +200,6 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 	OSMO_ASSERT(value[-1] == value_len);
 	gsm48_decode_bcd_number(gsup_msg->imsi, sizeof(gsup_msg->imsi),
 				value - 1, 0);
-
-	gsup_msg->num_pdp_infos = 0;
-	gsup_msg->num_auth_tuples = 0;
 
 	/* specific parts */
 	while (data_len > 0) {
@@ -253,7 +253,7 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 				return -GMM_CAUSE_COND_IE_ERR;
 			}
 
-			memcpy(&pdp_info, &empty_pdp_info, sizeof(pdp_info));
+			pdp_info = empty_pdp_info;
 
 			if (iei == GPRS_GSUP_PDP_INFO_IE) {
 				rc = decode_pdp_info(value, value_len, &pdp_info);
@@ -277,7 +277,7 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 				return -GMM_CAUSE_INV_MAND_INFO;
 			}
 
-			memcpy(&auth_info, &empty_auth_info, sizeof(auth_info));
+			auth_info = empty_auth_info;
 			auth_info.key_seq = gsup_msg->num_auth_tuples;
 
 			rc = decode_auth_info(value, value_len, &auth_info);
