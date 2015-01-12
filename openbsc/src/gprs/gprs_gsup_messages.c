@@ -174,7 +174,10 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 	static const struct gsm_auth_tuple empty_auth_info = {0};
 
 	/* generic part */
-	gprs_shift_v_fixed(&data, &data_len, 1, &value);
+	rc = gprs_shift_v_fixed(&data, &data_len, 1, &value);
+	if (rc < 0)
+		return -GMM_CAUSE_INV_MAND_INFO;
+
 	gsup_msg->message_type = decode_big_endian(value, 1);
 
 	rc = gprs_match_tlv(&data, &data_len, GPRS_GSUP_IMSI_IE,
