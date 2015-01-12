@@ -198,6 +198,9 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 	gsm48_decode_bcd_number(gsup_msg->imsi, sizeof(gsup_msg->imsi),
 				value - 1, 0);
 
+	gsup_msg->num_pdp_infos = 0;
+	gsup_msg->num_auth_tuples = 0;
+
 	/* specific parts */
 	while (data_len > 0) {
 		enum gprs_gsup_iei iei;
