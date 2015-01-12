@@ -7,8 +7,14 @@
 
 #include <openbsc/gprs_gsup_messages.h>
 
+#include <openbsc/debug.h>
+
+#include <osmocom/core/application.h>
+
 #define ASSERT_FALSE(x) if (x)  { printf("Should have returned false.\n"); abort(); }
 #define ASSERT_TRUE(x)  if (!x) { printf("Should have returned true.\n"); abort(); }
+
+#define VERBOSE_FPRINTF(...)
 
 /**
  * GSM 04.64 8.4.2 Receipt of unacknowledged information
@@ -389,6 +395,7 @@ static void test_gsup_messages_dec_enc(void)
 {
 	int test_idx;
 	int rc;
+	uint8_t buf[1024];
 
 	static const uint8_t send_auth_info_req[] = {
 		0x08,
@@ -512,10 +519,95 @@ static void test_gsup_messages_dec_enc(void)
 
 		msgb_free(msg);
 	}
+
+	/* simple truncation test */
+	for (test_idx = 0; test_idx < ARRAY_SIZE(test_messages); test_idx++) {
+		int j;
+		const struct test *t = &test_messages[test_idx];
+		int ie_end = t->data_len;
+		struct gprs_gsup_message gm = {0};
+		int counter = 0;
+		int parse_err = 0;
+
+		for (j = t->data_len - 1; j >= 0; --j) {
+			rc = gprs_gsup_decode(t->data, j, &gm);
+			counter += 1;
+
+			VERBOSE_FPRINTF(stderr,
+				"  partial message decoding: "
+				"orig_len = %d, trunc = %d, rc = %d, ie_end = %d\n",
+				t->data_len, j, rc, ie_end);
+			if (rc >= 0) {
+				VERBOSE_FPRINTF(stderr,
+					"    remaing partial message: %s\n",
+					osmo_hexdump(t->data + j, ie_end - j));
+
+				OSMO_ASSERT(j <= ie_end - 2);
+				OSMO_ASSERT(t->data[j+0] <= GPRS_GSUP_KC_IE);
+				OSMO_ASSERT(t->data[j+1] <= ie_end - j - 2);
+
+				ie_end = j;
+			} else {
+				parse_err += 1;
+			}
+		}
+
+		fprintf(stderr,
+			"  message %d: tested %d truncations, %d parse failures\n",
+			test_idx, counter, parse_err);
+	}
+
+	/* message modification test (relies on ASAN or valgrind being used) */
+	for (test_idx = 0; test_idx < ARRAY_SIZE(test_messages); test_idx++) {
+		int j;
+		const struct test *t = &test_messages[test_idx];
+		struct gprs_gsup_message gm = {0};
+		uint8_t val;
+		int counter = 0;
+		int parse_err = 0;
+
+		OSMO_ASSERT(sizeof(buf) >= t->data_len);
+
+		for (j = t->data_len - 1; j >= 0; --j) {
+			memcpy(buf, t->data, t->data_len);
+			val = 0;
+			do {
+				VERBOSE_FPRINTF(stderr,
+					"t = %d, len = %d, val = %d\n",
+					test_idx, j, val);
+				buf[j] = val;
+				rc = gprs_gsup_decode(buf, t->data_len, &gm);
+				counter += 1;
+				if (rc < 0)
+					parse_err += 1;
+
+				val += 1;
+			} while (val != (uint8_t)256);
+		}
+
+		fprintf(stderr,
+			"  message %d: tested %d modifications, %d parse failures\n",
+			test_idx, counter, parse_err);
+	}
 }
+
+const struct log_info_cat default_categories[] = {
+	[DGPRS] = {
+		.name = "DGPRS",
+		.description = "GPRS Packet Service",
+		.enabled = 0, .loglevel = LOGL_DEBUG,
+	},
+};
+
+static struct log_info info = {
+	.cat = default_categories,
+	.num_cat = ARRAY_SIZE(default_categories),
+};
 
 int main(int argc, char **argv)
 {
+	osmo_init_logging(&info);
+
 	test_8_4_2();
 	test_gsm_03_03_apn();
 	test_tlv_shift_functions();
