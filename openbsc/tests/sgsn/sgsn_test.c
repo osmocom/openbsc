@@ -211,6 +211,25 @@ static void assert_subscr(const struct gsm_subscriber *subscr, const char *imsi)
 	OSMO_ASSERT(strcmp(subscr->imsi, imsi) == 0);
 }
 
+static void show_subscrs(FILE *out)
+{
+	struct gsm_subscriber *subscr;
+
+	llist_for_each_entry(subscr, &active_subscribers, entry) {
+		fprintf(out, "  Subscriber: %s, "
+			"use count: %d, keep: %d, timer: %d\n",
+			subscr->imsi, subscr->use_count, subscr->keep_in_ram,
+			osmo_timer_pending(&subscr->sgsn_data->timer));
+	}
+}
+
+static void assert_no_subscrs()
+{
+	show_subscrs(stdout);
+	fflush(stdout);
+	OSMO_ASSERT(llist_empty(&active_subscribers));
+}
+
 static void test_subscriber(void)
 {
 	struct gsm_subscriber *s1, *s2, *s3, *sfound;
@@ -911,6 +930,7 @@ static void test_gmm_attach_subscr(void)
 	test_gmm_attach(0);
 
 	cleanup_subscr_by_imsi("123456789012345");
+	assert_no_subscrs();
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
@@ -947,6 +967,7 @@ static void test_gmm_attach_subscr_fake_auth(void)
 	test_gmm_attach(0);
 
 	cleanup_subscr_by_imsi("123456789012345");
+	assert_no_subscrs();
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
@@ -986,9 +1007,11 @@ static void test_gmm_attach_subscr_real_auth(void)
 	subscr_put(subscr);
 
 	printf("Auth policy 'remote', triplet based auth: ");
+
 	test_gmm_attach(0);
 
 	cleanup_subscr_by_imsi("123456789012345");
+	assert_no_subscrs();
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
@@ -1074,9 +1097,8 @@ static void test_gmm_attach_subscr_gsup_auth(int retry)
 	printf("Auth policy 'remote', GSUP based auth: ");
 	test_gmm_attach(retry);
 
-	subscr = gprs_subscr_get_by_imsi("123456789012345");
-	OSMO_ASSERT(subscr != NULL);
-	gprs_subscr_delete(subscr);
+	cleanup_subscr_by_imsi("123456789012345");
+	assert_no_subscrs();
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
@@ -1157,7 +1179,7 @@ static void test_gmm_attach_subscr_real_gsup_auth(int retry)
 
 	osmo_timers_update();
 
-	OSMO_ASSERT(gprs_subscr_get_by_imsi("123456789012345") == NULL);
+	assert_no_subscrs();
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	sgsn_inst.cfg.subscriber_expiry_timeout = SGSN_TIMEOUT_NEVER;
