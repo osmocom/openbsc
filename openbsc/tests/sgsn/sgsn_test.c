@@ -1461,6 +1461,10 @@ int main(int argc, char **argv)
 	test_gmm_cancel();
 	test_gmm_ptmsi_allocation();
 	printf("Done\n");
+
+	talloc_report_full(tall_bsc_ctx, stderr);
+	/* TODO: The following check currently fails */
+	/* OSMO_ASSERT(talloc_total_blocks(tall_msgb_ctx) == 1); */
 	return 0;
 }
 
