@@ -53,6 +53,7 @@ int bssgp_tx_dl_ud(struct msgb *msg, uint16_t pdu_lifetime,
 		   struct bssgp_dl_ud_par *dup)
 {
 	sgsn_tx_counter += 1;
+	msgb_free(msg);
 	return 0;
 }
 
@@ -1463,8 +1464,7 @@ int main(int argc, char **argv)
 	printf("Done\n");
 
 	talloc_report_full(tall_bsc_ctx, stderr);
-	/* TODO: The following check currently fails */
-	/* OSMO_ASSERT(talloc_total_blocks(tall_msgb_ctx) == 1); */
+	OSMO_ASSERT(talloc_total_blocks(tall_msgb_ctx) == 1);
 	return 0;
 }
 
