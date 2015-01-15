@@ -468,6 +468,21 @@ static void test_subscriber_gsup(void)
 		0x06, 0x01, 0x00,
 	};
 
+	static const uint8_t insert_data_req[] = {
+		0x10,
+		TEST_GSUP_IMSI1_IE,
+		0x05, 0x11,
+			0x10, 0x01, 0x03,
+			0x11, 0x02, 0xf1, 0x21, /* IPv4 */
+			0x12, 0x08, 0x03, 'b', 'a', 'r', 0x03, 'a', 'p', 'n',
+	};
+
+	static const uint8_t delete_data_req[] = {
+		0x14,
+		TEST_GSUP_IMSI1_IE,
+		0x10, 0x01, 0x03,
+	};
+
 	printf("Testing subcriber GSUP handling\n");
 
 	update_subscriber_data_cb = my_dummy_sgsn_update_subscriber_data;
@@ -527,7 +542,19 @@ static void test_subscriber_gsup(void)
 	/* Check authorization */
 	OSMO_ASSERT(s1->authorized == 0);
 
-	/* Inject UpdateLocReq GSUP message */
+	/* Inject InsertSubscrData GSUP message */
+	last_updated_subscr = NULL;
+	rc = rx_gsup_message(insert_data_req, sizeof(insert_data_req));
+	OSMO_ASSERT(rc == -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
+	OSMO_ASSERT(last_updated_subscr == NULL);
+
+	/* Inject DeleteSubscrData GSUP message */
+	last_updated_subscr = NULL;
+	rc = rx_gsup_message(delete_data_req, sizeof(delete_data_req));
+	OSMO_ASSERT(rc == -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
+	OSMO_ASSERT(last_updated_subscr == NULL);
+
+	/* Inject LocCancelReq GSUP message */
 	rc = rx_gsup_message(location_cancellation_req,
 			     sizeof(location_cancellation_req));
 	OSMO_ASSERT(rc >= 0);
@@ -542,6 +569,24 @@ static void test_subscriber_gsup(void)
 	s1found = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(s1found == NULL);
 	gprs_llgmm_assign(llme, local_tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+
+	/* Inject InsertSubscrData GSUP message (unknown IMSI) */
+	last_updated_subscr = NULL;
+	rc = rx_gsup_message(insert_data_req, sizeof(insert_data_req));
+	/* TODO: Remove the comments when this is fixed */
+	/* OSMO_ASSERT(rc == -GMM_CAUSE_IMSI_UNKNOWN); */
+	OSMO_ASSERT(last_updated_subscr == NULL);
+
+	/* Inject DeleteSubscrData GSUP message (unknown IMSI) */
+	rc = rx_gsup_message(delete_data_req, sizeof(delete_data_req));
+	OSMO_ASSERT(rc == -GMM_CAUSE_IMSI_UNKNOWN);
+	OSMO_ASSERT(last_updated_subscr == NULL);
+
+	/* Inject LocCancelReq GSUP message (unknown IMSI) */
+	rc = rx_gsup_message(location_cancellation_req,
+			     sizeof(location_cancellation_req));
+	OSMO_ASSERT(rc == -GMM_CAUSE_IMSI_UNKNOWN);
+	OSMO_ASSERT(last_updated_subscr == NULL);
 
 	update_subscriber_data_cb = __real_sgsn_update_subscriber_data;
 }

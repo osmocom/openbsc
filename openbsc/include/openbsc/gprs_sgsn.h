@@ -289,7 +289,8 @@ struct sgsn_subscriber_data {
 };
 
 #define LOGGSUBSCRP(level, subscr, fmt, args...) \
-	LOGP(DGPRS, level, "SUBSCR(%s) " fmt, (subscr)->imsi, \
+	LOGP(DGPRS, level, "SUBSCR(%s) " fmt, \
+	     (subscr) ? (subscr)->imsi : "---", \
 	     ## args)
 
 struct sgsn_config;
