@@ -536,10 +536,7 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 	if (!gsup_msg.imsi[0])
 		return -GMM_CAUSE_INV_MAND_INFO;
 
-	if (gsup_msg.message_type == GPRS_GSUP_MSGT_INSERT_DATA_REQUEST)
-		subscr = gprs_subscr_get_or_create(gsup_msg.imsi);
-	else
-		subscr = gprs_subscr_get_by_imsi(gsup_msg.imsi);
+	subscr = gprs_subscr_get_by_imsi(gsup_msg.imsi);
 
 	if (!subscr)
 		return gprs_subscr_handle_unknown_imsi(&gsup_msg);
