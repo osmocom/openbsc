@@ -231,12 +231,13 @@ static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 {
 	struct msgb *msg = gprs_gsup_msgb_alloc();
 
-	strncpy(gsup_msg->imsi, subscr->imsi, sizeof(gsup_msg->imsi) - 1);
+	if (strlen(gsup_msg->imsi) == 0 && subscr)
+		strncpy(gsup_msg->imsi, subscr->imsi, sizeof(gsup_msg->imsi) - 1);
 
 	gprs_gsup_encode(msg, gsup_msg);
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
-		"Sending GSUP, will send: %s\n", msgb_hexdump(msg));
+		    "Sending GSUP, will send: %s\n", msgb_hexdump(msg));
 
 	if (!sgsn->gsup_client) {
 		msgb_free(msg);
@@ -244,6 +245,20 @@ static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 	}
 
 	return gprs_gsup_client_send(sgsn->gsup_client, msg);
+}
+
+static int gprs_subscr_tx_gsup_error_reply(struct gsm_subscriber *subscr,
+					   struct gprs_gsup_message *gsup_orig,
+					   enum gsm48_gmm_cause cause)
+{
+	struct gprs_gsup_message gsup_reply = {0};
+
+	strncpy(gsup_reply.imsi, gsup_orig->imsi, sizeof(gsup_reply.imsi) - 1);
+	gsup_reply.cause = cause;
+	gsup_reply.message_type =
+		GPRS_GSUP_TO_MSGT_ERROR(gsup_orig->message_type);
+
+	return gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
 }
 
 static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
@@ -475,6 +490,32 @@ static int gprs_subscr_handle_gsup_purge_err(struct gsm_subscriber *subscr,
 	return -gsup_msg->cause;
 }
 
+static int gprs_subscr_handle_unknown_imsi(struct gprs_gsup_message *gsup_msg)
+{
+	if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg->message_type)) {
+		gprs_subscr_tx_gsup_error_reply(NULL, gsup_msg,
+						GMM_CAUSE_IMSI_UNKNOWN);
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "Unknown IMSI %s, discarding GSUP request "
+		     "of type 0x%02x\n",
+		     gsup_msg->imsi, gsup_msg->message_type);
+	} else if (GPRS_GSUP_IS_MSGT_ERROR(gsup_msg->message_type)) {
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "Unknown IMSI %s, discarding GSUP error "
+		     "of type 0x%02x, cause '%s' (%d)\n",
+		     gsup_msg->imsi, gsup_msg->message_type,
+		     get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+		     gsup_msg->cause);
+	} else {
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "Unknown IMSI %s, discarding GSUP response "
+		     "of type 0x%02x\n",
+		     gsup_msg->imsi, gsup_msg->message_type);
+	}
+
+	return -GMM_CAUSE_IMSI_UNKNOWN;
+}
+
 int gprs_subscr_rx_gsup_message(struct msgb *msg)
 {
 	uint8_t *data = msgb_l2(msg);
@@ -500,11 +541,8 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 	else
 		subscr = gprs_subscr_get_by_imsi(gsup_msg.imsi);
 
-	if (!subscr) {
-		LOGP(DGPRS, LOGL_NOTICE,
-		     "Unknown IMSI %s, discarding GSUP message\n", gsup_msg.imsi);
-		return -GMM_CAUSE_IMSI_UNKNOWN;
-	}
+	if (!subscr)
+		return gprs_subscr_handle_unknown_imsi(&gsup_msg);
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		"Received GSUP message of type 0x%02x\n", gsup_msg.message_type);
@@ -545,6 +583,8 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		LOGGSUBSCRP(LOGL_ERROR, subscr,
 			"Rx GSUP message type %d not yet implemented\n",
 			gsup_msg.message_type);
+		gprs_subscr_tx_gsup_error_reply(subscr, &gsup_msg,
+						GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		rc = -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
 		break;
 
@@ -552,7 +592,10 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		LOGGSUBSCRP(LOGL_ERROR, subscr,
 			"Rx GSUP message type %d not valid at SGSN\n",
 			gsup_msg.message_type);
-		rc = -GMM_CAUSE_MSGT_INCOMP_P_STATE;
+		if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
+			gprs_subscr_tx_gsup_error_reply(
+				subscr, &gsup_msg, GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
+		rc = -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
 		break;
 	};
 

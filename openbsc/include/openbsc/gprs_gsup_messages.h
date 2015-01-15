@@ -74,6 +74,10 @@ enum gprs_gsup_message_type {
 	GPRS_GSUP_MSGT_LOCATION_CANCEL_RESULT	= 0b00011110,
 };
 
+#define GPRS_GSUP_IS_MSGT_REQUEST(msgt) (((msgt) & 0b00000011) == 0b00)
+#define GPRS_GSUP_IS_MSGT_ERROR(msgt)   (((msgt) & 0b00000011) == 0b01)
+#define GPRS_GSUP_TO_MSGT_ERROR(msgt)   (((msgt) & 0b11111100) | 0b01)
+
 enum gprs_gsup_cancel_type {
 	GPRS_GSUP_CANCEL_TYPE_UPDATE		= 1, /* on wire: 0 */
 	GPRS_GSUP_CANCEL_TYPE_WITHDRAW		= 2, /* on wire: 1 */
