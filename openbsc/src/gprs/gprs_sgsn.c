@@ -403,10 +403,34 @@ uint32_t sgsn_alloc_ptmsi(void)
 {
 	struct sgsn_mm_ctx *mm;
 	uint32_t ptmsi;
-	int max_retries = 23;
+	int max_retries = 100;
 
 restart:
-	ptmsi = rand() | 0xC0000000;
+	ptmsi = rand();
+	/* Enforce that the 2 MSB are set without loosing the distance between
+	 * identical values. Since rand() has no duplicate values within a
+	 * period (because the size of the state is the same like the size of
+	 * the random value), this leads to a distance of period/4 when the
+	 * distribution of the 2 MSB is uniform. This approach fails with a
+	 * probability of (3/4)^max_retries, only 1% of the approaches will
+	 * need more than 16 numbers (even distribution assumed).
+	 *
+	 * Alternatively, a freeze list could be used if another PRNG is used
+	 * or when this approach proves to be not sufficient.
+	 */
+	if (ptmsi >= 0xC0000000) {
+		if (!max_retries--)
+			goto failed;
+		goto restart;
+	}
+	ptmsi |= 0xC0000000;
+
+	if (ptmsi == GSM_RESERVED_TMSI) {
+		if (!max_retries--)
+			goto failed;
+		goto restart;
+	}
+
 	llist_for_each_entry(mm, &sgsn_mm_ctxts, list) {
 		if (mm->p_tmsi == ptmsi) {
 			if (!max_retries--)
