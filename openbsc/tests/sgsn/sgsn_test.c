@@ -573,8 +573,7 @@ static void test_subscriber_gsup(void)
 	/* Inject InsertSubscrData GSUP message (unknown IMSI) */
 	last_updated_subscr = NULL;
 	rc = rx_gsup_message(insert_data_req, sizeof(insert_data_req));
-	/* TODO: Remove the comments when this is fixed */
-	/* OSMO_ASSERT(rc == -GMM_CAUSE_IMSI_UNKNOWN); */
+	OSMO_ASSERT(rc == -GMM_CAUSE_IMSI_UNKNOWN);
 	OSMO_ASSERT(last_updated_subscr == NULL);
 
 	/* Inject DeleteSubscrData GSUP message (unknown IMSI) */
