@@ -471,6 +471,23 @@ static void test_gsup_messages_dec_enc(void)
 		TEST_IMSI_IE,
 	};
 
+	static const uint8_t purge_ms_req[] = {
+		0x0c,
+		TEST_IMSI_IE,
+	};
+
+	static const uint8_t purge_ms_err[] = {
+		0x0c,
+		TEST_IMSI_IE,
+		0x02, 0x01, 0x03, /* Illegal MS */
+	};
+
+	static const uint8_t purge_ms_res[] = {
+		0x0c,
+		TEST_IMSI_IE,
+		0x07, 0x00,
+	};
+
 	static const struct test {
 		char *name;
 		const uint8_t *data;
@@ -494,6 +511,12 @@ static void test_gsup_messages_dec_enc(void)
 			location_cancellation_err, sizeof(location_cancellation_err)},
 		{"Location Cancellation Result",
 			location_cancellation_res, sizeof(location_cancellation_res)},
+		{"Purge MS Request",
+			purge_ms_req, sizeof(purge_ms_req)},
+		{"Purge MS Error",
+			purge_ms_err, sizeof(purge_ms_err)},
+		{"Purge MS Result",
+			purge_ms_res, sizeof(purge_ms_res)},
 	};
 
 	printf("Test GSUP message decoding/encoding\n");

@@ -39,6 +39,7 @@ enum gprs_gsup_iei {
 	GPRS_GSUP_PDP_INFO_COMPL_IE		= 0x04,
 	GPRS_GSUP_PDP_INFO_IE			= 0x05,
 	GPRS_GSUP_CANCEL_TYPE_IE		= 0x06,
+	GPRS_GSUP_FREEZE_PTMSI_IE		= 0x07,
 	GPRS_GSUP_PDP_CONTEXT_ID_IE		= 0x10,
 	GPRS_GSUP_PDP_TYPE_IE			= 0x11,
 	GPRS_GSUP_ACCESS_POINT_NAME_IE		= 0x12,
@@ -92,6 +93,7 @@ struct gprs_gsup_message {
 	enum gsm48_gmm_cause		cause;
 	enum gprs_gsup_cancel_type	cancel_type;
 	int				pdp_info_compl;
+	int				freeze_ptmsi;
 	struct gsm_auth_tuple		auth_tuples[GPRS_GSUP_MAX_NUM_AUTH_INFO];
 	size_t				num_auth_tuples;
 	struct gprs_gsup_pdp_info	pdp_infos[GPRS_GSUP_MAX_NUM_PDP_INFO];

@@ -237,6 +237,10 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 			gsup_msg->pdp_info_compl = 1;
 			break;
 
+		case GPRS_GSUP_FREEZE_PTMSI_IE:
+			gsup_msg->freeze_ptmsi = 1;
+			break;
+
 		case GPRS_GSUP_PDP_CONTEXT_ID_IE:
 			/* When these IE appear in the top-level part of the
 			 * message, they are used by Delete Subscr Info to delete
@@ -380,6 +384,9 @@ void gprs_gsup_encode(struct msgb *msg, const struct gprs_gsup_message *gsup_msg
 
 	if (gsup_msg->pdp_info_compl)
 		msgb_tlv_put(msg, GPRS_GSUP_PDP_INFO_COMPL_IE, 0, &u8);
+
+	if (gsup_msg->freeze_ptmsi)
+		msgb_tlv_put(msg, GPRS_GSUP_FREEZE_PTMSI_IE, 0, &u8);
 
 	for (idx = 0; idx < gsup_msg->num_pdp_infos; idx++) {
 		const struct gprs_gsup_pdp_info *pdp_info;
