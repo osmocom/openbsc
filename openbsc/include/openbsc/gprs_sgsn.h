@@ -275,7 +275,6 @@ struct sgsn_subscriber_data {
 	struct sgsn_mm_ctx	*mm;
 	struct gsm_auth_tuple	auth_triplets[5];
 	int			auth_triplets_updated;
-	int			authenticate;
 };
 
 struct sgsn_config;
