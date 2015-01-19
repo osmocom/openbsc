@@ -288,6 +288,8 @@ struct sgsn_subscriber_data {
 	enum sgsn_subscriber_proc blocked_by;
 };
 
+#define SGSN_ERROR_CAUSE_NONE (-1)
+
 #define LOGGSUBSCRP(level, subscr, fmt, args...) \
 	LOGP(DGPRS, level, "SUBSCR(%s) " fmt, \
 	     (subscr) ? (subscr)->imsi : "---", \

@@ -644,15 +644,29 @@ DEFUN(update_subscr_update_location_result, update_subscr_update_location_result
 
 	struct gsm_subscriber *subscr;
 
+	const struct value_string cause_mapping[] = {
+		{ GMM_CAUSE_NET_FAIL,		"system-failure" },
+		{ GMM_CAUSE_INV_MAND_INFO,	"data-missing" },
+		{ GMM_CAUSE_PROTO_ERR_UNSPEC,   "unexpected-data-value" },
+		{ GMM_CAUSE_IMSI_UNKNOWN,       "unknown-subscriber" },
+		{ GMM_CAUSE_GPRS_NOTALLOWED,    "roaming-not-allowed" },
+		{ 0, NULL }
+	};
+
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (!subscr) {
 		vty_out(vty, "%% unable to get subscriber record for %s\n", imsi);
 		return CMD_WARNING;
 	}
-	if (strcmp(ret_code_str, "ok") == 0)
+
+	if (strcmp(ret_code_str, "ok") == 0) {
+		subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
 		subscr->authorized = 1;
-	else
+	} else {
+		subscr->sgsn_data->error_cause =
+			get_string_value(cause_mapping, ret_code_str);
 		subscr->authorized = 0;
+	}
 
 	gprs_subscr_update(subscr);
 

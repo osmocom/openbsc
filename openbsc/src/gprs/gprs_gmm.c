@@ -654,7 +654,7 @@ void gsm0408_gprs_access_granted(struct sgsn_mm_ctx *ctx)
 
 void gsm0408_gprs_access_denied(struct sgsn_mm_ctx *ctx, int gmm_cause)
 {
-	if (gmm_cause == 0)
+	if (gmm_cause == SGSN_ERROR_CAUSE_NONE)
 		gmm_cause = GMM_CAUSE_GPRS_NOTALLOWED;
 
 	switch (ctx->mm_state) {
@@ -690,7 +690,7 @@ void gsm0408_gprs_access_denied(struct sgsn_mm_ctx *ctx, int gmm_cause)
 
 void gsm0408_gprs_access_cancelled(struct sgsn_mm_ctx *ctx, int gmm_cause)
 {
-	if (gmm_cause != 0) {
+	if (gmm_cause != SGSN_ERROR_CAUSE_NONE) {
 		LOGMMCTXP(LOGL_INFO, ctx,
 			  "Cancelled with cause '%s' (%d), deleting context\n",
 			  get_value_string(gsm48_gmm_cause_names, gmm_cause),
