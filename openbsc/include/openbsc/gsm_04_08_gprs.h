@@ -116,8 +116,11 @@ enum gsm48_gprs_tmr_unit {
 	GPRS_TMR_2SECONDS	= 0 << 5,
 	GPRS_TMR_MINUTE		= 1 << 5,
 	GPRS_TMR_6MINUTE	= 2 << 5,
-	GPRS_TMR_DEACTIVATED	= 3 << 5,
+	GPRS_TMR_DEACTIVATED	= 7 << 5,
 };
+
+#define GPRS_TMR_UNIT_MASK (7 << 5)
+#define GPRS_TMR_FACT_MASK ((1 << 5)-1)
 
 /* Chapter 9.4.2 / Table 9.4.2 */
 struct gsm48_attach_ack {

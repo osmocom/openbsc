@@ -20,6 +20,7 @@
  *
  */
 #include <openbsc/gprs_utils.h>
+#include <openbsc/gsm_04_08_gprs.h>
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/gprs/gprs_ns.h>
@@ -170,6 +171,36 @@ int gprs_str_to_apn(uint8_t *apn_enc, size_t max_len, const char *str)
 	*last_len_field = (apn_enc - last_len_field) - 1;
 
 	return len;
+}
+
+/* GSM 04.08, 10.5.7.3 GPRS Timer */
+int gprs_tmr_to_secs(uint8_t tmr)
+{
+	switch (tmr & GPRS_TMR_UNIT_MASK) {
+	case GPRS_TMR_2SECONDS:
+		return 2 * (tmr & GPRS_TMR_FACT_MASK);
+	default:
+	case GPRS_TMR_MINUTE:
+		return 60 * (tmr & GPRS_TMR_FACT_MASK);
+	case GPRS_TMR_6MINUTE:
+		return 600 * (tmr & GPRS_TMR_FACT_MASK);
+	case GPRS_TMR_DEACTIVATED:
+		return -1;
+	}
+}
+
+uint8_t gprs_secs_to_tmr_floor(int secs)
+{
+	if (secs < 0)
+		return GPRS_TMR_DEACTIVATED;
+	if (secs < 2 * 32)
+		return GPRS_TMR_2SECONDS | (secs / 2);
+	if (secs < 60 * 32)
+		return GPRS_TMR_MINUTE | (secs / 60);
+	if (secs < 600 * 32)
+		return GPRS_TMR_6MINUTE | (secs / 600);
+
+	return GPRS_TMR_6MINUTE | 31;
 }
 
 /* GSM 04.08, 10.5.1.4 */
