@@ -373,7 +373,8 @@ DEFUN(imsi_acl, cfg_imsi_acl_cmd,
 		rc = sgsn_acl_del(imsi, g_cfg);
 
 	if (rc < 0) {
-		vty_out(vty, "%% unable to %s ACL\n", op);
+		vty_out(vty, "%% unable to %s ACL%s", op, VTY_NEWLINE);
+
 		return CMD_WARNING;
 	}
 
@@ -516,7 +517,8 @@ DEFUN(update_subscr_insert, update_subscr_insert_cmd,
 
 	subscr = gprs_subscr_get_or_create(imsi);
 	if (!subscr) {
-		vty_out(vty, "%% unable get subscriber record for %s\n", imsi);
+		vty_out(vty, "%% unable get subscriber record for %s%s",
+			imsi, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -548,22 +550,26 @@ DEFUN(update_subscr_insert_auth_triplet, update_subscr_insert_auth_triplet_cmd,
 
 	subscr = gprs_subscr_get_or_create(imsi);
 	if (!subscr) {
-		vty_out(vty, "%% unable get subscriber record for %s\n", imsi);
+		vty_out(vty, "%% unable get subscriber record for %s%s",
+			imsi, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 	OSMO_ASSERT(subscr->sgsn_data);
 
 	if (osmo_hexparse(sres_str, &at.sres[0], sizeof(at.sres)) < 0) {
-		vty_out(vty, "%% invalid SRES value '%s'\n", sres_str);
+		vty_out(vty, "%% invalid SRES value '%s'%s",
+			sres_str, VTY_NEWLINE);
 		goto failed;
 	}
 	if (osmo_hexparse(rand_str, &at.rand[0], sizeof(at.rand)) < 0) {
-		vty_out(vty, "%% invalid RAND value '%s'\n", rand_str);
+		vty_out(vty, "%% invalid RAND value '%s'%s",
+			rand_str, VTY_NEWLINE);
 		goto failed;
 	}
 	if (osmo_hexparse(kc_str, &at.kc[0], sizeof(at.kc)) < 0) {
-		vty_out(vty, "%% invalid Kc value '%s'\n", kc_str);
+		vty_out(vty, "%% invalid Kc value '%s'%s",
+			kc_str, VTY_NEWLINE);
 		goto failed;
 	}
 	at.key_seq = cksn;
@@ -591,7 +597,8 @@ DEFUN(update_subscr_cancel, update_subscr_cancel_cmd,
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (!subscr) {
-		vty_out(vty, "%% no subscriber record for %s\n", imsi);
+		vty_out(vty, "%% no subscriber record for %s%s",
+			imsi, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -610,8 +617,9 @@ DEFUN(update_subscr_commit, update_subscr_commit_cmd,
 	struct gsm_subscriber *subscr;
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
-	if (!subscr) {
-		vty_out(vty, "%% unable to get subscriber record for %s\n", imsi);
+	if (subscr) {
+		vty_out(vty, "%% subscriber record already exists for %s%s",
+			imsi, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -655,7 +663,8 @@ DEFUN(update_subscr_update_location_result, update_subscr_update_location_result
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (!subscr) {
-		vty_out(vty, "%% unable to get subscriber record for %s\n", imsi);
+		vty_out(vty, "%% unable to get subscriber record for %s%s",
+			imsi, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -686,7 +695,8 @@ DEFUN(update_subscr_update_auth_info, update_subscr_update_auth_info_cmd,
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (!subscr) {
-		vty_out(vty, "%% unable to get subscriber record for %s\n", imsi);
+		vty_out(vty, "%% unable to get subscriber record for %s%s",
+			imsi, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
