@@ -503,32 +503,6 @@ DEFUN(show_subscr_cache,
 
 #define UPDATE_SUBSCR_INSERT_HELP "Insert data into the subscriber record\n"
 
-DEFUN(update_subscr_insert, update_subscr_insert_cmd,
-	UPDATE_SUBSCR_STR "insert authorized <0-1>)",
-	UPDATE_SUBSCR_HELP
-	UPDATE_SUBSCR_INSERT_HELP
-	"Authorize the subscriber to attach\n"
-	"New option value\n")
-{
-	const char *imsi = argv[0];
-	const char *value = argv[1];
-
-	struct gsm_subscriber *subscr;
-
-	subscr = gprs_subscr_get_or_create(imsi);
-	if (!subscr) {
-		vty_out(vty, "%% unable get subscriber record for %s%s",
-			imsi, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	subscr->authorized = atoi(value);
-
-	subscr_put(subscr);
-
-	return CMD_SUCCESS;
-}
-
 DEFUN(update_subscr_insert_auth_triplet, update_subscr_insert_auth_triplet_cmd,
 	UPDATE_SUBSCR_STR "insert auth-triplet <1-5> sres SRES rand RAND kc KC",
 	UPDATE_SUBSCR_HELP
@@ -548,7 +522,7 @@ DEFUN(update_subscr_insert_auth_triplet, update_subscr_insert_auth_triplet_cmd,
 
 	struct gsm_subscriber *subscr;
 
-	subscr = gprs_subscr_get_or_create(imsi);
+	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (!subscr) {
 		vty_out(vty, "%% unable get subscriber record for %s%s",
 			imsi, VTY_NEWLINE);
@@ -607,10 +581,10 @@ DEFUN(update_subscr_cancel, update_subscr_cancel_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(update_subscr_commit, update_subscr_commit_cmd,
-	UPDATE_SUBSCR_STR "commit",
+DEFUN(update_subscr_create, update_subscr_create_cmd,
+	UPDATE_SUBSCR_STR "create",
 	UPDATE_SUBSCR_HELP
-	"Apply the changes made by the insert commands\n")
+	"Create a subscriber entry\n")
 {
 	const char *imsi = argv[0];
 
@@ -623,8 +597,8 @@ DEFUN(update_subscr_commit, update_subscr_commit_cmd,
 		return CMD_WARNING;
 	}
 
-	gprs_subscr_update(subscr);
-
+	subscr = gprs_subscr_get_or_create(imsi);
+	subscr->keep_in_ram = 1;
 	subscr_put(subscr);
 
 	return CMD_SUCCESS;
@@ -757,10 +731,9 @@ int sgsn_vty_init(void)
 	install_element_ve(&show_pdpctx_all_cmd);
 	install_element_ve(&show_subscr_cache_cmd);
 
-	install_element(ENABLE_NODE, &update_subscr_insert_cmd);
 	install_element(ENABLE_NODE, &update_subscr_insert_auth_triplet_cmd);
+	install_element(ENABLE_NODE, &update_subscr_create_cmd);
 	install_element(ENABLE_NODE, &update_subscr_cancel_cmd);
-	install_element(ENABLE_NODE, &update_subscr_commit_cmd);
 	install_element(ENABLE_NODE, &update_subscr_update_location_result_cmd);
 	install_element(ENABLE_NODE, &update_subscr_update_auth_info_cmd);
 
