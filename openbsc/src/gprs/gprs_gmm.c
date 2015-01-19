@@ -50,6 +50,7 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
+#include <openbsc/gprs_utils.h>
 #include <openbsc/sgsn.h>
 
 #include <pdp.h>
@@ -338,8 +339,12 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	ptsig[1] = mm->p_tmsi_sig >> 8;
 	ptsig[2] = mm->p_tmsi_sig & 0xff;
 
-	/* Optional: Negotiated Ready timer value */
 #endif
+	/* Optional: Negotiated Ready timer value
+	 * (fixed 44s, default value, GSM 04.08, table 11.4a) to safely limit
+	 * the inactivity time READY->STANDBY.
+	 */
+	msgb_tv_put(msg, GSM48_IE_GMM_TIMER_READY, gprs_secs_to_tmr_floor(44));
 
 #ifdef PTMSI_ALLOC
 	/* Optional: Allocated P-TMSI */
@@ -991,6 +996,9 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 	gsm48_generate_mid_from_tmsi(mid, mm->p_tmsi);
 	mid[0] = GSM48_IE_GMM_ALLOC_PTMSI;
 #endif
+
+	/* Optional: Negotiated READY timer value */
+	msgb_tv_put(msg, GSM48_IE_GMM_TIMER_READY, gprs_secs_to_tmr_floor(44));
 
 	/* Option: MS ID, ... */
 	return gsm48_gmm_sendmsg(msg, 0, mm);

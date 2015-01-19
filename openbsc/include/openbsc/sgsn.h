@@ -52,6 +52,8 @@ struct sgsn_instance {
 	struct gsn_t *gsn;
 	/* Subscriber */
 	struct gprs_gsup_client *gsup_client;
+	/* LMME inactivity timer */
+	struct osmo_timer_list llme_timer;
 };
 
 extern struct sgsn_instance *sgsn;

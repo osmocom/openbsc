@@ -267,6 +267,7 @@ static struct gprs_llc_llme *llme_alloc(uint32_t tlli)
 	llme->tlli = tlli;
 	llme->old_tlli = 0xffffffff;
 	llme->state = GPRS_LLMS_UNASSIGNED;
+	llme->age_timestamp = GPRS_LLME_RESET_AGE;
 
 	for (i = 0; i < ARRAY_SIZE(llme->lle); i++)
 		lle_init(llme, i);
@@ -632,6 +633,9 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		}
 		return 0;
 	}
+
+	/* reset age computation */
+	lle->llme->age_timestamp = GPRS_LLME_RESET_AGE;
 
 	/* decrypt information field + FCS, if needed! */
 	if (llhp.is_encrypted) {
