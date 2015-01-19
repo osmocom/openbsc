@@ -27,4 +27,5 @@ Test GSUP message decoding/encoding
   Testing Purge MS Request
   Testing Purge MS Error
   Testing Purge MS Result
+Test GPRS timer decoding/encoding
 Done.
