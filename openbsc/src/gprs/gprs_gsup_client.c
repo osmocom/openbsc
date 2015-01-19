@@ -84,7 +84,10 @@ static int gsup_client_connect(struct gprs_gsup_client *gsupc)
 
 	osmo_timer_schedule(&gsupc->connect_timer, GPRS_GSUP_RECONNECT_INTERVAL, 0);
 
-	return rc;
+	LOGP(DGPRS, LOGL_INFO, "Scheduled timer to retry GSUP connect to %s:%d\n",
+	     gsupc->link->addr, gsupc->link->port);
+
+	return 0;
 }
 
 static void connect_timer_cb(void *gsupc_)
