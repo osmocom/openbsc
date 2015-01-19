@@ -203,12 +203,13 @@ void my_dummy_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
 static void assert_subscr(const struct gsm_subscriber *subscr, const char *imsi)
 {
 	struct gsm_subscriber *sfound;
+	OSMO_ASSERT(subscr);
+	OSMO_ASSERT(strcmp(subscr->imsi, imsi) == 0);
 
 	sfound = gprs_subscr_get_by_imsi(imsi);
 	OSMO_ASSERT(sfound == subscr);
-	subscr_put(sfound);
 
-	OSMO_ASSERT(strcmp(subscr->imsi, imsi) == 0);
+	subscr_put(sfound);
 }
 
 static void show_subscrs(FILE *out)
