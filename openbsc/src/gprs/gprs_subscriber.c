@@ -167,6 +167,8 @@ static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
 
 	sdata = talloc_zero(ctx, struct sgsn_subscriber_data);
 
+	sdata->error_cause = SGSN_ERROR_CAUSE_NONE;
+
 	for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
 	     sdata->auth_triplets[idx].key_seq = GSM_KEY_SEQ_INVAL;
 
@@ -292,7 +294,7 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 	}
 
 	sdata->auth_triplets_updated = 1;
-	sdata->error_cause = 0;
+	sdata->error_cause = SGSN_ERROR_CAUSE_NONE;
 
 	gprs_subscr_update_auth_info(subscr);
 
@@ -322,7 +324,7 @@ static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
 	}
 
 	subscr->authorized = 1;
-	subscr->sgsn_data->error_cause = 0;
+	subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
 
 	subscr->flags |= GPRS_SUBSCRIBER_ENABLE_PURGE;
 
@@ -451,7 +453,7 @@ static int gprs_subscr_handle_gsup_purge_res(struct gsm_subscriber *subscr,
 	LOGGSUBSCRP(LOGL_INFO, subscr, "Completing purge MS\n");
 
 	/* Force silent cancellation */
-	subscr->sgsn_data->error_cause = 0;
+	subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
 	gprs_subscr_put_and_cancel(subscr_get(subscr));
 
 	return 0;
@@ -500,7 +502,7 @@ static int gprs_subscr_handle_loc_cancel_req(struct gsm_subscriber *subscr,
 	gsup_reply.message_type = GPRS_GSUP_MSGT_LOCATION_CANCEL_RESULT;
 	gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
 
-	subscr->sgsn_data->error_cause = 0;
+	subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
 	gprs_subscr_put_and_cancel(subscr_get(subscr));
 
 	return 0;
