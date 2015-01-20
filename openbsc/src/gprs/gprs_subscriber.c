@@ -89,76 +89,10 @@ static int check_blocking(
 
 static void abort_blocking_procedure(struct gsm_subscriber *subscr)
 {
-	/* Best effort, stop retries at least */
-	subscr->sgsn_data->retries = SGSN_SUBSCR_MAX_RETRIES;
+	/* reset something */
 }
 
-static void sgsn_subscriber_timeout_cb(void *subscr_);
 int gprs_subscr_purge(struct gsm_subscriber *subscr);
-
-void gprs_subscr_stop_timer(struct gsm_subscriber *subscr)
-{
-	if (subscr->sgsn_data->timer.data) {
-		osmo_timer_del(&subscr->sgsn_data->timer);
-		subscr->sgsn_data->timer.cb = NULL;
-		OSMO_ASSERT(subscr->sgsn_data->timer.data == subscr);
-		subscr->sgsn_data->timer.data = NULL;
-		subscr_put(subscr);
-	}
-}
-
-void gprs_subscr_start_timer(struct gsm_subscriber *subscr, unsigned seconds)
-{
-	if (!subscr->sgsn_data->timer.data) {
-		subscr->sgsn_data->timer.cb = sgsn_subscriber_timeout_cb;
-		subscr->sgsn_data->timer.data = subscr_get(subscr);
-		subscr->sgsn_data->retries = 0;
-	}
-
-	osmo_timer_schedule(&subscr->sgsn_data->timer, seconds, 0);
-}
-
-static void sgsn_subscriber_timeout_cb(void *subscr_)
-{
-	struct gsm_subscriber *subscr = subscr_;
-
-	LOGGSUBSCRP(LOGL_INFO, subscr,
-		    "Expired, deleting subscriber entry\n");
-
-	subscr_get(subscr);
-
-	/* Check, whether to cleanup immediately */
-	if (!(subscr->flags & GPRS_SUBSCRIBER_ENABLE_PURGE) ||
-	    subscr->sgsn_data->retries >= SGSN_SUBSCR_MAX_RETRIES)
-		goto force_cleanup;
-
-	/* Send a 'purge MS' message to the HLR */
-	if (gprs_subscr_purge(subscr) < 0)
-		goto force_cleanup;
-
-	/* Purge request has been sent */
-
-	/* Check, whether purge is still enabled */
-	if (!(subscr->flags & GPRS_SUBSCRIBER_ENABLE_PURGE))
-		goto force_cleanup;
-
-	/* Make sure this will be tried again if there is no response in time */
-	subscr->sgsn_data->retries += 1;
-	gprs_subscr_start_timer(subscr, SGSN_SUBSCR_RETRY_INTERVAL);
-	subscr_put(subscr);
-	return;
-
-force_cleanup:
-	/* Make sure to clear blocking */
-	if (check_blocking(subscr, SGSN_SUBSCR_PROC_PURGE))
-		subscr->sgsn_data->blocked_by = SGSN_SUBSCR_PROC_NONE;
-
-	/* Make sure, the timer is cleaned up */
-	subscr->keep_in_ram = 0;
-	gprs_subscr_stop_timer(subscr);
-	/* The subscr is freed now, if the timer was the last user */
-	subscr_put(subscr);
-}
 
 static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
 {
@@ -185,9 +119,6 @@ struct gsm_subscriber *gprs_subscr_get_or_create(const char *imsi)
 
 	if (!subscr->sgsn_data)
 		subscr->sgsn_data = sgsn_subscriber_data_alloc(subscr);
-
-	gprs_subscr_stop_timer(subscr);
-
 	return subscr;
 }
 
@@ -204,16 +135,12 @@ void gprs_subscr_delete(struct gsm_subscriber *subscr)
 		subscr->sgsn_data->mm = NULL;
 	}
 
-	if ((subscr->flags & GPRS_SUBSCRIBER_CANCELLED) ||
-	    (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT)) {
-		subscr->keep_in_ram = 0;
-		gprs_subscr_stop_timer(subscr);
-	} else if (sgsn->cfg.subscriber_expiry_timeout != SGSN_TIMEOUT_NEVER) {
-		gprs_subscr_start_timer(subscr, sgsn->cfg.subscriber_expiry_timeout);
-	} else {
-		subscr->keep_in_ram = 1;
+	if (subscr->flags & GPRS_SUBSCRIBER_ENABLE_PURGE) {
+		gprs_subscr_purge(subscr);
+		subscr->flags &= ~GPRS_SUBSCRIBER_ENABLE_PURGE;
 	}
 
+	subscr->keep_in_ram = 0;
 	subscr_put(subscr);
 }
 
@@ -224,7 +151,6 @@ void gprs_subscr_put_and_cancel(struct gsm_subscriber *subscr)
 	subscr->flags &= ~GPRS_SUBSCRIBER_ENABLE_PURGE;
 
 	gprs_subscr_update(subscr);
-
 	gprs_subscr_delete(subscr);
 }
 

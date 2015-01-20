@@ -284,8 +284,6 @@ struct sgsn_subscriber_data {
 	struct gsm_auth_tuple	auth_triplets[5];
 	int			auth_triplets_updated;
 	int			error_cause;
-	struct osmo_timer_list	timer;
-	int			retries;
 	enum sgsn_subscriber_proc blocked_by;
 };
 
