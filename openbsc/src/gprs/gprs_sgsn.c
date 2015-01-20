@@ -187,6 +187,9 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 		osmo_timer_del(&mm->timer);
 	}
 
+	/* Unlink from global list of MM contexts */
+	llist_del(&mm->list);
+
 	/* Detach from subscriber which is possibly freed then */
 	if (mm->subscr) {
 		struct gsm_subscriber *subscr =  mm->subscr;
@@ -194,9 +197,6 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 		subscr->sgsn_data->mm = NULL;
 		gprs_subscr_delete(subscr);
 	}
-
-	/* Unlink from global list of MM contexts */
-	llist_del(&mm->list);
 
 	/* Free all PDP contexts */
 	llist_for_each_entry_safe(pdp, pdp2, &mm->pdp_list, list)

@@ -283,8 +283,6 @@ struct sgsn_subscriber_data {
 	struct gsm_auth_tuple	auth_triplets[5];
 	int			auth_triplets_updated;
 	int			error_cause;
-	struct osmo_timer_list	timer;
-	int			retries;
 	enum sgsn_subscriber_proc blocked_by;
 };
 
@@ -316,7 +314,6 @@ struct gsm_auth_tuple *sgsn_auth_get_tuple(struct sgsn_mm_ctx *mmctx,
 #define GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING	(1 << 16)
 #define GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING		(1 << 17)
 #define GPRS_SUBSCRIBER_CANCELLED			(1 << 18)
-#define GPRS_SUBSCRIBER_ENABLE_PURGE			(1 << 19)
 
 #define GPRS_SUBSCRIBER_UPDATE_PENDING_MASK ( \
 		GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING | \
