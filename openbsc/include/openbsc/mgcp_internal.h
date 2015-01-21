@@ -253,6 +253,8 @@ void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 			const uint16_t seq, const int32_t transit,
 			const uint32_t ssrc);
 
+int mgcp_set_ip_tos(int fd, int tos);
+
 enum {
 	MGCP_DEST_NET = 0,
 	MGCP_DEST_BTS,
