@@ -901,7 +901,7 @@ int mgcp_create_bind(const char *source_addr, struct osmo_fd *fd, int port)
 	return 0;
 }
 
-static int set_ip_tos(int fd, int tos)
+int mgcp_set_ip_tos(int fd, int tos)
 {
 	int ret;
 	ret = setsockopt(fd, IPPROTO_IP, IP_TOS,
@@ -925,8 +925,8 @@ static int bind_rtp(struct mgcp_config *cfg, struct mgcp_rtp_end *rtp_end, int e
 		goto cleanup1;
 	}
 
-	set_ip_tos(rtp_end->rtp.fd, cfg->endp_dscp);
-	set_ip_tos(rtp_end->rtcp.fd, cfg->endp_dscp);
+	mgcp_set_ip_tos(rtp_end->rtp.fd, cfg->endp_dscp);
+	mgcp_set_ip_tos(rtp_end->rtcp.fd, cfg->endp_dscp);
 
 	rtp_end->rtp.when = BSC_FD_READ;
 	if (osmo_fd_register(&rtp_end->rtp) != 0) {

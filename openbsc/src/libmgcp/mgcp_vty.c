@@ -378,7 +378,7 @@ DEFUN(cfg_mgcp_rtp_ip_dscp,
       cfg_mgcp_rtp_ip_dscp_cmd,
       "rtp ip-dscp <0-255>",
       RTP_STR
-      "Apply IP_TOS to the audio stream\n" "The DSCP value\n")
+      "Apply IP_TOS to the audio stream (including Osmux)\n" "The DSCP value\n")
 {
 	int dscp = atoi(argv[0]);
 	g_cfg->endp_dscp = dscp;
