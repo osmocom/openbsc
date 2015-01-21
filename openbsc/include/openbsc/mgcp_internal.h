@@ -243,6 +243,8 @@ void mgcp_get_net_downlink_format_default(struct mgcp_endpoint *endp,
 					  const char**subtype_name,
 					  const char**fmtp_extra);
 
+int mgcp_set_ip_tos(int fd, int tos);
+
 enum {
 	MGCP_DEST_NET = 0,
 	MGCP_DEST_BTS,
