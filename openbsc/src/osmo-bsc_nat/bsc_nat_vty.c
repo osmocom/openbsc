@@ -1192,12 +1192,14 @@ DEFUN(cfg_bsc_osmux,
 	else if (strcmp(argv[0], "off") == 0)
 		conf->osmux = 0;
 
-	if (old == 0 && conf->osmux == 1) {
+	if (old == 0 && conf->osmux == 1 && !conf->nat->mgcp_cfg->osmux_init) {
+		LOGP(DMGCP, LOGL_NOTICE, "Setting up OSMUX socket\n");
 		if (osmux_init(OSMUX_ROLE_BSC_NAT, conf->nat->mgcp_cfg) < 0) {
 			LOGP(DMGCP, LOGL_ERROR, "Cannot init OSMUX\n");
-			return -1;
+			vty_out(vty, "%% failed to create Osmux socket%s",
+				VTY_NEWLINE);
+			return CMD_WARNING;
 		}
-		LOGP(DMGCP, LOGL_NOTICE, "Setting up OSMUX socket\n");
 	} else if (old == 1 && conf->osmux == 0) {
 		LOGP(DMGCP, LOGL_NOTICE, "Disabling OSMUX socket\n");
 		/* Don't stop the socket, we may already have ongoing voice
