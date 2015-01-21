@@ -1,10 +1,11 @@
-openbsc (0.13.2+j2) UNRELEASED; urgency=low
+openbsc (0.13.2+j3) UNRELEASED; urgency=low
 
   [ Jacob Erlbeck ]
   * Reworked SGSN
 
   [ Holger Hans Peter Freyther ]
   * Merge master for MGCP changes
+  * Initialize osmux once
 
  -- Jacob Erlbeck <jerlbeck@sysmocom.de>  Mon, 19 Jan 2015 18:23:18 +0100
 
