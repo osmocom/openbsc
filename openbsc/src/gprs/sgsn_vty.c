@@ -560,7 +560,8 @@ DEFUN(update_subscr_cancel, update_subscr_cancel_cmd,
 		return CMD_WARNING;
 	}
 
-	gprs_subscr_put_and_cancel(subscr);
+	gprs_subscr_cancel(subscr);
+	subscr_put(subscr);
 
 	return CMD_SUCCESS;
 }

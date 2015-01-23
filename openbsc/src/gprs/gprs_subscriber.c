@@ -141,10 +141,9 @@ void gprs_subscr_delete(struct gsm_subscriber *subscr)
 	}
 
 	subscr->keep_in_ram = 0;
-	subscr_put(subscr);
 }
 
-void gprs_subscr_put_and_cancel(struct gsm_subscriber *subscr)
+void gprs_subscr_cancel(struct gsm_subscriber *subscr)
 {
 	subscr->authorized = 0;
 	subscr->flags |= GPRS_SUBSCRIBER_CANCELLED;
@@ -380,7 +379,7 @@ static int gprs_subscr_handle_gsup_purge_res(struct gsm_subscriber *subscr,
 
 	/* Force silent cancellation */
 	subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
-	gprs_subscr_put_and_cancel(subscr_get(subscr));
+	gprs_subscr_cancel(subscr);
 
 	return 0;
 }
@@ -429,7 +428,7 @@ static int gprs_subscr_handle_loc_cancel_req(struct gsm_subscriber *subscr,
 	gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
 
 	subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
-	gprs_subscr_put_and_cancel(subscr_get(subscr));
+	gprs_subscr_cancel(subscr);
 
 	return 0;
 }

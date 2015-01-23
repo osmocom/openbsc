@@ -270,6 +270,7 @@ static void test_subscriber(void)
 
 	/* There is no subscriber cache. Verify it */
 	gprs_subscr_delete(s1);
+	subscr_put(s1);
 	s1 = NULL;
 	sfound = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(sfound == NULL);
@@ -279,6 +280,7 @@ static void test_subscriber(void)
 
 	/* Free entry 2 (GSM_SUBSCRIBER_FIRST_CONTACT is set) */
 	gprs_subscr_delete(s2);
+	subscr_put(s2);
 	s2 = NULL;
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
@@ -286,6 +288,7 @@ static void test_subscriber(void)
 
 	/* Try to delete entry 3 */
 	gprs_subscr_delete(s3);
+	subscr_put(s3);
 	s3 = NULL;
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi3) == NULL);
 

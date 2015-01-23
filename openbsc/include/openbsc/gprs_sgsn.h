@@ -329,7 +329,7 @@ void gprs_subscr_delete(struct gsm_subscriber *subscr);
 struct gsm_subscriber *gprs_subscr_get_or_create(const char *imsi);
 struct gsm_subscriber *gprs_subscr_get_or_create_by_mmctx( struct sgsn_mm_ctx *mmctx);
 struct gsm_subscriber *gprs_subscr_get_by_imsi(const char *imsi);
-void gprs_subscr_put_and_cancel(struct gsm_subscriber *subscr);
+void gprs_subscr_cancel(struct gsm_subscriber *subscr);
 void gprs_subscr_update(struct gsm_subscriber *subscr);
 void gprs_subscr_update_auth_info(struct gsm_subscriber *subscr);
 int gprs_subscr_rx_gsup_message(struct msgb *msg);

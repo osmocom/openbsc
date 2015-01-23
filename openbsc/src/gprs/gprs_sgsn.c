@@ -200,6 +200,7 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 		mm->subscr = NULL;
 		subscr->sgsn_data->mm = NULL;
 		gprs_subscr_delete(subscr);
+		subscr_put(subscr);
 	}
 
 	/* Free all PDP contexts */
