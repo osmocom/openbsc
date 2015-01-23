@@ -161,7 +161,12 @@ struct gprs_llc_llme {
 	uint16_t bvci;
 	uint16_t nsei;
 	struct gprs_llc_lle lle[NUM_SAPIS];
+
+	/* Internal management */
+	uint32_t age_timestamp;
 };
+
+#define GPRS_LLME_RESET_AGE (0)
 
 extern struct llist_head gprs_llc_llmes;
 

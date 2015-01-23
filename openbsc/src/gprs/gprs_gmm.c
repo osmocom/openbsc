@@ -70,6 +70,7 @@
 #define GSM0408_T3313_SECS	30	/* waiting for paging response */
 #define GSM0408_T3314_SECS	44	/* force to STBY on expiry, Ready timer */
 #define GSM0408_T3316_SECS	44
+#define GSM0408_MOBILE_REACHABLE_SECS (GSM0408_T3312_SECS + 4 * 60)
 
 /* Section 11.3 / Table 11.2d Timers of Session Management - network side */
 #define GSM0408_T3385_SECS	8	/* wait for ACT PDP CTX REQ */
@@ -138,6 +139,11 @@ static void mmctx_timer_stop(struct sgsn_mm_ctx *mm, unsigned int T)
 		LOGP(DMM, LOGL_ERROR, "Stopping MM timer %u but "
 			"%u is running\n", T, mm->T);
 	osmo_timer_del(&mm->timer);
+}
+
+time_t gprs_max_time_to_idle(void)
+{
+	return GSM0408_T3314_SECS + GSM0408_MOBILE_REACHABLE_SECS;
 }
 
 /* Send a message through the underlying layer */

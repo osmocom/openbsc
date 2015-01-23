@@ -246,6 +246,7 @@ extern struct llist_head sgsn_apn_ctxts;
 extern struct llist_head sgsn_pdp_ctxts;
 
 uint32_t sgsn_alloc_ptmsi(void);
+void sgsn_inst_init(void);
 
 /* High-level function to be called in case a GGSN has disappeared or
  * ottherwise lost state (recovery procedure) */

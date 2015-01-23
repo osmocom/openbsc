@@ -37,6 +37,10 @@
 #include <openbsc/gprs_gmm.h>
 #include "openbsc/gprs_llc.h"
 
+#include <time.h>
+
+#define GPRS_LLME_CHECK_TICK 30
+
 extern struct sgsn_instance *sgsn;
 
 LLIST_HEAD(sgsn_mm_ctxts);
@@ -508,3 +512,62 @@ void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
 
 	sgsn_auth_update(mmctx);
 }
+
+static void sgsn_llme_cleanup_free(struct gprs_llc_llme *llme)
+{
+	struct sgsn_mm_ctx *mmctx = NULL;
+
+	llist_for_each_entry(mmctx, &sgsn_mm_ctxts, list) {
+		if (llme == mmctx->llme) {
+			gsm0408_gprs_access_cancelled(mmctx, SGSN_ERROR_CAUSE_NONE);
+			return;
+		}
+	}
+
+	/* No MM context found */
+	LOGP(DGPRS, LOGL_INFO, "Deleting orphaned LLME, TLLI 0x%08x\n",
+	     llme->tlli);
+	gprs_llgmm_assign(llme, llme->tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+}
+
+static void sgsn_llme_check_cb(void *data_)
+{
+	struct gprs_llc_llme *llme, *llme_tmp;
+	struct timespec now_tp;
+	time_t now, age;
+	time_t max_age = gprs_max_time_to_idle();
+
+	int rc;
+
+	rc = clock_gettime(CLOCK_MONOTONIC, &now_tp);
+	OSMO_ASSERT(rc >= 0);
+	now = now_tp.tv_sec;
+
+	LOGP(DGPRS, LOGL_DEBUG,
+	     "Checking for inactive LLMEs, time = %u\n", (unsigned)now);
+
+	llist_for_each_entry_safe(llme, llme_tmp, &gprs_llc_llmes, list) {
+		if (llme->age_timestamp == GPRS_LLME_RESET_AGE)
+			llme->age_timestamp = now;
+
+		age = now - llme->age_timestamp;
+
+		if (age > max_age || age < 0) {
+			LOGP(DGPRS, LOGL_INFO,
+			     "Inactivity timeout for TLLI 0x%08x, age %d\n",
+			     llme->tlli, (int)age);
+			sgsn_llme_cleanup_free(llme);
+		}
+	}
+
+	osmo_timer_schedule(&sgsn->llme_timer, GPRS_LLME_CHECK_TICK, 0);
+}
+
+void sgsn_inst_init()
+{
+	sgsn->llme_timer.cb = sgsn_llme_check_cb;
+	sgsn->llme_timer.data = NULL;
+
+	osmo_timer_schedule(&sgsn->llme_timer, GPRS_LLME_CHECK_TICK, 0);
+}
+

@@ -32,5 +32,5 @@ sgsn_test_LDADD = \
 	$(LIBOSMOCORE_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBOSMOGB_LIBS) \
-	-lgtp
+	-lgtp -lrt
 

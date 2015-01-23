@@ -22,4 +22,6 @@ int gprs_gmm_rx_suspend(struct gprs_ra_id *raid, uint32_t tlli);
 int gprs_gmm_rx_resume(struct gprs_ra_id *raid, uint32_t tlli,
 		       uint8_t suspend_ref);
 
+time_t gprs_max_time_to_idle(void);
+
 #endif /* _GPRS_GMM_H */
