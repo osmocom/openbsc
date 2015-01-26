@@ -238,7 +238,7 @@ struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,
 
 	rc = gsup_client_connect(gsupc);
 
-	if (rc < 0 && rc != -EINPROGRESS)
+	if (rc < 0)
 		goto failed;
 
 	gsupc->read_cb = read_cb;
