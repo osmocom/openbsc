@@ -196,9 +196,7 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 
 	/* Detach from subscriber which is possibly freed then */
 	if (mm->subscr) {
-		struct gsm_subscriber *subscr =  mm->subscr;
-		mm->subscr = NULL;
-		subscr->sgsn_data->mm = NULL;
+		struct gsm_subscriber *subscr = subscr_get(mm->subscr);
 		gprs_subscr_cleanup(subscr);
 		subscr_put(subscr);
 	}
