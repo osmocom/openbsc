@@ -765,10 +765,10 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 				mm_ctx_cleanup_free(ictx, "GPRS IMSI re-use");
 			}
 		}
-		strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
+		strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi) - 1);
 		break;
 	case GSM_MI_TYPE_IMEI:
-		strncpy(ctx->imei, mi_string, sizeof(ctx->imei));
+		strncpy(ctx->imei, mi_string, sizeof(ctx->imei) - 1);
 		break;
 	case GSM_MI_TYPE_IMEISV:
 		break;
@@ -856,7 +856,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 				reject_cause = GMM_CAUSE_NET_FAIL;
 				goto rejected;
 			}
-			strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
+			strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi) - 1);
 #endif
 		}
 		ctx->tlli = msgb_tlli(msg);

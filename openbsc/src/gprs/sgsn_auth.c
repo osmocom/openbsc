@@ -61,7 +61,7 @@ int sgsn_acl_add(const char *imsi, struct sgsn_config *cfg)
 	acl = talloc_zero(NULL, struct imsi_acl_entry);
 	if (!acl)
 		return -ENOMEM;
-	strncpy(acl->imsi, imsi, sizeof(acl->imsi));
+	strncpy(acl->imsi, imsi, sizeof(acl->imsi) - 1);
 
 	llist_add(&acl->list, &cfg->imsi_acl);
 
