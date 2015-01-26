@@ -186,13 +186,35 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 {
 	struct sgsn_pdp_ctx *pdp, *pdp2;
 
+	/* Unlink from global list of MM contexts */
+	llist_del(&mm->list);
+
+	/* Free all PDP contexts */
+	llist_for_each_entry_safe(pdp, pdp2, &mm->pdp_list, list)
+		sgsn_pdp_ctx_free(pdp);
+
+	rate_ctr_group_free(mm->ctrg);
+
+	talloc_free(mm);
+}
+
+void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
+{
+	struct gprs_llc_llme *llme = mm->llme;
+	uint32_t tlli = mm->tlli;
+	struct sgsn_pdp_ctx *pdp, *pdp2;
+
+	/* delete all existing PDP contexts for this MS */
+	llist_for_each_entry_safe(pdp, pdp2, &mm->pdp_list, list) {
+		LOGMMCTXP(LOGL_NOTICE, mm,
+			  "Dropping PDP context for NSAPI=%u\n", pdp->nsapi);
+		sgsn_pdp_ctx_terminate(pdp);
+	}
+
 	if (osmo_timer_pending(&mm->timer)) {
 		LOGMMCTXP(LOGL_INFO, mm, "Cancelling MM timer %u\n", mm->T);
 		osmo_timer_del(&mm->timer);
 	}
-
-	/* Unlink from global list of MM contexts */
-	llist_del(&mm->list);
 
 	/* Detach from subscriber which is possibly freed then */
 	if (mm->subscr) {
@@ -201,14 +223,13 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 		subscr_put(subscr);
 	}
 
-	/* Free all PDP contexts */
-	llist_for_each_entry_safe(pdp, pdp2, &mm->pdp_list, list)
-		sgsn_pdp_ctx_free(pdp);
-	
-	rate_ctr_group_free(mm->ctrg);
+	sgsn_mm_ctx_free(mm);
+	mm = NULL;
 
-	talloc_free(mm);
+	/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
+	gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
 }
+
 
 /* look up PDP context by MM context and NSAPI */
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,

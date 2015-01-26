@@ -181,34 +181,14 @@ static void mmctx2msgid(struct msgb *msg, const struct sgsn_mm_ctx *mm)
 	msgb_nsei(msg) = mm->nsei;
 }
 
-static void delete_pdp_contexts(struct sgsn_mm_ctx *ctx, const char *log_text)
-{
-	struct sgsn_pdp_ctx *pdp, *pdp2;
-
-	/* delete all existing PDP contexts for this MS */
-	llist_for_each_entry_safe(pdp, pdp2, &ctx->pdp_list, list) {
-		LOGMMCTXP(LOGL_NOTICE, ctx,
-			  "Dropping PDP context for NSAPI=%u due to %s\n",
-			  pdp->nsapi, log_text);
-		sgsn_pdp_ctx_terminate(pdp);
-	}
-}
-
 static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
 {
-	struct gprs_llc_llme *llme = ctx->llme;
-	uint32_t tlli = ctx->tlli;
+	LOGMMCTXP(LOGL_INFO, ctx, "Cleaning MM context due to %s\n", log_text);
 
 	/* Mark MM state as deregistered */
 	ctx->mm_state = GMM_DEREGISTERED;
 
-	delete_pdp_contexts(ctx, log_text);
-
-	sgsn_mm_ctx_free(ctx);
-	ctx = NULL;
-
-	/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
-	gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+	sgsn_mm_ctx_cleanup_free(ctx);
 }
 
 /* Chapter 9.4.18 */

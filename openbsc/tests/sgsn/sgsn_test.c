@@ -306,7 +306,6 @@ static void test_auth_triplets(void)
 	struct sgsn_mm_ctx *ctx;
 	struct gprs_ra_id raid = { 0, };
 	uint32_t local_tlli = 0xffeeddcc;
-	struct gprs_llc_llme *llme;
 
 	printf("Testing authentication triplet handling\n");
 
@@ -355,11 +354,9 @@ static void test_auth_triplets(void)
 
 	/* Free MM context and subscriber */
 	subscr_put(s1);
-	llme = ctx->llme;
-	sgsn_mm_ctx_free(ctx);
+	sgsn_mm_ctx_cleanup_free(ctx);
 	s1found = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(s1found == NULL);
-	gprs_llgmm_assign(llme, local_tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
 }
 
 #define TEST_GSUP_IMSI1_IE 0x01, 0x05, 0x21, 0x43, 0x65, 0x87, 0x09
@@ -595,7 +592,6 @@ static void test_subscriber_blocking(void)
 	struct sgsn_mm_ctx *ctx;
 	struct gprs_ra_id raid = { 0, };
 	uint32_t local_tlli = 0xffeeddcc;
-	struct gprs_llc_llme *llme;
 	int rc;
 
 	printf("Testing subcriber procedure blocking\n");
@@ -609,7 +605,6 @@ static void test_subscriber_blocking(void)
 	/* Create a context */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ctx = alloc_mm_ctx(local_tlli, &raid);
-	llme = ctx->llme;
 	strncpy(ctx->imsi, imsi1, sizeof(ctx->imsi) - 1);
 
 	/* Allocate and attach a subscriber */
@@ -661,8 +656,7 @@ static void test_subscriber_blocking(void)
 	OSMO_ASSERT(rc == 0);
 
 	subscr_put(s1);
-	sgsn_mm_ctx_free(ctx);
-	gprs_llgmm_assign(llme, local_tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+	sgsn_mm_ctx_cleanup_free(ctx);
 
 	assert_no_subscrs();
 
