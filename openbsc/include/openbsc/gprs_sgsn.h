@@ -339,8 +339,7 @@ int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr);
 int gprs_subscr_location_update(struct gsm_subscriber *subscr);
 
 /* Called on subscriber data updates */
-void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
-				 struct gsm_subscriber *subscr);
+void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx);
 
 int gprs_sndcp_vty_init(void);
 struct sgsn_instance;

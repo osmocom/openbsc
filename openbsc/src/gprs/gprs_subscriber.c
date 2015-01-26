@@ -614,7 +614,8 @@ void gprs_subscr_update(struct gsm_subscriber *subscr)
 	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING;
 	subscr->flags &= ~GSM_SUBSCRIBER_FIRST_CONTACT;
 
-	sgsn_update_subscriber_data(subscr->sgsn_data->mm, subscr);
+	if (subscr->sgsn_data->mm)
+		sgsn_update_subscriber_data(subscr->sgsn_data->mm);
 }
 
 void gprs_subscr_update_auth_info(struct gsm_subscriber *subscr)
@@ -625,7 +626,8 @@ void gprs_subscr_update_auth_info(struct gsm_subscriber *subscr)
 	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING;
 	subscr->flags &= ~GSM_SUBSCRIBER_FIRST_CONTACT;
 
-	sgsn_update_subscriber_data(subscr->sgsn_data->mm, subscr);
+	if (subscr->sgsn_data->mm)
+		sgsn_update_subscriber_data(subscr->sgsn_data->mm);
 }
 
 struct gsm_subscriber *gprs_subscr_get_or_create_by_mmctx(struct sgsn_mm_ctx *mmctx)

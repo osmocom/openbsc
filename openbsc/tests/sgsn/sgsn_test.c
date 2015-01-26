@@ -61,14 +61,13 @@ int bssgp_tx_dl_ud(struct msgb *msg, uint16_t pdu_lifetime,
 }
 
 /* override, requires '-Wl,--wrap=sgsn_update_subscriber_data' */
-void __real_sgsn_update_subscriber_data(struct sgsn_mm_ctx *, struct gsm_subscriber *);
-void (*update_subscriber_data_cb)(struct sgsn_mm_ctx *, struct gsm_subscriber *) =
+void __real_sgsn_update_subscriber_data(struct sgsn_mm_ctx *);
+void (*update_subscriber_data_cb)(struct sgsn_mm_ctx *) =
     &__real_sgsn_update_subscriber_data;
 
-void __wrap_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
-					struct gsm_subscriber *subscr)
+void __wrap_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)
 {
-	(*update_subscriber_data_cb)(mmctx, subscr);
+	(*update_subscriber_data_cb)(mmctx);
 }
 
 /* override, requires '-Wl,--wrap=gprs_subscr_request_update_location' */
@@ -191,12 +190,12 @@ static void test_llme(void)
 }
 
 struct gsm_subscriber *last_updated_subscr = NULL;
-void my_dummy_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
-					  struct gsm_subscriber *subscr)
+void my_dummy_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)
 {
+	OSMO_ASSERT(mmctx);
 	fprintf(stderr, "Called %s, mmctx = %p, subscr = %p\n",
-		__func__, mmctx, subscr);
-	last_updated_subscr = subscr;
+		__func__, mmctx, mmctx->subscr);
+	last_updated_subscr = mmctx->subscr;
 }
 
 static void assert_subscr(const struct gsm_subscriber *subscr, const char *imsi)
@@ -266,7 +265,9 @@ static void test_subscriber(void)
 	/* Update entry 1 */
 	last_updated_subscr = NULL;
 	gprs_subscr_update(s1);
-	OSMO_ASSERT(last_updated_subscr == s1);
+	OSMO_ASSERT(last_updated_subscr == NULL);
+	OSMO_ASSERT(s1->sgsn_data->mm == NULL);
+	OSMO_ASSERT((s1->flags & GSM_SUBSCRIBER_FIRST_CONTACT) == 0);
 
 	/* There is no subscriber cache. Verify it */
 	gprs_subscr_cleanup(s1);

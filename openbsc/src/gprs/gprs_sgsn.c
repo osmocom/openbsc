@@ -487,27 +487,10 @@ int sgsn_force_reattach_oldmsg(struct msgb *oldmsg)
 	return gsm0408_gprs_force_reattach_oldmsg(oldmsg);
 }
 
-void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx,
-				 struct gsm_subscriber *subscr)
+void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)
 {
-	if (!mmctx && subscr && strlen(subscr->imsi) > 0) {
-		mmctx = sgsn_mm_ctx_by_imsi(subscr->imsi);
-		OSMO_ASSERT(!mmctx || !mmctx->subscr || mmctx->subscr == subscr);
-	}
-
-	if (!mmctx) {
-		LOGP(DMM, LOGL_INFO,
-		     "Subscriber data update for unregistered MM context, IMSI %s\n",
-		     subscr->imsi);
-		return;
-	}
-
+	OSMO_ASSERT(mmctx != NULL);
 	LOGMMCTXP(LOGL_INFO, mmctx, "Subscriber data update\n");
-
-	if (!subscr->sgsn_data->mm && !mmctx->subscr) {
-		mmctx->subscr =	subscr_get(subscr);
-		mmctx->subscr->sgsn_data->mm = mmctx;
-	}
 
 	sgsn_auth_update(mmctx);
 }
