@@ -127,7 +127,7 @@ struct gsm_subscriber *gprs_subscr_get_by_imsi(const char *imsi)
 	return subscr_active_by_imsi(NULL, imsi);
 }
 
-void gprs_subscr_delete(struct gsm_subscriber *subscr)
+void gprs_subscr_cleanup(struct gsm_subscriber *subscr)
 {
 	if (subscr->sgsn_data->mm) {
 		subscr_put(subscr->sgsn_data->mm->subscr);
@@ -150,7 +150,7 @@ void gprs_subscr_cancel(struct gsm_subscriber *subscr)
 	subscr->flags &= ~GPRS_SUBSCRIBER_ENABLE_PURGE;
 
 	gprs_subscr_update(subscr);
-	gprs_subscr_delete(subscr);
+	gprs_subscr_cleanup(subscr);
 }
 
 static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,

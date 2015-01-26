@@ -199,7 +199,7 @@ void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 		struct gsm_subscriber *subscr =  mm->subscr;
 		mm->subscr = NULL;
 		subscr->sgsn_data->mm = NULL;
-		gprs_subscr_delete(subscr);
+		gprs_subscr_cleanup(subscr);
 		subscr_put(subscr);
 	}
 
