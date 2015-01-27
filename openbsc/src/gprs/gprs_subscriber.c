@@ -35,6 +35,11 @@
 #define SGSN_SUBSCR_MAX_RETRIES 3
 #define SGSN_SUBSCR_RETRY_INTERVAL 10
 
+#define LOGGSUPP(level, gsup, fmt, args...) \
+	LOGP(DGPRS, level, "GSUP(%s) " fmt, \
+	     (gsup)->imsi, \
+	     ## args)
+
 extern void *tall_bsc_ctx;
 
 static int gsup_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg);
@@ -370,6 +375,21 @@ static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
 	return -gsup_msg->cause;
 }
 
+static int gprs_subscr_handle_gsup_purge_no_subscr(
+	struct gprs_gsup_message *gsup_msg)
+{
+	if (GPRS_GSUP_IS_MSGT_ERROR(gsup_msg->message_type)) {
+		LOGGSUPP(LOGL_NOTICE, gsup_msg,
+			 "Purge MS has failed with cause '%s' (%d)\n",
+			 get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
+			 gsup_msg->cause);
+		return -gsup_msg->cause;
+	}
+
+	LOGGSUPP(LOGL_INFO, gsup_msg, "Completing purge MS\n");
+	return 0;
+}
+
 static int gprs_subscr_handle_gsup_purge_res(struct gsm_subscriber *subscr,
 					     struct gprs_gsup_message *gsup_msg)
 {
@@ -479,8 +499,15 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 
 	subscr = gprs_subscr_get_by_imsi(gsup_msg.imsi);
 
-	if (!subscr)
-		return gprs_subscr_handle_unknown_imsi(&gsup_msg);
+	if (!subscr) {
+		switch (gsup_msg.message_type) {
+		case GPRS_GSUP_MSGT_PURGE_MS_RESULT:
+		case GPRS_GSUP_MSGT_PURGE_MS_ERROR:
+			return gprs_subscr_handle_gsup_purge_no_subscr(&gsup_msg);
+		default:
+			return gprs_subscr_handle_unknown_imsi(&gsup_msg);
+		}
+	}
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		"Received GSUP message of type 0x%02x\n", gsup_msg.message_type);
