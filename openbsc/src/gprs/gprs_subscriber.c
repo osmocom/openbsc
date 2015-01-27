@@ -439,13 +439,24 @@ static int gprs_subscr_handle_loc_cancel_req(struct gsm_subscriber *subscr,
 					     struct gprs_gsup_message *gsup_msg)
 {
 	struct gprs_gsup_message gsup_reply = {0};
+	int is_update_procedure = !gsup_msg->cancel_type || gsup_msg->cancel_type;
 
-	LOGGSUBSCRP(LOGL_INFO, subscr, "purging MS subscriber\n");
+	LOGGSUBSCRP(LOGL_INFO, subscr, "Cancelling MS subscriber (%s)\n",
+		    is_update_procedure ?
+		    "update procedure" : "subscription withdraw");
 
 	gsup_reply.message_type = GPRS_GSUP_MSGT_LOCATION_CANCEL_RESULT;
 	gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
 
-	subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
+	if (is_update_procedure)
+		subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
+	else
+		/* Since a withdraw cause is not specified, just abort the
+		 * current attachment. The following re-attachment should then
+		 * be rejected with a proper cause value.
+		 */
+		subscr->sgsn_data->error_cause = GMM_CAUSE_IMPL_DETACHED;
+
 	gprs_subscr_cancel(subscr);
 
 	return 0;

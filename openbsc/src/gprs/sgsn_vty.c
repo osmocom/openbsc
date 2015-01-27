@@ -545,11 +545,14 @@ failed:
 }
 
 DEFUN(update_subscr_cancel, update_subscr_cancel_cmd,
-	UPDATE_SUBSCR_STR "cancel",
+	UPDATE_SUBSCR_STR "cancel (update-procedure|subscription-withdraw)",
 	UPDATE_SUBSCR_HELP
-	"Cancel (remove) subscriber record\n")
+	"Cancel (remove) subscriber record\n"
+	"The MS moved to another SGSN\n"
+	"The subscription is no longer valid\n")
 {
 	const char *imsi = argv[0];
+	const char *cancel_type = argv[1];
 
 	struct gsm_subscriber *subscr;
 
@@ -559,6 +562,11 @@ DEFUN(update_subscr_cancel, update_subscr_cancel_cmd,
 			imsi, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
+
+	if (strcmp(cancel_type, "update-procedure") == 0)
+		subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
+	else
+		subscr->sgsn_data->error_cause = GMM_CAUSE_IMPL_DETACHED;
 
 	gprs_subscr_cancel(subscr);
 	subscr_put(subscr);
@@ -606,6 +614,7 @@ DEFUN(update_subscr_destroy, update_subscr_destroy_cmd,
 	}
 
 	subscr->keep_in_ram = 0;
+	subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
 	gprs_subscr_cancel(subscr);
 	if (subscr->use_count > 1)
 		vty_out(vty, "%% subscriber is still in use%s",

@@ -768,7 +768,7 @@ class TestVTYSGSN(TestVTYGenericBSC):
         res = self.vty.command('show subscriber cache')
         self.assert_(res.find('1234567890') >= 0)
         self.assert_(res.find('Authorized: 1') >= 0)
-        self.assertTrue(self.vty.verify('update-subscriber imsi 1234567890 cancel', ['']))
+        self.assertTrue(self.vty.verify('update-subscriber imsi 1234567890 cancel update-procedure', ['']))
         res = self.vty.command('show subscriber cache')
         self.assert_(res.find('1234567890') >= 0)
         self.assertTrue(self.vty.verify('update-subscriber imsi 1234567890 destroy', ['']))
