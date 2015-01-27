@@ -269,7 +269,7 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	}
 }
 
-static void release_loc_updating_req(struct gsm_subscriber_connection *conn)
+static void release_loc_updating_req(struct gsm_subscriber_connection *conn, int release)
 {
 	if (!conn->loc_operation)
 		return;
@@ -280,14 +280,15 @@ static void release_loc_updating_req(struct gsm_subscriber_connection *conn)
 	osmo_timer_del(&conn->loc_operation->updating_timer);
 	talloc_free(conn->loc_operation);
 	conn->loc_operation = NULL;
-	msc_release_connection(conn);
+	if (release)
+		msc_release_connection(conn);
 }
 
 static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
 {
 	if (conn->loc_operation)
 		LOGP(DMM, LOGL_ERROR, "Connection already had operation.\n");
-	release_loc_updating_req(conn);
+	release_loc_updating_req(conn, 0);
 
 	conn->loc_operation = talloc_zero(tall_locop_ctx,
 					   struct gsm_loc_updating_operation);
@@ -301,7 +302,7 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 
 	switch (event) {
 		case GSM_SECURITY_AUTH_FAILED:
-			release_loc_updating_req(conn);
+			release_loc_updating_req(conn, 1);
 			break;
 
 		case GSM_SECURITY_ALREADY:
@@ -362,7 +363,7 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 	 * Cancel any outstanding location updating request
 	 * operation taking place on the subscriber connection.
 	 */
-	release_loc_updating_req(conn);
+	release_loc_updating_req(conn, 1);
 
 	/* We might need to cancel the paging response or such. */
 	if (conn->sec_operation && conn->sec_operation->cb) {
@@ -500,9 +501,14 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 		if (!conn->subscr) {
 			conn->subscr = subscr_get_by_imsi(net->subscr_group,
 							  mi_string);
-			if (!conn->subscr)
+			if (!conn->subscr && net->create_subscriber)
 				conn->subscr = subscr_create_subscriber(
 					net->subscr_group, mi_string);
+		}
+		if (!conn->subscr && conn->loc_operation) {
+			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
+			release_loc_updating_req(conn, 1);
+			return 0;
 		}
 		if (conn->loc_operation)
 			conn->loc_operation->waiting_for_imsi = 0;
@@ -532,7 +538,7 @@ static void loc_upd_rej_cb(void *data)
 
 	LOGP(DMM, LOGL_DEBUG, "Location Updating Request procedure timedout.\n");
 	gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
-	release_loc_updating_req(conn);
+	release_loc_updating_req(conn, 1);
 }
 
 static void schedule_reject(struct gsm_subscriber_connection *conn)
@@ -613,9 +619,14 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 		/* look up subscriber based on IMSI, create if not found */
 		subscr = subscr_get_by_imsi(bts->network->subscr_group, mi_string);
-		if (!subscr) {
+		if (!subscr && bts->network->create_subscriber) {
 			subscr = subscr_create_subscriber(
 				bts->network->subscr_group, mi_string);
+		}
+		if (!subscr) {
+			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
+			release_loc_updating_req(conn, 0);
+			return 0;
 		}
 		break;
 	case GSM_MI_TYPE_TMSI:
@@ -1109,7 +1120,7 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 		       conn->subscr ?
 				subscr_name(conn->subscr) :
 				"unknown subscriber");
-		release_loc_updating_req(conn);
+		release_loc_updating_req(conn, 1);
 		break;
 	case GSM48_MT_MM_IMSI_DETACH_IND:
 		rc = gsm48_rx_mm_imsi_detach_ind(conn, msg);

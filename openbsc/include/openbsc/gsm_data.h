@@ -278,6 +278,7 @@ struct gsm_network {
 	struct osmo_bsc_data *bsc_data;
 
 	/* subscriber related features */
+	int create_subscriber;
 	struct gsm_subscriber_group *subscr_group;
 	struct gsm_sms_queue *sms_queue;
 
