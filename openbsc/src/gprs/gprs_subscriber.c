@@ -139,8 +139,6 @@ void gprs_subscr_cleanup(struct gsm_subscriber *subscr)
 		gprs_subscr_purge(subscr);
 		subscr->flags &= ~GPRS_SUBSCRIBER_ENABLE_PURGE;
 	}
-
-	subscr->keep_in_ram = 0;
 }
 
 void gprs_subscr_cancel(struct gsm_subscriber *subscr)

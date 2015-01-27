@@ -770,6 +770,9 @@ class TestVTYSGSN(TestVTYGenericBSC):
         self.assert_(res.find('Authorized: 1') >= 0)
         self.assertTrue(self.vty.verify('update-subscriber imsi 1234567890 cancel', ['']))
         res = self.vty.command('show subscriber cache')
+        self.assert_(res.find('1234567890') >= 0)
+        self.assertTrue(self.vty.verify('update-subscriber imsi 1234567890 destroy', ['']))
+        res = self.vty.command('show subscriber cache')
         self.assert_(res.find('1234567890') < 0)
 
 def add_nat_test(suite, workdir):

@@ -589,6 +589,32 @@ DEFUN(update_subscr_create, update_subscr_create_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(update_subscr_destroy, update_subscr_destroy_cmd,
+	UPDATE_SUBSCR_STR "destroy",
+	UPDATE_SUBSCR_HELP
+	"Destroy a subscriber entry\n")
+{
+	const char *imsi = argv[0];
+
+	struct gsm_subscriber *subscr;
+
+	subscr = gprs_subscr_get_by_imsi(imsi);
+	if (!subscr) {
+		vty_out(vty, "%% subscriber record does not exist for %s%s",
+			imsi, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	subscr->keep_in_ram = 0;
+	gprs_subscr_cancel(subscr);
+	if (subscr->use_count > 1)
+		vty_out(vty, "%% subscriber is still in use%s",
+			VTY_NEWLINE);
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
 #define UL_ERR_STR "system-failure|data-missing|unexpected-data-value|" \
 		   "unknown-subscriber|roaming-not-allowed"
 
@@ -699,6 +725,7 @@ int sgsn_vty_init(void)
 
 	install_element(ENABLE_NODE, &update_subscr_insert_auth_triplet_cmd);
 	install_element(ENABLE_NODE, &update_subscr_create_cmd);
+	install_element(ENABLE_NODE, &update_subscr_destroy_cmd);
 	install_element(ENABLE_NODE, &update_subscr_cancel_cmd);
 	install_element(ENABLE_NODE, &update_subscr_update_location_result_cmd);
 	install_element(ENABLE_NODE, &update_subscr_update_auth_info_cmd);
