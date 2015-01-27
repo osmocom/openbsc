@@ -1053,6 +1053,47 @@ DEFUN(logging_fltr_imsi,
 	log_set_imsi_filter(tgt, subscr);
 	return CMD_SUCCESS;
 }
+
+static struct cmd_node nitb_node = {
+	NITB_NODE,
+	"%s(config-nitb)# ",
+	1,
+};
+
+DEFUN(cfg_nitb, cfg_nitb_cmd,
+      "nitb", "Configure NITB options")
+{
+	vty->node = NITB_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
+      "subscriber-create-on-demand",
+      "Make a new record when a subscriber is first seen.\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->create_subscriber = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nitb_no_subscr_create, cfg_nitb_no_subscr_create_cmd,
+      "no subscriber-create-on-demand",
+      NO_STR "Make a new record when a subscriber is first seen.\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->create_subscriber = 0;
+	return CMD_SUCCESS;
+}
+
+static int config_write_nitb(struct vty *vty)
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	vty_out(vty, "nitb%s", VTY_NEWLINE);
+	vty_out(vty, " %ssubscriber-create-on-demand%s",
+		gsmnet->create_subscriber ? "" : "no ", VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	osmo_signal_register_handler(SS_SCALL, scall_cbfn, NULL);
@@ -1099,6 +1140,12 @@ int bsc_vty_init_extra(void)
 
 	install_element(CFG_LOG_NODE, &log_level_sms_cmd);
 	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);
+
+
+	install_element(CONFIG_NODE, &cfg_nitb_cmd);
+	install_node(&nitb_node, config_write_nitb);
+	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
+	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);
 
 	return 0;
 }
