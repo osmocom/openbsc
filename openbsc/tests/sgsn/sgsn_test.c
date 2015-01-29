@@ -451,6 +451,11 @@ static void test_subscriber_gsup(void)
 		0x02, 0x01, 0x02, /* IMSI unknown in HLR */
 	};
 
+	static const uint8_t purge_ms_err_no_cause[] = {
+		0x0d,
+		TEST_GSUP_IMSI1_IE,
+	};
+
 	static const uint8_t purge_ms_res[] = {
 		0x0e,
 		TEST_GSUP_IMSI1_IE,
@@ -587,6 +592,11 @@ static void test_subscriber_gsup(void)
 	rc = rx_gsup_message(purge_ms_err,
 			     sizeof(purge_ms_err));
 	OSMO_ASSERT(rc == -GMM_CAUSE_IMSI_UNKNOWN);
+
+	/* Inject PurgeMsErr() GSUP message */
+	rc = rx_gsup_message(purge_ms_err_no_cause,
+			     sizeof(purge_ms_err_no_cause));
+	OSMO_ASSERT(rc == -GMM_CAUSE_NET_FAIL);
 
 	/* Inject InsertSubscrData GSUP message (unknown IMSI) */
 	last_updated_subscr = NULL;

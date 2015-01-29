@@ -514,6 +514,9 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		return -GMM_CAUSE_INV_MAND_INFO;
 	}
 
+	if (!gsup_msg.cause && GPRS_GSUP_IS_MSGT_ERROR(gsup_msg.message_type))
+		gsup_msg.cause = GMM_CAUSE_NET_FAIL;
+
 	subscr = gprs_subscr_get_by_imsi(gsup_msg.imsi);
 
 	if (!subscr) {
