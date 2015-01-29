@@ -515,6 +515,7 @@ static void test_subscriber_gsup(void)
 	rc = rx_gsup_message(send_auth_info_err, sizeof(send_auth_info_err));
 	OSMO_ASSERT(rc == -GMM_CAUSE_GPRS_NOTALLOWED);
 	OSMO_ASSERT(last_updated_subscr == s1);
+	OSMO_ASSERT(s1->sgsn_data->error_cause == GMM_CAUSE_GPRS_NOTALLOWED);
 
 	/* Check triplets */
 	OSMO_ASSERT(s1->sgsn_data->auth_triplets[0].key_seq == GSM_KEY_SEQ_INVAL);
@@ -526,6 +527,7 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(last_updated_subscr == s1);
 	OSMO_ASSERT(s1->flags & GPRS_SUBSCRIBER_ENABLE_PURGE);
+	OSMO_ASSERT(s1->sgsn_data->error_cause == SGSN_ERROR_CAUSE_NONE);
 
 	/* Check authorization */
 	OSMO_ASSERT(s1->authorized == 1);
@@ -534,6 +536,7 @@ static void test_subscriber_gsup(void)
 	rc = rx_gsup_message(update_location_err, sizeof(update_location_err));
 	OSMO_ASSERT(rc == -GMM_CAUSE_GPRS_NOTALLOWED);
 	OSMO_ASSERT(last_updated_subscr == s1);
+	OSMO_ASSERT(s1->sgsn_data->error_cause == GMM_CAUSE_GPRS_NOTALLOWED);
 
 	/* Check authorization */
 	OSMO_ASSERT(s1->authorized == 0);
@@ -566,6 +569,7 @@ static void test_subscriber_gsup(void)
 			     sizeof(location_cancellation_req));
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(last_updated_subscr == s1);
+	OSMO_ASSERT(s1->sgsn_data->error_cause == SGSN_ERROR_CAUSE_NONE);
 
 	/* Check cancellation result */
 	OSMO_ASSERT(s1->flags & GPRS_SUBSCRIBER_CANCELLED);
