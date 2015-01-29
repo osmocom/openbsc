@@ -67,6 +67,20 @@ shall be sent in the given order. Nevertheless after the generic part the
 receiver shall be able to received them in any order. Unknown IE shall be
 ignored.
 
+3.1.1. Error Messages
+
+  IEI	Info Element		Type			Pres.	Format	Length
+	Message type		4.2.1			M	V	1
+  01	IMSI			4.2.9			M	TLV	2-10
+  02	Cause			4.2.10			C	TLV	3
+
+The Cause information element shall be used, if the corresponding MAP response
+contains a User Error. The mapping is defined in 4.2.10. If the Cause IE is not
+included, the receiver shall assume the cause 'Network failure'.
+
+[TODO: decide whether to add an IE for a textual description of the error that
+can be used in log messages]
+
 3.2.1. Send Authentication Info Request
 
 SGSN -> Network peer
@@ -82,8 +96,7 @@ Network peer -> SGSN
   IEI	Info Element		Type			Pres.	Format	Length
 	Message type		4.2.1			M	V	1
   01	IMSI			4.2.9			M	TLV	2-10
-  02	Cause			GMM cause,		M	TLV	3
-				04.08: 10.5.5.14
+  02	Cause			4.2.10			C	TLV	3
 
 3.2.3. Send Authentication Info Response
 
@@ -109,8 +122,7 @@ Network peer -> SGSN
   IEI	Info Element		Type			Pres.	Format	Length
 	Message type		4.2.1			M	V	1
   01	IMSI			4.2.9			M	TLV	2-10
-  02	Cause			GMM cause,		M	TLV	3
-				04.08: 10.5.5.14
+  02	Cause			4.2.10			C	TLV	3
 
 3.2.6. Update Location Result
 
@@ -156,8 +168,7 @@ Network peer -> SGSN
   IEI	Info Element		Type			Pres.	Format	Length
 	Message type		4.2.1			M	V	1
   01	IMSI			4.2.9			M	TLV	2-10
-  02	Cause			GMM cause,		M	TLV	3
-				04.08: 10.5.5.14
+  02	Cause			4.2.10			C	TLV	3
 
 3.2.11. Purge MS Result
 
@@ -187,8 +198,7 @@ SGSN -> Network peer
   IEI	Info Element		Type			Pres.	Format	Length
 	Message type		4.2.1			M	V	1
   01	IMSI			4.2.9			M	TLV	2-10
-  02	Cause			GMM cause,		M	TLV	3
-				04.08: 10.5.5.14
+  02	Cause			4.2.10			C	TLV	3
 
 3.2.14. Insert Subscriber Data Result
 
@@ -215,8 +225,7 @@ SGSN -> Network peer
   IEI	Info Element		Type			Pres.	Format	Length
 	Message type		4.2.1			M	V	1
   01	IMSI			4.2.9			M	TLV	2-10
-  02	Cause			GMM cause,		M	TLV	3
-				04.08: 10.5.5.14
+  02	Cause			4.2.10			C	TLV	3
 
 3.2.17. Delete Subscriber Data Result
 
@@ -397,3 +406,51 @@ The IMSI is encoded like in octet 4-N of the Called Party BCD Number defined in 
 Note 1) Either '1 1 1 1 | Number digit N' (N odd) or
         'Number digit N | Number digit N-1' (N even),
         where N is the number of digits.
+
+4.2.10. Cause
+
+Cause are encoded as GMM cause values (see GSM 04.08, 10.5.5.14). If the cause
+IE is missing in an ERROR message, 'network failure' is assumed.
+
+     8      7      6      5      4      3      2      1
+  +-----------------------------------------------------+
+  |     |  Cause IEI                                    | octet 1
+  +-----------------------------------------------------+
+  |   Length of Cause IE contents (1)                   | octet 2
+  +-----------------------------------------------------+
+  |   Cause value                                       | octet 3
+  +-----------------------------------------------------+
+
+The MAP User Errors (see GSM 09.02, 7.6.1.4) are mapped as follows:
+
+  +-----------------------------------------------------------+
+  | MAP User Error                  GMM Cause                 |
+  |                                                           |
+  | system failure                  NET_FAIL                  |
+  | data missing                    COND_IE_ERR (?)           |
+  | unexpected data value           SEM_INCORR_MSG (?)        |
+  | resource limitation             NET_FAIL                  |
+  | initiating release              MSGT_INCOMP_P_STATE       |
+  | facility not supported          MSGT_NOTEXIST_NOTIMPL (?) |
+  | incompatible terminal           MSGT_NOTEXIST_NOTIMPL (?) |
+  |                                                           |
+  | unknown subscriber              IMSI_UNKNOWN              |
+  | number changed                  IMSI_UNKNOWN              |
+  | unknown MSC                     (?)                       |
+  | unidentified subscriber         IMSI_UNKNOWN              |
+  | unallocated roaming number      IMSI_UNKNOWN (?)          |
+  | unknown equipment               ILLEGAL_ME (?)            |
+  | unknown location area           LA_NOTALLOWED (?)         |
+  |                                                           |
+  | roaming not allowed             ROAMING_NOTALLOWED        |
+  | illegal subscriber              ILLEGAL_MS                |
+  | bearer service not provisioned  (?)                       |
+  | teleservice not provisioned     (?)                       |
+  | illegal equipment               ILLEGAL_ME                |
+  +-----------------------------------------------------------+
+
+[TODO: Finish the mapping table]
+
+In addition, the causes mentioned in GSM 04.08, G.3 and G.5, can be used for
+errors that are related to the decoding of messages defined by this
+specification or to the MAP connection to the HLR.
