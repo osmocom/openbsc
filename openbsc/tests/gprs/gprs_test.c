@@ -477,13 +477,13 @@ static void test_gsup_messages_dec_enc(void)
 	};
 
 	static const uint8_t purge_ms_err[] = {
-		0x0c,
+		0x0d,
 		TEST_IMSI_IE,
 		0x02, 0x01, 0x03, /* Illegal MS */
 	};
 
 	static const uint8_t purge_ms_res[] = {
-		0x0c,
+		0x0e,
 		TEST_IMSI_IE,
 		0x07, 0x00,
 	};
