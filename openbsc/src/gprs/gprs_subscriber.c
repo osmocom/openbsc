@@ -505,8 +505,14 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		return rc;
 	}
 
-	if (!gsup_msg.imsi[0])
+	if (!gsup_msg.imsi[0]) {
+		LOGP(DGPRS, LOGL_ERROR, "Missing IMSI in GSUP message\n");
+
+		if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
+			gprs_subscr_tx_gsup_error_reply(NULL, &gsup_msg,
+							GMM_CAUSE_INV_MAND_INFO);
 		return -GMM_CAUSE_INV_MAND_INFO;
+	}
 
 	subscr = gprs_subscr_get_by_imsi(gsup_msg.imsi);
 
