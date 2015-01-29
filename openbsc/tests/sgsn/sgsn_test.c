@@ -445,6 +445,19 @@ static void test_subscriber_gsup(void)
 		0x06, 0x01, 0x00,
 	};
 
+	static const uint8_t purge_ms_err[] = {
+		0x0d,
+		TEST_GSUP_IMSI1_IE,
+		0x02, 0x01, 0x02, /* IMSI unknown in HLR */
+	};
+
+	static const uint8_t purge_ms_res[] = {
+		0x0e,
+		TEST_GSUP_IMSI1_IE,
+		0x07, 0x00,
+	};
+
+
 	static const uint8_t insert_data_req[] = {
 		0x10,
 		TEST_GSUP_IMSI1_IE,
@@ -507,6 +520,7 @@ static void test_subscriber_gsup(void)
 	rc = rx_gsup_message(update_location_res, sizeof(update_location_res));
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(last_updated_subscr == s1);
+	OSMO_ASSERT(s1->flags & GPRS_SUBSCRIBER_ENABLE_PURGE);
 
 	/* Check authorization */
 	OSMO_ASSERT(s1->authorized == 1);
@@ -552,11 +566,27 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(s1->flags & GPRS_SUBSCRIBER_CANCELLED);
 	OSMO_ASSERT(s1->sgsn_data->mm == NULL);
 
+	/* Inject PurgeMsRes GSUP message */
+	rc = rx_gsup_message(purge_ms_res,
+			     sizeof(purge_ms_res));
+	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(!(s1->flags & GPRS_SUBSCRIBER_ENABLE_PURGE));
+
 	/* Free MM context and subscriber */
 	subscr_put(s1);
 	s1found = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(s1found == NULL);
 	gprs_llgmm_assign(llme, local_tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+
+	/* Inject PurgeMsRes GSUP message */
+	rc = rx_gsup_message(purge_ms_res,
+			     sizeof(purge_ms_res));
+	OSMO_ASSERT(rc >= 0);
+
+	/* Inject PurgeMsErr(IMSI unknown in HLR) GSUP message */
+	rc = rx_gsup_message(purge_ms_err,
+			     sizeof(purge_ms_err));
+	OSMO_ASSERT(rc == -GMM_CAUSE_IMSI_UNKNOWN);
 
 	/* Inject InsertSubscrData GSUP message (unknown IMSI) */
 	last_updated_subscr = NULL;
