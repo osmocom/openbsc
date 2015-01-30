@@ -383,7 +383,6 @@ static void test_subscriber_gsup(void)
 	struct sgsn_mm_ctx *ctx;
 	struct gprs_ra_id raid = { 0, };
 	uint32_t local_tlli = 0xffeeddcc;
-	struct gprs_llc_llme *llme;
 	int rc;
 
 	static const uint8_t send_auth_info_res[] = {
@@ -495,7 +494,6 @@ static void test_subscriber_gsup(void)
 	/* Create a context */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ctx = alloc_mm_ctx(local_tlli, &raid);
-	llme = ctx->llme;
 
 	/* Attach s1 to ctx */
 	ctx->subscr = subscr_get(s1);
@@ -582,10 +580,11 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(!(s1->flags & GPRS_SUBSCRIBER_ENABLE_PURGE));
 
 	/* Free MM context and subscriber */
+	OSMO_ASSERT(ctx->subscr == NULL);
+	sgsn_mm_ctx_cleanup_free(ctx);
 	subscr_put(s1);
 	s1found = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(s1found == NULL);
-	gprs_llgmm_assign(llme, local_tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
 
 	/* Inject PurgeMsRes GSUP message */
 	rc = rx_gsup_message(purge_ms_res,
@@ -1834,9 +1833,12 @@ static struct log_info info = {
 
 int main(int argc, char **argv)
 {
+	void *osmo_sgsn_ctx;
+
 	osmo_init_logging(&info);
-	tall_bsc_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");
-	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
+	osmo_sgsn_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");
+	tall_bsc_ctx = talloc_named_const(osmo_sgsn_ctx, 0, "bsc");
+	tall_msgb_ctx = talloc_named_const(osmo_sgsn_ctx, 0, "msgb");
 
 	sgsn_auth_init();
 	gprs_subscr_init(sgsn);
@@ -1863,8 +1865,9 @@ int main(int argc, char **argv)
 	test_gmm_ptmsi_allocation();
 	printf("Done\n");
 
-	talloc_report_full(tall_bsc_ctx, stderr);
+	talloc_report_full(osmo_sgsn_ctx, stderr);
 	OSMO_ASSERT(talloc_total_blocks(tall_msgb_ctx) == 1);
+	OSMO_ASSERT(talloc_total_blocks(tall_bsc_ctx) == 1);
 	return 0;
 }
 
