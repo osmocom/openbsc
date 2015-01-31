@@ -953,8 +953,10 @@ static int config_write_mncc_int(struct vty *vty)
 {
 	uint16_t meas_port;
 	char *meas_host;
+	const char *meas_scenario;
 
 	meas_feed_cfg_get(&meas_host, &meas_port);
+	meas_scenario = meas_feed_scenario_get();
 
 	vty_out(vty, "mncc-int%s", VTY_NEWLINE);
 	vty_out(vty, " default-codec tch-f %s%s",
@@ -966,6 +968,9 @@ static int config_write_mncc_int(struct vty *vty)
 	if (meas_port)
 		vty_out(vty, " meas-feed destination %s %u%s",
 			meas_host, meas_port, VTY_NEWLINE);
+	if (strlen(meas_scenario) > 0)
+		vty_out(vty, " meas-feed scenario %s%s",
+			meas_scenario, VTY_NEWLINE);
 
 
 	return CMD_SUCCESS;
@@ -1138,6 +1143,7 @@ int bsc_vty_init_extra(void)
 	install_element(MNCC_INT_NODE, &mnccint_def_codec_f_cmd);
 	install_element(MNCC_INT_NODE, &mnccint_def_codec_h_cmd);
 	install_element(MNCC_INT_NODE, &mnccint_meas_feed_cmd);
+	install_element(MNCC_INT_NODE, &meas_feed_scenario_cmd);
 
 	install_element(CFG_LOG_NODE, &log_level_sms_cmd);
 	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);

@@ -296,6 +296,25 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command("show network")
         self.assert_(res.startswith('BSC is on Country Code') >= 0)
 
+    def testMeasurementFeed(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("mncc-int")
+
+        res = self.vty.command("write terminal")
+        self.assertEquals(res.find('meas-feed scenario'), -1)
+
+        self.vty.command("meas-feed scenario bla")
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('meas-feed scenario bla') > 0)
+
+	self.vty.command("meas-feed scenario abcdefghijklmnopqrstuvwxyz01234567890")
+        res = self.vty.command("write terminal")
+        self.assertEquals(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz01234567890'), -1)
+        self.assertEquals(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz012345'), -1)
+        self.assert_(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz01234') > 0)
+
+
 class TestVTYBSC(TestVTYGenericBSC):
 
     def vty_command(self):
