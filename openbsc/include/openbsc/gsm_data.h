@@ -403,8 +403,9 @@ const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
 enum rrlp_mode rrlp_mode_parse(const char *arg);
 const char *rrlp_mode_name(enum rrlp_mode mode);
 
-enum bts_gprs_mode bts_gprs_mode_parse(const char *arg);
+enum bts_gprs_mode bts_gprs_mode_parse(const char *arg, int *valid);
 const char *bts_gprs_mode_name(enum bts_gprs_mode mode);
+int bts_gprs_mode_is_compat(struct gsm_bts *bts, enum bts_gprs_mode mode);
 
 int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts);
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);

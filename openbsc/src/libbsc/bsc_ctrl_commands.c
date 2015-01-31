@@ -1,6 +1,6 @@
 /*
- * (C) 2013-2014 by Holger Hans Peter Freyther
- * (C) 2013-2014 by sysmocom s.f.m.c. GmbH
+ * (C) 2013-2015 by Holger Hans Peter Freyther
+ * (C) 2013-2015 by sysmocom s.f.m.c. GmbH
  *
  * All Rights Reserved
  *
@@ -299,6 +299,45 @@ static int set_bts_oml_conn(struct ctrl_cmd *cmd, void *data)
 }
 CTRL_CMD_DEFINE(bts_oml_conn, "oml-connection-state");
 
+static int verify_bts_gprs_mode(struct ctrl_cmd *cmd, const char *value, void *_data)
+{
+	int valid;
+	enum bts_gprs_mode mode;
+	struct gsm_bts *bts = cmd->node;
+
+	mode = bts_gprs_mode_parse(value, &valid);
+	if (!valid) {
+		cmd->reply = "Mode is not known";
+		return 1;
+	}
+
+	if (!bts_gprs_mode_is_compat(bts, mode)) {
+		cmd->reply = "bts does not support this mode";
+		return 1;
+	}
+
+	return 0;
+}
+
+static int get_bts_gprs_mode(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+
+	cmd->reply = talloc_strdup(cmd, bts_gprs_mode_name(bts->gprs.mode));
+	return CTRL_CMD_REPLY;
+}
+
+static int set_bts_gprs_mode(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+
+	bts->gprs.mode = bts_gprs_mode_parse(cmd->value, NULL);
+	return get_bts_gprs_mode(cmd, data);
+}
+
+CTRL_CMD_DEFINE(bts_gprs_mode, "gprs-mode");
+
+
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
 static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
@@ -356,6 +395,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_si);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_chan_load);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_oml_conn);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_gprs_mode);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_arfcn);

@@ -199,14 +199,33 @@ static const struct value_string bts_gprs_mode_names[] = {
 	{ 0,			NULL }
 };
 
-enum bts_gprs_mode bts_gprs_mode_parse(const char *arg)
+enum bts_gprs_mode bts_gprs_mode_parse(const char *arg, int *valid)
 {
-	return get_string_value(bts_gprs_mode_names, arg);
+	int rc;
+
+	rc = get_string_value(bts_gprs_mode_names, arg);
+	if (valid)
+		*valid = rc != -EINVAL;
+	return rc;
 }
 
 const char *bts_gprs_mode_name(enum bts_gprs_mode mode)
 {
 	return get_value_string(bts_gprs_mode_names, mode);
+}
+
+int bts_gprs_mode_is_compat(struct gsm_bts *bts, enum bts_gprs_mode mode)
+{
+	if (mode != BTS_GPRS_NONE &&
+	    !gsm_bts_has_feature(bts, BTS_FEAT_GPRS)) {
+		return 0;
+	}
+	if (mode == BTS_GPRS_EGPRS &&
+	    !gsm_bts_has_feature(bts, BTS_FEAT_EGPRS)) {
+		return 0;
+	}
+
+	return 1;
 }
 
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)

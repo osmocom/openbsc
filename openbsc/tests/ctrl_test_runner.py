@@ -491,6 +491,25 @@ class TestCtrlNITB(TestCtrlBase):
         self.assertEquals(r['mtype'], 'SET_REPLY')
         self.assertEquals(r['value'], 'Tried to drop the BTS')
 
+    def testGprsMode(self):
+        r = self.do_get('bts.0.gprs-mode')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.gprs-mode')
+        self.assertEquals(r['value'], 'none')
+
+        r = self.do_set('bts.0.gprs-mode', 'bla')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Mode is not known')
+
+        r = self.do_set('bts.0.gprs-mode', 'egprs')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['value'], 'egprs')
+
+        r = self.do_get('bts.0.gprs-mode')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.gprs-mode')
+        self.assertEquals(r['value'], 'egprs')
+
 class TestCtrlNAT(TestCtrlBase):
 
     def ctrl_command(self):
