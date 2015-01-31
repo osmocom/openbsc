@@ -443,41 +443,6 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 }
 
 /* Chapter 8.4.1 */
-#if 0
-int rsl_chan_activate(struct gsm_bts_trx *trx, uint8_t chan_nr,
-		      uint8_t act_type,
-		      struct rsl_ie_chan_mode *chan_mode,
-		      struct rsl_ie_chan_ident *chan_ident,
-		      uint8_t bs_power, uint8_t ms_power,
-		      uint8_t ta)
-{
-	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
-
-	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
-	init_dchan_hdr(dh, RSL_MT_CHAN_ACTIV);
-	dh->chan_nr = chan_nr;
-
-	msgb_tv_put(msg, RSL_IE_ACT_TYPE, act_type);
-	/* For compatibility with Phase 1 */
-	msgb_tlv_put(msg, RSL_IE_CHAN_MODE, sizeof(*chan_mode),
-		     (uint8_t *) chan_mode);
-	msgb_tlv_put(msg, RSL_IE_CHAN_IDENT, 4,
-		     (uint8_t *) chan_ident);
-#if 0
-	msgb_tlv_put(msg, RSL_IE_ENCR_INFO, 1,
-		     (uint8_t *) &encr_info);
-#endif
-	msgb_tv_put(msg, RSL_IE_BS_POWER, bs_power);
-	msgb_tv_put(msg, RSL_IE_MS_POWER, ms_power);
-	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
-
-	msg->dst = trx->rsl_link;
-
-	return abis_rsl_sendmsg(msg);
-}
-#endif
-
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 			    uint8_t ho_ref)
 {
