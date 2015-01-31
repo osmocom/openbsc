@@ -62,7 +62,7 @@ const struct value_string gsm_pchant_names[12] = {
 	{ GSM_PCHAN_TCH_F_PDCH,	"TCH/F_PDCH" },
 	{ GSM_PCHAN_UNKNOWN,	"UNKNOWN" },
 	{ GSM_PCHAN_CCCH_SDCCH4_CBCH, "CCCH+SDCCH4+CBCH" },
-	{ GSM_PCHAN_SDCCH8_SACCH8C, "SDCCH8+CBCH" },
+	{ GSM_PCHAN_SDCCH8_SACCH8C_CBCH, "SDCCH8+CBCH" },
 	{ 0,			NULL }
 };
 
@@ -78,7 +78,7 @@ const struct value_string gsm_pchant_descs[12] = {
 	{ GSM_PCHAN_TCH_F_PDCH,	"Dynamic TCH/F or GPRS PDCH" },
 	{ GSM_PCHAN_UNKNOWN,	"Unknown / Unsupported channel combination" },
 	{ GSM_PCHAN_CCCH_SDCCH4_CBCH, "FCCH + SCH + BCCH + CCCH + CBCH + 3 SDCCH + 2 SACCH (Comb. V)" },
-	{ GSM_PCHAN_SDCCH8_SACCH8C, "7 SDCCH + 4 SACCH + CBCH (Comb. VII)" },
+	{ GSM_PCHAN_SDCCH8_SACCH8C_CBCH, "7 SDCCH + 4 SACCH + CBCH (Comb. VII)" },
 	{ 0,			NULL }
 };
 

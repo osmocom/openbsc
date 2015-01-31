@@ -248,6 +248,8 @@ static int get_bts_chan_load(struct ctrl_cmd *cmd, void *data)
 			continue;
 		if (i == GSM_PCHAN_PDCH)
 			continue;
+		if (i == GSM_PCHAN_UNKNOWN)
+			continue;
 
 		cmd->reply = talloc_asprintf_append(cmd->reply,
 					"%s%s,%u,%u",
