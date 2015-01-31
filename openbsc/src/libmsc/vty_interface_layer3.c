@@ -1007,9 +1007,10 @@ DEFUN_DEPRECATED(log_level_sms, log_level_sms_cmd,
 	return CMD_SUCCESS;
 }
 
+#define MEAS_STR "Measurement export related\n"
 DEFUN(mnccint_meas_feed, mnccint_meas_feed_cmd,
 	"meas-feed destination ADDR <0-65535>",
-	"FIXME")
+	MEAS_STR "destination\n" "address or hostname\n" "port number\n")
 {
 	int rc;
 
@@ -1022,7 +1023,7 @@ DEFUN(mnccint_meas_feed, mnccint_meas_feed_cmd,
 
 DEFUN(meas_feed_scenario, meas_feed_scenario_cmd,
 	"meas-feed scenario NAME",
-	"FIXME")
+	MEAS_STR "scenario\n" "Name up to 31 characters included in report\n")
 {
 	meas_feed_scenario_set(argv[0]);
 
