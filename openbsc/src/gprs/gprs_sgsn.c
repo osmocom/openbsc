@@ -35,6 +35,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/gprs_gmm.h>
+#include <openbsc/gprs_utils.h>
 #include "openbsc/gprs_llc.h"
 
 #include <time.h>
@@ -579,6 +580,115 @@ void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)
 	LOGMMCTXP(LOGL_INFO, mmctx, "Subscriber data update\n");
 
 	sgsn_auth_update(mmctx);
+}
+
+struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
+						struct tlv_parsed *tp,
+						enum gsm48_gsm_cause *gsm_cause)
+{
+	char req_apn_str[GSM_APN_LENGTH] = {0};
+	const struct apn_ctx *apn_ctx = NULL;
+	const char *selected_apn_str = NULL;
+	struct sgsn_subscriber_pdp_data *pdp;
+	struct sgsn_ggsn_ctx *ggsn = NULL;
+	int allow_any_apn = 0;
+
+	if (TLVP_PRESENT(tp, GSM48_IE_GSM_APN)) {
+		if (TLVP_LEN(tp, GSM48_IE_GSM_APN) >= GSM_APN_LENGTH - 1) {
+			LOGMMCTXP(LOGL_ERROR, mmctx, "APN IE too long\n");
+			*gsm_cause = GSM_CAUSE_INV_MAND_INFO;
+			return NULL;
+		}
+
+		gprs_apn_to_str(req_apn_str,
+				TLVP_VAL(tp, GSM48_IE_GSM_APN),
+				TLVP_LEN(tp, GSM48_IE_GSM_APN));
+
+		if (strcmp(req_apn_str, "*") == 0)
+			req_apn_str[0] = 0;
+	}
+
+	if (mmctx->subscr == NULL ||
+	    llist_empty(&mmctx->subscr->sgsn_data->pdp_list))
+		allow_any_apn = 1;
+
+	if (strlen(req_apn_str) == 0 && !allow_any_apn) {
+		/* No specific APN requested, check for an APN that is both
+		 * granted and configured */
+
+		llist_for_each_entry(pdp, &mmctx->subscr->sgsn_data->pdp_list, list) {
+			if (strcmp(pdp->apn_str, "*") == 0)
+			{
+				allow_any_apn = 1;
+				selected_apn_str = "";
+				continue;
+			}
+			if (!llist_empty(&sgsn_apn_ctxts)) {
+				apn_ctx = sgsn_apn_ctx_match(req_apn_str, mmctx->imsi);
+				/* Not configured */
+				if (apn_ctx == NULL)
+					continue;
+			}
+			selected_apn_str = pdp->apn_str;
+			break;
+		}
+	} else if (!allow_any_apn) {
+		/* Check whether the given APN is granted */
+		llist_for_each_entry(pdp, &mmctx->subscr->sgsn_data->pdp_list, list) {
+			if (strcmp(pdp->apn_str, "*") == 0) {
+				selected_apn_str = req_apn_str;
+				allow_any_apn = 1;
+				continue;
+			}
+			if (strcasecmp(pdp->apn_str, req_apn_str) == 0) {
+				selected_apn_str = req_apn_str;
+				break;
+			}
+		}
+	} else if (strlen(req_apn_str) != 0) {
+		/* Any APN is allowed */
+		selected_apn_str = req_apn_str;
+	} else {
+		/* Prefer the GGSN associated with the wildcard APN */
+		selected_apn_str = "";
+	}
+
+	if (!allow_any_apn && selected_apn_str == NULL) {
+		/* Access not granted */
+		LOGMMCTXP(LOGL_NOTICE, mmctx,
+			  "The requested APN '%s' is not allowed\n",
+			  req_apn_str);
+		*gsm_cause = GSM_CAUSE_REQ_SERV_OPT_NOTSUB;
+		return NULL;
+	}
+
+	if (apn_ctx == NULL && selected_apn_str)
+		apn_ctx = sgsn_apn_ctx_match(selected_apn_str, mmctx->imsi);
+
+	if (apn_ctx != NULL) {
+		ggsn = apn_ctx->ggsn;
+	} else if (llist_empty(&sgsn_apn_ctxts)) {
+		/* No configuration -> use GGSN 0 */
+		ggsn = sgsn_ggsn_ctx_by_id(0);
+	} else if (allow_any_apn &&
+		   (selected_apn_str == NULL || strlen(selected_apn_str) == 0)) {
+		/* No APN given and no default configuration -> Use GGSN 0 */
+		ggsn = sgsn_ggsn_ctx_by_id(0);
+	} else {
+		/* No matching configuration found */
+		LOGMMCTXP(LOGL_NOTICE, mmctx,
+			  "The selected APN '%s' has not been configured\n",
+			  selected_apn_str);
+		*gsm_cause = GSM_CAUSE_MISSING_APN;
+		return NULL;
+	}
+
+	LOGMMCTXP(LOGL_INFO, mmctx,
+		  "Found GGSN %d for APN '%s' (requested '%s')\n",
+		  ggsn->id, selected_apn_str ? selected_apn_str : "---",
+		  req_apn_str);
+
+	return ggsn;
 }
 
 static void sgsn_llme_cleanup_free(struct gprs_llc_llme *llme)

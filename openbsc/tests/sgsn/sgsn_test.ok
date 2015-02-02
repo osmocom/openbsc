@@ -27,4 +27,5 @@ Testing P-TMSI allocation
   - Repeated Attach Request
   - Repeated RA Update Request
 Testing APN matching
+Testing GGSN selection
 Done
