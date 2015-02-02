@@ -1541,6 +1541,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	uint8_t transaction_id = (gh->proto_discr >> 4);
 	struct sgsn_ggsn_ctx *ggsn;
 	struct sgsn_pdp_ctx *pdp;
+	enum gsm48_gsm_cause gsm_cause;
 
 	LOGMMCTXP(LOGL_INFO, mmctx, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
 		act_req->req_llc_sapi, act_req->req_nsapi);
@@ -1599,9 +1600,6 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].len = req_pdpa_len;
 	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].val = req_pdpa;
 
-	/* FIXME:  determine GGSN based on APN and subscription options */
-	if (TLVP_PRESENT(&tp, GSM48_IE_GSM_APN)) {}
-
 	/* Check if NSAPI is out of range (TS 04.65 / 7.2) */
 	if (act_req->req_nsapi < 5 || act_req->req_nsapi > 15) {
 		/* Send reject with GSM_CAUSE_INV_MAND_INFO */
@@ -1631,11 +1629,14 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	 * for re-transmissions */
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PDP_CTX_ACT]);
 
-	ggsn = sgsn_ggsn_ctx_by_id(0);
+	/* Determine GGSN based on APN and subscription options */
+	ggsn = sgsn_mm_ctx_find_ggsn_ctx(mmctx, &tp, &gsm_cause);
 	if (!ggsn) {
-		LOGP(DGPRS, LOGL_ERROR, "No GGSN context 0 found!\n");
-		return -EIO;
+		LOGP(DGPRS, LOGL_ERROR, "No GGSN context found!\n");
+		return gsm48_tx_gsm_act_pdp_rej(mmctx, transaction_id,
+						gsm_cause, 0, NULL);
 	}
+	LOGMMCTXP(LOGL_DEBUG, mmctx, "Using GGSN %d\n", ggsn->id);
 	ggsn->gsn = sgsn->gsn;
 	pdp = sgsn_create_pdp_ctx(ggsn, mmctx, act_req->req_nsapi, &tp);
 	if (!pdp)

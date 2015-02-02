@@ -21,6 +21,8 @@ struct gprs_llc_lle;
 struct ctrl_handle;
 struct gsm_subscriber;
 
+enum gsm48_gsm_cause;
+
 /* TS 04.08 4.1.3.3 GMM mobility management states on the network side */
 enum gprs_mm_state {
 	GMM_DEREGISTERED,		/* 4.1.3.3.1.1 */
@@ -153,6 +155,9 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm);
 void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx);
 
+struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
+						struct tlv_parsed *tp,
+						enum gsm48_gsm_cause *gsm_cause);
 
 enum pdp_ctx_state {
 	PDP_STATE_NONE,

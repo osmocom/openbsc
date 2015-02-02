@@ -26,6 +26,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gprs_gsup_messages.h>
 #include <openbsc/gprs_gsup_client.h>
+#include <openbsc/gprs_utils.h>
 
 #include <osmocom/gprs/gprs_bssgp.h>
 
@@ -1876,6 +1877,139 @@ static void test_apn_matching(void)
 	OSMO_ASSERT(actx == NULL);
 }
 
+struct sgsn_subscriber_pdp_data* sgsn_subscriber_pdp_data_alloc(
+	struct sgsn_subscriber_data *sdata);
+
+static void test_ggsn_selection(void)
+{
+	struct apn_ctx *actxs[4];
+	struct sgsn_ggsn_ctx *ggc, *ggcs[3];
+	struct gsm_subscriber *s1;
+	const char *imsi1 = "1234567890";
+	struct sgsn_mm_ctx *ctx;
+	struct gprs_ra_id raid = { 0, };
+	uint32_t local_tlli = 0xffeeddcc;
+	enum gsm48_gsm_cause gsm_cause;
+	struct tlv_parsed tp;
+	uint8_t apn_enc[GSM_APN_LENGTH + 10];
+	struct sgsn_subscriber_pdp_data *pdp_data;
+
+	printf("Testing GGSN selection\n");
+
+	gprs_gsup_client_send_cb = my_gprs_gsup_client_send_dummy;
+
+	/* Check for emptiness */
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
+
+	/* Create a context */
+	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+	ctx = alloc_mm_ctx(local_tlli, &raid);
+	strncpy(ctx->imsi, imsi1, sizeof(ctx->imsi) - 1);
+
+	/* Allocate and attach a subscriber */
+	s1 = gprs_subscr_get_or_create_by_mmctx(ctx);
+	assert_subscr(s1, imsi1);
+
+	tp.lv[GSM48_IE_GSM_APN].len = 0;
+	tp.lv[GSM48_IE_GSM_APN].val = apn_enc;
+
+	/* TODO: Add PDP info entries to s1 */
+
+	ggcs[0] = sgsn_ggsn_ctx_find_alloc(0);
+	ggcs[1] = sgsn_ggsn_ctx_find_alloc(1);
+	ggcs[2] = sgsn_ggsn_ctx_find_alloc(2);
+
+	actxs[0] = sgsn_apn_ctx_find_alloc("test.apn", "123456");
+	actxs[0]->ggsn = ggcs[0];
+	actxs[1] = sgsn_apn_ctx_find_alloc("*.apn", "123456");
+	actxs[1]->ggsn = ggcs[1];
+	actxs[2] = sgsn_apn_ctx_find_alloc("*", "456789");
+	actxs[2]->ggsn = ggcs[2];
+
+	/* Resolve GGSNs */
+
+	tp.lv[GSM48_IE_GSM_APN].len =
+		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Test.Apn");
+
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	OSMO_ASSERT(ggc != NULL);
+	OSMO_ASSERT(ggc->id == 0);
+
+	tp.lv[GSM48_IE_GSM_APN].len =
+		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Other.Apn");
+
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	OSMO_ASSERT(ggc != NULL);
+	OSMO_ASSERT(ggc->id == 1);
+
+	tp.lv[GSM48_IE_GSM_APN].len = 0;
+	tp.lv[GSM48_IE_GSM_APN].val = NULL;
+
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	OSMO_ASSERT(ggc != NULL);
+	OSMO_ASSERT(ggc->id == 0);
+
+	actxs[3] = sgsn_apn_ctx_find_alloc("*", "123456");
+	actxs[3]->ggsn = ggcs[2];
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	OSMO_ASSERT(ggc != NULL);
+	OSMO_ASSERT(ggc->id == 2);
+
+	sgsn_apn_ctx_free(actxs[3]);
+	tp.lv[GSM48_IE_GSM_APN].val = apn_enc;
+
+	tp.lv[GSM48_IE_GSM_APN].len =
+		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Foo.Bar");
+
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	OSMO_ASSERT(ggc == NULL);
+	OSMO_ASSERT(gsm_cause == GSM_CAUSE_MISSING_APN);
+
+	tp.lv[GSM48_IE_GSM_APN].len = sizeof(apn_enc);
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	OSMO_ASSERT(ggc == NULL);
+	OSMO_ASSERT(gsm_cause == GSM_CAUSE_INV_MAND_INFO);
+
+	/* Add PDP data entry to subscriber */
+
+	pdp_data = sgsn_subscriber_pdp_data_alloc(s1->sgsn_data);
+	pdp_data->context_id = 1;
+
+	pdp_data->pdp_type = 0x0121;
+	strncpy(pdp_data->apn_str, "Test.Apn", sizeof(pdp_data->apn_str)-1);
+
+	tp.lv[GSM48_IE_GSM_APN].len =
+		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Test.Apn");
+
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	OSMO_ASSERT(ggc != NULL);
+	OSMO_ASSERT(ggc->id == 0);
+
+	tp.lv[GSM48_IE_GSM_APN].len =
+		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Other.Apn");
+
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	OSMO_ASSERT(ggc == NULL);
+	OSMO_ASSERT(gsm_cause == GSM_CAUSE_REQ_SERV_OPT_NOTSUB);
+
+	/* Cleanup */
+
+	subscr_put(s1);
+	sgsn_mm_ctx_cleanup_free(ctx);
+
+	assert_no_subscrs();
+
+	sgsn_apn_ctx_free(actxs[0]);
+	sgsn_apn_ctx_free(actxs[1]);
+	sgsn_apn_ctx_free(actxs[2]);
+
+	sgsn_ggsn_ctx_free(ggcs[0]);
+	sgsn_ggsn_ctx_free(ggcs[1]);
+	sgsn_ggsn_ctx_free(ggcs[2]);
+
+	gprs_gsup_client_send_cb = __real_gprs_gsup_client_send;
+}
+
 static struct log_info_cat gprs_categories[] = {
 	[DMM] = {
 		.name = "DMM",
@@ -1964,6 +2098,7 @@ int main(int argc, char **argv)
 	test_gmm_cancel();
 	test_gmm_ptmsi_allocation();
 	test_apn_matching();
+	test_ggsn_selection();
 	printf("Done\n");
 
 	talloc_report_full(osmo_sgsn_ctx, stderr);
