@@ -2,7 +2,6 @@ Testing LLME allocations
 Testing core subscriber data API
 Testing authentication triplet handling
 Testing subcriber GSUP handling
-Testing subcriber procedure blocking
 Testing GMM detach
 Testing GMM detach (power off)
 Testing GMM detach (no MMCTX)
