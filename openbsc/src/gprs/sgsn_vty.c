@@ -126,6 +126,7 @@ static int config_write_sgsn(struct vty *vty)
 {
 	struct sgsn_ggsn_ctx *gctx;
 	struct imsi_acl_entry *acl;
+	struct apn_ctx *actx;
 
 	vty_out(vty, "sgsn%s", VTY_NEWLINE);
 
@@ -150,6 +151,18 @@ static int config_write_sgsn(struct vty *vty)
 			g_cfg->gsup_server_port, VTY_NEWLINE);
 	llist_for_each_entry(acl, &g_cfg->imsi_acl, list)
 		vty_out(vty, " imsi-acl add %s%s", acl->imsi, VTY_NEWLINE);
+
+	if (llist_empty(&sgsn_apn_ctxts))
+		vty_out(vty, " ! apn * ggsn 0%s", VTY_NEWLINE);
+	llist_for_each_entry(actx, &sgsn_apn_ctxts, list) {
+		if (strlen(actx->imsi_prefix) > 0)
+			vty_out(vty, " apn %s imsi-prefix %s ggsn %d%s",
+				actx->name, actx->imsi_prefix, actx->ggsn->id,
+				VTY_NEWLINE);
+		else
+			vty_out(vty, " apn %s ggsn %d%s", actx->name,
+				actx->ggsn->id, VTY_NEWLINE);
+	}
 
 	return CMD_SUCCESS;
 }
@@ -216,14 +229,55 @@ DEFUN(cfg_ggsn_gtp_version, cfg_ggsn_gtp_version_cmd,
 	return CMD_SUCCESS;
 }
 
-#if 0
+#define APN_STR	"Configure the information per APN\n"
+#define APN_GW_STR "The APN gateway name optionally prefixed by '*' (wildcard)\n"
+
+static int add_apn_ggsn_mapping(struct vty *vty, const char *apn_str,
+				const char *imsi_prefix, int ggsn_id)
+{
+	struct apn_ctx *actx;
+	struct sgsn_ggsn_ctx *ggsn;
+
+	ggsn = sgsn_ggsn_ctx_by_id(ggsn_id);
+	if (ggsn == NULL) {
+		vty_out(vty, "%% a GGSN with id %d has not been defined%s",
+			ggsn_id, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	actx = sgsn_apn_ctx_find_alloc(apn_str, imsi_prefix);
+	if (!actx) {
+		vty_out(vty, "%% unable to create APN context for %s/%s%s",
+			apn_str, imsi_prefix, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	actx->ggsn = ggsn;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_apn_ggsn, cfg_apn_ggsn_cmd,
 	"apn APNAME ggsn <0-255>",
-	"")
+	APN_STR APN_GW_STR
+	"Select the GGSN to use when the APN gateway prefix matches\n"
+	"The GGSN id")
 {
-	struct apn_ctx **
+
+	return add_apn_ggsn_mapping(vty, argv[0], "", atoi(argv[1]));
 }
-#endif
+
+DEFUN(cfg_apn_imsi_ggsn, cfg_apn_imsi_ggsn_cmd,
+	"apn APNAME imsi-prefix IMSIPRE ggsn <0-255>",
+	APN_STR APN_GW_STR
+	"Restrict rule to a certain IMSI prefix\n"
+	"An IMSI prefix\n"
+	"Select the GGSN to use when APN gateway and IMSI prefix match\n"
+	"The GGSN id")
+{
+
+	return add_apn_ggsn_mapping(vty, argv[0], argv[1], atoi(argv[2]));
+}
 
 const struct value_string gprs_mm_st_strs[] = {
 	{ GMM_DEREGISTERED, "DEREGISTERED" },
@@ -757,6 +811,8 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_auth_policy_cmd);
 	install_element(SGSN_NODE, &cfg_gsup_remote_ip_cmd);
 	install_element(SGSN_NODE, &cfg_gsup_remote_port_cmd);
+	install_element(SGSN_NODE, &cfg_apn_ggsn_cmd);
+	install_element(SGSN_NODE, &cfg_apn_imsi_ggsn_cmd);
 
 	return 0;
 }
