@@ -352,6 +352,12 @@ struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_alloc(uint32_t id)
 	return ggc;
 }
 
+void sgsn_ggsn_ctx_free(struct sgsn_ggsn_ctx *ggc)
+{
+	llist_del(&ggc->list);
+	talloc_free(ggc);
+}
+
 struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_by_id(uint32_t id)
 {
 	struct sgsn_ggsn_ctx *ggc;

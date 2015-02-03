@@ -231,6 +231,7 @@ struct sgsn_ggsn_ctx {
 	struct gsn_t *gsn;
 };
 struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_alloc(uint32_t id);
+void sgsn_ggsn_ctx_free(struct sgsn_ggsn_ctx *ggc);
 struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_by_id(uint32_t id);
 struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_by_addr(struct in_addr *addr);
 struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_find_alloc(uint32_t id);
