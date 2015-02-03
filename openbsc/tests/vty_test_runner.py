@@ -794,6 +794,27 @@ class TestVTYSGSN(TestVTYGenericBSC):
         res = self.vty.command('show subscriber cache')
         self.assert_(res.find('1234567890') < 0)
 
+    def testVtyGgsn(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify('configure terminal', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify('sgsn', ['']))
+        self.assertEquals(self.vty.node(), 'config-sgsn')
+        self.assertTrue(self.vty.verify('ggsn 0 remote-ip 127.99.99.99', ['']))
+        self.assertTrue(self.vty.verify('ggsn 0 gtp-version 1', ['']))
+        self.assertTrue(self.vty.verify('apn * ggsn 0', ['']))
+        self.assertTrue(self.vty.verify('apn apn1.test ggsn 0', ['']))
+        self.assertTrue(self.vty.verify('apn apn1.test ggsn 1', ['% a GGSN with id 1 has not been defined']))
+        self.assertTrue(self.vty.verify('apn apn1.test imsi-prefix 123456 ggsn 0', ['']))
+        self.assertTrue(self.vty.verify('apn apn2.test imsi-prefix 123456 ggsn 0', ['']))
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('ggsn 0 remote-ip 127.99.99.99') >= 0)
+        self.assert_(res.find('ggsn 0 gtp-version 1') >= 0)
+        self.assert_(res.find('apn * ggsn 0') >= 0)
+        self.assert_(res.find('apn apn1.test ggsn 0') >= 0)
+        self.assert_(res.find('apn apn1.test imsi-prefix 123456 ggsn 0') >= 0)
+        self.assert_(res.find('apn apn2.test imsi-prefix 123456 ggsn 0') >= 0)
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")
