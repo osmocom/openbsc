@@ -296,20 +296,12 @@ struct sgsn_subscriber_pdp_data {
 	char			apn_str[GSM_APN_LENGTH];
 };
 
-enum sgsn_subscriber_proc {
-	SGSN_SUBSCR_PROC_NONE = 0,
-	SGSN_SUBSCR_PROC_PURGE,
-	SGSN_SUBSCR_PROC_UPD_LOC,
-	SGSN_SUBSCR_PROC_UPD_AUTH,
-};
-
 struct sgsn_subscriber_data {
 	struct sgsn_mm_ctx	*mm;
 	struct gsm_auth_tuple	auth_triplets[5];
 	int			auth_triplets_updated;
 	struct llist_head	pdp_list;
 	int			error_cause;
-	enum sgsn_subscriber_proc blocked_by;
 };
 
 #define SGSN_ERROR_CAUSE_NONE (-1)
@@ -358,10 +350,6 @@ void gprs_subscr_cancel(struct gsm_subscriber *subscr);
 void gprs_subscr_update(struct gsm_subscriber *subscr);
 void gprs_subscr_update_auth_info(struct gsm_subscriber *subscr);
 int gprs_subscr_rx_gsup_message(struct msgb *msg);
-
-int gprs_subscr_purge(struct gsm_subscriber *subscr);
-int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr);
-int gprs_subscr_location_update(struct gsm_subscriber *subscr);
 
 /* Called on subscriber data updates */
 void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx);

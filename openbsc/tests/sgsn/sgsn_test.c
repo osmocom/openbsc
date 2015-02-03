@@ -636,88 +636,6 @@ int my_gprs_gsup_client_send_dummy(struct gprs_gsup_client *gsupc, struct msgb *
 	return 0;
 };
 
-
-static void test_subscriber_blocking(void)
-{
-	struct gsm_subscriber *s1;
-	const char *imsi1 = "1234567890";
-	struct sgsn_mm_ctx *ctx;
-	struct gprs_ra_id raid = { 0, };
-	uint32_t local_tlli = 0xffeeddcc;
-	int rc;
-
-	printf("Testing subcriber procedure blocking\n");
-
-	gprs_gsup_client_send_cb = my_gprs_gsup_client_send_dummy;
-	sgsn->gsup_client = talloc_zero(tall_bsc_ctx, struct gprs_gsup_client);
-
-	/* Check for emptiness */
-	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
-
-	/* Create a context */
-	OSMO_ASSERT(count(gprs_llme_list()) == 0);
-	ctx = alloc_mm_ctx(local_tlli, &raid);
-	strncpy(ctx->imsi, imsi1, sizeof(ctx->imsi) - 1);
-
-	/* Allocate and attach a subscriber */
-	s1 = gprs_subscr_get_or_create_by_mmctx(ctx);
-	assert_subscr(s1, imsi1);
-
-	/* Start SendAuthInfoRequest procedure */
-	rc = gprs_subscr_query_auth_info(s1);
-	/* Not blocking */
-	OSMO_ASSERT(rc == 0);
-
-	/* Start UpdateLocation procedure */
-	rc = gprs_subscr_location_update(s1);
-	/* Blocking */
-	OSMO_ASSERT(rc == 0);
-
-	/* Start PurgeMS procedure */
-	rc = gprs_subscr_purge(s1);
-	/* Not blocking */
-	OSMO_ASSERT(rc == 0);
-	OSMO_ASSERT(s1->sgsn_data->blocked_by == SGSN_SUBSCR_PROC_PURGE);
-
-	/* Start PurgeMS procedure (retry) */
-	rc = gprs_subscr_purge(s1);
-	/* Not blocking */
-	OSMO_ASSERT(rc == 0);
-
-	/* Start SendAuthInfoRequest procedure */
-	rc = gprs_subscr_query_auth_info(s1);
-	/* Blocking */
-	OSMO_ASSERT(rc == -EAGAIN);
-
-	/* Start UpdateLocation procedure */
-	rc = gprs_subscr_location_update(s1);
-	/* Blocking */
-	OSMO_ASSERT(rc == -EAGAIN);
-
-	/* Unblock manually (normally done by the caller of gprs_subscr_purge) */
-	s1->sgsn_data->blocked_by = SGSN_SUBSCR_PROC_NONE;
-
-	/* Start SendAuthInfoRequest procedure */
-	rc = gprs_subscr_query_auth_info(s1);
-	/* Not blocking */
-	OSMO_ASSERT(rc == 0);
-
-	/* Start UpdateLocation procedure */
-	rc = gprs_subscr_location_update(s1);
-	/* Blocking */
-	OSMO_ASSERT(rc == 0);
-
-	subscr_put(s1);
-	sgsn_mm_ctx_cleanup_free(ctx);
-
-	assert_no_subscrs();
-
-	gprs_gsup_client_send_cb = __real_gprs_gsup_client_send;
-	talloc_free(sgsn->gsup_client);
-	sgsn->gsup_client = NULL;
-}
-
-
 /*
  * Test that a GMM Detach will remove the MMCTX and the
  * associated LLME.
@@ -2081,7 +1999,6 @@ int main(int argc, char **argv)
 	test_subscriber();
 	test_auth_triplets();
 	test_subscriber_gsup();
-	test_subscriber_blocking();
 	test_gmm_detach();
 	test_gmm_detach_power_off();
 	test_gmm_detach_no_mmctx();
