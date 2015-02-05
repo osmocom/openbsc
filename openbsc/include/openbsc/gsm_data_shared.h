@@ -308,6 +308,12 @@ struct gsm_lchan {
 	int s;
 	/* Kind of the release/activation. E.g. RSL or PCU */
 	int rel_act_kind;
+
+	/* power handling */
+	struct {
+		uint8_t current;
+		uint8_t fixed;
+	} ms_power_ctrl;
 #endif
 };
 
@@ -373,6 +379,7 @@ struct gsm_bts_trx {
 	int nominal_power;		/* in dBm */
 	unsigned int max_power_red;	/* in actual dB */
 	unsigned int power_reduce;	/* in dB */
+	int ms_power_control;
 
 	struct {
 		void *l1h;
