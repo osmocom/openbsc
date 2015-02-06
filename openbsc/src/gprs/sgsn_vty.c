@@ -784,6 +784,27 @@ DEFUN(cfg_gsup_remote_port, cfg_gsup_remote_port_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_apn_name, cfg_apn_name_cmd,
+	"access-point-name NAME",
+	"Configure a global list of allowed APNs\n"
+	"Add this NAME to the list\n")
+{
+	return add_apn_ggsn_mapping(vty, argv[0], "", 0);
+}
+
+DEFUN(cfg_no_apn_name, cfg_no_apn_name_cmd,
+	"no access-point-name NAME",
+	NO_STR "Configure a global list of allowed APNs\n"
+	"Remove entry with NAME\n")
+{
+	struct apn_ctx *apn_ctx = sgsn_apn_ctx_by_name(argv[0], "");
+	if (!apn_ctx)
+		return CMD_SUCCESS;
+
+	sgsn_apn_ctx_free(apn_ctx);
+	return CMD_SUCCESS;
+}
+
 int sgsn_vty_init(void)
 {
 	install_element_ve(&show_sgsn_cmd);
@@ -813,6 +834,8 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_gsup_remote_port_cmd);
 	install_element(SGSN_NODE, &cfg_apn_ggsn_cmd);
 	install_element(SGSN_NODE, &cfg_apn_imsi_ggsn_cmd);
+	install_element(SGSN_NODE, &cfg_apn_name_cmd);
+	install_element(SGSN_NODE, &cfg_no_apn_name_cmd);
 
 	return 0;
 }

@@ -815,6 +815,24 @@ class TestVTYSGSN(TestVTYGenericBSC):
         self.assert_(res.find('apn apn1.test imsi-prefix 123456 ggsn 0') >= 0)
         self.assert_(res.find('apn apn2.test imsi-prefix 123456 ggsn 0') >= 0)
 
+    def testVtyEasyAPN(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify('configure terminal', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify('sgsn', ['']))
+        self.assertEquals(self.vty.node(), 'config-sgsn')
+
+        res = self.vty.command("show running-config")
+        self.assertEquals(res.find("apn internet"), -1)
+
+        self.assertTrue(self.vty.verify("access-point-name internet.apn", ['']))
+        res = self.vty.command("show running-config")
+        self.assert_(res.find("apn internet.apn ggsn 0") >= 0)
+
+        self.assertTrue(self.vty.verify("no access-point-name internet.apn", ['']))
+        res = self.vty.command("show running-config")
+        self.assertEquals(res.find("apn internet"), -1)
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")
