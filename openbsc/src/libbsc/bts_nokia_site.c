@@ -42,8 +42,6 @@
 
 /* TODO: put in a separate file ? */
 
-#define RESET_INTERVAL      15, 0	/* 15 seconds */
-
 extern int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg);
 /* was static in system_information.c */
 extern int generate_cell_chan_list(uint8_t * chan_list, struct gsm_bts *bts);
@@ -1147,7 +1145,7 @@ static int abis_nm_reset(struct gsm_bts *bts, uint16_t ref)
 {
 	uint8_t *data = reset;
 	int len_data = sizeof(reset);
-
+	LOGP(DLINP, LOGL_INFO, "Nokia BTS reset timer: %d\n", bts->nokia.bts_reset_timer_cnf);
 	return abis_nm_send(bts, NOKIA_MSG_RESET_REQ, ref, data, len_data);
 }
 
@@ -1564,7 +1562,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 			bts->nokia.reset_timer.cb = &reset_timer_cb;
 			bts->nokia.reset_timer.data = bts;
-			osmo_timer_schedule(&bts->nokia.reset_timer, RESET_INTERVAL);
+			osmo_timer_schedule(&bts->nokia.reset_timer, bts->nokia.bts_reset_timer_cnf, 0);
 
 			struct gsm_e1_subslot *e1_link = &bts->oml_e1_link;
 			struct e1inp_line *line;

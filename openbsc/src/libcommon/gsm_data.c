@@ -284,6 +284,8 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 	case GSM_BTS_TYPE_BS11:
 	case GSM_BTS_TYPE_UNKNOWN:
 	case GSM_BTS_TYPE_NOKIA_SITE:
+		/* Set default BTS reset timer */
+		bts->nokia.bts_reset_timer_cnf = 15;
 	case _NUM_GSM_BTS_TYPE:
 		break;
 	}

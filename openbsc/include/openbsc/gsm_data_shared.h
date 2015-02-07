@@ -651,6 +651,7 @@ struct gsm_bts {
 			unsigned int configured:1,
 				skip_reset:1,
 				no_loc_rel_cnf:1,
+				bts_reset_timer_cnf,
 				did_reset:1,
 				wait_reset:1;
 			struct osmo_timer_list reset_timer;

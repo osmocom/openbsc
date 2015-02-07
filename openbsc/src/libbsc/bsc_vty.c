@@ -605,6 +605,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  nokia_site skip-reset %d%s", bts->nokia.skip_reset, VTY_NEWLINE);
 		vty_out(vty, "  nokia_site no-local-rel-conf %d%s",
 			bts->nokia.no_loc_rel_cnf, VTY_NEWLINE);
+		vty_out(vty, "  nokia_site bts-reset-timer %d%s", bts->nokia.bts_reset_timer_cnf, VTY_NEWLINE);
 		/* fall through: Nokia requires "oml e1" parameters also */
 	default:
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
@@ -1837,6 +1838,25 @@ DEFUN(cfg_bts_nokia_site_no_loc_rel_cnf,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_nokia_site_bts_reset_timer_cnf,
+      cfg_bts_nokia_site_bts_reset_timer_cnf_cmd,
+      "nokia_site bts-reset-timer  <15-100>",
+      NOKIA_STR
+      "The amount of time (in sec.) between BTS_RESET is sent,\n"
+      "and the BTS is being bootstrapped.\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!is_nokia_bts(bts)) {
+		vty_out(vty, "%% BTS is not of Nokia *Site type%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->nokia.bts_reset_timer_cnf = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
 #define OML_STR	"Organization & Maintenance Link\n"
 #define IPA_STR "A-bis/IP Specific Options\n"
 
@@ -3420,6 +3440,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_no_timezone_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_skip_reset_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_no_loc_rel_cnf_cmd);
+	install_element(BTS_NODE, &cfg_bts_nokia_site_bts_reset_timer_cnf_cmd);
 	install_element(BTS_NODE, &cfg_bts_stream_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
