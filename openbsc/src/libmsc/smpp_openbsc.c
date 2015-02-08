@@ -114,12 +114,13 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 		}
 		sms_msg = t->value.octet;
 		sms_msg_len = t->length;
-	} else if (submit->sm_length) {
+	} else if (submit->sm_length > 0 && submit->sm_length < 255) {
 		sms_msg = submit->short_message;
 		sms_msg_len = submit->sm_length;
 	} else {
-		sms_msg = NULL;
-		sms_msg_len = 0;
+		LOGP(DLSMS, LOGL_ERROR,
+			"SMPP neither message payload nor valid sm_length.\n");
+		return ESME_RINVPARLEN;
 	}
 
 	sms = sms_alloc();
