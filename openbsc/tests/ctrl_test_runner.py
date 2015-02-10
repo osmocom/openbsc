@@ -305,6 +305,11 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['var'], 'bts.0.rf_state')
         self.assertEquals(r['value'], 'inoperational,locked,off')
 
+        r = self.do_get('rf_locked')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'rf_locked')
+        self.assertEquals(r['value'], 'state=off,policy=off')
+
         r = self.do_set('rf_locked', '0')
         self.assertEquals(r['mtype'], 'SET_REPLY')
         self.assertEquals(r['var'], 'rf_locked')
@@ -316,6 +321,11 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'bts.0.rf_state')
         self.assertEquals(r['value'], 'inoperational,unlocked,on')
+
+        r = self.do_get('rf_locked')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'rf_locked')
+        self.assertEquals(r['value'], 'state=off,policy=on')
 
     def testTimezone(self):
         r = self.do_get('bts.0.timezone')

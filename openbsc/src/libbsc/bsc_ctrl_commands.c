@@ -366,8 +366,33 @@ CTRL_CMD_DEFINE_RO(bts_rf_state, "rf_state");
 
 static int get_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
-	cmd->reply = "get only works for the individual trx properties.";
-	return CTRL_CMD_ERROR;
+	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts;
+	const char *policy_name;
+
+	policy_name = osmo_bsc_rf_get_policy_name(net->bsc_data->rf_ctrl->policy);
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		struct gsm_bts_trx *trx;
+
+		/* Exclude the BTS from the global lock */
+		if (bts->excl_from_rf_lock)
+			continue;
+
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			if (trx->mo.nm_state.availability == NM_AVSTATE_OK &&
+			    trx->mo.nm_state.operational != NM_OPSTATE_DISABLED) {
+				cmd->reply = talloc_asprintf(cmd,
+						"state=on,policy=%s,bts=%u,trx=%u",
+						policy_name, bts->nr, trx->nr);
+				return CTRL_CMD_REPLY;
+			}
+		}
+	}
+
+	cmd->reply = talloc_asprintf(cmd, "state=off,policy=%s",
+			policy_name);
+	return CTRL_CMD_REPLY;
 }
 
 #define TIME_FORMAT_RFC2822 "%a, %d %b %Y %T %z"
