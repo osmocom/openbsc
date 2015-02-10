@@ -419,6 +419,15 @@ static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *dat
 }
 CTRL_CMD_DEFINE(net_rf_lock, "rf_locked");
 
+static int get_net_bts_num(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+
+	cmd->reply = talloc_asprintf(cmd, "%u", net->num_bts);
+	return CTRL_CMD_REPLY;
+}
+CTRL_CMD_DEFINE_RO(net_bts_num, "number-of-bts");
+
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
 static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
@@ -470,6 +479,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_rf_lock);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_bts_num);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_lac);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ci);

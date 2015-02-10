@@ -453,6 +453,12 @@ class TestCtrlNITB(TestCtrlBase):
     def ctrl_app(self):
         return (4249, "./src/osmo-nitb/osmo-nitb", "OsmoBSC", "nitb")
 
+    def testNumberOfBTS(self):
+        r = self.do_get('number-of-bts')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'number-of-bts')
+        self.assertEquals(r['value'], '1')
+
     def testSubscriberAddRemove(self):
         r = self.do_set('subscriber-modify-v1', '2620345,445566')
         self.assertEquals(r['mtype'], 'SET_REPLY')
