@@ -36,8 +36,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#define TIME_FORMAT_RFC2822 "%a, %d %b %Y %T %z"
-
 void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con)
 {
 	struct ctrl_cmd *trap;
@@ -475,84 +473,6 @@ err:
 	return 1;
 }
 
-CTRL_CMD_DEFINE_RO(bts_rf_state, "rf_state");
-static int get_bts_rf_state(struct ctrl_cmd *cmd, void *data)
-{
-	const char *oper, *admin, *policy;
-	struct gsm_bts *bts = cmd->node;
-
-	if (!bts) {
-		cmd->reply = "bts not found.";
-		return CTRL_CMD_ERROR;
-	}
-
-	oper = osmo_bsc_rf_get_opstate_name(osmo_bsc_rf_get_opstate_by_bts(bts));
-	admin = osmo_bsc_rf_get_adminstate_name(osmo_bsc_rf_get_adminstate_by_bts(bts));
-	policy = osmo_bsc_rf_get_policy_name(osmo_bsc_rf_get_policy_by_bts(bts));
-
-	cmd->reply = talloc_asprintf(cmd, "%s,%s,%s", oper, admin, policy);
-	if (!cmd->reply) {
-		cmd->reply = "OOM.";
-		return CTRL_CMD_ERROR;
-	}
-
-	return CTRL_CMD_REPLY;
-}
-
-
-CTRL_CMD_DEFINE(net_rf_lock, "rf_locked");
-static int get_net_rf_lock(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "get only works for the individual trx properties.";
-	return CTRL_CMD_ERROR;
-}
-
-static int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
-{
-	int locked = atoi(cmd->value);
-	struct gsm_network *net = cmd->node;
-	time_t now = time(NULL);
-	char now_buf[64];
-	struct osmo_bsc_rf *rf;
-
-	if (!net) {
-		cmd->reply = "net not found.";
-		return CTRL_CMD_ERROR;
-	}
-
-	rf = net->bsc_data->rf_ctrl;
-
-	if (!rf) {
-		cmd->reply = "RF Ctrl is not enabled in the BSC Configuration";
-		return CTRL_CMD_ERROR;
-	}
-
-	talloc_free(rf->last_rf_lock_ctrl_command);
-	strftime(now_buf, sizeof(now_buf), TIME_FORMAT_RFC2822, gmtime(&now));
-	rf->last_rf_lock_ctrl_command =
-		talloc_asprintf(rf, "rf_locked %u (%s)", locked, now_buf);
-
-	osmo_bsc_rf_schedule_lock(rf, locked == 1 ? '0' : '1');
-
-	cmd->reply = talloc_asprintf(cmd, "%u", locked);
-	if (!cmd->reply) {
-		cmd->reply = "OOM.";
-		return CTRL_CMD_ERROR;
-	}
-
-	return CTRL_CMD_REPLY;
-}
-
-static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
-{
-	int locked = atoi(cmd->value);
-
-	if ((locked != 0) && (locked != 1))
-		return 1;
-
-	return 0;
-}
-
 CTRL_CMD_DEFINE(net_notification, "notification");
 static int get_net_notification(struct ctrl_cmd *cmd, void *data)
 {
@@ -732,16 +652,10 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 	rc = bsc_base_ctrl_cmds_install();
 	if (rc)
 		goto end;
-	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rf_state);
-	if (rc)
-		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_loc);
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_timezone);
-	if (rc)
-		goto end;
-	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_rf_lock);
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_msc_connection_status);

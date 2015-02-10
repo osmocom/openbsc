@@ -19,6 +19,7 @@
  *
  */
 #include <errno.h>
+#include <time.h>
 
 #include <osmocom/ctrl/control_cmd.h>
 #include <openbsc/ipaccess.h>
@@ -26,6 +27,8 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/debug.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/osmo_bsc_rf.h>
+#include <openbsc/osmo_msc_data.h>
 
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
 	CTRL_HELPER_GET_STRING(cmdname, dtype, element) \
@@ -337,6 +340,84 @@ static int set_bts_gprs_mode(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(bts_gprs_mode, "gprs-mode");
 
+static int get_bts_rf_state(struct ctrl_cmd *cmd, void *data)
+{
+	const char *oper, *admin, *policy;
+	struct gsm_bts *bts = cmd->node;
+
+	if (!bts) {
+		cmd->reply = "bts not found.";
+		return CTRL_CMD_ERROR;
+	}
+
+	oper = osmo_bsc_rf_get_opstate_name(osmo_bsc_rf_get_opstate_by_bts(bts));
+	admin = osmo_bsc_rf_get_adminstate_name(osmo_bsc_rf_get_adminstate_by_bts(bts));
+	policy = osmo_bsc_rf_get_policy_name(osmo_bsc_rf_get_policy_by_bts(bts));
+
+	cmd->reply = talloc_asprintf(cmd, "%s,%s,%s", oper, admin, policy);
+	if (!cmd->reply) {
+		cmd->reply = "OOM.";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+CTRL_CMD_DEFINE_RO(bts_rf_state, "rf_state");
+
+static int get_net_rf_lock(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "get only works for the individual trx properties.";
+	return CTRL_CMD_ERROR;
+}
+
+#define TIME_FORMAT_RFC2822 "%a, %d %b %Y %T %z"
+
+static int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
+{
+	int locked = atoi(cmd->value);
+	struct gsm_network *net = cmd->node;
+	time_t now = time(NULL);
+	char now_buf[64];
+	struct osmo_bsc_rf *rf;
+
+	if (!net) {
+		cmd->reply = "net not found.";
+		return CTRL_CMD_ERROR;
+	}
+
+	rf = net->bsc_data->rf_ctrl;
+
+	if (!rf) {
+		cmd->reply = "RF Ctrl is not enabled in the BSC Configuration";
+		return CTRL_CMD_ERROR;
+	}
+
+	talloc_free(rf->last_rf_lock_ctrl_command);
+	strftime(now_buf, sizeof(now_buf), TIME_FORMAT_RFC2822, gmtime(&now));
+	rf->last_rf_lock_ctrl_command =
+		talloc_asprintf(rf, "rf_locked %u (%s)", locked, now_buf);
+
+	osmo_bsc_rf_schedule_lock(rf, locked == 1 ? '0' : '1');
+
+	cmd->reply = talloc_asprintf(cmd, "%u", locked);
+	if (!cmd->reply) {
+		cmd->reply = "OOM.";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	int locked = atoi(cmd->value);
+
+	if ((locked != 0) && (locked != 1))
+		return 1;
+
+	return 0;
+}
+CTRL_CMD_DEFINE(net_rf_lock, "rf_locked");
 
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
@@ -388,6 +469,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_rf_lock);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_lac);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ci);
@@ -396,6 +478,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_chan_load);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_oml_conn);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_gprs_mode);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rf_state);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_arfcn);
