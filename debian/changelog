@@ -1,8 +1,8 @@
-openbsc (0.13.0) UNRELEASED; urgency=low
+openbsc (0.14.0) UNRELEASED; urgency=low
 
   * New upstream tag and additional patches.
 
- -- Holger Hans Peter Freyther <holger@freyther.de>  Tue, 16 Apr 2013 09:23:18 +0200
+ -- Holger Hans Peter Freyther <holger@freyther.de>  Sat, 14 Mar 2015 20:33:25 +0100
 
 openbsc (0.12.0+git26-7) unstable; urgency=low
 
