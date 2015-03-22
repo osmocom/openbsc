@@ -3,15 +3,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <err.h>
+#include <stdint.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
+
+#include <osmocom/netif/rtp.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
-#include <openbsc/rtp.h>
 
 #include "bscconfig.h"
 #ifndef BUILD_MGCP_TRANSCODING
