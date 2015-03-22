@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <time.h>
+#include <limits.h>
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -32,9 +34,10 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
 
+#include <osmocom/netif/rtp.h>
+
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
-#include <openbsc/rtp.h>
 
 #include <openbsc/osmux.h>
 

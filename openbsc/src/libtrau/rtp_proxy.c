@@ -36,21 +36,12 @@
 #include <openbsc/rtp_proxy.h>
 #include <openbsc/mncc.h>
 #include <openbsc/trau_upqueue.h>
-#include <openbsc/rtp.h>
+
+#include <osmocom/netif/rtp.h>
 
 /* attempt to determine byte order */
 #include <sys/param.h>
 #include <limits.h>
-
-#ifndef __BYTE_ORDER
-# ifdef __APPLE__
-#  define __BYTE_ORDER __DARWIN_BYTE_ORDER
-#  define __LITTLE_ENDIAN __DARWIN_LITTLE_ENDIAN
-#  define __BIG_ENDIAN __DARWIN_BIG_ENDIAN
-# else
-#  error "__BYTE_ORDER should be defined by someone"
-# endif
-#endif
 
 static LLIST_HEAD(rtp_sockets);
 
@@ -66,21 +57,10 @@ enum rtp_bfd_priv {
 
 #define RTP_ALLOC_SIZE	1500
 
-/* according to RFC 1889 */
-struct rtcp_hdr {
-	uint8_t byte0;
-	uint8_t type;
-	uint16_t length;
-} __attribute__((packed));
-
 #define RTCP_TYPE_SDES	202
 	
 #define RTCP_IE_CNAME	1
 
-struct rtp_x_hdr {
-	uint16_t by_profile;
-	uint16_t length;
-} __attribute__((packed));
 
 #define RTP_VERSION	2
 
