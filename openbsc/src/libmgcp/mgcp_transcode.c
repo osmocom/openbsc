@@ -28,9 +28,9 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 #include <openbsc/mgcp_transcode.h>
-#include <openbsc/rtp.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/netif/rtp.h>
 
 int mgcp_transcoding_get_frame_size(void *state_, int nsamples, int dst)
 {
