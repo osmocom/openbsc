@@ -111,7 +111,7 @@ static struct msgb *handle_noti_req(struct mgcp_parse_data *data);
 static void create_transcoder(struct mgcp_endpoint *endp);
 static void delete_transcoder(struct mgcp_endpoint *endp);
 
-static void setup_rtp_processing(struct mgcp_endpoint *endp);
+static int setup_rtp_processing(struct mgcp_endpoint *endp);
 
 static int mgcp_analyze_header(struct mgcp_parse_data *parse, char *data);
 
@@ -1050,7 +1050,8 @@ mgcp_header_done:
 		endp->bts_end.force_output_ptime = 1;
 	}
 
-	setup_rtp_processing(endp);
+	if (setup_rtp_processing(endp) != 0)
+		goto error2;
 
 	/* policy CB */
 	if (p->cfg->policy_cb) {
@@ -1161,7 +1162,8 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 		set_audio_info(p->cfg, &endp->net_end.codec,
 			       PTYPE_UNDEFINED, endp->local_options.codec);
 
-	setup_rtp_processing(endp);
+	if (setup_rtp_processing(endp) != 0)
+		goto error3;
 
 	/* policy CB */
 	if (p->cfg->policy_cb) {
@@ -1659,25 +1661,27 @@ int mgcp_send_reset_ep(struct mgcp_endpoint *endp, int endpoint)
 	return send_agent(endp->cfg, buf, len);
 }
 
-static void setup_rtp_processing(struct mgcp_endpoint *endp)
+static int setup_rtp_processing(struct mgcp_endpoint *endp)
 {
+	int rc = 0;
 	struct mgcp_config *cfg = endp->cfg;
 
 	if (endp->type != MGCP_RTP_DEFAULT)
-		return;
+		return 0;
 
 	if (endp->conn_mode == MGCP_CONN_LOOPBACK)
-		return;
+		return 0;
 
 	if (endp->conn_mode & MGCP_CONN_SEND_ONLY)
-		cfg->setup_rtp_processing_cb(endp, &endp->net_end, &endp->bts_end);
+		rc |= cfg->setup_rtp_processing_cb(endp, &endp->net_end, &endp->bts_end);
 	else
-		cfg->setup_rtp_processing_cb(endp, &endp->net_end, NULL);
+		rc |= cfg->setup_rtp_processing_cb(endp, &endp->net_end, NULL);
 
 	if (endp->conn_mode & MGCP_CONN_RECV_ONLY)
-		cfg->setup_rtp_processing_cb(endp, &endp->bts_end, &endp->net_end);
+		rc |= cfg->setup_rtp_processing_cb(endp, &endp->bts_end, &endp->net_end);
 	else
-		cfg->setup_rtp_processing_cb(endp, &endp->bts_end, NULL);
+		rc |= cfg->setup_rtp_processing_cb(endp, &endp->bts_end, NULL);
+	return rc;
 }
 
 static void create_transcoder(struct mgcp_endpoint *endp)
