@@ -56,6 +56,7 @@ src/gprs/osmo-gbproxy
 src/osmo-bsc_nat/osmo-bsc_nat
 
 #tests
+tests/testsuite.dir
 tests/bsc-nat/bsc_nat_test
 tests/bsc-nat-trie/bsc_nat_trie_test
 tests/channel/channel_test
