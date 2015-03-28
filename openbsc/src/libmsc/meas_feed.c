@@ -61,7 +61,8 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 	memcpy(&mfm->mr, mr, sizeof(mfm->mr));
 
 	/* and send it to the socket */
-	osmo_wqueue_enqueue(&g_mfs.wqueue, msg);
+	if (osmo_wqueue_enqueue(&g_mfs.wqueue, msg) != 0)
+		msgb_free(msg);
 
 	return 0;
 }

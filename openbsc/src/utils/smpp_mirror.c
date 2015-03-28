@@ -85,7 +85,13 @@ static int pack_and_send(struct esme *esme, uint32_t type, void *ptr)
 	}
 	msgb_put(msg, rlen);
 
-	return osmo_wqueue_enqueue(&esme->wqueue, msg);
+	if (osmo_wqueue_enqueue(&esme->wqueue, msg) != 0) {
+		LOGP(DSMPP, LOGL_ERROR, "[%s] Write queue full. Dropping message\n",
+		     esme->system_id);
+		msgb_free(msg);
+		return -EAGAIN;
+	}
+	return 0;
 }
 /* FIXME: merge with smpp_smsc.c */
 
