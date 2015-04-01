@@ -327,11 +327,29 @@ static int get_bts_gprs_mode(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
+static void oml_activate(struct gsm_bts *bts)
+{
+	if (!is_ipaccess_bts(bts)) {
+		LOGP(DCTRL, LOGL_ERROR, "GPRS activation only possible with IP.\n");
+		return;
+	}
+
+	if (bts->gprs.nse.mo.nm_state.operational != NM_OPSTATE_ENABLED) {
+		bts_model_nanobts_start_nse(bts);
+		bts_model_nanobts_start_cell(bts);
+		bts_model_nanobts_start_nsvc(bts);
+	}
+}
+
 static int set_bts_gprs_mode(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_bts *bts = cmd->node;
 
+	enum bts_gprs_mode old_mode = bts->gprs.mode;
 	bts->gprs.mode = bts_gprs_mode_parse(cmd->value, NULL);
+	if (old_mode == BTS_GPRS_NONE && bts->gprs.mode != old_mode)
+		oml_activate(bts);
+
 	return get_bts_gprs_mode(cmd, data);
 }
 

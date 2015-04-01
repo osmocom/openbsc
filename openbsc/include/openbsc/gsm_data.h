@@ -445,4 +445,10 @@ void bts_depend_clear(struct gsm_bts *bts, int dep);
 int bts_depend_check(struct gsm_bts *bts);
 int bts_depend_is_depedency(struct gsm_bts *base, struct gsm_bts *other);
 
+/* nanobts ... */
+void bts_model_nanobts_start_nsvc(struct gsm_bts *bts);
+void bts_model_nanobts_start_nsvc(struct gsm_bts *bts);
+void bts_model_nanobts_start_cell(struct gsm_bts *bts);
+void bts_model_nanobts_start_nse(struct gsm_bts *bts);
+
 #endif /* _GSM_DATA_H */
