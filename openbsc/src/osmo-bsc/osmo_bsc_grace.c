@@ -37,6 +37,16 @@ int bsc_grace_allow_new_connection(struct gsm_network *network, struct gsm_bts *
 static int normal_paging(struct gsm_subscriber *subscr, int chan_needed,
 			struct osmo_msc_data *msc)
 {
+	/* we can't page by lac.. we need to page everything */
+	if (msc->core_lac != -1) {
+		struct gsm_bts *bts;
+
+		llist_for_each_entry(bts, &msc->network->bts_list, list)
+			paging_request_bts(bts, subscr, chan_needed, NULL, msc);
+
+		return 0;
+	}
+
 	return paging_request(subscr->group->net, subscr, chan_needed, NULL,
 			      msc);
 }
@@ -50,22 +60,22 @@ static int locked_paging(struct gsm_subscriber *subscr, int chan_needed,
 	 * Check if there is any BTS that is on for the given lac. Start
 	 * with NULL and iterate through all bts.
 	 */
-	do {
-		bts = gsm_bts_by_lac(subscr->group->net, subscr->lac, bts);
-		if (!bts)
-			break;
-
+	llist_for_each_entry(bts, &msc->network->bts_list, list) {
 		/*
 		 * continue if the BTS is not excluded from the lock
 		 */
 		if (!bts->excl_from_rf_lock)
 			continue;
 
+		/* in case of no lac patching is in place, check the BTS */
+		if (msc->core_lac == -1 && subscr->lac != bts->location_area_code)
+			continue;
+
 		/*
 		 * now page on this bts
 		 */
 		paging_request_bts(bts, subscr, chan_needed, NULL, msc);
-	} while (1);
+	};
 
 	/* All bts are either off or in the grace period */
 	return 0;
