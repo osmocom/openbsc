@@ -33,16 +33,18 @@ int bsc_grace_allow_new_connection(struct gsm_network *network, struct gsm_bts *
 	return network->bsc_data->rf_ctrl->policy == S_RF_ON;
 }
 
-/**
- * Try to not page if everything the cell is not on.
- */
-int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
-				struct osmo_msc_data *msc)
+
+static int normal_paging(struct gsm_subscriber *subscr, int chan_needed,
+			struct osmo_msc_data *msc)
+{
+	return paging_request(subscr->group->net, subscr, chan_needed, NULL,
+			      msc);
+}
+
+static int locked_paging(struct gsm_subscriber *subscr, int chan_needed,
+			struct osmo_msc_data *msc)
 {
 	struct gsm_bts *bts = NULL;
-
-	if (subscr->group->net->bsc_data->rf_ctrl->policy == S_RF_ON)
-		goto page;
 
 	/*
 	 * Check if there is any BTS that is on for the given lac. Start
@@ -67,9 +69,17 @@ int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
 
 	/* All bts are either off or in the grace period */
 	return 0;
-page:
-	return paging_request(subscr->group->net, subscr, chan_needed, NULL,
-			      msc);
+}
+
+/**
+ * Try to not page if everything the cell is not on.
+ */
+int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
+				struct osmo_msc_data *msc)
+{
+	if (subscr->group->net->bsc_data->rf_ctrl->policy == S_RF_ON)
+		return normal_paging(subscr, chan_needed, msc);
+	return locked_paging(subscr, chan_needed, msc);
 }
 
 static int handle_sub(struct gsm_lchan *lchan, const char *text)
