@@ -2266,10 +2266,8 @@ DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	bts->gprs.cell.bvci = atoi(argv[0]);
 
@@ -2284,10 +2282,8 @@ DEFUN(cfg_bts_gprs_nsei, cfg_bts_gprs_nsei_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	bts->gprs.nse.nsei = atoi(argv[0]);
 
@@ -2306,10 +2302,8 @@ DEFUN(cfg_bts_gprs_nsvci, cfg_bts_gprs_nsvci_cmd,
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	bts->gprs.nsvc[idx].nsvci = atoi(argv[1]);
 
@@ -2327,10 +2321,8 @@ DEFUN(cfg_bts_gprs_nsvc_lport, cfg_bts_gprs_nsvc_lport_cmd,
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	bts->gprs.nsvc[idx].local_port = atoi(argv[1]);
 
@@ -2348,10 +2340,8 @@ DEFUN(cfg_bts_gprs_nsvc_rport, cfg_bts_gprs_nsvc_rport_cmd,
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	bts->gprs.nsvc[idx].remote_port = atoi(argv[1]);
 
@@ -2369,10 +2359,8 @@ DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
 	int idx = atoi(argv[0]);
 	struct in_addr ia;
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	inet_aton(argv[1], &ia);
 	bts->gprs.nsvc[idx].remote_ip = ntohl(ia.s_addr);
@@ -2402,10 +2390,8 @@ DEFUN(cfg_bts_gprs_ns_timer, cfg_bts_gprs_ns_timer_cmd,
 	int idx = get_string_value(gprs_ns_timer_strs, argv[0]);
 	int val = atoi(argv[1]);
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	if (idx < 0 || idx >= ARRAY_SIZE(bts->gprs.nse.timer))
 		return CMD_WARNING;
@@ -2439,10 +2425,8 @@ DEFUN(cfg_bts_gprs_cell_timer, cfg_bts_gprs_cell_timer_cmd,
 	int idx = get_string_value(gprs_bssgp_cfg_strs, argv[0]);
 	int val = atoi(argv[1]);
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	if (idx < 0 || idx >= ARRAY_SIZE(bts->gprs.cell.timer))
 		return CMD_WARNING;
@@ -2461,10 +2445,8 @@ DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	bts->gprs.rac = atoi(argv[0]);
 
@@ -2481,10 +2463,8 @@ DEFUN(cfg_bts_gprs_net_ctrl_ord, cfg_bts_gprs_net_ctrl_ord_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (bts->gprs.mode == BTS_GPRS_NONE) {
+	if (bts->gprs.mode == BTS_GPRS_NONE)
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	bts->gprs.net_ctrl_ord = atoi(argv[0] + 2);
 
