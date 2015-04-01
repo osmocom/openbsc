@@ -65,6 +65,21 @@ static uint16_t get_country_code_for_msc(struct osmo_msc_data *msc)
 	return msc->network->country_code;
 }
 
+static uint16_t get_lac_for_msc(struct osmo_msc_data *msc, struct gsm_bts *bts)
+{
+	if (msc->core_lac != -1)
+		return msc->core_lac;
+	return bts->location_area_code;
+}
+
+static uint16_t get_ci_for_msc(struct osmo_msc_data *msc, struct gsm_bts *bts)
+{
+	if (msc->core_ci != -1)
+		return msc->core_ci;
+	return bts->cell_identity;
+}
+
+
 static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
 	struct msgb *resp;
@@ -161,6 +176,8 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 	struct msgb *resp;
 	uint16_t network_code;
 	uint16_t country_code;
+	uint16_t lac;
+	uint16_t ci;
 	enum bsc_con ret;
 	int send_ping = msc->advanced_ping;
 
@@ -189,11 +206,11 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 
 	network_code = get_network_code_for_msc(conn->sccp_con->msc);
 	country_code = get_country_code_for_msc(conn->sccp_con->msc);
+	lac = get_lac_for_msc(conn->sccp_con->msc, conn->bts);
+	ci = get_ci_for_msc(conn->sccp_con->msc, conn->bts);
 
 	bsc_scan_bts_msg(conn, msg);
-	resp = gsm0808_create_layer3(msg, network_code, country_code,
-				     conn->bts->location_area_code,
-				     conn->bts->cell_identity);
+	resp = gsm0808_create_layer3(msg, network_code, country_code, lac, ci);
 	if (!resp) {
 		LOGP(DMSC, LOGL_DEBUG, "Failed to create layer3 message.\n");
 		sccp_connection_free(conn->sccp_con->sccp);

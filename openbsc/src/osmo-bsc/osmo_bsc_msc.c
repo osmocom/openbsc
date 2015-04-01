@@ -1,8 +1,8 @@
 /*
  * Handle the connection to the MSC. This include ping/timeout/reconnect
  * (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009-2014 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2014 by On-Waves
+ * (C) 2009-2015 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2015 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -524,6 +524,8 @@ struct osmo_msc_data *osmo_msc_data_alloc(struct gsm_network *net, int nr)
 	msc_data->pong_timeout = 5;
 	msc_data->core_ncc = -1;
 	msc_data->core_mcc = -1;
+	msc_data->core_ci = -1;
+	msc_data->core_lac = -1;
 	msc_data->rtp_base = 4000;
 
 	msc_data->nr = nr;

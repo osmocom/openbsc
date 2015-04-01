@@ -112,6 +112,12 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 	if (msc->core_mcc != -1)
 		vty_out(vty, " core-mobile-country-code %d%s",
 			msc->core_mcc, VTY_NEWLINE);
+	if (msc->core_lac != -1)
+		vty_out(vty, " core-location-area-code %d%s",
+			msc->core_lac, VTY_NEWLINE);
+	if (msc->core_ci != -1)
+		vty_out(vty, " core-cell-identity %d%s",
+			msc->core_ci, VTY_NEWLINE);
 	vty_out(vty, " ip.access rtp-base %d%s", msc->rtp_base, VTY_NEWLINE);
 
 	if (msc->ping_timeout == -1)
@@ -236,6 +242,26 @@ DEFUN(cfg_net_bsc_mcc,
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	data->core_mcc = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_bsc_lac,
+      cfg_net_bsc_lac_cmd,
+      "core-location-area-code <0-65535>",
+      "Use this location area code for the core network\n" "LAC value\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	data->core_lac = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_bsc_ci,
+      cfg_net_bsc_ci_cmd,
+      "core-cell-identity <0-65535>",
+      "Use this cell identity for the core network\n" "CI value\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	data->core_ci = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -785,6 +811,8 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_bsc_token_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_ncc_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_mcc_cmd);
+	install_element(MSC_NODE, &cfg_net_bsc_lac_cmd);
+	install_element(MSC_NODE, &cfg_net_bsc_ci_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_rtp_base_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_codec_list_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_dest_cmd);

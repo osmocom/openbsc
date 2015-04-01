@@ -1,8 +1,8 @@
 /*
  * Data for the true BSC
  *
- * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010-2011 by On-Waves
+ * (C) 2010-2015 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2015 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -67,6 +67,8 @@ struct osmo_msc_data {
 	struct bsc_msc_connection *msc_con;
 	int core_ncc;
 	int core_mcc;
+	int core_lac;
+	int core_ci;
 	int rtp_base;
 
 	/* audio codecs */

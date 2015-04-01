@@ -495,6 +495,21 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.assert_(res.find(" timeout-pong 14") > 0)
         self.assert_(res.find(" timeout-ping advanced") > 0)
 
+    def testMscDataCoreLACCI(self):
+        self.vty.enable()
+        res = self.vty.command("show running-config")
+        self.assertEquals(res.find("core-location-area-code"), -1)
+        self.assertEquals(res.find("core-cell-identity"), -1)
+
+	self.vty.command("configure terminal")
+        self.vty.command("msc 0")
+        self.vty.command("core-location-area-code 666")
+        self.vty.command("core-cell-identity 333")
+
+        res = self.vty.command("show running-config")
+        self.assert_(res.find("core-location-area-code 666") > 0)
+        self.assert_(res.find("core-cell-identity 333") > 0)
+
 class TestVTYNAT(TestVTYGenericBSC):
 
     def vty_command(self):
