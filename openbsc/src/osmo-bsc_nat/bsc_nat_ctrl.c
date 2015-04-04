@@ -29,6 +29,7 @@
 
 #include <openbsc/ctrl.h>
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bsc_msg_filter.h>
 #include <openbsc/vty.h>
 #include <openbsc/gsm_data.h>
 

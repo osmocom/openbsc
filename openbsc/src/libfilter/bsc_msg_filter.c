@@ -2,7 +2,7 @@
  * Access filtering
  */
 /*
- * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2015 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2010-2012 by On-Waves
  * All Rights Reserved
  *
@@ -21,6 +21,8 @@
  *
  */
 
+#include <openbsc/bsc_msg_filter.h>
+
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
 #include <openbsc/bsc_msc.h>
@@ -28,7 +30,6 @@
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
 
-#include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/gsm0808.h>
 

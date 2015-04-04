@@ -26,6 +26,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
+#include <openbsc/bsc_msg_filter.h>
 #include <openbsc/nat_rewrite_trie.h>
 
 #include <osmocom/core/application.h>

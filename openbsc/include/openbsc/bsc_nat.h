@@ -229,36 +229,6 @@ struct bsc_nat_statistics {
 	} ussd;
 };
 
-enum bsc_nat_acc_ctr {
-	ACC_LIST_BSC_FILTER,
-	ACC_LIST_NAT_FILTER,
-};
-
-struct bsc_nat_acc_lst {
-	struct llist_head list;
-
-	/* counter */
-	struct rate_ctr_group *stats;
-
-	/* the name of the list */
-	const char *name;
-	struct llist_head fltr_list;
-};
-
-struct bsc_nat_acc_lst_entry {
-	struct llist_head list;
-
-	/* the filter */
-	char *imsi_allow;
-	regex_t imsi_allow_re;
-	char *imsi_deny;
-	regex_t imsi_deny_re;
-
-	/* reject reasons for the access lists */
-	int cm_reject_cause;
-	int lu_reject_cause;
-};
-
 /**
  * the structure of the "nat" network
  */
@@ -355,11 +325,6 @@ struct bsc_nat_ussd_con {
 	struct osmo_timer_list auth_timeout;
 };
 
-struct bsc_nat_reject_cause {
-	int lu_reject_cause;
-	int cm_reject_cause;
-};
-
 /* create and init the structures */
 struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
@@ -388,16 +353,6 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg);
 int bsc_nat_filter_ipa(int direction, struct msgb *msg, struct bsc_nat_parsed *parsed);
 int bsc_nat_vty_init(struct bsc_nat *nat);
 int bsc_nat_find_paging(struct msgb *msg, const uint8_t **,int *len);
-
-/**
- * Content filtering.
- */
-int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
-			struct bsc_nat_parsed *, int *con_type, char **imsi,
-			struct bsc_nat_reject_cause *cause);
-int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
-			struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
-			struct bsc_nat_reject_cause *cause);
 
 /**
  * SCCP patching and handling
@@ -477,17 +432,6 @@ struct bsc_nat_num_rewr_entry {
 };
 
 void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head, const struct osmo_config_list *);
-
-struct bsc_nat_barr_entry {
-	struct rb_node node;
-
-	char *imsi;
-	int cm_reject_cause;
-	int lu_reject_cause;
-};
-
-int bsc_nat_barr_adapt(void *ctx, struct rb_root *rbtree, const struct osmo_config_list *);
-int bsc_nat_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu);
 
 void bsc_nat_send_mgcp_to_msc(struct bsc_nat *bsc_nat, struct msgb *msg);
 void bsc_nat_handle_mgcp(struct bsc_nat *bsc, struct msgb *msg);
