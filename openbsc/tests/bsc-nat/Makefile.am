@@ -10,11 +10,12 @@ bsc_nat_test_SOURCES = bsc_nat_test.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_filter.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_sccp.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_utils.c \
-			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_filter.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_rewrite.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_rewrite_trie.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_mgcp_utils.c
-bsc_nat_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
+bsc_nat_test_LDADD = \
+			$(top_builddir)/src/libfilter/libfilter.a \
+			$(top_builddir)/src/libbsc/libbsc.a \
 			$(top_builddir)/src/libmgcp/libmgcp.a \
 			$(top_builddir)/src/libtrau/libtrau.a \
 			$(top_builddir)/src/libcommon/libcommon.a \
