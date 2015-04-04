@@ -32,12 +32,12 @@ DEFUN(cfg_lst_no,
       NO_STR "Remove an access-list by name\n"
       "The access-list to remove\n")
 {
-	struct bsc_nat_acc_lst *acc;
-	acc = bsc_nat_acc_lst_find(_acc_lst, argv[0]);
+	struct bsc_msg_acc_lst *acc;
+	acc = bsc_msg_acc_lst_find(_acc_lst, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
-	bsc_nat_acc_lst_delete(acc);
+	bsc_msg_acc_lst_delete(acc);
 	return CMD_SUCCESS;
 }
 
@@ -46,8 +46,8 @@ DEFUN(show_acc_lst,
       "show access-list NAME",
       SHOW_STR "IMSI access list\n" "Name of the access list\n")
 {
-	struct bsc_nat_acc_lst *acc;
-	acc = bsc_nat_acc_lst_find(_acc_lst, argv[0]);
+	struct bsc_msg_acc_lst *acc;
+	acc = bsc_msg_acc_lst_find(_acc_lst, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
@@ -65,14 +65,14 @@ DEFUN(cfg_lst_imsi_allow,
       "Add allowed IMSI to the list\n"
       "Regexp for IMSIs\n")
 {
-	struct bsc_nat_acc_lst *acc;
-	struct bsc_nat_acc_lst_entry *entry;
+	struct bsc_msg_acc_lst *acc;
+	struct bsc_msg_acc_lst_entry *entry;
 
-	acc = bsc_nat_acc_lst_get(_ctx, _acc_lst, argv[0]);
+	acc = bsc_msg_acc_lst_get(_ctx, _acc_lst, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
-	entry = bsc_nat_acc_lst_entry_create(acc);
+	entry = bsc_msg_acc_lst_entry_create(acc);
 	if (!entry)
 		return CMD_WARNING;
 
@@ -91,14 +91,14 @@ DEFUN(cfg_lst_imsi_deny,
       "CM Service Reject reason\n"
       "LU Reject reason\n")
 {
-	struct bsc_nat_acc_lst *acc;
-	struct bsc_nat_acc_lst_entry *entry;
+	struct bsc_msg_acc_lst *acc;
+	struct bsc_msg_acc_lst_entry *entry;
 
-	acc = bsc_nat_acc_lst_get(_ctx, _acc_lst, argv[0]);
+	acc = bsc_msg_acc_lst_get(_ctx, _acc_lst, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
-	entry = bsc_nat_acc_lst_entry_create(acc);
+	entry = bsc_msg_acc_lst_entry_create(acc);
 	if (!entry)
 		return CMD_WARNING;
 
@@ -111,9 +111,9 @@ DEFUN(cfg_lst_imsi_deny,
 	return CMD_SUCCESS;
 }
 
-void bsc_nat_acc_lst_write(struct vty *vty, struct bsc_nat_acc_lst *lst)
+void bsc_msg_acc_lst_write(struct vty *vty, struct bsc_msg_acc_lst *lst)
 {
-	struct bsc_nat_acc_lst_entry *entry;
+	struct bsc_msg_acc_lst_entry *entry;
 
 	llist_for_each_entry(entry, &lst->fltr_list, list) {
 		if (entry->imsi_allow)
@@ -127,7 +127,7 @@ void bsc_nat_acc_lst_write(struct vty *vty, struct bsc_nat_acc_lst *lst)
 	}
 }
 
-void bsc_nat_lst_vty_init(void *ctx, struct llist_head *lst, int node)
+void bsc_msg_lst_vty_init(void *ctx, struct llist_head *lst, int node)
 {
 	_ctx = ctx;
 	_acc_lst = lst;

@@ -32,7 +32,7 @@ enum bsc_nat_acc_ctr {
 	ACC_LIST_NAT_FILTER,
 };
 
-struct bsc_nat_acc_lst {
+struct bsc_msg_acc_lst {
 	struct llist_head list;
 
 	/* counter */
@@ -43,7 +43,7 @@ struct bsc_nat_acc_lst {
 	struct llist_head fltr_list;
 };
 
-struct bsc_nat_acc_lst_entry {
+struct bsc_msg_acc_lst_entry {
 	struct llist_head list;
 
 	/* the filter */
@@ -72,12 +72,12 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 			struct bsc_nat_reject_cause *cause);
 
 /* IMSI allow/deny handling */
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct llist_head *lst, const char *name);
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(void *ctx, struct llist_head *lst, const char *name);
-void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
+struct bsc_msg_acc_lst *bsc_msg_acc_lst_find(struct llist_head *lst, const char *name);
+struct bsc_msg_acc_lst *bsc_msg_acc_lst_get(void *ctx, struct llist_head *lst, const char *name);
+void bsc_msg_acc_lst_delete(struct bsc_msg_acc_lst *lst);
 
-struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
-int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *imsi);
+struct bsc_msg_acc_lst_entry *bsc_msg_acc_lst_entry_create(struct bsc_msg_acc_lst *);
+int bsc_msg_acc_lst_check_allow(struct bsc_msg_acc_lst *lst, const char *imsi);
 
-void bsc_nat_lst_vty_init(void *ctx, struct llist_head *lst, int node);
-void bsc_nat_acc_lst_write(struct vty *vty, struct bsc_nat_acc_lst *lst);
+void bsc_msg_lst_vty_init(void *ctx, struct llist_head *lst, int node);
+void bsc_msg_acc_lst_write(struct vty *vty, struct bsc_msg_acc_lst *lst);

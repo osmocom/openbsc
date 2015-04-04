@@ -112,12 +112,12 @@ struct bsc_nat *bsc_nat_alloc(void)
 void bsc_nat_free(struct bsc_nat *nat)
 {
 	struct bsc_config *cfg, *tmp;
-	struct bsc_nat_acc_lst *lst, *tmp_lst;
+	struct bsc_msg_acc_lst *lst, *tmp_lst;
 
 	llist_for_each_entry_safe(cfg, tmp, &nat->bsc_configs, entry)
 		bsc_config_free(cfg);
 	llist_for_each_entry_safe(lst, tmp_lst, &nat->access_lists, list)
-		bsc_nat_acc_lst_delete(lst);
+		bsc_msg_acc_lst_delete(lst);
 
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, NULL);
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr_post, NULL);

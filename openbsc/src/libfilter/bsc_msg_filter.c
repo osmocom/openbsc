@@ -123,10 +123,10 @@ int bsc_nat_barr_adapt(void *ctx, struct rb_root *root,
 }
 
 
-static int lst_check_deny(struct bsc_nat_acc_lst *lst, const char *mi_string,
+static int lst_check_deny(struct bsc_msg_acc_lst *lst, const char *mi_string,
 			int *cm_cause, int *lu_cause)
 {
-	struct bsc_nat_acc_lst_entry *entry;
+	struct bsc_msg_acc_lst_entry *entry;
 
 	llist_for_each_entry(entry, &lst->fltr_list, list) {
 		if (!entry->imsi_deny)
@@ -154,8 +154,8 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 	 * 5.) Allow directly if the IMSI is allowed at the global level
 	 */
 	int cm, lu;
-	struct bsc_nat_acc_lst *nat_lst = NULL;
-	struct bsc_nat_acc_lst *bsc_lst = NULL;
+	struct bsc_msg_acc_lst *nat_lst = NULL;
+	struct bsc_msg_acc_lst *bsc_lst = NULL;
 
 	/* 1. global check for barred imsis */
 	if (bsc_nat_barr_find(&bsc->nat->imsi_black_list, imsi, &cm, &lu)) {
@@ -168,13 +168,13 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 	}
 
 
-	bsc_lst = bsc_nat_acc_lst_find(&bsc->nat->access_lists, bsc->cfg->acc_lst_name);
-	nat_lst = bsc_nat_acc_lst_find(&bsc->nat->access_lists, bsc->nat->acc_lst_name);
+	bsc_lst = bsc_msg_acc_lst_find(&bsc->nat->access_lists, bsc->cfg->acc_lst_name);
+	nat_lst = bsc_msg_acc_lst_find(&bsc->nat->access_lists, bsc->nat->acc_lst_name);
 
 
 	if (bsc_lst) {
 		/* 2. BSC allow */
-		if (bsc_nat_lst_check_allow(bsc_lst, imsi) == 0)
+		if (bsc_msg_acc_lst_check_allow(bsc_lst, imsi) == 0)
 			return 1;
 
 		/* 3. BSC deny */

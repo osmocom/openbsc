@@ -38,9 +38,9 @@ static const struct rate_ctr_group_desc bsc_cfg_acc_list_desc = {
 };
 
 
-int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *mi_string)
+int bsc_msg_acc_lst_check_allow(struct bsc_msg_acc_lst *lst, const char *mi_string)
 {
-	struct bsc_nat_acc_lst_entry *entry;
+	struct bsc_msg_acc_lst_entry *entry;
 
 	llist_for_each_entry(entry, &lst->fltr_list, list) {
 		if (!entry->imsi_allow)
@@ -52,9 +52,9 @@ int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *mi_string)
 	return 1;
 }
 
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct llist_head *head, const char *name)
+struct bsc_msg_acc_lst *bsc_msg_acc_lst_find(struct llist_head *head, const char *name)
 {
-	struct bsc_nat_acc_lst *lst;
+	struct bsc_msg_acc_lst *lst;
 
 	if (!name)
 		return NULL;
@@ -66,15 +66,15 @@ struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct llist_head *head, const char
 	return NULL;
 }
 
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(void *ctx, struct llist_head *head, const char *name)
+struct bsc_msg_acc_lst *bsc_msg_acc_lst_get(void *ctx, struct llist_head *head, const char *name)
 {
-	struct bsc_nat_acc_lst *lst;
+	struct bsc_msg_acc_lst *lst;
 
-	lst = bsc_nat_acc_lst_find(head, name);
+	lst = bsc_msg_acc_lst_find(head, name);
 	if (lst)
 		return lst;
 
-	lst = talloc_zero(ctx, struct bsc_nat_acc_lst);
+	lst = talloc_zero(ctx, struct bsc_msg_acc_lst);
 	if (!lst) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate access list");
 		return NULL;
@@ -93,18 +93,18 @@ struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(void *ctx, struct llist_head *head, 
 	return lst;
 }
 
-void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst)
+void bsc_msg_acc_lst_delete(struct bsc_msg_acc_lst *lst)
 {
 	llist_del(&lst->list);
 	rate_ctr_group_free(lst->stats);
 	talloc_free(lst);
 }
 
-struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *lst)
+struct bsc_msg_acc_lst_entry *bsc_msg_acc_lst_entry_create(struct bsc_msg_acc_lst *lst)
 {
-	struct bsc_nat_acc_lst_entry *entry;
+	struct bsc_msg_acc_lst_entry *entry;
 
-	entry = talloc_zero(lst, struct bsc_nat_acc_lst_entry);
+	entry = talloc_zero(lst, struct bsc_msg_acc_lst_entry);
 	if (!entry)
 		return NULL;
 

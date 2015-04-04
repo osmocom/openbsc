@@ -374,7 +374,7 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	uint8_t proto;
 	uint8_t ti;
 	struct gsm48_hdr *hdr48;
-	struct bsc_nat_acc_lst *lst;
+	struct bsc_msg_acc_lst *lst;
 	struct ussd_request req;
 
 	/*
@@ -416,12 +416,12 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	if (msg_type == GSM0480_MTYPE_REGISTER) {
 
 		/* now check if it is a IMSI we care about */
-		lst = bsc_nat_acc_lst_find(&con->bsc->nat->access_lists,
+		lst = bsc_msg_acc_lst_find(&con->bsc->nat->access_lists,
 					   con->bsc->nat->ussd_lst_name);
 		if (!lst)
 			return 0;
 
-		if (bsc_nat_lst_check_allow(lst, con->imsi) != 0)
+		if (bsc_msg_acc_lst_check_allow(lst, con->imsi) != 0)
 			return 0;
 
 		/* now decode the message and see if we really want to handle it */

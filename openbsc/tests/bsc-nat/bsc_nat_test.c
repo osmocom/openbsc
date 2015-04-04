@@ -868,8 +868,8 @@ static void test_cr_filter()
 	int i, res, contype;
 	struct msgb *msg = msgb_alloc(4096, "test_cr_filter");
 	struct bsc_nat_parsed *parsed;
-	struct bsc_nat_acc_lst *nat_lst, *bsc_lst;
-	struct bsc_nat_acc_lst_entry *nat_entry, *bsc_entry;
+	struct bsc_msg_acc_lst *nat_lst, *bsc_lst;
+	struct bsc_msg_acc_lst_entry *nat_entry, *bsc_entry;
 	struct bsc_nat_reject_cause cause;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
@@ -879,11 +879,11 @@ static void test_cr_filter()
 	bsc->cfg->acc_lst_name = "bsc";
 	nat->acc_lst_name = "nat";
 
-	nat_lst = bsc_nat_acc_lst_get(nat, &nat->access_lists, "nat");
-	bsc_lst = bsc_nat_acc_lst_get(nat, &nat->access_lists, "bsc");
+	nat_lst = bsc_msg_acc_lst_get(nat, &nat->access_lists, "nat");
+	bsc_lst = bsc_msg_acc_lst_get(nat, &nat->access_lists, "bsc");
 
-	bsc_entry = bsc_nat_acc_lst_entry_create(bsc_lst);
-	nat_entry = bsc_nat_acc_lst_entry_create(nat_lst);
+	bsc_entry = bsc_msg_acc_lst_entry_create(bsc_lst);
+	nat_entry = bsc_msg_acc_lst_entry_create(nat_lst);
 
 	/* test the default value as we are going to overwrite it */
 	OSMO_ASSERT(bsc_entry->cm_reject_cause == GSM48_REJECT_PLMN_NOT_ALLOWED);

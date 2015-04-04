@@ -87,7 +87,7 @@ static void write_pgroup_lst(struct vty *vty, struct bsc_nat_paging_group *pgrou
 
 static int config_write_nat(struct vty *vty)
 {
-	struct bsc_nat_acc_lst *lst;
+	struct bsc_msg_acc_lst *lst;
 	struct bsc_nat_paging_group *pgroup;
 
 	vty_out(vty, "nat%s", VTY_NEWLINE);
@@ -136,7 +136,7 @@ static int config_write_nat(struct vty *vty)
 			_nat->num_rewr_trie_name, VTY_NEWLINE);
 
 	llist_for_each_entry(lst, &_nat->access_lists, list)
-		bsc_nat_acc_lst_write(vty, lst);
+		bsc_msg_acc_lst_write(vty, lst);
 	llist_for_each_entry(pgroup, &_nat->paging_groups, entry)
 		write_pgroup_lst(vty, pgroup);
 	if (_nat->mgcp_ipa)
@@ -1171,7 +1171,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_ussd_local_cmd);
 	install_element(NAT_NODE, &cfg_nat_use_ipa_for_mgcp_cmd);
 
-	bsc_nat_lst_vty_init(nat, &nat->access_lists, NAT_NODE);
+	bsc_msg_lst_vty_init(nat, &nat->access_lists, NAT_NODE);
 
 	/* number rewriting */
 	install_element(NAT_NODE, &cfg_nat_number_rewrite_cmd);
