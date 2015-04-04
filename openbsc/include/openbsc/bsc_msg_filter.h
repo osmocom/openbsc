@@ -8,6 +8,7 @@
 #include <regex.h>
 
 /* TODO: remove */
+struct bsc_nat;
 struct bsc_nat_parsed;
 struct bsc_connection;
 struct nat_sccp_connection;
@@ -68,4 +69,12 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 			struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
 			struct bsc_nat_reject_cause *cause);
+
+/* IMSI allow/deny handling */
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name);
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name);
+void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
+
+struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
+int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *imsi);
 

@@ -5,5 +5,6 @@ AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) \
 noinst_LIBRARIES = libfilter.a
 
 libfilter_a_SOURCES = \
-	bsc_msg_filter.c
+	bsc_msg_filter.c \
+	bsc_msg_acc.c
 

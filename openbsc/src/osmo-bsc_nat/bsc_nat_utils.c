@@ -67,18 +67,6 @@ static const struct rate_ctr_group_desc bsc_cfg_ctrg_desc = {
 	.ctr_desc = bsc_cfg_ctr_description,
 };
 
-static const struct rate_ctr_desc acc_list_ctr_description[] = {
-	[ACC_LIST_BSC_FILTER]	= { "access-list.bsc-filter", "Rejected by rule for BSC"},
-	[ACC_LIST_NAT_FILTER]	= { "access-list.nat-filter", "Rejected by rule for NAT"},
-};
-
-static const struct rate_ctr_group_desc bsc_cfg_acc_list_desc = {
-	.group_name_prefix = "nat.filter",
-	.group_description = "NAT Access-List Statistics",
-	.num_ctr = ARRAY_SIZE(acc_list_ctr_description),
-	.ctr_desc = acc_list_ctr_description,
-};
-
 struct bsc_nat *bsc_nat_alloc(void)
 {
 	struct bsc_nat *nat = talloc_zero(tall_bsc_ctx, struct bsc_nat);
@@ -393,20 +381,6 @@ int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg)
 	return 0;
 }
 
-int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *mi_string)
-{
-	struct bsc_nat_acc_lst_entry *entry;
-
-	llist_for_each_entry(entry, &lst->fltr_list, list) {
-		if (!entry->imsi_allow)
-			continue;
-		if (regexec(&entry->imsi_allow_re, mi_string, 0, NULL, 0) == 0)
-			return 0;
-	}
-
-	return 1;
-}
-
 struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed,
 				  struct msgb *msg, uint32_t *len)
 {
@@ -441,68 +415,6 @@ static const char *con_types [] = {
 const char *bsc_con_type_to_string(int type)
 {
 	return con_types[type];
-}
-
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name)
-{
-	struct bsc_nat_acc_lst *lst;
-
-	if (!name)
-		return NULL;
-
-	llist_for_each_entry(lst, &nat->access_lists, list)
-		if (strcmp(lst->name, name) == 0)
-			return lst;
-
-	return NULL;
-}
-
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name)
-{
-	struct bsc_nat_acc_lst *lst;
-
-	lst = bsc_nat_acc_lst_find(nat, name);
-	if (lst)
-		return lst;
-
-	lst = talloc_zero(nat, struct bsc_nat_acc_lst);
-	if (!lst) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to allocate access list");
-		return NULL;
-	}
-
-	/* TODO: get the index right */
-	lst->stats = rate_ctr_group_alloc(lst, &bsc_cfg_acc_list_desc, 0);
-	if (!lst->stats) {
-		talloc_free(lst);
-		return NULL;
-	}
-
-	INIT_LLIST_HEAD(&lst->fltr_list);
-	lst->name = talloc_strdup(lst, name);
-	llist_add_tail(&lst->list, &nat->access_lists);
-	return lst;
-}
-
-void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst)
-{
-	llist_del(&lst->list);
-	rate_ctr_group_free(lst->stats);
-	talloc_free(lst);
-}
-
-struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *lst)
-{
-	struct bsc_nat_acc_lst_entry *entry;
-
-	entry = talloc_zero(lst, struct bsc_nat_acc_lst_entry);
-	if (!entry)
-		return NULL;
-
-	entry->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
-	entry->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
-	llist_add_tail(&entry->list, &lst->fltr_list);
-	return entry;
 }
 
 int bsc_nat_msc_is_connected(struct bsc_nat *nat)

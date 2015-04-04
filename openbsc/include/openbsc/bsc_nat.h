@@ -390,14 +390,6 @@ int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int id);
 int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg);
 int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg);
 
-/* IMSI allow/deny handling */
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name);
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name);
-void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
-
-struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
-int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *imsi);
-
 int bsc_nat_msc_is_connected(struct bsc_nat *nat);
 
 int bsc_conn_type_to_ctr(struct nat_sccp_connection *conn);
