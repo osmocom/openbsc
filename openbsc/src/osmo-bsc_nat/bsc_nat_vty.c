@@ -71,22 +71,6 @@ static int config_write_pgroup(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-static void write_acc_lst(struct vty *vty, struct bsc_nat_acc_lst *lst)
-{
-	struct bsc_nat_acc_lst_entry *entry;
-
-	llist_for_each_entry(entry, &lst->fltr_list, list) {
-		if (entry->imsi_allow)
-			vty_out(vty, " access-list %s imsi-allow %s%s",
-				lst->name, entry->imsi_allow, VTY_NEWLINE);
-		if (entry->imsi_deny)
-			vty_out(vty, " access-list %s imsi-deny %s %d %d%s",
-				lst->name, entry->imsi_deny,
-				entry->cm_reject_cause, entry->lu_reject_cause,
-				VTY_NEWLINE);
-	}
-}
-
 static void dump_lac(struct vty *vty, struct llist_head *head)
 {
 	struct bsc_lac_entry *lac;
@@ -152,7 +136,7 @@ static int config_write_nat(struct vty *vty)
 			_nat->num_rewr_trie_name, VTY_NEWLINE);
 
 	llist_for_each_entry(lst, &_nat->access_lists, list)
-		write_acc_lst(vty, lst);
+		bsc_nat_acc_lst_write(vty, lst);
 	llist_for_each_entry(pgroup, &_nat->paging_groups, entry)
 		write_pgroup_lst(vty, pgroup);
 	if (_nat->mgcp_ipa)
@@ -868,94 +852,6 @@ DEFUN(cfg_bsc_no_lac, cfg_bsc_no_lac_cmd,
 	return CMD_SUCCESS;
 }
 
-
-
-DEFUN(cfg_lst_imsi_allow,
-      cfg_lst_imsi_allow_cmd,
-      "access-list NAME imsi-allow [REGEXP]",
-      "Access list commands\n"
-      "Name of the access list\n"
-      "Add allowed IMSI to the list\n"
-      "Regexp for IMSIs\n")
-{
-	struct bsc_nat_acc_lst *acc;
-	struct bsc_nat_acc_lst_entry *entry;
-
-	acc = bsc_nat_acc_lst_get(_nat, argv[0]);
-	if (!acc)
-		return CMD_WARNING;
-
-	entry = bsc_nat_acc_lst_entry_create(acc);
-	if (!entry)
-		return CMD_WARNING;
-
-	if (gsm_parse_reg(acc, &entry->imsi_allow_re, &entry->imsi_allow, argc - 1, &argv[1]) != 0)
-		return CMD_WARNING;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_lst_imsi_deny,
-      cfg_lst_imsi_deny_cmd,
-      "access-list NAME imsi-deny [REGEXP] (<0-256>) (<0-256>)",
-      "Access list commands\n"
-      "Name of the access list\n"
-      "Add denied IMSI to the list\n"
-      "Regexp for IMSIs\n"
-      "CM Service Reject reason\n"
-      "LU Reject reason\n")
-{
-	struct bsc_nat_acc_lst *acc;
-	struct bsc_nat_acc_lst_entry *entry;
-
-	acc = bsc_nat_acc_lst_get(_nat, argv[0]);
-	if (!acc)
-		return CMD_WARNING;
-
-	entry = bsc_nat_acc_lst_entry_create(acc);
-	if (!entry)
-		return CMD_WARNING;
-
-	if (gsm_parse_reg(acc, &entry->imsi_deny_re, &entry->imsi_deny, argc - 1, &argv[1]) != 0)
-		return CMD_WARNING;
-	if (argc >= 3)
-		entry->cm_reject_cause = atoi(argv[2]);
-	if (argc >= 4)
-		entry->lu_reject_cause = atoi(argv[3]);
-	return CMD_SUCCESS;
-}
-
-/* naming to follow Zebra... */
-DEFUN(cfg_lst_no,
-      cfg_lst_no_cmd,
-      "no access-list NAME",
-      NO_STR "Remove an access-list by name\n"
-      "The access-list to remove\n")
-{
-	struct bsc_nat_acc_lst *acc;
-	acc = bsc_nat_acc_lst_find(_nat, argv[0]);
-	if (!acc)
-		return CMD_WARNING;
-
-	bsc_nat_acc_lst_delete(acc);
-	return CMD_SUCCESS;
-}
-
-DEFUN(show_acc_lst,
-      show_acc_lst_cmd,
-      "show access-list NAME",
-      SHOW_STR "IMSI access list\n" "Name of the access list\n")
-{
-	struct bsc_nat_acc_lst *acc;
-	acc = bsc_nat_acc_lst_find(_nat, argv[0]);
-	if (!acc)
-		return CMD_WARNING;
-
-	vty_out(vty, "access-list %s%s", acc->name, VTY_NEWLINE);
-	vty_out_rate_ctr_group(vty, " ", acc->stats);
-
-	return CMD_SUCCESS;
-}
-
 DEFUN(show_bar_lst,
       show_bar_lst_cmd,
       "show imsi-black-list",
@@ -1246,7 +1142,6 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_msc_cmd);
 	install_element_ve(&test_regex_cmd);
 	install_element_ve(&show_bsc_mgcp_cmd);
-	install_element_ve(&show_acc_lst_cmd);
 	install_element_ve(&show_bar_lst_cmd);
 	install_element_ve(&show_prefix_tree_cmd);
 	install_element_ve(&show_ussd_connection_cmd);
@@ -1276,10 +1171,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_ussd_local_cmd);
 	install_element(NAT_NODE, &cfg_nat_use_ipa_for_mgcp_cmd);
 
-	/* access-list */
-	install_element(NAT_NODE, &cfg_lst_imsi_allow_cmd);
-	install_element(NAT_NODE, &cfg_lst_imsi_deny_cmd);
-	install_element(NAT_NODE, &cfg_lst_no_cmd);
+	bsc_nat_lst_vty_init(nat, NAT_NODE);
 
 	/* number rewriting */
 	install_element(NAT_NODE, &cfg_nat_number_rewrite_cmd);

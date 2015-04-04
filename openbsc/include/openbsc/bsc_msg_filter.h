@@ -7,6 +7,8 @@
 
 #include <regex.h>
 
+struct vty;
+
 /* TODO: remove */
 struct bsc_nat;
 struct bsc_nat_parsed;
@@ -78,3 +80,5 @@ void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
 struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
 int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *imsi);
 
+void bsc_nat_lst_vty_init(struct bsc_nat *nat, int node);
+void bsc_nat_acc_lst_write(struct vty *vty, struct bsc_nat_acc_lst *lst);

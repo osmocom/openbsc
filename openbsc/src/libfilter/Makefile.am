@@ -6,5 +6,6 @@ noinst_LIBRARIES = libfilter.a
 
 libfilter_a_SOURCES = \
 	bsc_msg_filter.c \
-	bsc_msg_acc.c
+	bsc_msg_acc.c \
+	bsc_msg_vty.c
 
