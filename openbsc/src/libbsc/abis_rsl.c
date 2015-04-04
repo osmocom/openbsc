@@ -720,10 +720,21 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 	osmo_timer_del(&lchan->act_timer);
 	osmo_timer_del(&lchan->T3111);
 
+	/*
+	 * The BTS didn't respond within the timeout to our channel
+	 * release request and we have marked the channel as broken.
+	 * Now we do receive an ACK and let's be conservative. If it
+	 * is a sysmoBTS we know that only one RF Channel Release ACK
+	 * will be sent. So let's "repair" the channel.
+	 */
 	if (lchan->state == LCHAN_S_BROKEN) {
-		/* we are leaving this channel broken for now */
-		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK for broken channel.\n",
-			gsm_lchan_name(lchan));
+		int do_free = is_sysmobts_v2(lchan->ts->trx->bts);
+		LOGP(DRSL, LOGL_NOTICE,
+			"%s CHAN REL ACK for broken channel. %s.\n",
+			gsm_lchan_name(lchan),
+			do_free ? "Releasing it" : "Keeping it broken");
+		if (do_free)
+			do_lchan_free(lchan);
 		return 0;
 	}
 
