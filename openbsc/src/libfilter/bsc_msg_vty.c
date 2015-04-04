@@ -18,13 +18,13 @@
  */
 
 #include <openbsc/bsc_msg_filter.h>
-#include <openbsc/bsc_nat.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/vty.h>
 
 #include <osmocom/vty/misc.h>
 
-static struct bsc_nat *_nat;
+static struct llist_head *_acc_lst;
+static void *_ctx;
 
 DEFUN(cfg_lst_no,
       cfg_lst_no_cmd,
@@ -33,7 +33,7 @@ DEFUN(cfg_lst_no,
       "The access-list to remove\n")
 {
 	struct bsc_nat_acc_lst *acc;
-	acc = bsc_nat_acc_lst_find(_nat, argv[0]);
+	acc = bsc_nat_acc_lst_find(_acc_lst, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
@@ -47,7 +47,7 @@ DEFUN(show_acc_lst,
       SHOW_STR "IMSI access list\n" "Name of the access list\n")
 {
 	struct bsc_nat_acc_lst *acc;
-	acc = bsc_nat_acc_lst_find(_nat, argv[0]);
+	acc = bsc_nat_acc_lst_find(_acc_lst, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
@@ -68,7 +68,7 @@ DEFUN(cfg_lst_imsi_allow,
 	struct bsc_nat_acc_lst *acc;
 	struct bsc_nat_acc_lst_entry *entry;
 
-	acc = bsc_nat_acc_lst_get(_nat, argv[0]);
+	acc = bsc_nat_acc_lst_get(_ctx, _acc_lst, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
@@ -94,7 +94,7 @@ DEFUN(cfg_lst_imsi_deny,
 	struct bsc_nat_acc_lst *acc;
 	struct bsc_nat_acc_lst_entry *entry;
 
-	acc = bsc_nat_acc_lst_get(_nat, argv[0]);
+	acc = bsc_nat_acc_lst_get(_ctx, _acc_lst, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
@@ -127,11 +127,10 @@ void bsc_nat_acc_lst_write(struct vty *vty, struct bsc_nat_acc_lst *lst)
 	}
 }
 
-
-void bsc_nat_lst_vty_init(struct bsc_nat *nat, int node)
+void bsc_nat_lst_vty_init(void *ctx, struct llist_head *lst, int node)
 {
-	_nat = nat;
-
+	_ctx = ctx;
+	_acc_lst = lst;
 	install_element_ve(&show_acc_lst_cmd);
 
 	/* access-list */

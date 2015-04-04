@@ -10,7 +10,6 @@
 struct vty;
 
 /* TODO: remove */
-struct bsc_nat;
 struct bsc_nat_parsed;
 struct bsc_connection;
 struct nat_sccp_connection;
@@ -73,12 +72,12 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 			struct bsc_nat_reject_cause *cause);
 
 /* IMSI allow/deny handling */
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name);
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name);
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct llist_head *lst, const char *name);
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(void *ctx, struct llist_head *lst, const char *name);
 void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
 
 struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
 int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *imsi);
 
-void bsc_nat_lst_vty_init(struct bsc_nat *nat, int node);
+void bsc_nat_lst_vty_init(void *ctx, struct llist_head *lst, int node);
 void bsc_nat_acc_lst_write(struct vty *vty, struct bsc_nat_acc_lst *lst);

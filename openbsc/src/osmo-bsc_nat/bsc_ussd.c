@@ -416,7 +416,7 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	if (msg_type == GSM0480_MTYPE_REGISTER) {
 
 		/* now check if it is a IMSI we care about */
-		lst = bsc_nat_acc_lst_find(con->bsc->nat,
+		lst = bsc_nat_acc_lst_find(&con->bsc->nat->access_lists,
 					   con->bsc->nat->ussd_lst_name);
 		if (!lst)
 			return 0;

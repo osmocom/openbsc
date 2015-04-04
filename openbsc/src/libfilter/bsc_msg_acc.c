@@ -52,29 +52,29 @@ int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *mi_string)
 	return 1;
 }
 
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name)
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct llist_head *head, const char *name)
 {
 	struct bsc_nat_acc_lst *lst;
 
 	if (!name)
 		return NULL;
 
-	llist_for_each_entry(lst, &nat->access_lists, list)
+	llist_for_each_entry(lst, head, list)
 		if (strcmp(lst->name, name) == 0)
 			return lst;
 
 	return NULL;
 }
 
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name)
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(void *ctx, struct llist_head *head, const char *name)
 {
 	struct bsc_nat_acc_lst *lst;
 
-	lst = bsc_nat_acc_lst_find(nat, name);
+	lst = bsc_nat_acc_lst_find(head, name);
 	if (lst)
 		return lst;
 
-	lst = talloc_zero(nat, struct bsc_nat_acc_lst);
+	lst = talloc_zero(ctx, struct bsc_nat_acc_lst);
 	if (!lst) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate access list");
 		return NULL;
@@ -89,7 +89,7 @@ struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *nam
 
 	INIT_LLIST_HEAD(&lst->fltr_list);
 	lst->name = talloc_strdup(lst, name);
-	llist_add_tail(&lst->list, &nat->access_lists);
+	llist_add_tail(&lst->list, head);
 	return lst;
 }
 

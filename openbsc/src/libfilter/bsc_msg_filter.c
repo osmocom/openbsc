@@ -168,8 +168,8 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 	}
 
 
-	bsc_lst = bsc_nat_acc_lst_find(bsc->nat, bsc->cfg->acc_lst_name);
-	nat_lst = bsc_nat_acc_lst_find(bsc->nat, bsc->nat->acc_lst_name);
+	bsc_lst = bsc_nat_acc_lst_find(&bsc->nat->access_lists, bsc->cfg->acc_lst_name);
+	nat_lst = bsc_nat_acc_lst_find(&bsc->nat->access_lists, bsc->nat->acc_lst_name);
 
 
 	if (bsc_lst) {

@@ -1171,7 +1171,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_ussd_local_cmd);
 	install_element(NAT_NODE, &cfg_nat_use_ipa_for_mgcp_cmd);
 
-	bsc_nat_lst_vty_init(nat, NAT_NODE);
+	bsc_nat_lst_vty_init(nat, &nat->access_lists, NAT_NODE);
 
 	/* number rewriting */
 	install_element(NAT_NODE, &cfg_nat_number_rewrite_cmd);

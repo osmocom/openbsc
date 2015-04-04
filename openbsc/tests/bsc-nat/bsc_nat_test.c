@@ -879,8 +879,8 @@ static void test_cr_filter()
 	bsc->cfg->acc_lst_name = "bsc";
 	nat->acc_lst_name = "nat";
 
-	nat_lst = bsc_nat_acc_lst_get(nat, "nat");
-	bsc_lst = bsc_nat_acc_lst_get(nat, "bsc");
+	nat_lst = bsc_nat_acc_lst_get(nat, &nat->access_lists, "nat");
+	bsc_lst = bsc_nat_acc_lst_get(nat, &nat->access_lists, "bsc");
 
 	bsc_entry = bsc_nat_acc_lst_entry_create(bsc_lst);
 	nat_entry = bsc_nat_acc_lst_entry_create(nat_lst);
