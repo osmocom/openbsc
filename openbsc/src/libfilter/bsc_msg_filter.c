@@ -213,7 +213,7 @@ static int auth_imsi(struct filter_request *req,
 	return 1;
 }
 
-static int _cr_check_loc_upd(struct bsc_connection *bsc,
+static int _cr_check_loc_upd(void *ctx,
 			     uint8_t *data, unsigned int length,
 			     char **imsi)
 {
@@ -238,11 +238,11 @@ static int _cr_check_loc_upd(struct bsc_connection *bsc,
 		return 0;
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
-	*imsi = talloc_strdup(bsc, mi_string);
+	*imsi = talloc_strdup(ctx, mi_string);
 	return 1;
 }
 
-static int _cr_check_cm_serv_req(struct bsc_connection *bsc,
+static int _cr_check_cm_serv_req(void *ctx,
 				 uint8_t *data, unsigned int length,
 				 int *con_type, char **imsi)
 {
@@ -276,11 +276,11 @@ static int _cr_check_cm_serv_req(struct bsc_connection *bsc,
 	if (mi_type != GSM_MI_TYPE_IMSI)
 		return 0;
 
-	*imsi = talloc_strdup(bsc, mi_string);
+	*imsi = talloc_strdup(ctx, mi_string);
 	return 1;
 }
 
-static int _cr_check_pag_resp(struct bsc_connection *bsc,
+static int _cr_check_pag_resp(void *ctx,
 			      uint8_t *data, unsigned int length, char **imsi)
 {
 	struct gsm48_pag_resp *resp;
@@ -302,7 +302,7 @@ static int _cr_check_pag_resp(struct bsc_connection *bsc,
 	if (mi_type != GSM_MI_TYPE_IMSI)
 		return 0;
 
-	*imsi = talloc_strdup(bsc, mi_string);
+	*imsi = talloc_strdup(ctx, mi_string);
 	return 1;
 }
 
