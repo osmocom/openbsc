@@ -163,7 +163,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 		LOGP(DNAT, LOGL_DEBUG,
 			"Blocking subscriber IMSI %s with CM: %d LU: %d\n",
 			imsi, cm, lu);
-		return -1;
+		return -4;
 	}
 
 
