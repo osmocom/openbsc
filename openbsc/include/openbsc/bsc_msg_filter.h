@@ -28,8 +28,8 @@ struct bsc_nat_barr_entry {
 };
 
 enum bsc_nat_acc_ctr {
-	ACC_LIST_BSC_FILTER,
-	ACC_LIST_NAT_FILTER,
+	ACC_LIST_LOCAL_FILTER,
+	ACC_LIST_GLOBAL_FILTER,
 };
 
 struct bsc_msg_acc_lst {

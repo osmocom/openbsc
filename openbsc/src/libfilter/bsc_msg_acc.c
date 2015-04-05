@@ -26,8 +26,8 @@
 #include <string.h>
 
 static const struct rate_ctr_desc acc_list_ctr_description[] = {
-	[ACC_LIST_BSC_FILTER]	= { "access-list.bsc-filter", "Rejected by rule for BSC"},
-	[ACC_LIST_NAT_FILTER]	= { "access-list.nat-filter", "Rejected by rule for NAT"},
+	[ACC_LIST_LOCAL_FILTER]	= { "access-list.local-filter", "Rejected by rule for local"},
+	[ACC_LIST_GLOBAL_FILTER]= { "access-list.global-filter", "Rejected by rule for global"},
 };
 
 static const struct rate_ctr_group_desc bsc_cfg_acc_list_desc = {

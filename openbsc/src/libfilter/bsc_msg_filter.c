@@ -181,7 +181,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 		if (lst_check_deny(bsc_lst, imsi, &cm, &lu) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by imsi_deny on bsc nr: %d.\n", imsi, bsc->cfg->nr);
-			rate_ctr_inc(&bsc_lst->stats->ctr[ACC_LIST_BSC_FILTER]);
+			rate_ctr_inc(&bsc_lst->stats->ctr[ACC_LIST_LOCAL_FILTER]);
 			cause->cm_reject_cause = cm;
 			cause->lu_reject_cause = lu;
 			return -2;
@@ -194,7 +194,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 		if (lst_check_deny(nat_lst, imsi, &cm, &lu) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", imsi, bsc->cfg->nr);
-			rate_ctr_inc(&nat_lst->stats->ctr[ACC_LIST_NAT_FILTER]);
+			rate_ctr_inc(&nat_lst->stats->ctr[ACC_LIST_GLOBAL_FILTER]);
 			cause->cm_reject_cause = cm;
 			cause->lu_reject_cause = lu;
 			return -3;
