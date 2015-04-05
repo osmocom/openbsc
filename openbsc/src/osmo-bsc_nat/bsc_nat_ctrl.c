@@ -25,6 +25,8 @@
 #include <osmocom/ctrl/control_if.h>
 #include <osmocom/ctrl/ports.h>
 
+#include <osmocom/vty/misc.h>
+
 #include <openbsc/ctrl.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/vty.h>
@@ -436,6 +438,30 @@ static int verify_net_cfg_acc_cmd(struct ctrl_cmd *cmd, const char *value, void 
 	return 0;
 }
 
+CTRL_CMD_DEFINE(net_save_cmd, "net 0 save-configuration");
+static int verify_net_save_cmd(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int set_net_save_cmd(struct ctrl_cmd *cmd, void *data)
+{
+	int rc = osmo_vty_save_config_file();
+	cmd->reply = talloc_asprintf(cmd, "%d", rc);
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+static int get_net_save_cmd(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Write only attribute";
+	return CTRL_CMD_ERROR;
+}
+
 struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port)
 {
 	struct ctrl_handle *ctrl;
@@ -461,6 +487,11 @@ struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port)
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_cfg_acc_cmd);
 	if (rc) {
 		fprintf(stderr, "Failed to install the net acc command. Exiting.\n");
+		goto error;
+	}
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_cmd);
+	if (rc) {
+		fprintf(stderr, "Failed to install the net save command. Exiting.\n");
 		goto error;
 	}
 
