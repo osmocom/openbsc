@@ -48,16 +48,6 @@ struct bsc_nat;
 struct bsc_nat_ussd_con;
 struct nat_rewrite_rule;
 
-enum {
-	NAT_CON_TYPE_NONE,
-	NAT_CON_TYPE_LU,
-	NAT_CON_TYPE_CM_SERV_REQ,
-	NAT_CON_TYPE_PAG_RESP,
-	NAT_CON_TYPE_SSA,
-	NAT_CON_TYPE_LOCAL_REJECT,
-	NAT_CON_TYPE_OTHER,
-};
-
 /*
  * Is this terminated to the MSC, to the local machine (release
  * handling for IMSI filtering) or to a USSD provider?

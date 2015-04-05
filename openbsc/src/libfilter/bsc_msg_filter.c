@@ -256,7 +256,7 @@ static int _cr_check_cm_serv_req(void *ctx,
 
 	req = (struct gsm48_service_request *) data;
 	if (req->cm_service_type == 0x8)
-		*con_type = NAT_CON_TYPE_SSA;
+		*con_type = FLT_CON_TYPE_SSA;
 	rc = gsm48_extract_mi((uint8_t *) &req->classmark,
 			      length - classmark_offset, mi_string, &mi_type);
 	if (rc < 0) {
@@ -337,7 +337,7 @@ int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
 	int ret = 0;
 	uint8_t msg_type, proto;
 
-	*con_type = NAT_CON_TYPE_NONE;
+	*con_type = FLT_CON_TYPE_NONE;
 	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	*imsi = NULL;
@@ -346,23 +346,23 @@ int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
 	msg_type = hdr48->msg_type & 0xbf;
 	if (proto == GSM48_PDISC_MM &&
 	    msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
-		*con_type = NAT_CON_TYPE_LU;
+		*con_type = FLT_CON_TYPE_LU;
 		ret = _cr_check_loc_upd(req->ctx, &hdr48->data[0],
 					hdr48_len - sizeof(*hdr48), imsi);
 	} else if (proto == GSM48_PDISC_MM &&
 		  msg_type == GSM48_MT_MM_CM_SERV_REQ) {
-		*con_type = NAT_CON_TYPE_CM_SERV_REQ;
+		*con_type = FLT_CON_TYPE_CM_SERV_REQ;
 		ret = _cr_check_cm_serv_req(req->ctx, &hdr48->data[0],
 					     hdr48_len - sizeof(*hdr48),
 					     con_type, imsi);
 	} else if (proto == GSM48_PDISC_RR &&
 		   msg_type == GSM48_MT_RR_PAG_RESP) {
-		*con_type = NAT_CON_TYPE_PAG_RESP;
+		*con_type = FLT_CON_TYPE_PAG_RESP;
 		ret = _cr_check_pag_resp(req->ctx, &hdr48->data[0],
 					hdr48_len - sizeof(*hdr48), imsi);
 	} else {
 		/* We only want to filter the above, let other things pass */
-		*con_type = NAT_CON_TYPE_OTHER;
+		*con_type = FLT_CON_TYPE_OTHER;
 		return 0;
 	}
 

@@ -403,13 +403,13 @@ struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed,
 }
 
 static const char *con_types [] = {
-	[NAT_CON_TYPE_NONE] = "n/a",
-	[NAT_CON_TYPE_LU] = "Location Update",
-	[NAT_CON_TYPE_CM_SERV_REQ] = "CM Serv Req",
-	[NAT_CON_TYPE_PAG_RESP] = "Paging Response",
-	[NAT_CON_TYPE_SSA] = "Supplementar Service Activation",
-	[NAT_CON_TYPE_LOCAL_REJECT] = "Local Reject",
-	[NAT_CON_TYPE_OTHER] = "Other",
+	[FLT_CON_TYPE_NONE] = "n/a",
+	[FLT_CON_TYPE_LU] = "Location Update",
+	[FLT_CON_TYPE_CM_SERV_REQ] = "CM Serv Req",
+	[FLT_CON_TYPE_PAG_RESP] = "Paging Response",
+	[FLT_CON_TYPE_SSA] = "Supplementar Service Activation",
+	[FLT_CON_TYPE_LOCAL_REJECT] = "Local Reject",
+	[FLT_CON_TYPE_OTHER] = "Other",
 };
 
 const char *bsc_con_type_to_string(int type)
@@ -423,18 +423,18 @@ int bsc_nat_msc_is_connected(struct bsc_nat *nat)
 }
 
 static const int con_to_ctr[] = {
-	[NAT_CON_TYPE_NONE]		= -1,
-	[NAT_CON_TYPE_LU]		= BCFG_CTR_CON_TYPE_LU,
-	[NAT_CON_TYPE_CM_SERV_REQ]	= BCFG_CTR_CON_CMSERV_RQ,
-	[NAT_CON_TYPE_PAG_RESP]		= BCFG_CTR_CON_PAG_RESP,
-	[NAT_CON_TYPE_SSA]		= BCFG_CTR_CON_SSA,
-	[NAT_CON_TYPE_LOCAL_REJECT]	= -1,
-	[NAT_CON_TYPE_OTHER]		= BCFG_CTR_CON_OTHER,
+	[FLT_CON_TYPE_NONE]		= -1,
+	[FLT_CON_TYPE_LU]		= BCFG_CTR_CON_TYPE_LU,
+	[FLT_CON_TYPE_CM_SERV_REQ]	= BCFG_CTR_CON_CMSERV_RQ,
+	[FLT_CON_TYPE_PAG_RESP]		= BCFG_CTR_CON_PAG_RESP,
+	[FLT_CON_TYPE_SSA]		= BCFG_CTR_CON_SSA,
+	[FLT_CON_TYPE_LOCAL_REJECT]	= -1,
+	[FLT_CON_TYPE_OTHER]		= BCFG_CTR_CON_OTHER,
 };
 
 int bsc_conn_type_to_ctr(struct nat_sccp_connection *conn)
 {
-	return con_to_ctr[conn->con_type];
+	return con_to_ctr[conn->filter_state.con_type];
 }
 
 int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg)

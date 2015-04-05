@@ -382,7 +382,7 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	 * decode if the connection was created for USSD, we do have a USSD access
 	 * list, a query, a IMSI and such...
 	 */
-	if (con->con_type != NAT_CON_TYPE_SSA)
+	if (con->filter_state.con_type != FLT_CON_TYPE_SSA)
 		return 0;
 
 	if (!con->filter_state.imsi)

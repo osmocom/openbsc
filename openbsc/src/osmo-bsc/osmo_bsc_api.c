@@ -210,6 +210,7 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 	ci = get_ci_for_msc(conn->sccp_con->msc, conn->bts);
 
 	bsc_scan_bts_msg(conn, msg);
+
 	resp = gsm0808_create_layer3(msg, network_code, country_code, lac, ci);
 	if (!resp) {
 		LOGP(DMSC, LOGL_DEBUG, "Failed to create layer3 message.\n");

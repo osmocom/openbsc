@@ -41,7 +41,7 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	int hdr48_len;
 	int len;
 
-	*con_type = NAT_CON_TYPE_NONE;
+	*con_type = FLT_CON_TYPE_NONE;
 	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	*imsi = NULL;

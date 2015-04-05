@@ -53,9 +53,21 @@ struct bsc_msg_acc_lst_entry {
 	int lu_reject_cause;
 };
 
+enum {
+	FLT_CON_TYPE_NONE,
+	FLT_CON_TYPE_LU,
+	FLT_CON_TYPE_CM_SERV_REQ,
+	FLT_CON_TYPE_PAG_RESP,
+	FLT_CON_TYPE_SSA,
+	FLT_CON_TYPE_LOCAL_REJECT,
+	FLT_CON_TYPE_OTHER,
+};
+
+
 struct bsc_filter_state {
 	char *imsi;
 	int imsi_checked;
+	int con_type;
 };
 
 struct bsc_filter_request {

@@ -79,7 +79,6 @@ struct nat_sccp_connection {
 	int has_remote_ref;
 
 	/* status */
-	int con_type;
 	int con_local;
 	int authorized;
 

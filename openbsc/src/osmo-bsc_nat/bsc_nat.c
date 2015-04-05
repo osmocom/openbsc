@@ -442,7 +442,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 	con->msc_con = NULL;
 
 	/* 2. release the BSC side */
-	if (con->con_type == NAT_CON_TYPE_LU) {
+	if (con->filter_state.con_type == FLT_CON_TYPE_LU) {
 		struct msgb *payload, *udt;
 		payload = gsm48_create_loc_upd_rej(cause->lu_reject_cause);
 
@@ -470,7 +470,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 		return;
 	}
 
-	con->con_type = NAT_CON_TYPE_LOCAL_REJECT;
+	con->filter_state.con_type = FLT_CON_TYPE_LOCAL_REJECT;
 	bsc_write(bsc, rlsd, IPAC_PROTO_SCCP);
 }
 
@@ -481,9 +481,9 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 	struct msgb *payload;
 	struct msgb *refuse;
 
-	if (con_type == NAT_CON_TYPE_LU)
+	if (con_type == FLT_CON_TYPE_LU)
 		payload = gsm48_create_loc_upd_rej(cause->lu_reject_cause);
-	else if (con_type == NAT_CON_TYPE_CM_SERV_REQ || con_type == NAT_CON_TYPE_SSA)
+	else if (con_type == FLT_CON_TYPE_CM_SERV_REQ || con_type == FLT_CON_TYPE_SSA)
 		payload = gsm48_create_mm_serv_rej(cause->cm_reject_cause);
 	else {
 		LOGP(DNAT, LOGL_ERROR, "Unknown connection type: %d\n", con_type);
@@ -504,7 +504,7 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 			goto send_refuse;
 
 		/* declare it local and assign a unique remote_ref */
-		con->con_type = NAT_CON_TYPE_LOCAL_REJECT;
+		con->filter_state.con_type = FLT_CON_TYPE_LOCAL_REJECT;
 		con->con_local = NAT_CON_END_LOCAL;
 		con->has_remote_ref = 1;
 		con->remote_ref = con->patched_ref;
@@ -1072,7 +1072,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			con->msc_con = bsc->nat->msc_con;
 			con_msc = con->msc_con;
-			con->con_type = con_type;
+			con->filter_state.con_type = con_type;
 			con->filter_state.imsi_checked = filter;
 			bsc_nat_extract_lac(bsc, con, parsed, msg);
 			if (imsi)

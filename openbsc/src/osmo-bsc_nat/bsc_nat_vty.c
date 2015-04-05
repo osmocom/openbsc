@@ -189,7 +189,7 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
 			con->has_remote_ref,
 			sccp_src_ref_to_int(&con->remote_ref),
 			con->msc_endp, con->bsc_endp,
-			bsc_con_type_to_string(con->con_type),
+			bsc_con_type_to_string(con->filter_state.con_type),
 			VTY_NEWLINE);
 	}
 
