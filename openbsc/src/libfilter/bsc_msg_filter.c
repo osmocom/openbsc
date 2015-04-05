@@ -159,7 +159,7 @@ static int auth_imsi(struct bsc_filter_request *req,
 	struct bsc_msg_acc_lst *bsc_lst = NULL;
 
 	/* 1. global check for barred imsis */
-	if (bsc_filter_barr_find(req->black_list, imsi, &cm, &lu)) {
+	if (req->black_list && bsc_filter_barr_find(req->black_list, imsi, &cm, &lu)) {
 		cause->cm_reject_cause = cm;
 		cause->lu_reject_cause = lu;
 		LOGP(DFILTER, LOGL_DEBUG,

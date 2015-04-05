@@ -59,6 +59,12 @@ static const char *config_file = "openbsc.cfg";
 static const char *rf_ctrl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
+static struct llist_head access_lists;
+
+struct llist_head *bsc_access_lists(void)
+{
+	return &access_lists;
+}
 
 static void print_usage()
 {
@@ -179,7 +185,6 @@ static void signal_handler(int signal)
 
 int main(int argc, char **argv)
 {
-	struct llist_head access_lists;
 	struct osmo_msc_data *msc;
 	struct osmo_bsc_data *data;
 	int rc;

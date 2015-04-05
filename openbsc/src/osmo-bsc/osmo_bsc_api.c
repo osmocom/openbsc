@@ -1,4 +1,4 @@
-/* (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+/* (C) 2009-2015 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
@@ -79,6 +79,45 @@ static uint16_t get_ci_for_msc(struct osmo_msc_data *msc, struct gsm_bts *bts)
 	return bts->cell_identity;
 }
 
+static int bsc_filter_initial(struct osmo_bsc_data *bsc,
+				struct osmo_msc_data *msc,
+				struct gsm_subscriber_connection *conn,
+				struct msgb *msg, char **imsi)
+{
+	int con_type;
+	struct bsc_filter_request req;
+	struct bsc_filter_reject_cause cause;
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	req.ctx = conn;
+	req.black_list = NULL;
+	req.access_lists = bsc_access_lists();
+	req.local_lst_name = msc->acc_lst_name;
+	req.global_lst_name = conn->bts->network->bsc_data->acc_lst_name;
+	req.bsc_nr = 0;
+
+	return bsc_msg_filter_initial(gh, msgb_l3len(msg), &req,
+				&con_type, imsi, &cause);
+}
+
+static int bsc_filter_data(struct gsm_subscriber_connection *conn,
+				struct msgb *msg)
+{
+	struct bsc_filter_request req;
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct bsc_filter_reject_cause cause;
+
+	req.ctx = conn;
+	req.black_list = NULL;
+	req.access_lists = bsc_access_lists();
+	req.local_lst_name = conn->sccp_con->msc->acc_lst_name;
+	req.global_lst_name = conn->bts->network->bsc_data->acc_lst_name;
+	req.bsc_nr = 0;
+
+	return bsc_msg_filter_data(gh, msgb_l3len(msg), &req,
+				&conn->sccp_con->filter_state,
+				&cause);
+}
 
 static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
@@ -172,6 +211,7 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 static int complete_layer3(struct gsm_subscriber_connection *conn,
 			   struct msgb *msg, struct osmo_msc_data *msc)
 {
+	char *imsi = NULL;
 	struct timeval tv;
 	struct msgb *resp;
 	uint16_t network_code;
@@ -189,6 +229,10 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 	if (send_ping && osmo_timer_remaining(&msc->ping_timer, NULL, &tv) == -1)
 		send_ping = 0;
 
+	/* Check the filter */
+	if (bsc_filter_initial(msc->network->bsc_data, msc, conn, msg, &imsi) < 0)
+		return BSC_API_CONN_POL_REJECT;
+
 	/* allocate resource for a new connection */
 	ret = bsc_create_new_connection(conn, msc, send_ping);
 
@@ -201,6 +245,9 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 
 		return BSC_API_CONN_POL_REJECT;
 	}
+
+	if (imsi)
+		conn->sccp_con->filter_state.imsi = talloc_steal(conn, imsi);
 
 	/* check return value, if failed check msg for and send USSD */
 
@@ -333,8 +380,13 @@ static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, st
 	if (handle_cc_setup(conn, msg) >= 1)
 		return;
 
-	bsc_scan_bts_msg(conn, msg);
+	/* Check the filter */
+	if (bsc_filter_data(conn, msg) < 0) {
+		bsc_clear_request(conn, 0);
+		return;
+	}
 
+	bsc_scan_bts_msg(conn, msg);
 
 	resp = gsm0808_create_dtap(msg, link_id);
 	queue_msg_or_return(resp);
