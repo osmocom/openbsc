@@ -992,7 +992,7 @@ static void test_dt_filter()
 		if (!parsed)
 			continue;
 
-		con->imsi_checked = 0;
+		con->filter_state.imsi_checked = 0;
 		memset(&cause, 0, sizeof(cause));
 		bsc_nat_filter_dt(bsc, msg, con, parsed, &cause);
 	}

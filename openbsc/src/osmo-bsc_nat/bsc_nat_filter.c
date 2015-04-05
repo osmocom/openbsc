@@ -90,7 +90,7 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 
-	if (con->imsi_checked)
+	if (con->filter_state.imsi_checked)
 		return 0;
 
 	/* only care about DTAP messages */
@@ -101,5 +101,5 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	if (!hdr48)
 		return -1;
 
-	return bsc_msg_filter_data(hdr48, len, bsc, con, cause);
+	return bsc_msg_filter_data(hdr48, len, bsc, &con->filter_state, cause);
 }

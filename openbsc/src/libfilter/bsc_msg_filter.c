@@ -306,9 +306,9 @@ static int _cr_check_pag_resp(void *ctx,
 	return 1;
 }
 
-static int _dt_check_id_resp(struct filter_request *req,
+static int _dt_check_id_resp(void *ctx, struct filter_request *req,
 			     uint8_t *data, unsigned int length,
-			     struct nat_sccp_connection *con,
+			     struct bsc_filter_state *state,
 			     struct bsc_filter_reject_cause *cause)
 {
 	char mi_string[GSM48_MI_SIZE];
@@ -330,8 +330,8 @@ static int _dt_check_id_resp(struct filter_request *req,
 	if (mi_type != GSM_MI_TYPE_IMSI)
 		return 0;
 
-	con->imsi_checked = 1;
-	con->imsi = talloc_strdup(con, mi_string);
+	state->imsi_checked = 1;
+	state->imsi = talloc_strdup(ctx, mi_string);
 	return auth_imsi(req, mi_string, cause);
 }
 
@@ -394,7 +394,7 @@ int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
 
 int bsc_msg_filter_data(struct gsm48_hdr *hdr48, size_t len,
 		struct bsc_connection *bsc,
-		struct nat_sccp_connection *con,
+		struct bsc_filter_state *state,
 		struct bsc_filter_reject_cause *cause)
 {
 	struct filter_request req;
@@ -403,7 +403,7 @@ int bsc_msg_filter_data(struct gsm48_hdr *hdr48, size_t len,
 	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 
-	if (con->imsi_checked)
+	if (state->imsi_checked)
 		return 0;
 
 	proto = hdr48->proto_discr & 0x0f;
@@ -416,6 +416,6 @@ int bsc_msg_filter_data(struct gsm48_hdr *hdr48, size_t len,
 	req.local_lst_name = bsc->cfg->acc_lst_name;
 	req.global_lst_name = bsc->nat->acc_lst_name;
 	req.bsc_nr = bsc->cfg->nr;
-	return _dt_check_id_resp(&req, &hdr48->data[0],
-					len - sizeof(*hdr48), con, cause);
+	return _dt_check_id_resp(bsc, &req, &hdr48->data[0],
+					len - sizeof(*hdr48), state, cause);
 }

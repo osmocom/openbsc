@@ -1073,10 +1073,10 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			con->msc_con = bsc->nat->msc_con;
 			con_msc = con->msc_con;
 			con->con_type = con_type;
-			con->imsi_checked = filter;
+			con->filter_state.imsi_checked = filter;
 			bsc_nat_extract_lac(bsc, con, parsed, msg);
 			if (imsi)
-				con->imsi = talloc_steal(con, imsi);
+				con->filter_state.imsi = talloc_steal(con, imsi);
 			imsi = NULL;
 			con_bsc = con->bsc;
 			handle_con_stats(con);
@@ -1094,8 +1094,9 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					filter = bsc_nat_filter_dt(bsc, msg,
 							con, parsed, &cause);
 					if (filter < 0) {
-						if (con->imsi)
-							bsc_nat_inform_reject(bsc, con->imsi);
+						if (con->filter_state.imsi)
+							bsc_nat_inform_reject(bsc,
+								con->filter_state.imsi);
 						bsc_stat_reject(filter, bsc, 1);
 						bsc_send_con_release(bsc, con, &cause);
 						con = NULL;
@@ -1111,7 +1112,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					 * replace the msg and the parsed structure becomes
 					 * invalid.
 					 */
-					msg = bsc_nat_rewrite_msg(bsc->nat, msg, parsed, con->imsi);
+					msg = bsc_nat_rewrite_msg(bsc->nat, msg, parsed,
+									con->filter_state.imsi);
 					talloc_free(parsed);
 					parsed = NULL;
 				} else if (con->con_local == NAT_CON_END_USSD) {

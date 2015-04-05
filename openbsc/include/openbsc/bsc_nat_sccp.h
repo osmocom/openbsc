@@ -22,6 +22,8 @@
 #ifndef BSC_NAT_SCCP_H
 #define BSC_NAT_SCCP_H
 
+#include "bsc_msg_filter.h"
+
 #include <osmocom/sccp/sccp_types.h>
 
 /*
@@ -80,8 +82,8 @@ struct nat_sccp_connection {
 	int con_type;
 	int con_local;
 	int authorized;
-	int imsi_checked;
-	char *imsi;
+
+	struct bsc_filter_state filter_state;
 
 	uint16_t lac;
 	uint16_t ci;
