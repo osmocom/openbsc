@@ -142,7 +142,10 @@ static int lst_check_deny(struct bsc_msg_acc_lst *lst, const char *mi_string,
 }
 
 /* apply white/black list */
-static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
+static int auth_imsi(struct rb_root *black_list,
+		struct llist_head *access_lists,
+		const char *local_lst_name, const char *global_lst_name,
+		int bsc_nr, const char *imsi,
 		struct bsc_filter_reject_cause *cause)
 {
 	/*
@@ -158,7 +161,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 	struct bsc_msg_acc_lst *bsc_lst = NULL;
 
 	/* 1. global check for barred imsis */
-	if (bsc_filter_barr_find(&bsc->nat->imsi_black_list, imsi, &cm, &lu)) {
+	if (bsc_filter_barr_find(black_list, imsi, &cm, &lu)) {
 		cause->cm_reject_cause = cm;
 		cause->lu_reject_cause = lu;
 		LOGP(DNAT, LOGL_DEBUG,
@@ -168,8 +171,8 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 	}
 
 
-	bsc_lst = bsc_msg_acc_lst_find(&bsc->nat->access_lists, bsc->cfg->acc_lst_name);
-	nat_lst = bsc_msg_acc_lst_find(&bsc->nat->access_lists, bsc->nat->acc_lst_name);
+	bsc_lst = bsc_msg_acc_lst_find(access_lists, local_lst_name);
+	nat_lst = bsc_msg_acc_lst_find(access_lists, global_lst_name);
 
 
 	if (bsc_lst) {
@@ -180,7 +183,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 		/* 3. BSC deny */
 		if (lst_check_deny(bsc_lst, imsi, &cm, &lu) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
-			     "Filtering %s by imsi_deny on bsc nr: %d.\n", imsi, bsc->cfg->nr);
+			     "Filtering %s by imsi_deny on config nr: %d.\n", imsi, bsc_nr);
 			rate_ctr_inc(&bsc_lst->stats->ctr[ACC_LIST_LOCAL_FILTER]);
 			cause->cm_reject_cause = cm;
 			cause->lu_reject_cause = lu;
@@ -193,7 +196,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 	if (nat_lst) {
 		if (lst_check_deny(nat_lst, imsi, &cm, &lu) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
-			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", imsi, bsc->cfg->nr);
+			     "Filtering %s global imsi_deny on bsc nr: %d.\n", imsi, bsc_nr);
 			rate_ctr_inc(&nat_lst->stats->ctr[ACC_LIST_GLOBAL_FILTER]);
 			cause->cm_reject_cause = cm;
 			cause->lu_reject_cause = lu;
@@ -323,7 +326,10 @@ static int _dt_check_id_resp(struct bsc_connection *bsc,
 
 	con->imsi_checked = 1;
 	con->imsi = talloc_strdup(con, mi_string);
-	return auth_imsi(bsc, mi_string, cause);
+	return auth_imsi(&bsc->nat->imsi_black_list,
+			&bsc->nat->access_lists,
+			bsc->cfg->acc_lst_name, bsc->nat->acc_lst_name,
+			bsc->cfg->nr, mi_string, cause);
 }
 
 
@@ -374,7 +380,10 @@ int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
 		return -1;
 
 	/* now check the imsi */
-	return auth_imsi(bsc, *imsi, cause);
+	return auth_imsi(&bsc->nat->imsi_black_list,
+			&bsc->nat->access_lists,
+			bsc->cfg->acc_lst_name, bsc->nat->acc_lst_name,
+			bsc->cfg->nr, *imsi, cause);
 }
 
 int bsc_msg_filter_data(struct gsm48_hdr *hdr48, size_t len,
