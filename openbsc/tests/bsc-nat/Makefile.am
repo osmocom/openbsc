@@ -12,7 +12,8 @@ bsc_nat_test_SOURCES = bsc_nat_test.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_utils.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_rewrite.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_rewrite_trie.c \
-			$(top_srcdir)/src/osmo-bsc_nat/bsc_mgcp_utils.c
+			$(top_srcdir)/src/osmo-bsc_nat/bsc_mgcp_utils.c \
+			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_filter.c
 bsc_nat_test_LDADD = \
 			$(top_builddir)/src/libfilter/libfilter.a \
 			$(top_builddir)/src/libbsc/libbsc.a \

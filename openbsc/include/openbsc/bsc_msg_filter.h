@@ -8,6 +8,7 @@
 #include <regex.h>
 
 struct vty;
+struct gsm48_hdr;
 
 /* TODO: remove */
 struct bsc_nat_parsed;
@@ -64,11 +65,13 @@ int bsc_filter_barr_find(struct rb_root *root, const char *imsi, int *cm, int *l
 /**
  * Content filtering.
  */
-int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
-			struct bsc_nat_parsed *, int *con_type, char **imsi,
+int bsc_msg_filter_initial(struct gsm48_hdr *hdr, size_t size,
+			struct bsc_connection *bsc,
+			int *con_type, char **imsi,
 			struct bsc_filter_reject_cause *cause);
-int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
-			struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
+int bsc_msg_filter_data(struct gsm48_hdr *hdr, size_t size,
+			struct bsc_connection *bsc,
+			struct nat_sccp_connection *con,
 			struct bsc_filter_reject_cause *cause);
 
 /* IMSI allow/deny handling */

@@ -22,6 +22,7 @@
 #define BSC_NAT_H
 
 #include "mgcp.h"
+#include "bsc_msg_filter.h"
 
 
 #include <osmocom/core/select.h>
@@ -434,6 +435,13 @@ int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg);
 
 int bsc_nat_extract_lac(struct bsc_connection *bsc, struct nat_sccp_connection *con,
 				struct bsc_nat_parsed *parsed, struct msgb *msg);
+
+int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
+			struct bsc_nat_parsed *, int *con_type, char **imsi,
+			struct bsc_filter_reject_cause *cause);
+int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
+			struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
+			struct bsc_filter_reject_cause *cause);
 
 /**
  * CTRL interface helper

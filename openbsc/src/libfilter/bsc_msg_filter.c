@@ -328,53 +328,18 @@ static int _dt_check_id_resp(struct bsc_connection *bsc,
 
 
 /* Filter out CR data... */
-int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
-			struct bsc_nat_parsed *parsed, int *con_type,
+int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
+			struct bsc_connection *bsc,
+			int *con_type,
 			char **imsi, struct bsc_filter_reject_cause *cause)
 {
-	struct tlv_parsed tp;
-	struct gsm48_hdr *hdr48;
-	int hdr48_len;
-	int len, ret = 0;
+	int ret = 0;
 	uint8_t msg_type, proto;
 
 	*con_type = NAT_CON_TYPE_NONE;
 	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	*imsi = NULL;
-
-	if (parsed->gsm_type != BSS_MAP_MSG_COMPLETE_LAYER_3) {
-		LOGP(DNAT, LOGL_ERROR,
-		     "Rejecting CR message due wrong GSM Type %d\n", parsed->gsm_type);
-		return -1;
-	}
-
-	/* the parsed has had some basic l3 length check */
-	len = msg->l3h[1];
-	if (msgb_l3len(msg) - 3 < len) {
-		LOGP(DNAT, LOGL_ERROR,
-		     "The CR Data has not enough space...\n");
-		return -1;
-	}
-
-	msg->l4h = &msg->l3h[3];
-	len -= 1;
-
-	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h, len, 0, 0);
-
-	if (!TLVP_PRESENT(&tp, GSM0808_IE_LAYER_3_INFORMATION)) {
-		LOGP(DNAT, LOGL_ERROR, "CR Data does not contain layer3 information.\n");
-		return -1;
-	}
-
-	hdr48_len = TLVP_LEN(&tp, GSM0808_IE_LAYER_3_INFORMATION);
-
-	if (hdr48_len < sizeof(*hdr48)) {
-		LOGP(DNAT, LOGL_ERROR, "GSM48 header does not fit.\n");
-		return -1;
-	}
-
-	hdr48 = (struct gsm48_hdr *) TLVP_VAL(&tp, GSM0808_IE_LAYER_3_INFORMATION);
 
 	proto = hdr48->proto_discr & 0x0f;
 	msg_type = hdr48->msg_type & 0xbf;
@@ -412,27 +377,18 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	return auth_imsi(bsc, *imsi, cause);
 }
 
-int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
-		struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
+int bsc_msg_filter_data(struct gsm48_hdr *hdr48, size_t len,
+		struct bsc_connection *bsc,
+		struct nat_sccp_connection *con,
 		struct bsc_filter_reject_cause *cause)
 {
-	uint32_t len;
 	uint8_t msg_type, proto;
-	struct gsm48_hdr *hdr48;
 
 	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 
 	if (con->imsi_checked)
 		return 0;
-
-	/* only care about DTAP messages */
-	if (parsed->bssap != BSSAP_MSG_DTAP)
-		return 0;
-
-	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
-	if (!hdr48)
-		return -1;
 
 	proto = hdr48->proto_discr & 0x0f;
 	msg_type = hdr48->msg_type & 0xbf;
