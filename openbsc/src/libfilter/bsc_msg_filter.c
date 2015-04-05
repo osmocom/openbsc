@@ -38,14 +38,6 @@
 
 #include <osmocom/sccp/sccp.h>
 
-struct filter_request {
-	struct rb_root *black_list;
-	struct llist_head *access_lists;
-	const char *local_lst_name;
-	const char *global_lst_name;
-	int bsc_nr;
-};
-
 int bsc_filter_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu)
 {
 	struct bsc_filter_barr_entry *n;
@@ -150,7 +142,7 @@ static int lst_check_deny(struct bsc_msg_acc_lst *lst, const char *mi_string,
 }
 
 /* apply white/black list */
-static int auth_imsi(struct filter_request *req,
+static int auth_imsi(struct bsc_filter_request *req,
 		const char *imsi,
 		struct bsc_filter_reject_cause *cause)
 {
@@ -306,7 +298,7 @@ static int _cr_check_pag_resp(void *ctx,
 	return 1;
 }
 
-static int _dt_check_id_resp(void *ctx, struct filter_request *req,
+static int _dt_check_id_resp(struct bsc_filter_request *req,
 			     uint8_t *data, unsigned int length,
 			     struct bsc_filter_state *state,
 			     struct bsc_filter_reject_cause *cause)
@@ -331,18 +323,17 @@ static int _dt_check_id_resp(void *ctx, struct filter_request *req,
 		return 0;
 
 	state->imsi_checked = 1;
-	state->imsi = talloc_strdup(ctx, mi_string);
+	state->imsi = talloc_strdup(req->ctx, mi_string);
 	return auth_imsi(req, mi_string, cause);
 }
 
 
 /* Filter out CR data... */
 int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
-			struct bsc_connection *bsc,
+			struct bsc_filter_request *req,
 			int *con_type,
 			char **imsi, struct bsc_filter_reject_cause *cause)
 {
-	struct filter_request req;
 	int ret = 0;
 	uint8_t msg_type, proto;
 
@@ -356,18 +347,18 @@ int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
 	if (proto == GSM48_PDISC_MM &&
 	    msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
 		*con_type = NAT_CON_TYPE_LU;
-		ret = _cr_check_loc_upd(bsc, &hdr48->data[0],
+		ret = _cr_check_loc_upd(req->ctx, &hdr48->data[0],
 					hdr48_len - sizeof(*hdr48), imsi);
 	} else if (proto == GSM48_PDISC_MM &&
 		  msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		*con_type = NAT_CON_TYPE_CM_SERV_REQ;
-		ret = _cr_check_cm_serv_req(bsc, &hdr48->data[0],
+		ret = _cr_check_cm_serv_req(req->ctx, &hdr48->data[0],
 					     hdr48_len - sizeof(*hdr48),
 					     con_type, imsi);
 	} else if (proto == GSM48_PDISC_RR &&
 		   msg_type == GSM48_MT_RR_PAG_RESP) {
 		*con_type = NAT_CON_TYPE_PAG_RESP;
-		ret = _cr_check_pag_resp(bsc, &hdr48->data[0],
+		ret = _cr_check_pag_resp(req->ctx, &hdr48->data[0],
 					hdr48_len - sizeof(*hdr48), imsi);
 	} else {
 		/* We only want to filter the above, let other things pass */
@@ -384,20 +375,14 @@ int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
 		return -1;
 
 	/* now check the imsi */
-	req.black_list = &bsc->nat->imsi_black_list;
-	req.access_lists = &bsc->nat->access_lists;
-	req.local_lst_name = bsc->cfg->acc_lst_name;
-	req.global_lst_name = bsc->nat->acc_lst_name;
-	req.bsc_nr = bsc->cfg->nr;
-	return auth_imsi(&req, *imsi, cause);
+	return auth_imsi(req, *imsi, cause);
 }
 
 int bsc_msg_filter_data(struct gsm48_hdr *hdr48, size_t len,
-		struct bsc_connection *bsc,
+		struct bsc_filter_request *req,
 		struct bsc_filter_state *state,
 		struct bsc_filter_reject_cause *cause)
 {
-	struct filter_request req;
 	uint8_t msg_type, proto;
 
 	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
@@ -411,11 +396,6 @@ int bsc_msg_filter_data(struct gsm48_hdr *hdr48, size_t len,
 	if (proto != GSM48_PDISC_MM || msg_type != GSM48_MT_MM_ID_RESP)
 		return 0;
 
-	req.black_list = &bsc->nat->imsi_black_list;
-	req.access_lists = &bsc->nat->access_lists;
-	req.local_lst_name = bsc->cfg->acc_lst_name;
-	req.global_lst_name = bsc->nat->acc_lst_name;
-	req.bsc_nr = bsc->cfg->nr;
-	return _dt_check_id_resp(bsc, &req, &hdr48->data[0],
+	return _dt_check_id_resp(req, &hdr48->data[0],
 					len - sizeof(*hdr48), state, cause);
 }

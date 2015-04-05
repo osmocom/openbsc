@@ -10,9 +10,6 @@
 struct vty;
 struct gsm48_hdr;
 
-/* TODO: remove */
-struct bsc_connection;
-
 struct bsc_filter_reject_cause {
 	int lu_reject_cause;
 	int cm_reject_cause;
@@ -61,6 +58,15 @@ struct bsc_filter_state {
 	int imsi_checked;
 };
 
+struct bsc_filter_request {
+	void *ctx;
+	struct rb_root *black_list;
+	struct llist_head *access_lists;
+	const char *local_lst_name;
+	const char *global_lst_name;
+	int bsc_nr;
+};
+
 
 int bsc_filter_barr_adapt(void *ctx, struct rb_root *rbtree, const struct osmo_config_list *);
 int bsc_filter_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu);
@@ -69,11 +75,11 @@ int bsc_filter_barr_find(struct rb_root *root, const char *imsi, int *cm, int *l
  * Content filtering.
  */
 int bsc_msg_filter_initial(struct gsm48_hdr *hdr, size_t size,
-			struct bsc_connection *bsc,
+			struct bsc_filter_request *req,
 			int *con_type, char **imsi,
 			struct bsc_filter_reject_cause *cause);
 int bsc_msg_filter_data(struct gsm48_hdr *hdr, size_t size,
-			struct bsc_connection *bsc,
+			struct bsc_filter_request *req,
 			struct bsc_filter_state *state,
 			struct bsc_filter_reject_cause *cause);
 

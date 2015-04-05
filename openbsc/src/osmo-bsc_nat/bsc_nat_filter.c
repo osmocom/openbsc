@@ -35,6 +35,7 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 			struct bsc_nat_parsed *parsed, int *con_type,
 			char **imsi, struct bsc_filter_reject_cause *cause)
 {
+	struct bsc_filter_request req;
 	struct tlv_parsed tp;
 	struct gsm48_hdr *hdr48;
 	int hdr48_len;
@@ -77,7 +78,13 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	}
 
 	hdr48 = (struct gsm48_hdr *) TLVP_VAL(&tp, GSM0808_IE_LAYER_3_INFORMATION);
-	return bsc_msg_filter_initial(hdr48, hdr48_len, bsc, con_type, imsi, cause);
+	req.ctx = bsc;
+	req.black_list = &bsc->nat->imsi_black_list;
+	req.access_lists = &bsc->nat->access_lists;
+	req.local_lst_name = bsc->cfg->acc_lst_name;
+	req.global_lst_name = bsc->nat->acc_lst_name;
+	req.bsc_nr = bsc->cfg->nr;
+	return bsc_msg_filter_initial(hdr48, hdr48_len, &req, con_type, imsi, cause);
 }
 
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
@@ -86,6 +93,7 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 {
 	uint32_t len;
 	struct gsm48_hdr *hdr48;
+	struct bsc_filter_request req;
 
 	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
@@ -101,5 +109,11 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	if (!hdr48)
 		return -1;
 
-	return bsc_msg_filter_data(hdr48, len, bsc, &con->filter_state, cause);
+	req.ctx = bsc;
+	req.black_list = &bsc->nat->imsi_black_list;
+	req.access_lists = &bsc->nat->access_lists;
+	req.local_lst_name = bsc->cfg->acc_lst_name;
+	req.global_lst_name = bsc->nat->acc_lst_name;
+	req.bsc_nr = bsc->cfg->nr;
+	return bsc_msg_filter_data(hdr48, len, &req, &con->filter_state, cause);
 }
