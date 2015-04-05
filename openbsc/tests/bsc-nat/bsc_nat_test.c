@@ -870,7 +870,7 @@ static void test_cr_filter()
 	struct bsc_nat_parsed *parsed;
 	struct bsc_msg_acc_lst *nat_lst, *bsc_lst;
 	struct bsc_msg_acc_lst_entry *nat_entry, *bsc_entry;
-	struct bsc_nat_reject_cause cause;
+	struct bsc_filter_reject_cause cause;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
@@ -947,7 +947,7 @@ static void test_dt_filter()
 	int i;
 	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
 	struct bsc_nat_parsed *parsed;
-	struct bsc_nat_reject_cause cause;
+	struct bsc_filter_reject_cause cause;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
@@ -1454,21 +1454,21 @@ static void test_barr_list_parsing(void)
 	if (lst == NULL)
 		abort();
 
-	rc = bsc_nat_barr_adapt(NULL, &root, lst);
+	rc = bsc_filter_barr_adapt(NULL, &root, lst);
 	if (rc != 0)
 		abort();
 	talloc_free(lst);
 
 
 	for (node = rb_first(&root); node; node = rb_next(node)) {
-		struct bsc_nat_barr_entry *entry;
-		entry = rb_entry(node, struct bsc_nat_barr_entry, node);
+		struct bsc_filter_barr_entry *entry;
+		entry = rb_entry(node, struct bsc_filter_barr_entry, node);
 		printf("IMSI: %s CM: %d LU: %d\n", entry->imsi,
 			entry->cm_reject_cause, entry->lu_reject_cause);
 	}
 
 	/* do the look up now.. */
-	rc = bsc_nat_barr_find(&root, "12123119", &cm, &lu);
+	rc = bsc_filter_barr_find(&root, "12123119", &cm, &lu);
 	if (!rc) {
 		printf("Failed to find the IMSI.\n");
 		abort();
@@ -1480,7 +1480,7 @@ static void test_barr_list_parsing(void)
 	}
 
 	/* empty and check that it is empty */
-	bsc_nat_barr_adapt(NULL, &root, NULL);
+	bsc_filter_barr_adapt(NULL, &root, NULL);
 	if (!RB_EMPTY_ROOT(&root)) {
 		printf("Failed to empty the list.\n");
 		abort();
@@ -1493,7 +1493,7 @@ static void test_barr_list_parsing(void)
 		abort();
 	}
 
-	rc = bsc_nat_barr_adapt(NULL, &root, lst);
+	rc = bsc_filter_barr_adapt(NULL, &root, lst);
 	if (rc != -1) {
 		printf("It should have failed due dup\n");
 		abort();
@@ -1502,13 +1502,13 @@ static void test_barr_list_parsing(void)
 
 	/* dump for reference */
 	for (node = rb_first(&root); node; node = rb_next(node)) {
-		struct bsc_nat_barr_entry *entry;
-		entry = rb_entry(node, struct bsc_nat_barr_entry, node);
+		struct bsc_filter_barr_entry *entry;
+		entry = rb_entry(node, struct bsc_filter_barr_entry, node);
 		printf("IMSI: %s CM: %d LU: %d\n", entry->imsi,
 			entry->cm_reject_cause, entry->lu_reject_cause);
 
 	}
-	rc = bsc_nat_barr_adapt(NULL, &root, NULL);
+	rc = bsc_filter_barr_adapt(NULL, &root, NULL);
 }
 
 static void test_nat_extract_lac()

@@ -38,10 +38,10 @@
 
 #include <osmocom/sccp/sccp.h>
 
-int bsc_nat_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu)
+int bsc_filter_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu)
 {
-	struct bsc_nat_barr_entry *n;
-	n = rb_entry(root->rb_node, struct bsc_nat_barr_entry, node);
+	struct bsc_filter_barr_entry *n;
+	n = rb_entry(root->rb_node, struct bsc_filter_barr_entry, node);
 
 	while (n) {
 		int rc = strcmp(imsi, n->imsi);
@@ -53,20 +53,20 @@ int bsc_nat_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu)
 
 		n = rb_entry(
 			(rc < 0) ? n->node.rb_left : n->node.rb_right,
-			struct bsc_nat_barr_entry, node);
+			struct bsc_filter_barr_entry, node);
 	};
 
 	return 0;
 }
 
-static int insert_barr_node(struct bsc_nat_barr_entry *entry, struct rb_root *root)
+static int insert_barr_node(struct bsc_filter_barr_entry *entry, struct rb_root *root)
 {
 	struct rb_node **new = &root->rb_node, *parent = NULL;
 
 	while (*new) {
 		int rc;
-		struct bsc_nat_barr_entry *this;
-		this = rb_entry(*new, struct bsc_nat_barr_entry, node);
+		struct bsc_filter_barr_entry *this;
+		this = rb_entry(*new, struct bsc_filter_barr_entry, node);
 		parent = *new;
 
 		rc = strcmp(entry->imsi, this->imsi);
@@ -87,7 +87,7 @@ static int insert_barr_node(struct bsc_nat_barr_entry *entry, struct rb_root *ro
 	return 0;
 }
 
-int bsc_nat_barr_adapt(void *ctx, struct rb_root *root,
+int bsc_filter_barr_adapt(void *ctx, struct rb_root *root,
 			const struct osmo_config_list *list)
 {
 	struct osmo_config_entry *cfg_entry;
@@ -105,8 +105,8 @@ int bsc_nat_barr_adapt(void *ctx, struct rb_root *root,
 
 	/* now adapt the new list */
 	llist_for_each_entry(cfg_entry, &list->entry, list) {
-		struct bsc_nat_barr_entry *entry;
-		entry = talloc_zero(ctx, struct bsc_nat_barr_entry);
+		struct bsc_filter_barr_entry *entry;
+		entry = talloc_zero(ctx, struct bsc_filter_barr_entry);
 		if (!entry) {
 			LOGP(DNAT, LOGL_ERROR,
 				"Allocation of the barr entry failed.\n");
@@ -143,7 +143,7 @@ static int lst_check_deny(struct bsc_msg_acc_lst *lst, const char *mi_string,
 
 /* apply white/black list */
 static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
-		struct bsc_nat_reject_cause *cause)
+		struct bsc_filter_reject_cause *cause)
 {
 	/*
 	 * Now apply blacklist/whitelist of the BSC and the NAT.
@@ -158,7 +158,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 	struct bsc_msg_acc_lst *bsc_lst = NULL;
 
 	/* 1. global check for barred imsis */
-	if (bsc_nat_barr_find(&bsc->nat->imsi_black_list, imsi, &cm, &lu)) {
+	if (bsc_filter_barr_find(&bsc->nat->imsi_black_list, imsi, &cm, &lu)) {
 		cause->cm_reject_cause = cm;
 		cause->lu_reject_cause = lu;
 		LOGP(DNAT, LOGL_DEBUG,
@@ -300,7 +300,7 @@ static int _cr_check_pag_resp(struct bsc_connection *bsc,
 static int _dt_check_id_resp(struct bsc_connection *bsc,
 			     uint8_t *data, unsigned int length,
 			     struct nat_sccp_connection *con,
-			     struct bsc_nat_reject_cause *cause)
+			     struct bsc_filter_reject_cause *cause)
 {
 	char mi_string[GSM48_MI_SIZE];
 	uint8_t mi_type;
@@ -330,7 +330,7 @@ static int _dt_check_id_resp(struct bsc_connection *bsc,
 /* Filter out CR data... */
 int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 			struct bsc_nat_parsed *parsed, int *con_type,
-			char **imsi, struct bsc_nat_reject_cause *cause)
+			char **imsi, struct bsc_filter_reject_cause *cause)
 {
 	struct tlv_parsed tp;
 	struct gsm48_hdr *hdr48;
@@ -414,7 +414,7 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 		struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
-		struct bsc_nat_reject_cause *cause)
+		struct bsc_filter_reject_cause *cause)
 {
 	uint32_t len;
 	uint8_t msg_type, proto;

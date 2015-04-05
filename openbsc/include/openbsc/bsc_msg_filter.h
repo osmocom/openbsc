@@ -14,12 +14,12 @@ struct bsc_nat_parsed;
 struct bsc_connection;
 struct nat_sccp_connection;
 
-struct bsc_nat_reject_cause {
+struct bsc_filter_reject_cause {
 	int lu_reject_cause;
 	int cm_reject_cause;
 };
 
-struct bsc_nat_barr_entry {
+struct bsc_filter_barr_entry {
 	struct rb_node node;
 
 	char *imsi;
@@ -27,7 +27,7 @@ struct bsc_nat_barr_entry {
 	int lu_reject_cause;
 };
 
-enum bsc_nat_acc_ctr {
+enum bsc_filter_acc_ctr {
 	ACC_LIST_LOCAL_FILTER,
 	ACC_LIST_GLOBAL_FILTER,
 };
@@ -58,18 +58,18 @@ struct bsc_msg_acc_lst_entry {
 };
 
 
-int bsc_nat_barr_adapt(void *ctx, struct rb_root *rbtree, const struct osmo_config_list *);
-int bsc_nat_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu);
+int bsc_filter_barr_adapt(void *ctx, struct rb_root *rbtree, const struct osmo_config_list *);
+int bsc_filter_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu);
 
 /**
  * Content filtering.
  */
 int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 			struct bsc_nat_parsed *, int *con_type, char **imsi,
-			struct bsc_nat_reject_cause *cause);
+			struct bsc_filter_reject_cause *cause);
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 			struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
-			struct bsc_nat_reject_cause *cause);
+			struct bsc_filter_reject_cause *cause);
 
 /* IMSI allow/deny handling */
 struct bsc_msg_acc_lst *bsc_msg_acc_lst_find(struct llist_head *lst, const char *name);

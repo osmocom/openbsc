@@ -503,7 +503,7 @@ DEFUN(cfg_nat_imsi_black_list_fn,
 		int rc;
 		struct osmo_config_list *rewr = NULL;
 		rewr = osmo_config_list_parse(_nat, _nat->imsi_black_list_fn);
-		rc = bsc_nat_barr_adapt(_nat, &_nat->imsi_black_list, rewr);
+		rc = bsc_filter_barr_adapt(_nat, &_nat->imsi_black_list, rewr);
 		if (rc != 0) {
 			vty_out(vty, "%%There was an error parsing the list."
 				" Please see the error log.%s", VTY_NEWLINE);
@@ -513,7 +513,7 @@ DEFUN(cfg_nat_imsi_black_list_fn,
 		return CMD_SUCCESS;
 	}
 
-	bsc_nat_barr_adapt(_nat, &_nat->imsi_black_list, NULL);
+	bsc_filter_barr_adapt(_nat, &_nat->imsi_black_list, NULL);
 	return CMD_SUCCESS;
 }
 
@@ -524,7 +524,7 @@ DEFUN(cfg_nat_no_imsi_black_list_fn,
 {
 	talloc_free(_nat->imsi_black_list_fn);
 	_nat->imsi_black_list_fn = NULL;
-	bsc_nat_barr_adapt(_nat, &_nat->imsi_black_list, NULL);
+	bsc_filter_barr_adapt(_nat, &_nat->imsi_black_list, NULL);
 	return CMD_SUCCESS;
 }
 
@@ -862,8 +862,8 @@ DEFUN(show_bar_lst,
 	vty_out(vty, "IMSIs barred from the network:%s", VTY_NEWLINE);
 
 	for (node = rb_first(&_nat->imsi_black_list); node; node = rb_next(node)) {
-		struct bsc_nat_barr_entry *entry;
-		entry = rb_entry(node, struct bsc_nat_barr_entry, node);
+		struct bsc_filter_barr_entry *entry;
+		entry = rb_entry(node, struct bsc_filter_barr_entry, node);
 
 		vty_out(vty, " IMSI(%s) CM-Reject-Cause(%d) LU-Reject-Cause(%d)%s",
 			entry->imsi, entry->cm_reject_cause, entry->lu_reject_cause,

@@ -426,7 +426,7 @@ static void bsc_stat_reject(int filter, struct bsc_connection *bsc, int normal)
  */
 static void bsc_send_con_release(struct bsc_connection *bsc,
 		struct nat_sccp_connection *con,
-		struct bsc_nat_reject_cause *cause)
+		struct bsc_filter_reject_cause *cause)
 {
 	struct msgb *rlsd;
 	/* 1. release the network */
@@ -476,7 +476,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 
 static void bsc_send_con_refuse(struct bsc_connection *bsc,
 			struct bsc_nat_parsed *parsed, int con_type,
-			struct bsc_nat_reject_cause *cause)
+			struct bsc_filter_reject_cause *cause)
 {
 	struct msgb *payload;
 	struct msgb *refuse;
@@ -1026,7 +1026,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	struct bsc_connection *con_bsc = NULL;
 	int con_type;
 	struct bsc_nat_parsed *parsed;
-	struct bsc_nat_reject_cause cause;
+	struct bsc_filter_reject_cause cause;
 
 	/* Parse and filter messages */
 	parsed = bsc_nat_parse(msg);
