@@ -561,6 +561,18 @@ class TestCtrlNAT(TestCtrlBase):
         self.assertEquals(r['var'], 'net')
         self.assertEquals(r['value'], None)
 
+    def testAccessListManagement(self):
+        r = self.do_set("net.0.add.allow.access-list.404", "abc")
+        self.assertEquals(r['mtype'], 'ERROR')
+
+        r = self.do_set("net.0.add.allow.access-list.bla", "^234$")
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'net.0.add.allow.access-list.bla')
+        self.assertEquals(r['value'], 'IMSI allow added to access list')
+
+        # TODO.. find a way to actually see if this rule has been
+        # added. e.g. by implementing a get for the list.
+
 class TestCtrlSGSN(TestCtrlBase):
     def ctrl_command(self):
         return ["./src/gprs/osmo-sgsn", "-c",

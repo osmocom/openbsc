@@ -28,6 +28,7 @@
 #include <openbsc/ctrl.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/vty.h>
+#include <openbsc/gsm_data.h>
 
 #include <unistd.h>
 #include <string.h>
@@ -378,6 +379,62 @@ static int verify_net_cfg_cmd(struct ctrl_cmd *cmd, const char *value, void *dat
 	return 0;
 }
 
+CTRL_CMD_DEFINE(net_cfg_acc_cmd, "net 0 add allow access-list *");
+static const char *extract_acc_name(const char *var)
+{
+	char *str;
+
+	str = strstr(var, "net.0.add.allow.access-list.");
+	if (!str)
+		return NULL;
+	str += strlen("net.0.add.allow.access-list.");
+	if (strlen(str) == 0)
+		return NULL;
+	return str;
+}
+
+static int get_net_cfg_acc_cmd(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Append only";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_net_cfg_acc_cmd(struct ctrl_cmd *cmd, void *data)
+{
+	const char *access_name = extract_acc_name(cmd->variable);
+	struct bsc_nat_acc_lst *acc = bsc_nat_acc_lst_find(g_nat, access_name);
+	struct bsc_nat_acc_lst_entry *entry;
+	const char *value = cmd->value;
+	int rc;
+
+	entry = bsc_nat_acc_lst_entry_create(acc);
+	if (!entry) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	rc = gsm_parse_reg(acc, &entry->imsi_allow_re, &entry->imsi_allow, 1, &value);
+	if (rc !=  0) {
+		cmd->reply = "Failed to compile expression";
+		return CTRL_CMD_ERROR;
+	}
+
+	cmd->reply = "IMSI allow added to access list";
+	return CTRL_CMD_REPLY;
+}
+
+static int verify_net_cfg_acc_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	const char *access_name = extract_acc_name(cmd->variable);
+	struct bsc_nat_acc_lst *acc = bsc_nat_acc_lst_find(g_nat, access_name);
+
+	if (!acc) {
+		cmd->reply = "Access list not known";
+		return -1;
+	}
+
+	return 0;
+}
 
 struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port)
 {
@@ -399,6 +456,11 @@ struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port)
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_cfg_cmd);
 	if (rc) {
 		fprintf(stderr, "Failed to install the net cfg command. Exiting.\n");
+		goto error;
+	}
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_cfg_acc_cmd);
+	if (rc) {
+		fprintf(stderr, "Failed to install the net acc command. Exiting.\n");
 		goto error;
 	}
 
