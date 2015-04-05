@@ -32,6 +32,7 @@ enum {
 	DNAT,
 	DCTRL,
 	DSMPP,
+	DFILTER,
 	Debug_LastEntry,
 };
 

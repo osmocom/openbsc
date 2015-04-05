@@ -75,7 +75,7 @@ static int insert_barr_node(struct bsc_filter_barr_entry *entry, struct rb_root 
 		else if (rc > 0)
 			new = &((*new)->rb_right);
 		else {
-			LOGP(DNAT, LOGL_ERROR,
+			LOGP(DFILTER, LOGL_ERROR,
 				"Duplicate entry for IMSI(%s)\n", entry->imsi);
 			talloc_free(entry);
 			return -1;
@@ -108,7 +108,7 @@ int bsc_filter_barr_adapt(void *ctx, struct rb_root *root,
 		struct bsc_filter_barr_entry *entry;
 		entry = talloc_zero(ctx, struct bsc_filter_barr_entry);
 		if (!entry) {
-			LOGP(DNAT, LOGL_ERROR,
+			LOGP(DFILTER, LOGL_ERROR,
 				"Allocation of the barr entry failed.\n");
 			continue;
 		}
@@ -162,7 +162,7 @@ static int auth_imsi(struct bsc_filter_request *req,
 	if (bsc_filter_barr_find(req->black_list, imsi, &cm, &lu)) {
 		cause->cm_reject_cause = cm;
 		cause->lu_reject_cause = lu;
-		LOGP(DNAT, LOGL_DEBUG,
+		LOGP(DFILTER, LOGL_DEBUG,
 			"Blocking subscriber IMSI %s with CM: %d LU: %d\n",
 			imsi, cm, lu);
 		return -4;
@@ -180,7 +180,7 @@ static int auth_imsi(struct bsc_filter_request *req,
 
 		/* 3. BSC deny */
 		if (lst_check_deny(bsc_lst, imsi, &cm, &lu) == 0) {
-			LOGP(DNAT, LOGL_ERROR,
+			LOGP(DFILTER, LOGL_ERROR,
 			     "Filtering %s by imsi_deny on config nr: %d.\n", imsi, req->bsc_nr);
 			rate_ctr_inc(&bsc_lst->stats->ctr[ACC_LIST_LOCAL_FILTER]);
 			cause->cm_reject_cause = cm;
@@ -193,7 +193,7 @@ static int auth_imsi(struct bsc_filter_request *req,
 	/* 4. NAT deny */
 	if (nat_lst) {
 		if (lst_check_deny(nat_lst, imsi, &cm, &lu) == 0) {
-			LOGP(DNAT, LOGL_ERROR,
+			LOGP(DFILTER, LOGL_ERROR,
 			     "Filtering %s global imsi_deny on bsc nr: %d.\n", imsi, req->bsc_nr);
 			rate_ctr_inc(&nat_lst->stats->ctr[ACC_LIST_GLOBAL_FILTER]);
 			cause->cm_reject_cause = cm;
@@ -214,7 +214,7 @@ static int _cr_check_loc_upd(void *ctx,
 	char mi_string[GSM48_MI_SIZE];
 
 	if (length < sizeof(*lu)) {
-		LOGP(DNAT, LOGL_ERROR,
+		LOGP(DFILTER, LOGL_ERROR,
 		     "LU does not fit. Length is %d \n", length);
 		return -1;
 	}
@@ -249,7 +249,7 @@ static int _cr_check_cm_serv_req(void *ctx,
 	/* unfortunately in Phase1 the classmark2 length is variable */
 
 	if (length < sizeof(*req)) {
-		LOGP(DNAT, LOGL_ERROR,
+		LOGP(DFILTER, LOGL_ERROR,
 		     "CM Serv Req does not fit. Length is %d\n", length);
 		return -1;
 	}
@@ -260,7 +260,7 @@ static int _cr_check_cm_serv_req(void *ctx,
 	rc = gsm48_extract_mi((uint8_t *) &req->classmark,
 			      length - classmark_offset, mi_string, &mi_type);
 	if (rc < 0) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to parse the classmark2/mi. error: %d\n", rc);
+		LOGP(DFILTER, LOGL_ERROR, "Failed to parse the classmark2/mi. error: %d\n", rc);
 		return -1;
 	}
 
@@ -280,13 +280,13 @@ static int _cr_check_pag_resp(void *ctx,
 	uint8_t mi_type;
 
 	if (length < sizeof(*resp)) {
-		LOGP(DNAT, LOGL_ERROR, "PAG RESP does not fit. Length was %d.\n", length);
+		LOGP(DFILTER, LOGL_ERROR, "PAG RESP does not fit. Length was %d.\n", length);
 		return -1;
 	}
 
 	resp = (struct gsm48_pag_resp *) data;
 	if (gsm48_paging_extract_mi(resp, length, mi_string, &mi_type) < 0) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to extract the MI.\n");
+		LOGP(DFILTER, LOGL_ERROR, "Failed to extract the MI.\n");
 		return -1;
 	}
 
@@ -307,12 +307,12 @@ static int _dt_check_id_resp(struct bsc_filter_request *req,
 	uint8_t mi_type;
 
 	if (length < 2) {
-		LOGP(DNAT, LOGL_ERROR, "mi does not fit.\n");
+		LOGP(DFILTER, LOGL_ERROR, "mi does not fit.\n");
 		return -1;
 	}
 
 	if (data[0] < length - 1) {
-		LOGP(DNAT, LOGL_ERROR, "mi length too big.\n");
+		LOGP(DFILTER, LOGL_ERROR, "mi length too big.\n");
 		return -2;
 	}
 
