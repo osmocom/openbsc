@@ -92,6 +92,8 @@ struct osmo_msc_data {
 
 	/* ussd text when MSC has entered the grace period */
 	char *ussd_grace_txt;
+
+	char *acc_lst_name;
 };
 
 /*
@@ -112,6 +114,8 @@ struct osmo_bsc_data {
 
 	/* ussd text when there is no MSC available */
 	char *ussd_no_msc_txt;
+
+	char *acc_lst_name;
 };
 
 

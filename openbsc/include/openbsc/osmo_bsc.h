@@ -4,6 +4,7 @@
 #define OSMO_BSC_H
 
 #include "bsc_api.h"
+#include "bsc_msg_filter.h"
 
 #define BSS_SEND_USSD 1
 
@@ -41,6 +42,8 @@ struct osmo_bsc_sccp_con {
 
 	struct gsm_subscriber_connection *conn;
 	uint8_t new_subscriber;
+
+	struct bsc_filter_state filter_state;
 };
 
 struct bsc_api *osmo_bsc_api();

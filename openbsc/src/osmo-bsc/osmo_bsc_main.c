@@ -179,6 +179,7 @@ static void signal_handler(int signal)
 
 int main(int argc, char **argv)
 {
+	struct llist_head access_lists;
 	struct osmo_msc_data *msc;
 	struct osmo_bsc_data *data;
 	int rc;
@@ -196,6 +197,9 @@ int main(int argc, char **argv)
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	bsc_vty_init(&log_info);
+	bsc_msg_lst_vty_init(tall_bsc_ctx, &access_lists, BSC_NODE);
+
+	INIT_LLIST_HEAD(&access_lists);
 
 	/* parse options */
 	handle_options(argc, argv);
