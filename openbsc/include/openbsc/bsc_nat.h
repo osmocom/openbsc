@@ -498,6 +498,10 @@ int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg);
 int bsc_nat_extract_lac(struct bsc_connection *bsc, struct nat_sccp_connection *con,
 				struct bsc_nat_parsed *parsed, struct msgb *msg);
 
+/**
+ * CTRL interface helper
+ */
+void bsc_nat_inform_reject(struct bsc_connection *bsc, const char *imsi);
 
 /*
  * Use for testing

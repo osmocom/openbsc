@@ -412,3 +412,21 @@ error:
 	return NULL;
 }
 
+void bsc_nat_inform_reject(struct bsc_connection *conn, const char *imsi)
+{
+	struct ctrl_cmd *cmd;
+
+	cmd = ctrl_cmd_create(conn, CTRL_TYPE_TRAP);
+	if (!cmd) {
+		LOGP(DCTRL, LOGL_ERROR, "Failed to create TRAP command.\n");
+		return;
+	}
+
+	cmd->id = "0";
+	cmd->variable = talloc_asprintf(cmd, "net.0.bsc.%d.notification-rejection-v1",
+					conn->cfg->nr);
+	cmd->reply = talloc_asprintf(cmd, "imsi=%s", imsi);
+
+	ctrl_cmd_send_to_all(conn->cfg->nat->ctrl, cmd);
+	talloc_free(cmd);
+}
