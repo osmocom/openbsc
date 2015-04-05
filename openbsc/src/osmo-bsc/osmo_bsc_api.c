@@ -79,15 +79,34 @@ static uint16_t get_ci_for_msc(struct osmo_msc_data *msc, struct gsm_bts *bts)
 	return bts->cell_identity;
 }
 
+static void bsc_maybe_lu_reject(struct gsm_subscriber_connection *conn, int con_type, int cause)
+{
+	struct msgb *msg;
+
+	/* ignore cm service request or such */
+	if (con_type != FLT_CON_TYPE_LU)
+		return;
+
+	msg = gsm48_create_loc_upd_rej(cause);
+	if (!msg) {
+		LOGP(DMM, LOGL_ERROR, "Failed to create msg for LOCATION UPDATING REJECT.\n");
+		return;
+	}
+
+	msg->lchan = conn->lchan;
+	gsm0808_submit_dtap(conn, msg, 0, 0);
+}
+
 static int bsc_filter_initial(struct osmo_bsc_data *bsc,
 				struct osmo_msc_data *msc,
 				struct gsm_subscriber_connection *conn,
-				struct msgb *msg, char **imsi)
+				struct msgb *msg, char **imsi, int *con_type,
+				int *lu_cause)
 {
-	int con_type;
 	struct bsc_filter_request req;
 	struct bsc_filter_reject_cause cause;
 	struct gsm48_hdr *gh = msgb_l3(msg);
+	int rc;
 
 	req.ctx = conn;
 	req.black_list = NULL;
@@ -96,16 +115,19 @@ static int bsc_filter_initial(struct osmo_bsc_data *bsc,
 	req.global_lst_name = conn->bts->network->bsc_data->acc_lst_name;
 	req.bsc_nr = 0;
 
-	return bsc_msg_filter_initial(gh, msgb_l3len(msg), &req,
-				&con_type, imsi, &cause);
+	rc = bsc_msg_filter_initial(gh, msgb_l3len(msg), &req,
+				con_type, imsi, &cause);
+	*lu_cause = cause.lu_reject_cause;
+	return rc;
 }
 
 static int bsc_filter_data(struct gsm_subscriber_connection *conn,
-				struct msgb *msg)
+				struct msgb *msg, int *lu_cause)
 {
 	struct bsc_filter_request req;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct bsc_filter_reject_cause cause;
+	int rc;
 
 	req.ctx = conn;
 	req.black_list = NULL;
@@ -114,9 +136,11 @@ static int bsc_filter_data(struct gsm_subscriber_connection *conn,
 	req.global_lst_name = conn->bts->network->bsc_data->acc_lst_name;
 	req.bsc_nr = 0;
 
-	return bsc_msg_filter_data(gh, msgb_l3len(msg), &req,
+	rc = bsc_msg_filter_data(gh, msgb_l3len(msg), &req,
 				&conn->sccp_con->filter_state,
 				&cause);
+	*lu_cause = cause.lu_reject_cause;
+	return rc;
 }
 
 static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
@@ -211,6 +235,7 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 static int complete_layer3(struct gsm_subscriber_connection *conn,
 			   struct msgb *msg, struct osmo_msc_data *msc)
 {
+	int con_type, rc, lu_cause;
 	char *imsi = NULL;
 	struct timeval tv;
 	struct msgb *resp;
@@ -230,8 +255,12 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 		send_ping = 0;
 
 	/* Check the filter */
-	if (bsc_filter_initial(msc->network->bsc_data, msc, conn, msg, &imsi) < 0)
+	rc = bsc_filter_initial(msc->network->bsc_data, msc, conn, msg,
+				&imsi, &con_type, &lu_cause);
+	if (rc < 0) {
+		bsc_maybe_lu_reject(conn, con_type, lu_cause);
 		return BSC_API_CONN_POL_REJECT;
+	}
 
 	/* allocate resource for a new connection */
 	ret = bsc_create_new_connection(conn, msc, send_ping);
@@ -248,6 +277,7 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 
 	if (imsi)
 		conn->sccp_con->filter_state.imsi = talloc_steal(conn, imsi);
+	conn->sccp_con->filter_state.con_type = con_type;
 
 	/* check return value, if failed check msg for and send USSD */
 
@@ -368,6 +398,7 @@ static int handle_cc_setup(struct gsm_subscriber_connection *conn,
 
 static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
 {
+	int lu_cause;
 	struct msgb *resp;
 	return_when_not_connected(conn);
 
@@ -381,7 +412,10 @@ static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, st
 		return;
 
 	/* Check the filter */
-	if (bsc_filter_data(conn, msg) < 0) {
+	if (bsc_filter_data(conn, msg, &lu_cause) < 0) {
+		bsc_maybe_lu_reject(conn,
+					conn->sccp_con->filter_state.con_type,
+					lu_cause);
 		bsc_clear_request(conn, 0);
 		return;
 	}
