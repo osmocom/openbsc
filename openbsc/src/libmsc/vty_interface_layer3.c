@@ -107,6 +107,8 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 			"%a, %d %b %Y %T %z", localtime(&subscr->expire_lu));
 	expire_time[sizeof(expire_time) - 1] = '\0';
 	vty_out(vty, "    Expiration Time: %s%s", expire_time, VTY_NEWLINE);
+	vty_out(vty, "    Paging: %s paging%s",
+		subscr->is_paging ? "is" : "not", VTY_NEWLINE);
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
 

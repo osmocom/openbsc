@@ -119,7 +119,6 @@ struct gsm_subscriber_connection {
 
 	/* Are we part of a special "silent" call */
 	int silent_call;
-	int put_channel;
 
 	/* bsc structures */
 	struct osmo_bsc_sccp_con *sccp_con;

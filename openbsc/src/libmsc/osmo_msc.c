@@ -39,10 +39,6 @@ static void msc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 static int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
 	gsm0408_clear_request(conn, cause);
-	if (conn->put_channel) {
-		conn->put_channel = 0;
-		subscr_put_channel(conn->subscr);
-	}
 	return 1;
 }
 
@@ -173,9 +169,5 @@ void msc_release_connection(struct gsm_subscriber_connection *conn)
 
 	conn->in_release = 1;
 	gsm0808_clear(conn);
-	if (conn->put_channel) {
-		conn->put_channel = 0;
-		subscr_put_channel(conn->subscr);
-	}
 	subscr_con_free(conn);
 }

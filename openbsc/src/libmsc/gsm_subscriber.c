@@ -56,26 +56,9 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 struct subscr_request {
 	struct llist_head entry;
 
-	/* back reference */
-	struct gsm_subscriber *subscr;
-
-	/* the requested channel type */
-	int channel_type;
-
-	/* what did we do */
-	int state;
-
 	/* the callback data */
 	gsm_cbfn *cbfn;
 	void *param;
-};
-
-enum {
-	REQ_STATE_INITIAL,
-	REQ_STATE_QUEUED,
-	REQ_STATE_PAGED,
-	REQ_STATE_FAILED_START,
-	REQ_STATE_DISPATCHED,
 };
 
 static struct gsm_subscriber *get_subscriber(struct gsm_subscriber_group *sgrp,
@@ -94,16 +77,14 @@ static struct gsm_subscriber *get_subscriber(struct gsm_subscriber_group *sgrp,
 static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
                                   struct msgb *msg, void *data, void *param)
 {
-	struct subscr_request *request;
+	struct subscr_request *request, *tmp;
 	struct gsm_subscriber_connection *conn = data;
 	struct gsm_subscriber *subscr = param;
 	struct paging_signal_data sig_data;
 
-	/* There is no request anymore... */
-	if (llist_empty(&subscr->requests))
-		return -1;
+	OSMO_ASSERT(subscr->is_paging);
 
-	/* Dispatch signal */
+	/* Inform parts of the system we don't know */
 	sig_data.subscr = subscr;
 	sig_data.bts	= conn ? conn->bts : NULL;
 	sig_data.conn	= conn;
@@ -116,34 +97,22 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	);
 
 	/*
-	 * FIXME: What to do with paging requests coming during
-	 * this callback? We must be sure to not start paging when
-	 * we have an active connection to a subscriber and to make
-	 * the subscr_put_channel work as required...
+	 * Stop paging on all other BTS. E.g. if this is
+	 * the first timeout on a BTS then the others will
+	 * timeout soon as well. Let's just stop everything
+	 * and forget we wanted to page.
 	 */
-	request = (struct subscr_request *)subscr->requests.next;
-	request->state = REQ_STATE_DISPATCHED;
-	llist_del(&request->entry);
-	subscr->in_callback = 1;
-	request->cbfn(hooknum, event, msg, data, request->param);
-	subscr->in_callback = 0;
+	paging_request_stop(NULL, subscr, NULL, NULL);
+	subscr->is_paging = 0;
 
-	if (event != GSM_PAGING_SUCCEEDED) {
-		/*
-		 *  This is a workaround for a bigger issue. We have
-		 *  issued paging that might involve multiple BTSes
-		 *  and one of them have failed now. We will stop the
-		 *  other paging requests as well as the next timeout
-		 *  would work on the next paging request and the queue
-		 *  will do bad things. This should be fixed by counting
-		 *  the outstanding results.
-		 */
-		paging_request_stop(NULL, subscr, NULL, NULL);
-		subscr_put_channel(subscr);
+	llist_for_each_entry_safe(request, tmp, &subscr->requests, entry) {
+		llist_del(&request->entry);
+		request->cbfn(hooknum, event, msg, data, request->param);
+		talloc_free(request);
 	}
 
+	/* balanced with the moment we start paging */
 	subscr_put(subscr);
-	talloc_free(request);
 	return 0;
 }
 
@@ -194,86 +163,43 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, param);
 }
 
-
-static void subscr_send_paging_request(struct gsm_subscriber *subscr)
+struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
+			int channel_type, gsm_cbfn *cbfn, void *param)
 {
-	struct subscr_request *request;
 	int rc;
-	struct gsm_network *net = subscr->group->net;
-
-	assert(!llist_empty(&subscr->requests));
-
-	request = (struct subscr_request *)subscr->requests.next;
-	request->state = REQ_STATE_PAGED;
-	rc = paging_request(net, subscr, request->channel_type,
-			    subscr_paging_cb, subscr);
-
-	/* paging failed, quit now */
-	if (rc <= 0) {
-		request->state = REQ_STATE_FAILED_START;
-		subscr_paging_cb(GSM_HOOK_RR_PAGING, GSM_PAGING_BUSY,
-				 NULL, NULL, subscr);
-	}
-}
-
-void subscr_get_channel(struct gsm_subscriber *subscr,
-			int type, gsm_cbfn *cbfn, void *param)
-{
 	struct subscr_request *request;
 
-	request = talloc(tall_sub_req_ctx, struct subscr_request);
-	if (!request) {
-		if (cbfn)
-			cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_OOM,
-				NULL, NULL, param);
-		return;
+	/* Start paging.. we know it is async so we can do it before */
+	if (!subscr->is_paging) {
+		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet.\n",
+			subscr_name(subscr));
+		rc = paging_request(subscr->group->net, subscr, channel_type,
+				    subscr_paging_cb, subscr);
+		if (rc <= 0) {
+			LOGP(DMM, LOGL_ERROR, "Subscriber %s paging failed: %d\n",
+				subscr_name(subscr), rc);
+			return NULL;
+		}
+		/* reduced on the first paging callback */
+		subscr_get(subscr);
+		subscr->is_paging = 1;
 	}
 
-	memset(request, 0, sizeof(*request));
-	request->subscr = subscr_get(subscr);
-	request->channel_type = type;
+	/* TODO: Stop paging in case of memory allocation failure */
+	request = talloc_zero(subscr, struct subscr_request);
+	if (!request)
+		return NULL;
+
 	request->cbfn = cbfn;
 	request->param = param;
-	request->state = REQ_STATE_INITIAL;
-
-	/*
-	 * FIXME: We might be able to assign more than one
-	 * channel, e.g. voice and SMS submit at the same
-	 * time.
-	 */
-	if (!subscr->in_callback && llist_empty(&subscr->requests)) {
-		/* add to the list, send a request */
-		llist_add_tail(&request->entry, &subscr->requests);
-		subscr_send_paging_request(subscr);
-	} else {
-		/* this will be picked up later, from subscr_put_channel */
-		llist_add_tail(&request->entry, &subscr->requests);
-		request->state = REQ_STATE_QUEUED;
-	}
+	llist_add_tail(&request->entry, &subscr->requests);
+	return request;
 }
 
-void subscr_put_channel(struct gsm_subscriber *subscr)
+void subscr_remove_request(struct subscr_request *request)
 {
-	/*
-	 * FIXME: Continue with other requests now... by checking
-	 * the gsm_subscriber inside the gsm_lchan. Drop the ref count
-	 * of the lchan after having asked the next requestee to handle
-	 * the channel.
-	 */
-	/*
-	 * FIXME: is the lchan is of a different type we could still
-	 * issue an immediate assignment for another channel and then
-	 * close this one.
-	 */
-	/*
-	 * Currently we will drop the last ref of the lchan which
-	 * will result in a channel release on RSL and we will start
-	 * the paging. This should work most of the time as the MS
-	 * will listen to the paging requests before we timeout
-	 */
-
-	if (subscr && !llist_empty(&subscr->requests))
-		subscr_send_paging_request(subscr);
+	llist_del(&request->entry);
+	talloc_free(request);
 }
 
 struct gsm_subscriber *subscr_create_subscriber(struct gsm_subscriber_group *sgrp,

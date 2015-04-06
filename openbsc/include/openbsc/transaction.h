@@ -36,7 +36,7 @@ struct gsm_trans {
 	int tch_recv;
 
 	/* is thats one paging? */
-	struct gsm_network **paging_request;
+	struct subscr_request *paging_request;
 
 	union {
 		struct {
