@@ -55,7 +55,7 @@
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 
-static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr, int pending)
+static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
 	int rc;
 	struct gsm_auth_info ainfo;
@@ -107,11 +107,6 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 			"%a, %d %b %Y %T %z", localtime(&subscr->expire_lu));
 	expire_time[sizeof(expire_time) - 1] = '\0';
 	vty_out(vty, "    Expiration Time: %s%s", expire_time, VTY_NEWLINE);
-
-	if (pending)
-		vty_out(vty, "    Pending: %d%s",
-			subscr_pending_requests(subscr), VTY_NEWLINE);
-
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
 
@@ -127,7 +122,7 @@ DEFUN(show_subscr_cache,
 
 	llist_for_each_entry(subscr, &active_subscribers, entry) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_full_vty(vty, subscr, 0);
+		subscr_dump_full_vty(vty, subscr);
 	}
 
 	return CMD_SUCCESS;
@@ -215,7 +210,7 @@ DEFUN(show_subscr,
 		return CMD_WARNING;
 	}
 
-	subscr_dump_full_vty(vty, subscr, 1);
+	subscr_dump_full_vty(vty, subscr);
 
 	subscr_put(subscr);
 
@@ -241,7 +236,7 @@ DEFUN(subscriber_create,
 	}
 
 	/* Show info about the created subscriber. */
-	subscr_dump_full_vty(vty, subscr, 0);
+	subscr_dump_full_vty(vty, subscr);
 
 	subscr_put(subscr);
 
@@ -591,71 +586,6 @@ DEFUN(ena_subscr_extension,
 	strncpy(subscr->extension, ext, sizeof(subscr->extension));
 	db_sync_subscriber(subscr);
 
-	subscr_put(subscr);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(ena_subscr_clear,
-      ena_subscr_clear_cmd,
-      "subscriber " SUBSCR_TYPES " ID clear-requests",
-	SUBSCR_HELP "Clear the paging requests for this subscriber\n")
-{
-	int del;
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	del = subscr_pending_clear(subscr);
-	vty_out(vty, "Cleared %d pending requests.%s", del, VTY_NEWLINE);
-	subscr_put(subscr);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(ena_subscr_pend,
-      ena_subscr_pend_cmd,
-      "subscriber " SUBSCR_TYPES " ID show-pending",
-	SUBSCR_HELP "Clear the paging requests for this subscriber\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	subscr_pending_dump(subscr, vty);
-	subscr_put(subscr);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(ena_subscr_kick,
-      ena_subscr_kick_cmd,
-      "subscriber " SUBSCR_TYPES " ID kick-pending",
-	SUBSCR_HELP "Clear the paging requests for this subscriber\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	subscr_pending_kick(subscr);
 	subscr_put(subscr);
 
 	return CMD_SUCCESS;
@@ -1139,9 +1069,6 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &ena_subscr_extension_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_authorized_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_a3a8_cmd);
-	install_element(ENABLE_NODE, &ena_subscr_clear_cmd);
-	install_element(ENABLE_NODE, &ena_subscr_pend_cmd);
-	install_element(ENABLE_NODE, &ena_subscr_kick_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_handover_cmd);
 	install_element(ENABLE_NODE, &subscriber_purge_cmd);
 	install_element(ENABLE_NODE, &smsqueue_trigger_cmd);
