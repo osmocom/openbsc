@@ -1093,8 +1093,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					filter = bsc_nat_filter_dt(bsc, msg,
 							con, parsed, &cause);
 					if (filter < 0) {
-						if (imsi)
-							bsc_nat_inform_reject(bsc, imsi);
+						if (con->imsi)
+							bsc_nat_inform_reject(bsc, con->imsi);
 						bsc_stat_reject(filter, bsc, 1);
 						bsc_send_con_release(bsc, con, &cause);
 						con = NULL;
