@@ -286,6 +286,32 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command('show subscriber imsi '+imsi)
         self.assert_(res != '% No subscriber found for imsi '+imsi)
 
+    def testSubscriberSettings(self):
+        self.vty.enable()
+
+        imsi = "204300854013739"
+        wrong_imsi = "204300999999999"
+
+        # Lets create one
+        res = self.vty.command('subscriber create imsi '+imsi)
+        self.assert_(res.find("    IMSI: "+imsi) > 0)
+
+        self.vty.verify('subscriber imsi '+wrong_imsi+' name wrong', ['% No subscriber found for imsi '+wrong_imsi])
+        res = self.vty.command('subscriber imsi '+imsi+' name '+('X' * 160))
+        self.assert_(res.find("NAME is too long") > 0)
+
+        self.vty.verify('subscriber imsi '+imsi+' name '+('G' * 159), [''])
+
+        self.vty.verify('subscriber imsi '+wrong_imsi+' extension 840', ['% No subscriber found for imsi '+wrong_imsi])
+        res = self.vty.command('subscriber imsi '+imsi+' extension '+('9' * 15))
+        self.assert_(res.find("EXTENSION is too long") > 0)
+
+        self.vty.verify('subscriber imsi '+imsi+' extension '+('1' * 14), [''])
+
+        # Delete it
+        res = self.vty.command('subscriber delete imsi '+imsi)
+        self.assert_(res != "")
+
     def testShowPagingGroup(self):
         res = self.vty.command("show paging-group 255 1234567")
         self.assertEqual(res, "% can't find BTS 255")

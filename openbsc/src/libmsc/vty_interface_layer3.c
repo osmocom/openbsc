@@ -548,6 +548,13 @@ DEFUN(ena_subscr_name,
 		return CMD_WARNING;
 	}
 
+	if (strlen(name) > sizeof(subscr->name)-1) {
+		vty_out(vty,
+			"%% NAME is too long, max. %d characters are allowed%s",
+			sizeof(subscr->name)-1, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	strncpy(subscr->name, name, sizeof(subscr->name));
 	talloc_free(name);
 	db_sync_subscriber(subscr);
@@ -571,6 +578,13 @@ DEFUN(ena_subscr_extension,
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (strlen(ext) > sizeof(subscr->extension)-1) {
+		vty_out(vty,
+			"%% EXTENSION is too long, max. %d characters are allowed%s",
+			sizeof(subscr->extension)-1, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
