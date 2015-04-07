@@ -440,6 +440,12 @@ static void test_subscriber_gsup(void)
 		0x06, 0x01, 0x00,
 	};
 
+	static const uint8_t location_cancellation_req_withdraw[] = {
+		0x1c,
+		TEST_GSUP_IMSI1_IE,
+		0x06, 0x01, 0x01,
+	};
+
 	static const uint8_t location_cancellation_req_other[] = {
 		0x1c,
 		0x01, 0x05, 0x11, 0x11, 0x11, 0x11, 0x01,
@@ -581,6 +587,12 @@ static void test_subscriber_gsup(void)
 	/* Check cancellation result */
 	OSMO_ASSERT(s1->flags & GPRS_SUBSCRIBER_CANCELLED);
 	OSMO_ASSERT(s1->sgsn_data->mm == NULL);
+
+	/* Inject LocCancelReq(withdraw) GSUP message */
+	rc = rx_gsup_message(location_cancellation_req_withdraw,
+			     sizeof(location_cancellation_req_withdraw));
+	OSMO_ASSERT(rc >= 0);
+	OSMO_ASSERT(s1->sgsn_data->error_cause == GMM_CAUSE_IMPL_DETACHED);
 
 	/* Inject PurgeMsRes GSUP message */
 	rc = rx_gsup_message(purge_ms_res,

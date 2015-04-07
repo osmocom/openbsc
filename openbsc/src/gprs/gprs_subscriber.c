@@ -492,7 +492,8 @@ static int gprs_subscr_handle_loc_cancel_req(struct gsm_subscriber *subscr,
 					     struct gprs_gsup_message *gsup_msg)
 {
 	struct gprs_gsup_message gsup_reply = {0};
-	int is_update_procedure = !gsup_msg->cancel_type || gsup_msg->cancel_type;
+	int is_update_procedure = !gsup_msg->cancel_type ||
+		gsup_msg->cancel_type == GPRS_GSUP_CANCEL_TYPE_UPDATE;
 
 	LOGGSUBSCRP(LOGL_INFO, subscr, "Cancelling MS subscriber (%s)\n",
 		    is_update_procedure ?
