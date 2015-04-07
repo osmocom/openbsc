@@ -250,7 +250,7 @@ DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
 		vty_out(vty, "MGCP Status for %d%s", con->cfg->nr, VTY_NEWLINE);
 		max = bsc_mgcp_nr_multiplexes(con->max_endpoints);
 		for (i = 0; i < max; ++i) {
-			for (j = 0; j < 32; ++j) {
+			for (j = 1; j < 32; ++j) {
 				endp = mgcp_timeslot_to_endpoint(i, j);
 				vty_out(vty, " Endpoint 0x%x %s%s", endp,
 					con->_endpoint_status[endp] == 0 
