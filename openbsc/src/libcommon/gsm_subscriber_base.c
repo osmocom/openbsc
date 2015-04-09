@@ -112,8 +112,7 @@ struct gsm_subscriber *subscr_get_or_create(struct gsm_subscriber_group *sgrp,
 	if (!subscr)
 		return NULL;
 
-	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH);
-	subscr->imsi[GSM_IMSI_LENGTH - 1] = '\0';
+	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	subscr->group = sgrp;
 	return subscr;
 }

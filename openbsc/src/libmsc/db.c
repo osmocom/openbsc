@@ -565,7 +565,7 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 
 	string = dbi_result_get_string(result, "imei");
 	if (string)
-		strncpy(equip->imei, string, sizeof(equip->imei));
+		strncpy(equip->imei, string, sizeof(equip->imei)-1);
 
 	string = dbi_result_get_string(result, "classmark1");
 	if (string) {
@@ -802,7 +802,7 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 	const char *string;
 	string = dbi_result_get_string(result, "imsi");
 	if (string)
-		strncpy(subscr->imsi, string, GSM_IMSI_LENGTH);
+		strncpy(subscr->imsi, string, GSM_IMSI_LENGTH-1);
 
 	string = dbi_result_get_string(result, "tmsi");
 	if (string)
