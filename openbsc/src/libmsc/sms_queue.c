@@ -442,6 +442,7 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 	switch (signal) {
 	case S_SMS_DELIVERED:
 		/* Remember the subscriber and clear the pending entry */
+		LOGP(DLSMS, LOGL_NOTICE, "sms_mon: S_SMS_DELIVERED : sms->id = %llu \n", sig_sms->sms->id);
 		network->sms_queue->pending -= 1;
 		subscr = subscr_get(pending->subscr);
 		sms_pending_free(pending);
@@ -450,6 +451,7 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 		subscr_put(subscr);
 		break;
 	case S_SMS_MEM_EXCEEDED:
+		LOGP(DLSMS, LOGL_NOTICE, "sms_mon: S_SMS_DELIVERED : sms->id = %llu \n", sig_sms->sms->id);
 		network->sms_queue->pending -= 1;
 		sms_pending_free(pending);
 		sms_queue_trigger(network->sms_queue);
@@ -469,14 +471,17 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 		case 0:
 			/* BAD SMS? */
 			db_sms_inc_deliver_attempts(sig_sms->sms);
+			LOGP(DLSMS, LOGL_NOTICE, "sms_mon: db_sms_inc_deliver_attempts : bad sms : sms->id = %llu \n", sig_sms->sms->id);
 			sms_pending_failed(pending, 0);
 			break;
 		case GSM_PAGING_EXPIRED:
+			LOGP(DLSMS, LOGL_NOTICE, "sms_mon: GSM_PAGING_EXPIRED : sms->id = %llu \n", sig_sms->sms->id);
 			sms_pending_failed(pending, 1);
 			break;
 
 		case GSM_PAGING_OOM:
 		case GSM_PAGING_BUSY:
+			LOGP(DLSMS, LOGL_NOTICE, "sms_mon: GSM_PAGING_BUSY : sms->id = %llu \n", sig_sms->sms->id);
 			network->sms_queue->pending -= 1;
 			sms_pending_free(pending);
 			sms_queue_trigger(network->sms_queue);

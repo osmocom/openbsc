@@ -904,6 +904,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 
 	osmo_counter_inc(conn->bts->network->stats.sms.delivered);
 	db_sms_inc_deliver_attempts(trans->sms.sms);
+	LOGP(DLSMS, LOGL_NOTICE, "sms_mon: db_sms_inc_deliver_attempts : gsm411_send_sms : sms->id = %llu \n", sms->id);
 
 	return gsm411_rp_sendmsg(&trans->sms.smr_inst, msg,
 		GSM411_MT_RP_DATA_MT, msg_ref, GSM411_SM_RL_DATA_REQ);
