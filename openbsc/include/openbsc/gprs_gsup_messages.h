@@ -29,6 +29,7 @@
 
 #define GPRS_GSUP_MAX_NUM_PDP_INFO		10 /* GSM 09.02 limits this to 50 */
 #define GPRS_GSUP_MAX_NUM_AUTH_INFO		5
+#define GPRS_GSUP_MAX_MSISDN_LEN		9
 
 #define GPRS_GSUP_PDP_TYPE_SIZE			2
 
@@ -40,6 +41,7 @@ enum gprs_gsup_iei {
 	GPRS_GSUP_PDP_INFO_IE			= 0x05,
 	GPRS_GSUP_CANCEL_TYPE_IE		= 0x06,
 	GPRS_GSUP_FREEZE_PTMSI_IE		= 0x07,
+	GPRS_GSUP_MSISDN_IE			= 0x08,
 	GPRS_GSUP_PDP_CONTEXT_ID_IE		= 0x10,
 	GPRS_GSUP_PDP_TYPE_IE			= 0x11,
 	GPRS_GSUP_ACCESS_POINT_NAME_IE		= 0x12,
@@ -102,6 +104,8 @@ struct gprs_gsup_message {
 	size_t				num_auth_tuples;
 	struct gprs_gsup_pdp_info	pdp_infos[GPRS_GSUP_MAX_NUM_PDP_INFO];
 	size_t				num_pdp_infos;
+	const uint8_t			*msisdn_enc;
+	size_t				msisdn_enc_len;
 };
 
 int gprs_gsup_decode(const uint8_t *data, size_t data_len,
