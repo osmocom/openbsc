@@ -199,11 +199,18 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 		qos = TLVP_VAL(tp, OSMO_IE_GSM_REQ_QOS);
 	}
 
-	pdp->qos_req.l = qos_len + 1;
-	if (pdp->qos_req.l > sizeof(pdp->qos_req.v))
-		pdp->qos_req.l = sizeof(pdp->qos_req.v);
-	pdp->qos_req.v[0] = 0; /* Allocation/Retention policy */
-	memcpy(&pdp->qos_req.v[1], qos, pdp->qos_req.l - 1);
+	if (qos_len <= 3) {
+		pdp->qos_req.l = qos_len + 1;
+		if (pdp->qos_req.l > sizeof(pdp->qos_req.v))
+			pdp->qos_req.l = sizeof(pdp->qos_req.v);
+		pdp->qos_req.v[0] = 0; /* Allocation/Retention policy */
+		memcpy(&pdp->qos_req.v[1], qos, pdp->qos_req.l - 1);
+	} else {
+		pdp->qos_req.l = qos_len;
+		if (pdp->qos_req.l > sizeof(pdp->qos_req.v))
+			pdp->qos_req.l = sizeof(pdp->qos_req.v);
+		memcpy(pdp->qos_req.v, qos, pdp->qos_req.l);
+	}
 
 	/* SGSN address for control plane */
 	pdp->gsnlc.l = sizeof(sgsn->cfg.gtp_listenaddr.sin_addr);
