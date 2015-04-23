@@ -94,6 +94,11 @@ static int decode_pdp_info(uint8_t *data, size_t data_len,
 			pdp_info->apn_enc_len = value_len;
 			break;
 
+		case GPRS_GSUP_PDP_QOS_IE:
+			pdp_info->qos_enc = value;
+			pdp_info->qos_enc_len = value_len;
+			break;
+
 		default:
 			LOGP(DGPRS, LOGL_ERROR,
 			     "GSUP IE type %d not expected in PDP info\n", iei);
@@ -331,6 +336,11 @@ static void encode_pdp_info(struct msgb *msg, enum gprs_gsup_iei iei,
 	if (pdp_info->apn_enc) {
 		msgb_tlv_put(msg, GPRS_GSUP_ACCESS_POINT_NAME_IE,
 			     pdp_info->apn_enc_len, pdp_info->apn_enc);
+	}
+
+	if (pdp_info->qos_enc) {
+		msgb_tlv_put(msg, GPRS_GSUP_PDP_QOS_IE,
+				pdp_info->qos_enc_len, pdp_info->qos_enc);
 	}
 
 	/* Update length field */
