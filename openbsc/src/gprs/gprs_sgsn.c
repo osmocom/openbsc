@@ -582,6 +582,17 @@ void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)
 	sgsn_auth_update(mmctx);
 }
 
+static void insert_qos(struct tlv_parsed *tp, struct sgsn_subscriber_pdp_data *pdp)
+{
+	tp->lv[OSMO_IE_GSM_SUB_QOS].len = pdp->qos_subscribed_len;
+	tp->lv[OSMO_IE_GSM_SUB_QOS].val = pdp->qos_subscribed;
+}
+
+/**
+ * The tlv_parsed tp parameter will be modified to insert a
+ * OSMO_IE_GSM_SUB_QOS in case the data is available in the
+ * PDP context handling.
+ */
 struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 						struct tlv_parsed *tp,
 						enum gsm48_gsm_cause *gsm_cause)
@@ -621,6 +632,7 @@ struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 			{
 				allow_any_apn = 1;
 				selected_apn_str = "";
+				insert_qos(tp, pdp);
 				continue;
 			}
 			if (!llist_empty(&sgsn_apn_ctxts)) {
@@ -629,6 +641,7 @@ struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 				if (apn_ctx == NULL)
 					continue;
 			}
+			insert_qos(tp, pdp);
 			selected_apn_str = pdp->apn_str;
 			break;
 		}
@@ -636,11 +649,13 @@ struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 		/* Check whether the given APN is granted */
 		llist_for_each_entry(pdp, &mmctx->subscr->sgsn_data->pdp_list, list) {
 			if (strcmp(pdp->apn_str, "*") == 0) {
+				insert_qos(tp, pdp);
 				selected_apn_str = req_apn_str;
 				allow_any_apn = 1;
 				continue;
 			}
 			if (strcasecmp(pdp->apn_str, req_apn_str) == 0) {
+				insert_qos(tp, pdp);
 				selected_apn_str = req_apn_str;
 				break;
 			}
