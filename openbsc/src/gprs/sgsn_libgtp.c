@@ -197,6 +197,11 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	memcpy(pdp->gsnlu.v, &sgsn->cfg.gtp_listenaddr.sin_addr,
 		sizeof(sgsn->cfg.gtp_listenaddr.sin_addr));
 
+	/* Assume we are a GERAN system */
+	pdp->rattype.l = 1;
+	pdp->rattype.v[0] = 2;
+	pdp->rattype_given = 1;
+
 	/* change pdp state to 'requested' */
 	pctx->state = PDP_STATE_CR_REQ;
 
