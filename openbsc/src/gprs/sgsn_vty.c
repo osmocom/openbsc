@@ -500,8 +500,9 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 	}
 
 	llist_for_each_entry(pdp, &subscr->sgsn_data->pdp_list, list) {
-		vty_out(vty, "    PDP info: Id: %d, Type: 0x%04x, APN: '%s'%s",
+		vty_out(vty, "    PDP info: Id: %d, Type: 0x%04x, APN: '%s' QoS: %s%s",
 			pdp->context_id, pdp->pdp_type, pdp->apn_str,
+			osmo_hexdump(pdp->qos_subscribed, pdp->qos_subscribed_len),
 			VTY_NEWLINE);
 	}
 
