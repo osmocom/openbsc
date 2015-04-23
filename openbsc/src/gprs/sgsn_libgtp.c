@@ -123,6 +123,8 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	struct sgsn_pdp_ctx *pctx;
 	struct pdp_t *pdp;
 	uint64_t imsi_ui64;
+	size_t qos_len;
+	const uint8_t *qos;
 	int rc;
 
 	LOGP(DGPRS, LOGL_ERROR, "Create PDP Context\n");
@@ -188,12 +190,20 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	memcpy(pdp->pco_req.v, TLVP_VAL(tp, GSM48_IE_GSM_PROTO_CONF_OPT),
 		pdp->pco_req.l);
 
-	/* QoS options from GMM */
-	pdp->qos_req.l = TLVP_LEN(tp, OSMO_IE_GSM_REQ_QOS);
+	/* QoS options from GMM or remote */
+	if (TLVP_LEN(tp, OSMO_IE_GSM_SUB_QOS) > 0) {
+		qos_len = TLVP_LEN(tp, OSMO_IE_GSM_SUB_QOS);
+		qos = TLVP_VAL(tp, OSMO_IE_GSM_SUB_QOS);
+	} else {
+		qos_len = TLVP_LEN(tp, OSMO_IE_GSM_REQ_QOS);
+		qos = TLVP_VAL(tp, OSMO_IE_GSM_REQ_QOS);
+	}
+
+	pdp->qos_req.l = qos_len + 1;
 	if (pdp->qos_req.l > sizeof(pdp->qos_req.v))
 		pdp->qos_req.l = sizeof(pdp->qos_req.v);
-	memcpy(pdp->qos_req.v, TLVP_VAL(tp, OSMO_IE_GSM_REQ_QOS),
-		pdp->qos_req.l);
+	pdp->qos_req.v[0] = 0; /* Allocation/Retention policy */
+	memcpy(&pdp->qos_req.v[1], qos, pdp->qos_req.l - 1);
 
 	/* SGSN address for control plane */
 	pdp->gsnlc.l = sizeof(sgsn->cfg.gtp_listenaddr.sin_addr);

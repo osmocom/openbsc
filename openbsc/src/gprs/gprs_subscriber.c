@@ -295,6 +295,13 @@ static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
 			continue;
 		}
 
+		if (pdp_info->qos_enc_len > sizeof(pdp_data->qos_subscribed)) {
+			LOGGSUBSCRP(LOGL_ERROR, subscr,
+				"QoS info too long (%zu)\n",
+				pdp_info->qos_enc_len);
+			continue;
+		}
+
 		LOGGSUBSCRP(LOGL_INFO, subscr,
 		     "Will set PDP info, context id = %zu, APN = %s\n",
 		     ctx_id, osmo_hexdump(pdp_info->apn_enc, pdp_info->apn_enc_len));
@@ -310,6 +317,8 @@ static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
 		pdp_data->pdp_type = pdp_info->pdp_type;
 		gprs_apn_to_str(pdp_data->apn_str,
 				pdp_info->apn_enc, pdp_info->apn_enc_len);
+		memcpy(pdp_data->qos_subscribed, pdp_info->qos_enc, pdp_info->qos_enc_len);
+		pdp_data->qos_subscribed_len = pdp_info->qos_enc_len;
 	}
 }
 
