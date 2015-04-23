@@ -280,6 +280,7 @@ This is a container for information elements describing a single PDP.
   10	PDP context id		big endian int, 1-N 	C	TLV	3
   11	PDP type		4.2.4			C	TLV	4
   12	Access point name	04.08, 10.5.6.1		C	TLV	3-102
+  13	Quality of Service	4.2.11			O	TLV	1-20
 
 The conditional IE are mandantory unless mentioned otherwise.
 
@@ -359,6 +360,7 @@ IEI that shall be used for the encoding.
   | 0x10   PDP context id big endian int                    |
   | 0x11   PDP type       4.2.4                             |
   | 0x12   APN            04.08, 10.5.6.1                   |
+  | 0x13   QoS            4.2.11                            |
   | 0x20   RAND           octet string                      |
   | 0x21   SRES           octet string                      |
   | 0x22   Kc             octet string                      |
@@ -416,6 +418,22 @@ BCD Number in GSM 04.08.
   |  Number digit 2           |   Number digit 1        | octet 3
   +-----------------------------------------------------+
   |  Number digit 4           |   Number digit 3        | octet 4
+  +-----------------------------------------------------+
+  :                                                     :   :
+  +-----------------------------------------------------+
+
+
+4.2.11 Quality of Service Subscribed Service
+
+This encodes the QoS for the PDP context to be used by the SGSN/GGSN
+communication.
+
+
+     8      7      6      5      4      3      2      1
+  +-----------------------------------------------------+
+  |     |  IEI                                          | octet 1
+  +-----------------------------------------------------+
+  |   Length of IE contents                             | octet 2
   +-----------------------------------------------------+
   :                                                     :   :
   +-----------------------------------------------------+
