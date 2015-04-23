@@ -197,7 +197,7 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
-		"Got SendAuthenticationInfoResult, num_auth_tuples = %d\n",
+		"Got SendAuthenticationInfoResult, num_auth_tuples = %zu\n",
 		gsup_msg->num_auth_tuples);
 
 	if (gsup_msg->num_auth_tuples > 0) {
@@ -210,10 +210,10 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 	for (idx = 0; idx < gsup_msg->num_auth_tuples; idx++) {
 		size_t key_seq = gsup_msg->auth_tuples[idx].key_seq;
 		LOGGSUBSCRP(LOGL_DEBUG, subscr,
-			"Adding auth tuple, cksn = %d\n", key_seq);
+			"Adding auth tuple, cksn = %zu\n", key_seq);
 		if (key_seq >= ARRAY_SIZE(sdata->auth_triplets)) {
 			LOGGSUBSCRP(LOGL_NOTICE, subscr,
-				"Skipping auth triplet with invalid cksn %d\n",
+				"Skipping auth triplet with invalid cksn %zu\n",
 				key_seq);
 			continue;
 		}
@@ -275,14 +275,14 @@ static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
 
 		if (pdp_info->apn_enc_len >= sizeof(pdp_data->apn_str)-1) {
 			LOGGSUBSCRP(LOGL_ERROR, subscr,
-			     "APN too long, context id = %d, APN = %s\n",
+			     "APN too long, context id = %zu, APN = %s\n",
 			     ctx_id, osmo_hexdump(pdp_info->apn_enc,
 						  pdp_info->apn_enc_len));
 			continue;
 		}
 
 		LOGGSUBSCRP(LOGL_INFO, subscr,
-		     "Will set PDP info, context id = %d, APN = %s\n",
+		     "Will set PDP info, context id = %zu, APN = %s\n",
 		     ctx_id, osmo_hexdump(pdp_info->apn_enc, pdp_info->apn_enc_len));
 
 		/* Set PDP info [ctx_id] */

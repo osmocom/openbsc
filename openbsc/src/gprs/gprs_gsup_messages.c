@@ -153,7 +153,7 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 
 parse_error:
 	LOGP(DGPRS, LOGL_ERROR,
-	     "GSUP IE type %d, length %d invalid in PDP info\n", iei, value_len);
+	     "GSUP IE type %d, length %zu invalid in PDP info\n", iei, value_len);
 
 	return -1;
 }

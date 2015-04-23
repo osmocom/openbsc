@@ -61,7 +61,7 @@ static void test_simple_sw_config(void)
 	}
 
 	if (descr[0].len != 13) {
-		printf("WRONG SIZE: %d\n", descr[0].len);
+		printf("WRONG SIZE: %zu\n", descr[0].len);
 		abort();
 	}
 
@@ -99,12 +99,12 @@ static void test_dual_sw_config(void)
 	}
 
 	if (descr[0].len != 13) {
-		printf("WRONG SIZE0: %d\n", descr[0].len);
+		printf("WRONG SIZE0: %zu\n", descr[0].len);
 		abort();
 	}
 
 	if (descr[1].len != 13) {
-		printf("WRONG SIZE1: %d\n", descr[1].len);
+		printf("WRONG SIZE1: %zu\n", descr[1].len);
 		abort();
 	}
 
