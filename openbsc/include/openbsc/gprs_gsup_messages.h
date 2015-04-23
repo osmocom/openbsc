@@ -45,6 +45,7 @@ enum gprs_gsup_iei {
 	GPRS_GSUP_PDP_CONTEXT_ID_IE		= 0x10,
 	GPRS_GSUP_PDP_TYPE_IE			= 0x11,
 	GPRS_GSUP_ACCESS_POINT_NAME_IE		= 0x12,
+	GPRS_GSUP_PDP_QOS_IE			= 0x13,
 	GPRS_GSUP_RAND_IE			= 0x20,
 	GPRS_GSUP_SRES_IE			= 0x21,
 	GPRS_GSUP_KC_IE				= 0x22
@@ -91,6 +92,8 @@ struct gprs_gsup_pdp_info {
 	uint16_t			pdp_type;
 	const uint8_t			*apn_enc;
 	size_t				apn_enc_len;
+	const uint8_t			*qos_enc;
+	size_t				qos_enc_len;
 };
 
 struct gprs_gsup_message {
