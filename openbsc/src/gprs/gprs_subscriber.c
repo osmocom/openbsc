@@ -1,6 +1,7 @@
 /* MS subscriber data handling */
 
 /* (C) 2014 by sysmocom s.f.m.c. GmbH
+ * (C) 2015 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -259,8 +260,21 @@ static struct sgsn_subscriber_pdp_data *gprs_subscr_pdp_data_get_by_id(
 static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
 					 struct gprs_gsup_message *gsup_msg)
 {
+	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
 	unsigned idx;
 	int rc;
+
+	if (gsup_msg->msisdn_enc) {
+		if (gsup_msg->msisdn_enc_len > sizeof(sdata->msisdn)) {
+			LOGP(DGPRS, LOGL_ERROR, "MSISDN too long (%zu)\n",
+				gsup_msg->msisdn_enc_len);
+			sdata->msisdn_len = 0;
+		} else {
+			memcpy(sdata->msisdn, gsup_msg->msisdn_enc,
+				gsup_msg->msisdn_enc_len);
+			sdata->msisdn_len = gsup_msg->msisdn_enc_len;
+		}
+	}
 
 	if (gsup_msg->pdp_info_compl) {
 		rc = gprs_subscr_pdp_data_clear(subscr);

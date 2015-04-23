@@ -3,6 +3,7 @@
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by On-Waves
+ * (C) 2015 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -45,6 +46,7 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
+#include <openbsc/gsm_subscriber.h>
 
 #include <gtp.h>
 #include <pdp.h>
@@ -153,8 +155,14 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 
 	/* IMSI, TEID/TEIC, FLLU/FLLC, TID, NSAPI set in pdp_newpdp */
 
-	/* FIXME: MSISDN in BCD format from mmctx */
-	//pdp->msisdn.l/.v
+	/* Put the MSISDN in case we have it */
+	if (mmctx->subscr) {
+		pdp->msisdn.l = mmctx->subscr->sgsn_data->msisdn_len;
+		if (pdp->msisdn.l > sizeof(pdp->msisdn.v))
+			pdp->msisdn.l = sizeof(pdp->msisdn.l);
+		memcpy(pdp->msisdn.v, mmctx->subscr->sgsn_data->msisdn,
+			pdp->msisdn.l);
+	}
 
 	/* End User Address from GMM requested PDP address */
 	pdp->eua.l = TLVP_LEN(tp, OSMO_IE_GSM_REQ_PDP_ADDR);
