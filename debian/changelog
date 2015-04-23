@@ -1,6 +1,7 @@
-openbsc (0.14.0) UNRELEASED; urgency=low
+openbsc (0.14.0+z1) UNRELEASED; urgency=low
 
   * New upstream tag and additional patches.
+  * SGSN/GSUP extensions
 
  -- Holger Hans Peter Freyther <holger@freyther.de>  Sat, 14 Mar 2015 20:33:25 +0100
 
