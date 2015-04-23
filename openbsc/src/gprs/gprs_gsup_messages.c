@@ -2,6 +2,7 @@
 
 /*
  * (C) 2014 by Sysmocom s.f.m.c. GmbH
+ * (C) 2015 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * Author: Jacob Erlbeck
@@ -291,6 +292,12 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 			gsup_msg->auth_tuples[gsup_msg->num_auth_tuples++] =
 				auth_info;
 			break;
+
+		case GPRS_GSUP_MSISDN_IE:
+			gsup_msg->msisdn_enc = value;
+			gsup_msg->msisdn_enc_len = value_len;
+			break;
+
 		default:
 			LOGP(DGPRS, LOGL_NOTICE,
 			     "GSUP IE type %d unknown\n", iei);
@@ -374,6 +381,10 @@ void gprs_gsup_encode(struct msgb *msg, const struct gprs_gsup_message *gsup_msg
 	msgb_tlv_put(msg, GPRS_GSUP_IMSI_IE, bcd_len - 1, &bcd_buf[1]);
 
 	/* specific parts */
+	if (gsup_msg->msisdn_enc)
+		msgb_tlv_put(msg, GPRS_GSUP_MSISDN_IE,
+				gsup_msg->msisdn_enc_len, gsup_msg->msisdn_enc);
+
 	if ((u8 = gsup_msg->cause))
 		msgb_tlv_put(msg, GPRS_GSUP_CAUSE_IE, sizeof(u8), &u8);
 
