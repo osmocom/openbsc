@@ -1,9 +1,19 @@
-openbsc (0.14.0+z1) UNRELEASED; urgency=low
+openbsc (0.14.0+z8) unstable; urgency=low
 
   * New upstream tag and additional patches.
   * SGSN/GSUP extensions
+  * New NAT command.
+  * Potential fix to QoS GTP sending
+  * Merged GSUP extensions (change of IE)
+  * Added simple CDR module to the SGSN
+  * Put charging_id into CDR, send RAI/UCI/IMEI(SV) on PDP ctx creation.
+  * Log HLR-Number, provide hlr-Number in purgeMS
+  * Set LAC/CI to 0xFFFE/0xFF
+  * Set spare selection mode flags.
+  * Use the verified mode
+  * Resolve GGSN dynamically
 
- -- Holger Hans Peter Freyther <holger@freyther.de>  Sat, 14 Mar 2015 20:33:25 +0100
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Wed, 06 May 2015 18:04:15 +0200
 
 openbsc (0.12.0+git26-7) unstable; urgency=low
 
