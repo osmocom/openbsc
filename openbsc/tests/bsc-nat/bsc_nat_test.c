@@ -625,12 +625,13 @@ static void test_mgcp_rewrite(void)
 		const char *ip = mgcp_messages[i].ip;
 		const int port = mgcp_messages[i].port;
 		const int expected_payload_type = mgcp_messages[i].payload_type;
+		const int ensure_mode_set = mgcp_messages[i].ensure_mode_set;
 		int payload_type = -1;
 
 		char *input = strdup(orig);
 
 		output = bsc_mgcp_rewrite(input, strlen(input), 0x1e,
-					  ip, port, -1, &payload_type);
+					  ip, port, -1, &payload_type, ensure_mode_set);
 
 		if (payload_type != -1) {
 			fprintf(stderr, "Found media payload type %d in SDP data\n",

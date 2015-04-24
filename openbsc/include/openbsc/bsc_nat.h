@@ -285,6 +285,7 @@ struct bsc_nat {
 	uint8_t mgcp_msg[4096];
 	int mgcp_length;
 	int mgcp_ipa;
+	int sdp_ensure_amr_mode_set;
 
 	/* msc things */
 	struct llist_head dests;
@@ -421,7 +422,7 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat);
 
 struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
 struct msgb *bsc_mgcp_rewrite(char *input, int length, int endp, const char *ip,
-			      int port, int osmux, int *payload_type);
+			      int port, int osmux, int *payload_type, int mode_set);
 void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
 
 void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc);

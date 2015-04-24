@@ -552,7 +552,8 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
 				   sccp->bsc_endp, nat->mgcp_cfg->source_addr,
 				   mgcp_endp->bts_end.local_port, osmux_cid,
-				   &mgcp_endp->net_end.codec.payload_type);
+				   &mgcp_endp->net_end.codec.payload_type,
+				   nat->sdp_ensure_amr_mode_set);
 	if (!bsc_msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
 		return MGCP_POLICY_CONT;
@@ -746,7 +747,8 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg), -1,
 				  bsc->nat->mgcp_cfg->source_addr,
 				  endp->net_end.local_port, -1,
-				  &endp->bts_end.codec.payload_type);
+				  &endp->bts_end.codec.payload_type,
+				  bsc->nat->sdp_ensure_amr_mode_set);
 	if (!output) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");
 		return;
@@ -813,7 +815,7 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 /* we need to replace some strings... */
 struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint,
 			      const char *ip, int port, int osmux_cid,
-			      int *payload_type)
+			      int *payload_type, int ensure_mode_set)
 {
 	static const char crcx_str[] = "CRCX ";
 	static const char dlcx_str[] = "DLCX ";
@@ -898,7 +900,7 @@ copy:
 	 * the above code made sure that we have 128 bytes lefts. So we can
 	 * safely append another line.
 	 */
-	if (!found_fmtp && payload != -1) {
+	if (ensure_mode_set && !found_fmtp && payload != -1) {
 		snprintf(buf, sizeof(buf) - 1, "a=fmtp:%d mode-set=2%s",
 			payload, cr ? "\r\n" : "\n");
 		buf[sizeof(buf) - 1] = '\0';

@@ -156,6 +156,8 @@ static int config_write_nat(struct vty *vty)
 		write_pgroup_lst(vty, pgroup);
 	if (_nat->mgcp_ipa)
 		vty_out(vty, " use-msc-ipa-for-mgcp%s", VTY_NEWLINE);
+	vty_out(vty, " %ssdp-ensure-amr-mode-set%s",
+		_nat->sdp_ensure_amr_mode_set ? "" : "no ", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -773,6 +775,24 @@ DEFUN(cfg_nat_use_ipa_for_mgcp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_sdp_amr_mode_set,
+      cfg_nat_sdp_amr_mode_set_cmd,
+      "sdp-ensure-amr-mode-set",
+      "Ensure that SDP records include a mode-set\n")
+{
+	_nat->sdp_ensure_amr_mode_set = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_no_sdp_amr_mode_set,
+      cfg_nat_no_sdp_amr_mode_set_cmd,
+      "no sdp-ensure-amr-mode-set",
+      NO_STR "Ensure that SDP records include a mode-set\n")
+{
+	_nat->sdp_ensure_amr_mode_set = 0;
+	return CMD_SUCCESS;
+}
+
 /* per BSC configuration */
 DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR",
       "BSC configuration\n" "Identifier of the BSC\n")
@@ -1273,6 +1293,9 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_no_sms_number_rewrite_cmd);
 	install_element(NAT_NODE, &cfg_nat_prefix_trie_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_prefix_trie_cmd);
+
+	install_element(NAT_NODE, &cfg_nat_sdp_amr_mode_set_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_sdp_amr_mode_set_cmd);
 
 	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);

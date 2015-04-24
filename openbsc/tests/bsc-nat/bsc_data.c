@@ -171,6 +171,7 @@ static const char mdcx_resp_patched[] = "200 23330829\r\n\r\nv=0\r\nc=IN IP4 10.
 /* different line ending */
 static const char mdcx_resp2[] = "200 33330829\n\nv=0\nc=IN IP4 172.16.18.2\nm=audio 4002 RTP/AVP 98\na=rtpmap:98 AMR/8000\n";
 static const char mdcx_resp_patched2[] = "200 33330829\n\nv=0\nc=IN IP4 10.0.0.23\nm=audio 5555 RTP/AVP 98\na=rtpmap:98 AMR/8000\na=fmtp:98 mode-set=2\n";
+static const char mdcx_resp_patched2_noamr[] = "200 33330829\n\nv=0\nc=IN IP4 10.0.0.23\nm=audio 5555 RTP/AVP 98\na=rtpmap:98 AMR/8000\n";
 
 struct mgcp_patch_test {
 	const char *orig;
@@ -178,6 +179,7 @@ struct mgcp_patch_test {
 	const char *ip;
 	const int port;
 	const int payload_type;
+	const int ensure_mode_set;
 };
 
 static const struct mgcp_patch_test mgcp_messages[] = {
@@ -186,6 +188,7 @@ static const struct mgcp_patch_test mgcp_messages[] = {
 		.patch = crcx_patched,
 		.ip = "0.0.0.0",
 		.port = 2323,
+		.ensure_mode_set = 1,
 	},
 	{
 		.orig = crcx_resp,
@@ -193,6 +196,7 @@ static const struct mgcp_patch_test mgcp_messages[] = {
 		.ip = "10.0.0.1",
 		.port = 999,
 		.payload_type = 98,
+		.ensure_mode_set = 1,
 	},
 	{
 		.orig = mdcx,
@@ -200,6 +204,7 @@ static const struct mgcp_patch_test mgcp_messages[] = {
 		.ip = "10.0.0.23",
 		.port = 6666,
 		.payload_type = 126,
+		.ensure_mode_set = 1,
 	},
 	{
 		.orig = mdcx_resp,
@@ -207,6 +212,7 @@ static const struct mgcp_patch_test mgcp_messages[] = {
 		.ip = "10.0.0.23",
 		.port = 5555,
 		.payload_type = 98,
+		.ensure_mode_set = 1,
 	},
 	{
 		.orig = mdcx_resp2,
@@ -214,6 +220,15 @@ static const struct mgcp_patch_test mgcp_messages[] = {
 		.ip = "10.0.0.23",
 		.port = 5555,
 		.payload_type = 98,
+		.ensure_mode_set = 1,
+	},
+	{
+		.orig = mdcx_resp2,
+		.patch = mdcx_resp_patched2_noamr,
+		.ip = "10.0.0.23",
+		.port = 5555,
+		.payload_type = 98,
+		.ensure_mode_set = 0,
 	},
 };
 

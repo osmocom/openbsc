@@ -588,6 +588,23 @@ class TestVTYNAT(TestVTYGenericBSC):
         res = self.vty.command("number-rewrite rewrite.cfg")
         res = self.vty.command("no number-rewrite")
 
+    def testEnsureNoEnsureModeSet(self):
+        self.vty.enable()
+        res = self.vty.command("configure terminal")
+        res = self.vty.command("nat")
+
+        # Ensure the default
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('\n sdp-ensure-amr-mode-set') > 0)
+
+        self.vty.command("sdp-ensure-amr-mode-set")
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('\n sdp-ensure-amr-mode-set') > 0)
+
+        self.vty.command("no sdp-ensure-amr-mode-set")
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('\n no sdp-ensure-amr-mode-set') > 0)
+
     def testRewritePostNoRewrite(self):
         self.vty.enable()
         self.vty.command("configure terminal")

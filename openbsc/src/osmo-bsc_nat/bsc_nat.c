@@ -1526,6 +1526,9 @@ int main(int argc, char **argv)
 		return -5;
 	}
 
+	/* We need to add mode-set for amr codecs */
+	nat->sdp_ensure_amr_mode_set = 1;
+
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	logging_vty_add_cmds(&log_info);
