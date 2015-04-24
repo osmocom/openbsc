@@ -48,15 +48,15 @@ int mgcp_transcoding_get_frame_size(void *state_, int nsamples, int dst)
 static enum audio_format get_audio_format(const struct mgcp_rtp_codec *codec)
 {
 	if (codec->subtype_name) {
-		if (!strcmp("GSM", codec->subtype_name))
+		if (!strcasecmp("GSM", codec->subtype_name))
 			return AF_GSM;
-		if (!strcmp("PCMA", codec->subtype_name))
+		if (!strcasecmp("PCMA", codec->subtype_name))
 			return AF_PCMA;
 #ifdef HAVE_BCG729
-		if (!strcmp("G729", codec->subtype_name))
+		if (!strcasecmp("G729", codec->subtype_name))
 			return AF_G729;
 #endif
-		if (!strcmp("L16", codec->subtype_name))
+		if (!strcasecmp("L16", codec->subtype_name))
 			return AF_L16;
 	}
 
@@ -166,7 +166,7 @@ int mgcp_transcoding_setup(struct mgcp_endpoint *endp,
 			/* Not enough info, do nothing */
 			return 0;
 
-		if (strcmp(src_codec->subtype_name, dst_codec->subtype_name) == 0)
+		if (strcasecmp(src_codec->subtype_name, dst_codec->subtype_name) == 0)
 			/* Nothing to do */
 			return 0;
 
