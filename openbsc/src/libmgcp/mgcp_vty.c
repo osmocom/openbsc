@@ -120,6 +120,8 @@ static int config_write_mgcp(struct vty *vty)
 		g_cfg->trunk.audio_send_name ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, "  loop %u%s", !!g_cfg->trunk.audio_loop, VTY_NEWLINE);
 	vty_out(vty, "  number endpoints %u%s", g_cfg->trunk.number_endpoints - 1, VTY_NEWLINE);
+	vty_out(vty, "  %sallow-transcoding%s",
+		g_cfg->trunk.no_audio_transcoding ? "no " : "", VTY_NEWLINE);
 	if (g_cfg->call_agent_addr)
 		vty_out(vty, "  call-agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
 	if (g_cfg->transcoder_ip)
@@ -423,6 +425,24 @@ DEFUN(cfg_mgcp_sdp_fmtp_extra,
 
 	bsc_replace_string(g_cfg, &g_cfg->trunk.audio_fmtp_extra, txt);
 	talloc_free(txt);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_allow_transcoding,
+      cfg_mgcp_allow_transcoding_cmd,
+      "allow-transcoding",
+      "Allow transcoding\n")
+{
+	g_cfg->trunk.no_audio_transcoding = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_no_allow_transcoding,
+      cfg_mgcp_no_allow_transcoding_cmd,
+      "no allow-transcoding",
+      NO_STR "Allow transcoding\n")
+{
+	g_cfg->trunk.no_audio_transcoding = 1;
 	return CMD_SUCCESS;
 }
 
@@ -740,6 +760,8 @@ static int config_write_trunk(struct vty *vty)
 		if (trunk->audio_fmtp_extra)
 			vty_out(vty, "   sdp audio fmtp-extra %s%s",
 				trunk->audio_fmtp_extra, VTY_NEWLINE);
+		vty_out(vty, "  %sallow-transcoding%s",
+			trunk->no_audio_transcoding ? "no " : "", VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
@@ -964,6 +986,26 @@ DEFUN(cfg_trunk_no_rtp_keepalive,
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 	mgcp_trunk_set_keepalive(trunk, 0);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_allow_transcoding,
+      cfg_trunk_allow_transcoding_cmd,
+      "allow-transcoding",
+      "Allow transcoding\n")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->no_audio_transcoding = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_no_allow_transcoding,
+      cfg_trunk_no_allow_transcoding_cmd,
+      "no allow-transcoding",
+      NO_STR "Allow transcoding\n")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->no_audio_transcoding = 1;
 	return CMD_SUCCESS;
 }
 
@@ -1262,6 +1304,9 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_factor_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_size_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_port_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_allow_transcoding_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_allow_transcoding_cmd);
+
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
 	install_node(&trunk_node, config_write_trunk);
@@ -1286,6 +1331,8 @@ int mgcp_vty_init(void)
 	install_element(TRUNK_NODE, &cfg_trunk_no_sdp_payload_send_ptime_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_sdp_payload_send_name_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_no_sdp_payload_send_name_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_allow_transcoding_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_no_allow_transcoding_cmd);
 
 	return 0;
 }

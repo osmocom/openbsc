@@ -140,6 +140,8 @@ struct mgcp_trunk_config {
 	int audio_send_name;
 	int audio_loop;
 
+	int no_audio_transcoding;
+
 	int omit_rtcp;
 	int keepalive_interval;
 

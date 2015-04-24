@@ -153,6 +153,13 @@ int mgcp_transcoding_setup(struct mgcp_endpoint *endp,
 	if (!src_end)
 		return 0;
 
+	if (endp->tcfg->no_audio_transcoding) {
+		LOGP(DMGCP, LOGL_NOTICE,
+			"Transcoding disabled on endpoint 0x%x\n",
+			ENDPOINT_NUMBER(endp));
+		return 0;
+	}
+
 	src_fmt = get_audio_format(src_codec);
 	dst_fmt = get_audio_format(dst_codec);
 
