@@ -295,7 +295,7 @@ static void test_rtp_seq_state(void)
 	OSMO_ASSERT(cont >= 0);
 	OSMO_ASSERT(state->is_running);
 	OSMO_ASSERT(state->next_seq == 2);
-	OSMO_ASSERT(state->next_time = 240);
+	OSMO_ASSERT(state->next_time == 240);
 
 	/* verify that the right timestamp was written */
 	OSMO_ASSERT(len == audio_packets_pcma[0].len);
