@@ -141,7 +141,6 @@ int mgcp_transcoding_setup(struct mgcp_endpoint *endp,
 {
 	struct mgcp_process_rtp_state *state;
 	enum audio_format src_fmt, dst_fmt;
-	const struct mgcp_rtp_codec *src_codec = &src_end->codec;
 	const struct mgcp_rtp_codec *dst_codec = &dst_end->codec;
 
 	/* cleanup first */
@@ -152,6 +151,8 @@ int mgcp_transcoding_setup(struct mgcp_endpoint *endp,
 
 	if (!src_end)
 		return 0;
+
+	const struct mgcp_rtp_codec *src_codec = &src_end->codec;
 
 	if (endp->tcfg->no_audio_transcoding) {
 		LOGP(DMGCP, LOGL_NOTICE,
