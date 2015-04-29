@@ -366,13 +366,19 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
 				 entry) {
 		if (req->subscr == subscr) {
-			if (conn && req->cbfn) {
+			gsm_cbfn *cbfn = req->cbfn;
+			void *param = req->cbfn_param;
+
+			/* now give up the data structure */
+			paging_remove_request(&bts->paging, req);
+			req = NULL;
+
+			if (conn && cbfn) {
 				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d, calling cbfn.\n", bts->nr);
-				req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
-					  msg, conn, req->cbfn_param);
+				cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
+					  msg, conn, param);
 			} else
 				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d silently.\n", bts->nr);
-			paging_remove_request(&bts->paging, req);
 			break;
 		}
 	}

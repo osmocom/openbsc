@@ -98,11 +98,8 @@ void trans_free(struct gsm_trans *trans)
 		break;
 	}
 
-	/* FIXME: implement a sane way to stop this. */
-	if (!trans->conn && trans->paging_request) {
-		LOGP(DNM, LOGL_ERROR,
-		     "Transaction freed while paging for sub: %llu\n",
-		     trans->subscr->id);
+	if (trans->paging_request) {
+		subscr_remove_request(trans->paging_request);
 		trans->paging_request = NULL;
 	}
 

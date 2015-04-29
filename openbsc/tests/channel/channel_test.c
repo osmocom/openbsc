@@ -31,6 +31,8 @@
 
 static int s_end = 0;
 static struct gsm_subscriber_connection s_conn;
+static void *s_data;
+static gsm_cbfn *s_cbfn;
 
 /* our handler */
 static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, void *data, void *param)
@@ -48,7 +50,8 @@ static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, vo
 /* mock object for testing, directly invoke the cb... maybe later through the timer */
 int paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscriber, int type, gsm_cbfn *cbfn, void *data)
 {
-	cbfn(101, 200, (void*)0x1323L, &s_conn, data);
+	s_data = data;
+	s_cbfn = cbfn;
 
 	/* claim we have patched */
 	return 1;
@@ -80,11 +83,10 @@ int main(int argc, char **argv)
 	OSMO_ASSERT(subscr->group->net == network);
 
 	/* Ask for a channel... */
-	subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
+	subscr_request_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
+	s_cbfn(101, 200, (void*)0x1323L, &s_conn, s_data);
 
-	while (!s_end) {
-		osmo_select_main(0);
-	}
+	OSMO_ASSERT(s_end);
 
 	return EXIT_SUCCESS;
 }

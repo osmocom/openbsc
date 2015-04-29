@@ -69,7 +69,7 @@ static uint8_t determine_lchan_mode(struct gsm_mncc *setup)
 {
 	/* FIXME: check codec capabilities of the phone */
 
-	if (setup->lchan_type == GSM_LCHAN_TCH_F)
+	if (setup->lchan_type != GSM_LCHAN_TCH_H)
 		return mncc_int.def_codec[0];
 	else
 		return mncc_int.def_codec[1];
