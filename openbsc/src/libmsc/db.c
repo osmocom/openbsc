@@ -239,11 +239,11 @@ static struct gsm_sms *sms_from_result_v3(dbi_result result)
 	subscr_direct_free(sender);
 	sender = NULL;
 
-	sms->reply_path_req = dbi_result_get_uint(result, "reply_path_req");
-	sms->status_rep_req = dbi_result_get_uint(result, "status_rep_req");
-	sms->ud_hdr_ind = dbi_result_get_uint(result, "ud_hdr_ind");
-	sms->protocol_id = dbi_result_get_uint(result, "protocol_id");
-	sms->data_coding_scheme = dbi_result_get_uint(result,
+	sms->reply_path_req = dbi_result_get_ulonglong(result, "reply_path_req");
+	sms->status_rep_req = dbi_result_get_ulonglong(result, "status_rep_req");
+	sms->ud_hdr_ind = dbi_result_get_ulonglong(result, "ud_hdr_ind");
+	sms->protocol_id = dbi_result_get_ulonglong(result, "protocol_id");
+	sms->data_coding_scheme = dbi_result_get_ulonglong(result,
 						  "data_coding_scheme");
 
 	daddr = dbi_result_get_string(result, "dest_addr");
@@ -1454,16 +1454,16 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 
 	/* FIXME: validity */
 	/* FIXME: those should all be get_uchar, but sqlite3 is braindead */
-	sms->reply_path_req = dbi_result_get_uint(result, "reply_path_req");
-	sms->status_rep_req = dbi_result_get_uint(result, "status_rep_req");
-	sms->ud_hdr_ind = dbi_result_get_uint(result, "ud_hdr_ind");
-	sms->protocol_id = dbi_result_get_uint(result, "protocol_id");
-	sms->data_coding_scheme = dbi_result_get_uint(result,
+	sms->reply_path_req = dbi_result_get_ulonglong(result, "reply_path_req");
+	sms->status_rep_req = dbi_result_get_ulonglong(result, "status_rep_req");
+	sms->ud_hdr_ind = dbi_result_get_ulonglong(result, "ud_hdr_ind");
+	sms->protocol_id = dbi_result_get_ulonglong(result, "protocol_id");
+	sms->data_coding_scheme = dbi_result_get_ulonglong(result,
 						  "data_coding_scheme");
 	/* sms->msg_ref is temporary and not stored in DB */
 
-	sms->dst.npi = dbi_result_get_uint(result, "dest_npi");
-	sms->dst.ton = dbi_result_get_uint(result, "dest_ton");
+	sms->dst.npi = dbi_result_get_ulonglong(result, "dest_npi");
+	sms->dst.ton = dbi_result_get_ulonglong(result, "dest_ton");
 	daddr = dbi_result_get_string(result, "dest_addr");
 	if (daddr) {
 		strncpy(sms->dst.addr, daddr, sizeof(sms->dst.addr));
@@ -1471,8 +1471,8 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 	}
 	sms->receiver = subscr_get_by_extension(net, sms->dst.addr);
 
-	sms->src.npi = dbi_result_get_uint(result, "src_npi");
-	sms->src.ton = dbi_result_get_uint(result, "src_ton");
+	sms->src.npi = dbi_result_get_ulonglong(result, "src_npi");
+	sms->src.ton = dbi_result_get_ulonglong(result, "src_ton");
 	saddr = dbi_result_get_string(result, "src_addr");
 	if (saddr) {
 		strncpy(sms->src.addr, saddr, sizeof(sms->src.addr));
