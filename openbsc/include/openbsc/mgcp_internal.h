@@ -203,7 +203,7 @@ struct mgcp_endpoint {
 	} osmux;
 };
 
-#define ENDPOINT_NUMBER(endp) abs(endp - endp->tcfg->endpoints)
+#define ENDPOINT_NUMBER(endp) abs((int)(endp - endp->tcfg->endpoints))
 
 struct mgcp_msg_ptr {
 	unsigned int start;
