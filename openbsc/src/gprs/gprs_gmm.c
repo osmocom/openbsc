@@ -52,6 +52,7 @@
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gprs_utils.h>
 #include <openbsc/sgsn.h>
+#include <openbsc/signal.h>
 
 #include <pdp.h>
 
@@ -580,6 +581,10 @@ static void extract_subscr_msisdn(struct sgsn_mm_ctx *ctx)
 /* Check if we can already authorize a subscriber */
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
+#ifndef PTMSI_ALLOC
+	struct sgsn_signal_data sig_data;
+#endif
+
 	/* Request IMSI and IMEI from the MS if they are unknown */
 	if (!strlen(ctx->imei)) {
 		ctx->t3370_id_type = GSM_MI_TYPE_IMEI;
@@ -643,6 +648,9 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
 		ctx->t3350_mode = GMM_T3350_MODE_ATT;
 #else
+		memset(&sig_data, 0, sizeof(sig_data));
+		sig_data.mm = mmctx;
+		osmo_signal_dispatch(SS_SGSN, S_SGSN_ATTACH, &sig_data);
 		ctx->mm_state = GMM_REGISTERED_NORMAL;
 #endif
 
@@ -976,8 +984,13 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 			rc = gsm48_tx_gmm_det_ack_oldmsg(msg, 0);
 	}
 
-	if (ctx)
+	if (ctx) {
+		struct sgsn_signal_data sig_data;
+		memset(&sig_data, 0, sizeof(sig_data));
+		sig_data.mm = ctx;
+		osmo_signal_dispatch(SS_SGSN, S_SGSN_DETACH, &sig_data);
 		mm_ctx_cleanup_free(ctx, "GPRS DETACH REQUEST");
+	}
 
 	return rc;
 }
@@ -1083,6 +1096,9 @@ static void process_ms_ctx_status(struct sgsn_mm_ctx *mmctx,
 static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 				   struct gprs_llc_llme *llme)
 {
+#ifndef PTMSI_ALLOC
+	struct sgsn_signal_data sig_data;
+#endif
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t *cur = gh->data;
 	uint8_t ms_ra_acc_cap_len;
@@ -1168,6 +1184,10 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 #else
 	/* Make sure we are NORMAL (i.e. not SUSPENDED anymore) */
 	mmctx->mm_state = GMM_REGISTERED_NORMAL;
+
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.mm = mmctx;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_UPDATE, &sig_data);
 #endif
 	/* Even if there is no P-TMSI allocated, the MS will switch from
 	 * foreign TLLI to local TLLI */
@@ -1217,6 +1237,7 @@ static int gsm48_rx_gmm_status(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 			   struct gprs_llc_llme *llme)
 {
+	struct sgsn_signal_data sig_data;
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	int rc;
 
@@ -1298,6 +1319,10 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 				  GPRS_ALGO_GEA0, NULL);
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		rc = 0;
+
+		memset(&sig_data, 0, sizeof(sig_data));
+		sig_data.mm = mmctx;
+		osmo_signal_dispatch(SS_SGSN, S_SGSN_ATTACH, &sig_data);
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
@@ -1312,6 +1337,10 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 				  GPRS_ALGO_GEA0, NULL);
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		rc = 0;
+
+		memset(&sig_data, 0, sizeof(sig_data));
+		sig_data.mm = mmctx;
+		osmo_signal_dispatch(SS_SGSN, S_SGSN_UPDATE, &sig_data);
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 		LOGMMCTXP(LOGL_INFO, mmctx, "-> PTMSI REALLLICATION COMPLETE\n");

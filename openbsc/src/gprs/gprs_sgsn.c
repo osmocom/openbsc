@@ -36,6 +36,7 @@
 #include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gprs_utils.h>
+#include <openbsc/signal.h>
 #include "openbsc/gprs_llc.h"
 
 #include <time.h>
@@ -204,6 +205,7 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 	struct gprs_llc_llme *llme = mm->llme;
 	uint32_t tlli = mm->tlli;
 	struct sgsn_pdp_ctx *pdp, *pdp2;
+	struct sgsn_signal_data sig_data;
 
 	/* delete all existing PDP contexts for this MS */
 	llist_for_each_entry_safe(pdp, pdp2, &mm->pdp_list, list) {
@@ -216,6 +218,11 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 		LOGMMCTXP(LOGL_INFO, mm, "Cancelling MM timer %u\n", mm->T);
 		osmo_timer_del(&mm->timer);
 	}
+
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.mm = mm;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_MM_FREE, &sig_data);
+
 
 	/* Detach from subscriber which is possibly freed then */
 	if (mm->subscr) {
@@ -289,6 +296,8 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
  */
 void sgsn_pdp_ctx_terminate(struct sgsn_pdp_ctx *pdp)
 {
+	struct sgsn_signal_data sig_data;
+
 	OSMO_ASSERT(pdp->mm != NULL);
 
 	/* There might still be pending callbacks in libgtp. So the parts of
@@ -298,6 +307,10 @@ void sgsn_pdp_ctx_terminate(struct sgsn_pdp_ctx *pdp)
 
 	/* Force the deactivation of the SNDCP layer */
 	sndcp_sm_deactivate_ind(&pdp->mm->llme->lle[pdp->sapi], pdp->nsapi);
+
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.pdp = pdp;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_TERMINATE, &sig_data);
 
 	/* Detach from MM context */
 	llist_del(&pdp->list);
@@ -313,6 +326,12 @@ void sgsn_pdp_ctx_terminate(struct sgsn_pdp_ctx *pdp)
  */
 void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp)
 {
+	struct sgsn_signal_data sig_data;
+
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.pdp = pdp;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_FREE, &sig_data);
+
 	rate_ctr_group_free(pdp->ctrg);
 	if (pdp->mm)
 		llist_del(&pdp->list);

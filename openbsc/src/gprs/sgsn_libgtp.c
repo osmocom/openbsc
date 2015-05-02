@@ -287,6 +287,7 @@ static const struct cause_map gtp2sm_cause_map[] = {
 /* The GGSN has confirmed the creation of a PDP Context */
 static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
+	struct sgsn_signal_data sig_data;
 	struct sgsn_pdp_ctx *pctx = cbp;
 	uint8_t reject_cause;
 
@@ -322,6 +323,11 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	/* Activate the SNDCP layer */
 	sndcp_sm_activate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
 
+	/* Inform others about it */
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.pdp = pctx;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_ACT, &sig_data);
+
 	/* Send PDP CTX ACT to MS */
 	return gsm48_tx_gsm_act_pdp_acc(pctx);
 
@@ -349,11 +355,16 @@ reject:
 /* Confirmation of a PDP Context Delete */
 static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
+	struct sgsn_signal_data sig_data;
 	struct sgsn_pdp_ctx *pctx = cbp;
 	int rc = 0;
 
 	LOGPDPCTXP(LOGL_INFO, pctx, "Received DELETE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
+
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.pdp = pctx;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_DEACT, &sig_data);
 
 	if (pctx->mm) {
 		/* Deactivate the SNDCP layer */
