@@ -183,7 +183,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 
 /* this is a hard _free_ function, it doesn't clean up the PDP contexts
  * in libgtp! */
-void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
+static void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 {
 	struct sgsn_pdp_ctx *pdp, *pdp2;
 
