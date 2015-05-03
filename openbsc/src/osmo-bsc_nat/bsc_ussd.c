@@ -22,6 +22,7 @@
 
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
+#include <openbsc/bsc_msg_filter.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/socket.h>
 
@@ -350,7 +351,7 @@ static int forward_ussd(struct nat_sccp_connection *con, const struct ussd_reque
 	state->invoke_id = req->invoke_id;
 	memcpy(&state->src_ref, &con->remote_ref, sizeof(con->remote_ref));
 	memcpy(&state->dst_ref, &con->real_ref, sizeof(con->real_ref));
-	memcpy(state->imsi, con->imsi, strlen(con->imsi));
+	memcpy(state->imsi, con->filter_state.imsi, strlen(con->filter_state.imsi));
 
 	/* add additional tag/values */
 	lac = htons(con->lac);
@@ -373,7 +374,7 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	uint8_t proto;
 	uint8_t ti;
 	struct gsm48_hdr *hdr48;
-	struct bsc_nat_acc_lst *lst;
+	struct bsc_msg_acc_lst *lst;
 	struct ussd_request req;
 
 	/*
@@ -381,10 +382,10 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	 * decode if the connection was created for USSD, we do have a USSD access
 	 * list, a query, a IMSI and such...
 	 */
-	if (con->con_type != NAT_CON_TYPE_SSA)
+	if (con->filter_state.con_type != FLT_CON_TYPE_SSA)
 		return 0;
 
-	if (!con->imsi)
+	if (!con->filter_state.imsi)
 		return 0;
 
 	/* We have not verified the IMSI yet */
@@ -399,7 +400,7 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	if (parsed->bssap != BSSAP_MSG_DTAP)
 		return 0;
 
-	if (strlen(con->imsi) >= GSM_IMSI_LENGTH)
+	if (strlen(con->filter_state.imsi) >= GSM_IMSI_LENGTH)
 		return 0;
 
 	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
@@ -415,12 +416,12 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	if (msg_type == GSM0480_MTYPE_REGISTER) {
 
 		/* now check if it is a IMSI we care about */
-		lst = bsc_nat_acc_lst_find(con->bsc->nat,
+		lst = bsc_msg_acc_lst_find(&con->bsc->nat->access_lists,
 					   con->bsc->nat->ussd_lst_name);
 		if (!lst)
 			return 0;
 
-		if (bsc_nat_lst_check_allow(lst, con->imsi) != 0)
+		if (bsc_msg_acc_lst_check_allow(lst, con->filter_state.imsi) != 0)
 			return 0;
 
 		/* now decode the message and see if we really want to handle it */
@@ -435,14 +436,15 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 			return 0;
 
 		/* found a USSD query for our subscriber */
-		LOGP(DNAT, LOGL_NOTICE, "Found USSD query for %s\n", con->imsi);
+		LOGP(DNAT, LOGL_NOTICE, "Found USSD query for %s\n",
+			con->filter_state.imsi);
 		con->ussd_ti[ti] = 1;
 		if (forward_ussd(con, &req, msg) != 0)
 			return 0;
 		return 1;
 	} else if (msg_type == GSM0480_MTYPE_FACILITY && con->ussd_ti[ti]) {
 		LOGP(DNAT, LOGL_NOTICE, "Forwarding message part of TI: %d %s\n",
-		     ti, con->imsi);
+		     ti, con->filter_state.imsi);
 		if (forward_ussd_simple(con, msg) != 0)
 			return 0;
 		return 1;

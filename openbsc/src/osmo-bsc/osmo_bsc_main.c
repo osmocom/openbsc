@@ -59,6 +59,12 @@ static const char *config_file = "openbsc.cfg";
 static const char *rf_ctrl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
+static struct llist_head access_lists;
+
+struct llist_head *bsc_access_lists(void)
+{
+	return &access_lists;
+}
 
 static void print_usage()
 {
@@ -196,6 +202,9 @@ int main(int argc, char **argv)
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	bsc_vty_init(&log_info);
+	bsc_msg_lst_vty_init(tall_bsc_ctx, &access_lists, BSC_NODE);
+
+	INIT_LLIST_HEAD(&access_lists);
 
 	/* parse options */
 	handle_options(argc, argv);

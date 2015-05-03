@@ -39,6 +39,7 @@
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
+#include <openbsc/bsc_msg_filter.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/socket.h>
@@ -425,7 +426,7 @@ static void bsc_stat_reject(int filter, struct bsc_connection *bsc, int normal)
  */
 static void bsc_send_con_release(struct bsc_connection *bsc,
 		struct nat_sccp_connection *con,
-		struct bsc_nat_reject_cause *cause)
+		struct bsc_filter_reject_cause *cause)
 {
 	struct msgb *rlsd;
 	/* 1. release the network */
@@ -441,7 +442,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 	con->msc_con = NULL;
 
 	/* 2. release the BSC side */
-	if (con->con_type == NAT_CON_TYPE_LU) {
+	if (con->filter_state.con_type == FLT_CON_TYPE_LU) {
 		struct msgb *payload, *udt;
 		payload = gsm48_create_loc_upd_rej(cause->lu_reject_cause);
 
@@ -469,20 +470,20 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 		return;
 	}
 
-	con->con_type = NAT_CON_TYPE_LOCAL_REJECT;
+	con->filter_state.con_type = FLT_CON_TYPE_LOCAL_REJECT;
 	bsc_write(bsc, rlsd, IPAC_PROTO_SCCP);
 }
 
 static void bsc_send_con_refuse(struct bsc_connection *bsc,
 			struct bsc_nat_parsed *parsed, int con_type,
-			struct bsc_nat_reject_cause *cause)
+			struct bsc_filter_reject_cause *cause)
 {
 	struct msgb *payload;
 	struct msgb *refuse;
 
-	if (con_type == NAT_CON_TYPE_LU)
+	if (con_type == FLT_CON_TYPE_LU)
 		payload = gsm48_create_loc_upd_rej(cause->lu_reject_cause);
-	else if (con_type == NAT_CON_TYPE_CM_SERV_REQ || con_type == NAT_CON_TYPE_SSA)
+	else if (con_type == FLT_CON_TYPE_CM_SERV_REQ || con_type == FLT_CON_TYPE_SSA)
 		payload = gsm48_create_mm_serv_rej(cause->cm_reject_cause);
 	else {
 		LOGP(DNAT, LOGL_ERROR, "Unknown connection type: %d\n", con_type);
@@ -503,7 +504,7 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 			goto send_refuse;
 
 		/* declare it local and assign a unique remote_ref */
-		con->con_type = NAT_CON_TYPE_LOCAL_REJECT;
+		con->filter_state.con_type = FLT_CON_TYPE_LOCAL_REJECT;
 		con->con_local = NAT_CON_END_LOCAL;
 		con->has_remote_ref = 1;
 		con->remote_ref = con->patched_ref;
@@ -1025,7 +1026,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	struct bsc_connection *con_bsc = NULL;
 	int con_type;
 	struct bsc_nat_parsed *parsed;
-	struct bsc_nat_reject_cause cause;
+	struct bsc_filter_reject_cause cause;
 
 	/* Parse and filter messages */
 	parsed = bsc_nat_parse(msg);
@@ -1071,11 +1072,11 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			con->msc_con = bsc->nat->msc_con;
 			con_msc = con->msc_con;
-			con->con_type = con_type;
-			con->imsi_checked = filter;
+			con->filter_state.con_type = con_type;
+			con->filter_state.imsi_checked = filter;
 			bsc_nat_extract_lac(bsc, con, parsed, msg);
 			if (imsi)
-				con->imsi = talloc_steal(con, imsi);
+				con->filter_state.imsi = talloc_steal(con, imsi);
 			imsi = NULL;
 			con_bsc = con->bsc;
 			handle_con_stats(con);
@@ -1093,8 +1094,9 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					filter = bsc_nat_filter_dt(bsc, msg,
 							con, parsed, &cause);
 					if (filter < 0) {
-						if (con->imsi)
-							bsc_nat_inform_reject(bsc, con->imsi);
+						if (con->filter_state.imsi)
+							bsc_nat_inform_reject(bsc,
+								con->filter_state.imsi);
 						bsc_stat_reject(filter, bsc, 1);
 						bsc_send_con_release(bsc, con, &cause);
 						con = NULL;
@@ -1110,7 +1112,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					 * replace the msg and the parsed structure becomes
 					 * invalid.
 					 */
-					msg = bsc_nat_rewrite_msg(bsc->nat, msg, parsed, con->imsi);
+					msg = bsc_nat_rewrite_msg(bsc->nat, msg, parsed,
+									con->filter_state.imsi);
 					talloc_free(parsed);
 					parsed = NULL;
 				} else if (con->con_local == NAT_CON_END_USSD) {

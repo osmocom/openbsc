@@ -29,6 +29,7 @@
 
 #include <openbsc/ctrl.h>
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bsc_msg_filter.h>
 #include <openbsc/vty.h>
 #include <openbsc/gsm_data.h>
 
@@ -404,19 +405,19 @@ static int get_net_cfg_acc_cmd(struct ctrl_cmd *cmd, void *data)
 static int set_net_cfg_acc_cmd(struct ctrl_cmd *cmd, void *data)
 {
 	const char *access_name = extract_acc_name(cmd->variable);
-	struct bsc_nat_acc_lst *acc;
-	struct bsc_nat_acc_lst_entry *entry;
+	struct bsc_msg_acc_lst *acc;
+	struct bsc_msg_acc_lst_entry *entry;
 	const char *value = cmd->value;
 	int rc;
 
 	/* Should have been caught by verify_net_cfg_acc_cmd */
-	acc = bsc_nat_acc_lst_find(g_nat, access_name);
+	acc = bsc_msg_acc_lst_find(&g_nat->access_lists, access_name);
 	if (!acc) {
 		cmd->reply = "Access list not found";
 		return CTRL_CMD_ERROR;
 	}
 
-	entry = bsc_nat_acc_lst_entry_create(acc);
+	entry = bsc_msg_acc_lst_entry_create(acc);
 	if (!entry) {
 		cmd->reply = "OOM";
 		return CTRL_CMD_ERROR;
@@ -435,7 +436,7 @@ static int set_net_cfg_acc_cmd(struct ctrl_cmd *cmd, void *data)
 static int verify_net_cfg_acc_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
 {
 	const char *access_name = extract_acc_name(cmd->variable);
-	struct bsc_nat_acc_lst *acc = bsc_nat_acc_lst_find(g_nat, access_name);
+	struct bsc_msg_acc_lst *acc = bsc_msg_acc_lst_find(&g_nat->access_lists, access_name);
 
 	if (!acc) {
 		cmd->reply = "Access list not known";

@@ -22,6 +22,7 @@
 #define BSC_NAT_H
 
 #include "mgcp.h"
+#include "bsc_msg_filter.h"
 
 
 #include <osmocom/core/select.h>
@@ -46,16 +47,6 @@ struct bsc_nat_parsed;
 struct bsc_nat;
 struct bsc_nat_ussd_con;
 struct nat_rewrite_rule;
-
-enum {
-	NAT_CON_TYPE_NONE,
-	NAT_CON_TYPE_LU,
-	NAT_CON_TYPE_CM_SERV_REQ,
-	NAT_CON_TYPE_PAG_RESP,
-	NAT_CON_TYPE_SSA,
-	NAT_CON_TYPE_LOCAL_REJECT,
-	NAT_CON_TYPE_OTHER,
-};
 
 /*
  * Is this terminated to the MSC, to the local machine (release
@@ -229,36 +220,6 @@ struct bsc_nat_statistics {
 	} ussd;
 };
 
-enum bsc_nat_acc_ctr {
-	ACC_LIST_BSC_FILTER,
-	ACC_LIST_NAT_FILTER,
-};
-
-struct bsc_nat_acc_lst {
-	struct llist_head list;
-
-	/* counter */
-	struct rate_ctr_group *stats;
-
-	/* the name of the list */
-	const char *name;
-	struct llist_head fltr_list;
-};
-
-struct bsc_nat_acc_lst_entry {
-	struct llist_head list;
-
-	/* the filter */
-	char *imsi_allow;
-	regex_t imsi_allow_re;
-	char *imsi_deny;
-	regex_t imsi_deny_re;
-
-	/* reject reasons for the access lists */
-	int cm_reject_cause;
-	int lu_reject_cause;
-};
-
 /**
  * the structure of the "nat" network
  */
@@ -355,11 +316,6 @@ struct bsc_nat_ussd_con {
 	struct osmo_timer_list auth_timeout;
 };
 
-struct bsc_nat_reject_cause {
-	int lu_reject_cause;
-	int cm_reject_cause;
-};
-
 /* create and init the structures */
 struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
@@ -388,16 +344,6 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg);
 int bsc_nat_filter_ipa(int direction, struct msgb *msg, struct bsc_nat_parsed *parsed);
 int bsc_nat_vty_init(struct bsc_nat *nat);
 int bsc_nat_find_paging(struct msgb *msg, const uint8_t **,int *len);
-
-/**
- * Content filtering.
- */
-int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
-			struct bsc_nat_parsed *, int *con_type, char **imsi,
-			struct bsc_nat_reject_cause *cause);
-int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
-			struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
-			struct bsc_nat_reject_cause *cause);
 
 /**
  * SCCP patching and handling
@@ -435,14 +381,6 @@ int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int id);
 int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg);
 int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg);
 
-/* IMSI allow/deny handling */
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name);
-struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name);
-void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
-
-struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
-int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *imsi);
-
 int bsc_nat_msc_is_connected(struct bsc_nat *nat);
 
 int bsc_conn_type_to_ctr(struct nat_sccp_connection *conn);
@@ -478,17 +416,6 @@ struct bsc_nat_num_rewr_entry {
 
 void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head, const struct osmo_config_list *);
 
-struct bsc_nat_barr_entry {
-	struct rb_node node;
-
-	char *imsi;
-	int cm_reject_cause;
-	int lu_reject_cause;
-};
-
-int bsc_nat_barr_adapt(void *ctx, struct rb_root *rbtree, const struct osmo_config_list *);
-int bsc_nat_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu);
-
 void bsc_nat_send_mgcp_to_msc(struct bsc_nat *bsc_nat, struct msgb *msg);
 void bsc_nat_handle_mgcp(struct bsc_nat *bsc, struct msgb *msg);
 
@@ -498,6 +425,13 @@ int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg);
 
 int bsc_nat_extract_lac(struct bsc_connection *bsc, struct nat_sccp_connection *con,
 				struct bsc_nat_parsed *parsed, struct msgb *msg);
+
+int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
+			struct bsc_nat_parsed *, int *con_type, char **imsi,
+			struct bsc_filter_reject_cause *cause);
+int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
+			struct nat_sccp_connection *con, struct bsc_nat_parsed *parsed,
+			struct bsc_filter_reject_cause *cause);
 
 /**
  * CTRL interface helper

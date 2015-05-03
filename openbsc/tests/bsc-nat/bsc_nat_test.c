@@ -26,6 +26,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
+#include <openbsc/bsc_msg_filter.h>
 #include <openbsc/nat_rewrite_trie.h>
 
 #include <osmocom/core/application.h>
@@ -710,7 +711,7 @@ static struct cr_filter cr_filter[] = {
 		.data = bssmap_cr,
 		.length = sizeof(bssmap_cr),
 		.result = 1,
-		.contype = NAT_CON_TYPE_CM_SERV_REQ,
+		.contype = FLT_CON_TYPE_CM_SERV_REQ,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -722,7 +723,7 @@ static struct cr_filter cr_filter[] = {
 		.data = bss_lu,
 		.length = sizeof(bss_lu),
 		.result = 1,
-		.contype = NAT_CON_TYPE_LU,
+		.contype = FLT_CON_TYPE_LU,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -734,7 +735,7 @@ static struct cr_filter cr_filter[] = {
 		.data = pag_resp,
 		.length = sizeof(pag_resp),
 		.result = 1,
-		.contype = NAT_CON_TYPE_PAG_RESP,
+		.contype = FLT_CON_TYPE_PAG_RESP,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -748,7 +749,7 @@ static struct cr_filter cr_filter[] = {
 		.length = sizeof(bss_lu),
 		.result = -3,
 		.nat_imsi_deny = "[0-9]*",
-		.contype = NAT_CON_TYPE_LU,
+		.contype = FLT_CON_TYPE_LU,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -763,7 +764,7 @@ static struct cr_filter cr_filter[] = {
 		.result = 1,
 		.nat_imsi_deny = "[0-9]*",
 		.bsc_imsi_allow = "2440[0-9]*",
-		.contype = NAT_CON_TYPE_LU,
+		.contype = FLT_CON_TYPE_LU,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -778,7 +779,7 @@ static struct cr_filter cr_filter[] = {
 		.result = 1,
 		.bsc_imsi_allow = "[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
-		.contype = NAT_CON_TYPE_LU,
+		.contype = FLT_CON_TYPE_LU,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -794,7 +795,7 @@ static struct cr_filter cr_filter[] = {
 		.bsc_imsi_deny = "[0-9]*",
 		.bsc_imsi_allow = "[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
-		.contype = NAT_CON_TYPE_LU,
+		.contype = FLT_CON_TYPE_LU,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -809,7 +810,7 @@ static struct cr_filter cr_filter[] = {
 		.result = -3,
 		.bsc_imsi_deny = "000[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
-		.contype = NAT_CON_TYPE_LU,
+		.contype = FLT_CON_TYPE_LU,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -824,7 +825,7 @@ static struct cr_filter cr_filter[] = {
 		.result = -3,
 		.bsc_imsi_deny = "000[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
-		.contype = NAT_CON_TYPE_LU,
+		.contype = FLT_CON_TYPE_LU,
 		.nat_cm_reject_cause = 0x23,
 		.nat_lu_reject_cause = 0x42,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -838,7 +839,7 @@ static struct cr_filter cr_filter[] = {
 		.length = sizeof(bss_lu),
 		.result = -2,
 		.bsc_imsi_deny = "[0-9]*",
-		.contype = NAT_CON_TYPE_LU,
+		.contype = FLT_CON_TYPE_LU,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
@@ -852,7 +853,7 @@ static struct cr_filter cr_filter[] = {
 		.length = sizeof(bss_lu),
 		.result = -2,
 		.bsc_imsi_deny = "[0-9]*",
-		.contype = NAT_CON_TYPE_LU,
+		.contype = FLT_CON_TYPE_LU,
 		.nat_cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.nat_lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED,
 		.bsc_cm_reject_cause = 0x42,
@@ -867,9 +868,9 @@ static void test_cr_filter()
 	int i, res, contype;
 	struct msgb *msg = msgb_alloc(4096, "test_cr_filter");
 	struct bsc_nat_parsed *parsed;
-	struct bsc_nat_acc_lst *nat_lst, *bsc_lst;
-	struct bsc_nat_acc_lst_entry *nat_entry, *bsc_entry;
-	struct bsc_nat_reject_cause cause;
+	struct bsc_msg_acc_lst *nat_lst, *bsc_lst;
+	struct bsc_msg_acc_lst_entry *nat_entry, *bsc_entry;
+	struct bsc_filter_reject_cause cause;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
@@ -878,11 +879,11 @@ static void test_cr_filter()
 	bsc->cfg->acc_lst_name = "bsc";
 	nat->acc_lst_name = "nat";
 
-	nat_lst = bsc_nat_acc_lst_get(nat, "nat");
-	bsc_lst = bsc_nat_acc_lst_get(nat, "bsc");
+	nat_lst = bsc_msg_acc_lst_get(nat, &nat->access_lists, "nat");
+	bsc_lst = bsc_msg_acc_lst_get(nat, &nat->access_lists, "bsc");
 
-	bsc_entry = bsc_nat_acc_lst_entry_create(bsc_lst);
-	nat_entry = bsc_nat_acc_lst_entry_create(nat_lst);
+	bsc_entry = bsc_msg_acc_lst_entry_create(bsc_lst);
+	nat_entry = bsc_msg_acc_lst_entry_create(nat_lst);
 
 	/* test the default value as we are going to overwrite it */
 	OSMO_ASSERT(bsc_entry->cm_reject_cause == GSM48_REJECT_PLMN_NOT_ALLOWED);
@@ -946,7 +947,7 @@ static void test_dt_filter()
 	int i;
 	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
 	struct bsc_nat_parsed *parsed;
-	struct bsc_nat_reject_cause cause;
+	struct bsc_filter_reject_cause cause;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
@@ -991,7 +992,7 @@ static void test_dt_filter()
 		if (!parsed)
 			continue;
 
-		con->imsi_checked = 0;
+		con->filter_state.imsi_checked = 0;
 		memset(&cause, 0, sizeof(cause));
 		bsc_nat_filter_dt(bsc, msg, con, parsed, &cause);
 	}
@@ -1453,21 +1454,21 @@ static void test_barr_list_parsing(void)
 	if (lst == NULL)
 		abort();
 
-	rc = bsc_nat_barr_adapt(NULL, &root, lst);
+	rc = bsc_filter_barr_adapt(NULL, &root, lst);
 	if (rc != 0)
 		abort();
 	talloc_free(lst);
 
 
 	for (node = rb_first(&root); node; node = rb_next(node)) {
-		struct bsc_nat_barr_entry *entry;
-		entry = rb_entry(node, struct bsc_nat_barr_entry, node);
+		struct bsc_filter_barr_entry *entry;
+		entry = rb_entry(node, struct bsc_filter_barr_entry, node);
 		printf("IMSI: %s CM: %d LU: %d\n", entry->imsi,
 			entry->cm_reject_cause, entry->lu_reject_cause);
 	}
 
 	/* do the look up now.. */
-	rc = bsc_nat_barr_find(&root, "12123119", &cm, &lu);
+	rc = bsc_filter_barr_find(&root, "12123119", &cm, &lu);
 	if (!rc) {
 		printf("Failed to find the IMSI.\n");
 		abort();
@@ -1479,7 +1480,7 @@ static void test_barr_list_parsing(void)
 	}
 
 	/* empty and check that it is empty */
-	bsc_nat_barr_adapt(NULL, &root, NULL);
+	bsc_filter_barr_adapt(NULL, &root, NULL);
 	if (!RB_EMPTY_ROOT(&root)) {
 		printf("Failed to empty the list.\n");
 		abort();
@@ -1492,7 +1493,7 @@ static void test_barr_list_parsing(void)
 		abort();
 	}
 
-	rc = bsc_nat_barr_adapt(NULL, &root, lst);
+	rc = bsc_filter_barr_adapt(NULL, &root, lst);
 	if (rc != -1) {
 		printf("It should have failed due dup\n");
 		abort();
@@ -1501,13 +1502,13 @@ static void test_barr_list_parsing(void)
 
 	/* dump for reference */
 	for (node = rb_first(&root); node; node = rb_next(node)) {
-		struct bsc_nat_barr_entry *entry;
-		entry = rb_entry(node, struct bsc_nat_barr_entry, node);
+		struct bsc_filter_barr_entry *entry;
+		entry = rb_entry(node, struct bsc_filter_barr_entry, node);
 		printf("IMSI: %s CM: %d LU: %d\n", entry->imsi,
 			entry->cm_reject_cause, entry->lu_reject_cause);
 
 	}
-	rc = bsc_nat_barr_adapt(NULL, &root, NULL);
+	rc = bsc_filter_barr_adapt(NULL, &root, NULL);
 }
 
 static void test_nat_extract_lac()
