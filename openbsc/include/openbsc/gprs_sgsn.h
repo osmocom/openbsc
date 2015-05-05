@@ -207,6 +207,11 @@ struct sgsn_pdp_ctx {
 	struct osmo_timer_list	timer;
 	unsigned int		T;		/* Txxxx number */
 	unsigned int		num_T_exp;	/* number of consecutive T expirations */
+
+	struct osmo_timer_list	cdr_timer;	/* CDR record wird timer */
+	struct timespec		cdr_start;	/* The start of the CDR */
+	uint64_t		cdr_bytes_in;
+	uint64_t		cdr_bytes_out;
 };
 
 #define LOGPDPCTXP(level, pdp, fmt, args...) \

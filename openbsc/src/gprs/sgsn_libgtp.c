@@ -534,6 +534,9 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 	rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_UDATA_OUT]);
 	rate_ctr_add(&mm->ctrg->ctr[GMM_CTR_BYTES_UDATA_OUT], len);
 
+	/* It is easier to have a global count */
+	pdp->cdr_bytes_out += len;
+
 	return sndcp_unitdata_req(msg, &mm->llme->lle[pdp->sapi],
 				  pdp->nsapi, mm);
 }
@@ -568,6 +571,9 @@ int sgsn_rx_sndcp_ud_ind(struct gprs_ra_id *ra_id, int32_t tlli, uint8_t nsapi,
 	rate_ctr_add(&pdp->ctrg->ctr[PDP_CTR_BYTES_UDATA_IN], npdu_len);
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_UDATA_IN]);
 	rate_ctr_add(&mmctx->ctrg->ctr[GMM_CTR_BYTES_UDATA_IN], npdu_len);
+
+	/* It is easier to have a global count */
+	pdp->cdr_bytes_in += npdu_len;
 
 	return gtp_data_req(pdp->ggsn->gsn, pdp->lib, npdu, npdu_len);
 }
