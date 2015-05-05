@@ -100,6 +100,7 @@ enum gsm48_gprs_ie_sm {
 	 * but which we use to simplify internal APIs */
 	OSMO_IE_GSM_REQ_QOS		= 0xfd,
 	OSMO_IE_GSM_REQ_PDP_ADDR	= 0xfe,
+	OSMO_IE_GSM_SUB_QOS		= 0xff,
 };
 
 /* Chapter 9.4.15 / Table 9.4.15 */

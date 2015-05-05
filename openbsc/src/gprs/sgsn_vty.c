@@ -471,6 +471,11 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 	if (subscr->tmsi != GSM_RESERVED_TMSI)
 		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
 			VTY_NEWLINE);
+	if (subscr->sgsn_data->msisdn_len > 0)
+		vty_out(vty, "    MSISDN (BCD): %s%s",
+			osmo_hexdump(subscr->sgsn_data->msisdn,
+					subscr->sgsn_data->msisdn_len),
+			VTY_NEWLINE);
 
 	if (strlen(subscr->equipment.imei) > 0)
 		vty_out(vty, "    IMEI: %s%s", subscr->equipment.imei, VTY_NEWLINE);
@@ -495,8 +500,9 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 	}
 
 	llist_for_each_entry(pdp, &subscr->sgsn_data->pdp_list, list) {
-		vty_out(vty, "    PDP info: Id: %d, Type: 0x%04x, APN: '%s'%s",
+		vty_out(vty, "    PDP info: Id: %d, Type: 0x%04x, APN: '%s' QoS: %s%s",
 			pdp->context_id, pdp->pdp_type, pdp->apn_str,
+			osmo_hexdump(pdp->qos_subscribed, pdp->qos_subscribed_len),
 			VTY_NEWLINE);
 	}
 

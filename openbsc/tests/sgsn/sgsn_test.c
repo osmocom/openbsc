@@ -414,9 +414,14 @@ static void test_subscriber_gsup(void)
 		0x02, 0x01, 0x07 /* GPRS not allowed */
 	};
 
+#define MSISDN	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09
+
+	static const uint8_t s1_msisdn[] = { MSISDN };
+
 	static const uint8_t update_location_res[] = {
 		0x06,
 		TEST_GSUP_IMSI1_IE,
+		0x08, 0x09, MSISDN,
 		0x04, 0x00, /* PDP info complete */
 		0x05, 0x12,
 			0x10, 0x01, 0x01,
@@ -427,6 +432,8 @@ static void test_subscriber_gsup(void)
 			0x11, 0x02, 0xf1, 0x21, /* IPv4 */
 			0x12, 0x08, 0x03, 'f', 'o', 'o', 0x03, 'a', 'p', 'n',
 	};
+
+#undef MSISDN
 
 	static const uint8_t update_location_err[] = {
 		0x05,
@@ -534,6 +541,8 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(last_updated_subscr == s1);
 	OSMO_ASSERT(s1->flags & GPRS_SUBSCRIBER_ENABLE_PURGE);
 	OSMO_ASSERT(s1->sgsn_data->error_cause == SGSN_ERROR_CAUSE_NONE);
+	OSMO_ASSERT(s1->sgsn_data->msisdn_len == sizeof(s1_msisdn));
+	OSMO_ASSERT(memcmp(s1->sgsn_data->msisdn, s1_msisdn, sizeof(s1_msisdn)) == 0);
 	OSMO_ASSERT(!llist_empty(&s1->sgsn_data->pdp_list));
 	pdpd = llist_entry(s1->sgsn_data->pdp_list.next,
 		struct sgsn_subscriber_pdp_data, list);

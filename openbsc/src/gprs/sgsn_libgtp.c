@@ -3,6 +3,7 @@
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by On-Waves
+ * (C) 2015 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -45,6 +46,7 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
+#include <openbsc/gsm_subscriber.h>
 
 #include <gtp.h>
 #include <pdp.h>
@@ -121,6 +123,8 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	struct sgsn_pdp_ctx *pctx;
 	struct pdp_t *pdp;
 	uint64_t imsi_ui64;
+	size_t qos_len;
+	const uint8_t *qos;
 	int rc;
 
 	LOGP(DGPRS, LOGL_ERROR, "Create PDP Context\n");
@@ -153,8 +157,14 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 
 	/* IMSI, TEID/TEIC, FLLU/FLLC, TID, NSAPI set in pdp_newpdp */
 
-	/* FIXME: MSISDN in BCD format from mmctx */
-	//pdp->msisdn.l/.v
+	/* Put the MSISDN in case we have it */
+	if (mmctx->subscr) {
+		pdp->msisdn.l = mmctx->subscr->sgsn_data->msisdn_len;
+		if (pdp->msisdn.l > sizeof(pdp->msisdn.v))
+			pdp->msisdn.l = sizeof(pdp->msisdn.l);
+		memcpy(pdp->msisdn.v, mmctx->subscr->sgsn_data->msisdn,
+			pdp->msisdn.l);
+	}
 
 	/* End User Address from GMM requested PDP address */
 	pdp->eua.l = TLVP_LEN(tp, OSMO_IE_GSM_REQ_PDP_ADDR);
@@ -180,12 +190,27 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	memcpy(pdp->pco_req.v, TLVP_VAL(tp, GSM48_IE_GSM_PROTO_CONF_OPT),
 		pdp->pco_req.l);
 
-	/* QoS options from GMM */
-	pdp->qos_req.l = TLVP_LEN(tp, OSMO_IE_GSM_REQ_QOS);
-	if (pdp->qos_req.l > sizeof(pdp->qos_req.v))
-		pdp->qos_req.l = sizeof(pdp->qos_req.v);
-	memcpy(pdp->qos_req.v, TLVP_VAL(tp, OSMO_IE_GSM_REQ_QOS),
-		pdp->qos_req.l);
+	/* QoS options from GMM or remote */
+	if (TLVP_LEN(tp, OSMO_IE_GSM_SUB_QOS) > 0) {
+		qos_len = TLVP_LEN(tp, OSMO_IE_GSM_SUB_QOS);
+		qos = TLVP_VAL(tp, OSMO_IE_GSM_SUB_QOS);
+	} else {
+		qos_len = TLVP_LEN(tp, OSMO_IE_GSM_REQ_QOS);
+		qos = TLVP_VAL(tp, OSMO_IE_GSM_REQ_QOS);
+	}
+
+	if (qos_len <= 3) {
+		pdp->qos_req.l = qos_len + 1;
+		if (pdp->qos_req.l > sizeof(pdp->qos_req.v))
+			pdp->qos_req.l = sizeof(pdp->qos_req.v);
+		pdp->qos_req.v[0] = 0; /* Allocation/Retention policy */
+		memcpy(&pdp->qos_req.v[1], qos, pdp->qos_req.l - 1);
+	} else {
+		pdp->qos_req.l = qos_len;
+		if (pdp->qos_req.l > sizeof(pdp->qos_req.v))
+			pdp->qos_req.l = sizeof(pdp->qos_req.v);
+		memcpy(pdp->qos_req.v, qos, pdp->qos_req.l);
+	}
 
 	/* SGSN address for control plane */
 	pdp->gsnlc.l = sizeof(sgsn->cfg.gtp_listenaddr.sin_addr);

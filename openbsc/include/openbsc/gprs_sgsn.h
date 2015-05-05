@@ -294,6 +294,8 @@ struct sgsn_subscriber_pdp_data {
 	unsigned int		context_id;
 	uint16_t		pdp_type;
 	char			apn_str[GSM_APN_LENGTH];
+	uint8_t			qos_subscribed[20];
+	size_t			qos_subscribed_len;
 };
 
 struct sgsn_subscriber_data {
@@ -302,6 +304,9 @@ struct sgsn_subscriber_data {
 	int			auth_triplets_updated;
 	struct llist_head	pdp_list;
 	int			error_cause;
+
+	uint8_t			msisdn[9];
+	size_t			msisdn_len;
 };
 
 #define SGSN_ERROR_CAUSE_NONE (-1)

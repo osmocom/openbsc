@@ -2,6 +2,7 @@
 
 /*
  * (C) 2014 by Sysmocom s.f.m.c. GmbH
+ * (C) 2015 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * Author: Jacob Erlbeck
@@ -91,6 +92,11 @@ static int decode_pdp_info(uint8_t *data, size_t data_len,
 		case GPRS_GSUP_ACCESS_POINT_NAME_IE:
 			pdp_info->apn_enc = value;
 			pdp_info->apn_enc_len = value_len;
+			break;
+
+		case GPRS_GSUP_PDP_QOS_IE:
+			pdp_info->qos_enc = value;
+			pdp_info->qos_enc_len = value_len;
 			break;
 
 		default:
@@ -291,6 +297,12 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 			gsup_msg->auth_tuples[gsup_msg->num_auth_tuples++] =
 				auth_info;
 			break;
+
+		case GPRS_GSUP_MSISDN_IE:
+			gsup_msg->msisdn_enc = value;
+			gsup_msg->msisdn_enc_len = value_len;
+			break;
+
 		default:
 			LOGP(DGPRS, LOGL_NOTICE,
 			     "GSUP IE type %d unknown\n", iei);
@@ -324,6 +336,11 @@ static void encode_pdp_info(struct msgb *msg, enum gprs_gsup_iei iei,
 	if (pdp_info->apn_enc) {
 		msgb_tlv_put(msg, GPRS_GSUP_ACCESS_POINT_NAME_IE,
 			     pdp_info->apn_enc_len, pdp_info->apn_enc);
+	}
+
+	if (pdp_info->qos_enc) {
+		msgb_tlv_put(msg, GPRS_GSUP_PDP_QOS_IE,
+				pdp_info->qos_enc_len, pdp_info->qos_enc);
 	}
 
 	/* Update length field */
@@ -374,6 +391,10 @@ void gprs_gsup_encode(struct msgb *msg, const struct gprs_gsup_message *gsup_msg
 	msgb_tlv_put(msg, GPRS_GSUP_IMSI_IE, bcd_len - 1, &bcd_buf[1]);
 
 	/* specific parts */
+	if (gsup_msg->msisdn_enc)
+		msgb_tlv_put(msg, GPRS_GSUP_MSISDN_IE,
+				gsup_msg->msisdn_enc_len, gsup_msg->msisdn_enc);
+
 	if ((u8 = gsup_msg->cause))
 		msgb_tlv_put(msg, GPRS_GSUP_CAUSE_IE, sizeof(u8), &u8);
 
