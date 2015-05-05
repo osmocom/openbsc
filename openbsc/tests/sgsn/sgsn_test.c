@@ -953,6 +953,8 @@ retry_attach_req:
 		/* check that the MM context has not been removed due to a
 		 * failed authorization */
 		OSMO_ASSERT(ctx == sgsn_mm_ctx_by_tlli(foreign_tlli, &raid));
+		if (ctx->subscr && ctx->subscr->sgsn_data->msisdn_len > 0)
+			OSMO_ASSERT(strcmp(ctx->msisdn, "+49166213323") == 0);
 	}
 
 	if (retry && sgsn_tx_counter == 0)
@@ -1151,6 +1153,8 @@ int my_subscr_request_update_gsup_auth(struct sgsn_mm_ctx *mmctx) {
 			0x10, 0x01, 0x01,
 			0x11, 0x02, 0xf1, 0x21, /* IPv4 */
 			0x12, 0x09, 0x04, 't', 'e', 's', 't', 0x03, 'a', 'p', 'n',
+		0x08, 0x07, /* MSISDN 49166213323 encoded */
+			0x91, 0x94, 0x61, 0x26, 0x31, 0x23, 0xF3,
 	};
 
 	OSMO_ASSERT(!mmctx || mmctx->subscr);

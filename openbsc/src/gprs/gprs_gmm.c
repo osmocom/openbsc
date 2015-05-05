@@ -545,6 +545,38 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	return gsm48_gmm_authorize(ctx);
 }
 
+static void extract_subscr_msisdn(struct sgsn_mm_ctx *ctx)
+{
+	struct gsm_mncc_number called;
+	uint8_t msisdn[sizeof(ctx->subscr->sgsn_data->msisdn) + 1];
+
+	/* Convert MSISDN from encoded to string.. */
+	if (!ctx->subscr)
+		return;
+
+	if (ctx->subscr->sgsn_data->msisdn_len < 1)
+		return;
+
+	/* prepare the data for the decoder */
+	memset(&called, 0, sizeof(called));
+	msisdn[0] = ctx->subscr->sgsn_data->msisdn_len;
+	memcpy(&msisdn[1], ctx->subscr->sgsn_data->msisdn,
+		ctx->subscr->sgsn_data->msisdn_len);
+
+	/* decode the string now */
+	gsm48_decode_called(&called, msisdn);
+
+	/* Prepend a '+' for international numbers */
+	if (called.plan == 1 && called.type == 1) {
+		ctx->msisdn[0] = '+';
+		strncpy(&ctx->msisdn[1], called.number,
+			sizeof(ctx->msisdn) - 1);
+	} else {
+		strncpy(&ctx->msisdn[0], called.number,
+			sizeof(ctx->msisdn) - 1);
+	}
+}
+
 /* Check if we can already authorize a subscriber */
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
@@ -604,6 +636,8 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 			  "no pending request, authorization completed\n");
 		break;
 	case GSM48_MT_GMM_ATTACH_REQ:
+
+		extract_subscr_msisdn(ctx);
 #ifdef PTMSI_ALLOC
 		/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
 		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
