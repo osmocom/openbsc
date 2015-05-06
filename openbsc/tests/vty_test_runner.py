@@ -891,6 +891,34 @@ class TestVTYSGSN(TestVTYGenericBSC):
         res = self.vty.command("show running-config")
         self.assertEquals(res.find("apn internet"), -1)
 
+    def testVtyCDR(self):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify('configure terminal', ['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify('sgsn', ['']))
+        self.assertEquals(self.vty.node(), 'config-sgsn')
+
+        res = self.vty.command("show running-config")
+        self.assert_(res.find("no cdr filename") > 0)
+
+        self.vty.command("cdr filename bla.cdr")
+        res = self.vty.command("show running-config")
+        self.assertEquals(res.find("no cdr filename"), -1)
+        self.assert_(res.find(" cdr filename bla.cdr") > 0)
+
+        self.vty.command("no cdr filename")
+        res = self.vty.command("show running-config")
+        self.assert_(res.find("no cdr filename") > 0)
+        self.assertEquals(res.find(" cdr filename bla.cdr"), -1)
+
+        res = self.vty.command("show running-config")
+        self.assert_(res.find(" cdr interval 600") > 0)
+
+        self.vty.command("cdr interval 900")
+        res = self.vty.command("show running-config")
+        self.assert_(res.find(" cdr interval 900") > 0)
+        self.assertEquals(res.find(" cdr interval 600"), -1)
+
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")
