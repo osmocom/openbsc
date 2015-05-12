@@ -227,6 +227,11 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	pdp->rattype.v[0] = 2;
 	pdp->rattype_given = 1;
 
+	/* include the routing area identity all the time */
+	pdp->rai_given = 1;
+	pdp->rai.l = 6;
+	gsm48_construct_ra(pdp->rai.v, &mmctx->ra);
+
 	/* change pdp state to 'requested' */
 	pctx->state = PDP_STATE_CR_REQ;
 
