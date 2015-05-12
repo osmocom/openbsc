@@ -287,6 +287,7 @@ static const struct cause_map gtp2sm_cause_map[] = {
 /* The GGSN has confirmed the creation of a PDP Context */
 static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
+	struct sgsn_signal_data sig_data;
 	struct sgsn_pdp_ctx *pctx = cbp;
 	uint8_t reject_cause;
 
@@ -322,6 +323,11 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	/* Activate the SNDCP layer */
 	sndcp_sm_activate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
 
+	/* Inform others about it */
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.pdp = pctx;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_ACT, &sig_data);
+
 	/* Send PDP CTX ACT to MS */
 	return gsm48_tx_gsm_act_pdp_acc(pctx);
 
@@ -349,11 +355,16 @@ reject:
 /* Confirmation of a PDP Context Delete */
 static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
+	struct sgsn_signal_data sig_data;
 	struct sgsn_pdp_ctx *pctx = cbp;
 	int rc = 0;
 
 	LOGPDPCTXP(LOGL_INFO, pctx, "Received DELETE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
+
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.pdp = pctx;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_DEACT, &sig_data);
 
 	if (pctx->mm) {
 		/* Deactivate the SNDCP layer */
@@ -523,6 +534,9 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 	rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_UDATA_OUT]);
 	rate_ctr_add(&mm->ctrg->ctr[GMM_CTR_BYTES_UDATA_OUT], len);
 
+	/* It is easier to have a global count */
+	pdp->cdr_bytes_out += len;
+
 	return sndcp_unitdata_req(msg, &mm->llme->lle[pdp->sapi],
 				  pdp->nsapi, mm);
 }
@@ -557,6 +571,9 @@ int sgsn_rx_sndcp_ud_ind(struct gprs_ra_id *ra_id, int32_t tlli, uint8_t nsapi,
 	rate_ctr_add(&pdp->ctrg->ctr[PDP_CTR_BYTES_UDATA_IN], npdu_len);
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_UDATA_IN]);
 	rate_ctr_add(&mmctx->ctrg->ctr[GMM_CTR_BYTES_UDATA_IN], npdu_len);
+
+	/* It is easier to have a global count */
+	pdp->cdr_bytes_in += npdu_len;
 
 	return gtp_data_req(pdp->ggsn->gsn, pdp->lib, npdu, npdu_len);
 }

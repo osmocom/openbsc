@@ -152,7 +152,6 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_imsi(const char *imsi);
 /* Allocate a new SGSN MM context */
 struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 					const struct gprs_ra_id *raid);
-void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm);
 void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx);
 
 struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
@@ -208,6 +207,11 @@ struct sgsn_pdp_ctx {
 	struct osmo_timer_list	timer;
 	unsigned int		T;		/* Txxxx number */
 	unsigned int		num_T_exp;	/* number of consecutive T expirations */
+
+	struct osmo_timer_list	cdr_timer;	/* CDR record wird timer */
+	struct timespec		cdr_start;	/* The start of the CDR */
+	uint64_t		cdr_bytes_in;
+	uint64_t		cdr_bytes_out;
 };
 
 #define LOGPDPCTXP(level, pdp, fmt, args...) \

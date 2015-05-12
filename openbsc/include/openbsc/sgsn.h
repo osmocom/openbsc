@@ -16,6 +16,11 @@ enum sgsn_auth_policy {
 	SGSN_AUTH_POLICY_REMOTE
 };
 
+struct sgsn_cdr {
+	char *filename;
+	int interval;
+};
+
 struct sgsn_config {
 	/* parsed from config file */
 
@@ -33,6 +38,9 @@ struct sgsn_config {
 
 	int require_authentication;
 	int require_update_location;
+
+	/* CDR configuration */
+	struct sgsn_cdr cdr;
 };
 
 struct sgsn_instance {
@@ -84,5 +92,11 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 			void *mmcontext);
 int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
 			 uint8_t *hdr, uint16_t len);
+
+
+/*
+ * CDR related functionality
+ */
+int sgsn_cdr_init(struct sgsn_instance *sgsn);
 
 #endif

@@ -1,6 +1,7 @@
 /*
  * (C) 2010-2013 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by On-Waves
+ * (C) 2015 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -163,6 +164,12 @@ static int config_write_sgsn(struct vty *vty)
 			vty_out(vty, " apn %s ggsn %d%s", actx->name,
 				actx->ggsn->id, VTY_NEWLINE);
 	}
+
+	if (g_cfg->cdr.filename)
+		vty_out(vty, " cdr filename %s%s", g_cfg->cdr.filename, VTY_NEWLINE);
+	else
+		vty_out(vty, " no cdr filename%s", VTY_NEWLINE);
+	vty_out(vty, " cdr interval %d%s", g_cfg->cdr.interval, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -811,6 +818,32 @@ DEFUN(cfg_no_apn_name, cfg_no_apn_name_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_cdr_filename, cfg_cdr_filename_cmd,
+	"cdr filename NAME",
+	"CDR\nSet filename\nname\n")
+{
+	talloc_free(g_cfg->cdr.filename);
+	g_cfg->cdr.filename = talloc_strdup(tall_vty_ctx, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_cdr_filename, cfg_no_cdr_filename_cmd,
+	"no cdr filename",
+	NO_STR "CDR\nDisable CDR generation\n")
+{
+	talloc_free(g_cfg->cdr.filename);
+	g_cfg->cdr.filename = NULL;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_cdr_interval, cfg_cdr_interval_cmd,
+	"cdr interval <1-2147483647>",
+	"CDR\nPDP periodic log interval\nSeconds\n")
+{
+	g_cfg->cdr.interval = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 int sgsn_vty_init(void)
 {
 	install_element_ve(&show_sgsn_cmd);
@@ -842,6 +875,9 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_apn_imsi_ggsn_cmd);
 	install_element(SGSN_NODE, &cfg_apn_name_cmd);
 	install_element(SGSN_NODE, &cfg_no_apn_name_cmd);
+	install_element(SGSN_NODE, &cfg_cdr_filename_cmd);
+	install_element(SGSN_NODE, &cfg_no_cdr_filename_cmd);
+	install_element(SGSN_NODE, &cfg_cdr_interval_cmd);
 
 	return 0;
 }
