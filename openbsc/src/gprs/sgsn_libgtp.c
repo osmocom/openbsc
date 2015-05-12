@@ -237,6 +237,12 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	pdp->userloc.v[0] = 0; /* CGI for GERAN */
 	bssgp_create_cell_id(&pdp->userloc.v[1], &mmctx->ra, mmctx->cell_id);
 
+	/* include the IMEI(SV) */
+	pdp->imeisv_given = 1;
+	gsm48_encode_bcd_number(&pdp->imeisv.v[0], 8, 0, mmctx->imei);
+	pdp->imeisv.l = pdp->imeisv.v[0];
+	memmove(&pdp->imeisv.v[0], &pdp->imeisv.v[1], 8);
+
 	/* change pdp state to 'requested' */
 	pctx->state = PDP_STATE_CR_REQ;
 
