@@ -212,6 +212,7 @@ struct sgsn_pdp_ctx {
 	struct timespec		cdr_start;	/* The start of the CDR */
 	uint64_t		cdr_bytes_in;
 	uint64_t		cdr_bytes_out;
+	uint32_t		cdr_charging_id;
 };
 
 #define LOGPDPCTXP(level, pdp, fmt, args...) \
