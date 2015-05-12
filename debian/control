@@ -16,7 +16,7 @@ Description: GSM Base Station Controller; BSC-only version of OpenBSC.  Needs a 
 
 Package: osmocom-nitb
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends} libdbd-sqlite3
+Depends: ${shlibs:Depends}, ${misc:Depends}, libdbd-sqlite3
 Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
  All the GSM network components bundled together.
 
