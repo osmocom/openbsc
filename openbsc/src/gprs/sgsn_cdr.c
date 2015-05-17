@@ -64,7 +64,7 @@ static void maybe_print_header(FILE *cdr_file)
 	if (ftell(cdr_file) != 0)
 		return;
 
-	fprintf(cdr_file, "timestamp,imsi,imei,msisdn,cell_id,lac,event,pdp_duration,ggsn_addr,sgsn_addr,apni,eua_addr,vol_in,vol_out\n");
+	fprintf(cdr_file, "timestamp,imsi,imei,msisdn,cell_id,lac,event,pdp_duration,ggsn_addr,sgsn_addr,apni,eua_addr,vol_in,vol_out,charging_id\n");
 }
 
 static void cdr_log_mm(struct sgsn_instance *inst, const char *ev,
@@ -171,7 +171,7 @@ static void cdr_log_pdp(struct sgsn_instance *inst, const char *ev,
 	duration = tp.tv_sec - pdp->cdr_start.tv_sec;
 
 	fprintf(cdr_file,
-		"%04d%02d%02d%02d%02d%02d%03d,%s,%s,%s,%d,%d,%s,%ld,%s,%s,%s,%s,%" PRIu64 ",%" PRIu64 "\n",
+		"%04d%02d%02d%02d%02d%02d%03d,%s,%s,%s,%d,%d,%s,%ld,%s,%s,%s,%s,%" PRIu64 ",%" PRIu64 ",%u\n",
 		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec,
 		(int)(tv.tv_usec / 1000),
@@ -187,7 +187,8 @@ static void cdr_log_pdp(struct sgsn_instance *inst, const char *ev,
 		apni,
 		eua_addr,
 		pdp->cdr_bytes_in,
-		pdp->cdr_bytes_out);
+		pdp->cdr_bytes_out,
+		pdp->cdr_charging_id);
 	fclose(cdr_file);
 }
 
@@ -222,6 +223,7 @@ static int handle_sgsn_sig(unsigned int subsys, unsigned int signal,
 		break;
 	case S_SGSN_PDP_ACT:
 		clock_gettime(CLOCK_MONOTONIC, &signal_data->pdp->cdr_start);
+		signal_data->pdp->cdr_charging_id = signal_data->pdp->lib->cid;
 		cdr_log_pdp(inst, "pdp-act", signal_data->pdp);
 		signal_data->pdp->cdr_timer.cb = cdr_pdp_timeout;
 		signal_data->pdp->cdr_timer.data = signal_data->pdp;
