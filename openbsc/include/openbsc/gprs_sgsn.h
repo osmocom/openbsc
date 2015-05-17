@@ -312,6 +312,9 @@ struct sgsn_subscriber_data {
 
 	uint8_t			msisdn[9];
 	size_t			msisdn_len;
+
+	uint8_t			hlr[9];
+	size_t			hlr_len;
 };
 
 #define SGSN_ERROR_CAUSE_NONE (-1)
