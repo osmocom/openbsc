@@ -42,6 +42,7 @@ enum gprs_gsup_iei {
 	GPRS_GSUP_CANCEL_TYPE_IE		= 0x06,
 	GPRS_GSUP_FREEZE_PTMSI_IE		= 0x07,
 	GPRS_GSUP_MSISDN_IE			= 0x08,
+	GPRS_GSUP_HLR_NUMBER_IE			= 0x09,
 	GPRS_GSUP_PDP_CONTEXT_ID_IE		= 0x10,
 	GPRS_GSUP_PDP_TYPE_IE			= 0x11,
 	GPRS_GSUP_ACCESS_POINT_NAME_IE		= 0x12,
@@ -109,6 +110,8 @@ struct gprs_gsup_message {
 	size_t				num_pdp_infos;
 	const uint8_t			*msisdn_enc;
 	size_t				msisdn_enc_len;
+	const uint8_t			*hlr_enc;
+	size_t				hlr_enc_len;
 };
 
 int gprs_gsup_decode(const uint8_t *data, size_t data_len,
