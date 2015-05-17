@@ -120,6 +120,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 					 uint16_t nsapi,
 					 struct tlv_parsed *tp)
 {
+	struct gprs_ra_id raid;
 	struct sgsn_pdp_ctx *pctx;
 	struct pdp_t *pdp;
 	uint64_t imsi_ui64;
@@ -230,7 +231,10 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	/* Include RAI and ULI all the time */
 	pdp->rai_given = 1;
 	pdp->rai.l = 6;
-	gsm48_construct_ra(pdp->rai.v, &mmctx->ra);
+	raid = mmctx->ra;
+	raid.lac = 0xFFFE;
+	raid.rac = 0xFF;
+	gsm48_construct_ra(pdp->rai.v, &raid);
 
 	pdp->userloc_given = 1;
 	pdp->userloc.l = 8;
