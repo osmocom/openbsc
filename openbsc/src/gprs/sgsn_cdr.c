@@ -64,7 +64,7 @@ static void maybe_print_header(FILE *cdr_file)
 	if (ftell(cdr_file) != 0)
 		return;
 
-	fprintf(cdr_file, "timestamp,imsi,imei,msisdn,cell_id,lac,event,pdp_duration,ggsn_addr,sgsn_addr,apni,eua_addr,vol_in,vol_out,charging_id\n");
+	fprintf(cdr_file, "timestamp,imsi,imei,msisdn,cell_id,lac,hlr,event,pdp_duration,ggsn_addr,sgsn_addr,apni,eua_addr,vol_in,vol_out,charging_id\n");
 }
 
 static void cdr_log_mm(struct sgsn_instance *inst, const char *ev,
@@ -87,7 +87,7 @@ static void cdr_log_mm(struct sgsn_instance *inst, const char *ev,
 	maybe_print_header(cdr_file);
 	gettimeofday(&tv, NULL);
 	gmtime_r(&tv.tv_sec, &tm);
-	fprintf(cdr_file, "%04d%02d%02d%02d%02d%02d%03d,%s,%s,%s,%d,%d,%s\n",
+	fprintf(cdr_file, "%04d%02d%02d%02d%02d%02d%03d,%s,%s,%s,%d,%d,%s,%s\n",
 		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec,
 		(int)(tv.tv_usec / 1000),
@@ -96,6 +96,7 @@ static void cdr_log_mm(struct sgsn_instance *inst, const char *ev,
 		mmctx->msisdn,
 		mmctx->cell_id,
 		mmctx->ra.lac,
+		mmctx->hlr,
 		ev);
 
 	fclose(cdr_file);
@@ -171,7 +172,7 @@ static void cdr_log_pdp(struct sgsn_instance *inst, const char *ev,
 	duration = tp.tv_sec - pdp->cdr_start.tv_sec;
 
 	fprintf(cdr_file,
-		"%04d%02d%02d%02d%02d%02d%03d,%s,%s,%s,%d,%d,%s,%ld,%s,%s,%s,%s,%" PRIu64 ",%" PRIu64 ",%u\n",
+		"%04d%02d%02d%02d%02d%02d%03d,%s,%s,%s,%d,%d,%s,%s,%ld,%s,%s,%s,%s,%" PRIu64 ",%" PRIu64 ",%u\n",
 		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec,
 		(int)(tv.tv_usec / 1000),
@@ -180,6 +181,7 @@ static void cdr_log_pdp(struct sgsn_instance *inst, const char *ev,
 		pdp->mm ? pdp->mm->msisdn : "N/A",
 		pdp->mm ? pdp->mm->cell_id : -1,
 		pdp->mm ? pdp->mm->ra.lac : -1,
+		pdp->mm ? pdp->mm->hlr : "N/A",
 		ev,
 		(unsigned long ) duration,
 		ggsn_addr,

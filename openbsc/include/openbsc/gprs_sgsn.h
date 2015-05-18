@@ -136,6 +136,9 @@ struct sgsn_mm_ctx {
 	enum sgsn_auth_state	auth_state;
 	int			is_authenticated;
 
+	/* the string representation of the current hlr */
+	char 			hlr[GSM_EXTENSION_LENGTH];
+
 	struct gsm_subscriber   *subscr;
 };
 

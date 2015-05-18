@@ -578,6 +578,43 @@ static void extract_subscr_msisdn(struct sgsn_mm_ctx *ctx)
 	}
 }
 
+static void extract_subscr_hlr(struct sgsn_mm_ctx *ctx)
+{
+	struct gsm_mncc_number called;
+	uint8_t hlr_number[sizeof(ctx->subscr->sgsn_data->hlr) + 1];
+
+	if (!ctx->subscr)
+		return;
+
+	if (ctx->subscr->sgsn_data->hlr_len < 1)
+		return;
+
+	/* prepare the data for the decoder */
+	memset(&called, 0, sizeof(called));
+	hlr_number[0] = ctx->subscr->sgsn_data->hlr_len;
+	memcpy(&hlr_number[1], ctx->subscr->sgsn_data->hlr,
+		ctx->subscr->sgsn_data->hlr_len);
+
+	/* decode the string now */
+	gsm48_decode_called(&called, hlr_number);
+
+	if (called.plan != 1) {
+		LOGMMCTXP(LOGL_ERROR, ctx,
+				"Numbering plan(%d) not allowed\n",
+				called.plan);
+		return;
+	}
+
+	if (called.type != 1) {
+		LOGMMCTXP(LOGL_ERROR, ctx,
+				"Numbering type(%d) not allowed\n",
+				called.type);
+		return;
+	}
+
+	strncpy(&ctx->hlr[0], called.number, sizeof(ctx->hlr) - 1);
+}
+
 /* Check if we can already authorize a subscriber */
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
@@ -643,6 +680,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	case GSM48_MT_GMM_ATTACH_REQ:
 
 		extract_subscr_msisdn(ctx);
+		extract_subscr_hlr(ctx);
 #ifdef PTMSI_ALLOC
 		/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
 		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
