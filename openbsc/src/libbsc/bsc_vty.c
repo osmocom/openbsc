@@ -3283,27 +3283,42 @@ DEFUN(cfg_trx_max_power_red,
       "Reduction of maximum BS RF Power (relative to nominal power)\n"
       "Reduction of maximum BS RF Power in dB\n")
 {
+	int ret = CMD_SUCCESS;
 	int maxpwr_r = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
+	/* FIXME: check if our BTS type supports more than 24 */
 	int upper_limit = 24;	/* default 12.21 max power red. */
 
-	/* FIXME: check if our BTS type supports more than 12 */
-	if (maxpwr_r < 0 || maxpwr_r > upper_limit) {
-		vty_out(vty, "%% Power %d dB is not in the valid range%s",
+	if (maxpwr_r < 0) {
+		vty_out(vty, "%% Power %d dB can not be negative%s",
 			maxpwr_r, VTY_NEWLINE);
 		return CMD_WARNING;
+	}
+	if (maxpwr_r > upper_limit) {
+		vty_out(vty, "%% Power %d dB is more than %d dB maximum power reduction"
+			" defined by GSM 12.21. BTS may not support it.%s",
+			maxpwr_r, upper_limit, VTY_NEWLINE);
+		ret = CMD_WARNING;
 	}
 	if (maxpwr_r & 1) {
-		vty_out(vty, "%% Power %d dB is not an even value%s",
+		maxpwr_r = (maxpwr_r/2)*2;
+		vty_out(vty, "%% Power is not an even value, rounding it to %d dB%s",
 			maxpwr_r, VTY_NEWLINE);
-		return CMD_WARNING;
+		ret = CMD_WARNING;
 	}
 
-	trx->max_power_red = maxpwr_r;
+	/* Update the value if it's changed */
+	if (trx->max_power_red != maxpwr_r) {
+		trx->max_power_red = maxpwr_r;
+		vty_out(vty, "%% Updating max_pwr_red to %d dB for %s%s",
+			trx->max_power_red, gsm_trx_name(trx), VTY_NEWLINE);
+		abis_nm_update_max_power_red(trx);
+	} else {
+		vty_out(vty, "%% max_pwr_red is not changed for %s%s",
+			gsm_trx_name(trx), VTY_NEWLINE);
+	}
 
-	/* FIXME: make sure we update this using OML */
-
-	return CMD_SUCCESS;
+	return ret;
 }
 
 DEFUN(cfg_trx_rsl_e1,
