@@ -154,7 +154,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	//pdp->cch_pdp = 512;	/* Charging Flat Rate */
 
 	/* MS provided APN, subscription not verified */
-	pdp->selmode = 0x01;
+	pdp->selmode = 0xFC | 0x01;
 
 	/* IMSI, TEID/TEIC, FLLU/FLLC, TID, NSAPI set in pdp_newpdp */
 
