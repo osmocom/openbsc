@@ -153,8 +153,8 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	pdp->hisaddr1 = ggsn->remote_addr;
 	//pdp->cch_pdp = 512;	/* Charging Flat Rate */
 
-	/* MS provided APN, subscription not verified */
-	pdp->selmode = 0xFC | 0x01;
+	/* MS provided APN, subscription was verified by the caller */
+	pdp->selmode = 0xFC | 0x00;
 
 	/* IMSI, TEID/TEIC, FLLU/FLLC, TID, NSAPI set in pdp_newpdp */
 
