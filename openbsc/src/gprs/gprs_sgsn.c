@@ -638,8 +638,7 @@ struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 			req_apn_str[0] = 0;
 	}
 
-	if (mmctx->subscr == NULL ||
-	    llist_empty(&mmctx->subscr->sgsn_data->pdp_list))
+	if (mmctx->subscr == NULL)
 		allow_any_apn = 1;
 
 	if (strlen(req_apn_str) == 0 && !allow_any_apn) {

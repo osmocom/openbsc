@@ -1871,6 +1871,11 @@ static void test_ggsn_selection(void)
 	actxs[2] = sgsn_apn_ctx_find_alloc("*", "456789");
 	actxs[2]->ggsn = ggcs[2];
 
+	pdp_data = sgsn_subscriber_pdp_data_alloc(s1->sgsn_data);
+	pdp_data->context_id = 1;
+	pdp_data->pdp_type = 0x0121;
+	strncpy(pdp_data->apn_str, "*", sizeof(pdp_data->apn_str)-1);
+
 	/* Resolve GGSNs */
 
 	tp.lv[GSM48_IE_GSM_APN].len =
@@ -1917,10 +1922,6 @@ static void test_ggsn_selection(void)
 
 	/* Add PDP data entry to subscriber */
 
-	pdp_data = sgsn_subscriber_pdp_data_alloc(s1->sgsn_data);
-	pdp_data->context_id = 1;
-
-	pdp_data->pdp_type = 0x0121;
 	strncpy(pdp_data->apn_str, "Test.Apn", sizeof(pdp_data->apn_str)-1);
 
 	tp.lv[GSM48_IE_GSM_APN].len =
