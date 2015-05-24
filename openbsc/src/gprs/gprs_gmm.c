@@ -1630,6 +1630,26 @@ int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_pdp_ctx *pdp)
 	return _gsm48_tx_gsm_deact_pdp_acc(pdp->mm, pdp->ti);
 }
 
+static int activate_ggsn(struct sgsn_mm_ctx *mmctx,
+		struct sgsn_ggsn_ctx *ggsn, const uint8_t transaction_id,
+		const uint8_t req_nsapi, const uint8_t req_llc_sapi,
+		struct tlv_parsed *tp)
+{
+	struct sgsn_pdp_ctx *pdp;
+
+	LOGMMCTXP(LOGL_DEBUG, mmctx, "Using GGSN %d\n", ggsn->id);
+	ggsn->gsn = sgsn->gsn;
+	pdp = sgsn_create_pdp_ctx(ggsn, mmctx, req_nsapi, tp);
+	if (!pdp)
+		return -1;
+
+	/* Store SAPI and Transaction Identifier */
+	pdp->sapi = req_llc_sapi;
+	pdp->ti = transaction_id;
+
+	return 0;
+}
+
 /* Section 9.5.1: Activate PDP Context Request */
 static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 				    struct msgb *msg)
@@ -1652,13 +1672,6 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	req_qos = act_req->data + 1;	/* 10.5.6.5 */
 	req_pdpa_len = act_req->data[1 + req_qos_len];
 	req_pdpa = act_req->data + 1 + req_qos_len + 1;	/* 10.5.6.4 */
-
-	/* Optional: Access Point Name, Protocol Config Options */
-	if (req_pdpa + req_pdpa_len < msg->data + msg->len)
-		tlv_parse(&tp, &gsm48_sm_att_tlvdef, req_pdpa + req_pdpa_len,
-			  (msg->data + msg->len) - (req_pdpa + req_pdpa_len), 0, 0);
-	else
-		memset(&tp, 0, sizeof(tp));
 
 	switch (req_pdpa[0] & 0xf) {
 	case 0x0:
@@ -1694,13 +1707,6 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 
 	LOGPC(DMM, LOGL_INFO, "\n");
 
-	/* put the non-TLV elements in the TLV parser structure to
-	 * pass them on to the SGSN / GTP code */
-	tp.lv[OSMO_IE_GSM_REQ_QOS].len = req_qos_len;
-	tp.lv[OSMO_IE_GSM_REQ_QOS].val = req_qos;
-	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].len = req_pdpa_len;
-	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].val = req_pdpa;
-
 	/* Check if NSAPI is out of range (TS 04.65 / 7.2) */
 	if (act_req->req_nsapi < 5 || act_req->req_nsapi > 15) {
 		/* Send reject with GSM_CAUSE_INV_MAND_INFO */
@@ -1708,6 +1714,21 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 						GSM_CAUSE_INV_MAND_INFO,
 						0, NULL);
 	}
+
+	/* Optional: Access Point Name, Protocol Config Options */
+	if (req_pdpa + req_pdpa_len < msg->data + msg->len)
+		tlv_parse(&tp, &gsm48_sm_att_tlvdef, req_pdpa + req_pdpa_len,
+			  (msg->data + msg->len) - (req_pdpa + req_pdpa_len), 0, 0);
+	else
+		memset(&tp, 0, sizeof(tp));
+
+
+	/* put the non-TLV elements in the TLV parser structure to
+	 * pass them on to the SGSN / GTP code */
+	tp.lv[OSMO_IE_GSM_REQ_QOS].len = req_qos_len;
+	tp.lv[OSMO_IE_GSM_REQ_QOS].val = req_qos;
+	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].len = req_pdpa_len;
+	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].val = req_pdpa;
 
 	/* Check if NSAPI is already in use */
 	pdp = sgsn_pdp_ctx_by_nsapi(mmctx, act_req->req_nsapi);
@@ -1737,17 +1758,11 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 		return gsm48_tx_gsm_act_pdp_rej(mmctx, transaction_id,
 						gsm_cause, 0, NULL);
 	}
-	LOGMMCTXP(LOGL_DEBUG, mmctx, "Using GGSN %d\n", ggsn->id);
-	ggsn->gsn = sgsn->gsn;
-	pdp = sgsn_create_pdp_ctx(ggsn, mmctx, act_req->req_nsapi, &tp);
-	if (!pdp)
-		return -1;
 
-	/* Store SAPI and Transaction Identifier */
-	pdp->sapi = act_req->req_llc_sapi;
-	pdp->ti = transaction_id;
-
-	return 0;
+	/* Now activate the GGSN */
+	return activate_ggsn(mmctx, ggsn, transaction_id,
+				act_req->req_nsapi, act_req->req_llc_sapi,
+				&tp);
 }
 
 /* Section 9.5.8: Deactivate PDP Context Request */
