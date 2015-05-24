@@ -276,6 +276,18 @@ static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
 		}
 	}
 
+	if (gsup_msg->hlr_enc) {
+		if (gsup_msg->hlr_enc_len > sizeof(sdata->hlr)) {
+			LOGP(DGPRS, LOGL_ERROR, "HLR-Number too long (%zu)\n",
+				gsup_msg->hlr_enc_len);
+			sdata->hlr_len = 0;
+		} else {
+			memcpy(sdata->hlr, gsup_msg->hlr_enc,
+				gsup_msg->hlr_enc_len);
+			sdata->hlr_len = gsup_msg->hlr_enc_len;
+		}
+	}
+
 	if (gsup_msg->pdp_info_compl) {
 		rc = gprs_subscr_pdp_data_clear(subscr);
 		if (rc > 0)
@@ -666,11 +678,17 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 
 int gprs_subscr_purge(struct gsm_subscriber *subscr)
 {
+	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
 	struct gprs_gsup_message gsup_msg = {0};
 
 	LOGGSUBSCRP(LOGL_INFO, subscr, "purging MS subscriber\n");
 
 	gsup_msg.message_type = GPRS_GSUP_MSGT_PURGE_MS_REQUEST;
+
+	/* Provide the HLR number in case it is known */
+	gsup_msg.hlr_enc_len = sdata->hlr_len;
+	gsup_msg.hlr_enc = sdata->hlr;
+
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 

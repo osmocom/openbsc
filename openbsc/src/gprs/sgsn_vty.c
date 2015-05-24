@@ -315,8 +315,8 @@ static void vty_dump_mmctx(struct vty *vty, const char *pfx,
 {
 	vty_out(vty, "%sMM Context for IMSI %s, IMEI %s, P-TMSI %08x%s",
 		pfx, mm->imsi, mm->imei, mm->p_tmsi, VTY_NEWLINE);
-	vty_out(vty, "%s  MSISDN: %s, TLLI: %08x%s", pfx, mm->msisdn,
-		mm->tlli, VTY_NEWLINE);
+	vty_out(vty, "%s  MSISDN: %s, TLLI: %08x%s HLR: %s",
+		pfx, mm->msisdn, mm->tlli, mm->hlr, VTY_NEWLINE);
 	vty_out(vty, "%s  MM State: %s, Routeing Area: %u-%u-%u-%u, "
 		"Cell ID: %u%s", pfx,
 		get_value_string(gprs_mm_st_strs, mm->mm_state),

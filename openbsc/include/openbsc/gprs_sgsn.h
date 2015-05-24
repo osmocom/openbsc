@@ -136,6 +136,9 @@ struct sgsn_mm_ctx {
 	enum sgsn_auth_state	auth_state;
 	int			is_authenticated;
 
+	/* the string representation of the current hlr */
+	char 			hlr[GSM_EXTENSION_LENGTH];
+
 	struct gsm_subscriber   *subscr;
 };
 
@@ -312,6 +315,9 @@ struct sgsn_subscriber_data {
 
 	uint8_t			msisdn[9];
 	size_t			msisdn_len;
+
+	uint8_t			hlr[9];
+	size_t			hlr_len;
 };
 
 #define SGSN_ERROR_CAUSE_NONE (-1)

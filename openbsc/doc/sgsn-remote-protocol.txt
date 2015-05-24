@@ -120,6 +120,7 @@ Network peer -> SGSN
 	Message type		4.2.1			M	V	1
   01	IMSI			4.2.9			M	TLV	2-10
   08	MSISDN			4.2.10			O	TLV	0-9
+  09	HLR Number		4.2.12			O	TLV	0-9
   04	PDP info complete	4.2.8			O	TLV	2
   05	PDP info		4.2.3			1-10	TLV
 
@@ -149,6 +150,7 @@ SGSN -> Network peer
   IEI	Info Element		Type			Pres.	Format	Length
 	Message type		4.2.1			M	V	1
   01	IMSI			4.2.9			M	TLV	2-10
+  09	HLR Number		4.2.12			M	TLV	0-9
 
 3.2.10. Purge MS Error
 
@@ -357,6 +359,7 @@ IEI that shall be used for the encoding.
   | 0x06   Cancel type    4.2.6                             |
   | 0x07   Freeze P-TMSI  4.2.8                             |
   | 0x08   MSISDN         ISDN-AddressString/octet, 4.2.10  |
+  | 0x09   HLR Number     4.2.12                            |
   | 0x10   PDP context id big endian int                    |
   | 0x11   PDP type       4.2.4                             |
   | 0x12   APN            04.08, 10.5.6.1                   |
@@ -439,6 +442,27 @@ Priority and the reset are encoded as octets 3-N of 24.008.
   |     |  IEI                                          | octet 1
   +-----------------------------------------------------+
   |   Length of IE contents                             | octet 2
+  +-----------------------------------------------------+
+  :                                                     :   :
+  +-----------------------------------------------------+
+
+4.2.12. HLR Number encoded as GSM 09.02 ISDN-AddressString
+
+The HLR Number is encoded as an ISDN-AddressString in GSM 09.02. It
+will be stored by the SGSN can be used by the CDR module to keep a
+record.
+
+     8      7      6      5      4      3      2      1
+  +-----------------------------------------------------+
+  |     |  IEI                                          | octet 1
+  +-----------------------------------------------------+
+  |   Length of IE contents                             | octet 2
+  +-----------------------------------------------------+
+  | ext |  Type of num        |   Numbering plan        | octet 2
+  +-----------------------------------------------------+
+  |  Number digit 2           |   Number digit 1        | octet 3
+  +-----------------------------------------------------+
+  |  Number digit 4           |   Number digit 3        | octet 4
   +-----------------------------------------------------+
   :                                                     :   :
   +-----------------------------------------------------+
