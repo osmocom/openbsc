@@ -1650,9 +1650,8 @@ static int activate_ggsn(struct sgsn_mm_ctx *mmctx,
 	return 0;
 }
 
-/* Section 9.5.1: Activate PDP Context Request */
-static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
-				    struct msgb *msg)
+
+static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct gsm48_act_pdp_ctx_req *act_req = (struct gsm48_act_pdp_ctx_req *) gh->data;
@@ -1763,6 +1762,39 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	return activate_ggsn(mmctx, ggsn, transaction_id,
 				act_req->req_nsapi, act_req->req_llc_sapi,
 				&tp);
+}
+
+/* Section 9.5.1: Activate PDP Context Request */
+static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
+				    struct msgb *_msg)
+{
+	struct msgb *msg;
+	int rc;
+
+	/*
+	 * This is painful. We might not have a static GGSN
+	 * configuration and then would need to copy the msg
+	 * and re-do most of this routine (or call it again
+	 * and make sure it only goes through the dynamic
+	 * resolving. The question is what to optimize for
+	 * and the dynamic resolution will be the right thing
+	 * in the long run.
+	 */
+	msg = gprs_msgb_copy(_msg, __func__);
+	if (!msg) {
+		struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(_msg);
+		uint8_t transaction_id = (gh->proto_discr >> 4);
+
+		LOGMMCTXP(LOGL_ERROR, mmctx, "-> ACTIVATE PDP CONTEXT REQ failed copy.\n");
+		/* Send reject with GSM_CAUSE_INV_MAND_INFO */
+		return gsm48_tx_gsm_act_pdp_rej(mmctx, transaction_id,
+						GSM_CAUSE_NET_FAIL,
+						0, NULL);
+	}
+
+	rc = do_act_pdp_req(mmctx, _msg);
+	msgb_free(msg);
+	return rc;
 }
 
 /* Section 9.5.8: Deactivate PDP Context Request */
