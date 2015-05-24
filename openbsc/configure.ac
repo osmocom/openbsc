@@ -79,6 +79,11 @@ PKG_CHECK_MODULES(LIBGTP, libgtp, , found_libgtp=no)
 AM_CONDITIONAL(HAVE_LIBGTP, test "$found_libgtp" = yes)
 AC_SUBST(found_libgtp)
 
+found_libcares=yes
+PKG_CHECK_MODULES([LIBCARES], [libcares], [], [found_libcares=no])
+AM_CONDITIONAL(HAVE_LIBCARES, test "$found_libcares" = yes)
+AC_SUBST(found_libcares)
+
 dnl checks for header files
 AC_HEADER_STDC
 AC_CHECK_HEADERS(dahdi/user.h,,AC_MSG_WARN(DAHDI input driver will not be built))

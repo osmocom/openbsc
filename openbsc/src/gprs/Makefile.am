@@ -1,16 +1,19 @@
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS=-Wall -fno-strict-aliasing $(LIBOSMOCORE_CFLAGS) \
 	$(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOCTRL_CFLAGS) \
-	$(LIBOSMOABIS_CFLAGS) $(LIBOSMOGB_CFLAGS) $(COVERAGE_CFLAGS)
+	$(LIBOSMOABIS_CFLAGS) $(LIBOSMOGB_CFLAGS) $(COVERAGE_CFLAGS) \
+	$(LIBCARES_CFLAGS)
 OSMO_LIBS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) \
 	    $(LIBOSMOCTRL_LIBS) $(LIBOSMOGB_LIBS)
 
 noinst_HEADERS = gprs_sndcp.h
 
-if HAVE_LIBGTP
-bin_PROGRAMS = osmo-gbproxy osmo-sgsn
-else
 bin_PROGRAMS = osmo-gbproxy
+
+if HAVE_LIBGTP
+if HAVE_LIBCARES
+bin_PROGRAMS += osmo-sgsn
+endif
 endif
 
 osmo_gbproxy_SOURCES =  gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
@@ -24,7 +27,7 @@ osmo_sgsn_SOURCES =	gprs_gmm.c gprs_sgsn.c gprs_sndcp.c gprs_sndcp_vty.c \
 			gprs_llc.c gprs_llc_parse.c gprs_llc_vty.c crc24.c \
 			sgsn_ctrl.c sgsn_auth.c gprs_subscriber.c \
 			gprs_gsup_messages.c gprs_utils.c gprs_gsup_client.c \
-			gsm_04_08_gprs.c sgsn_cdr.c
+			gsm_04_08_gprs.c sgsn_cdr.c sgsn_ares.c
 osmo_sgsn_LDADD = 	\
 			$(top_builddir)/src/libcommon/libcommon.a \
-			-lgtp $(OSMO_LIBS) $(LIBOSMOABIS_LIBS) -lrt
+			-lgtp $(OSMO_LIBS) $(LIBOSMOABIS_LIBS) $(LIBCARES_LIBS) -lrt

@@ -7,6 +7,8 @@
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 
+#include <ares.h>
+
 struct gprs_gsup_client;
 
 enum sgsn_auth_policy {
@@ -58,6 +60,11 @@ struct sgsn_instance {
 	struct gprs_gsup_client *gsup_client;
 	/* LLME inactivity timer */
 	struct osmo_timer_list llme_timer;
+
+	/* c-ares event loop integration */
+	struct osmo_timer_list ares_timer;
+	struct llist_head ares_fds;
+	ares_channel ares_channel;
 };
 
 extern struct sgsn_instance *sgsn;
@@ -98,5 +105,12 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
  * CDR related functionality
  */
 int sgsn_cdr_init(struct sgsn_instance *sgsn);
+
+
+/*
+ * C-ARES related functionality
+ */
+int sgsn_ares_init(struct sgsn_instance *sgsn);
+int sgsn_ares_query(struct sgsn_instance *sgsm, const char *name, ares_host_callback cb, void *data);
 
 #endif
