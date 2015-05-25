@@ -1,4 +1,4 @@
-openbsc (0.14.0+z8) unstable; urgency=low
+openbsc (0.14.0+z9) unstable; urgency=low
 
   * New upstream tag and additional patches.
   * SGSN/GSUP extensions
@@ -12,6 +12,7 @@ openbsc (0.14.0+z8) unstable; urgency=low
   * Set spare selection mode flags.
   * Use the verified mode
   * Resolve GGSN dynamically
+  * Never append the domain name to the query
 
  -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Wed, 06 May 2015 18:04:15 +0200
 
