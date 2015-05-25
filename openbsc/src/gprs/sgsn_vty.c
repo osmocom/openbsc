@@ -135,11 +135,17 @@ static int config_write_sgsn(struct vty *vty)
 		inet_ntoa(g_cfg->gtp_listenaddr.sin_addr), VTY_NEWLINE);
 
 	llist_for_each_entry(gctx, &sgsn_ggsn_ctxts, list) {
+		if (gctx->id == UINT32_MAX)
+			continue;
+
 		vty_out(vty, " ggsn %u remote-ip %s%s", gctx->id,
 			inet_ntoa(gctx->remote_addr), VTY_NEWLINE);
 		vty_out(vty, " ggsn %u gtp-version %u%s", gctx->id,
 			gctx->gtp_version, VTY_NEWLINE);
 	}
+
+	if (sgsn->cfg.dynamic_lookup)
+		vty_out(vty, " ggsn dynamic%s", VTY_NEWLINE);
 
 	vty_out(vty, " auth-policy %s%s",
 		get_value_string(sgsn_auth_pol_strs, g_cfg->auth_policy),
@@ -233,6 +239,14 @@ DEFUN(cfg_ggsn_gtp_version, cfg_ggsn_gtp_version_cmd,
 	else
 		ggc->gtp_version = 0;
 
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_ggsn_dynamic_lookup, cfg_ggsn_dynamic_lookup_cmd,
+	"ggsn dynamic",
+	GGSN_STR "Enable dynamic GRX based look-up (requires restart)\n")
+{
+	sgsn->cfg.dynamic_lookup = 1;
 	return CMD_SUCCESS;
 }
 
@@ -878,6 +892,7 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_cdr_filename_cmd);
 	install_element(SGSN_NODE, &cfg_no_cdr_filename_cmd);
 	install_element(SGSN_NODE, &cfg_cdr_interval_cmd);
+	install_element(SGSN_NODE, &cfg_ggsn_dynamic_lookup_cmd);
 
 	return 0;
 }

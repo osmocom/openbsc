@@ -70,6 +70,29 @@ enum sgsn_auth_state {
 
 #define MS_RADIO_ACCESS_CAPA
 
+enum sgsn_ggsn_lookup_state {
+	SGSN_GGSN_2DIGIT,
+	SGSN_GGSN_3DIGIT,
+};
+
+struct sgsn_ggsn_lookup {
+	int state;
+
+	struct sgsn_mm_ctx *mmctx;
+
+	/* APN string */
+	char apn_str[GSM_APN_LENGTH];
+
+	/* the original data */
+	struct msgb *orig_msg;
+	struct tlv_parsed tp;
+
+	/* for dealing with re-transmissions */
+	uint8_t nsapi;
+	uint8_t sapi;
+	uint8_t ti;
+};
+
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
 /* Extended by 3GPP TS 23.060, Table 6: SGSN MM and PDP Contexts */
 struct sgsn_mm_ctx {
@@ -139,6 +162,9 @@ struct sgsn_mm_ctx {
 	/* the string representation of the current hlr */
 	char 			hlr[GSM_EXTENSION_LENGTH];
 
+	/* the current GGSN look-up operation */
+	struct sgsn_ggsn_lookup *ggsn_lookup;
+
 	struct gsm_subscriber   *subscr;
 };
 
@@ -159,7 +185,8 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx);
 
 struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 						struct tlv_parsed *tp,
-						enum gsm48_gsm_cause *gsm_cause);
+						enum gsm48_gsm_cause *gsm_cause,
+						char *apn_str);
 
 enum pdp_ctx_state {
 	PDP_STATE_NONE,
@@ -182,6 +209,7 @@ struct sgsn_pdp_ctx {
 	struct llist_head	list;	/* list_head for mmctx->pdp_list */
 	struct llist_head	g_list;	/* list_head for global list */
 	struct sgsn_mm_ctx	*mm;	/* back pointer to MM CTX */
+	int			destroy_ggsn; /* destroy it on destruction */
 	struct sgsn_ggsn_ctx	*ggsn;	/* which GGSN serves this PDP */
 	struct rate_ctr_group	*ctrg;
 

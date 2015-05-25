@@ -10,6 +10,7 @@
 #include <ares.h>
 
 struct gprs_gsup_client;
+struct hostent;
 
 enum sgsn_auth_policy {
 	SGSN_AUTH_POLICY_OPEN,
@@ -43,6 +44,8 @@ struct sgsn_config {
 
 	/* CDR configuration */
 	struct sgsn_cdr cdr;
+
+	int dynamic_lookup;
 };
 
 struct sgsn_instance {

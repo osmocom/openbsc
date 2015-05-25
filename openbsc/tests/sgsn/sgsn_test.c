@@ -1838,6 +1838,7 @@ static void test_ggsn_selection(void)
 	struct tlv_parsed tp;
 	uint8_t apn_enc[GSM_APN_LENGTH + 10];
 	struct sgsn_subscriber_pdp_data *pdp_data;
+	char apn_str[GSM_APN_LENGTH];
 
 	printf("Testing GGSN selection\n");
 
@@ -1881,29 +1882,33 @@ static void test_ggsn_selection(void)
 	tp.lv[GSM48_IE_GSM_APN].len =
 		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Test.Apn");
 
-	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause, apn_str);
 	OSMO_ASSERT(ggc != NULL);
 	OSMO_ASSERT(ggc->id == 0);
+	OSMO_ASSERT(strcmp(apn_str, "Test.Apn") == 0);
 
 	tp.lv[GSM48_IE_GSM_APN].len =
 		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Other.Apn");
 
-	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause, apn_str);
 	OSMO_ASSERT(ggc != NULL);
 	OSMO_ASSERT(ggc->id == 1);
+	OSMO_ASSERT(strcmp(apn_str, "Other.Apn") == 0);
 
 	tp.lv[GSM48_IE_GSM_APN].len = 0;
 	tp.lv[GSM48_IE_GSM_APN].val = NULL;
 
-	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause, apn_str);
 	OSMO_ASSERT(ggc != NULL);
 	OSMO_ASSERT(ggc->id == 0);
+	OSMO_ASSERT(strcmp(apn_str, "") == 0);
 
 	actxs[3] = sgsn_apn_ctx_find_alloc("*", "123456");
 	actxs[3]->ggsn = ggcs[2];
-	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause, apn_str);
 	OSMO_ASSERT(ggc != NULL);
 	OSMO_ASSERT(ggc->id == 2);
+	OSMO_ASSERT(strcmp(apn_str, "") == 0);
 
 	sgsn_apn_ctx_free(actxs[3]);
 	tp.lv[GSM48_IE_GSM_APN].val = apn_enc;
@@ -1911,12 +1916,13 @@ static void test_ggsn_selection(void)
 	tp.lv[GSM48_IE_GSM_APN].len =
 		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Foo.Bar");
 
-	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause, apn_str);
 	OSMO_ASSERT(ggc == NULL);
 	OSMO_ASSERT(gsm_cause == GSM_CAUSE_MISSING_APN);
+	OSMO_ASSERT(strcmp(apn_str, "Foo.Bar") == 0);
 
 	tp.lv[GSM48_IE_GSM_APN].len = sizeof(apn_enc);
-	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause, apn_str);
 	OSMO_ASSERT(ggc == NULL);
 	OSMO_ASSERT(gsm_cause == GSM_CAUSE_INV_MAND_INFO);
 
@@ -1927,16 +1933,18 @@ static void test_ggsn_selection(void)
 	tp.lv[GSM48_IE_GSM_APN].len =
 		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Test.Apn");
 
-	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause, apn_str);
 	OSMO_ASSERT(ggc != NULL);
 	OSMO_ASSERT(ggc->id == 0);
+	OSMO_ASSERT(strcmp(apn_str, "Test.Apn") == 0);
 
 	tp.lv[GSM48_IE_GSM_APN].len =
 		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Other.Apn");
 
-	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause);
+	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause, apn_str);
 	OSMO_ASSERT(ggc == NULL);
 	OSMO_ASSERT(gsm_cause == GSM_CAUSE_REQ_SERV_OPT_NOTSUB);
+	OSMO_ASSERT(strcmp(apn_str, "") == 0);
 
 	/* Cleanup */
 

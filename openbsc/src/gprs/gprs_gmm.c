@@ -29,6 +29,7 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #include <openbsc/db.h>
 #include <osmocom/core/msgb.h>
@@ -37,6 +38,7 @@
 #include <osmocom/core/signal.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/gsm/apn.h>
 
 #include <osmocom/gprs/gprs_bssgp.h>
 
@@ -1633,7 +1635,7 @@ int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_pdp_ctx *pdp)
 static int activate_ggsn(struct sgsn_mm_ctx *mmctx,
 		struct sgsn_ggsn_ctx *ggsn, const uint8_t transaction_id,
 		const uint8_t req_nsapi, const uint8_t req_llc_sapi,
-		struct tlv_parsed *tp)
+		struct tlv_parsed *tp, int destroy_ggsn)
 {
 	struct sgsn_pdp_ctx *pdp;
 
@@ -1646,10 +1648,94 @@ static int activate_ggsn(struct sgsn_mm_ctx *mmctx,
 	/* Store SAPI and Transaction Identifier */
 	pdp->sapi = req_llc_sapi;
 	pdp->ti = transaction_id;
+	pdp->destroy_ggsn = destroy_ggsn;
 
 	return 0;
 }
 
+static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *hostent)
+{
+	struct sgsn_ggsn_ctx *ggsn;
+	struct sgsn_ggsn_lookup *lookup = arg;
+	struct in_addr *addr = NULL;
+	int i;
+
+	/* The context is gone while we made a request */
+	if (!lookup->mmctx) {
+		talloc_free(lookup);
+		return;
+	}
+
+	if (status != ARES_SUCCESS) {
+		struct sgsn_mm_ctx *mmctx = lookup->mmctx;
+
+		LOGMMCTXP(LOGL_ERROR, mmctx, "DNS query failed.\n");
+
+		/* Need to try with three digits now */
+		if (lookup->state == SGSN_GGSN_2DIGIT) {
+			char *hostname;
+			int rc;
+
+			lookup->state = SGSN_GGSN_3DIGIT;
+			hostname = osmo_apn_qualify_from_imsi(mmctx->imsi,
+					lookup->apn_str, 1);
+			LOGMMCTXP(LOGL_DEBUG, mmctx,
+				"Going to query %s\n", hostname);
+			rc = sgsn_ares_query(sgsn, hostname,
+					ggsn_lookup_cb, lookup);
+			if (rc != 0) {
+				LOGP(DGPRS, LOGL_ERROR, "Couldn't start GGSN\n");
+				goto reject_due_failure;
+			}
+			return;
+		}
+
+		LOGMMCTXP(LOGL_ERROR, mmctx, "Couldn't resolve GGSN\n");
+		goto reject_due_failure;
+	}
+
+	if (hostent->h_length != sizeof(struct in_addr)) {
+		LOGMMCTXP(LOGL_ERROR, lookup->mmctx,
+			"Wrong addr size(%d)\n", sizeof(struct in_addr));
+		goto reject_due_failure;
+	}
+
+	/* get the address */
+	for (i = 0, addr = (struct in_addr *) hostent->h_addr_list[i]; addr;
+		i++, addr = (struct in_addr *) hostent->h_addr_list[i]) {
+		break;
+	}
+
+	if (!addr) {
+		LOGMMCTXP(LOGL_ERROR, lookup->mmctx, "No host address.\n");
+		goto reject_due_failure;
+	}
+
+	ggsn = sgsn_ggsn_ctx_alloc(UINT32_MAX);
+	if (!ggsn) {
+		LOGMMCTXP(LOGL_ERROR, lookup->mmctx, "Failed to create ggsn.\n");
+		goto reject_due_failure;
+	}
+	ggsn->remote_addr = *addr;
+	LOGMMCTXP(LOGL_NOTICE, lookup->mmctx,
+		"Selected %s as GGSN.\n", inet_ntoa(*addr));
+
+	/* forget about the ggsn look-up */
+	lookup->mmctx->ggsn_lookup = NULL;
+
+	activate_ggsn(lookup->mmctx, ggsn, lookup->ti, lookup->nsapi,
+			lookup->sapi, &lookup->tp, 1);
+
+	/* Now free it */
+	talloc_free(lookup);
+	return;
+
+reject_due_failure:
+	gsm48_tx_gsm_act_pdp_rej(lookup->mmctx, lookup->ti,
+				GMM_CAUSE_NET_FAIL, 0, NULL);
+	lookup->mmctx->ggsn_lookup = NULL;
+	talloc_free(lookup);
+}
 
 static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
@@ -1662,6 +1748,9 @@ static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	struct sgsn_ggsn_ctx *ggsn;
 	struct sgsn_pdp_ctx *pdp;
 	enum gsm48_gsm_cause gsm_cause;
+	char apn_str[GSM_APN_LENGTH] = { 0, };
+	char *hostname;
+	int rc;
 
 	LOGMMCTXP(LOGL_INFO, mmctx, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
 		act_req->req_llc_sapi, act_req->req_nsapi);
@@ -1746,22 +1835,64 @@ static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 						0, NULL);
 	}
 
+	if (mmctx->ggsn_lookup) {
+		if (mmctx->ggsn_lookup->sapi == act_req->req_llc_sapi &&
+			mmctx->ggsn_lookup->ti == transaction_id) {
+			LOGMMCTXP(LOGL_NOTICE, mmctx,
+				"Re-transmission while doing look-up. Ignoring.\n");
+			return 0;
+		}
+	}
+
 	/* Only increment counter for a real activation, after we checked
 	 * for re-transmissions */
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PDP_CTX_ACT]);
 
 	/* Determine GGSN based on APN and subscription options */
-	ggsn = sgsn_mm_ctx_find_ggsn_ctx(mmctx, &tp, &gsm_cause);
-	if (!ggsn) {
-		LOGP(DGPRS, LOGL_ERROR, "No GGSN context found!\n");
-		return gsm48_tx_gsm_act_pdp_rej(mmctx, transaction_id,
-						gsm_cause, 0, NULL);
+	ggsn = sgsn_mm_ctx_find_ggsn_ctx(mmctx, &tp, &gsm_cause, apn_str);
+	if (ggsn)
+		return activate_ggsn(mmctx, ggsn, transaction_id,
+				act_req->req_nsapi, act_req->req_llc_sapi,
+				&tp, 0);
+
+	if (strlen(apn_str) == 0)
+		goto no_context;
+	if (!sgsn->cfg.dynamic_lookup)
+		goto no_context;
+
+	/* schedule a dynamic look-up */
+	mmctx->ggsn_lookup = talloc_zero(tall_bsc_ctx, struct sgsn_ggsn_lookup);
+	if (!mmctx->ggsn_lookup)
+		goto no_context;
+
+	mmctx->ggsn_lookup->state = SGSN_GGSN_2DIGIT;
+	mmctx->ggsn_lookup->mmctx = mmctx;
+	strcpy(mmctx->ggsn_lookup->apn_str, apn_str);
+
+	mmctx->ggsn_lookup->orig_msg = msg;
+	mmctx->ggsn_lookup->tp = tp;
+
+	mmctx->ggsn_lookup->ti = transaction_id;
+	mmctx->ggsn_lookup->nsapi = act_req->req_nsapi;
+	mmctx->ggsn_lookup->sapi = act_req->req_llc_sapi;
+
+	hostname = osmo_apn_qualify_from_imsi(mmctx->imsi,
+				mmctx->ggsn_lookup->apn_str, 0);
+
+	LOGMMCTXP(LOGL_DEBUG, mmctx, "Going to query %s\n", hostname);
+	rc = sgsn_ares_query(sgsn, hostname,
+				ggsn_lookup_cb, mmctx->ggsn_lookup);
+	if (rc != 0) {
+		LOGMMCTXP(LOGL_ERROR, mmctx, "Failed to start ares query.\n");
+		goto no_context;
 	}
 
-	/* Now activate the GGSN */
-	return activate_ggsn(mmctx, ggsn, transaction_id,
-				act_req->req_nsapi, act_req->req_llc_sapi,
-				&tp);
+	return 0;
+
+no_context:
+	LOGP(DGPRS, LOGL_ERROR, "No GGSN context found!\n");
+	return gsm48_tx_gsm_act_pdp_rej(mmctx, transaction_id,
+					gsm_cause, 0, NULL);
 }
 
 /* Section 9.5.1: Activate PDP Context Request */

@@ -378,6 +378,14 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
+	if (sgsn->cfg.dynamic_lookup) {
+		if (sgsn_ares_init(sgsn) != 0) {
+			LOGP(DGPRS, LOGL_FATAL,
+				"Failed to initialize c-ares(%d)\n", rc);
+			exit(4);
+		}
+	}
+
 	if (daemonize) {
 		rc = osmo_daemonize();
 		if (rc < 0) {

@@ -207,6 +207,14 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 	struct sgsn_pdp_ctx *pdp, *pdp2;
 	struct sgsn_signal_data sig_data;
 
+	/* Forget about ongoing look-ups */
+	if (mm->ggsn_lookup) {
+		LOGMMCTXP(LOGL_NOTICE, mm,
+			"Cleaning mmctx with on-going query.\n");
+		mm->ggsn_lookup->mmctx = NULL;
+		mm->ggsn_lookup = NULL;
+	}
+
 	/* delete all existing PDP contexts for this MS */
 	llist_for_each_entry_safe(pdp, pdp2, &mm->pdp_list, list) {
 		LOGMMCTXP(LOGL_NOTICE, mm,
@@ -349,6 +357,8 @@ void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp)
 		lib->priv = NULL;
 	}
 
+	if (pdp->destroy_ggsn)
+		sgsn_ggsn_ctx_free(pdp->ggsn);
 	talloc_free(pdp);
 }
 
@@ -614,7 +624,8 @@ static void insert_qos(struct tlv_parsed *tp, struct sgsn_subscriber_pdp_data *p
  */
 struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 						struct tlv_parsed *tp,
-						enum gsm48_gsm_cause *gsm_cause)
+						enum gsm48_gsm_cause *gsm_cause,
+						char *out_apn_str)
 {
 	char req_apn_str[GSM_APN_LENGTH] = {0};
 	const struct apn_ctx *apn_ctx = NULL;
@@ -622,6 +633,8 @@ struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 	struct sgsn_subscriber_pdp_data *pdp;
 	struct sgsn_ggsn_ctx *ggsn = NULL;
 	int allow_any_apn = 0;
+
+	out_apn_str[0] = '\0';
 
 	if (TLVP_PRESENT(tp, GSM48_IE_GSM_APN)) {
 		if (TLVP_LEN(tp, GSM48_IE_GSM_APN) >= GSM_APN_LENGTH - 1) {
@@ -694,6 +707,9 @@ struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 		*gsm_cause = GSM_CAUSE_REQ_SERV_OPT_NOTSUB;
 		return NULL;
 	}
+
+	/* copy the selected apn_str */
+	strcpy(out_apn_str, selected_apn_str);
 
 	if (apn_ctx == NULL && selected_apn_str)
 		apn_ctx = sgsn_apn_ctx_match(selected_apn_str, mmctx->imsi);
