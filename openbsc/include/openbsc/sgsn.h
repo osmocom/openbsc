@@ -68,6 +68,7 @@ struct sgsn_instance {
 	struct osmo_timer_list ares_timer;
 	struct llist_head ares_fds;
 	ares_channel ares_channel;
+	struct ares_addr_node *ares_servers;
 };
 
 extern struct sgsn_instance *sgsn;

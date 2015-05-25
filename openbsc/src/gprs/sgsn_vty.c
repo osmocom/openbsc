@@ -128,6 +128,7 @@ static int config_write_sgsn(struct vty *vty)
 	struct sgsn_ggsn_ctx *gctx;
 	struct imsi_acl_entry *acl;
 	struct apn_ctx *actx;
+	struct ares_addr_node *server;
 
 	vty_out(vty, "sgsn%s", VTY_NEWLINE);
 
@@ -146,6 +147,9 @@ static int config_write_sgsn(struct vty *vty)
 
 	if (sgsn->cfg.dynamic_lookup)
 		vty_out(vty, " ggsn dynamic%s", VTY_NEWLINE);
+
+	for (server = sgsn->ares_servers; server; server = server->next)
+		vty_out(vty, " grx-dns-add %s%s", inet_ntoa(server->addr.addr4), VTY_NEWLINE);
 
 	vty_out(vty, " auth-policy %s%s",
 		get_value_string(sgsn_auth_pol_strs, g_cfg->auth_policy),
@@ -247,6 +251,19 @@ DEFUN(cfg_ggsn_dynamic_lookup, cfg_ggsn_dynamic_lookup_cmd,
 	GGSN_STR "Enable dynamic GRX based look-up (requires restart)\n")
 {
 	sgsn->cfg.dynamic_lookup = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_grx_ggsn, cfg_grx_ggsn_cmd,
+	"grx-dns-add A.B.C.D",
+	"Add DNS server\nIPv4 address\n")
+{
+	struct ares_addr_node *node = talloc_zero(tall_bsc_ctx, struct ares_addr_node);
+	node->family = AF_INET;
+	inet_aton(argv[0], &node->addr.addr4);
+
+	node->next = sgsn->ares_servers;
+	sgsn->ares_servers = node;
 	return CMD_SUCCESS;
 }
 
@@ -893,6 +910,7 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_no_cdr_filename_cmd);
 	install_element(SGSN_NODE, &cfg_cdr_interval_cmd);
 	install_element(SGSN_NODE, &cfg_ggsn_dynamic_lookup_cmd);
+	install_element(SGSN_NODE, &cfg_grx_ggsn_cmd);
 
 	return 0;
 }

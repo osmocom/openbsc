@@ -157,10 +157,16 @@ int sgsn_ares_init(struct sgsn_instance *sgsn)
 
 	optmask = ARES_OPT_FLAGS | ARES_OPT_SOCK_STATE_CB;
 
-	/*| ARES_OPT_SERVERS ... TODO..*/
+	if (sgsn->ares_servers)
+		optmask |= ARES_OPT_SERVERS;
 
 	ares_library_init(ARES_LIB_INIT_ALL);
 	rc = ares_init_options(&sgsn->ares_channel, &options, optmask);
+	if (rc != ARES_SUCCESS)
+		return rc;
+
+	if (sgsn->ares_servers)
+		rc = ares_set_servers(sgsn->ares_channel, sgsn->ares_servers);
 
 	return rc;
 }
