@@ -716,6 +716,13 @@ struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 		return NULL;
 	}
 
+	if (!ggsn) {
+		LOGMMCTXP(LOGL_NOTICE, mmctx,
+			"No static GGSN configured. Selected APN '%s'\n",
+			selected_apn_str);
+			return NULL;
+	}
+
 	LOGMMCTXP(LOGL_INFO, mmctx,
 		  "Found GGSN %d for APN '%s' (requested '%s')\n",
 		  ggsn->id, selected_apn_str ? selected_apn_str : "---",
