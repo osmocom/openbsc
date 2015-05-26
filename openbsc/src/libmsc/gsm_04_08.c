@@ -1396,13 +1396,12 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber_connection *conn = _conn;
 	struct gsm_trans *transt = _transt;
 
-	OSMO_ASSERT(!transt->conn);
-	OSMO_ASSERT(conn);
-
 	/* check all tranactions (without lchan) for subscriber */
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
 		DEBUGP(DCC, "Paging subscr %s succeeded!\n", transt->subscr->extension);
+		OSMO_ASSERT(!transt->conn);
+		OSMO_ASSERT(conn);
 		/* Assign lchan */
 		transt->conn = conn;
 		/* send SETUP request to called party */
