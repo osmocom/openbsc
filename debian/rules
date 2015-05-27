@@ -17,16 +17,8 @@ override_dh_autoreconf:
 	cd openbsc && autoreconf --install --force
 
 override_dh_strip:
-	dh_strip -posmocom-bsc --dbg-package=osmocom-bsc-dbg
 	dh_strip -posmocom-nitb --dbg-package=osmocom-nitb-dbg
-	dh_strip -posmocom-ipaccess-utils --dbg-package=osmocom-ipaccess-utils-dbg
-	dh_strip -posmocom-bs11-utils --dbg-package=osmocom-bs11-utils-dbg
-	dh_strip -posmocom-sgsn --dbg-package=osmocom-sgsn-dbg
-	dh_strip -posmocom-gbproxy --dbg-package=osmocom-gbproxy-dbg
-	dh_strip -posmocom-bsc-nat --dbg-package=osmocom-bsc-nat-dbg
-	dh_strip -posmo-gtphub --dbg-package=osmo-gtphub-dbg
 
 override_dh_auto_configure:
 	echo $(VERSION) > openbsc/.tarball-version
-	dh_auto_configure --sourcedirectory=openbsc -- --enable-nat --enable-osmo-bsc --enable-smpp
-
+	dh_auto_configure --sourcedirectory=openbsc -- --enable-smpp

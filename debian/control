@@ -6,7 +6,6 @@ Build-Depends: debhelper (>= 9),
                autotools-dev,
                autoconf-archive,
                pkg-config,
-               libgtp-dev,
                libosmocore-dev,
                libosmo-sccp-dev,
                libdbi0-dev,
@@ -23,17 +22,6 @@ Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
 Vcs-Browser: http://openbsc.osmocom.org/trac/browser
 Homepage: https://projects.osmocom.org/projects/openbsc
 
-Package: osmocom-bsc
-Architecture: any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
-Description: GSM Base Station Controller
- This is the BSC-only version of OpenBSC. It requires a Mobile Switching Center
- (MSC) to operate.
- .
- You might rather prefer to use osmocom-nitb which is considered a
- "GSM Network-in-a-Box" and does not depend on a MSC.
-
 Package: osmocom-nitb
 Architecture: any
 Depends: ${shlibs:Depends},
@@ -44,138 +32,10 @@ Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
  components bundled together. When using osmocom-nitb, there is no need for a
  Mobile Switching Center (MSC) which is needed when using osmocom-bsc.
 
-Package: osmocom-ipaccess-utils
-Architecture: any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
-Description: Command line utilities for ip.access nanoBTS
- This package contains utilities that are specific for nanoBTS when being used
- together with OpenBSC. It contains mainly three tools: ipaccess-find,
- ipaccess-config and ipaccess-proxy.
-
-Package: osmocom-bs11-utils
-Architecture: any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
-Description: Command line utilities for Siemens BS-11 BTS
- There is a tool in this package for configuring the Siemens BS-11 BTS.
- Additionally, it contains one tool for making use of an ISDN-card and the
- public telephone network as frequency standard for the E1 line.
-
-Package: osmocom-sgsn
-Architecture: any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
-Suggests: osmocom-bsc
-Description: Osmocom Serving GPRS Support Node
- This is an implementation of the GPRS Serving GPRS Support Node (SGSN). As
- such it implements the GPRS Mobility Management (GMM) and SM (Session
- Management).
- .
- The SGSN connects via the Gb-interface to the BSS (like the osmo-pcu or an
- ip.access nanoBTS), and it connects via the GTP protocol to a Gateway GPRS
- Support Node (GGSN) like openggsn.
-
-Package: osmocom-gbproxy
-Architecture: any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
-Recommends: osmocom-sgsn
-Description: Osmocom GPRS Gb Interface Proxy
- The purpose of the Gb proxy is to aggregate the Gb links of multiple
- BSS's and present them in one Gb link to the SGSN.
- .
- This package is part of OpenBSC and closely related to osmocom-sgsn.
-
-Package: osmocom-bsc-nat
-Architecture: any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
-Recommends: osmocom-bsc
-Description: Osmocom Base Station Controller Network Address Translation
- This NAT is useful for masquerading multiple BSCs behind one. It listens
- for incoming BSCs on port 5000 and connects to a specified Mobile Switching
- Center (MSC).
- .
- This package is part of OpenBSC and closely related to osmocom-bsc.
-
-Package: openbsc-dev
-Architecture: all
-Depends: ${misc:Depends}
-Description: Header file needed by tools tightly integrated
- Some other programs depend on gsm_data_shared.h and gsm_data_shared.c
- from OpenBSC. This package installs these files to your file system so
- that the other packages can build-depend on this package.
- .
- The directory structure is copied after the structure in the repository
- and the header and .c file are installed into /usr/src/osmocom/openbsc/.
-
-Package: osmo-gtphub
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Osmocom GTP Hub
- Proxy for comms between multiple SGSNs and GGSNs.
-
-Package: osmocom-bsc-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmocom-bsc (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for the OpenBSC BSC
- Make debugging possible
-
 Package: osmocom-nitb-dbg
 Architecture: any
 Section: debug
 Priority: extra
 Depends: osmocom-nitb (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the OpenBSC NITB
- Make debugging possible
-
-Package: osmocom-ipaccess-utils-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmocom-ipaccess-utils (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for the OpenBSC ip.access utils
- Make debugging possible
-
-Package: osmocom-bs11-utils-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmocom-bs11-utils (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for the OpenBSC BS11 utils
- Make debugging possible
-
-Package: osmocom-sgsn-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmocom-sgsn (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for the OpenBSC Serving GPRS Support Node
- Make debugging possible
-
-Package: osmocom-gbproxy-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmocom-gbproxy (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for the OpenBSC GPRS GBProxy
- Make debugging possible
-
-Package: osmocom-bsc-nat-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmocom-bsc-nat (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for the OpenBSC Network Address Translation
- Make debugging possible
-
-Package: osmo-gtphub-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmo-gtphub (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for Osmocom GTP Hub
  Make debugging possible
