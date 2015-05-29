@@ -155,7 +155,7 @@ int sgsn_ares_init(struct sgsn_instance *sgsn)
 	options.sock_state_cb = setup_ares_osmo_fd;
 	options.sock_state_cb_data = sgsn;
 
-	optmask = ARES_OPT_FLAGS | ARES_OPT_SOCK_STATE_CB;
+	optmask = ARES_OPT_FLAGS | ARES_OPT_SOCK_STATE_CB | ARES_OPT_DOMAINS;
 
 	if (sgsn->ares_servers)
 		optmask |= ARES_OPT_SERVERS;
