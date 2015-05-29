@@ -1639,7 +1639,7 @@ static int activate_ggsn(struct sgsn_mm_ctx *mmctx,
 {
 	struct sgsn_pdp_ctx *pdp;
 
-	LOGMMCTXP(LOGL_DEBUG, mmctx, "Using GGSN %d\n", ggsn->id);
+	LOGMMCTXP(LOGL_DEBUG, mmctx, "Using GGSN %u\n", ggsn->id);
 	ggsn->gsn = sgsn->gsn;
 	pdp = sgsn_create_pdp_ctx(ggsn, mmctx, req_nsapi, tp);
 	if (!pdp)

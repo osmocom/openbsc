@@ -167,11 +167,11 @@ static int config_write_sgsn(struct vty *vty)
 		vty_out(vty, " ! apn * ggsn 0%s", VTY_NEWLINE);
 	llist_for_each_entry(actx, &sgsn_apn_ctxts, list) {
 		if (strlen(actx->imsi_prefix) > 0)
-			vty_out(vty, " apn %s imsi-prefix %s ggsn %d%s",
+			vty_out(vty, " apn %s imsi-prefix %s ggsn %u%s",
 				actx->name, actx->imsi_prefix, actx->ggsn->id,
 				VTY_NEWLINE);
 		else
-			vty_out(vty, " apn %s ggsn %d%s", actx->name,
+			vty_out(vty, " apn %s ggsn %u%s", actx->name,
 				actx->ggsn->id, VTY_NEWLINE);
 	}
 
