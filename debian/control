@@ -10,9 +10,15 @@ Vcs-Browser: http://openbsc.osmocom.org/trac/browser
 
 Package: osmocom-nitb
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends} libdbd-sqlite3
+Depends: ${shlibs:Depends}, ${misc:Depends}, libdbd-sqlite3
 Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
  All the GSM network components bundled together.
+
+Package: osmocom-meas-utils
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcdk5-dev, libsqlite3-dev
+Description: Measurement utilities for the OpenBSC
+ Measurement utilities for the OpenBSC.
 
 Package: osmocom-nitb-dbg
 Architecture: any
@@ -21,3 +27,12 @@ Priority: extra
 Depends: osmocom-nitb (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the OpenBSC NITB
  Make debugging possible
+
+Package: osmocom-meas-utils-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-meas-utils (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the OpenBSC measurement utilities
+ Make debugging possible
+
