@@ -1,0 +1,4 @@
+/usr/bin/osmo-meas-udp2db
+/usr/bin/osmo-meas-pcap2db
+/usr/bin/meas_vis
+/usr/bin/meas_json

@@ -32,10 +32,29 @@ Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
  components bundled together. When using osmocom-nitb, there is no need for a
  Mobile Switching Center (MSC) which is needed when using osmocom-bsc.
 
+Package: osmocom-meas-utils
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libcdk5,
+         sqlite3
+Description: Measurement utilities for the OpenBSC
+ Measurement utilities for the OpenBSC.
+
 Package: osmocom-nitb-dbg
 Architecture: any
 Section: debug
 Priority: extra
-Depends: osmocom-nitb (= ${binary:Version}), ${misc:Depends}
+Depends: osmocom-nitb (= ${binary:Version}),
+         ${misc:Depends}
 Description: Debug symbols for the OpenBSC NITB
+ Make debugging possible
+
+Package: osmocom-meas-utils-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-meas-utils (= ${binary:Version}),
+         ${misc:Depends}
+Description: Debug symbols for the OpenBSC measurement utilities
  Make debugging possible
