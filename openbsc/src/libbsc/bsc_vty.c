@@ -2193,8 +2193,16 @@ DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
       "Maximum transmit power of the MS in dBm")
 {
 	struct gsm_bts *bts = vty->index;
+	int rc;
 
 	bts->ms_max_power = atoi(argv[0]);
+
+	/* Apply setting to the BTS */
+	rc = gsm_bts_set_system_infos(bts);
+	if (rc != 0) {
+		vty_out(vty, "%% Failed updating SYSTEM INFORMATION for the BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	return CMD_SUCCESS;
 }
