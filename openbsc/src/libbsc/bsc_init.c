@@ -120,7 +120,7 @@ static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 	return rc;
 }
 
-/* set all system information types */
+/* set all system information types for a TRX */
 int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx)
 {
 	int i, rc;
@@ -195,6 +195,26 @@ err_out:
 		"a problem with neighbor cell list generation\n",
 		get_value_string(osmo_sitype_strs, i), bts->nr);
 	return rc;
+}
+
+/* set all system information types for a BTS */
+int gsm_bts_set_system_infos(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+
+	/* Generate a new ID */
+	bts->bcch_change_mark += 1;
+	bts->bcch_change_mark %= 0x7;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		int rc;
+
+		rc = gsm_bts_trx_set_system_infos(trx);
+		if (rc != 0)
+			return rc;
+	}
+
+	return 0;
 }
 
 /* Produce a MA as specified in 10.5.2.21 */
