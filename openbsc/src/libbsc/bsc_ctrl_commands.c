@@ -202,20 +202,12 @@ static int get_bts_si(struct ctrl_cmd *cmd, void *data)
 static int set_bts_si(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_bts *bts = cmd->node;
-	struct gsm_bts_trx *trx;
+	int rc;
 
-	/* Generate a new ID */
-	bts->bcch_change_mark += 1;
-	bts->bcch_change_mark %= 0x7;
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		int rc;
-
-		rc = gsm_bts_trx_set_system_infos(trx);
-		if (rc != 0) {
-			cmd->reply = "Failed to generate SI";
-			return CTRL_CMD_ERROR;
-		}
+	rc = gsm_bts_set_system_infos(bts);
+	if (rc != 0) {
+		cmd->reply = "Failed to generate SI";
+		return CTRL_CMD_ERROR;
 	}
 
 	cmd->reply = "Generated new System Information";
