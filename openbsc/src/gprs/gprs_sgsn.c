@@ -709,7 +709,10 @@ struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 	}
 
 	/* copy the selected apn_str */
-	strcpy(out_apn_str, selected_apn_str);
+	if (selected_apn_str)
+		strcpy(out_apn_str, selected_apn_str);
+	else
+		out_apn_str[0] = '\0';
 
 	if (apn_ctx == NULL && selected_apn_str)
 		apn_ctx = sgsn_apn_ctx_match(selected_apn_str, mmctx->imsi);
