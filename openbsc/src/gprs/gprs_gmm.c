@@ -1658,7 +1658,6 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 	struct sgsn_ggsn_ctx *ggsn;
 	struct sgsn_ggsn_lookup *lookup = arg;
 	struct in_addr *addr = NULL;
-	int i;
 
 	/* The context is gone while we made a request */
 	if (!lookup->mmctx) {
@@ -1700,12 +1699,8 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 		goto reject_due_failure;
 	}
 
-	/* get the address */
-	for (i = 0, addr = (struct in_addr *) hostent->h_addr_list[i]; addr;
-		i++, addr = (struct in_addr *) hostent->h_addr_list[i]) {
-		break;
-	}
-
+	/* Get the first addr from the list */
+	addr = (struct in_addr *) hostent->h_addr_list[0];
 	if (!addr) {
 		LOGMMCTXP(LOGL_ERROR, lookup->mmctx, "No host address.\n");
 		goto reject_due_failure;
