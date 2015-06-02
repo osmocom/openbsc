@@ -114,7 +114,8 @@ static void setup_ares_osmo_fd(void *data, int fd, int read, int write)
 	ufd->fd.fd = fd;
 	ufd->fd.cb = ares_osmo_fd_cb;
 	ufd->fd.data = data;
-	osmo_fd_register(&ufd->fd);
+	if (osmo_fd_register(&ufd->fd) != 0)
+		LOGP(DGPRS, LOGL_ERROR, "Failed to register C-ares fd (%d)\n", fd);
 	llist_add(&ufd->head, &sgsn->ares_fds);
 
 update_fd:
