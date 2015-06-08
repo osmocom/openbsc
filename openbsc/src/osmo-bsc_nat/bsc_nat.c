@@ -1185,7 +1185,7 @@ exit:
 		send_reset_ack(bsc);
 	} else if (parsed->ipa_proto == IPAC_PROTO_IPACCESS) {
 		/* do we know who is handling this? */
-		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
+		if (msg->l2h[0] == IPAC_MSGT_ID_RESP && msgb_l2len(msg) > 2) {
 			struct tlv_parsed tvp;
 			int ret;
 			ret = ipa_ccm_idtag_parse(&tvp,
