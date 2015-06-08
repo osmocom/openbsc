@@ -319,6 +319,7 @@ struct bsc_nat_ussd_con {
 /* create and init the structures */
 struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
+struct bsc_config *bsc_config_by_token(struct bsc_nat *nat, const char *token, int len);
 void bsc_config_free(struct bsc_config *);
 void bsc_config_add_lac(struct bsc_config *cfg, int lac);
 void bsc_config_del_lac(struct bsc_config *cfg, int lac);

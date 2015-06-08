@@ -180,6 +180,24 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token)
 	return conf;
 }
 
+struct bsc_config *bsc_config_by_token(struct bsc_nat *nat, const char *token, int len)
+{
+	struct bsc_config *conf;
+
+	llist_for_each_entry(conf, &nat->bsc_configs, entry) {
+		/*
+		 * Add the '\0' of the token for the memcmp, the IPA messages
+		 * for some reason added null termination.
+		 */
+		const int token_len = strlen(conf->token) + 1;
+
+		if (token_len == len && memcmp(conf->token, token, token_len) == 0)
+			return conf;
+	}
+
+	return NULL;
+}
+
 void bsc_config_free(struct bsc_config *cfg)
 {
 	llist_del(&cfg->entry);
