@@ -985,6 +985,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 		LOGP(DNAT, LOGL_ERROR,
 			"No bsc found for token '%s' on fd: %d.\n", token,
 			bsc->write_queue.bfd.fd);
+		bsc_close_connection(bsc);
 		return;
 	}
 
