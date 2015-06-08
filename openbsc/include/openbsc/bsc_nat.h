@@ -84,6 +84,7 @@ struct bsc_connection {
 
 	/* do we know anything about this BSC? */
 	int authenticated;
+	uint8_t last_rand[16];
 
 	/* the fd we use to communicate */
 	struct osmo_wqueue write_queue;

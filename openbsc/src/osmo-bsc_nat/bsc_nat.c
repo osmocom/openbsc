@@ -188,9 +188,9 @@ static void send_id_ack(struct bsc_connection *bsc)
 	bsc_send_data(bsc, id_ack, sizeof(id_ack), IPAC_PROTO_IPACCESS);
 }
 
-static void send_id_req(struct bsc_connection *bsc)
+static void send_id_req(struct bsc_nat *nat, struct bsc_connection *bsc)
 {
-	static const uint8_t id_req[] = {
+	static const uint8_t s_id_req[] = {
 		IPAC_MSGT_ID_GET,
 		0x01, IPAC_IDTAG_UNIT,
 		0x01, IPAC_IDTAG_MACADDR,
@@ -202,7 +202,41 @@ static void send_id_req(struct bsc_connection *bsc)
 		0x01, IPAC_IDTAG_SERNR,
 	};
 
+	int toread, rounds;
+	uint8_t *mrand, *randoff;
+	uint8_t id_req[sizeof(s_id_req) + (2+16)];
+	uint8_t *buf = &id_req[sizeof(s_id_req)];
+
+	/* copy the static data */
+	memcpy(id_req, s_id_req, sizeof(s_id_req));
+
+	/* put the RAND with length, tag, value */
+	buf = v_put(buf, 0x11);
+	buf = v_put(buf, 0x23);
+	mrand = bsc->last_rand;
+	randoff = mrand;
+	memset(randoff, 0, 16);
+
+	for (toread = 16, rounds = 0; rounds < 5 && toread > 0; ++rounds) {
+		int rc = read(nat->random_fd, randoff, toread);
+		if (rc <= 0)
+			goto failed_random;
+		toread -= rc;
+		randoff += rc;
+	}
+
+	if (toread != 0)
+		goto failed_random;
+	memcpy(buf, mrand, 16);
+	buf += 16;
+
 	bsc_send_data(bsc, id_req, sizeof(id_req), IPAC_PROTO_IPACCESS);
+	return;
+
+failed_random:
+	/* the timeout will trigger and close this connection */
+	LOGP(DNAT, LOGL_ERROR, "Failed to read from urandom.\n");
+	return;
 }
 
 static struct msgb *nat_create_rlsd(struct nat_sccp_connection *conn)
@@ -1362,7 +1396,7 @@ static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 	bsc->last_id = 0;
 
 	send_id_ack(bsc);
-	send_id_req(bsc);
+	send_id_req(nat, bsc);
 	send_mgcp_reset(bsc);
 
 	/*
