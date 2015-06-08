@@ -276,7 +276,7 @@ void bsc_msc_schedule_connect(struct bsc_msc_connection *con)
 	osmo_timer_schedule(&con->reconnect_timer, 5, 0);
 }
 
-struct msgb *bsc_msc_id_get_resp(int fixed, const char *token)
+struct msgb *bsc_msc_id_get_resp(int fixed, const char *token, const uint8_t *res, int len)
 {
 	struct msgb *msg;
 
@@ -302,6 +302,11 @@ struct msgb *bsc_msc_id_get_resp(int fixed, const char *token)
 		msgb_put_u8(msg, 0);
 		msgb_put_u8(msg, strlen(token) + 2);
 		msgb_tv_fixed_put(msg, IPAC_IDTAG_UNITNAME, strlen(token) + 1, (uint8_t *) token);
+		if (len > 0) {
+			msgb_put_u8(msg, 0);
+			msgb_put_u8(msg, len + 1);
+			msgb_tv_fixed_put(msg, 0x24, len, res);
+		}
 	} else {
 		msgb_l16tv_put(msg, strlen(token) + 1,
 			IPAC_IDTAG_UNITNAME, (uint8_t *) token);

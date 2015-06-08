@@ -23,6 +23,7 @@
 #include <openbsc/bsc_nat.h>
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
+#include <osmocom/crypt/auth.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/ipaccess.h>
@@ -44,7 +45,7 @@
 
 static void initialize_if_needed(struct bsc_msc_connection *conn);
 static void send_lacs(struct gsm_network *net, struct bsc_msc_connection *conn);
-static void send_id_get_response(struct osmo_msc_data *data, int fd);
+static void send_id_get_response(struct osmo_msc_data *data, int fd, struct msgb *inp);
 static void send_ping(struct osmo_msc_data *data);
 static void schedule_ping_pong(struct osmo_msc_data *data);
 
@@ -302,7 +303,7 @@ static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
 			initialize_if_needed(data->msc_con);
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET) {
-			send_id_get_response(data, bfd->fd);
+			send_id_get_response(data, bfd->fd, msg);
 		} else if (msg->l2h[0] == IPAC_MSGT_PONG) {
 			osmo_timer_del(&data->pong_timer);
 		}
@@ -451,12 +452,61 @@ static void initialize_if_needed(struct bsc_msc_connection *conn)
 	}
 }
 
-static void send_id_get_response(struct osmo_msc_data *data, int fd)
+static int answer_challenge(struct osmo_msc_data *data, struct msgb *inp, struct osmo_auth_vector *vec)
+{
+	int ret;
+	struct tlv_parsed tvp;
+	const uint8_t *mrand;
+	uint8_t mrand_len;
+	struct osmo_sub_auth_data auth = {
+		.type		= OSMO_AUTH_TYPE_GSM,
+		.algo		= OSMO_AUTH_ALG_MILENAGE,
+	};
+
+	ret = ipa_ccm_idtag_parse_off(&tvp,
+				inp->l2h + 1,
+				msgb_l2len(inp) - 1, 1);
+	if (ret < 0) {
+		LOGP(DMSC, LOGL_ERROR, "ignoring IPA response "
+			"message with malformed TLVs: %s\n", osmo_hexdump(inp->l2h + 1,
+			msgb_l2len(inp) - 1));
+		return 0;
+	}
+
+	mrand = TLVP_VAL(&tvp, 0x23);
+	mrand_len = TLVP_LEN(&tvp, 0x23);
+	if (mrand_len != 16) {
+		LOGP(DMSC, LOGL_ERROR,
+			"RAND is not 16 bytes. Was %d\n",
+			mrand_len);
+		return 0;
+	}
+
+	/* copy the key */
+	memcpy(auth.u.umts.opc, data->bsc_key, 16);
+	memcpy(auth.u.umts.k, data->bsc_key, 16);
+	memset(auth.u.umts.amf, 0, 2);
+	auth.u.umts.sqn = 0;
+
+	/* generate the result */
+	memset(vec, 0, sizeof(*vec));
+	osmo_auth_gen_vec(vec, &auth, mrand);
+	return 1;
+}
+
+
+static void send_id_get_response(struct osmo_msc_data *data, int fd, struct msgb *inp)
 {
 	struct msc_signal_data sig;
 	struct msgb *msg;
+	struct osmo_auth_vector vec;
+	int valid = 0;
 
-	msg = bsc_msc_id_get_resp(0, data->bsc_token);
+	if (data->bsc_key_present)
+		valid = answer_challenge(data, inp, &vec);
+
+	msg = bsc_msc_id_get_resp(valid, data->bsc_token,
+			vec.res, valid ? vec.res_len : 0);
 	if (!msg)
 		return;
 	msc_queue_write(data->msc_con, msg, IPAC_PROTO_IPACCESS);

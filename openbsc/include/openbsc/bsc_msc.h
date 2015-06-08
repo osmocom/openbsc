@@ -60,6 +60,6 @@ void bsc_msc_schedule_connect(struct bsc_msc_connection *);
 
 void bsc_msc_lost(struct bsc_msc_connection *);
 
-struct msgb *bsc_msc_id_get_resp(int fixed, const char *token);
+struct msgb *bsc_msc_id_get_resp(int fixed, const char *token, const uint8_t *res, int len);
 
 #endif
