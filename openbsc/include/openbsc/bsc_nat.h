@@ -148,6 +148,8 @@ enum bsc_cfg_ctr {
 struct bsc_config {
 	struct llist_head entry;
 
+	uint8_t key[16];
+	uint8_t key_present;
 	char *token;
 	int nr;
 

@@ -1,6 +1,6 @@
 /* OpenBSC NAT interface to quagga VTY */
-/* (C) 2010-2013 by Holger Hans Peter Freyther
- * (C) 2010-2013 by On-Waves
+/* (C) 2010-2015 by Holger Hans Peter Freyther
+ * (C) 2010-2015 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -151,6 +151,8 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 {
 	vty_out(vty, " bsc %u%s", bsc->nr, VTY_NEWLINE);
 	vty_out(vty, "  token %s%s", bsc->token, VTY_NEWLINE);
+	if (bsc->key_present)
+		vty_out(vty, "  auth-key %s%s", osmo_hexdump(bsc->key, 16), VTY_NEWLINE);
 	dump_lac(vty, &bsc->lac_list);
 	if (bsc->description)
 		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
@@ -814,6 +816,30 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN",
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bsc_auth_key, cfg_bsc_auth_key_cmd,
+      "auth-key KEY",
+      "Authentication (secret) key configuration\n"
+      "Non null security key\n")
+{
+	struct bsc_config *conf = vty->index;
+
+	memset(conf->key, 0, sizeof(conf->key));
+	osmo_hexparse(argv[0], conf->key, sizeof(conf->key));
+	conf->key_present = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bsc_no_auth_key, cfg_bsc_no_auth_key_cmd,
+      "no auth-key",
+      NO_STR "Authentication (secret) key configuration\n")
+{
+	struct bsc_config *conf = vty->index;
+
+	memset(conf->key, 0, sizeof(conf->key));
+	conf->key_present = 0;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
       "Add the Location Area Code (LAC) of this BSC\n" "LAC\n")
 {
@@ -1202,6 +1228,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_node(&bsc_node, config_write_bsc);
 	vty_install_default(NAT_BSC_NODE);
 	install_element(NAT_BSC_NODE, &cfg_bsc_token_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_auth_key_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_no_auth_key_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_lac_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_no_lac_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_cmd);

@@ -51,6 +51,8 @@
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
 
+#include <osmocom/crypt/auth.h>
+
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 
@@ -993,11 +995,57 @@ static void ipaccess_close_bsc(void *data)
 	bsc_close_connection(conn);
 }
 
+/* Wishful thinking to generate a constant time compare */
+static int constant_time_cmp(const uint8_t *exp, const uint8_t *rel, const int count)
+{
+	int x = 0, i;
+
+	for (i = 0; i < count; ++i)
+		x |= exp[i] ^ rel[i];
+
+	return x != 0;
+}
+
+static int verify_key(struct bsc_connection *conn, struct bsc_config *conf, const uint8_t *key, const int keylen)
+{
+	struct osmo_auth_vector vec;
+
+	struct osmo_sub_auth_data auth = {
+		.type		= OSMO_AUTH_TYPE_GSM,
+		.algo		= OSMO_AUTH_ALG_MILENAGE,
+	};
+
+	/* expect a specific keylen */
+	if (keylen != 8) {
+		LOGP(DNAT, LOGL_ERROR, "Key length is wrong: %d for bsc nr %d\n",
+			keylen, conf->nr);
+		return 0;
+	}
+
+	memcpy(auth.u.umts.opc, conf->key, 16);
+	memcpy(auth.u.umts.k, conf->key, 16);
+	memset(auth.u.umts.amf, 0, 2);
+	auth.u.umts.sqn = 0;
+
+	memset(&vec, 0, sizeof(vec));
+	osmo_auth_gen_vec(&vec, &auth, conn->last_rand);
+
+	if (vec.res_len != 8) {
+		LOGP(DNAT, LOGL_ERROR, "Res length is wrong: %d for bsc nr %d\n",
+			keylen, conf->nr);
+		return 0;
+	}
+
+	return constant_time_cmp(vec.res, key, 8) == 0;
+}
+
 static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc)
 {
 	struct bsc_config *conf;
 	const char *token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
 	int len = TLVP_LEN(tvp, IPAC_IDTAG_UNITNAME);
+	const uint8_t *xres = TLVP_VAL(tvp, 0x24);
+	const int xlen = TLVP_LEN(tvp, 0x24);
 
 	if (bsc->cfg) {
 		LOGP(DNAT, LOGL_ERROR, "Reauth on fd %d bsc nr %d\n",
@@ -1029,6 +1077,15 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 		LOGP(DNAT, LOGL_ERROR,
 			"No bsc found for token '%s' len %d on fd: %d.\n", token,
 			bsc->write_queue.bfd.fd, len);
+		bsc_close_connection(bsc);
+		return;
+	}
+
+	/* We have set a key and expect it to be present */
+	if (conf->key_present && !verify_key(bsc, conf, xres, xlen - 1)) {
+		LOGP(DNAT, LOGL_ERROR,
+			"Wrong key for bsc nr %d fd: %d.\n", conf->nr,
+			bsc->write_queue.bfd.fd);
 		bsc_close_connection(bsc);
 		return;
 	}
@@ -1227,9 +1284,9 @@ exit:
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP && msgb_l2len(msg) > 2) {
 			struct tlv_parsed tvp;
 			int ret;
-			ret = ipa_ccm_idtag_parse(&tvp,
+			ret = ipa_ccm_idtag_parse_off(&tvp,
 					     (unsigned char *) msg->l2h + 2,
-					     msgb_l2len(msg) - 2);
+					     msgb_l2len(msg) - 2, 0);
 			if (ret < 0) {
 				LOGP(DNAT, LOGL_ERROR, "ignoring IPA response "
 					"message with malformed TLVs\n");
