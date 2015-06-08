@@ -21,6 +21,8 @@
  *
  */
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -31,6 +33,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define _GNU_SOURCE
 #include <getopt.h>
@@ -1533,6 +1536,12 @@ int main(int argc, char **argv)
 
 	/* We need to add mode-set for amr codecs */
 	nat->sdp_ensure_amr_mode_set = 1;
+
+	nat->random_fd = open("/dev/random", O_RDONLY);
+	if (nat->random_fd < 0) {
+		fprintf(stderr, "Failed to open /dev/urandom.\n");
+		return -5;
+	}
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
