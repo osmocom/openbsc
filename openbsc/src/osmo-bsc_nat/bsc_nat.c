@@ -357,7 +357,7 @@ static void initialize_msc_if_needed(struct bsc_msc_connection *msc_con)
 
 static void send_id_get_response(struct bsc_msc_connection *msc_con)
 {
-	struct msgb *msg = bsc_msc_id_get_resp(nat->token);
+	struct msgb *msg = bsc_msc_id_get_resp(0, nat->token);
 	if (!msg)
 		return;
 
@@ -960,7 +960,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 {
 	struct bsc_config *conf;
 	const char *token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
-	const int len = TLVP_LEN(tvp, IPAC_IDTAG_UNITNAME);
+	int len = TLVP_LEN(tvp, IPAC_IDTAG_UNITNAME);
 
 	if (bsc->cfg) {
 		LOGP(DNAT, LOGL_ERROR, "Reauth on fd %d bsc nr %d\n",
@@ -980,11 +980,18 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 		return;
 	}
 
+	/*
+	 * New systems have fixed the structure of the message but
+	 * we need to support old ones too.
+	 */
+	if (len >= 2 && token[len - 2] == '\0')
+		len -= 1;
+
 	conf = bsc_config_by_token(bsc->nat, token, len);
 	if (!conf) {
 		LOGP(DNAT, LOGL_ERROR,
-			"No bsc found for token '%s' on fd: %d.\n", token,
-			bsc->write_queue.bfd.fd);
+			"No bsc found for token '%s' len %d on fd: %d.\n", token,
+			bsc->write_queue.bfd.fd, len);
 		bsc_close_connection(bsc);
 		return;
 	}

@@ -456,7 +456,7 @@ static void send_id_get_response(struct osmo_msc_data *data, int fd)
 	struct msc_signal_data sig;
 	struct msgb *msg;
 
-	msg = bsc_msc_id_get_resp(data->bsc_token);
+	msg = bsc_msc_id_get_resp(0, data->bsc_token);
 	if (!msg)
 		return;
 	msc_queue_write(data->msc_con, msg, IPAC_PROTO_IPACCESS);

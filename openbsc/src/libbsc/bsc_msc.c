@@ -276,7 +276,7 @@ void bsc_msc_schedule_connect(struct bsc_msc_connection *con)
 	osmo_timer_schedule(&con->reconnect_timer, 5, 0);
 }
 
-struct msgb *bsc_msc_id_get_resp(const char *token)
+struct msgb *bsc_msc_id_get_resp(int fixed, const char *token)
 {
 	struct msgb *msg;
 
@@ -291,8 +291,21 @@ struct msgb *bsc_msc_id_get_resp(const char *token)
 		return NULL;
 	}
 
+	/*
+	 * The situation is bizarre. The encoding doesn't follow the
+	 * TLV structure. It is more like a LV and old versions had
+	 * it wrong but we want new versions to old servers so we
+	 * introduce the quirk here.
+	 */
 	msg->l2h = msgb_v_put(msg, IPAC_MSGT_ID_RESP);
-	msgb_l16tv_put(msg, strlen(token) + 1,
+	if (fixed) {
+		msgb_put_u8(msg, 0);
+		msgb_put_u8(msg, strlen(token) + 2);
+		msgb_tv_fixed_put(msg, IPAC_IDTAG_UNITNAME, strlen(token) + 1, (uint8_t *) token);
+	} else {
+		msgb_l16tv_put(msg, strlen(token) + 1,
 			IPAC_IDTAG_UNITNAME, (uint8_t *) token);
+	}
+
 	return msg;
 }
