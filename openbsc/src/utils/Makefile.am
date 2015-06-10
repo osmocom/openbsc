@@ -25,6 +25,7 @@ noinst_HEADERS = \
 bin_PROGRAMS = \
 	bs11_config \
 	isdnsync \
+	meas_json \
 	$(NULL)
 if HAVE_SQLITE3
 bin_PROGRAMS += \
@@ -118,6 +119,20 @@ osmo_meas_udp2db_LDADD = \
 	$(NULL)
 
 osmo_meas_udp2db_CFLAGS = \
+	$(LIBOSMOCORE_CFLAGS) \
+	$(LIBOSMOGSM_CFLAGS) \
+	$(NULL)
+
+meas_json_SOURCES = \
+	meas_json.c \
+	$(NULL)
+
+meas_json_LDADD = \
+	$(LIBOSMOCORE_LIBS) \
+	$(LIBOSMOGSM_LIBS) \
+	$(NULL)
+
+meas_json_CFLAGS = \
 	$(LIBOSMOCORE_CFLAGS) \
 	$(LIBOSMOGSM_CFLAGS) \
 	$(NULL)
