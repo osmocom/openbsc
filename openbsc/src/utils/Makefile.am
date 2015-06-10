@@ -4,7 +4,7 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
 noinst_HEADERS = meas_db.h
 
-bin_PROGRAMS = bs11_config isdnsync
+bin_PROGRAMS = bs11_config isdnsync meas_json
 if HAVE_SQLITE3
 bin_PROGRAMS += osmo-meas-pcap2db osmo-meas-udp2db
 endif
@@ -31,6 +31,10 @@ smpp_mirror_LDADD = $(top_builddir)/src/libcommon/libcommon.a \
 meas_vis_SOURCES = meas_vis.c
 meas_vis_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) -lcdk -lncurses
 meas_vis_CFLAGS = $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS)
+
+meas_json_SOURCES = meas_json.c
+meas_json_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS)
+meas_json_CFLAGS = $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS)
 
 osmo_meas_pcap2db_SOURCES = meas_pcap2db.c meas_db.c
 osmo_meas_pcap2db_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) -lpcap $(SQLITE3_LIBS)
