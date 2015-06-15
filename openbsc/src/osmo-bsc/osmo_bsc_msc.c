@@ -307,7 +307,7 @@ static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 			osmo_timer_del(&data->pong_timer);
 		}
 	} else if (hh->proto == IPAC_PROTO_SCCP) {
-		sccp_system_incoming(msg);
+		sccp_system_incoming_ctx(msg, data->msc_con);
 	} else if (hh->proto == IPAC_PROTO_MGCP_OLD) {
 		mgcp_forward(data, msg);
 	} else if (hh->proto == IPAC_PROTO_OSMO) {
