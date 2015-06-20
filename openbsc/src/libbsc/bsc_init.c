@@ -397,8 +397,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 		}
 		break;
 	case GSM_BAND_900:
-		if (bts->c0->arfcn < 0 ||
-		   (bts->c0->arfcn > 124 && bts->c0->arfcn < 955) ||
+		if ((bts->c0->arfcn > 124 && bts->c0->arfcn < 955) ||
 		    bts->c0->arfcn > 1023)  {
 			LOGP(DNM, LOGL_ERROR, "GSM900 channel must be between 0-124, 955-1023.\n");
 			return -EINVAL;
