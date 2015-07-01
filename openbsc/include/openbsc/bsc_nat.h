@@ -307,9 +307,6 @@ struct bsc_nat {
 
 	/* control interface */
 	struct ctrl_handle *ctrl;
-
-	/* for random values */
-	int random_fd;
 };
 
 struct bsc_nat_ussd_con {

@@ -35,6 +35,7 @@ AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Require
     [osmo_ac_build_nat="$enableval"],[osmo_ac_build_nat="no"])
 if test "$osmo_ac_build_nat" = "yes" ; then
         PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.2)
+        PKG_CHECK_MODULES(LIBCRYPTO, libcrypto)
 fi
 AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
 AC_SUBST(osmo_ac_build_nat)

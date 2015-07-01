@@ -69,6 +69,8 @@
 
 #include <osmocom/abis/ipa.h>
 
+#include <openssl/rand.h>
+
 #include "../../bscconfig.h"
 
 #define SCCP_CLOSE_TIME 20
@@ -204,8 +206,7 @@ static void send_id_req(struct bsc_nat *nat, struct bsc_connection *bsc)
 		0x01, IPAC_IDTAG_SERNR,
 	};
 
-	int toread, rounds;
-	uint8_t *mrand, *randoff;
+	uint8_t *mrand;
 	uint8_t id_req[sizeof(s_id_req) + (2+16)];
 	uint8_t *buf = &id_req[sizeof(s_id_req)];
 
@@ -216,19 +217,10 @@ static void send_id_req(struct bsc_nat *nat, struct bsc_connection *bsc)
 	buf = v_put(buf, 0x11);
 	buf = v_put(buf, 0x23);
 	mrand = bsc->last_rand;
-	randoff = mrand;
-	memset(randoff, 0, 16);
 
-	for (toread = 16, rounds = 0; rounds < 5 && toread > 0; ++rounds) {
-		int rc = read(nat->random_fd, randoff, toread);
-		if (rc <= 0)
-			goto failed_random;
-		toread -= rc;
-		randoff += rc;
-	}
-
-	if (toread != 0)
+	if (RAND_bytes(mrand, 16) != 1)
 		goto failed_random;
+
 	memcpy(buf, mrand, 16);
 	buf += 16;
 
@@ -1627,12 +1619,6 @@ int main(int argc, char **argv)
 
 	/* We need to add mode-set for amr codecs */
 	nat->sdp_ensure_amr_mode_set = 1;
-
-	nat->random_fd = open("/dev/random", O_RDONLY);
-	if (nat->random_fd < 0) {
-		fprintf(stderr, "Failed to open /dev/urandom.\n");
-		return -5;
-	}
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
