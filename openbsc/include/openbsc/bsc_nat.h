@@ -84,6 +84,7 @@ struct bsc_connection {
 
 	/* do we know anything about this BSC? */
 	int authenticated;
+	uint8_t last_rand[16];
 
 	/* the fd we use to communicate */
 	struct osmo_wqueue write_queue;
@@ -147,6 +148,8 @@ enum bsc_cfg_ctr {
 struct bsc_config {
 	struct llist_head entry;
 
+	uint8_t key[16];
+	uint8_t key_present;
 	char *token;
 	int nr;
 
@@ -304,6 +307,9 @@ struct bsc_nat {
 
 	/* control interface */
 	struct ctrl_handle *ctrl;
+
+	/* for random values */
+	int random_fd;
 };
 
 struct bsc_nat_ussd_con {
@@ -319,6 +325,7 @@ struct bsc_nat_ussd_con {
 /* create and init the structures */
 struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
+struct bsc_config *bsc_config_by_token(struct bsc_nat *nat, const char *token, int len);
 void bsc_config_free(struct bsc_config *);
 void bsc_config_add_lac(struct bsc_config *cfg, int lac);
 void bsc_config_del_lac(struct bsc_config *cfg, int lac);

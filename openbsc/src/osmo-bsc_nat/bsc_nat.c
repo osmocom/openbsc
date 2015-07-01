@@ -21,6 +21,8 @@
  *
  */
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -31,6 +33,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define _GNU_SOURCE
 #include <getopt.h>
@@ -47,6 +50,8 @@
 
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
+
+#include <osmocom/crypt/auth.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
@@ -185,9 +190,9 @@ static void send_id_ack(struct bsc_connection *bsc)
 	bsc_send_data(bsc, id_ack, sizeof(id_ack), IPAC_PROTO_IPACCESS);
 }
 
-static void send_id_req(struct bsc_connection *bsc)
+static void send_id_req(struct bsc_nat *nat, struct bsc_connection *bsc)
 {
-	static const uint8_t id_req[] = {
+	static const uint8_t s_id_req[] = {
 		IPAC_MSGT_ID_GET,
 		0x01, IPAC_IDTAG_UNIT,
 		0x01, IPAC_IDTAG_MACADDR,
@@ -199,7 +204,41 @@ static void send_id_req(struct bsc_connection *bsc)
 		0x01, IPAC_IDTAG_SERNR,
 	};
 
+	int toread, rounds;
+	uint8_t *mrand, *randoff;
+	uint8_t id_req[sizeof(s_id_req) + (2+16)];
+	uint8_t *buf = &id_req[sizeof(s_id_req)];
+
+	/* copy the static data */
+	memcpy(id_req, s_id_req, sizeof(s_id_req));
+
+	/* put the RAND with length, tag, value */
+	buf = v_put(buf, 0x11);
+	buf = v_put(buf, 0x23);
+	mrand = bsc->last_rand;
+	randoff = mrand;
+	memset(randoff, 0, 16);
+
+	for (toread = 16, rounds = 0; rounds < 5 && toread > 0; ++rounds) {
+		int rc = read(nat->random_fd, randoff, toread);
+		if (rc <= 0)
+			goto failed_random;
+		toread -= rc;
+		randoff += rc;
+	}
+
+	if (toread != 0)
+		goto failed_random;
+	memcpy(buf, mrand, 16);
+	buf += 16;
+
 	bsc_send_data(bsc, id_req, sizeof(id_req), IPAC_PROTO_IPACCESS);
+	return;
+
+failed_random:
+	/* the timeout will trigger and close this connection */
+	LOGP(DNAT, LOGL_ERROR, "Failed to read from urandom.\n");
+	return;
 }
 
 static struct msgb *nat_create_rlsd(struct nat_sccp_connection *conn)
@@ -357,7 +396,7 @@ static void initialize_msc_if_needed(struct bsc_msc_connection *msc_con)
 
 static void send_id_get_response(struct bsc_msc_connection *msc_con)
 {
-	struct msgb *msg = bsc_msc_id_get_resp(nat->token);
+	struct msgb *msg = bsc_msc_id_get_resp(0, nat->token, NULL, 0);
 	if (!msg)
 		return;
 
@@ -956,11 +995,57 @@ static void ipaccess_close_bsc(void *data)
 	bsc_close_connection(conn);
 }
 
+/* Wishful thinking to generate a constant time compare */
+static int constant_time_cmp(const uint8_t *exp, const uint8_t *rel, const int count)
+{
+	int x = 0, i;
+
+	for (i = 0; i < count; ++i)
+		x |= exp[i] ^ rel[i];
+
+	return x != 0;
+}
+
+static int verify_key(struct bsc_connection *conn, struct bsc_config *conf, const uint8_t *key, const int keylen)
+{
+	struct osmo_auth_vector vec;
+
+	struct osmo_sub_auth_data auth = {
+		.type		= OSMO_AUTH_TYPE_GSM,
+		.algo		= OSMO_AUTH_ALG_MILENAGE,
+	};
+
+	/* expect a specific keylen */
+	if (keylen != 8) {
+		LOGP(DNAT, LOGL_ERROR, "Key length is wrong: %d for bsc nr %d\n",
+			keylen, conf->nr);
+		return 0;
+	}
+
+	memcpy(auth.u.umts.opc, conf->key, 16);
+	memcpy(auth.u.umts.k, conf->key, 16);
+	memset(auth.u.umts.amf, 0, 2);
+	auth.u.umts.sqn = 0;
+
+	memset(&vec, 0, sizeof(vec));
+	osmo_auth_gen_vec(&vec, &auth, conn->last_rand);
+
+	if (vec.res_len != 8) {
+		LOGP(DNAT, LOGL_ERROR, "Res length is wrong: %d for bsc nr %d\n",
+			keylen, conf->nr);
+		return 0;
+	}
+
+	return constant_time_cmp(vec.res, key, 8) == 0;
+}
+
 static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc)
 {
 	struct bsc_config *conf;
 	const char *token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
-	const int len = TLVP_LEN(tvp, IPAC_IDTAG_UNITNAME);
+	int len = TLVP_LEN(tvp, IPAC_IDTAG_UNITNAME);
+	const uint8_t *xres = TLVP_VAL(tvp, 0x24);
+	const int xlen = TLVP_LEN(tvp, 0x24);
 
 	if (bsc->cfg) {
 		LOGP(DNAT, LOGL_ERROR, "Reauth on fd %d bsc nr %d\n",
@@ -980,27 +1065,38 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 		return;
 	}
 
-	llist_for_each_entry(conf, &bsc->nat->bsc_configs, entry) {
-		/*
-		 * Add the '\0' of the token for the memcmp, the IPA messages
-		 * for some reason added null termination.
-		 */
-		const int token_len = strlen(conf->token) + 1;
+	/*
+	 * New systems have fixed the structure of the message but
+	 * we need to support old ones too.
+	 */
+	if (len >= 2 && token[len - 2] == '\0')
+		len -= 1;
 
-		if (token_len == len && memcmp(conf->token, token, token_len) == 0) {
-			rate_ctr_inc(&conf->stats.ctrg->ctr[BCFG_CTR_NET_RECONN]);
-			bsc->authenticated = 1;
-			bsc->cfg = conf;
-			osmo_timer_del(&bsc->id_timeout);
-			LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc nr: %d on fd %d\n",
-			     conf->nr, bsc->write_queue.bfd.fd);
-			start_ping_pong(bsc);
-			return;
-		}
+	conf = bsc_config_by_token(bsc->nat, token, len);
+	if (!conf) {
+		LOGP(DNAT, LOGL_ERROR,
+			"No bsc found for token '%s' len %d on fd: %d.\n", token,
+			bsc->write_queue.bfd.fd, len);
+		bsc_close_connection(bsc);
+		return;
 	}
 
-	LOGP(DNAT, LOGL_ERROR, "No bsc found for token '%s' on fd: %d.\n", token,
-	     bsc->write_queue.bfd.fd);
+	/* We have set a key and expect it to be present */
+	if (conf->key_present && !verify_key(bsc, conf, xres, xlen - 1)) {
+		LOGP(DNAT, LOGL_ERROR,
+			"Wrong key for bsc nr %d fd: %d.\n", conf->nr,
+			bsc->write_queue.bfd.fd);
+		bsc_close_connection(bsc);
+		return;
+	}
+
+	rate_ctr_inc(&conf->stats.ctrg->ctr[BCFG_CTR_NET_RECONN]);
+	bsc->authenticated = 1;
+	bsc->cfg = conf;
+	osmo_timer_del(&bsc->id_timeout);
+	LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc nr: %d on fd %d\n",
+		conf->nr, bsc->write_queue.bfd.fd);
+	start_ping_pong(bsc);
 }
 
 static void handle_con_stats(struct nat_sccp_connection *con)
@@ -1185,12 +1281,12 @@ exit:
 		send_reset_ack(bsc);
 	} else if (parsed->ipa_proto == IPAC_PROTO_IPACCESS) {
 		/* do we know who is handling this? */
-		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
+		if (msg->l2h[0] == IPAC_MSGT_ID_RESP && msgb_l2len(msg) > 2) {
 			struct tlv_parsed tvp;
 			int ret;
-			ret = ipa_ccm_idtag_parse(&tvp,
+			ret = ipa_ccm_idtag_parse_off(&tvp,
 					     (unsigned char *) msg->l2h + 2,
-					     msgb_l2len(msg) - 2);
+					     msgb_l2len(msg) - 2, 0);
 			if (ret < 0) {
 				LOGP(DNAT, LOGL_ERROR, "ignoring IPA response "
 					"message with malformed TLVs\n");
@@ -1357,7 +1453,7 @@ static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 	bsc->last_id = 0;
 
 	send_id_ack(bsc);
-	send_id_req(bsc);
+	send_id_req(nat, bsc);
 	send_mgcp_reset(bsc);
 
 	/*
@@ -1531,6 +1627,12 @@ int main(int argc, char **argv)
 
 	/* We need to add mode-set for amr codecs */
 	nat->sdp_ensure_amr_mode_set = 1;
+
+	nat->random_fd = open("/dev/random", O_RDONLY);
+	if (nat->random_fd < 0) {
+		fprintf(stderr, "Failed to open /dev/urandom.\n");
+		return -5;
+	}
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
