@@ -25,4 +25,4 @@ mgcp_transcoding_test_LDADD = \
 		$(top_builddir)/src/libmgcp/libmgcp.a \
 		$(top_builddir)/src/libcommon/libcommon.a \
 		$(LIBOSMOCORE_LIBS) $(LIBBCG729_LIBS) -lrt -lm $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS) \
-		$(LIBRARY_DL) $(LIBOSMONETIF_LIBS)
+		$(LIBRARY_DL) $(LIBOSMONETIF_LIBS) $(LIBRARY_GSM)

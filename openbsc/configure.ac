@@ -63,7 +63,8 @@ AC_ARG_ENABLE([mgcp-transcoding], [AS_HELP_STRING([--enable-mgcp-transcoding], [
 AC_ARG_WITH([g729], [AS_HELP_STRING([--with-g729], [Enable G.729 encoding/decoding.])], [osmo_ac_with_g729="$withval"],[osmo_ac_with_g729="no"])
 
 if test "$osmo_ac_mgcp_transcoding" = "yes" ; then
-    AC_SEARCH_LIBS(gsm_create, gsm)
+    AC_SEARCH_LIBS([gsm_create], [gsm], [LIBRARY_GSM="$LIBS";LIBS=""])
+    AC_SUBST(LIBRARY_GSM)
     if test "$osmo_ac_with_g729" = "yes" ; then
 	PKG_CHECK_MODULES(LIBBCG729, libbcg729 >= 0.1, [AC_DEFINE([HAVE_BCG729], [1], [Use bgc729 decoder/encoder])])
     fi
