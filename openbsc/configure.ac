@@ -16,8 +16,6 @@ AC_PROG_INSTALL
 AC_PROG_RANLIB
 
 dnl checks for libraries
-AC_SEARCH_LIBS(crypt, crypt,
-    [LIBCRYPT="-lcrypt"; AC_DEFINE([VTY_CRYPT_PW], [], [Use crypt functionality of vty.])])
 AC_SEARCH_LIBS([dlopen], [dl dld], [LIBRARY_DL="$LIBS";LIBS=""])
 AC_SUBST(LIBRARY_DL)
 
