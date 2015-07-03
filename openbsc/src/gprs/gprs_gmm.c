@@ -700,8 +700,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			/* As a temorary hack, we simply assume that the IMSI exists,
 			 * as long as it is part of 'our' network */
 			char mccmnc[16];
-			snprintf(mccmnc, sizeof(mccmnc), "%03d%02d", ra_id.mcc, ra_id.mnc);
-			if (strncmp(mccmnc, mi_string, 5) &&
+			snprintf(mccmnc, sizeof(mccmnc), "%03d%0*d", ra_id.mcc, ra_id.mnc.two_digits ? 2 : 3, ra_id.mnc.network_code);
+			if (strncmp(mccmnc, mi_string, strlen(mccmnc)) &&
 			    (sgsn->cfg.acl_enabled &&
 			     !sgsn_acl_lookup(mi_string))) {
 				LOGP(DMM, LOGL_INFO, "Rejecting ATTACH REQUESET IMSI=%s\n",

@@ -5,6 +5,7 @@
 
 #include <osmocom/core/timer.h>
 #include <osmocom/core/select.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include <openbsc/rest_octets.h>
 
@@ -205,8 +206,8 @@ enum gsm_auth_policy {
 
 struct gsm_network {
 	/* global parameters */
-	uint16_t country_code;
-	uint16_t network_code;
+	uint16_t   country_code;
+	gsm_mnc_t  network_code;
 	char *name_long;
 	char *name_short;
 	enum gsm_auth_policy auth_policy;
@@ -328,7 +329,7 @@ struct gsm_sms {
 	char text[SMS_TEXT_SIZE];
 };
 
-struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
+struct gsm_network *gsm_network_init(uint16_t country_code, gsm_mnc_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, struct msgb *));
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 

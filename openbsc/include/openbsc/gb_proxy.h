@@ -25,7 +25,7 @@ struct gbproxy_config {
 	struct gprs_ns_inst *nsi;
 
 	/* force mcc/mnc */
-	int core_mnc;
+	gsm_mnc_t core_mnc;
 	int core_mcc;
 	uint8_t* core_apn;
 	size_t core_apn_size;

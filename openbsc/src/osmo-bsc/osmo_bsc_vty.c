@@ -103,9 +103,9 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 	vty_out(vty, "msc %d%s", msc->nr, VTY_NEWLINE);
 	if (msc->bsc_token)
 		vty_out(vty, " token %s%s", msc->bsc_token, VTY_NEWLINE);
-	if (msc->core_ncc != -1)
-		vty_out(vty, " core-mobile-network-code %d%s",
-			msc->core_ncc, VTY_NEWLINE);
+	if (msc->core_mnc.network_code != -1)
+		vty_out(vty, " core-mobile-network-code %0*d%s",
+			msc->core_mnc.two_digits ? 2 : 3, msc->core_mnc.network_code, VTY_NEWLINE);
 	if (msc->core_mcc != -1)
 		vty_out(vty, " core-mobile-country-code %d%s",
 			msc->core_mcc, VTY_NEWLINE);
@@ -210,10 +210,10 @@ DEFUN(cfg_net_bsc_token,
 DEFUN(cfg_net_bsc_ncc,
       cfg_net_bsc_ncc_cmd,
       "core-mobile-network-code <1-999>",
-      "Use this network code for the core network\n" "NCC value\n")
+      "Use this network code for the core network\n" "MNC value\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
-	data->core_ncc = atoi(argv[0]);
+	data->core_mnc = gsm48_str_to_mnc(argv[0]);
 	return CMD_SUCCESS;
 }
 

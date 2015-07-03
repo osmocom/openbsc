@@ -187,10 +187,11 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 	policy = osmo_bsc_rf_get_policy_name(osmo_bsc_rf_get_policy_by_bts(bts));
 
 	cmd->reply = talloc_asprintf_append(cmd->reply,
-				",%s,%s,%s,%d,%d",
+				",%s,%s,%s,%d,%0*d",
 				oper, admin, policy,
 				bts->network->country_code,
-				bts->network->network_code);
+				bts->network->network_code.two_digits ? 2 : 3,
+				bts->network->network_code.network_code);
 
 	osmo_bsc_send_trap(cmd, msc_con);
 	talloc_free(cmd);

@@ -60,7 +60,7 @@ static int verify_vty_description_string(struct ctrl_cmd *cmd,
 	return 0;
 }
 
-CTRL_CMD_DEFINE_RANGE(net_mnc, "mnc", struct gsm_network, network_code, 0, 999);
+CTRL_CMD_DEFINE_RANGE(net_mnc, "mnc", struct gsm_network, network_code.network_code, 0, 999);
 CTRL_CMD_DEFINE_RANGE(net_mcc, "mcc", struct gsm_network, country_code, 1, 999);
 CTRL_CMD_VTY_STRING(net_short_name, "short-name", struct gsm_network, name_short);
 CTRL_CMD_VTY_STRING(net_long_name, "long-name", struct gsm_network, name_long);
@@ -121,7 +121,8 @@ static int set_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net = cmd->node;
 	char *tmp, *saveptr, *mcc_str, *mnc_str;
-	int mcc, mnc;
+	gsm_mnc_t mnc;
+	int mcc;
 
 	tmp = talloc_strdup(cmd, cmd->value);
 	if (!tmp)
@@ -132,11 +133,11 @@ static int set_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
 	mnc_str = strtok_r(NULL, ",", &saveptr);
 
 	mcc = atoi(mcc_str);
-	mnc = atoi(mnc_str);
+	mnc = gsm48_str_to_mnc(mnc_str);
 
 	talloc_free(tmp);
 
-	if (net->network_code == mnc && net->country_code == mcc) {
+	if (gsm48_mnc_are_equal(net->network_code, mnc) && net->country_code == mcc) {
 		cmd->reply = "Nothing changed";
 		return CTRL_CMD_REPLY;
 	}

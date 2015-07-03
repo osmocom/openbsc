@@ -81,7 +81,7 @@ static const struct rate_ctr_group_desc pdpctx_ctrg_desc = {
 static int ra_id_equals(const struct gprs_ra_id *id1,
 			const struct gprs_ra_id *id2)
 {
-	return (id1->mcc == id2->mcc && id1->mnc == id2->mnc &&
+	return (id1->mcc == id2->mcc && gsm48_mnc_are_equal(id1->mnc, id2->mnc) &&
 		id1->lac == id2->lac && id1->rac == id2->rac);
 }
 

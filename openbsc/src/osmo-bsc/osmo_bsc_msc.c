@@ -494,7 +494,7 @@ struct osmo_msc_data *osmo_msc_data_alloc(struct gsm_network *net, int nr)
 	INIT_LLIST_HEAD(&msc_data->dests);
 	msc_data->ping_timeout = 20;
 	msc_data->pong_timeout = 5;
-	msc_data->core_ncc = -1;
+	msc_data->core_mnc.network_code = -1;
 	msc_data->core_mcc = -1;
 	msc_data->rtp_base = 4000;
 

@@ -27,6 +27,7 @@
 
 #include <osmocom/core/timer.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include <regex.h>
 
@@ -64,7 +65,7 @@ struct osmo_msc_data {
 	struct osmo_timer_list ping_timer;
 	struct osmo_timer_list pong_timer;
 	struct bsc_msc_connection *msc_con;
-	int core_ncc;
+	gsm_mnc_t core_mnc;
 	int core_mcc;
 	int rtp_base;
 

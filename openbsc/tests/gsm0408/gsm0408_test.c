@@ -66,13 +66,19 @@ static void test_location_area_identifier(void)
      * Test the default/test setup. Coming from
      * bsc_hack.c dumps
      */
-    gsm48_generate_lai(&lai48, 1, 1, 1);
+    gsm48_generate_lai(&lai48, 1, gsm48_str_to_mnc("01"), 1);
     COMPARE(lai48.digits[0], ==, 0x00);
     COMPARE(lai48.digits[1], ==, 0xF1);
     COMPARE(lai48.digits[2], ==, 0x10);
     COMPARE(lai48.lac, ==, htons(0x0001));
 
-    gsm48_generate_lai(&lai48, 602, 1, 15);
+	gsm48_generate_lai(&lai48, 1, gsm48_str_to_mnc("001"), 1);
+    COMPARE(lai48.digits[0], ==, 0x00);
+    COMPARE(lai48.digits[1], ==, 0x01);
+    COMPARE(lai48.digits[2], ==, 0x10);
+    COMPARE(lai48.lac, ==, htons(0x0001));
+	
+    gsm48_generate_lai(&lai48, 602, gsm48_str_to_mnc("01"), 15);
     COMPARE(lai48.digits[0], ==, 0x06);
     COMPARE(lai48.digits[1], ==, 0xF2);
     COMPARE(lai48.digits[2], ==, 0x10);

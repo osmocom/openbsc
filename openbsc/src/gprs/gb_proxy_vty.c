@@ -25,6 +25,7 @@
 
 #include <osmocom/core/talloc.h>
 
+#include <openbsc/gsm_04_08.h>
 #include <osmocom/gprs/gprs_ns.h>
 
 #include <openbsc/debug.h>
@@ -66,9 +67,9 @@ static int config_write_gbproxy(struct vty *vty)
 	if (g_cfg->core_mcc > 0)
 		vty_out(vty, " core-mobile-country-code %d%s",
 			g_cfg->core_mcc, VTY_NEWLINE);
-	if (g_cfg->core_mnc > 0)
-		vty_out(vty, " core-mobile-network-code %d%s",
-			g_cfg->core_mnc, VTY_NEWLINE);
+	if (g_cfg->core_mnc.network_code > 0)
+		vty_out(vty, " core-mobile-network-code %0*d%s",
+			g_cfg->core_mnc.two_digits ? 2 : 3, g_cfg->core_mnc.network_code, VTY_NEWLINE);
 	if (g_cfg->core_apn != NULL) {
 	       if (g_cfg->core_apn_size > 0) {
 		       char str[500] = {0};
@@ -128,7 +129,7 @@ DEFUN(cfg_gbproxy_core_mnc,
       "core-mobile-network-code <1-999>",
       GBPROXY_CORE_MNC_STR "NCC value\n")
 {
-	g_cfg->core_mnc = atoi(argv[0]);
+	g_cfg->core_mnc = gsm48_str_to_mnc(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -137,7 +138,8 @@ DEFUN(cfg_gbproxy_no_core_mnc,
       "no core-mobile-network-code",
       NO_STR GBPROXY_CORE_MNC_STR)
 {
-	g_cfg->core_mnc = 0;
+	/* FIXME: 00, 000 are valid MNCs */
+	g_cfg->core_mnc.network_code = 0;
 	return CMD_SUCCESS;
 }
 

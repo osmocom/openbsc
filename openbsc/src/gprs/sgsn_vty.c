@@ -240,10 +240,12 @@ static void vty_dump_mmctx(struct vty *vty, const char *pfx,
 		pfx, mm->imsi, mm->imei, mm->p_tmsi, VTY_NEWLINE);
 	vty_out(vty, "%s  MSISDN: %s, TLLI: %08x%s", pfx, mm->msisdn,
 		mm->tlli, VTY_NEWLINE);
-	vty_out(vty, "%s  MM State: %s, Routeing Area: %u-%u-%u-%u, "
+	vty_out(vty, "%s  MM State: %s, Routeing Area: %u-%0*u-%u-%u, "
 		"Cell ID: %u%s", pfx,
 		get_value_string(gprs_mm_st_strs, mm->mm_state),
-		mm->ra.mcc, mm->ra.mnc, mm->ra.lac, mm->ra.rac,
+		mm->ra.mcc,
+		mm->ra.mnc.two_digits ? 2 : 3, mm->ra.mnc.network_code,
+		mm->ra.lac, mm->ra.rac,
 		mm->cell_id, VTY_NEWLINE);
 
 	vty_out_rate_ctr_group(vty, " ", mm->ctrg);

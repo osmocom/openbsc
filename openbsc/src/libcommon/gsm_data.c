@@ -70,7 +70,7 @@ int gsm_bts_model_register(struct gsm_bts_model *model)
 	return 0;
 }
 
-struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
+struct gsm_network *gsm_network_init(uint16_t country_code, gsm_mnc_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, struct msgb *))
 {
 	struct gsm_network *net;

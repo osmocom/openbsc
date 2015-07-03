@@ -849,7 +849,8 @@ static void test_gbproxy_ra_patching()
 	gbcfg.nsi = bssgp_nsi;
 	gbcfg.nsip_sgsn_nsei = SGSN_NSEI;
 	gbcfg.core_mcc = 123;
-	gbcfg.core_mnc = 456;
+	gbcfg.core_mnc.two_digits = false;
+	gbcfg.core_mnc.network_code = 456;
 	gbcfg.core_apn = talloc_zero_size(NULL, 100);
 	gbcfg.core_apn_size = gbprox_str_to_apn(gbcfg.core_apn, "foo.bar", 100);
 

@@ -25,6 +25,7 @@
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0808.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -51,10 +52,10 @@ static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 static int complete_layer3(struct gsm_subscriber_connection *conn,
 			   struct msgb *msg, struct osmo_msc_data *msc);
 
-static uint16_t get_network_code_for_msc(struct osmo_msc_data *msc)
+static gsm_mnc_t get_network_code_for_msc(struct osmo_msc_data *msc)
 {
-	if (msc->core_ncc != -1)
-		return msc->core_ncc;
+	if (msc->core_mnc.network_code != -1)
+		return msc->core_mnc;
 	return msc->network->network_code;
 }
 
@@ -158,7 +159,7 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 			   struct msgb *msg, struct osmo_msc_data *msc)
 {
 	struct msgb *resp;
-	uint16_t network_code;
+	gsm_mnc_t network_code;
 	uint16_t country_code;
 	enum bsc_con ret;
 

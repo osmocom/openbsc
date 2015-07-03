@@ -41,6 +41,7 @@
 #include <osmocom/gprs/gprs_bssgp.h>
 
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
@@ -143,7 +144,7 @@ struct {
 } gbprox_global_patch_state = {0,};
 
 struct gbprox_patch_state {
-	int local_mnc;
+	gsm_mnc_t local_mnc;
 	int local_mcc;
 
 	/* List of TLLIs for which patching is enabled */
@@ -851,9 +852,9 @@ static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_peer *peer,
 {
 	struct gbprox_patch_state *state = &peer->patch_state;
 	const int old_local_mcc = state->local_mcc;
-	const int old_local_mnc = state->local_mnc;
+	const gsm_mnc_t old_local_mnc = state->local_mnc;
 	int old_mcc;
-	int old_mnc;
+	gsm_mnc_t old_mnc;
 	struct gprs_ra_id raid;
 
 	gsm48_parse_ra(&raid, raid_enc);
@@ -871,8 +872,8 @@ static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_peer *peer,
 			raid.mcc = gbcfg.core_mcc;
 		}
 
-		if (!gbcfg.core_mnc || raid.mnc == gbcfg.core_mnc) {
-			state->local_mnc = 0;
+		if (!gbcfg.core_mnc.network_code || gsm48_mnc_are_equal(raid.mnc, gbcfg.core_mnc)) {
+			memset(&state->local_mnc, 0, sizeof(state->local_mnc));
 		} else {
 			state->local_mnc = raid.mnc;
 			raid.mnc = gbcfg.core_mnc;
@@ -882,23 +883,25 @@ static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_peer *peer,
 		if (state->local_mcc)
 			raid.mcc = state->local_mcc;
 
-		if (state->local_mnc)
+		if (state->local_mnc.network_code)
 			raid.mnc = state->local_mnc;
 	}
 
 	if (old_local_mcc != state->local_mcc ||
-	    old_local_mnc != state->local_mnc)
+		!gsm48_mnc_are_equal(old_local_mnc, state->local_mnc))
 		LOGP(DGPRS, LOGL_NOTICE,
 		     "Patching RAID %sactivated, msg: %s, "
-		     "local: %d-%d, core: %d-%d, to %s\n",
-		     state->local_mcc || state->local_mnc ?
+		     "local: %d-%0*d, core: %d-%0*d, to %s\n",
+		     state->local_mcc || state->local_mnc.network_code ?
 		     "" : "de",
 		     log_text,
-		     state->local_mcc, state->local_mnc,
-		     gbcfg.core_mcc, gbcfg.core_mnc,
+		     state->local_mcc,
+		     state->local_mnc.two_digits ? 2 : 3, state->local_mnc.network_code,
+		     gbcfg.core_mcc,
+		     gbcfg.core_mnc.two_digits ? 2 : 3, gbcfg.core_mnc.network_code,
 		     to_bss ? "BSS" : "SGSN");
 
-	if (state->local_mcc || state->local_mnc) {
+	if (state->local_mcc || state->local_mnc.network_code) {
 		enum gbprox_peer_ctr counter =
 			to_bss ?
 			GBPROX_PEER_CTR_RAID_PATCHED_SGSN :
@@ -906,11 +909,11 @@ static void gbprox_patch_raid(uint8_t *raid_enc, struct gbprox_peer *peer,
 
 		LOGP(DGPRS, LOGL_DEBUG,
 		       "Patching %s to %s: "
-		       "%d-%d-%d-%d -> %d-%d-%d-%d\n",
+		       "%d-%0*d-%d-%d -> %d-%0*d-%d-%d\n",
 		       log_text,
 		       to_bss ? "BSS" : "SGSN",
-		       old_mcc, old_mnc, raid.lac, raid.rac,
-		       raid.mcc, raid.mnc, raid.lac, raid.rac);
+		       old_mcc, old_mnc.two_digits ? 2 : 3 , old_mnc.network_code, raid.lac, raid.rac,
+		       raid.mcc, raid.mnc.two_digits ? 2 : 3, raid.mnc.network_code, raid.lac, raid.rac);
 
 		gsm48_construct_ra(raid_enc, &raid);
 		rate_ctr_inc(&peer->ctrg->ctr[counter]);
@@ -1361,7 +1364,7 @@ static void gbprox_patch_bssgp_message(struct msgb *msg,
 	const char *err_info = NULL;
 	int err_ctr = -1;
 
-	if (!gbcfg.core_mcc && !gbcfg.core_mnc && !gbcfg.core_apn)
+	if (!gbcfg.core_mcc && !gbcfg.core_mnc.network_code && !gbcfg.core_apn)
 		return;
 
 	bgph = (struct bssgp_normal_hdr *) msgb_bssgph(msg);
@@ -1603,9 +1606,9 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 			sizeof(from_peer->ra));
 		gsm48_parse_ra(&raid, from_peer->ra);
 		LOGP(DGPRS, LOGL_INFO, "NSEI=%u BSSGP SUSPEND/RESUME "
-			"RAI snooping: RAI %u-%u-%u-%u behind BVCI=%u\n",
-			nsei, raid.mcc, raid.mnc, raid.lac,
-			raid.rac , from_peer->bvci);
+			"RAI snooping: RAI %u-%0*u-%u-%u behind BVCI=%u\n",
+			nsei, raid.mcc, raid.mnc.two_digits, raid.mnc.network_code,
+			raid.lac, raid.rac , from_peer->bvci);
 		/* FIXME: This only supports one BSS per RA */
 		break;
 	case BSSGP_PDUT_BVC_RESET:
@@ -1647,9 +1650,9 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, uint16_t nsei,
 					sizeof(from_peer->ra));
 				gsm48_parse_ra(&raid, from_peer->ra);
 				LOGP(DGPRS, LOGL_INFO, "NSEI=%u/BVCI=%u "
-				     "Cell ID %u-%u-%u-%u\n", nsei,
-				     bvci, raid.mcc, raid.mnc, raid.lac,
-				     raid.rac);
+				     "Cell ID %u-%0*u-%u-%u\n",
+				     nsei, bvci, raid.mcc,
+				     raid.mnc.two_digits, raid.mnc.network_code, raid.lac, raid.rac);
 			}
 		}
 		break;
@@ -2056,11 +2059,11 @@ int gbprox_dump_peers(FILE *stream, int indent)
 		gsm48_parse_ra(&raid, peer->ra);
 
 		rc = fprintf(stream, "%*s  NSEI %u, BVCI %u, %sblocked, "
-			     "RAI %u-%u-%u-%u\n",
+			     "RAI %u-%0*u-%u-%u\n",
 			     indent, "",
 			     peer->nsei, peer->bvci,
 			     peer->blocked ? "" : "not ",
-			     raid.mcc, raid.mnc, raid.lac, raid.rac);
+			     raid.mcc, raid.mnc.two_digits ? 2 : 3, raid.mnc.network_code, raid.lac, raid.rac);
 
 		if (rc < 0)
 			return rc;
@@ -2138,9 +2141,9 @@ static void gbprox_vty_print_peer(struct vty *vty, struct gbprox_peer *peer)
 	gsm48_parse_ra(&raid, peer->ra);
 
 	vty_out(vty, "NSEI %5u, PTP-BVCI %5u, "
-		"RAI %u-%u-%u-%u",
+		"RAI %u-%0*u-%u-%u",
 		peer->nsei, peer->bvci,
-		raid.mcc, raid.mnc, raid.lac, raid.rac);
+		raid.mcc, raid.mnc.two_digits ? 2 : 3, raid.mnc.network_code, raid.lac, raid.rac);
 	if (peer->blocked)
 		vty_out(vty, " [BVC-BLOCKED]");
 
