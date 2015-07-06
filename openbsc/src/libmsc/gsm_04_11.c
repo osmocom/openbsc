@@ -57,8 +57,6 @@
 
 #ifdef BUILD_SMPP
 #include "smpp_smsc.h"
-extern int smpp_try_deliver(struct gsm_sms *sms,
-			    struct gsm_subscriber_connection *conn);
 #endif
 
 void *tall_gsms_ctx;
