@@ -539,6 +539,11 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 
 static struct smsc *g_smsc;
 
+int smpp_route_smpp_first(struct gsm_sms *sms, struct gsm_subscriber_connection *conn)
+{
+	return g_smsc->smpp_first;
+}
+
 int smpp_try_deliver(struct gsm_sms *sms, struct gsm_subscriber_connection *conn)
 {
 	struct osmo_esme *esme;

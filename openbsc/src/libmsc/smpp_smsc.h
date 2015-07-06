@@ -92,6 +92,7 @@ struct smsc {
 	uint16_t listen_port;
 	char system_id[SMPP_SYS_ID_LEN+1];
 	int accept_all;
+	int smpp_first;
 	struct osmo_smpp_acl *def_route;
 	void *priv;
 };
@@ -137,6 +138,8 @@ int smpp_determine_scheme(uint8_t dcs, uint8_t *data_coding, int *mode);
 struct gsm_sms;
 struct gsm_subscriber_connection;
 
+int smpp_route_smpp_first(struct gsm_sms *sms,
+			    struct gsm_subscriber_connection *conn);
 int smpp_try_deliver(struct gsm_sms *sms,
 			    struct gsm_subscriber_connection *conn);
 #endif
