@@ -131,4 +131,12 @@ int smpp_route_pfx_del(struct osmo_smpp_acl *acl,
 int smpp_vty_init(void);
 
 int smpp_determine_scheme(uint8_t dcs, uint8_t *data_coding, int *mode);
+
+
+
+struct gsm_sms;
+struct gsm_subscriber_connection;
+
+int smpp_try_deliver(struct gsm_sms *sms,
+			    struct gsm_subscriber_connection *conn);
 #endif
