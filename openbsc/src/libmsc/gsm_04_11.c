@@ -297,7 +297,7 @@ int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
 		rc = 1; /* cause 1: unknown subscriber */
 		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
 #endif
-		goto out;
+		return rc;
 	}
 
 	switch (sms_mti) {
@@ -319,7 +319,6 @@ int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
 	if (!rc && !gsms->receiver)
 		rc = GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
 
-out:
 	return rc;
 }
 
