@@ -277,6 +277,55 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	return msg->len - old_msg_len;
 }
 
+int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
+			struct gsm_sms *gsms, uint8_t sms_mti)
+{
+	int rc;
+
+	/* determine gsms->receiver based on dialled number */
+	gsms->receiver = subscr_get_by_extension(conn->bts->network->subscr_group,
+						 gsms->dst.addr);
+	if (!gsms->receiver) {
+#ifdef BUILD_SMPP
+		rc = smpp_try_deliver(gsms, conn);
+		if (rc == 1) {
+			rc = 1; /* cause 1: unknown subscriber */
+			osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+		} else if (rc < 0) {
+			rc = 21; /* cause 21: short message transfer rejected */
+			/* FIXME: handle the error somehow? */
+		}
+#else
+		rc = 1; /* cause 1: unknown subscriber */
+		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+#endif
+		goto out;
+	}
+
+	switch (sms_mti) {
+	case GSM340_SMS_SUBMIT_MS2SC:
+		/* MS is submitting a SMS */
+		rc = gsm340_rx_sms_submit(msg, gsms);
+		break;
+	case GSM340_SMS_COMMAND_MS2SC:
+	case GSM340_SMS_DELIVER_REP_MS2SC:
+		LOGP(DLSMS, LOGL_NOTICE, "Unimplemented MTI 0x%02x\n", sms_mti);
+		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
+		break;
+	default:
+		LOGP(DLSMS, LOGL_NOTICE, "Undefined MTI 0x%02x\n", sms_mti);
+		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
+		break;
+	}
+
+	if (!rc && !gsms->receiver)
+		rc = GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
+
+out:
+	return rc;
+}
+
+
 /* process an incoming TPDU (called from RP-DATA)
  * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */
 static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *msg)
@@ -392,45 +441,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	/* FIXME: This looks very wrong */
 	send_signal(0, NULL, gsms, 0);
 
-	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(conn->bts->network->subscr_group,
-						 gsms->dst.addr);
-	if (!gsms->receiver) {
-#ifdef BUILD_SMPP
-		rc = smpp_try_deliver(gsms, conn);
-		if (rc == 1) {
-			rc = 1; /* cause 1: unknown subscriber */
-			osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
-		} else if (rc < 0) {
-			rc = 21; /* cause 21: short message transfer rejected */
-			/* FIXME: handle the error somehow? */
-		}
-#else
-		rc = 1; /* cause 1: unknown subscriber */
-		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
-#endif
-		goto out;
-	}
-
-	switch (sms_mti) {
-	case GSM340_SMS_SUBMIT_MS2SC:
-		/* MS is submitting a SMS */
-		rc = gsm340_rx_sms_submit(msg, gsms);
-		break;
-	case GSM340_SMS_COMMAND_MS2SC:
-	case GSM340_SMS_DELIVER_REP_MS2SC:
-		LOGP(DLSMS, LOGL_NOTICE, "Unimplemented MTI 0x%02x\n", sms_mti);
-		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
-		break;
-	default:
-		LOGP(DLSMS, LOGL_NOTICE, "Undefined MTI 0x%02x\n", sms_mti);
-		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
-		break;
-	}
-
-	if (!rc && !gsms->receiver)
-		rc = GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
-
+	rc = sms_route_mt_sms(conn, msg, gsms, sms_mti);
 out:
 	sms_free(gsms);
 
