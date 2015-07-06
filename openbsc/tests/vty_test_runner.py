@@ -154,6 +154,28 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command("list")
         return "smpp" in res
 
+    def testSmppFirst(self):
+        if not self.checkForSmpp():
+            return
+
+        # enable the configuration
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("smpp")
+
+        # check the default
+        res = self.vty.command("write terminal")
+        self.assert_(res.find(' no smpp-first') > 0)
+
+        self.vty.verify("smpp-first", [''])
+        res = self.vty.command("write terminal")
+        self.assert_(res.find(' smpp-first') > 0)
+        self.assertEquals(res.find('no smpp-first'), -1)
+
+        self.vty.verify("no smpp-first", [''])
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('no smpp-first') > 0)
+
     def testVtyTree(self):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal", ['']))

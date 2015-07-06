@@ -280,6 +280,27 @@ int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
 {
 	int rc;
 
+#ifdef BUILD_SMPP
+	/*
+	 * Route through SMPP first before going to the local database. In case
+	 * of a unroutable message and no local subscriber, SMPP will be tried
+	 * twice. In case of an unknown subscriber continue with the normal
+	 * delivery of the SMS.
+	 */
+	if (smpp_route_smpp_first(gsms, conn)) {
+		rc = smpp_try_deliver(gsms, conn);
+		if (rc == 1)
+			goto try_local;
+		if (rc < 0) {
+			rc = 21; /* cause 21: short message transfer rejected */
+			/* FIXME: handle the error somehow? */
+		}
+		return rc;
+	}
+
+try_local:
+#endif
+
 	/* determine gsms->receiver based on dialled number */
 	gsms->receiver = subscr_get_by_extension(conn->bts->network->subscr_group,
 						 gsms->dst.addr);
