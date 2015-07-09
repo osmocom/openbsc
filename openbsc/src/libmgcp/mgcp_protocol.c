@@ -476,7 +476,7 @@ static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *
 		return find_e1_endpoint(cfg, mgcp);
 	} else {
 		gw = strtoul(mgcp, &endptr, 16);
-		if (gw > 0 && gw < cfg->trunk.number_endpoints && strcmp(endptr, "@mgw") == 0)
+		if (gw > 0 && gw < cfg->trunk.number_endpoints /* && strcmp(endptr, "@mgw") == 0 */)
 			return &cfg->trunk.endpoints[gw];
 	}
 
