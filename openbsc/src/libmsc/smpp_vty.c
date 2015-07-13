@@ -58,6 +58,24 @@ DEFUN(cfg_smpp, cfg_smpp_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_smpp_first, cfg_smpp_first_cmd,
+	"smpp-first",
+	"Try SMPP routes before the subscriber DB\n")
+{
+	struct smsc *smsc = smsc_from_vty(vty);
+	smsc->smpp_first = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_smpp_first, cfg_no_smpp_first_cmd,
+	"no smpp-first",
+	NO_STR "Try SMPP before routes before the subscriber DB\n")
+{
+	struct smsc *smsc = smsc_from_vty(vty);
+	smsc->smpp_first = 0;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_smpp_port, cfg_smpp_port_cmd,
 	"local-tcp-port <1-65535>",
 	"Set the local TCP port on which we listen for SMPP\n"
@@ -125,6 +143,8 @@ static int config_write_smpp(struct vty *vty)
 		vty_out(vty, " system-id %s%s", smsc->system_id, VTY_NEWLINE);
 	vty_out(vty, " policy %s%s",
 		smsc->accept_all ? "accept-all" : "closed", VTY_NEWLINE);
+	vty_out(vty, " %ssmpp-first%s",
+		smsc->smpp_first ? "" : "no ", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -512,6 +532,8 @@ int smpp_vty_init(void)
 	vty_install_default(SMPP_NODE);
 	install_element(CONFIG_NODE, &cfg_smpp_cmd);
 
+	install_element(SMPP_NODE, &cfg_smpp_first_cmd);
+	install_element(SMPP_NODE, &cfg_no_smpp_first_cmd);
 	install_element(SMPP_NODE, &cfg_smpp_port_cmd);
 	install_element(SMPP_NODE, &cfg_smpp_sys_id_cmd);
 	install_element(SMPP_NODE, &cfg_smpp_policy_cmd);
