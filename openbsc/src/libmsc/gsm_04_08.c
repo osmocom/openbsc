@@ -968,7 +968,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
 		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_IMSI_UNKNOWN_IN_HLR);
+					    GSM48_REJECT_IMSI_UNKNOWN_IN_VLR);
 
 	if (!conn->subscr)
 		conn->subscr = subscr;
