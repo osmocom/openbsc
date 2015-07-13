@@ -53,8 +53,8 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 
 static uint16_t get_network_code_for_msc(struct osmo_msc_data *msc)
 {
-	if (msc->core_ncc != -1)
-		return msc->core_ncc;
+	if (msc->core_mnc != -1)
+		return msc->core_mnc;
 	return msc->network->network_code;
 }
 

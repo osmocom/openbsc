@@ -68,7 +68,7 @@ struct osmo_msc_data {
 	struct osmo_timer_list pong_timer;
 	int advanced_ping;
 	struct bsc_msc_connection *msc_con;
-	int core_ncc;
+	int core_mnc;
 	int core_mcc;
 	int core_lac;
 	int core_ci;

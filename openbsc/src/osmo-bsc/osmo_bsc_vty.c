@@ -110,9 +110,9 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 	if (msc->bsc_key_present)
 		vty_out(vty, " auth-key %s%s",
 			osmo_hexdump(msc->bsc_key, sizeof(msc->bsc_key)), VTY_NEWLINE);
-	if (msc->core_ncc != -1)
+	if (msc->core_mnc != -1)
 		vty_out(vty, " core-mobile-network-code %d%s",
-			msc->core_ncc, VTY_NEWLINE);
+			msc->core_mnc, VTY_NEWLINE);
 	if (msc->core_mcc != -1)
 		vty_out(vty, " core-mobile-country-code %d%s",
 			msc->core_mcc, VTY_NEWLINE);
@@ -261,10 +261,10 @@ DEFUN(cfg_net_no_bsc_key, cfg_net_bsc_no_key_cmd,
 DEFUN(cfg_net_bsc_ncc,
       cfg_net_bsc_ncc_cmd,
       "core-mobile-network-code <1-999>",
-      "Use this network code for the core network\n" "NCC value\n")
+      "Use this network code for the core network\n" "MNC value\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
-	data->core_ncc = atoi(argv[0]);
+	data->core_mnc = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 

@@ -313,7 +313,7 @@ static int bsc_patch_mm_info(struct gsm_subscriber_connection *conn,
 
 static int has_core_identity(struct osmo_msc_data *msc)
 {
-	if (msc->core_ncc != -1)
+	if (msc->core_mnc != -1)
 		return 1;
 	if (msc->core_mcc != -1)
 		return 1;
