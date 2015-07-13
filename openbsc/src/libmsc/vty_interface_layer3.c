@@ -1037,12 +1037,32 @@ DEFUN(cfg_nitb_no_subscr_create, cfg_nitb_no_subscr_create_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nitb_assign_tmsi, cfg_nitb_assign_tmsi_cmd,
+      "assign-tmsi",
+      "Assign TMSI during Location Updating.\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->avoid_tmsi = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nitb_no_assign_tmsi, cfg_nitb_no_assign_tmsi_cmd,
+      "no assign-tmsi",
+      NO_STR "Assign TMSI during Location Updating.\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->avoid_tmsi = 1;
+	return CMD_SUCCESS;
+}
+
 static int config_write_nitb(struct vty *vty)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	vty_out(vty, "nitb%s", VTY_NEWLINE);
 	vty_out(vty, " %ssubscriber-create-on-demand%s",
 		gsmnet->create_subscriber ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, " %suse-tmsi%s",
+		gsmnet->avoid_tmsi ? "no" : "", VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -1096,6 +1116,8 @@ int bsc_vty_init_extra(void)
 	install_node(&nitb_node, config_write_nitb);
 	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
 	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);
+	install_element(NITB_NODE, &cfg_nitb_assign_tmsi_cmd);
+	install_element(NITB_NODE, &cfg_nitb_no_assign_tmsi_cmd);
 
 	return 0;
 }

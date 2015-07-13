@@ -67,7 +67,7 @@
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;
 
-int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, uint32_t tmsi);
+static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn);
 static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 			   uint8_t pdisc, uint8_t msg_type);
 static void schedule_reject(struct gsm_subscriber_connection *conn);
@@ -294,6 +294,42 @@ static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
 					   struct gsm_loc_updating_operation);
 }
 
+static int finish_lu(struct gsm_subscriber_connection *conn)
+{
+	int rc = 0;
+	int avoid_tmsi = conn->bts->network->avoid_tmsi;
+
+	/* We're all good */
+	if (avoid_tmsi) {
+		conn->subscr->tmsi = GSM_RESERVED_TMSI;
+		db_sync_subscriber(conn->subscr);
+	} else {
+		db_subscriber_alloc_tmsi(conn->subscr);
+	}
+
+	rc = gsm0408_loc_upd_acc(conn);
+	if (conn->bts->network->send_mm_info) {
+		/* send MM INFO with network name */
+		rc = gsm48_tx_mm_info(conn);
+	}
+
+	/* call subscr_update after putting the loc_upd_acc
+	 * in the transmit queue, since S_SUBSCR_ATTACHED might
+	 * trigger further action like SMS delivery */
+	subscr_update(conn->subscr, conn->bts,
+		      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+
+	/*
+	 * The gsm0408_loc_upd_acc sends a MI with the TMSI. The
+	 * MS needs to respond with a TMSI REALLOCATION COMPLETE
+	 * (even if the TMSI is the same).
+	 */
+	if (avoid_tmsi)
+		release_loc_updating_req(conn, 1);
+
+	return rc;
+}
+
 static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
                                      struct msgb *msg, void *data, void *param)
 {
@@ -312,25 +348,7 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 
 		case GSM_SECURITY_NOAVAIL:
 		case GSM_SECURITY_SUCCEEDED:
-			/* We're all good */
-			db_subscriber_alloc_tmsi(conn->subscr);
-			rc = gsm0408_loc_upd_acc(conn, conn->subscr->tmsi);
-			if (conn->bts->network->send_mm_info) {
-				/* send MM INFO with network name */
-				rc = gsm48_tx_mm_info(conn);
-			}
-
-			/* call subscr_update after putting the loc_upd_acc
-			 * in the transmit queue, since S_SUBSCR_ATTACHED might
-			 * trigger further action like SMS delivery */
-			subscr_update(conn->subscr, conn->bts,
-				      GSM_SUBSCRIBER_UPDATE_ATTACHED);
-
-			/*
-			 * The gsm0408_loc_upd_acc sends a MI with the TMSI. The
-			 * MS needs to respond with a TMSI REALLOCATION COMPLETE
-			 * (even if the TMSI is the same).
-			 */
+			rc = finish_lu(conn);
 			break;
 
 		default:
@@ -434,7 +452,7 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 }
 
 /* Chapter 9.2.13 : Send LOCATION UPDATE ACCEPT */
-int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, uint32_t tmsi)
+static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 {
 	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -452,8 +470,16 @@ int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, uint32_t tmsi)
 	gsm48_generate_lai(lai, bts->network->country_code,
 		     bts->network->network_code, bts->location_area_code);
 
-	mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
-	gsm48_generate_mid_from_tmsi(mid, tmsi);
+	if (conn->subscr->tmsi == GSM_RESERVED_TMSI) {
+		uint8_t mi[10];
+		int len;
+		len = gsm48_generate_mid_from_imsi(mi, conn->subscr->imsi);
+		mid = msgb_put(msg, len);
+		memcpy(mid, mi, len);
+	} else {
+		mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
+		gsm48_generate_mid_from_tmsi(mid, conn->subscr->tmsi);
+	}
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
@@ -946,24 +972,30 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
 	mi_type = mi[0] & GSM_MI_TYPE_MASK;
-	if (mi_type != GSM_MI_TYPE_TMSI) {
-		DEBUGPC(DMM, "mi_type is not TMSI: %d\n", mi_type);
+
+	if (mi_type == GSM_MI_TYPE_IMSI) {
+		DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
+			req->cm_service_type, mi_type, mi_string);
+		subscr = subscr_get_by_imsi(bts->network->subscr_group,
+					    mi_string);
+	} else if (mi_type == GSM_MI_TYPE_TMSI) {
+		DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
+			req->cm_service_type, mi_type, mi_string);
+		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
+				tmsi_from_string(mi_string));
+	} else {
+		DEBUGPC(DMM, "mi_type is not expected: %d\n", mi_type);
 		return gsm48_tx_mm_serv_rej(conn,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
-
-	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
-	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
-		req->cm_service_type, mi_type, mi_string);
 
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
 
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);
 
-	subscr = subscr_get_by_tmsi(bts->network->subscr_group,
-				    tmsi_from_string(mi_string));
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)

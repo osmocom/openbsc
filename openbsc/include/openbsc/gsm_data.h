@@ -281,6 +281,9 @@ struct gsm_network {
 	struct gsm_subscriber_group *subscr_group;
 	struct gsm_sms_queue *sms_queue;
 
+	/* nitb related control */
+	int avoid_tmsi;
+
 	/* control interface */
 	struct ctrl_handle *ctrl;
 };
