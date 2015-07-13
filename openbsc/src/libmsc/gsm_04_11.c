@@ -281,13 +281,15 @@ int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
 	int rc;
 
 #ifdef BUILD_SMPP
+	int smpp_first = smpp_route_smpp_first(gsms, conn);
+
 	/*
 	 * Route through SMPP first before going to the local database. In case
 	 * of a unroutable message and no local subscriber, SMPP will be tried
 	 * twice. In case of an unknown subscriber continue with the normal
 	 * delivery of the SMS.
 	 */
-	if (smpp_route_smpp_first(gsms, conn)) {
+	if (smpp_first) {
 		rc = smpp_try_deliver(gsms, conn);
 		if (rc == 1)
 			goto try_local;
@@ -306,6 +308,10 @@ try_local:
 						 gsms->dst.addr);
 	if (!gsms->receiver) {
 #ifdef BUILD_SMPP
+		/* Avoid a second look-up */
+		if (smpp_first)
+			return 1; /* cause 1: unknown subscriber */
+
 		rc = smpp_try_deliver(gsms, conn);
 		if (rc == 1) {
 			rc = 1; /* cause 1: unknown subscriber */
