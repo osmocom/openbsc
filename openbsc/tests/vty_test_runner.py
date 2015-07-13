@@ -155,12 +155,13 @@ class TestVTYNITB(TestVTYGenericBSC):
         return "smpp" in res
 
     def testSmppFirst(self):
-        if not self.checkForSmpp():
-            return
-
         # enable the configuration
         self.vty.enable()
         self.vty.command("configure terminal")
+
+        if not self.checkForSmpp():
+            return
+
         self.vty.command("smpp")
 
         # check the default
