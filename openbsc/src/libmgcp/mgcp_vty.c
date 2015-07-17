@@ -144,6 +144,8 @@ static int config_write_mgcp(struct vty *vty)
 			g_cfg->osmux_batch_size, VTY_NEWLINE);
 		vty_out(vty, "  osmux port %u%s",
 			g_cfg->osmux_port, VTY_NEWLINE);
+		vty_out(vty, "  osmux dummy %s%s",
+			g_cfg->osmux_dummy ? "on" : "off", VTY_NEWLINE);
 	}
 	return CMD_SUCCESS;
 }
@@ -1245,6 +1247,19 @@ DEFUN(cfg_mgcp_osmux_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_osmux_dummy,
+      cfg_mgcp_osmux_dummy_cmd,
+      "osmux dummy (on|off)",
+      OSMUX_STR "Enable dummy padding\n" "Disable dummy padding\n")
+{
+	if (strcmp(argv[0], "on") == 0)
+		g_cfg->osmux_dummy = 1;
+	else if (strcmp(argv[0], "off") == 0)
+		g_cfg->osmux_dummy = 0;
+
+	return CMD_SUCCESS;
+}
+
 int mgcp_vty_init(void)
 {
 	install_element_ve(&show_mgcp_cmd);
@@ -1304,6 +1319,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_factor_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_size_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_port_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_osmux_dummy_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_allow_transcoding_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_allow_transcoding_cmd);
 

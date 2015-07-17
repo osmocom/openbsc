@@ -462,6 +462,12 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, int role,
 		LOGP(DMGCP, LOGL_ERROR, "Cannot allocate input osmux handle\n");
 		return -1;
 	}
+	if (!osmux_xfrm_input_open_circuit(endp->osmux.in, endp->osmux.cid,
+					   endp->cfg->osmux_dummy)) {
+		LOGP(DMGCP, LOGL_ERROR, "Cannot open osmux circuit %u\n",
+		     endp->osmux.cid);
+		return -1;
+	}
 
 	switch (endp->cfg->role) {
 		case MGCP_BSC_NAT:
@@ -480,6 +486,7 @@ void osmux_disable_endpoint(struct mgcp_endpoint *endp)
 {
 	LOGP(DMGCP, LOGL_INFO, "Releasing endpoint %u using Osmux CID %u\n",
 	     ENDPOINT_NUMBER(endp), endp->osmux.cid);
+	osmux_xfrm_input_close_circuit(endp->osmux.in, endp->osmux.cid);
 	endp->osmux.state = OSMUX_STATE_DISABLED;
 	endp->osmux.cid = -1;
 	osmux_handle_put(endp->osmux.in);
