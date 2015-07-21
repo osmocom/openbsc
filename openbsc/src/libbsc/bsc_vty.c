@@ -794,6 +794,8 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " dtx-used %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
 	vty_out(vty, " subscriber-keep-in-ram %d%s",
 		gsmnet->subscr_group->keep_subscr, VTY_NEWLINE);
+	vty_out(vty, " extension-prefix %llu%s",
+		gsmnet->exten_prefix, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1598,6 +1600,17 @@ DEFUN(cfg_net_subscr_keep,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->subscr_group->keep_subscr = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_exten_prefix,
+      cfg_net_exten_prefix_cmd,
+      "extension-prefix <1-999999999>",
+      "Prefix for subscribers extension.\n"
+      "Extension prefix\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->exten_prefix = strtoull(argv[0], NULL, 10);
 	return CMD_SUCCESS;
 }
 
@@ -3805,6 +3818,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
 	install_element(GSMNET_NODE, &cfg_net_subscr_keep_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
+	install_element(GSMNET_NODE, &cfg_net_exten_prefix_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

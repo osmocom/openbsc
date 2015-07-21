@@ -205,7 +205,9 @@ void subscr_remove_request(struct subscr_request *request)
 struct gsm_subscriber *subscr_create_subscriber(struct gsm_subscriber_group *sgrp,
 					const char *imsi)
 {
-	struct gsm_subscriber *subscr = db_create_subscriber(imsi);
+	uint64_t prefix;
+	prefix = sgrp->net->exten_prefix;
+	struct gsm_subscriber *subscr = db_create_subscriber(imsi, prefix);
 	if (subscr)
 		subscr->group = sgrp;
 	return subscr;

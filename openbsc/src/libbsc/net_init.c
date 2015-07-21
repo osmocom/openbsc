@@ -49,6 +49,7 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 
 	net->subscr_group->net = net;
 	net->create_subscriber = 1;
+	net->exten_prefix = 0;
 
 	net->country_code = country_code;
 	net->network_code = network_code;
