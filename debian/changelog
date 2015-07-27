@@ -1,3 +1,10 @@
+openbsc (0.14.0-fw.1) trusty; urgency=low
+
+  * Added osmocom-meas-utils package.
+  * Others enhancements and fixes.
+
+ -- Ivan Kluchnikov <kluchnikovi@gmail.com>  Mon, 27 Jul 2015 13:56:58 +0300
+
 openbsc (0.14.0) UNRELEASED; urgency=low
 
   * New upstream tag and additional patches.
