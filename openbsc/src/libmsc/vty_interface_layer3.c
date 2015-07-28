@@ -1061,8 +1061,8 @@ static int config_write_nitb(struct vty *vty)
 	vty_out(vty, "nitb%s", VTY_NEWLINE);
 	vty_out(vty, " %ssubscriber-create-on-demand%s",
 		gsmnet->create_subscriber ? "" : "no ", VTY_NEWLINE);
-	vty_out(vty, " %suse-tmsi%s",
-		gsmnet->avoid_tmsi ? "no" : "", VTY_NEWLINE);
+	vty_out(vty, " %sassign-tmsi%s",
+		gsmnet->avoid_tmsi ? "no " : "", VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
