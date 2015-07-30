@@ -1605,7 +1605,7 @@ DEFUN(cfg_net_subscr_keep,
 
 DEFUN(cfg_net_exten_prefix,
       cfg_net_exten_prefix_cmd,
-      "extension-prefix <1-999999999>",
+      "extension-prefix <0-999999999>",
       "Prefix for subscribers extension.\n"
       "Extension prefix\n")
 {
