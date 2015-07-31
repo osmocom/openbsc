@@ -68,6 +68,7 @@ struct gsm_subscriber *subscr_alloc(void)
 
 static void subscr_free(struct gsm_subscriber *subscr)
 {
+	OSMO_ASSERT(!subscr->is_paging);
 	llist_del(&subscr->entry);
 	talloc_free(subscr);
 }

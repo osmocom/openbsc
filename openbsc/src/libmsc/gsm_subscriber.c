@@ -33,6 +33,7 @@
 
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/osmo_msc.h>
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
@@ -82,7 +83,21 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber *subscr = param;
 	struct paging_signal_data sig_data;
 
-	OSMO_ASSERT(subscr->is_paging);
+	/*
+	* We might receive a timeout or paging response after one
+	* of the systems has already stopped paging and the below
+	* code was executed. In this case just leave early and free
+	* the resources early.
+	* This doesn't need a subscr_put as this should have been
+	* executed when is_paging has been set to 0.
+	*/
+	if (!subscr->is_paging) {
+		LOGP(DMM, LOGL_NOTICE, "Unexpected pagign event(%d,%d) for %s\n",
+			hooknum, event, subscr_name(subscr));
+		if (conn)
+			msc_release_connection(conn);
+		return 0;
+	}
 
 	/*
 	 * Stop paging on all other BTS. E.g. if this is
