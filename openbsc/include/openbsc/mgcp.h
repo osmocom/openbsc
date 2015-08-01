@@ -30,6 +30,9 @@
 #include "debug.h"
 
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #define RTP_PORT_DEFAULT 4000
 #define RTP_PORT_NET_DEFAULT 16000
