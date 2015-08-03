@@ -547,7 +547,7 @@ DEFUN(ena_subscr_name,
 
 	if (strlen(name) > sizeof(subscr->name)-1) {
 		vty_out(vty,
-			"%% NAME is too long, max. %d characters are allowed%s",
+			"%% NAME is too long, max. %zu characters are allowed%s",
 			sizeof(subscr->name)-1, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -580,7 +580,7 @@ DEFUN(ena_subscr_extension,
 
 	if (strlen(ext) > sizeof(subscr->extension)-1) {
 		vty_out(vty,
-			"%% EXTENSION is too long, max. %d characters are allowed%s",
+			"%% EXTENSION is too long, max. %zu characters are allowed%s",
 			sizeof(subscr->extension)-1, VTY_NEWLINE);
 		return CMD_WARNING;
 	}

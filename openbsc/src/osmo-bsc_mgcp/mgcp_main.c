@@ -156,7 +156,7 @@ static int read_call_agent(struct osmo_fd *fd, unsigned int what)
 		return -1;
 	} else if (slen > sizeof(addr)) {
 		fprintf(stderr, "Gateway received message from outerspace: %zu %zu\n",
-			slen, sizeof(addr));
+			(size_t) slen, sizeof(addr));
 		return -1;
 	}
 
