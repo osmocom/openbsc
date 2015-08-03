@@ -118,11 +118,10 @@ int silent_call_reroute(struct gsm_subscriber_connection *conn, struct msgb *msg
 /* initiate a silent call with a given subscriber */
 int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
 {
-	int rc;
+	struct subscr_request *req;
 
-	rc = paging_request(subscr->group->net, subscr, type,
-			    paging_cb_silent, data);
-	return rc;
+	req = subscr_request_channel(subscr, type, paging_cb_silent, data);
+	return req != NULL;
 }
 
 /* end a silent call with a given subscriber */
