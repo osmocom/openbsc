@@ -91,7 +91,6 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	 * and forget we wanted to page.
 	 */
 	paging_request_stop(NULL, subscr, NULL, NULL);
-	subscr->is_paging = 0;
 
 	/* Inform parts of the system we don't know */
 	sig_data.subscr = subscr;
@@ -112,6 +111,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	}
 
 	/* balanced with the moment we start paging */
+	subscr->is_paging = 0;
 	subscr_put(subscr);
 	return 0;
 }
