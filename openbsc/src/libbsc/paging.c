@@ -391,28 +391,21 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 			 struct gsm_subscriber_connection *conn,
 			 struct msgb *msg)
 {
-	struct gsm_bts *bts = NULL;
+	struct gsm_bts *bts;
 
 	log_set_context(BSC_CTX_SUBSCR, subscr);
 
+	/* Stop this first and dispatch the request */
 	if (_bts)
 		_paging_request_stop(_bts, subscr, conn, msg);
 
-	do {
-		/*
-		 * FIXME: Don't use the lac of the subscriber...
-		 * as it might have magically changed the lac.. use the
-		 * location area of the _bts as reconfiguration of the
-		 * network is probably happening less often.
-		 */
-		bts = gsm_bts_by_lac(subscr->group->net, subscr->lac, bts);
-		if (!bts)
-			break;
-
-		/* Stop paging */
-		if (bts != _bts)
-			_paging_request_stop(bts, subscr, NULL, NULL);
-	} while (1);
+	/* Make sure to cancel this everywhere else */
+	llist_for_each_entry(bts, &subscr->group->net->bts_list, list) {
+		/* Sort of an optimization. */
+		if (bts == _bts)
+			continue;
+		_paging_request_stop(bts, subscr, NULL, NULL);
+	}
 }
 
 void paging_update_buffer_space(struct gsm_bts *bts, uint16_t free_slots)
