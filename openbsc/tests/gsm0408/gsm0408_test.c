@@ -48,7 +48,7 @@
 #define VERIFY(res, cmp, wanted)					\
 	if (!(res cmp wanted)) {					\
 		printf("ASSERT failed: %s:%d Wanted: %d %s %d\n",	\
-			__FILE__, __LINE__, res, # cmp, wanted);	\
+			__FILE__, __LINE__, (int) res, # cmp, (int) wanted);	\
 	}
 
 
