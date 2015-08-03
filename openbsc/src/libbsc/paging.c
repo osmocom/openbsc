@@ -341,8 +341,10 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 			break;
 
 		rc = paging_request_bts(bts, subscr, type, cbfn, data);
-		if (rc < 0)
+		if (rc < 0) {
+			paging_request_stop(NULL, subscr, NULL, NULL);
 			return rc;
+		}
 		num_pages += rc;
 	} while (1);
 
