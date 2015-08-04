@@ -58,8 +58,10 @@ extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
 	int rc;
+	int reqs;
 	struct gsm_auth_info ainfo;
 	struct gsm_auth_tuple atuple;
+	struct llist_head *entry;
 	char expire_time[200];
 
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
@@ -107,8 +109,12 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 			"%a, %d %b %Y %T %z", localtime(&subscr->expire_lu));
 	expire_time[sizeof(expire_time) - 1] = '\0';
 	vty_out(vty, "    Expiration Time: %s%s", expire_time, VTY_NEWLINE);
-	vty_out(vty, "    Paging: %s paging%s",
-		subscr->is_paging ? "is" : "not", VTY_NEWLINE);
+
+	reqs = 0;
+	llist_for_each(entry, &subscr->requests)
+		reqs += 1;
+	vty_out(vty, "    Paging: %s paging Requests: %d%s",
+		subscr->is_paging ? "is" : "not", reqs, VTY_NEWLINE);
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
 
