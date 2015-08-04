@@ -1465,6 +1465,15 @@ static int switch_for_handover(struct gsm_lchan *old_lchan,
 {
 	struct rtp_socket *old_rs, *new_rs, *other_rs;
 
+	/* Ask the new socket to send to the already known port. */
+	if (new_lchan->conn->mncc_rtp_bridge) {
+		LOGP(DHO, LOGL_DEBUG, "Forwarding RTP\n");
+		rsl_ipacc_mdcx(new_lchan,
+					old_lchan->abis_ip.connect_ip,
+					old_lchan->abis_ip.connect_port, 0);
+		return 0;
+	}
+
 	if (ipacc_rtp_direct) {
 		LOGP(DHO, LOGL_ERROR, "unable to handover in direct RTP mode\n");
 		return 0;
@@ -1509,11 +1518,19 @@ static int switch_for_handover(struct gsm_lchan *old_lchan,
 	return 0;
 }
 
+static void maybe_switch_for_handover(struct gsm_lchan *lchan)
+{
+	struct gsm_lchan *old_lchan;
+	old_lchan = bsc_handover_pending(lchan);
+	if (old_lchan)
+		switch_for_handover(old_lchan, lchan);
+}
+
 /* some other part of the code sends us a signal */
 static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				 void *handler_data, void *signal_data)
 {
-	struct gsm_lchan *lchan = signal_data, *old_lchan;
+	struct gsm_lchan *lchan = signal_data;
 	int rc;
 	struct gsm_network *net;
 	struct gsm_trans *trans;
@@ -1566,9 +1583,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 		 * Do we have a handover pending for this new lchan? In that
 		 * case re-route the audio from the old channel to the new one.
 		 */
-		old_lchan = bsc_handover_pending(lchan);
-		if (old_lchan)
-			switch_for_handover(old_lchan, lchan);
+		maybe_switch_for_handover(lchan);
 		break;
 	case S_ABISIP_DLCX_IND:
 		/* the BTS tells us a RTP stream has been disconnected */
@@ -3070,6 +3085,7 @@ static int tch_rtp_connect(struct gsm_network *net, void *arg)
 	 * complains about both rtp and rtp payload2 being present in the
 	 * same package!
 	 */
+	trans->conn->mncc_rtp_connect_pending = 1;
 	return rsl_ipacc_mdcx(lchan, rtp->ip, rtp->port, 0);
 }
 
@@ -3082,7 +3098,7 @@ static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 	llist_for_each_entry(tmp, &net->trans_list, entry) {
 		if (!tmp->conn)
 			continue;
-		if (tmp->conn->lchan != lchan)
+		if (tmp->conn->lchan != lchan && tmp->conn->ho_lchan != lchan)
 			continue;
 		trans = tmp;
 		break;
@@ -3102,9 +3118,15 @@ static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 				gsm_lchan_name(lchan));
 			mncc_recv_rtp_sock(net, trans, MNCC_RTP_CREATE);
 		}
+		/*
+		 * TODO: this appears to be too early? Why not until after
+		 * the handover detect or the handover complete?
+		 */
+		maybe_switch_for_handover(lchan);
 		break;
 	case S_ABISIP_MDCX_ACK:
-		if (lchan->conn->mncc_rtp_bridge) {
+		if (lchan->conn->mncc_rtp_connect_pending) {
+			lchan->conn->mncc_rtp_connect_pending = 0;
 			LOGP(DMNCC, LOGL_NOTICE, "%s sending pending RTP connect ind.\n",
 				gsm_lchan_name(lchan));
 			mncc_recv_rtp_sock(net, trans, MNCC_RTP_CONNECT);
