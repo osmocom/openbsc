@@ -67,6 +67,8 @@
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;
 
+static int tch_rtp_signal(struct gsm_lchan *lchan, int signal);
+
 static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn);
 static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 			   uint8_t pdisc, uint8_t msg_type);
@@ -1514,6 +1516,10 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 	if (subsys != SS_ABISIP)
 		return 0;
 
+	/* RTP bridge handling */
+	if (lchan->conn && lchan->conn->mncc_rtp_bridge)
+		return tch_rtp_signal(lchan, signal);
+
 	/* in case we use direct BTS-to-BTS RTP */
 	if (ipacc_rtp_direct)
 		return 0;
@@ -2900,10 +2906,210 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *mode = arg;
+	struct gsm_lchan *lchan = trans->conn->lchan;
+
+	/*
+	 * We were forced to make an assignment a lot earlier and
+	 * we should avoid sending another assignment that might
+	 * even lead to a different kind of lchan (TCH/F vs. TCH/H).
+	 * In case of rtp-bridge it is too late to change things
+	 * here.
+	 */
+	if (trans->conn->mncc_rtp_bridge && lchan->tch_mode != GSM48_CMODE_SIGN)
+		return 0;
 
 	return gsm0808_assign_req(trans->conn, mode->lchan_mode,
 		trans->conn->lchan->type != GSM_LCHAN_TCH_H);
 }
+
+static void mncc_recv_rtp(struct gsm_network *net, uint32_t callref,
+		int cmd, uint32_t addr, uint16_t port, uint32_t payload_type,
+		uint32_t payload_msg_type)
+{
+	uint8_t data[sizeof(struct gsm_mncc)];
+	struct gsm_mncc_rtp *rtp;
+
+	memset(&data, 0, sizeof(data));
+	rtp = (struct gsm_mncc_rtp *) &data[0];
+
+	rtp->callref = callref;
+	rtp->msg_type = cmd;
+	rtp->ip = addr;
+	rtp->port = port;
+	rtp->payload_type = payload_type;
+	rtp->payload_msg_type = payload_msg_type;
+	mncc_recvmsg(net, NULL, cmd, (struct gsm_mncc *)data);
+}
+
+static void mncc_recv_rtp_sock(struct gsm_network *net, struct gsm_trans *trans, int cmd)
+{
+	struct gsm_lchan *lchan;
+	int msg_type;
+
+	lchan = trans->conn->lchan;
+	switch (lchan->abis_ip.rtp_payload) {
+	case RTP_PT_GSM_FULL:
+		msg_type = GSM_TCHF_FRAME;
+		break;
+	case RTP_PT_GSM_EFR:
+		msg_type = GSM_TCHF_FRAME_EFR;
+		break;
+	case RTP_PT_GSM_HALF:
+		msg_type = GSM_TCHH_FRAME;
+		break;
+	case RTP_PT_AMR:
+		msg_type = GSM_TCH_FRAME_AMR;
+		break;
+	default:
+		LOGP(DMNCC, LOGL_ERROR, "%s unknown payload type %d\n",
+			gsm_lchan_name(lchan), lchan->abis_ip.rtp_payload);
+		msg_type = 0;
+		break;
+	}
+
+	return mncc_recv_rtp(net, trans->callref, cmd,
+			lchan->abis_ip.bound_ip,
+			lchan->abis_ip.bound_port,
+			lchan->abis_ip.rtp_payload,
+			msg_type);
+}
+
+static void mncc_recv_rtp_err(struct gsm_network *net, uint32_t callref, int cmd)
+{
+	return mncc_recv_rtp(net, callref, cmd, 0, 0, 0, 0);
+}
+
+static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
+{
+	struct gsm_bts *bts;
+	struct gsm_lchan *lchan;
+	struct gsm_trans *trans;
+
+	/* Find callref */
+	trans = trans_find_by_callref(net, callref);
+	if (!trans) {
+		LOGP(DMNCC, LOGL_ERROR, "RTP create for non-existing trans\n");
+		mncc_recv_rtp_err(net, callref, MNCC_RTP_CREATE);
+		return -EIO;
+	}
+	log_set_context(BSC_CTX_SUBSCR, trans->subscr);
+	if (!trans->conn) {
+		LOGP(DMNCC, LOGL_NOTICE, "RTP create for trans without conn\n");
+		mncc_recv_rtp_err(net, callref, MNCC_RTP_CREATE);
+		return 0;
+	}
+
+	lchan = trans->conn->lchan;
+	bts = lchan->ts->trx->bts;
+	if (!is_ipaccess_bts(bts)) {
+		/*
+		 * I want this to be straight forward and have no audio flow
+		 * through the nitb/osmo-mss system. This currently means that
+		 * this will not work with BS11/Nokia type BTS. We would need
+		 * to have a trau<->rtp bridge for these but still preferable
+		 * in another process.
+		 */
+		LOGP(DMNCC, LOGL_ERROR, "RTP create only works with IP systems\n");
+		mncc_recv_rtp_err(net, callref, MNCC_RTP_CREATE);
+		return -EINVAL;
+	}
+
+	trans->conn->mncc_rtp_bridge = 1;
+	/*
+	 * *sigh* we need to pick a codec now. Pick the most generic one
+	 * right now and hope we could fix that later on. This is very
+	 * similiar to the above routine.
+	 * TODO: Use the default codec version...
+	 */
+	if (lchan->tch_mode == GSM48_CMODE_SIGN) {
+		trans->conn->mncc_rtp_create_pending = 1;
+		/* TODO... transport or fix the default type... */
+		return gsm0808_assign_req(trans->conn, GSM48_CMODE_SPEECH_V1,
+				lchan->type != GSM_LCHAN_TCH_H);
+	}
+
+	mncc_recv_rtp_sock(trans->net, trans, MNCC_RTP_CREATE);
+	return 0;
+}
+
+static int tch_rtp_connect(struct gsm_network *net, void *arg)
+{
+	struct gsm_lchan *lchan;
+	struct gsm_trans *trans;
+	struct gsm_mncc_rtp *rtp = arg;
+
+	/* Find callref */
+	trans = trans_find_by_callref(net, rtp->callref);
+	if (!trans) {
+		LOGP(DMNCC, LOGL_ERROR, "RTP connect for non-existing trans\n");
+		mncc_recv_rtp_err(net, rtp->callref, MNCC_RTP_CONNECT);
+		return -EIO;
+	}
+	log_set_context(BSC_CTX_SUBSCR, trans->subscr);
+	if (!trans->conn) {
+		LOGP(DMNCC, LOGL_ERROR, "RTP connect for trans without conn\n");
+		mncc_recv_rtp_err(net, rtp->callref, MNCC_RTP_CONNECT);
+		return 0;
+	}
+
+	lchan = trans->conn->lchan;
+
+	/* TODO: Check if payload_msg_type is compatible with what we have */
+	if (rtp->payload_type != lchan->abis_ip.rtp_payload) {
+		LOGP(DMNCC, LOGL_ERROR, "RTP connect with different RTP payload\n");
+		mncc_recv_rtp_err(net, rtp->callref, MNCC_RTP_CONNECT);
+	}
+
+	/*
+	 * FIXME: payload2 can't be sent with MDCX as the osmo-bts code
+	 * complains about both rtp and rtp payload2 being present in the
+	 * same package!
+	 */
+	return rsl_ipacc_mdcx(lchan, rtp->ip, rtp->port, 0);
+}
+
+static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
+{
+	struct gsm_network *net;
+	struct gsm_trans *tmp, *trans = NULL;
+
+	net = lchan->ts->trx->bts->network;
+	llist_for_each_entry(tmp, &net->trans_list, entry) {
+		if (!tmp->conn)
+			continue;
+		if (tmp->conn->lchan != lchan)
+			continue;
+		trans = tmp;
+		break;
+	}
+
+	if (!trans) {
+		LOGP(DMNCC, LOGL_ERROR, "%s IPA abis signal but no transaction.\n",
+			gsm_lchan_name(lchan));
+		return 0;
+	}
+
+	switch (signal) {
+	case S_ABISIP_CRCX_ACK:
+		if (lchan->conn->mncc_rtp_create_pending) {
+			lchan->conn->mncc_rtp_create_pending = 0;
+			LOGP(DMNCC, LOGL_NOTICE, "%s sending pending RTP create ind.\n",
+				gsm_lchan_name(lchan));
+			mncc_recv_rtp_sock(net, trans, MNCC_RTP_CREATE);
+		}
+		break;
+	case S_ABISIP_MDCX_ACK:
+		if (lchan->conn->mncc_rtp_bridge) {
+			LOGP(DMNCC, LOGL_NOTICE, "%s sending pending RTP connect ind.\n",
+				gsm_lchan_name(lchan));
+			mncc_recv_rtp_sock(net, trans, MNCC_RTP_CONNECT);
+		}
+		break;
+	}
+
+	return 0;
+}
+
 
 static struct downstate {
 	uint32_t	states;
@@ -2985,6 +3191,13 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		return tch_recv_mncc(net, data->callref, 0);
 	case MNCC_FRAME_RECV:
 		return tch_recv_mncc(net, data->callref, 1);
+	case MNCC_RTP_CREATE:
+		return tch_rtp_create(net, data->callref);
+	case MNCC_RTP_CONNECT:
+		return tch_rtp_connect(net, arg);
+	case MNCC_RTP_FREE:
+		/* unused right now */
+		return -EIO;
 	case GSM_TCHF_FRAME:
 	case GSM_TCHF_FRAME_EFR:
 	case GSM_TCHH_FRAME:
