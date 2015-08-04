@@ -353,6 +353,7 @@ static void subscr_expire_callback(void *data, long long unsigned int id)
 		LOGP(DMM, LOGL_DEBUG, "Not expiring subscriber %s (ID %llu)\n",
 			subscr_name(s), id);
 		subscr_update_expire_lu(s, conn->bts);
+		subscr_put(s);
 		return;
 	}
 
