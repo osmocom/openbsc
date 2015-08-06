@@ -301,7 +301,7 @@ static int update_db_revision_3(void)
 	dbi_result_free(result);
 
 	/* Cycle through old messages and convert them to the new format */
-	result = dbi_conn_queryf(conn, "SELECT * FROM SMS_3");
+	result = dbi_conn_query(conn, "SELECT * FROM SMS_3");
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR,
 		     "Failed fetch messages from the old SMS table (upgrade from rev 3).\n");
@@ -1095,8 +1095,8 @@ int db_subscriber_list_active(void (*cb)(struct gsm_subscriber*,void*), void *cl
 {
 	dbi_result result;
 
-	result = dbi_conn_queryf(conn,
-			"SELECT * from Subscriber WHERE LAC != 0 AND authorized = 1");
+	result = dbi_conn_query(conn,
+		       "SELECT * from Subscriber WHERE LAC != 0 AND authorized = 1");
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR, "Failed to list active subscribers\n");
 		return -1;

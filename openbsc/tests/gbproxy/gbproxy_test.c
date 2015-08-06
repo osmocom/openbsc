@@ -956,7 +956,7 @@ int gprs_ns_rcvmsg(struct gprs_ns_inst *nsi, struct msgb *msg,
 int gprs_ns_callback(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 			 struct msgb *msg, uint16_t bvci)
 {
-	printf("CALLBACK, event %d, msg length %d, bvci 0x%04x\n%s\n\n",
+	printf("CALLBACK, event %d, msg length %zu, bvci 0x%04x\n%s\n\n",
 			event, msgb_bssgp_len(msg), bvci,
 			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 

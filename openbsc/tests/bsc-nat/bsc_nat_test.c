@@ -645,7 +645,7 @@ static void test_mgcp_rewrite(void)
 		}
 
 		if (msgb_l2len(output) != strlen(patc)) {
-			printf("Wrong sizes for test: %d  %d != %d != %d\n", i, msgb_l2len(output), strlen(patc), strlen(orig));
+			printf("Wrong sizes for test: %d  %u != %zu != %zu\n", i, msgb_l2len(output), strlen(patc), strlen(orig));
 			printf("String '%s' vs '%s'\n", (const char *) output->l2h, patc);
 			abort();
 		}

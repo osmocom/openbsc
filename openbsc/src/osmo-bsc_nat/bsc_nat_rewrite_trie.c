@@ -45,10 +45,10 @@ static void insert_rewrite_node(struct nat_rewrite_rule *rule, struct nat_rewrit
 {
 	struct nat_rewrite_rule *new = &root->rule;
 
-	const size_t len = strlen(rule->prefix);
+	const int len = strlen(rule->prefix);
 	int i;
 
-	if (len == 0) {
+	if (len <= 0) {
 		LOGP(DNAT, LOGL_ERROR, "An empty prefix does not make sense.\n");
 		goto fail;
 	}

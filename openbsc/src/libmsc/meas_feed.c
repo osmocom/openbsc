@@ -2,6 +2,8 @@
 
 #include <unistd.h>
 
+#include <sys/socket.h>
+
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/socket.h>
 #include <osmocom/core/write_queue.h>
