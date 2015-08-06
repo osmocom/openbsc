@@ -120,6 +120,11 @@ struct gsm_subscriber_connection {
 	/* Are we part of a special "silent" call */
 	int silent_call;
 
+	/* MNCC rtp bridge markers */
+	int mncc_rtp_bridge;
+	int mncc_rtp_create_pending;
+	int mncc_rtp_connect_pending;
+
 	/* bsc structures */
 	struct osmo_bsc_sccp_con *sccp_con;
 
