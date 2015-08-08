@@ -84,6 +84,14 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 
 	OSMO_ASSERT(subscr->is_paging);
 
+	/*
+	 * Stop paging on all other BTS. E.g. if this is
+	 * the first timeout on a BTS then the others will
+	 * timeout soon as well. Let's just stop everything
+	 * and forget we wanted to page.
+	 */
+	paging_request_stop(NULL, subscr, NULL, NULL);
+
 	/* Inform parts of the system we don't know */
 	sig_data.subscr = subscr;
 	sig_data.bts	= conn ? conn->bts : NULL;
@@ -96,15 +104,6 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 		&sig_data
 	);
 
-	/*
-	 * Stop paging on all other BTS. E.g. if this is
-	 * the first timeout on a BTS then the others will
-	 * timeout soon as well. Let's just stop everything
-	 * and forget we wanted to page.
-	 */
-	paging_request_stop(NULL, subscr, NULL, NULL);
-	subscr->is_paging = 0;
-
 	llist_for_each_entry_safe(request, tmp, &subscr->requests, entry) {
 		llist_del(&request->entry);
 		request->cbfn(hooknum, event, msg, data, request->param);
@@ -112,6 +111,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	}
 
 	/* balanced with the moment we start paging */
+	subscr->is_paging = 0;
 	subscr_put(subscr);
 	return 0;
 }
