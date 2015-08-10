@@ -33,6 +33,7 @@ enum {
 	DCTRL,
 	DSMPP,
 	DFILTER,
+	DSUP,
 	Debug_LastEntry,
 };
 

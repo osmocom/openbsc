@@ -160,6 +160,11 @@ static const struct log_info_cat default_categories[] = {
 		.description = "SMPP interface for external SMS apps",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DSUP] = {
+		.name = "DSUP",
+		.description = "SUP interface for external HLR",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 	[DFILTER] = {
 		.name = "DFILTER",
 		.description = "BSC/NAT IMSI based filtering",
