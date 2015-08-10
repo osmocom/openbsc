@@ -38,6 +38,7 @@ enum {
 	DRANAP,
 	DSUA,
 	DV42BIS,
+	DSUP,
 	Debug_LastEntry,
 };
 
