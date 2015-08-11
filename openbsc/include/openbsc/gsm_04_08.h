@@ -95,4 +95,8 @@ int tch_frame_down(struct gsm_network *net, uint32_t callref, struct gsm_data_fr
 
 int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, int ms);
 
+int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg);
+int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause);
+void release_loc_updating_req(struct gsm_subscriber_connection *conn, int release);
+
 #endif

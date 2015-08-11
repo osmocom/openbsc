@@ -1,6 +1,8 @@
 #ifndef _AUTH_H
 #define _AUTH_H
 
+#include <openbsc/gsm_data.h>
+
 struct gsm_auth_tuple;
 struct gsm_subscriber;
 
@@ -11,7 +13,8 @@ enum auth_action {
 	AUTH_DO_AUTH		= 3,	/* Only authentication, no ciphering */
 };
 
-int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
+int auth_get_tuple_for_subscr(enum gsm_auth_policy auth_policy,
+                              struct gsm_auth_tuple *atuple,
                               struct gsm_subscriber *subscr, int key_seq);
 
 #endif /* _AUTH_H */
