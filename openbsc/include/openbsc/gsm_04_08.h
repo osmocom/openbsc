@@ -94,4 +94,8 @@ void allocate_security_operation(struct gsm_subscriber_connection *conn);
 
 int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, struct amr_mode *modes);
 
+int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg);
+int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause);
+void release_loc_updating_req(struct gsm_subscriber_connection *conn, int release);
+
 #endif

@@ -82,19 +82,21 @@ _use_comp128_v1(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
  *   1 -> Tuple returned, need to do auth, then enable cipher
  *   2 -> Tuple returned, need to enable cipher
  */
-int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
+int auth_get_tuple_for_subscr(enum gsm_auth_policy auth_policy,
+                              struct gsm_auth_tuple *atuple,
                               struct gsm_subscriber *subscr, int key_seq)
 {
 	struct gsm_auth_info ainfo;
 	int rc;
 
-	/* Get subscriber info (if any) */
-	rc = db_get_authinfo_for_subscr(&ainfo, subscr);
-	if (rc < 0) {
-		LOGP(DMM, LOGL_NOTICE,
-		     "No retrievable Ki for subscriber %s, skipping auth\n",
-		     subscr_name(subscr));
-		return rc == -ENOENT ? AUTH_NOT_AVAIL : AUTH_ERROR;
+	if (auth_policy != GSM_AUTH_POLICY_REMOTE) {
+		/* Get subscriber info (if any) */
+		rc = db_get_authinfo_for_subscr(&ainfo, subscr);
+		if (rc < 0) {
+			LOGP(DMM, LOGL_NOTICE,
+				"No retrievable Ki for subscriber %s, skipping auth\n");
+			return rc == -ENOENT ? AUTH_NOT_AVAIL : AUTH_ERROR;
+		}
 	}
 
 	/* If possible, re-use the last tuple and skip auth */
@@ -108,6 +110,11 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 		db_sync_lastauthtuple_for_subscr(atuple, subscr);
 		DEBUGP(DMM, "Auth tuple use < 3, just doing ciphering\n");
 		return AUTH_DO_CIPH;
+	}
+
+	if (auth_policy == GSM_AUTH_POLICY_REMOTE) {
+		/* Request a new tuple from remote HLR */
+		return 0;
 	}
 
 	/* Generate a new one */

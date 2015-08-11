@@ -15,6 +15,7 @@
 
 #include <openbsc/rest_octets.h>
 #include <openbsc/common_cs.h>
+#include <openbsc/gprs_gsup_client.h>
 
 /** annotations for msgb ownership */
 #define __uses
@@ -70,6 +71,7 @@ struct gsm_loc_updating_operation {
         struct osmo_timer_list updating_timer;
 	unsigned int waiting_for_imsi : 1;
 	unsigned int waiting_for_imei : 1;
+	unsigned int waiting_for_remote_accept : 1;
 	unsigned int key_seq : 4;
 };
 
@@ -266,6 +268,7 @@ enum gsm_auth_policy {
 	GSM_AUTH_POLICY_ACCEPT_ALL, /* accept everyone, even if not authorized in DB */
 	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
 	GSM_AUTH_POLICY_REGEXP, /* accept IMSIs matching given regexp */
+	GSM_AUTH_POLICY_REMOTE,
 };
 
 #define GSM_T3101_DEFAULT 10
@@ -320,6 +323,7 @@ struct gsm_network {
 	struct llist_head upqueue;
 	struct llist_head trans_list;
 	struct bsc_api *bsc_api;
+	struct gprs_gsup_client *sup_client;
 
 	unsigned int num_bts;
 	struct llist_head bts_list;

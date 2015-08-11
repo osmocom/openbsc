@@ -56,6 +56,7 @@
 #include <openbsc/osmo_msc.h>
 #include <openbsc/handover.h>
 #include <openbsc/mncc_int.h>
+#include <openbsc/gsm_sup.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/bitvec.h>
 
@@ -212,9 +213,15 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 
 	/* If not done yet, try to get info for this user */
 	if (status < 0) {
-		rc = auth_get_tuple_for_subscr(&atuple, subscr, key_seq);
-		if (rc <= 0)
+		rc = auth_get_tuple_for_subscr(net->auth_policy, &atuple, subscr, key_seq);
+		if ((rc == 0) && (net->auth_policy == GSM_AUTH_POLICY_REMOTE)) {
+			allocate_security_operation(conn);
+			conn->sec_operation->cb = cb;
+			conn->sec_operation->cb_data = cb_data;
+			return subscr_query_auth_info(subscr);
+		} else if (rc <= 0) {
 			status = GSM_SECURITY_NOAVAIL;
+		}
 	}
 
 	/* Are we done yet ? */
@@ -290,12 +297,19 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
 	case GSM_AUTH_POLICY_ACCEPT_ALL:
 		return 1;
+	case GSM_AUTH_POLICY_REMOTE:
+		if (loc->waiting_for_remote_accept) {
+			subscr_location_update(subscriber);
+			return 0;
+		} else {
+			return 1;
+		}
 	default:
 		return 0;
 	}
 }
 
-static void release_loc_updating_req(struct gsm_subscriber_connection *conn, int release)
+void release_loc_updating_req(struct gsm_subscriber_connection *conn, int release)
 {
 	if (!conn->loc_operation)
 		return;
@@ -384,7 +398,7 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 	return rc;
 }
 
-static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg)
+int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	if (!conn->loc_operation)
 		return 0;
@@ -711,6 +725,8 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 	conn->subscr = subscr;
 	conn->subscr->equipment.classmark1 = lu->classmark1;
+
+	conn->loc_operation->waiting_for_remote_accept = 1;
 
 	/* check if we can let the subscriber into our network immediately
 	 * or if we need to wait for identity responses. */

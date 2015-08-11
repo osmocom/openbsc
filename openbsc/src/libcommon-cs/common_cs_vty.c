@@ -105,13 +105,14 @@ DEFUN(cfg_net_name_long,
 
 DEFUN(cfg_net_auth_policy,
       cfg_net_auth_policy_cmd,
-      "auth policy (closed|accept-all|regexp|token)",
+      "auth policy (closed|accept-all|regexp|token|remote)",
 	"Authentication (not cryptographic)\n"
 	"Set the GSM network authentication policy\n"
 	"Require the MS to be activated in HLR\n"
 	"Accept all MS, whether in HLR or not\n"
 	"Use regular expression for IMSI authorization decision\n"
-	"Use SMS-token based authentication\n")
+	"Use SMS-token based authentication\n"
+	"Use remote subscription data only (HLR)\n")
 {
 	enum gsm_auth_policy policy = gsm_auth_policy_parse(argv[0]);
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
