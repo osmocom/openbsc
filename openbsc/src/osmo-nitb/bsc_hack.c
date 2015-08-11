@@ -51,6 +51,7 @@
 #include <openbsc/ctrl.h>
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/smpp.h>
+#include <openbsc/gsm_sup.h>
 
 #include "../../bscconfig.h"
 
@@ -322,6 +323,14 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	printf("DB: Database prepared.\n");
+
+	if (bsc_gsmnet->auth_policy == GSM_AUTH_POLICY_REMOTE) {
+		rc = sup_init(bsc_gsmnet);
+		if (rc < 0) {
+			LOGP(DSUP, LOGL_FATAL, "Cannot set up subscriber management\n");
+			exit(2);
+		}
+	}
 
 	/* setup the timer */
 	db_sync_timer.cb = db_sync_timer_cb;
