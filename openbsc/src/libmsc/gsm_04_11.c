@@ -869,6 +869,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 		LOGP(DLSMS, LOGL_ERROR, "No available transaction ids\n");
 		send_signal(S_SMS_UNKNOWN_ERROR, NULL, sms, 0);
 		sms_free(sms);
+		msgb_free(msg);
 		return -EBUSY;
 	}
 
@@ -882,6 +883,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 		LOGP(DLSMS, LOGL_ERROR, "No memory for trans\n");
 		send_signal(S_SMS_UNKNOWN_ERROR, NULL, sms, 0);
 		sms_free(sms);
+		msgb_free(msg);
 		/* FIXME: send some error message */
 		return -ENOMEM;
 	}
