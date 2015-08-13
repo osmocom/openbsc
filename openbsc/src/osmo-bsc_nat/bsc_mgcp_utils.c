@@ -815,7 +815,7 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 /* we need to replace some strings... */
 struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint,
 			      const char *ip, int port, int osmux_cid,
-			      int *payload_type, int ensure_mode_set)
+			      int *first_payload_type, int ensure_mode_set)
 {
 	static const char crcx_str[] = "CRCX ";
 	static const char dlcx_str[] = "DLCX ";
@@ -873,14 +873,15 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint,
 				output->l3h[0] = '\n';
 			}
 		} else if (strncmp(aud_str, token, (sizeof aud_str) - 1) == 0) {
-			if (sscanf(token, "m=audio %*d RTP/AVP %d", &payload) != 1) {
+			int offset;
+			if (sscanf(token, "m=audio %*d RTP/AVP %n%d", &offset, &payload) != 1) {
 				LOGP(DMGCP, LOGL_ERROR, "Could not parsed audio line.\n");
 				msgb_free(output);
 				return NULL;
 			}
 
-			snprintf(buf, sizeof(buf)-1, "m=audio %d RTP/AVP %d%s",
-				 port, payload, cr ? "\r\n" : "\n");
+			snprintf(buf, sizeof(buf)-1, "m=audio %d RTP/AVP %s\n",
+				 port, &token[offset]);
 			buf[sizeof(buf)-1] = '\0';
 
 			output->l3h = msgb_put(output, strlen(buf));
@@ -908,8 +909,8 @@ copy:
 		memcpy(output->l3h, buf, strlen(buf));
 	}
 
-	if (payload != -1 && payload_type)
-		*payload_type = payload;
+	if (payload != -1 && first_payload_type)
+		*first_payload_type = payload;
 
 	return output;
 }

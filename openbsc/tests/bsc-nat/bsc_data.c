@@ -157,8 +157,8 @@ static const char crcx_patched[] = "CRCX 23265295 1e@mgw MGCP 1.0\r\nC: 394b0439
 
 
 /* patch the ip and port */
-static const char crcx_resp[] = "200 23265295\r\nI: 1\r\n\r\nv=0\r\nc=IN IP4 172.16.18.2\r\nm=audio 4002 RTP/AVP 98\r\na=rtpmap:98 AMR/8000\r\n";
-static const char crcx_resp_patched[] = "200 23265295\r\nI: 1\r\n\r\nv=0\r\nc=IN IP4 10.0.0.1\r\nm=audio 999 RTP/AVP 98\r\na=rtpmap:98 AMR/8000\r\na=fmtp:98 mode-set=2\r\n";
+static const char crcx_resp[] = "200 23265295\r\nI: 1\r\n\r\nv=0\r\nc=IN IP4 172.16.18.2\r\nm=audio 4002 RTP/AVP 98 3\r\na=rtpmap:98 AMR/8000\r\n";
+static const char crcx_resp_patched[] = "200 23265295\r\nI: 1\r\n\r\nv=0\r\nc=IN IP4 10.0.0.1\r\nm=audio 999 RTP/AVP 98 3\r\na=rtpmap:98 AMR/8000\r\na=fmtp:98 mode-set=2\r\n";
 
 /* patch the ip and port */
 static const char mdcx[] = "MDCX 23330829 8@mgw MGCP 1.0\r\nC: 394b0439fb\r\nI: 1\r\nL: p:20, a:AMR, nt:IN\r\nM: recvonly\r\n\r\nv=0\r\no=- 1049380491 0 IN IP4 172.16.18.2\r\ns=-\r\nc=IN IP4 172.16.18.2\r\nt=0 0\r\nm=audio 4410 RTP/AVP 126\r\na=rtpmap:126 AMR/8000/1\r\na=fmtp:126 mode-set=2;start-mode=0\r\na=ptime:20\r\na=recvonly\r\nm=image 4412 udptl t38\r\na=T38FaxVersion:0\r\na=T38MaxBitRate:14400\r\n";
