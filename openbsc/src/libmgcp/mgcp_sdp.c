@@ -25,6 +25,18 @@
 
 #include <errno.h>
 
+struct sdp_rtp_map {
+	/* the type */
+	int payload_type;
+	/* null, static or later dynamic codec name */
+	char *codec_name;
+	/* A pointer to the original line for later parsing */
+	char *map_line;
+
+	int rate;
+	int channels;
+};
+
 int mgcp_set_audio_info(void *ctx, struct mgcp_rtp_codec *codec,
 			int payload_type, const char *audio_name)
 {
@@ -91,14 +103,69 @@ int mgcp_set_audio_info(void *ctx, struct mgcp_rtp_codec *codec,
 	return 0;
 }
 
+void codecs_initialize(void *ctx, struct sdp_rtp_map *codecs, int used)
+{
+	int i;
+
+	for (i = 0; i < used; ++i) {
+		switch (codecs[i].payload_type) {
+		case 3:
+			codecs[i].codec_name = "GSM";
+			codecs[i].rate = 8000;
+			codecs[i].channels = 1;
+			break;
+		case 8:
+			codecs[i].codec_name = "PCMA";
+			codecs[i].rate = 8000;
+			codecs[i].channels = 1;
+			break;
+		case 18:
+			codecs[i].codec_name = "G729";
+			codecs[i].rate = 8000;
+			codecs[i].channels = 1;
+			break;
+		}
+	}
+}
+
+void codecs_update(void *ctx, struct sdp_rtp_map *codecs, int used, int payload, char *audio_name)
+{
+	int i;
+
+	for (i = 0; i < used; ++i) {
+		char audio_codec[64];
+		int rate = -1;
+		int channels = -1;
+		if (codecs[i].payload_type != payload)
+			continue;
+		if (sscanf(audio_name, "%63[^/]/%d/%d",
+				audio_codec, &rate, &channels) < 1) {
+			LOGP(DMGCP, LOGL_ERROR, "Failed to parse '%s'\n", audio_name);
+			continue;
+		}
+
+		codecs[i].map_line = talloc_strdup(ctx, audio_name);
+		codecs[i].codec_name = talloc_strdup(ctx, audio_codec);
+		codecs[i].rate = rate;
+		codecs[i].channels = channels;
+		return;
+	}
+
+	LOGP(DMGCP, LOGL_ERROR, "Unconfigured PT(%d) with %s\n", payload, audio_name);
+}
+
 
 int mgcp_parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 {
+	struct sdp_rtp_map codecs[10];
+	int codecs_used = 0;
 	char *line;
-	int found_media = 0;
-	/* TODO/XXX make it more generic */
-	int audio_payload = -1;
-	int audio_payload_alt = -1;
+	int maxptime = -1;
+	int i;
+	int codecs_assigned = 0;
+	void *tmp_ctx = talloc_new(NULL);
+
+	memset(&codecs, 0, sizeof(codecs));
 
 	for_each_line(line, p->save) {
 		switch (line[0]) {
@@ -113,17 +180,10 @@ int mgcp_parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 			int ptime, ptime2 = 0;
 			char audio_name[64];
 
-			if (audio_payload == -1)
-				break;
 
 			if (sscanf(line, "a=rtpmap:%d %63s",
 				   &payload, audio_name) == 2) {
-				if (payload == audio_payload)
-					mgcp_set_audio_info(p->cfg, &rtp->codec,
-							payload, audio_name);
-				else if (payload == audio_payload_alt)
-					mgcp_set_audio_info(p->cfg, &rtp->alt_codec,
-							payload, audio_name);
+				codecs_update(tmp_ctx, codecs, codecs_used, payload, audio_name);
 			} else if (sscanf(line, "a=ptime:%d-%d",
 					  &ptime, &ptime2) >= 1) {
 				if (ptime2 > 0 && ptime2 != ptime)
@@ -131,29 +191,30 @@ int mgcp_parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 				else
 					rtp->packet_duration_ms = ptime;
 			} else if (sscanf(line, "a=maxptime:%d", &ptime2) == 1) {
-				/* TODO/XXX: Store this per codec and derive it on use */
-				if (ptime2 * rtp->codec.frame_duration_den >
-				    rtp->codec.frame_duration_num * 1500)
-					/* more than 1 frame */
-					rtp->packet_duration_ms = 0;
+				maxptime = ptime2;
 			}
 			break;
 		}
 		case 'm': {
 			int port, rc;
-			audio_payload = -1;
-			audio_payload_alt = -1;
 
-			rc = sscanf(line, "m=audio %d RTP/AVP %d %d",
-				   &port, &audio_payload, &audio_payload_alt);
+			rc = sscanf(line, "m=audio %d RTP/AVP %d %d %d %d %d %d %d %d %d %d",
+					&port,
+					&codecs[0].payload_type,
+					&codecs[1].payload_type,
+					&codecs[2].payload_type,
+					&codecs[3].payload_type,
+					&codecs[4].payload_type,
+					&codecs[5].payload_type,
+					&codecs[6].payload_type,
+					&codecs[7].payload_type,
+					&codecs[8].payload_type,
+					&codecs[9].payload_type);
 			if (rc >= 2) {
 				rtp->rtp_port = htons(port);
 				rtp->rtcp_port = htons(port + 1);
-				found_media = 1;
-				mgcp_set_audio_info(p->cfg, &rtp->codec, audio_payload, NULL);
-				if (rc == 3)
-					mgcp_set_audio_info(p->cfg, &rtp->alt_codec,
-							audio_payload_alt, NULL);
+				codecs_used = rc - 1;
+				codecs_initialize(tmp_ctx, codecs, codecs_used);
 			}
 			break;
 		}
@@ -178,14 +239,33 @@ int mgcp_parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 		}
 	}
 
-	if (found_media)
+	/* Now select the primary and alt_codec */
+	for (i = 0; i < codecs_used && codecs_assigned < 2; ++i) {
+		struct mgcp_rtp_codec *codec = codecs_assigned == 0 ?
+					&rtp->codec : &rtp->alt_codec;
+		mgcp_set_audio_info(p->cfg, codec,
+					codecs[i].payload_type,
+					codecs[i].map_line);
+		codecs_assigned += 1;
+	}
+
+	if (codecs_assigned > 0) {
+		/* TODO/XXX: Store this per codec and derive it on use */
+		if (maxptime >= 0 && maxptime * rtp->codec.frame_duration_den >
+				rtp->codec.frame_duration_num * 1500) {
+			/* more than 1 frame */
+			rtp->packet_duration_ms = 0;
+		}
+
 		LOGP(DMGCP, LOGL_NOTICE,
 		     "Got media info via SDP: port %d, payload %d (%s), "
 		     "duration %d, addr %s\n",
 		     ntohs(rtp->rtp_port), rtp->codec.payload_type,
 		     rtp->codec.subtype_name ? rtp->codec.subtype_name : "unknown",
 		     rtp->packet_duration_ms, inet_ntoa(rtp->addr));
+	}
 
-	return found_media;
+	talloc_free(tmp_ctx);
+	return codecs_assigned > 0;
 }
 
