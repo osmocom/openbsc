@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <string.h>
+
 #include <osmocom/core/select.h>
 
 #define CI_UNUSED 0
@@ -203,11 +205,51 @@ struct mgcp_endpoint {
 	} osmux;
 };
 
+#define for_each_line(line, save)			\
+	for (line = strline_r(NULL, &save); line;\
+	     line = strline_r(NULL, &save))
+
+static inline char *strline_r(char *str, char **saveptr)
+{
+	char *result;
+
+	if (str)
+		*saveptr = str;
+
+	result = *saveptr;
+
+	if (*saveptr != NULL) {
+		*saveptr = strpbrk(*saveptr, "\r\n");
+
+		if (*saveptr != NULL) {
+			char *eos = *saveptr;
+
+			if ((*saveptr)[0] == '\r' && (*saveptr)[1] == '\n')
+				(*saveptr)++;
+			(*saveptr)++;
+			if ((*saveptr)[0] == '\0')
+				*saveptr = NULL;
+
+			*eos = '\0';
+		}
+	}
+
+	return result;
+}
+
+
+
 #define ENDPOINT_NUMBER(endp) abs((int)(endp - endp->tcfg->endpoints))
 
-struct mgcp_msg_ptr {
-	unsigned int start;
-	unsigned int length;
+/**
+ * Internal structure while parsing a request
+ */
+struct mgcp_parse_data {
+	struct mgcp_config *cfg;
+	struct mgcp_endpoint *endp;
+	char *trans;
+	char *save;
+	int found;
 };
 
 int mgcp_send_dummy(struct mgcp_endpoint *endp);
@@ -260,5 +302,21 @@ enum {
 	MGCP_DEST_BTS,
 };
 
+
 #define MGCP_DUMMY_LOAD 0x23
 
+
+/**
+ * SDP related information
+ */
+/* Assume audio frame length of 20ms */
+#define DEFAULT_RTP_AUDIO_FRAME_DUR_NUM 20
+#define DEFAULT_RTP_AUDIO_FRAME_DUR_DEN 1000
+#define DEFAULT_RTP_AUDIO_PACKET_DURATION_MS 20
+#define DEFAULT_RTP_AUDIO_DEFAULT_RATE  8000
+#define DEFAULT_RTP_AUDIO_DEFAULT_CHANNELS 1
+
+#define PTYPE_UNDEFINED (-1)
+int mgcp_parse_sdp_data(struct mgcp_endpoint *endp, struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p);
+int mgcp_set_audio_info(void *ctx, struct mgcp_rtp_codec *codec,
+			int payload_type, const char *audio_name);

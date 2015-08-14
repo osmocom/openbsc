@@ -340,6 +340,31 @@ static void test_strline(void)
 		 "a=rtpmap:101 FOO/8000\r\n"	\
 		 "a=ptime:40\r\n"
 
+#define CRCX_MULT_GSM_EXACT \
+		"CRCX 259260421 5@mgw MGCP 1.0\r\n"	\
+		"C: 1355c6041e\r\n"			\
+		"I: 3\r\n"				\
+		"L: p:20, a:GSM, nt:IN\r\n"		\
+		"M: recvonly\r\n"			\
+		"\r\n"					\
+		"v=0\r\n"				\
+		"o=- 1439038275 1439038275 IN IP4 192.168.181.247\r\n" \
+		"s=-\r\nc=IN IP4 192.168.181.247\r\n"	\
+		"t=0 0\r\nm=audio 29084 RTP/AVP 0 8 3 18 4 96 97 101\r\n" \
+		"a=rtpmap:0 PCMU/8000\r\n"		\
+		"a=rtpmap:8 PCMA/8000\r\n"		\
+		"a=rtpmap:3 gsm/8000\r\n"		\
+		"a=rtpmap:18 G729/8000\r\n"		\
+		"a=fmtp:18 annexb=no\r\n"		\
+		"a=rtpmap:4 G723/8000\r\n"		\
+		"a=rtpmap:96 iLBC/8000\r\n"		\
+		"a=fmtp:96 mode=20\r\n"			\
+		"a=rtpmap:97 iLBC/8000\r\n"		\
+		"a=fmtp:97 mode=30\r\n"			\
+		"a=rtpmap:101 telephone-event/8000\r\n"	\
+		"a=fmtp:101 0-15\r\n"			\
+		"a=recvonly\r\n"
+
 struct mgcp_test {
 	const char *name;
 	const char *req;
@@ -1011,6 +1036,40 @@ static void test_multilple_codec(void)
 	OSMO_ASSERT(endp->net_end.codec.payload_type == 18);
 	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == -1);
 
+	/* Allocate 5@mgw at select GSM.. */
+	last_endpoint = -1;
+	inp = create_msg(CRCX_MULT_GSM_EXACT);
+	talloc_free(cfg->trunk.audio_name);
+	cfg->trunk.audio_name = "GSM/8000";
+	cfg->trunk.no_audio_transcoding = 1;
+	resp = mgcp_handle_message(cfg, inp);
+	msgb_free(inp);
+	msgb_free(resp);
+
+	OSMO_ASSERT(last_endpoint == 5);
+	endp = &cfg->trunk.endpoints[last_endpoint];
+	OSMO_ASSERT(endp->net_end.codec.payload_type == 3);
+	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == -1);
+
+	/* Check what happens without that flag */
+
+	/* Free the previous endpoint and the data ... */
+	mgcp_release_endp(endp);
+	talloc_free(endp->last_response);
+	talloc_free(endp->last_trans);
+	endp->last_response = endp->last_trans = NULL;
+
+	last_endpoint = -1;
+	inp = create_msg(CRCX_MULT_GSM_EXACT);
+	cfg->trunk.no_audio_transcoding = 0;
+	resp = mgcp_handle_message(cfg, inp);
+	msgb_free(inp);
+	msgb_free(resp);
+
+	OSMO_ASSERT(last_endpoint == 5);
+	endp = &cfg->trunk.endpoints[last_endpoint];
+	OSMO_ASSERT(endp->net_end.codec.payload_type == 0);
+	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 8);
 
 	talloc_free(cfg);
 }

@@ -8,7 +8,8 @@ noinst_LIBRARIES = libmgcp.a
 
 noinst_HEADERS = g711common.h
 
-libmgcp_a_SOURCES = mgcp_protocol.c mgcp_network.c mgcp_vty.c mgcp_osmux.c
+libmgcp_a_SOURCES = mgcp_protocol.c mgcp_network.c mgcp_vty.c mgcp_osmux.c \
+	mgcp_sdp.c
 
 if BUILD_MGCP_TRANSCODING
     libmgcp_a_SOURCES += mgcp_transcode.c
