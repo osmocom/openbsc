@@ -205,9 +205,6 @@ struct mgcp_endpoint {
 
 #define ENDPOINT_NUMBER(endp) abs((int)(endp - endp->tcfg->endpoints))
 
-struct mgcp_msg_ptr {
-	unsigned int start;
-	unsigned int length;
 };
 
 int mgcp_send_dummy(struct mgcp_endpoint *endp);
