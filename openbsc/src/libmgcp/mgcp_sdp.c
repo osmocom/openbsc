@@ -154,8 +154,23 @@ void codecs_update(void *ctx, struct sdp_rtp_map *codecs, int used, int payload,
 	LOGP(DMGCP, LOGL_ERROR, "Unconfigured PT(%d) with %s\n", payload, audio_name);
 }
 
+int is_codec_compatible(struct mgcp_endpoint *endp, struct sdp_rtp_map *codec)
+{
+	char *bts_codec;
+	char audio_codec[64];
 
-int mgcp_parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
+	/*
+	 * GSM, GSM/8000 and GSM/8000/1 should all be compatible.. let's go
+	 * by name first.
+	 */
+	bts_codec = endp->tcfg->audio_name;
+	if (sscanf(bts_codec, "%63[^/]/%*d/%*d", audio_codec) < 1)
+		return 0;
+
+	return strcasecmp(audio_codec, codec->codec_name) == 0;
+}
+
+int mgcp_parse_sdp_data(struct mgcp_endpoint *endp, struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 {
 	struct sdp_rtp_map codecs[10];
 	int codecs_used = 0;
@@ -243,6 +258,14 @@ int mgcp_parse_sdp_data(struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p)
 	for (i = 0; i < codecs_used && codecs_assigned < 2; ++i) {
 		struct mgcp_rtp_codec *codec = codecs_assigned == 0 ?
 					&rtp->codec : &rtp->alt_codec;
+
+		if (endp->tcfg->no_audio_transcoding &&
+			!is_codec_compatible(endp, &codecs[i])) {
+			LOGP(DMGCP, LOGL_NOTICE, "Skipping codec %s\n",
+				codecs[i].codec_name);
+			continue;
+		}
+
 		mgcp_set_audio_info(p->cfg, codec,
 					codecs[i].payload_type,
 					codecs[i].map_line);

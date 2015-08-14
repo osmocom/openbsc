@@ -828,7 +828,7 @@ mgcp_header_done:
 	endp->bts_end.fmtp_extra = talloc_strdup(tcfg->endpoints,
 						tcfg->audio_fmtp_extra);
 	if (have_sdp)
-		mgcp_parse_sdp_data(&endp->net_end, p);
+		mgcp_parse_sdp_data(endp, &endp->net_end, p);
 	else if (endp->local_options.codec)
 		mgcp_set_audio_info(p->cfg, &endp->net_end.codec,
 			       PTYPE_UNDEFINED, endp->local_options.codec);
@@ -931,7 +931,7 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 		case '\0':
 			/* SDP file begins */
 			have_sdp = 1;
-			mgcp_parse_sdp_data(&endp->net_end, p);
+			mgcp_parse_sdp_data(endp, &endp->net_end, p);
 			/* This will exhaust p->save, so the loop will
 			 * terminate next time.
 			 */
