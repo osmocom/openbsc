@@ -45,6 +45,21 @@ struct sgsn_config {
 	/* CDR configuration */
 	struct sgsn_cdr cdr;
 
+	struct {
+		int T3312;
+		int T3322;
+		int T3350;
+		int T3360;
+		int T3370;
+		int T3313;
+		int T3314;
+		int T3316;
+		int T3385;
+		int T3386;
+		int T3395;
+		int T3397;
+	} timers;
+
 	int dynamic_lookup;
 };
 

@@ -60,27 +60,6 @@
 
 #define PTMSI_ALLOC
 
-/* Section 11.2.2 / Table 11.3a GPRS Mobility management timers – MS side */
-#define GSM0408_T3312_SECS	(10*60)	/* periodic RAU interval, default 54min */
-
-/* Section 11.2.2 / Table 11.4 MM timers netwokr side */
-#define GSM0408_T3322_SECS	6	/* DETACH_REQ -> DETACH_ACC */
-#define GSM0408_T3350_SECS	6	/* waiting for ATT/RAU/TMSI COMPL */
-#define GSM0408_T3360_SECS	6	/* waiting for AUTH/CIPH RESP */
-#define GSM0408_T3370_SECS	6	/* waiting for ID RESP */
-
-/* Section 11.2.2 / Table 11.4a MM timers netwokr side */
-#define GSM0408_T3313_SECS	30	/* waiting for paging response */
-#define GSM0408_T3314_SECS	44	/* force to STBY on expiry, Ready timer */
-#define GSM0408_T3316_SECS	44
-#define GSM0408_MOBILE_REACHABLE_SECS (GSM0408_T3312_SECS + 4 * 60)
-
-/* Section 11.3 / Table 11.2d Timers of Session Management - network side */
-#define GSM0408_T3385_SECS	8	/* wait for ACT PDP CTX REQ */
-#define GSM0408_T3386_SECS	8	/* wait for MODIFY PDP CTX ACK */
-#define GSM0408_T3395_SECS	8	/* wait for DEACT PDP CTX ACK */
-#define GSM0408_T3397_SECS	8	/* wait for DEACT AA PDP CTX ACK */
-
 extern struct sgsn_instance *sgsn;
 
 static const struct tlv_definition gsm48_gmm_att_tlvdef = {
@@ -146,7 +125,7 @@ static void mmctx_timer_stop(struct sgsn_mm_ctx *mm, unsigned int T)
 
 time_t gprs_max_time_to_idle(void)
 {
-	return GSM0408_T3314_SECS + GSM0408_MOBILE_REACHABLE_SECS;
+	return sgsn->cfg.timers.T3314 + (sgsn->cfg.timers.T3312 + 4 * 60);
 }
 
 /* Send a message through the underlying layer */
@@ -319,7 +298,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	aa = (struct gsm48_attach_ack *) msgb_put(msg, sizeof(*aa));
 	aa->force_stby = 0;	/* not indicated */
 	aa->att_result = 1;	/* GPRS only */
-	aa->ra_upd_timer = gprs_secs_to_tmr_floor(GSM0408_T3312_SECS);
+	aa->ra_upd_timer = gprs_secs_to_tmr_floor(sgsn->cfg.timers.T3312);
 	aa->radio_prio = 4;	/* lowest */
 	gsm48_construct_ra(aa->ra_id.digits, &mm->ra);
 
@@ -337,7 +316,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	 * the inactivity time READY->STANDBY.
 	 */
 	msgb_tv_put(msg, GSM48_IE_GMM_TIMER_READY,
-		    gprs_secs_to_tmr_floor(GSM0408_T3314_SECS));
+		    gprs_secs_to_tmr_floor(sgsn->cfg.timers.T3314));
 
 #ifdef PTMSI_ALLOC
 	/* Optional: Allocated P-TMSI */
@@ -627,12 +606,12 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	/* Request IMSI and IMEI from the MS if they are unknown */
 	if (!strlen(ctx->imei)) {
 		ctx->t3370_id_type = GSM_MI_TYPE_IMEI;
-		mmctx_timer_start(ctx, 3370, GSM0408_T3370_SECS);
+		mmctx_timer_start(ctx, 3370, sgsn->cfg.timers.T3370);
 		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMEI);
 	}
 	if (!strlen(ctx->imsi)) {
 		ctx->t3370_id_type = GSM_MI_TYPE_IMSI;
-		mmctx_timer_start(ctx, 3370, GSM0408_T3370_SECS);
+		mmctx_timer_start(ctx, 3370, sgsn->cfg.timers.T3370);
 		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMSI);
 	}
 
@@ -654,7 +633,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	if (ctx->auth_state == SGSN_AUTH_AUTHENTICATE && !ctx->is_authenticated) {
 		struct gsm_auth_tuple *at = &ctx->auth_triplet;
 
-		mmctx_timer_start(ctx, 3360, GSM0408_T3360_SECS);
+		mmctx_timer_start(ctx, 3360, sgsn->cfg.timers.T3360);
 		return gsm48_tx_gmm_auth_ciph_req(ctx, at->rand, at->key_seq,
 						  GPRS_ALGO_GEA0);
 	}
@@ -685,7 +664,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		extract_subscr_hlr(ctx);
 #ifdef PTMSI_ALLOC
 		/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
-		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
+		mmctx_timer_start(ctx, 3350, sgsn->cfg.timers.T3350);
 		ctx->t3350_mode = GMM_T3350_MODE_ATT;
 #else
 		memset(&sig_data, 0, sizeof(sig_data));
@@ -1054,7 +1033,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 	rua = (struct gsm48_ra_upd_ack *) msgb_put(msg, sizeof(*rua));
 	rua->force_stby = 0;	/* not indicated */
 	rua->upd_result = 0;	/* RA updated */
-	rua->ra_upd_timer = gprs_secs_to_tmr_floor(GSM0408_T3312_SECS);
+	rua->ra_upd_timer = gprs_secs_to_tmr_floor(sgsn->cfg.timers.T3312);
 
 	gsm48_construct_ra(rua->ra_id.digits, &mm->ra);
 
@@ -1076,7 +1055,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 
 	/* Optional: Negotiated READY timer value */
 	msgb_tv_put(msg, GSM48_IE_GMM_TIMER_READY,
-		    gprs_secs_to_tmr_floor(GSM0408_T3314_SECS));
+		    gprs_secs_to_tmr_floor(sgsn->cfg.timers.T3314));
 
 	/* Option: MS ID, ... */
 	return gsm48_gmm_sendmsg(msg, 0, mm);
@@ -1218,7 +1197,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	}
 	/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
 	mmctx->t3350_mode = GMM_T3350_MODE_RAU;
-	mmctx_timer_start(mmctx, 3350, GSM0408_T3350_SECS);
+	mmctx_timer_start(mmctx, 3350, sgsn->cfg.timers.T3350);
 
 	mmctx->mm_state = GMM_COMMON_PROC_INIT;
 #else
@@ -1437,7 +1416,7 @@ static void mmctx_timer_cb(void *_mm)
 				  "T3350 mode wasn't set, ignoring timeout\n");
 			break;
 		}
-		osmo_timer_schedule(&mm->timer, GSM0408_T3350_SECS, 0);
+		osmo_timer_schedule(&mm->timer, sgsn->cfg.timers.T3350, 0);
 		break;
 	case 3360:	/* waiting for AUTH AND CIPH RESP */
 		if (mm->num_T_exp >= 5) {
@@ -1455,7 +1434,7 @@ static void mmctx_timer_cb(void *_mm)
 		at = &mm->auth_triplet;
 
 		gsm48_tx_gmm_auth_ciph_req(mm, at->rand, at->key_seq, GPRS_ALGO_GEA0);
-		osmo_timer_schedule(&mm->timer, GSM0408_T3360_SECS, 0);
+		osmo_timer_schedule(&mm->timer, sgsn->cfg.timers.T3360, 0);
 		break;
 	case 3370:	/* waiting for IDENTITY RESPONSE */
 		if (mm->num_T_exp >= 5) {
@@ -1466,7 +1445,7 @@ static void mmctx_timer_cb(void *_mm)
 		}
 		/* re-tranmit IDENTITY REQUEST and re-start timer */
 		gsm48_tx_gmm_id_req(mm, mm->t3370_id_type);
-		osmo_timer_schedule(&mm->timer, GSM0408_T3370_SECS, 0);
+		osmo_timer_schedule(&mm->timer, sgsn->cfg.timers.T3370, 0);
 		break;
 	default:
 		LOGMMCTXP(LOGL_ERROR, mm, "timer expired in unknown mode %u\n",
@@ -1605,7 +1584,7 @@ static int _gsm48_tx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, uint8_t tid,
 }
 int gsm48_tx_gsm_deact_pdp_req(struct sgsn_pdp_ctx *pdp, uint8_t sm_cause)
 {
-	pdpctx_timer_start(pdp, 3395, GSM0408_T3395_SECS);
+	pdpctx_timer_start(pdp, 3395, sgsn->cfg.timers.T3395);
 
 	return _gsm48_tx_gsm_deact_pdp_req(pdp->mm, pdp->ti, sm_cause);
 }
@@ -1989,7 +1968,7 @@ static void pdpctx_timer_cb(void *_pdp)
 			break;
 		}
 		gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_NET_FAIL); 
-		osmo_timer_schedule(&pdp->timer, GSM0408_T3395_SECS, 0);
+		osmo_timer_schedule(&pdp->timer, sgsn->cfg.timers.T3395, 0);
 		break;
 	default:
 		LOGPDPCTXP(LOGL_ERROR, pdp, "timer expired in unknown mode %u\n",

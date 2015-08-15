@@ -54,6 +54,60 @@ const struct value_string sgsn_auth_pol_strs[] = {
 	{ 0, NULL }
 };
 
+/* Section 11.2.2 / Table 11.3a GPRS Mobility management timers – MS side */
+#define GSM0408_T3312_SECS	(10*60)	/* periodic RAU interval, default 54min */
+
+/* Section 11.2.2 / Table 11.4 MM timers netwokr side */
+#define GSM0408_T3322_SECS	6	/* DETACH_REQ -> DETACH_ACC */
+#define GSM0408_T3350_SECS	6	/* waiting for ATT/RAU/TMSI COMPL */
+#define GSM0408_T3360_SECS	6	/* waiting for AUTH/CIPH RESP */
+#define GSM0408_T3370_SECS	6	/* waiting for ID RESP */
+
+/* Section 11.2.2 / Table 11.4a MM timers netwokr side */
+#define GSM0408_T3313_SECS	30	/* waiting for paging response */
+#define GSM0408_T3314_SECS	44	/* force to STBY on expiry, Ready timer */
+#define GSM0408_T3316_SECS	44
+
+/* Section 11.3 / Table 11.2d Timers of Session Management - network side */
+#define GSM0408_T3385_SECS	8	/* wait for ACT PDP CTX REQ */
+#define GSM0408_T3386_SECS	8	/* wait for MODIFY PDP CTX ACK */
+#define GSM0408_T3395_SECS	8	/* wait for DEACT PDP CTX ACK */
+#define GSM0408_T3397_SECS	8	/* wait for DEACT AA PDP CTX ACK */
+
+#define DECLARE_TIMER(number, doc) \
+    DEFUN(cfg_sgsn_T##number,					\
+      cfg_sgsn_T##number##_cmd,					\
+      "timer t" #number  " <0-65535>",				\
+      "Configure GPRS Timers\n"					\
+      doc "Timer Value in seconds\n")				\
+{								\
+	int value = atoi(argv[0]);				\
+								\
+	if (value < 0 || value > 65535) {			\
+		vty_out(vty, "Timer value %s out of range.%s",	\
+		        argv[0], VTY_NEWLINE);			\
+		return CMD_WARNING;				\
+	}							\
+								\
+	g_cfg->timers.T##number = value;			\
+	return CMD_SUCCESS;					\
+}
+
+DECLARE_TIMER(3312, "Periodic RA Update timer (s)")
+DECLARE_TIMER(3322, "Detach reqest -> accept timer (s)")
+DECLARE_TIMER(3350, "Waiting for ATT/RAU/TMSI_COMPL timer (s)")
+DECLARE_TIMER(3360, "Waiting for AUTH/CIPH response timer (s)")
+DECLARE_TIMER(3370, "Waiting for IDENTITY response timer (s)")
+
+DECLARE_TIMER(3313, "Waiting for paging response timer (s)")
+DECLARE_TIMER(3314, "Force to STANDBY on expiry timer (s)")
+DECLARE_TIMER(3316, "")
+
+DECLARE_TIMER(3385, "Wait for ACT PDP CTX REQ timer (s)")
+DECLARE_TIMER(3386, "Wait for MODIFY PDP CTX ACK timer (s)")
+DECLARE_TIMER(3395, "Wait for DEACT PDP CTX ACK timer (s)")
+DECLARE_TIMER(3397, "Wait for DEACT AA PDP CTX ACK timer (s)")
+
 
 #define GSM48_MAX_APN_LEN	102	/* 10.5.6.1 */
 static char *gprs_apn2str(uint8_t *apn, unsigned int len)
@@ -180,6 +234,19 @@ static int config_write_sgsn(struct vty *vty)
 	else
 		vty_out(vty, " no cdr filename%s", VTY_NEWLINE);
 	vty_out(vty, " cdr interval %d%s", g_cfg->cdr.interval, VTY_NEWLINE);
+
+	vty_out(vty, " timer t3312 %d%s", g_cfg->timers.T3312, VTY_NEWLINE);
+	vty_out(vty, " timer t3322 %d%s", g_cfg->timers.T3322, VTY_NEWLINE);
+	vty_out(vty, " timer t3350 %d%s", g_cfg->timers.T3350, VTY_NEWLINE);
+	vty_out(vty, " timer t3360 %d%s", g_cfg->timers.T3360, VTY_NEWLINE);
+	vty_out(vty, " timer t3370 %d%s", g_cfg->timers.T3370, VTY_NEWLINE);
+	vty_out(vty, " timer t3313 %d%s", g_cfg->timers.T3313, VTY_NEWLINE);
+	vty_out(vty, " timer t3314 %d%s", g_cfg->timers.T3314, VTY_NEWLINE);
+	vty_out(vty, " timer t3316 %d%s", g_cfg->timers.T3316, VTY_NEWLINE);
+	vty_out(vty, " timer t3385 %d%s", g_cfg->timers.T3385, VTY_NEWLINE);
+	vty_out(vty, " timer t3386 %d%s", g_cfg->timers.T3386, VTY_NEWLINE);
+	vty_out(vty, " timer t3395 %d%s", g_cfg->timers.T3395, VTY_NEWLINE);
+	vty_out(vty, " timer t3397 %d%s", g_cfg->timers.T3397, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -912,6 +979,19 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_ggsn_dynamic_lookup_cmd);
 	install_element(SGSN_NODE, &cfg_grx_ggsn_cmd);
 
+	install_element(SGSN_NODE, &cfg_sgsn_T3312_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3322_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3350_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3360_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3370_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3313_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3314_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3316_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3385_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3386_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3395_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_T3397_cmd);
+
 	return 0;
 }
 
@@ -920,6 +1000,19 @@ int sgsn_parse_config(const char *config_file, struct sgsn_config *cfg)
 	int rc;
 
 	g_cfg = cfg;
+
+	g_cfg->timers.T3312 = GSM0408_T3312_SECS;
+	g_cfg->timers.T3322 = GSM0408_T3322_SECS;
+	g_cfg->timers.T3350 = GSM0408_T3350_SECS;
+	g_cfg->timers.T3360 = GSM0408_T3360_SECS;
+	g_cfg->timers.T3370 = GSM0408_T3370_SECS;
+	g_cfg->timers.T3313 = GSM0408_T3313_SECS;
+	g_cfg->timers.T3314 = GSM0408_T3314_SECS;
+	g_cfg->timers.T3316 = GSM0408_T3316_SECS;
+	g_cfg->timers.T3385 = GSM0408_T3385_SECS;
+	g_cfg->timers.T3386 = GSM0408_T3386_SECS;
+	g_cfg->timers.T3395 = GSM0408_T3395_SECS;
+	g_cfg->timers.T3397 = GSM0408_T3397_SECS;
 
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {
