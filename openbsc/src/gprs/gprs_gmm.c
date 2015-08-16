@@ -1664,7 +1664,7 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 			rc = sgsn_ares_query(sgsn, hostname,
 					ggsn_lookup_cb, lookup);
 			if (rc != 0) {
-				LOGP(DGPRS, LOGL_ERROR, "Couldn't start GGSN\n");
+				LOGMMCTXP(LOGL_ERROR, mmctx, "Couldn't start GGSN\n");
 				goto reject_due_failure;
 			}
 			return;
@@ -1866,7 +1866,7 @@ static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	return 0;
 
 no_context:
-	LOGP(DGPRS, LOGL_ERROR, "No GGSN context found!\n");
+	LOGMMCTXP(LOGL_ERROR, mmctx, "No GGSN context found!\n");
 	return gsm48_tx_gsm_act_pdp_rej(mmctx, transaction_id,
 					gsm_cause, 0, NULL);
 }
