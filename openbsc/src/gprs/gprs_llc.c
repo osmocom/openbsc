@@ -679,7 +679,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		return rc;
 
 	/* llhp.data is only set when we need to send LL_[UNIT]DATA_IND up */
-	if (llhp.data) {
+	if (llhp.data && llhp.data_len) {
 		msgb_gmmh(msg) = llhp.data;
 		switch (llhp.sapi) {
 		case GPRS_SAPI_GMM:
