@@ -402,7 +402,8 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	LOGMMCTXP(LOGL_DEBUG, mm, "<- GPRS IDENTITY REQUEST: mi_type=%02x\n", id_type);
+	LOGMMCTXP(LOGL_DEBUG, mm, "<- GPRS IDENTITY REQUEST: mi_type=%s\n",
+		  gsm48_mi_type_name(id_type));
 
 	mmctx2msgid(msg, mm);
 
@@ -774,14 +775,14 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		return -EINVAL;
 	}
 
-	LOGMMCTXP(LOGL_DEBUG, ctx, "-> GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
-		mi_type, mi_string);
+	LOGMMCTXP(LOGL_DEBUG, ctx, "-> GMM IDENTITY RESPONSE: MI(%s)=%s\n",
+		gsm48_mi_type_name(mi_type), mi_string);
 
 	if (ctx->t3370_id_type == GSM_MI_TYPE_NONE) {
 		LOGMMCTXP(LOGL_NOTICE, ctx,
-			  "Got unexpected IDENTITY RESPONSE: mi_type=0x%02x MI(%s), "
+			  "Got unexpected IDENTITY RESPONSE: MI(%s)=%s, "
 			  "ignoring message\n",
-			  mi_type, mi_string);
+			  gsm48_mi_type_name(mi_type), mi_string);
 		return -EINVAL;
 	}
 
@@ -924,7 +925,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		break;
 	default:
 		LOGMMCTXP(LOGL_NOTICE, ctx, "Rejecting ATTACH REQUEST with "
-			"MI type %u\n", mi_type);
+			"MI type %s\n", gsm48_mi_type_name(mi_type));
 		reject_cause = GMM_CAUSE_MS_ID_NOT_DERIVED;
 		goto rejected;
 	}

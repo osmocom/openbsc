@@ -73,8 +73,8 @@ static struct gsm_subscriber *extract_sub(struct gsm_subscriber_connection *conn
 
 	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*gh),
 				mi_string, &mi_type);
-	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
-		mi_type, mi_string);
+	DEBUGP(DRR, "PAGING RESPONSE: MI(%s)=%s\n",
+		gsm48_mi_type_name(mi_type), mi_string);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:

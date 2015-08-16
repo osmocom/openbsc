@@ -516,8 +516,8 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 	char mi_string[GSM48_MI_SIZE];
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
-	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
-		mi_type, mi_string);
+	DEBUGP(DMM, "IDENTITY RESPONSE: MI(%s)=%s\n",
+		gsm48_mi_type_name(mi_type), mi_string);
 
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
 
@@ -574,19 +574,12 @@ static void schedule_reject(struct gsm_subscriber_connection *conn)
 	osmo_timer_schedule(&conn->loc_operation->updating_timer, 5, 0);
 }
 
-static const char *lupd_name(uint8_t type)
-{
-	switch (type) {
-	case GSM48_LUPD_NORMAL:
-		return "NORMAL";
-	case GSM48_LUPD_PERIODIC:
-		return "PERIODIC";
-	case GSM48_LUPD_IMSI_ATT:
-		return "IMSI ATTACH";
-	default:
-		return "UNKNOWN";
-	}
-}
+static const struct value_string lupd_names[] = {
+	{ GSM48_LUPD_NORMAL, "NORMAL" },
+	{ GSM48_LUPD_PERIODIC, "PERIODIC" },
+	{ GSM48_LUPD_IMSI_ATT, "IMSI ATTACH" },
+	{ 0, NULL }
+};
 
 /* Chapter 9.2.15: Receive Location Updating Request */
 static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
@@ -604,8 +597,8 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
 
-	DEBUGPC(DMM, "mi_type=0x%02x MI(%s) type=%s ", mi_type, mi_string,
-		lupd_name(lu->type));
+	DEBUGPC(DMM, "MI(%s)=%s type=%s ", gsm48_mi_type_name(mi_type),
+		mi_string, get_value_string(lupd_names, lu->type));
 
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, &lu->mi_len);
 
@@ -976,13 +969,15 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	mi_type = mi[0] & GSM_MI_TYPE_MASK;
 
 	if (mi_type == GSM_MI_TYPE_IMSI) {
-		DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
-			req->cm_service_type, mi_type, mi_string);
+		DEBUGPC(DMM, "serv_type=0x%02x MI(%s)=%s\n",
+			req->cm_service_type, gsm48_mi_type_name(mi_type),
+			mi_string);
 		subscr = subscr_get_by_imsi(bts->network->subscr_group,
 					    mi_string);
 	} else if (mi_type == GSM_MI_TYPE_TMSI) {
-		DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
-			req->cm_service_type, mi_type, mi_string);
+		DEBUGPC(DMM, "serv_type=0x%02x MI(%s)=%s\n",
+			req->cm_service_type, gsm48_mi_type_name(mi_type),
+			mi_string);
 		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
 				tmsi_from_string(mi_string));
 	} else {
@@ -1033,8 +1028,8 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	struct gsm_subscriber *subscr = NULL;
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), idi->mi, idi->mi_len);
-	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s)",
-		mi_type, mi_string);
+	DEBUGP(DMM, "IMSI DETACH INDICATION: MI(%s)=%s",
+		gsm48_mi_type_name(mi_type), mi_string);
 
 	osmo_counter_inc(bts->network->stats.loc_upd_type.detach);
 
@@ -1187,8 +1182,8 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	resp = (struct gsm48_pag_resp *) &gh->data[0];
 	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*gh),
 				mi_string, &mi_type);
-	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
-		mi_type, mi_string);
+	DEBUGP(DRR, "PAGING RESPONSE: MI(%s)=%s\n",
+		gsm48_mi_type_name(mi_type), mi_string);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
