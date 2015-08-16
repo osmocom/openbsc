@@ -1,7 +1,7 @@
 /* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
-/* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2009-2015 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by On-Waves
  *
  * All Rights Reserved
@@ -103,7 +103,7 @@ static void mmctx_timer_start(struct sgsn_mm_ctx *mm, unsigned int T,
 				unsigned int seconds)
 {
 	if (osmo_timer_pending(&mm->timer))
-		LOGP(DMM, LOGL_ERROR, "Starting MM timer %u while old "
+		LOGMMCTXP(LOGL_ERROR, mm, "Starting MM timer %u while old "
 			"timer %u pending\n", T, mm->T);
 	mm->T = T;
 	mm->num_T_exp = 0;
@@ -118,7 +118,7 @@ static void mmctx_timer_start(struct sgsn_mm_ctx *mm, unsigned int T,
 static void mmctx_timer_stop(struct sgsn_mm_ctx *mm, unsigned int T)
 {
 	if (mm->T != T)
-		LOGP(DMM, LOGL_ERROR, "Stopping MM timer %u but "
+		LOGMMCTXP(LOGL_ERROR, mm, "Stopping MM timer %u but "
 			"%u is running\n", T, mm->T);
 	osmo_timer_del(&mm->timer);
 }
@@ -332,11 +332,13 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 }
 
 /* Chapter 9.4.5: Attach reject */
-static int _tx_gmm_att_rej(struct msgb *msg, uint8_t gmm_cause)
+static int _tx_gmm_att_rej(struct msgb *msg, uint8_t gmm_cause,
+			   const struct sgsn_mm_ctx *mm)
 {
 	struct gsm48_hdr *gh;
 
-	LOGP(DMM, LOGL_NOTICE, "<- GPRS ATTACH REJECT: %s\n", get_value_string(gsm48_gmm_cause_names, gmm_cause));
+	LOGMMCTXP(LOGL_NOTICE, mm, "<- GPRS ATTACH REJECT: %s\n",
+		  get_value_string(gsm48_gmm_cause_names, gmm_cause));
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -350,14 +352,14 @@ static int gsm48_tx_gmm_att_rej_oldmsg(const struct msgb *old_msg,
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	gmm_copy_id(msg, old_msg);
-	return _tx_gmm_att_rej(msg, gmm_cause);
+	return _tx_gmm_att_rej(msg, gmm_cause, NULL);
 }
 static int gsm48_tx_gmm_att_rej(struct sgsn_mm_ctx *mm,
 				uint8_t gmm_cause)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	mmctx2msgid(msg, mm);
-	return _tx_gmm_att_rej(msg, gmm_cause);
+	return _tx_gmm_att_rej(msg, gmm_cause, mm);
 }
 
 /* Chapter 9.4.6.2 Detach accept */
@@ -695,14 +697,14 @@ void gsm0408_gprs_access_granted(struct sgsn_mm_ctx *ctx)
 {
 	switch (ctx->mm_state) {
 	case GMM_COMMON_PROC_INIT:
-		LOGP(DMM, LOGL_NOTICE,
+		LOGMMCTXP(LOGL_NOTICE, ctx,
 		     "Authorized, continuing procedure, IMSI=%s\n",
 		     ctx->imsi);
 		/* Continue with the authorization */
 		gsm48_gmm_authorize(ctx);
 		break;
 	default:
-		LOGP(DMM, LOGL_INFO,
+		LOGMMCTXP(LOGL_INFO, ctx,
 		     "Authorized, ignored, IMSI=%s\n",
 		     ctx->imsi);
 	}
@@ -834,7 +836,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	enum gsm48_gmm_cause reject_cause;
 	int rc;
 
-	LOGP(DMM, LOGL_INFO, "-> GMM ATTACH REQUEST ");
+	LOGMMCTXP(LOGL_INFO, ctx, "-> GMM ATTACH REQUEST ");
 
 	/* As per TS 04.08 Chapter 4.7.1.4, the attach request arrives either
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
@@ -921,7 +923,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		msgid2mmctx(ctx, msg);
 		break;
 	default:
-		LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST with "
+		LOGMMCTXP(LOGL_NOTICE, ctx, "Rejecting ATTACH REQUEST with "
 			"MI type %u\n", mi_type);
 		reject_cause = GMM_CAUSE_MS_ID_NOT_DERIVED;
 		goto rejected;
@@ -1166,7 +1168,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	if (!mmctx || mmctx->mm_state == GMM_DEREGISTERED) {
 		/* send a XID reset to re-set all LLC sequence numbers
 		 * in the MS */
-		LOGP(DMM, LOGL_NOTICE, "LLC XID RESET\n");
+		LOGMMCTXP(LOGL_NOTICE, mmctx, "LLC XID RESET\n");
 		gprs_llgmm_reset(llme);
 		/* The MS has to perform GPRS attach */
 		/* Device is still IMSI attached for CS but initiate GPRS ATTACH,
@@ -1461,7 +1463,7 @@ static void pdpctx_timer_start(struct sgsn_pdp_ctx *pdp, unsigned int T,
 				unsigned int seconds)
 {
 	if (osmo_timer_pending(&pdp->timer))
-		LOGP(DMM, LOGL_ERROR, "Starting MM timer %u while old "
+		LOGMMCTXP(LOGL_ERROR, pdp->mm, "Starting MM timer %u while old "
 			"timer %u pending\n", T, pdp->T);
 	pdp->T = T;
 	pdp->num_T_exp = 0;
@@ -2077,7 +2079,8 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg, struct gprs_llc_llme *llme)
 		rc = gsm0408_rcv_gsm(mmctx, msg, llme);
 		break;
 	default:
-		LOGP(DMM, LOGL_NOTICE, "Unknown GSM 04.08 discriminator 0x%02x: %s\n",
+		LOGMMCTXP(LOGL_NOTICE, mmctx,
+			"Unknown GSM 04.08 discriminator 0x%02x: %s\n",
 			pdisc, osmo_hexdump((uint8_t *)gh, msgb_l3len(msg)));
 		/* FIXME: return status message */
 		break;
