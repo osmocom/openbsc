@@ -1676,7 +1676,7 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 
 	if (hostent->h_length != sizeof(struct in_addr)) {
 		LOGMMCTXP(LOGL_ERROR, lookup->mmctx,
-			"Wrong addr size(%d)\n", sizeof(struct in_addr));
+			"Wrong addr size(%zu)\n", sizeof(struct in_addr));
 		goto reject_due_failure;
 	}
 
