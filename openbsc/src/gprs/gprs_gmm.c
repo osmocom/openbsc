@@ -2011,13 +2011,13 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	case GSM48_MT_GSM_REQ_PDP_ACT_REJ:
 	case GSM48_MT_GSM_ACT_AA_PDP_REQ:
 	case GSM48_MT_GSM_DEACT_AA_PDP_REQ:
-		LOGMMCTXP(LOGL_NOTICE, mmctx, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
-			gh->msg_type);
+		LOGMMCTXP(LOGL_NOTICE, mmctx, "Unimplemented GSM 04.08 GSM msg type 0x%02x: %s\n",
+			gh->msg_type, osmo_hexdump((uint8_t *)gh, msgb_l3len(msg)));
 		rc = gsm48_tx_sm_status(mmctx, GSM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		break;
 	default:
-		LOGMMCTXP(LOGL_NOTICE, mmctx, "Unknown GSM 04.08 GSM msg type 0x%02x\n",
-			gh->msg_type);
+		LOGMMCTXP(LOGL_NOTICE, mmctx, "Unknown GSM 04.08 GSM msg type 0x%02x: %s\n",
+			gh->msg_type, osmo_hexdump((uint8_t *)gh, msgb_l3len(msg)));
 		rc = gsm48_tx_sm_status(mmctx, GSM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		break;
 
@@ -2077,8 +2077,8 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg, struct gprs_llc_llme *llme)
 		rc = gsm0408_rcv_gsm(mmctx, msg, llme);
 		break;
 	default:
-		LOGP(DMM, LOGL_NOTICE, "Unknown GSM 04.08 discriminator 0x%02x\n",
-			pdisc);
+		LOGP(DMM, LOGL_NOTICE, "Unknown GSM 04.08 discriminator 0x%02x: %s\n",
+			pdisc, osmo_hexdump((uint8_t *)gh, msgb_l3len(msg)));
 		/* FIXME: return status message */
 		break;
 	}
