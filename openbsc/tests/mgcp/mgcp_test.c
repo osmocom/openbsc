@@ -364,6 +364,13 @@ static void test_strline(void)
 		"a=rtpmap:101 telephone-event/8000\r\n"	\
 		"a=fmtp:101 0-15\r\n"			\
 		"a=recvonly\r\n"
+#define MDCX_NAT_DUMMY \
+		"MDCX 23 5@mgw MGCP 1.0\r\n"		\
+		"C: 1355c6041e\r\n"			\
+		"\r\n"					\
+		"c=IN IP4 8.8.8.8\r\n"		\
+		"m=audio 16434 RTP/AVP 255\r\n"
+
 
 struct mgcp_test {
 	const char *name;
@@ -979,6 +986,7 @@ static void test_multilple_codec(void)
 	struct mgcp_config *cfg;
 	struct mgcp_endpoint *endp;
 	struct msgb *inp, *resp;
+	struct in_addr addr;
 
 	printf("Testing multiple payload types\n");
 
@@ -1050,6 +1058,20 @@ static void test_multilple_codec(void)
 	endp = &cfg->trunk.endpoints[last_endpoint];
 	OSMO_ASSERT(endp->net_end.codec.payload_type == 3);
 	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == -1);
+
+	inp = create_msg(MDCX_NAT_DUMMY);
+	last_endpoint = -1;
+	resp = mgcp_handle_message(cfg, inp);
+	msgb_free(inp);
+	msgb_free(resp);
+	OSMO_ASSERT(last_endpoint == 5);
+	endp = &cfg->trunk.endpoints[last_endpoint];
+	OSMO_ASSERT(endp->net_end.codec.payload_type == 3);
+	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == -1);
+	OSMO_ASSERT(endp->net_end.rtp_port == htons(16434));
+	memset(&addr, 0, sizeof(addr));
+	inet_aton("8.8.8.8", &addr);
+	OSMO_ASSERT(endp->net_end.addr.s_addr == addr.s_addr);
 
 	/* Check what happens without that flag */
 
