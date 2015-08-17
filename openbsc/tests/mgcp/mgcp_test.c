@@ -350,7 +350,7 @@ static void test_strline(void)
 		"v=0\r\n"				\
 		"o=- 1439038275 1439038275 IN IP4 192.168.181.247\r\n" \
 		"s=-\r\nc=IN IP4 192.168.181.247\r\n"	\
-		"t=0 0\r\nm=audio 29084 RTP/AVP 0 8 3 18 4 96 97 101\r\n" \
+		"t=0 0\r\nm=audio 29084 RTP/AVP 255 0 8 3 18 4 96 97 101\r\n" \
 		"a=rtpmap:0 PCMU/8000\r\n"		\
 		"a=rtpmap:8 PCMA/8000\r\n"		\
 		"a=rtpmap:3 gsm/8000\r\n"		\
@@ -1068,8 +1068,8 @@ static void test_multilple_codec(void)
 
 	OSMO_ASSERT(last_endpoint == 5);
 	endp = &cfg->trunk.endpoints[last_endpoint];
-	OSMO_ASSERT(endp->net_end.codec.payload_type == 0);
-	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 8);
+	OSMO_ASSERT(endp->net_end.codec.payload_type == 255);
+	OSMO_ASSERT(endp->net_end.alt_codec.payload_type == 0);
 
 	talloc_free(cfg);
 }

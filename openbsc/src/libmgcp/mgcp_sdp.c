@@ -159,6 +159,9 @@ int is_codec_compatible(struct mgcp_endpoint *endp, struct sdp_rtp_map *codec)
 	char *bts_codec;
 	char audio_codec[64];
 
+	if (!codec->codec_name)
+		return 0;
+
 	/*
 	 * GSM, GSM/8000 and GSM/8000/1 should all be compatible.. let's go
 	 * by name first.
