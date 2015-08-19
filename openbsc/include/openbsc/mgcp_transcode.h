@@ -33,7 +33,8 @@ enum audio_format {
 	AF_L16,
 	AF_GSM,
 	AF_G729,
-	AF_PCMA
+	AF_PCMA,
+	AF_PCMU
 };
 
 

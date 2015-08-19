@@ -52,6 +52,8 @@ static enum audio_format get_audio_format(const struct mgcp_rtp_codec *codec)
 			return AF_GSM;
 		if (!strcasecmp("PCMA", codec->subtype_name))
 			return AF_PCMA;
+		if (!strcasecmp("PCMU", codec->subtype_name))
+			return AF_PCMU;
 #ifdef HAVE_BCG729
 		if (!strcasecmp("G729", codec->subtype_name))
 			return AF_G729;
@@ -61,6 +63,8 @@ static enum audio_format get_audio_format(const struct mgcp_rtp_codec *codec)
 	}
 
 	switch (codec->payload_type) {
+	case 0 /* PCMU */:
+		return AF_PCMU;
 	case 3 /* GSM */:
 		return AF_GSM;
 	case 8 /* PCMA */:
@@ -100,6 +104,18 @@ static void alaw_decode(unsigned char *buf, short *sample, size_t n)
 {
 	for (; n > 0; --n)
 		*(sample++) = alaw_to_s16(*(buf++));
+}
+
+static void ulaw_encode(short *sample, unsigned char *buf, size_t n)
+{
+	for (; n > 0; --n)
+		*(buf++) = s16_to_ulaw(*(sample++));
+}
+
+static void ulaw_decode(unsigned char *buf, short *sample, size_t n)
+{
+	for (; n > 0; --n)
+		*(sample++) = ulaw_to_s16(*(buf++));
 }
 
 static int processing_state_destructor(struct mgcp_process_rtp_state *state)
@@ -226,6 +242,7 @@ int mgcp_transcoding_setup(struct mgcp_endpoint *endp,
 		}
 		break;
 #endif
+	case AF_PCMU:
 	case AF_PCMA:
 		state->src_frame_size = 80;
 		state->src_samples_per_frame = 80;
@@ -264,6 +281,7 @@ int mgcp_transcoding_setup(struct mgcp_endpoint *endp,
 		}
 		break;
 #endif
+	case AF_PCMU:
 	case AF_PCMA:
 		state->dst_frame_size = 80;
 		state->dst_samples_per_frame = 80;
@@ -331,6 +349,10 @@ static int decode_audio(struct mgcp_process_rtp_state *state,
 			bcg729Decoder(state->src.g729_dec, *src, 0, state->samples + state->sample_cnt);
 			break;
 #endif
+		case AF_PCMU:
+			ulaw_decode(*src, state->samples + state->sample_cnt,
+				    state->src_samples_per_frame);
+			break;
 		case AF_PCMA:
 			alaw_decode(*src, state->samples + state->sample_cnt,
 				    state->src_samples_per_frame);
@@ -381,6 +403,10 @@ static int encode_audio(struct mgcp_process_rtp_state *state,
 				      state->samples + state->sample_offs, dst);
 			break;
 #endif
+		case AF_PCMU:
+			ulaw_encode(state->samples + state->sample_offs, dst,
+				    state->src_samples_per_frame);
+			break;
 		case AF_PCMA:
 			alaw_encode(state->samples + state->sample_offs, dst,
 				    state->src_samples_per_frame);

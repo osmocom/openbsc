@@ -54,6 +54,7 @@ int mgcp_set_audio_info(void *ctx, struct mgcp_rtp_codec *codec,
 
 	if (!audio_name) {
 		switch (payload_type) {
+		case 0: audio_name = "PCMU/8000/1"; break;
 		case 3: audio_name = "GSM/8000/1"; break;
 		case 8: audio_name = "PCMA/8000/1"; break;
 		case 18: audio_name = "G729/8000/1"; break;
@@ -89,6 +90,8 @@ int mgcp_set_audio_info(void *ctx, struct mgcp_rtp_codec *codec,
 				payload_type = 3;
 			else if (!strcmp(audio_codec, "PCMA"))
 				payload_type = 8;
+			else if (!strcmp(audio_codec, "PCMU"))
+				payload_type = 0;
 			else if (!strcmp(audio_codec, "G729"))
 				payload_type = 18;
 		}
@@ -109,6 +112,11 @@ void codecs_initialize(void *ctx, struct sdp_rtp_map *codecs, int used)
 
 	for (i = 0; i < used; ++i) {
 		switch (codecs[i].payload_type) {
+		case 0:
+			codecs[i].codec_name = "PCMU";
+			codecs[i].rate = 8000;
+			codecs[i].channels = 1;
+			break;
 		case 3:
 			codecs[i].codec_name = "GSM";
 			codecs[i].rate = 8000;
