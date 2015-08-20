@@ -117,6 +117,9 @@ typedef void (*mgcp_get_format)(struct mgcp_endpoint *endp,
 struct mgcp_port_range {
 	int mode;
 
+	/* addr or NULL to fall-back to default */
+	char *bind_addr;
+
 	/* pre-allocated from a base? */
 	int base_port;
 

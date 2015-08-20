@@ -327,10 +327,14 @@ int mgcp_set_audio_info(void *ctx, struct mgcp_rtp_codec *codec,
  */
 static inline const char *mgcp_net_src_addr(struct mgcp_endpoint *endp)
 {
+	if (endp->cfg->bts_ports.bind_addr)
+		return endp->cfg->bts_ports.bind_addr;
 	return endp->cfg->source_addr;
 }
 
 static inline const char *mgcp_bts_src_addr(struct mgcp_endpoint *endp)
 {
+	if (endp->cfg->net_ports.bind_addr)
+		return endp->cfg->net_ports.bind_addr;
 	return endp->cfg->source_addr;
 }

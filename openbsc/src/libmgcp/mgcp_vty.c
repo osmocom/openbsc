@@ -78,12 +78,16 @@ static int config_write_mgcp(struct vty *vty)
 	else
 		vty_out(vty, "  rtp bts-range %u %u%s",
 			g_cfg->bts_ports.range_start, g_cfg->bts_ports.range_end, VTY_NEWLINE);
+	if (g_cfg->bts_ports.bind_addr)
+		vty_out(vty, "  rtp bts-bind-ip %s%s", g_cfg->bts_ports.bind_addr, VTY_NEWLINE);
 
 	if (g_cfg->net_ports.mode == PORT_ALLOC_STATIC)
 		vty_out(vty, "  rtp net-base %u%s", g_cfg->net_ports.base_port, VTY_NEWLINE);
 	else
 		vty_out(vty, "  rtp net-range %u %u%s",
 			g_cfg->net_ports.range_start, g_cfg->net_ports.range_end, VTY_NEWLINE);
+	if (g_cfg->net_ports.bind_addr)
+		vty_out(vty, "  rtp net-bind-ip %s%s", g_cfg->net_ports.bind_addr, VTY_NEWLINE);
 
 	vty_out(vty, "  rtp ip-dscp %d%s", g_cfg->endp_dscp, VTY_NEWLINE);
 	if (g_cfg->trunk.keepalive_interval == MGCP_KEEPALIVE_ONCE)
@@ -375,6 +379,44 @@ DEFUN(cfg_mgcp_rtp_transcoder_base,
       UDP_PORT_STR)
 {
 	parse_base(&g_cfg->transcoder_ports, argv);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_rtp_bts_bind_ip,
+      cfg_mgcp_rtp_bts_bind_ip_cmd,
+      "rtp bts-bind-ip A.B.C.D",
+      RTP_STR "Bind endpoints facing the BTS\n" "Address to bind to\n")
+{
+	bsc_replace_string(g_cfg, &g_cfg->bts_ports.bind_addr, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_rtp_no_bts_bind_ip,
+      cfg_mgcp_rtp_no_bts_bind_ip_cmd,
+      "no rtp bts-bind-ip",
+      NO_STR RTP_STR "Bind endpoints facing the BTS\n" "Address to bind to\n")
+{
+	talloc_free(g_cfg->bts_ports.bind_addr);
+	g_cfg->bts_ports.bind_addr = NULL;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_rtp_net_bind_ip,
+      cfg_mgcp_rtp_net_bind_ip_cmd,
+      "rtp net-bind-ip A.B.C.D",
+      RTP_STR "Bind endpoints facing the Network\n" "Address to bind to\n")
+{
+	bsc_replace_string(g_cfg, &g_cfg->net_ports.bind_addr, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_rtp_no_net_bind_ip,
+      cfg_mgcp_rtp_no_net_bind_ip_cmd,
+      "no rtp net-bind-ip",
+      NO_STR RTP_STR "Bind endpoints facing the Network\n" "Address to bind to\n")
+{
+	talloc_free(g_cfg->net_ports.bind_addr);
+	g_cfg->net_ports.bind_addr = NULL;
 	return CMD_SUCCESS;
 }
 
@@ -1282,7 +1324,11 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_bts_base_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_net_base_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_bts_range_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_bts_bind_ip_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_no_bts_bind_ip_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_net_range_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_net_bind_ip_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_no_net_bind_ip_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_transcoder_range_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_transcoder_base_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_dscp_cmd);

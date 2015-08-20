@@ -92,6 +92,28 @@ class TestVTYMGCP(TestVTYBase):
 
         # TODO: test it for the trunk!
 
+    def testBindAddr(self):
+        self.vty.enable()
+
+	self.vty.command("configure terminal")
+	self.vty.command("mgcp")
+
+        # enable.. disable bts-bind-ip
+        self.vty.command("rtp bts-bind-ip 254.253.252.250")
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('rtp bts-bind-ip 254.253.252.250') > 0)
+        self.vty.command("no rtp bts-bind-ip")
+        res = self.vty.command("show running-config")
+        self.assertEquals(res.find('  rtp bts-bind-ip'), -1)
+
+        # enable.. disable net-bind-ip
+        self.vty.command("rtp net-bind-ip 254.253.252.250")
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('rtp net-bind-ip 254.253.252.250') > 0)
+        self.vty.command("no rtp net-bind-ip")
+        res = self.vty.command("show running-config")
+        self.assertEquals(res.find('  rtp net-bind-ip'), -1)
+
 
 class TestVTYGenericBSC(TestVTYBase):
 
