@@ -275,7 +275,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	char osmux_extension[strlen("\nX-Osmux: 255") + 1];
 
 	if (!addr)
-		addr = endp->cfg->source_addr;
+		addr = mgcp_net_src_addr(endp);
 
 	if (endp->osmux.state == OSMUX_STATE_ACTIVATING)
 		sprintf(osmux_extension, "\nX-Osmux: %u", endp->osmux.cid);
@@ -1389,8 +1389,7 @@ static void send_msg(struct mgcp_endpoint *endp, int endpoint, int port,
 	if (len < 0)
 		return;
 
-	nchars = write_response_sdp(endp, buf + len, sizeof(buf) + len - 1,
-				    endp->cfg->source_addr);
+	nchars = write_response_sdp(endp, buf + len, sizeof(buf) + len - 1, NULL);
 	if (nchars < 0)
 		return;
 

@@ -912,19 +912,20 @@ int mgcp_set_ip_tos(int fd, int tos)
 	return ret != 0;
 }
 
-static int bind_rtp(struct mgcp_config *cfg, struct mgcp_rtp_end *rtp_end, int endpno)
+static int bind_rtp(struct mgcp_config *cfg, const char *source_addr,
+			struct mgcp_rtp_end *rtp_end, int endpno)
 {
-	if (mgcp_create_bind(cfg->source_addr, &rtp_end->rtp,
+	if (mgcp_create_bind(source_addr, &rtp_end->rtp,
 			     rtp_end->local_port) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTP port: %s:%d on 0x%x\n",
-		       cfg->source_addr, rtp_end->local_port, endpno);
+		       source_addr, rtp_end->local_port, endpno);
 		goto cleanup0;
 	}
 
-	if (mgcp_create_bind(cfg->source_addr, &rtp_end->rtcp,
+	if (mgcp_create_bind(source_addr, &rtp_end->rtcp,
 			     rtp_end->local_port + 1) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTCP port: %s:%d on 0x%x\n",
-		       cfg->source_addr, rtp_end->local_port + 1, endpno);
+		       source_addr, rtp_end->local_port + 1, endpno);
 		goto cleanup1;
 	}
 
@@ -961,7 +962,8 @@ cleanup0:
 
 static int int_bind(const char *port,
 		    struct mgcp_rtp_end *end, int (*cb)(struct osmo_fd *, unsigned),
-		    struct mgcp_endpoint *_endp, int rtp_port)
+		    struct mgcp_endpoint *_endp,
+		    const char *source_addr, int rtp_port)
 {
 	if (end->rtp.fd != -1 || end->rtcp.fd != -1) {
 		LOGP(DMGCP, LOGL_ERROR, "Previous %s was still bound on %d\n",
@@ -974,32 +976,35 @@ static int int_bind(const char *port,
 	end->rtp.data = _endp;
 	end->rtcp.data = _endp;
 	end->rtcp.cb = cb;
-	return bind_rtp(_endp->cfg, end, ENDPOINT_NUMBER(_endp));
+	return bind_rtp(_endp->cfg, source_addr, end, ENDPOINT_NUMBER(_endp));
 }
-
 
 int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
 	return int_bind("bts-port", &endp->bts_end,
-			rtp_data_bts, endp, rtp_port);
+			rtp_data_bts, endp,
+			mgcp_bts_src_addr(endp), rtp_port);
 }
 
 int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
 	return int_bind("net-port", &endp->net_end,
-			rtp_data_net, endp, rtp_port);
+			rtp_data_net, endp,
+			mgcp_net_src_addr(endp), rtp_port);
 }
 
 int mgcp_bind_trans_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
 	return int_bind("trans-net", &endp->trans_net,
-			rtp_data_trans_net, endp, rtp_port);
+			rtp_data_trans_net, endp,
+			endp->cfg->source_addr, rtp_port);
 }
 
 int mgcp_bind_trans_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
 	return int_bind("trans-bts", &endp->trans_bts,
-			rtp_data_trans_bts, endp, rtp_port);
+			rtp_data_trans_bts, endp,
+			endp->cfg->source_addr, rtp_port);
 }
 
 int mgcp_free_rtp_port(struct mgcp_rtp_end *end)

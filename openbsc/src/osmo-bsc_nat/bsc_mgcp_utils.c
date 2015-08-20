@@ -269,7 +269,7 @@ static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, int port, struct mgcp
 		       "\r\n"
 		       "c=IN IP4 %s\r\n"
 		       "m=audio %d RTP/AVP 255\r\n",
-		       port, bsc->nat->mgcp_cfg->source_addr,
+		       port, mgcp_bts_src_addr(endp),
 		       endp->bts_end.local_port);
 	if (len < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "snprintf for MDCX failed.\n");
@@ -550,7 +550,7 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 
 	/* we need to generate a new and patched message */
 	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
-				   sccp->bsc_endp, nat->mgcp_cfg->source_addr,
+				   sccp->bsc_endp, mgcp_bts_src_addr(mgcp_endp),
 				   mgcp_endp->bts_end.local_port, osmux_cid,
 				   &mgcp_endp->net_end.codec.payload_type,
 				   nat->sdp_ensure_amr_mode_set);
@@ -745,7 +745,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	 * with the value of 0 should be no problem.
 	 */
 	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg), -1,
-				  bsc->nat->mgcp_cfg->source_addr,
+				  mgcp_net_src_addr(endp),
 				  endp->net_end.local_port, -1,
 				  &endp->bts_end.codec.payload_type,
 				  bsc->nat->sdp_ensure_amr_mode_set);

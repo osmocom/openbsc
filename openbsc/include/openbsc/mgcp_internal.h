@@ -320,3 +320,17 @@ enum {
 int mgcp_parse_sdp_data(struct mgcp_endpoint *endp, struct mgcp_rtp_end *rtp, struct mgcp_parse_data *p);
 int mgcp_set_audio_info(void *ctx, struct mgcp_rtp_codec *codec,
 			int payload_type, const char *audio_name);
+
+
+/**
+ * Internal network related
+ */
+static inline const char *mgcp_net_src_addr(struct mgcp_endpoint *endp)
+{
+	return endp->cfg->source_addr;
+}
+
+static inline const char *mgcp_bts_src_addr(struct mgcp_endpoint *endp)
+{
+	return endp->cfg->source_addr;
+}
