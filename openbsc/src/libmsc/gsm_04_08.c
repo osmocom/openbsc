@@ -52,6 +52,7 @@
 #include <openbsc/bsc_api.h>
 #include <openbsc/osmo_msc.h>
 #include <openbsc/handover.h>
+#include <openbsc/mncc_int.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/bitvec.h>
 
@@ -3033,13 +3034,13 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 	/*
 	 * *sigh* we need to pick a codec now. Pick the most generic one
 	 * right now and hope we could fix that later on. This is very
-	 * similiar to the above routine.
-	 * TODO: Use the default codec version...
+	 * similiar to the routine above.
+	 * Fallback to the internal MNCC mode to select a route.
 	 */
 	if (lchan->tch_mode == GSM48_CMODE_SIGN) {
 		trans->conn->mncc_rtp_create_pending = 1;
-		/* TODO... transport or fix the default type... */
-		return gsm0808_assign_req(trans->conn, GSM48_CMODE_SPEECH_V1,
+		return gsm0808_assign_req(trans->conn,
+				mncc_codec_for_mode(lchan->type),
 				lchan->type != GSM_LCHAN_TCH_H);
 	}
 

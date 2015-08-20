@@ -65,14 +65,19 @@ static struct gsm_call *get_call_ref(uint32_t callref)
 	return NULL;
 }
 
-static uint8_t determine_lchan_mode(struct gsm_mncc *setup)
+uint8_t mncc_codec_for_mode(int lchan_type)
 {
 	/* FIXME: check codec capabilities of the phone */
 
-	if (setup->lchan_type != GSM_LCHAN_TCH_H)
+	if (lchan_type != GSM_LCHAN_TCH_H)
 		return mncc_int.def_codec[0];
 	else
 		return mncc_int.def_codec[1];
+}
+
+static uint8_t determine_lchan_mode(struct gsm_mncc *setup)
+{
+	return mncc_codec_for_mode(setup->lchan_type);
 }
 
 /* on incoming call, look up database and send setup to remote subscr. */

@@ -9,4 +9,6 @@ struct mncc_int {
 
 extern struct mncc_int mncc_int;
 
+uint8_t mncc_codec_for_mode(int lchan_type);
+
 #endif
