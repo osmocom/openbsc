@@ -214,6 +214,13 @@ int get_reason_by_chreq(uint8_t ra, int neci)
 	return GSM_CHREQ_REASON_OTHER;
 }
 
+static void mr_config_for_ms(struct gsm_lchan *lchan, struct msgb *msg)
+{
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		msgb_tlv_put(msg, GSM48_IE_MUL_RATE_CFG, lchan->mr_ms_lv[0],
+			lchan->mr_ms_lv + 1);
+}
+
 /* 7.1.7 and 9.1.7: RR CHANnel RELease */
 int gsm48_send_rr_release(struct gsm_lchan *lchan)
 {
@@ -489,9 +496,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 	}
 
 	/* in case of multi rate we need to attach a config */
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
-		msgb_tlv_put(msg, GSM48_IE_MUL_RATE_CFG, lchan->mr_ms_lv[0],
-			lchan->mr_ms_lv + 1);
+	mr_config_for_ms(lchan, msg);
 
 	return gsm48_sendmsg(msg);
 }
@@ -517,9 +522,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
 	cmm->mode = mode;
 
 	/* in case of multi rate we need to attach a config */
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
-		msgb_tlv_put(msg, GSM48_IE_MUL_RATE_CFG, lchan->mr_ms_lv[0],
-			lchan->mr_ms_lv + 1);
+	mr_config_for_ms(lchan, msg);
 
 	return gsm48_sendmsg(msg);
 }
