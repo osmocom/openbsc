@@ -33,7 +33,8 @@ meas_vis_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) -lcdk -lncurses
 meas_vis_CFLAGS = $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS)
 
 meas_json_SOURCES = meas_json.c
-meas_json_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS)
+meas_json_LDADD = $(top_builddir)/src/libcommon/libcommon.a \
+		  $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS)
 meas_json_CFLAGS = $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS)
 
 osmo_meas_pcap2db_SOURCES = meas_pcap2db.c meas_db.c
