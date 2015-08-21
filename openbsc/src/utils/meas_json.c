@@ -36,6 +36,8 @@
 
 #include <osmocom/gsm/gsm_utils.h>
 
+#include <openbsc/gsm_data.h>
+#include <openbsc/gsm_data_shared.h>
 #include <openbsc/meas_feed.h>
 
 static void print_meas_rep_uni_json(struct gsm_meas_rep_unidir *mru)
@@ -92,6 +94,14 @@ static void print_meas_rep_json(struct gsm_meas_rep *mr)
 	printf("]");
 }
 
+static void print_chan_info_json(struct meas_feed_meas *mfm)
+{
+	printf("\"lchan_type\":\"%s\", \"pchan_type\":\"%s\", "
+		   "\"bts_nr\":%d, \"trx_nr\":%d, \"ts_nr\":%d, \"ss_nr\":%d",
+	gsm_lchant_name(mfm->lchan_type), gsm_pchan_name(mfm->pchan_type),
+	mfm->bts_nr, mfm->trx_nr, mfm->ts_nr, mfm->ss_nr);
+}
+
 static void print_meas_feed_json(struct meas_feed_meas *mfm)
 {
 	time_t now = time(NULL);
@@ -100,9 +110,18 @@ static void print_meas_feed_json(struct meas_feed_meas *mfm)
 	printf("\"time\":%ld, \"imsi\":\"%s\", \"name\":\"%s\", \"scenario\":\"%s\", ",
 		now, mfm->imsi, mfm->name, mfm->scenario);
 
-	printf("\"meas_rep\":{");
-	print_meas_rep_json(&mfm->mr);
-	printf("}");
+	switch (mfm->hdr.version) {
+	case 1:
+		printf("\"chan_info\":{");
+		print_chan_info_json(mfm);
+		printf("}, ");
+		/* no break, fall to version 0 */
+	case 0:
+		printf("\"meas_rep\":{");
+		print_meas_rep_json(&mfm->mr);
+		printf("}");
+		break;
+	}
 
 	printf("}\n");
 
