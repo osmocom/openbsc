@@ -60,6 +60,15 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 	/* copy the entire measurement report */
 	memcpy(&mfm->mr, mr, sizeof(mfm->mr));
 
+	/* copy channel information */
+	/* we assume that the measurement report always belong to some timeslot */
+	mfm->lchan_type = (uint8_t)mr->lchan->type;
+	mfm->pchan_type = (uint8_t)mr->lchan->ts->pchan;
+	mfm->bts_nr = mr->lchan->ts->trx->bts->nr;
+	mfm->trx_nr = mr->lchan->ts->trx->nr;
+	mfm->ts_nr = mr->lchan->ts->nr;
+	mfm->ss_nr = mr->lchan->nr;
+
 	/* and send it to the socket */
 	if (osmo_wqueue_enqueue(&g_mfs.wqueue, msg) != 0)
 		msgb_free(msg);
