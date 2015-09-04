@@ -426,7 +426,7 @@ static int generate_si2(uint8_t *output, struct gsm_bts *bts)
 	if (rc < 0)
 		return rc;
 	list_arfcn(si2->bcch_frequency_list, 0xce,
-		"Neighbour cells in same band:");
+		"SI2 Neighbour cells in same band:");
 
 	si2->ncc_permitted = bts->si_common.ncc_permitted;
 	si2->rach_control = bts->si_common.rach_control;
@@ -616,7 +616,7 @@ static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 	if (rc < 0)
 		return rc;
 	list_arfcn(si5->bcch_frequency_list, 0xce,
-		"Neighbour cells in same band:");
+		"SI5 Neighbour cells in same band:");
 
 	/* 04.08 9.1.37: L2 Pseudo Length of 18 */
 	return l2_plen;
