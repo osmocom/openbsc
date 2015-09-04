@@ -151,9 +151,9 @@ static int enc_freq_lst_var_bitmap(uint8_t *chan_list,
 	for (i = 0; i < bv->data_len*8; i++) {
 		/* see notes in bitvec2freq_list */
 		if (bitvec_get_bit_pos(bv, i)
-		 && ((!bis && !ter && gsm_arfcn2band(i) == bts->band)
-		  || (bis && pgsm && gsm_arfcn2band(i) == bts->band && (i < 1 || i > 124))
-		  || (ter && gsm_arfcn2band(i) != bts->band))) {
+		 && ((!bis && !ter && band_compatible(bts,i))
+		  || (bis && pgsm && band_compatible(bts,i) && (i < 1 || i > 124))
+		  || (ter && !band_compatible(bts, i)))) {
 			int rc = freq_list_bmrel_set_arfcn(chan_list, i);
 			if (rc < 0)
 				return rc;
