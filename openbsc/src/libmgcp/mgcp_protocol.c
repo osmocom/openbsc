@@ -427,15 +427,14 @@ static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *
 	char *endptr = NULL;
 	unsigned int gw = INT_MAX;
 
-	if (strncmp(mgcp, "ds/e1", 5) == 0) {
+	if (strncmp(mgcp, "ds/e1", 5) == 0)
 		return find_e1_endpoint(cfg, mgcp);
-	} else {
-		gw = strtoul(mgcp, &endptr, 16);
-		if (gw > 0 && gw < cfg->trunk.number_endpoints && endptr[0] == '@')
-			return &cfg->trunk.endpoints[gw];
-	}
 
-	LOGP(DMGCP, LOGL_ERROR, "Not able to find endpoint: '%s'\n", mgcp);
+	gw = strtoul(mgcp, &endptr, 16);
+	if (gw > 0 && gw < cfg->trunk.number_endpoints && endptr[0] == '@')
+		return &cfg->trunk.endpoints[gw];
+
+	LOGP(DMGCP, LOGL_ERROR, "Not able to find the endpoint: '%s'\n", mgcp);
 	return NULL;
 }
 
