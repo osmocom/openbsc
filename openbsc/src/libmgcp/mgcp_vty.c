@@ -1292,7 +1292,7 @@ DEFUN(cfg_mgcp_osmux_port,
 DEFUN(cfg_mgcp_osmux_dummy,
       cfg_mgcp_osmux_dummy_cmd,
       "osmux dummy (on|off)",
-      OSMUX_STR "Enable dummy padding\n" "Disable dummy padding\n")
+      OSMUX_STR "Dummy padding\n" "Enable dummy padding\n" "Disable dummy padding\n")
 {
 	if (strcmp(argv[0], "on") == 0)
 		g_cfg->osmux_dummy = 1;
