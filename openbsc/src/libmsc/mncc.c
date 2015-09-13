@@ -34,10 +34,12 @@
 #include <openbsc/transaction.h>
 #include <openbsc/rtp_proxy.h>
 
-static struct mncc_names {
+struct name_value {
 	char *name;
 	int value;
-} mncc_names[] = {
+};
+
+static struct name_value mncc_names[] = {
 	{"MNCC_SETUP_REQ",	0x0101},
 	{"MNCC_SETUP_IND",	0x0102},
 	{"MNCC_SETUP_RSP",	0x0103},
@@ -92,16 +94,103 @@ static struct mncc_names {
 
 	{NULL, 0} };
 
-char *get_mncc_name(int value)
+static struct name_value mncc_locations[] = {
+	{"GSM48_CAUSE_LOC_USER",		0x00},
+	{"GSM48_CAUSE_LOC_PRN_S_LU",	0x01},
+	{"GSM48_CAUSE_LOC_PUN_S_LU",	0x02},
+	{"GSM48_CAUSE_LOC_TRANS_NET",	0x03},
+	{"GSM48_CAUSE_LOC_PUN_S_RU",	0x04},
+	{"GSM48_CAUSE_LOC_PRN_S_RU",	0x05},
+	/* not defined */
+	{"GSM48_CAUSE_LOC_INN_NET",		0x07},
+	{"GSM48_CAUSE_LOC_NET_BEYOND",	0x0a},
+
+	{NULL, 0} };
+
+static struct name_value mncc_causes[] = {
+	{"GSM48_CC_CAUSE_UNASSIGNED_NR",	1},
+	{"GSM48_CC_CAUSE_NO_ROUTE",	3},
+	{"GSM48_CC_CAUSE_CHAN_UNACCEPT",	6},
+	{"GSM48_CC_CAUSE_OP_DET_BARRING",	8},
+	{"GSM48_CC_CAUSE_NORM_CALL_CLEAR",	16},
+	{"GSM48_CC_CAUSE_USER_BUSY",	17},
+	{"GSM48_CC_CAUSE_USER_NOTRESPOND",	18},
+	{"GSM48_CC_CAUSE_USER_ALERTING_NA",	19},
+	{"GSM48_CC_CAUSE_CALL_REJECTED",	21},
+	{"GSM48_CC_CAUSE_NUMBER_CHANGED",	22},
+	{"GSM48_CC_CAUSE_PRE_EMPTION",	25},
+	{"GSM48_CC_CAUSE_NONSE_USER_CLR",	26},
+	{"GSM48_CC_CAUSE_DEST_OOO",	27},
+	{"GSM48_CC_CAUSE_INV_NR_FORMAT",	28},
+	{"GSM48_CC_CAUSE_FACILITY_REJ",	29},
+	{"GSM48_CC_CAUSE_RESP_STATUS_INQ",	30},
+	{"GSM48_CC_CAUSE_NORMAL_UNSPEC",	31},
+	{"GSM48_CC_CAUSE_NO_CIRCUIT_CHAN",	34},
+	{"GSM48_CC_CAUSE_NETWORK_OOO",	38},
+	{"GSM48_CC_CAUSE_TEMP_FAILURE",	41},
+	{"GSM48_CC_CAUSE_SWITCH_CONG",	42},
+	{"GSM48_CC_CAUSE_ACC_INF_DISCARD",	43},
+	{"GSM48_CC_CAUSE_REQ_CHAN_UNAVAIL",	44},
+	{"GSM48_CC_CAUSE_RESOURCE_UNAVAIL",	47},
+	{"GSM48_CC_CAUSE_QOS_UNAVAIL",	49},
+	{"GSM48_CC_CAUSE_REQ_FAC_NOT_SUBSC",	50},
+	{"GSM48_CC_CAUSE_INC_BARRED_CUG",	55},
+	{"GSM48_CC_CAUSE_BEARER_CAP_UNAUTH",	57},
+	{"GSM48_CC_CAUSE_BEARER_CA_UNAVAIL",	58},
+	{"GSM48_CC_CAUSE_SERV_OPT_UNAVAIL",	63},
+	{"GSM48_CC_CAUSE_BEARERSERV_UNIMPL",	65},
+	{"GSM48_CC_CAUSE_ACM_GE_ACM_MAX",	68},
+	{"GSM48_CC_CAUSE_REQ_FAC_NOTIMPL",	69},
+	{"GSM48_CC_CAUSE_RESTR_BCAP_AVAIL",	70},
+	{"GSM48_CC_CAUSE_SERV_OPT_UNIMPL",	79},
+	{"GSM48_CC_CAUSE_INVAL_TRANS_ID",	81},
+	{"GSM48_CC_CAUSE_USER_NOT_IN_CUG",	87},
+	{"GSM48_CC_CAUSE_INCOMPAT_DEST",	88},
+	{"GSM48_CC_CAUSE_INVAL_TRANS_NET",	91},
+	{"GSM48_CC_CAUSE_SEMANTIC_INCORR",	95},
+	{"GSM48_CC_CAUSE_INVAL_MAND_INF",	96},
+	{"GSM48_CC_CAUSE_MSGTYPE_NOTEXIST",	97},
+	{"GSM48_CC_CAUSE_MSGTYPE_INCOMPAT",	98},
+	{"GSM48_CC_CAUSE_IE_NOTEXIST",	99},
+	{"GSM48_CC_CAUSE_COND_IE_ERR",	100},
+	{"GSM48_CC_CAUSE_MSG_INCOMP_STATE",	101},
+	{"GSM48_CC_CAUSE_RECOVERY_TIMER",	102},
+	{"GSM48_CC_CAUSE_PROTO_ERR",	111},
+	{"GSM48_CC_CAUSE_INTERWORKING",	127},
+
+	{NULL, 0} };
+
+const char *get_name_by_value(struct name_value *pairs, int value, const char *default_val)
 {
 	int i;
 
-	for (i = 0; mncc_names[i].name; i++) {
-		if (mncc_names[i].value == value)
-			return mncc_names[i].name;
+	for (i = 0; pairs[i].name; i++) {
+		if (pairs[i].value == value)
+			return pairs[i].name;
 	}
 
-	return "MNCC_Unknown";
+	return default_val;
+}
+
+
+const char *get_mncc_name(int value)
+{
+	return get_name_by_value(mncc_names, value, "MNCC_Unknown");
+}
+
+const char *get_mncc_location(int value)
+{
+	return get_name_by_value(mncc_locations, value, "GSM48_CAUSE_LOC_Unknown");
+}
+
+const char *get_mncc_cause(int value)
+{
+	return get_name_by_value(mncc_causes, value, "GSM48_CC_CAUSE_Unknown");
+}
+
+int mncc_has_cause(struct gsm_mncc *data)
+{
+	return data->fields & MNCC_F_CAUSE;
 }
 
 void mncc_set_cause(struct gsm_mncc *data, int loc, int val)

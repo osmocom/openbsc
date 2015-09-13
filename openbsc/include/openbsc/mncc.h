@@ -179,8 +179,11 @@ struct gsm_mncc_hello {
 	uint32_t	lchan_type_offset;
 };
 
-char *get_mncc_name(int value);
+const char *get_mncc_name(int value);
 void mncc_set_cause(struct gsm_mncc *data, int loc, int val);
+int mncc_has_cause(struct gsm_mncc *data);
+const char *get_mncc_location(int value);
+const char *get_mncc_cause(int value);
 void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg);
 
 /* input from CC code into mncc_builtin */
