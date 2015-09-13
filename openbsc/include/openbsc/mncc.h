@@ -191,8 +191,11 @@ struct gsm_mncc_rtp {
 	uint32_t	payload_msg_type;
 };
 
-char *get_mncc_name(int value);
+const char *get_mncc_name(int value);
 void mncc_set_cause(struct gsm_mncc *data, int loc, int val);
+int mncc_has_cause(struct gsm_mncc *data);
+const char *get_mncc_location(int value);
+const char *get_mncc_cause(int value);
 void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg);
 
 /* input from CC code into mncc_builtin */
