@@ -1346,20 +1346,26 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 	if (trans)
 		if (trans->conn && trans->conn->lchan)
 			DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
-				"Sending '%s' to MNCC.\n",
+				"Sending '%s' cause %s/%s to MNCC.\n",
 				trans->conn->lchan->ts->trx->bts->nr,
 				trans->conn->lchan->ts->trx->nr,
 				trans->conn->lchan->ts->nr, trans->transaction_id,
 				(trans->subscr)?(trans->subscr->extension):"-",
-				get_mncc_name(msg_type));
+				get_mncc_name(msg_type),
+				(mncc_has_cause(mncc))?get_mncc_location(mncc->cause.location):"-",
+				(mncc_has_cause(mncc))?get_mncc_cause(mncc->cause.value):"-");
 		else
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
-				"Sending '%s' to MNCC.\n",
+				"Sending '%s' cause %s/%s to MNCC.\n",
 				(trans->subscr)?(trans->subscr->extension):"-",
-				get_mncc_name(msg_type));
+				get_mncc_name(msg_type),
+				(mncc_has_cause(mncc))?get_mncc_location(mncc->cause.location):"-",
+				(mncc_has_cause(mncc))?get_mncc_cause(mncc->cause.value):"-");
 	else
 		DEBUGP(DCC, "(bts - trx - ts - ti -- sub -) "
-			"Sending '%s' to MNCC.\n", get_mncc_name(msg_type));
+			"Sending '%s' cause %s/%s to MNCC.\n", get_mncc_name(msg_type),
+			   (mncc_has_cause(mncc))?get_mncc_location(mncc->cause.location):"-",
+			   (mncc_has_cause(mncc))?get_mncc_cause(mncc->cause.value):"-");
 
 	mncc->msg_type = msg_type;
 	
