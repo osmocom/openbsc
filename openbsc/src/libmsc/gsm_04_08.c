@@ -57,6 +57,7 @@
 
 #include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/gsm0480.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
@@ -407,7 +408,7 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 restart:
 	llist_for_each_entry_safe(trans, temp, &conn->bts->network->trans_list, entry) {
 		if (trans->conn == conn) {
-			trans_free(trans);
+			trans_free_cause(trans, cause);
 			goto restart;
 		}
 	}
@@ -1396,16 +1397,21 @@ int mncc_release_ind(struct gsm_network *net, struct gsm_trans *trans,
 
 /* Call Control Specific transaction release.
  * gets called by trans_free, DO NOT CALL YOURSELF! */
-void _gsm48_cc_trans_free(struct gsm_trans *trans)
+void _gsm48_cc_trans_free(struct gsm_trans *trans, int gsm0808_cause)
 {
 	gsm48_stop_cc_timer(trans);
 
 	/* send release to L4, if callref still exists */
 	if (trans->callref) {
-		/* Ressource unavailable */
+		/* Release CC connection */
+		int cc_cause = GSM48_CC_CAUSE_RESOURCE_UNAVAIL;
+		if (gsm0808_cause == GSM0808_CAUSE_RADIO_INTERFACE_FAILURE)
+		{
+			cc_cause = GSM48_CC_CAUSE_DEST_OOO;
+		}
 		mncc_release_ind(trans->net, trans, trans->callref,
 				 GSM48_CAUSE_LOC_PRN_S_LU,
-				 GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
+				 cc_cause);
 	}
 	if (trans->cc.state != GSM_CSTATE_NULL)
 		new_cc_state(trans, GSM_CSTATE_NULL);

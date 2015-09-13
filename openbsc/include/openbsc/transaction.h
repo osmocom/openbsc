@@ -70,6 +70,7 @@ struct gsm_trans *trans_alloc(struct gsm_network *net,
 			      struct gsm_subscriber *subscr,
 			      uint8_t protocol, uint8_t trans_id,
 			      uint32_t callref);
+void trans_free_cause(struct gsm_trans *trans, int gsm0808_cause);
 void trans_free(struct gsm_trans *trans);
 
 int trans_assign_trans_id(struct gsm_network *net, struct gsm_subscriber *subscr,

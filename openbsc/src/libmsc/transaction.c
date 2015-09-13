@@ -31,7 +31,7 @@
 
 void *tall_trans_ctx;
 
-void _gsm48_cc_trans_free(struct gsm_trans *trans);
+void _gsm48_cc_trans_free(struct gsm_trans *trans, int gsm0808_cause);
 
 struct gsm_trans *trans_find_by_id(struct gsm_subscriber_connection *conn,
 				   uint8_t proto, uint8_t trans_id)
@@ -89,9 +89,14 @@ struct gsm_trans *trans_alloc(struct gsm_network *net,
 
 void trans_free(struct gsm_trans *trans)
 {
+	trans_free_cause(trans, -1);
+}
+
+void trans_free_cause(struct gsm_trans *trans, int gsm0808_cause)
+{
 	switch (trans->protocol) {
 	case GSM48_PDISC_CC:
-		_gsm48_cc_trans_free(trans);
+		_gsm48_cc_trans_free(trans, gsm0808_cause);
 		break;
 	case GSM48_PDISC_SMS:
 		_gsm411_sms_trans_free(trans);
