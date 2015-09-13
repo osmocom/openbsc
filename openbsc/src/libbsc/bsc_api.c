@@ -830,7 +830,7 @@ static void handle_release(struct gsm_subscriber_connection *conn,
 
 	/* clear the connection now */
 	if (bsc->clear_request)
-		destruct = bsc->clear_request(conn, 0);
+		destruct = bsc->clear_request(conn, GSM0808_CAUSE_RADIO_INTERFACE_FAILURE);
 
 	/* now give up all channels */
 	if (conn->lchan == lchan)
