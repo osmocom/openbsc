@@ -91,20 +91,20 @@ static void print_usage()
 static void print_help()
 {
 	printf("  Some useful help...\n");
-	printf("  -h --help this text\n");
-	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
-	printf("  -D --daemonize Fork the process into a background daemon\n");
-	printf("  -c --config-file filename The config file to use.\n");
+	printf("  -h --help                  This text.\n");
+	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM  Enable debugging.\n");
+	printf("  -D --daemonize             Fork the process into a background daemon.\n");
+	printf("  -c --config-file filename  The config file to use.\n");
 	printf("  -s --disable-color\n");
-	printf("  -l --database db-name The database to use\n");
-	printf("  -a --authorize-everyone. Authorize every new subscriber. Dangerous!.\n");
-	printf("  -T --timestamp Prefix every log line with a timestamp\n");
-	printf("  -V --version. Print the version of OpenBSC.\n");
-	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
-	printf("  -e --log-level number. Set a global loglevel.\n");
-	printf("  -m --mncc-sock Disable built-in MNCC handler and offer socket\n");
-	printf("  -C --no-dbcounter Disable regular syncing of counters to database\n");
-	printf("  -r --rf-ctl NAME. A unix domain socket to listen for cmds.\n");
+	printf("  -l --database db-name      The database to use.\n");
+	printf("  -a --authorize-everyone    Authorize every new subscriber. Dangerous!\n");
+	printf("  -T --timestamp             Prefix every log line with a timestamp.\n");
+	printf("  -V --version               Print the version of OpenBSC.\n");
+	printf("  -P --rtp-proxy             Enable the RTP Proxy code inside OpenBSC.\n");
+	printf("  -e --log-level number      Set a global loglevel.\n");
+	printf("  -m --mncc-sock             Disable built-in MNCC handler and offer socket.\n");
+	printf("  -C --no-dbcounter          Disable regular syncing of counters to database.\n");
+	printf("  -r --rf-ctl NAME           A unix domain socket to listen for cmds.\n");
 }
 
 static void handle_options(int argc, char **argv)
