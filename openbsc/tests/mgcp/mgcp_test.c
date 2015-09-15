@@ -753,7 +753,7 @@ static void test_packet_loss_calc(void)
 		state.stats_max_seq = pl_test_dat[i].max_seq;
 		state.stats_cycles = pl_test_dat[i].cycles;
 
-		state.stats_packets = pl_test_dat[i].packets;
+		state.stats_received = pl_test_dat[i].packets;
 		mgcp_state_calc_loss(&state, &expected, &loss);
 
 		if (loss != pl_test_dat[i].loss || expected != pl_test_dat[i].expected) {

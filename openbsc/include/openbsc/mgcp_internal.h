@@ -66,13 +66,18 @@ struct mgcp_rtp_state {
 
 	/* jitter and packet loss calculation */
 	int stats_initialized;
-	uint16_t stats_base_seq;
-	uint16_t stats_max_seq;
 	uint32_t stats_ssrc;
-	uint32_t stats_jitter;
+
+	uint16_t stats_max_seq;
+	uint32_t stats_cycles;
+	uint32_t stats_base_seq;
+	/* uint32_t stats_bad_seq; no probation */
+	/* uint32_t probation  */
+	uint32_t stats_received;
+	/* uint32_t expected_prior no SenderReport */
+	/* uint32_t received_prior no SenderReport */
 	int32_t stats_transit;
-	int stats_cycles;
-	unsigned int stats_packets;
+	uint32_t stats_jitter;
 };
 
 struct mgcp_rtp_codec {
