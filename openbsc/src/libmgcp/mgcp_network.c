@@ -345,7 +345,7 @@ void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	if (!state->stats_initialized || state->stats_ssrc != ssrc) {
 		state->stats_initialized = 1;
 		state->stats_base_seq = seq;
-		state->stats_max_seq = seq - 1;
+		state->stats_max_seq = seq;
 		state->stats_ssrc = ssrc;
 		state->stats_jitter = 0;
 		state->stats_transit = transit;
@@ -372,6 +372,7 @@ void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 				"RTP seqno made a very large jump on 0x%x delta: %u\n",
 				ENDPOINT_NUMBER(endp), udelta);
 		}
+		state->stats_max_seq = seq;
 	}
 
 	/*
@@ -385,7 +386,6 @@ void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	if (d < 0)
 		d = -d;
 	state->stats_jitter += d - ((state->stats_jitter + 8) >> 4);
-	state->stats_max_seq = seq;
 }
 
 
