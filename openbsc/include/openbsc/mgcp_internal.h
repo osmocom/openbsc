@@ -71,7 +71,7 @@ struct mgcp_rtp_state {
 	uint16_t stats_max_seq;
 	uint32_t stats_cycles;
 	uint32_t stats_base_seq;
-	/* uint32_t stats_bad_seq; no probation */
+	uint32_t stats_bad_seq;
 	/* uint32_t probation  */
 	uint32_t stats_received;
 	/* uint32_t expected_prior no SenderReport */

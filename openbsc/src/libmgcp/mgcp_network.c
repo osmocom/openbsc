@@ -334,46 +334,61 @@ void mgcp_get_net_downlink_format_default(struct mgcp_endpoint *endp,
 	*fmtp_extra = endp->bts_end.fmtp_extra;
 }
 
+static void init_seq(struct mgcp_rtp_state *state, const uint16_t seq)
+{
+	state->stats_initialized = 1;
+	state->stats_base_seq = seq;
+	state->stats_max_seq = seq;
+	state->stats_base_seq = RTP_SEQ_MOD + 1;
+	state->stats_jitter = 0;
+	state->stats_cycles = 0;
+	state->stats_received = 0;
+}
 
 void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
 			const uint16_t seq, const int32_t transit,
 			const uint32_t ssrc)
 {
 	int32_t d;
+	uint16_t udelta;
 
 	/* initialize or re-initialize */
 	if (!state->stats_initialized || state->stats_ssrc != ssrc) {
-		state->stats_initialized = 1;
-		state->stats_base_seq = seq;
-		state->stats_max_seq = seq;
+		init_seq(state, seq);
 		state->stats_ssrc = ssrc;
-		state->stats_jitter = 0;
+		state->stats_received += 1;
 		state->stats_transit = transit;
-		state->stats_cycles = 0;
-		state->stats_received = 0;
-	} else {
-		uint16_t udelta;
-
-		/*
-		 * The below takes the shape of the validation of
-		 * Appendix A. Check if there is something weird with
-		 * the sequence number, otherwise check for a wrap
-		 * around in the sequence number.
-		 * It can't wrap during the initialization so let's
-		 * skip it here. The Appendix A probably doesn't have
-		 * this issue because of the probation.
-		 */
-		udelta = seq - state->stats_max_seq;
-		if (udelta < RTP_MAX_DROPOUT) {
-			if (seq < state->stats_max_seq)
-				state->stats_cycles += RTP_SEQ_MOD;
-		} else if (udelta <= RTP_SEQ_MOD - RTP_MAX_MISORDER) {
-			LOGP(DMGCP, LOGL_NOTICE,
-				"RTP seqno made a very large jump on 0x%x delta: %u\n",
-				ENDPOINT_NUMBER(endp), udelta);
-		}
-		state->stats_max_seq = seq;
+		state->stats_jitter = 0;
+		return;
 	}
+
+	/*
+	 * The below takes the shape of the validation of
+	 * Appendix A. Check if there is something weird with
+	 * the sequence number, otherwise check for a wrap
+	 * around in the sequence number.
+	 * It can't wrap during the initialization so let's
+	 * skip it here. The Appendix A probably doesn't have
+	 * this issue because of the probation.
+	 */
+	udelta = seq - state->stats_max_seq;
+	if (udelta < RTP_MAX_DROPOUT) {
+		if (seq < state->stats_max_seq)
+			state->stats_cycles += RTP_SEQ_MOD;
+		state->stats_max_seq = seq;
+	} else if (udelta <= RTP_SEQ_MOD - RTP_MAX_MISORDER) {
+		LOGP(DMGCP, LOGL_NOTICE,
+			"RTP seqno made a very large jump on 0x%x delta: %u\n",
+			ENDPOINT_NUMBER(endp), udelta);
+		if (seq == state->stats_bad_seq)
+			init_seq(state, seq);
+		else {
+			state->stats_bad_seq = (seq + 1) & (RTP_SEQ_MOD - 1);
+			return;
+		}
+	}
+
+	state->stats_received += 1;
 
 	/*
 	 * Calculate the jitter between the two packages. The TS should be
@@ -706,7 +721,6 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 	}
 
 	proto = fd == &endp->net_end.rtp ? MGCP_PROTO_RTP : MGCP_PROTO_RTCP;
-	endp->net_state.stats_received += 1;
 	endp->net_end.packets += 1;
 	endp->net_end.octets += rc;
 
@@ -799,7 +813,6 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 	}
 
 	/* do this before the loop handling */
-	endp->bts_state.stats_received += 1;
 	endp->bts_end.packets += 1;
 	endp->bts_end.octets += rc;
 
