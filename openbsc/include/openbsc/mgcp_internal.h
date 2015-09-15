@@ -72,6 +72,7 @@ struct mgcp_rtp_state {
 	uint32_t stats_jitter;
 	int32_t stats_transit;
 	int stats_cycles;
+	unsigned int stats_packets;
 };
 
 struct mgcp_rtp_codec {
@@ -273,8 +274,7 @@ void mgcp_rtp_end_config(struct mgcp_endpoint *endp, int expect_ssrc_change,
 uint32_t mgcp_rtp_packet_duration(struct mgcp_endpoint *endp,
 				  struct mgcp_rtp_end *rtp);
 
-void mgcp_state_calc_loss(struct mgcp_rtp_state *s, struct mgcp_rtp_end *,
-			uint32_t *expected, int *loss);
+void mgcp_state_calc_loss(struct mgcp_rtp_state *s, uint32_t *expected, int *loss);
 uint32_t mgcp_state_calc_jitter(struct mgcp_rtp_state *);
 
 /* payload processing default functions */

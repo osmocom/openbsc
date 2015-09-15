@@ -1522,8 +1522,7 @@ void mgcp_format_stats(struct mgcp_endpoint *endp, char *msg, size_t size)
 	uint32_t expected, jitter;
 	int ploss;
 	int nchars;
-	mgcp_state_calc_loss(&endp->net_state, &endp->net_end,
-				&expected, &ploss);
+	mgcp_state_calc_loss(&endp->net_state, &expected, &ploss);
 	jitter = mgcp_state_calc_jitter(&endp->net_state);
 
 	nchars = snprintf(msg, size,

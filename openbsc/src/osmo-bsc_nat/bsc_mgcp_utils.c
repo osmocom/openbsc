@@ -342,7 +342,7 @@ static void remember_pending_dlcx(struct nat_sccp_connection *con, uint32_t tran
 	stats->net_os = endp->net_end.octets;
 	stats->bts_pr = endp->bts_end.packets;
 	stats->bts_or = endp->bts_end.octets;
-	mgcp_state_calc_loss(&endp->bts_state, &endp->bts_end,
+	mgcp_state_calc_loss(&endp->bts_state,
 				&stats->bts_expected, &stats->bts_loss);
 	stats->bts_jitter = mgcp_state_calc_jitter(&endp->bts_state);
 

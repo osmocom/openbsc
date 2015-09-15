@@ -350,6 +350,7 @@ void mgcp_rtp_annex_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 		state->stats_jitter = 0;
 		state->stats_transit = transit;
 		state->stats_cycles = 0;
+		state->stats_packets = 0;
 	} else {
 		uint16_t udelta;
 
@@ -705,6 +706,7 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 	}
 
 	proto = fd == &endp->net_end.rtp ? MGCP_PROTO_RTP : MGCP_PROTO_RTCP;
+	endp->net_state.stats_packets += 1;
 	endp->net_end.packets += 1;
 	endp->net_end.octets += rc;
 
@@ -797,6 +799,7 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 	}
 
 	/* do this before the loop handling */
+	endp->bts_state.stats_packets += 1;
 	endp->bts_end.packets += 1;
 	endp->bts_end.octets += rc;
 
@@ -1026,8 +1029,7 @@ int mgcp_free_rtp_port(struct mgcp_rtp_end *end)
 
 
 void mgcp_state_calc_loss(struct mgcp_rtp_state *state,
-			struct mgcp_rtp_end *end, uint32_t *expected,
-			int *loss)
+			uint32_t *expected, int *loss)
 {
 	*expected = state->stats_cycles + state->stats_max_seq;
 	*expected = *expected - state->stats_base_seq + 1;
@@ -1042,8 +1044,8 @@ void mgcp_state_calc_loss(struct mgcp_rtp_state *state,
 	 * Make sure the sign is correct and use the biggest
 	 * positive/negative number that fits.
 	 */
-	*loss = *expected - end->packets;
-	if (*expected < end->packets) {
+	*loss = *expected - state->stats_packets;
+	if (*expected < state->stats_packets) {
 		if (*loss > 0)
 			*loss = INT_MIN;
 	} else {

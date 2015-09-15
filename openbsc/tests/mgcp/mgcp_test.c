@@ -753,8 +753,8 @@ static void test_packet_loss_calc(void)
 		state.stats_max_seq = pl_test_dat[i].max_seq;
 		state.stats_cycles = pl_test_dat[i].cycles;
 
-		rtp.packets = pl_test_dat[i].packets;
-		mgcp_state_calc_loss(&state, &rtp, &expected, &loss);
+		state.stats_packets = pl_test_dat[i].packets;
+		mgcp_state_calc_loss(&state, &expected, &loss);
 
 		if (loss != pl_test_dat[i].loss || expected != pl_test_dat[i].expected) {
 			printf("FAIL: Wrong exp/loss at idx(%d) Loss(%d vs. %d) Exp(%u vs. %u)\n",
