@@ -852,6 +852,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	uint16_t cid;
 	enum gsm48_gmm_cause reject_cause;
 	int rc;
+	int epc_cap;
 
 	LOGP(DMM, LOGL_INFO, "-> GMM ATTACH REQUEST ");
 
@@ -867,6 +868,9 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	if (msnc_len > sizeof(ctx->ms_network_capa.buf))
 		goto err_inval;
 	cur += msnc_len;
+
+	/* EPC Capability flag */
+	epc_cap = (msnc_len >= 3 && (msnc[2] & 0b100));
 
 	/* aTTACH Type 10.5.5.2 */
 	att_type = *cur++ & 0x0f;
@@ -887,6 +891,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 
 	DEBUGPC(DMM, "MI(%s) type=\"%s\" ", mi_string,
 		get_value_string(gprs_att_t_strs, att_type));
+	LOGPC(DMM, LOGL_INFO, " ecp_capability=%s", (epc_cap ? "true" : "false"));
 
 	/* Old routing area identification 10.5.5.15. Skip it */
 	cur += 6;

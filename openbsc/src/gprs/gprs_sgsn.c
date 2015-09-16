@@ -238,6 +238,12 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 	gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
 }
 
+/* Determines whether the EPC capability flag is present and set in */
+/* MS Network Capability IE  (TS 24.008 v10.15.0 section 10.5.5.12)*/
+int sgsn_mm_ctx_is_epc_capable(struct sgsn_mm_ctx *mmctx)
+{
+	return (mmctx->ms_network_capa.len >= 3 && (mmctx->ms_network_capa.buf[2] & 0b100));
+}
 
 /* look up PDP context by MM context and NSAPI */
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,
