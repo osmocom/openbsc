@@ -1024,7 +1024,7 @@ static int verify_key(struct bsc_connection *conn, struct bsc_config *conf, cons
 
 	if (vec.res_len != 8) {
 		LOGP(DNAT, LOGL_ERROR, "Res length is wrong: %d for bsc nr %d\n",
-			keylen, conf->nr);
+			vec.res_len, conf->nr);
 		return 0;
 	}
 
