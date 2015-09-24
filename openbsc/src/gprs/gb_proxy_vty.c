@@ -746,6 +746,55 @@ DEFUN(delete_gb_link, delete_gb_link_cmd,
 	return CMD_SUCCESS;
 }
 
+/*
+ * legacy commands to provide an upgrade path from "broken" releases
+ * or pre-releases
+ */
+DEFUN_DEPRECATED(cfg_gbproxy_broken_apn_match,
+      cfg_gbproxy_broken_apn_match_cmd,
+      "core-access-point-name none match-imsi .REGEXP",
+      GBPROXY_CORE_APN_STR GBPROXY_MATCH_IMSI_STR "Remove APN\n"
+      "Patch MS related information elements on match only\n"
+      "Route to the secondary SGSN on match only\n"
+      "Regular expression for the IMSI match\n")
+{
+	const char *filter = argv[0];
+	const char *err_msg = NULL;
+	struct gbproxy_match *match;
+	enum gbproxy_match_id match_id = get_string_value(match_ids, "patching");
+
+	/* apply APN none */
+	set_core_apn(vty, "");
+
+	/* do the matching... with copy and paste */
+	OSMO_ASSERT(match_id >= GBPROX_MATCH_PATCHING &&
+		    match_id < GBPROX_MATCH_LAST);
+	match = &g_cfg->matches[match_id];
+
+	if (gbproxy_set_patch_filter(match, filter, &err_msg) != 0) {
+		vty_out(vty, "Match expression invalid: %s%s",
+			err_msg, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	g_cfg->acquire_imsi = 1;
+
+	return CMD_SUCCESS;
+}
+
+#define GBPROXY_TLLI_LIST_STR "Set TLLI list parameters\n"
+#define GBPROXY_MAX_LEN_STR "Limit list length\n"
+DEFUN_DEPRECATED(cfg_gbproxy_depr_tlli_list_max_len,
+      cfg_gbproxy_depr_tlli_list_max_len_cmd,
+      "tlli-list max-length <1-99999>",
+      GBPROXY_TLLI_LIST_STR GBPROXY_MAX_LEN_STR
+      "Maximum number of TLLIs in the list\n")
+{
+	g_cfg->tlli_max_len = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 int gbproxy_vty_init(void)
 {
 	install_element_ve(&show_gbproxy_cmd);
@@ -779,6 +828,10 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &cfg_gbproxy_no_acquire_imsi_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_link_list_no_max_age_cmd);
 	install_element(GBPROXY_NODE, &cfg_gbproxy_link_list_no_max_len_cmd);
+
+	/* broken or deprecated to allow an upgrade path */
+	install_element(GBPROXY_NODE, &cfg_gbproxy_broken_apn_match_cmd);
+	install_element(GBPROXY_NODE, &cfg_gbproxy_depr_tlli_list_max_len_cmd);
 
 	return 0;
 }

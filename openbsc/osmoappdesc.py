@@ -31,7 +31,8 @@ app_configs = {
     "osmo-bsc": ["doc/examples/osmo-bsc/osmo-bsc.cfg"],
     "nat": ["doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg"],
     "mgcp": ["doc/examples/osmo-bsc_mgcp/mgcp.cfg"],
-    "gbproxy": ["doc/examples/osmo-gbproxy/osmo-gbproxy.cfg"],
+    "gbproxy": ["doc/examples/osmo-gbproxy/osmo-gbproxy.cfg",
+             "doc/examples/osmo-gbproxy/osmo-gbproxy-legacy.cfg"],
     "sgsn": ["doc/examples/osmo-sgsn/osmo-sgsn.cfg"],
     "nitb": ["doc/examples/osmo-nitb/nanobts/openbsc-multitrx.cfg",
              "doc/examples/osmo-nitb/nanobts/openbsc.cfg"]
