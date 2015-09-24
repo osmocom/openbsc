@@ -1587,7 +1587,7 @@ static void talloc_init_ctx()
 	tall_ctr_ctx = talloc_named_const(tall_bsc_ctx, 0, "counter");
 }
 
-extern enum node_type bsc_vty_go_parent(struct vty *vty);
+extern int bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
 	.name 		= "OsmoBSCNAT",

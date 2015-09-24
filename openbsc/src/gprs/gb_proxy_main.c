@@ -189,7 +189,7 @@ static void handle_options(int argc, char **argv)
 
 extern void *tall_msgb_ctx;
 
-extern enum node_type bsc_vty_go_parent(struct vty *vty);
+extern int bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
 	.name 		= "OsmoGbProxy",

@@ -158,7 +158,7 @@ static void signal_handler(int signal)
 extern struct gprs_ns_inst *bssgp_nsi;
 extern void *tall_msgb_ctx;
 
-extern enum node_type bsc_vty_go_parent(struct vty *vty);
+extern int bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
 	.name 		= "OsmoSGSN",
