@@ -174,7 +174,7 @@ static void print_help(void)
 	printf("  -D --daemonize\tFork the process into a background daemon\n");
 	printf("  -d option --debug\tenable Debugging\n");
 	printf("  -s --disable-color\n");
-	printf("  -c --config-file\tThe config file to use\n");
+	printf("  -c --config-file\tThe config file to use [%s]\n", sgsn->config_file);
 	printf("  -e --log-level number\tSet a global log level\n");
 }
 
