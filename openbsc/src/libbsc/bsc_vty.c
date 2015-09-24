@@ -505,22 +505,22 @@ static void config_write_bts_amr(struct vty *vty, struct gsm_bts *bts,
 	if (num > 1) {
 		vty_out(vty, "  %s threshold ms", prefix);
 		for (i = 0; i < num - 1; i++) {
-			vty_out(vty, " %d", mr->mode[i].threshold_ms);
+			vty_out(vty, " %d", mr->ms_mode[i].threshold);
 		}
 		vty_out(vty, "%s", VTY_NEWLINE);
 		vty_out(vty, "  %s hysteresis ms", prefix);
 		for (i = 0; i < num - 1; i++) {
-			vty_out(vty, " %d", mr->mode[i].hysteresis_ms);
+			vty_out(vty, " %d", mr->ms_mode[i].hysteresis);
 		}
 		vty_out(vty, "%s", VTY_NEWLINE);
 		vty_out(vty, "  %s threshold bts", prefix);
 		for (i = 0; i < num - 1; i++) {
-			vty_out(vty, " %d", mr->mode[i].threshold_bts);
+			vty_out(vty, " %d", mr->bts_mode[i].threshold);
 		}
 		vty_out(vty, "%s", VTY_NEWLINE);
 		vty_out(vty, "  %s hysteresis bts", prefix);
 		for (i = 0; i < num - 1; i++) {
-			vty_out(vty, " %d", mr->mode[i].hysteresis_bts);
+			vty_out(vty, " %d", mr->bts_mode[i].hysteresis);
 		}
 		vty_out(vty, "%s", VTY_NEWLINE);
 	}
@@ -2957,10 +2957,10 @@ static void get_amr_th_from_arg(struct vty *vty, int argc, const char *argv[], i
 
 	if (argv[0][0]=='m') {
 		for (i = 0; i < argc - 1; i++)
-			mr->mode[i].threshold_ms = atoi(argv[i + 1]);
+			mr->ms_mode[i].threshold = atoi(argv[i + 1]);
 	} else {
 		for (i = 0; i < argc - 1; i++)
-			mr->mode[i].threshold_bts = atoi(argv[i + 1]);
+			mr->bts_mode[i].threshold = atoi(argv[i + 1]);
 	}
 }
 
@@ -2972,10 +2972,10 @@ static void get_amr_hy_from_arg(struct vty *vty, int argc, const char *argv[], i
 
 	if (argv[0][0]=='m') {
 		for (i = 0; i < argc - 1; i++)
-			mr->mode[i].hysteresis_ms = atoi(argv[i + 1]);
+			mr->ms_mode[i].hysteresis = atoi(argv[i + 1]);
 	} else {
 		for (i = 0; i < argc - 1; i++)
-			mr->mode[i].hysteresis_bts = atoi(argv[i + 1]);
+			mr->bts_mode[i].hysteresis = atoi(argv[i + 1]);
 	}
 }
 

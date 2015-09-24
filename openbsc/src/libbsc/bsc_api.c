@@ -178,8 +178,8 @@ static void handle_mr_config(struct gsm_subscriber_connection *conn,
 		mr_conf->icmi = 1;
 		mr_conf->m5_90 = 1;
 	}
-	gsm48_multirate_config(lchan->mr_ms_lv, mr, 1);
-	gsm48_multirate_config(lchan->mr_bts_lv, mr, 0);
+	gsm48_multirate_config(lchan->mr_ms_lv, mr, mr->ms_mode);
+	gsm48_multirate_config(lchan->mr_bts_lv, mr, mr->bts_mode);
 }
 
 /*

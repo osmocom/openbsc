@@ -14,6 +14,7 @@ struct gsm_network;
 struct gsm_trans;
 struct gsm_subscriber_connection;
 struct amr_multirate_conf;
+struct amr_mode;
 
 #define GSM48_ALLOC_SIZE	2048
 #define GSM48_ALLOC_HEADROOM	256
@@ -90,6 +91,6 @@ void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 void release_security_operation(struct gsm_subscriber_connection *conn);
 void allocate_security_operation(struct gsm_subscriber_connection *conn);
 
-int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, int ms);
+int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, struct amr_mode *modes);
 
 #endif
