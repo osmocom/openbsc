@@ -1,8 +1,15 @@
-openbsc (0.14.0+z11) UNRELEASED; urgency=medium
+openbsc (0.14.0+z12) UNRELEASED; urgency=medium
+
+  * GBProxy compat commands
+  * Misc updates from 925504bfe0834be6b1549af51242ef24fa2a0eaa 
+
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Thu, 24 Sep 2015 10:45:27 +0200
+
+openbsc (0.14.0+z11) unstable; urgency=medium
 
   * Build with BSC NAT multi bind option 
 
- -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Sun, 23 Aug 2015 17:35:40 +0200
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Thu, 24 Sep 2015 10:45:23 +0200
 
 openbsc (0.14.0+z10) unstable; urgency=medium
 
