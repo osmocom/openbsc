@@ -110,3 +110,10 @@ AT_CHECK([test "$enable_oap_test" != no || exit 77])
 cat $abs_srcdir/oap/oap_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/oap/oap_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([gtphub])
+AT_KEYWORDS([gtphub])
+AT_CHECK([test "$enable_gtphub_test" != no || exit 77])
+cat $abs_srcdir/gtphub/gtphub_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/gtphub/gtphub_test], [], [expout], [ignore])
+AT_CLEANUP

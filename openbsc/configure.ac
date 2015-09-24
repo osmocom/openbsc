@@ -210,6 +210,7 @@ AC_OUTPUT(
     tests/sgsn/Makefile
     tests/subscr/Makefile
     tests/oap/Makefile
+    tests/gtphub/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

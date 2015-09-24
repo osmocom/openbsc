@@ -53,6 +53,7 @@ src/utils/isdnsync
 src/nat/bsc_nat
 src/gprs/osmo-sgsn
 src/gprs/osmo-gbproxy
+src/gprs/osmo-gtphub
 src/osmo-bsc_nat/osmo-bsc_nat
 
 #tests
@@ -78,6 +79,7 @@ tests/mgcp/mgcp_transcoding_test
 tests/sgsn/sgsn_test
 tests/subscr/subscr_test
 tests/oap/oap_test
+tests/gtphub/gtphub_test
 
 tests/atconfig
 tests/atlocal
