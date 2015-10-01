@@ -100,6 +100,14 @@ static void connect_timer_cb(void *gsupc_)
 	gsup_client_connect(gsupc);
 }
 
+static void gsup_client_send(struct gprs_gsup_client *gsupc, int proto_ext, struct msgb *msg_tx)
+{
+	ipa_prepend_header_ext(msg_tx, proto_ext);
+	ipa_msg_push_header(msg_tx, IPAC_PROTO_OSMO);
+	ipa_client_conn_send(gsupc->link, msg_tx);
+	/* msg_tx is now queued and will be freed. */
+}
+
 static void gsup_client_updown_cb(struct ipa_client_conn *link, int up)
 {
 	struct gprs_gsup_client *gsupc = link->data;
@@ -275,9 +283,7 @@ int gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 		return -EAGAIN;
 	}
 
-	ipa_prepend_header_ext(msg, IPAC_PROTO_EXT_GSUP);
-	ipa_msg_push_header(msg, IPAC_PROTO_OSMO);
-	ipa_client_conn_send(gsupc->link, msg);
+	gsup_client_send(gsupc, IPAC_PROTO_EXT_GSUP, msg);
 
 	return 0;
 }
