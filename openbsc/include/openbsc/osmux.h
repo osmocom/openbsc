@@ -22,6 +22,7 @@ int osmux_send_dummy(struct mgcp_endpoint *endp);
 
 int osmux_get_cid(void);
 void osmux_put_cid(uint8_t osmux_cid);
+int osmux_used_cid(void);
 
 enum osmux_state {
 	OSMUX_STATE_DISABLED = 0,
