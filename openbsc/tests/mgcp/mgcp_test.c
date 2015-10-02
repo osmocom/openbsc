@@ -1186,7 +1186,7 @@ static void test_osmux_cid(void)
 	osmux_put_cid(id);
 	OSMO_ASSERT(osmux_used_cid() == 0);
 
-	for (i = 0; i < 16; ++i) {
+	for (i = 0; i < 128; ++i) {
 		id = osmux_get_cid();
 		OSMO_ASSERT(id == i);
 		OSMO_ASSERT(osmux_used_cid() == i + 1);

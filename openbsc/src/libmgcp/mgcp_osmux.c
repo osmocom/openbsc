@@ -536,7 +536,7 @@ int osmux_used_cid(void)
 {
 	int i, j, used = 0;
 
-	for (i = 0; i < sizeof(osmux_cid_bitmap) / 8; i++) {
+	for (i = 0; i < sizeof(osmux_cid_bitmap); i++) {
 		for (j = 0; j < 8; j++) {
 			if (osmux_cid_bitmap[i] & (1 << j))
 				used += 1;
@@ -550,7 +550,7 @@ int osmux_get_cid(void)
 {
 	int i, j;
 
-	for (i = 0; i < sizeof(osmux_cid_bitmap) / 8; i++) {
+	for (i = 0; i < sizeof(osmux_cid_bitmap); i++) {
 		for (j = 0; j < 8; j++) {
 			if (osmux_cid_bitmap[i] & (1 << j))
 				continue;
