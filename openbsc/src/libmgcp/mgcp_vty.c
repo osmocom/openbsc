@@ -226,6 +226,9 @@ DEFUN(show_mcgp, show_mgcp_cmd,
 	llist_for_each_entry(trunk, &g_cfg->trunks, entry)
 		dump_trunk(vty, trunk, show_stats);
 
+	if (g_cfg->osmux)
+		vty_out(vty, "Osmux used CID: %d%s", osmux_used_cid(), VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
