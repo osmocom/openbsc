@@ -479,6 +479,21 @@ static void config_write_bts_model(struct vty *vty, struct gsm_bts *bts)
 		config_write_trx_single(vty, trx);
 }
 
+static void write_amr_modes(struct vty *vty, const char *prefix,
+	const char *name, struct amr_mode *modes, int num)
+{
+	int i;
+
+	vty_out(vty, "  %s threshold %s", prefix, name);
+	for (i = 0; i < num - 1; i++)
+		vty_out(vty, " %d", modes[i].threshold);
+	vty_out(vty, "%s", VTY_NEWLINE);
+	vty_out(vty, "  %s hysteresis %s", prefix, name);
+	for (i = 0; i < num - 1; i++)
+		vty_out(vty, " %d", modes[i].hysteresis);
+	vty_out(vty, "%s", VTY_NEWLINE);
+}
+
 static void config_write_bts_amr(struct vty *vty, struct gsm_bts *bts,
 	struct amr_multirate_conf *mr, int full)
 {
@@ -503,26 +518,8 @@ static void config_write_bts_amr(struct vty *vty, struct gsm_bts *bts,
 	if (num > 4)
 		num = 4;
 	if (num > 1) {
-		vty_out(vty, "  %s threshold ms", prefix);
-		for (i = 0; i < num - 1; i++) {
-			vty_out(vty, " %d", mr->mode[i].threshold_ms);
-		}
-		vty_out(vty, "%s", VTY_NEWLINE);
-		vty_out(vty, "  %s hysteresis ms", prefix);
-		for (i = 0; i < num - 1; i++) {
-			vty_out(vty, " %d", mr->mode[i].hysteresis_ms);
-		}
-		vty_out(vty, "%s", VTY_NEWLINE);
-		vty_out(vty, "  %s threshold bts", prefix);
-		for (i = 0; i < num - 1; i++) {
-			vty_out(vty, " %d", mr->mode[i].threshold_bts);
-		}
-		vty_out(vty, "%s", VTY_NEWLINE);
-		vty_out(vty, "  %s hysteresis bts", prefix);
-		for (i = 0; i < num - 1; i++) {
-			vty_out(vty, " %d", mr->mode[i].hysteresis_bts);
-		}
-		vty_out(vty, "%s", VTY_NEWLINE);
+		write_amr_modes(vty, prefix, "ms", mr->ms_mode, num);
+		write_amr_modes(vty, prefix, "bts", mr->bts_mode, num);
 	}
 	vty_out(vty, "  %s start-mode ", prefix);
 	if (mr_conf->icmi) {
@@ -2953,30 +2950,24 @@ static void get_amr_th_from_arg(struct vty *vty, int argc, const char *argv[], i
 {
 	struct gsm_bts *bts = vty->index;
 	struct amr_multirate_conf *mr = (full) ? &bts->mr_full: &bts->mr_half;
+	struct amr_mode *modes;
 	int i;
 
-	if (argv[0][0]=='m') {
-		for (i = 0; i < argc - 1; i++)
-			mr->mode[i].threshold_ms = atoi(argv[i + 1]);
-	} else {
-		for (i = 0; i < argc - 1; i++)
-			mr->mode[i].threshold_bts = atoi(argv[i + 1]);
-	}
+	modes = argv[0][0]=='m' ? mr->ms_mode : mr->bts_mode;
+	for (i = 0; i < argc - 1; i++)
+		modes[i].threshold = atoi(argv[i + 1]);
 }
 
 static void get_amr_hy_from_arg(struct vty *vty, int argc, const char *argv[], int full)
 {
 	struct gsm_bts *bts = vty->index;
 	struct amr_multirate_conf *mr = (full) ? &bts->mr_full: &bts->mr_half;
+	struct amr_mode *modes;
 	int i;
 
-	if (argv[0][0]=='m') {
-		for (i = 0; i < argc - 1; i++)
-			mr->mode[i].hysteresis_ms = atoi(argv[i + 1]);
-	} else {
-		for (i = 0; i < argc - 1; i++)
-			mr->mode[i].hysteresis_bts = atoi(argv[i + 1]);
-	}
+	modes = argv[0][0]=='m' ? mr->ms_mode : mr->bts_mode;
+	for (i = 0; i < argc - 1; i++)
+		modes[i].hysteresis = atoi(argv[i + 1]);
 }
 
 static void get_amr_start_from_arg(struct vty *vty, const char *argv[], int full)

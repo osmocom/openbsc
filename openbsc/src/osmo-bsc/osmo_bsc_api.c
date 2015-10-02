@@ -491,9 +491,10 @@ static void bsc_cm_update(struct gsm_subscriber_connection *conn,
 }
 
 static void bsc_mr_config(struct gsm_subscriber_connection *conn,
-			  struct gsm48_multi_rate_conf *conf)
+				struct gsm_lchan *lchan, int full_rate)
 {
 	struct osmo_msc_data *msc;
+	struct gsm48_multi_rate_conf *ms_conf, *bts_conf;
 
 	if (!conn->sccp_con) {
 		LOGP(DMSC, LOGL_ERROR,
@@ -504,18 +505,31 @@ static void bsc_mr_config(struct gsm_subscriber_connection *conn,
 
 	msc = conn->sccp_con->msc;
 
-	conf->ver = 1;
-	conf->icmi = 1;
+	/* initialize the data structure */
+	lchan->mr_ms_lv[0] = sizeof(*ms_conf);
+	lchan->mr_bts_lv[0] = sizeof(*bts_conf);
+	ms_conf = (struct gsm48_multi_rate_conf *) &lchan->mr_ms_lv[1];
+	bts_conf = (struct gsm48_multi_rate_conf *) &lchan->mr_bts_lv[1];
+	memset(ms_conf, 0, sizeof(*ms_conf));
+	memset(bts_conf, 0, sizeof(*bts_conf));
+
+	bts_conf->ver = ms_conf->ver = 1;
+	bts_conf->icmi = ms_conf->icmi = 1;
 
 	/* maybe gcc see's it is copy of _one_ byte */
-	conf->m4_75 = msc->amr_conf.m4_75;
-	conf->m5_15 = msc->amr_conf.m5_15;
-	conf->m5_90 = msc->amr_conf.m5_90;
-	conf->m6_70 = msc->amr_conf.m6_70;
-	conf->m7_40 = msc->amr_conf.m7_40;
-	conf->m7_95 = msc->amr_conf.m7_95;
-	conf->m10_2 = msc->amr_conf.m10_2;
-	conf->m12_2 = msc->amr_conf.m12_2;
+	bts_conf->m4_75 = ms_conf->m4_75 = msc->amr_conf.m4_75;
+	bts_conf->m5_15 = ms_conf->m5_15 = msc->amr_conf.m5_15;
+	bts_conf->m5_90 = ms_conf->m5_90 = msc->amr_conf.m5_90;
+	bts_conf->m6_70 = ms_conf->m6_70 = msc->amr_conf.m6_70;
+	bts_conf->m7_40 = ms_conf->m7_40 = msc->amr_conf.m7_40;
+	bts_conf->m7_95 = ms_conf->m7_95 = msc->amr_conf.m7_95;
+	if (full_rate) {
+		bts_conf->m10_2 = ms_conf->m10_2 = msc->amr_conf.m10_2;
+		bts_conf->m12_2 = ms_conf->m12_2 = msc->amr_conf.m12_2;
+	}
+
+	/* now copy this into the bts structure */
+	memcpy(lchan->mr_bts_lv, lchan->mr_ms_lv, sizeof(lchan->mr_ms_lv));
 }
 
 static struct bsc_api bsc_handler = {

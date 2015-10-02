@@ -214,6 +214,13 @@ int get_reason_by_chreq(uint8_t ra, int neci)
 	return GSM_CHREQ_REASON_OTHER;
 }
 
+static void mr_config_for_ms(struct gsm_lchan *lchan, struct msgb *msg)
+{
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		msgb_tlv_put(msg, GSM48_IE_MUL_RATE_CFG, lchan->mr_ms_lv[0],
+			lchan->mr_ms_lv + 1);
+}
+
 /* 7.1.7 and 9.1.7: RR CHANnel RELease */
 int gsm48_send_rr_release(struct gsm_lchan *lchan)
 {
@@ -357,7 +364,7 @@ void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 	}
 }
 
-int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, int ms)
+int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, struct amr_mode *modes)
 {
 	int num = 0, i;
 
@@ -380,33 +387,19 @@ int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, int ms)
 	memcpy(lv + 1, mr->gsm48_ie, 2);
 	if (num == 1)
 		return 0;
-	if (ms) {
-		lv[3] = mr->mode[0].threshold_ms & 0x3f;
-		lv[4] = mr->mode[0].hysteresis_ms << 4;
-		if (num == 2)
-			return 0;
-		lv[4] |= (mr->mode[1].threshold_ms & 0x3f) >> 2;
-		lv[5] = mr->mode[1].threshold_ms << 6;
-		lv[5] |= (mr->mode[1].hysteresis_ms & 0x0f) << 2;
-		if (num == 3)
-			return 0;
-		lv[5] |= (mr->mode[2].threshold_ms & 0x3f) >> 4;
-		lv[6] = mr->mode[2].threshold_ms << 4;
-		lv[6] |= mr->mode[2].hysteresis_ms & 0x0f;
-	} else {
-		lv[3] = mr->mode[0].threshold_bts & 0x3f;
-		lv[4] = mr->mode[0].hysteresis_bts << 4;
-		if (num == 2)
-			return 0;
-		lv[4] |= (mr->mode[1].threshold_bts & 0x3f) >> 2;
-		lv[5] = mr->mode[1].threshold_bts << 6;
-		lv[5] |= (mr->mode[1].hysteresis_bts & 0x0f) << 2;
-		if (num == 3)
-			return 0;
-		lv[5] |= (mr->mode[2].threshold_bts & 0x3f) >> 4;
-		lv[6] = mr->mode[2].threshold_bts << 4;
-		lv[6] |= mr->mode[2].hysteresis_bts & 0x0f;
-	}
+
+	lv[3] = modes[0].threshold & 0x3f;
+	lv[4] = modes[0].hysteresis << 4;
+	if (num == 2)
+		return 0;
+	lv[4] |= (modes[1].threshold & 0x3f) >> 2;
+	lv[5] = modes[1].threshold << 6;
+	lv[5] |= (modes[1].hysteresis & 0x0f) << 2;
+	if (num == 3)
+		return 0;
+	lv[5] |= (modes[2].threshold & 0x3f) >> 4;
+	lv[6] = modes[2].threshold << 4;
+	lv[6] |= modes[2].hysteresis & 0x0f;
 
 	return 0;
 }
@@ -489,9 +482,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 	}
 
 	/* in case of multi rate we need to attach a config */
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
-		msgb_tlv_put(msg, GSM48_IE_MUL_RATE_CFG, lchan->mr_ms_lv[0],
-			lchan->mr_ms_lv + 1);
+	mr_config_for_ms(lchan, msg);
 
 	return gsm48_sendmsg(msg);
 }
@@ -517,9 +508,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
 	cmm->mode = mode;
 
 	/* in case of multi rate we need to attach a config */
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
-		msgb_tlv_put(msg, GSM48_IE_MUL_RATE_CFG, lchan->mr_ms_lv[0],
-			lchan->mr_ms_lv + 1);
+	mr_config_for_ms(lchan, msg);
 
 	return gsm48_sendmsg(msg);
 }

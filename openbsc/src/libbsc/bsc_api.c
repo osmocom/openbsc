@@ -163,7 +163,7 @@ static void handle_mr_config(struct gsm_subscriber_connection *conn,
 	struct gsm48_multi_rate_conf *mr_conf;
 
 	if (api->mr_config)
-		return api->mr_config(conn, lchan->mr_ms_lv, lchan->mr_bts_lv);
+		return api->mr_config(conn, lchan, full_rate);
 
 	if (full_rate)
 		mr = &lchan->ts->trx->bts->mr_full;
@@ -178,8 +178,8 @@ static void handle_mr_config(struct gsm_subscriber_connection *conn,
 		mr_conf->icmi = 1;
 		mr_conf->m5_90 = 1;
 	}
-	gsm48_multirate_config(lchan->mr_ms_lv, mr, 1);
-	gsm48_multirate_config(lchan->mr_bts_lv, mr, 0);
+	gsm48_multirate_config(lchan->mr_ms_lv, mr, mr->ms_mode);
+	gsm48_multirate_config(lchan->mr_bts_lv, mr, mr->bts_mode);
 }
 
 /*

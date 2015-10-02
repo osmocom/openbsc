@@ -150,14 +150,14 @@ struct bts_codec_conf {
 
 struct amr_mode {
 	uint8_t mode;
-	uint8_t threshold_ms;
-	uint8_t hysteresis_ms;
-	uint8_t threshold_bts;
-	uint8_t hysteresis_bts;
+	uint8_t threshold;
+	uint8_t hysteresis;
 };
+
 struct amr_multirate_conf {
 	uint8_t gsm48_ie[2];
-	struct amr_mode mode[4];
+	struct amr_mode ms_mode[4];
+	struct amr_mode bts_mode[4];
 	uint8_t num_modes;
 };
 /* /BTS ONLY */
