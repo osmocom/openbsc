@@ -499,6 +499,15 @@ struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 	return NULL;
 }
 
+static int nat_osmux_only(struct mgcp_config *mgcp_cfg, struct bsc_config *bsc_cfg)
+{
+	if (mgcp_cfg->osmux == OSMUX_USAGE_ONLY)
+		return 1;
+	if (bsc_cfg->osmux == OSMUX_USAGE_ONLY)
+		return 1;
+	return 0;
+}
+
 static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, const char *transaction_id)
 {
 	struct bsc_nat *nat;
@@ -544,9 +553,16 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	}
 
 	/* Allocate a Osmux circuit ID */
-	if (state == MGCP_ENDP_CRCX &&
-	    nat->mgcp_cfg->osmux && sccp->bsc->cfg->osmux)
-		osmux_cid = osmux_get_cid();
+	if (state == MGCP_ENDP_CRCX) {
+		if (nat->mgcp_cfg->osmux && sccp->bsc->cfg->osmux) {
+			osmux_cid = osmux_get_cid();
+			if (osmux_cid < 0 && nat_osmux_only(nat->mgcp_cfg, sccp->bsc->cfg)) {
+				LOGP(DMGCP, LOGL_ERROR,
+					"Rejecting usage of endpoint\n");
+				return MGCP_POLICY_REJECT;
+			}
+		}
+	}
 
 	/* we need to generate a new and patched message */
 	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
@@ -733,6 +749,16 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 
 	if (endp->osmux.state == OSMUX_STATE_ACTIVATING)
 		bsc_mgcp_osmux_confirm(endp, (const char *) msg->l2h);
+
+	/* If we require osmux and it is disabled.. fail */
+	if (nat_osmux_only(bsc->nat->mgcp_cfg, bsc->cfg) &&
+		endp->osmux.state == OSMUX_STATE_DISABLED) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Failed to activate osmux endpoint 0x%x\n",
+			ENDPOINT_NUMBER(endp));
+		free_chan_downstream(endp, bsc_endp, bsc);
+		return;
+	}
 
 	/* free some stuff */
 	talloc_free(bsc_endp->transaction_id);
