@@ -818,6 +818,10 @@ mgcp_header_done:
 	if (osmux_cid >= 0) {
 		endp->osmux.cid = osmux_cid;
 		endp->osmux.state = OSMUX_STATE_ACTIVATING;
+	} else if(endp->cfg->osmux == OSMUX_USAGE_ONLY) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Osmux only and no osmux offered on 0x%x\n", ENDPOINT_NUMBER(endp));
+		goto error2;
 	}
 
 	endp->allocated = 1;
