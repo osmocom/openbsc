@@ -515,7 +515,6 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	struct nat_sccp_connection *sccp;
 	struct mgcp_endpoint *mgcp_endp;
 	struct msgb *bsc_msg;
-	int osmux_cid = -1;
 
 	nat = tcfg->cfg->data;
 	bsc_endp = &nat->bsc_endpoints[endpoint];
@@ -555,8 +554,9 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	/* Allocate a Osmux circuit ID */
 	if (state == MGCP_ENDP_CRCX) {
 		if (nat->mgcp_cfg->osmux && sccp->bsc->cfg->osmux) {
-			osmux_cid = osmux_get_cid();
-			if (osmux_cid < 0 && nat_osmux_only(nat->mgcp_cfg, sccp->bsc->cfg)) {
+			osmux_allocate_cid(mgcp_endp);
+			if (mgcp_endp->osmux.allocated_cid < 0 &&
+				nat_osmux_only(nat->mgcp_cfg, sccp->bsc->cfg)) {
 				LOGP(DMGCP, LOGL_ERROR,
 					"Rejecting usage of endpoint\n");
 				return MGCP_POLICY_REJECT;
@@ -567,7 +567,8 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	/* we need to generate a new and patched message */
 	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
 				   sccp->bsc_endp, mgcp_bts_src_addr(mgcp_endp),
-				   mgcp_endp->bts_end.local_port, osmux_cid,
+				   mgcp_endp->bts_end.local_port,
+				   mgcp_endp->osmux.allocated_cid,
 				   &mgcp_endp->net_end.codec.payload_type,
 				   nat->sdp_ensure_amr_mode_set);
 	if (!bsc_msg) {
@@ -587,10 +588,10 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 		/* Annotate the allocated Osmux CID until the bsc confirms that
 		 * it agrees to use Osmux for this voice flow.
 		 */
-		if (osmux_cid >= 0 &&
+		if (mgcp_endp->osmux.allocated_cid >= 0 &&
 		    mgcp_endp->osmux.state != OSMUX_STATE_ENABLED) {
 			mgcp_endp->osmux.state = OSMUX_STATE_ACTIVATING;
-			mgcp_endp->osmux.cid = osmux_cid;
+			mgcp_endp->osmux.cid = mgcp_endp->osmux.allocated_cid;
 		}
 
 		socklen_t len = sizeof(sock);
@@ -612,7 +613,7 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 
 		/* libmgcp clears the MGCP endpoint for us */
 		if (mgcp_endp->osmux.state == OSMUX_STATE_ENABLED)
-			osmux_put_cid(mgcp_endp->osmux.cid);
+			osmux_release_cid(mgcp_endp);
 
 		return MGCP_POLICY_CONT;
 	} else {
@@ -681,8 +682,7 @@ static void bsc_mgcp_osmux_confirm(struct mgcp_endpoint *endp, const char *str)
 	     osmux_cid);
 	return;
 err:
-	osmux_put_cid(endp->osmux.cid);
-	endp->osmux.cid = -1;
+	osmux_release_cid(endp);
 	endp->osmux.state = OSMUX_STATE_DISABLED;
 }
 

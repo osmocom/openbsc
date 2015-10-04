@@ -14,6 +14,8 @@ int osmux_init(int role, struct mgcp_config *cfg);
 int osmux_enable_endpoint(struct mgcp_endpoint *endp, int role,
 			  struct in_addr *addr, uint16_t port);
 void osmux_disable_endpoint(struct mgcp_endpoint *endp);
+void osmux_allocate_cid(struct mgcp_endpoint *endp);
+void osmux_release_cid(struct mgcp_endpoint *endp);
 
 int osmux_xfrm_to_rtp(struct mgcp_endpoint *endp, int type, char *buf, int rc);
 int osmux_xfrm_to_osmux(int type, char *buf, int rc, struct mgcp_endpoint *endp);

@@ -492,6 +492,19 @@ void osmux_disable_endpoint(struct mgcp_endpoint *endp)
 	osmux_handle_put(endp->osmux.in);
 }
 
+void osmux_release_cid(struct mgcp_endpoint *endp)
+{
+	if (endp->osmux.allocated_cid >= 0)
+		osmux_put_cid(endp->osmux.allocated_cid);
+	endp->osmux.allocated_cid = -1;
+}
+
+void osmux_allocate_cid(struct mgcp_endpoint *endp)
+{
+	osmux_release_cid(endp);
+	endp->osmux.allocated_cid = osmux_get_cid();
+}
+
 /* We don't need to send the dummy load for osmux so often as another endpoint
  * may have already punched the hole in the firewall. This approach is simple
  * though.
