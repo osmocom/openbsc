@@ -40,6 +40,13 @@
 #include <openbsc/db.h>
 #include <openbsc/chan_alloc.h>
 
+#define IS_PAGING (1)
+#define IS_PAGING_SEC_CB (1<<8)
+#define IS_PAGING_CB (1<<16)
+
+#define GET_PAGING_SEC_CB_CNT(x)	(((x)>>8)&0xff)
+#define GET_PAGING_CB_CNT(x)		(((x)>>16)&0xff)
+
 void *tall_sub_req_ctx;
 
 extern struct llist_head *subscr_bsc_active_subscribers(void);
@@ -91,9 +98,11 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	* This doesn't need a subscr_put as this should have been
 	* executed when is_paging has been set to 0.
 	*/
-	if (!subscr->is_paging) {
-		LOGP(DMM, LOGL_NOTICE, "Unexpected pagign event(%d,%d) for %s\n",
+	if (!(subscr->is_paging & IS_PAGING)) {
+		LOGP(DMM, LOGL_NOTICE, "Unexpected paging event(%d,%d) for %s\n",
 			hooknum, event, subscr_name(subscr));
+		LOGP(DMM, LOGL_ERROR, "Paging callback for subscriber (id=%llu) while is_paging is 0x%06x (cb = %i, sec_cb = %i)\n",
+				subscr->id, subscr->is_paging, GET_PAGING_CB_CNT(subscr->is_paging), GET_PAGING_SEC_CB_CNT(subscr->is_paging));
 		if (conn)
 			msc_release_connection(conn);
 		return 0;
@@ -125,8 +134,9 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 		talloc_free(request);
 	}
 
+	/* Keep the cb counter  */
+	subscr->is_paging &= ~IS_PAGING;
 	/* balanced with the moment we start paging */
-	subscr->is_paging = 0;
 	subscr_put(subscr);
 	return 0;
 }
@@ -136,8 +146,11 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
 {
 	int rc;
 
+	struct gsm_subscriber *subscr = param;
+
 	switch (event) {
 		case GSM_SECURITY_AUTH_FAILED:
+			subscr->is_paging += IS_PAGING_SEC_CB;
 			/* Dispatch as paging failure */
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
@@ -146,6 +159,7 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
 
 		case GSM_SECURITY_NOAVAIL:
 		case GSM_SECURITY_SUCCEEDED:
+			subscr->is_paging += IS_PAGING_SEC_CB;
 			/* Dispatch as paging failure */
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
@@ -165,10 +179,14 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber_connection *conn = data;
 	struct gsm48_hdr *gh;
 	struct gsm48_pag_resp *pr;
+	struct gsm_subscriber *subscr = param;
+
 
 	/* Other cases mean problem, dispatch direclty */
-	if (event != GSM_PAGING_SUCCEEDED)
+	if (event != GSM_PAGING_SUCCEEDED) {
+		subscr->is_paging += IS_PAGING_CB;
 		return subscr_paging_dispatch(hooknum, event, msg, data, param);
+	}
 
 	/* Get paging response */
 	gh = msgb_l3(msg);
@@ -185,7 +203,7 @@ struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
 	struct subscr_request *request;
 
 	/* Start paging.. we know it is async so we can do it before */
-	if (!subscr->is_paging) {
+	if (!(subscr->is_paging & IS_PAGING)) {
 		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet.\n",
 			subscr_name(subscr));
 		rc = paging_request(subscr->group->net, subscr, channel_type,
@@ -197,7 +215,7 @@ struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
 		}
 		/* reduced on the first paging callback */
 		subscr_get(subscr);
-		subscr->is_paging = 1;
+		subscr->is_paging = IS_PAGING;
 	}
 
 	/* TODO: Stop paging in case of memory allocation failure */
