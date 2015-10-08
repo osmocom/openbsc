@@ -94,6 +94,7 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 {
 	static char buf[] = { MGCP_DUMMY_LOAD };
 	int rc;
+	int was_rtcp = 0;
 
 	rc = mgcp_udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
 			   endp->net_end.rtp_port, buf, 1);
@@ -104,6 +105,7 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 	if (endp->tcfg->omit_rtcp)
 		return rc;
 
+	was_rtcp = 1;
 	rc = mgcp_udp_send(endp->net_end.rtcp.fd, &endp->net_end.addr,
 			   endp->net_end.rtcp_port, buf, 1);
 
@@ -112,8 +114,10 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 
 failed:
 	LOGP(DMGCP, LOGL_ERROR,
-	     "Failed to send dummy packet: %s on: 0x%x to %s\n",
-	     strerror(errno), ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr));
+		"Failed to send dummy %s packet: %s on: 0x%x to %s:%d\n",
+		was_rtcp ? "RTCP" : "RTP",
+		strerror(errno), ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr),
+		was_rtcp ? endp->net_end.rtcp_port : endp->net_end.rtp_port);
 
 	return -1;
 }
