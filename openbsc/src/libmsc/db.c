@@ -1275,7 +1275,10 @@ int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t *token
 	uint32_t try;
 
 	for (;;) {
-		try = rand();
+		if (RAND_bytes((uint8_t *) &try, sizeof(try)) != 1) {
+			LOGP(DDB, LOGL_ERROR, "RAND_bytes failed\n");
+			return 1;
+		}
 		if (!try) /* 0 is an invalid token */
 			continue;
 		result = dbi_conn_queryf(conn,
