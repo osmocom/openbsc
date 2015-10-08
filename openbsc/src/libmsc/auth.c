@@ -27,6 +27,8 @@
 
 #include <osmocom/gsm/comp128.h>
 
+#include <openssl/rand.h>
+
 #include <stdlib.h>
 
 
@@ -75,7 +77,7 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
                               struct gsm_subscriber *subscr, int key_seq)
 {
 	struct gsm_auth_info ainfo;
-	int i, rc;
+	int rc;
 
 	/* Get subscriber info (if any) */
 	rc = db_get_authinfo_for_subscr(&ainfo, subscr);
@@ -100,8 +102,11 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	/* Generate a new one */
 	atuple->use_count = 1;
 	atuple->key_seq = (atuple->key_seq + 1) % 7;
-        for (i=0; i<sizeof(atuple->rand); i++)
-                atuple->rand[i] = random() & 0xff;
+
+	if (RAND_bytes(atuple->rand, sizeof(atuple->rand)) != 1) {
+		LOGP(DMM, LOGL_NOTICE, "RAND_bytes failed, can't generate new auth tuple\n");
+		return -1;
+	}
 
 	switch (ainfo.auth_algo) {
 	case AUTH_ALGO_NONE:
