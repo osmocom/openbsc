@@ -818,7 +818,7 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 	int slen;
 	int ret;
 	char buf[40];
-	char osmux_extension[strlen("X-Osmux: 255")];
+	char osmux_extension[strlen("\nX-Osmux: 255") + 1];
 
 	buf[0] = buf[39] = '\0';
 	ret = sscanf(tok, "%*s %s", buf);
@@ -829,7 +829,7 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 	}
 
 	if (osmux_cid >= 0)
-		sprintf(osmux_extension, "\nX-Osmux: %u", osmux_cid);
+		sprintf(osmux_extension, "\nX-Osmux: %u", osmux_cid & 0xff);
 	else
 		osmux_extension[0] = '\0';
 
