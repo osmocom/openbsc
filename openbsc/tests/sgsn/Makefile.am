@@ -34,5 +34,6 @@ sgsn_test_LDADD = \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBOSMOGB_LIBS) \
 	$(LIBCARES_LIBS) \
+	$(LIBCRYPTO_LIBS) \
 	-lgtp -lrt
 

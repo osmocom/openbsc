@@ -30,4 +30,5 @@ osmo_sgsn_SOURCES =	gprs_gmm.c gprs_sgsn.c gprs_sndcp.c gprs_sndcp_vty.c \
 			gsm_04_08_gprs.c sgsn_cdr.c sgsn_ares.c
 osmo_sgsn_LDADD = 	\
 			$(top_builddir)/src/libcommon/libcommon.a \
-			-lgtp $(OSMO_LIBS) $(LIBOSMOABIS_LIBS) $(LIBCARES_LIBS) -lrt
+			-lgtp $(OSMO_LIBS) $(LIBOSMOABIS_LIBS) $(LIBCARES_LIBS) \
+			$(LIBCRYPTO_LIBS) -lrt
