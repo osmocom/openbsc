@@ -38,6 +38,8 @@
 #include <osmocom/core/statistics.h>
 #include <osmocom/core/rate_ctr.h>
 
+#include <openssl/rand.h>
+
 /* Semi-Private-Interface (SPI) for the subscriber code */
 void subscr_direct_free(struct gsm_subscriber *subscr);
 
@@ -1194,7 +1196,10 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 	char *tmsi_quoted;
 
 	for (;;) {
-		subscriber->tmsi = rand();
+		if (RAND_bytes((uint8_t *) &subscriber->tmsi, sizeof(subscriber->tmsi)) != 1) {
+			LOGP(DDB, LOGL_ERROR, "RAND_bytes failed\n");
+			return 1;
+		}
 		if (subscriber->tmsi == GSM_RESERVED_TMSI)
 			continue;
 

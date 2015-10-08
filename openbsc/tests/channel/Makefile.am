@@ -11,4 +11,4 @@ channel_test_LDADD = \
 	$(top_builddir)/src/libmsc/libmsc.a \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOCORE_LIBS) \
-	-ldbi $(LIBOSMOGSM_LIBS)
+	-ldbi $(LIBOSMOGSM_LIBS) $(LIBCRYPTO_LIBS)

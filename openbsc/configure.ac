@@ -27,13 +27,13 @@ PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.7.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.2.0)
 PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.6.4)
 PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 0.0.1)
+PKG_CHECK_MODULES(LIBCRYPTO, libcrypto >= 0.9.5)
 
 # Enabke/disable the NAT?
 AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Requires SCCP])],
     [osmo_ac_build_nat="$enableval"],[osmo_ac_build_nat="no"])
 if test "$osmo_ac_build_nat" = "yes" ; then
         PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.2)
-        PKG_CHECK_MODULES(LIBCRYPTO, libcrypto)
 fi
 AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
 AC_SUBST(osmo_ac_build_nat)
