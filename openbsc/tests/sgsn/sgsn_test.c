@@ -52,6 +52,10 @@ static struct sgsn_instance sgsn_inst = {
 struct sgsn_instance *sgsn = &sgsn_inst;
 unsigned sgsn_tx_counter = 0;
 
+static void cleanup_test()
+{
+}
+
 /* override */
 int bssgp_tx_dl_ud(struct msgb *msg, uint16_t pdu_lifetime,
 		   struct bssgp_dl_ud_par *dup)
@@ -188,6 +192,8 @@ static void test_llme(void)
 
 	/* Check that everything was cleaned up */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+
+	cleanup_test();
 }
 
 struct gsm_subscriber *last_updated_subscr = NULL;
@@ -297,6 +303,8 @@ static void test_subscriber(void)
 	OSMO_ASSERT(llist_empty(&active_subscribers));
 
 	update_subscriber_data_cb = __real_sgsn_update_subscriber_data;
+
+	cleanup_test();
 }
 
 static void test_auth_triplets(void)
@@ -358,6 +366,8 @@ static void test_auth_triplets(void)
 	sgsn_mm_ctx_cleanup_free(ctx);
 	s1found = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(s1found == NULL);
+
+	cleanup_test();
 }
 
 #define TEST_GSUP_IMSI1_IE 0x01, 0x05, 0x21, 0x43, 0x65, 0x87, 0x09
@@ -649,6 +659,8 @@ static void test_subscriber_gsup(void)
 	OSMO_ASSERT(last_updated_subscr == NULL);
 
 	update_subscriber_data_cb = __real_sgsn_update_subscriber_data;
+
+	cleanup_test();
 }
 
 int my_gprs_gsup_client_send_dummy(struct gprs_gsup_client *gsupc, struct msgb *msg)
@@ -694,6 +706,8 @@ static void test_gmm_detach(void)
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
 	OSMO_ASSERT(!ictx);
+
+	cleanup_test();
 }
 
 /*
@@ -733,6 +747,8 @@ static void test_gmm_detach_power_off(void)
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
 	OSMO_ASSERT(!ictx);
+
+	cleanup_test();
 }
 
 /*
@@ -765,6 +781,8 @@ static void test_gmm_detach_no_mmctx(void)
 
 	/* verify that the LLME is gone */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+
+	cleanup_test();
 }
 
 /*
@@ -799,6 +817,8 @@ static void test_gmm_detach_accept_unexpected(void)
 
 	/* verify that things are gone */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+
+	cleanup_test();
 }
 
 /*
@@ -832,6 +852,8 @@ static void test_gmm_status_no_mmctx(void)
 
 	/* verify that the LLME is gone */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
+
+	cleanup_test();
 }
 
 /*
@@ -983,6 +1005,8 @@ retry_attach_req:
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ictx = sgsn_mm_ctx_by_tlli(local_tlli, &raid);
 	OSMO_ASSERT(!ictx);
+
+	cleanup_test();
 }
 
 static void test_gmm_attach_acl(void)
@@ -996,6 +1020,8 @@ static void test_gmm_attach_acl(void)
 	sgsn_acl_del("123456789012345", &sgsn->cfg);
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
+
+	cleanup_test();
 }
 
 int my_subscr_request_update_location(struct sgsn_mm_ctx *mmctx) {
@@ -1033,6 +1059,8 @@ static void test_gmm_attach_subscr(void)
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
 	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
+
+	cleanup_test();
 }
 
 int my_subscr_request_auth_info_fake_auth(struct sgsn_mm_ctx *mmctx)
@@ -1067,6 +1095,8 @@ static void test_gmm_attach_subscr_fake_auth(void)
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
 	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
+
+	cleanup_test();
 }
 
 int my_subscr_request_auth_info_real_auth(struct sgsn_mm_ctx *mmctx)
@@ -1108,6 +1138,8 @@ static void test_gmm_attach_subscr_real_auth(void)
 	sgsn->cfg.auth_policy = saved_auth_policy;
 	subscr_request_update_location_cb = __real_gprs_subscr_request_update_location;
 	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
+
+	cleanup_test();
 }
 
 #define TEST_GSUP_IMSI_LONG_IE 0x01, 0x08, \
@@ -1199,6 +1231,8 @@ static void test_gmm_attach_subscr_gsup_auth(int retry)
 	subscr_request_auth_info_cb = __real_gprs_subscr_request_auth_info;
 	upd_loc_skip = 0;
 	auth_info_skip = 0;
+
+	cleanup_test();
 }
 
 int my_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
@@ -1280,6 +1314,8 @@ static void test_gmm_attach_subscr_real_gsup_auth(int retry)
 	auth_info_skip = 0;
 	talloc_free(sgsn->gsup_client);
 	sgsn->gsup_client = NULL;
+
+	cleanup_test();
 }
 
 /*
@@ -1422,6 +1458,8 @@ static void test_gmm_reject(void)
 		OSMO_ASSERT(ctx == NULL);
 		OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	}
+
+	cleanup_test();
 }
 
 /*
@@ -1538,6 +1576,8 @@ static void test_gmm_cancel(void)
 	OSMO_ASSERT(!ictx);
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
+
+	cleanup_test();
 }
 
 /*
@@ -1728,6 +1768,8 @@ static void test_gmm_ptmsi_allocation(void)
 	OSMO_ASSERT(!ictx);
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
+
+	cleanup_test();
 }
 
 static void test_apn_matching(void)
@@ -1820,6 +1862,8 @@ static void test_apn_matching(void)
 	sgsn_apn_ctx_free(actxs[3]);
 	actx = sgsn_apn_ctx_match("abc.def.test", "12345678");
 	OSMO_ASSERT(actx == NULL);
+
+	cleanup_test();
 }
 
 struct sgsn_subscriber_pdp_data* sgsn_subscriber_pdp_data_alloc(
@@ -1962,6 +2006,8 @@ static void test_ggsn_selection(void)
 	sgsn_ggsn_ctx_free(ggcs[2]);
 
 	gprs_gsup_client_send_cb = __real_gprs_gsup_client_send;
+
+	cleanup_test();
 }
 
 static struct log_info_cat gprs_categories[] = {
