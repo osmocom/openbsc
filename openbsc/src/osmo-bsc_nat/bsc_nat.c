@@ -47,6 +47,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/socket.h>
 #include <openbsc/vty.h>
+#include <openbsc/utils.h>
 
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
@@ -985,17 +986,6 @@ static void ipaccess_close_bsc(void *data)
 	LOGP(DNAT, LOGL_ERROR, "BSC on %s didn't respond to identity request. Closing.\n",
 	     inet_ntoa(sock.sin_addr));
 	bsc_close_connection(conn);
-}
-
-/* Wishful thinking to generate a constant time compare */
-static int constant_time_cmp(const uint8_t *exp, const uint8_t *rel, const int count)
-{
-	int x = 0, i;
-
-	for (i = 0; i < count; ++i)
-		x |= exp[i] ^ rel[i];
-
-	return x != 0;
 }
 
 static int verify_key(struct bsc_connection *conn, struct bsc_config *conf, const uint8_t *key, const int keylen)

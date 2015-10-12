@@ -26,40 +26,12 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/gprs_utils.h>
+#include <openbsc/utils.h>
 
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
 
 #include <stdint.h>
-
-
-static uint64_t decode_big_endian(const uint8_t *data, size_t data_len)
-{
-	uint64_t value = 0;
-
-	while (data_len > 0) {
-		value = (value << 8) + *data;
-		data += 1;
-		data_len -= 1;
-	}
-
-	return value;
-}
-
-static uint8_t *encode_big_endian(uint64_t value, size_t data_len)
-{
-	static uint8_t buf[sizeof(uint64_t)];
-	int idx;
-
-	OSMO_ASSERT(data_len <= ARRAY_SIZE(buf));
-
-	for (idx = data_len - 1; idx >= 0; idx--) {
-		buf[idx] = (uint8_t)value;
-		value = value >> 8;
-	}
-
-	return buf;
-}
 
 static int decode_pdp_info(uint8_t *data, size_t data_len,
 			  struct gprs_gsup_pdp_info *pdp_info)
