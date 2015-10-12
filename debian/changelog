@@ -1,9 +1,17 @@
-openbsc (0.14.0+z12) UNRELEASED; urgency=medium
+openbsc (0.15.0+z1) unstable; urgency=medium
+
+  * Revert the SGSN fix
+  * New build with osmux and NAT
+  * Based on fa07b489dc3e14579b34365c0a0f1b5d5a70138f
+
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Mon, 12 Oct 2015 10:23:44 +0200
+
+openbsc (0.14.0+z12) unstable; urgency=medium
 
   * GBProxy compat commands
   * Misc updates from 925504bfe0834be6b1549af51242ef24fa2a0eaa 
 
- -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Thu, 24 Sep 2015 10:45:27 +0200
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Mon, 12 Oct 2015 10:01:26 +0200
 
 openbsc (0.14.0+z11) unstable; urgency=medium
 
