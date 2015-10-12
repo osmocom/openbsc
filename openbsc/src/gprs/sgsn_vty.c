@@ -214,6 +214,18 @@ static int config_write_sgsn(struct vty *vty)
 	if (g_cfg->gsup_server_port)
 		vty_out(vty, " gsup remote-port %d%s",
 			g_cfg->gsup_server_port, VTY_NEWLINE);
+
+	vty_out(vty, " gsup oap-id %d%s",
+		(int)g_cfg->oap.client_id, VTY_NEWLINE);
+	if (g_cfg->oap.secret_k_present != 0)
+		vty_out(vty, " gsup oap-k %s%s",
+			osmo_hexdump_nospc(g_cfg->oap.secret_k, sizeof(g_cfg->oap.secret_k)),
+			VTY_NEWLINE);
+	if (g_cfg->oap.secret_opc_present != 0)
+		vty_out(vty, " gsup oap-opc %s%s",
+			osmo_hexdump_nospc(g_cfg->oap.secret_opc, sizeof(g_cfg->oap.secret_opc)),
+			VTY_NEWLINE);
+
 	llist_for_each_entry(acl, &g_cfg->imsi_acl, list)
 		vty_out(vty, " imsi-acl add %s%s", acl->imsi, VTY_NEWLINE);
 
@@ -895,6 +907,82 @@ DEFUN(cfg_gsup_remote_port, cfg_gsup_remote_port_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_gsup_oap_id, cfg_gsup_oap_id_cmd,
+	"gsup oap-id <0-65535>",
+	"GSUP Parameters\n"
+	"Set the SGSN's OAP client ID\nOAP client ID (0 == disabled)\n")
+{
+	/* VTY ensures range */
+	g_cfg->oap.client_id = (uint16_t)atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gsup_oap_k, cfg_gsup_oap_k_cmd,
+	"gsup oap-k K",
+	"GSUP Parameters\n"
+	"Set the OAP shared secret K\nK value (16 byte) hex\n")
+{
+	const char *k = argv[0];
+
+	g_cfg->oap.secret_k_present = 0;
+
+	if ((!k) || (strlen(k) == 0))
+		goto disable;
+
+	int k_len = osmo_hexparse(k,
+				  g_cfg->oap.secret_k,
+				  sizeof(g_cfg->oap.secret_k));
+	if (k_len != 16) {
+		vty_out(vty, "%% need exactly 16 octets for oap-k, got %d.%s",
+			k_len, VTY_NEWLINE);
+		goto disable;
+	}
+
+	g_cfg->oap.secret_k_present = 1;
+	return CMD_SUCCESS;
+
+disable:
+	if (g_cfg->oap.client_id > 0) {
+		vty_out(vty, "%% OAP client ID set, but invalid oap-k value disables OAP.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gsup_oap_opc, cfg_gsup_oap_opc_cmd,
+	"gsup oap-opc OPC",
+	"GSUP Parameters\n"
+	"Set the OAP shared secret OPC\nOPC value (16 byte) hex\n")
+{
+	const char *opc = argv[0];
+
+	g_cfg->oap.secret_opc_present = 0;
+
+	if ((!opc) || (strlen(opc) == 0))
+		goto disable;
+
+	int opc_len = osmo_hexparse(opc,
+				    g_cfg->oap.secret_opc,
+				    sizeof(g_cfg->oap.secret_opc));
+	if (opc_len != 16) {
+		vty_out(vty, "%% need exactly 16 octets for oap-opc, got %d.%s",
+			opc_len, VTY_NEWLINE);
+		goto disable;
+	}
+
+	g_cfg->oap.secret_opc_present = 1;
+	return CMD_SUCCESS;
+
+disable:
+	if (g_cfg->oap.client_id > 0) {
+		vty_out(vty, "%% OAP client ID set, but invalid oap-opc value disables OAP.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_apn_name, cfg_apn_name_cmd,
 	"access-point-name NAME",
 	"Configure a global list of allowed APNs\n"
@@ -969,6 +1057,9 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_auth_policy_cmd);
 	install_element(SGSN_NODE, &cfg_gsup_remote_ip_cmd);
 	install_element(SGSN_NODE, &cfg_gsup_remote_port_cmd);
+	install_element(SGSN_NODE, &cfg_gsup_oap_id_cmd);
+	install_element(SGSN_NODE, &cfg_gsup_oap_k_cmd);
+	install_element(SGSN_NODE, &cfg_gsup_oap_opc_cmd);
 	install_element(SGSN_NODE, &cfg_apn_ggsn_cmd);
 	install_element(SGSN_NODE, &cfg_apn_imsi_ggsn_cmd);
 	install_element(SGSN_NODE, &cfg_apn_name_cmd);
