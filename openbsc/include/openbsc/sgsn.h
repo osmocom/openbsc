@@ -6,6 +6,7 @@
 
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
+#include <openbsc/oap.h>
 
 #include <ares.h>
 
@@ -61,6 +62,8 @@ struct sgsn_config {
 	} timers;
 
 	int dynamic_lookup;
+
+	struct oap_config oap;
 };
 
 struct sgsn_instance {

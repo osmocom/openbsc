@@ -108,6 +108,20 @@ static void gsup_client_send(struct gprs_gsup_client *gsupc, int proto_ext, stru
 	/* msg_tx is now queued and will be freed. */
 }
 
+static void gsup_client_oap_register(struct gprs_gsup_client *gsupc)
+{
+	struct msgb *msg_tx;
+	int rc;
+	rc = oap_register(&gsupc->oap_state, &msg_tx);
+
+	if ((rc < 0) || (!msg_tx)) {
+		LOGP(DGPRS, LOGL_ERROR, "GSUP OAP set up, but cannot register.\n");
+		return;
+	}
+
+	gsup_client_send(gsupc, IPAC_PROTO_EXT_OAP, msg_tx);
+}
+
 static void gsup_client_updown_cb(struct ipa_client_conn *link, int up)
 {
 	struct gprs_gsup_client *gsupc = link->data;
@@ -120,6 +134,9 @@ static void gsup_client_updown_cb(struct ipa_client_conn *link, int up)
 	if (up) {
 		start_test_procedure(gsupc);
 
+		if (gsupc->oap_state.state == OAP_INITIALIZED)
+			gsup_client_oap_register(gsupc);
+
 		osmo_timer_del(&gsupc->connect_timer);
 	} else {
 		osmo_timer_del(&gsupc->ping_timer);
@@ -127,6 +144,22 @@ static void gsup_client_updown_cb(struct ipa_client_conn *link, int up)
 		osmo_timer_schedule(&gsupc->connect_timer,
 				    GPRS_GSUP_RECONNECT_INTERVAL, 0);
 	}
+}
+
+static int gsup_client_oap_handle(struct gprs_gsup_client *gsupc, struct msgb *msg_rx)
+{
+	int rc;
+	struct msgb *msg_tx;
+
+	rc = oap_handle(&gsupc->oap_state, msg_rx, &msg_tx);
+	msgb_free(msg_rx);
+	if (rc < 0)
+		return rc;
+
+	if (msg_tx)
+		gsup_client_send(gsupc, IPAC_PROTO_EXT_OAP, msg_tx);
+
+	return 0;
 }
 
 static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
@@ -168,16 +201,21 @@ static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	if (hh->proto != IPAC_PROTO_OSMO)
 		goto invalid;
 
-	if (!he || msgb_l2len(msg) < sizeof(*he) ||
-	    he->proto != IPAC_PROTO_EXT_GSUP)
+	if (!he || msgb_l2len(msg) < sizeof(*he))
 		goto invalid;
 
 	msg->l2h = &he->data[0];
 
-	OSMO_ASSERT(gsupc->read_cb != NULL);
-	gsupc->read_cb(gsupc, msg);
+	if (he->proto == IPAC_PROTO_EXT_GSUP) {
+		OSMO_ASSERT(gsupc->read_cb != NULL);
+		gsupc->read_cb(gsupc, msg);
+		/* expecting read_cb() to free msg */
+	} else if (he->proto == IPAC_PROTO_EXT_OAP) {
+		return gsup_client_oap_handle(gsupc, msg);
+		/* gsup_client_oap_handle frees msg */
+	} else
+		goto invalid;
 
-	/* Not freeing msg here, because that must be done by the read_cb. */
 	return 0;
 
 invalid:
@@ -222,13 +260,18 @@ static void start_test_procedure(struct gprs_gsup_client *gsupc)
 
 struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,
 						 unsigned int tcp_port,
-						 gprs_gsup_read_cb_t read_cb)
+						 gprs_gsup_read_cb_t read_cb,
+						 struct oap_config *oap_config)
 {
 	struct gprs_gsup_client *gsupc;
 	int rc;
 
 	gsupc = talloc_zero(tall_bsc_ctx, struct gprs_gsup_client);
 	OSMO_ASSERT(gsupc);
+
+	rc = oap_init(oap_config, &gsupc->oap_state);
+	if (rc != 0)
+		goto failed;
 
 	gsupc->link = ipa_client_conn_create(gsupc,
 					     /* no e1inp */ NULL,

@@ -23,6 +23,8 @@
 
 #include <osmocom/core/timer.h>
 
+#include <openbsc/oap.h>
+
 #define GPRS_GSUP_RECONNECT_INTERVAL 10
 #define GPRS_GSUP_PING_INTERVAL 20
 
@@ -38,6 +40,8 @@ struct gprs_gsup_client {
 	gprs_gsup_read_cb_t	read_cb;
 	void			*data;
 
+	struct oap_state	oap_state;
+
 	struct osmo_timer_list	ping_timer;
 	struct osmo_timer_list	connect_timer;
 	int			is_connected;
@@ -46,7 +50,8 @@ struct gprs_gsup_client {
 
 struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,
 						 unsigned int tcp_port,
-						 gprs_gsup_read_cb_t read_cb);
+						 gprs_gsup_read_cb_t read_cb,
+						 struct oap_config *oap_config);
 
 void gprs_gsup_client_destroy(struct gprs_gsup_client *gsupc);
 int gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg);

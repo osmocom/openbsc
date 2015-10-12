@@ -63,7 +63,8 @@ int gprs_subscr_init(struct sgsn_instance *sgi)
 
 	sgi->gsup_client = gprs_gsup_client_create(
 		addr_str, sgi->cfg.gsup_server_port,
-		&gsup_read_cb);
+		&gsup_read_cb,
+		&sgi->cfg.oap);
 
 	if (!sgi->gsup_client)
 		return -1;
