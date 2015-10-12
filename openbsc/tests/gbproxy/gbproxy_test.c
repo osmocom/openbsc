@@ -51,6 +51,10 @@ struct gbproxy_config gbcfg = {0};
 
 struct llist_head *received_messages = NULL;
 
+static void cleanup_test()
+{
+}
+
 static int dump_global(FILE *stream, int indent)
 {
 	unsigned int i;
@@ -2145,6 +2149,8 @@ static void test_gbproxy_ptmsi_assignment()
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
+
+	cleanup_test();
 }
 
 static void test_gbproxy_ptmsi_patching()
@@ -2482,6 +2488,8 @@ static void test_gbproxy_ptmsi_patching()
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
+
+	cleanup_test();
 }
 
 static void test_gbproxy_ptmsi_patching_bad_cases()
@@ -2661,6 +2669,8 @@ static void test_gbproxy_ptmsi_patching_bad_cases()
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
+
+	cleanup_test();
 }
 
 
@@ -2973,6 +2983,8 @@ static void test_gbproxy_imsi_acquisition()
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
+
+	cleanup_test();
 }
 
 static void test_gbproxy_secondary_sgsn()
@@ -3474,6 +3486,8 @@ static void test_gbproxy_secondary_sgsn()
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
+
+	cleanup_test();
 }
 
 static void test_gbproxy_keep_info()
@@ -4417,6 +4431,8 @@ static void test_gbproxy_keep_info()
 	gbprox_reset(&gbcfg);
 	gprs_ns_destroy(nsi);
 	nsi = NULL;
+
+	cleanup_test();
 }
 
 struct gbproxy_link_info *register_tlli(
@@ -4700,6 +4716,8 @@ static void test_gbproxy_tlli_expire(void)
 	}
 	gbproxy_clear_patch_filter(&cfg.matches[GBPROX_MATCH_PATCHING]);
 	gbprox_reset(&cfg);
+
+	cleanup_test();
 }
 
 static void test_gbproxy_imsi_matching(void)
@@ -4774,6 +4792,8 @@ static void test_gbproxy_imsi_matching(void)
 
 	gbproxy_clear_patch_filter(&match);
 	OSMO_ASSERT(match.enable == 0);
+
+	cleanup_test();
 }
 
 static struct log_info_cat gprs_categories[] = {
