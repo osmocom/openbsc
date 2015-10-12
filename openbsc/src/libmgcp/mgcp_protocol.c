@@ -1193,6 +1193,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 
 	cfg->source_port = 2427;
 	cfg->source_addr = talloc_strdup(cfg, "0.0.0.0");
+	cfg->osmux_addr = talloc_strdup(cfg, "0.0.0.0");
 
 	cfg->transcoder_remote_base = 4000;
 

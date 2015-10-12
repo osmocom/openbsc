@@ -153,6 +153,8 @@ static int config_write_mgcp(struct vty *vty)
 		break;
 	}
 	if (g_cfg->osmux) {
+		vty_out(vty, "  osmux bind-ip %s%s",
+			g_cfg->osmux_addr, VTY_NEWLINE);
 		vty_out(vty, "  osmux batch-factor %d%s",
 			g_cfg->osmux_batch, VTY_NEWLINE);
 		vty_out(vty, "  osmux batch-size %u%s",
@@ -1282,6 +1284,15 @@ DEFUN(cfg_mgcp_osmux,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_osmux_ip,
+      cfg_mgcp_osmux_ip_cmd,
+      "osmux bind-ip A.B.C.D",
+      OSMUX_STR IP_STR "IPv4 Address to bind to\n")
+{
+	bsc_replace_string(g_cfg, &g_cfg->osmux_addr, argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_mgcp_osmux_batch_factor,
       cfg_mgcp_osmux_batch_factor_cmd,
       "osmux batch-factor <1-8>",
@@ -1382,6 +1393,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_send_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_sdp_payload_send_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_osmux_ip_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_factor_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_size_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_port_cmd);

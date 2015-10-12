@@ -220,6 +220,8 @@ struct mgcp_config {
 
 	/* osmux translator: 0 means disabled, 1 means enabled */
 	int osmux;
+	/* addr to bind the server to */
+	char *osmux_addr;
 	/* The BSC-NAT may ask for enabling osmux on demand. This tells us if
 	 * the osmux socket is already initialized.
 	 */
