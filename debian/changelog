@@ -1,3 +1,10 @@
+openbsc (0.15.0+z2) unstable; urgency=medium
+
+  * Allow to bind osmux to different ip addresses.
+  * Based on a777c9ee3d4e433c713f7a5c346519aa0321f096 
+
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Mon, 12 Oct 2015 20:38:27 +0200
+
 openbsc (0.15.0+z1) unstable; urgency=medium
 
   * Revert the SGSN fix
