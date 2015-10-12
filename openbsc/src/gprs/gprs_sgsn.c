@@ -41,8 +41,6 @@
 
 #include <time.h>
 
-#include <openssl/rand.h>
-
 #define GPRS_LLME_CHECK_TICK 30
 
 extern struct sgsn_instance *sgsn;
@@ -527,9 +525,7 @@ uint32_t sgsn_alloc_ptmsi(void)
 	int max_retries = 100;
 
 restart:
-	if (RAND_bytes((uint8_t *) &ptmsi, sizeof(ptmsi)) != 1)
-		goto failed;
-
+	ptmsi = rand();
 	/* Enforce that the 2 MSB are set without loosing the distance between
 	 * identical values. Since rand() has no duplicate values within a
 	 * period (because the size of the state is the same like the size of
