@@ -7,6 +7,8 @@ EXTRA_DIST = gbproxy_test.ok
 noinst_PROGRAMS = gbproxy_test
 
 gbproxy_test_SOURCES = gbproxy_test.c
+gbproxy_test_LDFLAGS = \
+	     -Wl,--wrap=RAND_bytes
 gbproxy_test_LDADD = \
 			$(top_builddir)/src/gprs/gb_proxy.o \
 			$(top_builddir)/src/gprs/gb_proxy_patch.o \
@@ -22,4 +24,4 @@ gbproxy_test_LDADD = \
 			$(LIBOSMOCORE_LIBS) $(LIBOSMOGB_LIBS) \
 			$(LIBOSMOGSM_LIBS)  $(LIBOSMOVTY_LIBS) \
 			$(LIBOSMOABIS_LIBS) $(LIBRARY_DL) \
-			-lrt
+			$(LIBCRYPTO_LIBS) -lrt

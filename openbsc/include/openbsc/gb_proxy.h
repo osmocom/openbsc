@@ -101,10 +101,6 @@ struct gbproxy_config {
 
 	/* IMSI checking/matching */
 	struct gbproxy_match matches[GBPROX_MATCH_LAST];
-
-	/* Used to generate identifiers */
-	unsigned bss_ptmsi_state;
-	unsigned sgsn_tlli_state;
 };
 
 struct gbproxy_patch_state {

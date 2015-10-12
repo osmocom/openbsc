@@ -50,6 +50,8 @@
 #include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/gprs_utils.h>
 
+#include <openssl/rand.h>
+
 static const struct rate_ctr_desc global_ctr_description[] = {
 	{ "inv-bvci",	    "Invalid BVC Identifier          " },
 	{ "inv-lai",	    "Invalid Location Area Identifier" },
@@ -232,7 +234,11 @@ uint32_t gbproxy_make_bss_ptmsi(struct gbproxy_peer *peer,
 		bss_ptmsi = sgsn_ptmsi;
 	} else {
 		do {
-			bss_ptmsi = rand_r(&peer->cfg->bss_ptmsi_state);
+			if (RAND_bytes((uint8_t *) &bss_ptmsi, sizeof(bss_ptmsi)) != 1) {
+				bss_ptmsi = GSM_RESERVED_TMSI;
+				break;
+			}
+
 			bss_ptmsi = bss_ptmsi | 0xC0000000;
 
 			if (gbproxy_link_info_by_ptmsi(peer, bss_ptmsi))
@@ -265,7 +271,11 @@ uint32_t gbproxy_make_sgsn_tlli(struct gbproxy_peer *peer,
 	} else {
 		do {
 			/* create random TLLI, 0b01111xxx... */
-			sgsn_tlli = rand_r(&peer->cfg->sgsn_tlli_state);
+			if (RAND_bytes((uint8_t *) &sgsn_tlli, sizeof(sgsn_tlli)) != 1) {
+				sgsn_tlli = 0;
+				break;
+			}
+
 			sgsn_tlli = (sgsn_tlli & 0x7fffffff) | 0x78000000;
 
 			if (gbproxy_link_info_by_any_sgsn_tlli(peer, sgsn_tlli))
@@ -1365,8 +1375,6 @@ int gbproxy_init_config(struct gbproxy_config *cfg)
 	INIT_LLIST_HEAD(&cfg->bts_peers);
 	cfg->ctrg = rate_ctr_group_alloc(tall_bsc_ctx, &global_ctrg_desc, 0);
 	clock_gettime(CLOCK_REALTIME, &tp);
-	cfg->bss_ptmsi_state = tp.tv_sec + tp.tv_nsec;
-	cfg->sgsn_tlli_state = tp.tv_sec - tp.tv_nsec;
 
 	return 0;
 }

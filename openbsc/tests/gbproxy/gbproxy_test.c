@@ -37,6 +37,8 @@
 #include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/debug.h>
 
+#include <openssl/rand.h>
+
 #define REMOTE_BSS_ADDR 0x01020304
 #define REMOTE_SGSN_ADDR 0x05060708
 
@@ -51,8 +53,37 @@ struct gbproxy_config gbcfg = {0};
 
 struct llist_head *received_messages = NULL;
 
+/* override, requires '-Wl,--wrap=RAND_bytes' */
+int __real_RAND_bytes(unsigned char *buf, int num);
+int mock_RAND_bytes(unsigned char *buf, int num);
+int (*RAND_bytes_cb)(unsigned char *, int) =
+  &mock_RAND_bytes;
+
+int __wrap_RAND_bytes(unsigned char *buf, int num)
+{
+	return (*RAND_bytes_cb)(buf, num);
+}
+
+static int rand_seq_num = 0;
+int mock_RAND_bytes(unsigned char *buf, int num)
+{
+	uint32_t val;
+
+	OSMO_ASSERT(num == sizeof(val));
+	OSMO_ASSERT(__real_RAND_bytes(buf, num) == 1);
+
+	val = 0x00dead00 + rand_seq_num;
+
+	rand_seq_num++;
+
+	memcpy(buf, &val, num);
+
+	return 1;
+}
+
 static void cleanup_test()
 {
+	rand_seq_num = 0;
 }
 
 static int dump_global(FILE *stream, int indent)
@@ -1972,8 +2003,6 @@ static void test_gbproxy_ptmsi_assignment()
 	gbcfg.core_apn = talloc_zero_size(NULL, 100);
 	gbcfg.core_apn_size = gprs_str_to_apn(gbcfg.core_apn, 100, "foo.bar");
 	gbcfg.patch_ptmsi = 0;
-	gbcfg.bss_ptmsi_state = 0;
-	gbcfg.sgsn_tlli_state = 1;
 
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
@@ -2174,15 +2203,15 @@ static void test_gbproxy_ptmsi_patching()
 	const uint32_t local_sgsn_tlli = 0xefe2b700;
 	const uint32_t local_sgsn_tlli2 = 0xe0987654;
 	const uint32_t local_sgsn_tlli3 = 0xe0543210;
-	const uint32_t random_sgsn_tlli = 0x7c69fb81;
+	const uint32_t random_sgsn_tlli = 0x78dead00;
 	const uint32_t unknown_sgsn_tlli = 0xeebadbad;
 
-	const uint32_t bss_ptmsi = 0xc00f7304;
-	const uint32_t bss_ptmsi2 = 0xe656aa1f;
-	const uint32_t bss_ptmsi3 = 0xead4775a;
-	const uint32_t local_bss_tlli = 0xc00f7304;
-	const uint32_t local_bss_tlli2 = 0xe656aa1f;
-	const uint32_t local_bss_tlli3 = 0xead4775a;
+	const uint32_t bss_ptmsi = 0xc0dead01;
+	const uint32_t bss_ptmsi2 = 0xc0dead02;
+	const uint32_t bss_ptmsi3 = 0xc0dead03;
+	const uint32_t local_bss_tlli = 0xc0dead01;
+	const uint32_t local_bss_tlli2 = 0xc0dead02;
+	const uint32_t local_bss_tlli3 = 0xc0dead03;
 	const uint32_t foreign_bss_tlli = 0x8000dead;
 
 
@@ -2208,8 +2237,6 @@ static void test_gbproxy_ptmsi_patching()
 	gbcfg.core_apn = talloc_zero_size(NULL, 100);
 	gbcfg.core_apn_size = gprs_str_to_apn(gbcfg.core_apn, 100, "foo.bar");
 	gbcfg.patch_ptmsi = 1;
-	gbcfg.bss_ptmsi_state = 0;
-	gbcfg.sgsn_tlli_state = 1;
 
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
@@ -2505,10 +2532,10 @@ static void test_gbproxy_ptmsi_patching_bad_cases()
 
 	const uint32_t sgsn_ptmsi = 0xefe2b700;
 	const uint32_t local_sgsn_tlli = 0xefe2b700;
-	const uint32_t random_sgsn_tlli = 0x7c69fb81;
+	const uint32_t random_sgsn_tlli = 0x78dead00;
 
-	const uint32_t bss_ptmsi = 0xc00f7304;
-	const uint32_t local_bss_tlli = 0xc00f7304;
+	const uint32_t bss_ptmsi = 0xc0dead01;
+	const uint32_t local_bss_tlli = 0xc0dead01;
 	const uint32_t foreign_bss_tlli = 0x8000dead;
 
 
@@ -2529,8 +2556,6 @@ static void test_gbproxy_ptmsi_patching_bad_cases()
 	gbcfg.core_apn = talloc_zero_size(NULL, 100);
 	gbcfg.core_apn_size = gprs_str_to_apn(gbcfg.core_apn, 100, "foo.bar");
 	gbcfg.patch_ptmsi = 1;
-	gbcfg.bss_ptmsi_state = 0;
-	gbcfg.sgsn_tlli_state = 1;
 
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
@@ -2691,11 +2716,11 @@ static void test_gbproxy_imsi_acquisition()
 
 	const uint32_t sgsn_ptmsi = 0xefe2b700;
 	const uint32_t local_sgsn_tlli = 0xefe2b700;
-	const uint32_t random_sgsn_tlli = 0x7c69fb81;
-	const uint32_t random_sgsn_tlli2 = 0x7eb52dfb;
+	const uint32_t random_sgsn_tlli = 0x78dead00;
+	const uint32_t random_sgsn_tlli2 = 0x78dead02;
 
-	const uint32_t bss_ptmsi = 0xc00f7304;
-	const uint32_t local_bss_tlli = 0xc00f7304;
+	const uint32_t bss_ptmsi = 0xc0dead01;
+	const uint32_t local_bss_tlli = 0xc0dead01;
 	const uint32_t foreign_bss_tlli = 0x8000dead;
 	const uint32_t other_bss_tlli = 0x8000beef;
 
@@ -2716,8 +2741,6 @@ static void test_gbproxy_imsi_acquisition()
 	gbcfg.core_apn_size = gprs_str_to_apn(gbcfg.core_apn, 100, "foo.bar");
 	gbcfg.patch_ptmsi = 1;
 	gbcfg.acquire_imsi = 1;
-	gbcfg.bss_ptmsi_state = 0;
-	gbcfg.sgsn_tlli_state = 1;
 
 	configure_sgsn_peer(&sgsn_peer);
 	configure_bss_peers(bss_peer, ARRAY_SIZE(bss_peer));
@@ -3002,22 +3025,22 @@ static void test_gbproxy_secondary_sgsn()
 
 	const uint32_t sgsn_ptmsi = 0xefe2b700;
 	const uint32_t local_sgsn_tlli = 0xefe2b700;
-	const uint32_t random_sgsn_tlli = 0x7c69fb81;
+	const uint32_t random_sgsn_tlli = 0x78dead00;
 
-	const uint32_t bss_ptmsi = 0xc00f7304;
-	const uint32_t local_bss_tlli = 0xc00f7304;
+	const uint32_t bss_ptmsi = 0xc0dead01;
+	const uint32_t local_bss_tlli = 0xc0dead01;
 	const uint32_t foreign_bss_tlli = 0x8000dead;
 
 	const uint32_t sgsn_ptmsi2 = 0xe0987654;
 	const uint32_t local_sgsn_tlli2 = 0xe0987654;
-	const uint32_t random_sgsn_tlli2 = 0x7eb52dfb;
-	const uint32_t bss_ptmsi2 = 0xe656aa1f;
-	const uint32_t local_bss_tlli2 = 0xe656aa1f;
+	const uint32_t random_sgsn_tlli2 = 0x78dead02;
+	const uint32_t bss_ptmsi2 = 0xc0dead03;
+	const uint32_t local_bss_tlli2 = 0xc0dead03;
 	const uint32_t foreign_bss_tlli2 = 0x8000beef;
 
-	const uint32_t random_sgsn_tlli3 = 0x7e23ef54;
-	const uint32_t bss_ptmsi3 = 0xead4775a;
-	const uint32_t local_bss_tlli3 = 0xead4775a;
+	const uint32_t random_sgsn_tlli3 = 0x78dead04;
+	const uint32_t bss_ptmsi3 = 0xc0dead05;
+	const uint32_t local_bss_tlli3 = 0xc0dead05;
 	const uint32_t foreign_bss_tlli3 = 0x8000feed;
 
 	const uint8_t imsi1[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
@@ -3044,8 +3067,7 @@ static void test_gbproxy_secondary_sgsn()
 	gbcfg.core_apn_size = gprs_str_to_apn(gbcfg.core_apn, 100, "foo.bar");
 	gbcfg.patch_ptmsi = 1;
 	gbcfg.acquire_imsi = 1;
-	gbcfg.bss_ptmsi_state = 0;
-	gbcfg.sgsn_tlli_state = 1;
+
 	gbcfg.route_to_sgsn2 = 1;
 	gbcfg.nsip_sgsn2_nsei = SGSN2_NSEI;
 
@@ -3518,8 +3540,6 @@ static void test_gbproxy_keep_info()
 	gbcfg.nsip_sgsn_nsei = SGSN_NSEI;
 	gbcfg.patch_ptmsi = 0;
 	gbcfg.acquire_imsi = 1;
-	gbcfg.bss_ptmsi_state = 0;
-	gbcfg.sgsn_tlli_state = 1;
 	gbcfg.core_mcc = 0;
 	gbcfg.core_mnc = 0;
 	gbcfg.core_apn = NULL;
