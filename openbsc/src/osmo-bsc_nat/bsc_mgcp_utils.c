@@ -499,6 +499,15 @@ struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 	return NULL;
 }
 
+static int nat_osmux_only(struct mgcp_config *mgcp_cfg, struct bsc_config *bsc_cfg)
+{
+	if (mgcp_cfg->osmux == OSMUX_USAGE_ONLY)
+		return 1;
+	if (bsc_cfg->osmux == OSMUX_USAGE_ONLY)
+		return 1;
+	return 0;
+}
+
 static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, const char *transaction_id)
 {
 	struct bsc_nat *nat;
@@ -506,7 +515,6 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	struct nat_sccp_connection *sccp;
 	struct mgcp_endpoint *mgcp_endp;
 	struct msgb *bsc_msg;
-	int osmux_cid = -1;
 
 	nat = tcfg->cfg->data;
 	bsc_endp = &nat->bsc_endpoints[endpoint];
@@ -544,14 +552,23 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	}
 
 	/* Allocate a Osmux circuit ID */
-	if (state == MGCP_ENDP_CRCX &&
-	    nat->mgcp_cfg->osmux && sccp->bsc->cfg->osmux)
-		osmux_cid = osmux_get_cid();
+	if (state == MGCP_ENDP_CRCX) {
+		if (nat->mgcp_cfg->osmux && sccp->bsc->cfg->osmux) {
+			osmux_allocate_cid(mgcp_endp);
+			if (mgcp_endp->osmux.allocated_cid < 0 &&
+				nat_osmux_only(nat->mgcp_cfg, sccp->bsc->cfg)) {
+				LOGP(DMGCP, LOGL_ERROR,
+					"Rejecting usage of endpoint\n");
+				return MGCP_POLICY_REJECT;
+			}
+		}
+	}
 
 	/* we need to generate a new and patched message */
 	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
 				   sccp->bsc_endp, mgcp_bts_src_addr(mgcp_endp),
-				   mgcp_endp->bts_end.local_port, osmux_cid,
+				   mgcp_endp->bts_end.local_port,
+				   mgcp_endp->osmux.allocated_cid,
 				   &mgcp_endp->net_end.codec.payload_type,
 				   nat->sdp_ensure_amr_mode_set);
 	if (!bsc_msg) {
@@ -571,10 +588,10 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 		/* Annotate the allocated Osmux CID until the bsc confirms that
 		 * it agrees to use Osmux for this voice flow.
 		 */
-		if (osmux_cid >= 0 &&
+		if (mgcp_endp->osmux.allocated_cid >= 0 &&
 		    mgcp_endp->osmux.state != OSMUX_STATE_ENABLED) {
 			mgcp_endp->osmux.state = OSMUX_STATE_ACTIVATING;
-			mgcp_endp->osmux.cid = osmux_cid;
+			mgcp_endp->osmux.cid = mgcp_endp->osmux.allocated_cid;
 		}
 
 		socklen_t len = sizeof(sock);
@@ -596,7 +613,7 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 
 		/* libmgcp clears the MGCP endpoint for us */
 		if (mgcp_endp->osmux.state == OSMUX_STATE_ENABLED)
-			osmux_put_cid(mgcp_endp->osmux.cid);
+			osmux_release_cid(mgcp_endp);
 
 		return MGCP_POLICY_CONT;
 	} else {
@@ -665,8 +682,7 @@ static void bsc_mgcp_osmux_confirm(struct mgcp_endpoint *endp, const char *str)
 	     osmux_cid);
 	return;
 err:
-	osmux_put_cid(endp->osmux.cid);
-	endp->osmux.cid = -1;
+	osmux_release_cid(endp);
 	endp->osmux.state = OSMUX_STATE_DISABLED;
 }
 
@@ -734,6 +750,16 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	if (endp->osmux.state == OSMUX_STATE_ACTIVATING)
 		bsc_mgcp_osmux_confirm(endp, (const char *) msg->l2h);
 
+	/* If we require osmux and it is disabled.. fail */
+	if (nat_osmux_only(bsc->nat->mgcp_cfg, bsc->cfg) &&
+		endp->osmux.state == OSMUX_STATE_DISABLED) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Failed to activate osmux endpoint 0x%x\n",
+			ENDPOINT_NUMBER(endp));
+		free_chan_downstream(endp, bsc_endp, bsc);
+		return;
+	}
+
 	/* free some stuff */
 	talloc_free(bsc_endp->transaction_id);
 	bsc_endp->transaction_id = NULL;
@@ -792,7 +818,7 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 	int slen;
 	int ret;
 	char buf[40];
-	char osmux_extension[strlen("X-Osmux: 255")];
+	char osmux_extension[strlen("\nX-Osmux: 255") + 1];
 
 	buf[0] = buf[39] = '\0';
 	ret = sscanf(tok, "%*s %s", buf);
@@ -803,7 +829,7 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 	}
 
 	if (osmux_cid >= 0)
-		sprintf(osmux_extension, "\nX-Osmux: %u", osmux_cid);
+		sprintf(osmux_extension, "\nX-Osmux: %u", osmux_cid & 0xff);
 	else
 		osmux_extension[0] = '\0';
 

@@ -162,8 +162,14 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 	if (bsc->paging_group != -1)
 		vty_out(vty, "  paging group %d%s", bsc->paging_group, VTY_NEWLINE);
 	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
-	if (bsc->osmux)
+	switch (bsc->osmux) {
+	case OSMUX_USAGE_ON:
 		vty_out(vty, "  osmux on%s", VTY_NEWLINE);
+		break;
+	case OSMUX_USAGE_ONLY:
+		vty_out(vty, "  osmux only%s", VTY_NEWLINE);
+		break;
+	}
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -1124,18 +1130,20 @@ DEFUN(show_ussd_connection,
 #define OSMUX_STR "RTP multiplexing\n"
 DEFUN(cfg_bsc_osmux,
       cfg_bsc_osmux_cmd,
-      "osmux (on|off)",
-       OSMUX_STR "Enable OSMUX\n" "Disable OSMUX\n")
+      "osmux (on|off|only)",
+       OSMUX_STR "Enable OSMUX\n" "Disable OSMUX\n" "Only OSMUX\n")
 {
 	struct bsc_config *conf = vty->index;
 	int old = conf->osmux;
 
 	if (strcmp(argv[0], "on") == 0)
-		conf->osmux = 1;
+		conf->osmux = OSMUX_USAGE_ON;
 	else if (strcmp(argv[0], "off") == 0)
-		conf->osmux = 0;
+		conf->osmux = OSMUX_USAGE_OFF;
+	else if (strcmp(argv[0], "only") == 0)
+		conf->osmux = OSMUX_USAGE_ONLY;
 
-	if (old == 0 && conf->osmux == 1 && !conf->nat->mgcp_cfg->osmux_init) {
+	if (old == 0 && conf->osmux > 0 && !conf->nat->mgcp_cfg->osmux_init) {
 		LOGP(DMGCP, LOGL_NOTICE, "Setting up OSMUX socket\n");
 		if (osmux_init(OSMUX_ROLE_BSC_NAT, conf->nat->mgcp_cfg) < 0) {
 			LOGP(DMGCP, LOGL_ERROR, "Cannot init OSMUX\n");
@@ -1143,7 +1151,7 @@ DEFUN(cfg_bsc_osmux,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-	} else if (old == 1 && conf->osmux == 0) {
+	} else if (old > 0 && conf->osmux == 0) {
 		LOGP(DMGCP, LOGL_NOTICE, "Disabling OSMUX socket\n");
 		/* Don't stop the socket, we may already have ongoing voice
 		 * flows already using Osmux. This just switch indicates that

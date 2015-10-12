@@ -1175,6 +1175,31 @@ static void test_no_name(void)
 	talloc_free(cfg);
 }
 
+static void test_osmux_cid(void)
+{
+	int id, i;
+
+	OSMO_ASSERT(osmux_used_cid() == 0);
+	id = osmux_get_cid();
+	OSMO_ASSERT(id == 0);
+	OSMO_ASSERT(osmux_used_cid() == 1);
+	osmux_put_cid(id);
+	OSMO_ASSERT(osmux_used_cid() == 0);
+
+	for (i = 0; i < 128; ++i) {
+		id = osmux_get_cid();
+		OSMO_ASSERT(id == i);
+		OSMO_ASSERT(osmux_used_cid() == i + 1);
+	}
+
+	id = osmux_get_cid();
+	OSMO_ASSERT(id == -1);
+
+	for (i = 0; i < 256; ++i)
+		osmux_put_cid(i);
+	OSMO_ASSERT(osmux_used_cid() == 0);
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
@@ -1193,6 +1218,7 @@ int main(int argc, char **argv)
 	test_multilple_codec();
 	test_no_cycle();
 	test_no_name();
+	test_osmux_cid();
 
 	printf("Done\n");
 	return EXIT_SUCCESS;

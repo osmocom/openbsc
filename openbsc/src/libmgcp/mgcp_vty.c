@@ -139,8 +139,19 @@ static int config_write_mgcp(struct vty *vty)
 	if (g_cfg->bts_force_ptime > 0)
 		vty_out(vty, "  rtp force-ptime %d%s", g_cfg->bts_force_ptime, VTY_NEWLINE);
 	vty_out(vty, "  transcoder-remote-base %u%s", g_cfg->transcoder_remote_base, VTY_NEWLINE);
-	vty_out(vty, "  osmux %s%s",
-		g_cfg->osmux == 1 ? "on" : "off", VTY_NEWLINE);
+
+	switch (g_cfg->osmux) {
+	case OSMUX_USAGE_ON:
+		vty_out(vty, "  osmux on%s", VTY_NEWLINE);
+		break;
+	case OSMUX_USAGE_ONLY:
+		vty_out(vty, "  osmux only%s", VTY_NEWLINE);
+		break;
+	case OSMUX_USAGE_OFF:
+	default:
+		vty_out(vty, "  osmux off%s", VTY_NEWLINE);
+		break;
+	}
 	if (g_cfg->osmux) {
 		vty_out(vty, "  osmux batch-factor %d%s",
 			g_cfg->osmux_batch, VTY_NEWLINE);
@@ -225,6 +236,9 @@ DEFUN(show_mcgp, show_mgcp_cmd,
 
 	llist_for_each_entry(trunk, &g_cfg->trunks, entry)
 		dump_trunk(vty, trunk, show_stats);
+
+	if (g_cfg->osmux)
+		vty_out(vty, "Osmux used CID: %d%s", osmux_used_cid(), VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1246,18 +1260,24 @@ DEFUN(reset_all_endp, reset_all_endp_cmd,
 #define OSMUX_STR "RTP multiplexing\n"
 DEFUN(cfg_mgcp_osmux,
       cfg_mgcp_osmux_cmd,
-      "osmux (on|off)",
-       OSMUX_STR "Enable OSMUX\n" "Disable OSMUX\n")
+      "osmux (on|off|only)",
+       OSMUX_STR "Enable OSMUX\n" "Disable OSMUX\n" "Only use OSMUX\n")
 {
-	if (strcmp(argv[0], "on") == 0) {
-		g_cfg->osmux = 1;
-		if (g_cfg->trunk.audio_loop) {
-			vty_out(vty, "Cannot use `loop' with `osmux'.%s",
-				VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-	} else if (strcmp(argv[0], "off") == 0)
-		g_cfg->osmux = 0;
+	if (strcmp(argv[0], "off") == 0) {
+		g_cfg->osmux = OSMUX_USAGE_OFF;
+		return CMD_SUCCESS;
+	}
+
+	if (strcmp(argv[0], "on") == 0)
+		g_cfg->osmux = OSMUX_USAGE_ON;
+	else if (strcmp(argv[0], "only") == 0)
+		g_cfg->osmux = OSMUX_USAGE_ONLY;
+
+	if (g_cfg->trunk.audio_loop) {
+		vty_out(vty, "Cannot use `loop' with `osmux'.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	return CMD_SUCCESS;
 }

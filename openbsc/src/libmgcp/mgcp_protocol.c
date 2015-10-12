@@ -818,6 +818,10 @@ mgcp_header_done:
 	if (osmux_cid >= 0) {
 		endp->osmux.cid = osmux_cid;
 		endp->osmux.state = OSMUX_STATE_ACTIVATING;
+	} else if(endp->cfg->osmux == OSMUX_USAGE_ONLY) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Osmux only and no osmux offered on 0x%x\n", ENDPOINT_NUMBER(endp));
+		goto error2;
 	}
 
 	endp->allocated = 1;
@@ -1310,6 +1314,7 @@ int mgcp_endpoints_allocate(struct mgcp_trunk_config *tcfg)
 		return -1;
 
 	for (i = 0; i < tcfg->number_endpoints; ++i) {
+		tcfg->endpoints[i].osmux.allocated_cid = -1;
 		tcfg->endpoints[i].ci = CI_UNUSED;
 		tcfg->endpoints[i].cfg = tcfg->cfg;
 		tcfg->endpoints[i].tcfg = tcfg;
@@ -1349,6 +1354,9 @@ void mgcp_release_endp(struct mgcp_endpoint *endp)
 
 	if (endp->osmux.state == OSMUX_STATE_ENABLED)
 		osmux_disable_endpoint(endp);
+
+	/* release the circuit ID if it had been allocated */
+	osmux_release_cid(endp);
 
 	memset(&endp->taps, 0, sizeof(endp->taps));
 }

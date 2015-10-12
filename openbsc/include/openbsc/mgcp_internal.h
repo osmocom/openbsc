@@ -192,6 +192,8 @@ struct mgcp_endpoint {
 		/* Osmux state: disabled, activating, active */
 		enum osmux_state state;
 		/* Allocated Osmux circuit ID for this endpoint */
+		int allocated_cid;
+		/* Used Osmux circuit ID for this endpoint */
 		uint8_t cid;
 		/* handle to batch messages */
 		struct osmux_in_handle *in;
