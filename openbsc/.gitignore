@@ -77,6 +77,7 @@ tests/trau/trau_test
 tests/mgcp/mgcp_transcoding_test
 tests/sgsn/sgsn_test
 tests/subscr/subscr_test
+tests/oap/oap_test
 
 tests/atconfig
 tests/atlocal
