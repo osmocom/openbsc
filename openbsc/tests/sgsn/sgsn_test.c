@@ -27,6 +27,7 @@
 #include <openbsc/gprs_gsup_messages.h>
 #include <openbsc/gprs_gsup_client.h>
 #include <openbsc/gprs_utils.h>
+#include <openbsc/gprs_gb_parse.h>
 
 #include <osmocom/gprs/gprs_bssgp.h>
 
@@ -51,17 +52,53 @@ static struct sgsn_instance sgsn_inst = {
 };
 struct sgsn_instance *sgsn = &sgsn_inst;
 unsigned sgsn_tx_counter = 0;
+struct msgb *last_msg = NULL;
+struct gprs_gb_parse_context last_dl_parse_ctx;
+
+static void reset_last_msg()
+{
+	if (last_msg)
+		msgb_free(last_msg);
+
+	last_msg = NULL;
+	memset(&last_dl_parse_ctx, 0, sizeof(last_dl_parse_ctx));
+}
 
 static void cleanup_test()
 {
+	reset_last_msg();
+}
+
+static uint32_t get_new_ptmsi(const struct gprs_gb_parse_context *parse_ctx)
+{
+	uint32_t new_ptmsi = GSM_RESERVED_TMSI;
+
+	if (parse_ctx->new_ptmsi_enc)
+		gprs_parse_tmsi(parse_ctx->new_ptmsi_enc, &new_ptmsi);
+
+	return new_ptmsi;
 }
 
 /* override */
 int bssgp_tx_dl_ud(struct msgb *msg, uint16_t pdu_lifetime,
 		   struct bssgp_dl_ud_par *dup)
 {
+	int rc;
+
+	reset_last_msg();
+
+	last_msg = msg;
+	OSMO_ASSERT(msgb_data(last_msg) != NULL);
+
+	rc = gprs_gb_parse_llc(msgb_data(last_msg), msgb_length(last_msg),
+		&last_dl_parse_ctx);
+
+	fprintf(stderr, "Got DL LLC message: %s\n",
+		gprs_gb_message_name(&last_dl_parse_ctx, "UNKNOWN"));
+
+	OSMO_ASSERT(rc > 0);
+
 	sgsn_tx_counter += 1;
-	msgb_free(msg);
 	return 0;
 }
 
@@ -153,6 +190,7 @@ static void send_0408_message(struct gprs_llc_llme *llme, uint32_t tlli,
 {
 	struct msgb *msg;
 
+	reset_last_msg();
 	sgsn_tx_counter = 0;
 
 	msg = create_msg(data, data_len);
@@ -911,16 +949,6 @@ static void test_gmm_attach(int retry)
 
 	printf("Testing GMM attach%s\n", retry ? " with retry" : "");
 
-	/* reset the PRNG used by sgsn_alloc_ptmsi */
-	srand(1);
-
-	ptmsi1 = sgsn_alloc_ptmsi();
-	OSMO_ASSERT(ptmsi1 != GSM_RESERVED_TMSI);
-
-	/* reset the PRNG, so that the same P-TMSI sequence will be generated
-	 * again */
-	srand(1);
-
 	foreign_tlli = gprs_tmsi2tlli(0xc0000023, TLLI_FOREIGN);
 
 	/* Create a LLE/LLME */
@@ -984,6 +1012,8 @@ retry_attach_req:
 
 	/* we expect an attach accept/reject */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
+	ptmsi1 = get_new_ptmsi(&last_dl_parse_ctx);
+	OSMO_ASSERT(ptmsi1 != GSM_RESERVED_TMSI);
 
 	/* this has been randomly assigned by the SGSN */
 	local_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
@@ -1507,16 +1537,6 @@ static void test_gmm_cancel(void)
 
 	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_OPEN;
 
-	/* reset the PRNG used by sgsn_alloc_ptmsi */
-	srand(1);
-
-	ptmsi1 = sgsn_alloc_ptmsi();
-	OSMO_ASSERT(ptmsi1 != GSM_RESERVED_TMSI);
-
-	/* reset the PRNG, so that the same P-TMSI sequence will be generated
-	 * again */
-	srand(1);
-
 	foreign_tlli = gprs_tmsi2tlli(0xc0000023, TLLI_FOREIGN);
 
 	/* Create a LLE/LLME */
@@ -1554,6 +1574,8 @@ static void test_gmm_cancel(void)
 
 	/* we expect an attach accept/reject */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
+	ptmsi1 = get_new_ptmsi(&last_dl_parse_ctx);
+	OSMO_ASSERT(ptmsi1 != GSM_RESERVED_TMSI);
 
 	/* this has been randomly assigned by the SGSN */
 	local_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
@@ -1591,6 +1613,7 @@ static void test_gmm_ptmsi_allocation(void)
 	uint32_t foreign_tlli;
 	uint32_t ptmsi1;
 	uint32_t ptmsi2;
+	uint32_t received_ptmsi;
 	uint32_t old_ptmsi;
 	uint32_t local_tlli = 0;
 	struct gprs_llc_lle *lle;
@@ -1658,11 +1681,9 @@ static void test_gmm_ptmsi_allocation(void)
 
 	OSMO_ASSERT(ptmsi1 != ptmsi2);
 
-	printf("  - Repeated Attach Request\n");
+	ptmsi1 = ptmsi2 = GSM_RESERVED_TMSI;
 
-	/* reset the PRNG, so that the same P-TMSI will be generated
-	 * again */
-	srand(1);
+	printf("  - Repeated Attach Request\n");
 
 	foreign_tlli = gprs_tmsi2tlli(0xc0000023, TLLI_FOREIGN);
 
@@ -1678,7 +1699,8 @@ static void test_gmm_ptmsi_allocation(void)
 	ctx = sgsn_mm_ctx_by_tlli(foreign_tlli, &raid);
 	OSMO_ASSERT(ctx != NULL);
 	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
-	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
+	OSMO_ASSERT(ctx->p_tmsi != GSM_RESERVED_TMSI);
+	ptmsi1 = ctx->p_tmsi;
 
 	old_ptmsi = ctx->p_tmsi_old;
 
@@ -1698,6 +1720,8 @@ static void test_gmm_ptmsi_allocation(void)
 
 	/* we expect an attach accept */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
+	received_ptmsi = get_new_ptmsi(&last_dl_parse_ctx);
+	OSMO_ASSERT(received_ptmsi == ptmsi1);
 
 	/* we ignore this and send the attach again */
 	send_0408_message(lle->llme, foreign_tlli,
@@ -1709,6 +1733,11 @@ static void test_gmm_ptmsi_allocation(void)
 	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi_old == old_ptmsi);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
+
+	/* we expect an attach accept */
+	OSMO_ASSERT(sgsn_tx_counter == 1);
+	received_ptmsi = get_new_ptmsi(&last_dl_parse_ctx);
+	OSMO_ASSERT(received_ptmsi == ptmsi1);
 
 	/* inject the attach complete */
 	local_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
@@ -1733,7 +1762,9 @@ static void test_gmm_ptmsi_allocation(void)
 
 	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi_old == ptmsi1);
-	OSMO_ASSERT(ctx->p_tmsi == ptmsi2);
+	OSMO_ASSERT(ctx->p_tmsi != GSM_RESERVED_TMSI);
+	OSMO_ASSERT(ctx->p_tmsi != ptmsi1);
+	ptmsi2 = ctx->p_tmsi;
 
 	/* repeat the RA update request */
 	send_0408_message(ctx->llme, local_tlli,
@@ -1741,6 +1772,8 @@ static void test_gmm_ptmsi_allocation(void)
 
 	/* we expect an RA update accept */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
+	received_ptmsi = get_new_ptmsi(&last_dl_parse_ctx);
+	OSMO_ASSERT(received_ptmsi == ptmsi2);
 
 	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi_old == ptmsi1);
