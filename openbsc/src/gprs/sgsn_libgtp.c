@@ -162,7 +162,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	if (mmctx->subscr) {
 		pdp->msisdn.l = mmctx->subscr->sgsn_data->msisdn_len;
 		if (pdp->msisdn.l > sizeof(pdp->msisdn.v))
-			pdp->msisdn.l = sizeof(pdp->msisdn.l);
+			pdp->msisdn.l = sizeof(pdp->msisdn.v);
 		memcpy(pdp->msisdn.v, mmctx->subscr->sgsn_data->msisdn,
 			pdp->msisdn.l);
 	}
