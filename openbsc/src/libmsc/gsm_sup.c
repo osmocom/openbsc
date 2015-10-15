@@ -125,7 +125,7 @@ static int subscr_handle_sup_upd_loc_res(struct gsm_subscriber *subscr,
 			memcpy(msisdn_lv+1, gsup_msg->msisdn_enc,
 				gsup_msg->msisdn_enc_len);
 			gsm48_decode_bcd_number(subscr->extension, sizeof(subscr->extension),
-																	msisdn_lv,1);
+																	msisdn_lv,0);
 		}
 	}
 
