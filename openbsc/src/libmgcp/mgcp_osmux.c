@@ -543,7 +543,7 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 }
 
 /* bsc-nat allocates/releases the Osmux circuit ID */
-static uint8_t osmux_cid_bitmap[16];
+static uint8_t osmux_cid_bitmap[(OSMUX_CID_MAX + 1) / 8];
 
 int osmux_used_cid(void)
 {
