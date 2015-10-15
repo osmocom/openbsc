@@ -107,7 +107,7 @@ struct gprs_gsup_message {
 	size_t				num_auth_tuples;
 	struct gprs_gsup_pdp_info	pdp_infos[GPRS_GSUP_MAX_NUM_PDP_INFO];
 	size_t				num_pdp_infos;
-	const uint8_t			*msisdn_enc;
+	uint8_t				*msisdn_enc;
 	size_t				msisdn_enc_len;
 };
 
