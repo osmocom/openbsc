@@ -44,6 +44,7 @@ SUBDIRS += \
 	utils \
 	ipaccess \
 	gprs \
+	reg-proxy \
 	$(NULL)
 
 # Conditional Programs
