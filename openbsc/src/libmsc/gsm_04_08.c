@@ -670,6 +670,8 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	/* schedule the reject timer */
 	schedule_reject(conn);
 
+	conn->loc_operation->waiting_for_remote_accept = 1;
+
 	if (!subscr) {
 		DEBUGPC(DRR, "<- Can't find any subscriber for this ID\n");
 		/* FIXME: request id? close channel? */
@@ -678,8 +680,6 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 	conn->subscr = subscr;
 	conn->subscr->equipment.classmark1 = lu->classmark1;
-
-	conn->loc_operation->waiting_for_remote_accept = 1;
 
 	/* check if we can let the subscriber into our network immediately
 	 * or if we need to wait for identity responses. */
