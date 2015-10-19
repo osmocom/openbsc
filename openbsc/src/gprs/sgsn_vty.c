@@ -94,7 +94,7 @@ const struct value_string sgsn_auth_pol_strs[] = {
 }
 
 DECLARE_TIMER(3312, "Periodic RA Update timer (s)")
-DECLARE_TIMER(3322, "Detach reqest -> accept timer (s)")
+DECLARE_TIMER(3322, "Detach request -> accept timer (s)")
 DECLARE_TIMER(3350, "Waiting for ATT/RAU/TMSI_COMPL timer (s)")
 DECLARE_TIMER(3360, "Waiting for AUTH/CIPH response timer (s)")
 DECLARE_TIMER(3370, "Waiting for IDENTITY response timer (s)")
