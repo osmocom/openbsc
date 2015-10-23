@@ -288,7 +288,7 @@ struct gsm_network {
 	uint64_t exten_prefix;
 
 	/* control interface */
-	struct ctrl_handle *ctrl;
+    struct ctrl_handle *ctrl;
 };
 
 struct osmo_esme;

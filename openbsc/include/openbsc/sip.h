@@ -4,6 +4,10 @@
 #include <openbsc/sip_client.h>
 #include <openbsc/reg_proxy.h>
 #include <osip2/osip.h>
+#include <osmocom/gsm/gsm0480.h>
+
+int tx_ss_handle(struct sip_client *sip_client, osip_t *osip, struct ss_request *ss,
+		 const char *extention);
 
 int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi);
 
