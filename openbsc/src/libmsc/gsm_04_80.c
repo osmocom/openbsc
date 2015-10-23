@@ -63,13 +63,17 @@ static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, uint8_t tag,
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */
 int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 			       const struct msgb *in_msg, const char *response_text,
-			       const struct ussd_request *req)
+			       const struct ussd_request *req,
+			       uint8_t code,
+			       uint8_t ctype,
+			       uint8_t mtype)
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 USSD RSP");
 	struct gsm48_hdr *gh;
 	uint8_t *ptr8;
 	int response_len;
 
+#if 1
 	/* First put the payload text into the message */
 	ptr8 = msgb_put(msg, 0);
 	gsm_7bit_encode_n_ussd(ptr8, msgb_tailroom(msg), response_text, &response_len);
@@ -80,31 +84,65 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 
 	/* Pre-pend the DCS octet string */
 	msgb_push_TLV1(msg, ASN1_OCTET_STRING_TAG, 0x0F);
+#else
+	response_len = strlen(response_text);
+	if (response_len > MAX_LEN_USSD_STRING)
+		response_len = MAX_LEN_USSD_STRING;
+
+	ptr8 = msgb_put(msg, 0);
+	memcpy(ptr8, response_text, response_len);
+	msgb_put(msg, response_len);
+
+	/* Then wrap it as an Octet String */
+	msgb_wrap_with_TL(msg, ASN1_OCTET_STRING_TAG);
+
+	/* Pre-pend the DCS octet string */
+	msgb_push_TLV1(msg, ASN1_OCTET_STRING_TAG, 0xf4);
+#endif
+
 
 	/* Then wrap these as a Sequence */
 	msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
 
-	/* Pre-pend the operation code */
-	msgb_push_TLV1(msg, GSM0480_OPERATION_CODE,
-			GSM0480_OP_CODE_PROCESS_USS_REQ);
+	if (ctype == GSM0480_CTYPE_RETURN_RESULT) {
+		/* Pre-pend the operation code */
+		msgb_push_TLV1(msg, GSM0480_OPERATION_CODE, code);
 
-	/* Wrap the operation code and IA5 string as a sequence */
-	msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
+		/* Wrap the operation code and IA5 string as a sequence */
+		msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
 
-	/* Pre-pend the invoke ID */
-	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
+		/* Pre-pend the invoke ID */
+		msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
+	} else if (ctype == GSM0480_CTYPE_INVOKE) {
+		/* Pre-pend the operation code */
+		msgb_push_TLV1(msg, GSM0480_OPERATION_CODE, code);
+
+		/* Pre-pend the invoke ID */
+		msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
+	} else {
+		abort();
+	}
 
 	/* Wrap this up as a Return Result component */
-	msgb_wrap_with_TL(msg, GSM0480_CTYPE_RETURN_RESULT);
+	msgb_wrap_with_TL(msg, ctype);
 
-	/* Wrap the component in a Facility message */
-	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
+	if (mtype == GSM0480_MTYPE_REGISTER ||
+		mtype == GSM0480_MTYPE_RELEASE_COMPLETE) {
+		/* Wrap the component in a Facility message */
+		msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
+	} else if (mtype == GSM0480_MTYPE_FACILITY) {
+		uint8_t *data = msgb_push(msg, 1);
+		data[0] = msg->len - 1;
+	} else {
+		abort();
+	}
 
 	/* And finally pre-pend the L3 header */
 	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_NC_SS | req->transaction_id
-					| (1<<7);  /* TI direction = 1 */
-	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+			| (1<<7);  /* TI direction = 1 */
+
+	gh->msg_type = mtype;
 
 	return gsm0808_submit_dtap(conn, msg, 0, 0);
 }

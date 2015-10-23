@@ -28,6 +28,150 @@
 #include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/gprs_gsup_messages.h>
 #include <openbsc/gprs_gsup_client.h>
+#include <openbsc/osmo_msc.h>
+#include <openbsc/gprs_utils.h>
+#include <openbsc/ussd.h>
+
+enum {
+    FMAP_MSISDN        = 0x80
+};
+
+static int subscr_uss_message(struct msgb *msg,
+			      struct ss_request *req,
+			      const char* extention)
+{
+	size_t bcd_len = 0;
+	uint8_t *gsup_indicator;
+
+	gsup_indicator = msgb_put(msg, 4);
+
+	/* First byte should always be GPRS_GSUP_MSGT_MAP */
+	gsup_indicator[0] = GPRS_GSUP_MSGT_MAP;
+	gsup_indicator[1] = req->message_type;
+	/* TODO ADD tid */
+	gsup_indicator[2] = req->component_type;
+
+	/* invokeId */
+	msgb_tlv_put(msg, GSM0480_COMPIDTAG_INVOKE_ID, 1, &req->invoke_id);
+
+	/* opCode */
+	msgb_tlv_put(msg, GSM0480_OPERATION_CODE, 1, &req->opcode);
+
+	if (req->ussd_text_len > 0) {
+		//msgb_tlv_put(msg, ASN1_OCTET_STRING_TAG, 1, &req->ussd_text_language);
+		msgb_tlv_put(msg, ASN1_OCTET_STRING_TAG, req->ussd_text_len, req->ussd_text);
+	}
+
+	if (extention) {
+		uint8_t bcd_buf[32];
+		bcd_len = gsm48_encode_bcd_number(bcd_buf, sizeof(bcd_buf), 0,
+						  extention);
+		msgb_tlv_put(msg, FMAP_MSISDN, bcd_len - 1, &bcd_buf[1]);
+	}
+
+	/* fill actual length */
+	gsup_indicator[3] = 3 + 3 + (req->ussd_text_len + 2) + (bcd_len + 2);;
+
+	/* wrap with GSM0480_CTYPE_INVOKE */
+	// gsm0480_wrap_invoke(msg, req->opcode, invoke_id);
+	// gsup_indicator = msgb_push(msgb, 1);
+	// gsup_indicator[0] = GPRS_GSUP_MSGT_MAP;
+	return 0;
+}
+
+
+int subscr_tx_uss_message(struct ss_request *req,
+			  struct gsm_subscriber *subscr)
+{
+    struct msgb *msg = gprs_gsup_msgb_alloc();
+    if (!msg)
+        return -ENOMEM;
+
+    //GSM0480_OP_CODE_PROCESS_USS_REQ
+    subscr_uss_message(msg, req, subscr->extension);
+
+    return gprs_gsup_client_send(subscr->group->net->sup_client, msg);
+}
+
+
+static int rx_uss_message_parse(struct ss_request *ss,
+				const uint8_t* data,
+				size_t len,
+				char* extention,
+				size_t extention_len)
+{
+	const uint8_t* const_data = data;
+
+	if (len < 1 + 2 + 3 + 3)
+		return -1;
+
+	/* skip GPRS_GSUP_MSGT_MAP */
+	ss->message_type = *(++const_data);
+	ss->component_type = *(++const_data);
+	const_data += 2;
+
+	//
+	if (*const_data != GSM0480_COMPIDTAG_INVOKE_ID) {
+		return -1;
+	}
+	const_data += 2;
+	ss->invoke_id = *const_data;
+	const_data++;
+
+	//
+	if (*const_data != GSM0480_OPERATION_CODE) {
+		return -1;
+	}
+	const_data += 2;
+	ss->opcode = *const_data;
+	const_data++;
+
+
+	while (const_data - data < len) {
+		uint8_t len;
+		switch (*const_data) {
+		case ASN1_OCTET_STRING_TAG:
+			len = *(++const_data);
+			strncpy((char*)ss->ussd_text,
+				(const char*)++const_data,
+				(len > MAX_LEN_USSD_STRING) ? MAX_LEN_USSD_STRING : len);
+			const_data += len;
+			break;
+
+		case FMAP_MSISDN:
+			len = *(++const_data);
+			gsm48_decode_bcd_number(extention,
+						extention_len,
+						const_data,
+						0);
+			const_data += len + 1;
+			break;
+		default:
+			DEBUGP(DMM, "Unknown code: %d\n", *const_data);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int rx_uss_message(const uint8_t* data, size_t len)
+{
+	char extention[32] = {0};
+	struct ss_request ss;
+	memset(&ss, 0, sizeof(ss));
+
+	if (rx_uss_message_parse(&ss, data, len, extention, sizeof(extention))) {
+		LOGP(DSUP, LOGL_ERROR, "Can't parse uss message\n");
+		return -1;
+	}
+
+	LOGP(DSUP, LOGL_ERROR, "Got invoke_id=0x%02x opcode=0x%02x facility=0x%02x text=%s\n",
+	     ss.invoke_id, ss.opcode, ss.component_type, ss.ussd_text);
+
+	return on_ussd_response(&ss, extention);
+}
+
 
 static int subscr_tx_sup_message(struct gprs_gsup_client *sup_client,
 								 struct gsm_subscriber *subscr,
@@ -288,6 +432,10 @@ int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msgb *msg)
 
 	struct gprs_gsup_message gsup_msg = {0};
 	struct gsm_subscriber *subscr;
+
+    if (*data == GPRS_GSUP_MSGT_MAP) {
+        return rx_uss_message(data, data_len);
+    }
 
 	rc = gprs_gsup_decode(data, data_len, &gsup_msg);
 	if (rc < 0) {

@@ -52,7 +52,7 @@
 
 static const char *sip_src_ip = "127.0.0.1";
 static const char *sip_dst_ip = "127.0.0.1";
-static u_int16_t src_port = 5050;
+static u_int16_t src_port = 5150;
 static u_int16_t dst_port = 5060;
 
 struct log_info_cat ipa_proxy_test_cat[] = {
@@ -294,9 +294,19 @@ int main(int argc, char **argv)
 
 	while (1) {
 		log_reset_context();
-		osmo_select_main(0);
+		osmo_select_main(0); //<-- TIMER handling
 		osip_nict_execute(reg->osip);
 		osip_timers_nict_execute(reg->osip);
 
+		osip_ict_execute(reg->osip);
+		osip_timers_ict_execute(reg->osip);
+
+		osip_nist_execute(reg->osip);
+		osip_timers_nist_execute(reg->osip);
+
+		osip_ist_execute(reg->osip);
+		osip_timers_ist_execute(reg->osip);
+
+		osip_retransmissions_execute(reg->osip);
 	}
 }

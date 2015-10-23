@@ -7,4 +7,7 @@
 
 int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
+
+int on_ussd_response(const struct ss_request* req, const char* extention);
+
 #endif

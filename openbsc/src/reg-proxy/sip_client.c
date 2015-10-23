@@ -247,11 +247,13 @@ void sip_client_destroy(struct sip_client *sip_client)
 int sip_client_send(struct sip_client *sip_client, struct msgb *msg)
 {
 	if (!sip_client) {
+		printf(" sip_client == NULL ");
 		msgb_free(msg);
 		return -ENOTCONN;
 	}
 
 	if (!sip_client->is_connected) {
+		printf(" !sip_client->is_connected ");
 		msgb_free(msg);
 		return -EAGAIN;
 	}
