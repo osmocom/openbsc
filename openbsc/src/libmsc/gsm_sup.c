@@ -90,7 +90,7 @@ int subscr_tx_uss_message(struct ss_request *req,
 	//GSM0480_OP_CODE_PROCESS_USS_REQ
 	subscr_uss_message(msg, req, subscr->extension);
 
-	return gprs_gsup_client_send(subscr->group->net->hlr_sup_client, msg);
+	return gprs_gsup_client_send(subscr->group->net->ussd_sup_client, msg);
 }
 
 
