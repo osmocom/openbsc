@@ -83,12 +83,12 @@ static int subscr_uss_message(struct msgb *msg,
 int subscr_tx_uss_message(struct ss_request *req,
 			  struct gsm_subscriber *subscr)
 {
-    struct msgb *msg = gprs_gsup_msgb_alloc();
-    if (!msg)
-        return -ENOMEM;
+	struct msgb *msg = gprs_gsup_msgb_alloc();
+	if (!msg)
+		return -ENOMEM;
 
-    //GSM0480_OP_CODE_PROCESS_USS_REQ
-    subscr_uss_message(msg, req, subscr->extension);
+	//GSM0480_OP_CODE_PROCESS_USS_REQ
+	subscr_uss_message(msg, req, subscr->extension);
 
 	return gprs_gsup_client_send(subscr->group->net->hlr_sup_client, msg);
 }
