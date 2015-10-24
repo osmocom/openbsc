@@ -90,7 +90,7 @@ int subscr_tx_uss_message(struct ss_request *req,
     //GSM0480_OP_CODE_PROCESS_USS_REQ
     subscr_uss_message(msg, req, subscr->extension);
 
-    return gprs_gsup_client_send(subscr->group->net->sup_client, msg);
+	return gprs_gsup_client_send(subscr->group->net->hlr_sup_client, msg);
 }
 
 
@@ -203,7 +203,7 @@ int subscr_query_auth_info(struct gsm_subscriber *subscr)
 		"subscriber auth info is not available\n");
 
 	gsup_msg.message_type = GPRS_GSUP_MSGT_SEND_AUTH_INFO_REQUEST;
-	return subscr_tx_sup_message(subscr->group->net->sup_client, subscr, &gsup_msg);
+	return subscr_tx_sup_message(subscr->group->net->hlr_sup_client, subscr, &gsup_msg);
 }
 
 int subscr_location_update(struct gsm_subscriber *subscr)
@@ -214,7 +214,7 @@ int subscr_location_update(struct gsm_subscriber *subscr)
 		"subscriber data is not available\n");
 
 	gsup_msg.message_type = GPRS_GSUP_MSGT_UPDATE_LOCATION_REQUEST;
-	return subscr_tx_sup_message(subscr->group->net->sup_client, subscr, &gsup_msg);
+	return subscr_tx_sup_message(subscr->group->net->hlr_sup_client, subscr, &gsup_msg);
 }
 
 static int subscr_tx_sup_error_reply(struct gprs_gsup_client *sup_client,
@@ -531,11 +531,11 @@ int sup_init(struct gsm_network *net)
 
 	addr_str = "127.0.0.1";
 
-	net->sup_client = gprs_gsup_client_create(
+	net->hlr_sup_client = gprs_gsup_client_create(
 		addr_str, 8183,
 		&sup_read_cb);
 
-	if (!net->sup_client)
+	if (!net->hlr_sup_client)
 		return -1;
 
 	return 1;
