@@ -16,7 +16,8 @@ Build-Depends: debhelper (>= 9),
                libpcap-dev,
                libssl-dev,
                libc-ares-dev,
-               libsmpp34-dev
+               libsmpp34-dev,
+               libosip2-dev
 Standards-Version: 3.9.8
 Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
 Vcs-Browser: http://openbsc.osmocom.org/trac/browser
