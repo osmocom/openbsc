@@ -515,9 +515,26 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 		if (!conn->subscr) {
 			conn->subscr = subscr_get_by_imsi(net->subscr_group,
 							  mi_string);
-			if (!conn->subscr && net->create_subscriber)
+
+			if (!conn->subscr && net->create_subscriber
+			    && net->create_only_local_subscriber) {
+				char mcc[4];
+				char mnc[3];
+				strncpy(mcc, mi_string, 3);
+				strncpy(mnc, mi_string + 3, 2);
+				if ((atoi(mcc) == net->country_code) &&
+					(atoi(mnc) == net->network_code)) {
+						conn->subscr = subscr_create_subscriber(
+							net->subscr_group, mi_string);
+				}
+			}
+
+			if (!conn->subscr && net->create_subscriber
+			    && !net->create_only_local_subscriber) {
 				conn->subscr = subscr_create_subscriber(
 					net->subscr_group, mi_string);
+			}
+
 		}
 		if (!conn->subscr && conn->loc_operation) {
 			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
@@ -633,10 +650,26 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 		/* look up subscriber based on IMSI, create if not found */
 		subscr = subscr_get_by_imsi(bts->network->subscr_group, mi_string);
-		if (!subscr && bts->network->create_subscriber) {
+
+		if (!subscr && bts->network->create_subscriber
+		    && bts->network->create_only_local_subscriber) {
+			char mcc[4];
+			char mnc[3];
+			strncpy(mcc, mi_string, 3);
+			strncpy(mnc, mi_string + 3, 2);
+			if ((atoi(mcc) == bts->network->country_code) &&
+				(atoi(mnc) == bts->network->network_code)) {
+					subscr = subscr_create_subscriber(
+						bts->network->subscr_group, mi_string);
+			}
+		}
+
+		if (!subscr && bts->network->create_subscriber
+		    && !bts->network->create_only_local_subscriber) {
 			subscr = subscr_create_subscriber(
 				bts->network->subscr_group, mi_string);
 		}
+
 		if (!subscr) {
 			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
 			release_loc_updating_req(conn, 0);

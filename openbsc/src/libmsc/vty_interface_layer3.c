@@ -995,6 +995,24 @@ DEFUN(cfg_nitb_no_subscr_create, cfg_nitb_no_subscr_create_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nitb_subscr_create_only_local, cfg_nitb_subscr_create_only_local_cmd,
+      "subscriber-create-only-local",
+      "Make a new record only for a local subscriber.\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->create_only_local_subscriber = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nitb_no_subscr_create_only_local, cfg_nitb_no_subscr_create_only_local_cmd,
+      "no subscriber-create-only-local",
+      NO_STR "Make a new record only for a local subscriber.\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->create_only_local_subscriber = 0;
+	return CMD_SUCCESS;
+}
+
 static int config_write_nitb(struct vty *vty)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
@@ -1051,6 +1069,8 @@ int bsc_vty_init_extra(void)
 	install_node(&nitb_node, config_write_nitb);
 	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
 	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);
+	install_element(NITB_NODE, &cfg_nitb_subscr_create_only_local_cmd);
+	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_only_local_cmd);
 
 	return 0;
 }

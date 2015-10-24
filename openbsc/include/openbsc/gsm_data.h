@@ -282,6 +282,7 @@ struct gsm_network {
 
 	/* subscriber related features */
 	int create_subscriber;
+	int create_only_local_subscriber;
 	struct gsm_subscriber_group *subscr_group;
 	struct gsm_sms_queue *sms_queue;
 	uint64_t exten_prefix;
