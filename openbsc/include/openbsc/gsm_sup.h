@@ -10,10 +10,11 @@
 	     (subscr) ? (subscr)->imsi : "---", \
 	     ## args)
 
+// Callback for both HLR/auth and USSD SUP sockets
+int sup_read_cb(struct gprs_gsup_client *sup_client, struct msgb *msg);
+
 int subscr_query_auth_info(struct gsm_subscriber *subscr);
 int subscr_location_update(struct gsm_subscriber *subscr);
-int sup_init(struct gsm_network *net);
-
 
 int subscr_tx_uss_message(struct ss_request *req,
 			  struct gsm_subscriber *subscr);

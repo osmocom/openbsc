@@ -368,13 +368,15 @@ int main(int argc, char **argv)
 	}
 	printf("DB: Database prepared.\n");
 
-    //if (bsc_gsmnet->auth_policy == GSM_AUTH_POLICY_REMOTE) {
-		rc = sup_init(bsc_gsmnet);
-		if (rc < 0) {
+	if (bsc_gsmnet->auth_policy == GSM_AUTH_POLICY_REMOTE) {
+		bsc_gsmnet->hlr_sup_client = gprs_gsup_client_create(
+			"127.0.0.1", 8183,
+			&sup_read_cb);
+		if (!bsc_gsmnet->hlr_sup_client) {
 			LOGP(DSUP, LOGL_FATAL, "Cannot set up subscriber management\n");
 			exit(2);
 		}
-    //}
+	}
 
 	/* setup the timer */
 	db_sync_timer.cb = db_sync_timer_cb;

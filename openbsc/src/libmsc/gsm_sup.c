@@ -513,7 +513,7 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
 	return rc;
 }
 
-static int sup_read_cb(struct gprs_gsup_client *sup_client, struct msgb *msg)
+int sup_read_cb(struct gprs_gsup_client *sup_client, struct msgb *msg)
 {
 	int rc;
 
@@ -523,20 +523,4 @@ static int sup_read_cb(struct gprs_gsup_client *sup_client, struct msgb *msg)
 		return -1;
 
 	return rc;
-}
-
-int sup_init(struct gsm_network *net)
-{
-	const char *addr_str;
-
-	addr_str = "127.0.0.1";
-
-	net->hlr_sup_client = gprs_gsup_client_create(
-		addr_str, 8183,
-		&sup_read_cb);
-
-	if (!net->hlr_sup_client)
-		return -1;
-
-	return 1;
 }
