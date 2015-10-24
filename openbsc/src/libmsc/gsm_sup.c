@@ -155,7 +155,7 @@ static int rx_uss_message_parse(struct ss_request *ss,
 	return 0;
 }
 
-int rx_uss_message(const uint8_t* data, size_t len)
+static int rx_uss_message(const uint8_t* data, size_t len)
 {
 	char extention[32] = {0};
 	struct ss_request ss;
@@ -424,7 +424,7 @@ static int subscr_handle_unknown_imsi(struct gprs_gsup_client *sup_client,
 	return -GMM_CAUSE_IMSI_UNKNOWN;
 }
 
-int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msgb *msg)
+static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msgb *msg)
 {
 	uint8_t *data = msgb_l2(msg);
 	size_t data_len = msgb_l2len(msg);
