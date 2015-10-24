@@ -368,6 +368,7 @@ int main(int argc, char **argv)
 	}
 	printf("DB: Database prepared.\n");
 
+	/* Prepare HLR SUP socket if auth policy is "remote" */
 	if (bsc_gsmnet->auth_policy == GSM_AUTH_POLICY_REMOTE) {
 		bsc_gsmnet->hlr_sup_client = gprs_gsup_client_create(
 			"127.0.0.1", 8183,
