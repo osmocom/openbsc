@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <unistd.h>
 
 typedef struct context_s context_t;
 #define NTA_OUTGOING_MAGIC_T context_t
@@ -25,6 +26,7 @@ typedef struct operation operation_t;
 #include <sofia-sip/sip_util.h>
 #include <sofia-sip/auth_client.h>
 #include <sofia-sip/tport_tag.h>
+#include <sofia-sip/url.h>
 
 #include <osmocom/abis/ipa.h>
 #include <osmocom/core/application.h>
@@ -183,7 +185,8 @@ struct context_s {
 
 	nua_t          *nua;
 
-	const char     *to_str;
+	url_t          *to_url;
+	url_t          *self_url;
 
 	/* Array of isup connections */
 	struct isup_connection isup[1];
@@ -299,6 +302,18 @@ static int ussd_parse_xml(const char *xml,
 	return 1;
 }
 
+static void operetion_destroy(operation_t* op)
+{
+	/* release operation handle */
+	nua_handle_destroy(op->handle);
+	op->handle = NULL;
+
+	/* FIXME replace by list removal */
+	op->ctx->operations = NULL;
+	/* release operation context information */
+	su_free(op->ctx->home, op);
+}
+
 void proxy_r_invite(int           status,
 		    char const   *phrase,
 		    nua_t        *nua,
@@ -308,10 +323,14 @@ void proxy_r_invite(int           status,
 		    sip_t const  *sip,
 		    tagi_t        tags[])
 {
+	fprintf(stderr, "*** Got reply %d for INVITE\n", status);
 	if (status == 200) {
 		nua_ack(nh, TAG_END());
 	} else {
 		printf("response to INVITE: %03d %s\n", status, phrase);
+
+		ussd_send_data(hmagic, 1, "en", 2, NULL, 0);
+		operetion_destroy(hmagic);
 	}
 }
 
@@ -356,13 +375,7 @@ void proxy_r_bye(int           status,
 		}
 	}
 
-	/* release operation handle */
-	nua_handle_destroy(hmagic->handle);
-	hmagic->handle = NULL;
-
-	/* release operation context information */
-	su_free(hmagic->ctx->home, hmagic);
-
+	operetion_destroy(hmagic);
 }
 
 int ussd_create_xml_ascii(char *content, size_t max_len, const char* language, const char* msg, int msg_len)
@@ -382,35 +395,27 @@ int ussd_create_xml_ascii(char *content, size_t max_len, const char* language, c
 	return 1;
 }
 
+/* URL_RESERVED_CHARS in sofia is not strict enough as in RFC3986 */
+#define RFC3986_RESERVED_CHARS "!*'();:@&=+$,/?#[]"
+
 operation_t *open_ussd_session_mo(context_t* ctx,
 				  isup_connection_t *conn,
 				  struct ss_request* ss,
 				  const char* extention)
 {
 	char content[1024];
+	char escaped_to[512];
 	operation_t *op;
-	sip_to_t *to;
+	sip_to_t *to = NULL;
+	sip_to_t *from = NULL;
+	url_t to_url, from_url;
+	char* to_url_str;
+	char* from_url_str;
 
 	/* create operation context information */
 	op = su_zalloc(ctx->home, (sizeof *op));
 	if (!op) {
 		goto failed_alloc;
-	}
-
-	/* Destination address */
-	to = sip_to_create(ctx->home, (url_string_t *)ctx->to_str);
-	if (!to) {
-		goto failed_create;
-	}
-	//to->a_display = name;
-
-	/* create operation handle */
-	op->handle = nua_handle(ctx->nua,
-				op,
-				SIPTAG_TO(to),
-				TAG_END());
-	if (op->handle == NULL) {
-		goto failed_sip_addr;
 	}
 
 	op->ctx = ctx;
@@ -421,11 +426,59 @@ operation_t *open_ussd_session_mo(context_t* ctx,
 
 	/* TODO add language support !!! */
 
-	if (!ussd_create_xml_ascii(content, sizeof(content), "en",
+	if (!ussd_create_xml_ascii(content, sizeof(content),
+				   "en",
 				   (const char* )op->ussd.rigester_msg.ussd_text,
 				   op->ussd.rigester_msg.ussd_text_len)) {
-		goto failed_nua;
+		goto failed_to_parse_xml;
 	}
+
+
+	/* Destination address */
+	url_escape(escaped_to, ss->ussd_text, RFC3986_RESERVED_CHARS);
+	to_url = *ctx->to_url;
+	to_url.url_user = escaped_to;
+	to_url_str = url_as_string(ctx->home, &to_url);
+	if (to_url_str == NULL) {
+		goto failed_create_handle;
+	}
+
+	to = sip_to_create(ctx->home, (url_string_t *)to_url_str);
+	su_free(ctx->home, to_url_str);
+	if (!to) {
+		goto failed_create_handle;
+	}
+
+	/* Source address */
+	from_url = *ctx->self_url;
+	from_url.url_user = extention;
+	from_url_str = url_as_string(ctx->home, &from_url);
+	if (from_url_str == NULL) {
+		goto failed_create_handle;
+	}
+
+	from = sip_from_create(ctx->home, (url_string_t *)from_url_str);
+	su_free(ctx->home, from_url_str);
+	if (!to) {
+		goto failed_create_handle;
+	}
+
+	/* create operation handle */
+	op->handle = nua_handle(ctx->nua,
+				op,
+				SIPTAG_TO(to),
+				SIPTAG_FROM(from),
+				TAG_END());
+
+	su_free(ctx->home, from);
+	su_free(ctx->home, to);
+	from = NULL;
+	to = NULL;
+
+	if (op->handle == NULL) {
+		goto failed_create_handle;
+	}
+
 
 	nua_invite(op->handle,
 		   /* other tags as needed ... */
@@ -435,11 +488,14 @@ operation_t *open_ussd_session_mo(context_t* ctx,
 
 	return op;
 
-failed_nua:
-	nua_handle_destroy(op->handle);
-failed_sip_addr:
-	su_free(ctx->home, to);
-failed_create:
+//failed_nua:
+//	nua_handle_destroy(op->handle);
+failed_create_handle:
+	if (from != NULL)
+		su_free(ctx->home, from);
+	if (to != NULL)
+		su_free(ctx->home, to);
+failed_to_parse_xml:
 	su_free(ctx->home, op);
 failed_alloc:
 	fprintf(stderr, "*** open_ussd_session failed!\n");
@@ -539,8 +595,10 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 	memset(&ss, 0, sizeof(ss));
 
 	// TODO handle language
-
-	if (last) {
+	if (msg == NULL) {
+		ss.message_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+		ss.component_type = GSM0480_CTYPE_REJECT;
+	} else if (last) {
 		ss.message_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 		ss.component_type = GSM0480_CTYPE_RETURN_RESULT;
 	} else {
@@ -552,12 +610,17 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 	ss.opcode = op->ussd.rigester_msg.opcode;
 	ss.invoke_id = op->ussd.rigester_msg.invoke_id;
 
-	if (msg_len > MAX_LEN_USSD_STRING) {
-		msg_len = MAX_LEN_USSD_STRING;
-	}
+	if (msg) {
+		if (msg_len > MAX_LEN_USSD_STRING) {
+			msg_len = MAX_LEN_USSD_STRING;
+		}
 
-	ss.ussd_text_len = msg_len;
-	strncpy(ss.ussd_text, msg, msg_len);
+		ss.ussd_text_len = msg_len;
+		strncpy(ss.ussd_text, msg, msg_len);
+	} else {
+		ss.ussd_text_len = 0;
+		ss.ussd_text[0] = 0;
+	}
 
 	struct msgb *outmsg = msgb_alloc_headroom(4000, 64, __func__);
 	subscr_uss_message(outmsg,
@@ -723,8 +786,36 @@ int main(int argc, char *argv[])
 	context_t context[1] = {{{SU_HOME_INIT(context)}}};
 	su_sockaddr_t listen_addr;
 	int rc;
-	int port = 8184;
-	const char* to_str = "sip:ussd@127.0.0.1:5060";
+	int sup_port = 8184;
+	const char* to_str = "sip:127.0.0.1:5060";
+	const char* url_str = "sip:127.0.0.1:5090";
+	int force_tcp = 0;
+	int c;
+
+	while ((c = getopt (argc, argv, "p:t:u:T?")) != -1) {
+		switch (c)
+		{
+		case 'p':
+			sup_port = atoi(optarg);
+			break;
+		case 't':
+			to_str = optarg;
+			break;
+		case 'u':
+			url_str = optarg;
+			break;
+		case 'T':
+			force_tcp = 1;
+			break;
+
+		case '?':
+		default:
+			fprintf(stderr, "Usage:\n"
+				"%s [-p sup_port] [-t to_url] [-u agent_url] [-T]\n",
+				argv[0]);
+			return 2;
+		}
+	}
 
 	osmo_init_logging(&ipa_proxy_test_log_info);
 
@@ -756,7 +847,7 @@ int main(int argc, char *argv[])
 	memset(&listen_addr, 0, sizeof(listen_addr));
 	listen_addr.su_sin.sin_family = AF_INET;
 	listen_addr.su_sin.sin_addr.s_addr = INADDR_ANY;
-	listen_addr.su_sin.sin_port = htons(port);
+	listen_addr.su_sin.sin_port = htons(sup_port);
 
 	rc = bind(context->isup_acc_socket, &listen_addr.su_sa, sizeof(listen_addr.su_sin));
 	if (rc < 0) {
@@ -778,11 +869,22 @@ int main(int argc, char *argv[])
 			 NULL,
 			 0);
 
-	context->to_str = to_str;
+	context->to_url = url_make(home, to_str);
+	context->self_url = url_make(home, url_str);
+
+	if (context->to_url == NULL) {
+		fprintf(stderr, "Unable to parse destination URL\n");
+		return 1;
+	}
+	if (context->self_url == NULL) {
+		fprintf(stderr, "Unable to parse our (source) URL\n");
+		return 1;
+	}
+
 	context->nua = nua_create(context->root,
 				  context_callback,
 				  context,
-				  NUTAG_URL ("sip:ussd_proxy@127.0.0.1:5090"),
+				  NUTAG_URL (url_str),
 				  /* tags as necessary ...*/
 				  TAG_NULL());
 	if (context->nua == NULL) {
@@ -796,8 +898,13 @@ int main(int argc, char *argv[])
 		       NUTAG_SESSION_TIMER(0),
 		       NUTAG_AUTOANSWER(0),
 		       NUTAG_MEDIA_ENABLE(0),
-		       //NTATAG_UDP_MTU(100),    //////////////// FORCE TCP
 		       TAG_NULL());
+
+	if (force_tcp) {
+		nua_set_params(context->nua,
+			       NTATAG_UDP_MTU(10),
+			       TAG_NULL());
+	}
 
 	context->operations = NULL;
 
