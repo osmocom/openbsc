@@ -213,7 +213,8 @@ int response_to_options(sip_t const *sip);
 static
 int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_len,
 		   const char* msg, unsigned msg_len);
-
+static
+int ussd_send_data_ss(isup_connection_t *conn, struct ss_request* reply);
 
 static const char* get_unknown_header(sip_t const *sip, const char *header)
 {
@@ -227,9 +228,11 @@ static const char* get_unknown_header(sip_t const *sip, const char *header)
 }
 
 
-int sup_server_send(operation_t *op, struct msgb *msg)
+int sup_server_send(isup_connection_t *conn, struct msgb *msg)
 {
-	if (!op->ussd.conn) {
+	ssize_t sz;
+
+	if (!conn) {
 		msgb_free(msg);
 		return -ENOTCONN;
 	}
@@ -242,10 +245,10 @@ int sup_server_send(operation_t *op, struct msgb *msg)
 
 	// FIXME ugly hack!!!
 	// TODO place message in send queue !!!!
-	send(op->ussd.conn->isup_conn_socket, msg->data, msg->len, 0);
+	sz = send(conn->isup_conn_socket, msg->data, msg->len, 0);
 	msgb_free(msg);
 
-	return 0;
+	return ((unsigned)sz == msg->len) ? 0 : -1;
 }
 
 static int ussd_parse_xml(const char *xml,
@@ -367,7 +370,9 @@ void proxy_r_bye(int           status,
 			// TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			rc = ussd_send_data(hmagic, 1, language, language_len,
 					    msg, msg_len);
-
+			if (rc < 0) {
+				fprintf(stderr, "*** unable to send to SUP\n");
+			}
 			// TODO handle err, if socket is unavailable we MUST
 			// terminate sip session
 		} else {
@@ -435,7 +440,7 @@ operation_t *open_ussd_session_mo(context_t* ctx,
 
 
 	/* Destination address */
-	url_escape(escaped_to, ss->ussd_text, RFC3986_RESERVED_CHARS);
+	url_escape(escaped_to, (const char*)ss->ussd_text, RFC3986_RESERVED_CHARS);
 	to_url = *ctx->to_url;
 	to_url.url_user = escaped_to;
 	to_url_str = url_as_string(ctx->home, &to_url);
@@ -565,6 +570,14 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 	{
 		if (ctx->operations) {
 			LOGP(DLCTRL, LOGL_ERROR, "Doesn't support multiple sessions. Failing this for now\n");
+			struct ss_request ess;
+			memset(&ess, 0, sizeof(ess));
+			ess.message_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+			ess.component_type = GSM0480_CTYPE_REJECT;
+			ess.invoke_id = ss.invoke_id;
+			ess.opcode = ss.opcode;
+
+			ussd_send_data_ss(sup_conn, &ess);
 			return -1;
 		}
 
@@ -586,6 +599,19 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 	}
 
 	return 0;
+}
+
+int ussd_send_data_ss(isup_connection_t *conn, struct ss_request* reply)
+{
+	struct msgb *outmsg = msgb_alloc_headroom(4000, 64, __func__);
+	subscr_uss_message(outmsg,
+			   reply,
+			   NULL);
+
+	LOGP(DLCTRL, LOGL_ERROR,
+	     "Sending USS, will send: %s\n", msgb_hexdump(outmsg));
+
+	return sup_server_send(conn, outmsg);
 }
 
 int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_len,
@@ -616,21 +642,13 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 		}
 
 		ss.ussd_text_len = msg_len;
-		strncpy(ss.ussd_text, msg, msg_len);
+		strncpy((char*)ss.ussd_text, msg, msg_len);
 	} else {
 		ss.ussd_text_len = 0;
 		ss.ussd_text[0] = 0;
 	}
 
-	struct msgb *outmsg = msgb_alloc_headroom(4000, 64, __func__);
-	subscr_uss_message(outmsg,
-			   &ss,
-			   NULL);
-
-	LOGP(DLCTRL, LOGL_ERROR,
-	     "Sending USS, will send: %s\n", msgb_hexdump(outmsg));
-
-	return sup_server_send(op, outmsg);
+	return ussd_send_data_ss(op->ussd.conn, &ss);
 }
 
 static int isup_handle_connection(context_t *cli, su_wait_t *w, void *p)
