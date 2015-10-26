@@ -37,12 +37,14 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/logging.h>
+#include <osmocom/core/stats.h>
 
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/stats.h>
 #include <osmocom/vty/ports.h>
 
 #include <openbsc/signal.h>
@@ -302,11 +304,13 @@ int main(int argc, char **argv)
 
 	osmo_init_ignore_signals();
 	osmo_init_logging(&gprs_log_info);
+	osmo_stats_init(tall_bsc_ctx);
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	logging_vty_add_cmds(&gprs_log_info);
-        sgsn_vty_init();
+	osmo_stats_vty_add_cmds(&gprs_log_info);
+	sgsn_vty_init();
 
 	handle_options(argc, argv);
 

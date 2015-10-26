@@ -24,6 +24,7 @@
 #include <osmocom/vty/buffer.h>
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/stats.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/misc.h>
 
@@ -3737,6 +3738,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element_ve(&show_paging_group_cmd);
 
 	logging_vty_add_cmds(cat);
+	osmo_stats_vty_add_cmds();
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);

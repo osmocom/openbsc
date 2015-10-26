@@ -36,6 +36,7 @@
 #include <osmocom/core/application.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/stats.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 
 #include <osmocom/abis/abis.h>
@@ -192,6 +193,7 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 
 	osmo_init_logging(&log_info);
+	osmo_stats_init(tall_bsc_ctx);
 
 	bts_init();
 	libosmo_abis_init(tall_bsc_ctx);
