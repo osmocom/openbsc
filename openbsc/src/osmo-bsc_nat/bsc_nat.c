@@ -55,6 +55,7 @@
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/stats.h>
 
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/gsm0808.h>
@@ -63,6 +64,7 @@
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/stats.h>
 #include <osmocom/vty/ports.h>
 
 #include <osmocom/sccp/sccp.h>
@@ -1623,6 +1625,7 @@ int main(int argc, char **argv)
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	logging_vty_add_cmds(&log_info);
+	osmo_stats_vty_add_cmds(&log_info);
 	bsc_nat_vty_init(nat);
 
 
@@ -1631,6 +1634,7 @@ int main(int argc, char **argv)
 	handle_options(argc, argv);
 
 	rate_ctr_init(tall_bsc_ctx);
+	osmo_stats_init(tall_bsc_ctx);
 
 	/* init vty and parse */
 	telnet_init(tall_bsc_ctx, NULL, OSMO_VTY_PORT_BSC_NAT);

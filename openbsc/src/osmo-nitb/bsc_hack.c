@@ -32,6 +32,7 @@
 #include <openbsc/db.h>
 #include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
+#include <osmocom/core/stats.h>
 #include <openbsc/debug.h>
 #include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
@@ -258,6 +259,7 @@ int main(int argc, char **argv)
 
 	libosmo_abis_init(tall_bsc_ctx);
 	osmo_init_logging(&log_info);
+	osmo_stats_init(tall_bsc_ctx);
 	bts_init();
 
 	/* This needs to precede handle_options() */
