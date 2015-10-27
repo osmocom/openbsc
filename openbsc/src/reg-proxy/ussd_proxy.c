@@ -412,6 +412,26 @@ void proxy_r_bye(int           status,
 	operation_destroy(hmagic);
 }
 
+void proxy_i_error(int           status,
+		   char const   *phrase,
+		   nua_t        *nua,
+		   nua_magic_t  *magic,
+		   nua_handle_t *nh,
+		   nua_hmagic_t *hmagic,
+		   sip_t const  *sip,
+		   tagi_t        tags[])
+{
+	if (!hmagic) {
+		return;
+	}
+
+	fprintf(stderr, "*** error in session with %d satus\n",
+		status);
+	ussd_send_reject(hmagic->ussd.conn,
+			 hmagic->ussd.rigester_msg.invoke_id,
+			 hmagic->ussd.rigester_msg.opcode);
+	operation_destroy(hmagic);
+}
 
 void proxy_info(int           status,
 		char const   *phrase,
@@ -648,6 +668,10 @@ void context_callback(nua_event_t   event,
 		}
 		break;
 #endif
+	case nua_i_error:
+		proxy_i_error(status, phrase, nua, magic, nh, hmagic, sip, tags);
+		break;
+
 	case nua_i_info:
 		proxy_info(status, phrase, nua, magic, nh, hmagic, sip, tags, 0);
 		break;
