@@ -60,3 +60,19 @@ Depends: osmocom-meas-utils (= ${binary:Version}),
          ${misc:Depends}
 Description: Debug symbols for the OpenBSC measurement utilities
  Make debugging possible
+
+Package: osmocom-proxy
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
+ reg and ussd proxies
+
+Package: osmocom-proxy-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmocom-nitb (= ${binary:Version}),
+         ${misc:Depends}
+Description: Debug symbols for the OpenBSC Proxies
+ Make debugging possible

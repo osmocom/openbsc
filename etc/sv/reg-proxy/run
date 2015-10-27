@@ -1,0 +1,6 @@
+#!/bin/bash
+
+. /etc/reg-proxy.config
+exec 2>&1
+echo "reg-proxy restart" | /usr/bin/ts >> /var/log/runsv.log
+exec chrt 10 reg-proxy $COMMAND_LINE

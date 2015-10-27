@@ -1,0 +1,6 @@
+#!/bin/bash
+
+. /etc/ussd-proxy.config
+exec 2>&1
+echo "ussd-proxy restart" | /usr/bin/ts >> /var/log/runsv.log
+exec chrt 10 ussd-proxy $COMMAND_LINE

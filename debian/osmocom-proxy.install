@@ -1,0 +1,9 @@
+usr/bin/reg-proxy
+etc/sv/reg-proxy
+etc/service/reg-proxy
+etc/reg-proxy.config
+
+usr/bin/ussd-proxy
+etc/sv/ussd-proxy
+etc/service/ussd-proxy
+etc/ussd-proxy.config
