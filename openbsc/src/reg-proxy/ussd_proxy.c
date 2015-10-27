@@ -216,10 +216,6 @@ struct operation
 	struct ussd_session ussd;
 };
 
-
-static
-int response_to_options(sip_t const *sip);
-
 static
 int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_len,
 		   const char* msg, unsigned msg_len);
@@ -622,7 +618,6 @@ int ussd_session_open_mo(operation_t *op,
 	}
 
 	nua_invite(op->handle,
-		   /* other tags as needed ... */
 		   SIPTAG_CONTENT_TYPE_STR("application/vnd.3gpp.ussd+xml"),
 		   SIPTAG_PAYLOAD_STR(content),
 		   TAG_END());
@@ -675,16 +670,6 @@ void context_callback(nua_event_t   event,
 	fprintf(stderr, "$$$ got event %d: status: %d (%s) : %p\n", event, status, phrase, hmagic);
 
 	switch (event) {
-#if 0
-	case nua_r_unpublish:
-		if (hmagic != NULL) {
-			ussd_send_reject(hmagic->ussd.conn,
-					 hmagic->ussd.rigester_msg.invoke_id,
-					 hmagic->ussd.rigester_msg.opcode);
-			operation_destroy(hmagic);
-		}
-		break;
-#endif
 	case nua_i_error:
 		proxy_i_error(status, phrase, nua, magic, nh, hmagic, sip, tags);
 		break;
@@ -708,8 +693,6 @@ void context_callback(nua_event_t   event,
 	case nua_r_invite:
 		proxy_r_invite(status, phrase, nua, magic, nh, hmagic, sip, tags);
 		break;
-
-		/* and so on ... */
 
 	default:
 		/* unknown event -> print out error message */
@@ -1200,161 +1183,9 @@ int main(int argc, char *argv[])
 	context->timer = tm;
 	context->max_ussd_ses_duration = max_ussd_ses_secs * 1000l;
 
-	// TEST only
-	// open_ussd_session(context);
-
-	/* enter main loop for processing of messages */
 	su_root_run(context->root);
-
 	nua_destroy(context->nua);
 
-#if 0
-	url_string_t *r_uri;
-
-	context->c_agent =
-			nta_agent_create(context->c_root,
-					 URL_STRING_MAKE(o_bind),
-					 NULL,
-					 NULL, /* Ignore incoming messages */
-					 TPTAG_HTTP_CONNECT(o_http_proxy),
-					 TAG_END());
-
-	if (!context->c_agent) {
-		fprintf(stderr, "Unable to create sip-sofia agent\n");
-		return 1;
-	}
-
-	sip_addr_t *from, *to;
-	sip_contact_t const *m = nta_agent_contact(context->c_agent);
-
-	to = sip_to_create(home, (url_string_t *)o_to);
-
-	if (o_from)
-		from = sip_from_make(home, o_from);
-	else
-		from = sip_from_create(home, (url_string_t const *)m->m_url);
-
-	if (!from) {
-		fprintf(stderr, "%s: no valid From address\n", name);
-		exit(2);
-	}
-
-	//  tag_from_header(context->c_agent, context->c_home, from);
-
-	if (o_method) {
-		method = sip_method_code(o_method);
-	} else {
-		isize_t len;
-		char const *params = to->a_url->url_params;
-
-		len = url_param(params, "method", NULL, 0);
-
-		if (len > 0) {
-			o_method = su_alloc(home, len + 1);
-			if (o_method == 0 ||
-					url_param(params, "method", o_method, len + 1) != len) {
-				fprintf(stderr, "%s: %s\n", name,
-					o_method ? "internal error" : strerror(errno));
-				exit(2);
-			}
-			method = sip_method_code(o_method);
-		}
-	}
-
-	r_uri = (url_string_t *)url_hdup(home, to->a_url);
-
-	sip_aor_strip(to->a_url);
-	sip_aor_strip(from->a_url);
-
-	context->c_username = from->a_url->url_user;
-	context->c_password = from->a_url->url_password;
-	from->a_url->url_password = NULL;
-
-	if (extra) {
-		FILE *hf;
-
-		if (strcmp(extra, "-"))
-			hf = fopen(extra, "rb");
-		else
-			hf = stdin;
-
-		extra = readfile(hf);
-	}
-
-	context->c_proxy = url_hdup(context->c_home,
-				    (url_t *)getenv("sip_proxy"));
-
-	nta_agent_set_params(context->c_agent,
-			     NTATAG_SIPFLAGS(MSG_FLG_EXTRACT_COPY),
-			     NTATAG_DEFAULT_PROXY(context->c_proxy),
-			     TAG_END());
-
-	context->c_leg =
-			nta_leg_tcreate(context->c_agent,
-					NULL, NULL,      /* ignore incoming requests */
-					SIPTAG_FROM(from), /* who is sending OPTIONS? */
-					SIPTAG_TO(to), /* whom we are sending OPTIONS? */
-					TAG_END());
-
-	if (context->c_leg) {
-		context->c_orq =
-				nta_outgoing_tcreate(context->c_leg,
-						     response_to_options, context,
-						     NULL,
-						     method, o_method, r_uri,
-						     SIPTAG_USER_AGENT_STR("options"),
-						     SIPTAG_MAX_FORWARDS_STR(o_max_forwards),
-						     SIPTAG_HEADER_STR(extra),
-						     TAG_END());
-
-		if (context->c_orq) {
-			su_root_run(context->c_root);
-			nta_outgoing_destroy(context->c_orq); context->c_orq = NULL;
-		}
-
-		nta_leg_destroy(context->c_leg); context->c_leg = NULL;
-	}
-
-	nta_agent_destroy(context->c_agent); context->c_agent = NULL;
-	su_root_destroy(context->c_root);
-
-	su_deinit();
-
-	return context->c_retval;
-#endif
 	return 0;
-}
-
-
-
-/** Handle responses to registration request */
-static
-int response_to_options(sip_t const *sip)
-{
-
-//  if (sip->sip_status->st_status >= 200 || context->c_pre) {
-    sip_header_t *h = (sip_header_t *)sip->sip_unknown;
-    char hname[64];
-
-    for (; h; h = (sip_header_t *)h->sh_succ) {
-      /*if (!context->c_all) {
-	if (sip_is_from(h) ||
-	    sip_is_via(h) ||
-	    sip_is_call_id(h) ||
-	    sip_is_cseq(h) ||
-	    sip_is_content_length(h))
-	  continue;
-      }*/
-      if (h->sh_class->hc_name) {
-	snprintf(hname, sizeof hname, "%s: %%s\n", h->sh_class->hc_name);
-	sl_header_print(stdout, hname, h);
-      }
-      else {
-	sl_header_print(stdout, NULL, h);
-      }
-    }
-//  }
-
-  return 0;
 }
 
