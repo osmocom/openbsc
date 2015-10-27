@@ -1035,6 +1035,22 @@ const struct log_info ipa_proxy_test_log_info = {
 };
 
 
+static void Usage(char* progname)
+{
+	fprintf(stderr, "Usage:\n"
+		"%s [options]\n"
+		"Options\n"
+		"  -p <port>         TCP port to listen incoming SUP connection\n"
+		"                           (default: 8184)\n"
+		"  -t <url>          Destination SIP URL (default: sip:127.0.0.1:5060)\n"
+		"  -u <url>          User agent SIP URL (default: sip:127.0.0.1:5090)\n"
+		"  -T                Force  using TCP instead trying UDP\n"
+		"  -D <secs>         Maximum period of open USSD session (default: 90)\n"
+		"  -o <sessions>     Maximum number of concurrent USSD sessions\n"
+		"                           (default: 200)\n"
+		, progname);
+}
+
 int main(int argc, char *argv[])
 {
 	su_home_t *home;
@@ -1072,9 +1088,7 @@ int main(int argc, char *argv[])
 			break;
 		case '?':
 		default:
-			fprintf(stderr, "Usage:\n"
-				"%s [-p sup_port] [-t to_url] [-u agent_url] [-T]\n",
-				argv[0]);
+			Usage(argv[0]);
 			return 2;
 		}
 	}
