@@ -27,6 +27,7 @@ typedef struct operation operation_t;
 #include <sofia-sip/auth_client.h>
 #include <sofia-sip/tport_tag.h>
 #include <sofia-sip/url.h>
+#include <sofia-sip/su_log.h>
 
 #include <osmocom/abis/ipa.h>
 #include <osmocom/core/application.h>
@@ -1031,6 +1032,7 @@ static void Usage(char* progname)
 		"  -D <secs>         Maximum period of open USSD session (default: 90)\n"
 		"  -o <sessions>     Maximum number of concurrent USSD sessions\n"
 		"                           (default: 200)\n"
+		"  -l <0-9>          sip sofia loglevel, 0 - none; 9 - max\n"
 		, progname);
 }
 
@@ -1046,9 +1048,10 @@ int main(int argc, char *argv[])
 	int force_tcp = 0;
 	int max_ussd_ses_secs = 90;
 	int max_op_limit = 200;
+	int sip_loglevel = 1;
 	int c;
 
-	while ((c = getopt (argc, argv, "p:t:u:D:To:?")) != -1) {
+	while ((c = getopt (argc, argv, "p:t:u:D:To:l:?")) != -1) {
 		switch (c)
 		{
 		case 'p':
@@ -1069,6 +1072,9 @@ int main(int argc, char *argv[])
 		case 'o':
 			max_op_limit = atoi(optarg);
 			break;
+		case 'l':
+			sip_loglevel = atoi(optarg);
+			break;
 		case '?':
 		default:
 			Usage(argv[0]);
@@ -1083,7 +1089,7 @@ int main(int argc, char *argv[])
 
 	context->root = su_root_create(context);
 
-	su_log_set_level (NULL, 9);
+	su_log_set_level(NULL, sip_loglevel);
 
 	/* Disable threading */
 	su_root_threading(context->root, 0);
