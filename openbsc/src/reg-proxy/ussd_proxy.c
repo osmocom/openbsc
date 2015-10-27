@@ -34,6 +34,7 @@ typedef struct operation operation_t;
 #include <osmocom/gsm/ipa.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/gsm/gsm0480.h>
+#include <osmocom/core/linuxlist.h>
 
 #include <openbsc/gprs_gsup_messages.h>
 
@@ -196,13 +197,17 @@ struct context_s {
 	struct isup_connection isup[1];
 
 	/* list of active operations */
-	struct operation* operations;
+	struct llist_head operation_list;
+	unsigned operation_count;
+	unsigned operations_max;
 };
 
 
 /* Example of operation handle context information structure */
 struct operation
 {
+	struct llist_head list;
+
 	nua_handle_t    *handle;  /* operation handle */
 	context_t       *ctx;
 	su_time_t        tm_initiated;
@@ -316,21 +321,23 @@ static int ussd_parse_xml(const char *xml,
 // Operation APIs
 static operation_t* operation_find_by_tid(context_t* ctx, sup_tcap_tid_t id)
 {
-	if (ctx->operations == NULL)
-		return NULL;
-
-	if (ctx->operations->ussd.rigester_msg.invoke_id != id)
-		return NULL;
-
-	return ctx->operations;
+	operation_t* op;
+	llist_for_each_entry(op, &ctx->operation_list, list) {
+		if (op->ussd.rigester_msg.invoke_id == id)
+			return op;
+	}
+	return NULL;
 }
 
 static operation_t* operation_alloc(context_t* ctx)
 {
 	operation_t* op;
 
-	if (ctx->operations != NULL)
+	if (ctx->operation_count >= ctx->operations_max) {
+		fprintf(stderr, "!!! maximum number of active session is reached: %d\n",
+			ctx->operation_count);
 		return NULL;
+	}
 
 	/* create operation context information */
 	op = su_zalloc(ctx->home, (sizeof *op));
@@ -340,7 +347,9 @@ static operation_t* operation_alloc(context_t* ctx)
 
 	op->ctx = ctx;
 	op->tm_initiated = su_now();
-	ctx->operations = op;
+	INIT_LLIST_HEAD(&op->list);
+	llist_add_tail(&op->list, &ctx->operation_list);
+	ctx->operation_count++;
 
 	return op;
 }
@@ -351,8 +360,9 @@ static void operation_destroy(operation_t* op)
 	nua_handle_destroy(op->handle);
 	op->handle = NULL;
 
-	/* FIXME replace by list removal */
-	op->ctx->operations = NULL;
+	llist_del(&op->list);
+	op->ctx->operation_count--;
+
 	/* release operation context information */
 	su_free(op->ctx->home, op);
 }
@@ -741,6 +751,11 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 			LOGP(DLCTRL, LOGL_ERROR, "Unable to allocate new session\n");
 			goto err_send_reject;
 		}
+		LOGP(DLCTRL, LOGL_ERROR, "New session %.*s from %s, active: %d\n",
+		     ss.ussd_text_len,
+		     ss.ussd_text,
+		     extention,
+		     ctx->operation_count);
 
 		rc = ussd_session_open_mo(op, sup_conn, &ss, extention);
 		if (rc < 0) {
@@ -851,12 +866,10 @@ static void timer_function(su_root_magic_t *magic,
 			  su_timer_arg_t *arg)
 {
 	context_t *cli = (context_t*)arg;
-	printf("*** timer fired!\n");
-
-	operation_t* op = cli->operations;
 	su_time_t n = su_now();
 
-	if (op) {
+	operation_t *op, *tmp;
+	llist_for_each_entry_safe(op, tmp, &cli->operation_list, list) {
 		su_duration_t lasts = su_duration(n, op->tm_initiated);
 		if (lasts > cli->max_ussd_ses_duration) {
 			fprintf(stderr, "!!! session %.*s from %s lasted %ld ms, more than thresold %ld ms, destroying\n",
@@ -1033,9 +1046,10 @@ int main(int argc, char *argv[])
 	const char* url_str = "sip:127.0.0.1:5090";
 	int force_tcp = 0;
 	int max_ussd_ses_secs = 90;
+	int max_op_limit = 200;
 	int c;
 
-	while ((c = getopt (argc, argv, "p:t:u:D:T?")) != -1) {
+	while ((c = getopt (argc, argv, "p:t:u:D:To:?")) != -1) {
 		switch (c)
 		{
 		case 'p':
@@ -1053,7 +1067,9 @@ int main(int argc, char *argv[])
 		case 'D':
 			max_ussd_ses_secs = atoi(optarg);
 			break;
-
+		case 'o':
+			max_op_limit = atoi(optarg);
+			break;
 		case '?':
 		default:
 			fprintf(stderr, "Usage:\n"
@@ -1153,7 +1169,9 @@ int main(int argc, char *argv[])
 			       TAG_NULL());
 	}
 
-	context->operations = NULL;
+	INIT_LLIST_HEAD(&context->operation_list);
+	context->operation_count = 0;
+	context->operations_max = max_op_limit;
 
 	su_timer_t* tm = su_timer_create(su_root_task(context->root), 2000);
 	if (tm == NULL) {
