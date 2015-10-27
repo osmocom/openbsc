@@ -189,6 +189,9 @@ struct context_s {
 	url_t          *to_url;
 	url_t          *self_url;
 
+	su_timer_t     *timer;
+	su_duration_t   max_ussd_ses_duration;
+
 	/* Array of isup connections */
 	struct isup_connection isup[1];
 
@@ -202,6 +205,7 @@ struct operation
 {
 	nua_handle_t    *handle;  /* operation handle */
 	context_t       *ctx;
+	su_time_t        tm_initiated;
 
 	/* protocol specific sessions */
 	struct ussd_session ussd;
@@ -323,8 +327,22 @@ static operation_t* operation_find_by_tid(context_t* ctx, sup_tcap_tid_t id)
 
 static operation_t* operation_alloc(context_t* ctx)
 {
-	// TODO
-	return NULL;
+	operation_t* op;
+
+	if (ctx->operations != NULL)
+		return NULL;
+
+	/* create operation context information */
+	op = su_zalloc(ctx->home, (sizeof *op));
+	if (!op) {
+		return NULL;
+	}
+
+	op->ctx = ctx;
+	op->tm_initiated = su_now();
+	ctx->operations = op;
+
+	return op;
 }
 
 static void operation_destroy(operation_t* op)
@@ -421,6 +439,7 @@ void proxy_i_error(int           status,
 		   sip_t const  *sip,
 		   tagi_t        tags[])
 {
+#if 0
 	if (!hmagic) {
 		return;
 	}
@@ -431,6 +450,7 @@ void proxy_i_error(int           status,
 			 hmagic->ussd.rigester_msg.invoke_id,
 			 hmagic->ussd.rigester_msg.opcode);
 	operation_destroy(hmagic);
+#endif
 }
 
 void proxy_info(int           status,
@@ -517,27 +537,20 @@ int ussd_create_xml_ascii(char *content, size_t max_len, const char* language, c
 /* URL_RESERVED_CHARS in sofia is not strict enough as in RFC3986 */
 #define RFC3986_RESERVED_CHARS "!*'();:@&=+$,/?#[]"
 
-operation_t *ussd_session_open_mo(context_t* ctx,
-				  isup_connection_t *conn,
-				  struct ss_request* ss,
-				  const char* extention)
+int ussd_session_open_mo(operation_t *op,
+			 isup_connection_t *conn,
+			 struct ss_request* ss,
+			 const char* extention)
 {
 	char content[1024];
 	char escaped_to[512];
-	operation_t *op;
+	context_t* ctx = op->ctx;
 	sip_to_t *to = NULL;
 	sip_to_t *from = NULL;
 	url_t to_url, from_url;
 	char* to_url_str;
 	char* from_url_str;
 
-	/* create operation context information */
-	op = su_zalloc(ctx->home, (sizeof *op));
-	if (!op) {
-		goto failed_alloc;
-	}
-
-	op->ctx = ctx;
 	op->ussd.conn = conn;
 	op->ussd.ms_originated = 1;
 	op->ussd.rigester_msg = *ss;
@@ -598,27 +611,21 @@ operation_t *ussd_session_open_mo(context_t* ctx,
 		goto failed_create_handle;
 	}
 
-
 	nua_invite(op->handle,
 		   /* other tags as needed ... */
 		   SIPTAG_CONTENT_TYPE_STR("application/vnd.3gpp.ussd+xml"),
 		   SIPTAG_PAYLOAD_STR(content),
 		   TAG_END());
+	return 0;
 
-	return op;
-
-//failed_nua:
-//	nua_handle_destroy(op->handle);
 failed_create_handle:
 	if (from != NULL)
 		su_free(ctx->home, from);
 	if (to != NULL)
 		su_free(ctx->home, to);
 failed_to_parse_xml:
-	su_free(ctx->home, op);
-failed_alloc:
 	fprintf(stderr, "*** open_ussd_session failed!\n");
-	return NULL;
+	return -1;
 }
 
 int ussd_session_facility(operation_t *op,
@@ -655,7 +662,7 @@ void context_callback(nua_event_t   event,
 		      sip_t const  *sip,
 		      tagi_t        tags[])
 {
-	fprintf(stderr, "$$$ got event %d: status: %d : %p\n", event, status, hmagic);
+	fprintf(stderr, "$$$ got event %d: status: %d (%s) : %p\n", event, status, phrase, hmagic);
 
 	switch (event) {
 #if 0
@@ -720,7 +727,7 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 
 	if (rx_uss_message_parse(&ss, data, len, extention, sizeof(extention))) {
 		LOGP(DLCTRL, LOGL_ERROR, "Can't parse uss message\n");
-		return -1;
+		goto err_send_reject;
 	}
 
 	LOGP(DLCTRL, LOGL_ERROR, "Got mtype=0x%02x invoke_id=0x%02x opcode=0x%02x component_type=0x%02x text=%s\n",
@@ -729,29 +736,37 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 	switch (ss.message_type) {
 	case GSM0480_MTYPE_REGISTER:
 		/* Create new session */
-		if (ctx->operations) {
-			LOGP(DLCTRL, LOGL_ERROR, "Doesn't support multiple sessions. Failing this for now\n");
+		op = operation_alloc(ctx);
+		if (op == NULL) {
+			LOGP(DLCTRL, LOGL_ERROR, "Unable to allocate new session\n");
 			goto err_send_reject;
 		}
 
-		op = ussd_session_open_mo(ctx,
-					  sup_conn,
-					  &ss,
-					  extention);
-
-		ctx->operations = op;
+		rc = ussd_session_open_mo(op, sup_conn, &ss, extention);
+		if (rc < 0) {
+			operation_destroy(op);
+			goto err_send_reject;
+		}
 		break;
 
 	case GSM0480_MTYPE_FACILITY:
 		op = operation_find_by_tid(ctx, ss.invoke_id);
+		if (op == NULL) {
+			LOGP(DLCTRL, LOGL_ERROR, "No active session with tid=%d were found\n",
+			     ss.invoke_id);
+			goto err_send_reject;
+		}
 
 		// TODO check result!! MO/MT error handling
 		rc = ussd_session_facility(op, sup_conn, &ss, extention);
-		if (rc < 0)
+		if (rc < 0) {
+			operation_destroy(op);
 			goto err_send_reject;
+		}
 		break;
 
 	case GSM0480_MTYPE_RELEASE_COMPLETE:
+		// TODO handle this
 		break;
 
 	default:
@@ -829,6 +844,35 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 	}
 
 	return ussd_send_data_ss(op->ussd.conn, &ss);
+}
+
+static void timer_function(su_root_magic_t *magic,
+			  su_timer_t *t,
+			  su_timer_arg_t *arg)
+{
+	context_t *cli = (context_t*)arg;
+	printf("*** timer fired!\n");
+
+	operation_t* op = cli->operations;
+	su_time_t n = su_now();
+
+	if (op) {
+		su_duration_t lasts = su_duration(n, op->tm_initiated);
+		if (lasts > cli->max_ussd_ses_duration) {
+			fprintf(stderr, "!!! session %.*s from %s lasted %ld ms, more than thresold %ld ms, destroying\n",
+				op->ussd.rigester_msg.ussd_text_len,
+				op->ussd.rigester_msg.ussd_text,
+				op->ussd.extention,
+				lasts,
+				cli->max_ussd_ses_duration);
+
+
+			ussd_send_reject(op->ussd.conn,
+					 op->ussd.rigester_msg.invoke_id,
+					 op->ussd.rigester_msg.opcode);
+			operation_destroy(op);
+		}
+	}
 }
 
 static int isup_handle_connection(context_t *cli, su_wait_t *w, void *p)
@@ -988,9 +1032,10 @@ int main(int argc, char *argv[])
 	const char* to_str = "sip:127.0.0.1:5060";
 	const char* url_str = "sip:127.0.0.1:5090";
 	int force_tcp = 0;
+	int max_ussd_ses_secs = 90;
 	int c;
 
-	while ((c = getopt (argc, argv, "p:t:u:T?")) != -1) {
+	while ((c = getopt (argc, argv, "p:t:u:D:T?")) != -1) {
 		switch (c)
 		{
 		case 'p':
@@ -1004,6 +1049,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'T':
 			force_tcp = 1;
+			break;
+		case 'D':
+			max_ussd_ses_secs = atoi(optarg);
 			break;
 
 		case '?':
@@ -1106,6 +1154,19 @@ int main(int argc, char *argv[])
 	}
 
 	context->operations = NULL;
+
+	su_timer_t* tm = su_timer_create(su_root_task(context->root), 2000);
+	if (tm == NULL) {
+		fprintf(stderr, "Unable to initialize sip-sofia timer\n");
+		return 1;
+	}
+	rc = su_timer_run(tm, timer_function, context);
+	if (rc < 0) {
+		fprintf(stderr, "Unable to start sip-sofia timer\n");
+		return 1;
+	}
+	context->timer = tm;
+	context->max_ussd_ses_duration = max_ussd_ses_secs * 1000l;
 
 	// TEST only
 	// open_ussd_session(context);
