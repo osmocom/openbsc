@@ -419,11 +419,13 @@ void proxy_r_bye(int           status,
 			// TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			rc = ussd_send_data(hmagic, 1, language, language_len,
 					    msg, msg_len);
-			if (rc < 0) {
-				fprintf(stderr, "*** unable to send to SUP\n");
+			if (rc == 0) {
+				// Normal shutdown
+				operation_destroy(hmagic);
+				return;
 			}
-			// TODO handle err, if socket is unavailable we MUST
-			// terminate sip session
+
+			fprintf(stderr, "*** unable to send to SUP\n");
 		} else {
 			fprintf(stderr, "*** unable to parse XML\n");
 		}
