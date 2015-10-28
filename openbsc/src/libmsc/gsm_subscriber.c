@@ -160,7 +160,7 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
 		case GSM_SECURITY_NOAVAIL:
 		case GSM_SECURITY_SUCCEEDED:
 			subscr->is_paging += IS_PAGING_SEC_CB;
-			/* Dispatch as paging failure */
+			/* Dispatch as paging success */
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
 				msg, data, param);
