@@ -99,6 +99,7 @@ void gsm48_secure_channel() {}
 void paging_request_stop() {}
 void vty_out() {}
 void* connection_for_subscr(void) { abort(); return NULL; }
+void msc_release_connection(struct gsm_subscriber_connection *conn) {}
 
 
 struct tlv_definition nm_att_tlvdef;
