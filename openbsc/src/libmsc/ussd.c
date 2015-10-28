@@ -186,64 +186,19 @@ int on_ussd_response(const struct ss_request *req, const char *extention)
 		ussd_session_free(ussdq);
 		msc_release_connection(ussdq->conn);
 	}
+}
 
-#if 0
-	switch (req->opcode) {
-	case GSM0480_OP_CODE_USS_NOTIFY:
-		DEBUGP(DMM, "Network originated USSD Notify is not supported yet!\n");
+static int ussd_sup_send_reject(struct gsm_subscriber_connection *conn,
+				uint8_t uniq_id, uint8_t opcode)
+{
+	struct ss_request rej;
+	rej.message_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+	rej.component_type = GSM0480_CTYPE_REJECT;
+	rej.invoke_id = uniq_id;
+	rej.opcode = opcode;
+	rej.ussd_text_len = 0;
 
-		if (!ussdq) {
-			mtype = GSM0480_MTYPE_REGISTER;
-		} else {
-			mtype = GSM0480_MTYPE_FACILITY;
-		}
-
-		return -ENOTSUP;
-	case GSM0480_OP_CODE_PROCESS_USS_REQ:
-		if (!ussdq) {
-			DEBUGP(DMM, "Network originated Process USSD Request is not supported yet!\n");
-			// TODO SUP Reject
-			return -ENOTSUP;
-		}
-
-		mtype = GSM0480_MTYPE_RELEASE_COMPLETE;
-		ussd_req.transaction_id = ussdq->transaction_id;
-		break;
-	case GSM0480_OP_CODE_USS_REQUEST:
-		if (!ussdq) {
-			DEBUGP(DMM, "No session was found for invoke_id: %d\n", req->invoke_id);
-			return -EINVAL;
-		}
-
-		mtype = GSM0480_MTYPE_FACILITY;
-		ussd_req.transaction_id = ussdq->transaction_id;
-		break;
-	default:
-		// TODO SUP Reject
-		return -EINVAL;
-	}
-
-	ussd_req.invoke_id = ussdq->invoke_id;
-
-	if (req->ussd_text[0]) {
-		rc = gsm0480_send_ussd_response(ussdq->conn,
-						NULL,
-						(const char *)req->ussd_text,
-						&ussd_req,
-						req->opcode,
-						req->component_type,
-						mtype);
-	} else {
-		rc = gsm0480_send_ussd_reject(ussdq->conn, NULL, &ussd_req);
-	}
-	if (rc || mtype == GSM0480_MTYPE_RELEASE_COMPLETE) {
-		ussd_session_free(ussdq);
-		msc_release_connection(ussdq->conn);
-	}
-
-	return rc;
-
-#endif
+	return subscr_tx_uss_message(&rej, conn->subscr);
 }
 
 /* Entrypoint - handler function common to all mobile-originated USSDs */
@@ -266,7 +221,7 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		DEBUGP(DMM, "Unhandled SS\n");
 		ussdq = get_by_tid(conn, req.transaction_id);
 		if (ussdq) {
-			// TODO send notification to SUP
+			ussd_sup_send_reject(conn, ussdq->uniq_id, 0);
 			goto failed_transaction;
 		}
 
@@ -303,7 +258,7 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		}
 
 		ussd_session_free(ussdq);
-		// TODO send notification to SUP
+		ussd_sup_send_reject(conn, ussdq->uniq_id, req.opcode);
 		goto release_conn;
 	}
 
