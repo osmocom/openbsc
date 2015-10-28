@@ -39,6 +39,22 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/tlv.h>
 
+
+static inline unsigned char *msgb_wrap_with_ASN1_TL(struct msgb *msgb, uint8_t tag)
+{
+	uint16_t origlen = msgb->len;
+	uint8_t *data = msgb_push(msgb, (origlen > 0x7f) ? 3 : 2);
+	data[0] = tag;
+	if (origlen > 0x7f) {
+		data[1] = 0x81;
+		data[2] = origlen;
+	} else {
+		data[1] = origlen;
+	}
+	return data;
+}
+
+
 static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, uint8_t tag)
 {
 	uint8_t *data = msgb_push(msgb, 2);
@@ -80,7 +96,7 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 	msgb_put(msg, response_len);
 
 	/* Then wrap it as an Octet String */
-	msgb_wrap_with_TL(msg, ASN1_OCTET_STRING_TAG);
+	msgb_wrap_with_ASN1_TL(msg, ASN1_OCTET_STRING_TAG);
 
 	/* Pre-pend the DCS octet string */
 	msgb_push_TLV1(msg, ASN1_OCTET_STRING_TAG, 0x0F);
@@ -94,7 +110,7 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 	msgb_put(msg, response_len);
 
 	/* Then wrap it as an Octet String */
-	msgb_wrap_with_TL(msg, ASN1_OCTET_STRING_TAG);
+	msgb_wrap_with_ASN1_TL(msg, ASN1_OCTET_STRING_TAG);
 
 	/* Pre-pend the DCS octet string */
 	msgb_push_TLV1(msg, ASN1_OCTET_STRING_TAG, 0xf4);
@@ -102,14 +118,14 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 
 
 	/* Then wrap these as a Sequence */
-	msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
+	msgb_wrap_with_ASN1_TL(msg, GSM_0480_SEQUENCE_TAG);
 
 	if (ctype == GSM0480_CTYPE_RETURN_RESULT) {
 		/* Pre-pend the operation code */
 		msgb_push_TLV1(msg, GSM0480_OPERATION_CODE, code);
 
 		/* Wrap the operation code and IA5 string as a sequence */
-		msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
+		msgb_wrap_with_ASN1_TL(msg, GSM_0480_SEQUENCE_TAG);
 
 		/* Pre-pend the invoke ID */
 		msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
@@ -124,11 +140,11 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 	}
 
 	/* Wrap this up as a Return Result component */
-	msgb_wrap_with_TL(msg, ctype);
+	msgb_wrap_with_ASN1_TL(msg, ctype);
 
 	if (mtype == GSM0480_MTYPE_REGISTER ||
 		mtype == GSM0480_MTYPE_RELEASE_COMPLETE) {
-		/* Wrap the component in a Facility message */
+		/* Wrap the component in a Facility message, it's not ASN1 */
 		msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
 	} else if (mtype == GSM0480_MTYPE_FACILITY) {
 		uint8_t *data = msgb_push(msg, 1);
@@ -143,6 +159,8 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 			| (1<<7);  /* TI direction = 1 */
 
 	gh->msg_type = mtype;
+
+	DEBUGP(DSUP, "Sending USSD to mobile: %s\n", msgb_hexdump(msg));
 
 	return gsm0808_submit_dtap(conn, msg, 0, 0);
 }
@@ -162,7 +180,7 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
 
 	/* Wrap this up as a Reject component */
-	msgb_wrap_with_TL(msg, GSM0480_CTYPE_REJECT);
+	msgb_wrap_with_ASN1_TL(msg, GSM0480_CTYPE_REJECT);
 
 	/* Wrap the component in a Facility message */
 	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
