@@ -5,6 +5,9 @@
 
 #include <osmocom/core/msgb.h>
 
+#define USSD_MO 1
+#define USSD_MT 0
+
 int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
 
