@@ -141,7 +141,7 @@ int on_ussd_response(const struct ss_request *req, const char *extention)
 	struct ussd_request ussd_req;
 	struct gsm_ussd* ussdq;
 	memset(&ussd_req, 0, sizeof(ussd_req));
-	int rc;
+	int rc = 0;
 
 	switch (req->message_type) {
 	case GSM0480_MTYPE_REGISTER:
@@ -183,9 +183,11 @@ int on_ussd_response(const struct ss_request *req, const char *extention)
 	}
 
 	if (req->message_type == GSM0480_MTYPE_RELEASE_COMPLETE) {
-		ussd_session_free(ussdq);
 		msc_release_connection(ussdq->conn);
+		ussd_session_free(ussdq);
 	}
+
+	return rc;
 }
 
 static int ussd_sup_send_reject(struct gsm_subscriber_connection *conn,
