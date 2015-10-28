@@ -360,6 +360,12 @@ static void operation_destroy(operation_t* op)
 	llist_del(&op->list);
 	op->ctx->operation_count--;
 
+	fprintf(stderr, "--- operation %*.s from %s destroyed (sessions: %d)\n",
+		op->ussd.rigester_msg.ussd_text_len,
+		op->ussd.rigester_msg.ussd_text,
+		op->ussd.extention,
+		op->ctx->operation_count);
+
 	/* release operation context information */
 	su_free(op->ctx->home, op);
 }
