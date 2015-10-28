@@ -392,7 +392,7 @@ void proxy_r_invite(int           status,
 	}
 }
 
-void proxy_r_bye(int           status,
+void proxy_i_bye(int           status,
 		 char const   *phrase,
 		 nua_t        *nua,
 		 nua_magic_t  *magic,
@@ -442,6 +442,19 @@ void proxy_r_bye(int           status,
 	ussd_send_reject(hmagic->ussd.conn,
 			 hmagic->ussd.rigester_msg.invoke_id,
 			 hmagic->ussd.rigester_msg.opcode);
+	operation_destroy(hmagic);
+}
+
+void proxy_r_bye(int           status,
+		 char const   *phrase,
+		 nua_t        *nua,
+		 nua_magic_t  *magic,
+		 nua_handle_t *nh,
+		 nua_hmagic_t *hmagic,
+		 sip_t const  *sip,
+		 tagi_t        tags[])
+{
+	fprintf(stderr, "*** Got reply %d for BUY\n", status);
 	operation_destroy(hmagic);
 }
 
@@ -692,7 +705,7 @@ void context_callback(nua_event_t   event,
 		break;
 
 	case nua_i_bye:
-		proxy_r_bye(status, phrase, nua, magic, nh, hmagic, sip, tags);
+		proxy_i_bye(status, phrase, nua, magic, nh, hmagic, sip, tags);
 		break;
 
 	case nua_i_invite:
@@ -701,6 +714,10 @@ void context_callback(nua_event_t   event,
 
 	case nua_r_invite:
 		proxy_r_invite(status, phrase, nua, magic, nh, hmagic, sip, tags);
+		break;
+
+	case nua_r_bye:
+		proxy_r_bye(status, phrase, nua, magic, nh, hmagic, sip, tags);
 		break;
 
 	default:
@@ -773,7 +790,14 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 		break;
 
 	case GSM0480_MTYPE_RELEASE_COMPLETE:
-		// TODO handle this
+		op = operation_find_by_tid(ctx, ss.invoke_id);
+		if (op == NULL) {
+			LOGP(DLCTRL, LOGL_ERROR, "No active session with tid=%d were found for RELEASE_COMPLETE\n",
+			     ss.invoke_id);
+			return;
+		}
+
+		nua_bye(op->handle, TAG_END());
 		break;
 
 	default:
