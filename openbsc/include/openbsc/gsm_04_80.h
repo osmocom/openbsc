@@ -8,8 +8,14 @@
 struct gsm_subscriber_connection;
 
 int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
-                   const struct msgb *in_msg, const char* response_text,
-                   const struct ussd_request *req, uint8_t code, uint8_t ctype, uint8_t mtype);
+			       const struct msgb *in_msg,
+			       int response_text_len,
+			       uint8_t response_lang,
+			       const char* response_text,
+			       const struct ussd_request *req,
+			       uint8_t code,
+			       uint8_t ctype,
+			       uint8_t mtype);
 int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 			     const struct msgb *msg, 
 			     const struct ussd_request *request);

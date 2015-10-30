@@ -58,8 +58,7 @@ static int subscr_uss_message(struct msgb *msg,
 	msgb_tlv_put(msg, GSM0480_OPERATION_CODE, 1, &req->opcode);
 
 	if (req->ussd_text_len > 0) {
-		//msgb_tlv_put(msg, ASN1_OCTET_STRING_TAG, 1, &req->ussd_text_language);
-		msgb_tlv_put(msg, ASN1_OCTET_STRING_TAG, req->ussd_text_len, req->ussd_text);
+		msgb_tlv_put(msg, ASN1_OCTET_STRING_TAG, req->ussd_text_len + 1, &req->ussd_text_language);
 	}
 
 	if (extention) {
@@ -70,7 +69,7 @@ static int subscr_uss_message(struct msgb *msg,
 	}
 
 	/* fill actual length */
-	gsup_indicator[3] = 3 + 3 + (req->ussd_text_len + 2) + (bcd_len + 2);;
+	gsup_indicator[3] = 3 + 3 + (req->ussd_text_len + 1 + 2) + (bcd_len + 2);;
 
 	/* wrap with GSM0480_CTYPE_INVOKE */
 	// gsm0480_wrap_invoke(msg, req->opcode, invoke_id);
@@ -131,9 +130,10 @@ static int rx_uss_message_parse(struct ss_request *ss,
 		uint8_t len;
 		switch (*const_data) {
 		case ASN1_OCTET_STRING_TAG:
-			len = *(++const_data);
-			strncpy((char*)ss->ussd_text,
-				(const char*)++const_data,
+			ss->ussd_text_len = len = (*(++const_data) - 1);
+			ss->ussd_text_language = *(++const_data);
+			memcpy(ss->ussd_text,
+				++const_data,
 				(len > MAX_LEN_USSD_STRING) ? MAX_LEN_USSD_STRING : len);
 			const_data += len;
 			break;

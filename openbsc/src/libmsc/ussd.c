@@ -173,6 +173,8 @@ int on_ussd_response(const struct ss_request *req, const char *extention)
 	if (req->component_type != GSM0480_CTYPE_REJECT) {
 		rc = gsm0480_send_ussd_response(ussdq->conn,
 						NULL,
+						(req->ussd_text_language == 0x80) ? -1 : req->ussd_text_len,
+						req->ussd_text_language,
 						(const char *)req->ussd_text,
 						&ussd_req,
 						req->opcode,

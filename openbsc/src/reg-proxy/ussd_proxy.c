@@ -39,6 +39,8 @@ typedef struct operation operation_t;
 
 #include <openbsc/gprs_gsup_messages.h>
 
+#include <iconv.h>
+
 typedef uint8_t sup_tcap_tid_t;
 
 /******************************************************************************/
@@ -84,9 +86,10 @@ static int rx_uss_message_parse(struct ss_request *ss,
 		uint8_t len;
 		switch (*const_data) {
 		case ASN1_OCTET_STRING_TAG:
-			ss->ussd_text_len = len = *(++const_data);
-			strncpy((char*)ss->ussd_text,
-				(const char*)++const_data,
+			ss->ussd_text_len = len = (*(++const_data) - 1);
+			ss->ussd_text_language = *(++const_data);
+			memcpy(ss->ussd_text,
+				++const_data,
 				(len > MAX_LEN_USSD_STRING) ? MAX_LEN_USSD_STRING : len);
 			const_data += len;
 			break;
@@ -130,8 +133,7 @@ static int subscr_uss_message(struct msgb *msg,
 	msgb_tlv_put(msg, GSM0480_OPERATION_CODE, 1, &req->opcode);
 
 	if (req->ussd_text_len > 0) {
-		//msgb_tlv_put(msg, ASN1_OCTET_STRING_TAG, 1, &req->ussd_text_language);
-		msgb_tlv_put(msg, ASN1_OCTET_STRING_TAG, req->ussd_text_len, req->ussd_text);
+		msgb_tlv_put(msg, ASN1_OCTET_STRING_TAG, req->ussd_text_len + 1, &req->ussd_text_language);
 	}
 
 	if (extention) {
@@ -142,7 +144,7 @@ static int subscr_uss_message(struct msgb *msg,
 	}
 
 	/* fill actual length */
-	gsup_indicator[3] = 3 + 3 + (req->ussd_text_len + 2) + (bcd_len + 2);
+	gsup_indicator[3] = 3 + 3 + (req->ussd_text_len + 1 + 2) + (bcd_len + 2);
 
 	/* wrap with GSM0480_CTYPE_INVOKE */
 	// gsm0480_wrap_invoke(msg, req->opcode, invoke_id);
@@ -193,6 +195,15 @@ struct context_s {
 
 	su_timer_t     *timer;
 	su_duration_t   max_ussd_ses_duration;
+
+	/* iconv data */
+	iconv_t*        utf8_to_ucs2;
+	iconv_t*        ucs2_to_utf8;
+
+	iconv_t*        utf8_to_latin1;
+	iconv_t*        latin1_to_utf8;
+
+	int             dont_encode_in_latin1;
 
 	/* Array of isup connections */
 	struct isup_connection isup[1];
@@ -656,7 +667,6 @@ failed_to_parse_xml:
 }
 
 int ussd_session_facility(operation_t *op,
-			  isup_connection_t *conn,
 			  struct ss_request* ss,
 			  const char* extention)
 {
@@ -668,11 +678,10 @@ int ussd_session_facility(operation_t *op,
 		return -1;
 	}
 
-	// TODO add to header
-	// Recv-Info: g.3gpp.ussd
 	nua_info(op->handle,
 		   /* other tags as needed ... */
 		   SIPTAG_CONTENT_TYPE_STR("application/vnd.3gpp.ussd+xml"),
+		   SIPTAG_UNKNOWN_STR("Recv-Info: g.3gpp.ussd"),
 		   SIPTAG_PAYLOAD_STR(content),
 		   TAG_END());
 
@@ -754,6 +763,14 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 
 	switch (ss.message_type) {
 	case GSM0480_MTYPE_REGISTER:
+		if (ss.component_type != GSM0480_CTYPE_INVOKE) {
+			LOGP(DLCTRL, LOGL_ERROR, "Non-INVOKE component type in REGISTER: 0x%02x\n", ss.component_type);
+			goto err_send_reject;
+		}
+		if (ss.opcode != GSM0480_OP_CODE_PROCESS_USS_REQ) {
+			LOGP(DLCTRL, LOGL_ERROR, "Don't know hot to handle this SS opcode: 0x%02x\n", ss.opcode);
+			goto err_send_reject;
+		}
 		/* Create new session */
 		op = operation_alloc(ctx);
 		if (op == NULL) {
@@ -774,6 +791,23 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 		break;
 
 	case GSM0480_MTYPE_FACILITY:
+		//Only MS-originated Menu session is supported, so we ignore INVOKE here
+		if (ss.component_type != GSM0480_CTYPE_RETURN_RESULT &&
+				ss.component_type != GSM0480_CTYPE_RETURN_ERROR &&
+				ss.component_type != GSM0480_CTYPE_REJECT) {
+			LOGP(DLCTRL, LOGL_ERROR, "Non-{RESULT/RETURN_ERROR/REJECT} component type in FACILITY: 0x%02x\n", ss.component_type);
+			goto err_send_reject;
+		}
+		// /////////////////////////////////////////////////
+		// TODO handle RETURN_ERROR/REJECT
+		if (ss.component_type != GSM0480_CTYPE_RETURN_RESULT) {
+			LOGP(DLCTRL, LOGL_ERROR, "Component type in FACILITY: 0x%02x is not implemented yet\n", ss.component_type);
+			goto err_send_reject;
+		}
+		if (ss.opcode != GSM0480_OP_CODE_USS_REQUEST) {
+			LOGP(DLCTRL, LOGL_ERROR, "Don't know hot to handle this SS opcode: 0x%02x\n", ss.opcode);
+			goto err_send_reject;
+		}
 		op = operation_find_by_tid(ctx, ss.invoke_id);
 		if (op == NULL) {
 			LOGP(DLCTRL, LOGL_ERROR, "No active session with tid=%d were found\n",
@@ -782,7 +816,7 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 		}
 
 		// TODO check result!! MO/MT error handling
-		rc = ussd_session_facility(op, sup_conn, &ss, extention);
+		rc = ussd_session_facility(op, &ss, extention);
 		if (rc < 0) {
 			operation_destroy(op);
 			goto err_send_reject;
@@ -794,7 +828,7 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 		if (op == NULL) {
 			LOGP(DLCTRL, LOGL_ERROR, "No active session with tid=%d were found for RELEASE_COMPLETE\n",
 			     ss.invoke_id);
-			return;
+			return 0;
 		}
 
 		nua_bye(op->handle, TAG_END());
@@ -838,6 +872,16 @@ int ussd_send_data_ss(isup_connection_t *conn, struct ss_request* reply)
 	return sup_server_send(conn, outmsg);
 }
 
+static int is_string_ascii(const char* msg, unsigned msg_len)
+{
+	unsigned i;
+	for (i = 0; i < msg_len; ++i) {
+		if (*((uint8_t*)(msg++)) >= 0x80)
+			return 0;
+	}
+	return 1;
+}
+
 int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_len,
 		   const char* msg, unsigned msg_len)
 {
@@ -866,11 +910,44 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 		if (msg_len > MAX_LEN_USSD_STRING) {
 			msg_len = MAX_LEN_USSD_STRING;
 		}
+		if (is_string_ascii(msg, msg_len)) {
+			// GSM 7-bit coding, done on the other end of SUP
+			ss.ussd_text_len = msg_len;
+			ss.ussd_text_language = 0x80;
+			strncpy((char*)ss.ussd_text, msg, msg_len);
+		} else {
+			char* inbuf = (char*)msg;
+			size_t inleft = msg_len;
+			char* outbuf = (char*)ss.ussd_text;
+			size_t outleft = MAX_LEN_USSD_STRING;
+			size_t s;
+			// First of all try latin1
+			if (op->ctx->dont_encode_in_latin1) {
+				s =(size_t)-1;
+			} else {
+				s = iconv(op->ctx->utf8_to_latin1,
+					  &inbuf, &inleft,
+					  &outbuf, &outleft);
+			}
+			if (s == (size_t)-1) {
+				s = iconv(op->ctx->utf8_to_ucs2,
+						 &inbuf, &inleft,
+						 &outbuf, &outleft);
+				if (s == (size_t)-1) {
+					perror("can't convert string from utf8");
+				}
+				// UCS-2 encoding
+				ss.ussd_text_language = 0x48;
+			} else {
+				// 8-bit DATA encoding
+				ss.ussd_text_language = 0x44;
+			}
+			ss.ussd_text_len = (uint8_t*)outbuf - ss.ussd_text;
 
-		ss.ussd_text_len = msg_len;
-		strncpy((char*)ss.ussd_text, msg, msg_len);
+		}
 	} else {
 		ss.ussd_text_len = 0;
+		ss.ussd_text_language = 0x80;
 		ss.ussd_text[0] = 0;
 	}
 
@@ -1065,6 +1142,7 @@ static void Usage(char* progname)
 		"  -o <sessions>     Maximum number of concurrent USSD sessions\n"
 		"                           (default: 200)\n"
 		"  -l <0-9>          sip sofia loglevel, 0 - none; 9 - max\n"
+		"  -L                Do not try to encode in 8-bit (use 7-bit or UCS-2)\n"
 		, progname);
 }
 
@@ -1081,6 +1159,7 @@ int main(int argc, char *argv[])
 	int max_ussd_ses_secs = 90;
 	int max_op_limit = 200;
 	int sip_loglevel = 1;
+	int dont_try_latin1 = 0;
 	int c;
 
 	while ((c = getopt (argc, argv, "p:t:u:D:To:l:?")) != -1) {
@@ -1107,6 +1186,9 @@ int main(int argc, char *argv[])
 		case 'l':
 			sip_loglevel = atoi(optarg);
 			break;
+		case 'L':
+			dont_try_latin1 = 1;
+			break;
 		case '?':
 		default:
 			Usage(argv[0]);
@@ -1128,6 +1210,18 @@ int main(int argc, char *argv[])
 
 	if (!context->root) {
 		fprintf(stderr, "Unable to initialize sip-sofia context\n");
+		return 1;
+	}
+
+	context->dont_encode_in_latin1 = dont_try_latin1;
+	context->utf8_to_latin1=iconv_open("iso8859-1", "utf-8");
+	context->latin1_to_utf8=iconv_open("utf-8", "iso8859-1");
+	context->utf8_to_ucs2=iconv_open("utf-16be", "utf-8");
+	context->ucs2_to_utf8=iconv_open("utf-8", "utf-16be");
+
+	if (context->utf8_to_ucs2 == NULL || context->ucs2_to_utf8 == NULL ||
+			context->utf8_to_latin1 == NULL || context->latin1_to_utf8 == NULL) {
+		fprintf(stderr, "Unable to initialize iconv\n");
 		return 1;
 	}
 

@@ -78,7 +78,10 @@ static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, uint8_t tag,
 
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */
 int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
-			       const struct msgb *in_msg, const char *response_text,
+			       const struct msgb *in_msg,
+			       int response_text_len,
+			       uint8_t response_lang,
+			       const char *response_text,
 			       const struct ussd_request *req,
 			       uint8_t code,
 			       uint8_t ctype,
@@ -89,33 +92,23 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 	uint8_t *ptr8;
 	int response_len;
 
-#if 1
-	/* First put the payload text into the message */
 	ptr8 = msgb_put(msg, 0);
-	gsm_7bit_encode_n_ussd(ptr8, msgb_tailroom(msg), response_text, &response_len);
-	msgb_put(msg, response_len);
+
+	if (response_text_len < 0) {
+		/* First put the payload text into the message */
+		gsm_7bit_encode_n_ussd(ptr8, msgb_tailroom(msg), response_text, &response_len);
+		msgb_put(msg, response_len);
+		response_lang = 0x0F;
+	} else {
+		memcpy(ptr8, response_text, response_text_len);
+		msgb_put(msg, response_text_len);
+	}
 
 	/* Then wrap it as an Octet String */
 	msgb_wrap_with_ASN1_TL(msg, ASN1_OCTET_STRING_TAG);
 
 	/* Pre-pend the DCS octet string */
-	msgb_push_TLV1(msg, ASN1_OCTET_STRING_TAG, 0x0F);
-#else
-	response_len = strlen(response_text);
-	if (response_len > MAX_LEN_USSD_STRING)
-		response_len = MAX_LEN_USSD_STRING;
-
-	ptr8 = msgb_put(msg, 0);
-	memcpy(ptr8, response_text, response_len);
-	msgb_put(msg, response_len);
-
-	/* Then wrap it as an Octet String */
-	msgb_wrap_with_ASN1_TL(msg, ASN1_OCTET_STRING_TAG);
-
-	/* Pre-pend the DCS octet string */
-	msgb_push_TLV1(msg, ASN1_OCTET_STRING_TAG, 0xf4);
-#endif
-
+	msgb_push_TLV1(msg, ASN1_OCTET_STRING_TAG, response_lang);
 
 	/* Then wrap these as a Sequence */
 	msgb_wrap_with_ASN1_TL(msg, GSM_0480_SEQUENCE_TAG);
