@@ -204,6 +204,7 @@ struct context_s {
 	iconv_t*        latin1_to_utf8;
 
 	int             dont_encode_in_latin1;
+	int             force_7bit;
 
 	/* Array of isup connections */
 	struct isup_connection isup[1];
@@ -911,7 +912,8 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 			msg_len = MAX_LEN_USSD_STRING;
 		}
 		if (is_string_ascii(msg, msg_len)) {
-			// GSM 7-bit coding, done on the other end of SUP
+			// Only ASCII characters, no need extra convertion to
+			// GSM 7-bit, coding will be done on the other end of SUP
 			ss.ussd_text_len = msg_len;
 			ss.ussd_text_language = 0x80;
 			strncpy((char*)ss.ussd_text, msg, msg_len);
@@ -922,7 +924,7 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 			size_t outleft = MAX_LEN_USSD_STRING;
 			size_t s;
 			// First of all try latin1
-			if (op->ctx->dont_encode_in_latin1) {
+			if (!op->ctx->force_7bit && op->ctx->dont_encode_in_latin1) {
 				s =(size_t)-1;
 			} else {
 				s = iconv(op->ctx->utf8_to_latin1,
@@ -939,8 +941,13 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 				// UCS-2 encoding
 				ss.ussd_text_language = 0x48;
 			} else {
-				// 8-bit DATA encoding
-				ss.ussd_text_language = 0x44;
+				if (op->ctx->force_7bit) {
+					// Decode in 7-bit on SUP side
+					ss.ussd_text_language = 0x80;
+				} else {
+					// 8-bit DATA encoding
+					ss.ussd_text_language = 0x44;
+				}
 			}
 			ss.ussd_text_len = (uint8_t*)outbuf - ss.ussd_text;
 
@@ -1143,6 +1150,7 @@ static void Usage(char* progname)
 		"                           (default: 200)\n"
 		"  -l <0-9>          sip sofia loglevel, 0 - none; 9 - max\n"
 		"  -L                Do not try to encode in 8-bit (use 7-bit or UCS-2)\n"
+		"  -7                Encode Latin1 in GSM 7-bit not in 8-bit (don't mix with -L)\n"
 		, progname);
 }
 
@@ -1160,9 +1168,10 @@ int main(int argc, char *argv[])
 	int max_op_limit = 200;
 	int sip_loglevel = 1;
 	int dont_try_latin1 = 0;
+	int force_7bit = 0;
 	int c;
 
-	while ((c = getopt (argc, argv, "p:t:u:D:To:l:?")) != -1) {
+	while ((c = getopt (argc, argv, "p:t:u:D:To:l:L7?")) != -1) {
 		switch (c)
 		{
 		case 'p':
@@ -1189,6 +1198,9 @@ int main(int argc, char *argv[])
 		case 'L':
 			dont_try_latin1 = 1;
 			break;
+		case '7':
+			force_7bit = 1;
+			break;
 		case '?':
 		default:
 			Usage(argv[0]);
@@ -1214,6 +1226,7 @@ int main(int argc, char *argv[])
 	}
 
 	context->dont_encode_in_latin1 = dont_try_latin1;
+	context->force_7bit = force_7bit;
 	context->utf8_to_latin1=iconv_open("iso8859-1", "utf-8");
 	context->latin1_to_utf8=iconv_open("utf-8", "iso8859-1");
 	context->utf8_to_ucs2=iconv_open("utf-16be", "utf-8");
