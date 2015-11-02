@@ -29,6 +29,7 @@
 
 #include <osmocom/gprs/protocol/gsm_08_18.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/stats.h>
 #include <osmocom/core/talloc.h>
 
 #include <string.h>
@@ -59,6 +60,7 @@ static const struct rate_ctr_group_desc peer_ctrg_desc = {
 	.group_description = "GBProxy Peer Statistics",
 	.num_ctr = ARRAY_SIZE(peer_ctr_description),
 	.ctr_desc = peer_ctr_description,
+	.class_id = OSMO_STATS_CLASS_PEER,
 };
 
 

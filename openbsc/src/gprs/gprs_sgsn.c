@@ -25,6 +25,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/stats.h>
 #include <osmocom/core/backtrace.h>
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
@@ -69,6 +70,7 @@ static const struct rate_ctr_group_desc mmctx_ctrg_desc = {
 	.group_description = "SGSN MM Context Statistics",
 	.num_ctr = ARRAY_SIZE(mmctx_ctr_description),
 	.ctr_desc = mmctx_ctr_description,
+	.class_id = OSMO_STATS_CLASS_SUBSCRIBER,
 };
 
 static const struct rate_ctr_desc pdpctx_ctr_description[] = {
@@ -83,6 +85,7 @@ static const struct rate_ctr_group_desc pdpctx_ctrg_desc = {
 	.group_description = "SGSN PDP Context Statistics",
 	.num_ctr = ARRAY_SIZE(pdpctx_ctr_description),
 	.ctr_desc = pdpctx_ctr_description,
+	.class_id = OSMO_STATS_CLASS_SUBSCRIBER,
 };
 
 static int ra_id_equals(const struct gprs_ra_id *id1,

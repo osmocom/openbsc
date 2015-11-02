@@ -34,6 +34,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/stats.h>
 
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
@@ -70,6 +71,7 @@ static const struct rate_ctr_group_desc global_ctrg_desc = {
 	.group_description = "GBProxy Global Statistics",
 	.num_ctr = ARRAY_SIZE(global_ctr_description),
 	.ctr_desc = global_ctr_description,
+	.class_id = OSMO_STATS_CLASS_GLOBAL,
 };
 
 static int gbprox_relay2peer(struct msgb *old_msg, struct gbproxy_peer *peer,
