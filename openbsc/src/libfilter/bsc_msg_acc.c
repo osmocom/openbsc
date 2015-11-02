@@ -22,6 +22,7 @@
 #include <openbsc/bsc_nat.h>
 
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/stats.h>
 
 #include <string.h>
 
@@ -35,6 +36,7 @@ static const struct rate_ctr_group_desc bsc_cfg_acc_list_desc = {
 	.group_description = "NAT Access-List Statistics",
 	.num_ctr = ARRAY_SIZE(acc_list_ctr_description),
 	.ctr_desc = acc_list_ctr_description,
+	.class_id = OSMO_STATS_CLASS_GLOBAL,
 };
 
 

@@ -32,6 +32,7 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/stats.h>
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/ipa.h>
 
@@ -65,6 +66,7 @@ static const struct rate_ctr_group_desc bsc_cfg_ctrg_desc = {
 	.group_description = "NAT BSC Statistics",
 	.num_ctr = ARRAY_SIZE(bsc_cfg_ctr_description),
 	.ctr_desc = bsc_cfg_ctr_description,
+	.class_id = OSMO_STATS_CLASS_PEER,
 };
 
 struct bsc_nat *bsc_nat_alloc(void)
