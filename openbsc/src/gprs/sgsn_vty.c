@@ -79,7 +79,7 @@ const struct value_string sgsn_auth_pol_strs[] = {
       cfg_sgsn_T##number##_cmd,					\
       "timer t" #number  " <0-65535>",				\
       "Configure GPRS Timers\n"					\
-      doc "Timer Value in seconds\n")				\
+      doc "\nTimer Value in seconds\n")				\
 {								\
 	int value = atoi(argv[0]);				\
 								\
@@ -101,7 +101,7 @@ DECLARE_TIMER(3370, "Waiting for IDENTITY response timer (s)")
 
 DECLARE_TIMER(3313, "Waiting for paging response timer (s)")
 DECLARE_TIMER(3314, "Force to STANDBY on expiry timer (s)")
-DECLARE_TIMER(3316, "")
+DECLARE_TIMER(3316, "AA-Ready timer (s)")
 
 DECLARE_TIMER(3385, "Wait for ACT PDP CTX REQ timer (s)")
 DECLARE_TIMER(3386, "Wait for MODIFY PDP CTX ACK timer (s)")
