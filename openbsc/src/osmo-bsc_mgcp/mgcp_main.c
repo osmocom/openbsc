@@ -41,11 +41,14 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
+#include <osmocom/core/stats.h>
+#include <osmocom/core/rate_ctr.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/ports.h>
 #include <osmocom/vty/command.h>
+#include <osmocom/vty/stats.h>
 
 #include "../../bscconfig.h"
 
@@ -217,9 +220,13 @@ int main(int argc, char **argv)
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	logging_vty_add_cmds(&log_info);
+	osmo_stats_vty_add_cmds(&log_info);
 	mgcp_vty_init();
 
 	handle_options(argc, argv);
+
+	rate_ctr_init(tall_bsc_ctx);
+	osmo_stats_init(tall_bsc_ctx);
 
 	rc = mgcp_parse_config(config_file, cfg, MGCP_BSC);
 	if (rc < 0)
