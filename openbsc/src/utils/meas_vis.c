@@ -115,6 +115,8 @@ static int handle_msg(struct msgb *msg)
 	default:
 		break;
 	}
+
+	return 0;
 }
 
 static int udp_fd_cb(struct osmo_fd *ofd, unsigned int what)
