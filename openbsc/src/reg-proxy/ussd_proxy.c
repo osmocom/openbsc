@@ -640,6 +640,7 @@ int ussd_session_open_mo(operation_t *op,
 				op,
 				SIPTAG_TO(to),
 				SIPTAG_FROM(from),
+				NUTAG_M_USERNAME(extention),
 				TAG_END());
 
 	su_free(ctx->home, from);
@@ -1144,6 +1145,7 @@ static void Usage(char* progname)
 		"                           (default: 8184)\n"
 		"  -t <url>          Destination SIP URL (default: sip:127.0.0.1:5060)\n"
 		"  -u <url>          User agent SIP URL (default: sip:127.0.0.1:5090)\n"
+		"  -x <url>          Proxy SIP URL (default: <none>)\n"
 		"  -T                Force  using TCP instead trying UDP\n"
 		"  -D <secs>         Maximum period of open USSD session (default: 90)\n"
 		"  -o <sessions>     Maximum number of concurrent USSD sessions\n"
@@ -1163,6 +1165,7 @@ int main(int argc, char *argv[])
 	int sup_port = 8184;
 	const char* to_str = "sip:127.0.0.1:5060";
 	const char* url_str = "sip:127.0.0.1:5090";
+	const char* proxy_str = NULL;
 	int force_tcp = 0;
 	int max_ussd_ses_secs = 90;
 	int max_op_limit = 200;
@@ -1171,9 +1174,12 @@ int main(int argc, char *argv[])
 	int force_7bit = 0;
 	int c;
 
-	while ((c = getopt (argc, argv, "p:t:u:D:To:l:L7?")) != -1) {
+	while ((c = getopt (argc, argv, "x:p:t:u:D:To:l:L7?")) != -1) {
 		switch (c)
 		{
+		case 'x':
+			proxy_str = optarg;
+			break;
 		case 'p':
 			sup_port = atoi(optarg);
 			break;
@@ -1288,22 +1294,25 @@ int main(int argc, char *argv[])
 	context->nua = nua_create(context->root,
 				  context_callback,
 				  context,
-				  NUTAG_URL (url_str),
-				  /* tags as necessary ...*/
+				  NUTAG_URL(url_str),
+				  NUTAG_ENABLEINVITE(1),
+				  NUTAG_AUTOALERT(1),
+				  NUTAG_SESSION_TIMER(0),
+				  NUTAG_AUTOANSWER(0),
+				  NUTAG_MEDIA_ENABLE(0),
+				  NUTAG_ALLOW("INVITE, ACK, BYE, CANCEL, INFO"),
 				  TAG_NULL());
 	if (context->nua == NULL) {
 		fprintf(stderr, "Unable to initialize sip-sofia nua\n");
 		return 1;
 	}
 
-	nua_set_params(context->nua,
-		       NUTAG_ENABLEINVITE(1),
-		       NUTAG_AUTOALERT(1),
-		       NUTAG_SESSION_TIMER(0),
-		       NUTAG_AUTOANSWER(0),
-		       NUTAG_MEDIA_ENABLE(0),
-		       NUTAG_ALLOW("INVITE, ACK, BYE, CANCEL, INFO"),
-		       TAG_NULL());
+
+	if (proxy_str) {
+		nua_set_params(context->nua,
+			       NUTAG_PROXY(proxy_str),
+			       TAG_NULL());
+	}
 
 	if (force_tcp) {
 		nua_set_params(context->nua,
