@@ -3,7 +3,11 @@ AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS)
 
 EXTRA_DIST = oap_test.ok
 
+if HAVE_LIBGTP
+if HAVE_LIBCARES
 noinst_PROGRAMS = oap_test
+endif
+endif
 
 oap_test_SOURCES = oap_test.c
 
