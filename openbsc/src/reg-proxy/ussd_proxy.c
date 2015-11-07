@@ -833,7 +833,10 @@ static int rx_sup_uss_message(isup_connection_t *sup_conn, const uint8_t* data, 
 			return 0;
 		}
 
-		nua_bye(op->handle, TAG_END());
+		// NOTE: Add ContentType for 3rd party software workaround, it's not needed by standard
+		nua_bye(op->handle,
+			SIPTAG_CONTENT_TYPE_STR("application/vnd.3gpp.ussd+xml"),
+			TAG_END());
 		break;
 
 	default:
