@@ -33,10 +33,12 @@
 
 #include <openbsc/gtphub.h>
 #include <openbsc/debug.h>
+#include <openbsc/gprs_utils.h>
 
 #include <osmocom/core/utils.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/socket.h>
+
 
 #define GTPHUB_DEBUG 1
 
@@ -345,13 +347,13 @@ void validate_gtp_header(struct gtp_packet_desc *p)
  * The first IEI is reached by passing i = 0.
  * imsi must point at allocated space of (at least) 8 bytes.
  * Return 1 on success, or 0 if not found. */
-static int get_ie_imsi(union gtpie_member *ie[], uint8_t *imsi, int i)
+static int get_ie_imsi(union gtpie_member *ie[], int i, uint8_t *imsi)
 {
 	return gtpie_gettv0(ie, GTPIE_IMSI, i, imsi, 8) == 0;
 }
 
 /* Analogous to get_ie_imsi(). nsapi must point at a single uint8_t. */
-static int get_ie_nsapi(union gtpie_member *ie[], uint8_t *nsapi, int i)
+static int get_ie_nsapi(union gtpie_member *ie[], int i, uint8_t *nsapi)
 {
 	return gtpie_gettv1(ie, GTPIE_NSAPI, i, nsapi) == 0;
 }
@@ -378,6 +380,33 @@ static const char *imsi_to_str(uint8_t *imsi)
 	str[16] = '\0';
 	return str;
 }
+
+static const char *get_ie_imsi_str(union gtpie_member *ie[], int i)
+{
+	uint8_t imsi_buf[8];
+	if (!get_ie_imsi(ie, i, imsi_buf))
+		return NULL;
+	return imsi_to_str(imsi_buf);
+}
+
+static const char *get_ie_apn_str(union gtpie_member *ie[])
+{
+	static char apn_buf[GSM_APN_LENGTH];
+	unsigned int len;
+	if (gtpie_gettlv(ie, GTPIE_APN, 0,
+			 &len, apn_buf, sizeof(apn_buf)) != 0)
+		return NULL;
+
+	if (!len)
+		return NULL;
+
+	if (len > (sizeof(apn_buf) - 1))
+		len = sizeof(apn_buf) - 1;
+	apn_buf[len] = '\0';
+
+	return  gprs_apn_to_str(apn_buf, (uint8_t*)apn_buf, len);
+}
+
 
 /* Validate header, and index information elements. Write decoded packet
  * information to *res. res->data will point at the given data buffer. On
@@ -416,15 +445,15 @@ static void gtp_decode(const uint8_t *data, int data_len,
 	int i;
 
 	for (i = 0; i < 10; i++) {
-		uint8_t imsi[8];
-		if (!get_ie_imsi(res->ie, imsi, i))
+		const char *imsi = get_ie_imsi_str(res->ie, i);
+		if (!imsi)
 			break;
-		LOG("| IMSI %s\n", imsi_to_str(imsi));
+		LOG("| IMSI %s\n", imsi);
 	}
 
 	for (i = 0; i < 10; i++) {
 		uint8_t nsapi;
-		if (!get_ie_nsapi(res->ie, &nsapi, i))
+		if (!get_ie_nsapi(res->ie, i, &nsapi))
 			break;
 		LOG("| NSAPI %d\n", (int)nsapi);
 	}
@@ -481,7 +510,6 @@ int expiry_tick(struct expiry *exq, time_t now)
 			expiring_item_del(m);
 			expired ++;
 		} else {
-			LOG("Not expired: %d > %d\n", (int)m->expiry, (int)now);
 			/* The items are added sorted by expiry. So when we hit
 			 * an unexpired entry, only more unexpired ones will
 			 * follow. */
@@ -654,16 +682,12 @@ static struct gtphub_peer_port *gtphub_resolve_ggsn(struct gtphub *hub,
 						    struct gtp_packet_desc *p);
 
 /* See gtphub_ext.c (wrapped by unit test) */
-int gtphub_resolve_ggsn_addr(struct gtphub *hub,
-			     struct osmo_sockaddr *result,
-			     struct gtp_packet_desc *p);
+struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
+						  const char *imsi_str,
+						  const char *apn_ni_str);
+int gtphub_ares_init(struct gtphub *hub);
 
 static struct gtphub_peer_port *gtphub_port_find(const struct gtphub_bind *bind,
-						 const struct gsn_addr *addr,
-						 uint16_t port);
-
-static struct gtphub_peer_port *gtphub_port_have(struct gtphub *hub,
-						 struct gtphub_bind *bind,
 						 const struct gsn_addr *addr,
 						 uint16_t port);
 
@@ -833,7 +857,7 @@ const char *gtphub_peer_str2(struct gtphub_peer *peer)
 	return gtphub_peer_strb(peer, buf, sizeof(buf));
 }
 
-static const char *gtphub_port_str(struct gtphub_peer_port *port)
+const char *gtphub_port_str(struct gtphub_peer_port *port)
 {
 	static char buf[256];
 	return gtphub_port_strb(port, buf, sizeof(buf));
@@ -1562,6 +1586,49 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	return received;
 }
 
+static void resolved_gssn_del_cb(struct expiring_item *expi)
+{
+	struct gtphub_resolved_ggsn *ggsn;
+	ggsn = container_of(expi, struct gtphub_resolved_ggsn, expiry_entry);
+
+	gtphub_port_ref_count_dec(ggsn->peer);
+	llist_del(&ggsn->entry);
+
+	ggsn->expiry_entry.del_cb = 0;
+	expiring_item_del(&ggsn->expiry_entry);
+
+	talloc_free(ggsn);
+}
+
+void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
+			  struct gsn_addr *resolved_addr,
+			  time_t now)
+{
+	struct gtphub_peer_port *pp;
+	struct gtphub_resolved_ggsn *ggsn;
+
+	pp = gtphub_port_have(hub, &hub->to_ggsns[GTPH_PLANE_CTRL],
+			      resolved_addr, 2123);
+	if (!pp) {
+		LOGERR("Internal: Cannot create/find peer '%s'\n",
+		       gsn_addr_to_str(resolved_addr));
+		return;
+	}
+
+	ggsn = talloc_zero(osmo_gtphub_ctx, struct gtphub_resolved_ggsn);
+	OSMO_ASSERT(ggsn);
+
+	ggsn->peer = pp;
+	gtphub_port_ref_count_inc(pp);
+
+	strncpy(ggsn->apn_oi_str, apn_oi_str, sizeof(ggsn->apn_oi_str));
+
+	ggsn->expiry_entry.del_cb = resolved_gssn_del_cb;
+	expiry_add(&hub->expire_tei_maps, &ggsn->expiry_entry, now);
+
+	llist_add(&ggsn->entry, &hub->resolved_ggsns);
+}
+
 static int gtphub_gc_peer_port(struct gtphub_peer_port *pp)
 {
 	return pp->ref_count == 0;
@@ -1654,6 +1721,8 @@ void gtphub_init(struct gtphub *hub)
 {
 	gtphub_zero(hub);
 
+	INIT_LLIST_HEAD(&hub->resolved_ggsns);
+
 	expiry_init(&hub->expire_seq_maps, GTPH_SEQ_MAPPING_EXPIRY_SECS);
 	expiry_init(&hub->expire_tei_maps, GTPH_TEI_MAPPING_EXPIRY_MINUTES * 60);
 
@@ -1693,6 +1762,7 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 	int rc;
 
 	gtphub_init(hub);
+	gtphub_ares_init(hub);
 
 	int plane_idx;
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
@@ -1882,10 +1952,10 @@ static struct gtphub_peer_port *gtphub_addr_add_port(struct gtphub_peer_addr *a,
 	return pp;
 }
 
-static struct gtphub_peer_port *gtphub_port_have(struct gtphub *hub,
-						 struct gtphub_bind *bind,
-						 const struct gsn_addr *addr,
-						 uint16_t port)
+struct gtphub_peer_port *gtphub_port_have(struct gtphub *hub,
+					  struct gtphub_bind *bind,
+					  const struct gsn_addr *addr,
+					  uint16_t port)
 {
 	struct gtphub_peer_addr *a = gtphub_addr_have(hub, bind, addr);
 
@@ -1896,47 +1966,12 @@ static struct gtphub_peer_port *gtphub_port_have(struct gtphub *hub,
 	return gtphub_addr_add_port(a, port);
 }
 
-/* port_override: <=0: use port from addr; >0: use this number as port. Return
- * NULL if the address cannot be parsed. */
-static struct gtphub_peer_port *gtphub_port_have_sockaddr(struct gtphub *hub,
-							  struct gtphub_bind *bind,
-							  const struct osmo_sockaddr *addr,
-							  int port_override)
-{
-	struct gsn_addr gsna;
-	uint16_t port;
-	if (gsn_addr_from_sockaddr(&gsna, &port, addr) != 0)
-		return NULL;
-
-	if (port_override > 0)
-		port = port_override;
-	return gtphub_port_have(hub, bind, &gsna, port);
-}
-
-static struct gtphub_peer_port *gtphub_have_ggsn(struct gtphub *hub,
-						 struct osmo_sockaddr *addr,
-						 unsigned int plane_idx,
-						 int port_override)
-{
-	if (port_override == 0)
-		port_override = gtphub_plane_idx_default_port[plane_idx];
-
-	return gtphub_port_have_sockaddr(hub, &hub->to_ggsns[plane_idx], addr,
-					 port_override);
-}
-
 static struct gtphub_peer_port *gtphub_resolve_ggsn(struct gtphub *hub,
 						    struct gtp_packet_desc *p)
 {
-	int rc;
-
-	struct osmo_sockaddr addr;
-
-	rc = gtphub_resolve_ggsn_addr(hub, &addr, p);
-	if (rc < 0)
-		return NULL;
-
-	return gtphub_have_ggsn(hub, &addr, p->plane_idx, -1);
+	return gtphub_resolve_ggsn_addr(hub,
+					get_ie_imsi_str(p->ie, 0),
+					get_ie_apn_str(p->ie));
 }
 
 

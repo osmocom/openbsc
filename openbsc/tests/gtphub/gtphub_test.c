@@ -37,8 +37,6 @@
 
 #define EXPIRE_ALL ((60 * GTPH_TEI_MAPPING_EXPIRY_MINUTES) + 1)
 
-/* Make non-public API accessible */
-
 void gtphub_init(struct gtphub *hub);
 
 void *osmo_gtphub_ctx;
@@ -328,19 +326,75 @@ static void test_expiry(void)
 
 
 /* override, requires '-Wl,--wrap=gtphub_resolve_ggsn_addr' */
-int __real_gtphub_resolve_ggsn_addr(struct gtphub *hub,
-				    struct osmo_sockaddr *result,
-				    struct gtp_packet_desc *p);
+struct gtphub_peer_port *__real_gtphub_resolve_ggsn_addr(struct gtphub *hub,
+							 const char *imsi_str,
+							 const char *apn_ni_str);
 
-struct osmo_sockaddr resolved_ggsn_addr = {.l = 0};
-int __wrap_gtphub_resolve_ggsn_addr(struct gtphub *hub,
-				    struct osmo_sockaddr *result,
-				    struct gtp_packet_desc *p)
+struct gsn_addr resolved_ggsn_addr = { 0 };
+uint16_t resolved_ggsn_port = 2123;
+char resolve_ggsn_got_imsi[256];
+char resolve_ggsn_got_ni[256];
+struct gtphub_peer_port *__wrap_gtphub_resolve_ggsn_addr(struct gtphub *hub,
+							 const char *imsi_str,
+							 const char *apn_ni_str)
 {
-	osmo_sockaddr_copy(result, &resolved_ggsn_addr);
-	printf("Wrap: returning GGSN addr: %s\n",
-	       osmo_sockaddr_to_str(result));
-	return (resolved_ggsn_addr.l != 0)? 0 : -1;
+	struct gtphub_peer_port *pp;
+	pp = gtphub_port_have(hub, &hub->to_ggsns[GTPH_PLANE_CTRL],
+			      &resolved_ggsn_addr, resolved_ggsn_port);
+	printf("Wrap: returning GGSN addr from imsi %s ni %s: %s\n",
+	       imsi_str, apn_ni_str, gtphub_port_str(pp));
+
+	if (imsi_str) {
+		strncpy(resolve_ggsn_got_imsi, imsi_str, sizeof(resolve_ggsn_got_imsi));
+		resolve_ggsn_got_imsi[sizeof(resolve_ggsn_got_imsi) - 1] = '\0';
+	}
+	else
+		strcpy(resolve_ggsn_got_imsi, "(null)");
+
+	if (apn_ni_str) {
+		strncpy(resolve_ggsn_got_ni, apn_ni_str, sizeof(resolve_ggsn_got_ni));
+		resolve_ggsn_got_ni[sizeof(resolve_ggsn_got_ni) - 1] = '\0';
+	}
+	else
+		strcpy(resolve_ggsn_got_ni, "(null)");
+
+	return pp;
+}
+
+#define was_resolved_for(IMSI,NI) _was_resolved_for(IMSI, NI, __FILE__, __LINE__)
+static int _was_resolved_for(const char *imsi, const char *ni, const char *file, int line)
+{
+	int cmp0 = strncmp(imsi, resolve_ggsn_got_imsi, sizeof(resolve_ggsn_got_imsi));
+
+	if (cmp0 != 0) {
+		printf("\n%s:%d: was_resolved_for(): MISMATCH for IMSI\n"
+		       "  expecting: '%s'\n"
+		       "        got: '%s'\n\n",
+		       file,
+		       line,
+		       imsi, resolve_ggsn_got_imsi);
+	}
+
+	int cmp1 = strncmp(ni, resolve_ggsn_got_ni, sizeof(resolve_ggsn_got_ni));
+	if (cmp1 != 0) {
+		printf("\n%s:%d: was_resolved_for(): MISMATCH for NI\n"
+		       "  expecting: '%s'\n"
+		       "        got: '%s'\n\n",
+		       file,
+		       line,
+		       ni, resolve_ggsn_got_ni);
+	}
+
+	return (cmp0 == 0) && (cmp1 == 0);
+}
+
+/* override, requires '-Wl,--wrap=gtphub_ares_init' */
+int __real_gtphub_ares_init(struct gtphub *hub);
+
+int __wrap_gtphub_ares_init(struct gtphub *hub)
+{
+	/* Do nothing. */
+	return 0;
 }
 
 #define buf_len 1024
@@ -413,6 +467,9 @@ static void test_echo(void)
 
 	gtphub_init(hub);
 
+	/* TODO This test should test for gtphub echoing back to each side.
+	 * Echos must not be routed through. */
+
 	const char *gtp_ping_from_sgsn =
 		"32"	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */
 		"01"	/* type 01: Echo request */
@@ -444,16 +501,17 @@ static void test_echo(void)
 		"00" "00" "0e01";
 
 	/* Set the GGSN address that gtphub is forced to resolve to. */
-	OSMO_ASSERT(osmo_sockaddr_init_udp(&resolved_ggsn_addr,
-					   "192.168.43.34", 434)
+	const char *resolved_ggsn_str = "192.168.43.34";
+	resolved_ggsn_port = 434;
+	OSMO_ASSERT(gsn_addr_from_str(&resolved_ggsn_addr, resolved_ggsn_str)
 		    == 0);
 
-	/* according to spec, we'd always send to port 2123 instead...
-	struct osmo_sockaddr ggsn_standard_port;
-	OSMO_ASSERT(osmo_sockaddr_init_udp(&ggsn_standard_port,
-					   "192.168.43.34", 2123)
+	/* A sockaddr for comparing later */
+	struct osmo_sockaddr resolved_ggsn_sa;
+	OSMO_ASSERT(osmo_sockaddr_init_udp(&resolved_ggsn_sa,
+					   resolved_ggsn_str,
+					   resolved_ggsn_port)
 		    == 0);
-	 */
 
 	struct osmo_sockaddr orig_sgsn_addr;
 	OSMO_ASSERT(osmo_sockaddr_init(&orig_sgsn_addr,
@@ -467,7 +525,7 @@ static void test_echo(void)
 					    &ggsn_ofd, &ggsn_addr);
 	OSMO_ASSERT(send > 0);
 	OSMO_ASSERT(ggsn_addr.l);
-	OSMO_ASSERT(same_addr(&ggsn_addr, &resolved_ggsn_addr));
+	OSMO_ASSERT(same_addr(&ggsn_addr, &resolved_ggsn_sa));
 	OSMO_ASSERT(msg_is(gtp_ping_to_ggsn));
 
 	struct osmo_fd *sgsn_ofd;
@@ -481,7 +539,7 @@ static void test_echo(void)
 
 	struct gtphub_peer_port *ggsn_port =
 		gtphub_port_find_sa(&hub->to_ggsns[GTPH_PLANE_CTRL],
-				    &resolved_ggsn_addr);
+				    &resolved_ggsn_sa);
 	OSMO_ASSERT(ggsn_port);
 	struct gtphub_peer *ggsn = ggsn_port->peer_addr->peer;
 	/* now == 123; now + 30 == 153. */
@@ -515,7 +573,7 @@ static void test_create_pdp_ctx(void)
 	const char *gtp_req_from_sgsn =
 		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */
 		"10" 	/* type 16: Create PDP Context Request */
-		"0067"	/* length = 8 + 103 */
+		"0068"	/* length = 8 + 104 */
 		"00000000" /* No TEI yet */
 		"abcd"	/* Sequence nr */
 		"00"	/* N-PDU 0 */
@@ -536,8 +594,8 @@ static void test_create_pdp_ctx(void)
 		  "0002" /* length = 2: empty PDP Address */
 		  "f121" /* spare 0xf0, PDP organization 1, PDP type number 0x21 = 33 */
 		"83"	/* 131: Access Point Name */
-		  "0008" /* length = 8 */
-		  "696e7465726e6574" /* "internet" */
+		  "0009" /* length */
+		  "08696e7465726e6574" /* "internet" */
 		"84"	/* 132: Protocol Configuration Options */
 		  "0015" /* length = 21 */
 		  "80c0231101010011036d69670868656d6d656c6967"
@@ -557,13 +615,13 @@ static void test_create_pdp_ctx(void)
 		;
 
 	const char *gtp_req_to_ggsn =
-		"32" "10" "0067" "00000000"
+		"32" "10" "0068" "00000000"
 		"6d31"	/* mapped seq ("abcd") */
 		"00" "00" "02" "42000121436587f9" "0e60" "0f01"
 		"10" "00000001" /* mapped TEI Data I ("123") */
 		"11" "00000001" /* mapped TEI Control ("321") */
 		"1400" "1a" "0800" "80" "0002" "f121" "83"
-		"0008" "696e7465726e6574" "84" "0015"
+		"0009" "08696e7465726e6574" "84" "0015"
 		"80c0231101010011036d69670868656d6d656c6967" "85" "0004"
 		"7f000201" /* replaced with gtphub's address ggsn ctrl */
 		"85" "0004"
@@ -627,14 +685,23 @@ static void test_create_pdp_ctx(void)
 		;
 
 	/* Set the GGSN address that gtphub is forced to resolve to. */
-	OSMO_ASSERT(osmo_sockaddr_init_udp(&resolved_ggsn_addr,
-					   "192.168.43.34", 434)
+	const char *resolved_ggsn_str = "192.168.43.34";
+	resolved_ggsn_port = 434;
+	OSMO_ASSERT(gsn_addr_from_str(&resolved_ggsn_addr, resolved_ggsn_str)
+		    == 0);
+
+	/* A sockaddr for comparing later */
+	struct osmo_sockaddr resolved_ggsn_sa;
+	OSMO_ASSERT(osmo_sockaddr_init_udp(&resolved_ggsn_sa,
+					   resolved_ggsn_str,
+					   resolved_ggsn_port)
 		    == 0);
 
 	struct osmo_sockaddr orig_sgsn_addr;
 	OSMO_ASSERT(osmo_sockaddr_init(&orig_sgsn_addr,
 				       AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
 				       "192.168.42.23", 423) == 0);
+
 	struct osmo_fd *ggsn_ofd = NULL;
 	struct osmo_sockaddr ggsn_addr;
 	int send;
@@ -642,8 +709,9 @@ static void test_create_pdp_ctx(void)
 					    buf, msg(gtp_req_from_sgsn), now,
 					    &ggsn_ofd, &ggsn_addr);
 	OSMO_ASSERT(send > 0);
-	OSMO_ASSERT(same_addr(&ggsn_addr, &resolved_ggsn_addr));
+	OSMO_ASSERT(same_addr(&ggsn_addr, &resolved_ggsn_sa));
 	OSMO_ASSERT(msg_is(gtp_req_to_ggsn));
+	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	struct osmo_fd *sgsn_ofd;
 	struct osmo_sockaddr sgsn_addr;
@@ -656,7 +724,7 @@ static void test_create_pdp_ctx(void)
 
 	struct gtphub_peer_port *ggsn_port =
 		gtphub_port_find_sa(&hub->to_ggsns[GTPH_PLANE_CTRL],
-				    &resolved_ggsn_addr);
+				    &resolved_ggsn_sa);
 	OSMO_ASSERT(ggsn_port);
 	struct gtphub_peer *ggsn = ggsn_port->peer_addr->peer;
 	/* now == 345; now + 30 == 375.

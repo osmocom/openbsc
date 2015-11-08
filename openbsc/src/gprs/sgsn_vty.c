@@ -110,6 +110,11 @@ DECLARE_TIMER(3397, "Wait for DEACT AA PDP CTX ACK timer (s)")
 
 
 #define GSM48_MAX_APN_LEN	102	/* 10.5.6.1 */
+/* TODO: consolidate with gprs_apn_to_str(). */
+/** Copy apn to a static buffer, replacing the length octets in apn_enc with '.'
+ * and terminating with a '\0'. Return the static buffer.
+ * len: the length of the encoded APN (which has no terminating zero).
+ */
 static char *gprs_apn2str(uint8_t *apn, unsigned int len)
 {
 	static char apnbuf[GSM48_MAX_APN_LEN+1];

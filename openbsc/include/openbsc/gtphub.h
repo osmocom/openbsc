@@ -27,6 +27,8 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 
+#include <openbsc/gprs_sgsn.h>
+
 
 /* support */
 
@@ -363,6 +365,18 @@ struct gtphub_bind {
 	struct llist_head peers;
 };
 
+struct gtphub_resolved_ggsn {
+	struct llist_head entry;
+	struct expiring_item expiry_entry;
+
+	/* The APN OI, the Operator Identifier, is the combined address,
+	 * including parts of the IMSI and APN NI, and ending with ".gprs". */
+	char apn_oi_str[GSM_APN_LENGTH];
+
+	/* Which address and port we resolved that to. */
+	struct gtphub_peer_port *peer;
+};
+
 struct gtphub {
 	struct gtphub_bind to_sgsns[GTPH_PLANE_N];
 	struct gtphub_bind to_ggsns[GTPH_PLANE_N];
@@ -375,6 +389,9 @@ struct gtphub {
 
 	struct nr_map tei_map[GTPH_PLANE_N];
 	struct nr_pool tei_pool[GTPH_PLANE_N];
+
+	struct llist_head ggsn_lookups; /* opaque (gtphub_ext.c) */
+	struct llist_head resolved_ggsns; /* struct gtphub_resolved_ggsn */
 
 	struct osmo_timer_list gc_timer;
 	struct expiry expire_seq_maps;
@@ -420,5 +437,16 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr);
 
+struct gtphub_peer_port *gtphub_port_have(struct gtphub *hub,
+					  struct gtphub_bind *bind,
+					  const struct gsn_addr *addr,
+					  uint16_t port);
+
 struct gtphub_peer_port *gtphub_port_find_sa(const struct gtphub_bind *bind,
 					     const struct osmo_sockaddr *addr);
+
+void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
+			  struct gsn_addr *resolved_addr,
+			  time_t now);
+
+const char *gtphub_port_str(struct gtphub_peer_port *port);
