@@ -396,6 +396,8 @@ struct gtphub {
 	struct osmo_timer_list gc_timer;
 	struct expiry expire_seq_maps;
 	struct expiry expire_tei_maps;
+
+	uint16_t restart_counter;
 };
 
 struct gtp_packet_desc;
@@ -425,6 +427,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 				 uint8_t *buf,
 				 size_t received,
 				 time_t now,
+				 uint8_t **reply_buf,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr);
 
@@ -434,6 +437,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 				 uint8_t *buf,
 				 size_t received,
 				 time_t now,
+				 uint8_t **reply_buf,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr);
 

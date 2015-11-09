@@ -1222,6 +1222,7 @@ static int from_ggsns_read_cb(struct osmo_fd *from_ggsns_ofd, unsigned int what)
 	struct osmo_sockaddr to_addr;
 	struct osmo_fd *to_ofd;
 	size_t len;
+	uint8_t *reply_buf;
 
 	len = gtphub_read(from_ggsns_ofd, &from_addr, buf, sizeof(buf));
 	if (len < 1)
@@ -1229,11 +1230,11 @@ static int from_ggsns_read_cb(struct osmo_fd *from_ggsns_ofd, unsigned int what)
 
 	len = gtphub_from_ggsns_handle_buf(hub, plane_idx, &from_addr, buf, len,
 					   gtphub_now(),
-					   &to_ofd, &to_addr);
+					   &reply_buf, &to_ofd, &to_addr);
 	if (len < 1)
 		return 0;
 
-	return gtphub_write(to_ofd, &to_addr, buf, len);
+	return gtphub_write(to_ofd, &to_addr, reply_buf, len);
 }
 
 static int gtphub_unmap(struct gtphub *hub,
@@ -1311,10 +1312,33 @@ static int gsn_addr_to_sockaddr(struct gsn_addr *src,
 	return osmo_sockaddr_init_udp(dst, gsn_addr_to_str(src), port);
 }
 
-static int gtphub_handle_echo(const struct gtp_packet_desc *p)
+/* If p is an Echo request, replace p's data with the matching response and
+ * return 1. If p is no Echo request, return 0, or -1 if an invalid packet is
+ * detected. */
+static int gtphub_handle_echo(struct gtphub *hub, struct gtp_packet_desc *p, uint8_t **reply_buf)
 {
-	/* TODO */
-	return 0;
+	if (p->type != GTP_ECHO_REQ)
+		return 0;
+
+	static uint8_t echo_response_data[14] = {
+		0x32,	/* flags */
+		GTP_ECHO_RSP,
+		0x00, 14 - 8, /* Length in network byte order */
+		0x00, 0x00, 0x00, 0x00,	/* Zero TEI */
+		0, 0,	/* Seq, to be replaced */
+		0, 0,	/* no extensions */
+		0x0e,	/* Recovery IE */
+		0	/* Recovery counter, to be replaced */
+	};
+	uint16_t *seq = (uint16_t*)&echo_response_data[8];
+	uint8_t *recovery = &echo_response_data[13];
+
+	*seq = hton16(p->seq);
+	*recovery = hub->restart_counter;
+
+	*reply_buf = echo_response_data;
+
+	return sizeof(echo_response_data);
 }
 
 /* Parse buffer as GTP packet, replace elements in-place and return the ofd and
@@ -1328,12 +1352,11 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 				 uint8_t *buf,
 				 size_t received,
 				 time_t now,
+				 uint8_t **reply_buf,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr)
 {
 	LOG("<- rx from GGSN %s\n", osmo_sockaddr_to_str(from_addr));
-
-	*to_ofd = &hub->to_sgsns[plane_idx].ofd;
 
 	static struct gtp_packet_desc p;
 	gtp_decode(buf, received, plane_idx, &p);
@@ -1341,16 +1364,18 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	if (p.rc <= 0)
 		return -1;
 
-	int rc;
-	rc = gtphub_handle_echo(&p);
-	if (rc == 1) {
-		/* It was en echo. Nothing left to do. */
-		/* (*to_ofd already set above.) */
+	int reply_len;
+	reply_len = gtphub_handle_echo(hub, &p, reply_buf);
+	if (reply_len > 0) {
+		/* It was an echo. Nothing left to do. */
 		osmo_sockaddr_copy(to_addr, from_addr);
-		return 0;
+		*to_ofd = &hub->to_ggsns[plane_idx].ofd;
+		return reply_len;
 	}
-	if (rc < 0)
-		return -1; /* Invalid packet. */
+	if (reply_len < 0)
+		return -1;
+
+	*to_ofd = &hub->to_sgsns[plane_idx].ofd;
 
 	/* If a GGSN proxy is configured, check that it's indeed that proxy
 	 * talking to us. A proxy is a forced 1:1 connection, e.g. to another
@@ -1418,6 +1443,8 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 		gtphub_map_seq(&p, ggsn, sgsn, now);
 
 	osmo_sockaddr_copy(to_addr, &sgsn->sa);
+
+	*reply_buf = (uint8_t*)p.data;
 	return received;
 }
 
@@ -1437,6 +1464,7 @@ static int from_sgsns_read_cb(struct osmo_fd *from_sgsns_ofd, unsigned int what)
 	struct osmo_sockaddr to_addr;
 	struct osmo_fd *to_ofd;
 	size_t len;
+	uint8_t *reply_buf;
 
 	len = gtphub_read(from_sgsns_ofd, &from_addr, buf, sizeof(buf));
 	if (len < 1)
@@ -1444,11 +1472,11 @@ static int from_sgsns_read_cb(struct osmo_fd *from_sgsns_ofd, unsigned int what)
 
 	len = gtphub_from_sgsns_handle_buf(hub, plane_idx, &from_addr, buf, len,
 					   gtphub_now(),
-					   &to_ofd, &to_addr);
+					   &reply_buf, &to_ofd, &to_addr);
 	if (len < 1)
 		return 0;
 
-	return gtphub_write(to_ofd, &to_addr, buf, len);
+	return gtphub_write(to_ofd, &to_addr, reply_buf, len);
 }
 
 /* Analogous to gtphub_from_ggsns_handle_buf(), see the comment there. */
@@ -1458,12 +1486,11 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 				 uint8_t *buf,
 				 size_t received,
 				 time_t now,
+				 uint8_t **reply_buf,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr)
 {
 	LOG("-> rx from SGSN %s\n", osmo_sockaddr_to_str(from_addr));
-
-	*to_ofd = &hub->to_ggsns[plane_idx].ofd;
 
 	static struct gtp_packet_desc p;
 	gtp_decode(buf, received, plane_idx, &p);
@@ -1471,16 +1498,18 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	if (p.rc <= 0)
 		return -1;
 
-	int rc;
-	rc = gtphub_handle_echo(&p);
-	if (rc == 1) {
-		/* It was en echo. Nothing left to do. */
-		/* (*to_ofd already set above.) */
+	int reply_len;
+	reply_len = gtphub_handle_echo(hub, &p, reply_buf);
+	if (reply_len > 0) {
+		/* It was an echo. Nothing left to do. */
 		osmo_sockaddr_copy(to_addr, from_addr);
-		return 0;
+		*to_ofd = &hub->to_ggsns[plane_idx].ofd;
+		return reply_len;
 	}
-	if (rc < 0)
-		return -1; /* Invalid packet. */
+	if (reply_len < 0)
+		return -1;
+
+	*to_ofd = &hub->to_ggsns[plane_idx].ofd;
 
 	/* If an SGSN proxy is configured, check that it's indeed that proxy
 	 * talking to us. A proxy is a forced 1:1 connection, e.g. to another
@@ -1583,6 +1612,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 
 	osmo_sockaddr_copy(to_addr, &ggsn->sa);
 
+	*reply_buf = (uint8_t*)p.data;
 	return received;
 }
 
@@ -1763,6 +1793,8 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 
 	gtphub_init(hub);
 	gtphub_ares_init(hub);
+
+	/* TODO set hub->restart_counter from external file. */
 
 	int plane_idx;
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
