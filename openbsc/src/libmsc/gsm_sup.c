@@ -115,6 +115,12 @@ static int subscr_handle_sup_upd_loc_res(struct gsm_subscriber *subscr,
 {
 	uint8_t msisdn_lv[10];
 
+	if (!subscr->group) {
+		LOGGSUBSCRP(LOGL_ERROR, subscr,
+			"Update location result was received, but LUR procedure timedout.\n");
+		return -1;
+	}
+
 	if (gsup_msg->msisdn_enc) {
 		if (gsup_msg->msisdn_enc_len > sizeof(msisdn_lv) - 1) {
 			LOGP(DSUP, LOGL_ERROR, "MSISDN too long (%zu)\n",
