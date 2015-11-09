@@ -593,6 +593,27 @@ static int gbprox_process_bssgp_ul(struct gbproxy_config *cfg,
 		case GSM48_MT_GMM_ATTACH_REQ:
 			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REQS]);
 			break;
+		case GSM48_MT_GMM_DETACH_REQ:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_DETACH_REQS]);
+			break;
+		case GSM48_MT_GMM_ATTACH_COMPL:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_COMPLS]);
+			break;
+		case GSM48_MT_GMM_RA_UPD_REQ:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_RA_UPD_REQS]);
+			break;
+		case GSM48_MT_GMM_RA_UPD_COMPL:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_RA_UPD_COMPLS]);
+			break;
+		case GSM48_MT_GMM_STATUS:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_GMM_STATUS_BSS]);
+			break;
+		case GSM48_MT_GSM_ACT_PDP_REQ:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_PDP_ACT_REQS]);
+			break;
+		case GSM48_MT_GSM_DEACT_PDP_REQ:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_PDP_DEACT_REQS]);
+			break;
 
 		default:
 			break;
@@ -678,8 +699,32 @@ static void gbprox_process_bssgp_dl(struct gbproxy_config *cfg,
 
 	if (parse_ctx.g48_hdr) {
 		switch (parse_ctx.g48_hdr->msg_type) {
+		case GSM48_MT_GMM_ATTACH_ACK:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_ACKS]);
+			break;
 		case GSM48_MT_GMM_ATTACH_REJ:
 			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_ATTACH_REJS]);
+			break;
+		case GSM48_MT_GMM_DETACH_ACK:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_DETACH_ACKS]);
+			break;
+		case GSM48_MT_GMM_RA_UPD_ACK:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_RA_UPD_ACKS]);
+			break;
+		case GSM48_MT_GMM_RA_UPD_REJ:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_RA_UPD_REJS]);
+			break;
+		case GSM48_MT_GMM_STATUS:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_GMM_STATUS_SGSN]);
+			break;
+		case GSM48_MT_GSM_ACT_PDP_ACK:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_PDP_ACT_ACKS]);
+			break;
+		case GSM48_MT_GSM_ACT_PDP_REJ:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_PDP_ACT_REJS]);
+			break;
+		case GSM48_MT_GSM_DEACT_PDP_ACK:
+			rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_PDP_DEACT_ACKS]);
 			break;
 
 		default:

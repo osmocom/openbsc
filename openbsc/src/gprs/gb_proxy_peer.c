@@ -51,9 +51,26 @@ static const struct rate_ctr_desc peer_ctr_description[] = {
 	{ "mod-err",	   "Patch error: other              " },
 	{ "attach-reqs",   "Attach Request count            " },
 	{ "attach-rejs",   "Attach Reject count             " },
+	{ "attach-acks",   "Attach Accept count             " },
+	{ "attach-cpls",   "Attach Completed count          " },
+	{ "ra-upd-reqs",   "RoutingArea Update Request count" },
+	{ "ra-upd-rejs",   "RoutingArea Update Reject count " },
+	{ "ra-upd-acks",   "RoutingArea Update Accept count " },
+	{ "ra-upd-cpls",   "RoutingArea Update Compltd count" },
+	{ "gmm-status",    "GMM Status count           (BSS)" },
+	{ "gmm-status",    "GMM Status count          (SGSN)" },
+	{ "detach-reqs",   "Detach Request count            " },
+	{ "detach-acks",   "Detach Accept count             " },
+	{ "pdp-act-reqs",  "PDP Activation Request count    " },
+	{ "pdp-act-rejs",  "PDP Activation Reject count     " },
+	{ "pdp-act-acks",  "PDP Activation Accept count     " },
+	{ "pdp-deact-reqs","PDP Deactivation Request count  " },
+	{ "pdp-deact-acks","PDP Deactivation Accept count   " },
 	{ "tlli-unknown",  "TLLI from SGSN unknown          " },
 	{ "tlli-cache",    "TLLI cache size                 " },
 };
+
+osmo_static_assert(ARRAY_SIZE(peer_ctr_description) == GBPROX_PEER_CTR_LAST, everything_described);
 
 static const struct rate_ctr_group_desc peer_ctrg_desc = {
 	.group_name_prefix = "gbproxy.peer",

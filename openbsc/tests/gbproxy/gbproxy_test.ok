@@ -1670,6 +1670,7 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 1
+    Attach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/efe2b700 -> 8000dead/efe2b700, IMSI 12131415161718, AGE 0
@@ -1688,6 +1689,8 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/efe2b700 -> 8000dead/efe2b700, IMSI 12131415161718, AGE 0
@@ -1706,6 +1709,8 @@ result (GMM INFO) = 70
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -1726,6 +1731,8 @@ result (ATTACH REQUEST) = 79
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI 8000beef -> 8000beef, IMSI (none), AGE 0
@@ -1745,6 +1752,8 @@ result (IDENT REQUEST) = 27
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI 8000beef -> 8000beef, IMSI (none), AGE 0
@@ -1764,6 +1773,8 @@ result (IDENT RESPONSE) = 44
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI 8000beef -> 8000beef, IMSI 12199999961718, AGE 0
@@ -1783,6 +1794,8 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000beef/efe2b700 -> 8000beef/efe2b700, IMSI 12199999961718, AGE 0
@@ -1801,6 +1814,8 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000beef/efe2b700 -> 8000beef/efe2b700, IMSI 12199999961718, AGE 0
@@ -1819,6 +1834,8 @@ result (GMM INFO) = 70
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12199999961718, AGE 0
@@ -2086,6 +2103,9 @@ Peers:
     RAID patched              (SGSN): 2
     APN patched                     : 3
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    PDP Activation Request count    : 3
     TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
@@ -2120,6 +2140,11 @@ Peers:
     RAID patched              (SGSN): 2
     APN patched                     : 3
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
+    PDP Activation Request count    : 3
     TLLI from SGSN unknown          : 1
     TLLI-Cache: 0
 --- RA update ---
@@ -2166,6 +2191,13 @@ Peers:
     RAID patched              (SGSN): 3
     APN patched                     : 4
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    RoutingArea Update Accept count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
+    PDP Activation Request count    : 4
     TLLI from SGSN unknown          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
@@ -2189,6 +2221,13 @@ Peers:
     RAID patched              (SGSN): 3
     APN patched                     : 4
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    RoutingArea Update Accept count : 1
+    Detach Request count            : 2
+    Detach Accept count             : 1
+    PDP Activation Request count    : 4
     TLLI from SGSN unknown          : 1
     TLLI-Cache: 0
 --- Bad cases ---
@@ -2240,6 +2279,13 @@ Peers:
     RAID patched              (SGSN): 3
     APN patched                     : 4
     Attach Request count            : 2
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    RoutingArea Update Accept count : 1
+    Detach Request count            : 2
+    Detach Accept count             : 1
+    PDP Activation Request count    : 5
     TLLI from SGSN unknown          : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
@@ -2442,6 +2488,7 @@ Peers:
     TLLI patched              (SGSN): 2
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead01 -> 78dead00/efe2b700, IMSI 12131415161718, AGE 0
@@ -2465,6 +2512,8 @@ Peers:
     TLLI patched              (SGSN): 2
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead01 -> 78dead00/efe2b700, IMSI 12131415161718, AGE 0
@@ -2488,6 +2537,8 @@ Peers:
     TLLI patched              (SGSN): 3
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -2512,6 +2563,9 @@ Peers:
     TLLI patched              (SGSN): 3
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    PDP Activation Request count    : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -2572,6 +2626,9 @@ Peers:
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    PDP Activation Request count    : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -2608,6 +2665,11 @@ Peers:
     TLLI patched              (SGSN): 6
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    RoutingArea Update Accept count : 1
+    PDP Activation Request count    : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01/c0dead02 -> efe2b700/e0987654, IMSI 12131415161718, AGE 0
@@ -2644,6 +2706,11 @@ Peers:
     TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 2
+    RoutingArea Update Accept count : 2
+    PDP Activation Request count    : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01/c0dead03 -> efe2b700/e0543210, IMSI 12131415161718, AGE 0
@@ -2680,6 +2747,12 @@ Peers:
     TLLI patched              (SGSN): 8
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 2
+    RoutingArea Update Accept count : 2
+    RoutingArea Update Compltd count: 1
+    PDP Activation Request count    : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead03 -> e0543210, IMSI 12131415161718, AGE 0
@@ -2704,6 +2777,12 @@ Peers:
     TLLI patched              (SGSN): 8
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 2
+    RoutingArea Update Accept count : 2
+    RoutingArea Update Compltd count: 1
+    PDP Activation Request count    : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead03 -> e0543210, IMSI 12131415161718, AGE 0
@@ -2728,6 +2807,12 @@ Peers:
     TLLI patched              (SGSN): 8
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 2
+    RoutingArea Update Accept count : 2
+    RoutingArea Update Compltd count: 1
+    PDP Activation Request count    : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead03 -> e0543210, IMSI 12131415161718, AGE 0
@@ -2752,6 +2837,12 @@ Peers:
     TLLI patched              (SGSN): 9
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 2
+    RoutingArea Update Accept count : 2
+    RoutingArea Update Compltd count: 1
+    PDP Activation Request count    : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead03 -> e0543210, IMSI 12131415161718, AGE 0
@@ -2776,6 +2867,12 @@ Peers:
     TLLI patched              (SGSN): 9
     P-TMSI patched            (SGSN): 4
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 2
+    RoutingArea Update Accept count : 2
+    RoutingArea Update Compltd count: 1
+    PDP Activation Request count    : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead03 -> e0543210, IMSI 12131415161718, AGE 0
@@ -2868,6 +2965,13 @@ Peers:
     P-TMSI patched            (BSS ): 1
     P-TMSI patched            (SGSN): 4
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 2
+    RoutingArea Update Accept count : 2
+    RoutingArea Update Compltd count: 1
+    Detach Request count            : 1
+    PDP Activation Request count    : 1
     TLLI from SGSN unknown          : 2
     TLLI cache size                 : 1
     TLLI-Cache: 1
@@ -2894,6 +2998,14 @@ Peers:
     P-TMSI patched            (BSS ): 1
     P-TMSI patched            (SGSN): 4
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 2
+    RoutingArea Update Accept count : 2
+    RoutingArea Update Compltd count: 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
+    PDP Activation Request count    : 1
     TLLI from SGSN unknown          : 2
     TLLI-Cache: 0
 Gbproxy global:
@@ -3096,6 +3208,7 @@ Peers:
     TLLI patched              (SGSN): 2
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead01 -> 78dead00/efe2b700, IMSI 12131415161718, AGE 0
@@ -3119,6 +3232,7 @@ Peers:
     TLLI patched              (SGSN): 3
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 1
+    Attach Accept count             : 2
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead01 -> 78dead00/efe2b700, IMSI 12131415161718, AGE 0
@@ -3142,6 +3256,8 @@ Peers:
     TLLI patched              (SGSN): 3
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 1
+    Attach Accept count             : 2
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead01 -> 78dead00/efe2b700, IMSI 12131415161718, AGE 0
@@ -3165,6 +3281,8 @@ Peers:
     TLLI patched              (SGSN): 4
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 1
+    Attach Accept count             : 2
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -3188,6 +3306,9 @@ Peers:
     TLLI patched              (SGSN): 4
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 1
+    Attach Accept count             : 2
+    Attach Completed count          : 1
+    Detach Request count            : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -3211,6 +3332,10 @@ Peers:
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 1
+    Attach Accept count             : 2
+    Attach Completed count          : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI-Cache: 0
 Gbproxy global:
 === test_gbproxy_imsi_acquisition ===
@@ -3429,6 +3554,7 @@ Peers:
     TLLI patched              (SGSN): 2
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead01 -> 78dead00/efe2b700, IMSI 12131415161718, AGE 0
@@ -3452,6 +3578,8 @@ Peers:
     TLLI patched              (SGSN): 2
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead01 -> 78dead00/efe2b700, IMSI 12131415161718, AGE 0
@@ -3475,6 +3603,8 @@ Peers:
     TLLI patched              (SGSN): 3
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -3534,6 +3664,8 @@ Peers:
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -3557,6 +3689,8 @@ Peers:
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -3580,6 +3714,8 @@ Peers:
     TLLI patched              (SGSN): 6
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -3603,6 +3739,8 @@ Peers:
     TLLI patched              (SGSN): 6
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -3626,6 +3764,8 @@ Peers:
     TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -3695,6 +3835,9 @@ Peers:
     TLLI patched              (SGSN): 8
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    Detach Request count            : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -3718,6 +3861,10 @@ Peers:
     TLLI patched              (SGSN): 9
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI-Cache: 0
 PROCESSING RA UPD REQ from 0x01020304:1111
 00 00 10 02 01 80 00 de ad 00 00 04 08 88 00 f1 99 00 63 60 70 80 00 80 0e 00 3e 01 c0 15 08 08 10 11 22 33 40 50 60 1d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 19 8b b2 92 17 16 27 07 04 31 02 e5 e0 32 02 20 00 96 3e 97 
@@ -3751,6 +3898,11 @@ Peers:
     TLLI patched              (SGSN): 9
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead -> 78dead02, IMSI 12131415161718, AGE 0
@@ -3774,6 +3926,12 @@ Peers:
     TLLI patched              (SGSN): 10
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    RoutingArea Update Accept count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead03 -> 78dead02/efe2b700, IMSI 12131415161718, AGE 0
@@ -3797,6 +3955,12 @@ Peers:
     TLLI patched              (SGSN): 10
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    RoutingArea Update Accept count : 1
+    Detach Request count            : 2
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead03 -> 78dead02/efe2b700, IMSI 12131415161718, AGE 0
@@ -3820,6 +3984,12 @@ Peers:
     TLLI patched              (SGSN): 11
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    RoutingArea Update Accept count : 1
+    Detach Request count            : 2
+    Detach Accept count             : 2
     TLLI-Cache: 0
 PROCESSING ATTACH REQUEST from 0x01020304:1111
 00 00 10 02 01 80 00 de ad 00 00 04 08 88 00 f1 99 00 63 60 12 34 00 80 0e 00 34 01 c0 21 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 44 b6 bb 
@@ -3865,6 +4035,12 @@ Peers:
     TLLI patched              (SGSN): 11
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 3
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    RoutingArea Update Accept count : 1
+    Detach Request count            : 3
+    Detach Accept count             : 2
     TLLI-Cache: 0
 PROCESSING DETACH REQ (unknown TLLI) from 0x01020304:1111
 00 00 10 02 01 80 00 be ef 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 15 01 c0 2d 08 05 01 18 05 f4 ef e2 b7 00 19 03 b9 97 cb 0d 30 0d 
@@ -3886,6 +4062,12 @@ Peers:
     TLLI patched              (SGSN): 11
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 3
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 1
+    RoutingArea Update Accept count : 1
+    Detach Request count            : 4
+    Detach Accept count             : 2
     TLLI-Cache: 0
 PROCESSING RA UPD REQ from 0x01020304:1111
 00 00 10 02 01 80 00 de ad 00 00 04 08 88 00 f1 99 00 63 60 70 80 00 80 0e 00 3e 01 c0 31 08 08 10 11 22 33 40 50 60 1d 19 13 42 33 57 2b f7 c8 48 02 13 48 50 c8 48 02 14 48 50 c8 48 02 17 49 10 c8 48 02 00 19 8b b2 92 17 16 27 07 04 31 02 e5 e0 32 02 20 00 d8 cf d8 
@@ -3931,6 +4113,12 @@ Peers:
     TLLI patched              (SGSN): 11
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 3
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    RoutingArea Update Request count: 3
+    RoutingArea Update Accept count : 1
+    Detach Request count            : 5
+    Detach Accept count             : 2
     TLLI-Cache: 0
 Gbproxy global:
     Invalid Routing Area Identifier : 1
@@ -4264,6 +4452,7 @@ Peers:
     TLLI patched              (SGSN): 2
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead01 -> 78dead00/efe2b700, IMSI 12131415161718, AGE 0, SGSN NSEI 256
@@ -4287,6 +4476,8 @@ Peers:
     TLLI patched              (SGSN): 2
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 8000dead/c0dead01 -> 78dead00/efe2b700, IMSI 12131415161718, AGE 0, SGSN NSEI 256
@@ -4310,6 +4501,8 @@ Peers:
     TLLI patched              (SGSN): 3
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0, SGSN NSEI 256
@@ -4369,6 +4562,8 @@ Peers:
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0, SGSN NSEI 256
@@ -4392,6 +4587,8 @@ Peers:
     TLLI patched              (SGSN): 5
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0, SGSN NSEI 256
@@ -4415,6 +4612,8 @@ Peers:
     TLLI patched              (SGSN): 6
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0, SGSN NSEI 256
@@ -4438,6 +4637,8 @@ Peers:
     TLLI patched              (SGSN): 6
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0, SGSN NSEI 256
@@ -4461,6 +4662,8 @@ Peers:
     TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0, SGSN NSEI 256
@@ -4486,6 +4689,8 @@ Peers:
     TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 2
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI 8000beef -> 78dead02, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress, SGSN NSEI 65535
@@ -4510,6 +4715,8 @@ Peers:
     TLLI patched              (SGSN): 7
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 2
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI 8000beef -> 78dead02, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4534,6 +4741,8 @@ Peers:
     TLLI patched              (SGSN): 8
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 2
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI 8000beef -> 78dead02, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4558,6 +4767,8 @@ Peers:
     TLLI patched              (SGSN): 8
     P-TMSI patched            (SGSN): 1
     Attach Request count            : 2
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI 8000beef -> 78dead02, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4582,6 +4793,8 @@ Peers:
     TLLI patched              (SGSN): 9
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI 8000beef/c0dead03 -> 78dead02/e0987654, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4606,6 +4819,8 @@ Peers:
     TLLI patched              (SGSN): 9
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI 8000beef/c0dead03 -> 78dead02/e0987654, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4630,6 +4845,8 @@ Peers:
     TLLI patched              (SGSN): 10
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI c0dead03 -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4690,6 +4907,8 @@ Peers:
     TLLI patched              (SGSN): 12
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI c0dead03 -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4714,6 +4933,8 @@ Peers:
     TLLI patched              (SGSN): 12
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI c0dead03 -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4738,6 +4959,8 @@ Peers:
     TLLI patched              (SGSN): 13
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI c0dead03 -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4762,6 +4985,8 @@ Peers:
     TLLI patched              (SGSN): 13
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI c0dead03 -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4786,6 +5011,8 @@ Peers:
     TLLI patched              (SGSN): 14
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI c0dead03 -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4812,6 +5039,8 @@ Peers:
     TLLI patched              (SGSN): 14
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 3
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 3
     TLLI-Cache: 3
       TLLI 8000feed -> 78dead04, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress, SGSN NSEI 65535
@@ -4837,6 +5066,8 @@ Peers:
     TLLI patched              (SGSN): 14
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 3
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 3
     TLLI-Cache: 3
       TLLI 8000feed -> 78dead04, IMSI 12199999962728, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4862,6 +5093,8 @@ Peers:
     TLLI patched              (SGSN): 15
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 3
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 3
     TLLI-Cache: 3
       TLLI 8000feed -> 78dead04, IMSI 12199999962728, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4887,6 +5120,8 @@ Peers:
     TLLI patched              (SGSN): 15
     P-TMSI patched            (SGSN): 2
     Attach Request count            : 3
+    Attach Accept count             : 2
+    Attach Completed count          : 2
     TLLI cache size                 : 3
     TLLI-Cache: 3
       TLLI 8000feed -> 78dead04, IMSI 12199999962728, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4912,6 +5147,8 @@ Peers:
     TLLI patched              (SGSN): 16
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 2
     TLLI cache size                 : 3
     TLLI-Cache: 3
       TLLI 8000feed/c0dead05 -> 78dead04/efe2b700, IMSI 12199999962728, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4937,6 +5174,8 @@ Peers:
     TLLI patched              (SGSN): 16
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
     TLLI cache size                 : 3
     TLLI-Cache: 3
       TLLI 8000feed/c0dead05 -> 78dead04/efe2b700, IMSI 12199999962728, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4962,6 +5201,8 @@ Peers:
     TLLI patched              (SGSN): 17
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
     TLLI cache size                 : 3
     TLLI-Cache: 3
       TLLI c0dead05 -> efe2b700, IMSI 12199999962728, AGE 0, IMSI matches, SGSN NSEI 258
@@ -4989,6 +5230,9 @@ Peers:
     TLLI patched              (SGSN): 17
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 1
     TLLI cache size                 : 3
     TLLI-Cache: 3
       TLLI c0dead01 -> efe2b700, IMSI 12131415161718, AGE 0, SGSN NSEI 256
@@ -5014,6 +5258,10 @@ Peers:
     TLLI patched              (SGSN): 18
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI c0dead05 -> efe2b700, IMSI 12199999962728, AGE 0, IMSI matches, SGSN NSEI 258
@@ -5041,6 +5289,10 @@ Peers:
     P-TMSI patched            (BSS ): 1
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 2
+    Detach Accept count             : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI c0dead03 -> e0987654, IMSI 12199999961718, AGE 0, IMSI matches, SGSN NSEI 258
@@ -5066,6 +5318,10 @@ Peers:
     P-TMSI patched            (BSS ): 1
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 2
+    Detach Accept count             : 2
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead05 -> efe2b700, IMSI 12199999962728, AGE 0, IMSI matches, SGSN NSEI 258
@@ -5092,6 +5348,10 @@ Peers:
     P-TMSI patched            (BSS ): 1
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 3
+    Detach Accept count             : 2
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI c0dead05 -> efe2b700, IMSI 12199999962728, AGE 0, IMSI matches, SGSN NSEI 258
@@ -5116,6 +5376,10 @@ Peers:
     P-TMSI patched            (BSS ): 1
     P-TMSI patched            (SGSN): 3
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 3
+    Detach Accept count             : 3
     TLLI-Cache: 0
 Gbproxy global:
     Invalid BVC Identifier          : 1
@@ -5322,6 +5586,7 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 1
+    Attach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5340,6 +5605,8 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5358,6 +5625,8 @@ result (GMM INFO) = 70
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5376,6 +5645,9 @@ result (DETACH REQ) = 48
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    Detach Request count            : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5394,6 +5666,10 @@ result (DETACH ACC) = 71
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 1
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -5412,6 +5688,10 @@ result (ATTACH REQUEST) = 79
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 1
+    Attach Completed count          : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -5430,6 +5710,10 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5448,6 +5732,10 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5466,6 +5754,10 @@ result (DETACH REQ (re-attach)) = 73
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5484,6 +5776,10 @@ result (DETACH ACC) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 2
+    Attach Accept count             : 2
+    Attach Completed count          : 2
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -5502,6 +5798,10 @@ result (ATTACH REQUEST) = 79
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 3
+    Attach Accept count             : 2
+    Attach Completed count          : 2
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -5520,6 +5820,10 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 2
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5538,6 +5842,10 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5556,6 +5864,10 @@ result (DETACH REQ) = 73
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5574,6 +5886,10 @@ result (DETACH ACC) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 3
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -5592,6 +5908,10 @@ result (ATTACH REQUEST (IMSI)) = 82
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 4
+    Attach Accept count             : 3
+    Attach Completed count          : 3
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -5610,6 +5930,10 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 4
+    Attach Accept count             : 4
+    Attach Completed count          : 3
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5628,6 +5952,10 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 4
+    Attach Accept count             : 4
+    Attach Completed count          : 4
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5646,6 +5974,10 @@ result (DETACH REQ) = 73
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 4
+    Attach Accept count             : 4
+    Attach Completed count          : 4
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5664,6 +5996,10 @@ result (DETACH ACC) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 4
+    Attach Accept count             : 4
+    Attach Completed count          : 4
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -5682,6 +6018,10 @@ result (ATTACH REQUEST) = 79
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 5
+    Attach Accept count             : 4
+    Attach Completed count          : 4
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -5700,6 +6040,10 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 5
+    Attach Accept count             : 5
+    Attach Completed count          : 4
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5718,6 +6062,10 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 5
+    Attach Accept count             : 5
+    Attach Completed count          : 5
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5748,6 +6096,12 @@ result (RA UDP REJ) = 72
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 5
+    Attach Accept count             : 5
+    Attach Completed count          : 5
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -5766,6 +6120,12 @@ result (ATTACH REQUEST) = 0
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 6
+    Attach Accept count             : 5
+    Attach Completed count          : 5
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 2
     TLLI-Cache: 2
       TLLI afe2b700 -> afe2b700, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
@@ -5785,6 +6145,12 @@ result (IDENT RESPONSE) = 0
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 6
+    Attach Accept count             : 5
+    Attach Completed count          : 5
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -5803,6 +6169,12 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 6
+    Attach Accept count             : 6
+    Attach Completed count          : 5
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5821,6 +6193,12 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 6
+    Attach Accept count             : 6
+    Attach Completed count          : 6
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -5839,6 +6217,12 @@ result (DETACH REQ) = 73
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 6
+    Attach Accept count             : 6
+    Attach Completed count          : 6
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5857,6 +6241,12 @@ result (DETACH ACC) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 6
+    Attach Accept count             : 6
+    Attach Completed count          : 6
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -5875,6 +6265,12 @@ result (ATTACH REQUEST (local TLLI)) = 79
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 7
+    Attach Accept count             : 6
+    Attach Completed count          : 6
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5893,6 +6289,12 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 7
+    Attach Accept count             : 7
+    Attach Completed count          : 6
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5911,6 +6313,12 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 7
+    Attach Accept count             : 7
+    Attach Completed count          : 7
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5929,6 +6337,12 @@ result (DETACH REQ (re-attach)) = 73
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 7
+    Attach Accept count             : 7
+    Attach Completed count          : 7
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -5947,6 +6361,12 @@ result (DETACH ACC) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 7
+    Attach Accept count             : 7
+    Attach Completed count          : 7
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -5965,6 +6385,12 @@ result (ATTACH REQUEST) = 79
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 8
+    Attach Accept count             : 7
+    Attach Completed count          : 7
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -5983,6 +6409,12 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 8
+    Attach Accept count             : 8
+    Attach Completed count          : 7
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -6001,6 +6433,12 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 8
+    Attach Accept count             : 8
+    Attach Completed count          : 8
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -6019,6 +6457,12 @@ result (GMM INFO) = 70
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 8
+    Attach Accept count             : 8
+    Attach Completed count          : 8
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -6037,6 +6481,12 @@ result (ATTACH REQUEST (unexpected, IMSI)) = 82
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 9
+    Attach Accept count             : 8
+    Attach Completed count          : 8
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -6055,6 +6505,12 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 9
+    Attach Accept count             : 9
+    Attach Completed count          : 8
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -6073,6 +6529,12 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 9
+    Attach Accept count             : 9
+    Attach Completed count          : 9
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -6091,6 +6553,12 @@ result (DETACH REQ) = 73
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 9
+    Attach Accept count             : 9
+    Attach Completed count          : 9
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -6109,6 +6577,12 @@ result (DETACH ACC) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 9
+    Attach Accept count             : 9
+    Attach Completed count          : 9
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -6127,6 +6601,12 @@ result (ATTACH REQUEST) = 79
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 10
+    Attach Accept count             : 9
+    Attach Completed count          : 9
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -6145,6 +6625,12 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 10
+    Attach Accept count             : 10
+    Attach Completed count          : 9
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -6163,6 +6649,12 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 10
+    Attach Accept count             : 10
+    Attach Completed count          : 10
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -6181,6 +6673,12 @@ result (GMM INFO) = 70
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 10
+    Attach Accept count             : 10
+    Attach Completed count          : 10
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -6199,6 +6697,12 @@ result (ATTACH REQUEST (unexpected)) = 79
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 11
+    Attach Accept count             : 10
+    Attach Completed count          : 10
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -6217,6 +6721,12 @@ result (ATTACH ACCEPT) = 92
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 11
+    Attach Accept count             : 11
+    Attach Completed count          : 10
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -6235,6 +6745,12 @@ result (ATTACH COMPLETE) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 11
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700/efe2b700 -> afe2b700/efe2b700, IMSI 12131415161718, AGE 0
@@ -6253,6 +6769,12 @@ result (DETACH REQ) = 73
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 11
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI efe2b700 -> efe2b700, IMSI 12131415161718, AGE 0
@@ -6271,6 +6793,12 @@ result (DETACH ACC) = 35
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 11
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -6289,6 +6817,12 @@ result (ATTACH REQUEST) = 0
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 12
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
@@ -6307,6 +6841,12 @@ result (IDENT RESPONSE) = 0
 Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 12
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0
@@ -6326,6 +6866,12 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 12
     Attach Reject count             : 1
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
@@ -6345,6 +6891,12 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 13
     Attach Reject count             : 1
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 1
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
@@ -6364,6 +6916,12 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 13
     Attach Reject count             : 1
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 2
+    Detach Accept count             : 1
     TLLI-Cache: 0
 PROCESSING ATTACH REQUEST from 0x01020304:1111
 00 00 10 02 01 af e2 b7 00 00 00 04 08 88 11 22 33 40 50 60 12 34 00 80 0e 00 34 01 c0 99 08 01 02 f5 e0 21 08 02 05 f4 fb c5 46 79 11 22 33 40 50 60 19 18 b3 43 2b 25 96 62 00 60 80 9a c2 c6 62 00 60 80 ba c8 c6 62 00 60 80 00 88 49 82 
@@ -6381,6 +6939,12 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 14
     Attach Reject count             : 1
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 2
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI (none), AGE 0, STORED 1, IMSI acquisition in progress
@@ -6400,6 +6964,12 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 14
     Attach Reject count             : 1
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 2
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI afe2b700 -> afe2b700, IMSI 12131415161718, AGE 0, STORED 1, IMSI acquisition in progress
@@ -6423,6 +6993,12 @@ Peers:
   NSEI 4096, BVCI 4098, not blocked, RAI 112-332-16464-96
     Attach Request count            : 14
     Attach Reject count             : 1
+    Attach Accept count             : 11
+    Attach Completed count          : 11
+    RoutingArea Update Request count: 1
+    RoutingArea Update Reject count : 1
+    Detach Request count            : 2
+    Detach Accept count             : 1
     TLLI cache size                 : 1
     TLLI-Cache: 1
       TLLI 00000000, IMSI 12131415161718, AGE 0, DE-REGISTERED
