@@ -1,3 +1,10 @@
+openbsc (0.15.0+z4) unstable; urgency=medium
+
+  * Based on 98fa3dc1c655033b31d90ed051cfa9144e30248c
+  * Extended GBproxy counters 
+
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Tue, 10 Nov 2015 09:36:55 +0100
+
 openbsc (0.15.0+z3) unstable; urgency=medium
 
   * Based on 292769e19e1ec7ea28b69370f04569501020659f
