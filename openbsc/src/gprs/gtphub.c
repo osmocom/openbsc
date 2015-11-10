@@ -368,43 +368,65 @@ static char imsi_digit_to_char(uint8_t nibble)
 
 /* Return a human readable IMSI string, in a static buffer.
  * imsi must point at 8 octets of IMSI IE encoded IMSI data. */
-static const char *imsi_to_str(uint8_t *imsi)
+static int imsi_to_str(uint8_t *imsi, const char **imsi_str)
 {
 	static char str[17];
 	int i;
+	char c;
 
 	for (i = 0; i < 8; i++) {
-		str[2*i] = imsi_digit_to_char(imsi[i]);
-		str[2*i + 1] = imsi_digit_to_char(imsi[i] >> 4);
+		c = imsi_digit_to_char(imsi[i]);
+		if (c == '?')
+			return -1;
+		str[2*i] = c;
+
+		c = imsi_digit_to_char(imsi[i] >> 4);
+		if (c == '?')
+			return -1;
+		str[2*i + 1] = c;
 	}
 	str[16] = '\0';
-	return str;
+	*imsi_str = str;
+	return 1;
 }
 
-static const char *get_ie_imsi_str(union gtpie_member *ie[], int i)
+/* Return 0 if not present, 1 if present and decoded successfully, -1 if
+ * present but cannot be decoded. */
+static int get_ie_imsi_str(union gtpie_member *ie[], int i, const char **imsi_str)
 {
 	uint8_t imsi_buf[8];
 	if (!get_ie_imsi(ie, i, imsi_buf))
-		return NULL;
-	return imsi_to_str(imsi_buf);
+		return 0;
+	return imsi_to_str(imsi_buf, imsi_str);
 }
 
-static const char *get_ie_apn_str(union gtpie_member *ie[])
+/* Return 0 if not present, 1 if present and decoded successfully, -1 if
+ * present but cannot be decoded. */
+static int get_ie_apn_str(union gtpie_member *ie[], const char **apn_str)
 {
 	static char apn_buf[GSM_APN_LENGTH];
 	unsigned int len;
 	if (gtpie_gettlv(ie, GTPIE_APN, 0,
 			 &len, apn_buf, sizeof(apn_buf)) != 0)
-		return NULL;
+		return 0;
 
-	if (!len)
-		return NULL;
+	if (len < 2) {
+		LOGERR("APN IE: invalid length: %d\n",
+		       (int)len);
+		return -1;
+	}
 
 	if (len > (sizeof(apn_buf) - 1))
 		len = sizeof(apn_buf) - 1;
 	apn_buf[len] = '\0';
 
-	return  gprs_apn_to_str(apn_buf, (uint8_t*)apn_buf, len);
+	*apn_str = gprs_apn_to_str(apn_buf, (uint8_t*)apn_buf, len);
+	if (!(*apn_str)) {
+		LOGERR("APN IE: present but cannot be decoded: %s\n",
+		       osmo_hexdump((uint8_t*)apn_buf, len));
+		return -1;
+	}
+	return 1;
 }
 
 
@@ -445,8 +467,8 @@ static void gtp_decode(const uint8_t *data, int data_len,
 	int i;
 
 	for (i = 0; i < 10; i++) {
-		const char *imsi = get_ie_imsi_str(res->ie, i);
-		if (!imsi)
+		const char *imsi;
+		if (get_ie_imsi_str(res->ie, i, &imsi) < 1)
 			break;
 		LOG("| IMSI %s\n", imsi);
 	}
@@ -678,8 +700,9 @@ static void gtphub_peer_port_del(struct gtphub_peer_port *pp)
 
 /* From the information in the gtp_packet_desc, return the address of a GGSN.
  * Return -1 on error. */
-static struct gtphub_peer_port *gtphub_resolve_ggsn(struct gtphub *hub,
-						    struct gtp_packet_desc *p);
+static int gtphub_resolve_ggsn(struct gtphub *hub,
+			       struct gtp_packet_desc *p,
+			       struct gtphub_peer_port **pp);
 
 /* See gtphub_ext.c (wrapped by unit test) */
 struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
@@ -1572,7 +1595,8 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	/* See what our GGSN guess would be from the packet data per se. */
 	/* TODO maybe not do this always? */
 	struct gtphub_peer_port *ggsn_from_packet;
-	ggsn_from_packet = gtphub_resolve_ggsn(hub, &p);
+	if (gtphub_resolve_ggsn(hub, &p, &ggsn_from_packet) < 0)
+		return -1;
 
 	if (ggsn_from_packet && ggsn
 	    && (ggsn_from_packet != ggsn)) {
@@ -1998,12 +2022,32 @@ struct gtphub_peer_port *gtphub_port_have(struct gtphub *hub,
 	return gtphub_addr_add_port(a, port);
 }
 
-static struct gtphub_peer_port *gtphub_resolve_ggsn(struct gtphub *hub,
-						    struct gtp_packet_desc *p)
+/* Return 0 if the message in p is not applicable for GGSN resolution, -1 if
+ * resolution should be possible but failed, and 1 if resolution was
+ * successful. *pp will be set to NULL if <1 is returned. */
+static int gtphub_resolve_ggsn(struct gtphub *hub,
+			       struct gtp_packet_desc *p,
+			       struct gtphub_peer_port **pp)
 {
-	return gtphub_resolve_ggsn_addr(hub,
-					get_ie_imsi_str(p->ie, 0),
-					get_ie_apn_str(p->ie));
+	*pp = NULL;
+
+	/* TODO determine from message type whether IEs should be present? */
+
+	int rc;
+	const char *imsi_str;
+	rc = get_ie_imsi_str(p->ie, 0, &imsi_str);
+	if (rc < 1)
+		return rc;
+	OSMO_ASSERT(imsi_str);
+
+	const char *apn_str;
+	rc = get_ie_apn_str(p->ie, &apn_str);
+	if (rc < 1)
+		return rc;
+	OSMO_ASSERT(apn_str);
+
+	*pp = gtphub_resolve_ggsn_addr(hub, imsi_str, apn_str);
+	return (*pp)? 1 : -1;
 }
 
 

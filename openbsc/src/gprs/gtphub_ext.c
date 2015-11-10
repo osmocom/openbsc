@@ -139,7 +139,13 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 						  const char *imsi_str,
 						  const char *apn_ni_str)
 {
+	LOGP(DGTPHUB, LOGL_NOTICE, "Request to resolve IMSI '%s' with APN-NI '%s'\n",
+	     imsi_str, apn_ni_str);
+	OSMO_ASSERT(imsi_str);
+	OSMO_ASSERT(apn_ni_str);
+
 	struct ggsn_lookup *lookup = talloc_zero(osmo_gtphub_ctx, struct ggsn_lookup);
+	OSMO_ASSERT(lookup);
 
 	lookup->hub = hub;
 
