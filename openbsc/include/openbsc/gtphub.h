@@ -155,6 +155,10 @@ const char *gsn_addr_to_strb(const struct gsn_addr *gsna,
 /* Return 1 on match, zero otherwise. */
 int gsn_addr_same(const struct gsn_addr *a, const struct gsn_addr *b);
 
+/* Decode sa to gsna. Return 0 on success. If port is non-NULL, the port number
+ * from sa is also returned. */
+int gsn_addr_from_sockaddr(struct gsn_addr *gsna, uint16_t *port,
+			   const struct osmo_sockaddr *sa);
 
 /* expiry */
 

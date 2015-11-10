@@ -37,6 +37,16 @@
 
 #define EXPIRE_ALL ((60 * GTPH_TEI_MAPPING_EXPIRY_MINUTES) + 1)
 
+#define ZERO_STRUCT(struct_pointer) memset(struct_pointer, '\0', sizeof(*(struct_pointer)))
+
+#define LVL2_ASSERT(exp) LVL2_ASSERT_R(exp, return 0)
+#define LVL2_ASSERT_R(exp, ret)    \
+	if (!(exp)) { \
+		fprintf(stderr, "LVL2 Assert failed %s %s:%d\n", #exp, __FILE__, __LINE__); \
+		osmo_generate_backtrace(); \
+		ret; \
+	}
+
 void gtphub_init(struct gtphub *hub);
 
 void *osmo_gtphub_ctx;
@@ -323,6 +333,27 @@ static void test_expiry(void)
 #undef MAP3
 }
 
+char resolve_ggsn_got_imsi[GSM_IMSI_LENGTH];
+char resolve_ggsn_got_ni[GSM_APN_LENGTH];
+
+struct osmo_sockaddr resolved_ggsn_addr;
+static int resolve_to_ggsn(const char *addr, uint16_t port)
+{
+	LVL2_ASSERT(osmo_sockaddr_init_udp(&resolved_ggsn_addr,
+					   addr, port)
+		    == 0);
+	return 1;
+}
+
+struct osmo_sockaddr sgsn_sender;
+static int send_from_sgsn(const char *addr, uint16_t port)
+{
+	LVL2_ASSERT(osmo_sockaddr_init_udp(&sgsn_sender,
+					   addr, port)
+		    == 0);
+	return 1;
+}
+
 
 
 /* override, requires '-Wl,--wrap=gtphub_resolve_ggsn_addr' */
@@ -330,17 +361,19 @@ struct gtphub_peer_port *__real_gtphub_resolve_ggsn_addr(struct gtphub *hub,
 							 const char *imsi_str,
 							 const char *apn_ni_str);
 
-struct gsn_addr resolved_ggsn_addr = { 0 };
-uint16_t resolved_ggsn_port = 2123;
-char resolve_ggsn_got_imsi[256];
-char resolve_ggsn_got_ni[256];
 struct gtphub_peer_port *__wrap_gtphub_resolve_ggsn_addr(struct gtphub *hub,
 							 const char *imsi_str,
 							 const char *apn_ni_str)
 {
+	struct gsn_addr resolved_gsna;
+	uint16_t resolved_port;
+
+	OSMO_ASSERT(gsn_addr_from_sockaddr(&resolved_gsna, &resolved_port,
+					   &resolved_ggsn_addr) == 0);
+
 	struct gtphub_peer_port *pp;
 	pp = gtphub_port_have(hub, &hub->to_ggsns[GTPH_PLANE_CTRL],
-			      &resolved_ggsn_addr, resolved_ggsn_port);
+			      &resolved_gsna, resolved_port);
 	printf("Wrap: returning GGSN addr from imsi %s ni %s: %s\n",
 	       imsi_str, apn_ni_str, gtphub_port_str(pp));
 
@@ -460,14 +493,42 @@ static int _same_addr(const struct osmo_sockaddr *got,
 	return 0;
 }
 
-static void test_echo(void)
+
+time_t now;
+static struct gtphub _hub;
+static struct gtphub *hub = &_hub;
+
+static int setup_test_hub()
 {
-	struct gtphub _hub;
-	struct gtphub *hub = &_hub;
-	time_t now = 123;
+	/* Not really needed, but to make 100% sure... */
+	ZERO_STRUCT(hub);
 
 	gtphub_init(hub);
+
+	/* Tell this mock gtphub its local address for this test. */
+	LVL2_ASSERT(gsn_addr_from_str(&hub->to_sgsns[GTPH_PLANE_CTRL].local_addr,
+				      "127.0.1.1") == 0);
+	LVL2_ASSERT(gsn_addr_from_str(&hub->to_sgsns[GTPH_PLANE_USER].local_addr,
+				      "127.0.1.2") == 0);
+	LVL2_ASSERT(gsn_addr_from_str(&hub->to_ggsns[GTPH_PLANE_CTRL].local_addr,
+				      "127.0.2.1") == 0);
+	LVL2_ASSERT(gsn_addr_from_str(&hub->to_ggsns[GTPH_PLANE_USER].local_addr,
+				      "127.0.2.2") == 0);
+
 	hub->restart_counter = 0x23;
+	now = 345;
+	LVL2_ASSERT(send_from_sgsn("192.168.42.23", 423));
+	LVL2_ASSERT(resolve_to_ggsn("192.168.43.34", 434));
+
+	return 1;
+}
+
+
+static void test_echo(void)
+{
+	OSMO_ASSERT(setup_test_hub());
+
+	now = 123;
 
 	const char *gtp_ping_from_sgsn =
 		"32"	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */
@@ -488,23 +549,20 @@ static void test_echo(void)
 		"0e23"	/* Recovery with restart counter */
 		;
 
-	struct osmo_sockaddr orig_sgsn_addr;
-	OSMO_ASSERT(osmo_sockaddr_init_udp(&orig_sgsn_addr,
-					   "192.168.42.23", 423) == 0);
 	struct osmo_fd *ggsn_ofd = NULL;
 	struct osmo_sockaddr to_addr;
 	int send;
-	send = gtphub_from_sgsns_handle_buf(hub, GTPH_PLANE_CTRL, &orig_sgsn_addr,
+	send = gtphub_from_sgsns_handle_buf(hub, GTPH_PLANE_CTRL, &sgsn_sender,
 					    buf, msg(gtp_ping_from_sgsn), now,
 					    &reply_buf, &ggsn_ofd, &to_addr);
 	OSMO_ASSERT(send > 0);
 	OSMO_ASSERT(to_addr.l);
-	OSMO_ASSERT(same_addr(&to_addr, &orig_sgsn_addr));
+	OSMO_ASSERT(same_addr(&to_addr, &sgsn_sender));
 	OSMO_ASSERT(reply_is(gtp_pong_to_sgsn));
 
 	struct gtphub_peer_port *sgsn_port =
 		gtphub_port_find_sa(&hub->to_sgsns[GTPH_PLANE_CTRL],
-				    &orig_sgsn_addr);
+				    &sgsn_sender);
 	/* We don't record Echo peers. */
 	OSMO_ASSERT(!sgsn_port);
 
@@ -540,187 +598,194 @@ static void test_echo(void)
 
 	struct gtphub_peer_port *ggsn_port =
 		gtphub_port_find_sa(&hub->to_ggsns[GTPH_PLANE_CTRL],
-				    &orig_sgsn_addr);
+				    &sgsn_sender);
 	/* We don't record Echo peers. */
 	OSMO_ASSERT(!ggsn_port);
 
-	gtphub_gc(hub, now + EXPIRE_ALL);
+	now += EXPIRE_ALL;
+	gtphub_gc(hub, now);
+}
+
+
+#define MSG_PDP_CTX_REQ(len, seq, restart, imsi, tei_u, tei_c, apn, gsn_c, gsn_u) \
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"10" 	/* type 16: Create PDP Context Request */ \
+		len	/* msg length = 8 + len (2 octets) */ \
+		"00000000" /* No TEI yet */ \
+		seq	/* Sequence nr (2 octets) */ \
+		"00"	/* N-PDU 0 */ \
+		"00"	/* No extensions */ \
+		/* IEs */ \
+		"0e" restart /* 14: Recovery = 96 (restart counter: 1 octet) */ \
+		"02"	/* 2 = IMSI */ \
+		  imsi	/* (8 octets) */ \
+		"0f01"	/* 15: Selection mode = MS provided APN, subscription not verified*/ \
+		"10"	/* 16: TEI Data I */ \
+		  tei_u	/* (4 octets) */ \
+		"11"	/* 17: TEI Control Plane */ \
+		  tei_c	/* (4 octets) */ \
+		"1400"	/* 20: NSAPI = 0*/ \
+		"1a"	/* 26: Charging Characteristics */ \
+		  "0800" \
+		"80"	/* 128: End User Address */ \
+		  "0002" /* length = 2: empty PDP Address */ \
+		  "f121" /* spare 0xf0, PDP organization 1, PDP type number 0x21 = 33 */ \
+		"83"	/* 131: Access Point Name */ \
+                  apn	/* (2 octets length, N octets encoded APN-NI) */ \
+		"84"	/* 132: Protocol Configuration Options */ \
+		  "0015" /* length = 21 */ \
+		  "80c0231101010011036d69670868656d6d656c6967" \
+		"85"	/* 133: GSN Address */ \
+		  gsn_c /* (2 octets length, N octets addr) */ \
+		"85"	/* 133: GSN Address (second entry) */ \
+		  gsn_u /* (2 octets length, N octets addr) */ \
+		"86"	/* 134: MS International PSTN/ISDN Number (MSISDN) */ \
+		  "0007" /* length */ \
+		  "916407123254f6" /* 1946702123456(f) */ \
+		"87"	/* 135: Quality of Service (QoS) Profile */ \
+		  "0004" /* length */ \
+		  "00"	/* priority */ \
+		  "0b921f" /* QoS profile data */ 
+
+#define MSG_PDP_CTX_RSP(len, tei_h, seq, restart, tei_u, tei_c, gsn_c, gsn_u) \
+		"32" \
+		"11"	/* Create PDP Context Response */ \
+		len	/* msg length = 8 + len (2 octets) */ \
+		tei_h	/* destination TEI (sent in req above) */ \
+		seq	/* mapped seq */ \
+		"00" "00" \
+		/* IEs */ \
+		"01"	/* 1: Cause */ \
+		  "80"	/* value = 0b10000000 = response, no rejection. */ \
+		"08"	/* 8: Reordering Required */ \
+		  "00"	/* not required. */ \
+		"0e" restart /* 14: Recovery = 1 */ \
+		"10"	/* 16: TEI Data I */ \
+		  tei_u \
+		"11"	/* 17: TEI Control */ \
+		  tei_c \
+		"7f"	/* 127: Charging ID */ \
+		  "00000001" \
+		"80"	/* 128: End User Address */ \
+		  "0006" /* length = 6 */ \
+		  "f121" /* spare 0xf0, PDP organization 1, PDP type number 0x21 = 33 */ \
+		  "7f000002" \
+		"84"	/* 132: Protocol Configuration Options */ \
+		  "0014" /* len = 20 */ \
+		  "8080211002000010810608080808830600000000" \
+		"85"	/* 133: GSN Address (Ctrl) */ \
+		  gsn_c \
+		"85"	/* 133: GSN Address (User) */ \
+		  gsn_u \
+		"87"	/* 135: Quality of Service (QoS) Profile */ \
+		  "0004" /* length */ \
+		  "00"	/* priority */ \
+		  "0b921f" /* QoS profile data */
+
+#define msg_from_sgsn_c(A,B,C,D) msg_from_sgsn(GTPH_PLANE_CTRL, A,B,C,D)
+#define msg_from_sgsn_u(A,B,C,D) msg_from_sgsn(GTPH_PLANE_USER, A,B,C,D)
+static int msg_from_sgsn(int plane_idx,
+			 struct osmo_sockaddr *_sgsn_sender,
+			 struct osmo_sockaddr *ggsn_receiver,
+			 const char *hex_from_sgsn,
+			 const char *hex_to_ggsn)
+{
+	struct osmo_fd *ggsn_ofd = NULL;
+	struct osmo_sockaddr ggsn_addr;
+	int send;
+	send = gtphub_from_sgsns_handle_buf(hub, plane_idx, _sgsn_sender, buf,
+					    msg(hex_from_sgsn), now,
+					    &reply_buf, &ggsn_ofd, &ggsn_addr);
+	LVL2_ASSERT(send > 0);
+	LVL2_ASSERT(same_addr(&ggsn_addr, ggsn_receiver));
+	LVL2_ASSERT(reply_is(hex_to_ggsn));
+	return 1;
+}
+
+#define msg_from_ggsn_c(A,B,C,D) msg_from_ggsn(GTPH_PLANE_CTRL, A,B,C,D)
+#define msg_from_ggsn_u(A,B,C,D) msg_from_ggsn(GTPH_PLANE_USER, A,B,C,D)
+static int msg_from_ggsn(int plane_idx,
+			 struct osmo_sockaddr *ggsn_sender,
+			 struct osmo_sockaddr *sgsn_receiver,
+			 const char *msg_from_ggsn,
+			 const char *msg_to_sgsn)
+{
+	struct osmo_fd *sgsn_ofd;
+	struct osmo_sockaddr sgsn_addr;
+	int send;
+	send = gtphub_from_ggsns_handle_buf(hub, plane_idx, ggsn_sender, buf,
+					    msg(msg_from_ggsn), now,
+					    &reply_buf, &sgsn_ofd, &sgsn_addr);
+	LVL2_ASSERT(send > 0);
+	LVL2_ASSERT(same_addr(&sgsn_addr, sgsn_receiver));
+	LVL2_ASSERT(reply_is(msg_to_sgsn));
+	return 1;
+}
+
+static int create_pdp_ctx()
+{
+	const char *gtp_req_from_sgsn = MSG_PDP_CTX_REQ("0068",
+							"abcd",
+							"60",
+							"42000121436587f9",
+							"00000123",
+							"00000321",
+							"0009""08696e7465726e6574", /* "(8)internet" */
+							"0004""c0a82a17", /* same as default sgsn_sender */
+							"0004""c0a82a17"
+						       );
+	const char *gtp_req_to_ggsn = MSG_PDP_CTX_REQ("0068",
+						      "6d31",	/* mapped seq ("abcd") */
+						      "60",
+						      "42000121436587f9",
+						      "00000001", /* mapped TEI Data I ("123") */
+						      "00000001", /* mapped TEI Control ("321") */
+						      "0009""08696e7465726e6574",
+						      "0004""7f000201", /* replaced with gtphub's address ggsn ctrl */
+						      "0004""7f000202" /* replaced with gtphub's address ggsn user */
+						     );
+
+	LVL2_ASSERT(msg_from_sgsn_c(&sgsn_sender,
+				    &resolved_ggsn_addr,
+				    gtp_req_from_sgsn,
+				    gtp_req_to_ggsn));
+	LVL2_ASSERT(was_resolved_for("240010123456789", "internet"));
+
+	const char *gtp_resp_from_ggsn = MSG_PDP_CTX_RSP("004e",
+							 "00000001", /* destination TEI (sent in req above) */
+							 "6d31", /* mapped seq */
+							 "01", /* restart */
+							 "00000567", /* TEI U */
+							 "00000765", /* TEI C */
+							 "0004""c0a82b22", /* GSN addresses */
+							 "0004""c0a82b22"  /* (== resolved_ggsn_addr) */
+							);
+	const char *gtp_resp_to_sgsn = MSG_PDP_CTX_RSP("004e",
+						       "00000321", /* unmapped TEI ("001") */
+						       "abcd", /* unmapped seq ("6d31") */
+						       "01",
+						       "00000002", /* mapped TEI from GGSN ("567") */
+						       "00000002", /* mapped TEI from GGSN ("765") */
+						       "0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
+						       "0004""7f000102" /* gtphub's address towards SGSNs (User) */
+						      );
+	LVL2_ASSERT(msg_from_ggsn_c(&resolved_ggsn_addr,
+				    &sgsn_sender,
+				    gtp_resp_from_ggsn,
+				    gtp_resp_to_sgsn));
+
+	return 1;
 }
 
 static void test_create_pdp_ctx(void)
 {
-	struct gtphub _hub;
-	struct gtphub *hub = &_hub;
-	time_t now = 345;
+	OSMO_ASSERT(setup_test_hub());
 
-	gtphub_init(hub);
-
-	/* Tell this mock gtphub its local address for this test. */
-	OSMO_ASSERT(gsn_addr_from_str(&hub->to_sgsns[GTPH_PLANE_CTRL].local_addr,
-				      "127.0.1.1") == 0);
-	OSMO_ASSERT(gsn_addr_from_str(&hub->to_sgsns[GTPH_PLANE_USER].local_addr,
-				      "127.0.1.2") == 0);
-	OSMO_ASSERT(gsn_addr_from_str(&hub->to_ggsns[GTPH_PLANE_CTRL].local_addr,
-				      "127.0.2.1") == 0);
-	OSMO_ASSERT(gsn_addr_from_str(&hub->to_ggsns[GTPH_PLANE_USER].local_addr,
-				      "127.0.2.2") == 0);
-
-	/* This is copied from a packet that sgsnemu sends. */
-	const char *gtp_req_from_sgsn =
-		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */
-		"10" 	/* type 16: Create PDP Context Request */
-		"0068"	/* length = 8 + 104 */
-		"00000000" /* No TEI yet */
-		"abcd"	/* Sequence nr */
-		"00"	/* N-PDU 0 */
-		"00"	/* No extensions */
-		/* IEs */
-		"02"	/* 2 = IMSI */
-		  "42000121436587f9"
-		"0e" "60" /* 14: Recovery = 96 */
-		"0f01"	/* 15: Selection mode = MS provided APN, subscription not verified*/
-		"10"	/* 16: TEI Data I */
-		  "00000123"
-		"11"	/* 17: TEI Control Plane */
-		  "00000321"
-		"1400"	/* 20: NSAPI = 0*/
-		"1a"	/* 26: Charging Characteristics */
-		  "0800"
-		"80"	/* 128: End User Address */
-		  "0002" /* length = 2: empty PDP Address */
-		  "f121" /* spare 0xf0, PDP organization 1, PDP type number 0x21 = 33 */
-		"83"	/* 131: Access Point Name */
-		  "0009" /* length */
-		  "08696e7465726e6574" /* "internet" */
-		"84"	/* 132: Protocol Configuration Options */
-		  "0015" /* length = 21 */
-		  "80c0231101010011036d69670868656d6d656c6967"
-		"85"	/* 133: GSN Address */
-		  "0004" /* length */
-		  "abcdef00"
-		"85"	/* 133: GSN Address (second entry) */
-		  "0004" /* length */
-		  "fedcba00"
-		"86"	/* 134: MS International PSTN/ISDN Number (MSISDN) */
-		  "0007" /* length */
-		  "916407123254f6" /* 1946702123456(f) */
-		"87"	/* 135: Quality of Service (QoS) Profile */
-		  "0004" /* length */
-		  "00"	/* priority */
-		  "0b921f" /* QoS profile data */
-		;
-
-	const char *gtp_req_to_ggsn =
-		"32" "10" "0068" "00000000"
-		"6d31"	/* mapped seq ("abcd") */
-		"00" "00" "02" "42000121436587f9" "0e60" "0f01"
-		"10" "00000001" /* mapped TEI Data I ("123") */
-		"11" "00000001" /* mapped TEI Control ("321") */
-		"1400" "1a" "0800" "80" "0002" "f121" "83"
-		"0009" "08696e7465726e6574" "84" "0015"
-		"80c0231101010011036d69670868656d6d656c6967" "85" "0004"
-		"7f000201" /* replaced with gtphub's address ggsn ctrl */
-		"85" "0004"
-		"7f000202" /* replaced with gtphub's address ggsn user */
-		"86" "0007" "916407123254f6"
-		"87" "0004" "00" "0b921f"
-		;
-
-	const char *gtp_resp_from_ggsn =
-		"32"
-		"11"	/* Create PDP Context Response */
-		"004e"	/* length = 78 + 8 */
-		"00000001" /* destination TEI (sent in req above) */
-		"6d31"	/* mapped seq */
-		"00" "00"
-		/* IEs */
-		"01"	/* 1: Cause */
-		  "80"	/* value = 0b10000000 = response, no rejection. */
-		"08"	/* 8: Reordering Required */
-		  "00"	/* not required. */
-		"0e" "01" /* 14: Recovery = 1 */
-		"10"	/* 16: TEI Data I */
-		  "00000567"
-		"11"	/* 17: TEI Control */
-		  "00000765"
-		"7f"	/* 127: Charging ID */
-		  "00000001"
-		"80"	/* 128: End User Address */
-		  "0006" /* length = 6 */
-		  "f121" /* spare 0xf0, PDP organization 1, PDP type number 0x21 = 33 */
-		  "7f000002"
-		"84"	/* 132: Protocol Configuration Options */
-		  "0014" /* len = 20 */
-		  "8080211002000010810608080808830600000000"
-		"85"	/* 133: GSN Address (Ctrl) */
-		  "0004" /* length */
-		  "7f000002"
-		"85"	/* 133: GSN Address (User) */
-		  "0004" /* length */
-		  "7f000002"
-		"87"	/* 135: Quality of Service (QoS) Profile */
-		  "0004" /* length */
-		  "00"	/* priority */
-		  "0b921f" /* QoS profile data */
-		;
-
-	const char *gtp_resp_to_sgsn =
-		"32" "11" "004e"
-		"00000321" /* unmapped TEI ("001") */
-		"abcd" /* unmapped seq ("6d31") */
-		"00" "00" "01" "80" "08" "00" "0e" "01"
-		"10" "00000002" /* mapped TEI from GGSN ("567") */
-		"11" "00000002" /* mapped TEI from GGSN ("765") */
-		"7f" "00000001" "80" "0006" "f121" "7f000002" "84" "0014"
-		"8080211002000010810608080808830600000000"
-		"85" "0004"
-		  "7f000101" /* gtphub's address towards SGSNs (Ctrl) */
-		"85" "0004"
-		  "7f000102" /* gtphub's address towards SGSNs (User) */
-		"87" "0004" "00" "0b921f"
-		;
-
-	/* Set the GGSN address that gtphub is forced to resolve to. */
-	const char *resolved_ggsn_str = "192.168.43.34";
-	resolved_ggsn_port = 434;
-	OSMO_ASSERT(gsn_addr_from_str(&resolved_ggsn_addr, resolved_ggsn_str)
-		    == 0);
-
-	/* A sockaddr for comparing later */
-	struct osmo_sockaddr resolved_ggsn_sa;
-	OSMO_ASSERT(osmo_sockaddr_init_udp(&resolved_ggsn_sa,
-					   resolved_ggsn_str,
-					   resolved_ggsn_port)
-		    == 0);
-
-	struct osmo_sockaddr orig_sgsn_addr;
-	OSMO_ASSERT(osmo_sockaddr_init(&orig_sgsn_addr,
-				       AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
-				       "192.168.42.23", 423) == 0);
-
-	struct osmo_fd *ggsn_ofd = NULL;
-	struct osmo_sockaddr ggsn_addr;
-	int send;
-	send = gtphub_from_sgsns_handle_buf(hub, GTPH_PLANE_CTRL, &orig_sgsn_addr,
-					    buf, msg(gtp_req_from_sgsn), now,
-					    &reply_buf, &ggsn_ofd, &ggsn_addr);
-	OSMO_ASSERT(send > 0);
-	OSMO_ASSERT(same_addr(&ggsn_addr, &resolved_ggsn_sa));
-	OSMO_ASSERT(reply_is(gtp_req_to_ggsn));
-	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
-
-	struct osmo_fd *sgsn_ofd;
-	struct osmo_sockaddr sgsn_addr;
-	send = gtphub_from_ggsns_handle_buf(hub, GTPH_PLANE_CTRL, &ggsn_addr,
-					    buf, msg(gtp_resp_from_ggsn), now,
-					    &reply_buf, &sgsn_ofd, &sgsn_addr);
-	OSMO_ASSERT(send > 0);
-	OSMO_ASSERT(same_addr(&sgsn_addr, &orig_sgsn_addr));
-	OSMO_ASSERT(reply_is(gtp_resp_to_sgsn));
+	OSMO_ASSERT(create_pdp_ctx());
 
 	struct gtphub_peer_port *ggsn_port =
 		gtphub_port_find_sa(&hub->to_ggsns[GTPH_PLANE_CTRL],
-				    &resolved_ggsn_sa);
+				    &resolved_ggsn_addr);
 	OSMO_ASSERT(ggsn_port);
 	struct gtphub_peer *ggsn = ggsn_port->peer_addr->peer;
 	/* now == 345; now + 30 == 375.

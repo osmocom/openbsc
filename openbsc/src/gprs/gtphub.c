@@ -91,8 +91,6 @@ void gsn_addr_copy(struct gsn_addr *gsna, const struct gsn_addr *src)
 	memcpy(gsna, src, sizeof(struct gsn_addr));
 }
 
-/* Decode sa to gsna. Return 0 on success. If port is non-NULL, the port number
- * from sa is also returned. */
 int gsn_addr_from_sockaddr(struct gsn_addr *gsna, uint16_t *port,
 			   const struct osmo_sockaddr *sa)
 {
