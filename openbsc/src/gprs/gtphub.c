@@ -66,7 +66,8 @@ typedef int (*osmo_fd_cb_t)(struct osmo_fd *fd, unsigned int what);
 enum gtp_rc {
 	GTP_RC_UNKNOWN = 0,
 	GTP_RC_TINY = 1,    /* no IEs (like ping/pong) */
-	GTP_RC_PDU = 2,     /* a real packet with IEs */
+	GTP_RC_PDU_C = 2,     /* a real packet with IEs */
+	GTP_RC_PDU_U = 3,     /* a real packet with User data */
 
 	GTP_RC_TOOSHORT = -1,
 	GTP_RC_UNSUPPORTED_VERSION = -2,
@@ -176,7 +177,7 @@ int gsn_addr_same(const struct gsn_addr *a, const struct gsn_addr *b)
 
 static int gsn_addr_get(struct gsn_addr *gsna, const struct gtp_packet_desc *p, int idx)
 {
-	if (p->rc != GTP_RC_PDU)
+	if (p->rc != GTP_RC_PDU_C)
 		return -1;
 
 	unsigned int len;
@@ -191,7 +192,7 @@ static int gsn_addr_get(struct gsn_addr *gsna, const struct gtp_packet_desc *p, 
 
 static int gsn_addr_put(const struct gsn_addr *gsna, struct gtp_packet_desc *p, int idx)
 {
-	if (p->rc != GTP_RC_PDU)
+	if (p->rc != GTP_RC_PDU_C)
 		return -1;
 
 	int ie_idx;
@@ -251,7 +252,7 @@ void validate_gtp0_header(struct gtp_packet_desc *p)
 
 	LOG("GTP v0 TID = %" PRIu64 "\n", pheader->tid);
 	p->header_len = GTP0_HEADER_SIZE;
-	p->rc = GTP_RC_PDU;
+	p->rc = GTP_RC_PDU_C;
 }
 
 /* Validate GTP version 1 data, and update p->rc with the result, as well as
@@ -306,7 +307,7 @@ void validate_gtp1_header(struct gtp_packet_desc *p)
 		return;
 	}
 
-	p->rc = GTP_RC_PDU;
+	p->rc = GTP_RC_PDU_C;
 	p->header_len = GTP1_HEADER_SIZE_LONG;
 }
 
@@ -449,7 +450,12 @@ static void gtp_decode(const uint8_t *data, int data_len,
 
 	LOG("Valid GTP header (v%d)\n", res->version);
 
-	if (res->rc != GTP_RC_PDU) {
+	if (from_plane_idx == GTPH_PLANE_USER) {
+		res->rc = GTP_RC_PDU_U;
+		return;
+	}
+
+	if (res->rc != GTP_RC_PDU_C) {
 		LOG("no IEs in this GTP packet\n");
 		return;
 	}
@@ -458,6 +464,7 @@ static void gtp_decode(const uint8_t *data, int data_len,
 			 (void*)(data + res->header_len),
 			 res->data_len - res->header_len) != 0) {
 		res->rc = GTP_RC_INVALID_IE;
+		LOGERR("INVALID: cannot decode IEs. Dropping GTP packet.\n");
 		return;
 	}
 
@@ -707,10 +714,6 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 						  const char *imsi_str,
 						  const char *apn_ni_str);
 int gtphub_ares_init(struct gtphub *hub);
-
-static struct gtphub_peer_port *gtphub_port_find(const struct gtphub_bind *bind,
-						 const struct gsn_addr *addr,
-						 uint16_t port);
 
 static void gtphub_zero(struct gtphub *hub)
 {
@@ -1377,7 +1380,9 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr)
 {
-	LOG("<- rx from GGSN %s\n", osmo_sockaddr_to_str(from_addr));
+	LOG("<- rx %s from GGSN %s\n",
+	    gtphub_plane_idx_names[plane_idx],
+	    osmo_sockaddr_to_str(from_addr));
 
 	static struct gtp_packet_desc p;
 	gtp_decode(buf, received, plane_idx, &p);
@@ -1421,7 +1426,8 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	 * this GGSN. If we don't have an entry, the GGSN has nothing to tell
 	 * us about. */
 	if (!ggsn) {
-		LOGERR("Invalid GGSN peer. Dropping packet.\n");
+		LOGERR("Dropping packet: unknown GGSN peer: %s\n",
+		       osmo_sockaddr_to_str(from_addr));
 		return -1;
 	}
 
@@ -1466,6 +1472,9 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	osmo_sockaddr_copy(to_addr, &sgsn->sa);
 
 	*reply_buf = (uint8_t*)p.data;
+
+	LOG("<-- Forward to SGSN: %d bytes to %s\n",
+	    (int)received, osmo_sockaddr_to_str(to_addr));
 	return received;
 }
 
@@ -1511,7 +1520,9 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr)
 {
-	LOG("-> rx from SGSN %s\n", osmo_sockaddr_to_str(from_addr));
+	LOG("-> rx %s from SGSN %s\n",
+	    gtphub_plane_idx_names[plane_idx],
+	    osmo_sockaddr_to_str(from_addr));
 
 	static struct gtp_packet_desc p;
 	gtp_decode(buf, received, plane_idx, &p);
@@ -1574,7 +1585,8 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 
 	if (!sgsn) {
 		/* This could theoretically happen for invalid address data or somesuch. */
-		LOGERR("Invalid SGSN peer. Dropping packet.\n");
+		LOGERR("Dropping packet: invalid SGSN peer: %s\n",
+		       osmo_sockaddr_to_str(from_addr));
 		return -1;
 	}
 	LOG("SGSN peer: %s\n", gtphub_port_str(sgsn));
@@ -1635,6 +1647,9 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	osmo_sockaddr_copy(to_addr, &ggsn->sa);
 
 	*reply_buf = (uint8_t*)p.data;
+
+	LOG("--> Forward to GGSN: %d bytes to %s\n",
+	    (int)received, osmo_sockaddr_to_str(to_addr));
 	return received;
 }
 
@@ -1979,7 +1994,13 @@ static struct gtphub_peer_addr *gtphub_addr_have(struct gtphub *hub,
 	 * entirely new peer for the new address. More addresses may be added
 	 * to this peer later, but not via this function. */
 	struct gtphub_peer *peer = gtphub_peer_new(hub, bind);
-	return gtphub_peer_add_addr(peer, addr);
+
+	a = gtphub_peer_add_addr(peer, addr);
+	
+	LOG("New peer address: %s\n",
+	    gsn_addr_to_str(&a->addr));
+
+	return a;
 }
 
 static struct gtphub_peer_port *gtphub_addr_add_port(struct gtphub_peer_addr *a,
@@ -1999,7 +2020,7 @@ static struct gtphub_peer_port *gtphub_addr_add_port(struct gtphub_peer_addr *a,
 
 	llist_add(&pp->entry, &a->ports);
 
-	LOG("New peer: %s port %d\n",
+	LOG("New peer port: %s port %d\n",
 	    gsn_addr_to_str(&a->addr),
 	    (int)port);
 

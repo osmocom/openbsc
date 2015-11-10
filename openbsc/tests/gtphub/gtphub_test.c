@@ -47,6 +47,11 @@
 		ret; \
 	}
 
+/* Convenience makro, note: only within this C file. */
+#define LOG(label) \
+	{ LOGP(DGTPHUB, LOGL_NOTICE, "\n\n" label "\n"); \
+	  printf(label "\n"); }
+
 void gtphub_init(struct gtphub *hub);
 
 void *osmo_gtphub_ctx;
@@ -345,6 +350,15 @@ static int resolve_to_ggsn(const char *addr, uint16_t port)
 	return 1;
 }
 
+struct osmo_sockaddr resolved_sgsn_addr;
+static int resolve_to_sgsn(const char *addr, uint16_t port)
+{
+	LVL2_ASSERT(osmo_sockaddr_init_udp(&resolved_sgsn_addr,
+					   addr, port)
+		    == 0);
+	return 1;
+}
+
 struct osmo_sockaddr sgsn_sender;
 static int send_from_sgsn(const char *addr, uint16_t port)
 {
@@ -354,6 +368,14 @@ static int send_from_sgsn(const char *addr, uint16_t port)
 	return 1;
 }
 
+struct osmo_sockaddr ggsn_sender;
+static int send_from_ggsn(const char *addr, uint16_t port)
+{
+	LVL2_ASSERT(osmo_sockaddr_init_udp(&ggsn_sender,
+					   addr, port)
+		    == 0);
+	return 1;
+}
 
 
 /* override, requires '-Wl,--wrap=gtphub_resolve_ggsn_addr' */
@@ -374,7 +396,8 @@ struct gtphub_peer_port *__wrap_gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	struct gtphub_peer_port *pp;
 	pp = gtphub_port_have(hub, &hub->to_ggsns[GTPH_PLANE_CTRL],
 			      &resolved_gsna, resolved_port);
-	printf("Wrap: returning GGSN addr from imsi %s ni %s: %s\n",
+	printf("- __wrap_gtphub_resolve_ggsn_addr():\n"
+	       "  returning GGSN addr from imsi %s ni %s: %s\n",
 	       imsi_str, apn_ni_str, gtphub_port_str(pp));
 
 	if (imsi_str) {
@@ -518,7 +541,9 @@ static int setup_test_hub()
 	hub->restart_counter = 0x23;
 	now = 345;
 	LVL2_ASSERT(send_from_sgsn("192.168.42.23", 423));
-	LVL2_ASSERT(resolve_to_ggsn("192.168.43.34", 434));
+	LVL2_ASSERT(resolve_to_ggsn("192.168.43.34", 2123));
+	LVL2_ASSERT(send_from_ggsn("192.168.43.34", 321));
+	LVL2_ASSERT(resolve_to_sgsn("192.168.42.23", 2123));
 
 	return 1;
 }
@@ -526,6 +551,7 @@ static int setup_test_hub()
 
 static void test_echo(void)
 {
+	LOG("test_echo");
 	OSMO_ASSERT(setup_test_hub());
 
 	now = 123;
@@ -585,15 +611,12 @@ static void test_echo(void)
 		"0e23"	/* Recovery with restart counter */
 		;
 
-	struct osmo_sockaddr orig_ggsn_addr;
-	OSMO_ASSERT(osmo_sockaddr_init_udp(&orig_ggsn_addr,
-					   "192.168.24.32", 321) == 0);
 	struct osmo_fd *sgsn_ofd = NULL;
-	send = gtphub_from_ggsns_handle_buf(hub, GTPH_PLANE_CTRL, &orig_ggsn_addr,
+	send = gtphub_from_ggsns_handle_buf(hub, GTPH_PLANE_CTRL, &ggsn_sender,
 					    buf, msg(gtp_ping_from_ggsn), now,
 					    &reply_buf, &sgsn_ofd, &to_addr);
 	OSMO_ASSERT(send > 0);
-	OSMO_ASSERT(same_addr(&to_addr, &orig_ggsn_addr));
+	OSMO_ASSERT(same_addr(&to_addr, &ggsn_sender));
 	OSMO_ASSERT(reply_is(gtp_pong_to_ggsn));
 
 	struct gtphub_peer_port *ggsn_port =
@@ -769,6 +792,8 @@ static int create_pdp_ctx()
 						       "0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
 						       "0004""7f000102" /* gtphub's address towards SGSNs (User) */
 						      );
+	/* The response should go back to whichever port the request came from
+	 * (unmapped by sequence nr) */
 	LVL2_ASSERT(msg_from_ggsn_c(&resolved_ggsn_addr,
 				    &sgsn_sender,
 				    gtp_resp_from_ggsn,
@@ -779,6 +804,7 @@ static int create_pdp_ctx()
 
 static void test_create_pdp_ctx(void)
 {
+	LOG("test_create_pdp_ctx");
 	OSMO_ASSERT(setup_test_hub());
 
 	OSMO_ASSERT(create_pdp_ctx());
@@ -806,6 +832,83 @@ static void test_create_pdp_ctx(void)
 	gtphub_gc(hub, now + EXPIRE_ALL);
 }
 
+static void test_user_data(void)
+{
+	LOG("test_user_data");
+
+	OSMO_ASSERT(setup_test_hub());
+
+	OSMO_ASSERT(create_pdp_ctx());
+
+	LOG("- user data starts");
+	/* Now expect default port numbers for User. */
+	resolve_to_ggsn("192.168.43.34", 2152);
+	resolve_to_sgsn("192.168.42.23", 2152);
+
+	const char *u_from_ggsn =
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"ff"	/* type 255: G-PDU */
+		"0058"	/* length: 88 + 8 octets == 96 */
+		"00000001" /* mapped User TEI for SGSN from create_pdp_ctx() */
+		"0070"	/* seq */
+		"0000"	/* No extensions */
+		/* User data (ICMP packet), 96 - 12 = 84 octets  */
+		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
+		"4156000000007241010000000000101112131415161718191a1b1c1d1e1f"
+		"202122232425262728292a2b2c2d2e2f3031323334353637"
+		;
+	const char *u_to_sgsn =
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"ff"	/* type 255: G-PDU */
+		"0058"	/* length: 88 + 8 octets == 96 */
+		"00000123" /* unmapped User TEI */
+		"6d31"	/* new mapped seq */
+		"0000"
+		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
+		"4156000000007241010000000000101112131415161718191a1b1c1d1e1f"
+		"202122232425262728292a2b2c2d2e2f3031323334353637"
+		;
+
+	/* This depends on create_pdp_ctx() sending resolved_sgsn_addr as GSN
+	 * Address IEs in the GGSN's Create PDP Ctx Response. */
+	OSMO_ASSERT(msg_from_ggsn_u(&ggsn_sender,
+				    &resolved_sgsn_addr,
+				    u_from_ggsn,
+				    u_to_sgsn));
+
+	const char *u_from_sgsn =
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"ff"	/* type 255: G-PDU */
+		"0058"	/* length: 88 + 8 octets == 96 */
+		"00000002" /* mapped User TEI for GGSN from create_pdp_ctx() */
+		"6d31"	/* mapped seq */
+		"0000"	/* No extensions */
+		/* User data (ICMP packet), 96 - 12 = 84 octets  */
+		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
+		"4156000000007241010000000000101112131415161718191a1b1c1d1e1f"
+		"202122232425262728292a2b2c2d2e2f3031323334353637"
+		;
+	const char *u_to_ggsn =
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"ff"	/* type 255: G-PDU */
+		"0058"	/* length: 88 + 8 octets == 96 */
+		"00000567" /* unmapped User TEI */
+		"0070"	/* unmapped seq */
+		"0000"
+		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
+		"4156000000007241010000000000101112131415161718191a1b1c1d1e1f"
+		"202122232425262728292a2b2c2d2e2f3031323334353637"
+		;
+
+	OSMO_ASSERT(msg_from_sgsn_u(&resolved_sgsn_addr,
+				    &ggsn_sender,
+				    u_from_sgsn,
+				    u_to_ggsn));
+
+	gtphub_gc(hub, now + EXPIRE_ALL);
+}
+
+
 static struct log_info_cat gtphub_categories[] = {
 	[DGTPHUB] = {
 		.name = "DGTPHUB",
@@ -829,6 +932,7 @@ int main(int argc, char **argv)
 	test_expiry();
 	test_echo();
 	test_create_pdp_ctx();
+	test_user_data();
 	printf("Done\n");
 
 	talloc_report_full(osmo_gtphub_ctx, stderr);

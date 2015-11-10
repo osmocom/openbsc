@@ -1,2 +1,9 @@
-Wrap: returning GGSN addr from imsi 240010123456789 ni internet: 192.168.43.34 port 434
+test_echo
+test_create_pdp_ctx
+- __wrap_gtphub_resolve_ggsn_addr():
+  returning GGSN addr from imsi 240010123456789 ni internet: 192.168.43.34 port 2123
+test_user_data
+- __wrap_gtphub_resolve_ggsn_addr():
+  returning GGSN addr from imsi 240010123456789 ni internet: 192.168.43.34 port 2123
+- user data starts
 Done
