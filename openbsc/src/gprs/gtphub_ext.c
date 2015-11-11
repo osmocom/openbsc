@@ -64,6 +64,7 @@ static int start_ares_query(struct ggsn_lookup *lookup);
 static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *hostent)
 {
 	struct ggsn_lookup *lookup = arg;
+	LOGP(DGTPHUB, LOGL_NOTICE, "ggsn_lookup_cb(%p / %p)", lookup, &lookup->expiry_entry);
 
 	if (status != ARES_SUCCESS) {
 		LOGP(DGTPHUB, LOGL_ERROR, "DNS query failed.\n");
@@ -75,7 +76,7 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 				return;
 		}
 
-		LOGP(DGTPHUB, LOGL_ERROR, "Failed to resolve GGSN.\n");
+		LOGP(DGTPHUB, LOGL_ERROR, "Failed to resolve GGSN. (%p)\n", lookup);
 		goto remove_from_queue;
 	}
 
@@ -96,10 +97,14 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 	memcpy(&resolved_addr.buf, addr0, hostent->h_length);
 	resolved_addr.len = hostent->h_length;
 
+	LOGP(DGTPHUB, LOGL_NOTICE, "resolved addr %s\n",
+	     osmo_hexdump(&resolved_addr, sizeof(resolved_addr)));
+
 	gtphub_resolved_ggsn(lookup->hub, lookup->apn_oi_str, &resolved_addr,
 			     gtphub_now());
 
 remove_from_queue:
+	LOGP(DGTPHUB, LOGL_ERROR, "Removing GGSN lookup. (%p / %p)\n", lookup, &lookup->expiry_entry);
 	expiring_item_del(&lookup->expiry_entry);
 }
 
@@ -115,7 +120,7 @@ static void make_addr_str(struct ggsn_lookup *lookup)
 
 static int start_ares_query(struct ggsn_lookup *lookup)
 {
-	LOGP(DGTPHUB, LOGL_DEBUG, "Going to query %s\n", lookup->apn_oi_str);
+	LOGP(DGTPHUB, LOGL_DEBUG, "Going to query %s (%p / %p)\n", lookup->apn_oi_str, lookup, &lookup->expiry_entry);
 
 	int rc = sgsn_ares_query(sgsn, lookup->apn_oi_str, ggsn_lookup_cb, &lookup);
 	if (rc != 0)
@@ -125,27 +130,30 @@ static int start_ares_query(struct ggsn_lookup *lookup)
 
 static void ggsn_lookup_del_cb(struct expiring_item *expi)
 {
-	struct ggsn_lookup *ggsn;
-	ggsn = container_of(expi, struct ggsn_lookup, expiry_entry);
+	struct ggsn_lookup *lookup;
+	lookup = container_of(expi, struct ggsn_lookup, expiry_entry);
 
-	ggsn->expiry_entry.del_cb = 0;
+	LOGP(DGTPHUB, LOGL_NOTICE, "ggsn_lookup_del_cb(%p / %p)\n", lookup, expi);
+
+	lookup->expiry_entry.del_cb = 0;
 	expiring_item_del(expi);
 
-	llist_del(&ggsn->entry);
-	talloc_free(ggsn);
+	llist_del(&lookup->entry);
+	talloc_free(lookup);
 }
 
 struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 						  const char *imsi_str,
 						  const char *apn_ni_str)
 {
-	LOGP(DGTPHUB, LOGL_NOTICE, "Request to resolve IMSI '%s' with APN-NI '%s'\n",
-	     imsi_str, apn_ni_str);
 	OSMO_ASSERT(imsi_str);
 	OSMO_ASSERT(apn_ni_str);
 
 	struct ggsn_lookup *lookup = talloc_zero(osmo_gtphub_ctx, struct ggsn_lookup);
 	OSMO_ASSERT(lookup);
+
+	LOGP(DGTPHUB, LOGL_NOTICE, "Request to resolve IMSI '%s' with APN-NI '%s' (%p / %p)\n",
+	     imsi_str, apn_ni_str, lookup, &lookup->expiry_entry);
 
 	lookup->hub = hub;
 
@@ -157,6 +165,7 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 
 	make_addr_str(lookup);
 
+	LOGP(DGTPHUB, LOGL_NOTICE, "looking for active queries...\n");
 	struct ggsn_lookup *active;
 	llist_for_each_entry(active, &hub->ggsn_lookups, entry) {
 		if (strncmp(active->apn_oi_str, lookup->apn_oi_str,
@@ -166,6 +175,7 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 		}
 	}
 
+	LOGP(DGTPHUB, LOGL_NOTICE, "looking for already resolved GGSNs...\n");
 	struct gtphub_resolved_ggsn *resolved;
 	llist_for_each_entry(resolved, &hub->resolved_ggsns, entry) {
 		if (strncmp(resolved->apn_oi_str, lookup->apn_oi_str,
@@ -178,6 +188,7 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	/* Kick off a resolution, but so far return nothing. The hope is that
 	 * the peer will resend the request (a couple of times), and by then
 	 * the GGSN will be resolved. */
+	LOGP(DGTPHUB, LOGL_NOTICE, "kick off resolution.\n");
 
 	llist_add(&lookup->entry, &hub->ggsn_lookups);
 
@@ -185,6 +196,7 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	expiry_add(&hub->expire_seq_maps, &lookup->expiry_entry, gtphub_now());
 
 	start_ares_query(lookup);
+	LOGP(DGTPHUB, LOGL_NOTICE, "resolution started.\n");
 
 	return NULL;
 }

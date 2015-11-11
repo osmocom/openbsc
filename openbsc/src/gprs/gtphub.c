@@ -960,10 +960,10 @@ static uint32_t gtphub_tei_mapping_have(struct gtphub *hub,
 	return (uint32_t)nrm->repl;
 }
 
-static int gtphub_map_seq(struct gtp_packet_desc *p,
-			  struct gtphub_peer_port *from_port,
-			  struct gtphub_peer_port *to_port,
-			  time_t now)
+static void gtphub_map_seq(struct gtp_packet_desc *p,
+			   struct gtphub_peer_port *from_port,
+			   struct gtphub_peer_port *to_port,
+			   time_t now)
 {
 	/* Store a mapping in to_peer's map, so when we later receive a GTP
 	 * packet back from to_peer, the seq nr can be unmapped back to its
@@ -974,8 +974,6 @@ static int gtphub_map_seq(struct gtp_packet_desc *p,
 
 	/* Change the GTP packet to yield the new, mapped seq nr */
 	set_seq(p, nrm->repl);
-
-	return 0;
 }
 
 static struct gtphub_peer_port *gtphub_unmap_seq(struct gtp_packet_desc *p,
@@ -1680,6 +1678,9 @@ void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
 {
 	struct gtphub_peer_port *pp;
 	struct gtphub_resolved_ggsn *ggsn;
+
+	LOG("Resolved GGSN callback: %s %s\n",
+	    apn_oi_str, osmo_hexdump((unsigned char*)resolved_addr, sizeof(*resolved_addr)));
 
 	pp = gtphub_port_have(hub, &hub->to_ggsns[GTPH_PLANE_CTRL],
 			      resolved_addr, 2123);
