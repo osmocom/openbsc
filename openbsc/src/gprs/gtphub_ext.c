@@ -98,7 +98,7 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 	resolved_addr.len = hostent->h_length;
 
 	LOGP(DGTPHUB, LOGL_NOTICE, "resolved addr %s\n",
-	     osmo_hexdump(&resolved_addr, sizeof(resolved_addr)));
+	     osmo_hexdump((unsigned char*)&resolved_addr, sizeof(resolved_addr)));
 
 	gtphub_resolved_ggsn(lookup->hub, lookup->apn_oi_str, &resolved_addr,
 			     gtphub_now());
@@ -197,7 +197,10 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	expiry_add(&hub->expire_seq_maps, &lookup->expiry_entry, gtphub_now());
 
 	start_ares_query(lookup);
-	LOGP(DGTPHUB, LOGL_NOTICE, "resolution started.\n");
+	LOGP(DGTPHUB, LOGL_NOTICE, "Resolving %s %s ..."
+	     " (Returning failure, hoping for a retry"
+	     "once resolution has concluded)\n",
+	     imsi_str, apn_ni_str);
 
 	return NULL;
 }

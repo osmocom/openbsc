@@ -1609,24 +1609,10 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 		return -1;
 	}
 
-	/* See what our GGSN guess would be from the packet data per se. */
-	/* TODO maybe not do this always? */
-	struct gtphub_peer_port *ggsn_from_packet;
-	if (gtphub_resolve_ggsn(hub, &p, &ggsn_from_packet) < 0)
-		return -1;
-
-	if (ggsn_from_packet && ggsn
-	    && (ggsn_from_packet != ggsn)) {
-		LOGERR("GGSN implied from packet does not match unmapped"
-		       " GGSN, using unmapped GGSN:"
-		       " from packet: %s  unmapped: %s\n",
-		       gtphub_port_str(ggsn_from_packet),
-		       gtphub_port_str2(ggsn));
-		/* TODO return -1; ? */
+	if (!ggsn) {
+		if (gtphub_resolve_ggsn(hub, &p, &ggsn) < 0)
+			return -1;
 	}
-
-	if (!ggsn)
-		ggsn = ggsn_from_packet;
 
 	if (!ggsn) {
 		LOGERR("No GGSN to send to. Dropping packet.\n");
@@ -1737,16 +1723,6 @@ static int gtphub_gc_peer(struct gtphub_peer *p)
 	 * listed within p->addresses, referenced by TEI mappings from
 	 * hub->tei_map. As long as those don't expire, this peer will stay. */
 
-	LOG("gc peer %p llist_empty %d  seq_map_empty %d\n", p,
-	(int)llist_empty(&p->addresses), (int) nr_map_empty(&p->seq_map));
-	if (! nr_map_empty(&p->seq_map)) {
-		printf("not empty\n");
-		struct nr_mapping *nrm;
-		llist_for_each_entry(nrm, &p->seq_map.mappings, entry) {
-			printf("%p %s %d -> %d\n",
-			       nrm->origin, gtphub_port_str(nrm->origin),nrm->orig, nrm->repl);
-		}
-	}
 	return llist_empty(&p->addresses)
 		&& nr_map_empty(&p->seq_map);
 }
