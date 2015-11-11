@@ -94,7 +94,7 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 		goto remove_from_queue;
 	}
 
-	memcpy(&resolved_addr.buf, addr0, hostent->h_length);
+	memcpy(resolved_addr.buf, addr0, hostent->h_length);
 	resolved_addr.len = hostent->h_length;
 
 	LOGP(DGTPHUB, LOGL_NOTICE, "resolved addr %s\n",
@@ -122,7 +122,7 @@ static int start_ares_query(struct ggsn_lookup *lookup)
 {
 	LOGP(DGTPHUB, LOGL_DEBUG, "Going to query %s (%p / %p)\n", lookup->apn_oi_str, lookup, &lookup->expiry_entry);
 
-	int rc = sgsn_ares_query(sgsn, lookup->apn_oi_str, ggsn_lookup_cb, &lookup);
+	int rc = sgsn_ares_query(sgsn, lookup->apn_oi_str, ggsn_lookup_cb, lookup);
 	if (rc != 0)
 		LOGP(DGTPHUB, LOGL_ERROR, "Failed to start ares query.\n");
 	return rc;
@@ -155,6 +155,7 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	LOGP(DGTPHUB, LOGL_NOTICE, "Request to resolve IMSI '%s' with APN-NI '%s' (%p / %p)\n",
 	     imsi_str, apn_ni_str, lookup, &lookup->expiry_entry);
 
+	expiring_item_init(&lookup->expiry_entry);
 	lookup->hub = hub;
 
 	strncpy(lookup->imsi_str, imsi_str, sizeof(lookup->imsi_str));

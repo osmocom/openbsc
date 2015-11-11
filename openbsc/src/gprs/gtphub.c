@@ -718,6 +718,8 @@ int gtphub_ares_init(struct gtphub *hub);
 static void gtphub_zero(struct gtphub *hub)
 {
 	ZERO_STRUCT(hub);
+	INIT_LLIST_HEAD(&hub->ggsn_lookups);
+	INIT_LLIST_HEAD(&hub->resolved_ggsns);
 }
 
 static int gtphub_sock_init(struct osmo_fd *ofd,
@@ -1243,7 +1245,7 @@ static int from_ggsns_read_cb(struct osmo_fd *from_ggsns_ofd, unsigned int what)
 	struct osmo_sockaddr from_addr;
 	struct osmo_sockaddr to_addr;
 	struct osmo_fd *to_ofd;
-	size_t len;
+	int len;
 	uint8_t *reply_buf;
 
 	len = gtphub_read(from_ggsns_ofd, &from_addr, buf, sizeof(buf));
@@ -1497,7 +1499,7 @@ static int from_sgsns_read_cb(struct osmo_fd *from_sgsns_ofd, unsigned int what)
 	struct osmo_sockaddr from_addr;
 	struct osmo_sockaddr to_addr;
 	struct osmo_fd *to_ofd;
-	size_t len;
+	int len;
 	uint8_t *reply_buf;
 
 	len = gtphub_read(from_sgsns_ofd, &from_addr, buf, sizeof(buf));
@@ -1795,8 +1797,6 @@ static void gtphub_gc_start(struct gtphub *hub)
 void gtphub_init(struct gtphub *hub)
 {
 	gtphub_zero(hub);
-
-	INIT_LLIST_HEAD(&hub->resolved_ggsns);
 
 	expiry_init(&hub->expire_seq_maps, GTPH_SEQ_MAPPING_EXPIRY_SECS);
 	expiry_init(&hub->expire_tei_maps, GTPH_TEI_MAPPING_EXPIRY_MINUTES * 60);

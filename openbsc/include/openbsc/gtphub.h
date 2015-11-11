@@ -182,6 +182,9 @@ void expiry_init(struct expiry *exq, int expiry_in_seconds);
 /* Add a new mapping, or restart the expiry timeout for an already listed mapping. */
 void expiry_add(struct expiry *exq, struct expiring_item *mapping, time_t now);
 
+/* Initialize to all-empty; must be called before using the item in any way. */
+void expiring_item_init(struct expiring_item *item);
+
 /* Remove the given item from its expiry queue, and call item->del_cb, if set.
  * This sets item->del_cb to NULL and is harmless when run a second time on the
  * same item, so the del_cb may choose to call this function, too, to allow
