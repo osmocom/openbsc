@@ -1365,6 +1365,9 @@ static int gtphub_handle_echo(struct gtphub *hub, struct gtp_packet_desc *p, uin
 	return sizeof(echo_response_data);
 }
 
+struct gtphub_peer_port *gtphub_known_addr_have_port(const struct gtphub_bind *bind,
+						     const struct osmo_sockaddr *addr);
+
 /* Parse buffer as GTP packet, replace elements in-place and return the ofd and
  * address to forward to. Return a pointer to the osmo_fd, but copy the
  * sockaddr to *to_addr. The reason for this is that the sockaddr may expire at
@@ -1419,7 +1422,10 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	}
 
 	if (!ggsn) {
-		ggsn = gtphub_port_find_sa(&hub->to_ggsns[plane_idx], from_addr);
+		/* Find a GGSN peer with a matching address. The sender's port
+		 * may in fact differ. */
+		ggsn = gtphub_known_addr_have_port(&hub->to_ggsns[plane_idx],
+						   from_addr);
 	}
 
 	/* If any PDP context has been created, we already have an entry for
@@ -1560,8 +1566,9 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 
 	if (!sgsn) {
 		/* If any contact has been made before, we already have an
-		 * entry for this SGSN. */
-		sgsn = gtphub_port_find_sa(&hub->to_sgsns[plane_idx], from_addr);
+		 * entry for this SGSN. The port may differ. */
+		sgsn = gtphub_known_addr_have_port(&hub->to_sgsns[plane_idx],
+						   from_addr);
 	}
 
 	if (!sgsn) {
@@ -2040,6 +2047,31 @@ struct gtphub_peer_port *gtphub_port_have(struct gtphub *hub,
 
 	return gtphub_addr_add_port(a, port);
 }
+
+/* Find a GGSN peer with a matching address. If the address is known but the
+ * port not, create a new port for that peer address. */
+struct gtphub_peer_port *gtphub_known_addr_have_port(const struct gtphub_bind *bind,
+						     const struct osmo_sockaddr *addr)
+{
+	struct gtphub_peer_addr *pa;
+	struct gtphub_peer_port *pp;
+
+	struct gsn_addr gsna;
+	uint16_t port;
+	gsn_addr_from_sockaddr(&gsna, &port, addr);
+
+	pa = gtphub_addr_find(bind, &gsna);
+	if (!pa)
+		return NULL;
+
+	pp = gtphub_addr_find_port(pa, port);
+
+	if (!pp)
+		pp = gtphub_addr_add_port(pa, port);
+
+	return pp;
+}
+
 
 /* Return 0 if the message in p is not applicable for GGSN resolution, -1 if
  * resolution should be possible but failed, and 1 if resolution was
