@@ -45,17 +45,14 @@
 #include <openbsc/token_auth.h>
 #include <openbsc/handover_decision.h>
 #include <openbsc/rrlp.h>
-#include <openbsc/control_if.h>
 #include <openbsc/osmo_bsc_rf.h>
 
 #include "../../bscconfig.h"
 
 /* MCC and MNC for the Location Area Identifier */
 struct gsm_network *bsc_gsmnet = 0;
-static struct osmo_bsc_rf *rf_ctrl;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
-static const char *rf_ctrl_name = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 static int use_mncc_sock = 0;
@@ -99,7 +96,6 @@ static void print_help()
 	printf("  -e --log-level number. Set a global loglevel.\n");
 	printf("  -m --mncc-sock Disable built-in MNCC handler and offer socket\n");
 	printf("  -C --no-dbcounter Disable regular syncing of counters to database\n");
-	printf("  -r --rf-ctl NAME. A unix domain socket to listen for cmds.\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -121,11 +117,10 @@ static void handle_options(int argc, char **argv)
 			{"log-level", 1, 0, 'e'},
 			{"mncc-sock", 0, 0, 'm'},
 			{"no-dbcounter", 0, 0, 'C'},
-			{"rf-ctl", 1, 0, 'r'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mCr:",
+		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mC:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -169,9 +164,6 @@ static void handle_options(int argc, char **argv)
 			print_version(1);
 			exit(0);
 			break;
-		case 'r':
-			rf_ctrl_name = optarg;
-			break;
 		default:
 			/* ignore */
 			break;
@@ -186,7 +178,6 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		bsc_shutdown_net(bsc_gsmnet);
 		osmo_signal_dispatch(SS_L_GLOBAL, S_L_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
 		exit(0);
@@ -260,7 +251,6 @@ int main(int argc, char **argv)
 		exit(1);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
-	controlif_setup(bsc_gsmnet, 4250);
 	/* seed the PRNG */
 	srand(time(NULL));
 
