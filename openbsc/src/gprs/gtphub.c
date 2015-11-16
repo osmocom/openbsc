@@ -40,17 +40,13 @@
 #include <osmocom/core/socket.h>
 
 
-#define GTPHUB_DEBUG 1
-
 static const int GTPH_GC_TICK_SECONDS = 1;
 
 void *osmo_gtphub_ctx;
 
-#define LOGERR(fmt, args...) \
-	LOGP(DGTPHUB, LOGL_ERROR, fmt, ##args)
-
-#define LOG(fmt, args...) \
-	LOGP(DGTPHUB, LOGL_NOTICE, fmt, ##args)
+/* Convenience makro, note: only within this C file. */
+#define LOG(level, fmt, args...) \
+	LOGP(DGTPHUB, level, fmt, ##args)
 
 #define ZERO_STRUCT(struct_pointer) memset(struct_pointer, '\0', sizeof(*(struct_pointer)))
 
@@ -126,7 +122,7 @@ int gsn_addr_from_str(struct gsn_addr *gsna, const char *numeric_addr_str)
 
 	int rc = inet_pton(af, numeric_addr_str, gsna->buf);
 	if (rc != 1) {
-		LOGERR("Cannot resolve numeric address: '%s'\n", numeric_addr_str);
+		LOG(LOGL_ERROR, "Cannot resolve numeric address: '%s'\n", numeric_addr_str);
 		return -1;
 	}
 	return 0;
@@ -156,10 +152,10 @@ const char *gsn_addr_to_strb(const struct gsn_addr *gsna,
 
 	const char *r = inet_ntop(af, gsna->buf, strbuf, strbuf_len);
 	if (!r) {
-		LOGERR("Cannot convert gsn_addr to string: %s: len=%d, buf=%s\n",
-		       strerror(errno),
-		       (int)gsna->len,
-		       osmo_hexdump(gsna->buf, sizeof(gsna->buf)));
+		LOG(LOGL_ERROR, "Cannot convert gsn_addr to string: %s: len=%d, buf=%s\n",
+		    strerror(errno),
+		    (int)gsna->len,
+		    osmo_hexdump(gsna->buf, sizeof(gsna->buf)));
 	}
 	return r;
 }
@@ -204,7 +200,7 @@ static int gsn_addr_put(const struct gsn_addr *gsna, struct gtp_packet_desc *p, 
 	struct gtpie_tlv *ie = &p->ie[ie_idx]->tlv;
 	int ie_l = ntoh16(ie->l);
 	if (ie_l != gsna->len) {
-		LOG("Not implemented: replace an IE address of different size:"
+		LOG(LOGL_ERROR, "Not implemented: replace an IE address of different size:"
 		    " replace %d with %d\n", (int)ie_l, (int)gsna->len);
 		return -1;
 	}
@@ -225,7 +221,7 @@ void validate_gtp0_header(struct gtp_packet_desc *p)
 	OSMO_ASSERT(p->version == 0);
 
 	if (p->data_len < GTP0_HEADER_SIZE) {
-		LOGERR("GTP0 packet too short: %d\n", p->data_len);
+		LOG(LOGL_ERROR, "GTP0 packet too short: %d\n", p->data_len);
 		p->rc = GTP_RC_TOOSHORT;
 		return;
 	}
@@ -242,15 +238,15 @@ void validate_gtp0_header(struct gtp_packet_desc *p)
 
 	/* Check packet length field versus length of packet */
 	if (p->data_len != (ntoh16(pheader->length) + GTP0_HEADER_SIZE)) {
-		LOGERR("GTP packet length field (%d + %d) does not match"
-		       " actual length (%d)\n",
-		       GTP0_HEADER_SIZE, (int)ntoh16(pheader->length),
-		       p->data_len);
+		LOG(LOGL_ERROR, "GTP packet length field (%d + %d) does not match"
+		    " actual length (%d)\n",
+		    GTP0_HEADER_SIZE, (int)ntoh16(pheader->length),
+		    p->data_len);
 		p->rc = GTP_RC_TOOSHORT;
 		return;
 	}
 
-	LOG("GTP v0 TID = %" PRIu64 "\n", pheader->tid);
+	LOG(LOGL_DEBUG, "GTP v0 TID = %" PRIu64 "\n", pheader->tid);
 	p->header_len = GTP0_HEADER_SIZE;
 	p->rc = GTP_RC_PDU_C;
 }
@@ -268,7 +264,7 @@ void validate_gtp1_header(struct gtp_packet_desc *p)
 
 	if ((p->data_len < GTP1_HEADER_SIZE_LONG)
 	    && (p->data_len != GTP1_HEADER_SIZE_SHORT)){
-		LOGERR("GTP packet too short: %d\n", p->data_len);
+		LOG(LOGL_ERROR, "GTP packet too short: %d\n", p->data_len);
 		p->rc = GTP_RC_TOOSHORT;
 		return;
 	}
@@ -277,18 +273,18 @@ void validate_gtp1_header(struct gtp_packet_desc *p)
 	p->header_tei = ntoh32(pheader->tei);
 	p->seq = ntoh16(pheader->seq);
 
-	LOG("|GTPv1\n");
-	LOG("| type = %" PRIu8 " 0x%02" PRIx8 "\n",
-	    p->type, p->type);
-	LOG("| length = %" PRIu16 " 0x%04" PRIx16 "\n",
-	    ntoh16(pheader->length), ntoh16(pheader->length));
-	LOG("| TEI = %" PRIu32 " 0x%08" PRIx32 "\n",
-	    p->header_tei, p->header_tei);
-	LOG("| seq = %" PRIu16 " 0x%04" PRIx16 "\n",
-	    p->seq, p->seq);
-	LOG("| npdu = %" PRIu8 " 0x%02" PRIx8 "\n",
-	    pheader->npdu, pheader->npdu);
-	LOG("| next = %" PRIu8 " 0x%02" PRIx8 "\n",
+	LOG(LOGL_DEBUG, "GTPv1\n"
+	    "| type = %" PRIu8 " 0x%02" PRIx8 "\n"
+	    "| length = %" PRIu16 " 0x%04" PRIx16 "\n"
+	    "| TEI = %" PRIu32 " 0x%08" PRIx32 "\n"
+	    "| seq = %" PRIu16 " 0x%04" PRIx16 "\n"
+	    "| npdu = %" PRIu8 " 0x%02" PRIx8 "\n"
+	    "| next = %" PRIu8 " 0x%02" PRIx8 "\n",
+	    p->type, p->type,
+	    ntoh16(pheader->length), ntoh16(pheader->length),
+	    p->header_tei, p->header_tei,
+	    p->seq, p->seq,
+	    pheader->npdu, pheader->npdu,
 	    pheader->next, pheader->next);
 
 	if (p->data_len <= GTP1_HEADER_SIZE_LONG) {
@@ -299,10 +295,10 @@ void validate_gtp1_header(struct gtp_packet_desc *p)
 
 	/* Check packet length field versus length of packet */
 	if (p->data_len != (ntoh16(pheader->length) + GTP1_HEADER_SIZE_SHORT)) {
-		LOGERR("GTP packet length field (%d + %d) does not match"
-		       " actual length (%d)\n",
-		       GTP1_HEADER_SIZE_SHORT, (int)ntoh16(pheader->length),
-		       p->data_len);
+		LOG(LOGL_ERROR, "GTP packet length field (%d + %d) does not match"
+		    " actual length (%d)\n",
+		    GTP1_HEADER_SIZE_SHORT, (int)ntoh16(pheader->length),
+		    p->data_len);
 		p->rc = GTP_RC_TOOSHORT;
 		return;
 	}
@@ -320,7 +316,7 @@ void validate_gtp_header(struct gtp_packet_desc *p)
 
 	/* Need at least 1 byte in order to check version */
 	if (p->data_len < 1) {
-		LOGERR("Discarding packet - too small: %d\n", p->data_len);
+		LOG(LOGL_ERROR, "Discarding packet - too small: %d\n", p->data_len);
 		p->rc = GTP_RC_TOOSHORT;
 		return;
 	}
@@ -335,7 +331,7 @@ void validate_gtp_header(struct gtp_packet_desc *p)
 		validate_gtp1_header(p);
 		break;
 	default:
-		LOGERR("Unsupported GTP version: %d\n", p->version);
+		LOG(LOGL_ERROR, "Unsupported GTP version: %d\n", p->version);
 		p->rc = GTP_RC_UNSUPPORTED_VERSION;
 		break;
 	}
@@ -410,8 +406,8 @@ static int get_ie_apn_str(union gtpie_member *ie[], const char **apn_str)
 		return 0;
 
 	if (len < 2) {
-		LOGERR("APN IE: invalid length: %d\n",
-		       (int)len);
+		LOG(LOGL_ERROR, "APN IE: invalid length: %d\n",
+		    (int)len);
 		return -1;
 	}
 
@@ -421,8 +417,8 @@ static int get_ie_apn_str(union gtpie_member *ie[], const char **apn_str)
 
 	*apn_str = gprs_apn_to_str(apn_buf, (uint8_t*)apn_buf, len);
 	if (!(*apn_str)) {
-		LOGERR("APN IE: present but cannot be decoded: %s\n",
-		       osmo_hexdump((uint8_t*)apn_buf, len));
+		LOG(LOGL_ERROR, "APN IE: present but cannot be decoded: %s\n",
+		    osmo_hexdump((uint8_t*)apn_buf, len));
 		return -1;
 	}
 	return 1;
@@ -444,11 +440,11 @@ static void gtp_decode(const uint8_t *data, int data_len,
 	validate_gtp_header(res);
 
 	if (res->rc <= 0) {
-		LOGERR("INVALID: dropping GTP packet.\n");
+		LOG(LOGL_ERROR, "INVALID: dropping GTP packet.\n");
 		return;
 	}
 
-	LOG("Valid GTP header (v%d)\n", res->version);
+	LOG(LOGL_DEBUG, "Valid GTP header (v%d)\n", res->version);
 
 	if (from_plane_idx == GTPH_PLANE_USER) {
 		res->rc = GTP_RC_PDU_U;
@@ -456,7 +452,7 @@ static void gtp_decode(const uint8_t *data, int data_len,
 	}
 
 	if (res->rc != GTP_RC_PDU_C) {
-		LOG("no IEs in this GTP packet\n");
+		LOG(LOGL_DEBUG, "no IEs in this GTP packet\n");
 		return;
 	}
 
@@ -464,38 +460,39 @@ static void gtp_decode(const uint8_t *data, int data_len,
 			 (void*)(data + res->header_len),
 			 res->data_len - res->header_len) != 0) {
 		res->rc = GTP_RC_INVALID_IE;
-		LOGERR("INVALID: cannot decode IEs. Dropping GTP packet.\n");
+		LOG(LOGL_ERROR, "INVALID: cannot decode IEs. Dropping GTP packet.\n");
 		return;
 	}
 
-#if GTPHUB_DEBUG
+#if 1
+	/* TODO if (<loglevel is debug>) { ...  (waiting for a commit from jerlbeck) */
 	int i;
 
 	for (i = 0; i < 10; i++) {
 		const char *imsi;
 		if (get_ie_imsi_str(res->ie, i, &imsi) < 1)
 			break;
-		LOG("| IMSI %s\n", imsi);
+		LOG(LOGL_DEBUG, "| IMSI %s\n", imsi);
 	}
 
 	for (i = 0; i < 10; i++) {
 		uint8_t nsapi;
 		if (!get_ie_nsapi(res->ie, i, &nsapi))
 			break;
-		LOG("| NSAPI %d\n", (int)nsapi);
+		LOG(LOGL_DEBUG, "| NSAPI %d\n", (int)nsapi);
 	}
 
 	for (i = 0; i < 2; i++) {
 		struct gsn_addr addr;
 		if (gsn_addr_get(&addr, res, i) == 0)
-			LOG("| addr %s\n", gsn_addr_to_str(&addr));
+			LOG(LOGL_DEBUG, "| addr %s\n", gsn_addr_to_str(&addr));
 	}
 
 	for (i = 0; i < 10; i++) {
 		uint32_t tei;
 		if (gtpie_gettv4(res->ie, GTPIE_TEI_DI, i, &tei) != 0)
 			break;
-		LOG("| TEI DI (USER) %" PRIu32 " 0x%08" PRIx32 "\n",
+		LOG(LOGL_DEBUG, "| TEI DI (USER) %" PRIu32 " 0x%08" PRIx32 "\n",
 		    tei, tei);
 	}
 
@@ -503,7 +500,7 @@ static void gtp_decode(const uint8_t *data, int data_len,
 		uint32_t tei;
 		if (gtpie_gettv4(res->ie, GTPIE_TEI_C, i, &tei) != 0)
 			break;
-		LOG("| TEI (CTRL) %" PRIu32 " 0x%08" PRIx32 "\n",
+		LOG(LOGL_DEBUG, "| TEI (CTRL) %" PRIu32 " 0x%08" PRIx32 "\n",
 		    tei, tei);
 	}
 #endif
@@ -729,11 +726,11 @@ static int gtphub_sock_init(struct osmo_fd *ofd,
 			    int ofd_id)
 {
 	if (!addr->addr_str) {
-		LOGERR("Cannot bind: empty address.\n");
+		LOG(LOGL_FATAL, "Cannot bind: empty address.\n");
 		return -1;
 	}
 	if (!addr->port) {
-		LOGERR("Cannot bind: zero port not permitted.\n");
+		LOG(LOGL_FATAL, "Cannot bind: zero port not permitted.\n");
 		return -1;
 	}
 
@@ -748,8 +745,8 @@ static int gtphub_sock_init(struct osmo_fd *ofd,
 				addr->addr_str, addr->port,
 				OSMO_SOCK_F_BIND);
 	if (rc < 1) {
-		LOGERR("Cannot bind to %s port %d (rc %d)\n",
-		       addr->addr_str, (int)addr->port, rc);
+		LOG(LOGL_FATAL, "Cannot bind to %s port %d (rc %d)\n",
+		    addr->addr_str, (int)addr->port, rc);
 		return -1;
 	}
 
@@ -792,21 +789,16 @@ static int gtphub_read(const struct osmo_fd *from,
 	 * is not truncated. Then maybe reduce buf's size. */
 
 	if (received <= 0) {
-		if (errno != EAGAIN)
-			LOGERR("error: %s\n", strerror(errno));
+		LOG((errno == EAGAIN? LOGL_DEBUG : LOGL_ERROR),
+		    "error: %s\n", strerror(errno));
 		return 0;
 	}
 
 	if (from_addr) {
-		LOG("from %s\n", osmo_sockaddr_to_str(from_addr));
+		LOG(LOGL_DEBUG, "from %s\n", osmo_sockaddr_to_str(from_addr));
 	}
 
-	if (received <= 0) {
-		LOGERR("error: %s\n", strerror(errno));
-		return 0;
-	}
-
-	LOG("Received %d\n%s\n", (int)received, osmo_hexdump(buf, received));
+	LOG(LOGL_DEBUG, "Received %d\n", (int)received); //%s\n", (int)received, osmo_hexdump(buf, received));
 	return received;
 }
 
@@ -908,7 +900,7 @@ static void gtphub_mapping_del_cb(struct expiring_item *expi)
 	/* Just for log */
 	struct gtphub_peer_port *from = nrm->origin;
 	OSMO_ASSERT(from);
-	LOG("expired: %d: nr mapping from %s: %d->%d\n",
+	LOG(LOGL_DEBUG, "expired: %d: nr mapping from %s: %d->%d\n",
 	    (int)nrm->expiry_entry.expiry,
 	    gtphub_port_str(from),
 	    (int)nrm->orig, (int)nrm->repl);
@@ -933,7 +925,7 @@ static struct nr_mapping *gtphub_mapping_have(struct nr_map *map,
 		nrm->origin = from;
 		nr_map_add(map, nrm, now);
 		gtphub_port_ref_count_inc(from);
-		LOG("peer %s: MAP %d --> %d\n",
+		LOG(LOGL_DEBUG, "peer %s: sequence map %d --> %d\n",
 		    gtphub_port_str(from),
 		    (int)(nrm->orig), (int)(nrm->repl));
 	} else {
@@ -954,7 +946,7 @@ static uint32_t gtphub_tei_mapping_have(struct gtphub *hub,
 {
 	struct nr_mapping *nrm = gtphub_mapping_have(&hub->tei_map[plane_idx],
 						     from, orig_tei, now);
-	LOG("New %s TEI: (from %s, TEI %d) <-- TEI %d\n",
+	LOG(LOGL_DEBUG, "New %s TEI: (from %s, TEI %d) <-- TEI %d\n",
 	    gtphub_plane_idx_names[plane_idx],
 	    gtphub_port_str(from),
 	    (int)orig_tei, (int)nrm->repl);
@@ -986,7 +978,7 @@ static struct gtphub_peer_port *gtphub_unmap_seq(struct gtp_packet_desc *p,
 						p->seq);
 	if (!nrm)
 		return NULL;
-	LOG("peer %p: UNMAP %d <-- %d\n", nrm->origin, (int)(nrm->orig), (int)(nrm->repl));
+	LOG(LOGL_DEBUG, "peer %p: sequence unmap %d <-- %d\n", nrm->origin, (int)(nrm->orig), (int)(nrm->repl));
 	set_seq(p, nrm->orig);
 	return nrm->origin;
 }
@@ -1098,8 +1090,8 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 	struct nr_mapping *nrm;
 	nrm = nr_map_get_inv(&hub->tei_map[p->plane_idx], tei);
 	if (!nrm) {
-		LOGERR("Received unknown TEI %" PRIu32 " from %s\n",
-		       tei, gtphub_port_str(from_port));
+		LOG(LOGL_ERROR, "Received unknown TEI %" PRIu32 " from %s\n",
+		    tei, gtphub_port_str(from_port));
 		return -1;
 	}
 
@@ -1107,7 +1099,7 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 	uint32_t unmapped_tei = nrm->orig;
 	set_tei(p, unmapped_tei);
 
-	LOG("Unmapped TEI coming from %s: %d -> %d (to %s)\n",
+	LOG(LOGL_DEBUG, "Unmapped TEI coming from %s: %d -> %d (to %s)\n",
 	    gtphub_port_str(from_port), tei, unmapped_tei,
 	    gtphub_port_str2(to_port));
 
@@ -1156,11 +1148,11 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 		/* Fetch GSN Address and TEI from IEs */
 		rc = gsn_addr_get(&addr_from_ie, p, plane_idx);
 		if (rc) {
-			LOGERR("Cannot read %s GSN Address IE\n",
-			       gtphub_plane_idx_names[plane_idx]);
+			LOG(LOGL_ERROR, "Cannot read %s GSN Address IE\n",
+			    gtphub_plane_idx_names[plane_idx]);
 			return -1;
 		}
-		LOG("Read %s GSN addr %s (%d)\n",
+		LOG(LOGL_DEBUG, "Read %s GSN addr %s (%d)\n",
 		    gtphub_plane_idx_names[plane_idx],
 		    gsn_addr_to_str(&addr_from_ie),
 		    addr_from_ie.len);
@@ -1168,8 +1160,8 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 		ie_idx = gtpie_getie(p->ie, ie_type[plane_idx], 0);
 		if (ie_idx < 0) {
 			if (ie_mandatory) {
-				LOGERR("Create PDP Context message invalid:"
-				       " missing IE %d\n", (int)ie_type[plane_idx]);
+				LOG(LOGL_ERROR, "Create PDP Context message invalid:"
+				    " missing IE %d\n", (int)ie_type[plane_idx]);
 				return -1;
 			}
 			tei_from_ie = 0;
@@ -1197,8 +1189,8 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 		/* Replace the GSN address to reflect gtphub. */
 		rc = gsn_addr_put(&to_bind[plane_idx].local_addr, p, plane_idx);
 		if (rc) {
-			LOGERR("Cannot write %s GSN Address IE\n",
-			       gtphub_plane_idx_names[plane_idx]);
+			LOG(LOGL_ERROR, "Cannot write %s GSN Address IE\n",
+			    gtphub_plane_idx_names[plane_idx]);
 			return -1;
 		}
 	}
@@ -1215,18 +1207,18 @@ static int gtphub_write(const struct osmo_fd *to,
 			      (struct sockaddr*)&to_addr->a, to_addr->l);
 
 	if (to_addr) {
-		LOG("to %s\n", osmo_sockaddr_to_str(to_addr));
+		LOG(LOGL_DEBUG, "to %s\n", osmo_sockaddr_to_str(to_addr));
 	}
 
 	if (sent == -1) {
-		LOGERR("error: %s\n", strerror(errno));
+		LOG(LOGL_ERROR, "error: %s\n", strerror(errno));
 		return -EINVAL;
 	}
 
 	if (sent != buf_len)
-		LOGERR("sent(%d) != data_len(%d)\n", (int)sent, (int)buf_len);
+		LOG(LOGL_ERROR, "sent(%d) != data_len(%d)\n", (int)sent, (int)buf_len);
 	else
-		LOG("Sent %d\n%s\n", (int)sent, osmo_hexdump(buf, sent));
+		LOG(LOGL_DEBUG, "Sent %d\n%s\n", (int)sent, osmo_hexdump(buf, sent));
 
 	return 0;
 }
@@ -1235,7 +1227,7 @@ static int from_ggsns_read_cb(struct osmo_fd *from_ggsns_ofd, unsigned int what)
 {
 	unsigned int plane_idx = from_ggsns_ofd->priv_nr;
 	OSMO_ASSERT(plane_idx < GTPH_PLANE_N);
-	LOG("\n\n=== reading from GGSN (%s)\n", gtphub_plane_idx_names[plane_idx]);
+	LOG(LOGL_DEBUG, "\n\n=== reading from GGSN (%s)\n", gtphub_plane_idx_names[plane_idx]);
 	if (!(what & BSC_FD_READ))
 		return 0;
 
@@ -1291,24 +1283,24 @@ static int gtphub_unmap(struct gtphub *hub,
 
 	struct gtphub_peer *from_peer = from->peer_addr->peer;
 	if (from_seq && from_tei && (from_seq != from_tei)) {
-		LOGERR("Seq unmap and TEI unmap yield two different peers. Using seq unmap."
-		       "(from %s %s: seq %d yields %s, tei %u yields %s)\n",
-		       gtphub_plane_idx_names[p->plane_idx],
-		       gtphub_peer_str(from_peer),
-		       (int)p->seq,
-		       gtphub_port_str(from_seq),
-		       (int)p->header_tei,
-		       gtphub_port_str2(from_tei)
-		       );
+		LOG(LOGL_DEBUG, "Seq unmap and TEI unmap yield two different peers. Using seq unmap."
+		    "(from %s %s: seq %d yields %s, tei %u yields %s)\n",
+		    gtphub_plane_idx_names[p->plane_idx],
+		    gtphub_peer_str(from_peer),
+		    (int)p->seq,
+		    gtphub_port_str(from_seq),
+		    (int)p->header_tei,
+		    gtphub_port_str2(from_tei)
+		   );
 	}
 	unmapped = (from_seq? from_seq : from_tei);
 
 	if (unmapped && to_proxy && (unmapped != to_proxy)) {
-		LOGERR("Unmap yields a different peer than the configured proxy. Using proxy."
-		       " unmapped: %s  proxy: %s\n",
-		       gtphub_port_str(unmapped),
-		       gtphub_port_str2(to_proxy)
-		       );
+		LOG(LOGL_NOTICE, "Unmap yields a different peer than the configured proxy. Using proxy."
+		    " unmapped: %s  proxy: %s\n",
+		    gtphub_port_str(unmapped),
+		    gtphub_port_str2(to_proxy)
+		   );
 	}
 	unmapped = (to_proxy? to_proxy : unmapped);
 
@@ -1317,7 +1309,7 @@ static int gtphub_unmap(struct gtphub *hub,
 		return 0;
 	}
 
-	LOG("from seq %p; from tei %p; unmapped => %p\n",
+	LOG(LOGL_DEBUG, "from seq %p; from tei %p; unmapped => %p\n",
 	    from_seq, from_tei, unmapped);
 
 	if (unmapped_from_seq)
@@ -1383,7 +1375,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr)
 {
-	LOG("<- rx %s from GGSN %s\n",
+	LOG(LOGL_DEBUG, "<- rx %s from GGSN %s\n",
 	    gtphub_plane_idx_names[plane_idx],
 	    osmo_sockaddr_to_str(from_addr));
 
@@ -1412,11 +1404,11 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	struct gtphub_peer_port *ggsn = hub->ggsn_proxy[plane_idx];
 	if (ggsn) {
 		if (osmo_sockaddr_cmp(&ggsn->sa, from_addr) != 0) {
-			LOGERR("Rejecting: GGSN proxy configured, but GTP packet"
-			       " received on GGSN bind is from another sender:"
-			       " proxy: %s  sender: %s\n",
-			       gtphub_port_str(ggsn),
-			       osmo_sockaddr_to_str(from_addr));
+			LOG(LOGL_ERROR, "Rejecting: GGSN proxy configured, but GTP packet"
+			    " received on GGSN bind is from another sender:"
+			    " proxy: %s  sender: %s\n",
+			    gtphub_port_str(ggsn),
+			    osmo_sockaddr_to_str(from_addr));
 			return -1;
 		}
 	}
@@ -1432,12 +1424,12 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	 * this GGSN. If we don't have an entry, the GGSN has nothing to tell
 	 * us about. */
 	if (!ggsn) {
-		LOGERR("Dropping packet: unknown GGSN peer: %s\n",
-		       osmo_sockaddr_to_str(from_addr));
+		LOG(LOGL_ERROR, "Dropping packet: unknown GGSN peer: %s\n",
+		    osmo_sockaddr_to_str(from_addr));
 		return -1;
 	}
 
-	LOG("GGSN peer: %s\n", gtphub_port_str(ggsn));
+	LOG(LOGL_DEBUG, "GGSN peer: %s\n", gtphub_port_str(ggsn));
 
 	struct gtphub_peer_port *sgsn_from_seq;
 	struct gtphub_peer_port *sgsn;
@@ -1453,7 +1445,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	if (!sgsn) {
 		/* A GGSN initiated request would go to a known TEI. So this is
 		 * bogus. */
-		LOGERR("No SGSN to send to. Dropping packet.\n");
+		LOG(LOGL_ERROR, "No SGSN to send to. Dropping packet.\n");
 		return -1;
 	}
 
@@ -1479,7 +1471,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 
 	*reply_buf = (uint8_t*)p.data;
 
-	LOG("<-- Forward to SGSN: %d bytes to %s\n",
+	LOG(LOGL_DEBUG, "<-- Forward to SGSN: %d bytes to %s\n",
 	    (int)received, osmo_sockaddr_to_str(to_addr));
 	return received;
 }
@@ -1488,7 +1480,7 @@ static int from_sgsns_read_cb(struct osmo_fd *from_sgsns_ofd, unsigned int what)
 {
 	unsigned int plane_idx = from_sgsns_ofd->priv_nr;
 	OSMO_ASSERT(plane_idx < GTPH_PLANE_N);
-	LOG("\n\n=== reading from SGSN (%s)\n", gtphub_plane_idx_names[plane_idx]);
+	LOG(LOGL_DEBUG, "\n\n=== reading from SGSN (%s)\n", gtphub_plane_idx_names[plane_idx]);
 
 	if (!(what & BSC_FD_READ))
 		return 0;
@@ -1526,7 +1518,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr)
 {
-	LOG("-> rx %s from SGSN %s\n",
+	LOG(LOGL_DEBUG, "-> rx %s from SGSN %s\n",
 	    gtphub_plane_idx_names[plane_idx],
 	    osmo_sockaddr_to_str(from_addr));
 
@@ -1555,11 +1547,11 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	struct gtphub_peer_port *sgsn = hub->sgsn_proxy[plane_idx];
 	if (sgsn) {
 		if (osmo_sockaddr_cmp(&sgsn->sa, from_addr) != 0) {
-			LOGERR("Rejecting: GGSN proxy configured, but GTP packet"
-			       " received on GGSN bind is from another sender:"
-			       " proxy: %s  sender: %s\n",
-			       gtphub_port_str(sgsn),
-			       osmo_sockaddr_to_str(from_addr));
+			LOG(LOGL_ERROR, "Rejecting: GGSN proxy configured, but GTP packet"
+			    " received on GGSN bind is from another sender:"
+			    " proxy: %s  sender: %s\n",
+			    gtphub_port_str(sgsn),
+			    osmo_sockaddr_to_str(from_addr));
 			return -1;
 		}
 	}
@@ -1576,8 +1568,8 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 		 * first contact without being known yet, so create the peer
 		 * struct for the current sender. */
 		if (plane_idx != GTPH_PLANE_CTRL) {
-			LOGERR("User plane peer was not announced by PDP Context, discarding: %s\n",
-			       osmo_sockaddr_to_str(from_addr));
+			LOG(LOGL_ERROR, "User plane peer was not announced by PDP Context, discarding: %s\n",
+			    osmo_sockaddr_to_str(from_addr));
 			return -1;
 		}
 
@@ -1592,11 +1584,11 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 
 	if (!sgsn) {
 		/* This could theoretically happen for invalid address data or somesuch. */
-		LOGERR("Dropping packet: invalid SGSN peer: %s\n",
-		       osmo_sockaddr_to_str(from_addr));
+		LOG(LOGL_ERROR, "Dropping packet: invalid SGSN peer: %s\n",
+		    osmo_sockaddr_to_str(from_addr));
 		return -1;
 	}
-	LOG("SGSN peer: %s\n", gtphub_port_str(sgsn));
+	LOG(LOGL_DEBUG, "SGSN peer: %s\n", gtphub_port_str(sgsn));
 
 	struct gtphub_peer_port *ggsn_from_seq;
 	struct gtphub_peer_port *ggsn;
@@ -1615,7 +1607,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	}
 
 	if (!ggsn) {
-		LOGERR("No GGSN to send to. Dropping packet.\n");
+		LOG(LOGL_ERROR, "No GGSN to send to. Dropping packet.\n");
 		return -1;
 	}
 
@@ -1641,7 +1633,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 
 	*reply_buf = (uint8_t*)p.data;
 
-	LOG("--> Forward to GGSN: %d bytes to %s\n",
+	LOG(LOGL_DEBUG, "--> Forward to GGSN: %d bytes to %s\n",
 	    (int)received, osmo_sockaddr_to_str(to_addr));
 	return received;
 }
@@ -1667,14 +1659,14 @@ void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
 	struct gtphub_peer_port *pp;
 	struct gtphub_resolved_ggsn *ggsn;
 
-	LOG("Resolved GGSN callback: %s %s\n",
+	LOG(LOGL_DEBUG, "Resolved GGSN callback: %s %s\n",
 	    apn_oi_str, osmo_hexdump((unsigned char*)resolved_addr, sizeof(*resolved_addr)));
 
 	pp = gtphub_port_have(hub, &hub->to_ggsns[GTPH_PLANE_CTRL],
 			      resolved_addr, 2123);
 	if (!pp) {
-		LOGERR("Internal: Cannot create/find peer '%s'\n",
-		       gsn_addr_to_str(resolved_addr));
+		LOG(LOGL_ERROR, "Internal: Cannot create/find peer '%s'\n",
+		    gsn_addr_to_str(resolved_addr));
 		return;
 	}
 
@@ -1702,7 +1694,7 @@ static int gtphub_gc_peer_addr(struct gtphub_peer_addr *pa)
 	struct gtphub_peer_port *pp, *npp;
 	llist_for_each_entry_safe(pp, npp, &pa->ports, entry) {
 		if (gtphub_gc_peer_port(pp)) {
-			LOG("expired: peer %s\n",
+			LOG(LOGL_DEBUG, "expired: peer %s\n",
 			    gtphub_port_str(pp));
 			gtphub_peer_port_del(pp);
 		}
@@ -1828,8 +1820,8 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 				       &cfg->to_ggsns[plane_idx],
 				       from_ggsns_read_cb, hub, plane_idx);
 		if (rc) {
-			LOGERR("Failed to bind for GGSNs (%s)\n",
-			       gtphub_plane_idx_names[plane_idx]);
+			LOG(LOGL_FATAL, "Failed to bind for GGSNs (%s)\n",
+			    gtphub_plane_idx_names[plane_idx]);
 			return rc;
 		}
 
@@ -1837,8 +1829,8 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 				       &cfg->to_sgsns[plane_idx],
 				       from_sgsns_read_cb, hub, plane_idx);
 		if (rc) {
-			LOGERR("Failed to bind for SGSNs (%s)\n",
-			       gtphub_plane_idx_names[plane_idx]);
+			LOG(LOGL_FATAL, "Failed to bind for SGSNs (%s)\n",
+			    gtphub_plane_idx_names[plane_idx]);
 			return rc;
 		}
 	}
@@ -1850,9 +1842,9 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 				      &hub->to_sgsns[plane_idx],
 				      &cfg->sgsn_proxy[plane_idx])
 		    != 0) {
-			LOGERR("Cannot configure SGSN proxy %s port %d.\n",
-			       cfg->sgsn_proxy[plane_idx].addr_str,
-			       (int)cfg->sgsn_proxy[plane_idx].port);
+			LOG(LOGL_FATAL, "Cannot configure SGSN proxy %s port %d.\n",
+			    cfg->sgsn_proxy[plane_idx].addr_str,
+			    (int)cfg->sgsn_proxy[plane_idx].port);
 			return -1;
 		}
 		if (gtphub_make_proxy(hub,
@@ -1860,21 +1852,21 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 				      &hub->to_ggsns[plane_idx],
 				      &cfg->ggsn_proxy[plane_idx])
 		    != 0) {
-			LOGERR("Cannot configure GGSN proxy.\n");
+			LOG(LOGL_ERROR, "Cannot configure GGSN proxy.\n");
 			return -1;
 		}
 	}
 
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
 		if (hub->sgsn_proxy[plane_idx])
-			LOG("Using SGSN %s proxy %s\n",
+			LOG(LOGL_NOTICE, "Using SGSN %s proxy %s\n",
 			    gtphub_plane_idx_names[plane_idx],
 			    gtphub_port_str(hub->sgsn_proxy[plane_idx]));
 	}
 
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
 		if (hub->sgsn_proxy[plane_idx])
-			LOG("Using GGSN %s proxy %s\n",
+			LOG(LOGL_NOTICE, "Using GGSN %s proxy %s\n",
 			    gtphub_plane_idx_names[plane_idx],
 			    gtphub_port_str(hub->ggsn_proxy[plane_idx]));
 	}
@@ -1986,7 +1978,7 @@ static struct gtphub_peer_addr *gtphub_addr_have(struct gtphub *hub,
 
 	a = gtphub_peer_add_addr(peer, addr);
 	
-	LOG("New peer address: %s %s\n",
+	LOG(LOGL_DEBUG, "New peer address: %s %s\n",
 	    bind->label,
 	    gsn_addr_to_str(&a->addr));
 
@@ -2010,7 +2002,7 @@ static struct gtphub_peer_port *gtphub_addr_add_port(struct gtphub_peer_addr *a,
 
 	llist_add(&pp->entry, &a->ports);
 
-	LOG("New peer port: %s port %d\n",
+	LOG(LOGL_DEBUG, "New peer port: %s port %d\n",
 	    gsn_addr_to_str(&a->addr),
 	    (int)port);
 
@@ -2122,7 +2114,7 @@ int osmo_sockaddr_init(struct osmo_sockaddr *addr,
 	rc = _osmo_getaddrinfo(&res, family, type, proto, host, port);
 
 	if (rc != 0) {
-		LOGERR("getaddrinfo returned error %d\n", (int)rc);
+		LOG(LOGL_ERROR, "getaddrinfo returned error %d\n", (int)rc);
 		return -EINVAL;
 	}
 
