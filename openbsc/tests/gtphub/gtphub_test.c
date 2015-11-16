@@ -37,12 +37,14 @@
 
 #define EXPIRE_ALL ((60 * GTPH_TEI_MAPPING_EXPIRY_MINUTES) + 1)
 
-#define ZERO_STRUCT(struct_pointer) memset(struct_pointer, '\0', sizeof(*(struct_pointer)))
+#define ZERO_STRUCT(struct_pointer) memset(struct_pointer, '\0', \
+					   sizeof(*(struct_pointer)))
 
 #define LVL2_ASSERT(exp) LVL2_ASSERT_R(exp, return 0)
 #define LVL2_ASSERT_R(exp, ret)    \
 	if (!(exp)) { \
-		fprintf(stderr, "LVL2 Assert failed %s %s:%d\n", #exp, __FILE__, __LINE__); \
+		fprintf(stderr, "LVL2 Assert failed %s %s:%d\n", #exp, \
+			__FILE__, __LINE__); \
 		osmo_generate_backtrace(); \
 		ret; \
 	}
@@ -85,7 +87,8 @@ static struct nr_mapping *nr_mapping_alloc(void)
 	return m;
 }
 
-static struct nr_mapping *nr_map_have(struct nr_map *map, void *origin, nr_t orig, time_t now)
+static struct nr_mapping *nr_map_have(struct nr_map *map, void *origin,
+				      nr_t orig, time_t now)
 {
 	struct nr_mapping *mapping;
 
@@ -100,7 +103,8 @@ static struct nr_mapping *nr_map_have(struct nr_map *map, void *origin, nr_t ori
 	return mapping;
 }
 
-static nr_t nr_map_verify(const struct nr_map *map, void *origin, nr_t orig, nr_t expect_repl)
+static nr_t nr_map_verify(const struct nr_map *map, void *origin, nr_t orig,
+			  nr_t expect_repl)
 {
 	struct nr_mapping *m;
 	m = nr_map_get(map, origin, orig);
@@ -130,7 +134,8 @@ static int nr_map_verify_inv(const struct nr_map *map, nr_t repl,
 	}
 
 	if (m->origin != expect_origin) {
-		printf("mapping found, but origin mismatches: expect %p, got %p\n",
+		printf("mapping found, but origin mismatches:"
+		       " expect %p, got %p\n",
 		       expect_origin, m->origin);
 		return 0;
 	}
@@ -197,12 +202,14 @@ static void test_nr_map_basic(void)
 		nr_t orig = TEST_I + i;
 		{
 			OSMO_ASSERT(nr_map_verify(map, origin1, orig, m[i]));
-			OSMO_ASSERT(nr_map_verify_inv(map, m[i], origin1, orig));
+			OSMO_ASSERT(nr_map_verify_inv(map, m[i], origin1,
+						      orig));
 		}
 		{
 			int i2 = TEST_N_HALF + i;
 			OSMO_ASSERT(nr_map_verify(map, origin2, orig, m[i2]));
-			OSMO_ASSERT(nr_map_verify_inv(map, m[i2], origin2, orig));
+			OSMO_ASSERT(nr_map_verify_inv(map, m[i2], origin2,
+						      orig));
 		}
 	}
 
@@ -401,14 +408,16 @@ struct gtphub_peer_port *__wrap_gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	       imsi_str, apn_ni_str, gtphub_port_str(pp));
 
 	if (imsi_str) {
-		strncpy(resolve_ggsn_got_imsi, imsi_str, sizeof(resolve_ggsn_got_imsi));
+		strncpy(resolve_ggsn_got_imsi, imsi_str,
+			sizeof(resolve_ggsn_got_imsi));
 		resolve_ggsn_got_imsi[sizeof(resolve_ggsn_got_imsi) - 1] = '\0';
 	}
 	else
 		strcpy(resolve_ggsn_got_imsi, "(null)");
 
 	if (apn_ni_str) {
-		strncpy(resolve_ggsn_got_ni, apn_ni_str, sizeof(resolve_ggsn_got_ni));
+		strncpy(resolve_ggsn_got_ni, apn_ni_str,
+			sizeof(resolve_ggsn_got_ni));
 		resolve_ggsn_got_ni[sizeof(resolve_ggsn_got_ni) - 1] = '\0';
 	}
 	else
@@ -418,9 +427,11 @@ struct gtphub_peer_port *__wrap_gtphub_resolve_ggsn_addr(struct gtphub *hub,
 }
 
 #define was_resolved_for(IMSI,NI) _was_resolved_for(IMSI, NI, __FILE__, __LINE__)
-static int _was_resolved_for(const char *imsi, const char *ni, const char *file, int line)
+static int _was_resolved_for(const char *imsi, const char *ni, const char
+			     *file, int line)
 {
-	int cmp0 = strncmp(imsi, resolve_ggsn_got_imsi, sizeof(resolve_ggsn_got_imsi));
+	int cmp0 = strncmp(imsi, resolve_ggsn_got_imsi,
+			   sizeof(resolve_ggsn_got_imsi));
 
 	if (cmp0 != 0) {
 		printf("\n%s:%d: was_resolved_for(): MISMATCH for IMSI\n"
@@ -431,7 +442,8 @@ static int _was_resolved_for(const char *imsi, const char *ni, const char *file,
 		       imsi, resolve_ggsn_got_imsi);
 	}
 
-	int cmp1 = strncmp(ni, resolve_ggsn_got_ni, sizeof(resolve_ggsn_got_ni));
+	int cmp1 = strncmp(ni, resolve_ggsn_got_ni,
+			   sizeof(resolve_ggsn_got_ni));
 	if (cmp1 != 0) {
 		printf("\n%s:%d: was_resolved_for(): MISMATCH for NI\n"
 		       "  expecting: '%s'\n"
@@ -557,7 +569,7 @@ static void test_echo(void)
 	now = 123;
 
 	const char *gtp_ping_from_sgsn =
-		"32"	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */
+		"32"	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"01"	/* type 01: Echo request */
 		"0004"	/* length of 4 after header TEI */
 		"00000000" /* header TEI == 0 in Echo */
@@ -593,7 +605,7 @@ static void test_echo(void)
 	OSMO_ASSERT(!sgsn_port);
 
 	const char *gtp_ping_from_ggsn =
-		"32"	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */
+		"32"	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"01"	/* type 01: Echo request */
 		"0004"	/* length of 4 after header TEI */
 		"00000000" /* header TEI == 0 in Echo */
@@ -747,26 +759,28 @@ static int msg_from_ggsn(int plane_idx,
 
 static int create_pdp_ctx()
 {
-	const char *gtp_req_from_sgsn = MSG_PDP_CTX_REQ("0068",
-							"abcd",
-							"60",
-							"42000121436587f9",
-							"00000123",
-							"00000321",
-							"0009""08696e7465726e6574", /* "(8)internet" */
-							"0004""c0a82a17", /* same as default sgsn_sender */
-							"0004""c0a82a17"
-						       );
-	const char *gtp_req_to_ggsn = MSG_PDP_CTX_REQ("0068",
-						      "6d31",	/* mapped seq ("abcd") */
-						      "60",
-						      "42000121436587f9",
-						      "00000001", /* mapped TEI Data I ("123") */
-						      "00000001", /* mapped TEI Control ("321") */
-						      "0009""08696e7465726e6574",
-						      "0004""7f000201", /* replaced with gtphub's address ggsn ctrl */
-						      "0004""7f000202" /* replaced with gtphub's address ggsn user */
-						     );
+	const char *gtp_req_from_sgsn =
+		MSG_PDP_CTX_REQ("0068",
+				"abcd",
+				"60",
+				"42000121436587f9",
+				"00000123",
+				"00000321",
+				"0009""08696e7465726e6574", /* "(8)internet" */
+				"0004""c0a82a17", /* same as default sgsn_sender */
+				"0004""c0a82a17"
+			       );
+	const char *gtp_req_to_ggsn =
+		MSG_PDP_CTX_REQ("0068",
+				"6d31",	/* mapped seq ("abcd") */
+				"60",
+				"42000121436587f9",
+				"00000001", /* mapped TEI Data I ("123") */
+				"00000001", /* mapped TEI Control ("321") */
+				"0009""08696e7465726e6574",
+				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
+				"0004""7f000202" /* replaced with gtphub's ggsn user */
+			       );
 
 	LVL2_ASSERT(msg_from_sgsn_c(&sgsn_sender,
 				    &resolved_ggsn_addr,
@@ -774,24 +788,26 @@ static int create_pdp_ctx()
 				    gtp_req_to_ggsn));
 	LVL2_ASSERT(was_resolved_for("240010123456789", "internet"));
 
-	const char *gtp_resp_from_ggsn = MSG_PDP_CTX_RSP("004e",
-							 "00000001", /* destination TEI (sent in req above) */
-							 "6d31", /* mapped seq */
-							 "01", /* restart */
-							 "00000567", /* TEI U */
-							 "00000765", /* TEI C */
-							 "0004""c0a82b22", /* GSN addresses */
-							 "0004""c0a82b22"  /* (== resolved_ggsn_addr) */
-							);
-	const char *gtp_resp_to_sgsn = MSG_PDP_CTX_RSP("004e",
-						       "00000321", /* unmapped TEI ("001") */
-						       "abcd", /* unmapped seq ("6d31") */
-						       "01",
-						       "00000002", /* mapped TEI from GGSN ("567") */
-						       "00000002", /* mapped TEI from GGSN ("765") */
-						       "0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
-						       "0004""7f000102" /* gtphub's address towards SGSNs (User) */
-						      );
+	const char *gtp_resp_from_ggsn =
+		MSG_PDP_CTX_RSP("004e",
+				"00000001", /* destination TEI (sent in req above) */
+				"6d31", /* mapped seq */
+				"01", /* restart */
+				"00000567", /* TEI U */
+				"00000765", /* TEI C */
+				"0004""c0a82b22", /* GSN addresses */
+				"0004""c0a82b22"  /* (== resolved_ggsn_addr) */
+			       );
+	const char *gtp_resp_to_sgsn =
+		MSG_PDP_CTX_RSP("004e",
+				"00000321", /* unmapped TEI ("001") */
+				"abcd", /* unmapped seq ("6d31") */
+				"01",
+				"00000002", /* mapped TEI from GGSN ("567") */
+				"00000002", /* mapped TEI from GGSN ("765") */
+				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
+				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
+			       );
 	/* The response should go back to whichever port the request came from
 	 * (unmapped by sequence nr) */
 	LVL2_ASSERT(msg_from_ggsn_c(&resolved_ggsn_addr,
@@ -826,8 +842,10 @@ static void test_create_pdp_ctx(void)
 	 * 0x00000765 == 1893 (TEI from GGSN Ctrl)
 	 * 0x00000567 == 1383 (TEI from GGSN User)
 	 * Mapped TEIs should be 1 and 2. */
-	OSMO_ASSERT(nr_map_is(&hub->tei_map[GTPH_PLANE_CTRL], "(801->1@21945), (1893->2@21945), "));
-	OSMO_ASSERT(nr_map_is(&hub->tei_map[GTPH_PLANE_USER], "(291->1@21945), (1383->2@21945), "));
+	OSMO_ASSERT(nr_map_is(&hub->tei_map[GTPH_PLANE_CTRL],
+			      "(801->1@21945), (1893->2@21945), "));
+	OSMO_ASSERT(nr_map_is(&hub->tei_map[GTPH_PLANE_USER],
+			      "(291->1@21945), (1383->2@21945), "));
 
 	gtphub_gc(hub, now + EXPIRE_ALL);
 }
@@ -846,7 +864,7 @@ static void test_user_data(void)
 	resolve_to_sgsn("192.168.42.23", 2152);
 
 	const char *u_from_ggsn =
-		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
 		"00000001" /* mapped User TEI for SGSN from create_pdp_ctx() */
@@ -858,7 +876,7 @@ static void test_user_data(void)
 		"202122232425262728292a2b2c2d2e2f3031323334353637"
 		;
 	const char *u_to_sgsn =
-		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
 		"00000123" /* unmapped User TEI */
@@ -877,7 +895,7 @@ static void test_user_data(void)
 				    u_to_sgsn));
 
 	const char *u_from_sgsn =
-		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
 		"00000002" /* mapped User TEI for GGSN from create_pdp_ctx() */
@@ -889,7 +907,7 @@ static void test_user_data(void)
 		"202122232425262728292a2b2c2d2e2f3031323334353637"
 		;
 	const char *u_to_ggsn =
-		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
 		"00000567" /* unmapped User TEI */

@@ -61,7 +61,8 @@ int osmo_sockaddr_init(struct osmo_sockaddr *addr,
 static inline int osmo_sockaddr_init_udp(struct osmo_sockaddr *addr,
 					 const char *host, uint16_t port)
 {
-	return osmo_sockaddr_init(addr, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP, host, port);
+	return osmo_sockaddr_init(addr, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
+				  host, port);
 }
 
 /*! \brief convert sockaddr to human readable string.
@@ -86,7 +87,7 @@ int osmo_sockaddr_to_strs(char *addr_str, size_t addr_str_len,
 			  int flags);
 
 
-/*! \brief conveniently concatenate the parts returned by osmo_sockaddr_to_strs().
+/*! \brief concatenate the parts returned by osmo_sockaddr_to_strs().
  * \param[in] addr  Binary representation as returned by osmo_sockaddr_init().
  * \param[in] buf  A buffer to use for string operations.
  * \param[in] buf_len  Length of the buffer.
@@ -116,11 +117,13 @@ const char *osmo_sockaddr_to_str(const struct osmo_sockaddr *addr);
  * \param[in] b  The other address to compare.
  * \returns 0 if equal, otherwise -1 or 1.
  */
-int osmo_sockaddr_cmp(const struct osmo_sockaddr *a, const struct osmo_sockaddr *b);
+int osmo_sockaddr_cmp(const struct osmo_sockaddr *a,
+		      const struct osmo_sockaddr *b);
 
 /*! \brief Overwrite *dst with *src.
  * Like memcpy(), but copy only the valid bytes. */
-void osmo_sockaddr_copy(struct osmo_sockaddr *dst, const struct osmo_sockaddr *src);
+void osmo_sockaddr_copy(struct osmo_sockaddr *dst,
+			const struct osmo_sockaddr *src);
 
 
 /* general */
@@ -179,7 +182,8 @@ struct expiry {
 /* Initialize an expiry queue. */
 void expiry_init(struct expiry *exq, int expiry_in_seconds);
 
-/* Add a new mapping, or restart the expiry timeout for an already listed mapping. */
+/* Add a new mapping, or restart the expiry timeout for an already listed
+ * mapping. */
 void expiry_add(struct expiry *exq, struct expiring_item *mapping, time_t now);
 
 /* Initialize to all-empty; must be called before using the item in any way. */
