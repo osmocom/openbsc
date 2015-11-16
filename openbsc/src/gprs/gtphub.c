@@ -1787,6 +1787,11 @@ void gtphub_init(struct gtphub *hub)
 		gtphub_bind_init(&hub->to_ggsns[plane_idx]);
 		gtphub_bind_init(&hub->to_sgsns[plane_idx]);
 	}
+
+	hub->to_sgsns[GTPH_PLANE_CTRL].label = "SGSN Ctrl";
+	hub->to_ggsns[GTPH_PLANE_CTRL].label = "GGSN Ctrl";
+	hub->to_sgsns[GTPH_PLANE_USER].label = "SGSN User";
+	hub->to_ggsns[GTPH_PLANE_USER].label = "GGSN User";
 }
 
 static int gtphub_make_proxy(struct gtphub *hub,
@@ -1981,7 +1986,8 @@ static struct gtphub_peer_addr *gtphub_addr_have(struct gtphub *hub,
 
 	a = gtphub_peer_add_addr(peer, addr);
 	
-	LOG("New peer address: %s\n",
+	LOG("New peer address: %s %s\n",
+	    bind->label,
 	    gsn_addr_to_str(&a->addr));
 
 	return a;

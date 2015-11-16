@@ -370,6 +370,8 @@ struct gtphub_bind {
 
 	/* list of struct gtphub_peer */
 	struct llist_head peers;
+
+	const char *label; /* For logging */
 };
 
 struct gtphub_resolved_ggsn {
