@@ -1878,7 +1878,7 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 				      &hub->to_sgsns[plane_idx],
 				      &cfg->sgsn_proxy[plane_idx])
 		    != 0) {
-			LOG(LOGL_FATAL, "Cannot configure SGSN proxy",
+			LOG(LOGL_FATAL, "Cannot configure SGSN proxy"
 			    " %s port %d.\n",
 			    cfg->sgsn_proxy[plane_idx].addr_str,
 			    (int)cfg->sgsn_proxy[plane_idx].port);
