@@ -914,10 +914,10 @@ static void gtphub_mapping_del_cb(struct expiring_item *expi)
 	/* Just for log */
 	struct gtphub_peer_port *from = nrm->origin;
 	OSMO_ASSERT(from);
-	LOG(LOGL_DEBUG, "expired: %d: nr mapping from %s: %d->%d\n",
+	LOG(LOGL_DEBUG, "expired: %d: nr mapping from %s: %u->%u\n",
 	    (int)nrm->expiry_entry.expiry,
 	    gtphub_port_str(from),
-	    (int)nrm->orig, (int)nrm->repl);
+	    (unsigned int)nrm->orig, (unsigned int)nrm->repl);
 
 	gtphub_port_ref_count_dec(from);
 
@@ -960,10 +960,10 @@ static uint32_t gtphub_tei_mapping_have(struct gtphub *hub,
 {
 	struct nr_mapping *nrm = gtphub_mapping_have(&hub->tei_map[plane_idx],
 						     from, orig_tei, now);
-	LOG(LOGL_DEBUG, "New %s TEI: (from %s, TEI %d) <-- TEI %d\n",
+	LOG(LOGL_DEBUG, "New %s TEI: (from %s, TEI %u) <-- TEI %u\n",
 	    gtphub_plane_idx_names[plane_idx],
 	    gtphub_port_str(from),
-	    (int)orig_tei, (int)nrm->repl);
+	    (unsigned int)orig_tei, (unsigned int)nrm->repl);
 
 	return (uint32_t)nrm->repl;
 }
@@ -1046,8 +1046,9 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 	uint32_t unmapped_tei = nrm->orig;
 	set_tei(p, unmapped_tei);
 
-	LOG(LOGL_DEBUG, "Unmapped TEI coming from %s: %d -> %d (to %s)\n",
-	    gtphub_port_str(from_port), tei, unmapped_tei,
+	LOG(LOGL_DEBUG, "Unmapped TEI coming from %s: %u -> %u (to %s)\n",
+	    gtphub_port_str(from_port),
+	    (unsigned int)tei, (unsigned int)unmapped_tei,
 	    gtphub_port_str2(to_port));
 
 	*to_port_p = to_port;
@@ -1240,7 +1241,7 @@ static int gtphub_unmap(struct gtphub *hub,
 		    gtphub_peer_str(from_peer),
 		    (int)p->seq,
 		    gtphub_port_str(from_seq),
-		    (int)p->header_tei,
+		    (unsigned int)p->header_tei,
 		    gtphub_port_str2(from_tei)
 		   );
 	}

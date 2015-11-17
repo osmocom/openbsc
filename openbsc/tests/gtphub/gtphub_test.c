@@ -233,9 +233,9 @@ static int nr_map_is(struct nr_map *map, const char *str)
 	size_t len = sizeof(buf);
 	struct nr_mapping *m;
 	llist_for_each_entry(m, &map->mappings, entry) {
-		size_t wrote = snprintf(pos, len, "(%d->%d@%d), ",
-					(int)m->orig,
-					(int)m->repl,
+		size_t wrote = snprintf(pos, len, "(%u->%u@%d), ",
+					m->orig,
+					m->repl,
 					(int)m->expiry_entry.expiry);
 		OSMO_ASSERT(wrote < len);
 		pos += wrote;

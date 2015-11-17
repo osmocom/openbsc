@@ -249,7 +249,7 @@ int expiry_tick(struct expiry *exq, time_t now);
  * NULL, no deallocation will be done (allowing statically allocated entries).
  */
 
-typedef int nr_t;
+typedef unsigned int nr_t;
 
 /* Generator for unused numbers. So far this counts upwards from zero, but the
  * implementation may change in the future. Treat this like an opaque struct.
