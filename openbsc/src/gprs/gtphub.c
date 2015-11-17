@@ -784,16 +784,16 @@ static int gtphub_bind_start(struct gtphub_bind *b,
 	return 0;
 }
 
-/* Recv datagram from from->fd, optionally write sender's address to *from_addr.
+/* Recv datagram from from->fd, write sender's address to *from_addr.
  * Return the number of bytes read, zero on error. */
 static int gtphub_read(const struct osmo_fd *from,
 		       struct osmo_sockaddr *from_addr,
 		       uint8_t *buf, size_t buf_len)
 {
-	/* recvfrom requires the available length set in *from_addr_len. */
-	if (from_addr)
-		from_addr->l = sizeof(from_addr->a);
+	OSMO_ASSERT(from_addr);
 
+	/* recvfrom requires the available length set in *from_addr_len. */
+	from_addr->l = sizeof(from_addr->a);
 	errno = 0;
 	ssize_t received = recvfrom(from->fd, buf, buf_len, 0,
 				    (struct sockaddr*)&from_addr->a,
@@ -807,12 +807,10 @@ static int gtphub_read(const struct osmo_fd *from,
 		return 0;
 	}
 
-	if (from_addr) {
-		LOG(LOGL_DEBUG, "from %s\n", osmo_sockaddr_to_str(from_addr));
-	}
+	LOG(LOGL_DEBUG, "Received %d bytes from %s\n%s\n",
+	    (int)received, osmo_sockaddr_to_str(from_addr),
+	    osmo_hexdump(buf, received));
 
-	LOG(LOGL_DEBUG, "Received %d %s\n",
-	    (int)received, osmo_hexdump(buf, received));
 	return received;
 }
 
