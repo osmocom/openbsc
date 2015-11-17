@@ -1223,10 +1223,7 @@ static int gtphub_write(const struct osmo_fd *to,
 	errno = 0;
 	ssize_t sent = sendto(to->fd, buf, buf_len, 0,
 			      (struct sockaddr*)&to_addr->a, to_addr->l);
-
-	if (to_addr) {
-		LOG(LOGL_DEBUG, "to %s\n", osmo_sockaddr_to_str(to_addr));
-	}
+	LOG(LOGL_DEBUG, "to %s\n", osmo_sockaddr_to_str(to_addr));
 
 	if (sent == -1) {
 		LOG(LOGL_ERROR, "error: %s\n", strerror(errno));
@@ -1712,6 +1709,7 @@ void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
 	gtphub_port_ref_count_inc(pp);
 
 	strncpy(ggsn->apn_oi_str, apn_oi_str, sizeof(ggsn->apn_oi_str));
+	ggsn->apn_oi_str[sizeof(ggsn->apn_oi_str) - 1] = '\0';
 
 	ggsn->expiry_entry.del_cb = resolved_gssn_del_cb;
 	expiry_add(&hub->expire_tei_maps, &ggsn->expiry_entry, now);
@@ -1902,7 +1900,7 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 	}
 
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
-		if (hub->sgsn_proxy[plane_idx])
+		if (hub->ggsn_proxy[plane_idx])
 			LOG(LOGL_NOTICE, "Using GGSN %s proxy %s\n",
 			    gtphub_plane_idx_names[plane_idx],
 			    gtphub_port_str(hub->ggsn_proxy[plane_idx]));
