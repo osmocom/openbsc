@@ -248,8 +248,6 @@ int expiry_tick(struct expiry *exq, time_t now);
  * Mapping allocation and a del_cb are provided by the caller. If del_cb is
  * NULL, no deallocation will be done (allowing statically allocated entries).
  */
-/* TODO at some point I thought the allocation & del_cb complexity was
- * needed/helpful, but by now it seems like overkill. Maybe lose that again. */
 
 typedef int nr_t;
 
