@@ -157,7 +157,7 @@ static void test_nr_map_basic(void)
 	struct nr_map _map;
 	struct nr_map *map = &_map;
 
-	nr_pool_init(pool);
+	nr_pool_init(pool, 1, 1000);
 	nr_map_init(map, pool, NULL);
 
 	OSMO_ASSERT(llist_empty(&map->mappings));
@@ -253,6 +253,50 @@ static int nr_map_is(struct nr_map *map, const char *str)
 	return 1;
 }
 
+static int test_nr_map_wrap_with(nr_t nr_min, nr_t nr_max, nr_t repl_last,
+				 nr_t orig_start, int orig_n,
+				 const char *expect)
+{
+	struct nr_pool _pool;
+	struct nr_pool *pool = &_pool;
+	struct nr_map _map;
+	struct nr_map *map = &_map;
+
+	nr_pool_init(pool, nr_min, nr_max);
+	nr_map_init(map, pool, NULL);
+
+	pool->last_nr = repl_last;
+
+	void *origin = (void*)0x1234;
+
+	int i;
+	for (i = 0; i < orig_n; i++)
+		LVL2_ASSERT(nr_map_have(map, origin, orig_start + i, 0));
+
+	LVL2_ASSERT(nr_map_is(map, expect));
+
+	nr_map_clear(map);
+	return 1;
+}
+
+static void test_nr_map_wrap(void)
+{
+	OSMO_ASSERT(test_nr_map_wrap_with(
+		0, UINT_MAX, UINT_MAX - 2,
+		1, 5,
+		"(1->4294967294@0), "
+		"(2->4294967295@0), "
+		"(3->0@0), "
+		"(4->1@0), "
+		"(5->2@0), "
+		));
+	OSMO_ASSERT(test_nr_map_wrap_with(
+		5, 10, 8,
+		1, 5,
+		"(1->9@0), (2->10@0), (3->5@0), (4->6@0), (5->7@0), "
+		));
+}
+
 static void test_expiry(void)
 {
 	struct expiry expiry;
@@ -261,7 +305,7 @@ static void test_expiry(void)
 	int i;
 
 	expiry_init(&expiry, 30);
-	nr_pool_init(&pool);
+	nr_pool_init(&pool, 1, 1000);
 	nr_map_init(&map, &pool, &expiry);
 	OSMO_ASSERT(nr_map_is(&map, ""));
 
@@ -993,6 +1037,7 @@ int main(int argc, char **argv)
 	osmo_gtphub_ctx = talloc_named_const(NULL, 0, "osmo_gtphub");
 
 	test_nr_map_basic();
+	test_nr_map_wrap();
 	test_expiry();
 	test_echo();
 	test_create_pdp_ctx();

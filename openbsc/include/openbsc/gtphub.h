@@ -256,7 +256,8 @@ typedef unsigned int nr_t;
  * If this becomes random, the tests need to be fixed. */
 struct nr_pool {
 	nr_t last_nr;
-	/* TODO add min, max, for safe wrapping */
+	nr_t nr_min;
+	nr_t nr_max;
 };
 
 struct nr_mapping {
@@ -275,7 +276,7 @@ struct nr_map {
 };
 
 
-void nr_pool_init(struct nr_pool *pool);
+void nr_pool_init(struct nr_pool *pool, nr_t nr_min, nr_t nr_max);
 
 /* Return the next unused number from the nr_pool. */
 nr_t nr_pool_next(struct nr_pool *pool);
@@ -398,6 +399,12 @@ struct gtphub {
 	/* pointers to an entry of to_ggsns[x].peers */
 	struct gtphub_peer_port *ggsn_proxy[GTPH_PLANE_N];
 
+	/* The TEI numbers will simply wrap and be reused, which will work out
+	 * in practice. Problems would arise if one given peer maintained the
+	 * same TEI for a time long enough for the TEI nr map to wrap an entire
+	 * uint32_t; if a new TEI were mapped every second, this would take
+	 * more than 100 years (in which a single given TEI must not time out)
+	 * to cause a problem. */
 	struct nr_map tei_map[GTPH_PLANE_N];
 	struct nr_pool tei_pool[GTPH_PLANE_N];
 

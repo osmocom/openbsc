@@ -577,18 +577,21 @@ void expiring_item_del(struct expiring_item *item)
 
 /* nr_map, nr_pool */
 
-void nr_pool_init(struct nr_pool *pool)
+void nr_pool_init(struct nr_pool *pool, nr_t nr_min, nr_t nr_max)
 {
-	*pool = (struct nr_pool){};
+	*pool = (struct nr_pool){
+		.nr_min = nr_min,
+		.nr_max = nr_max,
+		.last_nr = nr_max
+	};
 }
 
 nr_t nr_pool_next(struct nr_pool *pool)
 {
-	pool->last_nr ++;
-
-	OSMO_ASSERT(pool->last_nr > 0);
-	/* TODO: gracefully handle running out of TEIs. */
-	/* TODO: random TEIs. */
+	if (pool->last_nr >= pool->nr_max)
+		pool->last_nr = pool->nr_min;
+	else
+		pool->last_nr ++;
 
 	return pool->last_nr;
 }
@@ -1739,7 +1742,7 @@ void gtphub_init(struct gtphub *hub)
 
 	int plane_idx;
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
-		nr_pool_init(&hub->tei_pool[plane_idx]);
+		nr_pool_init(&hub->tei_pool[plane_idx], 1, 0xffffffff);
 		nr_map_init(&hub->tei_map[plane_idx],
 			    &hub->tei_pool[plane_idx],
 			    &hub->expire_tei_maps);
@@ -1907,7 +1910,7 @@ static struct gtphub_peer *gtphub_peer_new(struct gtphub *hub,
 
 	INIT_LLIST_HEAD(&peer->addresses);
 
-	nr_pool_init(&peer->seq_pool);
+	nr_pool_init(&peer->seq_pool, 0, 0xffff);
 	nr_map_init(&peer->seq_map, &peer->seq_pool, &hub->expire_seq_maps);
 
 	/* TODO use something random to pick the initial sequence nr.
