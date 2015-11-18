@@ -197,7 +197,7 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 			LOGP(DGTPHUB, LOGL_DEBUG,
 			     "GGSN resolved from cache: %s -> %s\n",
 			     lookup->apn_oi_str,
-			     gtphub_peer_str(resolved->peer));
+			     gtphub_port_str(resolved->peer));
 			return resolved->peer;
 		}
 	}

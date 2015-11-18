@@ -20,11 +20,21 @@
 
 #include <string.h>
 
+#include <ares.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <osmocom/core/talloc.h>
 #include <osmocom/vty/command.h>
 
 #include <openbsc/vty.h>
 #include <openbsc/gtphub.h>
+
+/* TODO split GRX ares from sgsn into a separate struct and allow use without
+ * globals. */
+#include <openbsc/sgsn.h>
+extern struct sgsn_instance *sgsn;
 
 static struct gtphub_cfg *g_cfg = 0;
 
@@ -57,6 +67,10 @@ static void write_addrs(struct vty *vty, const char *name,
 		c->addr_str, (int)c->port,
 		u->addr_str, (int)u->port,
 		VTY_NEWLINE);
+
+	struct ares_addr_node *server;
+	for (server = sgsn->ares_servers; server; server = server->next)
+		vty_out(vty, " grx-dns-add %s%s", inet_ntoa(server->addr.addr4), VTY_NEWLINE);
 }
 
 static int config_write_gtphub(struct vty *vty)
@@ -214,6 +228,22 @@ DEFUN(cfg_gtphub_sgsn_proxy, cfg_gtphub_sgsn_proxy_cmd,
 	return CMD_SUCCESS;
 }
 
+
+/* Copied from sgsn_vty.h */
+DEFUN(cfg_grx_ggsn, cfg_grx_ggsn_cmd,
+	"grx-dns-add A.B.C.D",
+	"Add DNS server\nIPv4 address\n")
+{
+	struct ares_addr_node *node = talloc_zero(tall_bsc_ctx, struct ares_addr_node);
+	node->family = AF_INET;
+	inet_aton(argv[0], &node->addr.addr4);
+
+	node->next = sgsn->ares_servers;
+	sgsn->ares_servers = node;
+	return CMD_SUCCESS;
+}
+
+
 DEFUN(show_gtphub, show_gtphub_cmd, "show gtphub",
       SHOW_STR "Display information about the GTP hub")
 {
@@ -238,6 +268,7 @@ int gtphub_vty_init(void)
 	install_element(GTPHUB_NODE, &cfg_gtphub_ggsn_proxy_cmd);
 	install_element(GTPHUB_NODE, &cfg_gtphub_sgsn_proxy_short_cmd);
 	install_element(GTPHUB_NODE, &cfg_gtphub_sgsn_proxy_cmd);
+	install_element(GTPHUB_NODE, &cfg_grx_ggsn_cmd);
 
 	return 0;
 }

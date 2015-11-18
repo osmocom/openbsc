@@ -1781,7 +1781,14 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 	int rc;
 
 	gtphub_init(hub);
-	gtphub_ares_init(hub);
+
+	/* If a Ctrl plane proxy is configured, ares will never be used. */
+	if (!cfg->ggsn_proxy[GTPH_PLANE_CTRL].addr_str) {
+		if (gtphub_ares_init(hub) != 0) {
+			LOG(LOGL_FATAL, "Failed to initialize ares\n");
+			return -1;
+		}
+	}
 
 	/* TODO set hub->restart_counter from external file. */
 
@@ -1805,7 +1812,6 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
 			return rc;
 		}
 	}
-
 
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
 		if (gtphub_make_proxy(hub,
