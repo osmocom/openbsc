@@ -3,9 +3,11 @@
 /* (C) 2015 by sysmocom s.f.m.c. GmbH <info@sysmocom.de>
  * All Rights Reserved
  *
- * gtphub_ext.c -- ext means extern. This file is kept separate so that these
- * functions can be wrapped for gtphub_test.c. When a function and its callers
- * are in the same compilational unit, the wrappability may be optimized away.
+ * gtphub_ares.c.
+ *
+ * This file is kept separate so that these functions can be wrapped for
+ * gtphub_test.c. When a function and its callers are in the same compilational
+ * unit, the wrappability may be optimized away.
  *
  * Author: Neels Hofmeyr
  *

@@ -408,7 +408,7 @@ struct gtphub {
 	struct nr_map tei_map[GTPH_PLANE_N];
 	struct nr_pool tei_pool[GTPH_PLANE_N];
 
-	struct llist_head ggsn_lookups; /* opaque (gtphub_ext.c) */
+	struct llist_head ggsn_lookups; /* opaque (gtphub_ares.c) */
 	struct llist_head resolved_ggsns; /* struct gtphub_resolved_ggsn */
 
 	struct osmo_timer_list gc_timer;

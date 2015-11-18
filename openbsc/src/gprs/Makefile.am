@@ -34,7 +34,7 @@ osmo_sgsn_LDADD = 	\
 			-lgtp $(OSMO_LIBS) $(LIBOSMOABIS_LIBS) $(LIBCARES_LIBS) \
 			$(LIBCRYPTO_LIBS) -lrt
 
-osmo_gtphub_SOURCES =	gtphub_main.c gtphub.c gtphub_ext.c gtphub_vty.c \
+osmo_gtphub_SOURCES =	gtphub_main.c gtphub.c gtphub_ares.c gtphub_vty.c \
 			sgsn_ares.c gprs_utils.c
 osmo_gtphub_LDADD = 	\
 			$(top_builddir)/src/libcommon/libcommon.a \
