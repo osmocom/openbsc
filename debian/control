@@ -50,6 +50,12 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Osmocom Base Station Controller Network Address Translation
  Network address translation for BSC.
 
+Package: osmo-gtphub
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Osmocom GTP Hub
+ Proxy for comms between multiple SGSNs and GGSNs.
+
 Package: osmocom-bsc-dbg
 Architecture: any
 Section: debug
@@ -104,4 +110,12 @@ Section: debug
 Priority: extra
 Depends: osmocom-bsc-nat (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the OpenBSC Network Address Translation
+ Make debugging possible
+
+Package: osmo-gtphub-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmo-gtphub (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for Osmocom GTP Hub
  Make debugging possible
