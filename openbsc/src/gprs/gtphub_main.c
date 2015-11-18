@@ -42,12 +42,6 @@
 
 #include "../../bscconfig.h"
 
-#define LOGERR(fmt, args...) \
-	LOGP(DGTPHUB, LOGL_ERROR, fmt, ##args)
-
-#define LOG(fmt, args...) \
-	LOGP(DGTPHUB, LOGL_NOTICE, fmt, ##args)
-
 #ifndef OSMO_VTY_PORT_GTPHUB
 /* should come from libosmocore */
 #define OSMO_VTY_PORT_GTPHUB	4253
@@ -67,7 +61,8 @@ static struct log_info_cat gtphub_categories[] = {
 		.name = "DGTPHUB",
 		.description = "GTP Hub",
 		.color = "\033[1;33m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1,
+		.loglevel = LOGL_NOTICE,
 	},
 };
 
@@ -87,17 +82,21 @@ void log_cfg(struct gtphub_cfg *cfg)
 {
 	struct gtphub_cfg_addr *a;
 	a = &cfg->to_sgsns[GTPH_PLANE_CTRL].bind;
-	LOG("to-SGSNs bind, Control: %s port %d\n",
-	    a->addr_str, a->port);
+	LOGP(DGTPHUB, LOGL_NOTICE,
+	     "to-SGSNs bind, Control: %s port %d\n",
+	     a->addr_str, a->port);
 	a = &cfg->to_sgsns[GTPH_PLANE_USER].bind;
-	LOG("to-SGSNs bind, User:    %s port %d\n",
-	    a->addr_str, a->port);
+	LOGP(DGTPHUB, LOGL_NOTICE,
+	     "to-SGSNs bind, User:    %s port %d\n",
+	     a->addr_str, a->port);
 	a = &cfg->to_ggsns[GTPH_PLANE_CTRL].bind;
-	LOG("to-GGSNs bind, Control: %s port %d\n",
-	    a->addr_str, a->port);
+	LOGP(DGTPHUB, LOGL_NOTICE,
+	     "to-GGSNs bind, Control: %s port %d\n",
+	     a->addr_str, a->port);
 	a = &cfg->to_ggsns[GTPH_PLANE_USER].bind;
-	LOG("to-GGSNs bind, User:    %s port %d\n",
-	    a->addr_str, a->port);
+	LOGP(DGTPHUB, LOGL_NOTICE,
+	     "to-GGSNs bind, User:    %s port %d\n",
+	     a->addr_str, a->port);
 }
 
 static void signal_handler(int signal)
@@ -254,7 +253,8 @@ int main(int argc, char **argv)
 
 	rc = gtphub_cfg_read(cfg, ccfg->config_file);
 	if (rc < 0) {
-		LOGP(DGTPHUB, LOGL_FATAL, "Cannot parse config file '%s'\n", ccfg->config_file);
+		LOGP(DGTPHUB, LOGL_FATAL, "Cannot parse config file '%s'\n",
+		     ccfg->config_file);
 		exit(2);
 	}
 
@@ -266,7 +266,7 @@ int main(int argc, char **argv)
 	if (ccfg->daemonize) {
 		rc = osmo_daemonize();
 		if (rc < 0) {
-			LOGERR("Error during daemonize");
+			LOGP(DGTPHUB, LOGL_FATAL, "Error during daemonize");
 			exit(1);
 		}
 	}

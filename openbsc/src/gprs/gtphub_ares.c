@@ -163,7 +163,7 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 						 struct ggsn_lookup);
 	OSMO_ASSERT(lookup);
 
-	LOGP(DGTPHUB, LOGL_NOTICE, "Request to resolve IMSI"
+	LOGP(DGTPHUB, LOGL_DEBUG, "Request to resolve IMSI"
 	     " '%s' with APN-NI '%s' (%p / %p)\n",
 	     imsi_str, apn_ni_str, lookup, &lookup->expiry_entry);
 
@@ -178,22 +178,26 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 
 	make_addr_str(lookup);
 
-	LOGP(DGTPHUB, LOGL_NOTICE, "looking for active queries...\n");
 	struct ggsn_lookup *active;
 	llist_for_each_entry(active, &hub->ggsn_lookups, entry) {
 		if (strncmp(active->apn_oi_str, lookup->apn_oi_str,
 			    sizeof(lookup->apn_oi_str)) == 0) {
+			LOGP(DGTPHUB, LOGL_DEBUG,
+			     "Query already pending for %s\n",
+			     lookup->apn_oi_str);
 			/* A query already pending. Just tip our hat. */
 			return NULL;
 		}
 	}
 
-	LOGP(DGTPHUB, LOGL_NOTICE, "looking for already resolved GGSNs...\n");
 	struct gtphub_resolved_ggsn *resolved;
 	llist_for_each_entry(resolved, &hub->resolved_ggsns, entry) {
 		if (strncmp(resolved->apn_oi_str, lookup->apn_oi_str,
 			    sizeof(lookup->apn_oi_str)) == 0) {
-			/* Already resolved. */
+			LOGP(DGTPHUB, LOGL_DEBUG,
+			     "GGSN resolved from cache: %s -> %s\n",
+			     lookup->apn_oi_str,
+			     gtphub_peer_str(resolved->peer));
 			return resolved->peer;
 		}
 	}
@@ -201,7 +205,11 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	/* Kick off a resolution, but so far return nothing. The hope is that
 	 * the peer will resend the request (a couple of times), and by then
 	 * the GGSN will be resolved. */
-	LOGP(DGTPHUB, LOGL_NOTICE, "kick off resolution.\n");
+	LOGP(DGTPHUB, LOGL_DEBUG,
+	     "Sending out DNS query for %s..."
+	     " (Returning failure, hoping for a retry once resolution"
+	     " has concluded)\n",
+	     lookup->apn_oi_str);
 
 	llist_add(&lookup->entry, &hub->ggsn_lookups);
 
@@ -209,10 +217,6 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	expiry_add(&hub->expire_seq_maps, &lookup->expiry_entry, gtphub_now());
 
 	start_ares_query(lookup);
-	LOGP(DGTPHUB, LOGL_NOTICE, "Resolving %s %s ..."
-	     " (Returning failure, hoping for a retry"
-	     "once resolution has concluded)\n",
-	     imsi_str, apn_ni_str);
 
 	return NULL;
 }
