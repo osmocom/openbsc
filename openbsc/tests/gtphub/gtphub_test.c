@@ -35,8 +35,6 @@
 #include <gtp.h>
 #include <gtpie.h>
 
-#define EXPIRE_ALL ((60 * GTPH_TEI_MAPPING_EXPIRY_MINUTES) + 1)
-
 #define ZERO_STRUCT(struct_pointer) memset(struct_pointer, '\0', \
 					   sizeof(*(struct_pointer)))
 
@@ -55,6 +53,7 @@
 	  printf(label "\n"); }
 
 void gtphub_init(struct gtphub *hub);
+void gtphub_free(struct gtphub *hub);
 
 void *osmo_gtphub_ctx;
 
@@ -613,6 +612,23 @@ static int setup_test_hub()
 	return 1;
 }
 
+static int clear_test_hub()
+{
+	/* expire all */
+	gtphub_gc(hub, now + (60 * GTPH_TEI_MAPPING_EXPIRY_MINUTES) + 1);
+
+	int plane_idx;
+	plane_idx = GTPH_PLANE_CTRL;
+	LVL2_ASSERT(llist_empty(&hub->to_ggsns[plane_idx].peers));
+	LVL2_ASSERT(llist_empty(&hub->to_sgsns[plane_idx].peers));
+	plane_idx = GTPH_PLANE_USER;
+	LVL2_ASSERT(llist_empty(&hub->to_ggsns[plane_idx].peers));
+	LVL2_ASSERT(llist_empty(&hub->to_sgsns[plane_idx].peers));
+
+	gtphub_free(hub);
+	return 1;
+}
+
 
 static void test_echo(void)
 {
@@ -727,8 +743,7 @@ static void test_echo(void)
 	OSMO_ASSERT(!pp);
 
 
-	now += EXPIRE_ALL;
-	gtphub_gc(hub, now);
+	OSMO_ASSERT(clear_test_hub());
 }
 
 
@@ -937,7 +952,7 @@ static void test_create_pdp_ctx(void)
 	OSMO_ASSERT(nr_map_is(&hub->tei_map[GTPH_PLANE_USER],
 			      "(291->1@21945), (1383->2@21945), "));
 
-	gtphub_gc(hub, now + EXPIRE_ALL);
+	OSMO_ASSERT(clear_test_hub());
 }
 
 static void test_user_data(void)
@@ -1013,7 +1028,7 @@ static void test_user_data(void)
 				    u_from_sgsn,
 				    u_to_ggsn));
 
-	gtphub_gc(hub, now + EXPIRE_ALL);
+	OSMO_ASSERT(clear_test_hub());
 }
 
 

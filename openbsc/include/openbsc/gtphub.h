@@ -200,6 +200,9 @@ void expiring_item_del(struct expiring_item *item);
  * count passed to nr_map_add(). A monotonous clock counter should be used. */
 int expiry_tick(struct expiry *exq, time_t now);
 
+/* Expire all items. */
+void expiry_clear(struct expiry *exq);
+
 
 /* number map */
 
@@ -428,6 +431,10 @@ int gtphub_cfg_read(struct gtphub_cfg *cfg, const char *config_file);
 
 /* Initialize and start gtphub: bind to ports, run expiry timers. */
 int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg);
+
+/* Close all sockets, expire all maps and peers and free all allocations. The
+ * struct is then unusable, unless gtphub_start() is run on it again. */
+void gtphub_stop(struct gtphub *hub);
 
 time_t gtphub_now(void);
 

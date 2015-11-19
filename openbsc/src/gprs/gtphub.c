@@ -24,6 +24,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <limits.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -555,6 +556,14 @@ int expiry_tick(struct expiry *exq, time_t now)
 	return expired;
 }
 
+void expiry_clear(struct expiry *exq)
+{
+	struct expiring_item *m, *n;
+	llist_for_each_entry_safe(m, n, &exq->items, entry) {
+		expiring_item_del(m);
+	}
+}
+
 void expiring_item_init(struct expiring_item *item)
 {
 	ZERO_STRUCT(item);
@@ -769,6 +778,13 @@ static int gtphub_sock_init(struct osmo_fd *ofd,
 	return 0;
 }
 
+static void gtphub_sock_close(struct osmo_fd *ofd)
+{
+	close(ofd->fd);
+	osmo_fd_unregister(ofd);
+	ofd->cb = NULL;
+}
+
 static void gtphub_bind_init(struct gtphub_bind *b)
 {
 	ZERO_STRUCT(b);
@@ -786,6 +802,16 @@ static int gtphub_bind_start(struct gtphub_bind *b,
 	if (gtphub_sock_init(&b->ofd, &cfg->bind, cb, cb_data, ofd_id) != 0)
 		return -1;
 	return 0;
+}
+
+static void gtphub_bind_free(struct gtphub_bind *b)
+{
+	OSMO_ASSERT(llist_empty(&b->peers));
+}
+
+static void gtphub_bind_stop(struct gtphub_bind *b) {
+	gtphub_sock_close(&b->ofd);
+	gtphub_bind_free(b);
 }
 
 /* Recv datagram from from->fd, write sender's address to *from_addr.
@@ -1756,6 +1782,37 @@ void gtphub_init(struct gtphub *hub)
 	hub->to_ggsns[GTPH_PLANE_CTRL].label = "GGSN Ctrl";
 	hub->to_sgsns[GTPH_PLANE_USER].label = "SGSN User";
 	hub->to_ggsns[GTPH_PLANE_USER].label = "GGSN User";
+}
+
+/* For the test suite, this is kept separate from gtphub_stop(), which also
+ * closes sockets. The test suite avoids using sockets and would cause
+ * segfaults when trying to close uninitialized ofds. */
+void gtphub_free(struct gtphub *hub)
+{
+	/* By expiring all mappings, a garbage collection should free
+	 * everything else. A gtphub_bind_free() will assert that everything is
+	 * indeed empty. */
+	expiry_clear(&hub->expire_seq_maps);
+	expiry_clear(&hub->expire_tei_maps);
+
+	int plane_idx;
+	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+		gtphub_gc_bind(&hub->to_ggsns[plane_idx]);
+		gtphub_bind_free(&hub->to_ggsns[plane_idx]);
+
+		gtphub_gc_bind(&hub->to_sgsns[plane_idx]);
+		gtphub_bind_free(&hub->to_sgsns[plane_idx]);
+	}
+}
+
+void gtphub_stop(struct gtphub *hub)
+{
+	int plane_idx;
+	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+		gtphub_bind_stop(&hub->to_ggsns[plane_idx]);
+		gtphub_bind_stop(&hub->to_sgsns[plane_idx]);
+	}
+	gtphub_free(hub);
 }
 
 static int gtphub_make_proxy(struct gtphub *hub,
