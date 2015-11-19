@@ -1559,7 +1559,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	if (reply_len > 0) {
 		/* It was an echo. Nothing left to do. */
 		osmo_sockaddr_copy(to_addr, from_addr);
-		*to_ofd = &hub->to_ggsns[plane_idx].ofd;
+		*to_ofd = &hub->to_sgsns[plane_idx].ofd;
 		return reply_len;
 	}
 	if (reply_len < 0)
