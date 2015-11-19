@@ -696,6 +696,7 @@ time_t gtphub_now(void)
 /* Remove a gtphub_peer from its list and free it. */
 static void gtphub_peer_del(struct gtphub_peer *peer)
 {
+	OSMO_ASSERT(llist_empty(&peer->addresses));
 	nr_map_clear(&peer->seq_map);
 	llist_del(&peer->entry);
 	talloc_free(peer);
