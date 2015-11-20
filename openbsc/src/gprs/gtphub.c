@@ -39,6 +39,8 @@
 #include <osmocom/core/utils.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/socket.h>
+#include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/stats.h>
 
 
 static const int GTPH_GC_TICK_SECONDS = 1;
@@ -85,6 +87,32 @@ struct gtp_packet_desc {
 	unsigned int plane_idx;
 	union gtpie_member *ie[GTPIE_SIZE];
 };
+
+
+/* counters */
+
+enum gtphub_counters_io {
+	GTPH_CTR_PKTS_IN = 0,
+	GTPH_CTR_PKTS_OUT,
+	GTPH_CTR_BYTES_IN,
+	GTPH_CTR_BYTES_OUT
+};
+
+static const struct rate_ctr_desc gtphub_counters_io_desc[] = {
+	{ "packets.in",  "Packets ( In)" },
+	{ "packets.out", "Packets (Out)" },
+	{ "bytes.in",    "Packets ( In)" },
+	{ "bytes.out",   "Packets (Out)" },
+};
+
+static const struct rate_ctr_group_desc gtphub_ctrg_io_desc = {
+	.group_name_prefix = "gtphub.bind",
+	.group_description = "Local address I/O statistics",
+	.num_ctr = ARRAY_SIZE(gtphub_counters_io_desc),
+	.ctr_desc = gtphub_counters_io_desc,
+	.class_id = OSMO_STATS_CLASS_GLOBAL,
+};
+
 
 void gsn_addr_copy(struct gsn_addr *gsna, const struct gsn_addr *src)
 {
@@ -790,6 +818,10 @@ static void gtphub_bind_init(struct gtphub_bind *b)
 	ZERO_STRUCT(b);
 
 	INIT_LLIST_HEAD(&b->peers);
+
+	b->counters_io = rate_ctr_group_alloc(osmo_gtphub_ctx,
+					      &gtphub_ctrg_io_desc, 0);
+	OSMO_ASSERT(b->counters_io);
 }
 
 static int gtphub_bind_start(struct gtphub_bind *b,
@@ -807,6 +839,7 @@ static int gtphub_bind_start(struct gtphub_bind *b,
 static void gtphub_bind_free(struct gtphub_bind *b)
 {
 	OSMO_ASSERT(llist_empty(&b->peers));
+	rate_ctr_group_free(b->counters_io);
 }
 
 static void gtphub_bind_stop(struct gtphub_bind *b) {
@@ -1366,6 +1399,8 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	struct gtphub_bind *from_bind = &from_bind_arr[plane_idx];
 	struct gtphub_bind *to_bind = &to_bind_arr[plane_idx];
 
+	rate_ctr_add(&from_bind->counters_io->ctr[GTPH_CTR_BYTES_IN],
+		     received);
 	LOG(LOGL_DEBUG, "<- rx %s from GGSN %s\n",
 	    gtphub_plane_idx_names[plane_idx],
 	    osmo_sockaddr_to_str(from_addr));
@@ -1375,6 +1410,8 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 
 	if (p.rc <= 0)
 		return -1;
+
+	rate_ctr_inc(&from_bind->counters_io->ctr[GTPH_CTR_PKTS_IN]);
 
 	int reply_len;
 	reply_len = gtphub_handle_echo(hub, &p, reply_buf);
@@ -1463,6 +1500,11 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 
 	*reply_buf = (uint8_t*)p.data;
 
+	if (received) {
+		rate_ctr_inc(&to_bind->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
+		rate_ctr_add(&to_bind->counters_io->ctr[GTPH_CTR_BYTES_OUT],
+			     received);
+	}
 	LOG(LOGL_DEBUG, "<-- Forward to SGSN: %d bytes to %s\n",
 	    (int)received, osmo_sockaddr_to_str(to_addr));
 	return received;
@@ -1516,6 +1558,8 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	struct gtphub_bind *from_bind = &from_bind_arr[plane_idx];
 	struct gtphub_bind *to_bind = &to_bind_arr[plane_idx];
 
+	rate_ctr_add(&from_bind->counters_io->ctr[GTPH_CTR_BYTES_IN],
+		     received);
 	LOG(LOGL_DEBUG, "-> rx %s from SGSN %s\n",
 	    gtphub_plane_idx_names[plane_idx],
 	    osmo_sockaddr_to_str(from_addr));
@@ -1525,6 +1569,8 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 
 	if (p.rc <= 0)
 		return -1;
+
+	rate_ctr_inc(&from_bind->counters_io->ctr[GTPH_CTR_PKTS_IN]);
 
 	int reply_len;
 	reply_len = gtphub_handle_echo(hub, &p, reply_buf);
@@ -1634,6 +1680,11 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 
 	*reply_buf = (uint8_t*)p.data;
 
+	if (received) {
+		rate_ctr_inc(&to_bind->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
+		rate_ctr_add(&to_bind->counters_io->ctr[GTPH_CTR_BYTES_OUT],
+			     received);
+	}
 	LOG(LOGL_DEBUG, "--> Forward to GGSN: %d bytes to %s\n",
 	    (int)received, osmo_sockaddr_to_str(to_addr));
 	return received;

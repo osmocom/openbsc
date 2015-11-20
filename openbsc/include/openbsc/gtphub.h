@@ -26,6 +26,7 @@
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
+#include <osmocom/core/rate_ctr.h>
 
 #include <openbsc/gprs_sgsn.h>
 
@@ -378,6 +379,7 @@ struct gtphub_bind {
 	struct llist_head peers;
 
 	const char *label; /* For logging */
+	struct rate_ctr_group *counters_io;
 };
 
 struct gtphub_resolved_ggsn {
