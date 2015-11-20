@@ -1,4 +1,4 @@
-SUBDIRS = gsm0408 db channel mgcp gprs abis gbproxy trau subscr oap gtphub
+SUBDIRS = gsm0408 db channel mgcp gprs abis gbproxy trau subscr
 
 if BUILD_NAT
 SUBDIRS += bsc-nat bsc-nat-trie
@@ -13,7 +13,7 @@ SUBDIRS += smpp
 endif
 
 if HAVE_LIBGTP
-SUBDIRS += sgsn
+SUBDIRS += sgsn oap gtphub
 endif
 
 
