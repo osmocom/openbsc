@@ -101,13 +101,13 @@ enum gtphub_counters_io {
 static const struct rate_ctr_desc gtphub_counters_io_desc[] = {
 	{ "packets.in",  "Packets ( In)" },
 	{ "packets.out", "Packets (Out)" },
-	{ "bytes.in",    "Packets ( In)" },
-	{ "bytes.out",   "Packets (Out)" },
+	{ "bytes.in",    "Bytes   ( In)" },
+	{ "bytes.out",   "Bytes   (Out)" },
 };
 
 static const struct rate_ctr_group_desc gtphub_ctrg_io_desc = {
 	.group_name_prefix = "gtphub.bind",
-	.group_description = "Local address I/O statistics",
+	.group_description = "I/O Statistics",
 	.num_ctr = ARRAY_SIZE(gtphub_counters_io_desc),
 	.ctr_desc = gtphub_counters_io_desc,
 	.class_id = OSMO_STATS_CLASS_GLOBAL,
@@ -833,6 +833,7 @@ static int gtphub_bind_start(struct gtphub_bind *b,
 		return -1;
 	if (gtphub_sock_init(&b->ofd, &cfg->bind, cb, cb_data, ofd_id) != 0)
 		return -1;
+	b->local_port = cfg->bind.port;
 	return 0;
 }
 
@@ -1419,6 +1420,12 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 		/* It was an echo. Nothing left to do. */
 		osmo_sockaddr_copy(to_addr, from_addr);
 		*to_ofd = &from_bind->ofd;
+
+		rate_ctr_inc(&from_bind->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
+		rate_ctr_add(&from_bind->counters_io->ctr[GTPH_CTR_BYTES_OUT],
+			     reply_len);
+		LOG(LOGL_DEBUG, "--> Echo response to GGSN: %d bytes to %s\n",
+		    (int)reply_len, osmo_sockaddr_to_str(to_addr));
 		return reply_len;
 	}
 	if (reply_len < 0)
@@ -1578,6 +1585,12 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 		/* It was an echo. Nothing left to do. */
 		osmo_sockaddr_copy(to_addr, from_addr);
 		*to_ofd = &from_bind->ofd;
+
+		rate_ctr_inc(&from_bind->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
+		rate_ctr_add(&from_bind->counters_io->ctr[GTPH_CTR_BYTES_OUT],
+			     reply_len);
+		LOG(LOGL_DEBUG, "<-- Echo response to SGSN: %d bytes to %s\n",
+		    (int)reply_len, osmo_sockaddr_to_str(to_addr));
 		return reply_len;
 	}
 	if (reply_len < 0)

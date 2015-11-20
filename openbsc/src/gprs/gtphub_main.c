@@ -217,6 +217,18 @@ int main(int argc, char **argv)
 {
 	int rc;
 
+	struct cmdline_cfg _ccfg;
+	struct cmdline_cfg *ccfg = &_ccfg;
+	memset(ccfg, '\0', sizeof(*ccfg));
+	ccfg->config_file = "./gtphub.conf";
+
+	struct gtphub_cfg _cfg;
+	struct gtphub_cfg *cfg = &_cfg;
+	memset(cfg, '\0', sizeof(*cfg));
+
+	struct gtphub _hub;
+	struct gtphub *hub = &_hub;
+
 	osmo_gtphub_ctx = talloc_named_const(NULL, 0, "osmo_gtphub");
 
 	signal(SIGINT, &signal_handler);
@@ -230,24 +242,12 @@ int main(int argc, char **argv)
 	vty_info.copyright = gtphub_copyright;
 	vty_init(&vty_info);
 	logging_vty_add_cmds(&gtphub_log_info);
-        gtphub_vty_init();
+        gtphub_vty_init(hub, cfg);
 
 	rate_ctr_init(osmo_gtphub_ctx);
 	rc = telnet_init(osmo_gtphub_ctx, 0, OSMO_VTY_PORT_GTPHUB);
 	if (rc < 0)
 		exit(1);
-
-	struct cmdline_cfg _ccfg;
-	struct cmdline_cfg *ccfg = &_ccfg;
-	memset(ccfg, '\0', sizeof(*ccfg));
-	ccfg->config_file = "./gtphub.conf";
-
-	struct gtphub_cfg _cfg;
-	struct gtphub_cfg *cfg = &_cfg;
-	memset(cfg, '\0', sizeof(*cfg));
-
-	struct gtphub _hub;
-	struct gtphub *hub = &_hub;
 
 	handle_options(ccfg, argc, argv);
 

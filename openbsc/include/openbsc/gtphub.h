@@ -373,6 +373,7 @@ struct gtphub_peer_port {
 
 struct gtphub_bind {
 	struct gsn_addr local_addr;
+	uint16_t local_port;
 	struct osmo_fd ofd;
 
 	/* list of struct gtphub_peer */
@@ -428,7 +429,7 @@ struct gtp_packet_desc;
 
 /* api */
 
-int gtphub_vty_init(void);
+int gtphub_vty_init(struct gtphub *global_hub, struct gtphub_cfg *global_cfg);
 int gtphub_cfg_read(struct gtphub_cfg *cfg, const char *config_file);
 
 /* Initialize and start gtphub: bind to ports, run expiry timers. */
