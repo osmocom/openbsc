@@ -253,10 +253,11 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	struct pchan_load pl;
 
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
-		"BSIC %u and %u TRX%s",
+		"BSIC %u (NCC=%u, BCC=%u) and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
 		bts->cell_identity,
 		bts->location_area_code, bts->bsic,
+		bts->bsic >> 3, bts->bsic & 7,
 		bts->num_trx, VTY_NEWLINE);
 	vty_out(vty, "Description: %s%s",
 		bts->description ? bts->description : "(null)", VTY_NEWLINE);
