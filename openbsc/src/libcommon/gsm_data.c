@@ -294,7 +294,7 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 }
 
 struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_type type,
-					uint8_t tsc, uint8_t bsic)
+					uint8_t bsic)
 {
 	struct gsm_bts_model *model = bts_model_find(type);
 	struct gsm_bts *bts;
@@ -310,7 +310,6 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 	bts->nr = net->num_bts++;
 	bts->type = type;
 	bts->model = model;
-	bts->tsc = tsc;
 	bts->bsic = bsic;
 
 	bts->neigh_list_manual_mode = 0;

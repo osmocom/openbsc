@@ -437,7 +437,7 @@ void subscr_con_free(struct gsm_subscriber_connection *conn);
 
 struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net,
 					enum gsm_bts_type type,
-					uint8_t tsc, uint8_t bsic);
+					uint8_t bsic);
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, uint8_t e1_nr,
 		   uint8_t e1_ts, uint8_t e1_ts_ss);

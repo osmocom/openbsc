@@ -280,10 +280,10 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 	unsigned int i;
 
 	LOGP(DRSL, LOGL_NOTICE, "bootstrapping RSL for BTS/TRX (%u/%u) "
-		"on ARFCN %u using MCC=%u MNC=%u LAC=%u CID=%u BSIC=%u TSC=%u\n",
+		"on ARFCN %u using MCC=%u MNC=%u LAC=%u CID=%u BSIC=%u\n",
 		trx->bts->nr, trx->nr, trx->arfcn, bsc_gsmnet->country_code,
 		bsc_gsmnet->network_code, trx->bts->location_area_code,
-		trx->bts->cell_identity, trx->bts->bsic, trx->bts->tsc);
+		trx->bts->cell_identity, trx->bts->bsic);
 
 	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
 		rsl_nokia_si_begin(trx);

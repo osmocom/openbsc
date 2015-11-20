@@ -987,7 +987,7 @@ int main(int argc, char **argv)
 	if (!bsc_gsmnet)
 		exit(1);
 
-	bts = gsm_bts_alloc_register(bsc_gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
+	bts = gsm_bts_alloc_register(bsc_gsmnet, GSM_BTS_TYPE_NANOBTS,
 				     HARDCODED_BSIC);
 	/* ip.access supports up to 4 chained TRX */
 	gsm_bts_trx_alloc(bts);

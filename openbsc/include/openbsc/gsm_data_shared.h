@@ -50,7 +50,6 @@ enum gsm_chreq_reason_t {
 #define TS_MAX_LCHAN	8
 
 #define HARDCODED_ARFCN 123
-#define HARDCODED_TSC	7
 #define HARDCODED_BSIC	0x3f	/* NCC = 7 / BCC = 7 */
 
 /* for multi-drop config */
@@ -569,9 +568,8 @@ struct gsm_bts {
 	uint16_t cell_identity;
 	/* location area code of this BTS */
 	uint16_t location_area_code;
-	/* Training Sequence Code */
-	uint8_t tsc;
-	/* Base Station Identification Code (BSIC) */
+	/* Base Station Identification Code (BSIC), lower 3 bits is BCC,
+	 * which is used as TSC for the CCCH */
 	uint8_t bsic;
 	/* type of BTS */
 	enum gsm_bts_type type;
@@ -798,7 +796,7 @@ static inline uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts)
 	if (ts->tsc != -1)
 		return ts->tsc;
 	else
-		return ts->trx->bts->tsc;
+		return ts->trx->bts->bsic & 7;
 }
 
 

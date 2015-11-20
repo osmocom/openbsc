@@ -253,10 +253,10 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	struct pchan_load pl;
 
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
-		"BSIC %u, TSC %u and %u TRX%s",
+		"BSIC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
 		bts->cell_identity,
-		bts->location_area_code, bts->bsic, bts->tsc,
+		bts->location_area_code, bts->bsic,
 		bts->num_trx, VTY_NEWLINE);
 	vty_out(vty, "Description: %s%s",
 		bts->description ? bts->description : "(null)", VTY_NEWLINE);
@@ -374,7 +374,7 @@ static void config_write_e1_link(struct vty *vty, struct gsm_e1_subslot *e1_link
 static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
 	vty_out(vty, "    timeslot %u%s", ts->nr, VTY_NEWLINE);
-	if (ts->tsc != -1 && ts->tsc != ts->trx->bts->tsc)
+	if (ts->tsc != -1)
 		vty_out(vty, "     training_sequence_code %u%s", ts->tsc, VTY_NEWLINE);
 	if (ts->pchan != GSM_PCHAN_NONE)
 		vty_out(vty, "     phys_chan_config %s%s",
@@ -550,9 +550,6 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
 		VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
-	if (bts->tsc != (bts->bsic & 7))
-		vty_out(vty, "  training_sequence_code %u%s", bts->tsc,
-			VTY_NEWLINE);
 	if (bts->tz.override != 0) {
 		if (bts->tz.dst)
 			vty_out(vty, "  timezone %d %d %d%s",
@@ -1617,7 +1614,7 @@ DEFUN(cfg_bts,
 	} else if (bts_nr == gsmnet->num_bts) {
 		/* allocate a new one */
 		bts = gsm_bts_alloc_register(gsmnet, GSM_BTS_TYPE_UNKNOWN,
-					     HARDCODED_TSC, HARDCODED_BSIC);
+					     HARDCODED_BSIC);
 	} else
 		bts = gsm_bts_num(gsmnet, bts_nr);
 
@@ -1712,23 +1709,12 @@ DEFUN(cfg_bts_lac,
 }
 
 
-DEFUN(cfg_bts_tsc,
+/* compatibility wrapper for old config files */
+DEFUN_HIDDEN(cfg_bts_tsc,
       cfg_bts_tsc_cmd,
       "training_sequence_code <0-7>",
       "Set the Training Sequence Code (TSC) of this BTS\n" "TSC\n")
 {
-	struct gsm_bts *bts = vty->index;
-	int tsc = atoi(argv[0]);
-
-	if (!gsm_bts_has_feature(bts, BTS_FEAT_MULTI_TSC)) {
-		vty_out(vty, "%% This BTS does not support a TSC != BCC, "
-			"falling back to BCC%s", VTY_NEWLINE);
-		bts->tsc = bts->bsic & 7;
-		return CMD_WARNING;
-	}
-
-	bts->tsc = tsc;
-
 	return CMD_SUCCESS;
 }
 
@@ -1747,11 +1733,6 @@ DEFUN(cfg_bts_bsic,
 		return CMD_WARNING;
 	}
 	bts->bsic = bsic;
-
-	/* automatically re-configuer the TSC if we change the BCC
-	 * which is the lower 3 bits of the BSIC */
-	if (!gsm_bts_has_feature(bts, BTS_FEAT_MULTI_TSC))
-		bts->tsc = bts->bsic & 7;
 
 	return CMD_SUCCESS;
 }

@@ -898,7 +898,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Unable to allocate gsm network\n");
 		exit(1);
 	}
-	g_bts = gsm_bts_alloc_register(gsmnet, GSM_BTS_TYPE_BS11, HARDCODED_TSC,
+	g_bts = gsm_bts_alloc_register(gsmnet, GSM_BTS_TYPE_BS11,
 					HARDCODED_BSIC);
 
 	/* Override existing OML callback handler to set our own. */
