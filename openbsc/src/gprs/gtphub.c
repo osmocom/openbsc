@@ -1090,8 +1090,8 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
  * and User). Map TEIs announced in IEs, and write mapped TEIs in-place into
  * the packet p. */
 static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
-				     struct gtphub_bind from_bind[],
-				     struct gtphub_bind to_bind[],
+				     struct gtphub_bind from_bind_arr[],
+				     struct gtphub_bind to_bind_arr[],
 				     struct gtp_packet_desc *p,
 				     time_t now)
 {
@@ -1152,7 +1152,7 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 		/* Make sure an entry for this peer address with default port
 		 * exists */
 		struct gtphub_peer_port *peer_from_ie =
-			gtphub_port_have(hub, &from_bind[plane_idx],
+			gtphub_port_have(hub, &from_bind_arr[plane_idx],
 					 &addr_from_ie,
 					 gtphub_plane_idx_default_port[plane_idx]);
 
@@ -1167,7 +1167,8 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 		}
 
 		/* Replace the GSN address to reflect gtphub. */
-		rc = gsn_addr_put(&to_bind[plane_idx].local_addr, p, plane_idx);
+		rc = gsn_addr_put(&to_bind_arr[plane_idx].local_addr, p,
+				  plane_idx);
 		if (rc) {
 			LOG(LOGL_ERROR, "Cannot write %s GSN Address IE\n",
 			    gtphub_plane_idx_names[plane_idx]);
@@ -1360,6 +1361,11 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr)
 {
+	struct gtphub_bind *from_bind_arr = hub->to_ggsns;
+	struct gtphub_bind *to_bind_arr = hub->to_sgsns;
+	struct gtphub_bind *from_bind = &from_bind_arr[plane_idx];
+	struct gtphub_bind *to_bind = &to_bind_arr[plane_idx];
+
 	LOG(LOGL_DEBUG, "<- rx %s from GGSN %s\n",
 	    gtphub_plane_idx_names[plane_idx],
 	    osmo_sockaddr_to_str(from_addr));
@@ -1375,13 +1381,13 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	if (reply_len > 0) {
 		/* It was an echo. Nothing left to do. */
 		osmo_sockaddr_copy(to_addr, from_addr);
-		*to_ofd = &hub->to_ggsns[plane_idx].ofd;
+		*to_ofd = &from_bind->ofd;
 		return reply_len;
 	}
 	if (reply_len < 0)
 		return -1;
 
-	*to_ofd = &hub->to_sgsns[plane_idx].ofd;
+	*to_ofd = &to_bind->ofd;
 
 	/* If a GGSN proxy is configured, check that it's indeed that proxy
 	 * talking to us. A proxy is a forced 1:1 connection, e.g. to another
@@ -1402,8 +1408,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	if (!ggsn) {
 		/* Find a GGSN peer with a matching address. The sender's port
 		 * may in fact differ. */
-		ggsn = gtphub_known_addr_have_port(&hub->to_ggsns[plane_idx],
-						   from_addr);
+		ggsn = gtphub_known_addr_have_port(from_bind, from_addr);
 	}
 
 	/* If any PDP context has been created, we already have an entry for
@@ -1439,8 +1444,8 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 		/* This may be a Create PDP Context response. If it is, there
 		 * are other addresses in the GTP message to set up apart from
 		 * the sender. */
-		if (gtphub_handle_pdp_ctx_ies(hub, hub->to_ggsns,
-					      hub->to_sgsns, &p, now)
+		if (gtphub_handle_pdp_ctx_ies(hub, from_bind_arr, to_bind_arr,
+					      &p, now)
 		    != 0)
 			return -1;
 	}
@@ -1506,6 +1511,11 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 				 struct osmo_fd **to_ofd,
 				 struct osmo_sockaddr *to_addr)
 {
+	struct gtphub_bind *from_bind_arr = hub->to_sgsns;
+	struct gtphub_bind *to_bind_arr = hub->to_ggsns;
+	struct gtphub_bind *from_bind = &from_bind_arr[plane_idx];
+	struct gtphub_bind *to_bind = &to_bind_arr[plane_idx];
+
 	LOG(LOGL_DEBUG, "-> rx %s from SGSN %s\n",
 	    gtphub_plane_idx_names[plane_idx],
 	    osmo_sockaddr_to_str(from_addr));
@@ -1521,13 +1531,13 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	if (reply_len > 0) {
 		/* It was an echo. Nothing left to do. */
 		osmo_sockaddr_copy(to_addr, from_addr);
-		*to_ofd = &hub->to_sgsns[plane_idx].ofd;
+		*to_ofd = &from_bind->ofd;
 		return reply_len;
 	}
 	if (reply_len < 0)
 		return -1;
 
-	*to_ofd = &hub->to_ggsns[plane_idx].ofd;
+	*to_ofd = &to_bind->ofd;
 
 	/* If an SGSN proxy is configured, check that it's indeed that proxy
 	 * talking to us. A proxy is a forced 1:1 connection, e.g. to another
@@ -1548,8 +1558,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	if (!sgsn) {
 		/* If any contact has been made before, we already have an
 		 * entry for this SGSN. The port may differ. */
-		sgsn = gtphub_known_addr_have_port(&hub->to_sgsns[plane_idx],
-						   from_addr);
+		sgsn = gtphub_known_addr_have_port(from_bind, from_addr);
 	}
 
 	if (!sgsn) {
@@ -1569,8 +1578,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 		if (gsn_addr_from_sockaddr(&from_gsna, &from_port, from_addr) != 0)
 			return -1;
 
-		sgsn = gtphub_port_have(hub, &hub->to_sgsns[plane_idx],
-					&from_gsna, from_port);
+		sgsn = gtphub_port_have(hub, from_bind, &from_gsna, from_port);
 	}
 
 	if (!sgsn) {
@@ -1607,8 +1615,8 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 		/* This may be a Create PDP Context requst. If it is, there are
 		 * other addresses in the GTP message to set up apart from the
 		 * sender. */
-		if (gtphub_handle_pdp_ctx_ies(hub, hub->to_sgsns,
-					      hub->to_ggsns, &p, now)
+		if (gtphub_handle_pdp_ctx_ies(hub, from_bind_arr, to_bind_arr,
+					      &p, now)
 		    != 0)
 			return -1;
 	}
