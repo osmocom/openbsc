@@ -8,5 +8,6 @@ noinst_PROGRAMS = smpp_test
 
 smpp_test_SOURCES = smpp_test.c \
 	$(top_builddir)/src/libmsc/smpp_utils.c
-smpp_test_LDADD = $(LIBOSMOCORE_LIBS) \
-	$(top_builddir)/src/libcommon/libcommon.a
+smpp_test_LDADD = \
+	$(top_builddir)/src/libcommon/libcommon.a \
+	$(LIBOSMOCORE_LIBS)
