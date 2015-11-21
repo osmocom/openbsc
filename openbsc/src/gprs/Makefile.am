@@ -11,9 +11,8 @@ noinst_HEADERS = gprs_sndcp.h
 bin_PROGRAMS = osmo-gbproxy
 
 if HAVE_LIBGTP
-bin_PROGRAMS += osmo-gtphub
 if HAVE_LIBCARES
-bin_PROGRAMS += osmo-sgsn
+bin_PROGRAMS += osmo-sgsn osmo-gtphub
 endif
 endif
 

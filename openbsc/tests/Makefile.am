@@ -13,7 +13,10 @@ SUBDIRS += smpp
 endif
 
 if HAVE_LIBGTP
-SUBDIRS += sgsn oap gtphub
+SUBDIRS += gtphub
+if HAVE_LIBCARES
+SUBDIRS += sgsn oap
+endif
 endif
 
 
