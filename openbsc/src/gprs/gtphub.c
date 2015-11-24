@@ -62,6 +62,10 @@ typedef int (*osmo_fd_cb_t)(struct osmo_fd *fd, unsigned int what);
 #define llist_first(head, type, entry) \
 	llist_entry(__llist_first(head), type, entry)
 
+#define __llist_last(head) (((head)->next == (head)) ? NULL : (head)->prev)
+#define llist_last(head, type, entry) \
+	llist_entry(__llist_last(head), type, entry)
+
 /* TODO move GTP header stuff to openggsn/gtp/ ? See gtp_decaps*() */
 
 enum gtp_rc {
@@ -563,6 +567,10 @@ void expiry_init(struct expiry *exq, int expiry_in_seconds)
 void expiry_add(struct expiry *exq, struct expiring_item *item, time_t now)
 {
 	item->expiry = now + exq->expiry_in_seconds;
+
+	OSMO_ASSERT(llist_empty(&exq->items)
+		    || (item->expiry
+			>= llist_last(&exq->items, struct expiring_item, entry)->expiry));
 
 	/* Add/move to the tail to always sort by expiry, ascending. */
 	llist_del(&item->entry);
