@@ -49,7 +49,7 @@
 
 /* Convenience makro, note: only within this C file. */
 #define LOG(label) \
-	{ LOGP(DGTPHUB, LOGL_NOTICE, "\n\n" label "\n"); \
+	{ fprintf(stderr, "\n" label "\n"); \
 	  printf(label "\n"); }
 
 void gtphub_init(struct gtphub *hub);
@@ -597,7 +597,7 @@ static int setup_test_hub()
 	now = 345;
 	LVL2_ASSERT(send_from_sgsn("192.168.42.23", 423));
 	LVL2_ASSERT(resolve_to_ggsn("192.168.43.34", 2123));
-	LVL2_ASSERT(send_from_ggsn("192.168.43.34", 321));
+	LVL2_ASSERT(send_from_ggsn("192.168.43.34", 434));
 	LVL2_ASSERT(resolve_to_sgsn("192.168.42.23", 2123));
 
 #define GGSNS_CTRL_FD 1
@@ -615,7 +615,7 @@ static int setup_test_hub()
 static int clear_test_hub()
 {
 	/* expire all */
-	gtphub_gc(hub, now + (60 * GTPH_TEI_MAPPING_EXPIRY_MINUTES) + 1);
+	gtphub_gc(hub, now + (60 * GTPH_EXPIRE_SLOWLY_MINUTES) + 1);
 
 	int plane_idx;
 	plane_idx = GTPH_PLANE_CTRL;
@@ -629,6 +629,32 @@ static int clear_test_hub()
 	return 1;
 }
 
+static int tunnels_are(const char *expect)
+{
+	static char buf[4096];
+	char *pos = buf;
+	size_t len = sizeof(buf);
+	struct gtphub_tunnel *t;
+	llist_for_each_entry(t, &hub->tunnels, entry) {
+		size_t wrote = snprintf(pos, len, "%s @%d\n",
+					gtphub_tunnel_str(t),
+					(int)t->expiry_entry.expiry);
+		LVL2_ASSERT(wrote < len);
+		pos += wrote;
+		len -= wrote;
+	}
+	*pos = '\0';
+
+	if (strncmp(buf, expect, sizeof(buf)) != 0) {
+		fprintf(stderr, "FAILURE: tunnels_are() mismatches expected value:\n"
+		       "EXPECTED:\n%s\n"
+		       "IS:\n%s\n",
+		       expect, buf);
+		LVL2_ASSERT("tunnels do not match expected listing.");
+		return 0;
+	}
+	return 1;
+}
 
 static void test_echo(void)
 {
@@ -893,6 +919,11 @@ static int create_pdp_ctx()
 				    gtp_req_to_ggsn));
 	LVL2_ASSERT(was_resolved_for("240010123456789", "internet"));
 
+	LVL2_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=1)"
+		" <-> 192.168.43.34 / (uninitialized) (TEI C 0=0 / U 0=0)"
+		" @21945\n"));
+
 	const char *gtp_resp_from_ggsn =
 		MSG_PDP_CTX_RSP("004e",
 				"00000001", /* destination TEI (sent in req above) */
@@ -947,11 +978,10 @@ static void test_create_pdp_ctx(void)
 	 * 0x00000765 == 1893 (TEI from GGSN Ctrl)
 	 * 0x00000567 == 1383 (TEI from GGSN User)
 	 * Mapped TEIs should be 1 and 2. */
-	OSMO_ASSERT(nr_map_is(&hub->tei_map[GTPH_PLANE_CTRL],
-			      "(801->1@21945), (1893->2@21945), "));
-	OSMO_ASSERT(nr_map_is(&hub->tei_map[GTPH_PLANE_USER],
-			      "(291->1@21945), (1383->2@21945), "));
-
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=1)"
+		" <-> 192.168.43.34 (TEI C 765=2 / U 567=2)"
+		" @21945\n"));
 	OSMO_ASSERT(clear_test_hub());
 }
 
@@ -963,10 +993,19 @@ static void test_user_data(void)
 
 	OSMO_ASSERT(create_pdp_ctx());
 
+	/* now == 345; now + (6 * 60 * 60) == 21600 + 345 == 21945. */
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=1)"
+		" <-> 192.168.43.34 (TEI C 765=2 / U 567=2)"
+		" @21945\n"));
+
 	LOG("- user data starts");
-	/* Now expect default port numbers for User. */
+	/* Now expect default port numbers for User plane. */
 	resolve_to_ggsn("192.168.43.34", 2152);
 	resolve_to_sgsn("192.168.42.23", 2152);
+
+	/* 10 minutes later */
+	now += 600;
 
 	const char *u_from_ggsn =
 		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
@@ -999,6 +1038,13 @@ static void test_user_data(void)
 				    u_from_ggsn,
 				    u_to_sgsn));
 
+	/* Make sure the user plane messages have refreshed the TEI mapping
+	 * timeouts: 21945 + 600 == 22545. */
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=1)"
+		" <-> 192.168.43.34 (TEI C 765=2 / U 567=2)"
+		" @22545\n"));
+
 	const char *u_from_sgsn =
 		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"ff"	/* type 255: G-PDU */
@@ -1028,6 +1074,13 @@ static void test_user_data(void)
 				    u_from_sgsn,
 				    u_to_ggsn));
 
+	/* Make sure the user plane messages have refreshed the TEI mapping
+	 * timeouts: 21945 + 600 == 22545. Both timeouts refreshed: */
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=1)"
+		" <-> 192.168.43.34 (TEI C 765=2 / U 567=2)"
+		" @22545\n"));
+
 	OSMO_ASSERT(clear_test_hub());
 }
 
@@ -1037,7 +1090,7 @@ static struct log_info_cat gtphub_categories[] = {
 		.name = "DGTPHUB",
 		.description = "GTP Hub",
 		.color = "\033[1;33m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 };
 

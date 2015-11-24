@@ -214,7 +214,7 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	llist_add(&lookup->entry, &hub->ggsn_lookups);
 
 	lookup->expiry_entry.del_cb = ggsn_lookup_del_cb;
-	expiry_add(&hub->expire_seq_maps, &lookup->expiry_entry, gtphub_now());
+	expiry_add(&hub->expire_quickly, &lookup->expiry_entry, gtphub_now());
 
 	start_ares_query(lookup);
 

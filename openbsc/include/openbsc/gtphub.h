@@ -135,6 +135,17 @@ enum gtphub_plane_idx {
 	GTPH_PLANE_N
 };
 
+enum gtphub_side_idx {
+	GTPH_SIDE_GGSN = 0,
+	GTPH_SIDE_SGSN = 1,
+	GTPH_SIDE_N
+};
+
+static inline int other_side_idx(int side_idx)
+{
+	return (side_idx + 1) & 1;
+}
+
 extern const char* const gtphub_plane_idx_names[GTPH_PLANE_N];
 extern const uint16_t gtphub_plane_idx_default_port[GTPH_PLANE_N];
 
@@ -376,6 +387,19 @@ struct gtphub_peer_port {
 	struct osmo_sockaddr sa;
 };
 
+struct gtphub_tunnel_endpoint {
+	struct gtphub_peer_port *peer;
+	uint32_t tei_orig; /* from/to peer */
+	uint32_t tei_repl; /* from/to the other tunnel endpoint */
+};
+
+struct gtphub_tunnel {
+	struct llist_head entry;
+	struct expiring_item expiry_entry;
+
+	struct gtphub_tunnel_endpoint endpoint[GTPH_SIDE_N][GTPH_PLANE_N];
+};
+
 struct gtphub_bind {
 	struct gsn_addr local_addr;
 	uint16_t local_port;
@@ -416,8 +440,9 @@ struct gtphub {
 	 * uint32_t; if a new TEI were mapped every second, this would take
 	 * more than 100 years (in which a single given TEI must not time out)
 	 * to cause a problem. */
-	struct nr_map tei_map[GTPH_PLANE_N];
 	struct nr_pool tei_pool[GTPH_PLANE_N];
+
+	struct llist_head tunnels; /* struct gtphub_tunnel */
 
 	struct llist_head ggsn_lookups; /* opaque (gtphub_ares.c) */
 	struct llist_head resolved_ggsns; /* struct gtphub_resolved_ggsn */
@@ -453,6 +478,12 @@ void gtphub_gc(struct gtphub *hub, time_t now);
 const char *gtphub_peer_str(struct gtphub_peer *peer);
 /* Same with a different static buffer. We often want to print two peers. */
 const char *gtphub_peer_str2(struct gtphub_peer *peer);
+
+/* Return a human readable description of tun in a static buffer. */
+const char *gtphub_tunnel_str(struct gtphub_tunnel *tun);
+
+/* Return 1 if all of tun's endpoints are fully established, 0 otherwise. */
+int gtphub_tunnel_complete(struct gtphub_tunnel *tun);
 
 int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 				 unsigned int port_idx,

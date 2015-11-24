@@ -280,132 +280,112 @@ static void show_peers_summary(struct vty *vty)
 }
 */
 
-static void show_tei_maps_summary(struct vty *vty)
+static void show_tunnels_summary(struct vty *vty)
 {
 	time_t now = gtphub_now();
 
-	unsigned long long int count_all = 0; /* ...just joking. */
-
 	const int w = 36;
-	int max_expiry = g_hub->expire_tei_maps.expiry_in_seconds;
+	int max_expiry = g_hub->expire_slowly.expiry_in_seconds;
 	float seconds_per_step = ((float)max_expiry) / w;
 
 	/* Print TEI mapping expiry in an ASCII histogram, like:
 	     TEI map summary
 	       Legend:  '_'=0  '.'<=1%  ':'<=2%  '|'<=10%  '#'>10%  (10.0 m/step)
-	       CTRL: 30 mappings, valid for 360m[#__:.____|___.____:__.______________]1m
-	       USER: 30 mappings, valid for 360m[#__:.____|___.____:__.______________]1m
+	       CTRL: 30 mappings, valid for 360m[#  :.    |   .    :  .              ]1m
+	       USER: 30 mappings, valid for 360m[#  :.    |   .    :  .              ]1m
 	       4 TEI mappings in total, last expiry in 359.4 min
 	 */
 	vty_out(vty,
-		"TEI map summary%s"
-		"  Legend:  '_'=0  '.'<=1%%  ':'<=2%%  '|'<=10%%  '#'>10%%  (%.1f m/step)%s",
+		"Tunnels summary%s"
+		"  Legend:  ' '=0  '.'<=1%%  ':'<=2%%  '|'<=10%%  '#'>10%%  (%.1f m/step)%s",
 		VTY_NEWLINE,
 		seconds_per_step / 60.,
 		VTY_NEWLINE);
 
 	int last_expiry = 0;
-	int plane_idx;
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
 
-		unsigned int count = 0;
+	unsigned int count = 0;
 
-		int histogram[w];
-		memset(histogram, 0, sizeof(histogram));
+	int histogram[w];
+	memset(histogram, 0, sizeof(histogram));
 
-		struct nr_mapping *m;
-		llist_for_each_entry(m, &g_hub->tei_map[plane_idx].mappings, entry) {
-			count ++;
-			int expiry = m->expiry_entry.expiry - now;
-			last_expiry = (last_expiry > expiry) ? last_expiry : expiry;
+	struct gtphub_tunnel *t;
+	llist_for_each_entry(t, &g_hub->tunnels, entry) {
+		count ++;
+		int expiry = t->expiry_entry.expiry - now;
+		last_expiry = (last_expiry > expiry) ? last_expiry : expiry;
 
-			int hi = ((float)expiry) / seconds_per_step;
-			if (hi < 0)
-				hi = 0;
-			if (hi > (w - 1))
-				hi = w - 1;
-			histogram[hi] ++;
-		}
-
-		vty_out(vty,
-			"  %4s: %u mappings, valid for %dm[",
-			gtphub_plane_idx_names[plane_idx],
-			count, max_expiry / 60);
-
-		int i;
-		for (i = w - 1; i >= 0; i--) {
-			char c;
-			int val = histogram[i];
-			int percent = 100. * val / count;
-			if (!val)
-				c = '_';
-			else if (percent <= 1)
-				c = '.';
-			else if (percent <= 2)
-				c = ':';
-			else if (percent <= 10)
-				c = '|';
-			else c = '#';
-			vty_out(vty, "%c", c);
-		}
-		vty_out(vty, "]1m%s", VTY_NEWLINE);
-
-		count_all += count;
+		int hi = ((float)expiry) / seconds_per_step;
+		if (hi < 0)
+			hi = 0;
+		if (hi > (w - 1))
+			hi = w - 1;
+		histogram[hi] ++;
 	}
-	vty_out(vty, "  %llu TEI mappings in total, last expiry in %.1f min%s",
-		count_all,
+
+	vty_out(vty,
+		"  %u tunnels, valid for %dm[",
+		count, max_expiry / 60);
+
+	int i;
+	for (i = w - 1; i >= 0; i--) {
+		char c;
+		int val = histogram[i];
+		int percent = 100. * val / count;
+		if (!val)
+			c = ' ';
+		else if (percent <= 1)
+			c = '.';
+		else if (percent <= 2)
+			c = ':';
+		else if (percent <= 10)
+			c = '|';
+		else c = '#';
+		vty_out(vty, "%c", c);
+	}
+	vty_out(vty, "]1m%s", VTY_NEWLINE);
+
+	vty_out(vty, "  last expiry in %.1f min%s",
 		((float)last_expiry) / 60.,
 		VTY_NEWLINE);
 }
 
-static void show_tei_maps_all(struct vty *vty)
+static void show_tunnels_all(struct vty *vty)
 {
 	time_t now = gtphub_now();
 
-	unsigned long long int count_all = 0; /* ...just joking. */
+	vty_out(vty, "All tunnels:%s"
+		"Legend: SGSN <-> GGSN, with each:%s"
+		"        <IP-Ctrl>[/<IP-User>] (<TEI-Ctrl>=<mapped>/<TEI-User>=<mapped>)%s",
+		VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 
-	vty_out(vty, "All TEI mappings:%s", VTY_NEWLINE);
-	int plane_idx;
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+	unsigned int count = 0;
+	unsigned int incomplete = 0;
+	struct gtphub_tunnel *t;
+	llist_for_each_entry(t, &g_hub->tunnels, entry) {
 		vty_out(vty,
-			"- %s Plane:%s"
-			"  (timeout) replaced-TEI <--> original-TEI from-peer%s",
-			gtphub_plane_idx_names[plane_idx],
-			VTY_NEWLINE, VTY_NEWLINE);
-
-		unsigned int count = 0;
-		struct nr_mapping *m;
-		llist_for_each_entry(m, &g_hub->tei_map[plane_idx].mappings, entry) {
-			struct gtphub_peer_port *pp = m->origin;
-			vty_out(vty,
-				"  (%4dm) %8x <--> %8x %s",
-				-(int)((m->expiry_entry.expiry - now) / 60),
-				(uint32_t)m->repl,
-				(uint32_t)m->orig,
-				gsn_addr_to_str(&pp->peer_addr->addr));
-			if (pp->port != gtphub_plane_idx_default_port[plane_idx])
-				vty_out(vty, " port %d", (int)pp->port);
-			vty_out(vty, VTY_NEWLINE);
-			count ++;
-		}
-		vty_out(vty, "  (%u %s TEI mappings)%s", count,
-			gtphub_plane_idx_names[plane_idx], VTY_NEWLINE);
-		count_all += count;
+			"(%4dm) %s%s",
+			-(int)((t->expiry_entry.expiry - now) / 60),
+			gtphub_tunnel_str(t),
+			VTY_NEWLINE);
+		count ++;
+		if (!gtphub_tunnel_complete(t))
+			incomplete ++;
 	}
-	vty_out(vty, "- %llu TEI mappings in total%s", count_all, VTY_NEWLINE);
+	vty_out(vty, "Total: %u tunnels%s", count, VTY_NEWLINE);
 }
 
-DEFUN(show_gtphub_tei_summary, show_gtphub_tei_summary_cmd, "show gtphub tei summary",
-      SHOW_STR "TEI mappings summary")
+DEFUN(show_gtphub_tunnels_summary, show_gtphub_tunnels_summary_cmd, "show gtphub tunnels summary",
+      SHOW_STR "Summary of all tunnels")
 {
-	show_tei_maps_summary(vty);
+	show_tunnels_summary(vty);
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_gtphub_tei_dump, show_gtphub_tei_dump_cmd, "show gtphub tei dump",
-      SHOW_STR "Dump all current TEI mappings")
+DEFUN(show_gtphub_tunnels_list, show_gtphub_tunnels_list_cmd, "show gtphub tunnels list",
+      SHOW_STR "List all tunnels")
 {
-	show_tei_maps_all(vty);
+	show_tunnels_all(vty);
 	return CMD_SUCCESS;
 }
 
@@ -413,7 +393,7 @@ DEFUN(show_gtphub, show_gtphub_cmd, "show gtphub all",
       SHOW_STR "Display information about the GTP hub")
 {
 	show_bind_stats_all(vty);
-	show_tei_maps_summary(vty);
+	show_tunnels_summary(vty);
 	return CMD_SUCCESS;
 }
 
@@ -424,8 +404,8 @@ int gtphub_vty_init(struct gtphub *global_hub, struct gtphub_cfg *global_cfg)
 	g_cfg = global_cfg;
 
 	install_element_ve(&show_gtphub_cmd);
-	install_element_ve(&show_gtphub_tei_summary_cmd);
-	install_element_ve(&show_gtphub_tei_dump_cmd);
+	install_element_ve(&show_gtphub_tunnels_summary_cmd);
+	install_element_ve(&show_gtphub_tunnels_list_cmd);
 
 	install_element(CONFIG_NODE, &cfg_gtphub_cmd);
 	install_node(&gtphub_node, config_write_gtphub);

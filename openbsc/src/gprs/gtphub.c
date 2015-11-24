@@ -86,9 +86,11 @@ struct gtp_packet_desc {
 	int version;
 	uint8_t type;
 	uint16_t seq;
+	uint32_t header_tei_rx;
 	uint32_t header_tei;
 	int rc; /* enum gtp_rc */
 	unsigned int plane_idx;
+	unsigned int side_idx;
 	time_t timestamp;
 	union gtpie_member *ie[GTPIE_SIZE];
 };
@@ -269,7 +271,8 @@ void validate_gtp0_header(struct gtp_packet_desc *p)
 
 	p->type = ntoh8(pheader->type);
 	p->seq = ntoh16(pheader->seq);
-	p->header_tei = 0; /* TODO */
+	p->header_tei_rx = 0; /* TODO */
+	p->header_tei = p->header_tei_rx;
 
 	if (p->data_len == GTP0_HEADER_SIZE) {
 		p->rc = GTP_RC_TINY;
@@ -311,7 +314,8 @@ void validate_gtp1_header(struct gtp_packet_desc *p)
 	}
 
 	p->type = ntoh8(pheader->type);
-	p->header_tei = ntoh32(pheader->tei);
+	p->header_tei_rx = ntoh32(pheader->tei);
+	p->header_tei = p->header_tei_rx;
 	p->seq = ntoh16(pheader->seq);
 
 	LOG(LOGL_DEBUG, "GTPv1\n"
@@ -323,7 +327,7 @@ void validate_gtp1_header(struct gtp_packet_desc *p)
 	    "| next = %" PRIu8 " 0x%02" PRIx8 "\n",
 	    p->type, p->type,
 	    ntoh16(pheader->length), ntoh16(pheader->length),
-	    p->header_tei, p->header_tei,
+	    p->header_tei_rx, p->header_tei_rx,
 	    p->seq, p->seq,
 	    pheader->npdu, pheader->npdu,
 	    pheader->next, pheader->next);
@@ -473,6 +477,7 @@ static int get_ie_apn_str(union gtpie_member *ie[], const char **apn_str)
  * information to *res. res->data will point at the given data buffer. On
  * error, p->rc is set <= 0 (see enum gtp_rc). */
 static void gtp_decode(const uint8_t *data, int data_len,
+		       unsigned int from_side_idx,
 		       unsigned int from_plane_idx,
 		       struct gtp_packet_desc *res,
 		       time_t now)
@@ -480,6 +485,7 @@ static void gtp_decode(const uint8_t *data, int data_len,
 	ZERO_STRUCT(res);
 	res->data = (union gtp_packet*)data;
 	res->data_len = data_len;
+	res->side_idx = from_side_idx;
 	res->plane_idx = from_plane_idx;
 	res->timestamp = now;
 
@@ -897,12 +903,14 @@ static int gtphub_read(const struct osmo_fd *from,
 
 inline void gtphub_port_ref_count_inc(struct gtphub_peer_port *pp)
 {
+	OSMO_ASSERT(pp);
 	OSMO_ASSERT(pp->ref_count < UINT_MAX);
 	pp->ref_count++;
 }
 
 inline void gtphub_port_ref_count_dec(struct gtphub_peer_port *pp)
 {
+	OSMO_ASSERT(pp);
 	OSMO_ASSERT(pp->ref_count > 0);
 	pp->ref_count--;
 }
@@ -932,6 +940,128 @@ static struct nr_mapping *gtphub_mapping_new()
 	nr_mapping_init(nrm);
 	nrm->expiry_entry.del_cb = gtphub_mapping_del_cb;
 	return nrm;
+}
+
+
+#define APPEND(args...) \
+		l = snprintf(pos, left, args); \
+		pos += l; \
+		left -= l
+
+static const char *gtphub_tunnel_side_str(struct gtphub_tunnel *tun,
+					  int side_idx)
+{
+	static char buf[256];
+	char *pos = buf;
+	int left = sizeof(buf);
+	int l;
+	                 
+	struct gtphub_tunnel_endpoint *c, *u;
+	c = &tun->endpoint[side_idx][GTPH_PLANE_CTRL];
+	u = &tun->endpoint[side_idx][GTPH_PLANE_USER];
+
+	/* print both only if they differ. */
+	if (!c->peer) {
+		APPEND("(uninitialized)");
+	} else {
+		APPEND("%s", gsn_addr_to_str(&c->peer->peer_addr->addr));
+	}
+
+	if (!u->peer) {
+		if (c->peer) {
+			APPEND(" / (uninitialized)");
+		}
+	} else if ((!c->peer)
+		   || (!gsn_addr_same(&u->peer->peer_addr->addr,
+				      &c->peer->peer_addr->addr))) {
+		APPEND(" / %s", gsn_addr_to_str(&u->peer->peer_addr->addr));
+	}
+
+	APPEND(" (TEI C %x=%x / U %x=%x)",
+	       c->tei_orig, c->tei_repl,
+	       u->tei_orig, u->tei_repl);
+	return buf;
+}
+
+const char *gtphub_tunnel_str(struct gtphub_tunnel *tun)
+{
+	static char buf[512];
+	char *pos = buf;
+	int left = sizeof(buf);
+	int l;
+
+	APPEND("%s", gtphub_tunnel_side_str(tun, GTPH_SIDE_SGSN));
+	APPEND(" <-> %s", gtphub_tunnel_side_str(tun, GTPH_SIDE_GGSN));
+
+	return buf;
+}
+
+#undef APPEND
+
+void gtphub_tunnel_endpoint_set_peer(struct gtphub_tunnel_endpoint *te,
+				     struct gtphub_peer_port *pp)
+{
+	if (te->peer)
+		gtphub_port_ref_count_dec(te->peer);
+	te->peer = pp;
+	if (te->peer)
+		gtphub_port_ref_count_inc(te->peer);
+}
+
+int gtphub_tunnel_complete(struct gtphub_tunnel *tun)
+{
+	if (!tun)
+		return 0;
+	int side_idx;
+	int plane_idx;
+	for (side_idx = 0; side_idx < GTPH_SIDE_N; side_idx++) {
+		for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+			struct gtphub_tunnel_endpoint *te =
+				&tun->endpoint[side_idx][plane_idx];
+			if (!(te->peer && te->tei_orig && te->tei_repl))
+				return 0;
+		}
+	}
+	return 1;
+}
+
+static void gtphub_tunnel_del_cb(struct expiring_item *expi)
+{
+	struct gtphub_tunnel *tun = container_of(expi,
+						 struct gtphub_tunnel,
+						 expiry_entry);
+	LOG(LOGL_DEBUG, "expired: %s\n", gtphub_tunnel_str(tun));
+
+	llist_del(&tun->entry);
+	INIT_LLIST_HEAD(&tun->entry); /* mark unused */
+
+	expi->del_cb = 0; /* avoid recursion loops */
+	expiring_item_del(&tun->expiry_entry); /* usually already done, but make sure. */
+
+	int side_idx;
+	int plane_idx;
+	for (side_idx = 0; side_idx < GTPH_SIDE_N; side_idx++) {
+		for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+			/* clear ref count */
+			gtphub_tunnel_endpoint_set_peer(
+				&tun->endpoint[side_idx][plane_idx], NULL);
+		}
+	}
+
+	talloc_free(tun);
+}
+
+static struct gtphub_tunnel *gtphub_tunnel_new()
+{
+	struct gtphub_tunnel *tun;
+	tun = talloc_zero(osmo_gtphub_ctx, struct gtphub_tunnel);
+	OSMO_ASSERT(tun);
+
+	INIT_LLIST_HEAD(&tun->entry);
+	expiring_item_init(&tun->expiry_entry);
+
+	tun->expiry_entry.del_cb = gtphub_tunnel_del_cb;
+	return tun;
 }
 
 static const char *gtphub_peer_strb(struct gtphub_peer *peer, char *buf,
@@ -985,6 +1115,7 @@ static const char *gtphub_port_str2(struct gtphub_peer_port *port)
 static void gtphub_mapping_del_cb(struct expiring_item *expi)
 {
 	expi->del_cb = 0; /* avoid recursion loops */
+	expiring_item_del(expi); /* usually already done, but make sure. */
 
 	struct nr_mapping *nrm = container_of(expi,
 					      struct nr_mapping,
@@ -1031,22 +1162,6 @@ static struct nr_mapping *gtphub_mapping_have(struct nr_map *map,
 	return nrm;
 }
 
-static uint32_t gtphub_tei_mapping_have(struct gtphub *hub,
-					int plane_idx,
-					struct gtphub_peer_port *from,
-					uint32_t orig_tei,
-					time_t now)
-{
-	struct nr_mapping *nrm = gtphub_mapping_have(&hub->tei_map[plane_idx],
-						     from, orig_tei, now);
-	LOG(LOGL_DEBUG, "New %s TEI: (from %s, TEI %u) <-- TEI %u\n",
-	    gtphub_plane_idx_names[plane_idx],
-	    gtphub_port_str(from),
-	    (unsigned int)orig_tei, (unsigned int)nrm->repl);
-
-	return (uint32_t)nrm->repl;
-}
-
 static void gtphub_map_seq(struct gtp_packet_desc *p,
 			   struct gtphub_peer_port *from_port,
 			   struct gtphub_peer_port *to_port)
@@ -1077,6 +1192,100 @@ static struct gtphub_peer_port *gtphub_unmap_seq(struct gtp_packet_desc *p,
 	return nrm->origin;
 }
 
+static struct gtphub_tunnel *gtphub_tun_find(struct gtphub *hub,
+					     int side_idx,
+					     int plane_idx,
+					     struct gtphub_peer_port *from,
+					     uint32_t tei_orig,
+					     uint32_t tei_repl)
+{
+	OSMO_ASSERT(from);
+
+	struct gtphub_tunnel *tun;
+	/* TODO: optimize: don't iterate *all* tunnels. */
+	llist_for_each_entry(tun, &hub->tunnels, entry) {
+		struct gtphub_tunnel_endpoint *te =
+			&tun->endpoint[side_idx][plane_idx];
+		if (((!tei_orig) || (te->tei_orig == tei_orig))
+		    && ((!tei_repl) || (te->tei_repl == tei_repl))
+		    && gsn_addr_same(&te->peer->peer_addr->addr, &from->peer_addr->addr))
+			return tun;
+	}
+	return NULL;
+}
+
+static void gtphub_expire_reused_tei(struct gtphub *hub,
+				     int side_idx,
+				     int plane_idx,
+				     struct gtphub_peer_port *from,
+				     uint32_t tei_orig,
+				     struct gtphub_tunnel *except)
+{
+	struct gtphub_tunnel *exists, *e2;
+
+	llist_for_each_entry_safe(exists, e2, &hub->tunnels, entry) {
+		if (exists == except)
+			continue;
+
+		struct gtphub_tunnel_endpoint *te =
+			&exists->endpoint[side_idx][plane_idx];
+		if ((te->tei_orig == tei_orig)
+		    && gsn_addr_same(&te->peer->peer_addr->addr,
+				     &from->peer_addr->addr)) {
+
+			/* The peer is reusing a TEI that I believe to
+			 * be part of another tunnel. The other tunnel
+			 * must be stale, then. */
+			LOG(LOGL_NOTICE,
+			    "Expiring tunnel due to reused TEI:"
+			    " peer %s sent %s TEI %x,"
+			    " previously used by tunnel %s...\n",
+			    gtphub_port_str(from),
+			    gtphub_plane_idx_names[plane_idx],
+			    tei_orig,
+			    gtphub_tunnel_str(exists));
+			LOG(LOGL_NOTICE, "...while establishing tunnel %s\n",
+			    gtphub_tunnel_str(except));
+			expiring_item_del(&exists->expiry_entry);
+			/* continue to find more matches. There shouldn't be
+			 * any, but let's make sure. */
+		}
+	}
+}
+
+static void gtphub_tunnel_refresh(struct gtphub *hub,
+				  struct gtphub_tunnel *tun,
+				  time_t now)
+{
+	expiry_add(&hub->expire_slowly,
+		   &tun->expiry_entry,
+		   now);
+}
+
+static struct gtphub_tunnel_endpoint *gtphub_unmap_tei(struct gtphub *hub,
+						       struct gtp_packet_desc *p,
+						       struct gtphub_peer_port *from)
+{
+	OSMO_ASSERT(from);
+	int other_side = other_side_idx(p->side_idx);
+
+	struct gtphub_tunnel *tun;
+	llist_for_each_entry(tun, &hub->tunnels, entry) {
+		struct gtphub_tunnel_endpoint *te_from =
+			&tun->endpoint[p->side_idx][p->plane_idx];
+		struct gtphub_tunnel_endpoint *te_to =
+			&tun->endpoint[other_side][p->plane_idx];
+		if ((te_to->tei_repl == p->header_tei_rx)
+		    && gsn_addr_same(&te_from->peer->peer_addr->addr,
+				     &from->peer_addr->addr)) {
+			gtphub_tunnel_refresh(hub, tun, p->timestamp);
+			return te_to;
+		}
+	}
+	return NULL;
+}
+
+
 static void gtphub_check_restart_counter(struct gtphub *hub,
 					 struct gtp_packet_desc *p,
 					 struct gtphub_peer_port *from)
@@ -1106,30 +1315,28 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 	/* If the header's TEI is zero, no PDP context has been established
 	 * yet. If nonzero, a mapping should actually already exist for this
 	 * TEI, since it must have been announced in a PDP context creation. */
-	uint32_t tei = p->header_tei;
-	if (!tei)
+	if (!p->header_tei_rx)
 		return 0;
 
 	/* to_peer has previously announced a TEI, which was stored and
-	 * mapped in from_peer's tei_map. */
-	struct nr_mapping *nrm;
-	nrm = nr_map_get_inv(&hub->tei_map[p->plane_idx], tei);
-	if (!nrm) {
-		LOG(LOGL_ERROR, "Received unknown TEI %" PRIu32 " from %s\n",
-		    tei, gtphub_port_str(from_port));
+	 * mapped in a tunnel struct. */
+	struct gtphub_tunnel_endpoint *to;
+	to = gtphub_unmap_tei(hub, p, from_port);
+	if (!to) {
+		LOG(LOGL_ERROR, "Received unknown TEI %" PRIx32 " from %s\n",
+		    p->header_tei_rx, gtphub_port_str(from_port));
 		return -1;
 	}
 
-	struct gtphub_peer_port *to_port = nrm->origin;
-	uint32_t unmapped_tei = nrm->orig;
+	uint32_t unmapped_tei = to->tei_orig;
 	set_tei(p, unmapped_tei);
 
-	LOG(LOGL_DEBUG, "Unmapped TEI coming from %s: %u -> %u (to %s)\n",
-	    gtphub_port_str(from_port),
-	    (unsigned int)tei, (unsigned int)unmapped_tei,
-	    gtphub_port_str2(to_port));
+	LOG(LOGL_DEBUG, "Unmapped TEI coming from %s: %" PRIx32 " -> %" PRIx32 " (to %s)\n",
+	    gtphub_port_str(from_port), p->header_tei_rx, unmapped_tei,
+	    gtphub_port_str2(to->peer));
 
-	*to_port_p = to_port;
+	*to_port_p = to->peer;
+
 	return 0;
 }
 
@@ -1140,6 +1347,8 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 				     struct gtphub_bind from_bind_arr[],
 				     struct gtphub_bind to_bind_arr[],
+				     struct gtphub_peer_port *sgsn_ctrl,
+				     struct gtphub_peer_port *ggsn_ctrl,
 				     struct gtp_packet_desc *p)
 {
 	OSMO_ASSERT(p->plane_idx == GTPH_PLANE_CTRL);
@@ -1162,15 +1371,41 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 	osmo_static_assert((GTPH_PLANE_CTRL == 0) && (GTPH_PLANE_USER == 1),
 			   plane_nrs_match_GSN_addr_IE_indices);
 
+	struct gtphub_tunnel *tun = NULL;
+
+	if (p->type == GTP_CREATE_PDP_REQ) {
+		/* A new tunnel. */
+		tun = gtphub_tunnel_new();
+		llist_add(&tun->entry, &hub->tunnels);
+		gtphub_tunnel_refresh(hub, tun, p->timestamp);
+		gtphub_tunnel_endpoint_set_peer(&tun->endpoint[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL],
+						ggsn_ctrl);
+	} else if (p->type == GTP_CREATE_PDP_RSP) {
+		/* Find the tunnel created during request */
+		OSMO_ASSERT(sgsn_ctrl);
+		tun = gtphub_tun_find(hub, other_side_idx(p->side_idx),
+				      p->plane_idx, sgsn_ctrl, 0, p->header_tei_rx);
+
+		if (!tun) {
+			LOG(LOGL_ERROR, "Create PDP Context Response: cannot"
+			    " find matching request from SGSN %s, mapped TEI %x.\n",
+			    gtphub_port_str(sgsn_ctrl), p->header_tei_rx);
+			return -1;
+		}
+	}
+
 	uint8_t ie_type[] = { GTPIE_TEI_C, GTPIE_TEI_DI };
 	int ie_mandatory = (p->type == GTP_CREATE_PDP_REQ);
+	unsigned int side_idx = p->side_idx;
 
 	for (plane_idx = 0; plane_idx < 2; plane_idx++) {
 		struct gsn_addr addr_from_ie;
 		uint32_t tei_from_ie;
 		int ie_idx;
 
-		/* Fetch GSN Address and TEI from IEs */
+		/* Fetch GSN Address and TEI from IEs. As ensured by above
+		 * static asserts, plane_idx corresponds to the GSN Address IE
+		 * index (the first one = 0 = ctrl, second one = 1 = user). */
 		rc = gsn_addr_get(&addr_from_ie, p, plane_idx);
 		if (rc) {
 			LOG(LOGL_ERROR, "Cannot read %s GSN Address IE\n",
@@ -1203,14 +1438,20 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 					 &addr_from_ie,
 					 gtphub_plane_idx_default_port[plane_idx]);
 
+		gtphub_tunnel_endpoint_set_peer(&tun->endpoint[side_idx][plane_idx],
+						peer_from_ie);
+
 		if (tei_from_ie) {
 			/* Create TEI mapping and replace in GTP packet IE */
-			uint32_t mapped_tei =
-				gtphub_tei_mapping_have(hub, plane_idx,
-							peer_from_ie,
-							tei_from_ie,
-							p->timestamp);
+			uint32_t mapped_tei = nr_pool_next(&hub->tei_pool[plane_idx]);
+
+			tun->endpoint[side_idx][plane_idx].tei_orig = tei_from_ie;
+			tun->endpoint[side_idx][plane_idx].tei_repl = mapped_tei;
 			p->ie[ie_idx]->tv4.v = hton32(mapped_tei);
+
+			gtphub_expire_reused_tei(hub, side_idx, plane_idx,
+						 peer_from_ie, tei_from_ie,
+						 tun);
 		}
 
 		/* Replace the GSN address to reflect gtphub. */
@@ -1221,6 +1462,14 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 			    gtphub_plane_idx_names[plane_idx]);
 			return -1;
 		}
+	}
+
+	if (p->type == GTP_CREATE_PDP_REQ) {
+		LOG(LOGL_DEBUG, "New tunnel, first half: %s\n",
+		    gtphub_tunnel_str(tun));
+	} else if (p->type == GTP_CREATE_PDP_REQ) {
+		LOG(LOGL_DEBUG, "New tunnel: %s\n",
+		    gtphub_tunnel_str(tun));
 	}
 
 	return 0;
@@ -1319,7 +1568,7 @@ static int gtphub_unmap(struct gtphub *hub,
 		    gtphub_peer_str(from_peer),
 		    (int)p->seq,
 		    gtphub_port_str(from_seq),
-		    (unsigned int)p->header_tei,
+		    (unsigned int)p->header_tei_rx,
 		    gtphub_port_str2(from_tei)
 		   );
 	}
@@ -1340,9 +1589,6 @@ static int gtphub_unmap(struct gtphub *hub,
 		/* Return no error, but returned pointers are all NULL. */
 		return 0;
 	}
-
-	LOG(LOGL_DEBUG, "from seq %p; from tei %p; unmapped => %p\n",
-	    from_seq, from_tei, unmapped);
 
 	if (unmapped_from_seq)
 		*unmapped_from_seq = from_seq;
@@ -1420,7 +1666,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	    osmo_sockaddr_to_str(from_addr));
 
 	static struct gtp_packet_desc p;
-	gtp_decode(buf, received, plane_idx, &p, now);
+	gtp_decode(buf, received, GTPH_SIDE_GGSN, plane_idx, &p, now);
 
 	if (p.rc <= 0)
 		return -1;
@@ -1502,7 +1748,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 		 * are other addresses in the GTP message to set up apart from
 		 * the sender. */
 		if (gtphub_handle_pdp_ctx_ies(hub, from_bind_arr, to_bind_arr,
-					      &p)
+					      sgsn, ggsn, &p)
 		    != 0)
 			return -1;
 	}
@@ -1585,7 +1831,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	    osmo_sockaddr_to_str(from_addr));
 
 	static struct gtp_packet_desc p;
-	gtp_decode(buf, received, plane_idx, &p, now);
+	gtp_decode(buf, received, GTPH_SIDE_SGSN, plane_idx, &p, now);
 
 	if (p.rc <= 0)
 		return -1;
@@ -1684,11 +1930,11 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	}
 
 	if (plane_idx == GTPH_PLANE_CTRL) {
-		/* This may be a Create PDP Context requst. If it is, there are
+		/* This may be a Create PDP Context request. If it is, there are
 		 * other addresses in the GTP message to set up apart from the
 		 * sender. */
 		if (gtphub_handle_pdp_ctx_ies(hub, from_bind_arr, to_bind_arr,
-					      &p)
+					      sgsn, ggsn, &p)
 		    != 0)
 			return -1;
 	}
@@ -1848,15 +2094,14 @@ void gtphub_init(struct gtphub *hub)
 {
 	gtphub_zero(hub);
 
+	INIT_LLIST_HEAD(&hub->tunnels);
+
 	expiry_init(&hub->expire_quickly, GTPH_EXPIRE_QUICKLY_SECS);
 	expiry_init(&hub->expire_slowly, GTPH_EXPIRE_SLOWLY_MINUTES * 60);
 
 	int plane_idx;
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
 		nr_pool_init(&hub->tei_pool[plane_idx], 1, 0xffffffff);
-		nr_map_init(&hub->tei_map[plane_idx],
-			    &hub->tei_pool[plane_idx],
-			    &hub->expire_slowly);
 
 		gtphub_bind_init(&hub->to_ggsns[plane_idx]);
 		gtphub_bind_init(&hub->to_sgsns[plane_idx]);
