@@ -185,7 +185,7 @@ void expiry_init(struct expiry *exq, int expiry_in_seconds);
 
 /* Add a new mapping, or restart the expiry timeout for an already listed
  * mapping. */
-void expiry_add(struct expiry *exq, struct expiring_item *mapping, time_t now);
+void expiry_add(struct expiry *exq, struct expiring_item *item, time_t now);
 
 /* Initialize to all-empty; must be called before using the item in any way. */
 void expiring_item_init(struct expiring_item *item);
