@@ -1704,6 +1704,8 @@ void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
 
 	ggsn = talloc_zero(osmo_gtphub_ctx, struct gtphub_resolved_ggsn);
 	OSMO_ASSERT(ggsn);
+	INIT_LLIST_HEAD(&ggsn->entry);
+	expiring_item_init(&ggsn->expiry_entry);
 
 	ggsn->peer = pp;
 	gtphub_port_ref_count_inc(pp);
