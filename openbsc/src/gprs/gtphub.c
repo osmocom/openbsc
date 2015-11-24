@@ -660,10 +660,16 @@ void nr_map_add(struct nr_map *map, struct nr_mapping *mapping, time_t now)
 	/* Add to the tail to always yield a list sorted by expiry, in
 	 * ascending order. */
 	llist_add_tail(&mapping->entry, &map->mappings);
-	if (map->add_items_to_expiry)
-		expiry_add(map->add_items_to_expiry,
-			   &mapping->expiry_entry,
-			   now);
+	nr_map_refresh(map, mapping, now);
+}
+
+void nr_map_refresh(struct nr_map *map, struct nr_mapping *mapping, time_t now)
+{
+	if (!map->add_items_to_expiry)
+		return;
+	expiry_add(map->add_items_to_expiry,
+		   &mapping->expiry_entry,
+		   now);
 }
 
 void nr_map_clear(struct nr_map *map)
@@ -1010,9 +1016,7 @@ static struct nr_mapping *gtphub_mapping_have(struct nr_map *map,
 		    gtphub_port_str(from),
 		    (int)(nrm->orig), (int)(nrm->repl));
 	} else {
-		/* restart expiry timeout */
-		expiry_add(map->add_items_to_expiry, &nrm->expiry_entry,
-			   now);
+		nr_map_refresh(map, nrm, now);
 	}
 
 	OSMO_ASSERT(nrm);

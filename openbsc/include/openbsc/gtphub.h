@@ -307,6 +307,11 @@ void nr_map_init(struct nr_map *map, struct nr_pool *pool,
 void nr_map_add(struct nr_map *map, struct nr_mapping *mapping,
 		time_t now);
 
+/* Restart the timeout for the given mapping. mapping must be a member of map.
+ */
+void nr_map_refresh(struct nr_map *map, struct nr_mapping *mapping,
+		    time_t now);
+
 /* Return a known mapping from nr_orig and the given origin. If nr_orig is
  * unknown, return NULL. */
 struct nr_mapping *nr_map_get(const struct nr_map *map,
