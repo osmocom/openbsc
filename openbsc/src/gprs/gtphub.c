@@ -85,6 +85,7 @@ struct gtp_packet_desc {
 	uint32_t header_tei;
 	int rc; /* enum gtp_rc */
 	unsigned int plane_idx;
+	time_t timestamp;
 	union gtpie_member *ie[GTPIE_SIZE];
 };
 
@@ -469,12 +470,14 @@ static int get_ie_apn_str(union gtpie_member *ie[], const char **apn_str)
  * error, p->rc is set <= 0 (see enum gtp_rc). */
 static void gtp_decode(const uint8_t *data, int data_len,
 		       unsigned int from_plane_idx,
-		       struct gtp_packet_desc *res)
+		       struct gtp_packet_desc *res,
+		       time_t now)
 {
 	ZERO_STRUCT(res);
 	res->data = (union gtp_packet*)data;
 	res->data_len = data_len;
 	res->plane_idx = from_plane_idx;
+	res->timestamp = now;
 
 	validate_gtp_header(res);
 
@@ -1034,15 +1037,14 @@ static uint32_t gtphub_tei_mapping_have(struct gtphub *hub,
 
 static void gtphub_map_seq(struct gtp_packet_desc *p,
 			   struct gtphub_peer_port *from_port,
-			   struct gtphub_peer_port *to_port,
-			   time_t now)
+			   struct gtphub_peer_port *to_port)
 {
 	/* Store a mapping in to_peer's map, so when we later receive a GTP
 	 * packet back from to_peer, the seq nr can be unmapped back to its
 	 * origin (from_peer here). */
 	struct nr_mapping *nrm;
 	nrm = gtphub_mapping_have(&to_port->peer_addr->peer->seq_map,
-				  from_port, p->seq, now);
+				  from_port, p->seq, p->timestamp);
 
 	/* Change the GTP packet to yield the new, mapped seq nr */
 	set_seq(p, nrm->repl);
@@ -1126,8 +1128,7 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 				     struct gtphub_bind from_bind_arr[],
 				     struct gtphub_bind to_bind_arr[],
-				     struct gtp_packet_desc *p,
-				     time_t now)
+				     struct gtp_packet_desc *p)
 {
 	OSMO_ASSERT(p->plane_idx == GTPH_PLANE_CTRL);
 
@@ -1196,7 +1197,7 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 				gtphub_tei_mapping_have(hub, plane_idx,
 							peer_from_ie,
 							tei_from_ie,
-							now);
+							p->timestamp);
 			p->ie[ie_idx]->tv4.v = hton32(mapped_tei);
 		}
 
@@ -1407,7 +1408,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	    osmo_sockaddr_to_str(from_addr));
 
 	static struct gtp_packet_desc p;
-	gtp_decode(buf, received, plane_idx, &p);
+	gtp_decode(buf, received, plane_idx, &p, now);
 
 	if (p.rc <= 0)
 		return -1;
@@ -1489,7 +1490,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 		 * are other addresses in the GTP message to set up apart from
 		 * the sender. */
 		if (gtphub_handle_pdp_ctx_ies(hub, from_bind_arr, to_bind_arr,
-					      &p, now)
+					      &p)
 		    != 0)
 			return -1;
 	}
@@ -1501,7 +1502,7 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	 * already been unmapped above (sgsn_from_seq != NULL), and we need not
 	 * create a new mapping. */
 	if (!sgsn_from_seq)
-		gtphub_map_seq(&p, ggsn, sgsn, now);
+		gtphub_map_seq(&p, ggsn, sgsn);
 
 	osmo_sockaddr_copy(to_addr, &sgsn->sa);
 
@@ -1572,7 +1573,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	    osmo_sockaddr_to_str(from_addr));
 
 	static struct gtp_packet_desc p;
-	gtp_decode(buf, received, plane_idx, &p);
+	gtp_decode(buf, received, plane_idx, &p, now);
 
 	if (p.rc <= 0)
 		return -1;
@@ -1675,7 +1676,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 		 * other addresses in the GTP message to set up apart from the
 		 * sender. */
 		if (gtphub_handle_pdp_ctx_ies(hub, from_bind_arr, to_bind_arr,
-					      &p, now)
+					      &p)
 		    != 0)
 			return -1;
 	}
@@ -1687,7 +1688,7 @@ int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
 	 * already been unmapped above (unmap_ggsn != NULL), and we need not
 	 * create a new outgoing sequence map. */
 	if (!ggsn_from_seq)
-		gtphub_map_seq(&p, sgsn, ggsn, now);
+		gtphub_map_seq(&p, sgsn, ggsn);
 
 	osmo_sockaddr_copy(to_addr, &ggsn->sa);
 
