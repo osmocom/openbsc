@@ -763,8 +763,8 @@ int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net,
 			uint32_t callref, uint32_t msg_type)
 {
-	DEBUGP(DLMUX, "rtp_socket_proxy(this=%p, callref=%u)\n",
-		this, callref);
+	DEBUGP(DLMUX, "rtp_socket_upstream(this=%p, callref=%u, , msg_type=%u)\n",
+		this, callref, msg_type);
 
 	if (callref) {
 		this->rx_action = RTP_RECV_UPSTREAM;
