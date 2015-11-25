@@ -1638,6 +1638,41 @@ static int tch_bridge(struct gsm_network *net, uint32_t *refs)
 	return tch_map(trans1->conn->lchan, trans2->conn->lchan);
 }
 
+
+static uint32_t tch_msg_type_for_lchan(struct gsm_lchan *lchan)
+{
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return GSM_TCHF_FRAME;
+		case GSM_LCHAN_TCH_H:
+			return GSM_TCHH_FRAME;
+		default:
+			break;
+		}
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return GSM_TCHF_FRAME_EFR;
+		/* there's no half-rate EFR */
+		default:
+			break;
+		}
+		break;
+	case GSM48_CMODE_SPEECH_AMR:
+		return GSM_TCH_FRAME_AMR;
+		break;
+	default:
+		break;
+	}
+	LOGP(DCC, LOGL_ERROR, "Cannot determine MNCC codec type speech mode for "
+		"tch_mode == 0x%02x lchan->type=0x%02x\n", lchan->tch_mode, lchan->type);
+	return 0;
+}
+
+
 /* enable receive of channels to MNCC upqueue */
 static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 {
@@ -1683,10 +1718,10 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 				return rc;
 			/* assign socket to application interface */
 			rtp_socket_upstream(lchan->abis_ip.rtp_socket,
-				net, callref);
+				net, callref, tch_msg_type_for_lchan(lchan));
 		} else
 			rtp_socket_upstream(lchan->abis_ip.rtp_socket,
-				net, 0);
+				net, 0, 0);
 		break;
 	case GSM_BTS_TYPE_BS11:
 	case GSM_BTS_TYPE_RBS2000:
