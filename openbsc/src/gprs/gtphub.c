@@ -1761,7 +1761,7 @@ void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
 	ggsn->apn_oi_str[sizeof(ggsn->apn_oi_str) - 1] = '\0';
 
 	ggsn->expiry_entry.del_cb = resolved_gssn_del_cb;
-	expiry_add(&hub->expire_tei_maps, &ggsn->expiry_entry, now);
+	expiry_add(&hub->expire_slowly, &ggsn->expiry_entry, now);
 
 	llist_add(&ggsn->entry, &hub->resolved_ggsns);
 }
@@ -1814,8 +1814,8 @@ static void gtphub_gc_bind(struct gtphub_bind *b)
 void gtphub_gc(struct gtphub *hub, time_t now)
 {
 	int expired;
-	expired = expiry_tick(&hub->expire_seq_maps, now);
-	expired += expiry_tick(&hub->expire_tei_maps, now);
+	expired = expiry_tick(&hub->expire_quickly, now);
+	expired += expiry_tick(&hub->expire_slowly, now);
 
 	/* ... */
 
@@ -1848,16 +1848,15 @@ void gtphub_init(struct gtphub *hub)
 {
 	gtphub_zero(hub);
 
-	expiry_init(&hub->expire_seq_maps, GTPH_SEQ_MAPPING_EXPIRY_SECS);
-	expiry_init(&hub->expire_tei_maps,
-		    GTPH_TEI_MAPPING_EXPIRY_MINUTES * 60);
+	expiry_init(&hub->expire_quickly, GTPH_EXPIRE_QUICKLY_SECS);
+	expiry_init(&hub->expire_slowly, GTPH_EXPIRE_SLOWLY_MINUTES * 60);
 
 	int plane_idx;
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
 		nr_pool_init(&hub->tei_pool[plane_idx], 1, 0xffffffff);
 		nr_map_init(&hub->tei_map[plane_idx],
 			    &hub->tei_pool[plane_idx],
-			    &hub->expire_tei_maps);
+			    &hub->expire_slowly);
 
 		gtphub_bind_init(&hub->to_ggsns[plane_idx]);
 		gtphub_bind_init(&hub->to_sgsns[plane_idx]);
@@ -1877,8 +1876,8 @@ void gtphub_free(struct gtphub *hub)
 	/* By expiring all mappings, a garbage collection should free
 	 * everything else. A gtphub_bind_free() will assert that everything is
 	 * indeed empty. */
-	expiry_clear(&hub->expire_seq_maps);
-	expiry_clear(&hub->expire_tei_maps);
+	expiry_clear(&hub->expire_quickly);
+	expiry_clear(&hub->expire_slowly);
 
 	int plane_idx;
 	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
@@ -2060,7 +2059,7 @@ static struct gtphub_peer *gtphub_peer_new(struct gtphub *hub,
 	INIT_LLIST_HEAD(&peer->addresses);
 
 	nr_pool_init(&peer->seq_pool, 0, 0xffff);
-	nr_map_init(&peer->seq_map, &peer->seq_pool, &hub->expire_seq_maps);
+	nr_map_init(&peer->seq_map, &peer->seq_pool, &hub->expire_quickly);
 
 	/* TODO use something random to pick the initial sequence nr.
 	   0x6d31 produces the ASCII character sequence 'm1', currently used in

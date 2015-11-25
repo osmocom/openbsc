@@ -329,8 +329,8 @@ int nr_map_empty(const struct nr_map *map);
 
 /* config */
 
-static const int GTPH_SEQ_MAPPING_EXPIRY_SECS = 30; /* TODO is there a spec for this? */
-static const int GTPH_TEI_MAPPING_EXPIRY_MINUTES = 6 * 60; /* TODO is there a spec for this? */
+static const int GTPH_EXPIRE_QUICKLY_SECS = 30; /* TODO is there a spec for this? */
+static const int GTPH_EXPIRE_SLOWLY_MINUTES = 6 * 60; /* TODO is there a spec for this? */
 
 struct gtphub_cfg_addr {
 	const char *addr_str;
@@ -423,8 +423,8 @@ struct gtphub {
 	struct llist_head resolved_ggsns; /* struct gtphub_resolved_ggsn */
 
 	struct osmo_timer_list gc_timer;
-	struct expiry expire_seq_maps;
-	struct expiry expire_tei_maps;
+	struct expiry expire_quickly;
+	struct expiry expire_slowly;
 
 	uint16_t restart_counter;
 };
