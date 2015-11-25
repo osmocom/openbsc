@@ -64,8 +64,10 @@ enum rtp_bfd_priv {
 
 #define RTP_VERSION	2
 
-/* 33 for FR, all other codecs have smaller size */
-#define MAX_RTP_PAYLOAD_LEN	33
+/* 33 bytes for FR and AMR mode 7, all other codecs have smaller size.
+   Plus we need 1 byte for size of AMR frames
+   34 bytes total */
+#define MAX_RTP_PAYLOAD_LEN	34
 
 /* decode an rtp frame and create a new buffer with payload */
 static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, int msg_type)
