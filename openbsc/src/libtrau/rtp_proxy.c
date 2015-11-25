@@ -187,7 +187,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, in
 	frame = (struct gsm_data_frame *) msgb_put(new_msg, sizeof(struct gsm_data_frame));
 	frame->msg_type = msg_type;
 	frame->callref = callref;
-	if (rtph->payload_type == RTP_PT_AMR) {
+	if (msg_type == GSM_TCH_FRAME_AMR) {
 		/* for FR/HR/EFR the length is implicit.  In AMR, we
 		 * need to make it explicit by using the first byte of
 		 * the data[] buffer as length byte */
