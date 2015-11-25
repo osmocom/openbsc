@@ -482,7 +482,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 			rc = -EINVAL;
 			goto out_free;
 		}
-		rc = rtp_decode(msg, rs->receive.callref, &new_msg, 0);
+		rc = rtp_decode(msg, rs->receive.callref, &new_msg, rs->receive.msg_type);
 		if (rc < 0)
 			goto out_free;
 		msgb_free(msg);
