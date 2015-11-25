@@ -132,15 +132,6 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, in
 		case RTP_PT_GSM_FULL:
 			msg_type = GSM_TCHF_FRAME;
 			break;
-		case RTP_PT_GSM_EFR:
-			msg_type = GSM_TCHF_FRAME_EFR;
-			break;
-		case RTP_PT_GSM_HALF:
-			msg_type = GSM_TCHH_FRAME;
-			break;
-		case RTP_PT_AMR:
-			msg_type = GSM_TCH_FRAME_AMR;
-			break;
 		default:
 			DEBUGPC(DLMUX, "received RTP frame with unknown "
 				"payload type %d\n", rtph->payload_type);
