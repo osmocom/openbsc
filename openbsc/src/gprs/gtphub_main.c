@@ -176,8 +176,15 @@ static void handle_options(struct cmdline_cfg *ccfg, int argc, char **argv)
 
 		c = getopt_long(argc, argv, "hd:Dc:sTe:",
 				long_options, &option_index);
-		if (c == -1)
+		if (c == -1) {
+			if (optind < argc) {
+				LOGP(DGTPHUB, LOGL_FATAL,
+				     "Excess commandline arguments ('%s').\n",
+				     argv[optind]);
+				exit(2);
+			}
 			break;
+		}
 
 		switch (c) {
 		case 'h':
