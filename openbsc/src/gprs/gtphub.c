@@ -1302,7 +1302,16 @@ static void gtphub_map_restart_counter(struct gtphub *hub,
 				       struct gtphub_peer_port *from,
 				       struct gtphub_peer_port *to)
 {
-	/* TODO */
+	/* Always send gtphub's own restart counter */
+	if (p->rc != GTP_RC_PDU_C)
+		return;
+
+	int ie_idx;
+	ie_idx = gtpie_getie(p->ie, GTPIE_RECOVERY, 0);
+	if (ie_idx < 0)
+		return;
+
+	p->ie[ie_idx]->tv1.v = hton8(hub->restart_counter);
 }
 
 static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
@@ -2164,11 +2173,14 @@ static int gtphub_make_proxy(struct gtphub *hub,
 	return 0;
 }
 
-int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg)
+int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
+		 uint8_t restart_counter)
 {
 	int rc;
 
 	gtphub_init(hub);
+
+	hub->restart_counter = restart_counter;
 
 	/* If a Ctrl plane proxy is configured, ares will never be used. */
 	if (!cfg->ggsn_proxy[GTPH_PLANE_CTRL].addr_str) {

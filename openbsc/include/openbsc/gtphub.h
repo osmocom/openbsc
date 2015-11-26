@@ -451,7 +451,7 @@ struct gtphub {
 	struct expiry expire_quickly;
 	struct expiry expire_slowly;
 
-	uint16_t restart_counter;
+	uint8_t restart_counter;
 };
 
 struct gtp_packet_desc;
@@ -463,7 +463,8 @@ int gtphub_vty_init(struct gtphub *global_hub, struct gtphub_cfg *global_cfg);
 int gtphub_cfg_read(struct gtphub_cfg *cfg, const char *config_file);
 
 /* Initialize and start gtphub: bind to ports, run expiry timers. */
-int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg);
+int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
+		 uint8_t restart_counter);
 
 /* Close all sockets, expire all maps and peers and free all allocations. The
  * struct is then unusable, unless gtphub_start() is run on it again. */

@@ -782,7 +782,7 @@ static void test_echo(void)
 		"00"	/* N-PDU 0 */ \
 		"00"	/* No extensions */ \
 		/* IEs */ \
-		"0e" restart /* 14: Recovery = 96 (restart counter: 1 octet) */ \
+		"0e" restart /* 14: Recovery (restart counter: 1 octet) */ \
 		"02"	/* 2 = IMSI */ \
 		  imsi	/* (8 octets) */ \
 		"0f01"	/* 15: Selection mode = MS provided APN, subscription not verified*/ \
@@ -825,7 +825,7 @@ static void test_echo(void)
 		  "80"	/* value = 0b10000000 = response, no rejection. */ \
 		"08"	/* 8: Reordering Required */ \
 		  "00"	/* not required. */ \
-		"0e" restart /* 14: Recovery = 1 */ \
+		"0e" restart /* 14: Recovery */ \
 		"10"	/* 16: TEI Data I */ \
 		  tei_u \
 		"11"	/* 17: TEI Control */ \
@@ -904,7 +904,7 @@ static int create_pdp_ctx()
 	const char *gtp_req_to_ggsn =
 		MSG_PDP_CTX_REQ("0068",
 				"6d31",	/* mapped seq ("abcd") */
-				"60",
+				"23",
 				"42000121436587f9",
 				"00000001", /* mapped TEI Data I ("123") */
 				"00000001", /* mapped TEI Control ("321") */
@@ -938,7 +938,7 @@ static int create_pdp_ctx()
 		MSG_PDP_CTX_RSP("004e",
 				"00000321", /* unmapped TEI ("001") */
 				"abcd", /* unmapped seq ("6d31") */
-				"01",
+				"23",
 				"00000002", /* mapped TEI from GGSN ("567") */
 				"00000002", /* mapped TEI from GGSN ("765") */
 				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */

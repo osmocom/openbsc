@@ -23,6 +23,8 @@
 #include <signal.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
+#include <sys/stat.h>
 
 #define _GNU_SOURCE
 #include <getopt.h>
@@ -132,19 +134,82 @@ static struct vty_app_info vty_info = {
 
 struct cmdline_cfg {
 	const char *config_file;
+	const char *restart_counter_file;
 	int daemonize;
 };
+
+static uint8_t next_restart_count(const char *path)
+{
+	int umask_was = umask(022);
+
+	uint8_t counter = 0;
+
+	FILE *f = fopen(path, "r");
+	if (f) {
+		int rc = fscanf(f, "%hhu", &counter);
+
+		if (rc != 1)
+			goto failed_to_read;
+
+		char c;
+		while (fread(&c, 1, 1, f) > 0) {
+			switch (c) {
+			case ' ':
+			case '\t':
+			case '\n':
+			case '\r':
+				break;
+			default:
+				goto failed_to_read;
+			}
+		}
+		fclose(f);
+	}
+
+	counter ++;
+
+	f = fopen(path, "w");
+	if (!f)
+		goto failed_to_write;
+	if (fprintf(f, "%" PRIu8 "\n", counter) < 2)
+		goto failed_to_write;
+	if (fclose(f))
+		goto failed_to_write;
+
+	umask(umask_was);
+
+	LOGP(DGTPHUB, LOGL_NOTICE, "Restarted with counter %hhu\n", counter);
+	return counter;
+
+failed_to_read:
+	fclose(f);
+	umask(umask_was);
+	LOGP(DGTPHUB, LOGL_FATAL, "Restart counter file cannot be parsed:"
+	     " %s\n", path);
+	exit(1);
+
+failed_to_write:
+	if (f)
+		fclose(f);
+	umask(umask_was);
+	LOGP(DGTPHUB, LOGL_FATAL, "Restart counter file cannot be written:"
+	     " %s\n", path);
+	exit(1);
+}
 
 static void print_help(struct cmdline_cfg *ccfg)
 {
 	printf("gtphub commandline options\n");
-	printf("  -h --help            This text.\n");
-	printf("  -D --daemonize       Fork the process into a background daemon.\n");
+	printf("  -h,--help            This text.\n");
+	printf("  -D,--daemonize       Fork the process into a background daemon.\n");
 	printf("  -d,--debug <cat>     Enable Debugging for this category.\n");
 	printf("                       Pass '-d list' to get a category listing.\n");
-	printf("  -s --disable-color");
-	printf("  -c --config-file     The config file to use [%s].\n", ccfg->config_file);
-	printf("  -e,--log-level <nr>  Set a global log level.\n");
+	printf("  -s,--disable-color\n");
+	printf("  -c,--config-file <path>  The config file to use [%s].\n",
+	       ccfg->config_file);
+	printf("  -e,--log-level <nr>      Set a global log level.\n");
+	printf("  -r,--restart-file <path> File for counting restarts [%s].\n",
+	       ccfg->restart_counter_file);
 }
 
 static void list_categories(void)
@@ -171,10 +236,11 @@ static void handle_options(struct cmdline_cfg *ccfg, int argc, char **argv)
 			{"disable-color", 0, 0, 's'},
 			{"timestamp", 0, 0, 'T'},
 			{"log-level", 1, 0, 'e'},
+			{"restart-file", 1, 0, 'r'},
 			{NULL, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:Dc:sTe:",
+		c = getopt_long(argc, argv, "hd:Dc:sTe:r:",
 				long_options, &option_index);
 		if (c == -1) {
 			if (optind < argc) {
@@ -213,6 +279,9 @@ static void handle_options(struct cmdline_cfg *ccfg, int argc, char **argv)
 		case 'e':
 			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
+		case 'r':
+			ccfg->restart_counter_file = optarg;
+			break;
 		default:
 			/* ignore */
 			break;
@@ -228,6 +297,7 @@ int main(int argc, char **argv)
 	struct cmdline_cfg *ccfg = &_ccfg;
 	memset(ccfg, '\0', sizeof(*ccfg));
 	ccfg->config_file = "./gtphub.conf";
+	ccfg->restart_counter_file = "./gtphub_restart_count";
 
 	struct gtphub_cfg _cfg;
 	struct gtphub_cfg *cfg = &_cfg;
@@ -265,7 +335,9 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
-	if (gtphub_start(hub, cfg) != 0)
+	if (gtphub_start(hub, cfg,
+			 next_restart_count(ccfg->restart_counter_file))
+	    != 0)
 		return -1;
 
 	log_cfg(cfg);
