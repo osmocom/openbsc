@@ -1014,13 +1014,11 @@ int gtphub_tunnel_complete(struct gtphub_tunnel *tun)
 		return 0;
 	int side_idx;
 	int plane_idx;
-	for (side_idx = 0; side_idx < GTPH_SIDE_N; side_idx++) {
-		for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
-			struct gtphub_tunnel_endpoint *te =
-				&tun->endpoint[side_idx][plane_idx];
-			if (!(te->peer && te->tei_orig && te->tei_repl))
-				return 0;
-		}
+	for_each_side_and_plane(side_idx, plane_idx) {
+		struct gtphub_tunnel_endpoint *te =
+			&tun->endpoint[side_idx][plane_idx];
+		if (!(te->peer && te->tei_orig && te->tei_repl))
+			return 0;
 	}
 	return 1;
 }
@@ -1040,12 +1038,10 @@ static void gtphub_tunnel_del_cb(struct expiring_item *expi)
 
 	int side_idx;
 	int plane_idx;
-	for (side_idx = 0; side_idx < GTPH_SIDE_N; side_idx++) {
-		for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
-			/* clear ref count */
-			gtphub_tunnel_endpoint_set_peer(
-				&tun->endpoint[side_idx][plane_idx], NULL);
-		}
+	for_each_side_and_plane(side_idx, plane_idx) {
+		/* clear ref count */
+		gtphub_tunnel_endpoint_set_peer(&tun->endpoint[side_idx][plane_idx],
+						NULL);
 	}
 
 	talloc_free(tun);
@@ -2077,7 +2073,7 @@ void gtphub_gc(struct gtphub *hub, time_t now)
 
 	if (expired) {
 		int i;
-		for (i = 0; i < GTPH_PLANE_N; i++) {
+		for_each_plane(i) {
 			gtphub_gc_bind(&hub->to_sgsns[i]);
 			gtphub_gc_bind(&hub->to_ggsns[i]);
 		}
@@ -2110,7 +2106,7 @@ void gtphub_init(struct gtphub *hub)
 	expiry_init(&hub->expire_slowly, GTPH_EXPIRE_SLOWLY_MINUTES * 60);
 
 	int plane_idx;
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+	for_each_plane(plane_idx) {
 		nr_pool_init(&hub->tei_pool[plane_idx], 1, 0xffffffff);
 
 		gtphub_bind_init(&hub->to_ggsns[plane_idx]);
@@ -2135,7 +2131,7 @@ void gtphub_free(struct gtphub *hub)
 	expiry_clear(&hub->expire_slowly);
 
 	int plane_idx;
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+	for_each_plane(plane_idx) {
 		gtphub_gc_bind(&hub->to_ggsns[plane_idx]);
 		gtphub_bind_free(&hub->to_ggsns[plane_idx]);
 
@@ -2147,7 +2143,7 @@ void gtphub_free(struct gtphub *hub)
 void gtphub_stop(struct gtphub *hub)
 {
 	int plane_idx;
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+	for_each_plane(plane_idx) {
 		gtphub_bind_stop(&hub->to_ggsns[plane_idx]);
 		gtphub_bind_stop(&hub->to_sgsns[plane_idx]);
 	}
@@ -2193,7 +2189,7 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 	/* TODO set hub->restart_counter from external file. */
 
 	int plane_idx;
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+	for_each_plane(plane_idx) {
 		rc = gtphub_bind_start(&hub->to_ggsns[plane_idx],
 				       &cfg->to_ggsns[plane_idx],
 				       from_ggsns_read_cb, hub, plane_idx);
@@ -2213,7 +2209,7 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 		}
 	}
 
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+	for_each_plane(plane_idx) {
 		if (gtphub_make_proxy(hub,
 				      &hub->sgsn_proxy[plane_idx],
 				      &hub->to_sgsns[plane_idx],
@@ -2235,14 +2231,14 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 		}
 	}
 
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+	for_each_plane(plane_idx) {
 		if (hub->sgsn_proxy[plane_idx])
 			LOG(LOGL_NOTICE, "Using SGSN %s proxy %s\n",
 			    gtphub_plane_idx_names[plane_idx],
 			    gtphub_port_str(hub->sgsn_proxy[plane_idx]));
 	}
 
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+	for_each_plane(plane_idx) {
 		if (hub->ggsn_proxy[plane_idx])
 			LOG(LOGL_NOTICE, "Using GGSN %s proxy %s\n",
 			    gtphub_plane_idx_names[plane_idx],

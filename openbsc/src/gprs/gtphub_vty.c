@@ -122,7 +122,7 @@ DEFUN(cfg_gtphub_bind_to_sgsns_short, cfg_gtphub_bind_to_sgsns_short_cmd,
 	)
 {
 	int i;
-	for (i = 0; i < GTPH_PLANE_N; i++)
+	for_each_plane(i)
 		g_cfg->to_sgsns[i].bind.addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
 	g_cfg->to_sgsns[GTPH_PLANE_CTRL].bind.port = GTPH_DEFAULT_CONTROL_PORT;
 	g_cfg->to_sgsns[GTPH_PLANE_USER].bind.port = GTPH_DEFAULT_USER_PORT;
@@ -137,7 +137,7 @@ DEFUN(cfg_gtphub_bind_to_ggsns_short, cfg_gtphub_bind_to_ggsns_short_cmd,
 	)
 {
 	int i;
-	for (i = 0; i < GTPH_PLANE_N; i++)
+	for_each_plane(i)
 		g_cfg->to_ggsns[i].bind.addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
 	g_cfg->to_ggsns[GTPH_PLANE_CTRL].bind.port = GTPH_DEFAULT_CONTROL_PORT;
 	g_cfg->to_ggsns[GTPH_PLANE_USER].bind.port = GTPH_DEFAULT_USER_PORT;
@@ -254,7 +254,7 @@ DEFUN(cfg_grx_ggsn, cfg_grx_ggsn_cmd,
 static void show_bind_stats_all(struct vty *vty)
 {
 	int plane_idx;
-	for (plane_idx = 0; plane_idx < GTPH_PLANE_N; plane_idx++) {
+	for_each_plane(plane_idx) {
 		vty_out(vty, "- %s Plane:%s",
 			gtphub_plane_idx_names[plane_idx], VTY_NEWLINE);
 

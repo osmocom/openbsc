@@ -141,6 +141,10 @@ enum gtphub_side_idx {
 	GTPH_SIDE_N
 };
 
+#define for_each_side(I)	for (I = 0; I < GTPH_SIDE_N; I++)
+#define for_each_plane(I)	for (I = 0; I < GTPH_PLANE_N; I++)
+#define for_each_side_and_plane(I,J)	for_each_side(I) for_each_plane(J)
+
 static inline int other_side_idx(int side_idx)
 {
 	return (side_idx + 1) & 1;
