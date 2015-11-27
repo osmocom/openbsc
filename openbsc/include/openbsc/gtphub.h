@@ -444,7 +444,7 @@ struct gtphub {
 	 * uint32_t; if a new TEI were mapped every second, this would take
 	 * more than 100 years (in which a single given TEI must not time out)
 	 * to cause a problem. */
-	struct nr_pool tei_pool[GTPH_PLANE_N];
+	struct nr_pool tei_pool;
 
 	struct llist_head tunnels; /* struct gtphub_tunnel */
 

@@ -1449,7 +1449,7 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 
 		if (tei_from_ie) {
 			/* Create TEI mapping and replace in GTP packet IE */
-			uint32_t mapped_tei = nr_pool_next(&hub->tei_pool[plane_idx]);
+			uint32_t mapped_tei = nr_pool_next(&hub->tei_pool);
 
 			tun->endpoint[side_idx][plane_idx].tei_orig = tei_from_ie;
 			tun->endpoint[side_idx][plane_idx].tei_repl = mapped_tei;
@@ -2105,10 +2105,10 @@ void gtphub_init(struct gtphub *hub)
 	expiry_init(&hub->expire_quickly, GTPH_EXPIRE_QUICKLY_SECS);
 	expiry_init(&hub->expire_slowly, GTPH_EXPIRE_SLOWLY_MINUTES * 60);
 
+	nr_pool_init(&hub->tei_pool, 1, 0xffffffff);
+
 	int plane_idx;
 	for_each_plane(plane_idx) {
-		nr_pool_init(&hub->tei_pool[plane_idx], 1, 0xffffffff);
-
 		gtphub_bind_init(&hub->to_ggsns[plane_idx]);
 		gtphub_bind_init(&hub->to_sgsns[plane_idx]);
 	}
