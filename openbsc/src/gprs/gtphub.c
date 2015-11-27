@@ -1210,43 +1210,99 @@ static struct gtphub_tunnel *gtphub_tun_find(struct gtphub *hub,
 	return NULL;
 }
 
-static void gtphub_expire_reused_tei(struct gtphub *hub,
-				     int side_idx,
-				     int plane_idx,
-				     struct gtphub_peer_port *from,
-				     uint32_t tei_orig,
-				     struct gtphub_tunnel *except)
+static int gtphub_check_mapped_tei(struct gtphub_tunnel_endpoint *new_te,
+				   struct gtphub_tunnel_endpoint *iterated_te,
+				   uint32_t *tei_min,
+				   uint32_t *tei_max)
 {
-	struct gtphub_tunnel *exists, *e2;
+	if (new_te->tei_repl != iterated_te->tei_repl)
+		return 1;
 
-	llist_for_each_entry_safe(exists, e2, &hub->tunnels, entry) {
-		if (exists == except)
+	/* new_te->tei_repl is already taken. Try to find one out of the known
+	 * range. */
+
+	if ((*tei_max) < 0xffffffff) {
+		(*tei_max)++;
+		new_te->tei_repl = *tei_max;
+		return 1;
+	} else if ((*tei_min) > 1) {
+		(*tei_min)--;
+		new_te->tei_repl = *tei_min;
+		return 1;
+	}
+
+	/* None seems to be available. */
+	return 0;
+}
+
+static int gtphub_check_reused_teis(struct gtphub *hub,
+				    struct gtphub_tunnel *new_tun)
+{
+	uint32_t tei_min = 0xffffffff;
+	uint32_t tei_max = 0;
+	int side_idx;
+	int plane_idx;
+	int side_idx2;
+	int plane_idx2;
+	struct gtphub_tunnel_endpoint *te;
+	struct gtphub_tunnel_endpoint *te2;
+
+	struct gtphub_tunnel *tun, *ntun;
+
+	llist_for_each_entry_safe(tun, ntun, &hub->tunnels, entry) {
+		if (tun == new_tun)
 			continue;
 
-		struct gtphub_tunnel_endpoint *te =
-			&exists->endpoint[side_idx][plane_idx];
-		if ((te->tei_orig == tei_orig)
-		    && gsn_addr_same(&te->peer->peer_addr->addr,
-				     &from->peer_addr->addr)) {
+		/* Check whether the GSN sent a TEI that it is reusing from a
+		 * previous tunnel. */
+		for_each_side_and_plane(side_idx, plane_idx) {
+			te = &tun->endpoint[side_idx][plane_idx];
+			te2 = &new_tun->endpoint[side_idx][plane_idx];
+			if ((te->tei_orig == te2->tei_orig)
+			    && gsn_addr_same(&te->peer->peer_addr->addr,
+					     &te2->peer->peer_addr->addr)) {
 
-			/* The peer is reusing a TEI that I believe to
-			 * be part of another tunnel. The other tunnel
-			 * must be stale, then. */
-			LOG(LOGL_NOTICE,
-			    "Expiring tunnel due to reused TEI:"
-			    " peer %s sent %s TEI %x,"
-			    " previously used by tunnel %s...\n",
-			    gtphub_port_str(from),
-			    gtphub_plane_idx_names[plane_idx],
-			    tei_orig,
-			    gtphub_tunnel_str(exists));
-			LOG(LOGL_NOTICE, "...while establishing tunnel %s\n",
-			    gtphub_tunnel_str(except));
-			expiring_item_del(&exists->expiry_entry);
-			/* continue to find more matches. There shouldn't be
-			 * any, but let's make sure. */
+				/* The peer is reusing a TEI that I believe to
+				 * be part of another tunnel. The other tunnel
+				 * must be stale, then. */
+				LOG(LOGL_NOTICE,
+				    "Expiring tunnel due to reused TEI:"
+				    " peer %s sent %s TEI %x,"
+				    " previously used by tunnel %s...\n",
+				    gtphub_port_str(te->peer),
+				    gtphub_plane_idx_names[plane_idx],
+				    te->tei_orig,
+				    gtphub_tunnel_str(tun));
+				LOG(LOGL_NOTICE, "...while establishing tunnel %s\n",
+				    gtphub_tunnel_str(new_tun));
+				expiring_item_del(&tun->expiry_entry);
+				/* continue to find more matches. There shouldn't be
+				 * any, but let's make sure. */
+			}
 		}
+
+		/* Check whether the mapped TEIs assigned to the endpoints are
+		 * used anywhere else. */
+		for_each_side_and_plane(side_idx, plane_idx) {
+			te = &tun->endpoint[side_idx][plane_idx];
+			tei_min = (tei_min < te->tei_repl)? tei_min : te->tei_repl;
+			tei_max = (tei_max > te->tei_repl)? tei_max : te->tei_repl;
+
+			for_each_side_and_plane(side_idx2, plane_idx2) {
+				te2 = &new_tun->endpoint[side_idx2][plane_idx2];
+				if (!gtphub_check_mapped_tei(te2, te, &tei_min, &tei_max)) {
+					LOG(LOGL_ERROR,
+					    "No mapped TEI is readily available."
+					    " Searching for holes between occupied"
+					    " TEIs not implemented.");
+					return 0;
+				}
+			}
+		}
+
 	}
+
+	return 1;
 }
 
 static void gtphub_tunnel_refresh(struct gtphub *hub,
@@ -1455,9 +1511,8 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 			tun->endpoint[side_idx][plane_idx].tei_repl = mapped_tei;
 			p->ie[ie_idx]->tv4.v = hton32(mapped_tei);
 
-			gtphub_expire_reused_tei(hub, side_idx, plane_idx,
-						 peer_from_ie, tei_from_ie,
-						 tun);
+			if (!gtphub_check_reused_teis(hub, tun))
+				return -1;
 		}
 
 		/* Replace the GSN address to reflect gtphub. */
