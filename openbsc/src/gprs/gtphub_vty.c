@@ -87,6 +87,12 @@ static int config_write_gtphub(struct vty *vty)
 		    &g_cfg->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].bind,
 		    &g_cfg->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_USER].bind);
 
+	if (g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].addr_str) {
+		write_addrs(vty, "sgsn-proxy",
+			    &g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL],
+			    &g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_USER]);
+	}
+
 	if (g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].addr_str) {
 		write_addrs(vty, "ggsn-proxy",
 			    &g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL],
