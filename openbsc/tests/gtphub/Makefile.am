@@ -4,7 +4,11 @@ AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS)
 EXTRA_DIST = \
 	gtphub_test.ok
 
+if HAVE_LIBGTP
+if HAVE_LIBCARES
 noinst_PROGRAMS = gtphub_test
+endif
+endif
 
 gtphub_test_SOURCES = gtphub_test.c
 gtphub_test_LDFLAGS = \
