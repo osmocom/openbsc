@@ -1537,6 +1537,24 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 	return 0;
 }
 
+static int gtphub_handle_delete_pdp_ctx(struct gtphub *hub,
+					struct gtp_packet_desc *p,
+					struct gtphub_peer_port *from_ctrl,
+					struct gtphub_peer_port *to_ctrl)
+{
+	/* TODO */
+	return 0;
+}
+
+static int gtphub_handle_update_pdp_ctx(struct gtphub *hub,
+					struct gtp_packet_desc *p,
+					struct gtphub_peer_port *from_ctrl,
+					struct gtphub_peer_port *to_ctrl)
+{
+	/* TODO */
+	return 0;
+}
+
 /* Read GSN address IEs from p, and make sure these peer addresses exist in
  * bind[plane_idx] with default ports, in their respective planes (both Ctrl
  * and User). Map TEIs announced in IEs, and write mapped TEIs in-place into
@@ -1553,6 +1571,17 @@ static int gtphub_handle_pdp_ctx(struct gtphub *hub,
 	case GTP_CREATE_PDP_RSP:
 		return gtphub_handle_create_pdp_ctx(hub, p,
 						    from_ctrl, to_ctrl);
+
+	case GTP_DELETE_PDP_REQ:
+	case GTP_DELETE_PDP_RSP:
+		return gtphub_handle_delete_pdp_ctx(hub, p,
+						    from_ctrl, to_ctrl);
+
+	case GTP_UPDATE_PDP_REQ:
+	case GTP_UPDATE_PDP_RSP:
+		return gtphub_handle_update_pdp_ctx(hub, p,
+						    from_ctrl, to_ctrl);
+
 	default:
 		/* Nothing to do for this message type. */
 		return 0;
