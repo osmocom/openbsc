@@ -136,8 +136,8 @@ enum gtphub_plane_idx {
 };
 
 enum gtphub_side_idx {
-	GTPH_SIDE_GGSN = 0,
-	GTPH_SIDE_SGSN = 1,
+	GTPH_SIDE_SGSN = 0,
+	GTPH_SIDE_GGSN = 1,
 	GTPH_SIDE_N
 };
 
@@ -152,6 +152,8 @@ static inline int other_side_idx(int side_idx)
 
 extern const char* const gtphub_plane_idx_names[GTPH_PLANE_N];
 extern const uint16_t gtphub_plane_idx_default_port[GTPH_PLANE_N];
+
+extern const char* const gtphub_side_idx_names[GTPH_SIDE_N];
 
 /* A host address in the form that is expected in the 7.7.32 GSN Address IE.
  * len is either 4 (IPv4) or 16 (IPv6), any other value is invalid. If no
@@ -357,10 +359,8 @@ struct gtphub_cfg_bind {
 };
 
 struct gtphub_cfg {
-	struct gtphub_cfg_bind to_sgsns[GTPH_PLANE_N];
-	struct gtphub_cfg_bind to_ggsns[GTPH_PLANE_N];
-	struct gtphub_cfg_addr sgsn_proxy[GTPH_PLANE_N];
-	struct gtphub_cfg_addr ggsn_proxy[GTPH_PLANE_N];
+	struct gtphub_cfg_bind to_gsns[GTPH_SIDE_N][GTPH_PLANE_N];
+	struct gtphub_cfg_addr proxy[GTPH_SIDE_N][GTPH_PLANE_N];
 };
 
 
@@ -429,14 +429,10 @@ struct gtphub_resolved_ggsn {
 };
 
 struct gtphub {
-	struct gtphub_bind to_sgsns[GTPH_PLANE_N];
-	struct gtphub_bind to_ggsns[GTPH_PLANE_N];
+	struct gtphub_bind to_gsns[GTPH_SIDE_N][GTPH_PLANE_N];
 
-	/* pointers to an entry of to_sgsns[x].peers */
-	struct gtphub_peer_port *sgsn_proxy[GTPH_PLANE_N];
-
-	/* pointers to an entry of to_ggsns[x].peers */
-	struct gtphub_peer_port *ggsn_proxy[GTPH_PLANE_N];
+	/* pointers to an entry of to_gsns[s][p].peers */
+	struct gtphub_peer_port *proxy[GTPH_SIDE_N][GTPH_PLANE_N];
 
 	/* The TEI numbers will simply wrap and be reused, which will work out
 	 * in practice. Problems would arise if one given peer maintained the
@@ -490,25 +486,16 @@ const char *gtphub_tunnel_str(struct gtphub_tunnel *tun);
 /* Return 1 if all of tun's endpoints are fully established, 0 otherwise. */
 int gtphub_tunnel_complete(struct gtphub_tunnel *tun);
 
-int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
-				 unsigned int port_idx,
-				 const struct osmo_sockaddr *from_addr,
-				 uint8_t *buf,
-				 size_t received,
-				 time_t now,
-				 uint8_t **reply_buf,
-				 struct osmo_fd **to_ofd,
-				 struct osmo_sockaddr *to_addr);
-
-int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
-				 unsigned int port_idx,
-				 const struct osmo_sockaddr *from_addr,
-				 uint8_t *buf,
-				 size_t received,
-				 time_t now,
-				 uint8_t **reply_buf,
-				 struct osmo_fd **to_ofd,
-				 struct osmo_sockaddr *to_addr);
+int gtphub_handle_buf(struct gtphub *hub,
+		      unsigned int side_idx,
+		      unsigned int port_idx,
+		      const struct osmo_sockaddr *from_addr,
+		      uint8_t *buf,
+		      size_t received,
+		      time_t now,
+		      uint8_t **reply_buf,
+		      struct osmo_fd **to_ofd,
+		      struct osmo_sockaddr *to_addr);
 
 struct gtphub_peer_port *gtphub_port_have(struct gtphub *hub,
 					  struct gtphub_bind *bind,

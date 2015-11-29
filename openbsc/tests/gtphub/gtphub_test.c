@@ -444,7 +444,7 @@ struct gtphub_peer_port *__wrap_gtphub_resolve_ggsn_addr(struct gtphub *hub,
 					   &resolved_ggsn_addr) == 0);
 
 	struct gtphub_peer_port *pp;
-	pp = gtphub_port_have(hub, &hub->to_ggsns[GTPH_PLANE_CTRL],
+	pp = gtphub_port_have(hub, &hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL],
 			      &resolved_gsna, resolved_port);
 	printf("- __wrap_gtphub_resolve_ggsn_addr():\n"
 	       "  returning GGSN addr from imsi %s ni %s: %s\n",
@@ -584,13 +584,13 @@ static int setup_test_hub()
 	gtphub_init(hub);
 
 	/* Tell this mock gtphub its local address for this test. */
-	LVL2_ASSERT(gsn_addr_from_str(&hub->to_sgsns[GTPH_PLANE_CTRL].local_addr,
+	LVL2_ASSERT(gsn_addr_from_str(&hub->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].local_addr,
 				      "127.0.1.1") == 0);
-	LVL2_ASSERT(gsn_addr_from_str(&hub->to_sgsns[GTPH_PLANE_USER].local_addr,
+	LVL2_ASSERT(gsn_addr_from_str(&hub->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_USER].local_addr,
 				      "127.0.1.2") == 0);
-	LVL2_ASSERT(gsn_addr_from_str(&hub->to_ggsns[GTPH_PLANE_CTRL].local_addr,
+	LVL2_ASSERT(gsn_addr_from_str(&hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].local_addr,
 				      "127.0.2.1") == 0);
-	LVL2_ASSERT(gsn_addr_from_str(&hub->to_ggsns[GTPH_PLANE_USER].local_addr,
+	LVL2_ASSERT(gsn_addr_from_str(&hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_USER].local_addr,
 				      "127.0.2.2") == 0);
 
 	hub->restart_counter = 0x23;
@@ -604,10 +604,10 @@ static int setup_test_hub()
 #define GGSNS_USER_FD 2
 #define SGSNS_CTRL_FD 3
 #define SGSNS_USER_FD 4
-	hub->to_ggsns[GTPH_PLANE_CTRL].ofd.priv_nr = GGSNS_CTRL_FD;
-	hub->to_ggsns[GTPH_PLANE_USER].ofd.priv_nr = GGSNS_USER_FD;
-	hub->to_sgsns[GTPH_PLANE_CTRL].ofd.priv_nr = SGSNS_CTRL_FD;
-	hub->to_sgsns[GTPH_PLANE_USER].ofd.priv_nr = SGSNS_USER_FD;
+	hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].ofd.priv_nr = GGSNS_CTRL_FD;
+	hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_USER].ofd.priv_nr = GGSNS_USER_FD;
+	hub->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].ofd.priv_nr = SGSNS_CTRL_FD;
+	hub->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_USER].ofd.priv_nr = SGSNS_USER_FD;
 
 	return 1;
 }
@@ -619,11 +619,11 @@ static int clear_test_hub()
 
 	int plane_idx;
 	plane_idx = GTPH_PLANE_CTRL;
-	LVL2_ASSERT(llist_empty(&hub->to_ggsns[plane_idx].peers));
-	LVL2_ASSERT(llist_empty(&hub->to_sgsns[plane_idx].peers));
+	LVL2_ASSERT(llist_empty(&hub->to_gsns[GTPH_SIDE_GGSN][plane_idx].peers));
+	LVL2_ASSERT(llist_empty(&hub->to_gsns[GTPH_SIDE_SGSN][plane_idx].peers));
 	plane_idx = GTPH_PLANE_USER;
-	LVL2_ASSERT(llist_empty(&hub->to_ggsns[plane_idx].peers));
-	LVL2_ASSERT(llist_empty(&hub->to_sgsns[plane_idx].peers));
+	LVL2_ASSERT(llist_empty(&hub->to_gsns[GTPH_SIDE_GGSN][plane_idx].peers));
+	LVL2_ASSERT(llist_empty(&hub->to_gsns[GTPH_SIDE_SGSN][plane_idx].peers));
 
 	gtphub_free(hub);
 	return 1;
@@ -689,16 +689,16 @@ static void test_echo(void)
 
 	to_ofd = NULL;
 	ZERO_STRUCT(&to_addr);
-	send = gtphub_from_sgsns_handle_buf(hub, GTPH_PLANE_CTRL, &sgsn_sender,
-					    buf, msg(gtp_ping_from_sgsn), now,
-					    &reply_buf, &to_ofd, &to_addr);
+	send = gtphub_handle_buf(hub, GTPH_SIDE_SGSN, GTPH_PLANE_CTRL,
+				 &sgsn_sender, buf, msg(gtp_ping_from_sgsn),
+				 now, &reply_buf, &to_ofd, &to_addr);
 	OSMO_ASSERT(send > 0);
 	OSMO_ASSERT(to_addr.l);
 	OSMO_ASSERT(same_addr(&to_addr, &sgsn_sender));
 	OSMO_ASSERT(to_ofd && (to_ofd->priv_nr == SGSNS_CTRL_FD));
 	OSMO_ASSERT(reply_is(gtp_pong_to_sgsn));
 
-	pp = gtphub_port_find_sa(&hub->to_sgsns[GTPH_PLANE_CTRL],
+	pp = gtphub_port_find_sa(&hub->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL],
 				 &sgsn_sender);
 	/* We don't record Echo peers. */
 	OSMO_ASSERT(!pp);
@@ -724,15 +724,15 @@ static void test_echo(void)
 
 	to_ofd = NULL;
 	ZERO_STRUCT(&to_addr);
-	send = gtphub_from_ggsns_handle_buf(hub, GTPH_PLANE_CTRL, &ggsn_sender,
-					    buf, msg(gtp_ping_from_ggsn), now,
-					    &reply_buf, &to_ofd, &to_addr);
+	send = gtphub_handle_buf(hub, GTPH_SIDE_GGSN, GTPH_PLANE_CTRL,
+				 &ggsn_sender, buf, msg(gtp_ping_from_ggsn),
+				 now, &reply_buf, &to_ofd, &to_addr);
 	OSMO_ASSERT(send > 0);
 	OSMO_ASSERT(same_addr(&to_addr, &ggsn_sender));
 	OSMO_ASSERT(to_ofd && (to_ofd->priv_nr == GGSNS_CTRL_FD));
 	OSMO_ASSERT(reply_is(gtp_pong_to_ggsn));
 
-	pp = gtphub_port_find_sa(&hub->to_ggsns[GTPH_PLANE_CTRL],
+	pp = gtphub_port_find_sa(&hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL],
 				 &sgsn_sender);
 	OSMO_ASSERT(!pp);
 
@@ -741,30 +741,30 @@ static void test_echo(void)
 
 	to_ofd = NULL;
 	ZERO_STRUCT(&to_addr);
-	send = gtphub_from_sgsns_handle_buf(hub, GTPH_PLANE_USER, &sgsn_sender,
-					    buf, msg(gtp_ping_from_sgsn), now,
-					    &reply_buf, &to_ofd, &to_addr);
+	send = gtphub_handle_buf(hub, GTPH_SIDE_SGSN, GTPH_PLANE_USER,
+				 &sgsn_sender, buf, msg(gtp_ping_from_sgsn),
+				 now, &reply_buf, &to_ofd, &to_addr);
 	OSMO_ASSERT(send > 0);
 	OSMO_ASSERT(to_addr.l);
 	OSMO_ASSERT(same_addr(&to_addr, &sgsn_sender));
 	OSMO_ASSERT(to_ofd && (to_ofd->priv_nr == SGSNS_USER_FD));
 	OSMO_ASSERT(reply_is(gtp_pong_to_sgsn));
 
-	pp = gtphub_port_find_sa(&hub->to_sgsns[GTPH_PLANE_USER],
+	pp = gtphub_port_find_sa(&hub->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_USER],
 				 &sgsn_sender);
 	OSMO_ASSERT(!pp);
 
 	to_ofd = NULL;
 	ZERO_STRUCT(&to_addr);
-	send = gtphub_from_ggsns_handle_buf(hub, GTPH_PLANE_USER, &ggsn_sender,
-					    buf, msg(gtp_ping_from_ggsn), now,
-					    &reply_buf, &to_ofd, &to_addr);
+	send = gtphub_handle_buf(hub, GTPH_SIDE_GGSN, GTPH_PLANE_USER,
+				 &ggsn_sender, buf, msg(gtp_ping_from_ggsn),
+				 now, &reply_buf, &to_ofd, &to_addr);
 	OSMO_ASSERT(send > 0);
 	OSMO_ASSERT(same_addr(&to_addr, &ggsn_sender));
 	OSMO_ASSERT(to_ofd && (to_ofd->priv_nr == GGSNS_USER_FD));
 	OSMO_ASSERT(reply_is(gtp_pong_to_ggsn));
 
-	pp = gtphub_port_find_sa(&hub->to_ggsns[GTPH_PLANE_USER],
+	pp = gtphub_port_find_sa(&hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_USER],
 				 &sgsn_sender);
 	OSMO_ASSERT(!pp);
 
@@ -859,9 +859,9 @@ static int msg_from_sgsn(int plane_idx,
 	struct osmo_fd *ggsn_ofd = NULL;
 	struct osmo_sockaddr ggsn_addr;
 	int send;
-	send = gtphub_from_sgsns_handle_buf(hub, plane_idx, _sgsn_sender, buf,
-					    msg(hex_from_sgsn), now,
-					    &reply_buf, &ggsn_ofd, &ggsn_addr);
+	send = gtphub_handle_buf(hub, GTPH_SIDE_SGSN, plane_idx, _sgsn_sender,
+				 buf, msg(hex_from_sgsn), now,
+				 &reply_buf, &ggsn_ofd, &ggsn_addr);
 	LVL2_ASSERT(send > 0);
 	LVL2_ASSERT(same_addr(&ggsn_addr, ggsn_receiver));
 	LVL2_ASSERT(reply_is(hex_to_ggsn));
@@ -879,9 +879,9 @@ static int msg_from_ggsn(int plane_idx,
 	struct osmo_fd *sgsn_ofd;
 	struct osmo_sockaddr sgsn_addr;
 	int send;
-	send = gtphub_from_ggsns_handle_buf(hub, plane_idx, ggsn_sender, buf,
-					    msg(msg_from_ggsn), now,
-					    &reply_buf, &sgsn_ofd, &sgsn_addr);
+	send = gtphub_handle_buf(hub, GTPH_SIDE_GGSN, plane_idx, ggsn_sender,
+				 buf, msg(msg_from_ggsn), now,
+				 &reply_buf, &sgsn_ofd, &sgsn_addr);
 	LVL2_ASSERT(send > 0);
 	LVL2_ASSERT(same_addr(&sgsn_addr, sgsn_receiver));
 	LVL2_ASSERT(reply_is(msg_to_sgsn));
@@ -962,7 +962,7 @@ static void test_create_pdp_ctx(void)
 	OSMO_ASSERT(create_pdp_ctx());
 
 	struct gtphub_peer_port *ggsn_port =
-		gtphub_port_find_sa(&hub->to_ggsns[GTPH_PLANE_CTRL],
+		gtphub_port_find_sa(&hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL],
 				    &resolved_ggsn_addr);
 	OSMO_ASSERT(ggsn_port);
 	struct gtphub_peer *ggsn = ggsn_port->peer_addr->peer;

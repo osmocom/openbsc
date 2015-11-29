@@ -80,17 +80,17 @@ static int config_write_gtphub(struct vty *vty)
 	vty_out(vty, "gtphub%s", VTY_NEWLINE);
 
 	write_addrs(vty, "bind-to-sgsns",
-		    &g_cfg->to_sgsns[GTPH_PLANE_CTRL].bind,
-		    &g_cfg->to_sgsns[GTPH_PLANE_USER].bind);
+		    &g_cfg->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].bind,
+		    &g_cfg->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_USER].bind);
 
 	write_addrs(vty, "bind-to-ggsns",
-		    &g_cfg->to_ggsns[GTPH_PLANE_CTRL].bind,
-		    &g_cfg->to_ggsns[GTPH_PLANE_USER].bind);
+		    &g_cfg->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].bind,
+		    &g_cfg->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_USER].bind);
 
-	if (g_cfg->ggsn_proxy[GTPH_PLANE_CTRL].addr_str) {
+	if (g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].addr_str) {
 		write_addrs(vty, "ggsn-proxy",
-			    &g_cfg->ggsn_proxy[GTPH_PLANE_CTRL],
-			    &g_cfg->ggsn_proxy[GTPH_PLANE_USER]);
+			    &g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL],
+			    &g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_USER]);
 	}
 
 	return CMD_SUCCESS;
@@ -123,9 +123,9 @@ DEFUN(cfg_gtphub_bind_to_sgsns_short, cfg_gtphub_bind_to_sgsns_short_cmd,
 {
 	int i;
 	for_each_plane(i)
-		g_cfg->to_sgsns[i].bind.addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
-	g_cfg->to_sgsns[GTPH_PLANE_CTRL].bind.port = GTPH_DEFAULT_CONTROL_PORT;
-	g_cfg->to_sgsns[GTPH_PLANE_USER].bind.port = GTPH_DEFAULT_USER_PORT;
+		g_cfg->to_gsns[GTPH_SIDE_SGSN][i].bind.addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
+	g_cfg->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].bind.port = GTPH_DEFAULT_CONTROL_PORT;
+	g_cfg->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_USER].bind.port = GTPH_DEFAULT_USER_PORT;
 	return CMD_SUCCESS;
 }
 
@@ -138,9 +138,9 @@ DEFUN(cfg_gtphub_bind_to_ggsns_short, cfg_gtphub_bind_to_ggsns_short_cmd,
 {
 	int i;
 	for_each_plane(i)
-		g_cfg->to_ggsns[i].bind.addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
-	g_cfg->to_ggsns[GTPH_PLANE_CTRL].bind.port = GTPH_DEFAULT_CONTROL_PORT;
-	g_cfg->to_ggsns[GTPH_PLANE_USER].bind.port = GTPH_DEFAULT_USER_PORT;
+		g_cfg->to_gsns[GTPH_SIDE_GGSN][i].bind.addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
+	g_cfg->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].bind.port = GTPH_DEFAULT_CONTROL_PORT;
+	g_cfg->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_USER].bind.port = GTPH_DEFAULT_USER_PORT;
 	return CMD_SUCCESS;
 }
 
@@ -161,7 +161,7 @@ DEFUN(cfg_gtphub_bind_to_sgsns, cfg_gtphub_bind_to_sgsns_cmd,
 	BIND_DOCS
 	)
 {
-	return handle_binds(g_cfg->to_sgsns, argv);
+	return handle_binds(g_cfg->to_gsns[GTPH_SIDE_SGSN], argv);
 }
 
 DEFUN(cfg_gtphub_bind_to_ggsns, cfg_gtphub_bind_to_ggsns_cmd,
@@ -171,7 +171,7 @@ DEFUN(cfg_gtphub_bind_to_ggsns, cfg_gtphub_bind_to_ggsns_cmd,
 	BIND_DOCS
 	)
 {
-	return handle_binds(g_cfg->to_ggsns, argv);
+	return handle_binds(g_cfg->to_gsns[GTPH_SIDE_GGSN], argv);
 }
 
 DEFUN(cfg_gtphub_ggsn_proxy_short, cfg_gtphub_ggsn_proxy_short_cmd,
@@ -181,10 +181,10 @@ DEFUN(cfg_gtphub_ggsn_proxy_short, cfg_gtphub_ggsn_proxy_short_cmd,
 	"Remote IP address (v4 or v6)\n"
 	)
 {
-	g_cfg->ggsn_proxy[GTPH_PLANE_CTRL].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
-	g_cfg->ggsn_proxy[GTPH_PLANE_CTRL].port = GTPH_DEFAULT_CONTROL_PORT;
-	g_cfg->ggsn_proxy[GTPH_PLANE_USER].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
-	g_cfg->ggsn_proxy[GTPH_PLANE_USER].port = GTPH_DEFAULT_USER_PORT;
+	g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
+	g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].port = GTPH_DEFAULT_CONTROL_PORT;
+	g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_USER].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
+	g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_USER].port = GTPH_DEFAULT_USER_PORT;
 	return CMD_SUCCESS;
 }
 
@@ -195,10 +195,10 @@ DEFUN(cfg_gtphub_ggsn_proxy, cfg_gtphub_ggsn_proxy_cmd,
 	BIND_DOCS
 	)
 {
-	g_cfg->ggsn_proxy[GTPH_PLANE_CTRL].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
-	g_cfg->ggsn_proxy[GTPH_PLANE_CTRL].port = atoi(argv[1]);
-	g_cfg->ggsn_proxy[GTPH_PLANE_USER].addr_str = talloc_strdup(tall_vty_ctx, argv[2]);
-	g_cfg->ggsn_proxy[GTPH_PLANE_USER].port = atoi(argv[3]);
+	g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
+	g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].port = atoi(argv[1]);
+	g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_USER].addr_str = talloc_strdup(tall_vty_ctx, argv[2]);
+	g_cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_USER].port = atoi(argv[3]);
 	return CMD_SUCCESS;
 }
 
@@ -209,10 +209,10 @@ DEFUN(cfg_gtphub_sgsn_proxy_short, cfg_gtphub_sgsn_proxy_short_cmd,
 	"Remote IP address (v4 or v6)\n"
 	)
 {
-	g_cfg->sgsn_proxy[GTPH_PLANE_CTRL].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
-	g_cfg->sgsn_proxy[GTPH_PLANE_CTRL].port = GTPH_DEFAULT_CONTROL_PORT;
-	g_cfg->sgsn_proxy[GTPH_PLANE_USER].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
-	g_cfg->sgsn_proxy[GTPH_PLANE_USER].port = GTPH_DEFAULT_USER_PORT;
+	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
+	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].port = GTPH_DEFAULT_CONTROL_PORT;
+	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_USER].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
+	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_USER].port = GTPH_DEFAULT_USER_PORT;
 	return CMD_SUCCESS;
 }
 
@@ -223,10 +223,10 @@ DEFUN(cfg_gtphub_sgsn_proxy, cfg_gtphub_sgsn_proxy_cmd,
 	BIND_DOCS
 	)
 {
-	g_cfg->sgsn_proxy[GTPH_PLANE_CTRL].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
-	g_cfg->sgsn_proxy[GTPH_PLANE_CTRL].port = atoi(argv[1]);
-	g_cfg->sgsn_proxy[GTPH_PLANE_USER].addr_str = talloc_strdup(tall_vty_ctx, argv[2]);
-	g_cfg->sgsn_proxy[GTPH_PLANE_USER].port = atoi(argv[3]);
+	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].addr_str = talloc_strdup(tall_vty_ctx, argv[0]);
+	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].port = atoi(argv[1]);
+	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_USER].addr_str = talloc_strdup(tall_vty_ctx, argv[2]);
+	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_USER].port = atoi(argv[3]);
 	return CMD_SUCCESS;
 }
 
@@ -258,13 +258,13 @@ static void show_bind_stats_all(struct vty *vty)
 		vty_out(vty, "- %s Plane:%s",
 			gtphub_plane_idx_names[plane_idx], VTY_NEWLINE);
 
-		struct gtphub_bind *b = &g_hub->to_ggsns[plane_idx];
+		struct gtphub_bind *b = &g_hub->to_gsns[GTPH_SIDE_GGSN][plane_idx];
 		vty_out(vty, "  - to/from GGSNs: %s port %d%s",
 			gsn_addr_to_str(&b->local_addr), (int)b->local_port,
 			VTY_NEWLINE);
 		vty_out_rate_ctr_group(vty, "    ", b->counters_io);
 
-		b = &g_hub->to_sgsns[plane_idx];
+		b = &g_hub->to_gsns[GTPH_SIDE_SGSN][plane_idx];
 		vty_out(vty, "  - to/from SGSNs: %s port %d%s",
 			gsn_addr_to_str(&b->local_addr), (int)b->local_port,
 			VTY_NEWLINE);

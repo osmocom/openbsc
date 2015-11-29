@@ -746,6 +746,11 @@ const uint16_t gtphub_plane_idx_default_port[GTPH_PLANE_N] = {
 	2152,
 };
 
+const char* const gtphub_side_idx_names[GTPH_SIDE_N] = {
+	"SGSN",
+	"GGSN",
+};
+
 time_t gtphub_now(void)
 {
 	struct timespec now_tp;
@@ -1402,56 +1407,52 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 	return 0;
 }
 
-/* Read GSN address IEs from p, and make sure these peer addresses exist in
- * bind[plane_idx] with default ports, in their respective planes (both Ctrl
- * and User). Map TEIs announced in IEs, and write mapped TEIs in-place into
- * the packet p. */
-static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
-				     struct gtphub_bind from_bind_arr[],
-				     struct gtphub_bind to_bind_arr[],
-				     struct gtphub_peer_port *sgsn_ctrl,
-				     struct gtphub_peer_port *ggsn_ctrl,
-				     struct gtp_packet_desc *p)
+static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
+					struct gtp_packet_desc *p,
+					struct gtphub_peer_port *from_ctrl,
+					struct gtphub_peer_port *to_ctrl)
 {
-	OSMO_ASSERT(p->plane_idx == GTPH_PLANE_CTRL);
-
 	int rc;
 	int plane_idx;
 
-	switch (p->type) {
-	case GTP_CREATE_PDP_REQ:
-	case GTP_CREATE_PDP_RSP:
-		/* Go for it below */
-		break;
-	default:
-		/* Nothing to do for this message type. */
-		return 0;
-	}
-
 	/* TODO enforce a Request only from SGSN, a Response only from GGSN? */
-
 	osmo_static_assert((GTPH_PLANE_CTRL == 0) && (GTPH_PLANE_USER == 1),
 			   plane_nrs_match_GSN_addr_IE_indices);
 
 	struct gtphub_tunnel *tun = NULL;
 
 	if (p->type == GTP_CREATE_PDP_REQ) {
+		if (p->side_idx != GTPH_SIDE_SGSN) {
+			LOG(LOGL_ERROR, "Wrong side: Create PDP Context"
+			    " Request from the GGSN side");
+			return -1;
+		}
+
 		/* A new tunnel. */
 		tun = gtphub_tunnel_new();
 		llist_add(&tun->entry, &hub->tunnels);
 		gtphub_tunnel_refresh(hub, tun, p->timestamp);
+		/* The endpoint peers on this side (SGSN) will be set from IEs
+		 * below. Also set the GGSN Ctrl endpoint, for logging. */
 		gtphub_tunnel_endpoint_set_peer(&tun->endpoint[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL],
-						ggsn_ctrl);
+						to_ctrl);
 	} else if (p->type == GTP_CREATE_PDP_RSP) {
-		/* Find the tunnel created during request */
-		OSMO_ASSERT(sgsn_ctrl);
+		if (p->side_idx != GTPH_SIDE_GGSN) {
+			LOG(LOGL_ERROR, "Wrong side: Create PDP Context"
+			    " Response from the SGSN side");
+			return -1;
+		}
+
+		/* Find the tunnel created during request. This is coming from
+		 * the GGSN side, so to_ctrl corresponds to the SGSN. */
+		OSMO_ASSERT(to_ctrl);
 		tun = gtphub_tun_find(hub, other_side_idx(p->side_idx),
-				      p->plane_idx, sgsn_ctrl, 0, p->header_tei_rx);
+				      p->plane_idx, to_ctrl, 0, p->header_tei_rx);
 
 		if (!tun) {
 			LOG(LOGL_ERROR, "Create PDP Context Response: cannot"
 			    " find matching request from SGSN %s, mapped TEI %x.\n",
-			    gtphub_port_str(sgsn_ctrl), p->header_tei_rx);
+			    gtphub_port_str(to_ctrl), p->header_tei_rx);
 			return -1;
 		}
 	}
@@ -1496,7 +1497,7 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 		/* Make sure an entry for this peer address with default port
 		 * exists */
 		struct gtphub_peer_port *peer_from_ie =
-			gtphub_port_have(hub, &from_bind_arr[plane_idx],
+			gtphub_port_have(hub, &hub->to_gsns[side_idx][plane_idx],
 					 &addr_from_ie,
 					 gtphub_plane_idx_default_port[plane_idx]);
 
@@ -1516,8 +1517,8 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 		}
 
 		/* Replace the GSN address to reflect gtphub. */
-		rc = gsn_addr_put(&to_bind_arr[plane_idx].local_addr, p,
-				  plane_idx);
+		rc = gsn_addr_put(&hub->to_gsns[other_side_idx(side_idx)][plane_idx].local_addr,
+				  p, plane_idx);
 		if (rc) {
 			LOG(LOGL_ERROR, "Cannot write %s GSN Address IE\n",
 			    gtphub_plane_idx_names[plane_idx]);
@@ -1535,6 +1536,30 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 
 	return 0;
 }
+
+/* Read GSN address IEs from p, and make sure these peer addresses exist in
+ * bind[plane_idx] with default ports, in their respective planes (both Ctrl
+ * and User). Map TEIs announced in IEs, and write mapped TEIs in-place into
+ * the packet p. */
+static int gtphub_handle_pdp_ctx(struct gtphub *hub,
+				 struct gtp_packet_desc *p,
+				 struct gtphub_peer_port *from_ctrl,
+				 struct gtphub_peer_port *to_ctrl)
+{
+	OSMO_ASSERT(p->plane_idx == GTPH_PLANE_CTRL);
+
+	switch (p->type) {
+	case GTP_CREATE_PDP_REQ:
+	case GTP_CREATE_PDP_RSP:
+		return gtphub_handle_create_pdp_ctx(hub, p,
+						    from_ctrl, to_ctrl);
+	default:
+		/* Nothing to do for this message type. */
+		return 0;
+	}
+
+}
+
 
 static int gtphub_write(const struct osmo_fd *to,
 			const struct osmo_sockaddr *to_addr,
@@ -1582,9 +1607,9 @@ static int from_ggsns_read_cb(struct osmo_fd *from_ggsns_ofd, unsigned int what)
 	if (len < 1)
 		return 0;
 
-	len = gtphub_from_ggsns_handle_buf(hub, plane_idx, &from_addr, buf, len,
-					   gtphub_now(),
-					   &reply_buf, &to_ofd, &to_addr);
+	len = gtphub_handle_buf(hub, GTPH_SIDE_GGSN, plane_idx, &from_addr,
+				buf, len, gtphub_now(),
+				&reply_buf, &to_ofd, &to_addr);
 	if (len < 1)
 		return 0;
 
@@ -1705,29 +1730,34 @@ struct gtphub_peer_port *gtphub_known_addr_have_port(const struct gtphub_bind *b
  * sockaddr to *to_addr. The reason for this is that the sockaddr may expire at
  * any moment, while the osmo_fd is guaranteed to persist. Return the number of
  * bytes to forward, 0 or less on failure. */
-int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
-				 unsigned int plane_idx,
-				 const struct osmo_sockaddr *from_addr,
-				 uint8_t *buf,
-				 size_t received,
-				 time_t now,
-				 uint8_t **reply_buf,
-				 struct osmo_fd **to_ofd,
-				 struct osmo_sockaddr *to_addr)
+int gtphub_handle_buf(struct gtphub *hub,
+		      unsigned int side_idx,
+		      unsigned int plane_idx,
+		      const struct osmo_sockaddr *from_addr,
+		      uint8_t *buf,
+		      size_t received,
+		      time_t now,
+		      uint8_t **reply_buf,
+		      struct osmo_fd **to_ofd,
+		      struct osmo_sockaddr *to_addr)
 {
+	/*
 	struct gtphub_bind *from_bind_arr = hub->to_ggsns;
 	struct gtphub_bind *to_bind_arr = hub->to_sgsns;
-	struct gtphub_bind *from_bind = &from_bind_arr[plane_idx];
-	struct gtphub_bind *to_bind = &to_bind_arr[plane_idx];
+	*/
+	struct gtphub_bind *from_bind = &hub->to_gsns[side_idx][plane_idx];
+	struct gtphub_bind *to_bind = &hub->to_gsns[other_side_idx(side_idx)][plane_idx];
 
 	rate_ctr_add(&from_bind->counters_io->ctr[GTPH_CTR_BYTES_IN],
 		     received);
-	LOG(LOGL_DEBUG, "<- rx %s from GGSN %s\n",
+	LOG(LOGL_DEBUG, "%s rx %s from %s %s\n",
+	    (side_idx == GTPH_SIDE_GGSN)? "<-" : "->",
 	    gtphub_plane_idx_names[plane_idx],
+	    gtphub_side_idx_names[side_idx],
 	    osmo_sockaddr_to_str(from_addr));
 
 	static struct gtp_packet_desc p;
-	gtp_decode(buf, received, GTPH_SIDE_GGSN, plane_idx, &p, now);
+	gtp_decode(buf, received, side_idx, plane_idx, &p, now);
 
 	if (p.rc <= 0)
 		return -1;
@@ -1744,7 +1774,9 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 		rate_ctr_inc(&from_bind->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
 		rate_ctr_add(&from_bind->counters_io->ctr[GTPH_CTR_BYTES_OUT],
 			     reply_len);
-		LOG(LOGL_DEBUG, "--> Echo response to GGSN: %d bytes to %s\n",
+		LOG(LOGL_DEBUG, "%s Echo response to %s: %d bytes to %s\n",
+		    (side_idx == GTPH_SIDE_GGSN)? "-->" : "<--",
+		    gtphub_side_idx_names[side_idx],
 		    (int)reply_len, osmo_sockaddr_to_str(to_addr));
 		return reply_len;
 	}
@@ -1756,51 +1788,88 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 	/* If a GGSN proxy is configured, check that it's indeed that proxy
 	 * talking to us. A proxy is a forced 1:1 connection, e.g. to another
 	 * gtphub, so no-one else is allowed to talk to us from that side. */
-	struct gtphub_peer_port *ggsn = hub->ggsn_proxy[plane_idx];
-	if (ggsn) {
-		if (osmo_sockaddr_cmp(&ggsn->sa, from_addr) != 0) {
+	struct gtphub_peer_port *from_peer = hub->proxy[side_idx][plane_idx];
+	if (from_peer) {
+		if (osmo_sockaddr_cmp(&from_peer->sa, from_addr) != 0) {
 			LOG(LOGL_ERROR,
-			    "Rejecting: GGSN proxy configured, but GTP packet"
-			    " received on GGSN bind is from another sender:"
+			    "Rejecting: %s proxy configured, but GTP packet"
+			    " received on %s bind is from another sender:"
 			    " proxy: %s  sender: %s\n",
-			    gtphub_port_str(ggsn),
+			    gtphub_side_idx_names[side_idx],
+			    gtphub_side_idx_names[side_idx],
+			    gtphub_port_str(from_peer),
 			    osmo_sockaddr_to_str(from_addr));
 			return -1;
 		}
 	}
 
-	if (!ggsn) {
-		/* Find a GGSN peer with a matching address. The sender's port
-		 * may in fact differ. */
-		ggsn = gtphub_known_addr_have_port(from_bind, from_addr);
+	if (!from_peer) {
+		/* Find or create a peer with a matching address. The sender's
+		 * port may in fact differ. */
+		from_peer = gtphub_known_addr_have_port(from_bind, from_addr);
 	}
 
 	/* If any PDP context has been created, we already have an entry for
 	 * this GGSN. If we don't have an entry, the GGSN has nothing to tell
 	 * us about. */
-	if (!ggsn) {
-		LOG(LOGL_ERROR, "Dropping packet: unknown GGSN peer: %s\n",
+	if (!from_peer) {
+		if (side_idx == GTPH_SIDE_GGSN) {
+			LOG(LOGL_ERROR, "Dropping packet: unknown GGSN peer: %s\n",
+			    osmo_sockaddr_to_str(from_addr));
+			return -1;
+		} else {
+			/* SGSN */
+			/* A new peer. If this is on the Ctrl plane, an SGSN
+			 * may make first contact without being known yet, so
+			 * create the peer struct for the current sender. */
+			if (plane_idx != GTPH_PLANE_CTRL) {
+				LOG(LOGL_ERROR,
+				    "Dropping packet: User plane peer was not"
+				    "announced by PDP Context: %s\n",
+				    osmo_sockaddr_to_str(from_addr));
+				return -1;
+			}
+
+			struct gsn_addr from_gsna;
+			uint16_t from_port;
+			if (gsn_addr_from_sockaddr(&from_gsna, &from_port, from_addr) != 0)
+				return -1;
+
+			from_peer = gtphub_port_have(hub, from_bind, &from_gsna, from_port);
+		}
+	}
+
+	if (!from_peer) {
+		/* This could theoretically happen for invalid address data or
+		 * somesuch. */
+		LOG(LOGL_ERROR, "Dropping packet: invalid %s peer: %s\n",
+		    gtphub_side_idx_names[side_idx],
 		    osmo_sockaddr_to_str(from_addr));
 		return -1;
 	}
 
-	LOG(LOGL_DEBUG, "GGSN peer: %s\n", gtphub_port_str(ggsn));
+	LOG(LOGL_DEBUG, "from %s peer: %s\n", gtphub_side_idx_names[side_idx],
+	    gtphub_port_str(from_peer));
 
-	struct gtphub_peer_port *sgsn_from_seq;
-	struct gtphub_peer_port *sgsn;
-	if (gtphub_unmap(hub, &p, ggsn,
-			 hub->sgsn_proxy[plane_idx],
-			 &sgsn, &sgsn_from_seq,
-			 NULL /* not interested, got it in &sgsn already */
+	struct gtphub_peer_port *to_peer_from_seq;
+	struct gtphub_peer_port *to_peer;
+	if (gtphub_unmap(hub, &p, from_peer,
+			 hub->proxy[other_side_idx(side_idx)][plane_idx],
+			 &to_peer, &to_peer_from_seq,
+			 NULL /* not interested, got it in &to_peer already */
 			)
 	    != 0) {
 		return -1;
 	}
 
-	if (!sgsn) {
-		/* A GGSN initiated request would go to a known TEI. So this is
-		 * bogus. */
-		LOG(LOGL_ERROR, "No SGSN to send to. Dropping packet.\n");
+	if ((!to_peer) && (side_idx == GTPH_SIDE_SGSN)) {
+		if (gtphub_resolve_ggsn(hub, &p, &to_peer) < 0)
+			return -1;
+	}
+
+	if (!to_peer) {
+		LOG(LOGL_ERROR, "No %s to send to. Dropping packet.\n",
+		    gtphub_side_idx_names[other_side_idx(side_idx)]);
 		return -1;
 	}
 
@@ -1808,22 +1877,21 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 		/* This may be a Create PDP Context response. If it is, there
 		 * are other addresses in the GTP message to set up apart from
 		 * the sender. */
-		if (gtphub_handle_pdp_ctx_ies(hub, from_bind_arr, to_bind_arr,
-					      sgsn, ggsn, &p)
+		if (gtphub_handle_pdp_ctx(hub, &p, from_peer, to_peer)
 		    != 0)
 			return -1;
 	}
 
-	gtphub_check_restart_counter(hub, &p, ggsn);
-	gtphub_map_restart_counter(hub, &p, ggsn, sgsn);
+	gtphub_check_restart_counter(hub, &p, from_peer);
+	gtphub_map_restart_counter(hub, &p, from_peer, to_peer);
 
 	/* If the GGSN is replying to an SGSN request, the sequence nr has
-	 * already been unmapped above (sgsn_from_seq != NULL), and we need not
+	 * already been unmapped above (to_peer_from_seq != NULL), and we need not
 	 * create a new mapping. */
-	if (!sgsn_from_seq)
-		gtphub_map_seq(&p, ggsn, sgsn);
+	if (!to_peer_from_seq)
+		gtphub_map_seq(&p, from_peer, to_peer);
 
-	osmo_sockaddr_copy(to_addr, &sgsn->sa);
+	osmo_sockaddr_copy(to_addr, &to_peer->sa);
 
 	*reply_buf = (uint8_t*)p.data;
 
@@ -1832,7 +1900,9 @@ int gtphub_from_ggsns_handle_buf(struct gtphub *hub,
 		rate_ctr_add(&to_bind->counters_io->ctr[GTPH_CTR_BYTES_OUT],
 			     received);
 	}
-	LOG(LOGL_DEBUG, "<-- Forward to SGSN: %d bytes to %s\n",
+	LOG(LOGL_DEBUG, "%s Forward to %s: %d bytes to %s\n",
+	    (side_idx == GTPH_SIDE_SGSN)? "-->" : "<--",
+	    gtphub_side_idx_names[other_side_idx(side_idx)],
 	    (int)received, osmo_sockaddr_to_str(to_addr));
 	return received;
 }
@@ -1860,167 +1930,13 @@ static int from_sgsns_read_cb(struct osmo_fd *from_sgsns_ofd, unsigned int what)
 	if (len < 1)
 		return 0;
 
-	len = gtphub_from_sgsns_handle_buf(hub, plane_idx, &from_addr, buf, len,
-					   gtphub_now(),
-					   &reply_buf, &to_ofd, &to_addr);
+	len = gtphub_handle_buf(hub, GTPH_SIDE_SGSN, plane_idx, &from_addr,
+				buf, len, gtphub_now(),
+				&reply_buf, &to_ofd, &to_addr);
 	if (len < 1)
 		return 0;
 
 	return gtphub_write(to_ofd, &to_addr, reply_buf, len);
-}
-
-/* Analogous to gtphub_from_ggsns_handle_buf(), see the comment there. */
-int gtphub_from_sgsns_handle_buf(struct gtphub *hub,
-				 unsigned int plane_idx,
-				 const struct osmo_sockaddr *from_addr,
-				 uint8_t *buf,
-				 size_t received,
-				 time_t now,
-				 uint8_t **reply_buf,
-				 struct osmo_fd **to_ofd,
-				 struct osmo_sockaddr *to_addr)
-{
-	struct gtphub_bind *from_bind_arr = hub->to_sgsns;
-	struct gtphub_bind *to_bind_arr = hub->to_ggsns;
-	struct gtphub_bind *from_bind = &from_bind_arr[plane_idx];
-	struct gtphub_bind *to_bind = &to_bind_arr[plane_idx];
-
-	rate_ctr_add(&from_bind->counters_io->ctr[GTPH_CTR_BYTES_IN],
-		     received);
-	LOG(LOGL_DEBUG, "-> rx %s from SGSN %s\n",
-	    gtphub_plane_idx_names[plane_idx],
-	    osmo_sockaddr_to_str(from_addr));
-
-	static struct gtp_packet_desc p;
-	gtp_decode(buf, received, GTPH_SIDE_SGSN, plane_idx, &p, now);
-
-	if (p.rc <= 0)
-		return -1;
-
-	rate_ctr_inc(&from_bind->counters_io->ctr[GTPH_CTR_PKTS_IN]);
-
-	int reply_len;
-	reply_len = gtphub_handle_echo(hub, &p, reply_buf);
-	if (reply_len > 0) {
-		/* It was an echo. Nothing left to do. */
-		osmo_sockaddr_copy(to_addr, from_addr);
-		*to_ofd = &from_bind->ofd;
-
-		rate_ctr_inc(&from_bind->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
-		rate_ctr_add(&from_bind->counters_io->ctr[GTPH_CTR_BYTES_OUT],
-			     reply_len);
-		LOG(LOGL_DEBUG, "<-- Echo response to SGSN: %d bytes to %s\n",
-		    (int)reply_len, osmo_sockaddr_to_str(to_addr));
-		return reply_len;
-	}
-	if (reply_len < 0)
-		return -1;
-
-	*to_ofd = &to_bind->ofd;
-
-	/* If an SGSN proxy is configured, check that it's indeed that proxy
-	 * talking to us. A proxy is a forced 1:1 connection, e.g. to another
-	 * gtphub, so no-one else is allowed to talk to us from that side. */
-	struct gtphub_peer_port *sgsn = hub->sgsn_proxy[plane_idx];
-	if (sgsn) {
-		if (osmo_sockaddr_cmp(&sgsn->sa, from_addr) != 0) {
-			LOG(LOGL_ERROR,
-			    "Rejecting: GGSN proxy configured, but GTP packet"
-			    " received on GGSN bind is from another sender:"
-			    " proxy: %s  sender: %s\n",
-			    gtphub_port_str(sgsn),
-			    osmo_sockaddr_to_str(from_addr));
-			return -1;
-		}
-	}
-
-	if (!sgsn) {
-		/* If any contact has been made before, we already have an
-		 * entry for this SGSN. The port may differ. */
-		sgsn = gtphub_known_addr_have_port(from_bind, from_addr);
-	}
-
-	if (!sgsn) {
-		/* A new peer. If this is on the Ctrl plane, an SGSN may make
-		 * first contact without being known yet, so create the peer
-		 * struct for the current sender. */
-		if (plane_idx != GTPH_PLANE_CTRL) {
-			LOG(LOGL_ERROR,
-			    "User plane peer was not announced by PDP Context,"
-			    " discarding: %s\n",
-			    osmo_sockaddr_to_str(from_addr));
-			return -1;
-		}
-
-		struct gsn_addr from_gsna;
-		uint16_t from_port;
-		if (gsn_addr_from_sockaddr(&from_gsna, &from_port, from_addr) != 0)
-			return -1;
-
-		sgsn = gtphub_port_have(hub, from_bind, &from_gsna, from_port);
-	}
-
-	if (!sgsn) {
-		/* This could theoretically happen for invalid address data or
-		 * somesuch. */
-		LOG(LOGL_ERROR, "Dropping packet: invalid SGSN peer: %s\n",
-		    osmo_sockaddr_to_str(from_addr));
-		return -1;
-	}
-	LOG(LOGL_DEBUG, "SGSN peer: %s\n", gtphub_port_str(sgsn));
-
-	struct gtphub_peer_port *ggsn_from_seq;
-	struct gtphub_peer_port *ggsn;
-	if (gtphub_unmap(hub, &p, sgsn,
-			 hub->ggsn_proxy[plane_idx],
-			 &ggsn, &ggsn_from_seq,
-			 NULL /* not interested, got it in &ggsn already */
-			)
-	    != 0) {
-		return -1;
-	}
-
-	if (!ggsn) {
-		if (gtphub_resolve_ggsn(hub, &p, &ggsn) < 0)
-			return -1;
-	}
-
-	if (!ggsn) {
-		LOG(LOGL_ERROR, "No GGSN to send to. Dropping packet.\n");
-		return -1;
-	}
-
-	if (plane_idx == GTPH_PLANE_CTRL) {
-		/* This may be a Create PDP Context request. If it is, there are
-		 * other addresses in the GTP message to set up apart from the
-		 * sender. */
-		if (gtphub_handle_pdp_ctx_ies(hub, from_bind_arr, to_bind_arr,
-					      sgsn, ggsn, &p)
-		    != 0)
-			return -1;
-	}
-
-	gtphub_check_restart_counter(hub, &p, sgsn);
-	gtphub_map_restart_counter(hub, &p, sgsn, ggsn);
-
-	/* If the SGSN is replying to a GGSN request, the sequence nr has
-	 * already been unmapped above (unmap_ggsn != NULL), and we need not
-	 * create a new outgoing sequence map. */
-	if (!ggsn_from_seq)
-		gtphub_map_seq(&p, sgsn, ggsn);
-
-	osmo_sockaddr_copy(to_addr, &ggsn->sa);
-
-	*reply_buf = (uint8_t*)p.data;
-
-	if (received) {
-		rate_ctr_inc(&to_bind->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
-		rate_ctr_add(&to_bind->counters_io->ctr[GTPH_CTR_BYTES_OUT],
-			     received);
-	}
-	LOG(LOGL_DEBUG, "--> Forward to GGSN: %d bytes to %s\n",
-	    (int)received, osmo_sockaddr_to_str(to_addr));
-	return received;
 }
 
 static void resolved_gssn_del_cb(struct expiring_item *expi)
@@ -2048,7 +1964,7 @@ void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
 	    apn_oi_str, osmo_hexdump((unsigned char*)resolved_addr,
 				     sizeof(*resolved_addr)));
 
-	pp = gtphub_port_have(hub, &hub->to_ggsns[GTPH_PLANE_CTRL],
+	pp = gtphub_port_have(hub, &hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL],
 			      resolved_addr, 2123);
 	if (!pp) {
 		LOG(LOGL_ERROR, "Internal: Cannot create/find peer '%s'\n",
@@ -2127,10 +2043,9 @@ void gtphub_gc(struct gtphub *hub, time_t now)
 	/* ... */
 
 	if (expired) {
-		int i;
-		for_each_plane(i) {
-			gtphub_gc_bind(&hub->to_sgsns[i]);
-			gtphub_gc_bind(&hub->to_ggsns[i]);
+		int s, p;
+		for_each_side_and_plane(s, p) {
+			gtphub_gc_bind(&hub->to_gsns[s][p]);
 		}
 	}
 }
@@ -2162,16 +2077,16 @@ void gtphub_init(struct gtphub *hub)
 
 	nr_pool_init(&hub->tei_pool, 1, 0xffffffff);
 
+	int side_idx;
 	int plane_idx;
-	for_each_plane(plane_idx) {
-		gtphub_bind_init(&hub->to_ggsns[plane_idx]);
-		gtphub_bind_init(&hub->to_sgsns[plane_idx]);
+	for_each_side_and_plane(side_idx, plane_idx) {
+		gtphub_bind_init(&hub->to_gsns[side_idx][plane_idx]);
 	}
 
-	hub->to_sgsns[GTPH_PLANE_CTRL].label = "SGSN Ctrl";
-	hub->to_ggsns[GTPH_PLANE_CTRL].label = "GGSN Ctrl";
-	hub->to_sgsns[GTPH_PLANE_USER].label = "SGSN User";
-	hub->to_ggsns[GTPH_PLANE_USER].label = "GGSN User";
+	hub->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].label = "SGSN Ctrl";
+	hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].label = "GGSN Ctrl";
+	hub->to_gsns[GTPH_SIDE_SGSN][GTPH_PLANE_USER].label = "SGSN User";
+	hub->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_USER].label = "GGSN User";
 }
 
 /* For the test suite, this is kept separate from gtphub_stop(), which also
@@ -2185,22 +2100,20 @@ void gtphub_free(struct gtphub *hub)
 	expiry_clear(&hub->expire_quickly);
 	expiry_clear(&hub->expire_slowly);
 
+	int side_idx;
 	int plane_idx;
-	for_each_plane(plane_idx) {
-		gtphub_gc_bind(&hub->to_ggsns[plane_idx]);
-		gtphub_bind_free(&hub->to_ggsns[plane_idx]);
-
-		gtphub_gc_bind(&hub->to_sgsns[plane_idx]);
-		gtphub_bind_free(&hub->to_sgsns[plane_idx]);
+	for_each_side_and_plane(side_idx, plane_idx) {
+		gtphub_gc_bind(&hub->to_gsns[side_idx][plane_idx]);
+		gtphub_bind_free(&hub->to_gsns[side_idx][plane_idx]);
 	}
 }
 
 void gtphub_stop(struct gtphub *hub)
 {
+	int side_idx;
 	int plane_idx;
-	for_each_plane(plane_idx) {
-		gtphub_bind_stop(&hub->to_ggsns[plane_idx]);
-		gtphub_bind_stop(&hub->to_sgsns[plane_idx]);
+	for_each_side_and_plane(side_idx, plane_idx) {
+		gtphub_bind_stop(&hub->to_gsns[side_idx][plane_idx]);
 	}
 	gtphub_free(hub);
 }
@@ -2234,7 +2147,7 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 	hub->restart_counter = restart_counter;
 
 	/* If a Ctrl plane proxy is configured, ares will never be used. */
-	if (!cfg->ggsn_proxy[GTPH_PLANE_CTRL].addr_str) {
+	if (!cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].addr_str) {
 		if (gtphub_ares_init(hub) != 0) {
 			LOG(LOGL_FATAL, "Failed to initialize ares\n");
 			return -1;
@@ -2243,61 +2156,44 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 
 	/* TODO set hub->restart_counter from external file. */
 
+	int side_idx;
 	int plane_idx;
-	for_each_plane(plane_idx) {
-		rc = gtphub_bind_start(&hub->to_ggsns[plane_idx],
-				       &cfg->to_ggsns[plane_idx],
-				       from_ggsns_read_cb, hub, plane_idx);
+	for_each_side_and_plane(side_idx, plane_idx) {
+		rc = gtphub_bind_start(&hub->to_gsns[side_idx][plane_idx],
+				       &cfg->to_gsns[side_idx][plane_idx],
+				       (side_idx == GTPH_SIDE_SGSN)
+					       ? from_sgsns_read_cb
+					       : from_ggsns_read_cb,
+				       hub, plane_idx);
 		if (rc) {
-			LOG(LOGL_FATAL, "Failed to bind for GGSNs (%s)\n",
-			    gtphub_plane_idx_names[plane_idx]);
-			return rc;
-		}
-
-		rc = gtphub_bind_start(&hub->to_sgsns[plane_idx],
-				       &cfg->to_sgsns[plane_idx],
-				       from_sgsns_read_cb, hub, plane_idx);
-		if (rc) {
-			LOG(LOGL_FATAL, "Failed to bind for SGSNs (%s)\n",
+			LOG(LOGL_FATAL, "Failed to bind for %ss (%s)\n",
+			    gtphub_side_idx_names[side_idx],
 			    gtphub_plane_idx_names[plane_idx]);
 			return rc;
 		}
 	}
 
-	for_each_plane(plane_idx) {
+	for_each_side_and_plane(side_idx, plane_idx) {
 		if (gtphub_make_proxy(hub,
-				      &hub->sgsn_proxy[plane_idx],
-				      &hub->to_sgsns[plane_idx],
-				      &cfg->sgsn_proxy[plane_idx])
+				      &hub->proxy[side_idx][plane_idx],
+				      &hub->to_gsns[side_idx][plane_idx],
+				      &cfg->proxy[side_idx][plane_idx])
 		    != 0) {
-			LOG(LOGL_FATAL, "Cannot configure SGSN proxy"
+			LOG(LOGL_FATAL, "Cannot configure %s proxy"
 			    " %s port %d.\n",
-			    cfg->sgsn_proxy[plane_idx].addr_str,
-			    (int)cfg->sgsn_proxy[plane_idx].port);
-			return -1;
-		}
-		if (gtphub_make_proxy(hub,
-				      &hub->ggsn_proxy[plane_idx],
-				      &hub->to_ggsns[plane_idx],
-				      &cfg->ggsn_proxy[plane_idx])
-		    != 0) {
-			LOG(LOGL_ERROR, "Cannot configure GGSN proxy.\n");
+			    gtphub_side_idx_names[side_idx],
+			    cfg->proxy[side_idx][plane_idx].addr_str,
+			    (int)cfg->proxy[side_idx][plane_idx].port);
 			return -1;
 		}
 	}
 
-	for_each_plane(plane_idx) {
-		if (hub->sgsn_proxy[plane_idx])
-			LOG(LOGL_NOTICE, "Using SGSN %s proxy %s\n",
+	for_each_side_and_plane(side_idx, plane_idx) {
+		if (hub->proxy[side_idx][plane_idx])
+			LOG(LOGL_NOTICE, "Using %s %s proxy %s\n",
+			    gtphub_side_idx_names[side_idx],
 			    gtphub_plane_idx_names[plane_idx],
-			    gtphub_port_str(hub->sgsn_proxy[plane_idx]));
-	}
-
-	for_each_plane(plane_idx) {
-		if (hub->ggsn_proxy[plane_idx])
-			LOG(LOGL_NOTICE, "Using GGSN %s proxy %s\n",
-			    gtphub_plane_idx_names[plane_idx],
-			    gtphub_port_str(hub->ggsn_proxy[plane_idx]));
+			    gtphub_port_str(hub->proxy[side_idx][plane_idx]));
 	}
 
 	gtphub_gc_start(hub);

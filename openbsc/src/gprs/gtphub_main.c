@@ -83,22 +83,15 @@ static const struct log_info gtphub_log_info = {
 void log_cfg(struct gtphub_cfg *cfg)
 {
 	struct gtphub_cfg_addr *a;
-	a = &cfg->to_sgsns[GTPH_PLANE_CTRL].bind;
-	LOGP(DGTPHUB, LOGL_NOTICE,
-	     "to-SGSNs bind, Control: %s port %d\n",
-	     a->addr_str, a->port);
-	a = &cfg->to_sgsns[GTPH_PLANE_USER].bind;
-	LOGP(DGTPHUB, LOGL_NOTICE,
-	     "to-SGSNs bind, User:    %s port %d\n",
-	     a->addr_str, a->port);
-	a = &cfg->to_ggsns[GTPH_PLANE_CTRL].bind;
-	LOGP(DGTPHUB, LOGL_NOTICE,
-	     "to-GGSNs bind, Control: %s port %d\n",
-	     a->addr_str, a->port);
-	a = &cfg->to_ggsns[GTPH_PLANE_USER].bind;
-	LOGP(DGTPHUB, LOGL_NOTICE,
-	     "to-GGSNs bind, User:    %s port %d\n",
-	     a->addr_str, a->port);
+	int side_idx, plane_idx;
+	for_each_side_and_plane(side_idx, plane_idx) {
+		a = &cfg->to_gsns[side_idx][plane_idx].bind;
+		LOGP(DGTPHUB, LOGL_NOTICE,
+		     "to-%ss bind, %s: %s port %d\n",
+		     gtphub_side_idx_names[side_idx],
+		     gtphub_plane_idx_names[plane_idx],
+		     a->addr_str, a->port);
+	}
 }
 
 static void signal_handler(int signal)
