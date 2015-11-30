@@ -147,6 +147,9 @@ int gsn_addr_from_sockaddr(struct gsn_addr *gsna, uint16_t *port,
 
 int gsn_addr_from_str(struct gsn_addr *gsna, const char *numeric_addr_str)
 {
+	if ((!gsna) || (!numeric_addr_str))
+		return -1;
+
 	int af = AF_INET;
 	gsna->len = 4;
 	const char *pos = numeric_addr_str;
@@ -857,10 +860,17 @@ static int gtphub_bind_start(struct gtphub_bind *b,
 			     osmo_fd_cb_t cb, void *cb_data,
 			     unsigned int ofd_id)
 {
-	if (gsn_addr_from_str(&b->local_addr, cfg->bind.addr_str) != 0)
+	LOG(LOGL_DEBUG, "Starting bind %s\n", b->label);
+	if (gsn_addr_from_str(&b->local_addr, cfg->bind.addr_str) != 0) {
+		LOG(LOGL_FATAL, "Invalid bind address for %s: %s\n",
+		    b->label, cfg->bind.addr_str);
 		return -1;
-	if (gtphub_sock_init(&b->ofd, &cfg->bind, cb, cb_data, ofd_id) != 0)
+	}
+	if (gtphub_sock_init(&b->ofd, &cfg->bind, cb, cb_data, ofd_id) != 0) {
+		LOG(LOGL_FATAL, "Cannot bind for %s: %s\n",
+		    b->label, cfg->bind.addr_str);
 		return -1;
+	}
 	b->local_port = cfg->bind.port;
 	return 0;
 }
