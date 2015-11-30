@@ -954,9 +954,75 @@ static int create_pdp_ctx()
 	return 1;
 }
 
-static void test_create_pdp_ctx(void)
+#define MSG_DEL_PDP_CTX_REQ(tei, seq) \
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"14" 	/* type 20: Delete PDP Context Request */ \
+		"0008"	/* msg length = 8 + len (2 octets) */ \
+		tei	/* TEI Ctrl */ \
+		seq	/* Sequence nr (2 octets) */ \
+		"00"	/* N-PDU 0 */ \
+		"00"	/* No extensions */ \
+		/* IEs */ \
+		"13fe"  /* 19: Teardown ind = 0 */ \
+		"1400"	/* 20: NSAPI = 0*/ \
+
+#define MSG_DEL_PDP_CTX_RSP(tei, seq) \
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr. */ \
+		"15" 	/* type 21: Delete PDP Context Response */ \
+		"0006"	/* msg length = 8 + len (2 octets) */ \
+		tei	/* TEI Ctrl */ \
+		seq	/* Sequence nr (2 octets) */ \
+		"00"	/* N-PDU 0 */ \
+		"00"	/* No extensions */ \
+		/* IEs */ \
+		"01"	/* 1: Cause */ \
+		  "80"	/* value = 0b10000000 = response, no rejection. */ \
+
+static int delete_pdp_ctx(void)
 {
-	LOG("test_create_pdp_ctx");
+	now += GTPH_EXPIRE_QUICKLY_SECS + 1;
+	gtphub_gc(hub, now);
+
+	LVL2_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		" @21945\n"));
+
+	/* TEI Ctrl from above and next sequence after abcd. */
+	const char *gtp_req_from_sgsn = MSG_DEL_PDP_CTX_REQ("00000003", "abce");
+	const char *gtp_req_to_ggsn = MSG_DEL_PDP_CTX_REQ("00000765", "6d32");
+
+	LVL2_ASSERT(msg_from_sgsn_c(&sgsn_sender,
+				    &resolved_ggsn_addr,
+				    gtp_req_from_sgsn,
+				    gtp_req_to_ggsn));
+
+	/* 21945 + 31 = 21976 */
+	LVL2_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		" @21976\n"));
+
+	const char *gtp_resp_from_ggsn =
+		MSG_DEL_PDP_CTX_RSP("00000001", "6d32");
+	const char *gtp_resp_to_sgsn =
+		MSG_DEL_PDP_CTX_RSP("00000321", "abce");
+
+	/* The response should go back to whichever port the request came from
+	 * (unmapped by sequence nr) */
+	LVL2_ASSERT(msg_from_ggsn_c(&resolved_ggsn_addr,
+				    &sgsn_sender,
+				    gtp_resp_from_ggsn,
+				    gtp_resp_to_sgsn));
+
+	LVL2_ASSERT(tunnels_are(""));
+
+	return 1;
+}
+
+static void test_one_pdp_ctx(void)
+{
+	LOG("test_one_pdp_ctx");
 	OSMO_ASSERT(setup_test_hub());
 
 	OSMO_ASSERT(create_pdp_ctx());
@@ -982,6 +1048,10 @@ static void test_create_pdp_ctx(void)
 		"192.168.42.23 (TEI C 321=1 / U 123=2)"
 		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
 		" @21945\n"));
+
+	OSMO_ASSERT(delete_pdp_ctx());
+	OSMO_ASSERT(tunnels_are(""));
+
 	OSMO_ASSERT(clear_test_hub());
 }
 
@@ -1108,7 +1178,7 @@ int main(int argc, char **argv)
 	test_nr_map_wrap();
 	test_expiry();
 	test_echo();
-	test_create_pdp_ctx();
+	test_one_pdp_ctx();
 	test_user_data();
 	printf("Done\n");
 

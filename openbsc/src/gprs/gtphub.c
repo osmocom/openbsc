@@ -95,6 +95,15 @@ struct gtp_packet_desc {
 	union gtpie_member *ie[GTPIE_SIZE];
 };
 
+struct pending_delete {
+	struct llist_head entry;
+	struct expiring_item expiry_entry;
+
+	struct gtphub_tunnel *tun;
+	uint8_t teardown_ind;
+	uint8_t nsapi;
+};
+
 
 /* counters */
 
@@ -1325,7 +1334,8 @@ static void gtphub_tunnel_refresh(struct gtphub *hub,
 
 static struct gtphub_tunnel_endpoint *gtphub_unmap_tei(struct gtphub *hub,
 						       struct gtp_packet_desc *p,
-						       struct gtphub_peer_port *from)
+						       struct gtphub_peer_port *from,
+						       struct gtphub_tunnel **unmapped_from_tun)
 {
 	OSMO_ASSERT(from);
 	int other_side = other_side_idx(p->side_idx);
@@ -1341,9 +1351,14 @@ static struct gtphub_tunnel_endpoint *gtphub_unmap_tei(struct gtphub *hub,
 		    && gsn_addr_same(&te_from->peer->peer_addr->addr,
 				     &from->peer_addr->addr)) {
 			gtphub_tunnel_refresh(hub, tun, p->timestamp);
+			if (unmapped_from_tun)
+				*unmapped_from_tun = tun;
 			return te_to;
 		}
 	}
+
+	if (unmapped_from_tun)
+		*unmapped_from_tun = NULL;
 	return NULL;
 }
 
@@ -1376,12 +1391,15 @@ static void gtphub_map_restart_counter(struct gtphub *hub,
 }
 
 static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
+				   struct gtphub_tunnel **unmapped_from_tun,
 				   struct gtphub *hub,
 				   struct gtp_packet_desc *p,
 				   struct gtphub_peer_port *from_port)
 {
 	OSMO_ASSERT(p->version == 1);
 	*to_port_p = NULL;
+	if (unmapped_from_tun)
+		*unmapped_from_tun = NULL;
 
 	/* If the header's TEI is zero, no PDP context has been established
 	 * yet. If nonzero, a mapping should actually already exist for this
@@ -1392,7 +1410,7 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 	/* to_peer has previously announced a TEI, which was stored and
 	 * mapped in a tunnel struct. */
 	struct gtphub_tunnel_endpoint *to;
-	to = gtphub_unmap_tei(hub, p, from_port);
+	to = gtphub_unmap_tei(hub, p, from_port, unmapped_from_tun);
 	if (!to) {
 		LOG(LOGL_ERROR, "Received unknown TEI %" PRIx32 " from %s\n",
 		    p->header_tei_rx, gtphub_port_str(from_port));
@@ -1549,12 +1567,132 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 	return 0;
 }
 
+static void pending_delete_del_cb(struct expiring_item *expi)
+{
+	struct pending_delete *pd;
+	pd = container_of(expi, struct pending_delete, expiry_entry);
+
+	llist_del(&pd->entry);
+	INIT_LLIST_HEAD(&pd->entry);
+
+	pd->expiry_entry.del_cb = 0;
+	expiring_item_del(&pd->expiry_entry);
+
+	talloc_free(pd);
+}
+
+static struct pending_delete *pending_delete_new(void)
+{
+	struct pending_delete *pd = talloc_zero(osmo_gtphub_ctx, struct pending_delete);
+	INIT_LLIST_HEAD(&pd->entry);
+	expiring_item_init(&pd->expiry_entry);
+	pd->expiry_entry.del_cb = pending_delete_del_cb;
+	return pd;
+}
+
 static int gtphub_handle_delete_pdp_ctx(struct gtphub *hub,
 					struct gtp_packet_desc *p,
+					struct gtphub_tunnel *known_tun,
 					struct gtphub_peer_port *from_ctrl,
 					struct gtphub_peer_port *to_ctrl)
 {
-	/* TODO */
+	if (p->type == GTP_DELETE_PDP_REQ) {
+		if (!known_tun) {
+			LOG(LOGL_ERROR, "Cannot find tunnel for Delete PDP Context Request.\n");
+			return -1;
+		}
+
+		/* Store the Delete Request until a successful Response is seen. */
+		uint8_t teardown_ind;
+		uint8_t nsapi;
+
+		if (gtpie_gettv1(p->ie, GTPIE_TEARDOWN, 0, &teardown_ind) != 0) {
+			LOG(LOGL_ERROR, "Missing Teardown Ind IE in Delete PDP Context Request.\n");
+			return -1;
+		}
+
+		if (gtpie_gettv1(p->ie, GTPIE_NSAPI, 0, &nsapi) != 0) {
+			LOG(LOGL_ERROR, "Missing NSAPI IE in Delete PDP Context Request.\n");
+			return -1;
+		}
+
+		struct pending_delete *pd = NULL;
+
+		struct pending_delete *pdi = NULL;
+		llist_for_each_entry(pdi, &hub->pending_deletes, entry) {
+			if ((pdi->tun == known_tun)
+			    && (pdi->teardown_ind == teardown_ind)
+			    && (pdi->nsapi == nsapi)) {
+				pd = pdi;
+				break;
+			}
+		}
+
+		if (!pd) {
+			pd = pending_delete_new();
+			pd->tun = known_tun;
+			pd->teardown_ind = teardown_ind;
+			pd->nsapi = nsapi;
+
+			LOG(LOGL_DEBUG, "Tunnel delete pending: %s\n",
+			    gtphub_tunnel_str(known_tun));
+			llist_add(&pd->entry, &hub->pending_deletes);
+		}
+
+		/* Add or refresh timeout. */
+		expiry_add(&hub->expire_quickly, &pd->expiry_entry, p->timestamp);
+
+		/* If a pending_delete should expire before the response to
+		 * indicate success comes in, the responding peer will have the
+		 * tunnel deactivated, while the requesting peer gets no reply
+		 * and keeps the tunnel. The hope is that the requesting peer
+		 * will try again and get a useful response. */
+	} else if (p->type == GTP_DELETE_PDP_RSP) {
+		/* Find the Delete Request for this Response. */
+		struct pending_delete *pd = NULL;
+
+		struct pending_delete *pdi;
+		llist_for_each_entry(pdi, &hub->pending_deletes, entry) {
+			if (known_tun == pdi->tun) {
+				pd = pdi;
+				break;
+			}
+		}
+
+		if (!pd) {
+			LOG(LOGL_ERROR, "Delete PDP Context Response:"
+			    " Cannot find matching request.");
+			/* If we delete the tunnel now, anyone can send a
+			 * Delete response to kill tunnels at will. */
+			return -1;
+		}
+
+		/* TODO handle teardown_ind and nsapi */
+
+		expiring_item_del(&pd->expiry_entry);
+
+		uint8_t cause;
+		if (gtpie_gettv1(p->ie, GTPIE_CAUSE, 0, &cause) != 0) {
+			LOG(LOGL_ERROR, "Delete PDP Context Response:"
+			    " Missing Cause IE.");
+			/* If we delete the tunnel now, at least one of the
+			 * peers may still think it is active. */
+			return -1;
+		}
+
+		if (cause != GTPCAUSE_ACC_REQ) {
+			LOG(LOGL_NOTICE,
+			    "Delete PDP Context Response indicates failure;"
+			    "for %s\n",
+			    gtphub_tunnel_str(known_tun));
+			return -1;
+		}
+
+		LOG(LOGL_DEBUG, "Delete PDP Context: removing tunnel %s\n",
+		    gtphub_tunnel_str(known_tun));
+		expiring_item_del(&known_tun->expiry_entry);
+	}
+
 	return 0;
 }
 
@@ -1573,6 +1711,7 @@ static int gtphub_handle_update_pdp_ctx(struct gtphub *hub,
  * the packet p. */
 static int gtphub_handle_pdp_ctx(struct gtphub *hub,
 				 struct gtp_packet_desc *p,
+				 struct gtphub_tunnel *known_tun,
 				 struct gtphub_peer_port *from_ctrl,
 				 struct gtphub_peer_port *to_ctrl)
 {
@@ -1586,7 +1725,7 @@ static int gtphub_handle_pdp_ctx(struct gtphub *hub,
 
 	case GTP_DELETE_PDP_REQ:
 	case GTP_DELETE_PDP_RSP:
-		return gtphub_handle_delete_pdp_ctx(hub, p,
+		return gtphub_handle_delete_pdp_ctx(hub, p, known_tun,
 						    from_ctrl, to_ctrl);
 
 	case GTP_UPDATE_PDP_REQ:
@@ -1600,7 +1739,6 @@ static int gtphub_handle_pdp_ctx(struct gtphub *hub,
 	}
 
 }
-
 
 static int gtphub_write(const struct osmo_fd *to,
 			const struct osmo_sockaddr *to_addr,
@@ -1663,7 +1801,7 @@ static int gtphub_unmap(struct gtphub *hub,
 			struct gtphub_peer_port *to_proxy,
 			struct gtphub_peer_port **final_unmapped,
 			struct gtphub_peer_port **unmapped_from_seq,
-			struct gtphub_peer_port **unmapped_from_tei)
+			struct gtphub_tunnel **unmapped_from_tun)
 {
 	/* Always (try to) unmap sequence and TEI numbers, which need to be
 	 * replaced in the packet. Either way, give precedence to the proxy, if
@@ -1672,17 +1810,18 @@ static int gtphub_unmap(struct gtphub *hub,
 	struct gtphub_peer_port *from_seq = NULL;
 	struct gtphub_peer_port *from_tei = NULL;
 	struct gtphub_peer_port *unmapped = NULL;
+	struct gtphub_tunnel *tun = NULL;
 
 	if (unmapped_from_seq)
 		*unmapped_from_seq = from_seq;
-	if (unmapped_from_tei)
-		*unmapped_from_tei = from_tei;
+	if (unmapped_from_tun)
+		*unmapped_from_tun = tun;
 	if (final_unmapped)
 		*final_unmapped = unmapped;
 
 	from_seq = gtphub_unmap_seq(p, from);
 
-	if (gtphub_unmap_header_tei(&from_tei, hub, p, from) < 0)
+	if (gtphub_unmap_header_tei(&from_tei, &tun, hub, p, from) < 0)
 		return -1;
 
 	struct gtphub_peer *from_peer = from->peer_addr->peer;
@@ -1719,8 +1858,8 @@ static int gtphub_unmap(struct gtphub *hub,
 
 	if (unmapped_from_seq)
 		*unmapped_from_seq = from_seq;
-	if (unmapped_from_tei)
-		*unmapped_from_tei = from_tei;
+	if (unmapped_from_tun)
+		*unmapped_from_tun = tun;
 	if (final_unmapped)
 		*final_unmapped = unmapped;
 	return 0;
@@ -1894,11 +2033,10 @@ int gtphub_handle_buf(struct gtphub *hub,
 
 	struct gtphub_peer_port *to_peer_from_seq;
 	struct gtphub_peer_port *to_peer;
+	struct gtphub_tunnel *tun;
 	if (gtphub_unmap(hub, &p, from_peer,
 			 hub->proxy[other_side_idx(side_idx)][plane_idx],
-			 &to_peer, &to_peer_from_seq,
-			 NULL /* not interested, got it in &to_peer already */
-			)
+			 &to_peer, &to_peer_from_seq, &tun)
 	    != 0) {
 		return -1;
 	}
@@ -1918,7 +2056,7 @@ int gtphub_handle_buf(struct gtphub *hub,
 		/* This may be a Create PDP Context response. If it is, there
 		 * are other addresses in the GTP message to set up apart from
 		 * the sender. */
-		if (gtphub_handle_pdp_ctx(hub, &p, from_peer, to_peer)
+		if (gtphub_handle_pdp_ctx(hub, &p, tun, from_peer, to_peer)
 		    != 0)
 			return -1;
 	}
@@ -2112,6 +2250,7 @@ void gtphub_init(struct gtphub *hub)
 	gtphub_zero(hub);
 
 	INIT_LLIST_HEAD(&hub->tunnels);
+	INIT_LLIST_HEAD(&hub->pending_deletes);
 
 	expiry_init(&hub->expire_quickly, GTPH_EXPIRE_QUICKLY_SECS);
 	expiry_init(&hub->expire_slowly, GTPH_EXPIRE_SLOWLY_MINUTES * 60);

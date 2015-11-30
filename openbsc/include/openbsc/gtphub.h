@@ -443,6 +443,7 @@ struct gtphub {
 	struct nr_pool tei_pool;
 
 	struct llist_head tunnels; /* struct gtphub_tunnel */
+	struct llist_head pending_deletes; /* opaque (gtphub.c) */
 
 	struct llist_head ggsn_lookups; /* opaque (gtphub_ares.c) */
 	struct llist_head resolved_ggsns; /* struct gtphub_resolved_ggsn */
