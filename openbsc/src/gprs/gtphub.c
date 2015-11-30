@@ -1506,8 +1506,16 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 			tun->endpoint[side_idx][plane_idx].tei_repl = mapped_tei;
 			p->ie[ie_idx]->tv4.v = hton32(mapped_tei);
 
-			if (!gtphub_check_reused_teis(hub, tun))
-				return -1;
+			if (!gtphub_check_reused_teis(hub, tun)) {
+				/* It's highly unlikely that all TEIs are
+				 * taken. But the code looking for an unused
+				 * TEI is, at the time of writing this comment,
+				 * not able to find gaps in the TEI space. To
+				 * explicitly alert the user of this problem,
+				 * rather abort than carry on. */
+				LOG(LOGL_FATAL, "TEI range exhausted. Cannot create TEI mapping, aborting.\n");
+				abort();
+			}
 		}
 
 		/* Replace the GSN address to reflect gtphub. */
