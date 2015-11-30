@@ -1378,7 +1378,6 @@ static void gtphub_map_restart_counter(struct gtphub *hub,
 				       struct gtphub_peer_port *from,
 				       struct gtphub_peer_port *to)
 {
-	/* Always send gtphub's own restart counter */
 	if (p->rc != GTP_RC_PDU_C)
 		return;
 
@@ -1387,6 +1386,7 @@ static void gtphub_map_restart_counter(struct gtphub *hub,
 	if (ie_idx < 0)
 		return;
 
+	/* Always send gtphub's own restart counter */
 	p->ie[ie_idx]->tv1.v = hton8(hub->restart_counter);
 }
 
@@ -1764,6 +1764,38 @@ static int gtphub_write(const struct osmo_fd *to,
 	return 0;
 }
 
+static int from_sgsns_read_cb(struct osmo_fd *from_sgsns_ofd, unsigned int what)
+{
+	unsigned int plane_idx = from_sgsns_ofd->priv_nr;
+	OSMO_ASSERT(plane_idx < GTPH_PLANE_N);
+	LOG(LOGL_DEBUG, "\n\n=== reading from SGSN (%s)\n",
+	    gtphub_plane_idx_names[plane_idx]);
+
+	if (!(what & BSC_FD_READ))
+		return 0;
+
+	struct gtphub *hub = from_sgsns_ofd->data;
+
+	static uint8_t buf[4096];
+	struct osmo_sockaddr from_addr;
+	struct osmo_sockaddr to_addr;
+	struct osmo_fd *to_ofd;
+	int len;
+	uint8_t *reply_buf;
+
+	len = gtphub_read(from_sgsns_ofd, &from_addr, buf, sizeof(buf));
+	if (len < 1)
+		return 0;
+
+	len = gtphub_handle_buf(hub, GTPH_SIDE_SGSN, plane_idx, &from_addr,
+				buf, len, gtphub_now(),
+				&reply_buf, &to_ofd, &to_addr);
+	if (len < 1)
+		return 0;
+
+	return gtphub_write(to_ofd, &to_addr, reply_buf, len);
+}
+
 static int from_ggsns_read_cb(struct osmo_fd *from_ggsns_ofd, unsigned int what)
 {
 	unsigned int plane_idx = from_ggsns_ofd->priv_nr;
@@ -1807,17 +1839,17 @@ static int gtphub_unmap(struct gtphub *hub,
 	 * replaced in the packet. Either way, give precedence to the proxy, if
 	 * configured. */
 
+	if (unmapped_from_seq)
+		*unmapped_from_seq = NULL;
+	if (unmapped_from_tun)
+		*unmapped_from_tun = NULL;
+	if (final_unmapped)
+		*final_unmapped = NULL;
+
 	struct gtphub_peer_port *from_seq = NULL;
 	struct gtphub_peer_port *from_tei = NULL;
 	struct gtphub_peer_port *unmapped = NULL;
 	struct gtphub_tunnel *tun = NULL;
-
-	if (unmapped_from_seq)
-		*unmapped_from_seq = from_seq;
-	if (unmapped_from_tun)
-		*unmapped_from_tun = tun;
-	if (final_unmapped)
-		*final_unmapped = unmapped;
 
 	from_seq = gtphub_unmap_seq(p, from);
 
@@ -1875,21 +1907,21 @@ static int gsn_addr_to_sockaddr(struct gsn_addr *src,
 /* If p is an Echo request, replace p's data with the matching response and
  * return 1. If p is no Echo request, return 0, or -1 if an invalid packet is
  * detected. */
-static int gtphub_handle_echo(struct gtphub *hub, struct gtp_packet_desc *p,
-			      uint8_t **reply_buf)
+static int gtphub_handle_echo_req(struct gtphub *hub, struct gtp_packet_desc *p,
+				  uint8_t **reply_buf)
 {
 	if (p->type != GTP_ECHO_REQ)
 		return 0;
 
 	static uint8_t echo_response_data[14] = {
-		0x32,	/* flags */
+		0x32,	/* GTP v1 flags */
 		GTP_ECHO_RSP,
 		0x00, 14 - 8, /* Length in network byte order */
 		0x00, 0x00, 0x00, 0x00,	/* Zero TEI */
 		0, 0,	/* Seq, to be replaced */
 		0, 0,	/* no extensions */
 		0x0e,	/* Recovery IE */
-		0	/* Recovery counter, to be replaced */
+		0	/* Restart counter, to be replaced */
 	};
 	uint16_t *seq = (uint16_t*)&echo_response_data[8];
 	uint8_t *recovery = &echo_response_data[13];
@@ -1945,7 +1977,7 @@ int gtphub_handle_buf(struct gtphub *hub,
 	rate_ctr_inc(&from_bind->counters_io->ctr[GTPH_CTR_PKTS_IN]);
 
 	int reply_len;
-	reply_len = gtphub_handle_echo(hub, &p, reply_buf);
+	reply_len = gtphub_handle_echo_req(hub, &p, reply_buf);
 	if (reply_len > 0) {
 		/* It was an echo. Nothing left to do. */
 		osmo_sockaddr_copy(to_addr, from_addr);
@@ -1965,9 +1997,9 @@ int gtphub_handle_buf(struct gtphub *hub,
 
 	*to_ofd = &to_bind->ofd;
 
-	/* If a GGSN proxy is configured, check that it's indeed that proxy
-	 * talking to us. A proxy is a forced 1:1 connection, e.g. to another
-	 * gtphub, so no-one else is allowed to talk to us from that side. */
+	/* If a proxy is configured, check that it's indeed that proxy talking
+	 * to us. A proxy is a forced 1:1 connection, e.g. to another gtphub,
+	 * so no-one else is allowed to talk to us from that side. */
 	struct gtphub_peer_port *from_peer = hub->proxy[side_idx][plane_idx];
 	if (from_peer) {
 		if (osmo_sockaddr_cmp(&from_peer->sa, from_addr) != 0) {
@@ -1990,8 +2022,8 @@ int gtphub_handle_buf(struct gtphub *hub,
 	}
 
 	/* If any PDP context has been created, we already have an entry for
-	 * this GGSN. If we don't have an entry, the GGSN has nothing to tell
-	 * us about. */
+	 * this GSN. If we don't have an entry, a GGSN has nothing to tell us
+	 * about, while an SGSN may initiate a PDP context. */
 	if (!from_peer) {
 		if (side_idx == GTPH_SIDE_GGSN) {
 			LOG(LOGL_ERROR, "Dropping packet: unknown GGSN peer: %s\n",
@@ -2084,38 +2116,6 @@ int gtphub_handle_buf(struct gtphub *hub,
 	    gtphub_side_idx_names[other_side_idx(side_idx)],
 	    (int)received, osmo_sockaddr_to_str(to_addr));
 	return received;
-}
-
-static int from_sgsns_read_cb(struct osmo_fd *from_sgsns_ofd, unsigned int what)
-{
-	unsigned int plane_idx = from_sgsns_ofd->priv_nr;
-	OSMO_ASSERT(plane_idx < GTPH_PLANE_N);
-	LOG(LOGL_DEBUG, "\n\n=== reading from SGSN (%s)\n",
-	    gtphub_plane_idx_names[plane_idx]);
-
-	if (!(what & BSC_FD_READ))
-		return 0;
-
-	struct gtphub *hub = from_sgsns_ofd->data;
-
-	static uint8_t buf[4096];
-	struct osmo_sockaddr from_addr;
-	struct osmo_sockaddr to_addr;
-	struct osmo_fd *to_ofd;
-	int len;
-	uint8_t *reply_buf;
-
-	len = gtphub_read(from_sgsns_ofd, &from_addr, buf, sizeof(buf));
-	if (len < 1)
-		return 0;
-
-	len = gtphub_handle_buf(hub, GTPH_SIDE_SGSN, plane_idx, &from_addr,
-				buf, len, gtphub_now(),
-				&reply_buf, &to_ofd, &to_addr);
-	if (len < 1)
-		return 0;
-
-	return gtphub_write(to_ofd, &to_addr, reply_buf, len);
 }
 
 static void resolved_gssn_del_cb(struct expiring_item *expi)
