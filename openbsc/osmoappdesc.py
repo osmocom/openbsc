@@ -35,7 +35,8 @@ app_configs = {
              "doc/examples/osmo-gbproxy/osmo-gbproxy-legacy.cfg"],
     "sgsn": ["doc/examples/osmo-sgsn/osmo-sgsn.cfg"],
     "nitb": ["doc/examples/osmo-nitb/nanobts/openbsc-multitrx.cfg",
-             "doc/examples/osmo-nitb/nanobts/openbsc.cfg"]
+             "doc/examples/osmo-nitb/nanobts/openbsc.cfg"],
+    "gtphub": ["doc/examples/osmo-gtphub/osmo-gtphub.cfg"]
 }
 
 
@@ -44,7 +45,8 @@ apps = [(4242, "src/osmo-bsc/osmo-bsc", "OsmoBSC", "osmo-bsc"),
         (4243, "src/osmo-bsc_mgcp/osmo-bsc_mgcp", "OpenBSC MGCP", "mgcp"),
         (4246, "src/gprs/osmo-gbproxy", "OsmoGbProxy", "gbproxy"),
         (4245, "src/gprs/osmo-sgsn", "OsmoSGSN", "sgsn"),
-        (4242, "src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb")
+        (4242, "src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb"),
+        (4253, "src/gprs/osmo-gtphub", "OsmoGTPHub", "gtphub")
         ]
 
 vty_command = ["./src/osmo-nitb/osmo-nitb", "-c",
