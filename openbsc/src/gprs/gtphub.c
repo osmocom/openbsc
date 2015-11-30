@@ -2193,8 +2193,6 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 		}
 	}
 
-	/* TODO set hub->restart_counter from external file. */
-
 	int side_idx;
 	int plane_idx;
 	for_each_side_and_plane(side_idx, plane_idx) {
