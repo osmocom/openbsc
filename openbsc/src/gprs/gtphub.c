@@ -1468,7 +1468,7 @@ static int gtphub_handle_pdp_ctx_ies(struct gtphub *hub,
 	if (p->type == GTP_CREATE_PDP_REQ) {
 		LOG(LOGL_DEBUG, "New tunnel, first half: %s\n",
 		    gtphub_tunnel_str(tun));
-	} else if (p->type == GTP_CREATE_PDP_REQ) {
+	} else if (p->type == GTP_CREATE_PDP_RSP) {
 		LOG(LOGL_DEBUG, "New tunnel: %s\n",
 		    gtphub_tunnel_str(tun));
 	}
