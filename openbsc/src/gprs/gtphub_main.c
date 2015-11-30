@@ -82,9 +82,9 @@ static const struct log_info gtphub_log_info = {
 
 void log_cfg(struct gtphub_cfg *cfg)
 {
-	struct gtphub_cfg_addr *a;
 	int side_idx, plane_idx;
 	for_each_side_and_plane(side_idx, plane_idx) {
+		struct gtphub_cfg_addr *a;
 		a = &cfg->to_gsns[side_idx][plane_idx].bind;
 		LOGP(DGTPHUB, LOGL_NOTICE,
 		     "to-%ss bind, %s: %s port %d\n",
@@ -96,7 +96,7 @@ void log_cfg(struct gtphub_cfg *cfg)
 
 static void signal_handler(int signal)
 {
-	fprintf(stdout, "signal %u received\n", signal);
+	fprintf(stdout, "signal %d received\n", signal);
 
 	switch (signal) {
 	case SIGINT:

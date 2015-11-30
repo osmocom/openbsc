@@ -477,8 +477,6 @@ void gtphub_gc(struct gtphub *hub, time_t now);
 
 /* Return the string of the first address for this peer. */
 const char *gtphub_peer_str(struct gtphub_peer *peer);
-/* Same with a different static buffer. We often want to print two peers. */
-const char *gtphub_peer_str2(struct gtphub_peer *peer);
 
 /* Return a human readable description of tun in a static buffer. */
 const char *gtphub_tunnel_str(struct gtphub_tunnel *tun);

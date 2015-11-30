@@ -414,9 +414,9 @@ static int imsi_to_str(uint8_t *imsi, const char **imsi_str)
 {
 	static char str[17];
 	int i;
-	char c;
 
 	for (i = 0; i < 8; i++) {
+		char c;
 		c = imsi_digit_to_char(imsi[i]);
 		if (c == '?')
 			return -1;
@@ -1095,12 +1095,6 @@ const char *gtphub_peer_str(struct gtphub_peer *peer)
 	return gtphub_peer_strb(peer, buf, sizeof(buf));
 }
 
-const char *gtphub_peer_str2(struct gtphub_peer *peer)
-{
-	static char buf[256];
-	return gtphub_peer_strb(peer, buf, sizeof(buf));
-}
-
 const char *gtphub_port_str(struct gtphub_peer_port *port)
 {
 	static char buf[256];
@@ -1412,7 +1406,6 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 					struct gtphub_peer_port *from_ctrl,
 					struct gtphub_peer_port *to_ctrl)
 {
-	int rc;
 	int plane_idx;
 
 	/* TODO enforce a Request only from SGSN, a Response only from GGSN? */
@@ -1462,6 +1455,7 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 	unsigned int side_idx = p->side_idx;
 
 	for (plane_idx = 0; plane_idx < 2; plane_idx++) {
+		int rc;
 		struct gsn_addr addr_from_ie;
 		uint32_t tei_from_ie;
 		int ie_idx;
@@ -2169,8 +2163,6 @@ static int gtphub_make_proxy(struct gtphub *hub,
 int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 		 uint8_t restart_counter)
 {
-	int rc;
-
 	gtphub_init(hub);
 
 	hub->restart_counter = restart_counter;
@@ -2188,6 +2180,7 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 	int side_idx;
 	int plane_idx;
 	for_each_side_and_plane(side_idx, plane_idx) {
+		int rc;
 		rc = gtphub_bind_start(&hub->to_gsns[side_idx][plane_idx],
 				       &cfg->to_gsns[side_idx][plane_idx],
 				       (side_idx == GTPH_SIDE_SGSN)
