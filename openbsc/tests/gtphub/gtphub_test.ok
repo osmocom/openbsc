@@ -1,5 +1,8 @@
 test_echo
-test_one_pdp_ctx
+test_one_pdp_ctx (del from SGSN)
+- __wrap_gtphub_resolve_ggsn_addr():
+  returning GGSN addr from imsi 240010123456789 ni internet: 192.168.43.34 port 2123
+test_one_pdp_ctx (del from GGSN)
 - __wrap_gtphub_resolve_ggsn_addr():
   returning GGSN addr from imsi 240010123456789 ni internet: 192.168.43.34 port 2123
 test_user_data

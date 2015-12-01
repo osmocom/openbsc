@@ -983,7 +983,7 @@ static int create_pdp_ctx()
 		"01"	/* 1: Cause */ \
 		  "80"	/* value = 0b10000000 = response, no rejection. */ \
 
-static int delete_pdp_ctx(void)
+static int delete_pdp_ctx_from_sgsn(void)
 {
 	now += GTPH_EXPIRE_QUICKLY_SECS + 1;
 	gtphub_gc(hub, now);
@@ -1025,9 +1025,53 @@ static int delete_pdp_ctx(void)
 	return 1;
 }
 
-static void test_one_pdp_ctx(void)
+static int delete_pdp_ctx_from_ggsn(void)
 {
-	LOG("test_one_pdp_ctx");
+	now += GTPH_EXPIRE_QUICKLY_SECS + 1;
+	gtphub_gc(hub, now);
+
+	LVL2_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		" @21945\n"));
+
+	/* TEI Ctrl from above and next sequence after abcd. */
+	const char *gtp_req_from_ggsn = MSG_DEL_PDP_CTX_REQ("00000001", "5432");
+	const char *gtp_req_to_sgsn = MSG_DEL_PDP_CTX_REQ("00000321", "6d31");
+
+	LVL2_ASSERT(msg_from_ggsn_c(&ggsn_sender,
+				    &resolved_sgsn_addr,
+				    gtp_req_from_ggsn,
+				    gtp_req_to_sgsn));
+
+	/* 21945 + 31 = 21976 */
+	LVL2_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		" @21976\n"));
+
+	const char *gtp_resp_from_sgsn =
+		MSG_DEL_PDP_CTX_RSP("00000003", "6d31");
+	const char *gtp_resp_to_ggsn =
+		MSG_DEL_PDP_CTX_RSP("00000765", "5432");
+
+	/* The response should go back to whichever port the request came from
+	 * (unmapped by sequence nr) */
+	LVL2_ASSERT(msg_from_sgsn_c(&resolved_sgsn_addr,
+				    &ggsn_sender,
+				    gtp_resp_from_sgsn,
+				    gtp_resp_to_ggsn));
+
+	LVL2_ASSERT(tunnels_are(""));
+
+	return 1;
+}
+
+static void test_one_pdp_ctx(int del_from_side)
+{
+	if (del_from_side == GTPH_SIDE_SGSN)
+		LOG("test_one_pdp_ctx (del from SGSN)")
+	else	LOG("test_one_pdp_ctx (del from GGSN)");
 	OSMO_ASSERT(setup_test_hub());
 
 	OSMO_ASSERT(create_pdp_ctx());
@@ -1054,7 +1098,11 @@ static void test_one_pdp_ctx(void)
 		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
 		" @21945\n"));
 
-	OSMO_ASSERT(delete_pdp_ctx());
+	if (del_from_side == GTPH_SIDE_SGSN) {
+		OSMO_ASSERT(delete_pdp_ctx_from_sgsn());
+	} else {
+		OSMO_ASSERT(delete_pdp_ctx_from_ggsn());
+	}
 	OSMO_ASSERT(tunnels_are(""));
 
 	OSMO_ASSERT(clear_test_hub());
@@ -1183,7 +1231,8 @@ int main(int argc, char **argv)
 	test_nr_map_wrap();
 	test_expiry();
 	test_echo();
-	test_one_pdp_ctx();
+	test_one_pdp_ctx(GTPH_SIDE_SGSN);
+	test_one_pdp_ctx(GTPH_SIDE_GGSN);
 	test_user_data();
 	printf("Done\n");
 
