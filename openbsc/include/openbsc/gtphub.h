@@ -388,7 +388,8 @@ struct gtphub_peer_port {
 	struct gtphub_peer_addr *peer_addr;
 	uint16_t port;
 	unsigned int ref_count; /* references from other peers' seq_maps */
-	struct osmo_sockaddr sa;
+	struct osmo_sockaddr sa; /* a "cache" for (peer_addr->addr, port) */
+	int last_restart_count; /* 0..255 = valid, all else means unknown */
 };
 
 struct gtphub_tunnel_endpoint {

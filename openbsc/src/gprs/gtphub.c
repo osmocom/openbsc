@@ -1362,21 +1362,8 @@ static struct gtphub_tunnel_endpoint *gtphub_unmap_tei(struct gtphub *hub,
 	return NULL;
 }
 
-
-static void gtphub_check_restart_counter(struct gtphub *hub,
-					 struct gtp_packet_desc *p,
-					 struct gtphub_peer_port *from)
-{
-	/* TODO */
-	/* If the peer is sending a Recovery IE (7.7.11) with a restart counter
-	 * that doesn't match the peer's previously sent restart counter, clear
-	 * that peer and cancel PDP contexts. */
-}
-
 static void gtphub_map_restart_counter(struct gtphub *hub,
-				       struct gtp_packet_desc *p,
-				       struct gtphub_peer_port *from,
-				       struct gtphub_peer_port *to)
+				       struct gtp_packet_desc *p)
 {
 	if (p->rc != GTP_RC_PDU_C)
 		return;
@@ -1416,14 +1403,15 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 		    p->header_tei_rx, gtphub_port_str(from_port));
 		return -1;
 	}
+	OSMO_ASSERT(*unmapped_from_tun);
 
 	uint32_t unmapped_tei = to->tei_orig;
 	set_tei(p, unmapped_tei);
 
-	LOG(LOGL_DEBUG, "Unmapped TEI coming from %s: %" PRIx32 " -> %" PRIx32 " (to %s)\n",
-	    gtphub_port_str(from_port), p->header_tei_rx, unmapped_tei,
-	    gtphub_port_str2(to->peer));
+	LOG(LOGL_DEBUG, "Unmapped TEI coming from: %s\n",
+	    gtphub_tunnel_str(*unmapped_from_tun));
 
+	/* May be NULL for an invalidated tunnel. */
 	*to_port_p = to->peer;
 
 	return 0;
@@ -1764,6 +1752,117 @@ static int gtphub_write(const struct osmo_fd *to,
 	return 0;
 }
 
+static int gtphub_send_del_pdp_ctx(struct gtphub *hub,
+				   struct gtphub_tunnel *tun,
+				   int to_side)
+{
+	static uint8_t del_ctx_msg[16] = {
+		0x32,	/* GTP v1 flags */
+		GTP_DELETE_PDP_REQ,
+		0x00, 0x08, /* Length in network byte order */
+		0x00, 0x00, 0x00, 0x00,	/* TEI to be replaced */
+		0, 0,	/* Seq, to be replaced */
+		0, 0,	/* no extensions */
+		0x13, 0xff,  /* 19: Teardown ind = 1 */
+		0x14, 0	/* 20: NSAPI = 0 */
+	};
+
+	uint32_t *tei = (uint32_t*)&del_ctx_msg[4];
+	uint16_t *seq = (uint16_t*)&del_ctx_msg[8];
+
+	struct gtphub_tunnel_endpoint *te =
+		&tun->endpoint[to_side][GTPH_PLANE_CTRL];
+
+	if (! te->peer)
+		return 0;
+
+	*tei = hton32(te->tei_orig);
+	*seq = hton16(nr_pool_next(&te->peer->peer_addr->peer->seq_pool));
+
+	struct gtphub_bind *to_bind = &hub->to_gsns[to_side][GTPH_PLANE_CTRL];
+	int rc =  gtphub_write(&to_bind->ofd, &te->peer->sa,
+			       del_ctx_msg, sizeof(del_ctx_msg));
+	if (rc != 0) {
+		LOG(LOGL_ERROR,
+		    "Failed to send out-of-band Delete PDP Context Request to %s\n",
+		    gtphub_port_str(te->peer));
+	}
+	return rc;
+}
+
+/* Tell all peers on the other end of tunnels that PDP contexts are void. */
+static void gtphub_restarted(struct gtphub *hub,
+			     struct gtp_packet_desc *p,
+			     struct gtphub_peer_port *pp)
+{
+	struct gtphub_tunnel *tun;
+	llist_for_each_entry(tun, &hub->tunnels, entry) {
+		int side_idx;
+		for_each_side(side_idx) {
+			if (pp != tun->endpoint[side_idx][GTPH_PLANE_CTRL].peer)
+				continue;
+
+			/* Send a Delete PDP Context Request to the
+			 * peer on the other side, remember the pending
+			 * delete and wait for the response to delete
+			 * the tunnel. Clear this side of the tunnel to
+			 * make sure it isn't used.
+			 *
+			 * Should the delete message send fail, or if no
+			 * response is received, this tunnel will expire. If
+			 * its TEIs come up in a new PDP Context Request, it
+			 * will be removed. If messages for this tunnel should
+			 * come in (from the not restarted side), they will be
+			 * dropped because the tunnel is rendered unusable. */
+			gtphub_send_del_pdp_ctx(hub, tun, other_side_idx(side_idx));
+
+			struct pending_delete *pd;
+			pd = pending_delete_new();
+			pd->tun = tun;
+			pd->teardown_ind = 0xff;
+			pd->nsapi = 0;
+			llist_add(&pd->entry, &hub->pending_deletes);
+			expiry_add(&hub->expire_quickly, &pd->expiry_entry, p->timestamp);
+
+			gtphub_tunnel_endpoint_set_peer(&tun->endpoint[side_idx][GTPH_PLANE_CTRL],
+							NULL);
+			gtphub_tunnel_endpoint_set_peer(&tun->endpoint[side_idx][GTPH_PLANE_USER],
+							NULL);
+		}
+	}
+}
+
+static int get_restart_count(struct gtp_packet_desc *p)
+{
+	int ie_idx;
+	ie_idx = gtpie_getie(p->ie, GTPIE_RECOVERY, 0);
+	if (ie_idx < 0)
+		return -1;
+	return ntoh8(p->ie[ie_idx]->tv1.v);
+}
+
+static void gtphub_check_restart_counter(struct gtphub *hub,
+					 struct gtp_packet_desc *p,
+					 struct gtphub_peer_port *from)
+{
+	/* If the peer is sending a Recovery IE (7.7.11) with a restart counter
+	 * that doesn't match the peer's previously sent restart counter, clear
+	 * that peer and cancel PDP contexts. */
+
+	int restart = get_restart_count(p);
+
+	if ((restart < 0) || (restart > 255))
+		return;
+
+	if ((from->last_restart_count >= 0) && (from->last_restart_count <= 255)) {
+		if (from->last_restart_count != restart) {
+			gtphub_restarted(hub, p, from);
+		}
+	}
+
+	from->last_restart_count = restart;
+}
+
 static int from_sgsns_read_cb(struct osmo_fd *from_sgsns_ofd, unsigned int what)
 {
 	unsigned int plane_idx = from_sgsns_ofd->priv_nr;
@@ -2094,7 +2193,7 @@ int gtphub_handle_buf(struct gtphub *hub,
 	}
 
 	gtphub_check_restart_counter(hub, &p, from_peer);
-	gtphub_map_restart_counter(hub, &p, from_peer, to_peer);
+	gtphub_map_restart_counter(hub, &p);
 
 	/* If the GGSN is replying to an SGSN request, the sequence nr has
 	 * already been unmapped above (to_peer_from_seq != NULL), and we need not
@@ -2497,6 +2596,7 @@ static struct gtphub_peer_port *gtphub_addr_add_port(struct gtphub_peer_addr *a,
 	OSMO_ASSERT(pp);
 	pp->peer_addr = a;
 	pp->port = port;
+	pp->last_restart_count = -1;
 
 	if (gsn_addr_to_sockaddr(&a->addr, port, &pp->sa) != 0) {
 		talloc_free(pp);
