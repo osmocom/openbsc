@@ -1276,6 +1276,7 @@ static struct gtphub_tunnel_endpoint *gtphub_unmap_tei(struct gtphub *hub,
 		struct gtphub_tunnel_endpoint *te_to =
 			&tun->endpoint[other_side][p->plane_idx];
 		if ((te_to->tei_repl == p->header_tei_rx)
+		    && te_from->peer
 		    && gsn_addr_same(&te_from->peer->peer_addr->addr,
 				     &from->peer_addr->addr)) {
 			gtphub_tunnel_refresh(hub, tun, p->timestamp);
