@@ -1320,7 +1320,7 @@ static void test_peer_restarted(void)
 			       );
 	const char *gtp_req_to_ggsn =
 		MSG_PDP_CTX_REQ("0068",
-				"6d32",	/* mapped seq ("1234") */
+				"6d33",	/* mapped seq ("1234") */
 				"23",
 				"42000121436587f9",
 				"00000006", /* mapped TEI Data I ("123") */
@@ -1340,7 +1340,7 @@ static void test_peer_restarted(void)
 		"192.168.42.23 (TEI C cba=5 / U abc=6)"
 		" <-> 192.168.43.34 / (uninitialized) (TEI C 0=0 / U 0=0)"
 		" @21955\n"
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
+		"(uninitialized) (TEI C 321=1 / U 123=2)"
 		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
 		" @21945\n"
 		));
@@ -1348,7 +1348,7 @@ static void test_peer_restarted(void)
 	const char *gtp_resp_from_ggsn =
 		MSG_PDP_CTX_RSP("004e",
 				"00000005", /* destination TEI (sent in req above) */
-				"6d32", /* mapped seq */
+				"6d33", /* mapped seq */
 				"01", /* restart */
 				"00000def", /* TEI U */
 				"00000fde", /* TEI C */

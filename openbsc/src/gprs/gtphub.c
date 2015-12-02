@@ -1791,7 +1791,11 @@ static void gtphub_restarted(struct gtphub *hub,
 	llist_for_each_entry(tun, &hub->tunnels, entry) {
 		int side_idx;
 		for_each_side(side_idx) {
-			if (pp != tun->endpoint[side_idx][GTPH_PLANE_CTRL].peer)
+			struct gtphub_tunnel_endpoint *te = &tun->endpoint[side_idx][GTPH_PLANE_CTRL];
+			struct gtphub_tunnel_endpoint *te2 = &tun->endpoint[other_side_idx(side_idx)][GTPH_PLANE_CTRL];
+			if ((!te->peer)
+			    || (!te2->tei_orig)
+			    || (pp->peer_addr->peer != te->peer->peer_addr->peer))
 				continue;
 
 			LOG(LOGL_DEBUG, "Deleting tunnel due to peer restart: %s\n",
