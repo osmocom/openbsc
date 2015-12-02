@@ -625,6 +625,11 @@ static int clear_test_hub()
 	LVL2_ASSERT(llist_empty(&hub->to_gsns[GTPH_SIDE_GGSN][plane_idx].peers));
 	LVL2_ASSERT(llist_empty(&hub->to_gsns[GTPH_SIDE_SGSN][plane_idx].peers));
 
+	LVL2_ASSERT(llist_empty(&hub->tunnels));
+	LVL2_ASSERT(llist_empty(&hub->pending_deletes));
+	LVL2_ASSERT(llist_empty(&hub->ggsn_lookups));
+	LVL2_ASSERT(llist_empty(&hub->resolved_ggsns));
+
 	gtphub_free(hub);
 	return 1;
 }
