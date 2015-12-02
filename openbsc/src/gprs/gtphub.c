@@ -1276,27 +1276,28 @@ static int gtphub_check_reused_teis(struct gtphub *hub,
 		for_each_side_and_plane(side_idx, plane_idx) {
 			te = &tun->endpoint[side_idx][plane_idx];
 			te2 = &new_tun->endpoint[side_idx][plane_idx];
-			if ((te->tei_orig == te2->tei_orig)
-			    && gsn_addr_same(&te->peer->peer_addr->addr,
-					     &te2->peer->peer_addr->addr)) {
+			if ((te->tei_orig != te2->tei_orig)
+			    || !gsn_addr_same(&te->peer->peer_addr->addr,
+					      &te2->peer->peer_addr->addr))
+				continue;
 
-				/* The peer is reusing a TEI that I believe to
-				 * be part of another tunnel. The other tunnel
-				 * must be stale, then. */
-				LOG(LOGL_NOTICE,
-				    "Expiring tunnel due to reused TEI:"
-				    " peer %s sent %s TEI %x,"
-				    " previously used by tunnel %s...\n",
-				    gtphub_port_str(te->peer),
-				    gtphub_plane_idx_names[plane_idx],
-				    te->tei_orig,
-				    gtphub_tunnel_str(tun));
-				LOG(LOGL_NOTICE, "...while establishing tunnel %s\n",
-				    gtphub_tunnel_str(new_tun));
-				expiring_item_del(&tun->expiry_entry);
-				/* continue to find more matches. There shouldn't be
-				 * any, but let's make sure. */
-			}
+			/* The peer is reusing a TEI that I believe to
+			 * be part of another tunnel. The other tunnel
+			 * must be stale, then. */
+			LOG(LOGL_NOTICE,
+			    "Expiring tunnel due to reused TEI:"
+			    " peer %s sent %s TEI %x,"
+			    " previously used by tunnel %s...\n",
+			    gtphub_port_str(te->peer),
+			    gtphub_plane_idx_names[plane_idx],
+			    te->tei_orig,
+			    gtphub_tunnel_str(tun));
+			LOG(LOGL_NOTICE, "...while establishing tunnel %s\n",
+			    gtphub_tunnel_str(new_tun));
+
+			expiring_item_del(&tun->expiry_entry);
+			/* continue to find more matches. There shouldn't be
+			 * any, but let's make sure. */
 		}
 
 		/* Check whether the mapped TEIs assigned to the endpoints are
