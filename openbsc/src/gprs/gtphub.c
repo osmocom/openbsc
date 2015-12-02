@@ -1277,6 +1277,8 @@ static int gtphub_check_reused_teis(struct gtphub *hub,
 			te = &tun->endpoint[side_idx][plane_idx];
 			te2 = &new_tun->endpoint[side_idx][plane_idx];
 			if ((te->tei_orig != te2->tei_orig)
+			    || (!te->peer)
+			    || (!te2->peer)
 			    || !gsn_addr_same(&te->peer->peer_addr->addr,
 					      &te2->peer->peer_addr->addr))
 				continue;
