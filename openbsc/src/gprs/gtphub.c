@@ -1798,12 +1798,18 @@ static void gtphub_restarted(struct gtphub *hub,
 			     struct gtp_packet_desc *p,
 			     struct gtphub_peer_port *pp)
 {
+	LOG(LOGL_DEBUG, "Peer has restarted: %s\n",
+	    gtphub_port_str(pp));
+
 	struct gtphub_tunnel *tun;
 	llist_for_each_entry(tun, &hub->tunnels, entry) {
 		int side_idx;
 		for_each_side(side_idx) {
 			if (pp != tun->endpoint[side_idx][GTPH_PLANE_CTRL].peer)
 				continue;
+
+			LOG(LOGL_DEBUG, "Deleting tunnel due to peer restart: %s\n",
+			    gtphub_tunnel_str(tun));
 
 			/* Send a Delete PDP Context Request to the
 			 * peer on the other side, remember the pending
