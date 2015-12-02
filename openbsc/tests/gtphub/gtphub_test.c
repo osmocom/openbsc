@@ -1207,6 +1207,78 @@ static void test_user_data(void)
 	OSMO_ASSERT(clear_test_hub());
 }
 
+static void test_reused_tei(void)
+{
+	LOG("test_reused_tei");
+
+	OSMO_ASSERT(setup_test_hub());
+
+	OSMO_ASSERT(create_pdp_ctx());
+
+	const char *gtp_req_from_sgsn =
+		MSG_PDP_CTX_REQ("0068",
+				"abce", /* Next seq */
+				"60",
+				"42000121436587f9",
+				"00000123", /* Same TEIs as before */
+				"00000321",
+				"0009""08696e7465726e6574", /* "(8)internet" */
+				"0004""c0a82a17", /* same as default sgsn_sender */
+				"0004""c0a82a17"
+			       );
+	const char *gtp_req_to_ggsn =
+		MSG_PDP_CTX_REQ("0068",
+				"6d32",	/* mapped seq ("abce") */
+				"23",
+				"42000121436587f9",
+				"00000006", /* mapped TEI Data I ("123") */
+				"00000005", /* mapped TEI Control ("321") */
+				"0009""08696e7465726e6574",
+				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
+				"0004""7f000202" /* replaced with gtphub's ggsn user */
+			       );
+
+	OSMO_ASSERT(msg_from_sgsn_c(&sgsn_sender,
+				    &resolved_ggsn_addr,
+				    gtp_req_from_sgsn,
+				    gtp_req_to_ggsn));
+	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
+
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=5 / U 123=6)"
+		" <-> 192.168.43.34 / (uninitialized) (TEI C 0=0 / U 0=0)"
+		" @21945\n"));
+
+	const char *gtp_resp_from_ggsn =
+		MSG_PDP_CTX_RSP("004e",
+				"00000005", /* destination TEI (sent in req above) */
+				"6d32", /* mapped seq */
+				"01", /* restart */
+				"00000567", /* TEI U */
+				"00000765", /* TEI C */
+				"0004""c0a82b22", /* GSN addresses */
+				"0004""c0a82b22"  /* (== resolved_ggsn_addr) */
+			       );
+	const char *gtp_resp_to_sgsn =
+		MSG_PDP_CTX_RSP("004e",
+				"00000321", /* unmapped TEI ("001") */
+				"abce", /* unmapped seq ("6d32") */
+				"23",
+				"00000008", /* mapped TEI from GGSN ("567") */
+				"00000007", /* mapped TEI from GGSN ("765") */
+				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
+				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
+			       );
+	/* The response should go back to whichever port the request came from
+	 * (unmapped by sequence nr) */
+	OSMO_ASSERT(msg_from_ggsn_c(&resolved_ggsn_addr,
+				    &sgsn_sender,
+				    gtp_resp_from_ggsn,
+				    gtp_resp_to_sgsn));
+
+	OSMO_ASSERT(clear_test_hub());
+}
+
 
 static struct log_info_cat gtphub_categories[] = {
 	[DGTPHUB] = {
@@ -1234,6 +1306,7 @@ int main(int argc, char **argv)
 	test_one_pdp_ctx(GTPH_SIDE_SGSN);
 	test_one_pdp_ctx(GTPH_SIDE_GGSN);
 	test_user_data();
+	test_reused_tei();
 	printf("Done\n");
 
 	talloc_report_full(osmo_gtphub_ctx, stderr);
