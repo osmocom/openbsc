@@ -508,6 +508,24 @@ int __wrap_gtphub_ares_init(struct gtphub *hub)
 	return 0;
 }
 
+/* override, requires '-Wl,--wrap=gtphub_write' */
+int __real_gtphub_write(const struct osmo_fd *to,
+			const struct osmo_sockaddr *to_addr,
+			const uint8_t *buf, size_t buf_len);
+
+int __wrap_gtphub_write(const struct osmo_fd *to,
+			const struct osmo_sockaddr *to_addr,
+			const uint8_t *buf, size_t buf_len)
+{
+	printf("Out-of-band gtphub_write(%d):\n"
+	       "to %s\n"
+	       "%s\n",
+	       (int)buf_len,
+	       osmo_sockaddr_to_str(to_addr),
+	       osmo_hexdump(buf, buf_len));
+	return 0;
+}
+
 #define buf_len 1024
 static uint8_t buf[buf_len];
 static uint8_t *reply_buf;

@@ -510,3 +510,7 @@ void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
 			  time_t now);
 
 const char *gtphub_port_str(struct gtphub_peer_port *port);
+
+int gtphub_write(const struct osmo_fd *to,
+		 const struct osmo_sockaddr *to_addr,
+		 const uint8_t *buf, size_t buf_len);

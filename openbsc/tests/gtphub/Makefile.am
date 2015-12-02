@@ -13,7 +13,8 @@ endif
 gtphub_test_SOURCES = gtphub_test.c
 gtphub_test_LDFLAGS = \
 	-Wl,--wrap=gtphub_resolve_ggsn_addr \
-	-Wl,--wrap=gtphub_ares_init
+	-Wl,--wrap=gtphub_ares_init \
+	-Wl,--wrap=gtphub_write
 
 gtphub_test_LDADD = \
 	$(top_builddir)/src/gprs/gtphub.o \
