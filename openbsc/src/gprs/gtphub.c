@@ -1204,28 +1204,6 @@ static struct gtphub_peer_port *gtphub_unmap_seq(struct gtp_packet_desc *p,
 	return nrm->origin;
 }
 
-static struct gtphub_tunnel *gtphub_tun_find(struct gtphub *hub,
-					     int side_idx,
-					     int plane_idx,
-					     struct gtphub_peer_port *from,
-					     uint32_t tei_orig,
-					     uint32_t tei_repl)
-{
-	OSMO_ASSERT(from);
-
-	struct gtphub_tunnel *tun;
-	/* TODO: optimize: don't iterate *all* tunnels. */
-	llist_for_each_entry(tun, &hub->tunnels, entry) {
-		struct gtphub_tunnel_endpoint *te =
-			&tun->endpoint[side_idx][plane_idx];
-		if (((!tei_orig) || (te->tei_orig == tei_orig))
-		    && ((!tei_repl) || (te->tei_repl == tei_repl))
-		    && gsn_addr_same(&te->peer->peer_addr->addr, &from->peer_addr->addr))
-			return tun;
-	}
-	return NULL;
-}
-
 static int gtphub_check_mapped_tei(struct gtphub_tunnel_endpoint *new_te,
 				   struct gtphub_tunnel_endpoint *iterated_te,
 				   uint32_t *tei_min,
@@ -1462,18 +1440,13 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 			return -1;
 		}
 
-		/* Find the tunnel created during request. This is coming from
-		 * the GGSN side, so to_ctrl corresponds to the SGSN. */
+		/* The tunnel should already have been resolved from the header
+		 * TEI and be available in tun (== p->tun). Just fill in the
+		 * GSN Addresses below.*/
+		OSMO_ASSERT(tun);
+		OSMO_ASSERT(tun->endpoint[other_side_idx(p->side_idx)][GTPH_PLANE_CTRL].tei_repl
+			    == p->header_tei_rx);
 		OSMO_ASSERT(to_ctrl);
-		tun = gtphub_tun_find(hub, other_side_idx(p->side_idx),
-				      p->plane_idx, to_ctrl, 0, p->header_tei_rx);
-
-		if (!tun) {
-			LOG(LOGL_ERROR, "Create PDP Context Response: cannot"
-			    " find matching request from SGSN %s, mapped TEI %x.\n",
-			    gtphub_port_str(to_ctrl), p->header_tei_rx);
-			return -1;
-		}
 	}
 
 	uint8_t ie_type[] = { GTPIE_TEI_C, GTPIE_TEI_DI };
