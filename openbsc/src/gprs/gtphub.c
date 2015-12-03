@@ -1524,6 +1524,16 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 		gtphub_tunnel_endpoint_set_peer(&tun->endpoint[side_idx][plane_idx],
 						peer_from_ie);
 
+		if (!tei_from_ie &&
+		    !tun->endpoint[side_idx][plane_idx].tei_orig) {
+			LOG(LOGL_ERROR,
+			    "Create PDP Context message omits %s TEI, but the"
+			    " no TEI has been announced for this tunnel: %s",
+			    gtphub_plane_idx_names[plane_idx],
+			    gtphub_tunnel_str(tun));
+			return -1;
+		}
+
 		if (tei_from_ie) {
 			/* Create TEI mapping and replace in GTP packet IE */
 			uint32_t mapped_tei = nr_pool_next(&hub->tei_pool);
