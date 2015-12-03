@@ -1450,6 +1450,106 @@ static void test_peer_restarted_reusing_tei(void)
 	OSMO_ASSERT(clear_test_hub());
 }
 
+static void test_sgsn_behind_nat(void)
+{
+	LOG("test_user_data");
+
+	OSMO_ASSERT(setup_test_hub());
+	hub->sgsn_use_sender = 1; /* <-- Main difference to test_user_data() */
+	resolve_to_sgsn("192.168.42.23", 423); /* Same as sender */
+
+	OSMO_ASSERT(create_pdp_ctx());
+
+	/* now == 345; now + (6 * 60 * 60) == 21600 + 345 == 21945. */
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		" @21945\n"));
+
+	LOG("- user data starts");
+	/* Now expect default port numbers for User plane -- except SGSN. */
+	resolve_to_ggsn("192.168.43.34", 2152);
+
+	/* 10 minutes later */
+	now += 600;
+
+	const char *u_from_ggsn =
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
+		"ff"	/* type 255: G-PDU */
+		"0058"	/* length: 88 + 8 octets == 96 */
+		"00000002" /* mapped User TEI for SGSN from create_pdp_ctx() */
+		"0070"	/* seq */
+		"0000"	/* No extensions */
+		/* User data (ICMP packet), 96 - 12 = 84 octets  */
+		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
+		"4156000000007241010000000000101112131415161718191a1b1c1d1e1f"
+		"202122232425262728292a2b2c2d2e2f3031323334353637"
+		;
+	const char *u_to_sgsn =
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
+		"ff"	/* type 255: G-PDU */
+		"0058"	/* length: 88 + 8 octets == 96 */
+		"00000123" /* unmapped User TEI */
+		"6d31"	/* new mapped seq */
+		"0000"
+		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
+		"4156000000007241010000000000101112131415161718191a1b1c1d1e1f"
+		"202122232425262728292a2b2c2d2e2f3031323334353637"
+		;
+
+	/* This depends on create_pdp_ctx() sending resolved_sgsn_addr as GSN
+	 * Address IEs in the GGSN's Create PDP Ctx Response. */
+	OSMO_ASSERT(msg_from_ggsn_u(&ggsn_sender,
+				    &resolved_sgsn_addr,
+				    u_from_ggsn,
+				    u_to_sgsn));
+
+	/* Make sure the user plane messages have refreshed the TEI mapping
+	 * timeouts: 21945 + 600 == 22545. */
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		" @22545\n"));
+
+	const char *u_from_sgsn =
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
+		"ff"	/* type 255: G-PDU */
+		"0058"	/* length: 88 + 8 octets == 96 */
+		"00000004" /* mapped User TEI for GGSN from create_pdp_ctx() */
+		"1234"	/* unknown seq */
+		"0000"	/* No extensions */
+		/* User data (ICMP packet), 96 - 12 = 84 octets  */
+		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
+		"4156000000007241010000000000101112131415161718191a1b1c1d1e1f"
+		"202122232425262728292a2b2c2d2e2f3031323334353637"
+		;
+	const char *u_to_ggsn =
+		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
+		"ff"	/* type 255: G-PDU */
+		"0058"	/* length: 88 + 8 octets == 96 */
+		"00000567" /* unmapped User TEI */
+		"6d31"	/* unmapped seq */
+		"0000"
+		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
+		"4156000000007241010000000000101112131415161718191a1b1c1d1e1f"
+		"202122232425262728292a2b2c2d2e2f3031323334353637"
+		;
+
+	OSMO_ASSERT(msg_from_sgsn_u(&sgsn_sender,
+				    &resolved_ggsn_addr,
+				    u_from_sgsn,
+				    u_to_ggsn));
+
+	/* Make sure the user plane messages have refreshed the TEI mapping
+	 * timeouts: 21945 + 600 == 22545. Both timeouts refreshed: */
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1 / U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		" @22545\n"));
+
+	OSMO_ASSERT(clear_test_hub());
+}
+
 
 static struct log_info_cat gtphub_categories[] = {
 	[DGTPHUB] = {
@@ -1480,6 +1580,7 @@ int main(int argc, char **argv)
 	test_reused_tei();
 	test_peer_restarted();
 	test_peer_restarted_reusing_tei();
+	test_sgsn_behind_nat();
 	printf("Done\n");
 
 	talloc_report_full(osmo_gtphub_ctx, stderr);
