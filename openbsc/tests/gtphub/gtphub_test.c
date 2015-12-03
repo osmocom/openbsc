@@ -1191,7 +1191,7 @@ static void test_user_data(void)
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
 		"00000004" /* mapped User TEI for GGSN from create_pdp_ctx() */
-		"6d31"	/* mapped seq */
+		"1234"	/* unknown seq */
 		"0000"	/* No extensions */
 		/* User data (ICMP packet), 96 - 12 = 84 octets  */
 		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
@@ -1203,15 +1203,15 @@ static void test_user_data(void)
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
 		"00000567" /* unmapped User TEI */
-		"0070"	/* unmapped seq */
+		"6d31"	/* unmapped seq */
 		"0000"
 		"45000054daee40004001f7890a172a010a172a02080060d23f590071e3f8"
 		"4156000000007241010000000000101112131415161718191a1b1c1d1e1f"
 		"202122232425262728292a2b2c2d2e2f3031323334353637"
 		;
 
-	OSMO_ASSERT(msg_from_sgsn_u(&resolved_sgsn_addr,
-				    &ggsn_sender,
+	OSMO_ASSERT(msg_from_sgsn_u(&sgsn_sender,
+				    &resolved_ggsn_addr,
 				    u_from_sgsn,
 				    u_to_ggsn));
 
