@@ -361,6 +361,7 @@ struct gtphub_cfg_bind {
 struct gtphub_cfg {
 	struct gtphub_cfg_bind to_gsns[GTPH_SIDE_N][GTPH_PLANE_N];
 	struct gtphub_cfg_addr proxy[GTPH_SIDE_N][GTPH_PLANE_N];
+	int sgsn_use_sender; /* Use sender, not GSN addr IE with std ports */
 };
 
 
@@ -454,6 +455,8 @@ struct gtphub {
 	struct expiry expire_slowly;
 
 	uint8_t restart_counter;
+
+	int sgsn_use_sender;
 };
 
 struct gtp_packet_desc;

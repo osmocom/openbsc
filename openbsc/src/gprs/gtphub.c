@@ -1502,9 +1502,27 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 			tei_from_ie = ntoh32(p->ie[ie_idx]->tv4.v);
 
 		/* Make sure an entry for this peer address with default port
-		 * exists. */
+		 * exists.
+		 *
+		 * Exception: if sgsn_use_sender is set, instead use the
+		 * sender's address and port for Ctrl -- the User port is not
+		 * known until the first User packet arrives.
+		 *
+		 * Note: doing this here is just an optimization, because
+		 * gtphub_handle_buf() has code to replace the tunnel
+		 * endpoints' addresses with the sender (needed for User
+		 * plane). We could just ignore sgsn_use_sender here. But if we
+		 * set up a default port here and replace it in
+		 * gtphub_handle_buf(), we'd be creating a peer port just to
+		 * expire it right away. */
+		if (hub->sgsn_use_sender && (side_idx == GTPH_SIDE_SGSN)) {
+			gsn_addr_from_sockaddr(&use_addr, &use_port, &from_ctrl->sa);
+		} else {
+			use_port = gtphub_plane_idx_default_port[plane_idx];
+
+		}
+
 		struct gtphub_peer_port *peer_from_ie;
-		use_port = gtphub_plane_idx_default_port[plane_idx];
 		peer_from_ie = gtphub_port_have(hub,
 						&hub->to_gsns[side_idx][plane_idx],
 						&use_addr, use_port);
@@ -2417,6 +2435,7 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 	gtphub_init(hub);
 
 	hub->restart_counter = restart_counter;
+	hub->sgsn_use_sender = cfg->sgsn_use_sender? 1 : 0;
 
 	/* If a Ctrl plane proxy is configured, ares will never be used. */
 	if (!cfg->proxy[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].addr_str) {

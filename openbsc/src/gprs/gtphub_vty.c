@@ -87,6 +87,10 @@ static int config_write_gtphub(struct vty *vty)
 		    &g_cfg->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_CTRL].bind,
 		    &g_cfg->to_gsns[GTPH_SIDE_GGSN][GTPH_PLANE_USER].bind);
 
+	if (g_cfg->sgsn_use_sender) {
+		vty_out(vty, "sgsn-use-sender%s", VTY_NEWLINE);
+	}
+
 	if (g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].addr_str) {
 		write_addrs(vty, "sgsn-proxy",
 			    &g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL],
@@ -233,6 +237,28 @@ DEFUN(cfg_gtphub_sgsn_proxy, cfg_gtphub_sgsn_proxy_cmd,
 	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_CTRL].port = atoi(argv[1]);
 	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_USER].addr_str = talloc_strdup(tall_vty_ctx, argv[2]);
 	g_cfg->proxy[GTPH_SIDE_SGSN][GTPH_PLANE_USER].port = atoi(argv[3]);
+	return CMD_SUCCESS;
+}
+
+
+#define SGSN_USE_SENDER_STR \
+	"Ignore SGSN's Address IEs, use sender address and port (useful over NAT)\n"
+
+DEFUN(cfg_gtphub_sgsn_use_sender,
+      cfg_gtphub_sgsn_use_sender_cmd,
+      "sgsn-use-sender",
+      SGSN_USE_SENDER_STR)
+{
+	g_cfg->sgsn_use_sender = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_gtphub_no_sgsn_use_sender,
+      cfg_gtphub_no_sgsn_use_sender_cmd,
+      "no sgsn-use-sender",
+      NO_STR SGSN_USE_SENDER_STR)
+{
+	g_cfg->sgsn_use_sender = 0;
 	return CMD_SUCCESS;
 }
 
@@ -425,6 +451,8 @@ int gtphub_vty_init(struct gtphub *global_hub, struct gtphub_cfg *global_cfg)
 	install_element(GTPHUB_NODE, &cfg_gtphub_ggsn_proxy_cmd);
 	install_element(GTPHUB_NODE, &cfg_gtphub_sgsn_proxy_short_cmd);
 	install_element(GTPHUB_NODE, &cfg_gtphub_sgsn_proxy_cmd);
+	install_element(GTPHUB_NODE, &cfg_gtphub_sgsn_use_sender_cmd);
+	install_element(GTPHUB_NODE, &cfg_gtphub_no_sgsn_use_sender_cmd);
 	install_element(GTPHUB_NODE, &cfg_grx_ggsn_cmd);
 
 	return 0;
