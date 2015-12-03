@@ -1421,7 +1421,8 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 	if (p->type == GTP_CREATE_PDP_REQ) {
 		if (p->side_idx != GTPH_SIDE_SGSN) {
 			LOG(LOGL_ERROR, "Wrong side: Create PDP Context"
-			    " Request from the GGSN side");
+			    " Request from the GGSN side: %s",
+			    gtphub_port_str(from_ctrl));
 			return -1;
 		}
 
@@ -1436,7 +1437,8 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 	} else if (p->type == GTP_CREATE_PDP_RSP) {
 		if (p->side_idx != GTPH_SIDE_GGSN) {
 			LOG(LOGL_ERROR, "Wrong side: Create PDP Context"
-			    " Response from the SGSN side");
+			    " Response from the SGSN side: %s",
+			    gtphub_port_str(from_ctrl));
 			return -1;
 		}
 
