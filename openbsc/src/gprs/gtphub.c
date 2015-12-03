@@ -132,7 +132,7 @@ static const struct rate_ctr_group_desc gtphub_ctrg_io_desc = {
 
 void gsn_addr_copy(struct gsn_addr *gsna, const struct gsn_addr *src)
 {
-	memcpy(gsna, src, sizeof(struct gsn_addr));
+	*gsna = *src;
 }
 
 int gsn_addr_from_sockaddr(struct gsn_addr *gsna, uint16_t *port,
@@ -1437,7 +1437,6 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 {
 	int plane_idx;
 
-	/* TODO enforce a Request only from SGSN, a Response only from GGSN? */
 	osmo_static_assert((GTPH_PLANE_CTRL == 0) && (GTPH_PLANE_USER == 1),
 			   plane_nrs_match_GSN_addr_IE_indices);
 
@@ -1769,8 +1768,8 @@ static int gtphub_send_del_pdp_ctx(struct gtphub *hub,
 	*seq = hton16(nr_pool_next(&te->peer->peer_addr->peer->seq_pool));
 
 	struct gtphub_bind *to_bind = &hub->to_gsns[to_side][GTPH_PLANE_CTRL];
-	int rc =  gtphub_write(&to_bind->ofd, &te->peer->sa,
-			       del_ctx_msg, sizeof(del_ctx_msg));
+	int rc = gtphub_write(&to_bind->ofd, &te->peer->sa,
+			      del_ctx_msg, sizeof(del_ctx_msg));
 	if (rc != 0) {
 		LOG(LOGL_ERROR,
 		    "Failed to send out-of-band Delete PDP Context Request to %s\n",
@@ -2051,10 +2050,6 @@ int gtphub_handle_buf(struct gtphub *hub,
 		      struct osmo_fd **to_ofd,
 		      struct osmo_sockaddr *to_addr)
 {
-	/*
-	struct gtphub_bind *from_bind_arr = hub->to_ggsns;
-	struct gtphub_bind *to_bind_arr = hub->to_sgsns;
-	*/
 	struct gtphub_bind *from_bind = &hub->to_gsns[side_idx][plane_idx];
 	struct gtphub_bind *to_bind = &hub->to_gsns[other_side_idx(side_idx)][plane_idx];
 
@@ -2066,7 +2061,7 @@ int gtphub_handle_buf(struct gtphub *hub,
 	    gtphub_side_idx_names[side_idx],
 	    osmo_sockaddr_to_str(from_addr));
 
-	static struct gtp_packet_desc p;
+	struct gtp_packet_desc p;
 	gtp_decode(buf, received, side_idx, plane_idx, &p, now);
 
 	if (p.rc <= 0)
