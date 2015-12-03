@@ -503,10 +503,8 @@ static void gtp_decode(const uint8_t *data, int data_len,
 
 	validate_gtp_header(res);
 
-	if (res->rc <= 0) {
-		LOG(LOGL_ERROR, "INVALID: dropping GTP packet.\n");
+	if (res->rc <= 0)
 		return;
-	}
 
 	LOG(LOGL_DEBUG, "Valid GTP header (v%d)\n", res->version);
 
@@ -2064,8 +2062,13 @@ int gtphub_handle_buf(struct gtphub *hub,
 	struct gtp_packet_desc p;
 	gtp_decode(buf, received, side_idx, plane_idx, &p, now);
 
-	if (p.rc <= 0)
+	if (p.rc <= 0) {
+		LOG(LOGL_ERROR, "INVALID: dropping GTP packet from %s %s %s\n",
+		    gtphub_side_idx_names[side_idx],
+		    gtphub_plane_idx_names[plane_idx],
+		    osmo_sockaddr_to_str(from_addr));
 		return -1;
+	}
 
 	rate_ctr_inc(&from_bind->counters_io->ctr[GTPH_CTR_PKTS_IN]);
 
