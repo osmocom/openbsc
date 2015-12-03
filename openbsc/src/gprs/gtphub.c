@@ -2487,7 +2487,7 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 	}
 
 	if (hub->sgsn_use_sender)
-		LOG(LOGL_NOTICE, "Using sender address and port for SGSN instead of GSN Addr IE and default ports.");
+		LOG(LOGL_NOTICE, "Using sender address and port for SGSN instead of GSN Addr IE and default ports.\n");
 
 	gtphub_gc_start(hub);
 	return 0;
