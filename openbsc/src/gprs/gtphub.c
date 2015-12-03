@@ -2486,6 +2486,9 @@ int gtphub_start(struct gtphub *hub, struct gtphub_cfg *cfg,
 			    gtphub_port_str(hub->proxy[side_idx][plane_idx]));
 	}
 
+	if (hub->sgsn_use_sender)
+		LOG(LOGL_NOTICE, "Using sender address and port for SGSN instead of GSN Addr IE and default ports.");
+
 	gtphub_gc_start(hub);
 	return 0;
 }
