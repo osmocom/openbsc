@@ -91,6 +91,7 @@ struct gtp_packet_desc {
 	int rc; /* enum gtp_rc */
 	unsigned int plane_idx;
 	unsigned int side_idx;
+	struct gtphub_tunnel *tun;
 	time_t timestamp;
 	union gtpie_member *ie[GTPIE_SIZE];
 };
@@ -1416,7 +1417,7 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 	osmo_static_assert((GTPH_PLANE_CTRL == 0) && (GTPH_PLANE_USER == 1),
 			   plane_nrs_match_GSN_addr_IE_indices);
 
-	struct gtphub_tunnel *tun = NULL;
+	struct gtphub_tunnel *tun = p->tun;
 
 	if (p->type == GTP_CREATE_PDP_REQ) {
 		if (p->side_idx != GTPH_SIDE_SGSN) {
@@ -1426,8 +1427,18 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 			return -1;
 		}
 
+		if (tun) {
+			LOG(LOGL_ERROR, "Not implemented: Received"
+			    " Create PDP Context Request for an already"
+			    " established tunnel:"
+			    " from %s, tunnel %s\n",
+			    gtphub_port_str(from_ctrl),
+			    gtphub_tunnel_str(p->tun));
+			return -1;
+		}
+
 		/* A new tunnel. */
-		tun = gtphub_tunnel_new();
+		p->tun = tun = gtphub_tunnel_new();
 		llist_add(&tun->entry, &hub->tunnels);
 		gtphub_tunnel_refresh(hub, tun, p->timestamp);
 		/* The endpoint peers on this side (SGSN) will be set from IEs
@@ -1457,14 +1468,15 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 
 	for (plane_idx = 0; plane_idx < 2; plane_idx++) {
 		int rc;
-		struct gsn_addr addr_from_ie;
+		struct gsn_addr use_addr;
+		uint16_t use_port;
 		uint32_t tei_from_ie;
 		int ie_idx;
 
 		/* Fetch GSN Address and TEI from IEs. As ensured by above
 		 * static asserts, plane_idx corresponds to the GSN Address IE
 		 * index (the first one = 0 = ctrl, second one = 1 = user). */
-		rc = gsn_addr_get(&addr_from_ie, p, plane_idx);
+		rc = gsn_addr_get(&use_addr, p, plane_idx);
 		if (rc) {
 			LOG(LOGL_ERROR, "Cannot read %s GSN Address IE\n",
 			    gtphub_plane_idx_names[plane_idx]);
@@ -1472,8 +1484,8 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 		}
 		LOG(LOGL_DEBUG, "Read %s GSN addr %s (%d)\n",
 		    gtphub_plane_idx_names[plane_idx],
-		    gsn_addr_to_str(&addr_from_ie),
-		    addr_from_ie.len);
+		    gsn_addr_to_str(&use_addr),
+		    use_addr.len);
 
 		ie_idx = gtpie_getie(p->ie, ie_type[plane_idx], 0);
 		if (ie_idx < 0) {
@@ -1490,11 +1502,12 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 			tei_from_ie = ntoh32(p->ie[ie_idx]->tv4.v);
 
 		/* Make sure an entry for this peer address with default port
-		 * exists */
-		struct gtphub_peer_port *peer_from_ie =
-			gtphub_port_have(hub, &hub->to_gsns[side_idx][plane_idx],
-					 &addr_from_ie,
-					 gtphub_plane_idx_default_port[plane_idx]);
+		 * exists. */
+		struct gtphub_peer_port *peer_from_ie;
+		use_port = gtphub_plane_idx_default_port[plane_idx];
+		peer_from_ie = gtphub_port_have(hub,
+						&hub->to_gsns[side_idx][plane_idx],
+						&use_addr, use_port);
 
 		gtphub_tunnel_endpoint_set_peer(&tun->endpoint[side_idx][plane_idx],
 						peer_from_ie);
@@ -1575,10 +1588,11 @@ static struct pending_delete *pending_delete_new(void)
 
 static int gtphub_handle_delete_pdp_ctx(struct gtphub *hub,
 					struct gtp_packet_desc *p,
-					struct gtphub_tunnel *known_tun,
 					struct gtphub_peer_port *from_ctrl,
 					struct gtphub_peer_port *to_ctrl)
 {
+	struct gtphub_tunnel *known_tun = p->tun;
+
 	if (p->type == GTP_DELETE_PDP_REQ) {
 		if (!known_tun) {
 			LOG(LOGL_ERROR, "Cannot find tunnel for Delete PDP Context Request.\n");
@@ -1673,6 +1687,7 @@ static int gtphub_handle_delete_pdp_ctx(struct gtphub *hub,
 
 		LOG(LOGL_DEBUG, "Delete PDP Context: removing tunnel %s\n",
 		    gtphub_tunnel_str(known_tun));
+		p->tun = NULL;
 		expiring_item_del(&known_tun->expiry_entry);
 	}
 
@@ -1694,7 +1709,6 @@ static int gtphub_handle_update_pdp_ctx(struct gtphub *hub,
  * the packet p. */
 static int gtphub_handle_pdp_ctx(struct gtphub *hub,
 				 struct gtp_packet_desc *p,
-				 struct gtphub_tunnel *known_tun,
 				 struct gtphub_peer_port *from_ctrl,
 				 struct gtphub_peer_port *to_ctrl)
 {
@@ -1708,7 +1722,7 @@ static int gtphub_handle_pdp_ctx(struct gtphub *hub,
 
 	case GTP_DELETE_PDP_REQ:
 	case GTP_DELETE_PDP_RSP:
-		return gtphub_handle_delete_pdp_ctx(hub, p, known_tun,
+		return gtphub_handle_delete_pdp_ctx(hub, p,
 						    from_ctrl, to_ctrl);
 
 	case GTP_UPDATE_PDP_REQ:
@@ -1912,8 +1926,7 @@ static int gtphub_unmap(struct gtphub *hub,
 			struct gtphub_peer_port *from,
 			struct gtphub_peer_port *to_proxy,
 			struct gtphub_peer_port **final_unmapped,
-			struct gtphub_peer_port **unmapped_from_seq,
-			struct gtphub_tunnel **unmapped_from_tun)
+			struct gtphub_peer_port **unmapped_from_seq)
 {
 	/* Always (try to) unmap sequence and TEI numbers, which need to be
 	 * replaced in the packet. Either way, give precedence to the proxy, if
@@ -1921,19 +1934,17 @@ static int gtphub_unmap(struct gtphub *hub,
 
 	if (unmapped_from_seq)
 		*unmapped_from_seq = NULL;
-	if (unmapped_from_tun)
-		*unmapped_from_tun = NULL;
 	if (final_unmapped)
 		*final_unmapped = NULL;
+	p->tun = NULL;
 
 	struct gtphub_peer_port *from_seq = NULL;
 	struct gtphub_peer_port *from_tei = NULL;
 	struct gtphub_peer_port *unmapped = NULL;
-	struct gtphub_tunnel *tun = NULL;
 
 	from_seq = gtphub_unmap_seq(p, from);
 
-	if (gtphub_unmap_header_tei(&from_tei, &tun, hub, p, from) < 0)
+	if (gtphub_unmap_header_tei(&from_tei, &p->tun, hub, p, from) < 0)
 		return -1;
 
 	struct gtphub_peer *from_peer = from->peer_addr->peer;
@@ -1970,8 +1981,6 @@ static int gtphub_unmap(struct gtphub *hub,
 
 	if (unmapped_from_seq)
 		*unmapped_from_seq = from_seq;
-	if (unmapped_from_tun)
-		*unmapped_from_tun = tun;
 	if (final_unmapped)
 		*final_unmapped = unmapped;
 	return 0;
@@ -2146,10 +2155,9 @@ int gtphub_handle_buf(struct gtphub *hub,
 
 	struct gtphub_peer_port *to_peer_from_seq;
 	struct gtphub_peer_port *to_peer;
-	struct gtphub_tunnel *tun;
 	if (gtphub_unmap(hub, &p, from_peer,
 			 hub->proxy[other_side_idx(side_idx)][plane_idx],
-			 &to_peer, &to_peer_from_seq, &tun)
+			 &to_peer, &to_peer_from_seq)
 	    != 0) {
 		return -1;
 	}
@@ -2169,10 +2177,15 @@ int gtphub_handle_buf(struct gtphub *hub,
 		/* This may be a Create PDP Context response. If it is, there
 		 * are other addresses in the GTP message to set up apart from
 		 * the sender. */
-		if (gtphub_handle_pdp_ctx(hub, &p, tun, from_peer, to_peer)
+		if (gtphub_handle_pdp_ctx(hub, &p, from_peer, to_peer)
 		    != 0)
 			return -1;
 	}
+	
+	/* Either to_peer was resolved from an existing tunnel,
+	 * or a PDP Ctx and thus a tunnel has just been created,
+	 * or the tunnel has been deleted due to this message. */
+	OSMO_ASSERT(p.tun || (p.type == GTP_DELETE_PDP_RSP));
 
 	gtphub_check_restart_counter(hub, &p, from_peer);
 	gtphub_map_restart_counter(hub, &p);
