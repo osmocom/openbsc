@@ -1662,10 +1662,10 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 }
 
 /* bridge channels of two transactions */
-static int tch_bridge(struct gsm_network *net, uint32_t *refs)
+static int tch_bridge(struct gsm_network *net, struct gsm_mncc_bridge *bridge)
 {
-	struct gsm_trans *trans1 = trans_find_by_callref(net, refs[0]);
-	struct gsm_trans *trans2 = trans_find_by_callref(net, refs[1]);
+	struct gsm_trans *trans1 = trans_find_by_callref(net, bridge->callref[0]);
+	struct gsm_trans *trans2 = trans_find_by_callref(net, bridge->callref[1]);
 
 	if (!trans1 || !trans2)
 		return -EIO;

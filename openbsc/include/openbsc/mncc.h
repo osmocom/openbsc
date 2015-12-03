@@ -191,6 +191,11 @@ struct gsm_mncc_rtp {
 	uint32_t	payload_msg_type;
 };
 
+struct gsm_mncc_bridge {
+	uint32_t	msg_type;
+	uint32_t	callref[2];
+};
+
 const char *get_mncc_name(int value);
 void mncc_set_cause(struct gsm_mncc *data, int loc, int val);
 void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg);

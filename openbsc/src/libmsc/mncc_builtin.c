@@ -186,7 +186,7 @@ static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
 	struct gsm_mncc connect_ack, frame_recv;
 	struct gsm_network *net = call->net;
 	struct gsm_call *remote;
-	uint32_t refs[2];
+	struct gsm_mncc_bridge bridge = { .msg_type = MNCC_BRIDGE };
 
 	/* acknowledge connect */
 	memset(&connect_ack, 0, sizeof(struct gsm_mncc));
@@ -202,19 +202,19 @@ static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
 	mncc_tx_to_cc(remote->net, MNCC_SETUP_RSP, connect);
 
 	/* bridge tch */
-	refs[0] = call->callref;
-	refs[1] = call->remote_ref;
+	bridge.callref[0] = call->callref;
+	bridge.callref[1] = call->remote_ref;
 	DEBUGP(DMNCC, "(call %x) Bridging with remote.\n", call->callref);
 
 	/* in direct mode, we always have to bridge the channels */
 	if (ipacc_rtp_direct)
-		return mncc_tx_to_cc(call->net, MNCC_BRIDGE, refs);
+		return mncc_tx_to_cc(call->net, MNCC_BRIDGE, &bridge);
 
 	/* proxy mode */
 	if (!net->handover.active) {
 		/* in the no-handover case, we can bridge, i.e. use
 		 * the old RTP proxy code */
-		return mncc_tx_to_cc(call->net, MNCC_BRIDGE, refs);
+		return mncc_tx_to_cc(call->net, MNCC_BRIDGE, &bridge);
 	} else {
 		/* in case of handover, we need to re-write the RTP
 		 * SSRC, sequence and timestamp values and thus
