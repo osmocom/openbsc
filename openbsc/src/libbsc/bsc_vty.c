@@ -1015,6 +1015,19 @@ static void meas_rep_dump_vty(struct vty *vty, struct gsm_meas_rep *mr,
 	meas_rep_dump_uni_vty(vty, &mr->ul, prefix, "ul");
 }
 
+/* FIXME: move this to libosmogsm */
+static const struct value_string gsm48_cmode_names[] = {
+	{ GSM48_CMODE_SIGN,		"signalling" },
+	{ GSM48_CMODE_SPEECH_V1,	"FR or HR" },
+	{ GSM48_CMODE_SPEECH_EFR,	"EFR" },
+	{ GSM48_CMODE_SPEECH_AMR,	"AMR" },
+	{ GSM48_CMODE_DATA_14k5,	"CSD(14k5)" },
+	{ GSM48_CMODE_DATA_12k0,	"CSD(12k0)" },
+	{ GSM48_CMODE_DATA_6k0,		"CSD(6k0)" },
+	{ GSM48_CMODE_DATA_3k6,		"CSD(3k6)" },
+	{ 0, NULL }
+};
+
 static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
 	int idx;
@@ -1032,6 +1045,9 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
 		- lchan->bs_power*2,
 		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
+		VTY_NEWLINE);
+	vty_out(vty, "  Channel Mode / Codec: %s%s",
+		get_value_string(gsm48_cmode_names, lchan->tch_mode),
 		VTY_NEWLINE);
 	if (lchan->conn && lchan->conn->subscr) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
