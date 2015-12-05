@@ -233,6 +233,8 @@ struct gsm_lchan {
 
 	uint8_t rqd_ta;
 
+	char *name;
+
 #ifdef ROLE_BSC
 	struct osmo_timer_list T3101;
 	struct osmo_timer_list T3109;
@@ -759,9 +761,13 @@ const char *gsm_lchant_name(enum gsm_chan_t c);
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
 char *gsm_trx_name(const struct gsm_bts_trx *trx);
 char *gsm_ts_name(const struct gsm_bts_trx_ts *ts);
-char *gsm_lchan_name(const struct gsm_lchan *lchan);
+char *gsm_lchan_name_compute(const struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
+static inline char *gsm_lchan_name(const struct gsm_lchan *lchan)
+{
+	return lchan->name;
+}
 
 void gsm_abis_mo_reset(struct gsm_abis_mo *mo);
 

@@ -188,12 +188,15 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 
 		for (l = 0; l < TS_MAX_LCHAN; l++) {
 			struct gsm_lchan *lchan;
+			char *name;
 			lchan = &ts->lchan[l];
 
 			lchan->ts = ts;
 			lchan->nr = l;
 			lchan->type = GSM_LCHAN_NONE;
 
+			name = gsm_lchan_name_compute(lchan);
+			lchan->name = talloc_strdup(trx, name);
 #ifndef ROLE_BSC
 			INIT_LLIST_HEAD(&lchan->sapi_cmds);
 #endif
@@ -345,7 +348,7 @@ char *gsm_ts_name(const struct gsm_bts_trx_ts *ts)
 	return ts2str;
 }
 
-char *gsm_lchan_name(const struct gsm_lchan *lchan)
+char *gsm_lchan_name_compute(const struct gsm_lchan *lchan)
 {
 	struct gsm_bts_trx_ts *ts = lchan->ts;
 
