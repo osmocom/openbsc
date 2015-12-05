@@ -1,32 +1,35 @@
 About OpenBSC
 =============
 
-OpenBSC is a minimalistic implementation of the GSM Network, with
-particular emphasis on the functionality typically provided by the BSC,
-MSC, HLR, VLR and SMSC.
+OpenBSC started as a minimalistic all-in-one implementation of the GSM Network,
+with particular emphasis on the functionality typically provided by the BSC,
+MSC, HLR, VLR and SMSC.  Today it is a growing suite of libraries and programs,
+implementing protocol stacks and functional elements, including
 
-Its currently supported interfaces towards the BTS are:
+ * OsmoBSC - a pure GSM BSC, speaking Abis/IP to the BTS and A/IP to the MSC
+ * OsmoBSC-MGCP - MGCP helper to the OsmoBSC software
+ * OsmoNITB - a BTS+MSC+VLR+HLR+SMSC "Network in the box".
+ * OsmoSGSN - a GPRS SGSN with Gb interface over IP towards the PCU
+ * Osmo-GbProxy - a Proxy to aggregate many Gb links as one Gb link to the SGSN
+ * OsmoBSCNAT - a gateay aggregating many A links as one A link to the MSC
+ * OsmoGTPHUB - a hub aggregating many GTP links (between SGSN and GGSN)
+ * ipaccess-utils - some tools to discover + configure ip.access nanoBTS
+ * bs11_config - a tool to configure the Siemens BS-11 microBTS
+
+The currently supported interfaces towards the BTS are:
 
  * Classic A-bis over E1 using a mISDN based E1 interface. In other
    words, you can connect existing GSM Base Transceiver Station (BTS)
-   through E1 to OpenBSC.  So far, we have only tested the Siemens BS-11
-   Test reports with other BTS are much appreciated!
+   through E1 to OpenBSC.  So far, we have made it work with the Siemens BS-11,
+   various Ericsson RBS2xxx BTS models and the Nokia MetroSite.
 
- * A-bis over IP as used by the ip.access nanoBTS product family
+ * A-bis over IP as used by the ip.access nanoBTS product family as well as
+   the Open Source OsmoBTS software (by the same authors as OpenBSC).  OsmoBTS
+   in turn supports various transceiver hardware, including the sysmoBTS
+   product family, as well as SDR transceivers supported by OsmoTRX, such as
+   the UmTRX or USRP boardss.
 
-You can find the project documentation at http://openbsc.gnumonks.org/
-
-This project is still in its early days, and there are lots of areas where it
-doesn't behave as per GSM spec.
+You can find some unfortunately relatively unmaintained project documentation at
+http://openbsc.gnumonks.org/
 
 	Harald Welte <laforge@gnumonks.org>
-
-
-libosmocore
-===========
-
-Please note that as of March 2010, OpenBSC has a dependency to a library
-called "libosmocore".  You can obtain that library from
-
-	git://git.osmocom.org/libosmocore.git
-
