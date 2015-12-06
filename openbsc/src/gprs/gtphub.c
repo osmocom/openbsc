@@ -131,6 +131,34 @@ static const struct rate_ctr_group_desc gtphub_ctrg_io_desc = {
 };
 
 
+/* support */
+
+static const char *gtp_type_str(uint8_t type)
+{
+	switch (type) {
+	case 1:
+		return " (Echo Request)";
+	case 2:
+		return " (Echo Response)";
+	case 16:
+		return " (Create PDP Ctx Request)";
+	case 17:
+		return " (Create PDP Ctx Response)";
+	case 18:
+		return " (Update PDP Ctx Request)";
+	case 19:
+		return " (Update PDP Ctx Response)";
+	case 20:
+		return " (Delete PDP Ctx Request)";
+	case 21:
+		return " (Delete PDP Ctx Response)";
+	case 255:
+		return " (User Data)";
+	default:
+		return "";
+	}
+}
+
 void gsn_addr_copy(struct gsn_addr *gsna, const struct gsn_addr *src)
 {
 	*gsna = *src;
@@ -518,7 +546,9 @@ static void gtp_decode(const uint8_t *data, int data_len,
 			 res->data_len - res->header_len) != 0) {
 		res->rc = GTP_RC_INVALID_IE;
 		LOG(LOGL_ERROR, "INVALID: cannot decode IEs."
-		    " Dropping GTP packet.\n");
+		    " Dropping GTP packet%s.\n",
+		    gtp_type_str(res->type)
+		    );
 		return;
 	}
 
@@ -1808,9 +1838,10 @@ static void gtphub_restarted(struct gtphub *hub,
 			     struct gtp_packet_desc *p,
 			     struct gtphub_peer_port *pp)
 {
-	LOG(LOGL_DEBUG, "Peer has restarted: %s\n",
+	LOG(LOGL_NOTICE, "Peer has restarted: %s\n",
 	    gtphub_port_str(pp));
 
+	int deleted_count = 0;
 	struct gtphub_tunnel *tun;
 	llist_for_each_entry(tun, &hub->tunnels, entry) {
 		int side_idx;
@@ -1824,6 +1855,7 @@ static void gtphub_restarted(struct gtphub *hub,
 
 			LOG(LOGL_DEBUG, "Deleting tunnel due to peer restart: %s\n",
 			    gtphub_tunnel_str(tun));
+			deleted_count ++;
 
 			/* Send a Delete PDP Context Request to the
 			 * peer on the other side, remember the pending
@@ -1853,6 +1885,11 @@ static void gtphub_restarted(struct gtphub *hub,
 							NULL);
 		}
 	}
+
+	if (deleted_count)
+		LOG(LOGL_NOTICE, "Deleting %d tunnels due to restart of: %s\n",
+		    deleted_count,
+		    gtphub_port_str(pp));
 }
 
 static int get_restart_count(struct gtp_packet_desc *p)
@@ -2075,17 +2112,20 @@ int gtphub_handle_buf(struct gtphub *hub,
 
 	rate_ctr_add(&from_bind->counters_io->ctr[GTPH_CTR_BYTES_IN],
 		     received);
-	LOG(LOGL_DEBUG, "%s rx %s from %s %s\n",
-	    (side_idx == GTPH_SIDE_GGSN)? "<-" : "->",
-	    gtphub_plane_idx_names[plane_idx],
-	    gtphub_side_idx_names[side_idx],
-	    osmo_sockaddr_to_str(from_addr));
 
 	struct gtp_packet_desc p;
 	gtp_decode(buf, received, side_idx, plane_idx, &p, now);
 
+	LOG(LOGL_DEBUG, "%s rx %s from %s %s%s\n",
+	    (side_idx == GTPH_SIDE_GGSN)? "<-" : "->",
+	    gtphub_plane_idx_names[plane_idx],
+	    gtphub_side_idx_names[side_idx],
+	    osmo_sockaddr_to_str(from_addr),
+	    gtp_type_str(p.type));
+
 	if (p.rc <= 0) {
-		LOG(LOGL_ERROR, "INVALID: dropping GTP packet from %s %s %s\n",
+		LOG(LOGL_ERROR, "INVALID: dropping GTP packet%s from %s %s %s\n",
+		    gtp_type_str(p.type),
 		    gtphub_side_idx_names[side_idx],
 		    gtphub_plane_idx_names[plane_idx],
 		    osmo_sockaddr_to_str(from_addr));
@@ -2144,7 +2184,8 @@ int gtphub_handle_buf(struct gtphub *hub,
 	 * about, while an SGSN may initiate a PDP context. */
 	if (!from_peer) {
 		if (side_idx == GTPH_SIDE_GGSN) {
-			LOG(LOGL_ERROR, "Dropping packet: unknown GGSN peer: %s\n",
+			LOG(LOGL_ERROR, "Dropping packet%s: unknown GGSN peer: %s\n",
+			    gtp_type_str(p.type),
 			    osmo_sockaddr_to_str(from_addr));
 			return -1;
 		} else {
@@ -2154,8 +2195,9 @@ int gtphub_handle_buf(struct gtphub *hub,
 			 * create the peer struct for the current sender. */
 			if (plane_idx != GTPH_PLANE_CTRL) {
 				LOG(LOGL_ERROR,
-				    "Dropping packet: User plane peer was not"
+				    "Dropping packet%s: User plane peer was not"
 				    "announced by PDP Context: %s\n",
+				    gtp_type_str(p.type),
 				    osmo_sockaddr_to_str(from_addr));
 				return -1;
 			}
@@ -2172,7 +2214,8 @@ int gtphub_handle_buf(struct gtphub *hub,
 	if (!from_peer) {
 		/* This could theoretically happen for invalid address data or
 		 * somesuch. */
-		LOG(LOGL_ERROR, "Dropping packet: invalid %s peer: %s\n",
+		LOG(LOGL_ERROR, "Dropping packet%s: invalid %s peer: %s\n",
+		    gtp_type_str(p.type),
 		    gtphub_side_idx_names[side_idx],
 		    osmo_sockaddr_to_str(from_addr));
 		return -1;
@@ -2207,8 +2250,12 @@ int gtphub_handle_buf(struct gtphub *hub,
 	}
 
 	if (!to_peer) {
-		LOG(LOGL_ERROR, "No %s to send to. Dropping packet.\n",
-		    gtphub_side_idx_names[other_side_idx(side_idx)]);
+		LOG(LOGL_ERROR, "No %s to send to. Dropping packet%s"
+		    " (type=%" PRIu8 ", header-TEI=%" PRIx32 ", seq=%" PRIx16 ").\n",
+		    gtphub_side_idx_names[other_side_idx(side_idx)],
+		    gtp_type_str(p.type),
+		    p.type, p.header_tei_rx, p.seq
+		    );
 		return -1;
 	}
 
@@ -2256,9 +2303,11 @@ int gtphub_handle_buf(struct gtphub *hub,
 			     received);
 	}
 
-	LOG(LOGL_DEBUG, "%s Forward to %s: %d bytes to %s\n",
+	LOG(LOGL_DEBUG, "%s Forward to %s:"
+	    " header-TEI %" PRIx32", seq %" PRIx16", %d bytes to %s\n",
 	    (side_idx == GTPH_SIDE_SGSN)? "-->" : "<--",
 	    gtphub_side_idx_names[other_side_idx(side_idx)],
+	    p.header_tei, p.seq,
 	    (int)received, osmo_sockaddr_to_str(to_addr));
 	return received;
 }
