@@ -943,8 +943,8 @@ static int create_pdp_ctx()
 	LVL2_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 / (uninitialized) (TEI C 0=0 / U 0=0)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
 		" @21945\n"));
 
 	const char *gtp_resp_from_ggsn =
@@ -1007,8 +1007,8 @@ static int delete_pdp_ctx_from_sgsn(void)
 	gtphub_gc(hub, now);
 
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @21945\n"));
 
 	/* TEI Ctrl from above and next sequence after abcd. */
@@ -1022,8 +1022,8 @@ static int delete_pdp_ctx_from_sgsn(void)
 
 	/* 21945 + 31 = 21976 */
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @21976\n"));
 
 	const char *gtp_resp_from_ggsn =
@@ -1049,8 +1049,8 @@ static int delete_pdp_ctx_from_ggsn(void)
 	gtphub_gc(hub, now);
 
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @21945\n"));
 
 	/* TEI Ctrl from above and next sequence after abcd. */
@@ -1064,8 +1064,8 @@ static int delete_pdp_ctx_from_ggsn(void)
 
 	/* 21945 + 31 = 21976 */
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @21976\n"));
 
 	const char *gtp_resp_from_sgsn =
@@ -1112,8 +1112,8 @@ static void test_one_pdp_ctx(int del_from_side)
 	 * 0x00000567 == 1383 (TEI from GGSN User)
 	 * Mapped TEIs should be 1 and 2. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @21945\n"));
 
 	if (del_from_side == GTPH_SIDE_SGSN) {
@@ -1136,8 +1136,8 @@ static void test_user_data(void)
 
 	/* now == 345; now + (6 * 60 * 60) == 21600 + 345 == 21945. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @21945\n"));
 
 	LOG("- user data starts");
@@ -1182,8 +1182,8 @@ static void test_user_data(void)
 	/* Make sure the user plane messages have refreshed the TEI mapping
 	 * timeouts: 21945 + 600 == 22545. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @22545\n"));
 
 	const char *u_from_sgsn =
@@ -1218,8 +1218,8 @@ static void test_user_data(void)
 	/* Make sure the user plane messages have refreshed the TEI mapping
 	 * timeouts: 21945 + 600 == 22545. Both timeouts refreshed: */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @22545\n"));
 
 	OSMO_ASSERT(clear_test_hub());
@@ -1263,8 +1263,8 @@ static void test_reused_tei(void)
 	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=5 / U 123=6)"
-		" <-> 192.168.43.34 / (uninitialized) (TEI C 0=0 / U 0=0)"
+		"192.168.42.23 (TEI C 321=5/U 123=6)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
 		" @21945\n"));
 
 	const char *gtp_resp_from_ggsn =
@@ -1337,11 +1337,11 @@ static void test_peer_restarted(void)
 	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C cba=5 / U abc=6)"
-		" <-> 192.168.43.34 / (uninitialized) (TEI C 0=0 / U 0=0)"
+		"192.168.42.23 (TEI C cba=5/U abc=6)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
 		" @21955\n"
-		"(uninitialized) (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"(uninitialized) (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @21945\n"
 		));
 
@@ -1415,8 +1415,8 @@ static void test_peer_restarted_reusing_tei(void)
 	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=5 / U 123=6)"
-		" <-> 192.168.43.34 / (uninitialized) (TEI C 0=0 / U 0=0)"
+		"192.168.42.23 (TEI C 321=5/U 123=6)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
 		" @21955\n"
 		));
 
@@ -1462,8 +1462,8 @@ static void test_sgsn_behind_nat(void)
 
 	/* now == 345; now + (6 * 60 * 60) == 21600 + 345 == 21945. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @21945\n"));
 
 	LOG("- user data starts");
@@ -1507,8 +1507,8 @@ static void test_sgsn_behind_nat(void)
 	/* Make sure the user plane messages have refreshed the TEI mapping
 	 * timeouts: 21945 + 600 == 22545. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @22545\n"));
 
 	const char *u_from_sgsn =
@@ -1543,8 +1543,8 @@ static void test_sgsn_behind_nat(void)
 	/* Make sure the user plane messages have refreshed the TEI mapping
 	 * timeouts: 21945 + 600 == 22545. Both timeouts refreshed: */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1 / U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3 / U 567=4)"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
 		" @22545\n"));
 
 	OSMO_ASSERT(clear_test_hub());

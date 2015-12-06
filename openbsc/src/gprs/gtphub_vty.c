@@ -290,17 +290,15 @@ static void show_bind_stats_all(struct vty *vty)
 		vty_out(vty, "- %s Plane:%s",
 			gtphub_plane_idx_names[plane_idx], VTY_NEWLINE);
 
-		struct gtphub_bind *b = &g_hub->to_gsns[GTPH_SIDE_GGSN][plane_idx];
-		vty_out(vty, "  - to/from GGSNs: %s port %d%s",
-			gsn_addr_to_str(&b->local_addr), (int)b->local_port,
-			VTY_NEWLINE);
-		vty_out_rate_ctr_group(vty, "    ", b->counters_io);
-
-		b = &g_hub->to_gsns[GTPH_SIDE_SGSN][plane_idx];
-		vty_out(vty, "  - to/from SGSNs: %s port %d%s",
-			gsn_addr_to_str(&b->local_addr), (int)b->local_port,
-			VTY_NEWLINE);
-		vty_out_rate_ctr_group(vty, "    ", b->counters_io);
+		int side_idx;
+		for_each_side(side_idx) {
+			struct gtphub_bind *b = &g_hub->to_gsns[side_idx][plane_idx];
+			vty_out(vty, "  - to/from %ss: %s port %d%s",
+				gtphub_side_idx_names[side_idx],
+				gsn_addr_to_str(&b->local_addr), (int)b->local_port,
+				VTY_NEWLINE);
+			vty_out_rate_ctr_group(vty, "    ", b->counters_io);
+		}
 	}
 }
 
@@ -387,7 +385,7 @@ static void show_tunnels_all(struct vty *vty)
 	time_t now = gtphub_now();
 
 	vty_out(vty, "All tunnels:%s"
-		"Legend: SGSN <-> GGSN, with each:%s"
+		"Legend: (expiry in minutes) SGSN <-> GGSN, with each:%s"
 		"        <IP-Ctrl>[/<IP-User>] (<TEI-Ctrl>=<mapped>/<TEI-User>=<mapped>)%s",
 		VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 
@@ -397,7 +395,7 @@ static void show_tunnels_all(struct vty *vty)
 	llist_for_each_entry(t, &g_hub->tunnels, entry) {
 		vty_out(vty,
 			"(%4dm) %s%s",
-			-(int)((t->expiry_entry.expiry - now) / 60),
+			(int)((t->expiry_entry.expiry - now) / 60),
 			gtphub_tunnel_str(t),
 			VTY_NEWLINE);
 		count ++;

@@ -986,15 +986,15 @@ static const char *gtphub_tunnel_side_str(struct gtphub_tunnel *tun,
 
 	if (!u->peer) {
 		if (c->peer) {
-			APPEND(" / (uninitialized)");
+			APPEND("/(uninitialized)");
 		}
 	} else if ((!c->peer)
 		   || (!gsn_addr_same(&u->peer->peer_addr->addr,
 				      &c->peer->peer_addr->addr))) {
-		APPEND(" / %s", gsn_addr_to_str(&u->peer->peer_addr->addr));
+		APPEND("/%s", gsn_addr_to_str(&u->peer->peer_addr->addr));
 	}
 
-	APPEND(" (TEI C %x=%x / U %x=%x)",
+	APPEND(" (TEI C %x=%x/U %x=%x)",
 	       c->tei_orig, c->tei_repl,
 	       u->tei_orig, u->tei_repl);
 	return buf;
