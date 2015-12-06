@@ -31,4 +31,9 @@ test_user_data
 - __wrap_gtphub_resolve_ggsn_addr():
   returning GGSN addr from imsi 240010123456789 ni internet: 192.168.43.34 port 2123
 - user data starts
+test_parallel_context_creation
+- __wrap_gtphub_resolve_ggsn_addr():
+  returning GGSN addr from imsi 240010123456789 ni internet: 192.168.43.34 port 2123
+- __wrap_gtphub_resolve_ggsn_addr():
+  returning GGSN addr from imsi 240010123456889 ni internet: 192.168.43.34 port 2123
 Done

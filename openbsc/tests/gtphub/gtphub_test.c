@@ -1550,6 +1550,161 @@ static void test_sgsn_behind_nat(void)
 	OSMO_ASSERT(clear_test_hub());
 }
 
+void test_parallel_context_creation(void)
+{
+	LOG("test_parallel_context_creation");
+
+	OSMO_ASSERT(setup_test_hub());
+
+	const char *gtp_req_from_sgsn1 =
+		MSG_PDP_CTX_REQ("0068",
+				"abcd",
+				"60",
+				"42000121436587f9",
+				"00000123",
+				"00000321",
+				"0009""08696e7465726e6574", /* "(8)internet" */
+				"0004""c0a82a17", /* same as default sgsn_sender */
+				"0004""c0a82a17"
+			       );
+	const char *gtp_req_to_ggsn1 =
+		MSG_PDP_CTX_REQ("0068",
+				"6d31",	/* mapped seq ("abcd") */
+				"23",
+				"42000121436587f9",
+				"00000002", /* mapped TEI Data I ("123") */
+				"00000001", /* mapped TEI Control ("321") */
+				"0009""08696e7465726e6574",
+				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
+				"0004""7f000202" /* replaced with gtphub's ggsn user */
+			       );
+
+	OSMO_ASSERT(msg_from_sgsn_c(&sgsn_sender,
+				    &resolved_ggsn_addr,
+				    gtp_req_from_sgsn1,
+				    gtp_req_to_ggsn1));
+
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		" @21945\n"));
+
+	now ++;
+
+	const char *gtp_req_from_sgsn2 =
+		MSG_PDP_CTX_REQ("0068",
+				"abce",
+				"60",
+				"42000121436588f9",
+				"00000124",
+				"00000322",
+				"0009""08696e7465726e6574", /* "(8)internet" */
+				"0004""c0a82a17", /* same as default sgsn_sender */
+				"0004""c0a82a17"
+			       );
+	const char *gtp_req_to_ggsn2 =
+		MSG_PDP_CTX_REQ("0068",
+				"6d32",	/* mapped seq ("abce") */
+				"23",
+				"42000121436588f9",
+				"00000004", /* mapped TEI Data I ("124") */
+				"00000003", /* mapped TEI Control ("322") */
+				"0009""08696e7465726e6574",
+				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
+				"0004""7f000202" /* replaced with gtphub's ggsn user */
+			       );
+
+	OSMO_ASSERT(msg_from_sgsn_c(&sgsn_sender,
+				    &resolved_ggsn_addr,
+				    gtp_req_from_sgsn2,
+				    gtp_req_to_ggsn2));
+
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 322=3/U 124=4)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		" @21946\n"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		" @21945\n"
+		));
+
+	now ++;
+
+	const char *gtp_resp_from_ggsn1 =
+		MSG_PDP_CTX_RSP("004e",
+				"00000001", /* destination TEI (sent in req above) */
+				"6d31", /* mapped seq */
+				"01", /* restart */
+				"00000567", /* TEI U */
+				"00000765", /* TEI C */
+				"0004""c0a82b22", /* GSN addresses */
+				"0004""c0a82b22"  /* (== resolved_ggsn_addr) */
+			       );
+	const char *gtp_resp_to_sgsn1 =
+		MSG_PDP_CTX_RSP("004e",
+				"00000321", /* unmapped TEI ("001") */
+				"abcd", /* unmapped seq ("6d31") */
+				"23",
+				"00000006", /* mapped TEI from GGSN ("567") */
+				"00000005", /* mapped TEI from GGSN ("765") */
+				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
+				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
+			       );
+
+	OSMO_ASSERT(msg_from_ggsn_c(&resolved_ggsn_addr,
+				    &sgsn_sender,
+				    gtp_resp_from_ggsn1,
+				    gtp_resp_to_sgsn1));
+
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 322=3/U 124=4)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		" @21946\n"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=5/U 567=6)"
+		" @21947\n"
+		));
+
+	now ++;
+
+	const char *gtp_resp_from_ggsn2 =
+		MSG_PDP_CTX_RSP("004e",
+				"00000003", /* destination TEI (sent in req above) */
+				"6d32", /* mapped seq */
+				"01", /* restart */
+				"00000568", /* TEI U */
+				"00000766", /* TEI C */
+				"0004""c0a82b22", /* GSN addresses */
+				"0004""c0a82b22"  /* (== resolved_ggsn_addr) */
+			       );
+	const char *gtp_resp_to_sgsn2 =
+		MSG_PDP_CTX_RSP("004e",
+				"00000322", /* unmapped TEI ("001") */
+				"abce", /* unmapped seq ("6d31") */
+				"23",
+				"00000008", /* mapped TEI from GGSN ("567") */
+				"00000007", /* mapped TEI from GGSN ("765") */
+				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
+				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
+			       );
+
+	OSMO_ASSERT(msg_from_ggsn_c(&resolved_ggsn_addr,
+				    &sgsn_sender,
+				    gtp_resp_from_ggsn2,
+				    gtp_resp_to_sgsn2));
+
+	OSMO_ASSERT(tunnels_are(
+		"192.168.42.23 (TEI C 322=3/U 124=4)"
+		" <-> 192.168.43.34 (TEI C 766=7/U 568=8)"
+		" @21948\n"
+		"192.168.42.23 (TEI C 321=1/U 123=2)"
+		" <-> 192.168.43.34 (TEI C 765=5/U 567=6)"
+		" @21947\n"
+		));
+
+	OSMO_ASSERT(clear_test_hub());
+}
+
 
 static struct log_info_cat gtphub_categories[] = {
 	[DGTPHUB] = {
@@ -1581,6 +1736,7 @@ int main(int argc, char **argv)
 	test_peer_restarted();
 	test_peer_restarted_reusing_tei();
 	test_sgsn_behind_nat();
+	test_parallel_context_creation();
 	printf("Done\n");
 
 	talloc_report_full(osmo_gtphub_ctx, stderr);
