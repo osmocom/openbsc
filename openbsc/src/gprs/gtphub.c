@@ -1217,6 +1217,8 @@ static int gtphub_check_mapped_tei(struct gtphub_tunnel_endpoint *new_te,
 				   uint32_t *tei_min,
 				   uint32_t *tei_max)
 {
+	if (!new_te->tei_repl)
+		return 1;
 	if (new_te->tei_repl != iterated_te->tei_repl)
 		return 1;
 
@@ -1265,7 +1267,8 @@ static int gtphub_check_reused_teis(struct gtphub *hub,
 			for_each_plane(plane_idx) {
 				te = &tun->endpoint[side_idx][plane_idx];
 				te2 = &new_tun->endpoint[side_idx][plane_idx];
-				if ((te->tei_orig != te2->tei_orig)
+				if ((te->tei_orig == 0)
+				    || (te->tei_orig != te2->tei_orig)
 				    || (!te->peer)
 				    || (!te2->peer)
 				    || !gsn_addr_same(&te->peer->peer_addr->addr,
