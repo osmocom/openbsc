@@ -276,7 +276,8 @@ static void handle_options(struct cmdline_cfg *ccfg, int argc, char **argv)
 			ccfg->restart_counter_file = optarg;
 			break;
 		default:
-			/* ignore */
+			LOGP(DGTPHUB, LOGL_FATAL, "Invalid command line argument, abort.\n");
+			exit(1);
 			break;
 		}
 	}
