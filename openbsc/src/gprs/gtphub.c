@@ -995,9 +995,9 @@ static const char *gtphub_tunnel_side_str(struct gtphub_tunnel *tun,
 		APPEND("/%s", gsn_addr_to_str(&u->peer->peer_addr->addr));
 	}
 
-	APPEND(" (TEI C %x=%x/U %x=%x)",
-	       c->tei_orig, c->tei_repl,
-	       u->tei_orig, u->tei_repl);
+	APPEND(" (TEI C=%x U=%x)",
+	       c->tei_orig,
+	       u->tei_orig);
 	return buf;
 }
 
@@ -1008,6 +1008,7 @@ const char *gtphub_tunnel_str(struct gtphub_tunnel *tun)
 	int left = sizeof(buf);
 	int l;
 
+	APPEND("TEI=%x: ", tun->tei_repl);
 	APPEND("%s", gtphub_tunnel_side_str(tun, GTPH_SIDE_SGSN));
 	APPEND(" <-> %s", gtphub_tunnel_side_str(tun, GTPH_SIDE_GGSN));
 
@@ -1030,12 +1031,14 @@ int gtphub_tunnel_complete(struct gtphub_tunnel *tun)
 {
 	if (!tun)
 		return 0;
+	if (!tun->tei_repl)
+		return 0;
 	int side_idx;
 	int plane_idx;
 	for_each_side_and_plane(side_idx, plane_idx) {
 		struct gtphub_tunnel_endpoint *te =
 			&tun->endpoint[side_idx][plane_idx];
-		if (!(te->peer && te->tei_orig && te->tei_repl))
+		if (!(te->peer && te->tei_orig))
 			return 0;
 	}
 	return 1;
@@ -1212,29 +1215,33 @@ static struct gtphub_peer_port *gtphub_unmap_seq(struct gtp_packet_desc *p,
 	return nrm->origin;
 }
 
-static int gtphub_check_mapped_tei(struct gtphub_tunnel_endpoint *new_te,
-				   struct gtphub_tunnel_endpoint *iterated_te,
+static int gtphub_check_mapped_tei(struct gtphub_tunnel *new_tun,
+				   struct gtphub_tunnel *iterated_tun,
 				   uint32_t *tei_min,
 				   uint32_t *tei_max)
 {
-	if (!new_te->tei_repl)
-		return 1;
-	if (new_te->tei_repl != iterated_te->tei_repl)
+	if (!new_tun->tei_repl || !iterated_tun->tei_repl)
 		return 1;
 
-	/* new_te->tei_repl is already taken. Try to find one out of the known
+	*tei_min = (*tei_min < iterated_tun->tei_repl)? *tei_min : iterated_tun->tei_repl;
+	*tei_max = (*tei_max > iterated_tun->tei_repl)? *tei_max : iterated_tun->tei_repl;
+
+	if (new_tun->tei_repl != iterated_tun->tei_repl)
+		return 1;
+
+	/* new_tun->tei_repl is already taken. Try to find one out of the known
 	 * range. */
-	LOG(LOGL_DEBUG, "TEI replacement %d already taken.\n", new_te->tei_repl);
+	LOG(LOGL_DEBUG, "TEI replacement %d already taken.\n", new_tun->tei_repl);
 
 	if ((*tei_max) < 0xffffffff) {
 		(*tei_max)++;
-		new_te->tei_repl = *tei_max;
-		LOG(LOGL_DEBUG, "Using TEI %d instead.\n", new_te->tei_repl);
+		new_tun->tei_repl = *tei_max;
+		LOG(LOGL_DEBUG, "Using TEI %d instead.\n", new_tun->tei_repl);
 		return 1;
 	} else if ((*tei_min) > 1) {
 		(*tei_min)--;
-		new_te->tei_repl = *tei_min;
-		LOG(LOGL_DEBUG, "Using TEI %d instead.\n", new_te->tei_repl);
+		new_tun->tei_repl = *tei_min;
+		LOG(LOGL_DEBUG, "Using TEI %d instead.\n", new_tun->tei_repl);
 		return 1;
 	}
 
@@ -1249,8 +1256,6 @@ static int gtphub_check_reused_teis(struct gtphub *hub,
 	uint32_t tei_max = 0;
 	int side_idx;
 	int plane_idx;
-	int side_idx2;
-	int plane_idx2;
 	struct gtphub_tunnel_endpoint *te;
 	struct gtphub_tunnel_endpoint *te2;
 
@@ -1303,23 +1308,14 @@ static int gtphub_check_reused_teis(struct gtphub *hub,
 		if (tun_continue)
 			continue;
 
-		/* Check whether the mapped TEIs assigned to the endpoints are
-		 * used anywhere else. */
-		for_each_side_and_plane(side_idx, plane_idx) {
-			te = &tun->endpoint[side_idx][plane_idx];
-			tei_min = (tei_min < te->tei_repl)? tei_min : te->tei_repl;
-			tei_max = (tei_max > te->tei_repl)? tei_max : te->tei_repl;
-
-			for_each_side_and_plane(side_idx2, plane_idx2) {
-				te2 = &new_tun->endpoint[side_idx2][plane_idx2];
-				if (!gtphub_check_mapped_tei(te2, te, &tei_min, &tei_max)) {
-					LOG(LOGL_ERROR,
-					    "No mapped TEI is readily available."
-					    " Searching for holes between occupied"
-					    " TEIs not implemented.");
-					return 0;
-				}
-			}
+		/* Check whether the mapped TEI is already used by another
+		 * tunnel. */
+		if (!gtphub_check_mapped_tei(new_tun, tun, &tei_min, &tei_max)) {
+			LOG(LOGL_ERROR,
+			    "No mapped TEI is readily available."
+			    " Searching for holes between occupied"
+			    " TEIs not implemented.");
+			return 0;
 		}
 
 	}
@@ -1350,7 +1346,7 @@ static struct gtphub_tunnel_endpoint *gtphub_unmap_tei(struct gtphub *hub,
 			&tun->endpoint[p->side_idx][p->plane_idx];
 		struct gtphub_tunnel_endpoint *te_to =
 			&tun->endpoint[other_side][p->plane_idx];
-		if ((te_to->tei_repl == p->header_tei_rx)
+		if ((tun->tei_repl == p->header_tei_rx)
 		    && te_from->peer
 		    && gsn_addr_same(&te_from->peer->peer_addr->addr,
 				     &from->peer_addr->addr)) {
@@ -1453,6 +1449,10 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 
 		/* A new tunnel. */
 		p->tun = tun = gtphub_tunnel_new();
+
+		/* Create TEI mapping */
+		tun->tei_repl = nr_pool_next(&hub->tei_pool);
+
 		llist_add(&tun->entry, &hub->tunnels);
 		gtphub_tunnel_refresh(hub, tun, p->timestamp);
 		/* The endpoint peers on this side (SGSN) will be set from IEs
@@ -1471,8 +1471,7 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 		 * TEI and be available in tun (== p->tun). Just fill in the
 		 * GSN Addresses below.*/
 		OSMO_ASSERT(tun);
-		OSMO_ASSERT(tun->endpoint[other_side_idx(p->side_idx)][GTPH_PLANE_CTRL].tei_repl
-			    == p->header_tei_rx);
+		OSMO_ASSERT(tun->tei_repl == p->header_tei_rx);
 		OSMO_ASSERT(to_ctrl);
 	}
 
@@ -1555,12 +1554,9 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 		}
 
 		if (tei_from_ie) {
-			/* Create TEI mapping and replace in GTP packet IE */
-			uint32_t mapped_tei = nr_pool_next(&hub->tei_pool);
-
+			/* Replace TEI in GTP packet IE */
 			tun->endpoint[side_idx][plane_idx].tei_orig = tei_from_ie;
-			tun->endpoint[side_idx][plane_idx].tei_repl = mapped_tei;
-			p->ie[ie_idx]->tv4.v = hton32(mapped_tei);
+			p->ie[ie_idx]->tv4.v = hton32(tun->tei_repl);
 
 			if (!gtphub_check_reused_teis(hub, tun)) {
 				/* It's highly unlikely that all TEIs are

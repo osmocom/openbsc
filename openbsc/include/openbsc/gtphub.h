@@ -398,7 +398,6 @@ struct gtphub_peer_port {
 struct gtphub_tunnel_endpoint {
 	struct gtphub_peer_port *peer;
 	uint32_t tei_orig; /* from/to peer */
-	uint32_t tei_repl; /* from/to the other tunnel endpoint */
 
 	struct rate_ctr_group *counters_io;
 };
@@ -407,6 +406,7 @@ struct gtphub_tunnel {
 	struct llist_head entry;
 	struct expiring_item expiry_entry;
 
+	uint32_t tei_repl; /* unique TEI to replace peers' TEIs */
 	struct gtphub_tunnel_endpoint endpoint[GTPH_SIDE_N][GTPH_PLANE_N];
 };
 

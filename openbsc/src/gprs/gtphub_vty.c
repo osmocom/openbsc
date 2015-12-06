@@ -398,8 +398,8 @@ static void show_tunnels_all(struct vty *vty, int with_io_stats)
 	time_t now = gtphub_now();
 
 	vty_out(vty, "All tunnels%s:%s"
-		"Legend: (expiry in minutes) SGSN <-> GGSN, with each:%s"
-		"        <IP-Ctrl>[/<IP-User>] (<TEI-Ctrl>=<mapped>/<TEI-User>=<mapped>)%s",
+		"Legend: TEI=<hex>: SGSN <-> GGSN (expiry in minutes), with each:%s"
+		"        <IP-Ctrl>[/<IP-User>] (TEI C=<TEI-Ctrl-hex> U=<TEI-User-hex>)%s",
 		with_io_stats? "with I/O stats" : "",
 		VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 
@@ -408,9 +408,9 @@ static void show_tunnels_all(struct vty *vty, int with_io_stats)
 	struct gtphub_tunnel *tun;
 	llist_for_each_entry(tun, &g_hub->tunnels, entry) {
 		vty_out(vty,
-			"(%4dm) %s%s",
-			(int)((tun->expiry_entry.expiry - now) / 60),
+			"%s (expiry in %dm)%s",
 			gtphub_tunnel_str(tun),
+			(int)((tun->expiry_entry.expiry - now) / 60),
 			VTY_NEWLINE);
 		count ++;
 		if (!gtphub_tunnel_complete(tun))

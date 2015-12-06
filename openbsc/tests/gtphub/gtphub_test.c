@@ -929,8 +929,8 @@ static int create_pdp_ctx()
 				"6d31",	/* mapped seq ("abcd") */
 				"23",
 				"42000121436587f9",
-				"00000002", /* mapped TEI Data I ("123") */
-				"00000001", /* mapped TEI Control ("321") */
+				"00000001", /* Data I: tunnel's TEI */
+				"00000001", /* Control: tunnel's TEI */
 				"0009""08696e7465726e6574",
 				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
 				"0004""7f000202" /* replaced with gtphub's ggsn user */
@@ -943,8 +943,9 @@ static int create_pdp_ctx()
 	LVL2_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
 		" @21945\n"));
 
 	const char *gtp_resp_from_ggsn =
@@ -962,8 +963,8 @@ static int create_pdp_ctx()
 				"00000321", /* unmapped TEI ("001") */
 				"abcd", /* unmapped seq ("6d31") */
 				"23",
-				"00000004", /* mapped TEI from GGSN ("567") */
-				"00000003", /* mapped TEI from GGSN ("765") */
+				"00000001", /* mapped TEI from GGSN ("567") */
+				"00000001", /* mapped TEI from GGSN ("765") */
 				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
 				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
 			       );
@@ -1007,12 +1008,13 @@ static int delete_pdp_ctx_from_sgsn(void)
 	gtphub_gc(hub, now);
 
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21945\n"));
 
 	/* TEI Ctrl from above and next sequence after abcd. */
-	const char *gtp_req_from_sgsn = MSG_DEL_PDP_CTX_REQ("00000003", "abce");
+	const char *gtp_req_from_sgsn = MSG_DEL_PDP_CTX_REQ("00000001", "abce");
 	const char *gtp_req_to_ggsn = MSG_DEL_PDP_CTX_REQ("00000765", "6d32");
 
 	LVL2_ASSERT(msg_from_sgsn_c(&sgsn_sender,
@@ -1022,8 +1024,9 @@ static int delete_pdp_ctx_from_sgsn(void)
 
 	/* 21945 + 31 = 21976 */
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21976\n"));
 
 	const char *gtp_resp_from_ggsn =
@@ -1049,8 +1052,9 @@ static int delete_pdp_ctx_from_ggsn(void)
 	gtphub_gc(hub, now);
 
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21945\n"));
 
 	/* TEI Ctrl from above and next sequence after abcd. */
@@ -1064,12 +1068,13 @@ static int delete_pdp_ctx_from_ggsn(void)
 
 	/* 21945 + 31 = 21976 */
 	LVL2_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21976\n"));
 
 	const char *gtp_resp_from_sgsn =
-		MSG_DEL_PDP_CTX_RSP("00000003", "6d31");
+		MSG_DEL_PDP_CTX_RSP("00000001", "6d31");
 	const char *gtp_resp_to_ggsn =
 		MSG_DEL_PDP_CTX_RSP("00000765", "5432");
 
@@ -1112,8 +1117,9 @@ static void test_one_pdp_ctx(int del_from_side)
 	 * 0x00000567 == 1383 (TEI from GGSN User)
 	 * Mapped TEIs should be 1 and 2. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21945\n"));
 
 	if (del_from_side == GTPH_SIDE_SGSN) {
@@ -1136,8 +1142,9 @@ static void test_user_data(void)
 
 	/* now == 345; now + (6 * 60 * 60) == 21600 + 345 == 21945. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21945\n"));
 
 	LOG("- user data starts");
@@ -1152,7 +1159,7 @@ static void test_user_data(void)
 		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
-		"00000002" /* mapped User TEI for SGSN from create_pdp_ctx() */
+		"00000001" /* mapped TEI for SGSN from create_pdp_ctx() */
 		"0070"	/* seq */
 		"0000"	/* No extensions */
 		/* User data (ICMP packet), 96 - 12 = 84 octets  */
@@ -1182,15 +1189,16 @@ static void test_user_data(void)
 	/* Make sure the user plane messages have refreshed the TEI mapping
 	 * timeouts: 21945 + 600 == 22545. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @22545\n"));
 
 	const char *u_from_sgsn =
 		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
-		"00000004" /* mapped User TEI for GGSN from create_pdp_ctx() */
+		"00000001" /* mapped User TEI for GGSN from create_pdp_ctx() */
 		"1234"	/* unknown seq */
 		"0000"	/* No extensions */
 		/* User data (ICMP packet), 96 - 12 = 84 octets  */
@@ -1218,8 +1226,9 @@ static void test_user_data(void)
 	/* Make sure the user plane messages have refreshed the TEI mapping
 	 * timeouts: 21945 + 600 == 22545. Both timeouts refreshed: */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @22545\n"));
 
 	OSMO_ASSERT(clear_test_hub());
@@ -1249,8 +1258,8 @@ static void test_reused_tei(void)
 				"6d32",	/* mapped seq ("abce") */
 				"23",
 				"42000121436587f9",
-				"00000006", /* mapped TEI Data I ("123") */
-				"00000005", /* mapped TEI Control ("321") */
+				"00000002", /* mapped TEI Data I ("123") */
+				"00000002", /* mapped TEI Control ("321") */
 				"0009""08696e7465726e6574",
 				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
 				"0004""7f000202" /* replaced with gtphub's ggsn user */
@@ -1263,13 +1272,14 @@ static void test_reused_tei(void)
 	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=5/U 123=6)"
-		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		"TEI=2:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
 		" @21945\n"));
 
 	const char *gtp_resp_from_ggsn =
 		MSG_PDP_CTX_RSP("004e",
-				"00000005", /* destination TEI (sent in req above) */
+				"00000002", /* destination TEI (sent in req above) */
 				"6d32", /* mapped seq */
 				"01", /* restart */
 				"00000567", /* TEI U */
@@ -1282,8 +1292,8 @@ static void test_reused_tei(void)
 				"00000321", /* unmapped TEI ("001") */
 				"abce", /* unmapped seq ("6d32") */
 				"23",
-				"00000008", /* mapped TEI from GGSN ("567") */
-				"00000007", /* mapped TEI from GGSN ("765") */
+				"00000002", /* mapped TEI from GGSN ("567") */
+				"00000002", /* mapped TEI from GGSN ("765") */
 				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
 				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
 			       );
@@ -1323,8 +1333,8 @@ static void test_peer_restarted(void)
 				"6d33",	/* mapped seq ("1234") */
 				"23",
 				"42000121436587f9",
-				"00000006", /* mapped TEI Data I ("123") */
-				"00000005", /* mapped TEI Control ("321") */
+				"00000002", /* mapped TEI Data I ("123") */
+				"00000002", /* mapped TEI Control ("321") */
 				"0009""08696e7465726e6574",
 				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
 				"0004""7f000202" /* replaced with gtphub's ggsn user */
@@ -1337,17 +1347,19 @@ static void test_peer_restarted(void)
 	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C cba=5/U abc=6)"
-		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		"TEI=2:"
+		" 192.168.42.23 (TEI C=cba U=abc)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
 		" @21955\n"
-		"(uninitialized) (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" (uninitialized) (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21945\n"
 		));
 
 	const char *gtp_resp_from_ggsn =
 		MSG_PDP_CTX_RSP("004e",
-				"00000005", /* destination TEI (sent in req above) */
+				"00000002", /* destination TEI (sent in req above) */
 				"6d33", /* mapped seq */
 				"01", /* restart */
 				"00000def", /* TEI U */
@@ -1360,8 +1372,8 @@ static void test_peer_restarted(void)
 				"00000cba", /* unmapped TEI ("005") */
 				"1234", /* unmapped seq ("6d32") */
 				"23",
-				"00000008", /* mapped TEI from GGSN ("567") */
-				"00000007", /* mapped TEI from GGSN ("765") */
+				"00000002", /* mapped TEI from GGSN ("567") */
+				"00000002", /* mapped TEI from GGSN ("765") */
 				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
 				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
 			       );
@@ -1401,8 +1413,8 @@ static void test_peer_restarted_reusing_tei(void)
 				"6d32",	/* mapped seq ("1234") */
 				"23",
 				"42000121436587f9",
-				"00000006", /* mapped TEI Data I ("123") */
-				"00000005", /* mapped TEI Control ("321") */
+				"00000002", /* mapped TEI Data I ("123") */
+				"00000002", /* mapped TEI Control ("321") */
 				"0009""08696e7465726e6574",
 				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
 				"0004""7f000202" /* replaced with gtphub's ggsn user */
@@ -1415,14 +1427,15 @@ static void test_peer_restarted_reusing_tei(void)
 	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=5/U 123=6)"
-		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		"TEI=2:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
 		" @21955\n"
 		));
 
 	const char *gtp_resp_from_ggsn =
 		MSG_PDP_CTX_RSP("004e",
-				"00000005", /* destination TEI (sent in req above) */
+				"00000002", /* destination TEI (sent in req above) */
 				"6d32", /* mapped seq */
 				"01", /* restart */
 				"00000def", /* TEI U */
@@ -1435,8 +1448,8 @@ static void test_peer_restarted_reusing_tei(void)
 				"00000321", /* unmapped TEI ("005") */
 				"1234", /* unmapped seq ("6d32") */
 				"23",
-				"00000008", /* mapped TEI from GGSN ("567") */
-				"00000007", /* mapped TEI from GGSN ("765") */
+				"00000002", /* mapped TEI from GGSN ("567") */
+				"00000002", /* mapped TEI from GGSN ("765") */
 				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
 				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
 			       );
@@ -1462,8 +1475,9 @@ static void test_sgsn_behind_nat(void)
 
 	/* now == 345; now + (6 * 60 * 60) == 21600 + 345 == 21945. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21945\n"));
 
 	LOG("- user data starts");
@@ -1477,7 +1491,7 @@ static void test_sgsn_behind_nat(void)
 		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
-		"00000002" /* mapped User TEI for SGSN from create_pdp_ctx() */
+		"00000001" /* mapped User TEI for SGSN from create_pdp_ctx() */
 		"0070"	/* seq */
 		"0000"	/* No extensions */
 		/* User data (ICMP packet), 96 - 12 = 84 octets  */
@@ -1507,15 +1521,16 @@ static void test_sgsn_behind_nat(void)
 	/* Make sure the user plane messages have refreshed the TEI mapping
 	 * timeouts: 21945 + 600 == 22545. */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @22545\n"));
 
 	const char *u_from_sgsn =
 		"32" 	/* 0b001'1 0010: version 1, protocol GTP, with seq nr */
 		"ff"	/* type 255: G-PDU */
 		"0058"	/* length: 88 + 8 octets == 96 */
-		"00000004" /* mapped User TEI for GGSN from create_pdp_ctx() */
+		"00000001" /* mapped User TEI for GGSN from create_pdp_ctx() */
 		"1234"	/* unknown seq */
 		"0000"	/* No extensions */
 		/* User data (ICMP packet), 96 - 12 = 84 octets  */
@@ -1543,8 +1558,9 @@ static void test_sgsn_behind_nat(void)
 	/* Make sure the user plane messages have refreshed the TEI mapping
 	 * timeouts: 21945 + 600 == 22545. Both timeouts refreshed: */
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=3/U 567=4)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @22545\n"));
 
 	OSMO_ASSERT(clear_test_hub());
@@ -1572,7 +1588,7 @@ void test_parallel_context_creation(void)
 				"6d31",	/* mapped seq ("abcd") */
 				"23",
 				"42000121436587f9",
-				"00000002", /* mapped TEI Data I ("123") */
+				"00000001", /* mapped TEI Data I ("123") */
 				"00000001", /* mapped TEI Control ("321") */
 				"0009""08696e7465726e6574",
 				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
@@ -1585,8 +1601,9 @@ void test_parallel_context_creation(void)
 				    gtp_req_to_ggsn1));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
 		" @21945\n"));
 
 	now ++;
@@ -1607,8 +1624,8 @@ void test_parallel_context_creation(void)
 				"6d32",	/* mapped seq ("abce") */
 				"23",
 				"42000121436588f9",
-				"00000004", /* mapped TEI Data I ("124") */
-				"00000003", /* mapped TEI Control ("322") */
+				"00000002", /* mapped TEI Data I ("124") */
+				"00000002", /* mapped TEI Control ("322") */
 				"0009""08696e7465726e6574",
 				"0004""7f000201", /* replaced with gtphub's ggsn ctrl */
 				"0004""7f000202" /* replaced with gtphub's ggsn user */
@@ -1620,11 +1637,13 @@ void test_parallel_context_creation(void)
 				    gtp_req_to_ggsn2));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 322=3/U 124=4)"
-		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		"TEI=2:"
+		" 192.168.42.23 (TEI C=322 U=124)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
 		" @21946\n"
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
 		" @21945\n"
 		));
 
@@ -1645,8 +1664,8 @@ void test_parallel_context_creation(void)
 				"00000321", /* unmapped TEI ("001") */
 				"abcd", /* unmapped seq ("6d31") */
 				"23",
-				"00000006", /* mapped TEI from GGSN ("567") */
-				"00000005", /* mapped TEI from GGSN ("765") */
+				"00000001", /* mapped TEI from GGSN ("567") */
+				"00000001", /* mapped TEI from GGSN ("765") */
 				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
 				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
 			       );
@@ -1657,11 +1676,13 @@ void test_parallel_context_creation(void)
 				    gtp_resp_to_sgsn1));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 322=3/U 124=4)"
-		" <-> 192.168.43.34/(uninitialized) (TEI C 0=0/U 0=0)"
+		"TEI=2:"
+		" 192.168.42.23 (TEI C=322 U=124)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
 		" @21946\n"
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=5/U 567=6)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21947\n"
 		));
 
@@ -1669,7 +1690,7 @@ void test_parallel_context_creation(void)
 
 	const char *gtp_resp_from_ggsn2 =
 		MSG_PDP_CTX_RSP("004e",
-				"00000003", /* destination TEI (sent in req above) */
+				"00000002", /* destination TEI (sent in req above) */
 				"6d32", /* mapped seq */
 				"01", /* restart */
 				"00000568", /* TEI U */
@@ -1682,8 +1703,8 @@ void test_parallel_context_creation(void)
 				"00000322", /* unmapped TEI ("001") */
 				"abce", /* unmapped seq ("6d31") */
 				"23",
-				"00000008", /* mapped TEI from GGSN ("567") */
-				"00000007", /* mapped TEI from GGSN ("765") */
+				"00000002", /* mapped TEI from GGSN ("567") */
+				"00000002", /* mapped TEI from GGSN ("765") */
 				"0004""7f000101", /* gtphub's address towards SGSNs (Ctrl) */
 				"0004""7f000102" /* gtphub's address towards SGSNs (User) */
 			       );
@@ -1694,11 +1715,13 @@ void test_parallel_context_creation(void)
 				    gtp_resp_to_sgsn2));
 
 	OSMO_ASSERT(tunnels_are(
-		"192.168.42.23 (TEI C 322=3/U 124=4)"
-		" <-> 192.168.43.34 (TEI C 766=7/U 568=8)"
+		"TEI=2:"
+		" 192.168.42.23 (TEI C=322 U=124)"
+		" <-> 192.168.43.34 (TEI C=766 U=568)"
 		" @21948\n"
-		"192.168.42.23 (TEI C 321=1/U 123=2)"
-		" <-> 192.168.43.34 (TEI C 765=5/U 567=6)"
+		"TEI=1:"
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
 		" @21947\n"
 		));
 
