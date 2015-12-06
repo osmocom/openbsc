@@ -391,12 +391,16 @@ struct gtphub_peer_port {
 	unsigned int ref_count; /* references from other peers' seq_maps */
 	struct osmo_sockaddr sa; /* a "cache" for (peer_addr->addr, port) */
 	int last_restart_count; /* 0..255 = valid, all else means unknown */
+
+	struct rate_ctr_group *counters_io;
 };
 
 struct gtphub_tunnel_endpoint {
 	struct gtphub_peer_port *peer;
 	uint32_t tei_orig; /* from/to peer */
 	uint32_t tei_repl; /* from/to the other tunnel endpoint */
+
+	struct rate_ctr_group *counters_io;
 };
 
 struct gtphub_tunnel {

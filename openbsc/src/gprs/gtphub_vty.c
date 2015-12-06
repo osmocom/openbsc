@@ -278,11 +278,6 @@ DEFUN(cfg_grx_ggsn, cfg_grx_ggsn_cmd,
 }
 
 
-/*
-(show gtphub all, show gtphub stats, show gtphub teidmap,
- show gtphub peers, ...)
-*/
-
 static void show_bind_stats_all(struct vty *vty)
 {
 	int plane_idx;
@@ -298,6 +293,24 @@ static void show_bind_stats_all(struct vty *vty)
 				gsn_addr_to_str(&b->local_addr), (int)b->local_port,
 				VTY_NEWLINE);
 			vty_out_rate_ctr_group(vty, "    ", b->counters_io);
+		}
+	}
+}
+
+static void show_tunnel_stats(struct vty *vty, struct gtphub_tunnel *tun)
+{
+	int plane_idx;
+	for_each_plane(plane_idx) {
+		vty_out(vty, "- %s Plane:%s",
+			gtphub_plane_idx_names[plane_idx], VTY_NEWLINE);
+
+		int side_idx;
+		for_each_side(side_idx) {
+			struct gtphub_tunnel_endpoint *te = &tun->endpoint[side_idx][plane_idx];
+			vty_out(vty, "  - to/from %s:%s",
+				gtphub_side_idx_names[side_idx],
+				VTY_NEWLINE);
+			vty_out_rate_ctr_group(vty, "    ", te->counters_io);
 		}
 	}
 }
@@ -380,29 +393,33 @@ static void show_tunnels_summary(struct vty *vty)
 		VTY_NEWLINE);
 }
 
-static void show_tunnels_all(struct vty *vty)
+static void show_tunnels_all(struct vty *vty, int with_io_stats)
 {
 	time_t now = gtphub_now();
 
-	vty_out(vty, "All tunnels:%s"
+	vty_out(vty, "All tunnels%s:%s"
 		"Legend: (expiry in minutes) SGSN <-> GGSN, with each:%s"
 		"        <IP-Ctrl>[/<IP-User>] (<TEI-Ctrl>=<mapped>/<TEI-User>=<mapped>)%s",
+		with_io_stats? "with I/O stats" : "",
 		VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 
 	unsigned int count = 0;
 	unsigned int incomplete = 0;
-	struct gtphub_tunnel *t;
-	llist_for_each_entry(t, &g_hub->tunnels, entry) {
+	struct gtphub_tunnel *tun;
+	llist_for_each_entry(tun, &g_hub->tunnels, entry) {
 		vty_out(vty,
 			"(%4dm) %s%s",
-			(int)((t->expiry_entry.expiry - now) / 60),
-			gtphub_tunnel_str(t),
+			(int)((tun->expiry_entry.expiry - now) / 60),
+			gtphub_tunnel_str(tun),
 			VTY_NEWLINE);
 		count ++;
-		if (!gtphub_tunnel_complete(t))
+		if (!gtphub_tunnel_complete(tun))
 			incomplete ++;
+		if (with_io_stats)
+			show_tunnel_stats(vty, tun);
 	}
-	vty_out(vty, "Total: %u tunnels%s", count, VTY_NEWLINE);
+	vty_out(vty, "Total: %u tunnels (of which %u incomplete)%s",
+		count, incomplete, VTY_NEWLINE);
 }
 
 DEFUN(show_gtphub_tunnels_summary, show_gtphub_tunnels_summary_cmd, "show gtphub tunnels summary",
@@ -415,7 +432,14 @@ DEFUN(show_gtphub_tunnels_summary, show_gtphub_tunnels_summary_cmd, "show gtphub
 DEFUN(show_gtphub_tunnels_list, show_gtphub_tunnels_list_cmd, "show gtphub tunnels list",
       SHOW_STR "List all tunnels")
 {
-	show_tunnels_all(vty);
+	show_tunnels_all(vty, 0);
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_gtphub_tunnels_stats, show_gtphub_tunnels_stats_cmd, "show gtphub tunnels stats",
+      SHOW_STR "List all tunnels with I/O stats")
+{
+	show_tunnels_all(vty, 1);
 	return CMD_SUCCESS;
 }
 
@@ -436,6 +460,7 @@ int gtphub_vty_init(struct gtphub *global_hub, struct gtphub_cfg *global_cfg)
 	install_element_ve(&show_gtphub_cmd);
 	install_element_ve(&show_gtphub_tunnels_summary_cmd);
 	install_element_ve(&show_gtphub_tunnels_list_cmd);
+	install_element_ve(&show_gtphub_tunnels_stats_cmd);
 
 	install_element(CONFIG_NODE, &cfg_gtphub_cmd);
 	install_node(&gtphub_node, config_write_gtphub);

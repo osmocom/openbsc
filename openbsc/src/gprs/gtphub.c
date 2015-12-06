@@ -783,6 +783,7 @@ static void gtphub_peer_port_del(struct gtphub_peer_port *pp)
 {
 	OSMO_ASSERT(pp->ref_count == 0);
 	llist_del(&pp->entry);
+	rate_ctr_group_free(pp->counters_io);
 	talloc_free(pp);
 }
 
@@ -1056,9 +1057,12 @@ static void gtphub_tunnel_del_cb(struct expiring_item *expi)
 	int side_idx;
 	int plane_idx;
 	for_each_side_and_plane(side_idx, plane_idx) {
+		struct gtphub_tunnel_endpoint *te = &tun->endpoint[side_idx][plane_idx];
+
 		/* clear ref count */
-		gtphub_tunnel_endpoint_set_peer(&tun->endpoint[side_idx][plane_idx],
-						NULL);
+		gtphub_tunnel_endpoint_set_peer(te, NULL);
+
+		rate_ctr_group_free(te->counters_io);
 	}
 
 	talloc_free(tun);
@@ -1072,6 +1076,15 @@ static struct gtphub_tunnel *gtphub_tunnel_new()
 
 	INIT_LLIST_HEAD(&tun->entry);
 	expiring_item_init(&tun->expiry_entry);
+
+	int side_idx, plane_idx;
+	for_each_side_and_plane(side_idx, plane_idx) {
+		struct gtphub_tunnel_endpoint *te = &tun->endpoint[side_idx][plane_idx];
+		te->counters_io = rate_ctr_group_alloc(osmo_gtphub_ctx,
+						       &gtphub_ctrg_io_desc,
+						       0);
+		OSMO_ASSERT(te->counters_io);
+	}
 
 	tun->expiry_entry.del_cb = gtphub_tunnel_del_cb;
 	return tun;
@@ -2162,6 +2175,10 @@ int gtphub_handle_buf(struct gtphub *hub,
 		return -1;
 	}
 
+	rate_ctr_add(&from_peer->counters_io->ctr[GTPH_CTR_BYTES_IN],
+		     received);
+	rate_ctr_inc(&from_peer->counters_io->ctr[GTPH_CTR_PKTS_IN]);
+
 	LOG(LOGL_DEBUG, "from %s peer: %s\n", gtphub_side_idx_names[side_idx],
 	    gtphub_port_str(from_peer));
 
@@ -2172,6 +2189,13 @@ int gtphub_handle_buf(struct gtphub *hub,
 			 &to_peer, &to_peer_from_seq)
 	    != 0) {
 		return -1;
+	}
+
+	if (p.tun) {
+		struct gtphub_tunnel_endpoint *te = &p.tun->endpoint[p.side_idx][p.plane_idx];
+		rate_ctr_add(&te->counters_io->ctr[GTPH_CTR_BYTES_IN],
+			     received);
+		rate_ctr_inc(&te->counters_io->ctr[GTPH_CTR_PKTS_IN]);
 	}
 
 	if ((!to_peer) && (side_idx == GTPH_SIDE_SGSN)) {
@@ -2216,7 +2240,19 @@ int gtphub_handle_buf(struct gtphub *hub,
 		rate_ctr_inc(&to_bind->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
 		rate_ctr_add(&to_bind->counters_io->ctr[GTPH_CTR_BYTES_OUT],
 			     received);
+
+		rate_ctr_inc(&to_peer->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
+		rate_ctr_add(&to_peer->counters_io->ctr[GTPH_CTR_BYTES_OUT],
+			     received);
 	}
+
+	if (p.tun) {
+		struct gtphub_tunnel_endpoint *te = &p.tun->endpoint[other_side_idx(p.side_idx)][p.plane_idx];
+		rate_ctr_inc(&te->counters_io->ctr[GTPH_CTR_PKTS_OUT]);
+		rate_ctr_add(&te->counters_io->ctr[GTPH_CTR_BYTES_OUT],
+			     received);
+	}
+
 	LOG(LOGL_DEBUG, "%s Forward to %s: %d bytes to %s\n",
 	    (side_idx == GTPH_SIDE_SGSN)? "-->" : "<--",
 	    gtphub_side_idx_names[other_side_idx(side_idx)],
@@ -2613,6 +2649,9 @@ static struct gtphub_peer_port *gtphub_addr_add_port(struct gtphub_peer_addr *a,
 		talloc_free(pp);
 		return NULL;
 	}
+
+	pp->counters_io = rate_ctr_group_alloc(osmo_gtphub_ctx,
+					       &gtphub_ctrg_io_desc, 0);
 
 	llist_add(&pp->entry, &a->ports);
 
