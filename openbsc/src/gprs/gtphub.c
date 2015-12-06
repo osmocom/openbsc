@@ -331,19 +331,13 @@ void validate_gtp1_header(struct gtp_packet_desc *p)
 	p->header_tei = p->header_tei_rx;
 	p->seq = ntoh16(pheader->seq);
 
-	LOG(LOGL_DEBUG, "GTPv1\n"
-	    "| type = %" PRIu8 " 0x%02" PRIx8 "\n"
-	    "| length = %" PRIu16 " 0x%04" PRIx16 "\n"
-	    "| TEI = %" PRIu32 " 0x%08" PRIx32 "\n"
-	    "| seq = %" PRIu16 " 0x%04" PRIx16 "\n"
-	    "| npdu = %" PRIu8 " 0x%02" PRIx8 "\n"
-	    "| next = %" PRIu8 " 0x%02" PRIx8 "\n",
-	    p->type, p->type,
-	    ntoh16(pheader->length), ntoh16(pheader->length),
-	    p->header_tei_rx, p->header_tei_rx,
-	    p->seq, p->seq,
-	    pheader->npdu, pheader->npdu,
-	    pheader->next, pheader->next);
+	LOG(LOGL_DEBUG, "| GTPv1\n");
+	LOG(LOGL_DEBUG, "| type = %" PRIu8 " 0x%02" PRIx8 "\n", p->type, p->type);
+	LOG(LOGL_DEBUG, "| length = %" PRIu16 " 0x%04" PRIx16 "\n", ntoh16(pheader->length), ntoh16(pheader->length));
+	LOG(LOGL_DEBUG, "| TEI = %" PRIu32 " 0x%08" PRIx32 "\n", p->header_tei_rx, p->header_tei_rx);
+	LOG(LOGL_DEBUG, "| seq = %" PRIu16 " 0x%04" PRIx16 "\n", p->seq, p->seq);
+	LOG(LOGL_DEBUG, "| npdu = %" PRIu8 " 0x%02" PRIx8 "\n", pheader->npdu, pheader->npdu);
+	LOG(LOGL_DEBUG, "| next = %" PRIu8 " 0x%02" PRIx8 "\n", pheader->next, pheader->next);
 
 	if (p->data_len <= GTP1_HEADER_SIZE_LONG) {
 		p->rc = GTP_RC_TINY;
@@ -917,7 +911,7 @@ static int gtphub_read(const struct osmo_fd *from,
 		return 0;
 	}
 
-	LOG(LOGL_DEBUG, "Received %d bytes from %s\n%s\n",
+	LOG(LOGL_DEBUG, "Received %d bytes from %s: %s\n",
 	    (int)received, osmo_sockaddr_to_str(from_addr),
 	    osmo_hexdump(buf, received));
 
@@ -1880,7 +1874,7 @@ static int from_sgsns_read_cb(struct osmo_fd *from_sgsns_ofd, unsigned int what)
 {
 	unsigned int plane_idx = from_sgsns_ofd->priv_nr;
 	OSMO_ASSERT(plane_idx < GTPH_PLANE_N);
-	LOG(LOGL_DEBUG, "\n\n=== reading from SGSN (%s)\n",
+	LOG(LOGL_DEBUG, "=== reading from SGSN (%s)\n",
 	    gtphub_plane_idx_names[plane_idx]);
 
 	if (!(what & BSC_FD_READ))
@@ -1912,7 +1906,7 @@ static int from_ggsns_read_cb(struct osmo_fd *from_ggsns_ofd, unsigned int what)
 {
 	unsigned int plane_idx = from_ggsns_ofd->priv_nr;
 	OSMO_ASSERT(plane_idx < GTPH_PLANE_N);
-	LOG(LOGL_DEBUG, "\n\n=== reading from GGSN (%s)\n",
+	LOG(LOGL_DEBUG, "=== reading from GGSN (%s)\n",
 	    gtphub_plane_idx_names[plane_idx]);
 	if (!(what & BSC_FD_READ))
 		return 0;
@@ -1970,7 +1964,7 @@ static int gtphub_unmap(struct gtphub *hub,
 		LOG(LOGL_DEBUG,
 		    "Seq unmap and TEI unmap yield two different peers."
 		    " Using seq unmap."
-		    "(from %s %s: seq %d yields %s, tei %u yields %s)\n",
+		    " (from %s %s: seq %d yields %s, tei %u yields %s)\n",
 		    gtphub_plane_idx_names[p->plane_idx],
 		    gtphub_peer_str(from_peer),
 		    (int)p->seq,
