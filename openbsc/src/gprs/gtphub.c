@@ -1871,14 +1871,6 @@ static void gtphub_restarted(struct gtphub *hub,
 			 * dropped because the tunnel is rendered unusable. */
 			gtphub_send_del_pdp_ctx(hub, tun, other_side_idx(side_idx));
 
-			struct pending_delete *pd;
-			pd = pending_delete_new();
-			pd->tun = tun;
-			pd->teardown_ind = 0xff;
-			pd->nsapi = 0;
-			llist_add(&pd->entry, &hub->pending_deletes);
-			expiry_add(&hub->expire_quickly, &pd->expiry_entry, p->timestamp);
-
 			gtphub_tunnel_endpoint_set_peer(&tun->endpoint[side_idx][GTPH_PLANE_CTRL],
 							NULL);
 			gtphub_tunnel_endpoint_set_peer(&tun->endpoint[side_idx][GTPH_PLANE_USER],
@@ -2228,6 +2220,9 @@ int gtphub_handle_buf(struct gtphub *hub,
 	LOG(LOGL_DEBUG, "from %s peer: %s\n", gtphub_side_idx_names[side_idx],
 	    gtphub_port_str(from_peer));
 
+	gtphub_check_restart_counter(hub, &p, from_peer);
+	gtphub_map_restart_counter(hub, &p);
+
 	struct gtphub_peer_port *to_peer_from_seq;
 	struct gtphub_peer_port *to_peer;
 	if (gtphub_unmap(hub, &p, from_peer,
@@ -2247,6 +2242,15 @@ int gtphub_handle_buf(struct gtphub *hub,
 	if ((!to_peer) && (side_idx == GTPH_SIDE_SGSN)) {
 		if (gtphub_resolve_ggsn(hub, &p, &to_peer) < 0)
 			return -1;
+	}
+
+	if (!to_peer && p.tun && p.type == GTP_DELETE_PDP_RSP) {
+		/* It's a delete confirmation for a tunnel that is partly
+		 * invalid, probably marked unsuable due to a restarted peer.
+		 * Remove the tunnel and be happy without forwarding. */
+		expiring_item_del(&p.tun->expiry_entry);
+		p.tun = NULL;
+		return 0;
 	}
 
 	if (!to_peer) {
@@ -2272,9 +2276,6 @@ int gtphub_handle_buf(struct gtphub *hub,
 	 * or a PDP Ctx and thus a tunnel has just been created,
 	 * or the tunnel has been deleted due to this message. */
 	OSMO_ASSERT(p.tun || (p.type == GTP_DELETE_PDP_RSP));
-
-	gtphub_check_restart_counter(hub, &p, from_peer);
-	gtphub_map_restart_counter(hub, &p);
 
 	/* If the GGSN is replying to an SGSN request, the sequence nr has
 	 * already been unmapped above (to_peer_from_seq != NULL), and we need not

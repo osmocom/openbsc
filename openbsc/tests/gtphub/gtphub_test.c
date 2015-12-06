@@ -905,9 +905,13 @@ static int msg_from_ggsn(int plane_idx,
 	send = gtphub_handle_buf(hub, GTPH_SIDE_GGSN, plane_idx, ggsn_sender,
 				 buf, msg(msg_from_ggsn), now,
 				 &reply_buf, &sgsn_ofd, &sgsn_addr);
-	LVL2_ASSERT(send > 0);
-	LVL2_ASSERT(same_addr(&sgsn_addr, sgsn_receiver));
-	LVL2_ASSERT(reply_is(msg_to_sgsn));
+	if (*msg_to_sgsn) {
+		LVL2_ASSERT(send > 0);
+		LVL2_ASSERT(same_addr(&sgsn_addr, sgsn_receiver));
+		LVL2_ASSERT(reply_is(msg_to_sgsn));
+	}
+	else
+		LVL2_ASSERT(send == 0);
 	return 1;
 }
 
@@ -1410,7 +1414,8 @@ static void test_peer_restarted_reusing_tei(void)
 			       );
 	const char *gtp_req_to_ggsn =
 		MSG_PDP_CTX_REQ("0068",
-				"6d32",	/* mapped seq ("1234") */
+				"6d33",	/* seq 6d31 + 2, after "out-of-band" Delete PDP Ctx
+					   due to differing restart counter. */
 				"23",
 				"42000121436587f9",
 				"00000002", /* mapped TEI Data I ("123") */
@@ -1427,7 +1432,31 @@ static void test_peer_restarted_reusing_tei(void)
 	OSMO_ASSERT(was_resolved_for("240010123456789", "internet"));
 
 	OSMO_ASSERT(tunnels_are(
-		"TEI=2:"
+		"TEI=2:" /* being established after restart */
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
+		" @21955\n"
+		"TEI=1:" /* invalidated due to restart */
+		" (uninitialized) (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=765 U=567)"
+		" @21945\n"
+		));
+
+	/* An "out-of-band" delete request should have been sent to the GGSN
+	 * (checked by expected log output in gtphub_test.ok), and the GGSN
+	 * will (usually) send a Delete Response like this: */
+	const char *gtp_del_resp_from_ggsn =
+		MSG_DEL_PDP_CTX_RSP("00000001", "6d32");
+
+	/* For this response (due to peer restart) we expect no forwarded
+	 * message. */
+	OSMO_ASSERT(msg_from_ggsn_c(&resolved_ggsn_addr,
+				    &sgsn_sender,
+				    gtp_del_resp_from_ggsn,
+				    ""));
+
+	OSMO_ASSERT(tunnels_are(
+		"TEI=2:" /* still being established after restart */
 		" 192.168.42.23 (TEI C=321 U=123)"
 		" <-> 192.168.43.34/(uninitialized) (TEI C=0 U=0)"
 		" @21955\n"
@@ -1436,7 +1465,7 @@ static void test_peer_restarted_reusing_tei(void)
 	const char *gtp_resp_from_ggsn =
 		MSG_PDP_CTX_RSP("004e",
 				"00000002", /* destination TEI (sent in req above) */
-				"6d32", /* mapped seq */
+				"6d33", /* mapped seq */
 				"01", /* restart */
 				"00000def", /* TEI U */
 				"00000fde", /* TEI C */
@@ -1446,7 +1475,7 @@ static void test_peer_restarted_reusing_tei(void)
 	const char *gtp_resp_to_sgsn =
 		MSG_PDP_CTX_RSP("004e",
 				"00000321", /* unmapped TEI ("005") */
-				"1234", /* unmapped seq ("6d32") */
+				"1234", /* unmapped seq ("6d33") */
 				"23",
 				"00000002", /* mapped TEI from GGSN ("567") */
 				"00000002", /* mapped TEI from GGSN ("765") */
@@ -1459,6 +1488,13 @@ static void test_peer_restarted_reusing_tei(void)
 				    &sgsn_sender,
 				    gtp_resp_from_ggsn,
 				    gtp_resp_to_sgsn));
+
+	OSMO_ASSERT(tunnels_are(
+		"TEI=2:" /* still being established after restart */
+		" 192.168.42.23 (TEI C=321 U=123)"
+		" <-> 192.168.43.34 (TEI C=fde U=def)"
+		" @21955\n"
+		));
 
 	OSMO_ASSERT(clear_test_hub());
 }
