@@ -1274,8 +1274,9 @@ static int gtphub_check_reused_teis(struct gtphub *hub,
 				 * must be stale, then. */
 				LOG(LOGL_NOTICE,
 				    "Expiring tunnel due to reused TEI:"
-				    " peer %s sent %s TEI %x,"
+				    " %s peer %s sent %s TEI %x,"
 				    " previously used by tunnel %s...\n",
+				    gtphub_side_idx_names[side_idx],
 				    gtphub_port_str(te->peer),
 				    gtphub_plane_idx_names[plane_idx],
 				    te->tei_orig,
