@@ -1222,14 +1222,17 @@ static int gtphub_check_mapped_tei(struct gtphub_tunnel_endpoint *new_te,
 
 	/* new_te->tei_repl is already taken. Try to find one out of the known
 	 * range. */
+	LOG(LOGL_DEBUG, "TEI replacement %d already taken.\n", new_te->tei_repl);
 
 	if ((*tei_max) < 0xffffffff) {
 		(*tei_max)++;
 		new_te->tei_repl = *tei_max;
+		LOG(LOGL_DEBUG, "Using TEI %d instead.\n", new_te->tei_repl);
 		return 1;
 	} else if ((*tei_min) > 1) {
 		(*tei_min)--;
 		new_te->tei_repl = *tei_min;
+		LOG(LOGL_DEBUG, "Using TEI %d instead.\n", new_te->tei_repl);
 		return 1;
 	}
 
@@ -1541,8 +1544,8 @@ static int gtphub_handle_create_pdp_ctx(struct gtphub *hub,
 		if (!tei_from_ie &&
 		    !tun->endpoint[side_idx][plane_idx].tei_orig) {
 			LOG(LOGL_ERROR,
-			    "Create PDP Context message omits %s TEI, but the"
-			    " no TEI has been announced for this tunnel: %s",
+			    "Create PDP Context message omits %s TEI, but"
+			    " no TEI has been announced for this tunnel: %s\n",
 			    gtphub_plane_idx_names[plane_idx],
 			    gtphub_tunnel_str(tun));
 			return -1;
