@@ -19,6 +19,7 @@
  */
 
 #include <string.h>
+#include <inttypes.h>
 
 #include <ares.h>
 #include <sys/socket.h>
@@ -288,7 +289,7 @@ static void show_bind_stats_all(struct vty *vty)
 		int side_idx;
 		for_each_side(side_idx) {
 			struct gtphub_bind *b = &g_hub->to_gsns[side_idx][plane_idx];
-			vty_out(vty, "  - to/from %ss: %s port %d%s",
+			vty_out(vty, "  - local addr to/from %ss: %s port %d%s",
 				gtphub_side_idx_names[side_idx],
 				gsn_addr_to_str(&b->local_addr), (int)b->local_port,
 				VTY_NEWLINE);
@@ -315,13 +316,101 @@ static void show_tunnel_stats(struct vty *vty, struct gtphub_tunnel *tun)
 	}
 }
 
-/*
+static void show_peer_summary(struct vty *vty, const char *prefix,
+			      int side_idx, int plane_idx,
+			      struct gtphub_peer *p, int with_io_stats)
+{
+	struct gtphub_peer_addr *pa;
+	int p2l = strlen(prefix) + 4 + 1;
+	char prefix2[p2l];
+	memset(prefix2, ' ', p2l - 1);
+	prefix2[p2l - 1] = '\0';
+
+	if (with_io_stats) {
+		llist_for_each_entry(pa, &p->addresses, entry) {
+			vty_out(vty, "%s- %s %s %s%s", prefix,
+				gtphub_side_idx_names[side_idx],
+				gtphub_plane_idx_names[plane_idx],
+				gsn_addr_to_str(&pa->addr),
+				VTY_NEWLINE);
+
+
+			struct gtphub_peer_port *pp;
+			llist_for_each_entry(pp, &pa->ports, entry) {
+				vty_out(vty, "%s  Port %" PRIu16 "%s", prefix, pp->port, VTY_NEWLINE);
+				vty_out_rate_ctr_group(vty, prefix2, pp->counters_io);
+			}
+		}
+	} else {
+		llist_for_each_entry(pa, &p->addresses, entry) {
+			vty_out(vty, "%s- %s %s %s", prefix,
+				gtphub_side_idx_names[side_idx],
+				gtphub_plane_idx_names[plane_idx],
+				gsn_addr_to_str(&pa->addr));
+			struct gtphub_peer_port *pp;
+			llist_for_each_entry(pp, &pa->ports, entry) {
+				vty_out(vty, ":%" PRIu16, pp->port);
+			}
+			vty_out(vty, VTY_NEWLINE);
+		}
+	}
+}
+
 static void show_peers_summary(struct vty *vty)
 {
-	int c
+	int side_idx;
 	int plane_idx;
+
+	int count[GTPH_SIDE_N][GTPH_PLANE_N] = {{0}};
+
+	for_each_side(side_idx) {
+		for_each_plane(plane_idx) {
+			struct gtphub_peer *p;
+			llist_for_each_entry(p, &g_hub->to_gsns[side_idx][plane_idx].peers, entry) {
+				count[side_idx][plane_idx] ++;
+			}
+		}
+	}
+
+	vty_out(vty, "Peers Count:%s", VTY_NEWLINE);
+	for_each_side_and_plane(side_idx, plane_idx) {
+		vty_out(vty, "  %s %s peers: %d%s",
+			gtphub_side_idx_names[side_idx],
+			gtphub_plane_idx_names[plane_idx],
+			count[side_idx][plane_idx],
+			VTY_NEWLINE);
+	}
 }
-*/
+
+static void show_peers_all(struct vty *vty, int with_io_stats)
+{
+	int side_idx;
+	int plane_idx;
+
+	int count[GTPH_SIDE_N][GTPH_PLANE_N] = {{0}};
+
+	vty_out(vty, "All Peers%s%s",
+		with_io_stats? " with I/O stats" : "",
+		VTY_NEWLINE);
+	for_each_side(side_idx) {
+		vty_out(vty, "- %s%s", gtphub_side_idx_names[side_idx], VTY_NEWLINE);
+		for_each_plane(plane_idx) {
+			struct gtphub_peer *p;
+			llist_for_each_entry(p, &g_hub->to_gsns[side_idx][plane_idx].peers, entry) {
+				count[side_idx][plane_idx] ++;
+				show_peer_summary(vty, "    ", side_idx, plane_idx, p, with_io_stats);
+			}
+		}
+	}
+	for_each_side_and_plane(side_idx, plane_idx) {
+		vty_out(vty, "%s %s peers: %d%s",
+			gtphub_side_idx_names[side_idx],
+			gtphub_plane_idx_names[plane_idx],
+			count[side_idx][plane_idx],
+			VTY_NEWLINE);
+	}
+}
+
 
 static void show_tunnels_summary(struct vty *vty)
 {
@@ -422,6 +511,28 @@ static void show_tunnels_all(struct vty *vty, int with_io_stats)
 		count, incomplete, VTY_NEWLINE);
 }
 
+
+DEFUN(show_gtphub_peers_summary, show_gtphub_peers_summary_cmd, "show gtphub peers summary",
+      SHOW_STR "Summary of all peers")
+{
+	show_peers_summary(vty);
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_gtphub_peers_list, show_gtphub_peers_list_cmd, "show gtphub peers list",
+      SHOW_STR "List all peers")
+{
+	show_peers_all(vty, 0);
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_gtphub_peers_stats, show_gtphub_peers_stats_cmd, "show gtphub peers stats",
+      SHOW_STR "List all peers with I/O stats")
+{
+	show_peers_all(vty, 1);
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_gtphub_tunnels_summary, show_gtphub_tunnels_summary_cmd, "show gtphub tunnels summary",
       SHOW_STR "Summary of all tunnels")
 {
@@ -447,6 +558,7 @@ DEFUN(show_gtphub, show_gtphub_cmd, "show gtphub all",
       SHOW_STR "Display information about the GTP hub")
 {
 	show_bind_stats_all(vty);
+	show_peers_summary(vty);
 	show_tunnels_summary(vty);
 	return CMD_SUCCESS;
 }
@@ -458,6 +570,9 @@ int gtphub_vty_init(struct gtphub *global_hub, struct gtphub_cfg *global_cfg)
 	g_cfg = global_cfg;
 
 	install_element_ve(&show_gtphub_cmd);
+	install_element_ve(&show_gtphub_peers_summary_cmd);
+	install_element_ve(&show_gtphub_peers_list_cmd);
+	install_element_ve(&show_gtphub_peers_stats_cmd);
 	install_element_ve(&show_gtphub_tunnels_summary_cmd);
 	install_element_ve(&show_gtphub_tunnels_list_cmd);
 	install_element_ve(&show_gtphub_tunnels_stats_cmd);
