@@ -942,9 +942,10 @@ static int gtphub_read(const struct osmo_fd *from,
 		return 0;
 	}
 
-	LOG(LOGL_DEBUG, "Received %d bytes from %s: %s\n",
+	LOG(LOGL_DEBUG, "Received %d bytes from %s: %s%s\n",
 	    (int)received, osmo_sockaddr_to_str(from_addr),
-	    osmo_hexdump(buf, received));
+	    osmo_hexdump(buf, received > 1000? 1000 : received),
+	    received > 1000 ? "..." : "");
 
 	return received;
 }

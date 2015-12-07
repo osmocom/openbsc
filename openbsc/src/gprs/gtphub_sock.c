@@ -50,8 +50,10 @@ int gtphub_write(const struct osmo_fd *to,
 		LOG(LOGL_ERROR, "sent(%d) != data_len(%d)\n",
 		    (int)sent, (int)buf_len);
 	else
-		LOG(LOGL_DEBUG, "Sent %d: %s\n",
-		    (int)sent, osmo_hexdump(buf, sent));
+		LOG(LOGL_DEBUG, "Sent %d: %s%s\n",
+		    (int)sent,
+		    osmo_hexdump(buf, sent > 1000? 1000 : sent),
+		    sent > 1000 ? "..." : "");
 
 	return 0;
 }
