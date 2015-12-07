@@ -145,7 +145,7 @@ int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi)
 	sprintf(tmp, "<sip:%s@%s:%s>", imsi, sip_client->src_ip, src_port);
 	osip_message_set_contact(reg_msg, tmp);
 
-	sprintf(tmp, "%i", EXPIRES_TIME_INSECS);
+	sprintf(tmp, "%i",  sip_client->expires_time);
 	osip_message_set_expires(reg_msg, tmp);
 
 	osip_message_set_content_length(reg_msg, "0");
@@ -493,10 +493,10 @@ void sip_set_cbs(osip_t *osip)
 
 
 int sip_client_init(struct reg_proxy *reg, const char *src_ip, u_int16_t src_port,
-                                           const char *dst_ip, u_int16_t dst_port)
+						 const char *dst_ip, u_int16_t dst_port, int expires_time)
 {
 
-	reg->sip_client = sip_client_create(src_ip, src_port, dst_ip, dst_port,
+	reg->sip_client = sip_client_create(src_ip, src_port, dst_ip, dst_port, expires_time,
                                                         &sip_read_cb, reg);
 	if (!reg->sip_client)
 		return -1;

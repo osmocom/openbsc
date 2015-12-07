@@ -191,7 +191,8 @@ int ipa_client_write_cb(struct ipa_client_conn *link)
 */
 struct sip_client *sip_client_create(const char *src_ip, u_int16_t src_port,
                                      const char *dst_ip, u_int16_t dst_port,
-                                          sip_read_cb_t read_cb, void *data)
+                                     int expires_time, sip_read_cb_t read_cb,
+                                                                  void *data)
 {
 	struct sip_client *sip_client;
 	int rc;
@@ -216,6 +217,7 @@ struct sip_client *sip_client_create(const char *src_ip, u_int16_t src_port,
 	sip_client->src_ip = src_ip;
 	sip_client->dst_port = dst_port;
 	sip_client->src_port = src_port;
+	sip_client->expires_time = expires_time;
 
 	rc = sip_client_connect(sip_client);
 

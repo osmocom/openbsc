@@ -23,11 +23,13 @@ struct sip_client {
 	char *dst_ip;
 	u_int16_t src_port;
 	u_int16_t dst_port;
+	int expires_time;
 };
 
 struct sip_client *sip_client_create(const char *src_ip, u_int16_t src_port,
                                      const char *dst_ip, u_int16_t dst_port,
-                                          sip_read_cb_t read_cb, void *data);
+                                     int expires_time, sip_read_cb_t read_cb,
+                                                                 void *data);
 
 void sip_client_destroy(struct sip_client *sip_client);
 int sip_client_send(struct sip_client *sip_client, struct msgb *msg);

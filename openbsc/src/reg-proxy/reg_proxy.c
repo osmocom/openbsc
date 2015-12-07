@@ -54,6 +54,7 @@ static const char *sip_src_ip = "127.0.0.1";
 static const char *sip_dst_ip = "127.0.0.1";
 static u_int16_t src_port = 5150;
 static u_int16_t dst_port = 5060;
+static int expires_time = 3600;
 
 struct log_info_cat ipa_proxy_test_cat[] = {
 	[DIPA_PROXY_TEST] = {
@@ -84,6 +85,7 @@ static void print_help()
 	printf("  -s --src-port port Sip client port (source).\n");
 	printf("  -D --sip-dst-ip ip-addr Sip server IP address (destination).\n");
 	printf("  -d --dst-port port Sip server port (destination).\n");
+	printf("  -t --expires-time Registration expiry time in seconds.\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -96,10 +98,11 @@ static void handle_options(int argc, char **argv)
 			{"src-port", 1, 0, 's'},
 			{"sip-dst-ip", 1, 0, 'D'},
 			{"dst-port", 1, 0, 'd'},
+			{"expires-time", 1, 0, 't'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hS:s:D:d:",
+		c = getopt_long(argc, argv, "hS:s:D:d:t:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -120,6 +123,9 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'd':
 			dst_port = atoi(optarg);
+			break;
+		case 't':
+			expires_time = atoi(optarg);
 			break;
 		default:
 			/* ignore */
@@ -254,7 +260,7 @@ int main(int argc, char **argv)
 
 ////////////////////////////////
 
-	rc = sip_client_init(reg, sip_src_ip, src_port, sip_dst_ip, dst_port);
+	rc = sip_client_init(reg, sip_src_ip, src_port, sip_dst_ip, dst_port, expires_time);
 	if (rc < 0) {
 		LOGP(DSUP, LOGL_FATAL, "Cannot set up SIP\n");
 		exit(2);
