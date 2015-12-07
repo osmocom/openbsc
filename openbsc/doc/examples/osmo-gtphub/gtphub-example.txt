@@ -61,15 +61,27 @@ The LD_LIBRARY_PATH below may be needed if OpenGGSN installed to /usr/local.
     cd <your-test-dir>
     path/to/openbsc/openbsc/src/gprs/osmo-gtphub -c gtphub.conf #-e 1 #for DEBUG level
 
-3. SGSN test:
+3. SGSN tests:
 
     sudo -s
     cd <your-test-dir>
-    /usr/local/bin/sgsnemu --createif -l 127.0.0.1 -r 127.0.0.3 --contexts=3
+    /usr/local/bin/sgsnemu --createif -l 127.0.0.1 -r 127.0.0.3 --imsi 420001214365100 --contexts=3
+
+Add more SGSNs using different IMSIs and local ports (if the same IMSI is used,
+the GGSN will reuse TEIs and tunnels will be discarded automatically):
+
+    /usr/local/bin/sgsnemu --createif -l 127.0.0.11 -r 127.0.0.3 --imsi 420001214365300 --contexts=3
 
 This shows the basic setup of GTPHub. Testing internet traffic via sgsnemu
 still needs some effort to announce a mobile subscriber or the like (I have
 used a real BTS, osmo-sgsn and a testing SIM in a web phone, instead).
+
+The core capability of GTPHub is to manage more than two GSNs, e.g. an SGSN
+contacting various GGSNs over the single GTPHub link. You would configure the
+SGSN to use one fixed GGSN (sending to gtphub) and gtphub will resolve the
+GGSNs once it has received the messages. So the SGSN may be behind NAT (add
+"sgsn-use-sender" to gtphub.conf) and communicate to various GGSNs over a
+single link to gtphub.
 
 I hope this helps to get you going.
 Any suggestions/patches are welcome!
