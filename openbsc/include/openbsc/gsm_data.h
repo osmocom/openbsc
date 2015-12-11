@@ -269,6 +269,7 @@ enum gsm_auth_policy {
 	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
 	GSM_AUTH_POLICY_REGEXP, /* accept IMSIs matching given regexp */
 	GSM_AUTH_POLICY_REMOTE,
+	GSM_AUTH_POLICY_REMOTE_CLOSED
 };
 
 #define GSM_T3101_DEFAULT 10

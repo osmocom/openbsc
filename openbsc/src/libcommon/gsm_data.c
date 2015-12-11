@@ -164,6 +164,7 @@ static const struct value_string auth_policy_names[] = {
 	{ GSM_AUTH_POLICY_TOKEN,	"token" },
 	{ GSM_AUTH_POLICY_REGEXP,	"regexp" },
 	{ GSM_AUTH_POLICY_REMOTE,	"remote" },
+	{ GSM_AUTH_POLICY_REMOTE_CLOSED,	"remote-closed" },
 	{ 0,				NULL }
 };
 

@@ -89,7 +89,8 @@ int auth_get_tuple_for_subscr(enum gsm_auth_policy auth_policy,
 	struct gsm_auth_info ainfo;
 	int rc;
 
-	if (auth_policy != GSM_AUTH_POLICY_REMOTE) {
+	if (auth_policy != GSM_AUTH_POLICY_REMOTE &&
+	    auth_policy != GSM_AUTH_POLICY_REMOTE_CLOSED) {
 		/* Get subscriber info (if any) */
 		rc = db_get_authinfo_for_subscr(&ainfo, subscr);
 		if (rc < 0) {
@@ -112,7 +113,8 @@ int auth_get_tuple_for_subscr(enum gsm_auth_policy auth_policy,
 		return AUTH_DO_CIPH;
 	}
 
-	if (auth_policy == GSM_AUTH_POLICY_REMOTE) {
+	if (auth_policy == GSM_AUTH_POLICY_REMOTE ||
+	    auth_policy == GSM_AUTH_POLICY_REMOTE_CLOSED) {
 		/* Request a new tuple from remote HLR */
 		return 0;
 	}

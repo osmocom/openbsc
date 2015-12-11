@@ -214,7 +214,8 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	/* If not done yet, try to get info for this user */
 	if (status < 0) {
 		rc = auth_get_tuple_for_subscr(net->auth_policy, &atuple, subscr, key_seq);
-		if ((rc == 0) && (net->auth_policy == GSM_AUTH_POLICY_REMOTE)) {
+		if ((rc == 0) && (net->auth_policy == GSM_AUTH_POLICY_REMOTE ||
+		                  net->auth_policy == GSM_AUTH_POLICY_REMOTE_CLOSED)) {
 			allocate_security_operation(conn);
 			conn->sec_operation->cb = cb;
 			conn->sec_operation->cb_data = cb_data;
@@ -297,6 +298,10 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
 	case GSM_AUTH_POLICY_ACCEPT_ALL:
 		return 1;
+	case GSM_AUTH_POLICY_REMOTE_CLOSED:
+		if (!subscriber->authorized) {
+			return subscriber->authorized;
+		}
 	case GSM_AUTH_POLICY_REMOTE:
 		if (loc->waiting_for_remote_accept) {
 			subscr_location_update(subscriber);
