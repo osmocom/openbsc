@@ -455,6 +455,12 @@ struct gsm_bts_model {
 
 	struct tlv_definition nm_att_tlvdef;
 
+	struct {
+		void (*encode_power_param)(struct msgb *msg,
+					   struct gsm_power_control *pc,
+					   uint8_t msg_type);
+	} rsl;
+
 	struct bitvec features;
 	uint8_t _features_data[128/8];
 };

@@ -1,6 +1,6 @@
 /* ip.access nanoBTS specific code */
 
-/* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2009-2015 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -44,13 +44,19 @@ extern struct gsm_network *bsc_gsmnet;
 
 static int bts_model_nanobts_start(struct gsm_network *net);
 static void bts_model_nanobts_e1line_bind_ops(struct e1inp_line *line);
+static void ipaccess_encode_power_param(struct msgb *msg,
+					struct gsm_power_control *pc,
+					uint8_t msg_type);
 
 struct gsm_bts_model bts_model_nanobts = {
 	.type = GSM_BTS_TYPE_NANOBTS,
 	.name = "nanobts",
 	.start = bts_model_nanobts_start,
 	.oml_rcvmsg = &abis_nm_rcvmsg,
-	.e1line_bind_ops = bts_model_nanobts_e1line_bind_ops, 
+	.e1line_bind_ops = bts_model_nanobts_e1line_bind_ops,
+	.rsl = {
+		.encode_power_param = ipaccess_encode_power_param,
+	},
 	.nm_att_tlvdef = {
 		.def = {
 			/* ip.access specifics */
@@ -716,4 +722,23 @@ struct e1inp_line_ops ipaccess_e1inp_line_ops = {
 static void bts_model_nanobts_e1line_bind_ops(struct e1inp_line *line)
 {
         e1inp_line_bind_ops(line, &ipaccess_e1inp_line_ops);
+}
+
+static void ipaccess_encode_power_param(struct msgb *msg,
+					 struct gsm_power_control *pc,
+					 uint8_t rsl_ie)
+{
+	uint8_t buf[4];
+
+	if (rsl_ie == RSL_IE_BS_POWER_PARAM)
+		buf[0] = RSL_IPAC_EIE_BS_PWR_CTL;
+	else
+		buf[0] = RSL_IPAC_EIE_MS_PWR_CTL;
+
+	buf[1] = pc->rxlev.lower & 0x3f;
+	buf[2] = pc->rxlev.upper & 0x3f;
+	buf[3] = (pc->rxqual.lower & 7) << 4;
+	buf[3] |= (pc->rxqual.upper & 7);
+
+	msgb_tlv_put(msg, rsl_ie, sizeof(buf), buf);
 }

@@ -283,8 +283,30 @@ int rsl_sacch_info_modify(struct gsm_lchan *lchan, uint8_t type,
 	return abis_rsl_sendmsg(msg);
 }
 
-int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
+/* Add a (MS|BS) Power Parameter IE to the message */
+static void add_power_params(struct gsm_bts_trx *trx, struct msgb *msg,
+			     struct gsm_power_control *pc,
+			     uint8_t rsl_ie)
 {
+	struct gsm_bts *bts = trx->bts;
+
+	/* IE is only present if dynamic power control inside BTS is active */
+	if (rsl_ie == RSL_IE_BS_POWER_PARAM && !trx->power_control.dl.dynamic)
+		return;
+	if (rsl_ie == RSL_IE_MS_POWER_PARAM && !trx->power_control.ul.dynamic)
+		return;
+	/* IE is manufacturer/operator specific, we need an encoder
+	 * function as part of the BTS model */
+	if (!bts->model->rsl.encode_power_param)
+		return;
+
+	bts->model->rsl.encode_power_param(msg, pc, rsl_ie);
+}
+
+int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db,
+			   struct gsm_power_control *pc)
+{
+	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
@@ -304,20 +326,24 @@ int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
 	dh->chan_nr = chan_nr;
 
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
+	if (pc)
+		add_power_params(trx, msg, pc, RSL_IE_BS_POWER_PARAM);
 
-	msg->dst = lchan->ts->trx->rsl_link;
+	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
 
-int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
+int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm,
+			   struct gsm_power_control *pc)
 {
+	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	int ctl_lvl;
 
-	ctl_lvl = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, dbm);
+	ctl_lvl = ms_pwr_ctl_lvl(trx->bts->band, dbm);
 	if (ctl_lvl < 0)
 		return ctl_lvl;
 
@@ -333,8 +359,10 @@ int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 	dh->chan_nr = chan_nr;
 
 	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
+	if (pc)
+		add_power_params(trx, msg, pc, RSL_IE_MS_POWER_PARAM);
 
-	msg->dst = lchan->ts->trx->rsl_link;
+	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -453,6 +481,7 @@ static void mr_config_for_bts(struct gsm_lchan *lchan, struct msgb *msg)
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 			    uint8_t ho_ref)
 {
+	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
 	int rc;
@@ -470,7 +499,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	ta = lchan->rqd_ta;
 
 	/* BS11 requires TA shifted by 2 bits */
-	if (lchan->ts->trx->bts->type == GSM_BTS_TYPE_BS11)
+	if (trx->bts->type == GSM_BTS_TYPE_BS11)
 		ta <<= 2;
 
 	memset(&cd, 0, sizeof(cd));
@@ -525,6 +554,13 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
 	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
+
+	add_power_params(trx, msg, &trx->power_control.dl,
+			 RSL_IE_BS_POWER_PARAM);
+
+	add_power_params(trx, msg, &trx->power_control.ul,
+			 RSL_IE_MS_POWER_PARAM);
+
 	mr_config_for_bts(lchan, msg);
 
 	msg->dst = lchan->ts->trx->rsl_link;
@@ -2163,7 +2199,8 @@ int rsl_nokia_si_end(struct gsm_bts_trx *trx)
 	return abis_rsl_sendmsg(msg);
 }
 
-int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduction)
+int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel,
+			 uint8_t reduction, struct gsm_power_control *pc)
 {
 	struct abis_rsl_common_hdr *ch;
 	struct msgb *msg = rsl_msgb_alloc();
@@ -2174,6 +2211,8 @@ int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduc
 
 	msgb_tv_put(msg, RSL_IE_CHAN_NR, channel);
 	msgb_tv_put(msg, RSL_IE_BS_POWER, reduction); /* reduction in 2dB steps */
+	if (pc)
+		add_power_params(trx, msg, pc, RSL_IE_BS_POWER_PARAM);
 
 	msg->dst = trx->rsl_link;
 

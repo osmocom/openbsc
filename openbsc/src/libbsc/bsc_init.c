@@ -293,7 +293,7 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 
 	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
 		/* channel unspecific, power reduction in 2 dB steps */
-		rsl_bs_power_control(trx, 0xFF, trx->max_power_red / 2);
+		rsl_bs_power_control(trx, 0xFF, trx->max_power_red / 2, NULL);
 		rsl_nokia_si_end(trx);
 	}
 

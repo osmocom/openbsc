@@ -30,6 +30,7 @@ struct gsm_bts;
 struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_bts_trx_ts;
+struct gsm_power_control;
 
 
 int rsl_bcch_info(struct gsm_bts_trx *trx, uint8_t type,
@@ -83,8 +84,10 @@ int rsl_ccch_conf_to_bs_ccch_sdcch_comb(int ccch_conf);
 int rsl_sacch_info_modify(struct gsm_lchan *lchan, uint8_t type,
 			  const uint8_t *data, int len);
 
-int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db);
-int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm);
+int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db,
+			   struct gsm_power_control *pc);
+int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm,
+			   struct gsm_power_control *pc);
 
 /* SMSCB functionality */
 int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,
@@ -96,7 +99,8 @@ int rsl_nokia_si_begin(struct gsm_bts_trx *trx);
 int rsl_nokia_si_end(struct gsm_bts_trx *trx);
 
 /* required for Nokia BTS power control */
-int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduction);
+int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel,
+			 uint8_t reduction, struct gsm_power_control *pc);
 
 
 int rsl_release_sapis_from(struct gsm_lchan *lchan, int start,
