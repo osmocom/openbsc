@@ -52,4 +52,4 @@ apps = [(4242, "src/osmo-bsc/osmo-bsc", "OsmoBSC", "osmo-bsc"),
 vty_command = ["./src/osmo-nitb/osmo-nitb", "-c",
                "doc/examples/osmo-nitb/nanobts/openbsc.cfg"]
 
-vty_app = apps[-1]
+vty_app = apps[5] # reference apps[] entry for osmo-nitb
