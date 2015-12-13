@@ -308,10 +308,15 @@ struct gsm_lchan {
 	/* Kind of the release/activation. E.g. RSL or PCU */
 	int rel_act_kind;
 
-	/* power handling */
+	/* power control parameters as set by the BSC */
+	struct {
+		struct gsm_power_control ul;
+		struct gsm_power_control dl;
+	} power_control;
+
+	/* BTS side MS power control loop */
 	struct {
 		uint8_t current;
-		uint8_t fixed;
 	} ms_power_ctrl;
 #endif
 };
