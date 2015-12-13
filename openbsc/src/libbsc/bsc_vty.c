@@ -401,6 +401,24 @@ static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 		ts->trx->bts->model->config_write_ts(vty, ts);
 }
 
+static void config_write_power_control(struct vty *vty,
+					struct gsm_power_control *pc,
+					const char *name)
+{
+	vty_out(vty, "   power-control %s mode %s%s", name,
+		pc->dynamic ? "dynamic" : "static", VTY_NEWLINE);
+	vty_out(vty, "   power-control %s level %u%s", name,
+		pc->static_level, VTY_NEWLINE);
+	vty_out(vty, "   power-control %s threshold rxqual lower %u%s",
+		name, pc->rxqual.lower, VTY_NEWLINE);
+	vty_out(vty, "   power-control %s threshold rxqual upper %u%s",
+		name, pc->rxqual.upper, VTY_NEWLINE);
+	vty_out(vty, "   power-control %s threshold rxlev lower %u%s",
+		name, pc->rxlev.lower, VTY_NEWLINE);
+	vty_out(vty, "   power-control %s threshold rxlev upper %u%s",
+		name, pc->rxlev.upper, VTY_NEWLINE);
+}
+
 static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 {
 	int i;
@@ -417,6 +435,9 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 	vty_out(vty, "   max_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
 	config_write_e1_link(vty, &trx->rsl_e1_link, "   rsl ");
 	vty_out(vty, "   rsl e1 tei %u%s", trx->rsl_tei, VTY_NEWLINE);
+
+	config_write_power_control(vty, &trx->power_control.ul, "uplink");
+	config_write_power_control(vty, &trx->power_control.dl, "downlink");
 
 	if (trx->bts->model->config_write_trx)
 		trx->bts->model->config_write_trx(vty, trx);
@@ -794,6 +815,16 @@ static int config_write_net(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
+static void trx_dump_pwrctl(struct vty *vty, const struct gsm_power_control *pc,
+			    const char *prefix)
+{
+	vty_out(vty, "%s Power Control: %s, Level: %u dBm, "
+		"RxLev (%u...%u) RxQual (%u...%u)%s",
+		prefix, pc->dynamic ? "dynamic" : "static",
+		pc->static_level, pc->rxlev.lower, pc->rxlev.upper,
+		pc->rxqual.lower, pc->rxqual.upper, VTY_NEWLINE);
+}
+
 static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 {
 	vty_out(vty, "TRX %u of BTS %u is on ARFCN %u%s",
@@ -815,6 +846,9 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 		vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
 		e1isl_dump_vty(vty, trx->rsl_link);
 	}
+
+	trx_dump_pwrctl(vty, &trx->power_control.ul, "Uplink (MS)");
+	trx_dump_pwrctl(vty, &trx->power_control.ul, "Downlink (BTS)");
 }
 
 DEFUN(show_trx,
@@ -3348,6 +3382,100 @@ DEFUN(cfg_trx_rf_locked,
 	return CMD_SUCCESS;
 }
 
+struct gsm_power_control *get_pwrctl(struct gsm_bts_trx *trx, const char *updown)
+{
+	if (!strcmp(updown, "uplink"))
+		return &trx->power_control.ul;
+	else if (!strcmp(updown, "downlink"))
+		return &trx->power_control.dl;
+
+	return NULL;
+}
+
+#define PWRCTL_STR	"RF Power Control settings\n" \
+			"Uplink (MS) Power Control\n" \
+			"Downlink (BTS) Power Control\n"
+
+DEFUN(cfg_trx_power_mode,
+      cfg_trx_power_mode_cmd,
+      "power-control (uplink|downlink) mode (dynamic|static)",
+      PWRCTL_STR
+      "Power Control Mode\n"
+      "Enable Power Control (Dynamic Power)\n"
+      "Disable Power Contrl (Static Power)\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct gsm_power_control *p = get_pwrctl(trx, argv[0]);
+
+	if (!strcmp(argv[1], "dynamic")) {
+		if (trx->nr == 0 && !strcmp(argv[0], "downlink")) {
+			vty_out(vty, "%% TRX 0 has no downlink power control!%s",
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		p->dynamic = 1;
+	} else
+		p->dynamic = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_power_level,
+      cfg_trx_power_level_cmd,
+      "power-control (uplink|downlink) level <0-40>",
+      PWRCTL_STR
+      "Fixed Power Level\n"
+      "Power Level in dBm\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct gsm_power_control *p = get_pwrctl(trx, argv[0]);
+
+	p->static_level = atoi(argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_power_thresh_qual,
+      cfg_trx_power_thresh_qual_cmd,
+      "power-control (uplink|downlink) threshold rxqual (lower|upper) <0-7>",
+      PWRCTL_STR "Dynamic Power Control Threshold\n"
+      "RxQual Threshold\n"
+      "Lower RxQual Threshold\n"
+      "Upper RxQual Threshold\n"
+      "RxQual Value\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct gsm_power_control *p = get_pwrctl(trx, argv[0]);
+
+	if (!strcmp(argv[1], "lower"))
+		p->rxqual.lower = atoi(argv[2]);
+	else
+		p->rxqual.upper = atoi(argv[2]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_power_thresh_lev,
+      cfg_trx_power_thresh_lev_cmd,
+      "power-control (uplink|downlink) threshold rxlev (lower|upper) <0-63>",
+      PWRCTL_STR "Dynamic Power Control Threshold\n"
+      "RxLev Threshold\n"
+      "Lower RxLev Threshold\n"
+      "Upper RxLev Threshold\n"
+      "RxLev Value\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct gsm_power_control *p = get_pwrctl(trx, argv[0]);
+
+	if (!strcmp(argv[1], "lower"))
+		p->rxlev.lower = atoi(argv[2]);
+	else
+		p->rxlev.upper = atoi(argv[2]);
+
+	return CMD_SUCCESS;
+}
+
+
 /* per TS configuration */
 DEFUN(cfg_ts,
       cfg_ts_cmd,
@@ -3881,6 +4009,10 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(TRX_NODE, &cfg_trx_rsl_e1_cmd);
 	install_element(TRX_NODE, &cfg_trx_rsl_e1_tei_cmd);
 	install_element(TRX_NODE, &cfg_trx_rf_locked_cmd);
+	install_element(TRX_NODE, &cfg_trx_power_mode_cmd);
+	install_element(TRX_NODE, &cfg_trx_power_level_cmd);
+	install_element(TRX_NODE, &cfg_trx_power_thresh_qual_cmd);
+	install_element(TRX_NODE, &cfg_trx_power_thresh_lev_cmd);
 
 	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);

@@ -350,6 +350,18 @@ struct gsm_bts_trx_ts {
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
 
+struct gsm_power_control_threshold {
+	uint8_t lower;
+	uint8_t upper;
+};
+
+struct gsm_power_control {
+	uint8_t dynamic;
+	uint8_t static_level;
+	struct gsm_power_control_threshold rxlev;
+	struct gsm_power_control_threshold rxqual;
+};
+
 /* One TRX in a BTS */
 struct gsm_bts_trx {
 	/* list header in bts->trx_list */
@@ -377,6 +389,12 @@ struct gsm_bts_trx {
 	uint16_t arfcn;
 	int nominal_power;		/* in dBm */
 	unsigned int max_power_red;	/* in actual dB */
+
+	/* MS (UL) and BTS (DL) power control configuration */
+	struct {
+		struct gsm_power_control ul;
+		struct gsm_power_control dl;
+	} power_control;
 
 #ifndef ROLE_BSC
 	struct trx_power_params power_params;
