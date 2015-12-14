@@ -36,7 +36,7 @@ app_configs = {
     "sgsn": ["doc/examples/osmo-sgsn/osmo-sgsn.cfg"],
     "nitb": ["doc/examples/osmo-nitb/nanobts/openbsc-multitrx.cfg",
              "doc/examples/osmo-nitb/nanobts/openbsc.cfg"],
-    "gtphub": ["doc/examples/osmo-gtphub/osmo-gtphub.cfg"]
+    "gtphub": ["doc/examples/osmo-gtphub/osmo-gtphub-1iface.cfg"]
 }
 
 
