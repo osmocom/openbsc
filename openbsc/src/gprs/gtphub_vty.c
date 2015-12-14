@@ -109,7 +109,7 @@ static int config_write_gtphub(struct vty *vty)
 
 DEFUN(cfg_gtphub, cfg_gtphub_cmd,
       "gtphub",
-      "Configure the GTP hub")
+      "Configure the GTP hub\n")
 {
 	vty->node = GTPHUB_NODE;
 	return CMD_SUCCESS;
@@ -516,49 +516,49 @@ static void show_tunnels_all(struct vty *vty, int with_io_stats)
 #define SHOW_GTPHUB_TUNS_STRS  SHOW_GTPHUB_STRS "Active tunnels\n"
 
 DEFUN(show_gtphub_peers_summary, show_gtphub_peers_summary_cmd, "show gtphub peers summary",
-      SHOW_GTPHUB_PEERS_STRS "Summary of all peers")
+      SHOW_GTPHUB_PEERS_STRS "Summary of all peers\n")
 {
 	show_peers_summary(vty);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_peers_list, show_gtphub_peers_list_cmd, "show gtphub peers list",
-      SHOW_GTPHUB_PEERS_STRS "List all peers")
+      SHOW_GTPHUB_PEERS_STRS "List all peers\n")
 {
 	show_peers_all(vty, 0);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_peers_stats, show_gtphub_peers_stats_cmd, "show gtphub peers stats",
-      SHOW_GTPHUB_PEERS_STRS "List all peers with I/O stats")
+      SHOW_GTPHUB_PEERS_STRS "List all peers with I/O stats\n")
 {
 	show_peers_all(vty, 1);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_tunnels_summary, show_gtphub_tunnels_summary_cmd, "show gtphub tunnels summary",
-      SHOW_GTPHUB_TUNS_STRS "Summary of all tunnels")
+      SHOW_GTPHUB_TUNS_STRS "Summary of all tunnels\n")
 {
 	show_tunnels_summary(vty);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_tunnels_list, show_gtphub_tunnels_list_cmd, "show gtphub tunnels list",
-      SHOW_GTPHUB_TUNS_STRS "List all tunnels")
+      SHOW_GTPHUB_TUNS_STRS "List all tunnels\n")
 {
 	show_tunnels_all(vty, 0);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_tunnels_stats, show_gtphub_tunnels_stats_cmd, "show gtphub tunnels stats",
-      SHOW_GTPHUB_TUNS_STRS "List all tunnels with I/O stats")
+      SHOW_GTPHUB_TUNS_STRS "List all tunnels with I/O stats\n")
 {
 	show_tunnels_all(vty, 1);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub, show_gtphub_cmd, "show gtphub all",
-      SHOW_GTPHUB_STRS "Summarize everything about the GTP hub")
+      SHOW_GTPHUB_STRS "Summarize everything about the GTP hub\n")
 {
 	show_bind_stats_all(vty);
 	show_peers_summary(vty);
