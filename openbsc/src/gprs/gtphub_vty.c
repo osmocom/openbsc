@@ -511,51 +511,54 @@ static void show_tunnels_all(struct vty *vty, int with_io_stats)
 		count, incomplete, VTY_NEWLINE);
 }
 
+#define SHOW_GTPHUB_STRS   SHOW_STR "Show info on running GTP hub\n"
+#define SHOW_GTPHUB_PEERS_STRS  SHOW_GTPHUB_STRS "Active peers\n"
+#define SHOW_GTPHUB_TUNS_STRS  SHOW_GTPHUB_STRS "Active tunnels\n"
 
 DEFUN(show_gtphub_peers_summary, show_gtphub_peers_summary_cmd, "show gtphub peers summary",
-      SHOW_STR "Summary of all peers")
+      SHOW_GTPHUB_PEERS_STRS "Summary of all peers")
 {
 	show_peers_summary(vty);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_peers_list, show_gtphub_peers_list_cmd, "show gtphub peers list",
-      SHOW_STR "List all peers")
+      SHOW_GTPHUB_PEERS_STRS "List all peers")
 {
 	show_peers_all(vty, 0);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_peers_stats, show_gtphub_peers_stats_cmd, "show gtphub peers stats",
-      SHOW_STR "List all peers with I/O stats")
+      SHOW_GTPHUB_PEERS_STRS "List all peers with I/O stats")
 {
 	show_peers_all(vty, 1);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_tunnels_summary, show_gtphub_tunnels_summary_cmd, "show gtphub tunnels summary",
-      SHOW_STR "Summary of all tunnels")
+      SHOW_GTPHUB_TUNS_STRS "Summary of all tunnels")
 {
 	show_tunnels_summary(vty);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_tunnels_list, show_gtphub_tunnels_list_cmd, "show gtphub tunnels list",
-      SHOW_STR "List all tunnels")
+      SHOW_GTPHUB_TUNS_STRS "List all tunnels")
 {
 	show_tunnels_all(vty, 0);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub_tunnels_stats, show_gtphub_tunnels_stats_cmd, "show gtphub tunnels stats",
-      SHOW_STR "List all tunnels with I/O stats")
+      SHOW_GTPHUB_TUNS_STRS "List all tunnels with I/O stats")
 {
 	show_tunnels_all(vty, 1);
 	return CMD_SUCCESS;
 }
 
 DEFUN(show_gtphub, show_gtphub_cmd, "show gtphub all",
-      SHOW_STR "Display information about the GTP hub")
+      SHOW_GTPHUB_STRS "Summarize everything about the GTP hub")
 {
 	show_bind_stats_all(vty);
 	show_peers_summary(vty);
