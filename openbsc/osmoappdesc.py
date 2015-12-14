@@ -46,7 +46,7 @@ apps = [(4242, "src/osmo-bsc/osmo-bsc", "OsmoBSC", "osmo-bsc"),
         (4246, "src/gprs/osmo-gbproxy", "OsmoGbProxy", "gbproxy"),
         (4245, "src/gprs/osmo-sgsn", "OsmoSGSN", "sgsn"),
         (4242, "src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb"),
-        (4253, "src/gprs/osmo-gtphub", "OsmoGTPHub", "gtphub")
+        (4253, "src/gprs/osmo-gtphub", "OsmoGTPhub", "gtphub")
         ]
 
 vty_command = ["./src/osmo-nitb/osmo-nitb", "-c",
