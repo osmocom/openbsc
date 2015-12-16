@@ -344,7 +344,7 @@ static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 		gprs_gb_parse_bssgp(msgb_bssgph(stored_msg),
 				    msgb_bssgp_len(stored_msg),
 				    &tmp_parse_ctx);
-		gbproxy_patch_bssgp(msg, msgb_bssgph(stored_msg),
+		gbproxy_patch_bssgp(stored_msg, msgb_bssgph(stored_msg),
 				    msgb_bssgp_len(stored_msg),
 				    peer, link_info, &len_change,
 				    &tmp_parse_ctx);
