@@ -1,3 +1,9 @@
+openbsc (0.15.0+z6) unstable; urgency=medium
+
+  * Include gbproxy fix (4339a539585030c4e1b846d024a005f3d5a631a4) on top of z5 
+
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Thu, 17 Dec 2015 08:34:28 +0100
+
 openbsc (0.15.0+z5) unstable; urgency=medium
 
   * Based on 5e95a411946ba3c520f048c07f8fdc3dff26d564
