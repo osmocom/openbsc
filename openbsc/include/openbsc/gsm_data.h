@@ -326,6 +326,7 @@ struct gsm_network {
 	struct bsc_api *bsc_api;
 	struct gprs_gsup_client *hlr_sup_client;
 	struct gprs_gsup_client *ussd_sup_client;
+	struct gprs_gsup_client *sms_client;
 
 	unsigned int num_bts;
 	struct llist_head bts_list;

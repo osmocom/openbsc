@@ -1053,6 +1053,28 @@ DEFUN(sup_ussd_destination, sup_ussd_destination_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(sms_destination, sms_destination_cmd,
+	"sms destination ADDR <0-65535>",
+	"Enable SMS socket to a given address/port" "destination\n" "address or hostname\n" "port number\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
+	if (gsmnet->sms_client) {
+		LOGP(DSUP, LOGL_FATAL, "Can't create two SMS clients\n");
+		vty_out(vty, "%%SMS client already configured%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	gsmnet->sms_client = gprs_gsup_client_create(
+		argv[0], atoi(argv[1]), &sup_read_cb);
+	if (!gsmnet->sms_client) {
+		LOGP(DSUP, LOGL_FATAL, "Cannot set up SMS socket\n");
+		vty_out(vty, "%%Cannot set up SMS socket%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
 
 DEFUN(logging_fltr_imsi,
       logging_fltr_imsi_cmd,
