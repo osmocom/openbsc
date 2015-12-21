@@ -31,6 +31,9 @@
 #include <openbsc/osmo_msc.h>
 #include <openbsc/gprs_utils.h>
 #include <openbsc/ussd.h>
+#include <openbsc/gsm_04_11.h>
+#include <osmocom/gsm/protocol/gsm_04_11.h>
+#include <osmocom/gsm/gsm0411_utils.h>
 
 #if 0
 enum {
@@ -173,6 +176,74 @@ static int rx_uss_message(const uint8_t* data, size_t len)
 	return on_ussd_response(&ss, extention);
 }
 #endif
+
+int subscr_tx_sms_message(struct gsm_subscriber *subscr,
+                          struct gsm411_rp_hdr *rph)
+{
+	uint8_t *data;
+	struct msgb *msg = gprs_gsup_msgb_alloc();
+	if (!msg)
+		return -ENOMEM;
+
+	msgb_put_u8(msg, GPRS_GSUP_MSGT_SMS);
+
+	if (subscr->extension) {
+		uint8_t bcd_buf[32];
+		int bcd_len = gsm48_encode_bcd_number(bcd_buf, sizeof(bcd_buf),
+		                                      0, subscr->extension);
+		msgb_tlv_put(msg, 0x82, bcd_len - 1, &bcd_buf[1]);
+	}
+	msgb_put_u8(msg, rph->msg_type);
+	msgb_put_u8(msg, rph->msg_ref);
+
+	data = msgb_put(msg, rph->len - 2);
+	memcpy(data, rph->data, rph->len - 2);
+
+	return gprs_gsup_client_send(subscr->group->net->sms_client, msg);
+}
+
+static int rx_sms_message(const uint8_t* data, size_t data_len)
+{
+
+	int rc;
+	char extension[15];
+	uint8_t *value;
+	size_t value_len;
+	int offset = 0;
+	uint8_t *rp_hdr = (uint8_t*)data + offset;
+
+	offset++;
+	rc = gprs_match_tlv(&rp_hdr, &data_len, 0x82, &value, &value_len);
+
+	if (rc <= 0)
+		return -GMM_CAUSE_INV_MAND_INFO;
+
+	if (value_len * 2 + 1 > ARRAY_SIZE(extension))
+		return -GMM_CAUSE_INV_MAND_INFO;
+
+	/* Note that gsm48_decode_bcd_number expects the number of encoded MSISDN
+	 * octets in the first octet. By coincidence (the TLV encoding) the byte
+	 * before the value part already contains this length so we can use it
+	 * here.
+	 */
+	OSMO_ASSERT(value[-1] == value_len);
+	gsm48_decode_bcd_number(extension, ARRAY_SIZE(extension), value - 1, 0);
+	offset += 2 + value_len;
+
+	struct msgb *msg = gsm411_msgb_alloc();
+	uint8_t *rp_msg;
+	rp_msg = (uint8_t *)msgb_put(msg, data_len - offset);
+	memcpy(rp_msg, data + offset, data_len - offset);
+
+	struct gsm_subscriber *subscr;
+	subscr = subscr_get_by_extension(NULL, extension);
+	if (!subscr) {
+		msgb_free(msg);
+		return -GMM_CAUSE_IMSI_UNKNOWN;
+	}
+
+	return gsm411_send_rp_msg_subscr(subscr, msg);
+}
 
 static int subscr_tx_sup_message(struct gprs_gsup_client *sup_client,
 								 struct gsm_subscriber *subscr,
@@ -442,6 +513,8 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
 #if 0
     if (*data == GPRS_GSUP_MSGT_MAP) {
         return rx_uss_message(data, data_len);
+    } else if (*data == GPRS_GSUP_MSGT_SMS) {
+        return rx_sms_message(data, data_len);
     }
 #endif
 	rc = gprs_gsup_decode(data, data_len, &gsup_msg);

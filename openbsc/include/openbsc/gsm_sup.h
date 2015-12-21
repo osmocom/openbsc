@@ -4,6 +4,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_subscriber.h>
 #include <osmocom/gsm/gsm0480.h>
+#include <osmocom/gsm/protocol/gsm_04_11.h>
 
 #define LOGGSUBSCRP(level, subscr, fmt, args...) \
 	LOGP(DSUP, level, "SUBSCR(%s) " fmt, \
@@ -18,5 +19,8 @@ int subscr_location_update(struct gsm_subscriber *subscr);
 
 int subscr_tx_uss_message(struct ss_request *req,
 			  struct gsm_subscriber *subscr);
+
+int subscr_tx_sms_message(struct gsm_subscriber *subscr,
+                          struct gsm411_rp_hdr *rph);
 
 #endif /* _GSM_SUP_H */
