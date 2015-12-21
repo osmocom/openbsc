@@ -32,6 +32,9 @@ struct gsm_trans {
 	/* reference from MNCC or other application */
 	uint32_t callref;
 
+	/* SMS RP message reference */
+	uint8_t msg_ref;
+
 	/* if traffic channel receive was requested */
 	int tch_recv;
 
@@ -70,6 +73,8 @@ struct gsm_trans *trans_find_by_id(struct gsm_subscriber_connection *conn,
 				   uint8_t proto, uint8_t trans_id);
 struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 					uint32_t callref);
+struct gsm_trans *trans_find_by_msgref(struct gsm_subscriber_connection *conn,
+					uint8_t msg_ref);
 
 struct gsm_trans *trans_alloc(struct gsm_network *net,
 			      struct gsm_subscriber *subscr,

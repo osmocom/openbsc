@@ -61,6 +61,22 @@ struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 	return NULL;
 }
 
+struct gsm_trans *trans_find_by_msgref(struct gsm_subscriber_connection *conn,
+					uint8_t msg_ref)
+{
+	struct gsm_trans *trans;
+	struct gsm_network *net = conn->bts->network;
+	struct gsm_subscriber *subscr = conn->subscr;
+
+	llist_for_each_entry(trans, &net->trans_list, entry) {
+		if (trans->subscr == subscr &&
+		    trans->protocol == GSM48_PDISC_SMS &&
+		    trans->msg_ref == msg_ref)
+			return trans;
+	}
+	return NULL;
+}
+
 struct gsm_trans *trans_alloc(struct gsm_network *net,
 			      struct gsm_subscriber *subscr,
 			      uint8_t protocol, uint8_t trans_id,
