@@ -559,6 +559,7 @@ DEFUN(ena_subscr_handover,
 	SUBSCR_HELP "Handover the active connection\n"
 	"Number of the BTS to handover to\n")
 {
+#if BEFORE_MSCSPLIT
 	int ret;
 	struct gsm_subscriber_connection *conn;
 	struct gsm_bts *bts;
@@ -602,6 +603,10 @@ DEFUN(ena_subscr_handover,
 
 	vlr_subscr_put(vsub);
 	return CMD_SUCCESS;
+#else
+	vty_out(vty, "%% Not implemented!%s", VTY_NEWLINE);
+	return -1;
+#endif
 }
 
 #define A3A8_ALG_TYPES "(none|xor|comp128v1)"
@@ -647,6 +652,7 @@ DEFUN(subscriber_update,
 static int scall_cbfn(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
+#if BEFORE_MSCSPLIT
 	struct scall_signal_data *sigdata = signal_data;
 	struct vty *vty = sigdata->data;
 
@@ -661,6 +667,10 @@ static int scall_cbfn(unsigned int subsys, unsigned int signal,
 		break;
 	}
 	return 0;
+#else
+	/* not implemented yet! */
+	return -1;
+#endif
 }
 
 DEFUN(show_stats,
@@ -670,7 +680,11 @@ DEFUN(show_stats,
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 
+#if 0
+	TODO implement statistics specifically for libmsc!
+	Excluding this to be able to link without libbsc:
 	openbsc_vty_print_statistics(vty, net);
+#endif
 	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
 		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_ATTACH].current,
 		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_NORMAL].current,

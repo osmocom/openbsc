@@ -591,13 +591,6 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 				(sp->penalty_time*20)+20, VTY_NEWLINE);
 	}
 
-	/* Is periodic LU enabled or disabled? */
-	if (bts->si_common.chan_desc.t3212 == 0)
-		vty_out(vty, "  no periodic location update%s", VTY_NEWLINE);
-	else
-		vty_out(vty, "  periodic location update %u%s",
-			bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
-
 	vty_out(vty, "  radio-link-timeout %d%s",
 		get_radio_link_timeout(&bts->si_common.cell_options),
 		VTY_NEWLINE);
@@ -838,6 +831,11 @@ static int config_write_net(struct vty *vty)
 			vty_out(vty, " timezone %d %d%s",
 				gsmnet->tz.hr, gsmnet->tz.mn, VTY_NEWLINE);
 	}
+	if (gsmnet->t3212 == 0)
+		vty_out(vty, " no periodic location update%s", VTY_NEWLINE);
+	else
+		vty_out(vty, " periodic location update %u%s",
+			gsmnet->t3212 * 6, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -3947,7 +3945,6 @@ int bsc_vty_init(struct gsm_network *network)
 	install_element_ve(&show_paging_group_cmd);
 
 	logging_vty_add_cmds(NULL);
-	osmo_stats_vty_add_cmds();
 
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 	install_element(GSMNET_NODE, &cfg_net_handover_cmd);

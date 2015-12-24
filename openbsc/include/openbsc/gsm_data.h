@@ -26,6 +26,7 @@ struct gsm_subscriber_group;
 struct bsc_subscr;
 struct vlr_instance;
 struct vlr_subscr;
+struct ue_conn_ctx;
 
 #define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
 
@@ -110,6 +111,12 @@ struct gsm_classmark {
 	uint8_t classmark3[14];
 };
 
+enum integrity_protection_state {
+	INTEGRITY_PROTECTION_NONE	= 0,
+	INTEGRITY_PROTECTION_IK		= 1,
+	INTEGRITY_PROTECTION_IK_CK	= 2,
+};
+
 /* active radio connection of a mobile subscriber */
 struct gsm_subscriber_connection {
 	/* global linked list of subscriber_connections */
@@ -169,6 +176,15 @@ struct gsm_subscriber_connection {
 	enum ran_type via_ran;
 
 	struct gsm_classmark classmark;
+
+	uint16_t lac;
+	struct gsm_encr encr;
+
+	/* which Iu-CS connection, if any. */
+	struct {
+		struct ue_conn_ctx *ue_ctx;
+		int integrity_protection;
+	} iu;
 };
 
 
@@ -304,6 +320,12 @@ struct gsm_tz {
 };
 
 struct gsm_network {
+	/* TODO MSCSPLIT the gsm_network struct is basically a kitchen sink for
+	 * global settings and variables, "madly" mixing BSC and MSC stuff. Split
+	 * this in e.g. struct osmo_bsc and struct osmo_msc, with the things
+	 * these have in common, like country and network code, put in yet
+	 * separate structs and placed as members in osmo_bsc and osmo_msc. */
+
 	/* global parameters */
 	uint16_t country_code;
 	uint16_t network_code;
@@ -415,6 +437,9 @@ struct gsm_network {
 	uint16_t gsup_server_port;
 
 	struct vlr_instance *vlr;
+
+	/* Periodic location update default value */
+	uint8_t t3212;
 };
 
 struct osmo_esme;
@@ -464,10 +489,6 @@ struct gsm_sms {
 extern void talloc_ctx_init(void *ctx_root);
 
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
-
-/* Get reference to a neighbor cell on a given BCCH ARFCN */
-struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
-				 uint16_t arfcn, uint8_t bsic);
 
 enum gsm_bts_type parse_btstype(const char *arg);
 const char *btstype2str(enum gsm_bts_type type);
@@ -551,7 +572,6 @@ int bts_gprs_mode_is_compat(struct gsm_bts *bts, enum bts_gprs_mode mode);
 
 int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts);
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
-struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 
 int gsm_btsmodel_set_feature(struct gsm_bts_model *model, enum gsm_bts_features feat);
 int gsm_bts_model_register(struct gsm_bts_model *model);

@@ -19,8 +19,6 @@
 
 #define GSM_SUBSCRIBER_NO_EXPIRATION	0x0
 
-struct subscr_request;
-
 enum gsm_subscriber_field {
 	GSM_SUBSCRIBER_IMSI,
 	GSM_SUBSCRIBER_TMSI,
@@ -34,14 +32,29 @@ enum gsm_subscriber_update_reason {
 	GSM_SUBSCRIBER_UPDATE_EQUIPMENT,
 };
 
-int subscr_update(struct vlr_subscr *vsub, struct gsm_bts *bts, int reason);
+/*
+ * Struct for pending channel requests. This is managed in the
+ * llist_head requests of each subscriber. The reference counting
+ * should work in such a way that a subscriber with a pending request
+ * remains in memory.
+ */
+struct subscr_request {
+       struct llist_head entry;
+
+       /* the callback data */
+       gsm_cbfn *cbfn;
+       void *param;
+};
+
+int subscr_update(struct vlr_subscr *vsub, int reason);
 
 /*
  * Paging handling with authentication
  */
-struct subscr_request *subscr_request_channel(struct vlr_subscr *vsub,
-					      int channel_type,
-					      gsm_cbfn *cbfn, void *param);
+struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
+					   int channel_type,
+					   gsm_cbfn *cbfn, void *param);
+
 void subscr_remove_request(struct subscr_request *req);
 
 int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,

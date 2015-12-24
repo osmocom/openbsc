@@ -52,8 +52,10 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
+#if BEFORE_MSCSPLIT
 		DEBUGPC(DLSMS, "success, using Timeslot %u on ARFCN %u\n",
 			conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
+#endif
 		conn->silent_call = 1;
 		msc_subscr_conn_get(conn);
 		/* increment lchan reference count */
@@ -126,7 +128,10 @@ int gsm_silent_call_start(struct vlr_subscr *vsub, void *data, int type)
 {
 	struct subscr_request *req;
 
-	req = subscr_request_channel(vsub, type, paging_cb_silent, data);
+	/* FIXME the VTY command allows selecting a silent call channel type.
+	 * This doesn't apply to the situation after MSCSPLIT with an
+	 * A-interface. */
+	req = subscr_request_conn(vsub, type, paging_cb_silent, data);
 	return req != NULL;
 }
 
@@ -143,8 +148,10 @@ int gsm_silent_call_stop(struct vlr_subscr *vsub)
 	if (!conn->silent_call)
 		return -EINVAL;
 
+#if BEFORE_MSCSPLIT
 	DEBUGPC(DLSMS, "Stopping silent call using Timeslot %u on ARFCN %u\n",
 		conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
+#endif
 
 	conn->silent_call = 0;
 	msc_subscr_conn_put(conn);
