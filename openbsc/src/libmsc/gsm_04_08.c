@@ -125,27 +125,6 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 	 * work that the caller no longer has to do */
 	if (trans) {
 		gh->proto_discr = trans->protocol | (trans->transaction_id << 4);
-		msg->lchan = trans->conn->lchan;
-	}
-
-	if (msg->lchan) {
-		struct e1inp_sign_link *sign_link =
-				msg->lchan->ts->trx->rsl_link;
-
-		msg->dst = sign_link;
-		if (gsm48_hdr_pdisc(gh) == GSM48_PDISC_CC)
-			DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x) "
-				"Sending '%s' to MS.\n",
-				sign_link->trx->bts->nr,
-				sign_link->trx->nr, msg->lchan->ts->nr,
-				gh->proto_discr & 0xf0,
-				gsm48_cc_msg_name(gh->msg_type));
-		else
-			DEBUGP(DCC, "(bts %d trx %d ts %d pd %02x) "
-				"Sending 0x%02x to MS.\n",
-				sign_link->trx->bts->nr,
-				sign_link->trx->nr, msg->lchan->ts->nr,
-				gh->proto_discr, gh->msg_type);
 	}
 
 	return gsm0808_submit_dtap(conn, msg, 0, 0);
@@ -465,8 +444,6 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 		return -1;
 	}
 
-	msg->lchan = conn->lchan;
-
 	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT "
 	     "LAC=%u BTS=%u\n", subscr_name(conn->subscr),
 	     bts->location_area_code, bts->nr);
@@ -481,8 +458,6 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
 	uint8_t *mid;
-
-	msg->lchan = conn->lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -516,8 +491,6 @@ static int mm_tx_identity_req(struct gsm_subscriber_connection *conn, uint8_t id
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 ID REQ");
 	struct gsm48_hdr *gh;
-
-	msg->lchan = conn->lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -742,8 +715,6 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	int tzunits;
 	int dst = 0;
 
-	msg->lchan = conn->lchan;
-
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_INFO;
@@ -883,7 +854,6 @@ int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, uint8_t *rand, 
 
 	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", osmo_hexdump(rand, 16));
 
-	msg->lchan = conn->lchan;
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_AUTH_REQ;
 
@@ -1283,8 +1253,6 @@ int gsm48_send_rr_app_info(struct gsm_subscriber_connection *conn, uint8_t apdu_
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 APP INF");
 	struct gsm48_hdr *gh;
 
-	msg->lchan = conn->lchan;
-
 	DEBUGP(DRR, "TX APPLICATION INFO id=0x%02x, len=%u\n",
 		apdu_id, apdu_len);
 
@@ -1375,8 +1343,6 @@ static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 TX SIMPLE");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-
-	msg->lchan = conn->lchan;
 
 	gh->proto_discr = pdisc;
 	gh->msg_type = msg_type;
