@@ -855,7 +855,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 }
 
 /* Take a SMS in gsm_sms structure and send it through an already
- * existing lchan. We also assume that the caller ensured this lchan already
+ * existing conn. We also assume that the caller ensured this conn already
  * has a SAPI3 RLL connection! */
 int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 {
@@ -877,7 +877,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 		return -EBUSY;
 	}
 
-	DEBUGP(DLSMS, "send_sms_lchan()\n");
+	DEBUGP(DLSMS, "gsm411_send_sms()\n");
 
 	/* FIXME: allocate transaction with message reference */
 	trans = trans_alloc(conn->bts->network, conn->subscr,
@@ -981,7 +981,7 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	struct gsm_subscriber_connection *conn;
 	void *res;
 
-	/* check if we already have an open lchan to the subscriber.
+	/* check if we already have an open conn to the subscriber.
 	 * if yes, send the SMS this way */
 	conn = connection_for_subscr(subscr);
 	if (conn) {

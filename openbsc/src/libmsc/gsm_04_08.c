@@ -936,7 +936,7 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
  * b) Try to parse the TMSI. If we do not have one reject
  * c) Check that we know the subscriber with the TMSI otherwise reject
  *    with a HLR cause
- * d) Set the subscriber on the gsm_lchan and accept
+ * d) Set the subscriber on the conn and accept
  */
 static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
@@ -1002,7 +1002,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	if (!conn->subscr)
 		conn->subscr = subscr;
 	else if (conn->subscr == subscr)
-		subscr_put(subscr); /* lchan already has a ref, don't need another one */
+		subscr_put(subscr); /* conn already has a ref, don't need another one */
 	else {
 		DEBUGP(DMM, "<- CM Channel already owned by someone else?\n");
 		subscr_put(subscr);
@@ -1418,12 +1418,11 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 	OSMO_ASSERT(!transt->conn);
 
-	/* check all tranactions (without lchan) for subscriber */
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
 		DEBUGP(DCC, "Paging subscr %s succeeded!\n", transt->subscr->extension);
 		OSMO_ASSERT(conn);
-		/* Assign lchan */
+		/* Assign conn */
 		transt->conn = conn;
 		/* send SETUP request to called party */
 		gsm48_cc_tx_setup(transt, &transt->cc.msg);
@@ -3338,14 +3337,14 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 					 GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 			return -ENOMEM;
 		}
-		/* Find lchan */
+		/* Find conn */
 		conn = connection_for_subscr(subscr);
 
-		/* If subscriber has no lchan */
+		/* If subscriber has no conn */
 		if (!conn) {
 			/* find transaction with this subscriber already paging */
 			llist_for_each_entry(transt, &net->trans_list, entry) {
-				/* Transaction of our lchan? */
+				/* Transaction of our conn? */
 				if (transt == trans ||
 				    transt->subscr != subscr)
 					continue;
@@ -3375,7 +3374,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			subscr_put(subscr);
 			return 0;
 		}
-		/* Assign lchan */
+		/* Assign conn */
 		trans->conn = conn;
 		subscr_put(subscr);
 	} else {
