@@ -92,10 +92,28 @@ struct sgsn_ggsn_lookup {
 	uint8_t ti;
 };
 
+enum sgsn_ran_type {
+	/* GPRS/EDGE via Gb */
+	MM_CTX_T_GERAN_Gb,
+	/* UMTS via Iu */
+	MM_CTX_T_UTRAN_Iu,
+	/* GPRS/EDGE via Iu */
+	MM_CTX_T_GERAN_Iu,
+};
+
+struct service_info {
+	uint8_t type;
+	uint16_t pdp_status;
+};
+
+struct ue_conn_ctx;
+
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
 /* Extended by 3GPP TS 23.060, Table 6: SGSN MM and PDP Contexts */
 struct sgsn_mm_ctx {
 	struct llist_head	list;
+
+	enum sgsn_ran_type	ran_type;
 
 	char 			imsi[GSM23003_IMSI_MAX_DIGITS+1];
 	enum gprs_gmm_state	mm_state;
@@ -106,10 +124,32 @@ struct sgsn_mm_ctx {
 	/* Opt: Software Version Numbber / TS 23.195 */
 	char 			msisdn[GSM_EXTENSION_LENGTH];
 	struct gprs_ra_id	ra;
-	uint16_t		cell_id;
-	uint32_t		cell_id_age;
-	uint16_t		sac;	/* Iu: Service Area Code */
-	uint32_t		sac_age;/* Iu: Service Area Code age */
+	struct {
+		uint16_t		cell_id;	/* Gb only */
+		uint32_t		cell_id_age;	/* Gb only */
+		uint8_t			radio_prio_sms;
+
+		/* Additional bits not present in the GSM TS */
+		uint16_t		nsei;
+		uint16_t		bvci;
+		struct gprs_llc_llme	*llme;
+		uint32_t		tlli;
+		uint32_t		tlli_new;
+	} gb;
+	struct {
+		int			new_key;
+		uint16_t		sac;		/* Iu: Service Area Code */
+		uint32_t		sac_age;	/* Iu: Service Area Code age */
+		/* CSG ID */
+		/* CSG Membership */
+		/* Access Mode */
+		/* Seelected CN Operator ID (TS 23.251) */
+		/* CSG Subscription Data */
+		/* LIPA Allowed */
+		/* Voice Support Match Indicator */
+		struct ue_conn_ctx	*ue_ctx;
+		struct service_info	service;
+	} iu;
 	/* VLR number */
 	uint32_t		new_sgsn_addr;
 	/* Authentication Triplet */
@@ -118,30 +158,38 @@ struct sgsn_mm_ctx {
 	/* Iu: CK, IK, KSI */
 	/* CKSN */
 	enum gprs_ciph_algo	ciph_algo;
+
 	struct {
 		uint8_t	len;
 		uint8_t	buf[50];	/* GSM 04.08 10.5.5.12a, extended in TS 24.008 */
 	} ms_radio_access_capa;
+	/* Supported Codecs (SRVCC) */
 	struct {
 		uint8_t	len;
 		uint8_t	buf[8];		/* GSM 04.08 10.5.5.12, extended in TS 24.008 */
 	} ms_network_capa;
+	/* UE Netowrk Capability (E-UTRAN) */
 	uint16_t		drx_parms;
+	/* Active Time value for PSM */
 	int			mnrg;	/* MS reported to HLR? */
 	int			ngaf;	/* MS reported to MSC/VLR? */
 	int			ppf;	/* paging for GPRS + non-GPRS? */
+	/* Subscribed Charging Characteristics */
+	/* Trace Reference */
+	/* Trace Type */
+	/* Trigger ID */
+	/* OMC Identity */
 	/* SMS Parameters */
 	int			recovery;
-	uint8_t			radio_prio_sms;
+	/* Access Restriction */
+	/* GPRS CSI (CAMEL) */
+	/* MG-CSI (CAMEL) */
+	/* Subscribed UE-AMBR */
+	/* UE-AMBR */
+	/* APN Subscribed */
 
 	struct llist_head	pdp_list;
 
-	/* Additional bits not present in the GSM TS */
-	struct gprs_llc_llme	*llme;
-	uint32_t		tlli;
-	uint32_t		tlli_new;
-	uint16_t		nsei;
-	uint16_t		bvci;
 	struct rate_ctr_group	*ctrg;
 	struct osmo_timer_list	timer;
 	unsigned int		T;		/* Txxxx number */

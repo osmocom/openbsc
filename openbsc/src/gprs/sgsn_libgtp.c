@@ -239,7 +239,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	pdp->userloc_given = 1;
 	pdp->userloc.l = 8;
 	pdp->userloc.v[0] = 0; /* CGI for GERAN */
-	bssgp_create_cell_id(&pdp->userloc.v[1], &mmctx->ra, mmctx->cell_id);
+	bssgp_create_cell_id(&pdp->userloc.v[1], &mmctx->ra, mmctx->gb.cell_id);
 
 	/* include the IMEI(SV) */
 	pdp->imeisv_given = 1;
@@ -341,7 +341,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	}
 
 	/* Activate the SNDCP layer */
-	sndcp_sm_activate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
+	sndcp_sm_activate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
 
 	/* Inform others about it */
 	memset(&sig_data, 0, sizeof(sig_data));
@@ -388,7 +388,7 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 
 	if (pctx->mm) {
 		/* Deactivate the SNDCP layer */
-		sndcp_sm_deactivate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
+		sndcp_sm_deactivate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
 
 		/* Confirm deactivation of PDP context to MS */
 		rc = gsm48_tx_gsm_deact_pdp_acc(pctx);
@@ -521,9 +521,9 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 	ud = msgb_put(msg, len);
 	memcpy(ud, packet, len);
 
-	msgb_tlli(msg) = mm->tlli;
-	msgb_bvci(msg) = mm->bvci;
-	msgb_nsei(msg) = mm->nsei;
+	msgb_tlli(msg) = mm->gb.tlli;
+	msgb_bvci(msg) = mm->gb.bvci;
+	msgb_nsei(msg) = mm->gb.nsei;
 
 	switch (mm->mm_state) {
 	case GMM_REGISTERED_SUSPENDED:
@@ -531,12 +531,12 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 		memset(&pinfo, 0, sizeof(pinfo));
 		pinfo.mode = BSSGP_PAGING_PS;
 		pinfo.scope = BSSGP_PAGING_BVCI;
-		pinfo.bvci = mm->bvci;
+		pinfo.bvci = mm->gb.bvci;
 		pinfo.imsi = mm->imsi;
 		pinfo.ptmsi = &mm->p_tmsi;
 		pinfo.drx_params = mm->drx_parms;
 		pinfo.qos[0] = 0; // FIXME
-		bssgp_tx_paging(mm->nsei, 0, &pinfo);
+		bssgp_tx_paging(mm->gb.nsei, 0, &pinfo);
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PAGING_PS]);
 		/* FIXME: queue the packet we received from GTP */
 		break;
@@ -544,7 +544,7 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 		break;
 	default:
 		LOGP(DGPRS, LOGL_ERROR, "GTP DATA IND for TLLI %08X in state "
-			"%u\n", mm->tlli, mm->mm_state);
+			"%u\n", mm->gb.tlli, mm->mm_state);
 		msgb_free(msg);
 		return -1;
 	}
@@ -557,7 +557,7 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 	/* It is easier to have a global count */
 	pdp->cdr_bytes_out += len;
 
-	return sndcp_unitdata_req(msg, &mm->llme->lle[pdp->sapi],
+	return sndcp_unitdata_req(msg, &mm->gb.llme->lle[pdp->sapi],
 				  pdp->nsapi, mm);
 }
 
