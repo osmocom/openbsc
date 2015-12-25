@@ -2085,8 +2085,8 @@ int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx)
 	return rc;
 }
 
-/* Main entry point for incoming 04.08 GPRS messages */
-int gsm0408_gprs_rcvmsg(struct msgb *msg, struct gprs_llc_llme *llme)
+/* Main entry point for incoming 04.08 GPRS messages from Gb */
+int gsm0408_gprs_rcvmsg_gb(struct msgb *msg, struct gprs_llc_llme *llme)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t pdisc = gh->proto_discr & 0x0f;

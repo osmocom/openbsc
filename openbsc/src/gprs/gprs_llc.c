@@ -663,7 +663,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		switch (llhp.sapi) {
 		case GPRS_SAPI_GMM:
 			/* send LL_UNITDATA_IND to GMM */
-			rc = gsm0408_gprs_rcvmsg(msg, lle->llme);
+			rc = gsm0408_gprs_rcvmsg_gb(msg, lle->llme);
 			break;
 		case GPRS_SAPI_SNDCP3:
 		case GPRS_SAPI_SNDCP5:
