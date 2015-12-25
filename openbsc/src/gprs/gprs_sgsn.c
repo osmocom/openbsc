@@ -111,7 +111,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 	int tlli_type;
 
 	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
-		if (tlli == ctx->tlli &&
+		if (tlli == ctx->gb.tlli &&
 		    ra_id_equals(raid, &ctx->ra))
 			return ctx;
 	}
@@ -122,14 +122,14 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 		llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
 			if ((ctx->p_tmsi | 0xC0000000) == tlli ||
 			     (ctx->p_tmsi_old && (ctx->p_tmsi_old | 0xC0000000) == tlli)) {
-				ctx->tlli = tlli;
+				ctx->gb.tlli = tlli;
 				return ctx;
 			}
 		}
 		break;
 	case TLLI_FOREIGN:
 		llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
-			if (tlli == tlli_foreign(ctx->tlli) &&
+			if (tlli == tlli_foreign(ctx->gb.tlli) &&
 			    ra_id_equals(raid, &ctx->ra))
 				return ctx;
 		}
@@ -176,7 +176,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 		return NULL;
 
 	memcpy(&ctx->ra, raid, sizeof(ctx->ra));
-	ctx->tlli = tlli;
+	ctx->gb.tlli = tlli;
 	ctx->mm_state = GMM_DEREGISTERED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, tlli);
@@ -207,8 +207,8 @@ static void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 
 void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 {
-	struct gprs_llc_llme *llme = mm->llme;
-	uint32_t tlli = mm->tlli;
+	struct gprs_llc_llme *llme = mm->gb.llme;
+	uint32_t tlli = mm->gb.tlli;
 	struct sgsn_pdp_ctx *pdp, *pdp2;
 	struct sgsn_signal_data sig_data;
 
@@ -319,7 +319,7 @@ void sgsn_pdp_ctx_terminate(struct sgsn_pdp_ctx *pdp)
 	LOGPDPCTXP(LOGL_INFO, pdp, "Forcing release of PDP context\n");
 
 	/* Force the deactivation of the SNDCP layer */
-	sndcp_sm_deactivate_ind(&pdp->mm->llme->lle[pdp->sapi], pdp->nsapi);
+	sndcp_sm_deactivate_ind(&pdp->mm->gb.llme->lle[pdp->sapi], pdp->nsapi);
 
 	memset(&sig_data, 0, sizeof(sig_data));
 	sig_data.pdp = pdp;
@@ -762,7 +762,7 @@ static void sgsn_llme_cleanup_free(struct gprs_llc_llme *llme)
 	struct sgsn_mm_ctx *mmctx = NULL;
 
 	llist_for_each_entry(mmctx, &sgsn_mm_ctxts, list) {
-		if (llme == mmctx->llme) {
+		if (llme == mmctx->gb.llme) {
 			gsm0408_gprs_access_cancelled(mmctx, SGSN_ERROR_CAUSE_NONE);
 			return;
 		}
