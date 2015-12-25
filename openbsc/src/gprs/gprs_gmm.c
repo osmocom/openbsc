@@ -132,8 +132,12 @@ time_t gprs_max_time_to_idle(void)
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
 			     struct sgsn_mm_ctx *mm)
 {
-	if (mm)
+	if (mm) {
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_SIG_OUT]);
+		if (mm->ran_type == MM_CTX_T_UTRAN_Iu)
+			return gprs_iu_tx(msg, GPRS_SAPI_GMM, mm);
+	}
+#warning "How to catch Iu-mode messages without MM context?"
 
 	/* caller needs to provide TLLI, BVCI and NSEI */
 	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command, mm);
@@ -843,6 +847,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
 	 * or with random TLLI. */
 
+#error "how to obtain RA_ID in Iu case?"
 	cid = bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
 
 	/* MS network capability 10.5.5.12 */
@@ -937,6 +942,9 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	ctx->ra = ra_id;
 	if (ctx->ran_type == MM_CTX_T_GERAN_Gb)
 		ctx->gb.cell_id = cid;
+	else if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
+		ctx->iu.sac = sac;
+
 	/* Update MM Context with other data */
 	ctx->drx_parms = drx_par;
 	ctx->ms_radio_access_capa.len = ms_ra_acc_cap_len;
@@ -1172,6 +1180,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		break;
 	}
 
+#error "Differentiate look-up between Iu and Gb"
 	if (!mmctx) {
 		/* BSSGP doesn't give us an mmctx */
 
@@ -1226,6 +1235,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
 
 	/* Update the MM context with the new RA-ID */
+#error "how to obtain RA_ID in Iu case?"
 	bssgp_parse_cell_id(&mmctx->ra, msgb_bcid(msg));
 	if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
 		/* Update the MM context with the new (i.e. foreign) TLLI */
@@ -2117,6 +2127,46 @@ int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx)
 		mmctx, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
 
 	mm_ctx_cleanup_free(mmctx, "forced reattach");
+
+	return rc;
+}
+
+/* Main entry point for incoming 04.08 GPRS messages from Iu */
+int gsm0408_gprs_rcvmsg_iu(struct msgb *msg, struct gprs_ra_id *ra_id,
+			   uint16_t *sai, uint32_t conn_id)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	uint8_t pdisc = gh->proto_discr & 0x0f;
+	struct sgsn_mm_ctx *mmctx;
+	int rc = -EINVAL;
+
+	mmctx = sgsn_mm_ctx_by_conn_id(conn_id);
+	if (mmctx) {
+		rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
+		if (ra_id)
+			memcpy(&mmctx->ra_id, ra_id, sizeof(mmctx->ra_id));
+		if (sai)
+			mmctx->iu.sai = *sai;
+	}
+
+	/* MMCTX can be NULL */
+
+	switch (pdisc) {
+	case GSM48_PDISC_MM_GPRS:
+		rc = gsm0408_rcv_gmm(mmctx, msg, NULL);
+		break;
+	case GSM48_PDISC_SM_GPRS:
+		rc = gsm0408_rcv_gsm(mmctx, msg, NULL);
+		break;
+	default:
+		LOGMMCTXP(LOGL_NOTICE, mmctx,
+			"Unknown GSM 04.08 discriminator 0x%02x: %s\n",
+			pdisc, osmo_hexdump((uint8_t *)gh, msgb_l3len(msg)));
+		/* FIXME: return status message */
+		break;
+	}
+
+	/* MMCTX can be invalid */
 
 	return rc;
 }
