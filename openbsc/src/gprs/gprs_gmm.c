@@ -1313,7 +1313,17 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	case GSM48_MT_GMM_ATTACH_REQ:
 		rc = gsm48_rx_gmm_att_req(mmctx, msg, llme);
 		break;
+	default:
+		break;
+	}
+
 	/* For all the following types mmctx can not be NULL */
+	if (!mmctx) {
+		/* FIXME: return some error? */
+		return -1;
+	}
+
+	switch (gh->msg_type) {
 	case GSM48_MT_GMM_ID_RESP:
 		rc = gsm48_rx_gmm_id_resp(mmctx, msg);
 		break;
