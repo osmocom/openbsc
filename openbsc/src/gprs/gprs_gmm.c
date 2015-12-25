@@ -904,8 +904,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi) - 1);
 #endif
 		}
-		ctx->gb.tlli = msgb_tlli(msg);
-		ctx->gb.llme = llme;
+		if (ctx->ran_type == MM_CTX_T_GERAN_Gb) {
+			ctx->gb.tlli = msgb_tlli(msg);
+			ctx->gb.llme = llme;
+		}
 		msgid2mmctx(ctx, msg);
 		break;
 	case GSM_MI_TYPE_TMSI:
@@ -920,8 +922,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
 			ctx->p_tmsi = tmsi;
 		}
-		ctx->gb.tlli = msgb_tlli(msg);
-		ctx->gb.llme = llme;
+		if (ctx->ran_type == MM_CTX_T_GERAN_Gb) {
+			ctx->gb.tlli = msgb_tlli(msg);
+			ctx->gb.llme = llme;
+		}
 		msgid2mmctx(ctx, msg);
 		break;
 	default:
@@ -932,7 +936,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	}
 	/* Update MM Context with currient RA and Cell ID */
 	ctx->ra = ra_id;
-	ctx->gb.cell_id = cid;
+	if (ctx->ran_type == MM_CTX_T_GERAN_Gb)
+		ctx->gb.cell_id = cid;
 	/* Update MM Context with other data */
 	ctx->drx_parms = drx_par;
 	ctx->ms_radio_access_capa.len = ms_ra_acc_cap_len;
@@ -950,13 +955,16 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	}
 	ctx->mm_state = GMM_COMMON_PROC_INIT;
 #endif
-	/* Even if there is no P-TMSI allocated, the MS will switch from
-	 * foreign TLLI to local TLLI */
-	ctx->gb.tlli_new = gprs_tmsi2tlli(ctx->p_tmsi, TLLI_LOCAL);
 
-	/* Inform LLC layer about new TLLI but keep old active */
-	gprs_llgmm_assign(ctx->gb.llme, ctx->gb.tlli, ctx->gb.tlli_new,
-			  GPRS_ALGO_GEA0, NULL);
+	if (ctx->ran_type == MM_CTX_T_GERAN_Gb) {
+		/* Even if there is no P-TMSI allocated, the MS will
+		 * switch from foreign TLLI to local TLLI */
+		ctx->gb.tlli_new = gprs_tmsi2tlli(ctx->p_tmsi, TLLI_LOCAL);
+
+		/* Inform LLC layer about new TLLI but keep old active */
+		gprs_llgmm_assign(ctx->gb.llme, ctx->gb.tlli, ctx->gb.tlli_new,
+				  GPRS_ALGO_GEA0, NULL);
+	}
 
 	ctx->pending_req = GSM48_MT_GMM_ATTACH_REQ;
 	return gsm48_gmm_authorize(ctx);
@@ -1218,8 +1226,10 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 	/* Update the MM context with the new RA-ID */
 	bssgp_parse_cell_id(&mmctx->ra, msgb_bcid(msg));
-	/* Update the MM context with the new (i.e. foreign) TLLI */
-	mmctx->gb.tlli = msgb_tlli(msg);
+	if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
+		/* Update the MM context with the new (i.e. foreign) TLLI */
+		mmctx->gb.tlli = msgb_tlli(msg);
+	}
 	/* FIXME: Update the MM context with the MS radio acc capabilities */
 	/* FIXME: Update the MM context with the MS network capabilities */
 
@@ -1244,13 +1254,16 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	sig_data.mm = mmctx;
 	osmo_signal_dispatch(SS_SGSN, S_SGSN_UPDATE, &sig_data);
 #endif
-	/* Even if there is no P-TMSI allocated, the MS will switch from
-	 * foreign TLLI to local TLLI */
-	mmctx->gb.tlli_new = gprs_tmsi2tlli(mmctx->p_tmsi, TLLI_LOCAL);
+	if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
+		/* Even if there is no P-TMSI allocated, the MS will switch from
+	 	* foreign TLLI to local TLLI */
+		mmctx->gb.tlli_new = gprs_tmsi2tlli(mmctx->p_tmsi, TLLI_LOCAL);
 
-	/* Inform LLC layer about new TLLI but keep old active */
-	gprs_llgmm_assign(mmctx->gb.llme, mmctx->gb.tlli, mmctx->gb.tlli_new,
-			  GPRS_ALGO_GEA0, NULL);
+		/* Inform LLC layer about new TLLI but keep old active */
+		gprs_llgmm_assign(mmctx->gb.llme, mmctx->gb.tlli,
+				  mmctx->gb.tlli_new, GPRS_ALGO_GEA0,
+				  NULL);
+	}
 
 	/* Look at PDP Context Status IE and see if MS's view of
 	 * activated/deactivated NSAPIs agrees with our view */
@@ -1270,10 +1283,13 @@ rejected:
 	rc = gsm48_tx_gmm_ra_upd_rej(msg, reject_cause);
 	if (mmctx)
 		mm_ctx_cleanup_free(mmctx, "GPRS RA UPDATE REJ");
-	else
-		/* TLLI unassignment */
-		gprs_llgmm_assign(llme, llme->tlli, 0xffffffff, GPRS_ALGO_GEA0,
-				  NULL);
+	else {
+		if (llme) {
+			/* TLLI unassignment */
+			gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
+					  GPRS_ALGO_GEA0, NULL);
+		}
+	}
 
 	return rc;
 }
@@ -1387,10 +1403,13 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->t3350_mode = GMM_T3350_MODE_NONE;
 		mmctx->p_tmsi_old = 0;
 		mmctx->pending_req = 0;
-		/* Unassign the old TLLI */
-		mmctx->gb.tlli = mmctx->gb.tlli_new;
-		gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff, mmctx->gb.tlli_new,
-				  GPRS_ALGO_GEA0, NULL);
+		if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
+			/* Unassign the old TLLI */
+			mmctx->gb.tlli = mmctx->gb.tlli_new;
+			gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff,
+					  mmctx->gb.tlli_new,
+					  GPRS_ALGO_GEA0, NULL);
+		}
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		rc = 0;
 
@@ -1407,10 +1426,12 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->t3350_mode = GMM_T3350_MODE_NONE;
 		mmctx->p_tmsi_old = 0;
 		mmctx->pending_req = 0;
-		/* Unassign the old TLLI */
-		mmctx->gb.tlli = mmctx->gb.tlli_new;
-		gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff, mmctx->gb.tlli_new,
-				  GPRS_ALGO_GEA0, NULL);
+		if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
+			/* Unassign the old TLLI */
+			mmctx->gb.tlli = mmctx->gb.tlli_new;
+			gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff, mmctx->gb.tlli_new,
+					  GPRS_ALGO_GEA0, NULL);
+		}
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		rc = 0;
 
@@ -1426,9 +1447,11 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->t3350_mode = GMM_T3350_MODE_NONE;
 		mmctx->p_tmsi_old = 0;
 		mmctx->pending_req = 0;
-		/* Unassign the old TLLI */
-		mmctx->gb.tlli = mmctx->gb.tlli_new;
-		//gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff, mmctx->gb.tlli_new, GPRS_ALGO_GEA0, NULL);
+		if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
+			/* Unassign the old TLLI */
+			mmctx->gb.tlli = mmctx->gb.tlli_new;
+			//gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff, mmctx->gb.tlli_new, GPRS_ALGO_GEA0, NULL);
+		}
 		rc = 0;
 		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
@@ -2109,7 +2132,8 @@ int gsm0408_gprs_force_reattach_oldmsg(struct msgb *msg)
 int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx)
 {
 	int rc;
-	gprs_llgmm_reset(mmctx->gb.llme);
+	if (mmctx->ran_type == MM_CTX_T_GERAN_Gb)
+		gprs_llgmm_reset(mmctx->gb.llme);
 
 	rc = gsm48_tx_gmm_detach_req(
 		mmctx, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
