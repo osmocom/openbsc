@@ -1208,10 +1208,12 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	}
 
 	if (!mmctx) {
-		/* send a XID reset to re-set all LLC sequence numbers
-		 * in the MS */
-		LOGMMCTXP(LOGL_NOTICE, mmctx, "LLC XID RESET\n");
-		gprs_llgmm_reset(llme);
+		if (llme) {
+			/* send a XID reset to re-set all LLC sequence numbers
+			 * in the MS */
+			LOGMMCTXP(LOGL_NOTICE, mmctx, "LLC XID RESET\n");
+			gprs_llgmm_reset(llme);
+		}
 		/* The MS has to perform GPRS attach */
 		/* Device is still IMSI attached for CS but initiate GPRS ATTACH,
 		 * see GSM 04.08, 4.7.5.1.4 and G.6 */
@@ -1314,7 +1316,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 	/* MMCTX can be NULL when called */
 
-	if (!mmctx &&
+	if (llme && !mmctx &&
 	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
 	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
