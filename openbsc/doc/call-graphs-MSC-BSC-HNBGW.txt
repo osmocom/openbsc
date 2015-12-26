@@ -1,0 +1,608 @@
+gprs_iu_tx
+
+-- WORK IN PROGRESS --
+
+This is an incomplete collection of call graphs between MSC and Osmo-BSC,
+partly including Osmo-BTS. These traces helped understanding the separation of
+the BSC part from Osmo-NITB. The aim: obtain a clearly separated "A" interface
+towards the BSC, and have an Iu-CS interface to operate with HNB-GW and hNodeB.
+The working title for the result is Osmo-CSCN (Circuit Switched Core Network),
+combining an MSC with various other core network components, but without the
+BSC parts.
+
+
+Some Specs and Overview
+
+0408: Radio interface
+0411: PP-SMS on Radio interface
+0802: A Interface         MSC<->BSS (BSS = BSC + BTS)
+0804: A Interface L1      MSC<->BSS
+0806: A Interface L2      MSC<->BSS
+0808: A Interface L3      MSC<->BSS
+0808: Figure 1: A         MSC<->BSS
+0820: RA (Rate Adaption)  MSC<->BSS
+
+0851,0852: A-bis general  BSC<->BTS
+1221: A-bis NM            BSC<->BTS
+1201: Figure 9: A-bis     BSC<->BTS
+
+  MS <-> BTS <-> BSC  <-> MSC <-> cn
+   |      |       |        |       |
+   |<-------0408=DTAP----->|       |
+   |<-------0411---------->|       |
+   |      |       |<--0808>|       |
+   |      |       |<BSSMAP>|       |
+   |      |       |        |       |
+          |  Abis |    A   |
+
+  MS <-> hNodeB <-> HNB-GW <-> MSC <-> cn
+   |        |         |         |       |
+   |<-0408->|<--Iu--->|<-Iu-cs->|       |
+   |<-0411->|         |         |       |
+   |        |         |         |       |
+
+Entry/Exit points
+
+  Osmo-BSC <--A--> MSC or Osmo-CSCN
+    format: BSSAP/SCCP (where BSSAP = DTAP + BSSMAP)
+    Osmo-BSC
+      read from MSC:  sccp_system_incoming_ctx()
+      write to MSC:   sccp_connection_write() <-- osmo-bsc/osmo_bsc_sccp.c:bsc_queue_for_msc()
+    MSC:
+      third party
+    Osmo-CSCN:
+      read: does not exist yet
+      write: does not exist yet
+
+  HNB-GW <--Iu-CS--> Osmo-CSCN
+    format: CC+MM/RANAP/SUA
+    HNB-GW:
+      read: does not exist yet
+      write: does not exist yet
+    Osmo-CSCN:
+      read: does not exist yet
+      write: does not exist yet
+
+  Osmo-BTS <-Abis-> Osmo-BSC
+    Osmo-BSC:
+      read: libbsc/abis_rsl.c:abis_rsl_rcvmsg(msg)
+      write: libosmo-abis/src/e1_input.c:abis_sendmsg() (e1inp_sign_link*)msg->dst;
+
+  Osmo-BTS <-Abis-> Osmo-NITB
+    Osmo-NITB:
+      read:
+        osmo_signal_dispatch():
+          from on_dso_load_token()       libmsc/token_auth.c
+            SS_SUBSCR: token_subscr_cb() libmsc/token_auth.c
+            SS_SMS: token_sms_cb()       libmsc/token_auth.c
+          from subscr_sig_cb()           libmsc/rrlp.c
+            SS_SUBSCR: subscr_sig_cb()   libmsc/rrlp.c
+            SS_PAGING: paging_sig_cb()   libmsc/rrlp.c
+          from on_dso_load_ho_dec()      libbsc/handover_decision.c
+            SS_LCHAN: ho_dec_sig_cb()    libbsc/handover_decision.c
+          from e1inp_init()              libosmo-abis/src/e1_input.c
+            SS_L_GLOBAL: e1i_sig_cb()    libosmo-abis/src/e1_input.c
+
+          bts_model_bs11_init();
+          bts_model_rbs2k_init();
+          bts_model_nanobts_init();
+          bts_model_nokia_site_init();
+          bts_model_sysmobts_init();
+
+        bsc_bootstrap_network():
+          osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
+          osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
+
+
+Call Trees
+
+- A Interface
+
+  Osmo-BSC sends to MSC:
+
+  sccp_connection_write(conn->sccp, msg);
+  ^ bsc_queue_for_msc()
+     ^
+     | osmo-bsc/osmo_bsc_api.c:
+     |   bsc_clear_request()
+     | queue_msg_or_return() osmo-bsc/osmo_bsc_api.c
+     |  ^ bsc_sapi_n_reject()
+     |  | ^send_sapi_reject()
+     |  |  ^ gsm0808_submit_dtap() libbsc/bsc_api.c
+     |  |  |  ^ gsm48_conn_sendmsg() libmsc/gsm_04_08.c
+     |  |  |  |  ^ gsm48_cc_tx_notify_ss() libmsc/gsm_04_08.c
+     |  |  |  |  | mm_tx_identity_req() libmsc/gsm_04_08.c
+     |  |  |  |  | gsm48_tx_mm_info() libmsc/gsm_04_08.c
+     |  |  |  |  | gsm48_tx_mm_auth_req()
+     |  |  |  |  | gsm48_send_rr_app_info()
+     |  |  |  |  | gsm48_cc_tx_status()
+     |  |  |  |  | gsm48_tx_simple()
+     |  |  |  |  |  ^ gsm48_tx_mm_auth_rej()
+     |  |  |  |  | gsm48_cc_tx_setup()
+     |  |  |  |  | gsm48_cc_tx_call_proc()
+     |  |  |  |  | gsm48_cc_tx_alerting()
+     |  |  |  |  | gsm48_cc_tx_progress()
+     |  |  |  |  | gsm48_cc_tx_connect()
+     |  |  |  |  | gsm48_cc_tx_connect_ack()
+     |  |  |  |  | gsm48_cc_tx_disconnect()
+     |  |  |  |  | gsm48_cc_tx_release()
+     |  |  |  |  | gsm48_cc_tx_release_compl()
+     |  |  |  |  | gsm48_cc_tx_facility()
+     |  |  |  |  | gsm48_cc_tx_hold_ack()
+     |  |  |  |  | gsm48_cc_tx_hold_rej()
+     |  |  |  |  | gsm48_cc_tx_retrieve_ack()
+     |  |  |  |  | gsm48_cc_tx_retrieve_rej()
+     |  |  |  |  | gsm48_cc_tx_start_dtmf_ack()
+     |  |  |  |  | gsm48_cc_tx_start_dtmf_rej()
+     |  |  |  |  | gsm48_cc_tx_stop_dtmf_ack()
+     |  |  |  |  | gsm48_cc_tx_modify()
+     |  |  |  |  | gsm48_cc_tx_modify_complete()
+     |  |  |  |  | gsm48_cc_tx_modify_reject()
+     |  |  |  |  | gsm48_cc_tx_notify()
+     |  |  |  |  | gsm48_cc_tx_userinfo()
+     |  |  |  |
+     |  |  |  | gsm0480_send_ussd_response() libmsc/gsm_04_80.c
+     |  |  |  | gsm0480_send_ussd_reject() libmsc/gsm_04_80.c
+     |  |  |  | gsm0480_send_ussdNotify() libmsc/gsm_04_80.c
+     |  |  |  |  ^ bsc_send_ussd_no_srv() osmo-bsc/osmo_bsc_api.c
+     |  |  |  | gsm0480_send_releaseComplete() libmsc/gsm_04_80.c
+     |  |  |  |  ^ bsc_send_ussd_no_srv() osmo-bsc/osmo_bsc_api.c
+     |  |  |  | 
+     |  |  |  | gsm411_sendmsg() libmsc/gsm_04_11.c
+     |  |  |  | 
+     |  |  |  | bsc_maybe_lu_reject() osmo-bsc/osmo_bsc_api.c
+     |  |  |  |  ^ complete_layer3()
+     |  |  |  |  | bsc_dtap()
+     |  |  |  |
+     |  |  |  | dtap_rcvmsg() osmo-bsc/osmo_bsc_bssap.c
+     |  |  |  |
+     |  |  |  | gsm48_tx_mm_serv_ack() libbsc/gsm_04_08_utils.c
+     |  |  |  |  ^ _gsm48_rx_mm_serv_req_sec_cb()
+     |  |  |  |  | bsc_send_ussd_no_srv() osmo-bsc/osmo_bsc_api.c
+     |  |  |  |
+     |  |  |  | gsm48_tx_mm_serv_rej() libbsc/gsm_04_08_utils.c
+     |  |  |
+     |  |  | bsc_rll_req.cb = rll_ind_cb() from rll_establish() from gsm0808_submit_dtap()
+     |  |  |  ^ complete_rllr() libbsc/bsc_rll.c
+     |  |  |  |  ^ timer_cb() libbsc/bsc_rll.c
+     |  |  |  |  | rll_indication() libbsc/bsc_rll.c
+     |  |  |  |  | rll_lchan_signal() libbsc/bsc_rll.c
+     |  |
+     |  | bsc_cipher_mode_compl()
+     |  |  ^ bsc_api.cipher_mode_compl()
+     |  |  | dispatch_dtap()   (2)
+     |  |  |  with GSM48_MT_RR_CIPH_M_COMPL
+     |  |
+     |  | bsc_dtap()
+     |  |  ^ cb from osmo-bsc/osmo_bsc_api.c
+     |  |    bsc_api.dtap()
+     |  |     ^ libbsc/bsc_api.c:
+     |  |     | dispatch_dtap()   (2)
+     |  |     |  case GSM48_MT_RR_APP_INFO
+     |  |     |  case unknown 04.08 RR
+     |  |
+     |  | bsc_assign_compl()
+     |  |  ^ osmo-bsc/osmo_bsc_api.c
+     |  |    bsc_api.assign_compl()
+     |  |     ^ libbsc/bsc_api.c:
+     |  |     | dispatch_dtap()   (2)
+     |  |     |  case GSM48_MT_RR_CHAN_MODE_MODIF_ACK
+     |  |     | handle_ass_compl()
+     |  |     |  ^ dispatch_dtap()   (2)
+     |  |     |  | case GSM48_MT_RR_ASS_COMPL
+     |  |
+     |  | bsc_assign_fail()
+     |  |
+     |  | bsc_cm_update()
+     |
+     | osmo-bsc/osmo_bsc_bssap.c:
+     |   bssmap_handle_clear_command()
+     |   bssmap_handle_cipher_mode()
+     |   bssmap_handle_assignm_req()
+     |
+
+
+  Osmo-BSC receives from MSC:
+    sccp_system_incoming_ctx() (libosmo-sccp)
+    | L2 type:
+    v SCCP_MSG_TYPE_CR:   _sccp_handle_connection_request(msgb, ctx);
+      SCCP_MSG_TYPE_RLSD: _sccp_handle_connection_released(msgb);
+      SCCP_MSG_TYPE_CREF: _sccp_handle_connection_refused(msgb);
+      SCCP_MSG_TYPE_CC:   _sccp_handle_connection_confirm(msgb);
+      SCCP_MSG_TYPE_RLC:  _sccp_handle_connection_release_complete(msgb);
+
+      SCCP_MSG_TYPE_DT1:  _sccp_handle_connection_dt1(msgb);
+         Note: a dt1 target entry was created during one of:
+         - bsc_open_connection() (SCCP connections are established by the BSC, exclusively)
+             sccp_connection_connect()
+               _sccp_send_connection_request()
+                 llist_add_tail(&connection->list, &sccp_connections);
+         - sccp_system_incoming_ctx()
+             SCCP_MSG_TYPE_CR:
+               _sccp_handle_connection_request(struct msgb *msgb, void *ctx)
+                 cb->accept_cb() = msc_sccp_accept()
+
+      SCCP_MSG_TYPE_UDT:  _sccp_handle_read(msgb) --read_cb--> osmo-bsc/osmo_bsc_sccp.c:msc_sccp_read()
+        msc_sccp_read()
+         | bsc_handle_udt() ./openbsc/openbsc/src/osmo-bsc/osmo_bsc_bssap.c:494
+         v   bssmap_rcvmsg_udt() ./openbsc/openbsc/src/osmo-bsc/osmo_bsc_bssap.c:387
+               gsm0808_bssmap_name() ./libosmocore/src/gsm/gsm0808.c:535
+               bssmap_handle_reset_ack() ./openbsc/openbsc/src/osmo-bsc/osmo_bsc_bssap.c:91
+                 LOGP()
+               bssmap_handle_paging() ./openbsc/openbsc/src/osmo-bsc/osmo_bsc_bssap.c:99
+                 GSM0808_IE_IMSI
+                 GSM0808_IE_CELL_IDENTIFIER_LIST
+                 GSM0808_IE_TMSI
+                   CELL_IDENT_LAC
+                   CELL_IDENT_BSS
+                 GSM0808_IE_CHANNEL_NEEDED
+                 GSM0808_IE_EMLPP_PRIORITY
+                 subscr_get_or_create() ./openbsc/openbsc/src/libcommon/gsm_subscriber_base.c:101
+                 subscr_group
+                 LOGL_INFO
+                 bsc_grace_paging_request() ./openbsc/openbsc/src/osmo-bsc/osmo_bsc_grace.c:87
+                   normal_paging() ./openbsc/openbsc/src/osmo-bsc/osmo_bsc_grace.c:37
+                     if (msc->core_lac != -1)
+                       paging_request_bts() ./openbsc/openbsc/src/libbsc/paging.c:307
+                         trx_is_usable() ./openbsc/openbsc/src/libbsc/chan_alloc.c:49
+                           if is_ipaccess_bts() and nm_is_running(): 0
+                           else: 1
+                         paging_init_if_needed() ./openbsc/openbsc/src/libbsc/paging.c:224
+                           LAUNCH TIMER:
+                           bts->paging.work_timer.cb = paging_worker;
+                             paging_worker() ./openbsc/openbsc/src/libbsc/paging.c:217
+                               paging_handle_pending_requests() ./openbsc/openbsc/src/libbsc/paging.c:169 (R):
+                                 paging_give_credit() ./openbsc/openbsc/src/libbsc/paging.c:107 (R):
+                                   recurse paging_handle_pending_requests()
+                                 can_send_pag_req() ./openbsc/openbsc/src/libbsc/paging.c:116
+                                 page_ms() ./openbsc/openbsc/src/libbsc/paging.c:69
+                                   gsm0808_page() ./openbsc/openbsc/src/libbsc/bsc_api.c:415
+                                     rsl_paging_cmd() ./openbsc/openbsc/src/libbsc/abis_rsl.c:751
+                                       abis_rsl_dchan_hdr
+                                       RSL_MT_PAGING_CMD
+                                       RSL_CHAN_PCH_AGCH
+                                       init_dchan_hdr() ./openbsc/openbsc/src/libbsc/abis_rsl.c:99
+                                         mdisc_by_msgtype() ./openbsc/openbsc/src/libbsc/abis_rsl.c:80
+                                           ABIS_RSL_MDISC_RLL
+                                           ABIS_RSL_MDISC_TRX
+                                           ABIS_RSL_MDISC_COM_CHAN
+                                           ABIS_RSL_MDISC_DED_CHAN
+                                           ABIS_RSL_MDISC_LOC
+                                         RSL_IE_CHAN_NR
+                                       RSL_IE_PAGING_GROUP
+                                       RSL_IE_MS_IDENTITY
+                                       RSL_IE_CHAN_NEEDED
+                                       abis_rsl_sendmsg() ./libosmo-abis/src/e1_input.c:258
+                         _paging_request() ./openbsc/openbsc/src/libbsc/paging.c:279
+                           llist_add_tail(&req->entry, &bts_entry->pending_requests);
+                           paging_schedule_if_needed() ./openbsc/openbsc/src/libbsc/paging.c:96
+                     if (msc->core_lac == -1)
+                       paging_request()
+                         gsm_bts_by_lac() ./openbsc/openbsc/src/libcommon/gsm_data.c:135
+                         paging_request_bts() ./openbsc/openbsc/src/libbsc/paging.c:307
+                           (see above)
+                         if err
+                           paging_request_stop()
+                             (see below)
+                     locked_paging() ./openbsc/openbsc/src/osmo-bsc/osmo_bsc_grace.c:54
+                       paging_request_bts() ./openbsc/openbsc/src/libbsc/paging.c:307
+                         (see above)
+
+
+- A-bis Interface
+
+  Osmo-BSC to BTS:
+    abis_sendmsg()
+     ^
+     | libosmo-abis/src/e1_input.c:abis_rsl_sendmsg()
+     |   ^
+     |   | libbsc/abis_rsl.c: 23 callers
+     |   |  rsl_bcch_info()
+     |   |  rsl_sacch_filling()
+     |   |  rsl_sacch_info_modify()
+     |   |  rsl_chan_bs_power_ctrl()
+     |   |  rsl_chan_ms_power_ctrl()
+     |   |  rsl_chan_activate_lchan()
+     |   |  rsl_chan_mode_modify_req()
+     |   |  rsl_encryption_cmd()
+     |   |  rsl_deact_sacch()
+     |   |  rsl_rf_chan_release()
+     |   |  rsl_paging_cmd()
+     |   |  rsl_imm_assign_cmd()
+     |   |  rsl_siemens_mrpci()
+     |   |  rsl_data_request()
+     |   |  rsl_establish_request()
+     |   |  rsl_release_request()
+     |   |  rsl_ipacc_crcx()
+     |   |  rsl_ipacc_mdcx()
+     |   |  rsl_ipacc_pdch_activate()
+     |   |  rsl_sms_cb_command()
+     |   |  rsl_nokia_si_begin()
+     |   |  rsl_nokia_si_end()
+     |   |  rsl_bs_power_control()
+     |
+     | libbsc/bts_nokia_site.c:nokia_abis_nm_queue_send_next()
+     |
+     | libbsc/abis_nm.c:_abis_nm_sendmsg()
+     |   ^ abis_nm_sendmsg()
+     |   | abis_nm_sendmsg_direct()
+     |
+     | osmo-bts/src/common/abis.c:abis_oml_sendmsg()
+     | osmo-bts/src/common/abis.c:abis_bts_rsl_sendmsg()
+                         
+
+
+libbsc/e1_config.c:bts_isdn_e1inp_line_ops.sign_link =
+  libbsc/e1_config.c:bts_isdn_sign_link(struct msgb *msg)
+    case E1INP_SIGN_RSL:
+      libbsc/abis_rsl.c:abis_rsl_rcvmsg(msg)   (1)
+    case E1INP_SIGN_OML:
+      ret = bts->model->oml_rcvmsg(msg);
+
+libbsc/bts_ipaccess_nanobts.c:ipaccess_e1inp_line_ops.sign_link =
+  ipaccess_sign_link(struct msgb *msg)
+    case E1INP_SIGN_RSL:
+      libbsc/abis_rsl.c:abis_rsl_rcvmsg(msg)   (1)
+    case E1INP_SIGN_OML:
+      libbsc/abis_nm.c:abis_nm_rcvmsg(msg);
+
+
+(1)
+libbsc/abis_rsl.c:abis_rsl_rcvmsg(msg)
+  case ABIS_RSL_MDISC_RLL:
+    libbsc/abis_rsl.c:abis_rsl_rx_rll(msg)
+      case DATA_IND, EST_IND:
+        libbsc/bsc_api.c:gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
+          msg->lchan->ts->trx->bts->network->bsc_api;
+          if (lchan->conn)
+            libbsc/bsc_api.c:dispatch_dtap()           (2)
+          else
+            lchan->conn = subscr_con_allocate(msg->lchan);
+            rc = api->compl_l3(lchan->conn, msg, 0);   (3)
+
+  case ABIS_RSL_MDISC_DED_CHAN:
+    rc = abis_rsl_rx_dchan(msg);
+
+  case ABIS_RSL_MDISC_COM_CHAN:
+    rc = abis_rsl_rx_cchan(msg);
+
+  case ABIS_RSL_MDISC_TRX:
+    rc = abis_rsl_rx_trx(msg);
+
+  case ABIS_RSL_MDISC_IPACCESS:
+    rc = abis_rsl_rx_ipacc(msg);
+    break;
+
+  case ABIS_RSL_MDISC_LOC:
+    LOGP(DRSL, LOGL_NOTICE, "unimplemented RSL msg disc 0x%02x\n",
+          
+
+(2)
+libbsc/bsc_api.c:dispatch_dtap()
+  struct bsc_api *api = msg->lchan->ts->trx->bts->network->bsc_api;
+
+  default:
+    if (api->dtap)
+      api->dtap(conn, link_id, msg);       (5)
+
+  case GSM48_PDISC_RR:
+    case GSM48_MT_RR_HANDO_COMPL:
+      handle_rr_ho_compl(msg);
+
+    case GSM48_MT_RR_HANDO_FAIL:
+      handle_rr_ho_fail(msg);
+
+    case GSM48_MT_RR_CIPH_M_COMPL:
+      if (api->cipher_mode_compl)
+        api->cipher_mode_compl(conn, msg,       (4)
+            conn->lchan->encr.alg_id);
+
+    case GSM48_MT_RR_ASS_COMPL:
+      handle_ass_compl(conn, msg);
+
+    case GSM48_MT_RR_ASS_FAIL:
+      handle_ass_fail(conn, msg);
+
+    case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
+      rc = gsm48_rx_rr_modif_ack(msg);
+      if (rc < 0) {
+        api->assign_fail(conn, GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE)
+      else
+        api->assign_compl()
+
+    case GSM48_MT_RR_CLSM_CHG:
+      handle_classmark_chg(conn, msg);
+
+    case GSM48_MT_RR_APP_INFO:
+      if (api->dtap)
+        api->dtap(conn, link_id, msg);       (5)
+
+    default:
+      if (api->dtap)
+        api->dtap(conn, link_id, msg);       (5)
+
+    case GSM48_MT_RR_GPRS_SUSP_REQ:
+      DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
+
+    case GSM48_MT_RR_STATUS:
+      LOGP(DRR, LOGL_NOTICE, "RR STATUS (cause: %s)\n",
+
+    case GSM48_MT_RR_MEAS_REP:
+      LOGP(DMEAS, LOGL_ERROR, "DIRECT GSM48 MEASUREMENT REPORT ?!? ");
+
+
+(3)[0]
+msc_bsc_api().compl_l3 =
+  libmsc/osmo_msc.c: msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
+    libmsc/gsm0408.c: gsm0408_dispatch()      (6)
+
+(3)[1]
+osmo_bsc_api().compl_l3 =
+  osmo-bsc/osmo_bsc_api.c:bsc_compl_l3()
+    msc = bsc_find_msc(conn, msg);
+    complete_layer3(conn, msg, msc)
+      bsc_filter_initial(msc->network->bsc_data, msc, conn, msg,
+            &imsi, &con_type, &lu_cause);
+      bsc_create_new_connection(conn, msc, send_ping);
+        sccp->state_cb = msc_outgoing_sccp_state()
+        sccp->data_cb = msc_outgoing_sccp_data()
+        bsc_con->send_ping = send_ping()
+        bsc_con->sccp_it_timeout.cb = sccp_it_timeout()
+        bsc_con->sccp_cc_timeout.cb = sccp_cc_timeout()
+      bsc_scan_bts_msg(conn, msg);               (7)
+      resp = gsm0808_create_layer3(msg, network_code, country_code, lac, ci);
+
+(5)[0]
+msc_bsc_api().dtap =
+  libmsc/osmo_msc.c: msc_dtap(conn, link_id, msg)
+    gsm0408_dispatch(conn, msg)                (6)
+
+(5)[1]
+osmo_bsc_api().dtap =
+  osmo-bsc/osmo_bsc_api.c: bsc_dtap(conn, link_id, msg)
+    if (handle_cc_setup(conn, msg) >= 1) return;
+    if (bsc_filter_data(conn, msg, &lu_cause) < 0)
+      bsc_maybe_lu_reject()
+      return;
+    bsc_scan_bts_msg(conn, msg);               (7)
+    resp = gsm0808_create_dtap(msg, link_id);
+    queue_msg_or_return(resp);
+
+(7)
+bsc_scan_bts_msg() <osmo-bsc/osmo_bsc_filter.c:212>:
+  if GSM48_PDISC_MM, GSM48_MT_MM_LOC_UPD_REQUEST
+    handle_lu_request() <osmo-bsc/osmo_bsc_filter.c:29>:
+      gsm48_generate_lai()
+  if GSM48_PDISC_RR, GSM48_MT_RR_PAG_RESP
+    handle_page_resp() <osmo-bsc/osmo_bsc_filter.c:97>:
+      extract_sub() <osmo-bsc/osmo_bsc_filter.c:57>
+      paging_request_stop() <libbsc/paging.c:390>:
+        log_set_context()
+        _paging_request_stop() <libbsc/paging.c:359>:
+          paging_init_if_needed() <libbsc/paging.c:224>:
+            paging_worker() <libbsc/paging.c:217>:
+              paging_handle_pending_requests() <libbsc/paging.c:169> (R):
+                cb()
+                paging_give_credit() <libbsc/paging.c:107> (R):
+                  paging_handle_pending_requests() <libbsc/paging.c:169> (recursive: see 37)
+                can_send_pag_req() <libbsc/paging.c:116>:
+                page_ms() <libbsc/paging.c:69>:
+                  gsm0808_page() <libbsc/bsc_api.c:415>:
+                    rsl_paging_cmd() <libbsc/abis_rsl.c:751>:
+                      abis_rsl_dchan_hdr = RSL_IE_CHAN_NR
+                        mdisc_by_msgtype() <libbsc/abis_rsl.c:80>:
+                          ABIS_RSL_MDISC_RLL
+                          ABIS_RSL_MDISC_TRX
+                          ABIS_RSL_MDISC_COM_CHAN
+                          ABIS_RSL_MDISC_DED_CHAN
+                          ABIS_RSL_MDISC_LOC
+                      msgb_tv_put(msg, RSL_IE_PAGING_GROUP, paging_group);
+                      msgb_tlv_put(msg, RSL_IE_MS_IDENTITY, len-2, ms_ident+2);
+                      msgb_tv_put(msg, RSL_IE_CHAN_NEEDED, chan_needed);
+                      rsl_link
+                      abis_rsl_sendmsg()
+          cbfn()                         (8)
+          paging_remove_request() <libbsc/paging.c:60>:
+            subscr_put() <libcommon/gsm_subscriber_base.c:89>
+      subscr_put() <libcommon/gsm_subscriber_base.c:89>
+
+(8)[0]
+libmsc/gsm_04_08.c:mncc_tx_to_cc()
+  req->cbfn = 
+    libmsc/gsm_04_08.c:setup_trig_pag_evt
+
+(8)[1]
+libmsc/gsm_04_11.c:gsm411_send_sms_subscr()
+  req->cbfn = 
+    libmsc/gsm_04_11.c:paging_cb_send_sms
+
+(9)
+bsc_scan_msc_msg() ./osmo-bsc/osmo_bsc_filter.c:330
+  gsm48_hdr
+  send_welcome_ussd() ./osmo-bsc/osmo_bsc_filter.c:229
+    LOGP()
+    DMSC
+    LOGL_DEBUG
+    ussd_welcome_txt
+    BSS_SEND_USSD
+  GSM48_MT_MM_INFO
+  bsc_patch_mm_info() ./osmo-bsc/osmo_bsc_filter.c:255
+    uint8_t
+    tzbsd
+    dst
+    tlv_parse()
+    gsm48_mm_att_tlvdef
+    override
+    hr
+    mn
+    TLVP_PRESENT()
+    GSM48_IE_UTC
+    LOGP()
+    DMSC
+    LOGL_DEBUG
+    TLVP_VAL()
+    GSM48_IE_NET_TIME_TZ
+    GSM48_IE_NET_DST
+
+
+(6)
+libmsc/gsm0408.c: gsm0408_dispatch()  (MSC rx from BSC)
+  if (silent_call_reroute(conn, msg))
+    return silent_call_rx(conn, msg);
+
+  case gsm48_pdisc_cc:
+    rc = gsm0408_rcv_cc(conn, msg);
+
+  case gsm48_pdisc_mm:
+    rc = gsm0408_rcv_mm(conn, msg);
+
+  case gsm48_pdisc_rr:
+    rc = gsm0408_rcv_rr(conn, msg);
+
+  case gsm48_pdisc_sms:
+    rc = gsm0411_rcv_sms(conn, msg);
+
+  case gsm48_pdisc_nc_ss:
+    rc = handle_rcv_ussd(conn, msg);
+
+  case gsm48_pdisc_mm_gprs:
+  case gsm48_pdisc_sm_gprs:
+          logp(drll, logl_notice, "unimplemented "
+
+msc_bsc_api().assign_compl =
+ msc_assign_compl()
+   nothing
+
+(4)[0]
+libmsc/osmo_msc.c:msc_bsc_api().cipher_mode_compl =
+  msc_ciph_m_compl(conn, msg, alg_id)
+    conn->sec_operation->cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
+                            NULL, conn, conn->sec_operation->cb_data)
+    release_security_operation(conn);
+      msc_release_connection(conn)
+        bsc_api.c:gsm0808_clear(conn)
+          libbsc/handover_logic.c:bsc_clear_handover(conn, 1)
+            libbsc/chan_alloc.c:lchan_release(ho->new_lchan, 0, RSL_REL_LOCAL_END);
+          libbsc/chan_alloc.c:lchan_release(conn->secondary_lchan, 0, RSL_REL_LOCAL_END),
+                                           (conn->lchan, 1, RSL_REL_NORMAL)
+        bsc_api.c:subscr_con_free(conn)
+          libcommon/gsm_subscriber_base.c:subscr_put(conn->subscr);
+
+(4)[1]
+osmo-bsc/osmo_bsc_api.c:osmo_bsc_api().cipher_mode_compl =
+  bsc_cipher_mode_compl()
+    queue_msg_or_return() osmo-bsc/osmo_bsc_api.c
+      bsc_queue_for_msc()
+
+
+libbsc/abis_nm.c:abis_nm_rcvmsg(msg);
+  case ABIS_OM_MDISC_FOM:
+    rc = abis_nm_rcvmsg_fom(msg);
+
+  case ABIS_OM_MDISC_MANUF:
+    rc = abis_nm_rcvmsg_manuf(msg);
+
+  case ABIS_OM_MDISC_MMI:
+  case ABIS_OM_MDISC_TRAU:
+    LOGP(DNM, LOGL_ERROR, "unimplemented ABIS OML message discriminator 0x%x\n",
+
