@@ -147,6 +147,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		break;
 	case RTP_PT_GSM_HALF:
 		msg_type = GSM_TCHH_FRAME;
+		payload_len++;
 		if (payload_len != RTP_LEN_GSM_HALF) {
 			DEBUGPC(DLMUX, "received RTP half rate frame with "
 				"payload length != %d (len = %d)\n",
@@ -187,7 +188,12 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		*data0 = payload_len;
 	}
 	payload_out = msgb_put(new_msg, payload_len);
-	memcpy(payload_out, payload, payload_len);
+	if (rtph->payload_type == RTP_PT_GSM_HALF) {
+		payload_out[0] = 0;
+		memcpy(payload_out + 1, payload, payload_len - 1);
+	} else {
+		memcpy(payload_out, payload, payload_len);
+	}
 
 	*data = new_msg;
 	return 0;
@@ -229,7 +235,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		break;
 	case GSM_TCHH_FRAME:
 		payload_type = RTP_PT_GSM_HALF;
-		payload_len = RTP_LEN_GSM_HALF;
+		payload_len = RTP_LEN_GSM_HALF - 1;
 		duration = RTP_GSM_DURATION;
 		break;
 	case GSM_TCH_FRAME_AMR:
@@ -279,6 +285,8 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 
 	payload = msgb_put(msg, payload_len);
 	if (frame->msg_type == GSM_TCH_FRAME_AMR)
+		memcpy(payload, frame->data + 1, payload_len);
+	else if (frame->msg_type == GSM_TCHH_FRAME)
 		memcpy(payload, frame->data + 1, payload_len);
 	else
 		memcpy(payload, frame->data, payload_len);
