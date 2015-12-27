@@ -44,6 +44,10 @@ struct gsm_call {
 	uint32_t callref;
 	/* the 'remote' transaction */
 	uint32_t remote_ref;
+
+	/* the capabilities */
+	uint8_t lchan_type;
+	struct gsm_mncc_bearer_cap bcap;
 };
 
 #define MNCC_SETUP_REQ		0x0101
