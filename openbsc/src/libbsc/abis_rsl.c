@@ -1048,7 +1048,7 @@ static void print_meas_rep(struct gsm_lchan *lchan, struct gsm_meas_rep *mr)
 	int i;
 	char *name = "";
 
-	if (lchan && lchan->conn && lchan->conn->subscr)
+	if (lchan && lchan->conn)
 		name = subscr_name(lchan->conn->subscr);
 
 	DEBUGP(DMEAS, "[%s] MEASUREMENT RESULT NR=%d ", name, mr->nr);
