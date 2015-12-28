@@ -67,6 +67,36 @@ enum rtp_bfd_priv {
 /* 33 for FR, all other codecs have smaller size */
 #define MAX_RTP_PAYLOAD_LEN	33
 
+static void
+hr_jumble(uint8_t *dst, const uint8_t *src)
+{
+	const int p_unvoiced[] = { 5, 11,  9,  8,  1,  2,  7,  7,  5,  7,  7,  5,  7,  7,  5,  7,  7,  5 };
+	const int p_voiced[]   = { 5, 11,  9,  8,  1,  2,  8,  9,  5,  4,  9,  5,  4,  9,  5,  4,  9,  5 };
+
+	int base, i, j, l, si, di;
+	int *p;
+
+	memset(dst, 0x00, 14);
+
+	p = (src[4] & 0x30) ? p_voiced : p_unvoiced;
+
+	base = 0;
+	for (i=0; i<18; i++)
+	{
+		l = p[i];
+		for (j=0; j<l; j++)
+		{
+			si = base + j;
+			di = base + l - j - 1;
+
+			if (src[si >> 3] & (1 << (7 - (si & 7))))
+				dst[di >> 3] |= (1 << (7 - (di & 7)));
+		}
+
+		base += l;
+	}
+}
+
 /* decode an rtp frame and create a new buffer with payload */
 static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 {
@@ -190,7 +220,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 	payload_out = msgb_put(new_msg, payload_len);
 	if (rtph->payload_type == RTP_PT_GSM_HALF) {
 		payload_out[0] = 0;
-		memcpy(payload_out + 1, payload, payload_len - 1);
+		hr_jumble(payload_out + 1, payload);
 	} else {
 		memcpy(payload_out, payload, payload_len);
 	}
@@ -287,7 +317,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	if (frame->msg_type == GSM_TCH_FRAME_AMR)
 		memcpy(payload, frame->data + 1, payload_len);
 	else if (frame->msg_type == GSM_TCHH_FRAME)
-		memcpy(payload, frame->data + 1, payload_len);
+		hr_jumble(payload, frame->data + 1);
 	else
 		memcpy(payload, frame->data, payload_len);
 	msgb_enqueue(&rss->tx_queue, msg);
