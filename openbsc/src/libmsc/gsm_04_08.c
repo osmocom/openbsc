@@ -447,8 +447,7 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 	msg->lchan = conn->lchan;
 
 	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT "
-	     "LAC=%u BTS=%u\n", conn->subscr ?
-	     			subscr_name(conn->subscr) : "unknown",
+	     "LAC=%u BTS=%u\n", subscr_name(conn->subscr),
 	     bts->location_area_code, bts->nr);
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
@@ -1147,9 +1146,7 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 		break;
 	case GSM48_MT_MM_TMSI_REALL_COMPL:
 		DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
-		       conn->subscr ?
-				subscr_name(conn->subscr) :
-				"unknown subscriber");
+		       subscr_name(conn->subscr));
 		release_loc_updating_req(conn, 1);
 		break;
 	case GSM48_MT_MM_IMSI_DETACH_IND:
