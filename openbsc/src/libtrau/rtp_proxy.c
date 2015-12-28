@@ -172,7 +172,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 	/* always allocate for the maximum possible size to avoid
 	 * fragmentation */
 	new_msg = msgb_alloc(sizeof(struct gsm_data_frame) +
-			     MAX_RTP_PAYLOAD_LEN, "GSM-DATA (TCH)");
+			     MAX_RTP_PAYLOAD_LEN+1, "GSM-DATA (TCH)");
 
 	if (!new_msg)
 		return -ENOMEM;
