@@ -39,20 +39,6 @@
 static struct gprs_llc_llme *llme_alloc(uint32_t tlli);
 
 /* If the TLLI is foreign, return its local version */
-static inline uint32_t tlli_foreign2local(uint32_t tlli)
-{
-	uint32_t new_tlli;
-
-	if (gprs_tlli_type(tlli) == TLLI_FOREIGN) {
-		new_tlli = tlli | 0x40000000;
-		LOGP(DLLC, LOGL_NOTICE, "TLLI 0x%08x is foreign, converting to "
-			"local TLLI 0x%08x\n", tlli, new_tlli);
-	} else
-		new_tlli = tlli;
-
-	return new_tlli;
-}
-
 /* Entry function from upper level (LLC), asking us to transmit a BSSGP PDU
  * to a remote MS (identified by TLLI) at a BTS identified by its BVCI and NSEI */
 static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
@@ -72,9 +58,7 @@ static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
 
 		/* make sure we only send it to the right llme */
 		OSMO_ASSERT(msgb_tlli(msg) == mmctx->llme->tlli
-				|| msgb_tlli(msg) == mmctx->llme->old_tlli
-				|| tlli_foreign2local(msgb_tlli(msg)) == mmctx->llme->tlli
-				|| tlli_foreign2local(msgb_tlli(msg)) == mmctx->llme->old_tlli);
+				|| msgb_tlli(msg) == mmctx->llme->old_tlli);
 	}
 	memcpy(&dup.qos_profile, qos_profile_default,
 		sizeof(qos_profile_default));
@@ -175,10 +159,6 @@ struct gprs_llc_lle *gprs_lle_get_or_create(const uint32_t tlli, uint8_t sapi)
 	if (lle)
 		return lle;
 
-	lle = lle_by_tlli_sapi(tlli_foreign2local(tlli), sapi);
-	if (lle)
-		return lle;
-
 	LOGP(DLLC, LOGL_NOTICE, "LLC: unknown TLLI 0x%08x, "
 		"creating LLME on the fly\n", tlli);
 	llme = llme_alloc(tlli);
@@ -204,7 +184,7 @@ static struct gprs_llc_lle *lle_for_rx_by_tlli_sapi(const uint32_t tlli,
 
 	/* Maybe it is a routing area update but we already know this sapi? */
 	if (gprs_tlli_type(tlli) == TLLI_FOREIGN) {
-		lle = lle_by_tlli_sapi(tlli_foreign2local(tlli), sapi);
+		lle = lle_by_tlli_sapi(tlli, sapi);
 		if (lle) {
 			LOGP(DLLC, LOGL_NOTICE,
 				"LLC RX: Found a local entry for TLLI 0x%08x\n",

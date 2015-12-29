@@ -221,9 +221,6 @@ static void test_llme(void)
 	lle_copy = gprs_lle_get_or_create(local_tlli, 3);
 	OSMO_ASSERT(lle == lle_copy);
 	OSMO_ASSERT(count(gprs_llme_list()) == 1);
-	lle_copy = gprs_lle_get_or_create(foreign_tlli, 3);
-	OSMO_ASSERT(lle == lle_copy);
-	OSMO_ASSERT(count(gprs_llme_list()) == 1);
 
 	/* unassign which should delete it*/
 	gprs_llgmm_assign(lle->llme, lle->llme->tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
