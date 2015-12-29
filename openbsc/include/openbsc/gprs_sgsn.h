@@ -141,6 +141,7 @@ struct sgsn_mm_ctx {
 		/* CSG Subscription Data */
 		/* LIPA Allowed */
 		/* Voice Support Match Indicator */
+		void 			*ue_ctx;
 	} iu;
 	/* VLR number */
 	uint32_t		new_sgsn_addr;
@@ -216,10 +217,13 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid);
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_ptmsi(uint32_t tmsi);
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_imsi(const char *imsi);
+struct sgsn_mm_ctx *sgsn_mm_ctx_by_ue_ctx(const void *uectx);
 
 /* Allocate a new SGSN MM context */
 struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 					const struct gprs_ra_id *raid);
+struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx);
+
 void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx);
 
 struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,

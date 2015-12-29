@@ -104,6 +104,20 @@ static inline uint32_t tlli_foreign(uint32_t tlli)
 }
 
 /* look-up a SGSN MM context based on TLLI + RAI */
+struct sgsn_mm_ctx *sgsn_mm_ctx_by_ue_ctx(const void *uectx)
+{
+	struct sgsn_mm_ctx *ctx;
+
+	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
+		if (ctx->ran_type == MM_CTX_T_UTRAN_Iu && uectx == ctx->iu.ue_ctx)
+			return ctx;
+	}
+
+	return NULL;
+}
+
+
+/* look-up a SGSN MM context based on TLLI + RAI */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid)
 {
@@ -176,6 +190,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 		return NULL;
 
 	memcpy(&ctx->ra, raid, sizeof(ctx->ra));
+	ctx->ran_type = MM_CTX_T_GERAN_Gb;
 	ctx->gb.tlli = tlli;
 	ctx->mm_state = GMM_DEREGISTERED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
@@ -186,6 +201,28 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 
 	return ctx;
 }
+
+/* Allocate a new SGSN MM context */
+struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx)
+{
+	struct sgsn_mm_ctx *ctx;
+
+	ctx = talloc_zero(tall_bsc_ctx, struct sgsn_mm_ctx);
+	if (!ctx)
+		return NULL;
+
+	ctx->ran_type = MM_CTX_T_UTRAN_Iu;
+	ctx->iu.ue_ctx = uectx;
+	ctx->mm_state = GMM_DEREGISTERED;
+	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
+	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, 0);
+	INIT_LLIST_HEAD(&ctx->pdp_list);
+
+	llist_add(&ctx->list, &sgsn_mm_ctxts);
+
+	return ctx;
+}
+
 
 /* this is a hard _free_ function, it doesn't clean up the PDP contexts
  * in libgtp! */
@@ -244,11 +281,13 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 		subscr_put(subscr);
 	}
 
+	if (mm->ran_type == MM_CTX_T_GERAN_Gb) {
+		/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
+		gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+	}
+
 	sgsn_mm_ctx_free(mm);
 	mm = NULL;
-
-	/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
-	gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
 }
 
 
@@ -318,8 +357,10 @@ void sgsn_pdp_ctx_terminate(struct sgsn_pdp_ctx *pdp)
 
 	LOGPDPCTXP(LOGL_INFO, pdp, "Forcing release of PDP context\n");
 
-	/* Force the deactivation of the SNDCP layer */
-	sndcp_sm_deactivate_ind(&pdp->mm->gb.llme->lle[pdp->sapi], pdp->nsapi);
+	if (pdp->mm->ran_type == MM_CTX_T_GERAN_Gb) {
+		/* Force the deactivation of the SNDCP layer */
+		sndcp_sm_deactivate_ind(&pdp->mm->gb.llme->lle[pdp->sapi], pdp->nsapi);
+	}
 
 	memset(&sig_data, 0, sizeof(sig_data));
 	sig_data.pdp = pdp;

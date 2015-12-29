@@ -90,6 +90,8 @@ const struct value_string gtp_cause_strs[] = {
 	{ 0, NULL }
 };
 
+int gprs_iu_rab_act(struct sgsn_mm_ctx *mm, uint32_t gtp_ip, uint32_t gtp_tei);
+
 /* Generate the GTP IMSI IE according to 09.60 Section 7.9.2 */
 static uint64_t imsi_str2gtp(char *str)
 {
@@ -220,8 +222,14 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 
 	/* SGSN address for user plane */
 	pdp->gsnlu.l = sizeof(sgsn->cfg.gtp_listenaddr.sin_addr);
+#if 1
+	struct in_addr ia;
+	ia.s_addr = htonl(0xC0A80032);
+	memcpy(pdp->gsnlu.v, &ia, sizeof(ia));
+#else
 	memcpy(pdp->gsnlu.v, &sgsn->cfg.gtp_listenaddr.sin_addr,
 		sizeof(sgsn->cfg.gtp_listenaddr.sin_addr));
+#endif
 
 	/* Assume we are a GERAN system */
 	pdp->rattype.l = 1;
@@ -340,8 +348,14 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		goto reject;
 	}
 
-	/* Activate the SNDCP layer */
-	sndcp_sm_activate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
+	if (pctx->mm->ran_type == MM_CTX_T_GERAN_Gb) {
+		/* Activate the SNDCP layer */
+		sndcp_sm_activate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
+	} else {
+		/* Activate a radio bearer */
+		uint32_t ggsn_ip = 0xc0a80033; /* 192.168.0.51 */
+		gprs_iu_rab_act(pctx->mm, ggsn_ip, pdp->teid_own);
+	}
 
 	/* Inform others about it */
 	memset(&sig_data, 0, sizeof(sig_data));
@@ -387,8 +401,13 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_DEACT, &sig_data);
 
 	if (pctx->mm) {
-		/* Deactivate the SNDCP layer */
-		sndcp_sm_deactivate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
+		if (pctx->mm->ran_type == MM_CTX_T_GERAN_Gb) {
+			/* Deactivate the SNDCP layer */
+			sndcp_sm_deactivate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
+		} else {
+			/* Activate a radio bearer */
+			gprs_iu_rab_deact(&pctx->mm);
+		}
 
 		/* Confirm deactivation of PDP context to MS */
 		rc = gsm48_tx_gsm_deact_pdp_acc(pctx);
