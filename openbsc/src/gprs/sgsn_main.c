@@ -232,6 +232,9 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
+extern int asn_debug;
+
+#include "hnbgw.h"
 /* default categories */
 static struct log_info_cat gprs_categories[] = {
 	[DMM] = {
@@ -279,6 +282,11 @@ static struct log_info_cat gprs_categories[] = {
 	[DSNDCP] = {
 		.name = "DSNDCP",
 		.description = "GPRS Sub-Network Dependent Control Protocol (SNDCP)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
+	[DRANAP] = {
+		.name = "DRANAP",
+		.description = "RAN Application Part",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 };
@@ -403,6 +411,9 @@ int main(int argc, char **argv)
 			exit(4);
 		}
 	}
+
+	asn_debug = 0;
+	sgsn_iu_init(tall_bsc_ctx);
 
 	if (daemonize) {
 		rc = osmo_daemonize();

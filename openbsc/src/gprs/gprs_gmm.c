@@ -60,6 +60,8 @@
 
 #define PTMSI_ALLOC
 
+int gprs_transp_upd_key(struct sgsn_mm_ctx *mm);
+
 extern struct sgsn_instance *sgsn;
 
 static const struct tlv_definition gsm48_gmm_att_tlvdef = {
@@ -132,12 +134,11 @@ time_t gprs_max_time_to_idle(void)
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
 			     struct sgsn_mm_ctx *mm)
 {
-	if (mm) {
+	if (mm)
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_SIG_OUT]);
-		if (mm->ran_type == MM_CTX_T_UTRAN_Iu)
-			return gprs_iu_tx(msg, GPRS_SAPI_GMM, mm);
-	}
-#warning "How to catch Iu-mode messages without MM context?"
+
+	if (msg->dst)
+		return gprs_iu_tx(msg, GPRS_SAPI_GMM, mm);
 
 	/* caller needs to provide TLLI, BVCI and NSEI */
 	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command, mm);
@@ -150,6 +151,7 @@ static void gmm_copy_id(struct msgb *msg, const struct msgb *old)
 	msgb_tlli(msg) = msgb_tlli(old);
 	msgb_bvci(msg) = msgb_bvci(old);
 	msgb_nsei(msg) = msgb_nsei(old);
+	msg->dst = old->dst;
 }
 
 /* Store BVCI/NSEI in MM context */
@@ -165,6 +167,7 @@ static void mmctx2msgid(struct msgb *msg, const struct sgsn_mm_ctx *mm)
 	msgb_tlli(msg) = mm->gb.tlli;
 	msgb_bvci(msg) = mm->gb.bvci;
 	msgb_nsei(msg) = mm->gb.nsei;
+	msg->dst = mm->iu.ue_ctx;
 }
 
 static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
@@ -531,7 +534,11 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	/* FIXME: enable LLC cipheirng */
 
 	/* Check if we can let the mobile station enter */
-	return gsm48_gmm_authorize(ctx);
+	rc = gsm48_gmm_authorize(ctx);
+
+	gprs_transp_upd_key(ctx);
+
+	return rc;
 }
 
 static void extract_subscr_msisdn(struct sgsn_mm_ctx *ctx)
@@ -837,7 +844,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	uint32_t tmsi;
 	char mi_string[GSM48_MI_SIZE];
 	struct gprs_ra_id ra_id;
-	uint16_t cid;
+	uint16_t cid = 0;
 	enum gsm48_gmm_cause reject_cause;
 	int rc;
 
@@ -847,8 +854,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
 	 * or with random TLLI. */
 
-#error "how to obtain RA_ID in Iu case?"
-	cid = bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	if (!msg->dst)
+		cid = bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
 
 	/* MS network capability 10.5.5.12 */
 	msnc_len = *cur++;
@@ -900,7 +907,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 #if 0
 			return gsm48_tx_gmm_att_rej(msg, GMM_CAUSE_IMSI_UNKNOWN);
 #else
-			ctx = sgsn_mm_ctx_alloc(0, &ra_id);
+			if (msg->dst)
+				ctx = sgsn_mm_ctx_alloc_iu(msg->dst);
+			else
+				ctx = sgsn_mm_ctx_alloc(0, &ra_id);
 			if (!ctx) {
 				reject_cause = GMM_CAUSE_NET_FAIL;
 				goto rejected;
@@ -923,7 +933,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		if (!ctx) {
 			/* Allocate a context as most of our code expects one.
 			 * Context will not have an IMSI ultil ID RESP is received */
-			ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
+			if (msg->dst)
+				ctx = sgsn_mm_ctx_alloc_iu(msg->dst);
+			else
+				ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
 			ctx->p_tmsi = tmsi;
 		}
 		if (ctx->ran_type == MM_CTX_T_GERAN_Gb) {
@@ -938,12 +951,22 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		reject_cause = GMM_CAUSE_MS_ID_NOT_DERIVED;
 		goto rejected;
 	}
+	{
+		ctx->auth_state = SGSN_AUTH_AUTHENTICATE;
+		/* Ki 000102030405060708090a0b0c0d0e0f */
+		ctx->auth_triplet = (struct gsm_auth_tuple ) {
+			.key_seq = 0,
+			.rand = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
+			.sres = { 0x61, 0xb5, 0x69, 0xf5 },
+			.kc = { 0xd9, 0xd9, 0xc2, 0xed, 0x62, 0x7d, 0x68, 0x00 },
+		};
+	}
 	/* Update MM Context with currient RA and Cell ID */
 	ctx->ra = ra_id;
 	if (ctx->ran_type == MM_CTX_T_GERAN_Gb)
 		ctx->gb.cell_id = cid;
-	else if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
-		ctx->iu.sac = sac;
+	//else if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
+		//ctx->iu.sac = sac;
 
 	/* Update MM Context with other data */
 	ctx->drx_parms = drx_par;
@@ -1180,7 +1203,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		break;
 	}
 
-#error "Differentiate look-up between Iu and Gb"
+#warning "Differentiate look-up between Iu and Gb"
 	if (!mmctx) {
 		/* BSSGP doesn't give us an mmctx */
 
@@ -1235,9 +1258,9 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
 
 	/* Update the MM context with the new RA-ID */
-#error "how to obtain RA_ID in Iu case?"
-	bssgp_parse_cell_id(&mmctx->ra, msgb_bcid(msg));
+#warning "how to obtain RA_ID in Iu case?"
 	if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
+		bssgp_parse_cell_id(&mmctx->ra, msgb_bcid(msg));
 		/* Update the MM context with the new (i.e. foreign) TLLI */
 		mmctx->gb.tlli = msgb_tlli(msg);
 	}
@@ -1295,7 +1318,7 @@ rejected:
 	if (mmctx)
 		mm_ctx_cleanup_free(mmctx, "GPRS RA UPDATE REJ");
 	else {
-		if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
+		if (llme) {
 			/* TLLI unassignment */
 			gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
 					  GPRS_ALGO_GEA0, NULL);
@@ -2133,20 +2156,22 @@ int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx)
 
 /* Main entry point for incoming 04.08 GPRS messages from Iu */
 int gsm0408_gprs_rcvmsg_iu(struct msgb *msg, struct gprs_ra_id *ra_id,
-			   uint16_t *sai, uint32_t conn_id)
+			   uint16_t *sai)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t pdisc = gh->proto_discr & 0x0f;
 	struct sgsn_mm_ctx *mmctx;
 	int rc = -EINVAL;
 
-	mmctx = sgsn_mm_ctx_by_conn_id(conn_id);
+	DEBUGP(DMM, "rcvmsg_iu(%s)\n", osmo_hexdump(msgb_gmmh(msg), msgb_l3len(msg)));
+
+	mmctx = sgsn_mm_ctx_by_ue_ctx(msg->dst);
 	if (mmctx) {
 		rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
 		if (ra_id)
-			memcpy(&mmctx->ra_id, ra_id, sizeof(mmctx->ra_id));
-		if (sai)
-			mmctx->iu.sai = *sai;
+			memcpy(&mmctx->ra, ra_id, sizeof(mmctx->ra));
+		//if (sai)
+			//mmctx->iu.sai = *sai;
 	}
 
 	/* MMCTX can be NULL */
