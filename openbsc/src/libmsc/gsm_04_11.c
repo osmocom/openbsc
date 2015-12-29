@@ -1083,12 +1083,11 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 
 
 static int gsm411_send_rp_data(struct gsm_subscriber_connection *conn,
-                        struct msgb *rp)
+                        struct msgb *msg)
 {
 	struct gsm_trans *trans;
-	uint8_t *rp_msg = msgb_data(rp);
-	uint8_t rp_msg_ref;
-	rp_msg_ref = *(rp_msg + 1);
+	struct gsm411_rp_hdr *rp;
+	rp = (struct gsm411_rp_hdr *)msgb_data(msg);
 
 	int transaction_id;
 
@@ -1097,7 +1096,7 @@ static int gsm411_send_rp_data(struct gsm_subscriber_connection *conn,
 			      GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DLSMS, LOGL_ERROR, "No available transaction ids\n");
-		msgb_free(rp);
+		msgb_free(msg);
 		return -EBUSY;
 	}
 
@@ -1107,7 +1106,7 @@ static int gsm411_send_rp_data(struct gsm_subscriber_connection *conn,
 			    transaction_id, new_callref++);
 	if (!trans) {
 		LOGP(DLSMS, LOGL_ERROR, "No memory for trans\n");
-		msgb_free(rp);
+		msgb_free(msg);
 		/* FIXME: send some error message */
 		return -ENOMEM;
 	}
@@ -1115,59 +1114,59 @@ static int gsm411_send_rp_data(struct gsm_subscriber_connection *conn,
 		gsm411_mn_recv, gsm411_mm_send);
 	gsm411_smr_init(&trans->sms.smr_inst, 0, 1,
 		gsm411_rl_recv, gsm411_mn_send);
-	trans->msg_ref = rp_msg_ref;
+	trans->msg_ref = rp->msg_ref;
 	trans->conn = conn;
 
 	osmo_counter_inc(conn->bts->network->stats.sms.delivered);
-	return gsm411_smr_send(&trans->sms.smr_inst, GSM411_SM_RL_DATA_REQ, rp);
+	return gsm411_smr_send(&trans->sms.smr_inst, GSM411_SM_RL_DATA_REQ, msg);
 }
 
 static int gsm411_send_rp_resp(struct gsm_subscriber *subscr,
-                            struct msgb *rp)
+                            struct msgb *msg)
 {
 	struct gsm_subscriber_connection *conn;
 	struct gsm_trans *trans;
-	uint8_t *rp_msg = msgb_data(rp);
-	uint8_t rp_msg_ref;
-	rp_msg_ref = *(rp_msg + 1);
+	struct gsm411_rp_hdr *rp;
+	rp = (struct gsm411_rp_hdr *)msgb_data(msg);
+
 	conn = connection_for_subscr(subscr);
 	if (!conn) {
-		msgb_free(rp);
+		msgb_free(msg);
 		return -1;
 	}
 
-	trans = trans_find_by_msgref(conn, rp_msg_ref);
+	trans = trans_find_by_msgref(conn, rp->msg_ref);
 	if (!trans) {
-		msgb_free(rp);
+		msgb_free(msg);
 		return -1;
 	}
 
-	return gsm411_smr_send(&trans->sms.smr_inst, GSM411_SM_RL_REPORT_REQ, rp);
+	return gsm411_smr_send(&trans->sms.smr_inst, GSM411_SM_RL_REPORT_REQ, msg);
 }
 
 /* paging callback. Here we get called if paging a subscriber has
  * succeeded or failed. */
 static int paging_cb_send_rp_data(unsigned int hooknum, unsigned int event,
-			      struct msgb *msg, void *_conn, void *_rp)
+			      struct msgb *msg, void *_conn, void *_rp_data)
 {
 	struct gsm_subscriber_connection *conn = _conn;
-	struct msgb *rp = _rp;
+	struct msgb *rp_data = _rp_data;
 	int rc = 0;
 
 	DEBUGP(DLSMS, "paging_cb_send_sms(hooknum=%u, event=%u, msg=%p,"
-		"conn=%p, rp=%p)\n", hooknum, event, msg, conn, rp);
+		"conn=%p, rp_data=%p)\n", hooknum, event, msg, conn, rp_data);
 
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
-		gsm411_send_rp_data(conn, rp);
+		gsm411_send_rp_data(conn, rp_data);
 		break;
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_OOM:
 	case GSM_PAGING_BUSY:
-		msgb_free(rp);
+		msgb_free(rp_data);
 		rc = -ETIMEDOUT;
 		break;
 	default:
@@ -1178,39 +1177,40 @@ static int paging_cb_send_rp_data(unsigned int hooknum, unsigned int event,
 }
 
 static int gsm411_send_rp_req(struct gsm_subscriber *subscr,
-                           struct msgb *rp)
+                           struct msgb *rp_data)
 {
 	struct gsm_subscriber_connection *conn;
 	conn = connection_for_subscr(subscr);
 
 	if (conn) {
-		return gsm411_send_rp_data(conn, rp);
+		return gsm411_send_rp_data(conn, rp_data);
 	}
 
 	void *res;
 	res = subscr_request_channel(subscr, RSL_CHANNEED_SDCCH,
-					paging_cb_send_rp_data, rp);
+					paging_cb_send_rp_data, rp_data);
 	if (!res) {
-		msgb_free(rp);
+		msgb_free(rp_data);
 	}
 	return 0;
 }
 
 int gsm411_send_rp_msg_subscr(struct gsm_subscriber *subscr,
-                       struct msgb *rp)
+                       struct msgb *msg)
 {
-	uint8_t *rp_msg = msgb_data(rp);
-	uint8_t rp_msg_type;
-	rp_msg_type = *rp_msg;
+	struct gsm411_rp_hdr *rp;
+	msgb_push(msg, 1);
+	rp = (struct gsm411_rp_hdr *)msgb_data(msg);
+	rp->len = msg->len - 1;
 
-	switch (rp_msg_type) {
+	switch (rp->msg_type) {
 	case GSM411_MT_RP_ACK_MT:
 	case GSM411_MT_RP_ERROR_MT:
-		return gsm411_send_rp_resp(subscr, rp);
+		return gsm411_send_rp_resp(subscr, msg);
 	case GSM411_MT_RP_DATA_MT:
-		return gsm411_send_rp_req(subscr, rp);
+		return gsm411_send_rp_req(subscr, msg);
 	default:
-		msgb_free(rp);
+		msgb_free(msg);
 		return -1;
 	}
 }
