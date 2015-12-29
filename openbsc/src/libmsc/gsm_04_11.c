@@ -555,16 +555,17 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 
 	if (trans->net->sms_client) {
 		osmo_counter_inc(trans->conn->bts->network->stats.sms.submitted);
+		trans->msg_ref = rph->msg_ref;
 		return subscr_tx_sms_message(trans->subscr, rph);
-	} else {
-		rc = gsm340_rx_tpdu(trans->conn, msg);
-		if (rc == 0)
-			return gsm411_send_rp_ack(trans, rph->msg_ref);
-		else if (rc > 0)
-			return gsm411_send_rp_error(trans, rph->msg_ref, rc);
-		else
-			return rc;
 	}
+
+	rc = gsm340_rx_tpdu(trans->conn, msg);
+	if (rc == 0)
+		return gsm411_send_rp_ack(trans, rph->msg_ref);
+	else if (rc > 0)
+		return gsm411_send_rp_error(trans, rph->msg_ref, rc);
+	else
+		return rc;
 }
 
 /* Receive a 04.11 RP-DATA message in accordance with Section 7.3.1.2 */
