@@ -600,6 +600,10 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 {
 	struct gsm_sms *sms = trans->sms.sms;
 
+	if (trans->net->sms_client) {
+		return subscr_tx_sms_message(trans->subscr, rph);
+	}
+
 	/* Acnkowledgement to MT RP_DATA, i.e. the MS confirms it
 	 * successfully received a SMS.  We can now safely mark it as
 	 * transmitted */
@@ -636,6 +640,15 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	LOGP(DLSMS, LOGL_NOTICE, "%s: RX SMS RP-ERROR, cause %d:%d (%s)\n",
 	     subscr_name(trans->conn->subscr), cause_len, cause,
 	     get_value_string(gsm411_rp_cause_strs, cause));
+
+	if (trans->net->sms_client) {
+		if (cause == GSM411_RP_CAUSE_MT_MEM_EXCEEDED) {
+			osmo_counter_inc(net->stats.sms.rp_err_mem);
+		} else {
+			osmo_counter_inc(net->stats.sms.rp_err_other);
+		}
+		return subscr_tx_sms_message(trans->subscr, rph);
+	}
 
 	if (!sms) {
 		LOGP(DLSMS, LOGL_ERROR,
