@@ -209,10 +209,10 @@ static int rx_sms_message(const uint8_t* data, size_t data_len)
 	char extension[15];
 	uint8_t *value;
 	size_t value_len;
-	int offset = 0;
+	int offset = 1;
 	uint8_t *rp_hdr = (uint8_t*)data + offset;
+	data_len -= 1;
 
-	offset++;
 	rc = gprs_match_tlv(&rp_hdr, &data_len, 0x82, &value, &value_len);
 
 	if (rc <= 0)
@@ -232,8 +232,8 @@ static int rx_sms_message(const uint8_t* data, size_t data_len)
 
 	struct msgb *msg = gsm411_msgb_alloc();
 	uint8_t *rp_msg;
-	rp_msg = (uint8_t *)msgb_put(msg, data_len - offset);
-	memcpy(rp_msg, data + offset, data_len - offset);
+	rp_msg = (uint8_t *)msgb_put(msg, data_len);
+	memcpy(rp_msg, data + offset, data_len);
 
 	struct gsm_subscriber *subscr;
 	subscr = subscr_get_by_extension(NULL, extension);
