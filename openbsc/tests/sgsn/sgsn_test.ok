@@ -25,6 +25,13 @@ Testing P-TMSI allocation
   - sgsn_alloc_ptmsi
   - Repeated Attach Request
   - Repeated RA Update Request
+Testing routing area changes
+  - Attach Request (RA 1)
+  - Repeated RA Update Request (RA 1)
+  - RA Update Request (RA 1 -> RA 2)
+  - Attach Request (RA 2)
+  - RA Update Request (RA other -> RA 2)
+  - Attach Request (RA 2)
 Testing APN matching
 Testing GGSN selection
 Done
