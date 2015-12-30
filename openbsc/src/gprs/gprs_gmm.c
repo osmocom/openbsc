@@ -1164,9 +1164,21 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		break;
 	}
 
-	/* Look-up the MM context based on old RA-ID and TLLI */
-	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &old_ra_id);
-	if (!mmctx || mmctx->mm_state == GMM_DEREGISTERED) {
+	if (!mmctx) {
+		/* BSSGP doesn't give us an mmctx */
+
+		/* TODO: Check if there is an MM CTX with old_ra_id and
+		 * the P-TMSI (if given, reguired for UMTS) or as last resort
+		 * if the TLLI matches foreign_tlli (P-TMSI). Note that this
+		 * is an optimization to avoid the RA reject (impl detached)
+		 * below, which will cause a new attach cycle. */
+	}
+
+	if (!mmctx || !gprs_ra_id_equals(&mmctx->ra, &old_ra_id) ||
+		mmctx->mm_state == GMM_DEREGISTERED)
+	{
+		/* We cannot use the mmctx */
+
 		/* send a XID reset to re-set all LLC sequence numbers
 		 * in the MS */
 		LOGMMCTXP(LOGL_NOTICE, mmctx, "LLC XID RESET\n");
