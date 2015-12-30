@@ -25,6 +25,7 @@
 #include <sys/types.h>
 
 struct msgb;
+struct gprs_ra_id;
 
 struct msgb *gprs_msgb_copy(const struct msgb *msg, const char *name);
 int gprs_msgb_resize_area(struct msgb *msg, uint8_t *area,
@@ -52,3 +53,4 @@ int gprs_match_tlv(uint8_t **data, size_t *data_len,
 int gprs_shift_lv(uint8_t **data, size_t *data_len,
 		  uint8_t **value, size_t *value_len);
 
+int gprs_ra_id_equals(const struct gprs_ra_id *id1, const struct gprs_ra_id *id2);
