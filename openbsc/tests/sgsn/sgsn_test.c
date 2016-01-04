@@ -1607,7 +1607,7 @@ static void test_gmm_cancel(void)
  */
 static void test_gmm_ptmsi_allocation(void)
 {
-	struct gprs_ra_id raid = { 0, };
+	struct gprs_ra_id raid = {332, 112, 16464, 96};
 	struct sgsn_mm_ctx *ctx = NULL;
 	struct sgsn_mm_ctx *ictx;
 	uint32_t foreign_tlli;

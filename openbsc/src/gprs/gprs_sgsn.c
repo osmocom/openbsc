@@ -90,45 +90,16 @@ static const struct rate_ctr_group_desc pdpctx_ctrg_desc = {
 	.class_id = OSMO_STATS_CLASS_SUBSCRIBER,
 };
 
-/* See 03.02 Chapter 2.6 */
-static inline uint32_t tlli_foreign(uint32_t tlli)
-{
-	return ((tlli | 0x80000000) & ~0x40000000);	
-}
-
 /* look-up a SGSN MM context based on TLLI + RAI */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid)
 {
 	struct sgsn_mm_ctx *ctx;
-	int tlli_type;
 
 	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
-		if (tlli == ctx->tlli &&
+		if ((tlli == ctx->tlli || tlli == ctx->tlli_new) &&
 		    gprs_ra_id_equals(raid, &ctx->ra))
 			return ctx;
-	}
-
-	tlli_type = gprs_tlli_type(tlli);
-	switch (tlli_type) {
-	case TLLI_LOCAL:
-		llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
-			if ((ctx->p_tmsi | 0xC0000000) == tlli ||
-			     (ctx->p_tmsi_old && (ctx->p_tmsi_old | 0xC0000000) == tlli)) {
-				ctx->tlli = tlli;
-				return ctx;
-			}
-		}
-		break;
-	case TLLI_FOREIGN:
-		llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
-			if (tlli == tlli_foreign(ctx->tlli) &&
-			    gprs_ra_id_equals(raid, &ctx->ra))
-				return ctx;
-		}
-		break;
-	default:
-		break;
 	}
 
 	return NULL;
