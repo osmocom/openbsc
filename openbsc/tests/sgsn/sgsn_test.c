@@ -203,11 +203,9 @@ static void test_llme(void)
 {
 	struct gprs_llc_lle *lle, *lle_copy;
 	uint32_t local_tlli;
-	uint32_t foreign_tlli;
 
 	printf("Testing LLME allocations\n");
 	local_tlli = gprs_tmsi2tlli(0x234, TLLI_LOCAL);
-	foreign_tlli = gprs_tmsi2tlli(0x234, TLLI_FOREIGN);
 
 	/* initial state */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
@@ -219,9 +217,6 @@ static void test_llme(void)
 
 	/* No new entry is created */
 	lle_copy = gprs_lle_get_or_create(local_tlli, 3);
-	OSMO_ASSERT(lle == lle_copy);
-	OSMO_ASSERT(count(gprs_llme_list()) == 1);
-	lle_copy = gprs_lle_get_or_create(foreign_tlli, 3);
 	OSMO_ASSERT(lle == lle_copy);
 	OSMO_ASSERT(count(gprs_llme_list()) == 1);
 
