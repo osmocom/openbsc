@@ -29,7 +29,6 @@ Testing routing area changes
   - Attach Request (RA 1)
   - RA Update Request (RA 1 -> RA 1)
   - RA Update Request (RA 1 -> RA 2)
-  - Attach Request (RA 2)
   - RA Update Request (RA other -> RA 2)
   - Attach Request (RA 2)
   - RA Update Request (RA 2 -> RA 2)

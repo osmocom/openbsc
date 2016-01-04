@@ -105,6 +105,31 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 	return NULL;
 }
 
+struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli_and_ptmsi(uint32_t tlli,
+					const struct gprs_ra_id *raid)
+{
+	struct sgsn_mm_ctx *ctx;
+	int tlli_type;
+
+	/* TODO: Also check the P_TMSI signature to be safe. That signature
+	 * should be different (at least with a sufficiently high probability)
+	 * after SGSN restarts and for multiple SGSN instances.
+	 */
+
+	tlli_type = gprs_tlli_type(tlli);
+	if (tlli_type != TLLI_FOREIGN && tlli_type != TLLI_LOCAL)
+		return NULL;
+
+	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
+		if ((gprs_tmsi2tlli(ctx->p_tmsi, tlli_type) == tlli ||
+		     gprs_tmsi2tlli(ctx->p_tmsi_old, tlli_type) == tlli) &&
+		    gprs_ra_id_equals(raid, &ctx->ra))
+			return ctx;
+	}
+
+	return NULL;
+}
+
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_ptmsi(uint32_t p_tmsi)
 {
 	struct sgsn_mm_ctx *ctx;

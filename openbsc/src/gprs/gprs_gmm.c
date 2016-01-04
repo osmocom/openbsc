@@ -1172,13 +1172,33 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		 * if the TLLI matches foreign_tlli (P-TMSI). Note that this
 		 * is an optimization to avoid the RA reject (impl detached)
 		 * below, which will cause a new attach cycle. */
-	}
+		/* Look-up the MM context based on old RA-ID and TLLI */
+		mmctx = sgsn_mm_ctx_by_tlli_and_ptmsi(msgb_tlli(msg), &old_ra_id);
+		if (mmctx) {
+			LOGMMCTXP(LOGL_INFO, mmctx,
+				"Looked up by matching TLLI and P_TMSI. "
+				"BSSGP TLLI: %08x, P-TMSI: %08x (%08x), "
+				"TLLI: %08x (%08x), RA: %d-%d-%d-%d\n",
+				msgb_tlli(msg),
+				mmctx->p_tmsi, mmctx->p_tmsi_old,
+				mmctx->tlli, mmctx->tlli_new,
+				mmctx->ra.mcc, mmctx->ra.mnc,
+				mmctx->ra.lac, mmctx->ra.rac);
 
-	if (!mmctx || !gprs_ra_id_equals(&mmctx->ra, &old_ra_id) ||
+			mmctx->mm_state = GMM_COMMON_PROC_INIT;
+		}
+	} else if (!gprs_ra_id_equals(&mmctx->ra, &old_ra_id) ||
 		mmctx->mm_state == GMM_DEREGISTERED)
 	{
 		/* We cannot use the mmctx */
+		LOGMMCTXP(LOGL_INFO, mmctx,
+			"The MM context cannot be used, RA: %d-%d-%d-%d\n",
+			mmctx->ra.mcc, mmctx->ra.mnc,
+			mmctx->ra.lac, mmctx->ra.rac);
+		mmctx = NULL;
+	}
 
+	if (!mmctx) {
 		/* send a XID reset to re-set all LLC sequence numbers
 		 * in the MS */
 		LOGMMCTXP(LOGL_NOTICE, mmctx, "LLC XID RESET\n");

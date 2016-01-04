@@ -1995,7 +1995,6 @@ static void test_gmm_routing_areas(void)
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
 	OSMO_ASSERT(ctx->tlli == ms_tlli);
 
-
 	printf("  - RA Update Request (RA 1 -> RA 2)\n");
 
 	/* inject the RA update request */
@@ -2005,50 +2004,9 @@ static void test_gmm_routing_areas(void)
 	send_0408_message(ctx->llme, ms_tlli, &raid2,
 			  ra_upd_req1, ARRAY_SIZE(ra_upd_req1));
 
-	/* we expect an RA update reject (and a LLC XID RESET) */
-	OSMO_ASSERT(sgsn_tx_counter == 2);
-	OSMO_ASSERT(last_dl_parse_ctx.g48_hdr->msg_type == GSM48_MT_GMM_RA_UPD_REJ);
-	/* this has killed the LLE/LLME */
-
-	printf("  - Attach Request (RA 2)\n");
-
-	/* Create a LLE/LLME */
-	OSMO_ASSERT(count(gprs_llme_list()) == 1);
-	lle = gprs_lle_get_or_create(ms_tlli, 3);
-	OSMO_ASSERT(count(gprs_llme_list()) == 1);
-
-	/* inject the attach request */
-	send_0408_message(lle->llme, ms_tlli, &raid2,
-			  attach_req2, ARRAY_SIZE(attach_req2));
-
-	ctx = sgsn_mm_ctx_by_tlli(ms_tlli, &raid2);
-	OSMO_ASSERT(ctx != NULL);
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
-	OSMO_ASSERT(ctx->p_tmsi != GSM_RESERVED_TMSI);
-
-	/* we expect an attach accept */
+	/* we expect an RA update accept */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
-	OSMO_ASSERT(last_dl_parse_ctx.g48_hdr->msg_type == GSM48_MT_GMM_ATTACH_ACK);
-
-	received_ptmsi = get_new_ptmsi(&last_dl_parse_ctx);
-	OSMO_ASSERT(received_ptmsi == ctx->p_tmsi);
-	ptmsi1 = received_ptmsi;
-
-	/* inject the attach complete */
-	ms_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
-	ictx = sgsn_mm_ctx_by_tlli(ms_tlli, &raid2);
-	OSMO_ASSERT(ictx != NULL);
-	OSMO_ASSERT(ictx == ctx);
-
-	send_0408_message(ctx->llme, ms_tlli, &raid2,
-			  attach_compl, ARRAY_SIZE(attach_compl));
-
-	/* we don't expect a response */
-	OSMO_ASSERT(sgsn_tx_counter == 0);
-
-	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
-	OSMO_ASSERT(ctx->p_tmsi_old == 0);
-	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
+	OSMO_ASSERT(last_dl_parse_ctx.g48_hdr->msg_type == GSM48_MT_GMM_RA_UPD_ACK);
 
 	printf("  - RA Update Request (RA other -> RA 2)\n");
 
