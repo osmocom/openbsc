@@ -26,6 +26,7 @@
 #include <osmocom/gprs/gprs_ns.h>
 
 #include <osmocom/gsm/protocol/gsm_04_08.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include <string.h>
 
@@ -399,3 +400,9 @@ fail:
 	return -1;
 }
 
+int gprs_ra_id_equals(const struct gprs_ra_id *id1,
+			const struct gprs_ra_id *id2)
+{
+	return (id1->mcc == id2->mcc && id1->mnc == id2->mnc &&
+		id1->lac == id2->lac && id1->rac == id2->rac);
+}

@@ -90,13 +90,6 @@ static const struct rate_ctr_group_desc pdpctx_ctrg_desc = {
 	.class_id = OSMO_STATS_CLASS_SUBSCRIBER,
 };
 
-static int ra_id_equals(const struct gprs_ra_id *id1,
-			const struct gprs_ra_id *id2)
-{
-	return (id1->mcc == id2->mcc && id1->mnc == id2->mnc &&
-		id1->lac == id2->lac && id1->rac == id2->rac);
-}
-
 /* See 03.02 Chapter 2.6 */
 static inline uint32_t tlli_foreign(uint32_t tlli)
 {
@@ -112,7 +105,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 
 	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
 		if (tlli == ctx->tlli &&
-		    ra_id_equals(raid, &ctx->ra))
+		    gprs_ra_id_equals(raid, &ctx->ra))
 			return ctx;
 	}
 
@@ -130,7 +123,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 	case TLLI_FOREIGN:
 		llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
 			if (tlli == tlli_foreign(ctx->tlli) &&
-			    ra_id_equals(raid, &ctx->ra))
+			    gprs_ra_id_equals(raid, &ctx->ra))
 				return ctx;
 		}
 		break;
