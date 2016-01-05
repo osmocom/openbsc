@@ -234,7 +234,6 @@ static void handle_options(int argc, char **argv)
 
 extern int asn_debug;
 
-#include "hnbgw.h"
 /* default categories */
 static struct log_info_cat gprs_categories[] = {
 	[DMM] = {
@@ -284,9 +283,14 @@ static struct log_info_cat gprs_categories[] = {
 		.description = "GPRS Sub-Network Dependent Control Protocol (SNDCP)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DSUA] = {
+		.name = "DSUA",
+		.description = "SCCP User Adaptation (SUA)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 	[DRANAP] = {
 		.name = "DRANAP",
-		.description = "RAN Application Part",
+		.description = "RAN Application Part (RANAP)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 };

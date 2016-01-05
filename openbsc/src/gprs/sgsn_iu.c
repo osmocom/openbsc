@@ -18,10 +18,10 @@
 #include <osmocom/sigtran/sccp_sap.h>
 
 #include <openbsc/gprs_sgsn.h>
+#include <openbsc/debug.h>
 
-#include "ranap_ies_defs.h"
-#include "ranap_common_cn.h"
-#include "hnbgw.h"
+#include <osmocom/ranap/ranap_ies_defs.h>
+#include <osmocom/ranap/ranap_common_cn.h>
 
 int asn1_xer_print = 1;
 void *talloc_asn1_ctx;
@@ -239,7 +239,7 @@ static int ranap_handle_co_rab_ass_resp(void *ctx, RANAP_RAB_AssignmentResponseI
 }
 
 /* Entry point for connection-oriented ANAP message */
-int cn_ranap_handle_co(void *ctx, ranap_message *message)
+static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 {
 	int rc = 0;
 
@@ -282,8 +282,6 @@ int cn_ranap_handle_co(void *ctx, ranap_message *message)
 		rc = -1;
 		break;
 	}
-
-	return rc;
 }
 
 static int ranap_handle_cl_reset_req(void *ctx, RANAP_ResetIEs_t *ies)
@@ -303,7 +301,7 @@ static int ranap_handle_cl_err_ind(void *ctx, RANAP_ErrorIndicationIEs_t *ies)
 }
 
 /* Entry point for connection-less RANAP message */
-int cn_ranap_handle_cl(void *ctx, ranap_message *message)
+static void cn_ranap_handle_cl(void *ctx, ranap_message *message)
 {
 	int rc = 0;
 
@@ -370,7 +368,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 		printf("N-CONNECT.ind(X->%u)\n", prim->u.connect.conn_id);
 		if (/*  prim->u.connect.called_addr.ssn != OSMO_SCCP_SSN_RANAP || */
 		    !msgb_l2(oph->msg) || msgb_l2len(oph->msg) == 0) {
-			LOGP(DMAIN, LOGL_NOTICE, "Received invalid N-CONNECT.ind\n");
+			LOGP(DGPRS, LOGL_NOTICE, "Received invalid N-CONNECT.ind\n");
 			return 0;
 		}
 		/* FIXME: allocate UE context */
@@ -379,13 +377,13 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 		resp = make_conn_resp(&prim->u.connect);
 		osmo_sua_user_link_down(link, resp);
 		/* then handle the RANAP payload */
-		rc = cn_ranap_rx_co(ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
+		rc = ranap_cn_rx_co(cn_ranap_handle_co, ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DISCONNECT, PRIM_OP_INDICATION):
 		/* indication of disconnect */
 		printf("N-DISCONNECT.ind(%u)\n", prim->u.disconnect.conn_id);
 		ue = ue_conn_ctx_find(link, prim->u.disconnect.conn_id);
-		rc = cn_ranap_rx_co(ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
+		rc = ranap_cn_rx_co(cn_ranap_handle_co, ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
 		/* connection-oriented data received */
@@ -393,13 +391,13 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 			osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
 		/* resolve UE context */
 		ue = ue_conn_ctx_find(link, prim->u.data.conn_id);
-		rc = cn_ranap_rx_co(ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
+		rc = ranap_cn_rx_co(cn_ranap_handle_co, ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
 		/* connection-oriented data received */
 		printf("N-UNITDATA.ind(%s)\n", 
 			osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
-		rc = cn_ranap_rx_cl(link, msgb_l2(oph->msg), msgb_l2len(oph->msg));
+		rc = ranap_cn_rx_cl(cn_ranap_handle_cl, link, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	}
 
