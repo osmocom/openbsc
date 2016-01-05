@@ -238,7 +238,7 @@ static int ranap_handle_co_rab_ass_resp(void *ctx, RANAP_RAB_AssignmentResponseI
 	return rc;
 }
 
-/* Entry point for connection-oriented ANAP message */
+/* Entry point for connection-oriented RANAP message */
 static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 {
 	int rc = 0;
