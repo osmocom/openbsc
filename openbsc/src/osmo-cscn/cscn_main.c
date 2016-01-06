@@ -57,6 +57,7 @@
 #include <openbsc/ctrl.h>
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/smpp.h>
+#include <osmocom/sigtran/sua.h>
 
 #include "../../bscconfig.h"
 
@@ -249,6 +250,23 @@ static struct vty_app_info vty_info = {
 	.go_parent_cb	= bsc_vty_go_parent,
 	.is_config_node	= bsc_vty_is_config_node,
 };
+
+int iu_cs_init(void *ctx)
+{
+	struct osmo_sua_user *user;
+	int rc;
+
+	talloc_asn1_ctx = talloc_named_const(ctx, 1, "asn1");
+
+	osmo_sua_set_log_area(DSUA);
+
+	user = osmo_sua_user_create(ctx, sccp_sap_up, ctx);
+
+	rc = osmo_sua_server_listen(user, "127.0.0.2", 14001);
+	if (rc < 0) {
+		exit(1);
+	}
+}
 
 int main(int argc, char **argv)
 {
