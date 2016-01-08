@@ -57,6 +57,7 @@
 #include <openbsc/ctrl.h>
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/smpp.h>
+#include <osmocom/sigtran/sccp_sap.h>
 #include <osmocom/sigtran/sua.h>
 
 #include "../../bscconfig.h"
@@ -251,6 +252,13 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
+void *talloc_asn1_ctx;
+
+static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
+{
+	return 0;
+}
+
 int iu_cs_init(void *ctx)
 {
 	struct osmo_sua_user *user;
@@ -258,15 +266,17 @@ int iu_cs_init(void *ctx)
 
 	talloc_asn1_ctx = talloc_named_const(ctx, 1, "asn1");
 
-	osmo_sua_set_log_area(DSUA);
+	//osmo_sua_set_log_area(DSUA);
 
-	user = osmo_sua_user_create(ctx, sccp_sap_up, ctx);
+	//user = osmo_sua_user_create(ctx, sccp_sap_up, ctx);
 
-	rc = osmo_sua_server_listen(user, "127.0.0.2", 14001);
-	if (rc < 0) {
-		exit(1);
-	}
+	//rc = osmo_sua_server_listen(user, "127.0.0.2", 14001);
+	//if (rc < 0) {
+	//	exit(1);
+	//}
+	return 0;
 }
+
 
 int main(int argc, char **argv)
 {
@@ -274,15 +284,21 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = openbsc_copyright;
 
-	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
+	tall_bsc_ctx = talloc_named_const(NULL, 1, "osmo_cscn");
 	talloc_ctx_init();
+
+	osmo_init_logging(&log_info);
+	osmo_stats_init(tall_bsc_ctx);
+
+	/* BSC stuff is to be split behind an A-interface to be used with
+	 * OsmoBSC, but there is no need to remove it yet. Most of the
+	 * following code until iu_cs_init() is legacy. */
+
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
-
 	libosmo_abis_init(tall_bsc_ctx);
-	osmo_init_logging(&log_info);
-	osmo_stats_init(tall_bsc_ctx);
+
 	bts_init();
 
 	/* This needs to precede handle_options() */
@@ -329,6 +345,8 @@ int main(int argc, char **argv)
 
 	/* seed the PRNG */
 	srand(time(NULL));
+	/* TODO: is this used for crypto?? Improve randomness, at least we
+	 * should try to use the nanoseconds part of the current time. */
 
 	bsc_gsmnet->bsc_data->rf_ctrl = osmo_bsc_rf_create(rf_ctrl_name, bsc_gsmnet);
 	if (!bsc_gsmnet->bsc_data->rf_ctrl) {
@@ -367,6 +385,13 @@ int main(int argc, char **argv)
 	/* start the SMS queue */
 	if (sms_queue_start(bsc_gsmnet, 20) != 0)
 		return -1;
+
+
+	/* Set up A-Interface */
+	/* TODO: implement A-Interface and remove above legacy stuff. */
+
+	/* Set up Iu-CS */
+	iu_cs_init(tall_bsc_ctx);
 
 	if (daemonize) {
 		rc = osmo_daemonize();
