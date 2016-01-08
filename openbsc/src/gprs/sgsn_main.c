@@ -301,6 +301,7 @@ static const struct log_info gprs_log_info = {
 	.num_cat = ARRAY_SIZE(gprs_categories),
 };
 
+int asn_debug;
 
 int main(int argc, char **argv)
 {
