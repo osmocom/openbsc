@@ -237,6 +237,7 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 	uint32_t tlli = mm->gb.tlli;
 	struct sgsn_pdp_ctx *pdp, *pdp2;
 	struct sgsn_signal_data sig_data;
+	enum sgsn_ran_type ran_type;
 
 	/* Forget about ongoing look-ups */
 	if (mm->ggsn_lookup) {
@@ -270,13 +271,15 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 		subscr_put(subscr);
 	}
 
-	if (mm->ran_type == MM_CTX_T_GERAN_Gb) {
-		/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
-		gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
-	}
+	ran_type = mm->ran_type;
 
 	sgsn_mm_ctx_free(mm);
 	mm = NULL;
+
+	if (ran_type == MM_CTX_T_GERAN_Gb) {
+		/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
+		gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+	}
 }
 
 
