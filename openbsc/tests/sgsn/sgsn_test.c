@@ -175,7 +175,7 @@ static struct sgsn_mm_ctx *alloc_mm_ctx(uint32_t tlli, struct gprs_ra_id *raid)
 	lle = gprs_lle_get_or_create(tlli, 3);
 	ctx = sgsn_mm_ctx_alloc(tlli, raid);
 	ctx->mm_state = GMM_REGISTERED_NORMAL;
-	ctx->llme = lle->llme;
+	ctx->gb.llme = lle->llme;
 
 	ictx = sgsn_mm_ctx_by_tlli(tlli, raid);
 	OSMO_ASSERT(ictx == ctx);
@@ -197,7 +197,7 @@ static void send_0408_message(struct gprs_llc_llme *llme, uint32_t tlli,
 	msg = create_msg(data, data_len);
 	msgb_tlli(msg) = tlli;
 	bssgp_create_cell_id(msgb_bcid(msg), bssgp_raid, 0);
-	gsm0408_gprs_rcvmsg(msg, llme);
+	gsm0408_gprs_rcvmsg_gb(msg, llme);
 	msgb_free(msg);
 }
 
@@ -730,7 +730,7 @@ static void test_gmm_detach(void)
 	ctx = alloc_mm_ctx(local_tlli, &raid);
 
 	/* inject the detach */
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  detach_req, ARRAY_SIZE(detach_req));
 
 	/* verify that a single message (hopefully the Detach Accept) has been
@@ -771,7 +771,7 @@ static void test_gmm_detach_power_off(void)
 	ctx = alloc_mm_ctx(local_tlli, &raid);
 
 	/* inject the detach */
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  detach_req, ARRAY_SIZE(detach_req));
 
 	/* verify that no message (and therefore no Detach Accept) has been
@@ -968,14 +968,14 @@ static void test_gmm_attach(int retry)
 	OSMO_ASSERT(sgsn_tx_counter == 1);
 
 	/* inject the identity response (IMEI) */
-	send_0408_message(ctx->llme, foreign_tlli, &raid,
+	send_0408_message(ctx->gb.llme, foreign_tlli, &raid,
 			  ident_resp_imei, ARRAY_SIZE(ident_resp_imei));
 
 	/* we expect an identity request (IMSI) */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
 
 	/* inject the identity response (IMSI) */
-	send_0408_message(ctx->llme, foreign_tlli, &raid,
+	send_0408_message(ctx->gb.llme, foreign_tlli, &raid,
 			  ident_resp_imsi, ARRAY_SIZE(ident_resp_imsi));
 
 	/* check that the MM context has not been removed due to a failed
@@ -997,7 +997,7 @@ retry_attach_req:
 		/* we got an auth & ciph request */
 
 		/* inject the auth & ciph response */
-		send_0408_message(ctx->llme, foreign_tlli, &raid,
+		send_0408_message(ctx->gb.llme, foreign_tlli, &raid,
 				  auth_ciph_resp, ARRAY_SIZE(auth_ciph_resp));
 
 		/* check that the MM context has not been removed due to a
@@ -1019,7 +1019,7 @@ retry_attach_req:
 	local_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
 
 	/* inject the attach complete */
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  attach_compl, ARRAY_SIZE(attach_compl));
 
 	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
@@ -1028,7 +1028,7 @@ retry_attach_req:
 	OSMO_ASSERT(sgsn_tx_counter == 0);
 
 	/* inject the detach */
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  detach_req, ARRAY_SIZE(detach_req));
 
 	/* verify that things are gone */
@@ -1556,14 +1556,14 @@ static void test_gmm_cancel(void)
 	OSMO_ASSERT(sgsn_tx_counter == 1);
 
 	/* inject the identity response (IMEI) */
-	send_0408_message(ctx->llme, foreign_tlli, &raid,
+	send_0408_message(ctx->gb.llme, foreign_tlli, &raid,
 			  ident_resp_imei, ARRAY_SIZE(ident_resp_imei));
 
 	/* we expect an identity request (IMSI) */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
 
 	/* inject the identity response (IMSI) */
-	send_0408_message(ctx->llme, foreign_tlli, &raid,
+	send_0408_message(ctx->gb.llme, foreign_tlli, &raid,
 			  ident_resp_imsi, ARRAY_SIZE(ident_resp_imsi));
 
 	/* check that the MM context has not been removed due to a failed
@@ -1581,7 +1581,7 @@ static void test_gmm_cancel(void)
 	local_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
 
 	/* inject the attach complete */
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, foreign_tlli, &raid,
 			  attach_compl, ARRAY_SIZE(attach_compl));
 
 	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
@@ -1708,7 +1708,7 @@ static void test_gmm_ptmsi_allocation(void)
 	OSMO_ASSERT(sgsn_tx_counter == 1);
 
 	/* inject the identity response (IMEI) */
-	send_0408_message(ctx->llme, foreign_tlli, &raid,
+	send_0408_message(ctx->gb.llme, foreign_tlli, &raid,
 			  ident_resp_imei, ARRAY_SIZE(ident_resp_imei));
 
 	/* check that the MM context has not been removed due to a failed
@@ -1741,7 +1741,7 @@ static void test_gmm_ptmsi_allocation(void)
 
 	/* inject the attach complete */
 	local_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  attach_compl, ARRAY_SIZE(attach_compl));
 
 	/* we don't expect a response */
@@ -1754,7 +1754,7 @@ static void test_gmm_ptmsi_allocation(void)
 	printf("  - Repeated RA Update Request\n");
 
 	/* inject the RA update request */
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  ra_upd_req, ARRAY_SIZE(ra_upd_req));
 
 	/* we expect an RA update accept */
@@ -1767,7 +1767,7 @@ static void test_gmm_ptmsi_allocation(void)
 	ptmsi2 = ctx->p_tmsi;
 
 	/* repeat the RA update request */
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  ra_upd_req, ARRAY_SIZE(ra_upd_req));
 
 	/* we expect an RA update accept */
@@ -1781,7 +1781,7 @@ static void test_gmm_ptmsi_allocation(void)
 
 	/* inject the RA update complete */
 	local_tlli = gprs_tmsi2tlli(ptmsi2, TLLI_LOCAL);
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  ra_upd_complete, ARRAY_SIZE(ra_upd_complete));
 
 	/* we don't expect a response */
@@ -1792,7 +1792,7 @@ static void test_gmm_ptmsi_allocation(void)
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi2);
 
 	/* inject the detach */
-	send_0408_message(ctx->llme, local_tlli, &raid,
+	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  detach_req, ARRAY_SIZE(detach_req));
 
 	/* verify that things are gone */
