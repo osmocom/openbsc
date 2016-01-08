@@ -18,13 +18,20 @@
 #include <osmocom/sigtran/sccp_sap.h>
 
 #include <openbsc/gprs_sgsn.h>
+#include <openbsc/iu.h>
 #include <openbsc/debug.h>
 
 #include <osmocom/ranap/ranap_ies_defs.h>
+#include <osmocom/ranap/ranap_common.h>
 #include <osmocom/ranap/ranap_common_cn.h>
+#include <osmocom/ranap/ranap_msg_factory.h>
+
+#include <asn1c/asn1helpers.h>
 
 int asn1_xer_print = 1;
 void *talloc_asn1_ctx;
+
+iu_recv_cb_t global_iu_recv_cb = NULL;
 
 struct ue_conn_ctx {
 	struct llist_head list;
@@ -125,6 +132,7 @@ int gprs_transp_upd_key(struct sgsn_mm_ctx *mm)
 	return 0;
 }
 
+
 static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *ies)
 {
 	struct gprs_ra_id ra_id;
@@ -138,7 +146,8 @@ static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *i
 
 	/* Feed into the MM layer */
 	msg->dst = ctx;
-	gsm0408_gprs_rcvmsg_iu(msg, ra_id, sai);
+	global_iu_recv_cb(msg, &ra_id, sai);
+	//	gsm0408_gprs_rcvmsg_iu(msg, ra_id, sai);
 
 	return 0;
 }
@@ -182,7 +191,7 @@ static int ranap_handle_co_err_ind(void *ctx, RANAP_ErrorIndicationIEs_t *ies)
 	return 0;
 }
 
-int gprs_iu_tx(struct msgb *msg, uint8_t sapi, struct mm_context *mm)
+int iu_tx(struct msgb *msg, uint8_t sapi)
 {
 	struct ue_conn_ctx *uectx = msg->dst;
 	struct osmo_scu_prim *prim;
@@ -405,12 +414,14 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 	return 0;
 }
 
-int sgsn_iu_init(void *ctx)
+int sgsn_iu_init(void *ctx, iu_recv_cb_t iu_recv_cb)
 {
 	struct osmo_sua_user *user;
 	int rc;
 
 	talloc_asn1_ctx = talloc_named_const(ctx, 1, "asn1");
+
+	global_iu_recv_cb = iu_recv_cb;
 
 	osmo_sua_set_log_area(DSUA);
 

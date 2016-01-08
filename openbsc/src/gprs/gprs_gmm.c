@@ -55,6 +55,7 @@
 #include <openbsc/gprs_utils.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/signal.h>
+#include <openbsc/iu.h>
 
 #include <pdp.h>
 
@@ -138,7 +139,7 @@ static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_SIG_OUT]);
 
 	if (msg->dst)
-		return gprs_iu_tx(msg, GPRS_SAPI_GMM, mm);
+		return iu_tx(msg, GPRS_SAPI_GMM);
 
 	/* caller needs to provide TLLI, BVCI and NSEI */
 	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command, mm);

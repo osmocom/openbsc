@@ -418,7 +418,7 @@ int main(int argc, char **argv)
 	}
 
 	asn_debug = 0;
-	sgsn_iu_init(tall_bsc_ctx);
+	sgsn_iu_init(tall_bsc_ctx, gsm0408_gprs_rcvmsg_iu);
 
 	if (daemonize) {
 		rc = osmo_daemonize();
