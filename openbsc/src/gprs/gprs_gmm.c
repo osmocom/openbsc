@@ -2163,7 +2163,7 @@ int gsm0408_gprs_rcvmsg_iu(struct msgb *msg, struct gprs_ra_id *ra_id,
 	struct sgsn_mm_ctx *mmctx;
 	int rc = -EINVAL;
 
-	DEBUGP(DMM, "rcvmsg_iu(%s)\n", osmo_hexdump(msgb_gmmh(msg), msgb_l3len(msg)));
+	DEBUGP(DMM, "grps_rcvmsg_iu(%s)\n", osmo_hexdump(msgb_gmmh(msg), msgb_l3len(msg)));
 
 	mmctx = sgsn_mm_ctx_by_ue_ctx(msg->dst);
 	if (mmctx) {
