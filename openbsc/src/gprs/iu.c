@@ -181,7 +181,7 @@ static int ranap_handle_co_dt(void *ctx, RANAP_DirectTransferIEs_t *ies)
 
 	/* Feed into the MM/CC/SMS-CP layer */
 	msg->dst = ctx;
-	global_iu_recv_cb(msg, &ra_id, sai);
+	global_iu_recv_cb(msg, ra_id, sai);
 
 	return 0;
 }
@@ -234,17 +234,20 @@ static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseR
 
 static int ranap_handle_co_rab_ass_resp(void *ctx, RANAP_RAB_AssignmentResponseIEs_t *ies)
 {
-	int i, rc;
+	int rc;
 
 	LOGP(DRANAP, LOGL_INFO, "RAB Asignment Response:");
 	if (ies->presenceMask & RAB_ASSIGNMENTRESPONSEIES_RANAP_RAB_SETUPORMODIFIEDLIST_PRESENT) {
 		RANAP_RAB_SetupOrModifiedItemIEs_t setup_ies;
 		RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies.raB_SetupOrModifiedItem;
-		rc = ranap_decode_rab_setupormodifieditemies(&setup_ies, &ies->raB_SetupOrModifiedList);
+		rc = ranap_decode_rab_setupormodifieditemies(&setup_ies,
+							     (ANY_t *)&ies->raB_SetupOrModifiedList);
 		if (item->transportLayerAddress) {
 			uint8_t rab_id = item->rAB_ID.buf[0];
-			LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)", osmo_hexdump(item->transportLayerAddress->buf,
-									     item->transportLayerAddress->size));
+			LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)",
+			      rab_id,
+			      osmo_hexdump(item->transportLayerAddress->buf,
+					   item->transportLayerAddress->size));
 		}
 	}
 
@@ -256,7 +259,7 @@ static int ranap_handle_co_rab_ass_resp(void *ctx, RANAP_RAB_AssignmentResponseI
 /* Entry point for connection-oriented RANAP message */
 static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 {
-	int rc = 0;
+	int rc;
 
 	LOGP(DRANAP, LOGL_NOTICE, "handle_co(dir=%u, proc=%u)\n", message->direction, message->procedureCode);
 
