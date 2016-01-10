@@ -61,24 +61,37 @@ struct ue_conn_ctx *ue_conn_ctx_find(struct osmo_sua_link *link, uint32_t conn_i
  * RANAP handling
  ***********************************************************************/
 
-int gprs_iu_rab_act(struct sgsn_mm_ctx *mm, uint32_t gtp_ip, uint32_t gtp_tei)
+static int iu_rab_act(struct ue_conn_ctx *ue_ctx, struct msgb *msg)
 {
-	struct ue_conn_ctx *uectx;
 	struct osmo_scu_prim *prim;
-	struct msgb *msg;
-
-	uectx = mm->iu.ue_ctx;
-
-	msg = ranap_new_msg_rab_assign_data(1, gtp_ip, gtp_tei);
-	msg->l2h = msg->data;
 
 	/* wrap RANAP message in SCCP N-DATA.req */
 	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));
-	prim->u.data.conn_id = uectx->conn_id;
-	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
-			OSMO_SCU_PRIM_N_DATA,
-			PRIM_OP_REQUEST, msg);
-	osmo_sua_user_link_down(uectx->link, &prim->oph);
+	prim->u.data.conn_id = ue_ctx->conn_id;
+	osmo_prim_init(&prim->oph,
+		       SCCP_SAP_USER,
+		       OSMO_SCU_PRIM_N_DATA,
+		       PRIM_OP_REQUEST,
+		       msg);
+	return osmo_sua_user_link_down(ue_ctx->link, &prim->oph);
+}
+
+int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port)
+{
+	struct msgb *msg;
+
+	msg = ranap_new_msg_rab_assign_voice(1, rtp_ip, rtp_port);
+	msg->l2h = msg->data;
+	iu_rab_act(ue_ctx, msg);
+}
+
+int iu_rab_act_ps(struct ue_conn_ctx *ue_ctx, uint32_t gtp_ip, uint32_t gtp_tei)
+{
+	struct msgb *msg;
+
+	msg = ranap_new_msg_rab_assign_data(1, gtp_ip, gtp_tei);
+	msg->l2h = msg->data;
+	iu_rab_act(ue_ctx, msg);
 }
 
 int gprs_iu_rab_deact(struct sgsn_mm_ctx *mm)

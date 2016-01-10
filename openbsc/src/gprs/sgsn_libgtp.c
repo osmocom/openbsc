@@ -47,6 +47,7 @@
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/iu.h>
 
 #include <gtp.h>
 #include <pdp.h>
@@ -354,7 +355,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	} else {
 		/* Activate a radio bearer */
 		uint32_t ggsn_ip = 0xc0a80033; /* 192.168.0.51 */
-		gprs_iu_rab_act(pctx->mm, ggsn_ip, pdp->teid_own);
+		iu_rab_act_ps(pctx->mm->iu.ue_ctx, ggsn_ip, pdp->teid_own);
 	}
 
 	/* Inform others about it */
