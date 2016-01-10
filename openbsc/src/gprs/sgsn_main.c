@@ -55,6 +55,8 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_gmm.h>
+#include <openbsc/iu.h>
+
 #include <osmocom/ctrl/control_if.h>
 #include <osmocom/ctrl/ports.h>
 
@@ -418,7 +420,7 @@ int main(int argc, char **argv)
 	}
 
 	asn_debug = 0;
-	sgsn_iu_init(tall_bsc_ctx, gsm0408_gprs_rcvmsg_iu);
+	iu_init(tall_bsc_ctx, gsm0408_gprs_rcvmsg_iu);
 
 	if (daemonize) {
 		rc = osmo_daemonize();

@@ -82,7 +82,7 @@ int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port
 
 	msg = ranap_new_msg_rab_assign_voice(1, rtp_ip, rtp_port);
 	msg->l2h = msg->data;
-	iu_rab_act(ue_ctx, msg);
+	return iu_rab_act(ue_ctx, msg);
 }
 
 int iu_rab_act_ps(struct ue_conn_ctx *ue_ctx, uint32_t gtp_ip, uint32_t gtp_tei)
@@ -91,12 +91,13 @@ int iu_rab_act_ps(struct ue_conn_ctx *ue_ctx, uint32_t gtp_ip, uint32_t gtp_tei)
 
 	msg = ranap_new_msg_rab_assign_data(1, gtp_ip, gtp_tei);
 	msg->l2h = msg->data;
-	iu_rab_act(ue_ctx, msg);
+	return iu_rab_act(ue_ctx, msg);
 }
 
 int gprs_iu_rab_deact(struct sgsn_mm_ctx *mm)
 {
-
+	/* FIXME */
+	return -1;
 }
 
 int gprs_transp_upd_key(struct sgsn_mm_ctx *mm)
@@ -279,6 +280,9 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 			/* Iu Release Request */
 			rc = ranap_handle_co_iu_rel_req(ctx, &message->msg.iu_ReleaseRequestIEs);
 			break;
+		default:
+			rc = -1;
+			break;
 		}
 		break;
 	case RANAP_RANAP_PDU_PR_successfulOutcome:
@@ -289,9 +293,14 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 			break;
 		case RANAP_ProcedureCode_id_SecurityModeControl:
 			/* Security Mode Complete */
+			rc = -1;
 			break;
 		case RANAP_ProcedureCode_id_Iu_Release:
 			/* Iu Release Complete */
+			rc = -1;
+			break;
+		default:
+			rc = -1;
 			break;
 		}
 	case RANAP_RANAP_PDU_PR_unsuccessfulOutcome:
@@ -300,11 +309,18 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 		rc = -1;
 		break;
 	}
+
+	if (rc) {
+		LOGP(DRANAP, LOGL_ERROR, "Error in cn_ranap_handle_co (%d)\n",
+		     rc);
+		/* TODO handling of the error? */
+	}
 }
 
 static int ranap_handle_cl_reset_req(void *ctx, RANAP_ResetIEs_t *ies)
 {
 	/* FIXME: send reset response */
+	return -1;
 }
 
 static int ranap_handle_cl_err_ind(void *ctx, RANAP_ErrorIndicationIEs_t *ies)
@@ -321,7 +337,7 @@ static int ranap_handle_cl_err_ind(void *ctx, RANAP_ErrorIndicationIEs_t *ies)
 /* Entry point for connection-less RANAP message */
 static void cn_ranap_handle_cl(void *ctx, ranap_message *message)
 {
-	int rc = 0;
+	int rc;
 
 	switch (message->direction) {
 	case RANAP_RANAP_PDU_PR_initiatingMessage:
@@ -333,6 +349,9 @@ static void cn_ranap_handle_cl(void *ctx, ranap_message *message)
 		case RANAP_ProcedureCode_id_ErrorIndication:
 			rc = ranap_handle_cl_err_ind(ctx, &message->msg.errorIndicationIEs);
 			break;
+		default:
+			rc = -1;
+			break;
 		}
 		break;
 	case RANAP_RANAP_PDU_PR_successfulOutcome:
@@ -341,6 +360,12 @@ static void cn_ranap_handle_cl(void *ctx, ranap_message *message)
 	default:
 		rc = -1;
 		break;
+	}
+
+	if (rc) {
+		LOGP(DRANAP, LOGL_ERROR, "Error in cn_ranap_handle_cl (%d)\n",
+		     rc);
+		/* TODO handling of the error? */
 	}
 }
 
@@ -371,7 +396,6 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 {
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
 	struct osmo_prim_hdr *resp = NULL;
-	const uint8_t payload[] = { 0xb1, 0xb2, 0xb3 };
 	int rc;
 	struct ue_conn_ctx *ue;
 
@@ -380,6 +404,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 	switch (OSMO_PRIM_HDR(oph)) {
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_CONFIRM):
 		/* confirmation of outbound connection */
+		rc = -1;
 		break;
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
 		/* indication of new inbound connection request*/
@@ -417,27 +442,21 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 			osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
 		rc = ranap_cn_rx_cl(cn_ranap_handle_cl, link, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
+	default:
+		rc = -1;
+		break;
 	}
 
 	msgb_free(oph->msg);
-	return 0;
+	return rc;
 }
 
-int sgsn_iu_init(void *ctx, iu_recv_cb_t iu_recv_cb)
+int iu_init(void *ctx, iu_recv_cb_t iu_recv_cb)
 {
 	struct osmo_sua_user *user;
-	int rc;
-
 	talloc_asn1_ctx = talloc_named_const(ctx, 1, "asn1");
-
 	global_iu_recv_cb = iu_recv_cb;
-
 	osmo_sua_set_log_area(DSUA);
-
 	user = osmo_sua_user_create(ctx, sccp_sap_up, ctx);
-
-	rc = osmo_sua_server_listen(user, "127.0.0.2", 14001);
-	if (rc < 0) {
-		exit(1);
-	}
+	return osmo_sua_server_listen(user, "127.0.0.2", 14001);
 }
