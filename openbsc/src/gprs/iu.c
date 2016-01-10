@@ -146,7 +146,7 @@ static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *i
 
 	/* Feed into the MM layer */
 	msg->dst = ctx;
-	global_iu_recv_cb(msg, &ra_id, sai);
+	global_iu_recv_cb(msg, &ra_id, &sai);
 
 	return 0;
 }
