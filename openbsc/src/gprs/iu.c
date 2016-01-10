@@ -33,12 +33,6 @@ void *talloc_asn1_ctx;
 
 iu_recv_cb_t global_iu_recv_cb = NULL;
 
-struct ue_conn_ctx {
-	struct llist_head list;
-	struct osmo_sua_link *link;
-	uint32_t conn_id;
-};
-
 static LLIST_HEAD(conn_ctx_list);
 
 struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sua_link *link, uint32_t conn_id)
