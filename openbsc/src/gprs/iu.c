@@ -147,7 +147,6 @@ static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *i
 	/* Feed into the MM layer */
 	msg->dst = ctx;
 	global_iu_recv_cb(msg, &ra_id, sai);
-	//	gsm0408_gprs_rcvmsg_iu(msg, ra_id, sai);
 
 	return 0;
 }
@@ -175,7 +174,7 @@ static int ranap_handle_co_dt(void *ctx, RANAP_DirectTransferIEs_t *ies)
 
 	/* Feed into the MM/CC/SMS-CP layer */
 	msg->dst = ctx;
-	gsm0408_gprs_rcvmsg_iu(msg, &ra_id, sai);
+	global_iu_recv_cb(msg, &ra_id, sai);
 
 	return 0;
 }
