@@ -2157,7 +2157,7 @@ int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx)
 
 /* Main entry point for incoming 04.08 GPRS messages from Iu */
 int gsm0408_gprs_rcvmsg_iu(struct msgb *msg, struct gprs_ra_id *ra_id,
-			   uint16_t sai)
+			   uint16_t *sai)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t pdisc = gh->proto_discr & 0x0f;
@@ -2172,7 +2172,7 @@ int gsm0408_gprs_rcvmsg_iu(struct msgb *msg, struct gprs_ra_id *ra_id,
 		if (ra_id)
 			memcpy(&mmctx->ra, ra_id, sizeof(mmctx->ra));
 		//if (sai)
-			//mmctx->iu.sai = sai;
+			//mmctx->iu.sai = *sai;
 	}
 
 	/* MMCTX can be NULL */
