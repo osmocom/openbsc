@@ -30,7 +30,7 @@ sgsn_test_LDADD = \
 	$(top_builddir)/src/gprs/gsm_04_08_gprs.o \
 	$(top_builddir)/src/gprs/gprs_gb_parse.o \
 	$(top_builddir)/src/gprs/oap.o \
-	$(top_builddir)/src/gprs/sgsn_iu.o \
+	$(top_builddir)/src/gprs/iu.o \
 	$(top_builddir)/src/gprs/oap_messages.o \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOABIS_LIBS) \
