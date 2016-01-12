@@ -391,7 +391,7 @@ int main(int argc, char **argv)
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
 	/* Set up Iu-CS */
-	iu_cs_init(tall_bsc_ctx);
+	iu_init(tall_bsc_ctx, "127.0.0.1", 14001, rcvmsg_iu_cs);
 
 	if (daemonize) {
 		rc = osmo_daemonize();

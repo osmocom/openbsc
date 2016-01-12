@@ -451,12 +451,13 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 	return rc;
 }
 
-int iu_init(void *ctx, iu_recv_cb_t iu_recv_cb)
+int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
+	    iu_recv_cb_t iu_recv_cb)
 {
 	struct osmo_sua_user *user;
 	talloc_asn1_ctx = talloc_named_const(ctx, 1, "asn1");
 	global_iu_recv_cb = iu_recv_cb;
 	osmo_sua_set_log_area(DSUA);
 	user = osmo_sua_user_create(ctx, sccp_sap_up, ctx);
-	return osmo_sua_server_listen(user, "127.0.0.2", 14001);
+	return osmo_sua_server_listen(user, listen_addr, listen_port);
 }
