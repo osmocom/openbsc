@@ -57,6 +57,7 @@
 #include <openbsc/ctrl.h>
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/smpp.h>
+#include <openbsc/iu.h>
 #include <osmocom/sigtran/sccp_sap.h>
 #include <osmocom/sigtran/sua.h>
 
@@ -65,7 +66,7 @@
 /* MCC and MNC for the Location Area Identifier */
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
-static const char *config_file = "openbsc.cfg";
+static const char *config_file = "opencscn.cfg";
 static const char *rf_ctrl_name = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
@@ -246,7 +247,7 @@ void talloc_ctx_init(void);
 extern int bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
-	.name 		= "OpenBSC",
+	.name 		= "OpenCSCN",
 	.version	= PACKAGE_VERSION,
 	.go_parent_cb	= bsc_vty_go_parent,
 	.is_config_node	= bsc_vty_is_config_node,
@@ -254,27 +255,14 @@ static struct vty_app_info vty_info = {
 
 void *talloc_asn1_ctx;
 
-static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
+static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gprs_ in CS code */
+			uint16_t *sai)
 {
-	return 0;
-}
-
-int iu_cs_init(void *ctx)
-{
-	struct osmo_sua_user *user;
-	int rc;
-
-	talloc_asn1_ctx = talloc_named_const(ctx, 1, "asn1");
-
-	//osmo_sua_set_log_area(DSUA);
-
-	//user = osmo_sua_user_create(ctx, sccp_sap_up, ctx);
-
-	//rc = osmo_sua_server_listen(user, "127.0.0.2", 14001);
-	//if (rc < 0) {
-	//	exit(1);
-	//}
-	return 0;
+	DEBUGP(DIUCS, "got Iu-CS message\n");
+	DEBUGP(DIUCS, "Iu-CS message is %s\n",
+	       osmo_hexdump(msg->data, msg->len));
+	return -1;
+	//return gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 }
 
 
@@ -292,7 +280,7 @@ int main(int argc, char **argv)
 
 	/* BSC stuff is to be split behind an A-interface to be used with
 	 * OsmoBSC, but there is no need to remove it yet. Most of the
-	 * following code until iu_cs_init() is legacy. */
+	 * following code until iu_init() is legacy. */
 
 	on_dso_load_token();
 	on_dso_load_rrlp();
