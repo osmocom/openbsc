@@ -39,7 +39,7 @@
 
 #define GSM0808_T10_VALUE    6, 0
 
-static LLIST_HEAD(sub_connections);
+static LLIST_HEAD(sub_connections); /* FIXME move to libmsc */
 
 static void rll_ind_cb(struct gsm_lchan *, uint8_t, void *, enum bsc_rllr_ind);
 static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id);
@@ -239,6 +239,8 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 	return 0;
 }
 
+struct gsm_subscriber_connection *subscr_con_allocate_iu(struct gsm_lchan *lchan)
+/* for A-interface */
 struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 {
 	struct gsm_subscriber_connection *conn;

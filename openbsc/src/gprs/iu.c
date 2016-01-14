@@ -414,7 +414,6 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 			LOGP(DGPRS, LOGL_NOTICE, "Received invalid N-CONNECT.ind\n");
 			return 0;
 		}
-		/* FIXME: allocate UE context */ /* FIXME: is this fixme fixed? */
 		ue = ue_conn_ctx_alloc(link, prim->u.connect.conn_id);
 		/* first ensure the local SUA/SCCP socket is ACTIVE */
 		resp = make_conn_resp(&prim->u.connect);
