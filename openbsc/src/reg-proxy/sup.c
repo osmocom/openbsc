@@ -344,10 +344,13 @@ int handle_location_update_result(struct gsm_sup_server *sup_server,
 	memcpy(gsup_msg.imsi, imsi, 17);
 	printf("handle_location_update_result %d  len = %d 2\n", gsup_msg.msisdn_enc, strlen(msisdn));
 
-	gsm48_encode_bcd_number(msisdn_enc, 9, 0, msisdn);
-	gsup_msg.msisdn_enc = msisdn_enc + 1;
-	gsup_msg.msisdn_enc_len = msisdn_enc[0];
-	printf("handle_location_update_result %d %d\n", gsup_msg.msisdn_enc_len, gsup_msg.msisdn_enc);
+	if (strcmp(imsi, msisdn) != 0) {
+		gsm48_encode_bcd_number(msisdn_enc, 9, 0, msisdn);
+		gsup_msg.msisdn_enc = msisdn_enc + 1;
+		gsup_msg.msisdn_enc_len = msisdn_enc[0];
+		printf("handle_location_update_result %d %d\n", gsup_msg.msisdn_enc_len, gsup_msg.msisdn_enc);
+	}
+
 	return tx_sup_message(sup_server, &gsup_msg);
 }
 

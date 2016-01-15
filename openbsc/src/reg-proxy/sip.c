@@ -253,13 +253,13 @@ void sip_cb_rcv2xx(int type, osip_transaction_t *tr, osip_message_t *sip_msg)
 	osip_to_t* to;
 	struct sip_client *sip_client = osip_transaction_get_your_instance(tr);
 	struct reg_proxy *reg = sip_client->data;
-	char imsi[17];
-	char msisdn[15];
+	char imsi[16];
+	char msisdn[16];
 	osip_message_get_contact(sip_msg, 0, &contact);
-	memcpy(msisdn, contact->url->username, 15);
+	memcpy(msisdn, contact->url->username, 16);
 	
 	to = osip_message_get_to(sip_msg);
-	memcpy(imsi, to->url->username, 17);
+	memcpy(imsi, to->url->username, 16);
 
 	printf("OSIP_NICT_STATUS_2XX_RECEIVED imsi = %s \n", imsi);
 	printf("OSIP_NICT_STATUS_2XX_RECEIVED msisdn = %d \n", msisdn);
