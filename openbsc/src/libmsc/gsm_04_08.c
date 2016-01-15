@@ -621,7 +621,7 @@ static void schedule_reject(struct gsm_subscriber_connection *conn)
 {
 	conn->loc_operation->updating_timer.cb = loc_upd_rej_cb;
 	conn->loc_operation->updating_timer.data = conn;
-	osmo_timer_schedule(&conn->loc_operation->updating_timer, 5, 0);
+	osmo_timer_schedule(&conn->loc_operation->updating_timer, 10, 0);
 }
 
 static const struct value_string lupd_names[] = {
