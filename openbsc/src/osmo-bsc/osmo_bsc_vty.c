@@ -314,7 +314,7 @@ DEFUN(cfg_net_bsc_codec_list,
       cfg_net_bsc_codec_list_cmd,
       "codec-list .LIST",
       "Set the allowed audio codecs\n"
-      "List of audio codecs\n")
+      "List of audio codecs, e.g. fr3 fr1 hr3\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	int saw_fr, saw_hr;
