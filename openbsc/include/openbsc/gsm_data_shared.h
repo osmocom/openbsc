@@ -350,7 +350,7 @@ struct gsm_bts_trx_ts {
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
 
-/* One TRX in a BTS */
+/* One TRX (transceiver) in a BTS */
 struct gsm_bts_trx {
 	/* list header in bts->trx_list */
 	struct llist_head list;

@@ -239,8 +239,8 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 	return 0;
 }
 
-struct gsm_subscriber_connection *subscr_con_allocate_iu(struct gsm_lchan *lchan)
-/* for A-interface */
+/* Allocate a subscriber connection for A-interface link. For Iu-CS see
+ * subscr_con_allocate_iu(). */
 struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 {
 	struct gsm_subscriber_connection *conn;
@@ -251,6 +251,7 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 		return NULL;
 
 	/* Configure the time and start it so it will be closed */
+	/* FIXME: above comment is weird in at least two ways */
 	conn->lchan = lchan;
 	conn->bts = lchan->ts->trx->bts;
 	lchan->conn = conn;
@@ -655,7 +656,8 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 	}
 }
 
-/*! \brief RSL has received a DATA INDICATION with L3 from MS */
+/*! \brief RSL has received a DATA INDICATION with L3 from MS.
+ * (for Iu-CS see gsm0408_rcvmsg_iucs()) */
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 {
 	int rc;

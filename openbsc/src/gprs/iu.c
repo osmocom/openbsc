@@ -33,7 +33,7 @@ void *talloc_asn1_ctx;
 
 iu_recv_cb_t global_iu_recv_cb = NULL;
 
-static LLIST_HEAD(conn_ctx_list);
+static LLIST_HEAD(ue_conn_ctx_list);
 
 struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sua_link *link, uint32_t conn_id)
 {
@@ -41,7 +41,7 @@ struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sua_link *link, uint32_t conn_
 
 	ctx->link = link;
 	ctx->conn_id = conn_id;
-	llist_add(&ctx->list, &conn_ctx_list);
+	llist_add(&ctx->list, &ue_conn_ctx_list);
 
 	return ctx;
 }
@@ -50,7 +50,7 @@ struct ue_conn_ctx *ue_conn_ctx_find(struct osmo_sua_link *link, uint32_t conn_i
 {
 	struct ue_conn_ctx *ctx;
 
-	llist_for_each_entry(ctx, &conn_ctx_list, list) {
+	llist_for_each_entry(ctx, &ue_conn_ctx_list, list) {
 		if (ctx->link == link && ctx->conn_id == conn_id)
 			return ctx;
 	}

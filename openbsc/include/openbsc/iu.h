@@ -9,6 +9,7 @@ struct ue_conn_ctx {
 	uint32_t conn_id;
 };
 
+/* Implementations of iu_recv_cb_t shall find the ue_conn_ctx in msg->dest. */
 typedef int (* iu_recv_cb_t )(struct msgb *msg, struct gprs_ra_id *ra_id,
 			      /* TODO is ra_id only used for gprs? ^ */
 			      uint16_t *sai);
