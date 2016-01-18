@@ -463,6 +463,7 @@ int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
 
 /* Return an existing Iu-CS subscriber connection record for the given link and
  * connection IDs, or return NULL if not found. */
+/* TODO wrong file */
 static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_network *network,
 							       uint8_t link_id,
 							       uint32_t conn_id)
@@ -485,6 +486,7 @@ static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_networ
  * peer that sent the msg.
  *
  * For A-interface see libbsc/bsc_api.c gsm0408_rcvmsg(). */
+/* TODO wrong file */
 int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t link_id)
 {
 	int rc;
@@ -524,6 +526,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 }
 
 /* For A-interface see libbsc/bsc_api.c subscr_con_allocate() */
+/* TODO wrong file */
 struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_bts *bts)
 	/* TODO "bts"? this is an hNodeB, really. */
 {
