@@ -291,6 +291,9 @@ struct gsm_network {
 
 	/* control interface */
 	struct ctrl_handle *ctrl;
+
+	/* all active subscriber connections. */
+	struct llist_head subscr_conns;
 };
 
 struct osmo_esme;
