@@ -505,6 +505,10 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 		gsm0408_dispatch(conn, msg);
 	} else {
 		/* allocate a new connection */
+
+		/* TODO */
+
+#if 0
 		rc = BSC_API_CONN_POL_REJECT;
 		conn = subscr_conn_allocate_iu(msg->lchan);
 		if (!lchan->conn) {
@@ -520,6 +524,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 			subscr_con_free(lchan->conn);
 			lchan_release(lchan, 1, RSL_REL_NORMAL);
 		}
+#endif
 	}
 
 	return 0;
