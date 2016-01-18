@@ -98,6 +98,12 @@ struct neigh_meas_proc {
 	uint8_t last_seen_nr;
 };
 
+enum interface_type {
+	IFACE_UNKNOWN = 0,
+	IFACE_A,
+	IFACE_IUCS
+};
+
 /* the per subscriber data for lchan */
 struct gsm_subscriber_connection {
 	struct llist_head entry;
@@ -138,6 +144,14 @@ struct gsm_subscriber_connection {
 	struct osmo_timer_list T10;
 	struct gsm_lchan *secondary_lchan;
 
+	/* see enum interface_type */
+	int via_iface;
+
+	/* which Iu-CS connection, if any. */
+	struct {
+		uint8_t link_id;
+		uint32_t conn_id;
+	} iu;
 };
 
 
