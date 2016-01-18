@@ -252,6 +252,7 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 
 	/* Configure the time and start it so it will be closed */
 	/* FIXME: above comment is weird in at least two ways */
+	conn->via_iface = IFACE_A;
 	conn->lchan = lchan;
 	conn->bts = lchan->ts->trx->bts;
 	lchan->conn = conn;
