@@ -490,8 +490,8 @@ static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_networ
 int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t link_id)
 {
 	int rc;
-	struct ue_conn_ctx ue_ctx;
-	struct gsm_subscriber_connection conn;
+	struct ue_conn_ctx *ue_ctx;
+	struct gsm_subscriber_connection *conn;
 
 	ue_ctx = (struct ue_conn_ctx*)msg->dst;
 
@@ -499,7 +499,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 	 * search? */
 	conn = subscr_conn_lookup_iu(network, link_id, ue_ctx->conn_id);
 
-	if (lchan->conn) {
+	if (conn) {
 		/* if we already have a connection, handle DTAP.
 		   gsm0408_dispatch() is aka msc_dtap() */
 		gsm0408_dispatch(conn, msg);
