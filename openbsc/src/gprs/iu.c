@@ -481,7 +481,7 @@ static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_networ
 }
 
 /* Receive MM/CC message from Iu-CS (SCCP user SAP).
- * msg->dest must reference a struct ue_conn_ctx. link_id identifies the SCTP
+ * msg->dst must reference a struct ue_conn_ctx. link_id identifies the SCTP
  * peer that sent the msg.
  *
  * For A-interface see libbsc/bsc_api.c gsm0408_rcvmsg(). */
@@ -491,7 +491,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 	struct ue_conn_ctx ue_ctx;
 	struct gsm_subscriber_connection conn;
 
-	ue_ctx = msg->dest;
+	ue_ctx = (struct ue_conn_ctx*)msg->dst;
 
 	/* TODO: are there message types that could allow us to skip this
 	 * search? */
