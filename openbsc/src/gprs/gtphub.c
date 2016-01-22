@@ -950,14 +950,14 @@ static int gtphub_read(const struct osmo_fd *from,
 	return received;
 }
 
-inline void gtphub_port_ref_count_inc(struct gtphub_peer_port *pp)
+static inline void gtphub_port_ref_count_inc(struct gtphub_peer_port *pp)
 {
 	OSMO_ASSERT(pp);
 	OSMO_ASSERT(pp->ref_count < UINT_MAX);
 	pp->ref_count++;
 }
 
-inline void gtphub_port_ref_count_dec(struct gtphub_peer_port *pp)
+static inline void gtphub_port_ref_count_dec(struct gtphub_peer_port *pp)
 {
 	OSMO_ASSERT(pp);
 	OSMO_ASSERT(pp->ref_count > 0);
