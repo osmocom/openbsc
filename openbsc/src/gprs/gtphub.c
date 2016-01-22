@@ -964,14 +964,14 @@ static inline void gtphub_port_ref_count_dec(struct gtphub_peer_port *pp)
 	pp->ref_count--;
 }
 
-inline void set_seq(struct gtp_packet_desc *p, uint16_t seq)
+static inline void set_seq(struct gtp_packet_desc *p, uint16_t seq)
 {
 	OSMO_ASSERT(p->version == 1);
 	p->data->gtp1l.h.seq = hton16(seq);
 	p->seq = seq;
 }
 
-inline void set_tei(struct gtp_packet_desc *p, uint32_t tei)
+static inline void set_tei(struct gtp_packet_desc *p, uint32_t tei)
 {
 	OSMO_ASSERT(p->version == 1);
 	p->data->gtp1l.h.tei = hton32(tei);
