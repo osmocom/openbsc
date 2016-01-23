@@ -166,8 +166,10 @@ static uint8_t next_restart_count(const char *path)
 		goto failed_to_write;
 	if (fprintf(f, "%" PRIu8 "\n", counter) < 2)
 		goto failed_to_write;
-	if (fclose(f))
+	if (fclose(f)) {
+		f = NULL;
 		goto failed_to_write;
+	}
 
 	umask(umask_was);
 
