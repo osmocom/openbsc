@@ -579,13 +579,15 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 	cm2 = dbi_result_get_binary(result, "classmark2");
 	if (equip->classmark2_len > sizeof(equip->classmark2))
 		equip->classmark2_len = sizeof(equip->classmark2);
-	memcpy(equip->classmark2, cm2, equip->classmark2_len);
+	if (cm2)
+		memcpy(equip->classmark2, cm2, equip->classmark2_len);
 
 	equip->classmark3_len = dbi_result_get_field_length(result, "classmark3");
 	cm3 = dbi_result_get_binary(result, "classmark3");
 	if (equip->classmark3_len > sizeof(equip->classmark3))
 		equip->classmark3_len = sizeof(equip->classmark3);
-	memcpy(equip->classmark3, cm3, equip->classmark3_len);
+	if (cm3)
+		memcpy(equip->classmark3, cm3, equip->classmark3_len);
 
 	dbi_result_free(result);
 
