@@ -481,7 +481,7 @@ static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_networ
 	return NULL;
 }
 
-/* Receive MM/CC message from Iu-CS (SCCP user SAP).
+/* Receive MM/CC/... message from Iu-CS (SCCP user SAP).
  * msg->dst must reference a struct ue_conn_ctx. link_id identifies the SCTP
  * peer that sent the msg.
  *
@@ -502,6 +502,14 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 	if (conn) {
 		/* if we already have a connection, handle DTAP.
 		   gsm0408_dispatch() is aka msc_dtap() */
+
+		/* Make sure we don't receive RR over Iu-CS; otherwise all
+		 * messages handled by gsm0408_dispatch() are of interest (CC,
+		 * MM, SMS, NS_SS, maybe even MM_GPRS and SM_GPRS). */
+		struct gsm48_hdr *gh = msgb_l3(msg);
+		uint8_t pdisc = gh->proto_discr & 0x0f;
+		OSMO_ASSERT(pdisc != GSM48_PDISC_RR);
+
 		gsm0408_dispatch(conn, msg);
 	} else {
 		/* allocate a new connection */
