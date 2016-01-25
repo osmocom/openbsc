@@ -224,7 +224,7 @@ static void mr_config_for_ms(struct gsm_lchan *lchan, struct msgb *msg)
 /* 7.1.7 and 9.1.7: RR CHANnel RELease */
 int gsm48_send_rr_release(struct gsm_lchan *lchan)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 RR REL");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	uint8_t *cause;
 
@@ -314,7 +314,7 @@ int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
 /* Chapter 9.1.9: Ciphering Mode Command */
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CIPH");
 	struct gsm48_hdr *gh;
 	uint8_t ciph_mod_set;
 
@@ -410,7 +410,7 @@ int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, struct am
 int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
 		      uint8_t power_command, uint8_t ho_ref)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 HO CMD");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_ho_cmd *ho =
 		(struct gsm48_ho_cmd *) msgb_put(msg, sizeof(*ho));
@@ -449,7 +449,7 @@ int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
 /* Chapter 9.1.2: Assignment Command */
 int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan, uint8_t power_command)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 ASS CMD");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_ass_cmd *ass =
 		(struct gsm48_ass_cmd *) msgb_put(msg, sizeof(*ass));
@@ -490,7 +490,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 /* 9.1.5 Channel mode modify: Modify the mode on the MS side */
 int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CHN MOD");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_chan_mode_modify *cmm =
 		(struct gsm48_chan_mode_modify *) msgb_put(msg, sizeof(*cmm));
@@ -650,7 +650,7 @@ struct msgb *gsm48_create_mm_serv_rej(enum gsm48_reject_value value)
 	struct msgb *msg;
 	struct gsm48_hdr *gh;
 
-	msg = gsm48_msgb_alloc();
+	msg = gsm48_msgb_alloc_name("GSM 04.08 SERV REJ");
 	if (!msg)
 		return NULL;
 
@@ -667,7 +667,7 @@ struct msgb *gsm48_create_loc_upd_rej(uint8_t cause)
 	struct gsm48_hdr *gh;
 	struct msgb *msg;
 
-	msg = gsm48_msgb_alloc();
+	msg = gsm48_msgb_alloc_name("GSM 04.08 LOC UPD REJ");
 	if (!msg)
 		return NULL;
 
@@ -681,7 +681,7 @@ struct msgb *gsm48_create_loc_upd_rej(uint8_t cause)
 /* 9.2.5 CM service accept */
 int gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERV ACK");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	msg->lchan = conn->lchan;

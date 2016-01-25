@@ -199,7 +199,7 @@ static int _tx_status(struct msgb *msg, uint8_t cause,
 
 static int gsm48_tx_gmm_status(struct sgsn_mm_ctx *mmctx, uint8_t cause)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 GMM STATUS");
 
 	mmctx2msgid(msg, mmctx);
 	return _tx_status(msg, cause, mmctx, 0);
@@ -207,7 +207,7 @@ static int gsm48_tx_gmm_status(struct sgsn_mm_ctx *mmctx, uint8_t cause)
 
 static int gsm48_tx_sm_status(struct sgsn_mm_ctx *mmctx, uint8_t cause)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SM STATUS");
 
 	mmctx2msgid(msg, mmctx);
 	return _tx_status(msg, cause, mmctx, 1);
@@ -238,7 +238,7 @@ static int _tx_detach_req(struct msgb *msg, uint8_t detach_type, uint8_t cause,
 static int gsm48_tx_gmm_detach_req(struct sgsn_mm_ctx *mmctx,
 				   uint8_t detach_type, uint8_t cause)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 DET REQ");
 
 	mmctx2msgid(msg, mmctx);
 	return _tx_detach_req(msg, detach_type, cause, mmctx);
@@ -247,7 +247,7 @@ static int gsm48_tx_gmm_detach_req(struct sgsn_mm_ctx *mmctx,
 static int gsm48_tx_gmm_detach_req_oldmsg(struct msgb *oldmsg,
 					  uint8_t detach_type, uint8_t cause)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 DET OLD");
 
 	gmm_copy_id(msg, oldmsg);
 	return _tx_detach_req(msg, detach_type, cause, NULL);
@@ -279,7 +279,7 @@ static struct gsm48_qos default_qos = {
 /* Chapter 9.4.2: Attach accept */
 static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 ATT ACK");
 	struct gsm48_hdr *gh;
 	struct gsm48_attach_ack *aa;
 	uint8_t *mid;
@@ -350,14 +350,14 @@ static int _tx_gmm_att_rej(struct msgb *msg, uint8_t gmm_cause,
 static int gsm48_tx_gmm_att_rej_oldmsg(const struct msgb *old_msg,
 					uint8_t gmm_cause)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 ATT REJ OLD");
 	gmm_copy_id(msg, old_msg);
 	return _tx_gmm_att_rej(msg, gmm_cause, NULL);
 }
 static int gsm48_tx_gmm_att_rej(struct sgsn_mm_ctx *mm,
 				uint8_t gmm_cause)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 ATT REJ");
 	mmctx2msgid(msg, mm);
 	return _tx_gmm_att_rej(msg, gmm_cause, mm);
 }
@@ -382,7 +382,7 @@ static int _tx_detach_ack(struct msgb *msg, uint8_t force_stby,
 
 static int gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 DET ACK");
 
 	mmctx2msgid(msg, mm);
 	return _tx_detach_ack(msg, force_stby, mm);
@@ -390,7 +390,7 @@ static int gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
 
 static int gsm48_tx_gmm_det_ack_oldmsg(struct msgb *oldmsg, uint8_t force_stby)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 DET ACK OLD");
 
 	gmm_copy_id(msg, oldmsg);
 	return _tx_detach_ack(msg, force_stby, NULL);
@@ -399,7 +399,7 @@ static int gsm48_tx_gmm_det_ack_oldmsg(struct msgb *oldmsg, uint8_t force_stby)
 /* Transmit Chapter 9.4.12 Identity Request */
 static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 ID REQ");
 	struct gsm48_hdr *gh;
 
 	LOGMMCTXP(LOGL_DEBUG, mm, "<- GPRS IDENTITY REQUEST: mi_type=%s\n",
@@ -420,7 +420,7 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 				      uint8_t key_seq, uint8_t algo)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 AUTH CIPH REQ");
 	struct gsm48_hdr *gh;
 	struct gsm48_auth_ciph_req *acreq;
 	uint8_t *m_rand, *m_cksn;
@@ -458,7 +458,7 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 /* Section 9.4.11: Authentication and Ciphering Reject */
 static int gsm48_tx_gmm_auth_ciph_rej(struct sgsn_mm_ctx *mm)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 AUTH CIPH REJ");
 	struct gsm48_hdr *gh;
 
 	LOGMMCTXP(LOGL_NOTICE, mm, "<- GPRS AUTH AND CIPH REJECT\n");
@@ -1020,7 +1020,7 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 /* Chapter 9.4.15: Routing area update accept */
 static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 UPD ACK");
 	struct gsm48_hdr *gh;
 	struct gsm48_ra_upd_ack *rua;
 	uint8_t *mid;
@@ -1067,7 +1067,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 /* Chapter 9.4.17: Routing area update reject */
 static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 RA UPD REJ");
 	struct gsm48_hdr *gh;
 
 	LOGP(DMM, LOGL_NOTICE, "<- ROUTING AREA UPDATE REJECT\n");
@@ -1502,7 +1502,7 @@ static void msgb_put_pdp_addr_ppp(struct msgb *msg)
 /* Section 9.5.2: Ativate PDP Context Accept */
 int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 PDP ACC");
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = pdp->ti ^ 0x8; /* flip */
 
@@ -1546,7 +1546,7 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 			     uint8_t cause, uint8_t pco_len, uint8_t *pco_v)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 PDP REJ");
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
@@ -1569,7 +1569,7 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 static int _gsm48_tx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, uint8_t tid,
 					uint8_t sm_cause)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 PDP DET REQ");
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
@@ -1595,7 +1595,7 @@ int gsm48_tx_gsm_deact_pdp_req(struct sgsn_pdp_ctx *pdp, uint8_t sm_cause)
 /* Section 9.5.9: Deactivate PDP Context Accept */
 static int _gsm48_tx_gsm_deact_pdp_acc(struct sgsn_mm_ctx *mm, uint8_t tid)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 PDP DET ACC");
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 

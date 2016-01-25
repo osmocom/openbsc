@@ -65,7 +65,7 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 			       const struct msgb *in_msg, const char *response_text,
 			       const struct ussd_request *req)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 USSD RSP");
 	struct gsm48_hdr *gh;
 	uint8_t *ptr8;
 	int response_len;
@@ -113,7 +113,7 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 			     const struct msgb *in_msg,
 			     const struct ussd_request *req)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 USSD REJ");
 	struct gsm48_hdr *gh;
 
 	/* First insert the problem code */
@@ -163,7 +163,7 @@ int gsm0480_send_releaseComplete(struct gsm_subscriber_connection *conn)
 	struct gsm48_hdr *gh;
 	struct msgb *msg;
 
-	msg = gsm48_msgb_alloc();
+	msg = gsm48_msgb_alloc_name("GSM 04.08 USSD REL COMPL");
 	if (!msg)
 		return -1;
 

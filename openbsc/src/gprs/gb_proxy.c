@@ -393,7 +393,7 @@ static void gbproxy_acquire_imsi(struct gbproxy_peer *peer,
 	struct msgb *idreq_msg;
 
 	/* Send IDENT REQ */
-	idreq_msg = gsm48_msgb_alloc();
+	idreq_msg = gsm48_msgb_alloc_name("GSM 04.08 ACQ IMSI");
 	gprs_put_identity_req(idreq_msg, GSM_MI_TYPE_IMSI);
 	gbproxy_gsm48_to_peer(peer, link_info, bvci, idreq_msg);
 }
@@ -405,7 +405,7 @@ static void gbproxy_tx_detach_acc(struct gbproxy_peer *peer,
 	struct msgb *detacc_msg;
 
 	/* Send DETACH ACC */
-	detacc_msg = gsm48_msgb_alloc();
+	detacc_msg = gsm48_msgb_alloc_name("GSM 04.08 DET ACC");
 	gprs_put_mo_detach_acc(detacc_msg);
 	gbproxy_gsm48_to_peer(peer, link_info, bvci, detacc_msg);
 }

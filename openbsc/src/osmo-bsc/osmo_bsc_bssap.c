@@ -473,7 +473,7 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 	LOGP(DMSC, LOGL_INFO, "Rx MSC DTAP, SAPI: %u CHAN: %u\n", header->link_id & 0x07, header->link_id & 0xC0);
 
 	/* forward the data */
-	gsm48 = gsm48_msgb_alloc();
+	gsm48 = gsm48_msgb_alloc_name("GSM 04.08 DTAP RCV");
 	if (!gsm48) {
 		LOGP(DMSC, LOGL_ERROR, "Allocation of the message failed.\n");
 		return -1;

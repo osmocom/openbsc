@@ -458,7 +458,7 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 {
 	struct gsm_bts *bts = conn->bts;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 LOC UPD ACC");
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
 	uint8_t *mid;
@@ -494,7 +494,7 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 /* Transmit Chapter 9.2.10 Identity Request */
 static int mm_tx_identity_req(struct gsm_subscriber_connection *conn, uint8_t id_type)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 ID REQ");
 	struct gsm48_hdr *gh;
 
 	msg->lchan = conn->lchan;
@@ -707,7 +707,7 @@ static uint8_t bcdify(uint8_t value)
 /* Section 9.2.15a */
 int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 MM INF");
 	struct gsm48_hdr *gh;
 	struct gsm_network *net = conn->bts->network;
 	struct gsm_bts *bts = conn->bts;
@@ -855,7 +855,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 /* Section 9.2.2 */
 int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, uint8_t *rand, int key_seq)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 AUTH REQ");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_auth_req *ar = (struct gsm48_auth_req *) msgb_put(msg, sizeof(*ar));
 
@@ -1261,7 +1261,7 @@ static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *m
 int gsm48_send_rr_app_info(struct gsm_subscriber_connection *conn, uint8_t apdu_id,
 			   uint8_t apdu_len, const uint8_t *apdu)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 APP INF");
 	struct gsm48_hdr *gh;
 
 	msg->lchan = conn->lchan;
@@ -1300,7 +1300,7 @@ static void new_cc_state(struct gsm_trans *trans, int state)
 
 static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC STATUS");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	uint8_t *cause, *call_state;
 
@@ -1320,7 +1320,7 @@ static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
 static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 			   uint8_t pdisc, uint8_t msg_type)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 TX SIMPLE");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	msg->lchan = conn->lchan;
@@ -1943,7 +1943,7 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC STUP");
 	struct gsm48_hdr *gh;
 	struct gsm_mncc *setup = arg;
 	int rc, trans_id;
@@ -2067,7 +2067,7 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *proceeding = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC PROC");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_CALL_PROC;
@@ -2129,7 +2129,7 @@ static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_cc_tx_alerting(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *alerting = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC ALERT");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_ALERTING;
@@ -2152,7 +2152,7 @@ static int gsm48_cc_tx_alerting(struct gsm_trans *trans, void *arg)
 static int gsm48_cc_tx_progress(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *progress = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC PROGRESS");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_PROGRESS;
@@ -2169,7 +2169,7 @@ static int gsm48_cc_tx_progress(struct gsm_trans *trans, void *arg)
 static int gsm48_cc_tx_connect(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *connect = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSN 04.08 CC CON");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_CONNECT;
@@ -2258,7 +2258,7 @@ static int gsm48_cc_rx_connect_ack(struct gsm_trans *trans, struct msgb *msg)
 
 static int gsm48_cc_tx_connect_ack(struct gsm_trans *trans, void *arg)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC CON ACK");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_CONNECT_ACK;
@@ -2324,7 +2324,7 @@ static struct gsm_mncc_cause default_cause = {
 static int gsm48_cc_tx_disconnect(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *disc = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC DISC");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_DISCONNECT;
@@ -2415,7 +2415,7 @@ static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_cc_tx_release(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *rel = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC REL");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_RELEASE;
@@ -2505,7 +2505,7 @@ static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_cc_tx_release_compl(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *rel = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC REL COMPL");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	int ret;
 
@@ -2561,7 +2561,7 @@ static int gsm48_cc_rx_facility(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_cc_tx_facility(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *fac = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC FAC");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_FACILITY;
@@ -2583,7 +2583,7 @@ static int gsm48_cc_rx_hold(struct gsm_trans *trans, struct msgb *msg)
 
 static int gsm48_cc_tx_hold_ack(struct gsm_trans *trans, void *arg)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC HLD ACK");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_HOLD_ACK;
@@ -2594,7 +2594,7 @@ static int gsm48_cc_tx_hold_ack(struct gsm_trans *trans, void *arg)
 static int gsm48_cc_tx_hold_rej(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *hold_rej = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC HLD REJ");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_HOLD_REJ;
@@ -2620,7 +2620,7 @@ static int gsm48_cc_rx_retrieve(struct gsm_trans *trans, struct msgb *msg)
 
 static int gsm48_cc_tx_retrieve_ack(struct gsm_trans *trans, void *arg)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC RETR ACK");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_RETR_ACK;
@@ -2631,7 +2631,7 @@ static int gsm48_cc_tx_retrieve_ack(struct gsm_trans *trans, void *arg)
 static int gsm48_cc_tx_retrieve_rej(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *retrieve_rej = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC RETR REJ");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_RETR_REJ;
@@ -2668,7 +2668,7 @@ static int gsm48_cc_rx_start_dtmf(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_cc_tx_start_dtmf_ack(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *dtmf = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 DTMF ACK");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_START_DTMF_ACK;
@@ -2683,7 +2683,7 @@ static int gsm48_cc_tx_start_dtmf_ack(struct gsm_trans *trans, void *arg)
 static int gsm48_cc_tx_start_dtmf_rej(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *dtmf = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 DTMF REJ");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_START_DTMF_REJ;
@@ -2699,7 +2699,7 @@ static int gsm48_cc_tx_start_dtmf_rej(struct gsm_trans *trans, void *arg)
 
 static int gsm48_cc_tx_stop_dtmf_ack(struct gsm_trans *trans, void *arg)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 DTMF STP ACK");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_STOP_DTMF_ACK;
@@ -2743,7 +2743,7 @@ static int gsm48_cc_rx_modify(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_cc_tx_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *modify = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC MOD");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_MODIFY;
@@ -2786,7 +2786,7 @@ static int gsm48_cc_rx_modify_complete(struct gsm_trans *trans, struct msgb *msg
 static int gsm48_cc_tx_modify_complete(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *modify = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC MOD COMPL");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_MODIFY_COMPL;
@@ -2833,7 +2833,7 @@ static int gsm48_cc_rx_modify_reject(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_cc_tx_modify_reject(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *modify = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC MOD REJ");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_MODIFY_REJECT;
@@ -2851,7 +2851,7 @@ static int gsm48_cc_tx_modify_reject(struct gsm_trans *trans, void *arg)
 static int gsm48_cc_tx_notify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *notify = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC NOT");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_NOTIFY;
@@ -2881,7 +2881,7 @@ static int gsm48_cc_rx_notify(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_cc_tx_userinfo(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *user = arg;
-	struct msgb *msg = gsm48_msgb_alloc();
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 USR INFO");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->msg_type = GSM48_MT_CC_USER_INFO;

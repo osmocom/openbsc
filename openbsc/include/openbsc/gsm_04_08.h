@@ -19,10 +19,10 @@ struct amr_mode;
 #define GSM48_ALLOC_SIZE	2048
 #define GSM48_ALLOC_HEADROOM	256
 
-static inline struct msgb *gsm48_msgb_alloc(void)
+static inline struct msgb *gsm48_msgb_alloc_name(const char *name)
 {
 	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM,
-				   "GSM 04.08");
+				   name);
 }
 
 static inline int get_radio_link_timeout(struct gsm48_cell_options *cell_options)
