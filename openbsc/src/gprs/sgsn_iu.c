@@ -265,10 +265,6 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 		break;
 	case RANAP_RANAP_PDU_PR_successfulOutcome:
 		switch (message->procedureCode) {
-		case RANAP_ProcedureCode_id_RAB_Assignment:
-			/* RAB Assignment Response */
-			rc = ranap_handle_co_rab_ass_resp(ctx, &message->msg.raB_AssignmentResponseIEs);
-			break;
 		case RANAP_ProcedureCode_id_SecurityModeControl:
 			/* Security Mode Complete */
 			break;
@@ -276,8 +272,14 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 			/* Iu Release Complete */
 			break;
 		}
-	case RANAP_RANAP_PDU_PR_unsuccessfulOutcome:
 	case RANAP_RANAP_PDU_PR_outcome:
+		switch (message->procedureCode) {
+		case RANAP_ProcedureCode_id_RAB_Assignment:
+			/* RAB Assignment Response */
+			rc = ranap_handle_co_rab_ass_resp(ctx, &message->msg.raB_AssignmentResponseIEs);
+			break;
+		}
+	case RANAP_RANAP_PDU_PR_unsuccessfulOutcome:
 	default:
 		rc = -1;
 		break;
