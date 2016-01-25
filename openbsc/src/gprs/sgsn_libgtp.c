@@ -90,7 +90,7 @@ const struct value_string gtp_cause_strs[] = {
 	{ 0, NULL }
 };
 
-int gprs_iu_rab_act(struct sgsn_mm_ctx *mm, uint32_t gtp_ip, uint32_t gtp_tei);
+int gprs_iu_rab_act(struct sgsn_pdp_ctx *mm, uint32_t gtp_ip, uint32_t gtp_tei);
 
 /* Generate the GTP IMSI IE according to 09.60 Section 7.9.2 */
 static uint64_t imsi_str2gtp(char *str)
@@ -351,19 +351,15 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	if (pctx->mm->ran_type == MM_CTX_T_GERAN_Gb) {
 		/* Activate the SNDCP layer */
 		sndcp_sm_activate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
+
+
+		return send_act_pdp_cont_acc(pctx);
 	} else {
 		/* Activate a radio bearer */
 		uint32_t ggsn_ip = 0xc0a80033; /* 192.168.0.51 */
-		gprs_iu_rab_act(pctx->mm, ggsn_ip, pdp->teid_own);
+		gprs_iu_rab_act(pctx, ggsn_ip, pdp->teid_own);
+		return 0;
 	}
-
-	/* Inform others about it */
-	memset(&sig_data, 0, sizeof(sig_data));
-	sig_data.pdp = pctx;
-	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_ACT, &sig_data);
-
-	/* Send PDP CTX ACT to MS */
-	return gsm48_tx_gsm_act_pdp_acc(pctx);
 
 reject:
 	/*
@@ -384,6 +380,19 @@ reject:
 	sgsn_pdp_ctx_free(pctx);
 
 	return EOF;
+}
+
+int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx)
+{
+	struct sgsn_signal_data sig_data;
+
+	/* Inform others about it */
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.pdp = pctx;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_ACT, &sig_data);
+
+	/* Send PDP CTX ACT to MS */
+	return gsm48_tx_gsm_act_pdp_acc(pctx);
 }
 
 /* Confirmation of a PDP Context Delete */

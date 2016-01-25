@@ -30,6 +30,7 @@ struct ue_conn_ctx {
 	struct llist_head list;
 	struct osmo_sua_link *link;
 	uint32_t conn_id;
+	struct sgsn_pdp_ctx *pdp;
 };
 
 static LLIST_HEAD(conn_ctx_list);
@@ -60,13 +61,15 @@ struct ue_conn_ctx *ue_conn_ctx_find(struct osmo_sua_link *link, uint32_t conn_i
  * RANAP handling
  ***********************************************************************/
 
-int gprs_iu_rab_act(struct sgsn_mm_ctx *mm, uint32_t gtp_ip, uint32_t gtp_tei)
+int gprs_iu_rab_act(struct sgsn_pdp_ctx *pdp, uint32_t gtp_ip, uint32_t gtp_tei)
 {
+	struct sgsn_mm_ctx *mm = pdp->mm;
 	struct ue_conn_ctx *uectx;
 	struct osmo_scu_prim *prim;
 	struct msgb *msg;
 
 	uectx = mm->iu.ue_ctx;
+	uectx->pdp = pdp;
 
 	msg = ranap_new_msg_rab_assign_data(1, gtp_ip, gtp_tei);
 	msg->l2h = msg->data;
@@ -217,7 +220,9 @@ static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseR
 	return 0;
 }
 
-static int ranap_handle_co_rab_ass_resp(void *ctx, RANAP_RAB_AssignmentResponseIEs_t *ies)
+int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx);
+
+static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_AssignmentResponseIEs_t *ies)
 {
 	int i, rc;
 
@@ -235,6 +240,8 @@ static int ranap_handle_co_rab_ass_resp(void *ctx, RANAP_RAB_AssignmentResponseI
 	}
 
 	LOGPC(DRANAP, LOGL_INFO, "\n");
+
+	send_act_pdp_cont_acc(ctx->pdp);
 
 	return rc;
 }
