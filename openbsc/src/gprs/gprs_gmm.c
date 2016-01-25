@@ -865,8 +865,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		goto err_inval;
 	cur += msnc_len;
 
+	/* TODO: In iu mode - handle follow-on request */
+
 	/* aTTACH Type 10.5.5.2 */
-	att_type = *cur++ & 0x0f;
+	att_type = *cur++ & 0x07;
 
 	/* DRX parameter 10.5.5.6 */
 	drx_par = *cur++ << 8;
@@ -1170,8 +1172,10 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	enum gsm48_gmm_cause reject_cause;
 	int rc;
 
+	/* TODO: In iu mode - handle follow-on request */
+
 	/* Update Type 10.5.5.18 */
-	upd_type = *cur++ & 0x0f;
+	upd_type = *cur++ & 0x07;
 
 	LOGP(DMM, LOGL_INFO, "-> GMM RA UPDATE REQUEST type=\"%s\"\n",
 		get_value_string(gprs_upd_t_strs, upd_type));
