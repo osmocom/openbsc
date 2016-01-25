@@ -243,7 +243,8 @@ static int ranap_handle_co_rab_ass_resp(void *ctx, RANAP_RAB_AssignmentResponseI
 	int rc;
 
 	LOGP(DRANAP, LOGL_INFO, "RAB Asignment Response:");
-	if (ies->presenceMask & RAB_ASSIGNMENTRESPONSEIES_RANAP_RAB_SETUPORMODIFIEDLIST_PRESENT) {
+	if (0) {
+//	if (ies->presenceMask & RAB_ASSIGNMENTRESPONSEIES_RANAP_RAB_SETUPORMODIFIEDLIST_PRESENT) {
 		RANAP_RAB_SetupOrModifiedItemIEs_t setup_ies;
 		RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies.raB_SetupOrModifiedItem;
 		rc = ranap_decode_rab_setupormodifieditemies(&setup_ies,
