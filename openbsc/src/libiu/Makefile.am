@@ -1,0 +1,10 @@
+AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) \
+	$(LIBOSMOABIS_CFLAGS) $(COVERAGE_CFLAGS) $(LIBCRYPTO_CFLAGS) \
+	$(LIBASN1C_CFLAGS) \
+	$(LIBOSMOSIGTRAN_CFLAGS) $(LIBOSMORANAP_CFLAGS)
+
+noinst_LIBRARIES = libiu.a
+
+libiu_a_SOURCES = iu.c
+

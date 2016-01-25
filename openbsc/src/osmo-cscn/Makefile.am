@@ -9,9 +9,11 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 bin_PROGRAMS = osmo-cscn
 
 osmo_cscn_SOURCES = cscn_main.c \
-		$(top_builddir)/src/gprs/iu.c
+		    iu_cs.c
+
 osmo_cscn_LDADD = \
 		$(top_builddir)/src/libbsc/libbsc.a \
+		$(top_builddir)/src/libiu/libiu.a \
 		$(top_builddir)/src/libmsc/libmsc.a \
 		$(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libtrau/libtrau.a \
