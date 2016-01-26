@@ -414,7 +414,7 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 			/* Deactivate the SNDCP layer */
 			sndcp_sm_deactivate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
 		} else {
-			/* Activate a radio bearer */
+			/* Dectivate a radio bearer */
 			gprs_iu_rab_deact(&pctx->mm);
 		}
 
