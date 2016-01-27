@@ -374,28 +374,28 @@ static void config_write_e1_link(struct vty *vty, struct gsm_e1_subslot *e1_link
 
 static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
-	vty_out(vty, "    timeslot %u%s", ts->nr, VTY_NEWLINE);
+	vty_out(vty, "   timeslot %u%s", ts->nr, VTY_NEWLINE);
 	if (ts->tsc != -1)
-		vty_out(vty, "     training_sequence_code %u%s", ts->tsc, VTY_NEWLINE);
+		vty_out(vty, "    training_sequence_code %u%s", ts->tsc, VTY_NEWLINE);
 	if (ts->pchan != GSM_PCHAN_NONE)
-		vty_out(vty, "     phys_chan_config %s%s",
+		vty_out(vty, "    phys_chan_config %s%s",
 			gsm_pchan_name(ts->pchan), VTY_NEWLINE);
-	vty_out(vty, "     hopping enabled %u%s",
+	vty_out(vty, "    hopping enabled %u%s",
 		ts->hopping.enabled, VTY_NEWLINE);
 	if (ts->hopping.enabled) {
 		unsigned int i;
-		vty_out(vty, "     hopping sequence-number %u%s",
+		vty_out(vty, "    hopping sequence-number %u%s",
 			ts->hopping.hsn, VTY_NEWLINE);
-		vty_out(vty, "     hopping maio %u%s",
+		vty_out(vty, "    hopping maio %u%s",
 			ts->hopping.maio, VTY_NEWLINE);
 		for (i = 0; i < ts->hopping.arfcns.data_len*8; i++) {
 			if (!bitvec_get_bit_pos(&ts->hopping.arfcns, i))
 				continue;
-			vty_out(vty, "     hopping arfcn add %u%s",
+			vty_out(vty, "    hopping arfcn add %u%s",
 				i, VTY_NEWLINE);
 		}
 	}
-	config_write_e1_link(vty, &ts->e1_link, "     ");
+	config_write_e1_link(vty, &ts->e1_link, "    ");
 
 	if (ts->trx->bts->model->config_write_ts)
 		ts->trx->bts->model->config_write_ts(vty, ts);
