@@ -263,7 +263,7 @@ static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gpr
 	DEBUGP(DIUCS, "got Iu-CS message\n");
 	DEBUGP(DIUCS, "Iu-CS message is %s\n",
 	       osmo_hexdump(msg->data, msg->len));
-	uint8_t link_id = 1; /* TODO proper link_id */
+	uint8_t link_id = 42; /* TODO proper link_id */
 	return gsm0408_rcvmsg_iucs(bsc_gsmnet, msg, link_id);
 }
 

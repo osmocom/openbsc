@@ -1,3 +1,8 @@
+#include <inttypes.h>
+
+#include <osmocom/core/logging.h>
+#include <openbsc/debug.h>
+
 #include <openbsc/gsm_data.h>
 #include <openbsc/iu.h>
 
@@ -12,6 +17,9 @@ struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *ne
 {
 	struct gsm_subscriber_connection *conn;
 
+	DEBUGP(DIUCS, "Allocating IuCS subscriber conn: link_id %" PRIx8 ", conn_id %" PRIx32 "\n",
+	       link_id, conn_id);
+
 	conn = talloc_zero(network, struct gsm_subscriber_connection);
 	if (!conn)
 		return NULL;
@@ -24,7 +32,7 @@ struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *ne
 	return conn;
 }
 
-/* Return an existing Iu-CS subscriber connection record for the given link and
+/* Return an existing IuCS subscriber connection record for the given link and
  * connection IDs, or return NULL if not found. */
 static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_network *network,
 							       uint8_t link_id,
@@ -38,12 +46,16 @@ static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_networ
 			continue;
 		if (conn->iu.conn_id != conn_id)
 			continue;
+		DEBUGP(DIUCS, "Found IuCS subscriber for link_id %" PRIx8 ", conn_id %" PRIx32 "\n",
+		       link_id, conn_id);
 		return conn;
 	}
+	DEBUGP(DIUCS, "No IuCS subscriber found for link_id %" PRIx8 ", conn_id %" PRIx32 "\n",
+	       link_id, conn_id);
 	return NULL;
 }
 
-/* Receive MM/CC/... message from Iu-CS (SCCP user SAP).
+/* Receive MM/CC/... message from IuCS (SCCP user SAP).
  * msg->dst must reference a struct ue_conn_ctx. link_id identifies the SCTP
  * peer that sent the msg.
  *
@@ -64,7 +76,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 		/* if we already have a connection, handle DTAP.
 		   gsm0408_dispatch() is aka msc_dtap() */
 
-		/* Make sure we don't receive RR over Iu-CS; otherwise all
+		/* Make sure we don't receive RR over IuCS; otherwise all
 		 * messages handled by gsm0408_dispatch() are of interest (CC,
 		 * MM, SMS, NS_SS, maybe even MM_GPRS and SM_GPRS). */
 		struct gsm48_hdr *gh = msgb_l3(msg);
