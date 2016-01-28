@@ -1,6 +1,29 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/iu.h>
 
+#include <openbsc/bsc_api.h> /* for BSC_API_CONN_POL_ACCEPT, TODO move that to libmsc */
+
+#include "../libmsc/msc_api.h"
+
+/* For A-interface see libbsc/bsc_api.c subscr_con_allocate() */
+struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *network,
+							  uint8_t link_id,
+							  uint32_t conn_id)
+{
+	struct gsm_subscriber_connection *conn;
+
+	conn = talloc_zero(network, struct gsm_subscriber_connection);
+	if (!conn)
+		return NULL;
+
+	conn->via_iface = IFACE_IUCS;
+	conn->iu.link_id = link_id;
+	conn->iu.conn_id = conn_id;
+
+	llist_add_tail(&conn->entry, &network->subscr_conns);
+	return conn;
+}
+
 /* Return an existing Iu-CS subscriber connection record for the given link and
  * connection IDs, or return NULL if not found. */
 static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_network *network,
@@ -76,18 +99,3 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 	return 0;
 }
 
-/* For A-interface see libbsc/bsc_api.c subscr_con_allocate() */
-struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_bts *bts)
-	/* TODO "bts"? this is an hNodeB, really. */
-{
-	struct gsm_subscriber_connection *conn;
-
-	conn = talloc_zero(bts->network, struct gsm_subscriber_connection);
-	if (!conn)
-		return NULL;
-
-	conn->via_iface = IFACE_IUCS;
-	conn->bts = bts;
-	llist_add_tail(&conn->entry, &bts->network->subscr_conns);
-	return conn;
-}

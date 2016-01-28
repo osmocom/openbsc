@@ -42,8 +42,8 @@ static int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 	return 1;
 }
 
-static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
-			uint16_t chosen_channel)
+int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
+		 uint16_t chosen_channel)
 {
 	gsm0408_new_conn(conn);
 	gsm0408_dispatch(conn, msg);
