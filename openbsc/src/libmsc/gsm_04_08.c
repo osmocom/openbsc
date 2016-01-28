@@ -3604,6 +3604,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	case GSM48_PDISC_SM_GPRS:
 		LOGP(DRLL, LOGL_NOTICE, "Unimplemented "
 			"GSM 04.08 discriminator 0x%02x\n", pdisc);
+		rc = -1;
 		break;
 	case GSM48_PDISC_NC_SS:
 		release_anchor(conn);
@@ -3612,6 +3613,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	default:
 		LOGP(DRLL, LOGL_NOTICE, "Unknown "
 			"GSM 04.08 discriminator 0x%02x\n", pdisc);
+		rc = -1;
 		break;
 	}
 
