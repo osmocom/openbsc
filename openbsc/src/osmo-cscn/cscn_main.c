@@ -68,7 +68,7 @@
 /* MCC and MNC for the Location Area Identifier */
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
-static const char *config_file = "opencscn.cfg";
+static const char *config_file = "osmo-cscn.cfg";
 static const char *rf_ctrl_name = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
