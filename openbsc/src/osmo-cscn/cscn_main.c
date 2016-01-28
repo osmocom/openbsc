@@ -1,6 +1,11 @@
-/* A hackish minimal BSC (+MSC +HLR) implementation */
+/* OsmoCSCN - Circuit-Switched Core Network (MSC+VLR+HLR+SMSC) implementation
+ */
 
-/* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2016 by sysmocom s.f.m.c. GmbH <info@sysmocom.de>
+ * All Rights Reserved
+ *
+ * Based on OsmoNITB:
+ * (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
