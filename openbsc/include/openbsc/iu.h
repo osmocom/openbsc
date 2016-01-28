@@ -21,6 +21,3 @@ int iu_tx(struct msgb *msg, uint8_t sapi);
 
 int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port);
 int iu_rab_act_ps(struct ue_conn_ctx *ue_ctx, uint32_t gtp_ip, uint32_t gtp_tei);
-
-/* TODO wrong file */
-int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t link_id);

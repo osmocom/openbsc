@@ -63,6 +63,8 @@
 
 #include "../../bscconfig.h"
 
+#include "iu_cs.h"
+
 /* MCC and MNC for the Location Area Identifier */
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
