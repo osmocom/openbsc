@@ -71,31 +71,23 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 		uint8_t pdisc = gh->proto_discr & 0x0f;
 		OSMO_ASSERT(pdisc != GSM48_PDISC_RR);
 
-		gsm0408_dispatch(conn, msg);
+		rc = gsm0408_dispatch(conn, msg);
 	} else {
 		/* allocate a new connection */
 
-		/* TODO */
+		conn = subscr_conn_allocate_iu(network, link_id, ue_ctx->conn_id);
+		if (!conn)
+			abort();
 
-#if 0
-		rc = BSC_API_CONN_POL_REJECT;
-		conn = subscr_conn_allocate_iu(msg->lchan);
-		if (!lchan->conn) {
-			lchan_release(lchan, 1, RSL_REL_NORMAL);
-			return -1;
-		}
-
-		/* fwd via bsc_api to send COMPLETE L3 INFO to MSC */
-		rc = api->compl_l3(lchan->conn, msg, 0);
-
+		rc = msc_compl_l3(conn, msg, 0);
 		if (rc != BSC_API_CONN_POL_ACCEPT) {
-			lchan->conn->lchan = NULL;
-			subscr_con_free(lchan->conn);
-			lchan_release(lchan, 1, RSL_REL_NORMAL);
+			subscr_con_free(conn);
+			rc = -1;
 		}
-#endif
+		else
+			rc = 0;
 	}
 
-	return 0;
+	return rc;
 }
 
