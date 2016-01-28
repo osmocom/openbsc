@@ -8,15 +8,16 @@ implementing protocol stacks and functional elements, including
 
  * OsmoBSC - a pure GSM BSC, speaking Abis/IP to the BTS and A/IP to the MSC
  * OsmoBSC-MGCP - MGCP helper to the OsmoBSC software
- * OsmoNITB - a BTS+MSC+VLR+HLR+SMSC "Network in the box".
- * OsmoSGSN - a GPRS SGSN with Gb interface over IP towards the PCU
+ * OsmoNITB - a BSC+MSC+VLR+HLR+SMSC "Network in the box".
+ * OsmoCSCN - a voice CN with A/IP and IuCS/IP towards the BSC and/or HNB-GW
+ * OsmoSGSN - a GPRS SGSN with Gb/IP and IuPS/IP towards the PCU and/or HNB-GW
  * Osmo-GbProxy - a Proxy to aggregate many Gb links as one Gb link to the SGSN
- * OsmoBSCNAT - a gateay aggregating many A links as one A link to the MSC
+ * OsmoBSCNAT - a gateway aggregating many A links as one A link to the MSC
  * OsmoGTPHUB - a hub aggregating many GTP links (between SGSN and GGSN)
  * ipaccess-utils - some tools to discover + configure ip.access nanoBTS
  * bs11_config - a tool to configure the Siemens BS-11 microBTS
 
-The currently supported interfaces towards the BTS are:
+Various interfaces towards the BTS are supported, among which are:
 
  * Classic A-bis over E1 using a mISDN based E1 interface. In other
    words, you can connect existing GSM Base Transceiver Station (BTS)
@@ -29,7 +30,10 @@ The currently supported interfaces towards the BTS are:
    product family, as well as SDR transceivers supported by OsmoTRX, such as
    the UmTRX or USRP boardss.
 
-You can find some unfortunately relatively unmaintained project documentation at
-http://openbsc.gnumonks.org/
+ * IuCS and IuPS over IP towards an HNB-GW (see osmo-iuh) for UMTS (3G)
+   voice and data links.
+
+Find OpenBSC online at
+http://openbsc.osmocom.org/
 
 	Harald Welte <laforge@gnumonks.org>
