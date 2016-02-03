@@ -953,7 +953,14 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		reject_cause = GMM_CAUSE_MS_ID_NOT_DERIVED;
 		goto rejected;
 	}
+	/* Update MM Context with currient RA and Cell ID */
+	ctx->ra = ra_id;
+	if (ctx->ran_type == MM_CTX_T_GERAN_Gb)
+		ctx->gb.cell_id = cid;
+	else if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
 	{
+		//ctx->iu.sac = sac;
+		/* XXX: Hack to make 3G auth work with special SIM card */
 		ctx->auth_state = SGSN_AUTH_AUTHENTICATE;
 		/* Ki 000102030405060708090a0b0c0d0e0f */
 		ctx->auth_triplet = (struct gsm_auth_tuple ) {
@@ -963,12 +970,6 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			.kc = { 0xd9, 0xd9, 0xc2, 0xed, 0x62, 0x7d, 0x68, 0x00 },
 		};
 	}
-	/* Update MM Context with currient RA and Cell ID */
-	ctx->ra = ra_id;
-	if (ctx->ran_type == MM_CTX_T_GERAN_Gb)
-		ctx->gb.cell_id = cid;
-	//else if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
-		//ctx->iu.sac = sac;
 
 	/* Update MM Context with other data */
 	ctx->drx_parms = drx_par;
