@@ -21,6 +21,8 @@
 #include <openbsc/iu.h>
 #include <openbsc/debug.h>
 
+#include <pdp.h>
+
 #include <osmocom/ranap/ranap_ies_defs.h>
 #include <osmocom/ranap/ranap_common.h>
 #include <osmocom/ranap/ranap_common_cn.h>
@@ -91,17 +93,23 @@ int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port
 	return iu_rab_act(ue_ctx, msg);
 }
 
-int iu_rab_act_ps(struct sgsn_pdp_ctx *pdp, uint32_t gtp_ip, uint32_t gtp_tei)
+int iu_rab_act_ps(struct sgsn_pdp_ctx *pdp)
 {
 	struct msgb *msg;
 	struct sgsn_mm_ctx *mm = pdp->mm;
 	struct ue_conn_ctx *uectx;
+	uint32_t ggsn_ip;
 
 	uectx = mm->iu.ue_ctx;
 	uectx->pdp = pdp;
 
+
+	/* Get the IP address for ggsn user plane */
+	memcpy(&ggsn_ip, pdp->lib->gsnru.v, pdp->lib->gsnru.l);
+	ggsn_ip = htonl(ggsn_ip);
+
 	/* FIXME: Generate unique RAB ID per UE */
-	msg = ranap_new_msg_rab_assign_data(1, gtp_ip, gtp_tei);
+	msg = ranap_new_msg_rab_assign_data(1, ggsn_ip, pdp->lib->teid_own);
 	msg->l2h = msg->data;
 	return iu_rab_act(uectx, msg);
 }

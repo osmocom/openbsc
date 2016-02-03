@@ -91,7 +91,7 @@ const struct value_string gtp_cause_strs[] = {
 	{ 0, NULL }
 };
 
-int gprs_iu_rab_act(struct sgsn_pdp_ctx *mm, uint32_t gtp_ip, uint32_t gtp_tei);
+int gprs_iu_rab_act(struct sgsn_pdp_ctx *pdp);
 
 /* Generate the GTP IMSI IE according to 09.60 Section 7.9.2 */
 static uint64_t imsi_str2gtp(char *str)
@@ -357,10 +357,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		return send_act_pdp_cont_acc(pctx);
 	} else {
 		/* Activate a radio bearer */
-		uint32_t ggsn_ip;
-		memcpy(&ggsn_ip, pdp->gsnru.v, pdp->gsnru.l);
-		ggsn_ip = htonl(ggsn_ip);
-		iu_rab_act_ps(pctx, ggsn_ip, pdp->teid_own);
+		iu_rab_act_ps(pctx);
 		return 0;
 	}
 
