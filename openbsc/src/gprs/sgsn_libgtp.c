@@ -221,16 +221,13 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	memcpy(pdp->gsnlc.v, &sgsn->cfg.gtp_listenaddr.sin_addr,
 		sizeof(sgsn->cfg.gtp_listenaddr.sin_addr));
 
-	/* SGSN address for user plane */
+	/* SGSN address for user plane
+	 * Default to the control plane addr for now. If we are connected to a
+	 * hnbgw via IuPS we'll need to send a PDP context update with the
+	 * correct IP address after the RAB Assignment is complete */
 	pdp->gsnlu.l = sizeof(sgsn->cfg.gtp_listenaddr.sin_addr);
-#if 1
-	struct in_addr ia;
-	ia.s_addr = htonl(0xC0A80032);
-	memcpy(pdp->gsnlu.v, &ia, sizeof(ia));
-#else
 	memcpy(pdp->gsnlu.v, &sgsn->cfg.gtp_listenaddr.sin_addr,
 		sizeof(sgsn->cfg.gtp_listenaddr.sin_addr));
-#endif
 
 	/* Assume we are a GERAN system */
 	pdp->rattype.l = 1;

@@ -286,6 +286,9 @@ static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_Assig
 
 			LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)", rab_id, osmo_hexdump(item->transportLayerAddress->buf,
 									     item->transportLayerAddress->size));
+			memcpy(pdp->lib->gsnlu.v, &item->transportLayerAddress->buf[3], 4);
+			gtp_update_context(pdp->ggsn->gsn, pdp->lib, pdp, &pdp->lib->hisaddr0);
+
 		}
 		ranap_free_rab_setupormodifieditemies(&setup_ies);
 	}
