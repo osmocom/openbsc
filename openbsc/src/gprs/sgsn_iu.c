@@ -20,6 +20,8 @@
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/debug.h>
 
+#include <pdp.h>
+
 #include <osmocom/ranap/ranap_ies_defs.h>
 #include <osmocom/ranap/ranap_common_cn.h>
 
@@ -61,17 +63,23 @@ struct ue_conn_ctx *ue_conn_ctx_find(struct osmo_sua_link *link, uint32_t conn_i
  * RANAP handling
  ***********************************************************************/
 
-int gprs_iu_rab_act(struct sgsn_pdp_ctx *pdp, uint32_t gtp_ip, uint32_t gtp_tei)
+int gprs_iu_rab_act(struct sgsn_pdp_ctx *pdp)
 {
 	struct sgsn_mm_ctx *mm = pdp->mm;
 	struct ue_conn_ctx *uectx;
 	struct osmo_scu_prim *prim;
 	struct msgb *msg;
+	uint32_t ggsn_ip;
 
 	uectx = mm->iu.ue_ctx;
 	uectx->pdp = pdp;
 
-	msg = ranap_new_msg_rab_assign_data(1, gtp_ip, gtp_tei);
+
+	/* Get the IP address for ggsn user plane */
+	memcpy(&ggsn_ip, pdp->lib->gsnru.v, pdp->lib->gsnru.l);
+	ggsn_ip = htonl(ggsn_ip);
+
+	msg = ranap_new_msg_rab_assign_data(1, ggsn_ip, pdp->lib->teid_own);
 	msg->l2h = msg->data;
 
 	/* wrap RANAP message in SCCP N-DATA.req */
