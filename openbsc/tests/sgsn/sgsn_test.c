@@ -102,6 +102,28 @@ int bssgp_tx_dl_ud(struct msgb *msg, uint16_t pdu_lifetime,
 	return 0;
 }
 
+/* Stubs for IU functions */
+int gprs_iu_tx(struct msgb *msg, uint8_t sapi, void *mm)
+{
+	return -1;
+}
+
+int gprs_transp_upd_key(struct sgsn_mm_ctx *mm)
+{
+	return -1;
+}
+
+int gprs_iu_rab_act(struct sgsn_pdp_ctx *pdp)
+{
+	return -1;
+}
+
+int gprs_iu_rab_deact(struct sgsn_mm_ctx *mm)
+{
+	return -1;
+}
+
+
 /* override, requires '-Wl,--wrap=sgsn_update_subscriber_data' */
 void __real_sgsn_update_subscriber_data(struct sgsn_mm_ctx *);
 void (*update_subscriber_data_cb)(struct sgsn_mm_ctx *) =
