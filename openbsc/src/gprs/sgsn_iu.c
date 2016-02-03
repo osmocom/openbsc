@@ -32,7 +32,6 @@ struct ue_conn_ctx {
 	struct llist_head list;
 	struct osmo_sua_link *link;
 	uint32_t conn_id;
-	struct sgsn_pdp_ctx *pdp;
 };
 
 static LLIST_HEAD(conn_ctx_list);
@@ -72,8 +71,6 @@ int gprs_iu_rab_act(struct sgsn_pdp_ctx *pdp)
 	uint32_t ggsn_ip;
 
 	uectx = mm->iu.ue_ctx;
-	uectx->pdp = pdp;
-
 
 	/* Get the IP address for ggsn user plane */
 	memcpy(&ggsn_ip, pdp->lib->gsnru.v, pdp->lib->gsnru.l);
@@ -232,24 +229,44 @@ int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx);
 
 static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_AssignmentResponseIEs_t *ies)
 {
+	struct sgsn_mm_ctx *mm;
+	struct sgsn_pdp_ctx *pdp = NULL;
 	int i, rc;
+	uint8_t rab_id;
+	uint32_t gtp_tei;
+
+	mm = sgsn_mm_ctx_by_ue_ctx(ctx);
+	/* XXX: Error handling */
 
 	LOGP(DRANAP, LOGL_INFO, "RAB Asignment Response:");
-	if (0) {
-//	if (ies->presenceMask & RAB_ASSIGNMENTRESPONSEIES_RANAP_RAB_SETUPORMODIFIEDLIST_PRESENT) {
+	if (ies->presenceMask & RAB_ASSIGNMENTRESPONSEIES_RANAP_RAB_SETUPORMODIFIEDLIST_PRESENT) {
+		RANAP_IE_t *ranap_ie = ies->raB_SetupOrModifiedList.raB_SetupOrModifiedList_ies.list.array[0];
 		RANAP_RAB_SetupOrModifiedItemIEs_t setup_ies;
 		RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies.raB_SetupOrModifiedItem;
-		rc = ranap_decode_rab_setupormodifieditemies(&setup_ies, &ies->raB_SetupOrModifiedList);
+		rc = ranap_decode_rab_setupormodifieditemies(&setup_ies, &ranap_ie->value);
+
+		rab_id = item->rAB_ID.buf[0];
+		if (item->iuTransportAssociation->present == RANAP_IuTransportAssociation_PR_gTP_TEI) {
+			gtp_tei = asn1str_to_u32(&item->iuTransportAssociation->choice.gTP_TEI);
+			pdp = sgsn_pdp_ctx_by_tei(mm, gtp_tei);
+		}
+
+		if (!pdp) {
+			ranap_free_rab_setupormodifieditemies(&setup_ies);
+			return -1;
+		}
+
 		if (item->transportLayerAddress) {
-			uint8_t rab_id = item->rAB_ID.buf[0];
-			LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)", osmo_hexdump(item->transportLayerAddress->buf,
+
+			LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)", rab_id, osmo_hexdump(item->transportLayerAddress->buf,
 									     item->transportLayerAddress->size));
 		}
+		ranap_free_rab_setupormodifieditemies(&setup_ies);
 	}
 
 	LOGPC(DRANAP, LOGL_INFO, "\n");
 
-	send_act_pdp_cont_acc(ctx->pdp);
+	send_act_pdp_cont_acc(pdp);
 
 	return rc;
 }
