@@ -40,7 +40,7 @@ static const uint8_t ass_pref_pos_req[] = { 0x40, 0x03, 0x79, 0x50 };
 
 static int send_rrlp_req(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_network *net = conn->bts->network;
+	struct gsm_network *net = conn->network;
 	const uint8_t *req;
 
 	switch (net->rrlp.mode) {

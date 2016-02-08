@@ -292,11 +292,16 @@ static int mncc_rcv_data(struct gsm_call *call, int msg_type,
 		return -EIO;
 	}
 
+#if BEFORE_MSCSPLIT
 	/* RTP socket of remote end has meanwhile died */
 	if (!remote_trans->conn->lchan->abis_ip.rtp_socket)
 		return -EIO;
 
 	return rtp_send_frame(remote_trans->conn->lchan->abis_ip.rtp_socket, dfr);
+#else
+	/* not implemented yet! */
+	return -1;
+#endif
 }
 
 

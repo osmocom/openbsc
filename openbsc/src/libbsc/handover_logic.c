@@ -269,9 +269,14 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 
 	osmo_timer_del(&ho->T3103);
 
+#if BEFORE_MSCSPLIT
 	/* switch TRAU muxer for E1 based BTS from one channel to another */
 	if (is_e1_bts(new_lchan->conn->bts))
 		switch_trau_mux(ho->old_lchan, new_lchan);
+#else
+	if (is_e1_bts(new_lchan->ts->trx->bts))
+		switch_trau_mux(ho->old_lchan, new_lchan);
+#endif
 
 	/* Replace the ho lchan with the primary one */
 	if (ho->old_lchan != new_lchan->conn->lchan)

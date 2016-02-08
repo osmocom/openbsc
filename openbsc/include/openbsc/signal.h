@@ -142,7 +142,7 @@ struct gsm_subscriber;
 
 struct paging_signal_data {
 	struct gsm_subscriber *subscr;
-	struct gsm_bts *bts;
+	uint16_t lac;
 
 	int paging_result;
 

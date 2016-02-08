@@ -304,7 +304,7 @@ try_local:
 #endif
 
 	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(conn->bts->network->subscr_group,
+	gsms->receiver = subscr_get_by_extension(conn->network->subscr_group,
 						 gsms->dst.addr);
 	if (!gsms->receiver) {
 #ifdef BUILD_SMPP
@@ -322,7 +322,7 @@ try_local:
 		}
 #else
 		rc = 1; /* cause 1: unknown subscriber */
-		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+		osmo_counter_inc(conn->network->stats.sms.no_receiver);
 #endif
 		return rc;
 	}
@@ -363,7 +363,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	uint8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
-	osmo_counter_inc(conn->bts->network->stats.sms.submitted);
+	osmo_counter_inc(conn->network->stats.sms.submitted);
 
 	gsms = sms_alloc();
 	if (!gsms)
@@ -605,7 +605,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 			      struct gsm411_rp_hdr *rph)
 {
-	struct gsm_network *net = trans->conn->bts->network;
+	struct gsm_network *net = trans->conn->network;
 	struct gsm_sms *sms = trans->sms.sms;
 	uint8_t cause_len = rph->data[0];
 	uint8_t cause = rph->data[1];
@@ -805,7 +805,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 
 	if (!trans) {
 		DEBUGP(DLSMS, " -> (new transaction)\n");
-		trans = trans_alloc(conn->bts->network, conn->subscr,
+		trans = trans_alloc(conn->network, conn->subscr,
 				    GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {
@@ -867,7 +867,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	int rc;
 
 	transaction_id =
-		trans_assign_trans_id(conn->bts->network, conn->subscr,
+		trans_assign_trans_id(conn->network, conn->subscr,
 				      GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DLSMS, LOGL_ERROR, "No available transaction ids\n");
@@ -880,7 +880,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	DEBUGP(DLSMS, "gsm411_send_sms()\n");
 
 	/* FIXME: allocate transaction with message reference */
-	trans = trans_alloc(conn->bts->network, conn->subscr,
+	trans = trans_alloc(conn->network, conn->subscr,
 			    GSM48_PDISC_SMS,
 			    transaction_id, new_callref++);
 	if (!trans) {
@@ -932,7 +932,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 
 	DEBUGP(DLSMS, "TX: SMS DELIVER\n");
 
-	osmo_counter_inc(conn->bts->network->stats.sms.delivered);
+	osmo_counter_inc(conn->network->stats.sms.delivered);
 	db_sms_inc_deliver_attempts(trans->sms.sms);
 
 	return gsm411_rp_sendmsg(&trans->sms.smr_inst, msg,
@@ -1022,7 +1022,7 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 	struct gsm_network *net;
 	struct gsm_trans *trans, *tmp;
 
-	net = conn->bts->network;
+	net = conn->network;
 
 	llist_for_each_entry_safe(trans, tmp, &net->trans_list, entry) {
 		struct gsm_sms *sms;

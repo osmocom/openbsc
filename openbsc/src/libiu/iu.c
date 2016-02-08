@@ -33,7 +33,6 @@ void *talloc_asn1_ctx;
 
 iu_recv_cb_t global_iu_recv_cb = NULL;
 
-static LLIST_HEAD(ue_conn_ctx_list);
 
 struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sua_link *link, uint32_t conn_id)
 {
@@ -41,16 +40,22 @@ struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sua_link *link, uint32_t conn_
 
 	ctx->link = link;
 	ctx->conn_id = conn_id;
-	llist_add(&ctx->list, &ue_conn_ctx_list);
 
 	return ctx;
 }
 
-struct ue_conn_ctx *ue_conn_ctx_find(struct osmo_sua_link *link, uint32_t conn_id)
+struct ue_conn_ctx *ue_conn_ctx_find(struct gsm_network *network,
+				     struct osmo_sua_link *link,
+				     uint32_t conn_id)
 {
+	struct gsm_subscriber_connection *gsc;
 	struct ue_conn_ctx *ctx;
 
-	llist_for_each_entry(ctx, &ue_conn_ctx_list, list) {
+	llist_for_each_entry(gsc, &network->subscr_conns, entry) {
+		if (gsc->via_iface != IFACE_IUCS)
+			continue;
+
+		ctx = gsc->iu.ue_ctx;
 		if (ctx->link == link && ctx->conn_id == conn_id)
 			return ctx;
 	}
@@ -398,6 +403,9 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 	struct osmo_prim_hdr *resp = NULL;
 	int rc;
 	struct ue_conn_ctx *ue;
+	struct osmo_sua_link *osl = (struct osmo_sua_link*)link;
+	struct iu_cb_ctx *iu_ctx = (struct iu_cb_ctx*)osmo_sua_link_get_user_priv(osl);
+	struct gsm_network *network = iu_ctx->network;
 
 	printf("sccp_sap_up(%s)\n", osmo_scu_prim_name(oph));
 
@@ -424,7 +432,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DISCONNECT, PRIM_OP_INDICATION):
 		/* indication of disconnect */
 		printf("N-DISCONNECT.ind(%u)\n", prim->u.disconnect.conn_id);
-		ue = ue_conn_ctx_find(link, prim->u.disconnect.conn_id);
+		ue = ue_conn_ctx_find(network, link, prim->u.disconnect.conn_id);
 		rc = ranap_cn_rx_co(cn_ranap_handle_co, ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
@@ -432,7 +440,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 		printf("N-DATA.ind(%u, %s)\n", prim->u.data.conn_id,
 			osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
 		/* resolve UE context */
-		ue = ue_conn_ctx_find(link, prim->u.data.conn_id);
+		ue = ue_conn_ctx_find(network, link, prim->u.data.conn_id);
 		rc = ranap_cn_rx_co(cn_ranap_handle_co, ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
@@ -451,13 +459,18 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 }
 
 int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
-	    iu_recv_cb_t iu_recv_cb)
+	    struct gsm_network *network, iu_recv_cb_t iu_recv_cb)
 {
+	struct iu_cb_ctx *iu_ctx;
 	struct osmo_sua_user *user;
 	talloc_asn1_ctx = talloc_named_const(ctx, 1, "asn1");
+
+	iu_ctx = talloc_zero(ctx, struct iu_cb_ctx);
+	iu_ctx->network = network;
+
 	global_iu_recv_cb = iu_recv_cb;
 	osmo_sua_set_log_area(DSUA);
-	user = osmo_sua_user_create(ctx, sccp_sap_up, ctx);
+	user = osmo_sua_user_create(ctx, sccp_sap_up, iu_ctx);
 	return osmo_sua_server_listen(user, listen_addr, listen_port);
 }
 

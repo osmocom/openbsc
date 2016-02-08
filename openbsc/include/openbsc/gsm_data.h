@@ -7,6 +7,7 @@
 #include <osmocom/core/select.h>
 
 #include <openbsc/rest_octets.h>
+#include <openbsc/common.h>
 
 /** annotations for msgb ownership */
 #define __uses
@@ -100,11 +101,11 @@ struct neigh_meas_proc {
 
 enum interface_type {
 	IFACE_UNKNOWN = 0,
-	IFACE_A,
-	IFACE_IUCS
+	IFACE_A,    /* A-interface == 2G */
+	IFACE_IUCS  /* IuCS-interface == UMTS aka 3G */
 };
 
-/* the per subscriber data for lchan */
+/* mobile subscriber data */
 struct gsm_subscriber_connection {
 	struct llist_head entry;
 
@@ -135,23 +136,35 @@ struct gsm_subscriber_connection {
 	struct osmo_bsc_sccp_con *sccp_con;
 
 	/* back pointers */
-	int in_release;
-	struct gsm_lchan *lchan;
-	struct gsm_lchan *ho_lchan;
-	struct gsm_bts *bts;
+	struct gsm_network *network;
 
 	/* for assignment handling */
 	struct osmo_timer_list T10;
 	struct gsm_lchan *secondary_lchan;
 
-	/* see enum interface_type */
+	/* 2G or 3G? See enum interface_type */
 	int via_iface;
 
 	/* which Iu-CS connection, if any. */
 	struct {
-		uint8_t link_id;
-		uint32_t conn_id;
+		struct ue_conn_ctx *ue_ctx;
 	} iu;
+
+	/* The BSC used to be an integral part of OsmoNITB. In OsmoCSCN, the
+	 * BSC and/or RNC is a separate entity, and no back pointers to the bts
+	 * and lchan structures are available. To facilitate separation of the
+	 * code paths, I'm explicitly excluding the unavailable structures from
+	 * the build. Once separated, this split may become unnecessary. */
+#if COMPILING_LIBMSC
+	int in_release;
+	uint16_t lac;
+	struct gsm_encr encr;
+#else
+	struct gsm_bts *bts;
+	struct gsm_lchan *lchan;
+	struct gsm_lchan *ho_lchan;
+#endif
+
 };
 
 
@@ -308,6 +321,21 @@ struct gsm_network {
 
 	/* all active subscriber connections. */
 	struct llist_head subscr_conns;
+
+	/* if override is nonzero, this timezone data is used for all MM
+	 * contexts. */
+	/* TODO: in OsmoNITB, tz-override used to be BTS-specific. To enable
+	 * BTS|RNC specific timezone overrides for multi-tz networks in
+	 * OsmoCSCN, this should be tied to the location area code (LAC). */
+	struct {
+		int override; /* if 0, use system's time zone instead. */
+		int hr; /* hour */
+		int mn; /* minute */
+		int dst; /* daylight savings */
+	} tz;
+
+	/* Periodic location update default value */
+	uint8_t t3212;
 };
 
 struct osmo_esme;
@@ -357,10 +385,6 @@ struct gsm_sms {
 struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, struct msgb *));
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
-
-/* Get reference to a neighbor cell on a given BCCH ARFCN */
-struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
-				 uint16_t arfcn, uint8_t bsic);
 
 enum gsm_bts_type parse_btstype(const char *arg);
 const char *btstype2str(enum gsm_bts_type type);
@@ -444,7 +468,6 @@ int bts_gprs_mode_is_compat(struct gsm_bts *bts, enum bts_gprs_mode mode);
 
 int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts);
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
-struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 
 int gsm_btsmodel_set_feature(struct gsm_bts_model *model, enum gsm_bts_features feat);
 int gsm_bts_model_register(struct gsm_bts_model *model);

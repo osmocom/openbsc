@@ -37,7 +37,7 @@ struct gsm_trans *trans_find_by_id(struct gsm_subscriber_connection *conn,
 				   uint8_t proto, uint8_t trans_id)
 {
 	struct gsm_trans *trans;
-	struct gsm_network *net = conn->bts->network;
+	struct gsm_network *net = conn->network;
 	struct gsm_subscriber *subscr = conn->subscr;
 
 	llist_for_each_entry(trans, &net->trans_list, entry) {
@@ -155,7 +155,7 @@ int trans_has_conn(const struct gsm_subscriber_connection *conn)
 {
 	struct gsm_trans *trans;
 
-	llist_for_each_entry(trans, &conn->bts->network->trans_list, entry)
+	llist_for_each_entry(trans, &conn->network->trans_list, entry)
 		if (trans->conn == conn)
 			return 1;
 

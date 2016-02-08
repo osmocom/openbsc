@@ -147,7 +147,7 @@ static void assignment_t10_timeout(void *_conn)
 	conn->secondary_lchan = NULL;
 
 	/* inform them about the failure */
-	api = conn->bts->network->bsc_api;
+	api = conn->network->bsc_api;
 	api->assign_fail(conn, GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
 }
 
@@ -158,7 +158,7 @@ static void handle_mr_config(struct gsm_subscriber_connection *conn,
 			     struct gsm_lchan *lchan, int full_rate)
 {
 	struct bsc_api *api;
-	api = conn->bts->network->bsc_api;
+	api = conn->network->bsc_api;
 	struct amr_multirate_conf *mr;
 	struct gsm48_multi_rate_conf *mr_conf;
 
@@ -204,7 +204,8 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 
 	chan_type = full_rate ? GSM_LCHAN_TCH_F : GSM_LCHAN_TCH_H;
 
-	new_lchan = lchan_alloc(conn->bts, chan_type, 0);
+	struct gsm_bts *bts = conn->lchan->ts->trx->bts; // MSCPLIT ??
+	new_lchan = lchan_alloc(bts, chan_type, 0);
 
 	if (!new_lchan) {
 		LOGP(DMSC, LOGL_NOTICE, "No free channel.\n");
@@ -254,7 +255,7 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 	/* FIXME: above comment is weird in at least two ways */
 	conn->via_iface = IFACE_A;
 	conn->lchan = lchan;
-	conn->bts = lchan->ts->trx->bts;
+	conn->network = network;
 	lchan->conn = conn;
 	llist_add_tail(&conn->entry, &network->subscr_conns);
 	return conn;
@@ -392,7 +393,7 @@ static int chan_compat_with_mode(struct gsm_lchan *lchan, int chan_mode, int ful
 int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, int full_rate)
 {
 	struct bsc_api *api;
-	api = conn->bts->network->bsc_api;
+	api = conn->network->bsc_api;
 
 	if (!chan_compat_with_mode(conn->lchan, chan_mode, full_rate)) {
 		if (handle_new_assignment(conn, chan_mode, full_rate) != 0)
@@ -427,7 +428,7 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 			     struct msgb *msg)
 {
 	struct gsm48_hdr *gh;
-	struct bsc_api *api = conn->bts->network->bsc_api;
+	struct bsc_api *api = conn->network->bsc_api;
 
 	if (conn->secondary_lchan != msg->lchan) {
 		LOGP(DMSC, LOGL_ERROR, "Assignment Compl should occur on second lchan.\n");
@@ -442,8 +443,13 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 	}
 
 	/* switch TRAU muxer for E1 based BTS from one channel to another */
+#if BEFORE_MSCSPLIT
 	if (is_e1_bts(conn->bts))
 		switch_trau_mux(conn->lchan, conn->secondary_lchan);
+#else
+	if (is_e1_bts(conn->lchan->ts->trx->bts))
+		switch_trau_mux(conn->lchan, conn->secondary_lchan);
+#endif
 
 	/* swap channels */
 	osmo_timer_del(&conn->T10);
@@ -452,7 +458,7 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 	conn->lchan = conn->secondary_lchan;
 	conn->secondary_lchan = NULL;
 
-	if (is_ipaccess_bts(conn->bts) && conn->lchan->tch_mode != GSM48_CMODE_SIGN)
+	if (is_ipaccess_bts(conn->lchan->ts->trx->bts) && conn->lchan->tch_mode != GSM48_CMODE_SIGN)
 		rsl_ipacc_crcx(conn->lchan);
 
 	api->assign_compl(conn, gh->data[0],
@@ -464,7 +470,7 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 			    struct msgb *msg)
 {
-	struct bsc_api *api = conn->bts->network->bsc_api;
+	struct bsc_api *api = conn->network->bsc_api;
 	uint8_t *rr_failure;
 	struct gsm48_hdr *gh;
 
@@ -739,7 +745,6 @@ int gsm0808_clear(struct gsm_subscriber_connection *conn)
 	conn->lchan = NULL;
 	conn->secondary_lchan = NULL;
 	conn->ho_lchan = NULL;
-	conn->bts = NULL;
 
 	osmo_timer_del(&conn->T10);
 
@@ -753,7 +758,7 @@ static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id
 	if (!conn)
 		return;
 
-	api = conn->bts->network->bsc_api;
+	api = conn->network->bsc_api;
 	if (!api || !api->sapi_n_reject)
 		return;
 

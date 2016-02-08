@@ -550,14 +550,6 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
 		VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
-	if (bts->tz.override != 0) {
-		if (bts->tz.dst)
-			vty_out(vty, "  timezone %d %d %d%s",
-				bts->tz.hr, bts->tz.mn, bts->tz.dst, VTY_NEWLINE);
-		else
-			vty_out(vty, "  timezone %d %d%s",
-				bts->tz.hr, bts->tz.mn, VTY_NEWLINE);
-	}
 	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "  cell reselection hysteresis %u%s",
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
@@ -590,13 +582,6 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			vty_out(vty, "  penalty time %u%s",
 				(sp->penalty_time*20)+20, VTY_NEWLINE);
 	}
-
-	/* Is periodic LU enabled or disabled? */
-	if (bts->si_common.chan_desc.t3212 == 0)
-		vty_out(vty, "  no periodic location update%s", VTY_NEWLINE);
-	else
-		vty_out(vty, "  periodic location update %u%s",
-			bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
 
 	vty_out(vty, "  radio-link-timeout %d%s",
 		get_radio_link_timeout(&bts->si_common.cell_options),
@@ -789,6 +774,22 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " dtx-used %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
 	vty_out(vty, " subscriber-keep-in-ram %d%s",
 		gsmnet->subscr_group->keep_subscr, VTY_NEWLINE);
+	if (gsmnet->tz.override != 0) {
+		if (gsmnet->tz.dst)
+			vty_out(vty, " timezone %d %d %d%s",
+				gsmnet->tz.hr, gsmnet->tz.mn, gsmnet->tz.dst,
+				VTY_NEWLINE);
+		else
+			vty_out(vty, " timezone %d %d%s",
+				gsmnet->tz.hr, gsmnet->tz.mn, VTY_NEWLINE);
+	}
+
+	if (gsmnet->t3212 == 0)
+		vty_out(vty, " no periodic location update%s", VTY_NEWLINE);
+	else
+		vty_out(vty, " periodic location update %u%s",
+			gsmnet->t3212 * 6, VTY_NEWLINE);
+
 
 	return CMD_SUCCESS;
 }
@@ -1753,10 +1754,10 @@ DEFUN(cfg_bts_bsic,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_timezone,
-      cfg_bts_timezone_cmd,
+DEFUN(cfg_net_timezone,
+      cfg_net_timezone_cmd,
       "timezone <-19-19> (0|15|30|45)",
-      "Set the Timezone Offset of this BTS\n"
+      "Set the Timezone Offset of the network\n"
       "Timezone offset (hours)\n"
       "Timezone offset (00 minutes)\n"
       "Timezone offset (15 minutes)\n"
@@ -1764,22 +1765,22 @@ DEFUN(cfg_bts_timezone,
       "Timezone offset (45 minutes)\n"
       )
 {
-	struct gsm_bts *bts = vty->index;
+	struct gsm_network *net = vty->index;
 	int tzhr = atoi(argv[0]);
 	int tzmn = atoi(argv[1]);
 
-	bts->tz.hr = tzhr;
-	bts->tz.mn = tzmn;
-	bts->tz.dst = 0;
-	bts->tz.override = 1;
+	net->tz.hr = tzhr;
+	net->tz.mn = tzmn;
+	net->tz.dst = 0;
+	net->tz.override = 1;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_timezone_dst,
-      cfg_bts_timezone_dst_cmd,
+DEFUN(cfg_net_timezone_dst,
+      cfg_net_timezone_dst_cmd,
       "timezone <-19-19> (0|15|30|45) <0-2>",
-      "Set the Timezone Offset of this BTS\n"
+      "Set the Timezone Offset of the network\n"
       "Timezone offset (hours)\n"
       "Timezone offset (00 minutes)\n"
       "Timezone offset (15 minutes)\n"
@@ -1788,28 +1789,28 @@ DEFUN(cfg_bts_timezone_dst,
       "DST offset (hours)\n"
       )
 {
-	struct gsm_bts *bts = vty->index;
+	struct gsm_network *net = vty->index;
 	int tzhr = atoi(argv[0]);
 	int tzmn = atoi(argv[1]);
 	int tzdst = atoi(argv[2]);
 
-	bts->tz.hr = tzhr;
-	bts->tz.mn = tzmn;
-	bts->tz.dst = tzdst;
-	bts->tz.override = 1;
+	net->tz.hr = tzhr;
+	net->tz.mn = tzmn;
+	net->tz.dst = tzdst;
+	net->tz.override = 1;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_no_timezone,
-      cfg_bts_no_timezone_cmd,
+DEFUN(cfg_net_no_timezone,
+      cfg_net_no_timezone_cmd,
       "no timezone",
       NO_STR
-      "Disable BTS specific timezone\n")
+      "Disable network timezone override, use system tz\n")
 {
-	struct gsm_bts *bts = vty->index;
+	struct gsm_network *net = vty->index;
 
-	bts->tz.override = 0;
+	net->tz.override = 0;
 
 	return CMD_SUCCESS;
 }
@@ -2309,30 +2310,40 @@ DEFUN(cfg_bts_penalty_time_rsvd, cfg_bts_penalty_time_rsvd_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
+DEFUN(cfg_net_per_loc_upd, cfg_net_per_loc_upd_cmd,
       "periodic location update <6-1530>",
       "Periodic Location Updating Interval\n"
       "Periodic Location Updating Interval\n"
       "Periodic Location Updating Interval\n"
       "Periodic Location Updating Interval in Minutes\n")
 {
-	struct gsm_bts *bts = vty->index;
+	struct gsm_network *net = vty->index;
+	struct gsm_bts *bts;
 
-	bts->si_common.chan_desc.t3212 = atoi(argv[0]) / 6;
+	net->t3212 = atoi(argv[0]) / 6;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		bts->si_common.chan_desc.t3212 = net->t3212;
+	}
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_no_per_loc_upd, cfg_bts_no_per_loc_upd_cmd,
+DEFUN(cfg_net_no_per_loc_upd, cfg_net_no_per_loc_upd_cmd,
       "no periodic location update",
       NO_STR
       "Periodic Location Updating Interval\n"
       "Periodic Location Updating Interval\n"
       "Periodic Location Updating Interval\n")
 {
-	struct gsm_bts *bts = vty->index;
+	struct gsm_network *net = vty->index;
+	struct gsm_bts *bts;
 
-	bts->si_common.chan_desc.t3212 = 0;
+	net->t3212 = 0;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		bts->si_common.chan_desc.t3212 = net->t3212;
+	}
 
 	return CMD_SUCCESS;
 }
@@ -3772,6 +3783,11 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
 	install_element(GSMNET_NODE, &cfg_net_subscr_keep_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
+	install_element(GSMNET_NODE, &cfg_net_timezone_cmd);
+	install_element(GSMNET_NODE, &cfg_net_timezone_dst_cmd);
+	install_element(GSMNET_NODE, &cfg_net_no_timezone_cmd);
+	install_element(GSMNET_NODE, &cfg_net_per_loc_upd_cmd);
+	install_element(GSMNET_NODE, &cfg_net_no_per_loc_upd_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
@@ -3786,9 +3802,6 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_rsl_ip_cmd);
-	install_element(BTS_NODE, &cfg_bts_timezone_cmd);
-	install_element(BTS_NODE, &cfg_bts_timezone_dst_cmd);
-	install_element(BTS_NODE, &cfg_bts_no_timezone_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_skip_reset_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_no_loc_rel_cnf_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_bts_reset_timer_cnf_cmd);
@@ -3807,8 +3820,6 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_rach_ec_allowed_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_ac_class_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
-	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
-	install_element(BTS_NODE, &cfg_bts_no_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
 	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_bar_qualify_cmd);

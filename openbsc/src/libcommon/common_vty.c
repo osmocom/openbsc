@@ -42,6 +42,7 @@ int bsc_vty_go_parent(struct vty *vty)
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
 		break;
+#ifdef ROLE_BSC
 	case BTS_NODE:
 		vty->node = GSMNET_NODE;
 		{
@@ -51,6 +52,7 @@ int bsc_vty_go_parent(struct vty *vty)
 			vty->index_sub = NULL;
 		}
 		break;
+#endif
 	case TRX_NODE:
 		vty->node = BTS_NODE;
 		{

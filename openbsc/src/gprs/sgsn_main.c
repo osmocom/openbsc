@@ -420,7 +420,7 @@ int main(int argc, char **argv)
 	}
 
 	asn_debug = 0;
-	iu_init(tall_bsc_ctx, "127.0.0.2", 14001, gsm0408_gprs_rcvmsg_iu);
+	iu_init(tall_bsc_ctx, "127.0.0.2", 14001, NULL, gsm0408_gprs_rcvmsg_iu);
 
 	if (daemonize) {
 		rc = osmo_daemonize();

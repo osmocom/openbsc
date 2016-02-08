@@ -94,7 +94,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 
 	/* Inform parts of the system we don't know */
 	sig_data.subscr = subscr;
-	sig_data.bts	= conn ? conn->bts : NULL;
+	sig_data.lac	= conn ? conn->lac : 0;
 	sig_data.conn	= conn;
 	sig_data.paging_result = event;
 	osmo_signal_dispatch(
@@ -268,7 +268,7 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_subscriber_group *sgrp,
 	return get_subscriber(sgrp, GSM_SUBSCRIBER_ID, buf);
 }
 
-int subscr_update_expire_lu(struct gsm_subscriber *s, struct gsm_bts *bts)
+int subscr_update_expire_lu(struct gsm_network *network, struct gsm_subscriber *s)
 {
 	int rc;
 
@@ -279,27 +279,27 @@ int subscr_update_expire_lu(struct gsm_subscriber *s, struct gsm_bts *bts)
 	 * Timeout is twice the t3212 value plus one minute */
 
 	/* Is expiration handling enabled? */
-	if (bts->si_common.chan_desc.t3212 == 0)
+	if (network->t3212 == 0)
 		s->expire_lu = GSM_SUBSCRIBER_NO_EXPIRATION;
 	else
-		s->expire_lu = time(NULL) +
-			(bts->si_common.chan_desc.t3212 * 60 * 6 * 2) + 60;
+		s->expire_lu = time(NULL) + (network->t3212 * 60 * 6 * 2) + 60;
 
 	rc = db_sync_subscriber(s);
 	db_subscriber_update(s);
 	return rc;
 }
 
-int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
+int subscr_update(struct gsm_network *network, struct gsm_subscriber *s,
+		  uint16_t lac, int reason)
 {
 	int rc;
 
 	/* FIXME: Migrate pending requests from one BSC to another */
 	switch (reason) {
 	case GSM_SUBSCRIBER_UPDATE_ATTACHED:
-		s->group = bts->network->subscr_group;
+		s->group = network->subscr_group;
 		/* Indicate "attached to LAC" */
-		s->lac = bts->location_area_code;
+		s->lac = lac;
 
 		LOGP(DMM, LOGL_INFO, "Subscriber %s ATTACHED LAC=%u\n",
 			subscr_name(s), s->lac);
@@ -308,12 +308,12 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		 * The below will set a new expire_lu but as a side-effect
 		 * the new lac will be saved in the database.
 		 */
-		rc = subscr_update_expire_lu(s, bts);
+		rc = subscr_update_expire_lu(network, s);
 		osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_ATTACHED, s);
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
 		/* Only detach if we are currently in this area */
-		if (bts->location_area_code == s->lac)
+		if (lac == s->lac)
 			s->lac = GSM_LAC_RESERVED_DETACHED;
 		LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n", subscr_name(s));
 		rc = db_sync_subscriber(s);
@@ -352,7 +352,7 @@ static void subscr_expire_callback(void *data, long long unsigned int id)
 	if (conn && conn->expire_timer_stopped) {
 		LOGP(DMM, LOGL_DEBUG, "Not expiring subscriber %s (ID %llu)\n",
 			subscr_name(s), id);
-		subscr_update_expire_lu(s, conn->bts);
+		subscr_update_expire_lu(conn->network, s);
 		subscr_put(s);
 		return;
 	}

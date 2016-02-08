@@ -102,7 +102,8 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_subscriber_group *sgrp,
 					unsigned long long id);
 struct gsm_subscriber *subscr_get_or_create(struct gsm_subscriber_group *sgrp,
 					const char *imsi);
-int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
+int subscr_update(struct gsm_network *network, struct gsm_subscriber *s,
+		  uint16_t lac, int reason);
 struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_subscriber_group *sgrp,
 					     uint32_t tmsi);
 struct gsm_subscriber *subscr_active_by_imsi(struct gsm_subscriber_group *sgrp,
@@ -113,7 +114,7 @@ char *subscr_name(struct gsm_subscriber *subscr);
 int subscr_purge_inactive(struct gsm_subscriber_group *sgrp);
 void subscr_update_from_db(struct gsm_subscriber *subscr);
 void subscr_expire(struct gsm_subscriber_group *sgrp);
-int subscr_update_expire_lu(struct gsm_subscriber *subscr, struct gsm_bts *bts);
+int subscr_update_expire_lu(struct gsm_network *network, struct gsm_subscriber *subscr);
 
 /*
  * Paging handling with authentication

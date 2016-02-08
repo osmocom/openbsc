@@ -68,6 +68,9 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	net->handover.pwr_hysteresis = 3;
 	net->handover.max_distance = 9999;
 
+	/* Use 30 min periodic update interval as sane default */
+	net->t3212 = 5;
+
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
 	INIT_LLIST_HEAD(&net->bts_list);

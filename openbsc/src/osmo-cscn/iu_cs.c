@@ -12,46 +12,50 @@
 
 /* For A-interface see libbsc/bsc_api.c subscr_con_allocate() */
 struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *network,
-							  uint8_t link_id,
-							  uint32_t conn_id)
+							  struct ue_conn_ctx *ue)
 {
 	struct gsm_subscriber_connection *conn;
 
-	DEBUGP(DIUCS, "Allocating IuCS subscriber conn: link_id %" PRIx8 ", conn_id %" PRIx32 "\n",
-	       link_id, conn_id);
+	DEBUGP(DIUCS, "Allocating IuCS subscriber conn: link_id %p, conn_id %" PRIx32 "\n",
+	       ue->link, ue->conn_id);
 
 	conn = talloc_zero(network, struct gsm_subscriber_connection);
 	if (!conn)
 		return NULL;
 
 	conn->via_iface = IFACE_IUCS;
-	conn->iu.link_id = link_id;
-	conn->iu.conn_id = conn_id;
+	conn->iu.ue_ctx = ue;
 
 	llist_add_tail(&conn->entry, &network->subscr_conns);
 	return conn;
 }
 
+static int same_ue_conn(struct ue_conn_ctx *a, struct ue_conn_ctx *b)
+{
+	if (a == b)
+		return 1;
+	return (a->link == b->link)
+		&& (a->conn_id != b->conn_id);
+}
+
 /* Return an existing IuCS subscriber connection record for the given link and
  * connection IDs, or return NULL if not found. */
 static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_network *network,
-							       uint8_t link_id,
-							       uint32_t conn_id)
+							       struct ue_conn_ctx *ue)
 {
 	struct gsm_subscriber_connection *conn;
+
 	llist_for_each_entry(conn, &network->subscr_conns, entry) {
 		if (conn->via_iface != IFACE_IUCS)
 			continue;
-		if (conn->iu.link_id != link_id)
+		if (!same_ue_conn(conn->iu.ue_ctx, ue))
 			continue;
-		if (conn->iu.conn_id != conn_id)
-			continue;
-		DEBUGP(DIUCS, "Found IuCS subscriber for link_id %" PRIx8 ", conn_id %" PRIx32 "\n",
-		       link_id, conn_id);
+		DEBUGP(DIUCS, "Found IuCS subscriber for link_id %p, conn_id %" PRIx32 "\n",
+		       ue->link, ue->conn_id);
 		return conn;
 	}
-	DEBUGP(DIUCS, "No IuCS subscriber found for link_id %" PRIx8 ", conn_id %" PRIx32 "\n",
-	       link_id, conn_id);
+	DEBUGP(DIUCS, "No IuCS subscriber found for link_id %p, conn_id %" PRIx32 "\n",
+	       ue->link, ue->conn_id);
 	return NULL;
 }
 
@@ -60,7 +64,7 @@ static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_networ
  * peer that sent the msg.
  *
  * For A-interface see libbsc/bsc_api.c gsm0408_rcvmsg(). */
-int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t link_id)
+int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg)
 {
 	int rc;
 	struct ue_conn_ctx *ue_ctx;
@@ -70,7 +74,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 
 	/* TODO: are there message types that could allow us to skip this
 	 * search? */
-	conn = subscr_conn_lookup_iu(network, link_id, ue_ctx->conn_id);
+	conn = subscr_conn_lookup_iu(network, ue_ctx);
 
 	if (conn) {
 		/* if we already have a connection, handle DTAP.
@@ -87,7 +91,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg, uint8_t l
 	} else {
 		/* allocate a new connection */
 
-		conn = subscr_conn_allocate_iu(network, link_id, ue_ctx->conn_id);
+		conn = subscr_conn_allocate_iu(network, ue_ctx);
 		if (!conn)
 			abort();
 

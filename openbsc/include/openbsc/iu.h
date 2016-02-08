@@ -3,8 +3,11 @@
 struct msgb;
 struct gprs_ra_id;
 
+struct iu_cb_ctx {
+	struct gsm_network *network;
+};
+
 struct ue_conn_ctx {
-	struct llist_head list;
 	struct osmo_sua_link *link;
 	uint32_t conn_id;
 };
@@ -15,7 +18,7 @@ typedef int (* iu_recv_cb_t )(struct msgb *msg, struct gprs_ra_id *ra_id,
 			      uint16_t *sai);
 
 int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
-	    iu_recv_cb_t iu_recv_cb);
+	    struct gsm_network *network, iu_recv_cb_t iu_recv_cb);
 
 int iu_tx(struct msgb *msg, uint8_t sapi);
 
