@@ -47,6 +47,8 @@ libmsc_a_SOURCES = \
 	osmo_msc.c \
 	ctrl_commands.c \
 	meas_feed.c \
+	gsm_ussd_map_proto.c \
+	gsm_ussd_map.c \
 	$(NULL)
 
 if BUILD_SMPP

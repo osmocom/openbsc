@@ -32,6 +32,7 @@
 #include <openbsc/gprs_utils.h>
 #include <openbsc/ussd.h>
 
+#if 0
 enum {
     FMAP_MSISDN        = 0x80
 };
@@ -171,7 +172,7 @@ static int rx_uss_message(const uint8_t* data, size_t len)
 
 	return on_ussd_response(&ss, extention);
 }
-
+#endif
 
 static int subscr_tx_sup_message(struct gprs_gsup_client *sup_client,
 								 struct gsm_subscriber *subscr,
@@ -438,11 +439,11 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
 
 	struct gprs_gsup_message gsup_msg = {0};
 	struct gsm_subscriber *subscr;
-
+#if 0
     if (*data == GPRS_GSUP_MSGT_MAP) {
         return rx_uss_message(data, data_len);
     }
-
+#endif
 	rc = gprs_gsup_decode(data, data_len, &gsup_msg);
 	if (rc < 0) {
 		LOGP(DSUP, LOGL_ERROR,

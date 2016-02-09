@@ -50,7 +50,8 @@
 #include <openbsc/sms_queue.h>
 #include <openbsc/mncc_int.h>
 #include <openbsc/handover.h>
-#include <openbsc/gsm_sup.h>
+#include <openbsc/gprs_gsup_client.h>
+#include <openbsc/gsm_ussd_map.h>
 
 #include <osmocom/vty/logging.h>
 
@@ -1035,19 +1036,20 @@ DEFUN(sup_ussd_destination, sup_ussd_destination_cmd,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
 	if (gsmnet->ussd_sup_client) {
-		LOGP(DSUP, LOGL_FATAL, "Can't create two USSD SUP clients\n");
+		LOGP(DSS, LOGL_FATAL, "Can't create two USSD SUP clients\n");
 		vty_out(vty, "%%USSD SUP client already configured%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 	gsmnet->ussd_sup_client = gprs_gsup_client_create(
-		argv[0], atoi(argv[1]), &sup_read_cb);
+		argv[0], atoi(argv[1]), &ussd_map_read_cb);
 	if (!gsmnet->ussd_sup_client) {
-		LOGP(DSUP, LOGL_FATAL, "Cannot set up USSD SUP socket\n");
+		LOGP(DSS, LOGL_FATAL, "Cannot set up USSD SUP socket\n");
 		vty_out(vty, "%%Cannot set up USSD SUP socket%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
+	gsmnet->ussd_sup_client->data = gsmnet;
 	return CMD_SUCCESS;
 }
 

@@ -211,6 +211,18 @@ AC_MSG_CHECKING([whether to enable VTY/CTRL tests])
 AC_MSG_RESULT([$enable_ext_tests])
 AM_CONDITIONAL(ENABLE_EXT_TESTS, test "x$enable_ext_tests" = "xyes")
 
+
+# Enable/disable ussd_proxy utility
+AC_ARG_ENABLE([ussd_proxy], [AS_HELP_STRING([--enable-ussd-proxy], [Build the USSD MAP SUP to SIP proxy])],
+    [osmo_ac_build_ussd_proxy="$enableval"],[osmo_ac_build_ussd_proxy="no"])
+if test "$osmo_ac_build_ussd_proxy" = "yes" ; then
+    PKG_CHECK_MODULES(LIBSOFIA_SIP_UA, sofia-sip-ua >= 1.10)
+    AC_DEFINE(BUILD_USSD_PROXY, 1, [Define if we want to build ussd_proxy])
+fi
+AM_CONDITIONAL(BUILD_USSD_PROXY, test "x$osmo_ac_build_ussd_proxy" = "xyes")
+AC_SUBST(osmo_ac_build_smpp)
+
+
 dnl Generate the output
 AM_CONFIG_HEADER(bscconfig.h)
 
@@ -259,6 +271,7 @@ AC_OUTPUT(
     tests/slhc/Makefile
     tests/v42bis/Makefile
     tests/nanobts_omlattr/Makefile
+    tests/ussd/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

@@ -56,6 +56,11 @@ struct gsm_trans {
 
 			struct gsm_sms *sms;
 		} sms;
+		struct {
+			uint8_t invoke_id;
+			uint8_t mo;
+			uint8_t dirty;
+		} ss;
 	};
 };
 

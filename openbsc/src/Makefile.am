@@ -45,6 +45,7 @@ SUBDIRS += \
 	ipaccess \
 	gprs \
 	reg-proxy \
+	ussd-proxy \
 	$(NULL)
 
 # Conditional Programs

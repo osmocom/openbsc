@@ -1,12 +1,10 @@
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS=-Wall	$(COVERAGE_CFLAGS)			\
   	$(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) \
-	$(LIBOSMOCTRL_CFLAGS) $(LIBOSMOABIS_CFLAGS) \
-       -I/usr/include/sofia-sip-1.12
-
+	$(LIBOSMOCTRL_CFLAGS) $(LIBOSMOABIS_CFLAGS)
 AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
-bin_PROGRAMS = reg-proxy ussd-proxy
+bin_PROGRAMS = reg-proxy
 
 reg_proxy_SOURCES = \
 		../gprs/gsm_04_08_gprs.c \
@@ -22,10 +20,3 @@ reg_proxy_LDADD = \
 		$(LIBOSMOCTRL_LIBS) $(LIBOSMOABIS_LIBS)
 
 
-ussd_proxy_SOURCES = \
-		ussd_proxy.c
-
-ussd_proxy_LDADD = \
-		-lsofia-sip-ua \
-		$(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOCORE_LIBS)  \
-		$(LIBOSMOCTRL_LIBS) $(LIBOSMOABIS_LIBS)

@@ -23,6 +23,7 @@ static int handle_sup_upd_loc_req(struct gsm_sup_server *sup_server,
 	return rc;
 }
 
+#if 0
 static int handle_sup_ss(struct gsm_sup_server *sup_server,
 			 struct ss_request *ss,
 			 const char* extention)
@@ -39,7 +40,6 @@ static int handle_sup_ss(struct gsm_sup_server *sup_server,
 		"Sip_register was send 0x%02x\n", ss->message_type);
 	return rc;
 }
-
 
 enum {
     FMAP_MSISDN        = 0x80
@@ -223,6 +223,8 @@ static int rx_sup_uss_message(struct gsm_sup_server *sup_server, const uint8_t* 
 #endif
 }
 
+#endif
+
 int rx_sup_message(struct gsm_sup_server *sup_server, struct msgb *msg)
 {
 	uint8_t *data = msgb_l2(msg);
@@ -231,14 +233,14 @@ int rx_sup_message(struct gsm_sup_server *sup_server, struct msgb *msg)
 
 	struct gprs_gsup_message sup_msg = {0};
 	//struct gsm_subscriber *subscr;
-
+#if 0
     if (*data == GPRS_GSUP_MSGT_MAP) {
 	LOGP(DSUP, LOGL_INFO,
 		   "Receive USS: %s\n", msgb_hexdump(msg));
 
 	return rx_sup_uss_message(sup_server, data, data_len);
     }
-
+#endif
 	rc = gprs_gsup_decode(data, data_len, &sup_msg);
 	if (rc < 0) {
 		LOGP(DSUP, LOGL_ERROR,

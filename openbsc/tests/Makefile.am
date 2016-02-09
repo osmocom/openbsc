@@ -10,6 +10,7 @@ SUBDIRS = \
 	subscr \
 	mm_auth \
 	nanobts_omlattr \
+	ussd \
 	$(NULL)
 
 if BUILD_NAT

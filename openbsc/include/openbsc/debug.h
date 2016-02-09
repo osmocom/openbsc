@@ -39,6 +39,7 @@ enum {
 	DSUA,
 	DV42BIS,
 	DSUP,
+	DSS,
 	Debug_LastEntry,
 };
 
