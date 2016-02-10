@@ -1108,7 +1108,7 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 			  &outbuf, &outleft);
 		if (s == (size_t)-1) {
 			outbuf = (char*)ss.ussd_text;
-			outleft = MAX_LEN_USSD_STRING;
+			outleft = MAX_ASN1_LEN_USSD_STRING;
 
 			s = iconv(op->ctx->utf8_to_ucs2,
 				  &inbuf, &inleft,
@@ -1122,11 +1122,13 @@ int ussd_send_data(operation_t *op, int last, const char* lang, unsigned lang_le
 
 		} else {
 			int outlen;
+			size_t len = (msg_len > MAX_LEN_USSD_STRING) ?
+						MAX_LEN_USSD_STRING : msg_len;
+			memcpy(tmpbuf, msg, len);
+			tmpbuf[len] = 0;
 
-			// Set null-termination
-			outbuf[0] = 0;
 			gsm_7bit_encode_n_ussd(ss.ussd_text,
-					       MAX_LEN_USSD_STRING, outbuf, &outlen);
+					       MAX_ASN1_LEN_USSD_STRING, tmpbuf, &outlen);
 			ss.ussd_text_len = outlen;
 			ss.ussd_text_language = 0x0f;
 		}
