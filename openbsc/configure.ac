@@ -247,6 +247,7 @@ AC_OUTPUT(
     src/utils/Makefile
     src/gprs/Makefile
     src/reg-proxy/Makefile
+    src/ussd-proxy/Makefile
     tests/Makefile
     tests/atlocal
     tests/gsm0408/Makefile
