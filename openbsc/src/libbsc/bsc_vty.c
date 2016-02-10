@@ -3710,7 +3710,6 @@ DEFUN(pdch_act, pdch_act_cmd,
 }
 
 extern int bsc_vty_init_extra(void);
-extern const char *openbsc_copyright;
 
 int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 {
