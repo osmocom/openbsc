@@ -378,12 +378,12 @@ uint8_t get_nibble(uint8_t a)
 	if (a >= '0' && a <= '9')
 		return a-'0';
 	else if (a >= 'A' && a <= 'F')
-		return a-'A';
+		return a-'A' + 10;
 	else if (a >= 'a' && a <= 'f')
-		return a-'a';
+		return a-'a' + 10;
 
 	fprintf(stderr, "*** Incorrect nibble deteced: %02x\n", a);
-	return 0;
+	return 0xff;
 }
 
 void proxy_i_bye_ss(int           status,
@@ -401,25 +401,28 @@ void proxy_i_bye_ss(int           status,
 	uint8_t buflen = 0;
 	int i;
 
-	for (i = 0; i < pl_txt_len && buflen < sizeof(buflen) - 1; ) {
+	for (i = 0; i < pl_txt_len && buflen < sizeof(buffer) - 1; ) {
 		uint8_t hi_nibble = pl_txt[i++];
-		if (hi_nibble == 0)
+		if (hi_nibble == 0xff || i == pl_txt_len)
 			break;
-		if (isspace(hi_nibble))
-			continue;
-
 		uint8_t lo_nibble = pl_txt[i++];
-		if (lo_nibble == 0)
+		if (lo_nibble == 0xff)
 			break;
 
 		buffer[buflen++] = (get_nibble(hi_nibble) << 4) |
-				get_nibble(lo_nibble);
+				    get_nibble(lo_nibble);
 	}
 
+	fprintf(stderr, "got bye_ss %d `%.*s` -> %d bytes\n", pl_txt_len, pl_txt_len, pl_txt, buflen);
+
 	if (buflen > 1) {
-		if (buffer[1] != buflen - 2) {
+		/* ASN.1 length can be 1 or 2 bytes ( >2 isn't possible anyway here ) */
+		unsigned len =     (buffer[1] < 0x80) ? buffer[1] : ( (buflen > 2) ? buffer[2] : 0xff);
+		unsigned len_len = (buffer[1] < 0x80) ? 1         : buffer[1] - 0x80;
+
+		if (len + 1 + len_len != buflen) {
 			fprintf(stderr, "*** parsed %d len, but should be %d (%s)",
-				buflen, buffer[1] + 2, pl_txt);
+				buflen, len_len + 1 + len, pl_txt);
 		}
 	}
 
@@ -428,6 +431,7 @@ void proxy_i_bye_ss(int           status,
 			  buffer,
 			  buflen,
 			  hmagic->ussd.ref);
+	operation_destroy(hmagic);
 }
 
 void proxy_r_bye(int           status,
