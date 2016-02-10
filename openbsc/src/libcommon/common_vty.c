@@ -52,7 +52,6 @@ int bsc_vty_go_parent(struct vty *vty)
 			vty->index_sub = NULL;
 		}
 		break;
-#endif
 	case TRX_NODE:
 		vty->node = BTS_NODE;
 		{
@@ -71,6 +70,7 @@ int bsc_vty_go_parent(struct vty *vty)
 			vty->index_sub = &ts->trx->description;
 		}
 		break;
+#endif
 	case OML_NODE:
 	case OM2K_NODE:
 		vty->node = ENABLE_NODE;
