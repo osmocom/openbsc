@@ -39,6 +39,7 @@
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/logging.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/vty.h>
 
 extern struct gsm_network *bsc_gsmnet;
 

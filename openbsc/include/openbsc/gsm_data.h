@@ -382,8 +382,11 @@ struct gsm_sms {
 	char text[SMS_TEXT_SIZE];
 };
 
-struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, struct msgb *));
+struct gsm_network *gsm_network_init(void *ctx,
+				     uint16_t country_code,
+				     uint16_t network_code,
+				     mncc_recv_cb_t mncc_recv);
+
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 
 enum gsm_bts_type parse_btstype(const char *arg);

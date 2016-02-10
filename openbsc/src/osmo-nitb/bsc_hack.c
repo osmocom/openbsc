@@ -242,7 +242,7 @@ static void subscr_expire_cb(void *data)
 	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
 }
 
-void talloc_ctx_init(void);
+void talloc_ctx_init(void *ctx_root);
 
 extern int bsc_vty_go_parent(struct vty *vty);
 
@@ -260,7 +260,7 @@ int main(int argc, char **argv)
 	vty_info.copyright = openbsc_copyright;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
-	talloc_ctx_init();
+	talloc_ctx_init(tall_bsc_ctx);
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
@@ -270,9 +270,18 @@ int main(int argc, char **argv)
 	osmo_stats_init(tall_bsc_ctx);
 	bts_init();
 
+	handle_options(argc, argv);
+
+	/* internal MNCC handler or MNCC socket? */
+	rc = bsc_network_init(mncc_sock_path?
+			      mncc_sock_from_cc : int_mncc_recv);
+	if (rc < 0)
+		exit(1);
+
 	/* This needs to precede handle_options() */
+	/* no it doesn't, does it. */
 	vty_init(&vty_info);
-	bsc_vty_init(&log_info);
+	bsc_vty_init(&log_info, bsc_gsmnet);
 	ctrl_vty_init(tall_bsc_ctx);
 
 #ifdef BUILD_SMPP
@@ -280,18 +289,16 @@ int main(int argc, char **argv)
 		return -1;
 #endif
 
-	/* parse options */
-	handle_options(argc, argv);
-
-	/* internal MNCC handler or MNCC socket? */
-	if (mncc_sock_path) {
-		rc = bsc_bootstrap_network(mncc_sock_from_cc, config_file);
-		if (rc >= 0)
-			mncc_sock_init(bsc_gsmnet, mncc_sock_path);
-	} else
-		rc = bsc_bootstrap_network(int_mncc_recv, config_file);
+	rc = bsc_network_configure(config_file);
 	if (rc < 0)
 		exit(1);
+
+	if (mncc_sock_path) {
+		rc = mncc_sock_init(bsc_gsmnet, mncc_sock_path);
+		if (rc < 0)
+			exit(1);
+	}
+
 #ifdef BUILD_SMPP
 	smpp_openbsc_start(bsc_gsmnet);
 #endif

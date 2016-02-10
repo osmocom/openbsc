@@ -983,7 +983,7 @@ int main(int argc, char **argv)
 	}
 	libosmo_abis_init(tall_ctx_config);
 
-	bsc_gsmnet = gsm_network_init(1, 1, NULL);
+	bsc_gsmnet = gsm_network_init(tall_bsc_ctx, 1, 1, NULL);
 	if (!bsc_gsmnet)
 		exit(1);
 

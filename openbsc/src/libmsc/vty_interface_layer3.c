@@ -53,8 +53,6 @@
 
 #include "meas_feed.h"
 
-extern struct gsm_network *gsmnet_from_vty(struct vty *v);
-
 static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
 	int rc;

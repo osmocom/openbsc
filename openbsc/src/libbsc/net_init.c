@@ -21,12 +21,14 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/gsm_subscriber.h>
 
-struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, struct msgb *))
+struct gsm_network *gsm_network_init(void *ctx,
+				     uint16_t country_code,
+				     uint16_t network_code,
+				     mncc_recv_cb_t mncc_recv)
 {
 	struct gsm_network *net;
 
-	net = talloc_zero(tall_bsc_ctx, struct gsm_network);
+	net = talloc_zero(ctx, struct gsm_network);
 	if (!net)
 		return NULL;
 

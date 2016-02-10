@@ -130,19 +130,21 @@ struct cmd_node ts_node = {
 	1,
 };
 
-extern struct gsm_network *bsc_gsmnet;
+static struct gsm_network *vty_global_gsm_network = 0;
 
 struct gsm_network *gsmnet_from_vty(struct vty *v)
 {
 	/* In case we read from the config file, the vty->priv cannot
 	 * point to a struct telnet_connection, and thus conn->priv
-	 * will not point to the gsm_network structure */
-#if 0
-	struct telnet_connection *conn = v->priv;
-	return (struct gsm_network *) conn->priv;
-#else
-	return bsc_gsmnet;
-#endif
+	 * will not point to the gsm_network structure.
+	 * It can't hurt to force callers to continue to pass the vty instance
+	 * to this function, in case we'd like to retrieve the global
+	 * gsm_network instance from the vty at some point in the future. But
+	 * until then, just return the global pointer, which should have been
+	 * initialized by bsc_vty_init().
+	 */
+	OSMO_ASSERT(vty_global_gsm_network);
+	return vty_global_gsm_network;
 }
 
 static int dummy_config_write(struct vty *v)
@@ -3620,7 +3622,7 @@ DEFUN(smscb_cmd, smscb_cmd_cmd,
 	uint8_t buf[88];
 	int rc;
 
-	bts = gsm_bts_num(bsc_gsmnet, bts_nr);
+	bts = gsm_bts_num(vty_global_gsm_network, bts_nr);
 	if (!bts) {
 		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
 		return CMD_WARNING;
@@ -3671,7 +3673,7 @@ DEFUN(pdch_act, pdch_act_cmd,
 	int ts_nr = atoi(argv[2]);
 	int activate;
 
-	bts = gsm_bts_num(bsc_gsmnet, bts_nr);
+	bts = gsm_bts_num(vty_global_gsm_network, bts_nr);
 	if (!bts) {
 		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
 		return CMD_WARNING;
@@ -3710,8 +3712,10 @@ DEFUN(pdch_act, pdch_act_cmd,
 extern int bsc_vty_init_extra(void);
 extern const char *openbsc_copyright;
 
-int bsc_vty_init(const struct log_info *cat)
+int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 {
+	vty_global_gsm_network = network;
+
 	cfg_ts_pchan_cmd.string =
 		vty_cmd_string_from_valstr(tall_bsc_ctx,
 					   gsm_pchant_names,
