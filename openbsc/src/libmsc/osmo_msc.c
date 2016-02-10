@@ -48,7 +48,11 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	gsm0408_new_conn(conn);
 	gsm0408_dispatch(conn, msg);
 
-	/* TODO: do better */
+	/*
+	 * If this is a silent call we want the channel to remain open as long as
+	 * possible and this is why we accept this connection regardless of any
+	 * pending transaction or ongoing operation.
+	 */
 	if (conn->silent_call)
 		return BSC_API_CONN_POL_ACCEPT;
 	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
