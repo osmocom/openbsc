@@ -31,6 +31,7 @@ class RegistrationProxyServer(protocol.Protocol):
           self.ussd_queue.get().addCallback(self.sipClientDataReceived)
 
           msgType, firstLine, headers, body = sip_parser.parseSipMessage(data)
+          #print headers
           via = headers["via"][0].split(";")
           via_branch = via[1].split("=")
           from_hdr = headers["from"].split(";")
@@ -38,6 +39,10 @@ class RegistrationProxyServer(protocol.Protocol):
           to_hdr = headers["to"].split(";")
           to_tag = "%s" % from_hdr[1]
           call_id = headers["call-id"]
+          try:
+              ctype = headers["content-type"]
+          except:
+              ctype = ""
           sip_url = re.split(r"[:@]", from_hdr[0])
           ussd_url = sip_url[1]
           try:
@@ -113,7 +118,6 @@ class RegistrationProxyServer(protocol.Protocol):
                   log.msg("\n[SIP:TX]\n%s" % r.toString())
                   self.transport.write(r.toString())
 
-
               r = sip.Request("BYE", to_hdr[0].replace('<', '').replace('>', ''))
               r.addHeader('Via', headers["via"][0]) #sip.Via(via_dest_ip, via_dest_port, transport='TCP', ttl=None, hidden=False, received=None, rport=None, branch=via_branch[1], maddr=None).toString())
               r.addHeader('From', "%s;%s" % (from_hdr[0], to_tag)) #"<sip:%s@%s>;%s" % (from_hdr[0], self.src_ip, from_tag))
@@ -121,11 +125,21 @@ class RegistrationProxyServer(protocol.Protocol):
               r.addHeader('Call-Id', call_id)
               r.addHeader('Max-Forwards', 20)
               r.addHeader('Cseq',  "%d BYE" % (int(cseq.split(' ')[0]) + 1))
-              r.addHeader('Recv-Info', 'g.3gpp.ussd')
-              r.addHeader('Content-Type', 'application/vnd.3gpp.ussd+xml')
-              #r.addHeader('Content-Disposition', 'Info-Package')
-              r.addHeader('Content-Length', len(msg))
-              #r.addHeader("Authentication-Info", auth_info)
+              if to_hdr[0].startswith('<sip:mapss'):
+                      # Copy InvokeID
+                      #      a10b02010602010e3003040121
+                      #      --------__----------------  invoke_id
+                      #msg = 'a20b0201%c%c300602010e80010c' % (body[8],body[9])
+                      msg =  'a20b02010c300602010e80010c'
+
+                      r.addHeader('Content-Type', 'application/map-ss-binary')
+                      r.addHeader('Content-Length', len(msg))
+              else:
+                      r.addHeader('Recv-Info', 'g.3gpp.ussd')
+                      r.addHeader('Content-Type', 'application/vnd.3gpp.ussd+xml')
+                      #r.addHeader('Content-Disposition', 'Info-Package')
+                      r.addHeader('Content-Length', len(msg))
+                      #r.addHeader("Authentication-Info", auth_info)
               log.msg("\n[SIP:TX]]\n%s" % r.toString())
               self.transport.write(r.toString() + msg)
           else:
