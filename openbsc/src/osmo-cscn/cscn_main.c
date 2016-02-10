@@ -46,6 +46,8 @@
 #include <openbsc/osmo_msc.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/sms_queue.h>
+#include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/ports.h>
 #include <openbsc/vty.h>
 #include <openbsc/bss.h>
 #include <openbsc/mncc.h>
@@ -65,15 +67,33 @@
 
 #include "iu_cs.h"
 
-/* MCC and MNC for the Location Area Identifier */
-struct gsm_network *bsc_gsmnet = 0;
-static const char *database_name = "hlr.sqlite3";
-static const char *config_file = "osmo-cscn.cfg";
-static const char *rf_ctrl_name = NULL;
-extern const char *openbsc_copyright;
-static int daemonize = 0;
-static int use_mncc_sock = 0;
-static int use_db_counter = 1;
+static const char * const osmocscn_copyright =
+	"OsmoCSCN - Osmocom Circuit-Switched Core Network implementation\r\n"
+	"Copyright (C) 2016 by sysmocom s.f.m.c. GmbH <info@sysmocom.de>\r\n"
+	"Based on OsmoNITB:\r\n"
+	"  (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>\r\n"
+	"  (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>\r\n"
+	"Contributions by Daniel Willmann, Jan Lübbe, Stefan Schmidt\r\n"
+	"Dieter Spaar, Andreas Eversberg, Sylvain Munaut, Neels Hofmeyr\r\n\r\n"
+	"License AGPLv3+: GNU AGPL version 3 or later <http://gnu.org/licenses/agpl-3.0.html>\r\n"
+	"This is free software: you are free to change and redistribute it.\r\n"
+	"There is NO WARRANTY, to the extent permitted by law.\r\n";
+
+void *tall_cscn_ctx = NULL;
+
+static struct {
+	const char *database_name;
+	const char *config_file;
+	int daemonize;
+	int use_mncc_sock;
+	int use_db_counter;
+} cscn_cmdline_config = {
+	"hlr.sqlite3",
+	"osmo-cscn.cfg",
+	0,
+	0,
+	1
+};
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -115,7 +135,6 @@ static void print_help()
 	printf("  -e --log-level number      Set a global loglevel.\n");
 	printf("  -m --mncc-sock             Disable built-in MNCC handler and offer socket.\n");
 	printf("  -C --no-dbcounter          Disable regular syncing of counters to database.\n");
-	printf("  -r --rf-ctl NAME           A unix domain socket to listen for cmds.\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -137,7 +156,6 @@ static void handle_options(int argc, char **argv)
 			{"log-level", 1, 0, 'e'},
 			{"mncc-sock", 0, 0, 'm'},
 			{"no-dbcounter", 0, 0, 'C'},
-			{"rf-ctl", 1, 0, 'r'},
 			{0, 0, 0, 0}
 		};
 
@@ -158,13 +176,13 @@ static void handle_options(int argc, char **argv)
 			log_parse_category_mask(osmo_stderr_target, optarg);
 			break;
 		case 'D':
-			daemonize = 1;
+			cscn_cmdline_config.daemonize = 1;
 			break;
 		case 'l':
-			database_name = optarg;
+			cscn_cmdline_config.database_name = optarg;
 			break;
 		case 'c':
-			config_file = optarg;
+			cscn_cmdline_config.config_file = optarg;
 			break;
 		case 'p':
 			create_pcap_file(optarg);
@@ -179,17 +197,14 @@ static void handle_options(int argc, char **argv)
 			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		case 'm':
-			use_mncc_sock = 1;
+			cscn_cmdline_config.use_mncc_sock = 1;
 			break;
 		case 'C':
-			use_db_counter = 0;
+			cscn_cmdline_config.use_db_counter = 0;
 			break;
 		case 'V':
 			print_version(1);
 			exit(0);
-			break;
-		case 'r':
-			rf_ctrl_name = optarg;
 			break;
 		default:
 			/* ignore */
@@ -198,6 +213,30 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
+struct gsm_network *cscn_network_init(void *ctx,
+				      mncc_recv_cb_t mncc_recv)
+{
+	struct gsm_network *net = gsm_network_init(ctx, 1, 1, mncc_recv);
+	if (!net)
+		return NULL;
+
+	net->name_long = talloc_strdup(net, "Osmocom Circuit-Switched Core Network");
+	net->name_short = talloc_strdup(net, "OsmoCSCN");
+
+	return net;
+}
+
+void cscn_network_shutdown(struct gsm_network *net)
+{
+	/* nothing here yet */
+}
+
+static struct gsm_network *cscn_network = NULL;
+
+/* TODO this is here to satisfy linking during intermediate development. Once
+ * libbsc is not linked to osmo-cscn, this should go away. */
+struct gsm_network *bsc_gsmnet = NULL;
+
 extern void *tall_vty_ctx;
 static void signal_handler(int signal)
 {
@@ -205,7 +244,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		bsc_shutdown_net(bsc_gsmnet);
+		cscn_network_shutdown(cscn_network);
 		osmo_signal_dispatch(SS_L_GLOBAL, S_L_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
 		exit(0);
@@ -215,7 +254,7 @@ static void signal_handler(int signal)
 		 * and then return to the caller, who will abort the process */
 	case SIGUSR1:
 		talloc_report(tall_vty_ctx, stderr);
-		talloc_report_full(tall_bsc_ctx, stderr);
+		talloc_report_full(tall_cscn_ctx, stderr);
 		break;
 	case SIGUSR2:
 		talloc_report_full(tall_vty_ctx, stderr);
@@ -240,16 +279,16 @@ static void db_sync_timer_cb(void *data)
 
 static void subscr_expire_cb(void *data)
 {
-	subscr_expire(bsc_gsmnet->subscr_group);
-	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
+	subscr_expire(cscn_network->subscr_group);
+	osmo_timer_schedule(&cscn_network->subscr_expire_timer, EXPIRE_INTERVAL);
 }
 
-void talloc_ctx_init(void);
+void talloc_ctx_init(void *ctx_root);
 
 extern int bsc_vty_go_parent(struct vty *vty);
 
-static struct vty_app_info vty_info = {
-	.name		= "OpenCSCN",
+static struct vty_app_info cscn_vty_info = {
+	.name		= "OsmoCSCN",
 	.version	= PACKAGE_VERSION,
 	.go_parent_cb	= bsc_vty_go_parent,
 	.is_config_node	= bsc_vty_is_config_node,
@@ -264,7 +303,7 @@ static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gpr
 	DEBUGP(DIUCS, "Iu-CS message is %s\n",
 	       osmo_hexdump(msg->data, msg->len));
 	uint8_t link_id = 42; /* TODO proper link_id */
-	return gsm0408_rcvmsg_iucs(bsc_gsmnet, msg, link_id);
+	return gsm0408_rcvmsg_iucs(cscn_network, msg, link_id);
 }
 
 
@@ -272,61 +311,78 @@ int main(int argc, char **argv)
 {
 	int rc;
 
-	vty_info.copyright = openbsc_copyright;
+	cscn_vty_info.copyright	= osmocscn_copyright;
 
-	tall_bsc_ctx = talloc_named_const(NULL, 1, "osmo_cscn");
-	talloc_ctx_init();
+	tall_cscn_ctx = talloc_named_const(NULL, 1, "osmo_cscn");
+	talloc_ctx_init(tall_cscn_ctx);
 
 	osmo_init_logging(&log_info);
-	osmo_stats_init(tall_bsc_ctx);
+	osmo_stats_init(tall_cscn_ctx);
+
+	handle_options(argc, argv);
+
+	cscn_network = cscn_network_init(tall_cscn_ctx,
+					 cscn_cmdline_config.use_mncc_sock?
+						 mncc_sock_from_cc
+						 : int_mncc_recv);
+	if (!cscn_network)
+		return -ENOMEM;
+
+	vty_init(&cscn_vty_info);
+	bsc_vty_init(&log_info, cscn_network);
+	rc = vty_read_config_file(cscn_cmdline_config.config_file, NULL);
+	if (rc < 0) {
+		LOGP(DNM, LOGL_FATAL, "Failed to parse the config file: '%s'\n",
+		     cscn_cmdline_config.config_file);
+		return 1;
+	}
+
+	if (cscn_cmdline_config.use_mncc_sock)
+			mncc_sock_init(cscn_network);
+
+	rc = telnet_init(tall_cscn_ctx, cscn_network, OSMO_VTY_PORT_CSCN);
+	if (rc < 0)
+		return 2;
+
 
 	/* BSC stuff is to be split behind an A-interface to be used with
 	 * OsmoBSC, but there is no need to remove it yet. Most of the
 	 * following code until iu_init() is legacy. */
 
+#if 0
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
-	libosmo_abis_init(tall_bsc_ctx);
+	libosmo_abis_init(tall_cscn_ctx);
 
 	bts_init();
 
-	/* This needs to precede handle_options() */
-	vty_init(&vty_info);
-	bsc_vty_init(&log_info);
 
 #ifdef BUILD_SMPP
-	if (smpp_openbsc_init(tall_bsc_ctx, 0) < 0)
+	if (smpp_openbsc_init(tall_cscn_ctx, 0) < 0)
 		return -1;
 #endif
 
-	/* parse options */
-	handle_options(argc, argv);
 
-	/* internal MNCC handler or MNCC socket? */
-	if (use_mncc_sock) {
-		rc = bsc_bootstrap_network(mncc_sock_from_cc, config_file);
-		if (rc >= 0)
-			mncc_sock_init(bsc_gsmnet);
-	} else
-		rc = bsc_bootstrap_network(int_mncc_recv, config_file);
-	if (rc < 0)
-		exit(1);
 #ifdef BUILD_SMPP
-	smpp_openbsc_set_net(bsc_gsmnet);
+	smpp_openbsc_set_net(cscn_network);
 #endif
-	bsc_api_init(bsc_gsmnet, msc_bsc_api()); // pobably not.
+	bsc_api_init(cscn_network, msc_bsc_api()); // pobably not.
+#endif
 
-	bsc_gsmnet->ctrl = bsc_controlif_setup(bsc_gsmnet, OSMO_CTRL_PORT_NITB_BSC);
-	if (!bsc_gsmnet->ctrl) {
+	cscn_network->ctrl = bsc_controlif_setup(cscn_network, OSMO_CTRL_PORT_CSCN);
+	if (!cscn_network->ctrl) {
 		printf("Failed to initialize control interface. Exiting.\n");
 		return -1;
 	}
 
+#if 0
+TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_install().
 	if (bsc_base_ctrl_cmds_install() != 0) {
 		printf("Failed to initialize the BSC control commands.\n");
 		return -1;
 	}
+#endif
 
 	if (msc_ctrl_cmds_install() != 0) {
 		printf("Failed to initialize the MSC control commands.\n");
@@ -338,33 +394,33 @@ int main(int argc, char **argv)
 	/* TODO: is this used for crypto?? Improve randomness, at least we
 	 * should try to use the nanoseconds part of the current time. */
 
-	bsc_gsmnet->bsc_data->rf_ctrl = osmo_bsc_rf_create(rf_ctrl_name, bsc_gsmnet);
-	if (!bsc_gsmnet->bsc_data->rf_ctrl) {
+#if 0
+	cscn_network->bsc_data->rf_ctrl = osmo_bsc_rf_create(rf_ctrl_name, cscn_network);
+	if (!cscn_network->bsc_data->rf_ctrl) {
 		fprintf(stderr, "Failed to create the RF service.\n");
-		exit(1);
+		return 3;
 	}
+#endif
 
-	if (db_init(database_name)) {
-		printf("DB: Failed to init database. Please check the option settings.\n");
-		return -1;
+	if (db_init(cscn_cmdline_config.database_name)) {
+		printf("DB: Failed to init database: %s\n",
+		       cscn_cmdline_config.database_name);
+		return 4;
 	}
-	printf("DB: Database initialized.\n");
 
 	if (db_prepare()) {
 		printf("DB: Failed to prepare database.\n");
-		return -1;
+		return 5;
 	}
-	printf("DB: Database prepared.\n");
 
-	/* setup the timer */
 	db_sync_timer.cb = db_sync_timer_cb;
 	db_sync_timer.data = NULL;
-	if (use_db_counter)
+	if (cscn_cmdline_config.use_db_counter)
 		osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 
-	bsc_gsmnet->subscr_expire_timer.cb = subscr_expire_cb;
-	bsc_gsmnet->subscr_expire_timer.data = NULL;
-	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
+	cscn_network->subscr_expire_timer.cb = subscr_expire_cb;
+	cscn_network->subscr_expire_timer.data = NULL;
+	osmo_timer_schedule(&cscn_network->subscr_expire_timer, EXPIRE_INTERVAL);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
@@ -372,22 +428,23 @@ int main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
+#if 0
 	/* start the SMS queue */
-	if (sms_queue_start(bsc_gsmnet, 20) != 0)
+	if (sms_queue_start(cscn_network, 20) != 0)
 		return -1;
-
+#endif
 
 	/* Set up A-Interface */
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
 	/* Set up Iu-CS */
-	iu_init(tall_bsc_ctx, "127.0.0.1", 14001, bsc_gsmnet, rcvmsg_iu_cs);
+	iu_init(tall_cscn_ctx, "127.0.0.1", 14001, cscn_network, rcvmsg_iu_cs);
 
-	if (daemonize) {
+	if (cscn_cmdline_config.daemonize) {
 		rc = osmo_daemonize();
 		if (rc < 0) {
 			perror("Error during daemonize");
-			exit(1);
+			return 6;
 		}
 	}
 
