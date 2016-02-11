@@ -20,7 +20,8 @@ libmsc_a_SOURCES =	auth.c \
 			ussd.c \
 			vty_interface_layer3.c \
 			transaction.c \
-			osmo_msc.c ctrl_commands.c meas_feed.c
+			osmo_msc.c ctrl_commands.c meas_feed.c \
+			msc_api.c
 
 if BUILD_SMPP
 noinst_HEADERS += smpp_smsc.h

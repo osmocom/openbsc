@@ -65,6 +65,8 @@
 
 #include <assert.h>
 
+#include "msc_api.h"
+
 /* These debug statements were removed during the BSC/MSC split. It may make
  * sense to replace them with debug statements that do not access BTS data. */
 #define BEFORE_MSCSPLIT 0
@@ -102,7 +104,7 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 		gh->proto_discr = trans->protocol | (trans->transaction_id << 4);
 	}
 
-	return gsm0808_submit_dtap(conn, msg, 0, 0);
+	return msc_submit_dtap(conn, msg);
 }
 
 int gsm48_cc_tx_notify_ss(struct gsm_trans *trans, const char *message)

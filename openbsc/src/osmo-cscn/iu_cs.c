@@ -108,3 +108,12 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg)
 	return rc;
 }
 
+
+int iucs_submit_dtap(struct gsm_subscriber_connection *conn,
+		     struct msgb *msg)
+{
+	OSMO_ASSERT(conn->via_iface == IFACE_IUCS);
+	msg->dst = conn->iu.ue_ctx;
+	return iu_tx(msg, 0);
+}
+
