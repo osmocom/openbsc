@@ -176,6 +176,7 @@ int on_ussd_response(struct gsm_network *net,
 	int rc = 0;
 	struct msgb *msg;
 	uint8_t *ptr8;
+	struct ss_header ssrep = *reqhdr;
 
 	switch (reqhdr->message_type) {
 	case GSM0480_MTYPE_REGISTER:
@@ -216,7 +217,8 @@ int on_ussd_response(struct gsm_network *net,
 	memcpy(ptr8, component, reqhdr->component_length);
 	msgb_put(msg, reqhdr->component_length);
 
-	rc = gsm0480_send_component(trans->conn, msg, reqhdr);
+	ssrep.transaction_id = (trans->transaction_id << 4) ^ 0x80;
+	rc = gsm0480_send_component(trans->conn, msg, &ssrep);
 
 	if (reqhdr->message_type == GSM0480_MTYPE_RELEASE_COMPLETE) {
 		struct gsm_subscriber_connection* conn = trans->conn;
