@@ -23,6 +23,7 @@ struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *ne
 	if (!conn)
 		return NULL;
 
+	conn->network = network;
 	conn->via_iface = IFACE_IUCS;
 	conn->iu.ue_ctx = ue;
 
