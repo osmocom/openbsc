@@ -34,6 +34,9 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 
+/* build switches from the configure script */
+#include "../../bscconfig.h"
+
 #include <openbsc/db.h>
 #include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
@@ -59,12 +62,11 @@
 #include <openbsc/ctrl.h>
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/smpp.h>
-#include <openbsc/iu.h>
 #include <osmocom/sigtran/sccp_sap.h>
 #include <osmocom/sigtran/sua.h>
 
-#include "../../bscconfig.h"
-
+#include <openbsc/msc_ifaces.h>
+#include <openbsc/iu.h>
 #include <openbsc/iu_cs.h>
 
 static const char * const osmocscn_copyright =
@@ -327,6 +329,9 @@ int main(int argc, char **argv)
 						 : int_mncc_recv);
 	if (!cscn_network)
 		return -ENOMEM;
+
+	global_msc_ifaces.network = cscn_network;
+	global_msc_ifaces.iu_cs.tx = iu_tx;
 
 	vty_init(&cscn_vty_info);
 	bsc_vty_init(&log_info, cscn_network);
