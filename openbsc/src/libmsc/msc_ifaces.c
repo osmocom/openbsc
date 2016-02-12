@@ -28,17 +28,17 @@ static int tx_dummy_a(struct msgb *msg, uint8_t sapi)
 {
 	LOGP(DMSC, LOGL_ERROR,
 	     "attempt to send message via uninitialized A-interface\n");
-	return -1
+	return -1;
 }
 
 static int tx_dummy_iu_cs(struct msgb *msg, uint8_t sapi)
 {
 	LOGP(DMSC, LOGL_ERROR,
 	     "attempt to send message via uninitialized IuCS-interface\n");
-	return -1
+	return -1;
 }
 
-struct msc_ifaces *global_msc_ifaces = {
+struct msc_ifaces global_msc_ifaces = {
 	.a = {
 		.tx = tx_dummy_a,
 	},
@@ -57,7 +57,7 @@ static int msc_tx(struct msc_ifaces *ifaces,
 		/* TODO: msg->dst = <A-iface token> */
 		return ifaces->a.tx(msg, 0);
 
-	case IFACE_IUCS:
+	case IFACE_IU:
 		msg->dst = conn->iu.ue_ctx;
 		return ifaces->iu_cs.tx(msg, 0);
 
@@ -73,6 +73,6 @@ static int msc_tx(struct msc_ifaces *ifaces,
 int msc_tx_dtap(struct gsm_subscriber_connection *conn,
 		struct msgb *msg)
 {
-	msc_tx(global_msc_ifaces, conn, msg);
+	return msc_tx(&global_msc_ifaces, conn, msg);
 }
 

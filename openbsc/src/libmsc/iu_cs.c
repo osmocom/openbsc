@@ -4,11 +4,8 @@
 #include <openbsc/debug.h>
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/msc_api.h>
 #include <openbsc/iu.h>
-
-#include <openbsc/bsc_api.h> /* for BSC_API_CONN_POL_ACCEPT, TODO move that to libmsc */
-
-#include "../libmsc/msc_api.h"
 
 /* For A-interface see libbsc/bsc_api.c subscr_con_allocate() */
 struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *network,
@@ -97,7 +94,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg)
 			abort();
 
 		rc = msc_compl_l3(conn, msg, 0);
-		if (rc != BSC_API_CONN_POL_ACCEPT) {
+		if (rc != MSC_CONN_ACCEPT) {
 			subscr_con_free(conn);
 			rc = -1;
 		}

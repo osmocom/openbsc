@@ -3,7 +3,7 @@ AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir) \
 AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) \
 	$(LIBOSMOABIS_CFLAGS) $(COVERAGE_CFLAGS) $(LIBCRYPTO_CFLAGS) $(LIBSMPP34_CFLAGS)
 
-noinst_HEADERS = meas_feed.h msc_api.h
+noinst_HEADERS = meas_feed.h
 
 noinst_LIBRARIES = libmsc.a
 

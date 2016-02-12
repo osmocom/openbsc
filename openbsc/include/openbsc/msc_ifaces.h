@@ -16,7 +16,7 @@
  * scope to plug real world functions or to have mere dummy implementations.
  *
  * For example, for msc_tx_foo(ifaces, conn, msg), depending on
- * conn->via_iface, either ifaces->a.tx() or ifaces.iu_cs.tx() is called to
+ * conn->via_iface, either ifaces.a.tx() or ifaces.iu_cs.tx() is called to
  * dispatch the msg.
  *
  * To replace the default dummy implementations, a user would do the likes of:
@@ -28,8 +28,8 @@
  *
  *   int main(void)
  *   {
- *           global_msc_ifaces->network = my_network;
- *           global_msc_ifaces->iu_cs.tx = my_iu_cs_tx;
+ *           global_msc_ifaces.network = my_network;
+ *           global_msc_ifaces.iu_cs.tx = my_iu_cs_tx;
  *           ...
  *   }
  *
@@ -55,7 +55,7 @@ struct msc_ifaces {
 
 };
 
-extern struct msc_ifaces *global_msc_ifaces;
+extern struct msc_ifaces global_msc_ifaces;
 
 
 int msc_tx_dtap(struct gsm_subscriber_connection *conn,

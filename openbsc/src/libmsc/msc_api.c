@@ -24,8 +24,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <osmocom/core/logging.h>
+
+#include <openbsc/debug.h>
+
 #include <openbsc/msc_api.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/transaction.h>
 
 int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 		 uint16_t chosen_channel)
