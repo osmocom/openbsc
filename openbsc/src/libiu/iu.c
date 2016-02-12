@@ -52,7 +52,7 @@ struct ue_conn_ctx *ue_conn_ctx_find(struct gsm_network *network,
 	struct ue_conn_ctx *ctx;
 
 	llist_for_each_entry(gsc, &network->subscr_conns, entry) {
-		if (gsc->via_iface != IFACE_IUCS)
+		if (gsc->via_iface != IFACE_IU)
 			continue;
 
 		ctx = gsc->iu.ue_ctx;

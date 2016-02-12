@@ -100,9 +100,9 @@ struct neigh_meas_proc {
 };
 
 enum interface_type {
-	IFACE_UNKNOWN = 0,
-	IFACE_A,    /* A-interface == 2G */
-	IFACE_IUCS  /* IuCS-interface == UMTS aka 3G */
+	IFACE_UNKNOWN = -1,
+	IFACE_A = 0,        /* A-interface for 2G */
+	IFACE_IU = 1        /* Iu-interface for UMTS aka 3G (IuCS or IuPS) */
 };
 
 /* mobile subscriber data */

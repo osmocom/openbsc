@@ -24,7 +24,7 @@ struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *ne
 		return NULL;
 
 	conn->network = network;
-	conn->via_iface = IFACE_IUCS;
+	conn->via_iface = IFACE_IU;
 	conn->iu.ue_ctx = ue;
 
 	llist_add_tail(&conn->entry, &network->subscr_conns);
@@ -47,7 +47,7 @@ static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_networ
 	struct gsm_subscriber_connection *conn;
 
 	llist_for_each_entry(conn, &network->subscr_conns, entry) {
-		if (conn->via_iface != IFACE_IUCS)
+		if (conn->via_iface != IFACE_IU)
 			continue;
 		if (!same_ue_conn(conn->iu.ue_ctx, ue))
 			continue;
@@ -112,7 +112,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg)
 int iucs_submit_dtap(struct gsm_subscriber_connection *conn,
 		     struct msgb *msg)
 {
-	OSMO_ASSERT(conn->via_iface == IFACE_IUCS);
+	OSMO_ASSERT(conn->via_iface == IFACE_IU);
 	msg->dst = conn->iu.ue_ctx;
 	return iu_tx(msg, 0);
 }
