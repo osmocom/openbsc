@@ -26,6 +26,7 @@
 #include <openbsc/transaction.h>
 #include <openbsc/db.h>
 
+#include <openbsc/msc_api.h>
 #include <openbsc/gsm_04_11.h>
 
 static void msc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
@@ -40,28 +41,6 @@ static int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 {
 	gsm0408_clear_request(conn, cause);
 	return 1;
-}
-
-int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
-		 uint16_t chosen_channel)
-{
-	gsm0408_new_conn(conn);
-	gsm0408_dispatch(conn, msg);
-
-	/*
-	 * If this is a silent call we want the channel to remain open as long as
-	 * possible and this is why we accept this connection regardless of any
-	 * pending transaction or ongoing operation.
-	 */
-	if (conn->silent_call)
-		return BSC_API_CONN_POL_ACCEPT;
-	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
-		return BSC_API_CONN_POL_ACCEPT;
-	if (trans_has_conn(conn))
-		return BSC_API_CONN_POL_ACCEPT;
-
-	LOGP(DRR, LOGL_INFO, "MSC Complete L3: Rejecting connection.\n");
-	return BSC_API_CONN_POL_REJECT;
 }
 
 static void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)

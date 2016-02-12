@@ -1,4 +1,4 @@
-/* MSC decisions which interface to send messages out on. */
+/* Implementation for MSC decisions which interface to send messages out on. */
 
 /* (C) 2016 by sysmocom s.m.f.c GmbH <info@sysmocom.de>
  *
@@ -16,35 +16,63 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include <osmocom/core/logging.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/iu_cs.h>
+#include <openbsc/msc_ifaces.h>
 
-#include "msc_api.h"
+static int tx_dummy_a(struct msgb *msg, uint8_t sapi)
+{
+	LOGP(DMSC, LOGL_ERROR,
+	     "attempt to send message via uninitialized A-interface\n");
+	return -1
+}
 
-int msc_submit_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg)
+static int tx_dummy_iu_cs(struct msgb *msg, uint8_t sapi)
+{
+	LOGP(DMSC, LOGL_ERROR,
+	     "attempt to send message via uninitialized IuCS-interface\n");
+	return -1
+}
+
+struct msc_ifaces *global_msc_ifaces = {
+	.a = {
+		.tx = tx_dummy_a,
+	},
+	.iu_cs = {
+		.tx = tx_dummy_iu_cs,
+	}
+};
+
+
+static int msc_tx(struct msc_ifaces *ifaces,
+		  struct gsm_subscriber_connection *conn,
+		  struct msgb *msg)
 {
 	switch (conn->via_iface) {
 	case IFACE_A:
-		//return gsm0808_submit_dtap(conn, msg, link_id, allow_sacch);
-		LOGP(DMSC, LOGL_ERROR,
-		     "submit dtap: A-interface not implemented\n");
-		return -1;
+		/* TODO: msg->dst = <A-iface token> */
+		return ifaces->a.tx(msg, 0);
 
 	case IFACE_IUCS:
-		return iucs_submit_dtap(conn, msg);
+		msg->dst = conn->iu.ue_ctx;
+		return ifaces->iu_cs.tx(msg, 0);
 
 	default:
 		LOGP(DMSC, LOGL_ERROR,
-		     "submit dtap: conn->via_iface invalid (%d)\n",
+		     "msc_tx(): conn->via_iface invalid (%d)\n",
 		     conn->via_iface);
 		return -1;
 	}
 }
 
+
+int msc_tx_dtap(struct gsm_subscriber_connection *conn,
+		struct msgb *msg)
+{
+	msc_tx(global_msc_ifaces, conn, msg);
+}
 

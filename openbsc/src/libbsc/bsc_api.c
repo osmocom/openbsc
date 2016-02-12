@@ -242,6 +242,8 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 
 /* Allocate a subscriber connection for A-interface link. For Iu-CS see
  * subscr_con_allocate_iu(). */
+/* TODO this shall move to libmsc, behind an actual A-interface, and lchan will
+ * not be involved. */
 struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 {
 	struct gsm_subscriber_connection *conn;
