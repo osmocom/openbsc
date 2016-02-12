@@ -6,12 +6,9 @@ AM_CFLAGS=-Wall	$(COVERAGE_CFLAGS)			\
 
 AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
-noinst_HEADERS = iu_cs.h
-
 bin_PROGRAMS = osmo-cscn
 
-osmo_cscn_SOURCES = cscn_main.c \
-		    iu_cs.c
+osmo_cscn_SOURCES = cscn_main.c
 
 osmo_cscn_LDADD = \
 		$(top_builddir)/src/libbsc/libbsc.a \

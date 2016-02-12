@@ -65,7 +65,7 @@
 
 #include "../../bscconfig.h"
 
-#include "iu_cs.h"
+#include <openbsc/iu_cs.h>
 
 static const char * const osmocscn_copyright =
 	"OsmoCSCN - Osmocom Circuit-Switched Core Network implementation\r\n"
