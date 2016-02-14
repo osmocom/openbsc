@@ -1,0 +1,33 @@
+digraph G {
+	net [label="gsm_network"]
+	bts [label="gsm_bts"]
+	trx [label="gsm_bts_trx"]
+	ts [label="gsm_bts_trx_ts"]
+	lchan [label="gsm_lchan"]
+	sub [label="gsm_subscriber"]
+	subcon [label="gsm_subscriber_conn"]
+	sccpcon [label="osmo_bsc_sccp_con"]
+	subgrp [label="gsm_subscriber_group"]
+
+	net -> bts
+	bts -> trx
+	trx -> ts
+	ts -> lchan
+
+	lchan -> ts
+	ts -> trx
+	trx -> bts
+	bts -> net
+
+	lchan -> subcon
+
+	subcon -> sub
+	subcon -> sccpcon
+	subcon -> lchan
+	subcon -> lchan [label="ho_lchan"]
+	subcon -> bts
+	subcon -> lchan [label="secondary_lchan"]
+
+	sub -> subgrp
+	subgrp -> net
+}
