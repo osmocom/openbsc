@@ -132,15 +132,8 @@ struct gsm_subscriber_connection {
 	int mncc_rtp_create_pending;
 	int mncc_rtp_connect_pending;
 
-	/* bsc structures */
-	struct osmo_bsc_sccp_con *sccp_con;
-
 	/* back pointers */
 	struct gsm_network *network;
-
-	/* for assignment handling */
-	struct osmo_timer_list T10;
-	struct gsm_lchan *secondary_lchan;
 
 	/* 2G or 3G? See enum interface_type */
 	int via_iface;
@@ -163,6 +156,13 @@ struct gsm_subscriber_connection {
 	struct gsm_bts *bts;
 	struct gsm_lchan *lchan;
 	struct gsm_lchan *ho_lchan;
+
+	/* bsc structures */
+	struct osmo_bsc_sccp_con *sccp_con;
+
+	/* for assignment handling */
+	struct osmo_timer_list T10;
+	struct gsm_lchan *secondary_lchan;
 #endif
 
 };
