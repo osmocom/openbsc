@@ -1,0 +1,15 @@
+digraph G {
+	net [label="gsm_network"]
+	subconns [label="subscr_conns"]
+	sub [label="gsm_subscriber"]
+	subcon [label="gsm_subscriber_conn"]
+	subgrp [label="gsm_subscriber_group"]
+
+	net -> subconns
+	subconns -> subcon [label="llist"]
+	subcon -> sub
+	subcon -> net
+
+	sub -> subgrp
+	subgrp -> net
+}
