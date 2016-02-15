@@ -4,6 +4,9 @@ struct sgsn_pdp_ctx;
 struct msgb;
 struct gprs_ra_id;
 
+struct RANAP_RAB_SetupOrModifiedItemIEs_s;
+typedef struct RANAP_RAB_SetupOrModifiedItemIEs_s RANAP_RAB_SetupOrModifiedItemIEs_t;
+
 struct iu_cb_ctx {
 	struct gsm_network *network;
 };
@@ -19,8 +22,11 @@ typedef int (* iu_recv_cb_t )(struct msgb *msg, struct gprs_ra_id *ra_id,
 			      /* TODO is ra_id only used for gprs? ^ */
 			      uint16_t *sai);
 
+typedef int (* iu_rab_ass_resp_cb_t )(struct ue_conn_ctx *ue_ctx, uint8_t rab_id,
+		RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies);
+
 int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
-	    struct gsm_network *network, iu_recv_cb_t iu_recv_cb);
+	    struct gsm_network *network, iu_recv_cb_t iu_recv_cb, iu_rab_ass_resp_cb_t ui_rab_ass_resp_cb);
 
 int iu_tx(struct msgb *msg, uint8_t sapi);
 

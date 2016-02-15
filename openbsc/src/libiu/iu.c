@@ -34,6 +34,7 @@ int asn1_xer_print = 1;
 void *talloc_asn1_ctx;
 
 iu_recv_cb_t global_iu_recv_cb = NULL;
+iu_rab_ass_resp_cb_t global_iu_rab_ass_resp_cb = NULL;
 
 
 struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sua_link *link, uint32_t conn_id)
@@ -251,51 +252,31 @@ static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseR
 	return 0;
 }
 
-int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx);
-
 static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_AssignmentResponseIEs_t *ies)
 {
-	struct sgsn_mm_ctx *mm;
-	struct sgsn_pdp_ctx *pdp = NULL;
-	int i, rc;
+	int rc = -1;
 	uint8_t rab_id;
-	uint32_t gtp_tei;
-
-	mm = sgsn_mm_ctx_by_ue_ctx(ctx);
-	/* XXX: Error handling */
 
 	LOGP(DRANAP, LOGL_INFO, "RAB Asignment Response:");
 	if (ies->presenceMask & RAB_ASSIGNMENTRESPONSEIES_RANAP_RAB_SETUPORMODIFIEDLIST_PRESENT) {
+		/* TODO: Iterate over list of SetupOrModifiedList IEs and handle each one */
 		RANAP_IE_t *ranap_ie = ies->raB_SetupOrModifiedList.raB_SetupOrModifiedList_ies.list.array[0];
 		RANAP_RAB_SetupOrModifiedItemIEs_t setup_ies;
 		RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies.raB_SetupOrModifiedItem;
 		rc = ranap_decode_rab_setupormodifieditemies(&setup_ies, &ranap_ie->value);
+		if (rc) {
+			LOGP(DRANAP, LOGL_ERROR, "Error in ranap_decode_rab_setupormodifieditemies()\n");
+			return rc;
+		}
 
 		rab_id = item->rAB_ID.buf[0];
-		if (item->iuTransportAssociation->present == RANAP_IuTransportAssociation_PR_gTP_TEI) {
-			gtp_tei = asn1str_to_u32(&item->iuTransportAssociation->choice.gTP_TEI);
-			pdp = sgsn_pdp_ctx_by_tei(mm, gtp_tei);
-		}
 
-		if (!pdp) {
-			ranap_free_rab_setupormodifieditemies(&setup_ies);
-			return -1;
-		}
+		rc = global_iu_rab_ass_resp_cb(ctx, rab_id, &setup_ies);
 
-		if (item->transportLayerAddress) {
-
-			LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)", rab_id, osmo_hexdump(item->transportLayerAddress->buf,
-									     item->transportLayerAddress->size));
-			memcpy(pdp->lib->gsnlu.v, &item->transportLayerAddress->buf[3], 4);
-			gtp_update_context(pdp->ggsn->gsn, pdp->lib, pdp, &pdp->lib->hisaddr0);
-
-		}
 		ranap_free_rab_setupormodifieditemies(&setup_ies);
 	}
 
 	LOGPC(DRANAP, LOGL_INFO, "\n");
-
-	send_act_pdp_cont_acc(pdp);
 
 	return rc;
 }
@@ -499,7 +480,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 }
 
 int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
-	    struct gsm_network *network, iu_recv_cb_t iu_recv_cb)
+	    struct gsm_network *network, iu_recv_cb_t iu_recv_cb, iu_rab_ass_resp_cb_t iu_rab_ass_resp_cb)
 {
 	struct iu_cb_ctx *iu_ctx;
 	struct osmo_sua_user *user;
@@ -509,6 +490,7 @@ int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
 	iu_ctx->network = network;
 
 	global_iu_recv_cb = iu_recv_cb;
+	global_iu_rab_ass_resp_cb = iu_rab_ass_resp_cb;
 	osmo_sua_set_log_area(DSUA);
 	user = osmo_sua_user_create(ctx, sccp_sap_up, iu_ctx);
 	return osmo_sua_server_listen(user, listen_addr, listen_port);
