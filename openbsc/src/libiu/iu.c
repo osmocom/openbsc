@@ -458,7 +458,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 		rc = ranap_cn_rx_co(cn_ranap_handle_co, ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
-		/* connection-oriented data received */
+		/* connection-less data received */
 		printf("N-UNITDATA.ind(%s)\n", 
 			osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
 		rc = ranap_cn_rx_cl(cn_ranap_handle_cl, link, msgb_l2(oph->msg), msgb_l2len(oph->msg));
