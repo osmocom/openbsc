@@ -49,6 +49,8 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/iu.h>
 
+#include <osmocom/ranap/ranap_ies_defs.h>
+
 #include <gtp.h>
 #include <pdp.h>
 
@@ -308,6 +310,19 @@ static const struct cause_map gtp2sm_cause_map[] = {
 	{ 0, 0 }
 };
 
+static int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx)
+{
+	struct sgsn_signal_data sig_data;
+
+	/* Inform others about it */
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.pdp = pctx;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_ACT, &sig_data);
+
+	/* Send PDP CTX ACT to MS */
+	return gsm48_tx_gsm_act_pdp_acc(pctx);
+}
+
 /* The GGSN has confirmed the creation of a PDP Context */
 static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
@@ -377,17 +392,39 @@ reject:
 	return EOF;
 }
 
-int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx)
+/* Callback for RAB assignment response */
+int sgsn_ranap_rab_ass_resp(struct ue_conn_ctx *ctx, uint8_t rab_id, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies)
 {
-	struct sgsn_signal_data sig_data;
+	int rc = -1;
+	struct sgsn_mm_ctx *mm;
+	struct sgsn_pdp_ctx *pdp = NULL;
+	uint32_t gtp_tei;
+	RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies->raB_SetupOrModifiedItem;
 
-	/* Inform others about it */
-	memset(&sig_data, 0, sizeof(sig_data));
-	sig_data.pdp = pctx;
-	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_ACT, &sig_data);
+	mm = sgsn_mm_ctx_by_ue_ctx(ctx);
+	/* XXX: Error handling */
 
-	/* Send PDP CTX ACT to MS */
-	return gsm48_tx_gsm_act_pdp_acc(pctx);
+	if (item->iuTransportAssociation->present == RANAP_IuTransportAssociation_PR_gTP_TEI) {
+		gtp_tei = asn1str_to_u32(&item->iuTransportAssociation->choice.gTP_TEI);
+		pdp = sgsn_pdp_ctx_by_tei(mm, gtp_tei);
+	}
+
+	if (!pdp) {
+		return -1;
+	}
+
+	if (item->transportLayerAddress) {
+
+		LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)", rab_id, osmo_hexdump(item->transportLayerAddress->buf,
+								     item->transportLayerAddress->size));
+		memcpy(pdp->lib->gsnlu.v, &item->transportLayerAddress->buf[3], 4);
+		gtp_update_context(pdp->ggsn->gsn, pdp->lib, pdp, &pdp->lib->hisaddr0);
+
+	}
+
+	send_act_pdp_cont_acc(pdp);
+	return 0;
+
 }
 
 /* Confirmation of a PDP Context Delete */
