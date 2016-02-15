@@ -12,7 +12,6 @@ struct ue_conn_ctx {
 	struct llist_head list;
 	struct osmo_sua_link *link;
 	uint32_t conn_id;
-	struct sgsn_pdp_ctx *pdp;
 };
 
 /* Implementations of iu_recv_cb_t shall find the ue_conn_ctx in msg->dst. */
