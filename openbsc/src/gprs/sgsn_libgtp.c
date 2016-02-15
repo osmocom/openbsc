@@ -91,8 +91,6 @@ const struct value_string gtp_cause_strs[] = {
 	{ 0, NULL }
 };
 
-int gprs_iu_rab_act(struct sgsn_pdp_ctx *pdp);
-
 /* Generate the GTP IMSI IE according to 09.60 Section 7.9.2 */
 static uint64_t imsi_str2gtp(char *str)
 {
@@ -412,7 +410,8 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 			sndcp_sm_deactivate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
 		} else {
 			/* Dectivate a radio bearer */
-			gprs_iu_rab_deact(&pctx->mm);
+			/* TODO: Save and use rab_id */
+			iu_rab_deact(pctx->mm->iu.ue_ctx, 1);
 		}
 
 		/* Confirm deactivation of PDP context to MS */

@@ -112,7 +112,7 @@ int iu_rab_act_ps(struct sgsn_pdp_ctx *pdp)
 	return iu_rab_act(uectx, msg);
 }
 
-int gprs_iu_rab_deact(struct sgsn_mm_ctx *mm)
+int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id)
 {
 	/* FIXME */
 	return -1;
