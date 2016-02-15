@@ -85,18 +85,25 @@ int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port
 {
 	struct msgb *msg;
 
+	/* FIXME: Generate unique RAB ID per UE */
 	msg = ranap_new_msg_rab_assign_voice(1, rtp_ip, rtp_port);
 	msg->l2h = msg->data;
 	return iu_rab_act(ue_ctx, msg);
 }
 
-int iu_rab_act_ps(struct ue_conn_ctx *ue_ctx, uint32_t gtp_ip, uint32_t gtp_tei)
+int iu_rab_act_ps(struct sgsn_pdp_ctx *pdp, uint32_t gtp_ip, uint32_t gtp_tei)
 {
 	struct msgb *msg;
+	struct sgsn_mm_ctx *mm = pdp->mm;
+	struct ue_conn_ctx *uectx;
 
+	uectx = mm->iu.ue_ctx;
+	uectx->pdp = pdp;
+
+	/* FIXME: Generate unique RAB ID per UE */
 	msg = ranap_new_msg_rab_assign_data(1, gtp_ip, gtp_tei);
 	msg->l2h = msg->data;
-	return iu_rab_act(ue_ctx, msg);
+	return iu_rab_act(uectx, msg);
 }
 
 int gprs_iu_rab_deact(struct sgsn_mm_ctx *mm)
@@ -238,7 +245,9 @@ static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseR
 	return 0;
 }
 
-static int ranap_handle_co_rab_ass_resp(void *ctx, RANAP_RAB_AssignmentResponseIEs_t *ies)
+int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx);
+
+static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_AssignmentResponseIEs_t *ies)
 {
 	int rc;
 
@@ -259,6 +268,8 @@ static int ranap_handle_co_rab_ass_resp(void *ctx, RANAP_RAB_AssignmentResponseI
 	}
 
 	LOGPC(DRANAP, LOGL_INFO, "\n");
+
+	send_act_pdp_cont_acc(ctx->pdp);
 
 	return rc;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+struct sgsn_pdp_ctx;
 struct msgb;
 struct gprs_ra_id;
 
@@ -8,8 +9,10 @@ struct iu_cb_ctx {
 };
 
 struct ue_conn_ctx {
+	struct llist_head list;
 	struct osmo_sua_link *link;
 	uint32_t conn_id;
+	struct sgsn_pdp_ctx *pdp;
 };
 
 /* Implementations of iu_recv_cb_t shall find the ue_conn_ctx in msg->dst. */
@@ -23,4 +26,4 @@ int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
 int iu_tx(struct msgb *msg, uint8_t sapi);
 
 int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port);
-int iu_rab_act_ps(struct ue_conn_ctx *ue_ctx, uint32_t gtp_ip, uint32_t gtp_tei);
+int iu_rab_act_ps(struct sgsn_pdp_ctx *pdp, uint32_t gtp_ip, uint32_t gtp_tei);
