@@ -357,7 +357,9 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		return send_act_pdp_cont_acc(pctx);
 	} else {
 		/* Activate a radio bearer */
-		uint32_t ggsn_ip = 0xc0a80033; /* 192.168.0.51 */
+		uint32_t ggsn_ip;
+		memcpy(&ggsn_ip, pdp->gsnru.v, pdp->gsnru.l);
+		ggsn_ip = htonl(ggsn_ip);
 		iu_rab_act_ps(pctx, ggsn_ip, pdp->teid_own);
 		return 0;
 	}
