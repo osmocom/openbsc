@@ -253,6 +253,12 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
+int iu_tx(struct msgb *msg, uint8_t sapi)
+{
+	LOGP(DNM, LOGL_ERROR, "iu_tx() called, but NITB has no Iu interface.\n");
+	return -1;
+}
+
 int main(int argc, char **argv)
 {
 	int rc;

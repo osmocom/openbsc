@@ -24,42 +24,18 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/msc_ifaces.h>
 
-static int tx_dummy_a(struct msgb *msg, uint8_t sapi)
-{
-	LOGP(DMSC, LOGL_ERROR,
-	     "attempt to send message via uninitialized A-interface\n");
-	return -1;
-}
-
-static int tx_dummy_iu_cs(struct msgb *msg, uint8_t sapi)
-{
-	LOGP(DMSC, LOGL_ERROR,
-	     "attempt to send message via uninitialized IuCS-interface\n");
-	return -1;
-}
-
-struct msc_ifaces global_msc_ifaces = {
-	.a = {
-		.tx = tx_dummy_a,
-	},
-	.iu_cs = {
-		.tx = tx_dummy_iu_cs,
-	}
-};
-
-
-static int msc_tx(struct msc_ifaces *ifaces,
-		  struct gsm_subscriber_connection *conn,
-		  struct msgb *msg)
+int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	switch (conn->via_iface) {
 	case IFACE_A:
-		/* TODO: msg->dst = <A-iface token> */
-		return ifaces->a.tx(msg, 0);
+		LOGP(DMSC, LOGL_ERROR,
+		     "attempt to send message via A-interface, which is not yet implemented.\n");
+		/* TODO: msg->dst = <A-iface token>; a_tx(msg); */
+		return -1;
 
 	case IFACE_IU:
 		msg->dst = conn->iu.ue_ctx;
-		return ifaces->iu_cs.tx(msg, 0);
+		return iu_tx(msg, 0);
 
 	default:
 		LOGP(DMSC, LOGL_ERROR,
