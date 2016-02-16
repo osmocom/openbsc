@@ -304,8 +304,7 @@ static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gpr
 	DEBUGP(DIUCS, "got Iu-CS message\n");
 	DEBUGP(DIUCS, "Iu-CS message is %s\n",
 	       osmo_hexdump(msg->data, msg->len));
-	uint8_t link_id = 42; /* TODO proper link_id */
-	return gsm0408_rcvmsg_iucs(cscn_network, msg, link_id);
+	return gsm0408_rcvmsg_iucs(cscn_network, msg);
 }
 
 static int handle_rab_ass_resp(struct ue_conn_ctx *ctx, uint8_t rab_id, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies)
