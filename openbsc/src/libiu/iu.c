@@ -252,6 +252,8 @@ static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseR
 	return 0;
 }
 
+extern int ranap_free_rab_setupormodifieditemies(RANAP_RAB_SetupOrModifiedItemIEs_t *raB_SetupOrModifiedItemIEs);
+
 static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_AssignmentResponseIEs_t *ies)
 {
 	int rc = -1;
