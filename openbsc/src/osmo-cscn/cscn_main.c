@@ -337,9 +337,6 @@ int main(int argc, char **argv)
 	if (!cscn_network)
 		return -ENOMEM;
 
-	global_msc_ifaces.network = cscn_network;
-	global_msc_ifaces.iu_cs.tx = iu_tx;
-
 	vty_init(&cscn_vty_info);
 	bsc_vty_init(&log_info, cscn_network);
 	rc = vty_read_config_file(cscn_cmdline_config.config_file, NULL);

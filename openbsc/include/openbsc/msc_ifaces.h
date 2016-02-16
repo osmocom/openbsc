@@ -25,6 +25,9 @@
  * and not link against osmo-iuh.
  */
 
+/* Each main linkage must implement this function (see comment above). */
+extern int iu_tx(struct msgb *msg, uint8_t sapi);
+
 int msc_tx_dtap(struct gsm_subscriber_connection *conn,
 		struct msgb *msg);
 

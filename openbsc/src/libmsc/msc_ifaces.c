@@ -24,7 +24,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/msc_ifaces.h>
 
-int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
+static int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	switch (conn->via_iface) {
 	case IFACE_A:
@@ -49,6 +49,6 @@ int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 int msc_tx_dtap(struct gsm_subscriber_connection *conn,
 		struct msgb *msg)
 {
-	return msc_tx(&global_msc_ifaces, conn, msg);
+	return msc_tx(conn, msg);
 }
 
