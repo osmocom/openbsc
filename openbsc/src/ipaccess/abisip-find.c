@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 	char *ifname = NULL;
 	int rc;
 
-	printf("ipaccess-find (C) 2009 by Harald Welte\n");
+	printf("abisip-find (C) 2009 by Harald Welte\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
 
 	if (argc < 2) {
