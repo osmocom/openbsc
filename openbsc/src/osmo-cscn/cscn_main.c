@@ -447,7 +447,7 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
 	/* Set up Iu-CS */
-	iu_init(tall_cscn_ctx, "127.0.0.1", 14001, cscn_network, rcvmsg_iu_cs, handle_rab_ass_resp);
+	iu_init(tall_cscn_ctx, "127.0.0.1", 14001, rcvmsg_iu_cs, handle_rab_ass_resp);
 
 	if (cscn_cmdline_config.daemonize) {
 		rc = osmo_daemonize();

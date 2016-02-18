@@ -7,10 +7,6 @@ struct gprs_ra_id;
 struct RANAP_RAB_SetupOrModifiedItemIEs_s;
 typedef struct RANAP_RAB_SetupOrModifiedItemIEs_s RANAP_RAB_SetupOrModifiedItemIEs_t;
 
-struct iu_cb_ctx {
-	struct gsm_network *network;
-};
-
 struct ue_conn_ctx {
 	struct llist_head list;
 	struct osmo_sua_link *link;
@@ -26,7 +22,7 @@ typedef int (* iu_rab_ass_resp_cb_t )(struct ue_conn_ctx *ue_ctx, uint8_t rab_id
 		RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies);
 
 int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
-	    struct gsm_network *network, iu_recv_cb_t iu_recv_cb, iu_rab_ass_resp_cb_t ui_rab_ass_resp_cb);
+	    iu_recv_cb_t iu_recv_cb, iu_rab_ass_resp_cb_t ui_rab_ass_resp_cb);
 
 int iu_tx(struct msgb *msg, uint8_t sapi);
 
