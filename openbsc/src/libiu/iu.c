@@ -262,7 +262,7 @@ static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_Assig
 		RANAP_IE_t *ranap_ie = ies->raB_SetupOrModifiedList.raB_SetupOrModifiedList_ies.list.array[0];
 		RANAP_RAB_SetupOrModifiedItemIEs_t setup_ies;
 		RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies.raB_SetupOrModifiedItem;
-		rc = ranap_decode_rab_setupormodifieditemies(&setup_ies, &ranap_ie->value);
+		rc = ranap_decode_rab_setupormodifieditemies_fromlist(&setup_ies, &ranap_ie->value);
 		if (rc) {
 			LOGP(DRANAP, LOGL_ERROR, "Error in ranap_decode_rab_setupormodifieditemies()\n");
 			return rc;
