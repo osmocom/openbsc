@@ -307,7 +307,8 @@ static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gpr
 	return gsm0408_rcvmsg_iucs(cscn_network, msg);
 }
 
-static int handle_rab_ass_resp(struct ue_conn_ctx *ctx, uint8_t rab_id, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies)
+static int handle_rab_ass_resp(struct ue_conn_ctx *ctx, uint8_t rab_id,
+			       struct RANAP_RAB_SetupOrModifiedItemIEs_s *setup_ies)
 {
 	DEBUGP(DIUCS, "got Iu-CS RAB assignment response for RAB ID %u\n", rab_id);
 
