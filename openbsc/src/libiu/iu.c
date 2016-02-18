@@ -312,10 +312,12 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 		switch (message->procedureCode) {
 		case RANAP_ProcedureCode_id_SecurityModeControl:
 			/* Security Mode Complete */
+			LOGP(DRANAP, LOGL_NOTICE, "FIXME: Handle security mode complete\n");
 			rc = -1;
 			break;
 		case RANAP_ProcedureCode_id_Iu_Release:
 			/* Iu Release Complete */
+			LOGP(DRANAP, LOGL_NOTICE, "FIXME: Handle Iu release complete\n");
 			rc = -1;
 			break;
 		default:
