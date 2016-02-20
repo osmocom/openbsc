@@ -315,7 +315,7 @@ try_local:
 		rc = smpp_try_deliver(gsms, conn);
 		if (rc == 1) {
 			rc = 1; /* cause 1: unknown subscriber */
-			osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+			osmo_counter_inc(conn->network->stats.sms.no_receiver);
 		} else if (rc < 0) {
 			rc = 21; /* cause 21: short message transfer rejected */
 			/* FIXME: handle the error somehow? */
