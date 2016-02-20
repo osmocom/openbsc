@@ -1,0 +1,94 @@
+[[smpp]]
+== Short Message Peer to Peer (SMPP)
+
+The _Short Message Peer to Peer (SMPP) Protocol_ <<smpp-34>> has been
+used for the communication with SMSCs. OsmoNITB implements version 3.4
+of the protocol. Using this interface one can send MT-SMS to an attached
+subscriber or receive unrouted MO-SMS.
+
+SMPP describes a situation where multiple ESMEs (External SMS Entities)
+interact with a SMSC (SMS Service Center) via the SMPP protocol.  Each
+entity is identified by its System Id.  The System ID is a character
+string which is configured by the system administrator.
+
+OsmoNITB implements the SMSC side of SMPP and subsequently acts as a TCP
+server accepting incoming connections from ESME client programs.
+
+Each ESME identifies itself to the SMSC with its system-id and an
+optional shared password.
+
+
+=== Global SMPP configuration
+
+
+There is a `smpp` vty node at the top level of the OsmoNITB
+configuration.  Under this node, the global SMPP configuration is
+performed.
+
+
+Use the `local-tcp-port` command to define the TCP port at which the
+OsmoNITB internal SMSC should listen for incoming SMPP connections.  The
+default port assigned to SMPP is 2775.
+
+Use the `system-id` command  to define the System ID of the SMSC.
+
+Use the `policy` parameter to define whether only explicitly configured
+ESMEs are permitted to access the SMSC (`closed`), or whether any
+ESME should be accepted (`accept-all`).
+
+Use the `smpp-first` command to define if SMPP routes have higher
+precendence than MSISDNs contained in the HLR (`smpp-first`), or if
+only MSISDNs found not in the HLR should be considered for routing to
+SMPP (`no smpp-first`).
+
+
+=== ESME configuration
+
+nder the `smpp` vty node, you can add any number of `esme` nodes, one
+for each ESME that you wish to configure.
+
+Use the `esme NAME` command (where NAME corresponds to the system-id of
+the ESME to be configured) under the SMPP vty node to enter the
+configuration node for this given ESME.
+
+Use the `password` command to specify the password (if any) for the
+ESME.
+
+Use the `default-route` command to indicate that any MO-SMS without a
+more specific route should be routed to this ESME.
+
+Use the `deliver-src-imsi` command to indicate that the SMPP DELIVER
+messages for MO SMS should state the IMSI (rather than the MSISDN) as
+source address.
+
+Use the `osmocom-extensions` command to request that Osmocom specific
+extension TLVs shall be included in the SMPP PDUs.  Those extensions
+include the ARFCN of the cell, the L1 transmit power of the MS, the
+timing advance, the uplink and dwnlink RxLev and RxQual, as well as the
+IMEI of the terminal at the time of generating the SMPP DELIVER PDU.
+
+Use the `dcs-transparent` command to transparently pass the DCS value
+from the SMS Layer3 protocols to SMPP, instead of converting them to the
+SMPP-specific values.
+
+Use the `route prefix` command to specify a route towards this ESME.
+Using routes, you specify which destination MSISDNs should be routed
+towards your ESME.
+
+
+=== Example configuration snippet
+
+The following example configuration snippet shows a single ESME
+'galactica' with a prefix-route of all national numbers stating with
+2342:
+----
+smpp
+ local-tcp-port 2775
+ policy closed
+ no smpp-first
+ esme galactica
+  password SoSayWeAll
+  deliver-src-imsi
+  osmocom-extensions
+   route prefix national isdn 2342
+----

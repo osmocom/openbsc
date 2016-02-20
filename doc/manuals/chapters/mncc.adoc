@@ -1,0 +1,206 @@
+[[mncc]]
+== MNCC for external Call Control
+
+The 3GPP GSM specifications define an interface point (service access
+point) inside the MSC between the call-control part and the rest of the
+system.  This service access point is called the MNCC-SAP.  It is
+described in _3GPP TS 24.007_ <<3gpp-ts-24-007>> Chapter 7.1.
+
+However, like for all internal interfaces, 3GPP does not give any
+specific encoding for the primitives passed at this SAP.
+
+The MNCC protocol of OsmoNITB has been created by the Osmocom community
+and allows to control the call handling and audio processing by an
+external application. The interface is currently exposed using Unix
+Domain Sockets. The protocol is defined in the `mncc.h` header file.
+
+OsmoNITB can run in two different modes:
+
+. with internal MNCC handler
+. with external MNCC handler
+
+=== Internal MNCC handler
+
+When the internal MNCC handler is enabled, OsmoNITB will switch voice
+calls between GSM subscribers internally and automatically based on
+the subscribers __extension__ number.  No external software is required.
+
+NOTE: Internal MNCC is the default behavior.
+
+==== Internal MNCC Configuration
+
+The internal MNCC handler offers some configuration parameters under the
+`mncc-int` VTY configuration node.
+
+===== `default-codec tch-f (fr|efr|amr)`
+
+Using this command, you can configure the default voice codec to be used
+by voice calls on TCH/F channels.
+
+===== `default-codec tch-h (hr|amr)`
+
+Using this command, you can configure the default voice codec to be used
+by voice calls on TCH/H channels.
+
+=== External MNCC handler
+
+When the external MNCC handler is enabled, OsmoNITB will not perform any
+internal call switching, but delegate all call-control handling towards
+the external MNCC program connected via the MNCC socket.
+
+If you intend to operate OsmoNITB with external MNCC handler, you have
+to start it with the `-m` or `--mncc-sock` command line option.
+
+At the time of this writing, the only external application implementing
+the MNCC interface compatible with the OsmoNITB MNCC socket was `lcr`,
+the Linux Call Router.
+
+=== MNCC protocol description
+
+The protocol follows the primitives specified in 3GPP TS 04.07 Chapter
+7.1.  The encoding of the primitives is provided in the `openbsc/mncc.h`
+header file, which uses some common definitions from
+`osmocom/gsm/mncc.h` (part of libosmocore.git).
+
+However, OsmoNITB MNCC specifies a number of additional primitives
+beyond those listed in the 3GPP specification.
+
+The different calls in the network are distinguished by their callref
+(call reference), which is a unique unsigned 32bit integer.
+
+==== MNCC_HOLD_IND
+
+Direction: NITB -> Handler
+
+A 'CC HOLD' message was received from the MS.
+
+==== MNCC_HOLD_CNF
+
+Direction: Handler -> NITB
+
+Acknowledge a previously-received 'CC HOLD' message, causes the
+transmission of a 'CC HOLD ACK' message to the MS.
+
+==== MNCC_HOLD_REJ
+
+Direction: Handler -> NITB
+
+Reject a previously-received 'CC HOLD' message, causes the
+transmission of a 'CC HOLD REJ' message to the MS.
+
+==== MNCC_RETRIEVE_IND
+
+Direction: NITB -> Handler
+
+A 'CC RETRIEVE' message was received from the MS.
+
+==== MNCC_RETRIEVE_CNF
+
+Direction: Handler -> NITB
+
+Acknowledge a previously-received 'CC RETRIEVE' message, causes the
+transmission of a 'CC RETRIEVE ACK' message to the MS.
+
+
+==== MNCC_RETRIEVE_REJ
+
+Direction: Handler -> NITB
+
+Reject a previously-received 'CC RETRIEVE' message, causes the
+transmission of a 'CC RETRIEVE REJ' message to the MS.
+
+==== MNCC_USERINFO_REQ
+
+Direction: NITB -> Handler
+
+Causes a 'CC USER INFO' message to be sent to the MS.
+
+==== MNCC_USERINFO_IND
+
+Direction: NITB -> Handler
+
+Indicates that a 'CC USER-USER' message has been received from the MS.
+
+==== MNCC_BRIDGE
+
+Direction: Handler -> NITB
+
+Requests that the TCH (voice) channels of two calls shall be
+inter-connected.   This is the old-fashioned way of using MNCC,
+primarily required for circuit-switched BTSs whose TRAU frames are
+received via an E1 interface card on the NITB machine.
+
+==== MNCC_FRAME_RECV
+
+Direction: Handler -> NITB
+
+Enable the forwarding of TCHF voice frames via the MNCC interface in
+NITB->Handler direction for the specified call.
+
+==== MNCC_FRAME_DROP
+
+Direction: Handler -> NITB
+
+Disable the forwarding of TCHF voice frames via the MNCC interface in
+NITB->Handler direction for the specified call.
+
+==== MNCC_LCHAN_MODIFY
+
+Direction: Handler -> NITB
+
+Modify the current dedicated radio channel from signalling to voice, or
+if it is a signalling-only channel (SDCCH), assign a TCH to the MS.
+
+==== MNCC_RTP_CREATE
+
+Direction: Handler -> NITB
+
+Create a RTP socket for this call at the BTS/TRAU that serves this BTS.
+
+==== MNCC_RTP_CONNECT
+
+Direction: Handler -> NITB
+
+Connect the RTP socket of this call to the given remote IP address and
+port.
+
+==== MNCC_RTP_FREE
+
+Direction: Handler -> NITB
+
+Release a RTP connection for one given call.
+
+==== GSM_TCHF_FRAME
+
+Direction: both
+
+Transfer the payload of a GSM Full-Rate (FR) voice frame between the
+NITB and an external MNCC handler.
+
+==== GSM_TCHF_FRAME_EFR
+
+Direction: both
+
+Transfer the payload of a GSM Enanced Full-Rate (EFR) voice frame
+between the NITB and an external MNCC handler.
+
+==== GSM_TCHH_FRAME
+
+Direction: both
+
+Transfer the payload of a GSM Half-Rate (HR) voice frame between the
+NITB and an external MNCC handler.
+
+==== GSM_TCH_FRAE_AMR
+
+Direction: both
+
+Transfer the payload of a GSM Adaptive-Multi-Rate (AMR) voice frame
+between the NITB and an external MNCC handler.
+
+==== GSM_BAD_FRAME
+
+Direction: NITB -> Handler
+
+Indicate that no valid voice frame, but a 'bad frame' was received over
+the radio link from the MS.

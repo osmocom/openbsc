@@ -1,0 +1,139 @@
+[[net]]
+== OsmoNITB Core Network Subsystem
+
+The OsmoNITB Core Network is a minimalistic implementation of the
+classic MSC/VLR/HLR/AUC/SMSC components.  None of the standardized core
+network protocols (such as SCCP/TCAP/MAP) are used, interfaces between
+VLR and HLR are simple function calls inside the same software package.
+
+OsmoNITB can thus provide autonomous voice and SMS services to its
+coverage area, but it cannot provide roaming interfaces to classic GSM
+operators.  To support this configuration, it is suggested to use the
+OsmoBSC variant of OpenBSC and interface it with a conventional MSC
+using A-over-IP protocol.
+
+If you have classic GSM network/operator background, many of the
+concepts used in OsmoNITB will appear foreign to you, as they are very
+unlike the conventional GSM networks that you have worked with.
+
+
+=== Configuring the Core Network
+
+Like everything else, the core network related parameters are configured
+using the VTY.  The respective parameters are underneath the
+`network` config node.
+
+You can get to that node by issuing the following commands:
+
+.Entering the config network node
+----
+OpenBSC> enable 
+OpenBSC# configure terminal 
+OpenBSC(config)# network 
+OpenBSC(config-net)#
+----
+
+A full reference to them can be found in the _OsmoNITB VTY reference
+manual_ <<vty-ref-osmonitb>>. This section will only introduce the most
+commonly used settings in detail.
+
+[TIP]
+====
+You can always use the `list` VTY command to get a list of all possible
+commands at the current node.
+====
+
+
+=== Configuring the MCC/MNC
+
+The key identities of every GSM PLMN is the MCC and MNC.  They are
+identical over the entire network.  In most cases, the MCC/MNC will be
+allocated to the operator by the respective local regulatory authority.
+For example, to set the MCC/MNC of 262-89, you may enter:
+
+.Configuring the MCC/MNC
+----
+OpenBSC(config-net)# network country code 262
+OpenBSC(config-net)# mobile network code 89
+----
+
+
+=== Configuring MM INFO
+
+The __MM INFO__ procedure can be used after a successful __LOCATION
+UPDATE__ in order to transmit the human-readable network name as well as
+local time zone information to the MS.  gq
+
+By default, MM INFO is not active.  You can activate it, and set its
+configuration using the VTY.   An example is provided below.  
+
+.Configuring MM INFO
+----
+OpenBSC(config-net)# mm info 1
+OpenBSC(config-net)# short name OpenBSC
+OpenBSC(config-net)# long name OpenBSC
+----
+
+[NOTE]
+====
+Not all phone support the MM INFO procedure.  Unless they already are
+factory-programmed to contain the name for your MCC/MNC, then they will
+likely only provide a numeric display of the network name, such as
+__262-89__ or with the country code transformed into a letter, such as
+__D 89__.
+====
+
+The time information transmitted is determined by the local system time
+of the operating system on which OsmoNITB is running.  As BTSs attached
+to one OsmoNITB can reside in different time zones, it is possible to
+use the `timezone` command at each BTS node to set different time
+zone offsets in hours and quarter hours.
+
+
+=== Setting the NECI bit
+
+NECI (New Establishment Cause Indication) is an optional change of the
+definition for establishment cause in the RACH burst.  Among other
+things, in a network with NECI, a MS can explicitly indicate its TCH/H
+capability while asking for a dedicated radio channel.
+
+It is strongly recommended to use NECI.  You can do so by issuing the following command:
+.Enabling NECI
+----
+OpenBSC(config-net)# neci 1
+----
+
+
+=== Configuring Handover
+
+As opposed to cell re-selection in idle mode, handover refers to the
+explicit transfer of a MS dedicated channel from one radio channel to
+another.  This typically happens due to a MS moving from one cell to
+another while in an active call.
+
+OsmoNITB has a number of hand-over related parameters by which the
+hand-over algorithm can be tuned. Logically, those settings are settings
+of the BSC component, but for historic reasons, they are also configured
+under the __network__ VTY node.
+
+.Configuring Handover
+----
+OpenBSC(config-net)# handover 1
+OpenBSC(config-net)# handover window rxlev averaging 10
+OpenBSC(config-net)# handover window rxqual averaging 1
+OpenBSC(config-net)# handover window rxlev neighbor averaging 10
+OpenBSC(config-net)# handover power budget interval 6
+OpenBSC(config-net)# handover power budget hysteresis 3
+OpenBSC(config-net)# handover maximum distance 9999
+----
+
+[NOTE]
+====
+If you are receiving the following error message: 
+----
+OpenBSC(config-net)# handover 1
+% Cannot enable handover unless RTP Proxy mode is enabled by using the -P command line option
+----
+then you should do as indicated and make sure to start your `osmo-nitb` process using
+the `-P` command line option.
+====

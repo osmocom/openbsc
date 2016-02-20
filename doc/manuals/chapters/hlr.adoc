@@ -1,0 +1,244 @@
+[[hlr]]
+== OsmoNITB HLR subsystem
+
+
+As OsmoNITB is a fully autonomous system, it also includes a
+minimal/simplistic HLR and AUC.  Compared to real GSM networks, it does
+not implement any of the external interfaces of a real HLR, such as the
+MAP/TCAP/SCCP protocol.  It can only be used inside the OsmoNITB.
+
+While functionally maintaining the subscriber database and
+authentication keys, it offers a much reduced feature set.  For example,
+it is not possible to configure bearer service permission lists, or
+BAOC.
+
+At this time, the only supported database back end for the OsmoNITB
+internal HLR/AUC is the file-based SQL database SQLite3.
+
+
+=== Authorization Policy
+
+Authorization determines how subscribers can access your network.  This
+is unrelated to authentication, which verifies the authenticity of SIM
+cards that register with the network.
+
+OsmoNITB supports three different authorization policies:
+
+closed::
+	This mode requires subscribers to have a record with their IMSI
+	in the HLR, and it requires that their status is set to
+	`authorized 1`
+	+
+	This reflects the most typical operation of GSM networks, where
+	subscribers have to obtain a SIM card issued by the operator.  At the
+	time the SIM gets issued, it is provisioned in the HLR to enable the
+	subscriber to use the services of the network.
+
+accept-all::
+	This policy accepts any and all subscribers that every try to
+	register to the network.  Non-existent subscribers are
+	automatically and dynamically created in the HLR, and they
+	immediately have full access to the network.  Any IMSI can
+	register, no matter what SIM card they are using in their
+	phones.
+	+
+	This mode is mostly useful for lab testing or for demonstrating
+	the lack of mutual authentication and the resulting security
+	problems in the GSM system.
+
+NOTE: As you do not know the Ki of dynamically created subscribers with
+SIM cards of unknown origin, you cannot use cryptographic authentication
+and/or encryption!
+
+CAUTION: Never run a network in accept-all mode, unless you know exactly
+what you are doing.  You are very likely causing service interruption to
+mobile phones in the coverage area of your BTSs, which is punishable
+under criminal law in most countries!
+
+token::
+	This method was created for special-purpose configurations at
+	certain events.  It tries to combine the benefits of automatic
+	enrollment with foreign IMSI while trying to prevent causing disruption
+	to phones that register to the network by accident.
+	+
+	This policy is currently not actively supported.
+
+The currently active policy can be selected using the
+`auth policy (closed|accept-all|token)` at the `network` configuration
+node of the VTY.
+
+=== Location Update Reject Cause
+
+When a 'Location Update Request' is to be rejected by the network (e.g.
+due to an unknown or unauthorized subscriber), the 'Location Update
+Reject' message will contain a 'Reject Cause'.
+
+You can configure the numeric value of that cause by means of the
+`location updating reject cause <2-111>` command at the network node.
+
+
+=== Querying information about a subscriber
+
+Information about a specific subscriber can be obtained from the HLR by
+issuing `show subscriber` command.
+
+For example, to display information about a subscriber with the IMSI
+602022080345046, you can use the following command:
+
+.Displaying information about a subscriber
+----
+OpenBSC> show subscriber imsi 602022080345046
+    ID: 1, Authorized: 1 <1>
+    Name: 'Frank'
+    Extension: 2342 <2>
+    LAC: 1/0x1 <3>
+    IMSI: 602022080345046
+    TMSI: 4DB8B4D8
+    Pending: 0
+    Use count: 1
+----
+
+<1> Whether or not the subscriber is authorized for access
+<2> OsmoNITB is often treated like a PBX, this is why phone numbers are called extensions
+<3> The Location Area Code (LAC) indicates where in the network the
+    subscriber has last performed a LOCATION UPDATE.  Detached subscribers
+    indicate a LAC of 0.
+
+Subscribers don't have to be identified/referenced by their IMSI, but
+they can also be identified by their extension (phone number), their
+TMSI as well as their internal database ID.   Example alternatives
+showing the same subscriber record are:
+----
+OpenBSC> show subscriber id 1
+----
+
+or
+
+----
+OpenBSC> show subscriber extension 2342
+----
+
+
+=== Enrolling a subscriber
+
+A subscriber can be added to the network in different ways:
+
+* direct insert into SQL database by external program
+* semi-automatic from the VTY
+
+In most applications, the subscribers will be pre-provisioned by direct
+insertion into the SQL database.  This can be done by a custom program,
+the SQL schema is visible from the `.schema` command on the sqlite3
+command-line program, and there are several scripts included in the
+OpenBSC source code, written in both Python as well as Perl language.
+
+In case you are obtaining pre-provisioned SIM cards from sysmocom: They
+will ship with a HLR SQL database containing the subscriber records.
+
+If you prefer to program the SIM cards yourself, you can use the pySim
+tool available from http://cgit.osmocom.org/cgit/pysim/.  It has the
+ability to append the newly-provisioned SIM cards to an existing HLR
+database, please check its `--write-hlr` command line argument.
+
+
+NOTE: OsmoNITB will automatically add new subscriber records for every
+IMSI that ever tries to perform a LOCATION UPDATE with the network.
+However, those subscriber records are marked as "not authorized", i.e.
+they will not be able to use your network.
+
+
+=== Changing subscriber properties
+
+
+Once a subscriber exists in the HLR, his properties can be set
+interactively from the VTY.  Modifying subscriber properties requires
+the VTY to be in the privileged (`enable`) mode.
+
+All commands are single-line commands and always start with identifying
+the subscriber on which the operation shall be performed.  Such
+identification can be performed by
+
+* IMSI
+* TMSI
+* extension number
+* ID (internal identifier)
+
+
+==== Changing the subscriber phone number
+
+
+You can set the phone number of the subscriber with IMSI 602022080345046
+to 12345 by issuing the following VTY command from the enable node:
+
+.Changing the phone number of a subscriber
+----
+OpenBSC# subscriber imsi 602022080345046 extension 12345
+----
+
+
+==== Changing the subscriber name
+
+The subscriber name is an internal property of OsmoNITB.  The name will
+never be transmitted over the air interface or used by the GSM protocol.
+The sole purpose of the name is to make log output more intuitive, as
+human readers of log files tend to remember names easier than IMSIs or
+phone numbers.
+
+In order to set the name of subscriber with extension number 12345 to
+"Frank", you can issue the following command on the VTY enable node:
+`subscriber extension 12345 name Frank`
+
+The name may contain spaces and special characters.  You can verify the
+modified subscriber record by issuing the `show subscriber extension
+12345` command.
+
+
+==== Changing the authorization status
+
+As the HLR automatically adds records for all subscribers it sees, those
+that are actually permitted to use the network have to be authorized by
+setting the authorized property of the subscriber. 
+
+You can set the authorized property by issuing the following VTY command
+from the enable node:
+
+.Authorizing a subscriber
+----
+OpenBSC# subscriber extension 12345 authorized 1
+----
+
+Similarly, you can remove the authorized status from
+a subscriber by issuing the following command:
+
+.Un-authorizing a subscriber
+----
+OpenBSC# subscriber extension 12345 authorized 0
+----
+
+
+==== Changing the GSM authentication algorithm and Ki
+
+In order to perform cryptographic authentication of the subscriber, his
+Ki needs to be known to the HLR/AUC.  Furthermore, the authentication
+algorithm implemented on the SIM card (A3/A8) must match that of the
+algorithm configured in the HLR.
+
+Currently, OsmoNITB supports the following authentication algorithms:
+
+none:: No authentication is performed
+xor:: Authentication is performed using the XOR algorithm (for test/debugging purpose)
+comp128v1:: Authentication is performed according to the COMP128v1 algorithm 
+
+WARNING: None of the supported authentication algorithms are
+cryptographically very strong.  Development is proceeding to include
+support for stronger algorithms like GSM-MILENAGE.  Please contact
+sysmocom if you require strong authentication support.
+
+In order to configure a subscriber for COMP128v1 and to set his Ki, you
+can use the following VTY command from the enable node:
+
+.Configuring a subscriber for COMP128v1 and setting Ki
+----
+OpenBSC# subscriber extension 2342 a3a8 comp128v1 000102030405060708090a0b0c0d0e0f
+----
+

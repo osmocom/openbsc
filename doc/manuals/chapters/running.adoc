@@ -1,0 +1,60 @@
+== Running OsmoNITB
+
+The OsmoNITB executable (`osmo-nitb`) offers the following command-line
+arguments:
+
+==== SYNOPSIS
+
+*osmo-nitb* [-h|-V] [-d 'DBGMASK'] [-D] [-c 'CONFIGFILE'] [-s] [-T] [-e 'LOGLEVEL'] [-l 'DATABASE'] [-a] [-P] [-m] [-C] [-r 'RFCTL']
+
+==== OPTIONS
+
+*-h, --help*::
+	Print a short help message about the supported options
+*-V, --version*::
+	Print the compile-time version number of the OsmoBTS program
+*-d, --debug 'DBGMASK','DBGLEVELS'*::
+	Set the log subsystems and levels for logging to stderr. This
+	has mostly been superseded by VTY-based logging configuration,
+	see <<logging>> for further information.
+*-D, --daemonize*::
+	Fork the process as a daemon into background.
+*-c, --config-file 'CONFIGFILE'*::
+	Specify the file and path name of the configuration file to be
+	used. If none is specified, use `openbsc.cfg` in the current
+	working directory.
+*-s, --disable-color*::
+	Disable colors for logging to stderr. This has mostly been
+	deprecated by VTY based logging configuration, see <<logging>>
+	for more information.
+*-T, --timestamp*::
+	Enable time-stamping of log messages to stderr. This has mostly
+	been deprecated by VTY based logging configu- ration, see
+	<<logging>> for more information.
+*-e, --log-level 'LOGLEVEL'*::
+	Set the global log level for logging to stderr. This has mostly
+	been deprecated by VTY based logging configuration, see
+	<<logging>> for more information.
+*-l, --database 'DATABASE'*::
+	Specify the file name of the SQLite3 database to use as HLR/AUC
+	storage
+*-a, --authorize-everyone*::
+	Authorize every subscriber to the network.  This corresponds to
+	the `auth-policy open` VTY configuration option.
+	+
+	WARNING:: This is dangerous as you may disrupt sevices to
+	subscribers that are not part of your network!  Don't use unless
+	you absolutely know what you're doing!
+*-P, --rtp-proxy*::
+	Enable the RTP proxy code inside OsmoNITB.  This will force all
+	voice RTP data to pass through OsmoNITB, rather than going
+	directly from BTS to MGW, or BTS to BTS.
+*-m, --mncc-sock*::
+	Enable the MNCC socket for an external MNCC handler. See
+	<<mncc>> for further information.
+*-C, --no-dbcounter*::
+	Disable the regular periodic synchronization of statistics
+	counters to the database.
+*-r, --rf-ctl 'RFCTL'*::
+	Offer a Unix domain socket for RF control at the path/filename
+	'RFCTL' in the file system.

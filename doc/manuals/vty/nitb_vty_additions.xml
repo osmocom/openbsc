@@ -1,0 +1,24 @@
+<vtydoc xmlns='urn:osmocom:xml:libosmocore:vty:doc:1.0'>
+    <node id='29'>
+      <child_of nodeid='4' />
+      <name>MNCC Internal Configuration</name>
+      <description>This node allows to configure the default codecs for
+      the internal call control handling.</description>
+    </node>
+    <node id='31'>
+      <child_of nodeid='4' />
+      <name>SMPP Configuration</name>
+      <description>This node allows to configure the SMPP interface
+	for interfacing with external SMS applications. This section
+	contains generic/common SMPP related configuration, and no
+	per-ESME specific parameters.</description>
+    </node>
+    <node id='32'>
+      <child_of nodeid='31' />
+      <name>ESME Configuration</name>
+      <description>This node allows to configure one particular SMPP
+      ESME, which is an External SMS Entity such as a SMS based
+      application server.  You can define any number of ESME within
+      the SMPP node of the OsmoNITB VTY.</description>
+    </node>
+</vtydoc>
