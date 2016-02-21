@@ -533,8 +533,10 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
 	}
 
+#if BEFORE_MSCSPLIT
 	if (esme->acl && esme->acl->osmocom_ext && conn->lchan)
 		append_osmo_tlvs(&deliver.tlv, conn->lchan);
+#endif
 
 	return smpp_tx_deliver(esme, &deliver);
 }
