@@ -371,9 +371,10 @@ static int get_bts_timezone(struct ctrl_cmd *cmd, void *data)
 		return CTRL_CMD_ERROR;
 	}
 
-	if (bts->tz.override)
+	struct gsm_tz *tz = &bts->network->tz;
+	if (tz->override)
 		cmd->reply = talloc_asprintf(cmd, "%d,%d,%d",
-			       bts->tz.hr, bts->tz.mn, bts->tz.dst);
+			       tz->hr, tz->mn, tz->dst);
 	else
 		cmd->reply = talloc_asprintf(cmd, "off");
 
@@ -385,8 +386,19 @@ static int get_bts_timezone(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
+/* Note: it may appear that set_bts_timezone() is never used, but is in in fact
+ * used by CTRL_CMD_DEFINE(bts_timezone, "timezone"); above. */
 static int set_bts_timezone(struct ctrl_cmd *cmd, void *data)
 {
+	/* FIXME: in the course of MSCSPLIT, the osmo CN no longer has access
+	 * to the BTS structs, and hence the timezone override was moved to the
+	 * network level. It does of course still make sense to allow adjusting
+	 * the timezone per BTS in osmo-bsc. This function currently modifies
+	 * the global timezone data on network level, thus having an effect on
+	 * all other BTSs at the same time. I'm doing it this way because I'm
+	 * focusing on IuCS and the MSCSPLIT and hope to do this properly
+	 * at a later time. Sorry about that... ~Neels */
+
 	char *saveptr, *hourstr, *minstr, *dststr, *tmp = 0;
 	int override;
 	struct gsm_bts *bts = (struct gsm_bts *) cmd->node;
@@ -409,12 +421,13 @@ static int set_bts_timezone(struct ctrl_cmd *cmd, void *data)
 	if (hourstr != NULL)
 		override = strcasecmp(hourstr, "off") != 0;
 
-	bts->tz.override = override;
+	struct gsm_tz *tz = &bts->network->tz;
+	tz->override = override;
 
 	if (override) {
-		bts->tz.hr  = hourstr ? atol(hourstr) : 0;
-		bts->tz.mn  = minstr ? atol(minstr) : 0;
-		bts->tz.dst = dststr ? atol(dststr) : 0;
+		tz->hr  = hourstr ? atol(hourstr) : 0;
+		tz->mn  = minstr ? atol(minstr) : 0;
+		tz->dst = dststr ? atol(dststr) : 0;
 	}
 
 	talloc_free(tmp);

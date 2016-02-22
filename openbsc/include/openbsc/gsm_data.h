@@ -235,6 +235,13 @@ enum gsm_auth_policy {
 #define GSM_T3113_DEFAULT 60
 #define GSM_T3122_DEFAULT 10
 
+struct gsm_tz {
+	int override; /* if 0, use system's time zone instead. */
+	int hr; /* hour */
+	int mn; /* minute */
+	int dst; /* daylight savings */
+};
+
 struct gsm_network {
 	/* global parameters */
 	uint16_t country_code;
@@ -327,12 +334,7 @@ struct gsm_network {
 	/* TODO: in OsmoNITB, tz-override used to be BTS-specific. To enable
 	 * BTS|RNC specific timezone overrides for multi-tz networks in
 	 * OsmoCSCN, this should be tied to the location area code (LAC). */
-	struct {
-		int override; /* if 0, use system's time zone instead. */
-		int hr; /* hour */
-		int mn; /* minute */
-		int dst; /* daylight savings */
-	} tz;
+	struct gsm_tz tz;
 
 	/* Periodic location update default value */
 	uint8_t t3212;
