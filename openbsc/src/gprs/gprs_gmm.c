@@ -1334,6 +1334,159 @@ rejected:
 	return rc;
 }
 
+/* Chapter 9.4.21: Service accept */
+static int gsm48_tx_gmm_service_ack(struct sgsn_mm_ctx *mm)
+{
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERVICE ACK");
+	struct gsm48_hdr *gh;
+
+	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS SERVICE ACCEPT (P-TMSI=0x%08x)\n", mm->p_tmsi);
+
+	mmctx2msgid(msg, mm);
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_MM_GPRS;
+	gh->msg_type = GSM48_MT_GMM_SERVICE_ACK;
+
+	/* Optional: PDP context status */
+	/* Optional: MBMS context status */
+
+	return gsm48_gmm_sendmsg(msg, 0, mm);
+}
+
+/* Chapter 9.4.22: Service reject */
+static int _tx_gmm_service_rej(struct msgb *msg, uint8_t gmm_cause,
+			   const struct sgsn_mm_ctx *mm)
+{
+	struct gsm48_hdr *gh;
+
+	LOGMMCTXP(LOGL_NOTICE, mm, "<- GPRS SERVICE REJECT: %s\n",
+		  get_value_string(gsm48_gmm_cause_names, gmm_cause));
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_MM_GPRS;
+	gh->msg_type = GSM48_MT_GMM_SERVICE_REJ;
+	gh->data[0] = gmm_cause;
+
+	return gsm48_gmm_sendmsg(msg, 0, NULL);
+}
+static int gsm48_tx_gmm_service_rej_oldmsg(const struct msgb *old_msg,
+					uint8_t gmm_cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERVICE REJ OLD");
+	gmm_copy_id(msg, old_msg);
+	return _tx_gmm_service_rej(msg, gmm_cause, NULL);
+}
+static int gsm48_tx_gmm_service_rej(struct sgsn_mm_ctx *mm,
+				uint8_t gmm_cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERVICE REJ");
+	mmctx2msgid(msg, mm);
+	return _tx_gmm_service_rej(msg, gmm_cause, mm);
+}
+
+/* 3GPP TS 24.008 Section 9.4.20 Service request */
+static int gsm48_rx_gmm_service_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	uint8_t *cur = gh->data, *mi;
+	uint8_t ciph_seq_nr, service_type, mi_len, mi_type;
+	uint32_t tmsi;
+	struct tlv_parsed tp;
+	char mi_string[GSM48_MI_SIZE];
+	uint16_t cid = 0;
+	enum gsm48_gmm_cause reject_cause;
+	int rc;
+
+	LOGMMCTXP(LOGL_INFO, ctx, "-> GMM SERVICE REQUEST ");
+
+	/* This message is only valid in Iu mode */
+	if (!msg->dst)
+		return -1;
+
+	/* Skip Ciphering key sequence number 10.5.1.2 */
+	ciph_seq_nr = *cur & 0x07;
+
+	/* Service type 10.5.5.20 */
+	service_type = (*cur++ >> 4) & 0x07;
+
+	/* Mobile Identity (P-TMSI or IMSI) 10.5.1.4 */
+	mi_len = *cur++;
+	mi = cur;
+	if (mi_len > 8)
+		goto err_inval;
+	mi_type = *mi & GSM_MI_TYPE_MASK;
+	cur += mi_len;
+
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
+
+	DEBUGPC(DMM, "MI(%s) type=\"%s\" ", mi_string,
+		get_value_string(gprs_service_t_strs, service_type));
+
+	LOGPC(DMM, LOGL_INFO, "\n");
+
+	/* Optional: PDP context status, MBMS context status, Uplink data status, Device properties */
+	tlv_parse(&tp, &gsm48_gmm_att_tlvdef, cur, (msg->data + msg->len) - cur, 0, 0);
+
+	switch (mi_type) {
+	case GSM_MI_TYPE_IMSI:
+		/* Try to find MM context based on IMSI */
+		if (!ctx)
+			ctx = sgsn_mm_ctx_by_imsi(mi_string);
+		if (!ctx) {
+			/* FIXME: We need to have a context for service request? */
+			reject_cause = GMM_CAUSE_NET_FAIL;
+			goto rejected;
+		}
+		msgid2mmctx(ctx, msg);
+		break;
+	case GSM_MI_TYPE_TMSI:
+		memcpy(&tmsi, mi+1, 4);
+		tmsi = ntohl(tmsi);
+		/* Try to find MM context based on P-TMSI */
+		if (!ctx)
+			ctx = sgsn_mm_ctx_by_ptmsi(tmsi);
+		if (!ctx) {
+			/* FIXME: We need to have a context for service request? */
+			reject_cause = GMM_CAUSE_NET_FAIL;
+			goto rejected;
+		}
+		msgid2mmctx(ctx, msg);
+		break;
+	default:
+		LOGMMCTXP(LOGL_NOTICE, ctx, "Rejecting SERVICE REQUEST with "
+			"MI type %s\n", gsm48_mi_type_name(mi_type));
+		reject_cause = GMM_CAUSE_MS_ID_NOT_DERIVED;
+		goto rejected;
+	}
+
+	/* Look at PDP Context Status IE and see if MS's view of
+	 * activated/deactivated NSAPIs agrees with our view */
+	if (TLVP_PRESENT(&tp, GSM48_IE_GMM_PDP_CTX_STATUS)) {
+		const uint8_t *pdp_status = TLVP_VAL(&tp, GSM48_IE_GMM_PDP_CTX_STATUS);
+		process_ms_ctx_status(ctx, pdp_status);
+	}
+
+
+	ctx->pending_req = GSM48_MT_GMM_SERVICE_REQ;
+	return gsm48_gmm_authorize(ctx);
+
+err_inval:
+	LOGPC(DMM, LOGL_INFO, "\n");
+	reject_cause = GMM_CAUSE_SEM_INCORR_MSG;
+
+rejected:
+	/* Send SERVICE REJECT */
+	LOGMMCTXP(LOGL_NOTICE, ctx,
+		  "Rejecting Service Request with cause '%s' (%d)\n",
+		  get_value_string(gsm48_gmm_cause_names, reject_cause), reject_cause);
+	rc = gsm48_tx_gmm_service_rej_oldmsg(msg, reject_cause);
+
+	return rc;
+
+}
+
+
 static int gsm48_rx_gmm_status(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -1401,6 +1554,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		break;
 	case GSM48_MT_GMM_ATTACH_REQ:
 		rc = gsm48_rx_gmm_att_req(mmctx, msg, llme);
+		break;
+	case GSM48_MT_GMM_SERVICE_REQ:
+		rc = gsm48_rx_gmm_service_req(mmctx, msg);
 		break;
 	default:
 		break;

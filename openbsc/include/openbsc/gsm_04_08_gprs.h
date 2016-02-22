@@ -17,6 +17,11 @@
 #define GSM48_MT_GMM_RA_UPD_COMPL	0x0a
 #define GSM48_MT_GMM_RA_UPD_REJ		0x0b
 
+/* Table 10.4 in 3GPP TS 24.008 (successor to 04.08) */
+#define GSM48_MT_GMM_SERVICE_REQ	0x0c
+#define GSM48_MT_GMM_SERVICE_ACK	0x0d
+#define GSM48_MT_GMM_SERVICE_REJ	0x0e
+
 #define GSM48_MT_GMM_PTMSI_REALL_CMD	0x10
 #define GSM48_MT_GMM_PTMSI_REALL_COMPL	0x11
 #define GSM48_MT_GMM_AUTH_CIPH_REQ	0x12
@@ -393,5 +398,15 @@ struct gsm48_qos {
 	uint8_t guar_bitrate_down_ext;
 };
 
+/* 3GPP 24.008 / Chapter 10.5.5.20 / Table 10.5.153a */
+enum gsm48_gmm_service_type {
+	GPRS_SERVICE_T_SIGNALLING	= 0x00,
+	GPRS_SERVICE_T_DATA		= 0x01,
+	GPRS_SERVICE_T_PAGING_RESP	= 0x02,
+	GPRS_SERVICE_T_MBMS_MC_SERV	= 0x03,
+	GPRS_SERVICE_T_MBMS_BC_SERV	= 0x04,
+};
+
+extern const struct value_string *gprs_service_t_strs;
 
 #endif /* _GSM48_GPRS_H */
