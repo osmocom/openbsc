@@ -1405,8 +1405,10 @@ static int gsm48_rx_gmm_service_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	LOGMMCTXP(LOGL_INFO, ctx, "-> GMM SERVICE REQUEST ");
 
 	/* This message is only valid in Iu mode */
-	if (!msg->dst)
+	if (!msg->dst) {
+		LOGPC(DMM, LOGL_INFO, "Invalid if not in Iu mode\n");
 		return -1;
+	}
 
 	/* Skip Ciphering key sequence number 10.5.1.2 */
 	ciph_seq_nr = *cur & 0x07;
