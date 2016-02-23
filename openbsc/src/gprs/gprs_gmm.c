@@ -160,6 +160,7 @@ static void msgid2mmctx(struct sgsn_mm_ctx *mm, const struct msgb *msg)
 {
 	mm->gb.bvci = msgb_bvci(msg);
 	mm->gb.nsei = msgb_nsei(msg);
+	mm->iu.ue_ctx = msg->dst;
 }
 
 /* Store BVCI/NSEI in MM context */
