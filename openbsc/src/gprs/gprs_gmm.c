@@ -612,6 +612,57 @@ static void extract_subscr_hlr(struct sgsn_mm_ctx *ctx)
 	strncpy(&ctx->hlr[0], called.number, sizeof(ctx->hlr) - 1);
 }
 
+/* Chapter 9.4.21: Service accept */
+static int gsm48_tx_gmm_service_ack(struct sgsn_mm_ctx *mm)
+{
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERVICE ACK");
+	struct gsm48_hdr *gh;
+
+	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS SERVICE ACCEPT (P-TMSI=0x%08x)\n", mm->p_tmsi);
+
+	mmctx2msgid(msg, mm);
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_MM_GPRS;
+	gh->msg_type = GSM48_MT_GMM_SERVICE_ACK;
+
+	/* Optional: PDP context status */
+	/* Optional: MBMS context status */
+
+	return gsm48_gmm_sendmsg(msg, 0, mm);
+}
+
+/* Chapter 9.4.22: Service reject */
+static int _tx_gmm_service_rej(struct msgb *msg, uint8_t gmm_cause,
+			   const struct sgsn_mm_ctx *mm)
+{
+	struct gsm48_hdr *gh;
+
+	LOGMMCTXP(LOGL_NOTICE, mm, "<- GPRS SERVICE REJECT: %s\n",
+		  get_value_string(gsm48_gmm_cause_names, gmm_cause));
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_MM_GPRS;
+	gh->msg_type = GSM48_MT_GMM_SERVICE_REJ;
+	gh->data[0] = gmm_cause;
+
+	return gsm48_gmm_sendmsg(msg, 0, NULL);
+}
+static int gsm48_tx_gmm_service_rej_oldmsg(const struct msgb *old_msg,
+					uint8_t gmm_cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERVICE REJ OLD");
+	gmm_copy_id(msg, old_msg);
+	return _tx_gmm_service_rej(msg, gmm_cause, NULL);
+}
+static int gsm48_tx_gmm_service_rej(struct sgsn_mm_ctx *mm,
+				uint8_t gmm_cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERVICE REJ");
+	mmctx2msgid(msg, mm);
+	return _tx_gmm_service_rej(msg, gmm_cause, mm);
+}
+
 /* Check if we can already authorize a subscriber */
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
@@ -690,6 +741,9 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 #endif
 
 		return gsm48_tx_gmm_att_ack(ctx);
+	case GSM48_MT_GMM_SERVICE_REQ:
+		/* TODO: State transition */
+		return gsm48_tx_gmm_service_ack(ctx);
 	default:
 		LOGMMCTXP(LOGL_ERROR, ctx,
 			  "only Attach Request is supported yet, "
@@ -1333,57 +1387,6 @@ rejected:
 	}
 
 	return rc;
-}
-
-/* Chapter 9.4.21: Service accept */
-static int gsm48_tx_gmm_service_ack(struct sgsn_mm_ctx *mm)
-{
-	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERVICE ACK");
-	struct gsm48_hdr *gh;
-
-	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS SERVICE ACCEPT (P-TMSI=0x%08x)\n", mm->p_tmsi);
-
-	mmctx2msgid(msg, mm);
-
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	gh->proto_discr = GSM48_PDISC_MM_GPRS;
-	gh->msg_type = GSM48_MT_GMM_SERVICE_ACK;
-
-	/* Optional: PDP context status */
-	/* Optional: MBMS context status */
-
-	return gsm48_gmm_sendmsg(msg, 0, mm);
-}
-
-/* Chapter 9.4.22: Service reject */
-static int _tx_gmm_service_rej(struct msgb *msg, uint8_t gmm_cause,
-			   const struct sgsn_mm_ctx *mm)
-{
-	struct gsm48_hdr *gh;
-
-	LOGMMCTXP(LOGL_NOTICE, mm, "<- GPRS SERVICE REJECT: %s\n",
-		  get_value_string(gsm48_gmm_cause_names, gmm_cause));
-
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
-	gh->proto_discr = GSM48_PDISC_MM_GPRS;
-	gh->msg_type = GSM48_MT_GMM_SERVICE_REJ;
-	gh->data[0] = gmm_cause;
-
-	return gsm48_gmm_sendmsg(msg, 0, NULL);
-}
-static int gsm48_tx_gmm_service_rej_oldmsg(const struct msgb *old_msg,
-					uint8_t gmm_cause)
-{
-	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERVICE REJ OLD");
-	gmm_copy_id(msg, old_msg);
-	return _tx_gmm_service_rej(msg, gmm_cause, NULL);
-}
-static int gsm48_tx_gmm_service_rej(struct sgsn_mm_ctx *mm,
-				uint8_t gmm_cause)
-{
-	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERVICE REJ");
-	mmctx2msgid(msg, mm);
-	return _tx_gmm_service_rej(msg, gmm_cause, mm);
 }
 
 /* 3GPP TS 24.008 Section 9.4.20 Service request */
