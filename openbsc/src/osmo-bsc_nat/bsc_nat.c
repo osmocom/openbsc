@@ -51,6 +51,7 @@
 
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
+#include <osmocom/ctrl/ports.h>
 
 #include <osmocom/crypt/auth.h>
 
@@ -645,7 +646,7 @@ static void bsc_nat_handle_paging(struct bsc_nat *nat, struct msgb *msg)
 
 
 /*
- * Update the auth status. This can be either a CIPHER MODE COMAMND or
+ * Update the auth status. This can be either a CIPHER MODE COMMAND or
  * a CM Serivce Accept. Maybe also LU Accept or such in the future.
  */
 static void update_con_authorize(struct nat_sccp_connection *con,
@@ -1655,7 +1656,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	nat->ctrl = bsc_nat_controlif_setup(nat, 4250);
+	nat->ctrl = bsc_nat_controlif_setup(nat, OSMO_CTRL_PORT_BSC_NAT);
 	if (!nat->ctrl) {
 		fprintf(stderr, "Creating the control interface failed.\n");
 		exit(1);
