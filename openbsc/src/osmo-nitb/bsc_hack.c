@@ -187,7 +187,9 @@ static void handle_options(int argc, char **argv)
 			rf_ctrl_path = optarg;
 			break;
 		default:
-			/* ignore */
+			/* catch unknown options *as well as* missing arguments. */
+			fprintf(stderr, "Error in command line options. Exiting.\n");
+			exit(-1);
 			break;
 		}
 	}
