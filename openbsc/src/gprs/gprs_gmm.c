@@ -1227,7 +1227,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 				"TLLI: %08x (%08x), RA: %d-%d-%d-%d\n",
 				msgb_tlli(msg),
 				mmctx->p_tmsi, mmctx->p_tmsi_old,
-				mmctx->tlli, mmctx->tlli_new,
+				mmctx->gb.tlli, mmctx->gb.tlli_new,
 				mmctx->ra.mcc, mmctx->ra.mnc,
 				mmctx->ra.lac, mmctx->ra.rac);
 
