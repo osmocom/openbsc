@@ -59,7 +59,7 @@
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
-static const char *rf_ctrl_name = NULL;
+static const char *rf_ctrl_path = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 static const char *mncc_sock_path = NULL;
@@ -106,7 +106,7 @@ static void print_help()
 	printf("  -M --mncc-sock-path PATH   Disable built-in MNCC handler and offer socket.\n");
 	printf("  -m --mncc-sock 	     Same as `-M /tmp/bsc_mncc' (deprecated).\n");
 	printf("  -C --no-dbcounter          Disable regular syncing of counters to database.\n");
-	printf("  -r --rf-ctl NAME           A unix domain socket to listen for cmds.\n");
+	printf("  -r --rf-ctl PATH           A unix domain socket to listen for cmds.\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -184,7 +184,7 @@ static void handle_options(int argc, char **argv)
 			exit(0);
 			break;
 		case 'r':
-			rf_ctrl_name = optarg;
+			rf_ctrl_path = optarg;
 			break;
 		default:
 			/* ignore */
@@ -312,7 +312,7 @@ int main(int argc, char **argv)
 	/* seed the PRNG */
 	srand(time(NULL));
 
-	bsc_gsmnet->bsc_data->rf_ctrl = osmo_bsc_rf_create(rf_ctrl_name, bsc_gsmnet);
+	bsc_gsmnet->bsc_data->rf_ctrl = osmo_bsc_rf_create(rf_ctrl_path, bsc_gsmnet);
 	if (!bsc_gsmnet->bsc_data->rf_ctrl) {
 		fprintf(stderr, "Failed to create the RF service.\n");
 		exit(1);
