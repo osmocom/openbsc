@@ -49,6 +49,7 @@
 #include <openbsc/rrlp.h>
 #include <osmocom/ctrl/control_if.h>
 #include <osmocom/ctrl/ports.h>
+#include <osmocom/ctrl/control_vty.h>
 #include <openbsc/ctrl.h>
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/smpp.h>
@@ -272,6 +273,7 @@ int main(int argc, char **argv)
 	/* This needs to precede handle_options() */
 	vty_init(&vty_info);
 	bsc_vty_init(&log_info);
+	ctrl_vty_init(tall_bsc_ctx);
 
 #ifdef BUILD_SMPP
 	if (smpp_openbsc_init(tall_bsc_ctx, 0) < 0)
@@ -295,7 +297,13 @@ int main(int argc, char **argv)
 #endif
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
-	bsc_gsmnet->ctrl = bsc_controlif_setup(bsc_gsmnet, OSMO_CTRL_PORT_NITB_BSC);
+	/* start control interface after reading config for
+	 * ctrl_vty_get_bind_addr() */
+	LOGP(DNM, LOGL_NOTICE, "CTRL at %s %d\n",
+	     ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_NITB_BSC);
+	bsc_gsmnet->ctrl = bsc_controlif_setup(bsc_gsmnet,
+					       ctrl_vty_get_bind_addr(),
+					       OSMO_CTRL_PORT_NITB_BSC);
 	if (!bsc_gsmnet->ctrl) {
 		printf("Failed to initialize control interface. Exiting.\n");
 		return -1;

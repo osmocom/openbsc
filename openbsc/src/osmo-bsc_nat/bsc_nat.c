@@ -52,6 +52,7 @@
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
 #include <osmocom/ctrl/ports.h>
+#include <osmocom/ctrl/control_vty.h>
 
 #include <osmocom/crypt/auth.h>
 
@@ -1618,6 +1619,7 @@ int main(int argc, char **argv)
 	logging_vty_add_cmds(&log_info);
 	osmo_stats_vty_add_cmds(&log_info);
 	bsc_nat_vty_init(nat);
+	ctrl_vty_init(tall_bsc_ctx);
 
 
 	/* parse options */
@@ -1664,7 +1666,12 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	nat->ctrl = bsc_nat_controlif_setup(nat, OSMO_CTRL_PORT_BSC_NAT);
+	/* start control interface after reading config for
+	 * ctrl_vty_get_bind_addr() */
+	LOGP(DNAT, LOGL_NOTICE, "CTRL at %s %d\n",
+	     ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_BSC_NAT);
+	nat->ctrl = bsc_nat_controlif_setup(nat, ctrl_vty_get_bind_addr(),
+					    OSMO_CTRL_PORT_BSC_NAT);
 	if (!nat->ctrl) {
 		fprintf(stderr, "Creating the control interface failed.\n");
 		exit(1);

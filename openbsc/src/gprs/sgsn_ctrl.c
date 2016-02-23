@@ -73,7 +73,8 @@ int sgsn_ctrl_cmds_install(void)
 	return rc;
 }
 
-struct ctrl_handle *sgsn_controlif_setup(struct gsm_network *net, uint16_t port)
+struct ctrl_handle *sgsn_controlif_setup(struct gsm_network *net,
+					 const char *bind_addr, uint16_t port)
 {
-	return ctrl_interface_setup(net, port, NULL);
+	return ctrl_interface_setup_dynip(net, bind_addr, port, NULL);
 }

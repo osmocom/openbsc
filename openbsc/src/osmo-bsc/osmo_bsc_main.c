@@ -32,6 +32,7 @@
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
 #include <osmocom/ctrl/ports.h>
+#include <osmocom/ctrl/control_vty.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/linuxlist.h>
@@ -205,6 +206,7 @@ int main(int argc, char **argv)
 	vty_init(&vty_info);
 	bsc_vty_init(&log_info);
 	bsc_msg_lst_vty_init(tall_bsc_ctx, &access_lists, BSC_NODE);
+	ctrl_vty_init(tall_bsc_ctx);
 
 	INIT_LLIST_HEAD(&access_lists);
 
@@ -225,7 +227,13 @@ int main(int argc, char **argv)
 	}
 	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
 
-	bsc_gsmnet->ctrl = bsc_controlif_setup(bsc_gsmnet, OSMO_CTRL_PORT_NITB_BSC);
+	/* start control interface after reading config for
+	 * ctrl_vty_get_bind_addr() */
+	LOGP(DNM, LOGL_NOTICE, "CTRL at %s %d\n",
+	     ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_NITB_BSC);
+	bsc_gsmnet->ctrl = bsc_controlif_setup(bsc_gsmnet,
+					       ctrl_vty_get_bind_addr(),
+					       OSMO_CTRL_PORT_NITB_BSC);
 	if (!bsc_gsmnet->ctrl) {
 		fprintf(stderr, "Failed to init the control interface. Exiting.\n");
 		exit(1);

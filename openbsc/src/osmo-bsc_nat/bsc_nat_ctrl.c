@@ -470,13 +470,14 @@ static int get_net_save_cmd(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_ERROR;
 }
 
-struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port)
+struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat,
+					    const char *bind_addr, int port)
 {
 	struct ctrl_handle *ctrl;
 	int rc;
 
 
-	ctrl = bsc_controlif_setup(NULL, OSMO_CTRL_PORT_BSC_NAT);
+	ctrl = bsc_controlif_setup(NULL, bind_addr, OSMO_CTRL_PORT_BSC_NAT);
 	if (!ctrl) {
 		fprintf(stderr, "Failed to initialize the control interface. Exiting.\n");
 		return NULL;

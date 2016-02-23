@@ -315,7 +315,8 @@ int sgsn_force_reattach_oldmsg(struct msgb *oldmsg);
  * ctrl interface related work
  */
 struct gsm_network;
-struct ctrl_handle *sgsn_controlif_setup(struct gsm_network *, uint16_t port);
+struct ctrl_handle *sgsn_controlif_setup(struct gsm_network *,
+					 const char *bind_addr, uint16_t port);
 int sgsn_ctrl_cmds_install(void);
 
 /*

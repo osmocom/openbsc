@@ -47,6 +47,8 @@
 #include <osmocom/vty/stats.h>
 #include <osmocom/vty/ports.h>
 
+#include <osmocom/ctrl/control_vty.h>
+
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/vty.h>
@@ -311,21 +313,11 @@ int main(int argc, char **argv)
 	logging_vty_add_cmds(&gprs_log_info);
 	osmo_stats_vty_add_cmds(&gprs_log_info);
 	sgsn_vty_init();
+	ctrl_vty_init(tall_bsc_ctx);
 
 	handle_options(argc, argv);
 
 	rate_ctr_init(tall_bsc_ctx);
-
-	ctrl = sgsn_controlif_setup(NULL, OSMO_CTRL_PORT_SGSN);
-	if (!ctrl) {
-		LOGP(DGPRS, LOGL_ERROR, "Failed to create CTRL interface.\n");
-		exit(1);
-	}
-
-	if (sgsn_ctrl_cmds_install() != 0) {
-		LOGP(DGPRS, LOGL_ERROR, "Failed to install CTRL commands.\n");
-		exit(1);
-	}
 
 	gprs_ns_set_log_ss(DNS);
 	bssgp_set_log_ss(DBSSGP);
@@ -361,6 +353,23 @@ int main(int argc, char **argv)
 			       vty_get_bind_addr(), OSMO_VTY_PORT_SGSN);
 	if (rc < 0)
 		exit(1);
+
+	/* start control interface after reading config for
+	 * ctrl_vty_get_bind_addr() */
+	LOGP(DGPRS, LOGL_NOTICE, "CTRL at %s %d\n",
+	     ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_SGSN);
+	ctrl = sgsn_controlif_setup(NULL, ctrl_vty_get_bind_addr(),
+				    OSMO_CTRL_PORT_SGSN);
+	if (!ctrl) {
+		LOGP(DGPRS, LOGL_ERROR, "Failed to create CTRL interface.\n");
+		exit(1);
+	}
+
+	if (sgsn_ctrl_cmds_install() != 0) {
+		LOGP(DGPRS, LOGL_ERROR, "Failed to install CTRL commands.\n");
+		exit(1);
+	}
+
 
 	rc = sgsn_gtp_init(&sgsn_inst);
 	if (rc) {

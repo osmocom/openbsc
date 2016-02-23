@@ -99,7 +99,9 @@ err_index:
 	return -ERANGE;
 }
 
-struct ctrl_handle *bsc_controlif_setup(struct gsm_network *net, uint16_t port)
+struct ctrl_handle *bsc_controlif_setup(struct gsm_network *net,
+					const char *bind_addr, uint16_t port)
 {
-	return ctrl_interface_setup(net, port, bsc_ctrl_node_lookup);
+	return ctrl_interface_setup_dynip(net, bind_addr, port,
+					  bsc_ctrl_node_lookup);
 }
