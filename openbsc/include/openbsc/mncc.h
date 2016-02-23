@@ -206,7 +206,7 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg);
 /* input from CC code into mncc_sock */
 int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg);
 
-int mncc_sock_init(struct gsm_network *gsmnet);
+int mncc_sock_init(struct gsm_network *net, const char *sock_path);
 
 #define mncc_is_data_frame(msg_type) \
 	(msg_type == GSM_TCHF_FRAME \

@@ -62,7 +62,7 @@ static const char *config_file = "openbsc.cfg";
 static const char *rf_ctrl_name = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
-static int use_mncc_sock = 0;
+static const char *mncc_sock_path = NULL;
 static int use_db_counter = 1;
 
 /* timer to store statistics */
@@ -103,7 +103,8 @@ static void print_help()
 	printf("  -V --version               Print the version of OpenBSC.\n");
 	printf("  -P --rtp-proxy             Enable the RTP Proxy code inside OpenBSC.\n");
 	printf("  -e --log-level number      Set a global loglevel.\n");
-	printf("  -m --mncc-sock             Disable built-in MNCC handler and offer socket.\n");
+	printf("  -M --mncc-sock-path PATH   Disable built-in MNCC handler and offer socket.\n");
+	printf("  -m --mncc-sock 	     Same as `-M /tmp/bsc_mncc' (deprecated).\n");
 	printf("  -C --no-dbcounter          Disable regular syncing of counters to database.\n");
 	printf("  -r --rf-ctl NAME           A unix domain socket to listen for cmds.\n");
 }
@@ -126,12 +127,13 @@ static void handle_options(int argc, char **argv)
 			{"rtp-proxy", 0, 0, 'P'},
 			{"log-level", 1, 0, 'e'},
 			{"mncc-sock", 0, 0, 'm'},
+			{"mncc-sock-path", 1, 0, 'M'},
 			{"no-dbcounter", 0, 0, 'C'},
 			{"rf-ctl", 1, 0, 'r'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mCr:",
+		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mCr:M:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -168,8 +170,11 @@ static void handle_options(int argc, char **argv)
 		case 'e':
 			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
+		case 'M':
+			mncc_sock_path = optarg;
+			break;
 		case 'm':
-			use_mncc_sock = 1;
+			mncc_sock_path = "/tmp/bsc_mncc";
 			break;
 		case 'C':
 			use_db_counter = 0;
@@ -275,10 +280,10 @@ int main(int argc, char **argv)
 	handle_options(argc, argv);
 
 	/* internal MNCC handler or MNCC socket? */
-	if (use_mncc_sock) {
+	if (mncc_sock_path) {
 		rc = bsc_bootstrap_network(mncc_sock_from_cc, config_file);
 		if (rc >= 0)
-			mncc_sock_init(bsc_gsmnet);
+			mncc_sock_init(bsc_gsmnet, mncc_sock_path);
 	} else
 		rc = bsc_bootstrap_network(int_mncc_recv, config_file);
 	if (rc < 0)

@@ -277,7 +277,7 @@ static int mncc_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 }
 
 
-int mncc_sock_init(struct gsm_network *net)
+int mncc_sock_init(struct gsm_network *net, const char *sock_path)
 {
 	struct mncc_sock_state *state;
 	struct osmo_fd *bfd;
@@ -292,10 +292,10 @@ int mncc_sock_init(struct gsm_network *net)
 
 	bfd = &state->listen_bfd;
 
-	rc = osmo_unixsock_listen(bfd, SOCK_SEQPACKET, "/tmp/bsc_mncc");
+	rc = osmo_unixsock_listen(bfd, SOCK_SEQPACKET, sock_path);
 	if (rc < 0) {
-		LOGP(DMNCC, LOGL_ERROR, "Could not create unix socket: %s\n",
-			strerror(errno));
+		LOGP(DMNCC, LOGL_ERROR, "Could not create unix socket: %s: %s\n",
+		     sock_path, strerror(errno));
 		talloc_free(state);
 		return rc;
 	}
@@ -314,6 +314,7 @@ int mncc_sock_init(struct gsm_network *net)
 
 	net->mncc_state = state;
 
+	LOGP(DMNCC, LOGL_NOTICE, "MNCC socket at %s\n", sock_path);
 	return 0;
 }
 
