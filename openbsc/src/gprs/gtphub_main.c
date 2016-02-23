@@ -60,7 +60,7 @@ static struct log_info_cat gtphub_categories[] = {
 		.description = "GTP Hub",
 		.color = "\033[1;33m",
 		.enabled = 1,
-		.loglevel = LOGL_NOTICE,
+		.loglevel = LOGL_INFO,
 	},
 };
 
