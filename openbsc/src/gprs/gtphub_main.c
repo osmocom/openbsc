@@ -37,17 +37,13 @@
 
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/ports.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gtphub.h>
 #include <openbsc/vty.h>
 
 #include "../../bscconfig.h"
-
-#ifndef OSMO_VTY_PORT_GTPHUB
-/* should come from libosmocore */
-#define OSMO_VTY_PORT_GTPHUB	4253
-#endif
 
 extern void *osmo_gtphub_ctx;
 
