@@ -314,9 +314,6 @@ int main(int argc, char **argv)
         gtphub_vty_init(hub, cfg);
 
 	rate_ctr_init(osmo_gtphub_ctx);
-	rc = telnet_init(osmo_gtphub_ctx, 0, OSMO_VTY_PORT_GTPHUB);
-	if (rc < 0)
-		exit(1);
 
 	handle_options(ccfg, argc, argv);
 
@@ -326,6 +323,14 @@ int main(int argc, char **argv)
 		     ccfg->config_file);
 		exit(2);
 	}
+
+	/* start telnet after reading config for vty_get_bind_addr() */
+	LOGP(DGTPHUB, LOGL_NOTICE, "VTY at %s %d\n",
+	     vty_get_bind_addr(), OSMO_VTY_PORT_GTPHUB);
+	rc = telnet_init_dynif(osmo_gtphub_ctx, 0, vty_get_bind_addr(),
+			       OSMO_VTY_PORT_GTPHUB);
+	if (rc < 0)
+		exit(1);
 
 	if (gtphub_start(hub, cfg,
 			 next_restart_count(ccfg->restart_counter_file))

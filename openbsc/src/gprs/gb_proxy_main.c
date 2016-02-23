@@ -252,10 +252,6 @@ int main(int argc, char **argv)
 	rate_ctr_init(tall_bsc_ctx);
 	osmo_stats_init(tall_bsc_ctx);
 
-	rc = telnet_init(tall_bsc_ctx, &dummy_network, OSMO_VTY_PORT_GBPROXY);
-	if (rc < 0)
-		exit(1);
-
 	bssgp_nsi = gprs_ns_instantiate(&proxy_ns_cb, tall_bsc_ctx);
 	if (!bssgp_nsi) {
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
@@ -273,6 +269,14 @@ int main(int argc, char **argv)
 		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
 		exit(2);
 	}
+
+	/* start telnet after reading config for vty_get_bind_addr() */
+	LOGP(DGPRS, LOGL_NOTICE, "VTY at %s %d\n",
+	     vty_get_bind_addr(), OSMO_VTY_PORT_GBPROXY);
+	rc = telnet_init_dynif(tall_bsc_ctx, &dummy_network,
+			       vty_get_bind_addr(), OSMO_VTY_PORT_GBPROXY);
+	if (rc < 0)
+		exit(1);
 
 	if (!gprs_nsvc_by_nsei(gbcfg.nsi, gbcfg.nsip_sgsn_nsei)) {
 		LOGP(DGPRS, LOGL_FATAL, "You cannot proxy to NSEI %u "

@@ -1628,13 +1628,18 @@ int main(int argc, char **argv)
 	osmo_stats_init(tall_bsc_ctx);
 
 	/* init vty and parse */
-	if (telnet_init(tall_bsc_ctx, NULL, OSMO_VTY_PORT_BSC_NAT)) {
-		fprintf(stderr, "Creating VTY telnet line failed\n");
-		return -5;
-	}
 	if (mgcp_parse_config(config_file, nat->mgcp_cfg, MGCP_BSC_NAT) < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return -3;
+	}
+
+	/* start telnet after reading config for vty_get_bind_addr() */
+	LOGP(DNAT, LOGL_NOTICE, "VTY at %s %d\n",
+	     vty_get_bind_addr(), OSMO_VTY_PORT_BSC_NAT);
+	if (telnet_init_dynif(tall_bsc_ctx, NULL, vty_get_bind_addr(),
+			      OSMO_VTY_PORT_BSC_NAT)) {
+		fprintf(stderr, "Creating VTY telnet line failed\n");
+		return -5;
 	}
 
 	/* over rule the VTY config for MSC IP */
