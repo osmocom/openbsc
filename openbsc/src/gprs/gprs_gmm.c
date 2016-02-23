@@ -742,7 +742,17 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 
 		return gsm48_tx_gmm_att_ack(ctx);
 	case GSM48_MT_GMM_SERVICE_REQ:
-		/* TODO: State transition */
+		/* TODO: PMM State transition */
+		ctx->pending_req = 0;
+
+		/* Send RAB activation requests for all PDP contexts */
+		if (ctx->iu.service.type == 1) {
+			struct sgsn_pdp_ctx *pdp;
+			llist_for_each_entry(pdp, &ctx->pdp_list, list) {
+				iu_rab_act_ps(pdp);
+			}
+		}
+
 		return gsm48_tx_gmm_service_ack(ctx);
 	default:
 		LOGMMCTXP(LOGL_ERROR, ctx,
@@ -1466,6 +1476,9 @@ static int gsm48_rx_gmm_service_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		goto rejected;
 	}
 
+	ctx->iu.service.type = service_type;
+
+	/* TODO: Handle those only in case of accept? */
 	/* Look at PDP Context Status IE and see if MS's view of
 	 * activated/deactivated NSAPIs agrees with our view */
 	if (TLVP_PRESENT(&tp, GSM48_IE_GMM_PDP_CTX_STATUS)) {

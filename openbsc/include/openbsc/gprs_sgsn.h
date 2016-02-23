@@ -102,6 +102,11 @@ enum sgsn_ran_type {
 	MM_CTX_T_GERAN_Iu,
 };
 
+struct service_info {
+	uint8_t type;
+	uint16_t pdp_status;
+};
+
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
 /* Extended by 3GPP TS 23.060, Table 6: SGSN MM and PDP Contexts */
 struct sgsn_mm_ctx {
@@ -142,6 +147,7 @@ struct sgsn_mm_ctx {
 		/* LIPA Allowed */
 		/* Voice Support Match Indicator */
 		void 			*ue_ctx;
+		struct service_info	service;
 	} iu;
 	/* VLR number */
 	uint32_t		new_sgsn_addr;
