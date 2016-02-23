@@ -1938,7 +1938,7 @@ static void test_gmm_routing_areas(void)
 	OSMO_ASSERT(last_dl_parse_ctx.tlli == ms_tlli);
 
 	/* inject the identity response (IMEI) */
-	send_0408_message(ctx->llme, ms_tlli, &raid1,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid1,
 			  ident_resp_imei, ARRAY_SIZE(ident_resp_imei));
 
 	/* check that the MM context has not been removed due to a failed
@@ -1958,7 +1958,7 @@ static void test_gmm_routing_areas(void)
 
 	/* inject the attach complete */
 	ms_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
-	send_0408_message(ctx->llme, ms_tlli, &raid1,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid1,
 			  attach_compl, ARRAY_SIZE(attach_compl));
 
 	/* we don't expect a response */
@@ -1971,7 +1971,7 @@ static void test_gmm_routing_areas(void)
 	printf("  - RA Update Request (RA 1 -> RA 1)\n");
 
 	/* inject the RA update request */
-	send_0408_message(ctx->llme, ms_tlli, &raid1,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid1,
 			  ra_upd_req1, ARRAY_SIZE(ra_upd_req1));
 
 	/* we expect an RA update accept */
@@ -1990,7 +1990,7 @@ static void test_gmm_routing_areas(void)
 
 	/* inject the RA update complete */
 	ms_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
-	send_0408_message(ctx->llme, ms_tlli, &raid1,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid1,
 			  ra_upd_complete, ARRAY_SIZE(ra_upd_complete));
 
 	/* we don't expect a response */
@@ -1999,7 +1999,7 @@ static void test_gmm_routing_areas(void)
 	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
 	OSMO_ASSERT(ctx->p_tmsi_old == 0);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
-	OSMO_ASSERT(ctx->tlli == ms_tlli);
+	OSMO_ASSERT(ctx->gb.tlli == ms_tlli);
 
 	printf("  - RA Update Request (RA 1 -> RA 2)\n");
 
@@ -2007,7 +2007,7 @@ static void test_gmm_routing_areas(void)
 	ms_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_FOREIGN);
 
 	/* It is coming from RA 1 => ra_upd_req1 */
-	send_0408_message(ctx->llme, ms_tlli, &raid2,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid2,
 			  ra_upd_req1, ARRAY_SIZE(ra_upd_req1));
 
 	/* we expect an RA update accept */
@@ -2020,7 +2020,7 @@ static void test_gmm_routing_areas(void)
 	ms_tlli = gprs_tmsi2tlli(0x12345678, TLLI_FOREIGN);
 
 	/* It is coming from RA 1 => ra_upd_req1 */
-	send_0408_message(ctx->llme, ms_tlli, &raid2,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid2,
 			  ra_upd_req_other, ARRAY_SIZE(ra_upd_req_other));
 
 	/* we expect an RA update reject (and a LLC XID RESET) */
@@ -2058,7 +2058,7 @@ static void test_gmm_routing_areas(void)
 	OSMO_ASSERT(ictx != NULL);
 	OSMO_ASSERT(ictx == ctx);
 
-	send_0408_message(ctx->llme, ms_tlli, &raid2,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid2,
 			  attach_compl, ARRAY_SIZE(attach_compl));
 
 	/* we don't expect a response */
@@ -2071,7 +2071,7 @@ static void test_gmm_routing_areas(void)
 	printf("  - RA Update Request (RA 2 -> RA 2)\n");
 
 	/* inject the RA update request */
-	send_0408_message(ctx->llme, ms_tlli, &raid2,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid2,
 			  ra_upd_req2, ARRAY_SIZE(ra_upd_req2));
 
 	/* we expect an RA update accept */
@@ -2089,7 +2089,7 @@ static void test_gmm_routing_areas(void)
 
 	/* inject the RA update complete */
 	ms_tlli = gprs_tmsi2tlli(ptmsi1, TLLI_LOCAL);
-	send_0408_message(ctx->llme, ms_tlli, &raid2,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid2,
 			  ra_upd_complete, ARRAY_SIZE(ra_upd_complete));
 
 	/* we don't expect a response */
@@ -2098,11 +2098,11 @@ static void test_gmm_routing_areas(void)
 	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
 	OSMO_ASSERT(ctx->p_tmsi_old == 0);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
-	OSMO_ASSERT(ctx->tlli == ms_tlli);
+	OSMO_ASSERT(ctx->gb.tlli == ms_tlli);
 
 
 	/* inject the detach */
-	send_0408_message(ctx->llme, ms_tlli, &raid2,
+	send_0408_message(ctx->gb.llme, ms_tlli, &raid2,
 			  detach_req, ARRAY_SIZE(detach_req));
 
 	/* verify that things are gone */
