@@ -527,6 +527,12 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 			return -EIO;
 		}
 		ret = write(bfd->fd, ipbc->id_resp, ipbc->id_resp_len);
+		if (ret != ipbc->id_resp_len) {
+			LOGP(DLINP, LOGL_ERROR, "Partial write: %d of %d\n",
+			     ret, ipbc->id_resp_len);
+			return -EIO;
+		}
+		ret = 0;
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DLMI, "ID_ACK? -> ACK!\n");
@@ -537,7 +543,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 		return 1;
 		break;
 	}
-	return 0;
+	return ret;
 }
 
 struct msgb *ipaccess_proxy_read_msg(struct osmo_fd *bfd, int *error)
