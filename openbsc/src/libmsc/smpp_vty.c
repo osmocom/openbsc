@@ -76,6 +76,55 @@ DEFUN(cfg_no_smpp_first, cfg_no_smpp_first_cmd,
 	return CMD_SUCCESS;
 }
 
+static int smpp_local_tcp(struct vty *vty,
+			  const char *bind_addr, uint16_t port)
+{
+	struct smsc *smsc = smsc_from_vty(vty);
+	int is_running = smsc->listen_ofd.fd > 0;
+	int same_bind_addr;
+	int rc;
+
+	/* If it is not up yet, don't rebind, just set values. */
+	if (!is_running) {
+		rc = smpp_smsc_conf(smsc, bind_addr, port);
+		if (rc < 0) {
+			vty_out(vty, "%% Cannot configure new address:port%s",
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		return CMD_SUCCESS;
+	}
+
+	rc = smpp_smsc_restart(smsc, bind_addr, port);
+	if (rc < 0) {
+		vty_out(vty, "%% Cannot bind to new port %s:%u nor to"
+			" old port %s:%u%s",
+			bind_addr? bind_addr : "0.0.0.0",
+			port,
+			smsc->bind_addr? smsc->bind_addr : "0.0.0.0",
+			smsc->listen_port,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	same_bind_addr = (bind_addr == smsc->bind_addr)
+		|| (bind_addr && smsc->bind_addr
+		    && (strcmp(bind_addr, smsc->bind_addr) == 0));
+
+	if (!same_bind_addr || port != smsc->listen_port) {
+		vty_out(vty, "%% Cannot bind to new port %s:%u, staying on"
+			" old port %s:%u%s",
+			bind_addr? bind_addr : "0.0.0.0",
+			port,
+			smsc->bind_addr? smsc->bind_addr : "0.0.0.0",
+			smsc->listen_port,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_smpp_port, cfg_smpp_port_cmd,
 	"local-tcp-port <1-65535>",
 	"Set the local TCP port on which we listen for SMPP\n"
@@ -83,22 +132,18 @@ DEFUN(cfg_smpp_port, cfg_smpp_port_cmd,
 {
 	struct smsc *smsc = smsc_from_vty(vty);
 	uint16_t port = atoi(argv[0]);
-	int rc;
+	return smpp_local_tcp(vty, smsc->bind_addr, port);
+}
 
-	rc = smpp_smsc_init(smsc, port);
-	if (rc < 0) {
-		vty_out(vty, "%% Cannot bind to new port %u nor to "
-			"old port %u%s", port, smsc->listen_port, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	if (port != smsc->listen_port) {
-		vty_out(vty, "%% Cannot bind to new port %u, staying on old"
-			"port %u%s", port, smsc->listen_port, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	return CMD_SUCCESS;
+DEFUN(cfg_smpp_addr_port, cfg_smpp_addr_port_cmd,
+	"local-tcp-ip A.B.C.D <1-65535>",
+	"Set the local IP address and TCP port on which we listen for SMPP\n"
+	"Local IP address\n"
+	"TCP port number")
+{
+	const char *bind_addr = argv[0];
+	uint16_t port = atoi(argv[1]);
+	return smpp_local_tcp(vty, bind_addr, port);
 }
 
 DEFUN(cfg_smpp_sys_id, cfg_smpp_sys_id_cmd,
@@ -138,7 +183,12 @@ static int config_write_smpp(struct vty *vty)
 	struct smsc *smsc = smsc_from_vty(vty);
 
 	vty_out(vty, "smpp%s", VTY_NEWLINE);
-	vty_out(vty, " local-tcp-port %u%s", smsc->listen_port, VTY_NEWLINE);
+	if (smsc->bind_addr)
+		vty_out(vty, " local-tcp-ip %s %u%s", smsc->bind_addr,
+			smsc->listen_port, VTY_NEWLINE);
+	else
+		vty_out(vty, " local-tcp-port %u%s", smsc->listen_port,
+			VTY_NEWLINE);
 	if (strlen(smsc->system_id) > 0)
 		vty_out(vty, " system-id %s%s", smsc->system_id, VTY_NEWLINE);
 	vty_out(vty, " policy %s%s",
@@ -535,6 +585,7 @@ int smpp_vty_init(void)
 	install_element(SMPP_NODE, &cfg_smpp_first_cmd);
 	install_element(SMPP_NODE, &cfg_no_smpp_first_cmd);
 	install_element(SMPP_NODE, &cfg_smpp_port_cmd);
+	install_element(SMPP_NODE, &cfg_smpp_addr_port_cmd);
 	install_element(SMPP_NODE, &cfg_smpp_sys_id_cmd);
 	install_element(SMPP_NODE, &cfg_smpp_policy_cmd);
 	install_element(SMPP_NODE, &cfg_esme_cmd);

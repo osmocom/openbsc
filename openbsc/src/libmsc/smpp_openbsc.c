@@ -569,27 +569,38 @@ struct smsc *smsc_from_vty(struct vty *v)
 	return g_smsc;
 }
 
-/*! \brief Initialize the OpenBSC SMPP interface */
-int smpp_openbsc_init(void *ctx, uint16_t port)
+/*! \brief Allocate the OpenBSC SMPP interface struct and init VTY. */
+int smpp_openbsc_alloc_init(void *ctx)
 {
-	struct smsc *smsc = talloc_zero(ctx, struct smsc);
+	g_smsc = smpp_smsc_alloc_init(ctx);
+	if (!g_smsc) {
+		LOGP(DSMPP, LOGL_FATAL, "Cannot allocate smsc struct\n");
+		return -1;
+	}
+	return smpp_vty_init();
+}
+
+/*! \brief Launch the OpenBSC SMPP interface with the parameters set from VTY.
+ */
+int smpp_openbsc_start(struct gsm_network *net)
+{
 	int rc;
-
-	rc = smpp_smsc_init(smsc, port);
-	if (rc < 0)
-		talloc_free(smsc);
-
-	osmo_signal_register_handler(SS_SMS, smpp_sms_cb, smsc);
-	osmo_signal_register_handler(SS_SUBSCR, smpp_subscr_cb, smsc);
-
-	g_smsc = smsc;
-
-	smpp_vty_init();
-
-	return rc;
-}
-
-void smpp_openbsc_set_net(struct gsm_network *net)
-{
 	g_smsc->priv = net;
+
+	/* If a VTY configuration has taken place, the values have been stored
+	 * in the smsc struct. Otherwise, use the defaults (NULL -> any, 0 ->
+	 * default SMPP port, see smpp_smsc_bind()). */
+	rc = smpp_smsc_start(g_smsc, g_smsc->bind_addr, g_smsc->listen_port);
+	if (rc < 0)
+		return rc;
+
+	rc = osmo_signal_register_handler(SS_SMS, smpp_sms_cb, g_smsc);
+	if (rc < 0)
+		return rc;
+	rc = osmo_signal_register_handler(SS_SUBSCR, smpp_subscr_cb, g_smsc);
+	if (rc < 0)
+		return rc;
+
+	return 0;
 }
+

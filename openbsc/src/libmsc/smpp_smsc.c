@@ -931,39 +931,84 @@ static int smsc_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	return link_accept_cb(ofd->data, rc, &sa, sa_len);
 }
 
-/*! \brief Initialize the SMSC-side SMPP implementation */
-int smpp_smsc_init(struct smsc *smsc, uint16_t port)
+/*! \brief allocate and initialize an smsc struct from talloc context ctx. */
+struct smsc *smpp_smsc_alloc_init(void *ctx)
+{
+	struct smsc *smsc = talloc_zero(ctx, struct smsc);
+
+	INIT_LLIST_HEAD(&smsc->esme_list);
+	INIT_LLIST_HEAD(&smsc->acl_list);
+	INIT_LLIST_HEAD(&smsc->route_list);
+
+	smsc->listen_ofd.data = smsc;
+	smsc->listen_ofd.cb = smsc_fd_cb;
+
+	return smsc;
+}
+
+/*! \brief Set the SMPP address and port without binding. */
+int smpp_smsc_conf(struct smsc *smsc, const char *bind_addr, uint16_t port)
+{
+	talloc_free((void*)smsc->bind_addr);
+	smsc->bind_addr = NULL;
+	if (bind_addr) {
+		smsc->bind_addr = talloc_strdup(smsc, bind_addr);
+		if (!smsc->bind_addr)
+			return -ENOMEM;
+	}
+	smsc->listen_port = port;
+	return 0;
+}
+
+/*! \brief Bind to given address and port and accept connections.
+ * \param[in] bind_addr Local IP address, may be NULL for any.
+ * \param[in] port TCP port number, may be 0 for default SMPP (2775).
+ */
+int smpp_smsc_start(struct smsc *smsc, const char *bind_addr, uint16_t port)
 {
 	int rc;
 
 	/* default port for SMPP */
-	if (port == 0)
+	if (!port)
 		port = 2775;
 
-	/* This will not work if we were to actually ever use FD 0
-	 * (stdin) for this ... */
-	if (smsc->listen_ofd.fd <= 0) {
-		INIT_LLIST_HEAD(&smsc->esme_list);
-		INIT_LLIST_HEAD(&smsc->acl_list);
-		INIT_LLIST_HEAD(&smsc->route_list);
-		smsc->listen_ofd.data = smsc;
-		smsc->listen_ofd.cb = smsc_fd_cb;
-	} else {
-		close(smsc->listen_ofd.fd);
-		osmo_fd_unregister(&smsc->listen_ofd);
-	}
+	smpp_smsc_stop(smsc);
+
+	LOGP(DSMPP, LOGL_NOTICE, "SMPP at %s %d\n",
+	     bind_addr? bind_addr : "0.0.0.0", port);
 
 	rc = osmo_sock_init_ofd(&smsc->listen_ofd, AF_UNSPEC, SOCK_STREAM,
-				IPPROTO_TCP, NULL, port,
+				IPPROTO_TCP, bind_addr, port,
 				OSMO_SOCK_F_BIND);
+	if (rc < 0)
+		return rc;
 
-	/* if there is an error, try to re-bind to the old port */
-	if (rc < 0) {
-		rc = osmo_sock_init_ofd(&smsc->listen_ofd, AF_UNSPEC,
-					SOCK_STREAM, IPPROTO_TCP, NULL,
-					smsc->listen_port, OSMO_SOCK_F_BIND);
-	} else
-		smsc->listen_port = port;
-
+	/* store new address and port */
+	rc = smpp_smsc_conf(smsc, bind_addr, port);
+	if (rc)
+		smpp_smsc_stop(smsc);
 	return rc;
+}
+
+/*! \brief Change a running connection to a different address/port, and upon
+ * error switch back to the running configuration. */
+int smpp_smsc_restart(struct smsc *smsc, const char *bind_addr, uint16_t port)
+{
+	int rc;
+
+	rc = smpp_smsc_start(smsc, bind_addr, port);
+	if (rc)
+		/* if there is an error, try to re-bind to the old port */
+		return smpp_smsc_start(smsc, smsc->bind_addr, smsc->listen_port);
+	return 0;
+}
+
+/*! /brief Close SMPP connection. */
+void smpp_smsc_stop(struct smsc *smsc)
+{
+	if (smsc->listen_ofd.fd > 0) {
+		close(smsc->listen_ofd.fd);
+		smsc->listen_ofd.fd = 0;
+		osmo_fd_unregister(&smsc->listen_ofd);
+	}
 }

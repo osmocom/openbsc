@@ -89,6 +89,7 @@ struct smsc {
 	struct llist_head esme_list;
 	struct llist_head acl_list;
 	struct llist_head route_list;
+	const char *bind_addr;
 	uint16_t listen_port;
 	char system_id[SMPP_SYS_ID_LEN+1];
 	int accept_all;
@@ -100,7 +101,11 @@ struct smsc {
 int smpp_addr_eq(const struct osmo_smpp_addr *a,
 		 const struct osmo_smpp_addr *b);
 
-int smpp_smsc_init(struct smsc *smsc, uint16_t port);
+struct smsc *smpp_smsc_alloc_init(void *ctx);
+int smpp_smsc_conf(struct smsc *smsc, const char *bind_addr, uint16_t port);
+int smpp_smsc_start(struct smsc *smsc, const char *bind_addr, uint16_t port);
+int smpp_smsc_restart(struct smsc *smsc, const char *bind_addr, uint16_t port);
+void smpp_smsc_stop(struct smsc *smsc);
 
 void smpp_esme_get(struct osmo_esme *esme);
 void smpp_esme_put(struct osmo_esme *esme);

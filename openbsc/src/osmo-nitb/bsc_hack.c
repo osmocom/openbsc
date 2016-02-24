@@ -276,7 +276,7 @@ int main(int argc, char **argv)
 	ctrl_vty_init(tall_bsc_ctx);
 
 #ifdef BUILD_SMPP
-	if (smpp_openbsc_init(tall_bsc_ctx, 0) < 0)
+	if (smpp_openbsc_alloc_init(tall_bsc_ctx) < 0)
 		return -1;
 #endif
 
@@ -293,7 +293,7 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 #ifdef BUILD_SMPP
-	smpp_openbsc_set_net(bsc_gsmnet);
+	smpp_openbsc_start(bsc_gsmnet);
 #endif
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
