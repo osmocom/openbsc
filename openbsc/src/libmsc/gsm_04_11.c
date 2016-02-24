@@ -357,7 +357,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	uint8_t *smsp = msgb_sms(msg);
 	struct gsm_sms *gsms;
 	unsigned int sms_alphabet;
-	uint8_t sms_mti, sms_mms, sms_vpf, sms_rp;
+	uint8_t sms_mti, sms_vpf;
 	uint8_t *sms_vp;
 	uint8_t da_len_bytes;
 	uint8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
@@ -371,11 +371,15 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 
 	/* invert those fields where 0 means active/present */
 	sms_mti = *smsp & 0x03;
-	sms_mms = !!(*smsp & 0x04);
 	sms_vpf = (*smsp & 0x18) >> 3;
 	gsms->status_rep_req = (*smsp & 0x20);
 	gsms->ud_hdr_ind = (*smsp & 0x40);
-	sms_rp  = (*smsp & 0x80);
+	/*
+	 * Not evaluating MMS (More Messages to Send) because the
+	 * lchan stays open anyway.
+	 * Not evaluating RP (Reply Path) because we're not aware of its
+	 * benefits.
+	 */
 
 	smsp++;
 	gsms->msg_ref = *smsp++;
