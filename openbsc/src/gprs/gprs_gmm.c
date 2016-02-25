@@ -1284,7 +1284,19 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		 * is an optimization to avoid the RA reject (impl detached)
 		 * below, which will cause a new attach cycle. */
 		/* Look-up the MM context based on old RA-ID and TLLI */
-		mmctx = sgsn_mm_ctx_by_tlli_and_ptmsi(msgb_tlli(msg), &old_ra_id);
+		if (!msg->dst) {
+			mmctx = sgsn_mm_ctx_by_tlli_and_ptmsi(msgb_tlli(msg), &old_ra_id);
+		} else if (TLVP_PRESENT(&tp, GSM48_IE_GMM_ALLOC_PTMSI)) {
+			/* In Iu mode search only for ptmsi */
+			char mi_string[GSM48_MI_SIZE];
+			uint8_t mi_len = TLVP_LEN(&tp, GSM48_IE_GMM_ALLOC_PTMSI);
+			uint8_t *mi = TLVP_VAL(&tp, GSM48_IE_GMM_ALLOC_PTMSI);
+			uint8_t mi_type = *mi & GSM_MI_TYPE_MASK;
+			gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
+
+			if (mi_type == GSM_MI_TYPE_TMSI)
+				mmctx = sgsn_mm_ctx_by_ptmsi(mi_string);
+		}
 		if (mmctx) {
 			LOGMMCTXP(LOGL_INFO, mmctx,
 				"Looked up by matching TLLI and P_TMSI. "
