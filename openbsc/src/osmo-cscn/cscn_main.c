@@ -87,7 +87,7 @@ static struct {
 	const char *database_name;
 	const char *config_file;
 	int daemonize;
-	int use_mncc_sock;
+	const char *mncc_sock_path;
 	int use_db_counter;
 } cscn_cmdline_config = {
 	"hlr.sqlite3",
@@ -157,11 +157,12 @@ static void handle_options(int argc, char **argv)
 			{"rtp-proxy", 0, 0, 'P'},
 			{"log-level", 1, 0, 'e'},
 			{"mncc-sock", 0, 0, 'm'},
+			{"mncc-sock-path", 1, 0, 'M'},
 			{"no-dbcounter", 0, 0, 'C'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mCr:",
+		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mCr:M:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -198,8 +199,11 @@ static void handle_options(int argc, char **argv)
 		case 'e':
 			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
+		case 'M':
+			cscn_cmdline_config.mncc_sock_path = optarg;
+			break;
 		case 'm':
-			cscn_cmdline_config.use_mncc_sock = 1;
+			cscn_cmdline_config.mncc_sock_path = "/tmp/bsc_mncc";
 			break;
 		case 'C':
 			cscn_cmdline_config.use_db_counter = 0;
@@ -332,7 +336,7 @@ int main(int argc, char **argv)
 	handle_options(argc, argv);
 
 	cscn_network = cscn_network_init(tall_cscn_ctx,
-					 cscn_cmdline_config.use_mncc_sock?
+					 cscn_cmdline_config.mncc_sock_path?
 						 mncc_sock_from_cc
 						 : int_mncc_recv);
 	if (!cscn_network)
@@ -347,8 +351,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (cscn_cmdline_config.use_mncc_sock)
-			mncc_sock_init(cscn_network);
+	if (cscn_cmdline_config.mncc_sock_path) {
+		rc = mncc_sock_init(cscn_network,
+				    cscn_cmdline_config.mncc_sock_path);
+		if (rc < 0)
+			exit(1);
+	}
 
 	rc = telnet_init(tall_cscn_ctx, cscn_network, OSMO_VTY_PORT_CSCN);
 	if (rc < 0)
@@ -380,7 +388,13 @@ int main(int argc, char **argv)
 	bsc_api_init(cscn_network, msc_bsc_api()); // pobably not.
 #endif
 
-	cscn_network->ctrl = bsc_controlif_setup(cscn_network, OSMO_CTRL_PORT_CSCN);
+	/* start control interface after reading config for
+	 * ctrl_vty_get_bind_addr() */
+	LOGP(DNM, LOGL_NOTICE, "CTRL at %s %d\n",
+	     ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_CSCN);
+	cscn_network->ctrl = bsc_controlif_setup(cscn_network,
+						 ctrl_vty_get_bind_addr(),
+						 OSMO_CTRL_PORT_CSCN);
 	if (!cscn_network->ctrl) {
 		printf("Failed to initialize control interface. Exiting.\n");
 		return -1;
