@@ -58,6 +58,7 @@
 #include <openbsc/handover_decision.h>
 #include <openbsc/rrlp.h>
 #include <osmocom/ctrl/control_if.h>
+#include <osmocom/ctrl/control_vty.h>
 #include <osmocom/ctrl/ports.h>
 #include <openbsc/ctrl.h>
 #include <openbsc/osmo_bsc_rf.h>
@@ -342,6 +343,7 @@ int main(int argc, char **argv)
 		return -ENOMEM;
 
 	vty_init(&cscn_vty_info);
+	ctrl_vty_init(tall_cscn_ctx);
 	bsc_vty_init(&log_info, cscn_network);
 	rc = vty_read_config_file(cscn_cmdline_config.config_file, NULL);
 	if (rc < 0) {
