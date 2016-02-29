@@ -314,10 +314,20 @@ err_io:
 
 void meas_db_close(struct meas_db_state *st)
 {
+	int retries;
 	sqlite3_finalize(st->stmt_ins_mr);
 	sqlite3_finalize(st->stmt_ins_ud);
 	sqlite3_finalize(st->stmt_upd_mr);
-	sqlite3_close(st->db);
+	retries = 0;
+	while (1) {
+		if (sqlite3_close(st->db) == SQLITE_OK)
+			break;
+		if ((++retries) >= 3) {
+			fprintf(stderr, "Unable to close DB\n");
+			break;
+		}
+		sleep(1);
+	}
 
 	talloc_free(st);
 
