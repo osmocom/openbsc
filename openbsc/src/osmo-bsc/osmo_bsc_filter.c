@@ -354,6 +354,7 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	if (mtype == GSM48_MT_MM_LOC_UPD_ACCEPT) {
 		if (has_core_identity(msc)) {
 			if (msgb_l3len(msg) >= sizeof(*gh) + sizeof(*lai)) {
+				/* overwrite LAI in the message */
 				lai = (struct gsm48_loc_area_id *) &gh->data[0];
 				gsm48_generate_lai(lai, net->country_code,
 						   net->network_code,
