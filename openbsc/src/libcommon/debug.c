@@ -41,74 +41,74 @@ static const struct log_info_cat default_categories[] = {
 		.name = "DRLL",
 		.description = "A-bis Radio Link Layer (RLL)",
 		.color = "\033[1;31m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DCC] = {
 		.name = "DCC",
 		.description = "Layer3 Call Control (CC)",
 		.color = "\033[1;32m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DMM] = {
 		.name = "DMM",
 		.description = "Layer3 Mobility Management (MM)",
 		.color = "\033[1;33m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DRR] = {
 		.name = "DRR",
 		.description = "Layer3 Radio Resource (RR)",
 		.color = "\033[1;34m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DRSL] = {
 		.name = "DRSL",
 		.description = "A-bis Radio Siganlling Link (RSL)",
 		.color = "\033[1;35m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DNM] =	{
 		.name = "DNM",
 		.description = "A-bis Network Management / O&M (NM/OML)",
 		.color = "\033[1;36m",
-		.enabled = 1, .loglevel = LOGL_INFO,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DMNCC] = {
 		.name = "DMNCC",
 		.description = "MNCC API for Call Control application",
 		.color = "\033[1;39m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DPAG]	= {
 		.name = "DPAG",
 		.description = "Paging Subsystem",
 		.color = "\033[1;38m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DMEAS] = {
 		.name = "DMEAS",
 		.description = "Radio Measurement Processing",
-		.enabled = 0, .loglevel = LOGL_NOTICE,
+		.enabled = 0, .loglevel = LOGL_DEBUG,
 	},
 	[DSCCP] = {
 		.name = "DSCCP",
 		.description = "SCCP Protocol",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DMSC] = {
 		.name = "DMSC",
 		.description = "Mobile Switching Center",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DMGCP] = {
 		.name = "DMGCP",
 		.description = "Media Gateway Control Protocol",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DHO] = {
 		.name = "DHO",
 		.description = "Hand-Over",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DDB] = {
 		.name = "DDB",
@@ -118,7 +118,7 @@ static const struct log_info_cat default_categories[] = {
 	[DREF] = {
 		.name = "DREF",
 		.description = "Reference Counting",
-		.enabled = 0, .loglevel = LOGL_NOTICE,
+		.enabled = 0, .loglevel = LOGL_DEBUG,
 	},
 	[DGPRS] = {
 		.name = "DGPRS",
@@ -128,7 +128,7 @@ static const struct log_info_cat default_categories[] = {
 	[DNS] = {
 		.name = "DNS",
 		.description = "GPRS Network Service (NS)",
-		.enabled = 1, .loglevel = LOGL_INFO,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DBSSGP] = {
 		.name = "DBSSGP",
@@ -148,12 +148,12 @@ static const struct log_info_cat default_categories[] = {
 	[DNAT] = {
 		.name = "DNAT",
 		.description = "GSM 08.08 NAT/Multiplexer",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DCTRL] = {
 		.name = "DCTRL",
 		.description = "Control interface",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DSMPP] = {
 		.name = "DSMPP",
