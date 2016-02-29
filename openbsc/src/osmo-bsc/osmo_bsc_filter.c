@@ -264,6 +264,9 @@ static int bsc_patch_mm_info(struct gsm_subscriber_connection *conn,
 
 	parse_res = tlv_parse(&tp, &gsm48_mm_att_tlvdef, data, length, 0, 0);
 	if (parse_res <= 0 && parse_res != -3)
+		/* FIXME: -3 means unknown IE error, so this accepts messages
+		 * with unknown IEs. But parsing has aborted with the unknown
+		 * IE and the message is broken or parsed incompletely. */
 		return 0;
 
 	/* Is TZ patching enabled? */
