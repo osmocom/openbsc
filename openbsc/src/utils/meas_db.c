@@ -317,7 +317,7 @@ void meas_db_close(struct meas_db_state *st)
 	sqlite3_finalize(st->stmt_ins_mr);
 	sqlite3_finalize(st->stmt_ins_ud);
 	sqlite3_finalize(st->stmt_upd_mr);
-	sqlite3_close_v2(st->db);
+	sqlite3_close(st->db);
 
 	talloc_free(st);
 
