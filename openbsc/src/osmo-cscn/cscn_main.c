@@ -359,10 +359,13 @@ int main(int argc, char **argv)
 			exit(1);
 	}
 
-	rc = telnet_init(tall_cscn_ctx, cscn_network, OSMO_VTY_PORT_CSCN);
+	/* start telnet after reading config for vty_get_bind_addr() */
+	LOGP(DGPRS, LOGL_NOTICE, "VTY at %s %d\n",
+	     vty_get_bind_addr(), OSMO_VTY_PORT_SGSN);
+	rc = telnet_init_dynif(tall_cscn_ctx, &cscn_network,
+			       vty_get_bind_addr(), OSMO_VTY_PORT_SGSN);
 	if (rc < 0)
 		return 2;
-
 
 	/* BSC stuff is to be split behind an A-interface to be used with
 	 * OsmoBSC, but there is no need to remove it yet. Most of the
