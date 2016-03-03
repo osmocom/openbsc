@@ -32,7 +32,7 @@
 static int s_end = 0;
 static struct gsm_subscriber_connection s_conn;
 static void *s_data;
-static gsm_cbfn *s_cbfn;
+static gsm_cbfn *s_cbfn = NULL;
 
 /* our handler */
 static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, void *data, void *param)
@@ -83,7 +83,10 @@ int main(int argc, char **argv)
 	OSMO_ASSERT(subscr->group->net == network);
 
 	/* Ask for a channel... */
-	subscr_request_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
+	struct subscr_request *sr;
+	sr = subscr_request_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
+	OSMO_ASSERT(sr);
+	OSMO_ASSERT(s_cbfn);
 	s_cbfn(101, 200, (void*)0x1323L, &s_conn, s_data);
 
 	OSMO_ASSERT(s_end);
