@@ -202,7 +202,8 @@ int subscr_tx_sms_message(struct gsm_subscriber *subscr,
 	return gprs_gsup_client_send(subscr->group->net->sms_client, msg);
 }
 
-static int rx_sms_message(const uint8_t* data, size_t data_len)
+static int rx_sms_message(struct gprs_gsup_client *sup_client,
+                          const uint8_t* data, size_t data_len)
 {
 
 	int rc;
@@ -236,12 +237,12 @@ static int rx_sms_message(const uint8_t* data, size_t data_len)
 	memcpy(rp_msg, data + offset, data_len);
 
 	struct gsm_subscriber *subscr;
-	subscr = subscr_get_by_extension(NULL, extension);
+	struct gsm_network *net = sup_client->net;
+	subscr = subscr_get_by_extension(net->subscr_group, extension);
 	if (!subscr) {
 		msgb_free(msg);
 		return -GMM_CAUSE_IMSI_UNKNOWN;
 	}
-
 	return gsm411_send_rp_msg_subscr(subscr, msg);
 }
 
@@ -514,7 +515,7 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
     if (*data == GPRS_GSUP_MSGT_MAP) {
         return rx_uss_message(data, data_len);
     } else if (*data == GPRS_GSUP_MSGT_SMS) {
-        return rx_sms_message(data, data_len);
+        return rx_sms_message(sup_client, data, data_len);
     }
 #endif
 	rc = gprs_gsup_decode(data, data_len, &gsup_msg);

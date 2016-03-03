@@ -47,6 +47,7 @@ struct gsup_client {
 	struct osmo_timer_list connect_timer;
 	int is_connected;
 	int got_ipa_pong;
+	struct gsm_network *net;
 };
 
 struct gsup_client *gsup_client_create(const char *ip_addr,
