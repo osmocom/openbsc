@@ -7,7 +7,7 @@
 #include <osmocom/core/select.h>
 
 #include <openbsc/rest_octets.h>
-#include <openbsc/common.h>
+#include <openbsc/xsc.h>
 
 /** annotations for msgb ownership */
 #define __uses

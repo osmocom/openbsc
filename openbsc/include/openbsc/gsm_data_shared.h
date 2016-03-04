@@ -24,7 +24,7 @@
 #include <osmocom/gsm/lapdm.h>
 #endif
 
-#include <openbsc/common.h>
+#include <openbsc/xsc.h>
 
 struct osmo_bsc_data;
 

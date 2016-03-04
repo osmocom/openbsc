@@ -258,30 +258,6 @@ int send_siemens_mrpci(struct gsm_lchan *lchan,
 	return rsl_siemens_mrpci(lchan, &mrpci);
 }
 
-int gsm48_extract_mi(uint8_t *classmark2_lv, int length, char *mi_string, uint8_t *mi_type)
-{
-	/* Check the size for the classmark */
-	if (length < 1 + *classmark2_lv)
-		return -1;
-
-	uint8_t *mi_lv = classmark2_lv + *classmark2_lv + 1;
-	if (length < 2 + *classmark2_lv + mi_lv[0])
-		return -2;
-
-	*mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;
-	return gsm48_mi_to_string(mi_string, GSM48_MI_SIZE, mi_lv+1, *mi_lv);
-}
-
-int gsm48_paging_extract_mi(struct gsm48_pag_resp *resp, int length,
-			    char *mi_string, uint8_t *mi_type)
-{
-	static const uint32_t classmark_offset =
-		offsetof(struct gsm48_pag_resp, classmark2);
-	uint8_t *classmark2_lv = (uint8_t *) &resp->classmark2;
-	return gsm48_extract_mi(classmark2_lv, length - classmark_offset,
-				mi_string, mi_type);
-}
-
 int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
 			     struct msgb *msg, struct gsm_subscriber *subscr)
 {
@@ -643,39 +619,6 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 	mrc->bsic = data[15] & 0x3f;
 
 	return 0;
-}
-
-struct msgb *gsm48_create_mm_serv_rej(enum gsm48_reject_value value)
-{
-	struct msgb *msg;
-	struct gsm48_hdr *gh;
-
-	msg = gsm48_msgb_alloc_name("GSM 04.08 SERV REJ");
-	if (!msg)
-		return NULL;
-
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
-	gh->proto_discr = GSM48_PDISC_MM;
-	gh->msg_type = GSM48_MT_MM_CM_SERV_REJ;
-	gh->data[0] = value;
-
-	return msg;
-}
-
-struct msgb *gsm48_create_loc_upd_rej(uint8_t cause)
-{
-	struct gsm48_hdr *gh;
-	struct msgb *msg;
-
-	msg = gsm48_msgb_alloc_name("GSM 04.08 LOC UPD REJ");
-	if (!msg)
-		return NULL;
-
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
-	gh->proto_discr = GSM48_PDISC_MM;
-	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
-	gh->data[0] = cause;
-	return msg;
 }
 
 /* 9.2.5 CM service accept */

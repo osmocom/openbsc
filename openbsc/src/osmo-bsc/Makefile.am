@@ -12,10 +12,8 @@ osmo_bsc_SOURCES = osmo_bsc_main.c osmo_bsc_vty.c osmo_bsc_api.c \
 osmo_bsc_LDADD = \
 		 $(top_builddir)/src/libfilter/libfilter.a \
 		 $(top_builddir)/src/libbsc/libbsc.a \
-		 $(top_builddir)/src/libmsc/libmsc.a \
-		 $(top_builddir)/src/libbsc/libbsc.a \
+		 $(top_builddir)/src/libmsc/libxsc.a \
 		 $(top_builddir)/src/libtrau/libtrau.a \
-		 $(top_builddir)/src/libcommon/libcommon.a \
 		 $(top_builddir)/src/libcommon/libcommon.a \
 		 $(LIBOSMOSCCP_LIBS) $(LIBOSMOCORE_LIBS) \
 		 $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOCTRL_LIBS) \

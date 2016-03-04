@@ -4,6 +4,8 @@
 
 struct msgb;
 struct gsm_network;
+struct log_info;
+struct ctrl_handle;
 
 typedef int (*mncc_recv_cb_t)(struct gsm_network *, struct msgb *);
 
@@ -14,4 +16,8 @@ struct gsm_encr {
 	uint8_t key_len;
 	uint8_t key[MAX_A5_KEY_LEN];
 };
+
+extern struct gsm_network *vty_global_gsm_network;
+
+int xsc_vty_init(struct gsm_network *network);
 

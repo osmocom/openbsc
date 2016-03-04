@@ -1,7 +1,7 @@
 #ifndef _BSS_H_
 #define _BSS_H_
 
-#include <openbsc/common.h>
+#include <openbsc/xsc.h>
 
 struct gsm_network;
 struct msgb;

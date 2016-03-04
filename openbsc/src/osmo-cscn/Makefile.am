@@ -11,12 +11,11 @@ bin_PROGRAMS = osmo-cscn
 osmo_cscn_SOURCES = cscn_main.c
 
 osmo_cscn_LDADD = \
-		$(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libiu/libiu.a \
 		$(top_builddir)/src/libmsc/libmsc.a \
-		$(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libtrau/libtrau.a \
 		$(top_builddir)/src/libcommon/libcommon.a \
+		$(top_builddir)/src/libxsc/libxsc.a \
 		-ldbi $(LIBCRYPT)				   \
 		$(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOCORE_LIBS)  \
 		$(LIBOSMOCTRL_LIBS) $(LIBOSMOABIS_LIBS) $(LIBSMPP34_LIBS) $(LIBCRYPTO_LIBS) \

@@ -7,9 +7,8 @@ EXTRA_DIST = db_test.ok db_test.err hlr.sqlite3
 noinst_PROGRAMS = db_test
 
 db_test_SOURCES = db_test.c
-db_test_LDADD =	$(top_builddir)/src/libbsc/libbsc.a \
-		$(top_builddir)/src/libmsc/libmsc.a \
-		$(top_builddir)/src/libbsc/libbsc.a \
+db_test_LDADD =	$(top_builddir)/src/libmsc/libmsc.a \
+		$(top_builddir)/src/libxsc/libxsc.a \
 		$(top_builddir)/src/libtrau/libtrau.a \
 		$(top_builddir)/src/libcommon/libcommon.a \
 		$(top_builddir)/tests/libiudummy/libiudummy.a \
