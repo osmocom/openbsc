@@ -1163,8 +1163,13 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	/* We received a paging */
 	conn->expire_timer_stopped = 1;
 
+#if BEFORE_MSCSPLIT
 	rc = gsm48_handle_paging_resp(conn, msg, subscr);
 	return rc;
+#else
+	LOGP(DRR, LOGL_ERROR, "MSC wants to tell BSC to gsm48_handle_paging_resp() but A-interface not implemented\n");
+	return -1;
+#endif
 }
 
 static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct msgb *msg)

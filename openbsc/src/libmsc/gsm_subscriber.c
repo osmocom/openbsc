@@ -84,6 +84,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 
 	OSMO_ASSERT(subscr->is_paging);
 
+#if BEFORE_MSCSPLIT
 	/*
 	 * Stop paging on all other BTS. E.g. if this is
 	 * the first timeout on a BTS then the others will
@@ -91,6 +92,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	 * and forget we wanted to page.
 	 */
 	paging_request_stop(NULL, subscr, NULL, NULL);
+#endif
 
 	/* Inform parts of the system we don't know */
 	sig_data.subscr = subscr;
@@ -163,6 +165,14 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, param);
 }
 
+int msc_paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
+		       int type, gsm_cbfn *cbfn, void *data)
+{
+	LOGP(DMM, LOGL_ERROR, "MSC paging not implemented! want to page %s\n",
+	     subscr_name(subscr));
+	return -1;
+}
+
 struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
 			int channel_type, gsm_cbfn *cbfn, void *param)
 {
@@ -173,8 +183,8 @@ struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
 	if (!subscr->is_paging) {
 		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet.\n",
 			subscr_name(subscr));
-		rc = paging_request(subscr->group->net, subscr, channel_type,
-				    subscr_paging_cb, subscr);
+		rc = msc_paging_request(subscr->group->net, subscr, channel_type,
+					subscr_paging_cb, subscr);
 		if (rc <= 0) {
 			LOGP(DMM, LOGL_ERROR, "Subscriber %s paging failed: %d\n",
 				subscr_name(subscr), rc);
