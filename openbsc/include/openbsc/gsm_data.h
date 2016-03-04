@@ -135,14 +135,6 @@ struct gsm_subscriber_connection {
 	/* back pointers */
 	struct gsm_network *network;
 
-	/* 2G or 3G? See enum interface_type */
-	int via_iface;
-
-	/* which Iu-CS connection, if any. */
-	struct {
-		struct ue_conn_ctx *ue_ctx;
-	} iu;
-
 	/* The BSC used to be an integral part of OsmoNITB. In OsmoCSCN, the
 	 * BSC and/or RNC is a separate entity, and no back pointers to the bts
 	 * and lchan structures are available. To facilitate separation of the
@@ -152,6 +144,15 @@ struct gsm_subscriber_connection {
 	int in_release;
 	uint16_t lac;
 	struct gsm_encr encr;
+
+	/* 2G or 3G? See enum interface_type */
+	int via_iface;
+
+	/* which Iu-CS connection, if any. */
+	struct {
+		struct ue_conn_ctx *ue_ctx;
+	} iu;
+
 #else
 	struct gsm_bts *bts;
 	struct gsm_lchan *lchan;
@@ -243,6 +244,12 @@ struct gsm_tz {
 };
 
 struct gsm_network {
+	/* TODO MSCSPLIT the gsm_network struct is basically a kitchen sink for
+	 * global settings and variables, "madly" mixing BSC and MSC stuff. Split
+	 * this in e.g. struct osmo_bsc and struct osmo_msc, with the things
+	 * these have in common, like country and network code, put in yet
+	 * separate structs and placed as members in osmo_bsc and osmo_msc. */
+
 	/* global parameters */
 	uint16_t country_code;
 	uint16_t network_code;
@@ -477,8 +484,11 @@ void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
 int gsm_btsmodel_set_feature(struct gsm_bts_model *model, enum gsm_bts_features feat);
 int gsm_bts_model_register(struct gsm_bts_model *model);
 
-struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan);
-void subscr_con_free(struct gsm_subscriber_connection *conn);
+struct gsm_subscriber_connection *bsc_subscr_con_allocate(struct gsm_lchan *lchan);
+void bsc_subscr_con_free(struct gsm_subscriber_connection *conn);
+
+struct gsm_subscriber_connection *msc_subscr_con_allocate(struct gsm_network *network);
+void msc_subscr_con_free(struct gsm_subscriber_connection *conn);
 
 struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net,
 					enum gsm_bts_type type,

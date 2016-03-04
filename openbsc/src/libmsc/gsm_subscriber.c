@@ -370,3 +370,31 @@ void subscr_expire(struct gsm_subscriber_group *sgrp)
 {
 	db_subscriber_expire(sgrp->net, subscr_expire_callback);
 }
+
+struct gsm_subscriber_connection *msc_subscr_con_allocate(struct gsm_network *network)
+{
+	struct gsm_subscriber_connection *conn;
+
+	conn = talloc_zero(network, struct gsm_subscriber_connection);
+	if (!conn)
+		return NULL;
+
+	conn->network = network;
+	llist_add_tail(&conn->entry, &network->subscr_conns);
+	return conn;
+}
+
+void msc_subscr_con_free(struct gsm_subscriber_connection *conn)
+{
+	if (!conn)
+		return;
+
+
+	if (conn->subscr) {
+		subscr_put(conn->subscr);
+		conn->subscr = NULL;
+	}
+
+	llist_del(&conn->entry);
+	talloc_free(conn);
+}
