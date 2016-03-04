@@ -51,6 +51,7 @@
 #include <openbsc/sms_queue.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/ports.h>
+#include <osmocom/vty/logging.h>
 #include <openbsc/vty.h>
 #include <openbsc/bss.h>
 #include <openbsc/mncc.h>
@@ -83,6 +84,14 @@ static const char * const osmocscn_copyright =
 	"There is NO WARRANTY, to the extent permitted by law.\r\n";
 
 void *tall_cscn_ctx = NULL;
+
+/* satisfy deps from libbsc legacy.
+   TODO double check these */
+void *tall_fle_ctx = NULL;
+void *tall_paging_ctx = NULL;
+void *tall_map_ctx = NULL;
+void *tall_upq_ctx = NULL;
+/* end deps from libbsc legacy. */
 
 static struct {
 	const char *database_name;
@@ -194,9 +203,11 @@ static void handle_options(int argc, char **argv)
 		case 'T':
 			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
+#if BEFORE_MSCSPLIT
 		case 'P':
 			ipacc_rtp_direct = 0;
 			break;
+#endif
 		case 'e':
 			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
@@ -393,6 +404,9 @@ int main(int argc, char **argv)
 	bsc_api_init(cscn_network, msc_bsc_api()); // pobably not.
 #endif
 
+#if 0
+	the bsc_ctrl_node_lookup() only returns BSC specific ctrl nodes
+
 	/* start control interface after reading config for
 	 * ctrl_vty_get_bind_addr() */
 	LOGP(DNM, LOGL_NOTICE, "CTRL at %s %d\n",
@@ -404,6 +418,7 @@ int main(int argc, char **argv)
 		printf("Failed to initialize control interface. Exiting.\n");
 		return -1;
 	}
+#endif
 
 #if 0
 TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_install().
@@ -413,10 +428,12 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	}
 #endif
 
+#if 0
 	if (msc_ctrl_cmds_install() != 0) {
 		printf("Failed to initialize the MSC control commands.\n");
 		return -1;
 	}
+#endif
 
 	/* seed the PRNG */
 	srand(time(NULL));
