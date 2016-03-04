@@ -38,5 +38,5 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn,
 		    struct gsm_sms *sms);
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn);
 
-uint8_t sms_next_rp_msg_ref(struct gsm_subscriber_connection *conn);
+uint8_t sms_next_rp_msg_ref(uint8_t *next_rp_ref);
 #endif

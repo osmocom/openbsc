@@ -2,6 +2,7 @@
  *
  * (C) 2016 by sysmocom s.m.f.c. <info@sysmocom.de>
  * (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2014 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -198,5 +199,23 @@ int gsm48_paging_extract_mi(struct gsm48_pag_resp *resp, int length,
 	uint8_t *classmark2_lv = (uint8_t *) &resp->classmark2;
 	return gsm48_extract_mi(classmark2_lv, length - classmark_offset,
 				mi_string, mi_type);
+}
+
+
+/* Helpers for SMS/GSM 04.11 */
+#include <openbsc/gsm_data.h>
+#include <openbsc/gsm_04_11.h>
+
+uint8_t sms_next_rp_msg_ref(uint8_t *next_rp_ref)
+{
+	const uint8_t rp_msg_ref = *next_rp_ref;
+	/*
+	 * This should wrap as the valid range is 0 to 255. We only
+	 * transfer one SMS at a time so we don't need to check if
+	 * the id has been already assigned.
+	 */
+	*next_rp_ref += 1;
+
+	return rp_msg_ref;
 }
 
