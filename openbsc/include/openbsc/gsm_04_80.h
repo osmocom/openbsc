@@ -14,6 +14,9 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 			     const struct msgb *msg, 
 			     const struct ussd_request *request);
 
+struct msgb *gsm0480_gen_ussdNotify(int level, const char *text);
+struct msgb *gsm0480_gen_releaseComplete(void);
+
 int gsm0480_send_ussdNotify(struct gsm_subscriber_connection *conn, int level, const char *text);
 int gsm0480_send_releaseComplete(struct gsm_subscriber_connection *conn);
 

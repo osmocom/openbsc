@@ -30,6 +30,8 @@
 
 /* FIXME parts of the gsm_network are BSC specific and don't belong here. */
 
+#include <osmocom/gsm/gsm0480.h>
+
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/gsm_subscriber.h>
@@ -199,6 +201,43 @@ int gsm48_paging_extract_mi(struct gsm48_pag_resp *resp, int length,
 	uint8_t *classmark2_lv = (uint8_t *) &resp->classmark2;
 	return gsm48_extract_mi(classmark2_lv, length - classmark_offset,
 				mi_string, mi_type);
+}
+
+
+struct msgb *gsm0480_gen_ussdNotify(int level, const char *text)
+{
+	struct gsm48_hdr *gh;
+	struct msgb *msg;
+
+	msg = gsm0480_create_unstructuredSS_Notify(level, text);
+	if (!msg)
+		return NULL;
+
+	gsm0480_wrap_invoke(msg, GSM0480_OP_CODE_USS_NOTIFY, 0);
+	gsm0480_wrap_facility(msg);
+
+	/* And finally pre-pend the L3 header */
+	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_NC_SS;
+	gh->msg_type = GSM0480_MTYPE_REGISTER;
+
+	return msg;
+}
+
+struct msgb *gsm0480_gen_releaseComplete(void)
+{
+	struct gsm48_hdr *gh;
+	struct msgb *msg;
+
+	msg = gsm48_msgb_alloc_name("GSM 04.08 USSD REL COMPL");
+	if (!msg)
+		return NULL;
+
+	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_NC_SS;
+	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+
+	return msg;
 }
 
 

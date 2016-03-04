@@ -20,6 +20,7 @@ libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
 			e1_config.c \
 			bsc_api.c bsc_msc.c bsc_vty.c \
 			gsm_04_08_utils.c \
+			gsm_04_80_utils.c \
 			bsc_init.c bts_init.c bsc_rf_ctrl.c \
 			arfcn_range_encode.c bsc_ctrl_commands.c \
 			bsc_ctrl_lookup.c \
