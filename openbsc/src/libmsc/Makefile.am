@@ -19,6 +19,7 @@ libmsc_a_SOURCES =	auth.c \
 			token_auth.c \
 			ussd.c \
 			vty_interface_layer3.c \
+			cscn_vty.c \
 			transaction.c \
 			osmo_msc.c ctrl_commands.c meas_feed.c \
 			msc_api.c msc_ifaces.c iu_cs.c \

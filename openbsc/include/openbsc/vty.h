@@ -32,7 +32,6 @@ enum bsc_vty_node {
 	TRUNK_NODE,
 	PGROUP_NODE,
 	MNCC_INT_NODE,
-	NITB_NODE,
 	BSC_NODE,
 	SMPP_NODE,
 	SMPP_ESME_NODE,
@@ -46,6 +45,8 @@ extern void bsc_replace_string(void *ctx, char **dst, const char *newstr);
 struct log_info;
 int bsc_vty_init(const struct log_info *cat, struct gsm_network *network);
 int bsc_vty_init_extra(void);
+
+void cscn_vty_init(void);
 
 struct gsm_network *gsmnet_from_vty(struct vty *vty);
 

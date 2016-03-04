@@ -357,6 +357,7 @@ int main(int argc, char **argv)
 	ctrl_vty_init(tall_cscn_ctx);
 	logging_vty_add_cmds(&log_info);
 	xsc_vty_init(cscn_network);
+	cscn_vty_init();
 	rc = vty_read_config_file(cscn_cmdline_config.config_file, NULL);
 	if (rc < 0) {
 		LOGP(DNM, LOGL_FATAL, "Failed to parse the config file: '%s'\n",
