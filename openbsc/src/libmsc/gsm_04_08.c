@@ -174,14 +174,23 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	}
 
 	/* Are we done yet ? */
-	if (status >= 0)
+	if (status >= 0) {
+		DEBUGP(DMM, "gsm48_secure_channel(%s) returning with status %d\n",
+		       subscr_name(subscr), status);
 		return cb ?
 			cb(GSM_HOOK_RR_SECURITY, status, NULL, conn, cb_data) :
 			0;
+	}
 
 	/* Start an operation (can't have more than one pending !!!) */
-	if (conn->sec_operation)
+	if (conn->sec_operation) {
+		DEBUGP(DMM, "gsm48_secure_channel(%s) error: attempt to start"
+		       " second security operation\n",
+		       subscr_name(subscr));
 		return -EBUSY;
+	}
+	DEBUGP(DMM, "gsm48_secure_channel(%s) starting security operation\n",
+	       subscr_name(subscr));
 
 	allocate_security_operation(conn);
 	op = conn->sec_operation;
@@ -194,9 +203,13 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	/* Then do whatever is needed ... */
 	if (rc == AUTH_DO_AUTH_THEN_CIPH) {
 		/* Start authentication */
+		DEBUGP(DMM, "gsm48_secure_channel(%s) starting authentication\n",
+		       subscr_name(subscr));
 		return gsm48_tx_mm_auth_req(conn, op->atuple.rand, op->atuple.key_seq);
 	} else if (rc == AUTH_DO_CIPH) {
 		/* Start ciphering directly */
+		DEBUGP(DMM, "gsm48_secure_channel(%s) starting ciphering\n",
+		       subscr_name(subscr));
 		return gsm0808_cipher_mode(conn, net->a5_encryption,
 		                           op->atuple.kc, 8, 0);
 	}
@@ -207,27 +220,46 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 				struct gsm_subscriber *subscriber)
 {
-	if (!subscriber)
+	if (!subscriber) {
+		LOGP(DMM, LOGL_DEBUG, "authorize_subscriber() on NULL subscriber\n");
 		return 0;
+	}
 
 	/*
 	 * Do not send accept yet as more information should arrive. Some
 	 * phones will not send us the information and we will have to check
 	 * what we want to do with that.
 	 */
-	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei))
+	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei)) {
+		LOGP(DMM, LOGL_DEBUG, "authorize_subscriber() failed:"
+		     " still waiting for%s%s of subscriber %s\n",
+		     loc->waiting_for_imsi? " IMSI": "",
+		     loc->waiting_for_imei? " IMEI": "",
+		     subscr_name(subscriber));
 		return 0;
+	}
 
 	switch (subscriber->group->net->auth_policy) {
 	case GSM_AUTH_POLICY_CLOSED:
+		LOGP(DMM, LOGL_DEBUG, "subscriber %s authorized = %d\n",
+		     subscr_name(subscriber), subscriber->authorized);
 		return subscriber->authorized;
 	case GSM_AUTH_POLICY_TOKEN:
-		if (subscriber->authorized)
+		if (subscriber->authorized) {
+			LOGP(DMM, LOGL_DEBUG,
+			     "subscriber %s authorized = %d\n",
+			     subscr_name(subscriber), subscriber->authorized);
 			return subscriber->authorized;
+		}
+		LOGP(DMM, LOGL_DEBUG, "subscriber %s first contact = %d\n",
+		     subscr_name(subscriber),
+		     (int)(subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT));
 		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
 	case GSM_AUTH_POLICY_ACCEPT_ALL:
 		return 1;
 	default:
+		LOGP(DMM, LOGL_DEBUG, "unknown auth_policy, rejecting"
+		     " subscriber %s\n", subscr_name(subscriber));
 		return 0;
 	}
 }
@@ -324,6 +356,7 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			     subscr_name(conn->subscr));
 			/* fall through */
 		default:
+			LOGP(DMM, LOGL_DEBUG, "invalid authorization event\n");
 			rc = -EINVAL;
 	};
 
@@ -332,9 +365,12 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 
 static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	if (!conn->loc_operation)
+	if (!conn->loc_operation) {
+		LOGP(DMM, LOGL_DEBUG, "gsm0408_authorize() failed:"
+		     " no location update operation pending\n");
 		return 0;
-
+	}
+	
 	if (authorize_subscriber(conn->loc_operation, conn->subscr))
 		return gsm48_secure_channel(conn,
 			conn->loc_operation->key_seq,
