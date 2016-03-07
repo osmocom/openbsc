@@ -395,9 +395,8 @@ static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb
 	}
 	
 	if (authorize_subscriber(conn->loc_operation, conn->subscr))
-		return gsm48_secure_channel(conn,
-			conn->loc_operation->key_seq,
-			_gsm0408_authorize_sec_cb, NULL);
+		return gsm48_secure_channel(conn, conn->loc_operation->key_seq,
+					    _gsm0408_authorize_sec_cb, NULL);
 	return 0;
 }
 

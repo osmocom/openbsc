@@ -399,7 +399,6 @@ void msc_subscr_con_free(struct gsm_subscriber_connection *conn)
 	if (!conn)
 		return;
 
-
 	if (conn->subscr) {
 		subscr_put(conn->subscr);
 		conn->subscr = NULL;
