@@ -128,17 +128,8 @@ static int config_write_mgcp(struct vty *vty)
 		g_cfg->trunk.no_audio_transcoding ? "no " : "", VTY_NEWLINE);
 	if (g_cfg->call_agent_addr)
 		vty_out(vty, "  call-agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
-	if (g_cfg->transcoder_ip)
-		vty_out(vty, "  transcoder-mgw %s%s", g_cfg->transcoder_ip, VTY_NEWLINE);
-
-	if (g_cfg->transcoder_ports.mode == PORT_ALLOC_STATIC)
-		vty_out(vty, "  rtp transcoder-base %u%s", g_cfg->transcoder_ports.base_port, VTY_NEWLINE);
-	else
-		vty_out(vty, "  rtp transcoder-range %u %u%s",
-			g_cfg->transcoder_ports.range_start, g_cfg->transcoder_ports.range_end, VTY_NEWLINE);
 	if (g_cfg->bts_force_ptime > 0)
 		vty_out(vty, "  rtp force-ptime %d%s", g_cfg->bts_force_ptime, VTY_NEWLINE);
-	vty_out(vty, "  transcoder-remote-base %u%s", g_cfg->transcoder_remote_base, VTY_NEWLINE);
 
 	switch (g_cfg->osmux) {
 	case OSMUX_USAGE_ON:
@@ -209,13 +200,12 @@ static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg, int verbo
 		struct mgcp_endpoint *endp = &cfg->endpoints[i];
 		vty_out(vty,
 			" Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s "
-			"traffic received bts: %u  remote: %u transcoder: %u/%u%s",
+			"traffic received bts: %u  remote: %u%s",
 			i, endp->ci,
 			ntohs(endp->net_end.rtp_port), ntohs(endp->net_end.rtcp_port),
 			ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
 			inet_ntoa(endp->bts_end.addr),
 			endp->bts_end.packets, endp->net_end.packets,
-			endp->trans_net.packets, endp->trans_bts.packets,
 			VTY_NEWLINE);
 
 		if (verbose && endp->allocated) {
@@ -378,24 +368,26 @@ ALIAS_DEPRECATED(cfg_mgcp_rtp_bts_base_port, cfg_mgcp_rtp_base_port_cmd,
       "rtp base <0-65534>",
       RTP_STR BTS_START_STR UDP_PORT_STR)
 
-DEFUN(cfg_mgcp_rtp_transcoder_range,
+DEFUN_DEPRECATED(cfg_mgcp_rtp_transcoder_range,
       cfg_mgcp_rtp_transcoder_range_cmd,
       "rtp transcoder-range <0-65534> <0-65534>",
       RTP_STR "Range of ports to use for the Transcoder\n"
       RANGE_START_STR RANGE_END_STR)
 {
-	parse_range(&g_cfg->transcoder_ports, argv);
-	return CMD_SUCCESS;
+	vty_out(vty,
+		"%% MGCP RTP transcoding has been removed.%s", VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
-DEFUN(cfg_mgcp_rtp_transcoder_base,
+DEFUN_DEPRECATED(cfg_mgcp_rtp_transcoder_base,
       cfg_mgcp_rtp_transcoder_base_cmd,
       "rtp transcoder-base <0-65534>",
       RTP_STR "First UDP port allocated for the Transcoder side\n"
       UDP_PORT_STR)
 {
-	parse_base(&g_cfg->transcoder_ports, argv);
-	return CMD_SUCCESS;
+	vty_out(vty,
+		"%% MGCP RTP transcoding has been removed.%s", VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(cfg_mgcp_rtp_bts_bind_ip,
@@ -724,39 +716,35 @@ ALIAS_DEPRECATED(cfg_mgcp_agent_addr, cfg_mgcp_agent_addr_cmd_old,
       "IPv4 Address of the callagent\n")
       
 
-DEFUN(cfg_mgcp_transcoder,
+DEFUN_DEPRECATED(cfg_mgcp_transcoder,
       cfg_mgcp_transcoder_cmd,
       "transcoder-mgw A.B.C.D",
       "Use a MGW to detranscoder RTP\n"
       "The IP address of the MGW")
 {
-	bsc_replace_string(g_cfg, &g_cfg->transcoder_ip, argv[0]);
-	inet_aton(g_cfg->transcoder_ip, &g_cfg->transcoder_in);
-
-	return CMD_SUCCESS;
+	vty_out(vty,
+		"%% MGCP RTP transcoding has been removed.%s", VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
-DEFUN(cfg_mgcp_no_transcoder,
+DEFUN_DEPRECATED(cfg_mgcp_no_transcoder,
       cfg_mgcp_no_transcoder_cmd,
       "no transcoder-mgw",
       NO_STR "Disable the transcoding\n")
 {
-	if (g_cfg->transcoder_ip) {
-		LOGP(DMGCP, LOGL_NOTICE, "Disabling transcoding on future calls.\n");
-		talloc_free(g_cfg->transcoder_ip);
-		g_cfg->transcoder_ip = NULL;
-	}
-
-	return CMD_SUCCESS;
+	vty_out(vty,
+		"%% MGCP RTP transcoding has been removed.%s", VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
-DEFUN(cfg_mgcp_transcoder_remote_base,
+DEFUN_DEPRECATED(cfg_mgcp_transcoder_remote_base,
       cfg_mgcp_transcoder_remote_base_cmd,
       "transcoder-remote-base <0-65534>",
       "Set the base port for the transcoder\n" "The RTP base port on the transcoder")
 {
-	g_cfg->transcoder_remote_base = atoi(argv[0]);
-	return CMD_SUCCESS;
+	vty_out(vty,
+		"%% MGCP RTP transcoding has been removed.%s", VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(cfg_mgcp_trunk, cfg_mgcp_trunk_cmd,
@@ -1465,29 +1453,6 @@ static int allocate_trunk(struct mgcp_trunk_config *trunk)
 				return -1;
 			}
 			endp->net_end.local_alloc = PORT_ALLOC_STATIC;
-		}
-
-		if (trunk->trunk_type == MGCP_TRUNK_VIRTUAL &&
-		    cfg->transcoder_ip && cfg->transcoder_ports.mode == PORT_ALLOC_STATIC) {
-			int rtp_port;
-
-			/* network side */
-			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
-						      cfg->transcoder_ports.base_port);
-			if (mgcp_bind_trans_net_rtp_port(endp, rtp_port) != 0) {
-				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
-				return -1;
-			}
-			endp->trans_net.local_alloc = PORT_ALLOC_STATIC;
-
-			/* bts side */
-			rtp_port = rtp_calculate_port(endp_back_channel(ENDPOINT_NUMBER(endp)),
-						      cfg->transcoder_ports.base_port);
-			if (mgcp_bind_trans_bts_rtp_port(endp, rtp_port) != 0) {
-				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
-				return -1;
-			}
-			endp->trans_bts.local_alloc = PORT_ALLOC_STATIC;
 		}
 	}
 

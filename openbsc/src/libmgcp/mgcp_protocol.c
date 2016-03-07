@@ -59,9 +59,6 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *data);
 static struct msgb *handle_rsip(struct mgcp_parse_data *data);
 static struct msgb *handle_noti_req(struct mgcp_parse_data *data);
 
-static void create_transcoder(struct mgcp_endpoint *endp);
-static void delete_transcoder(struct mgcp_endpoint *endp);
-
 static int setup_rtp_processing(struct mgcp_endpoint *endp);
 
 static int mgcp_analyze_header(struct mgcp_parse_data *parse, char *data);
@@ -604,28 +601,6 @@ static int allocate_ports(struct mgcp_endpoint *endp)
 		return -1;
 	}
 
-	if (endp->cfg->transcoder_ip && endp->tcfg->trunk_type == MGCP_TRUNK_VIRTUAL) {
-		if (allocate_port(endp, &endp->trans_net,
-				  &endp->cfg->transcoder_ports,
-				  mgcp_bind_trans_net_rtp_port) != 0) {
-			mgcp_rtp_end_reset(&endp->net_end);
-			mgcp_rtp_end_reset(&endp->bts_end);
-			return -1;
-		}
-
-		if (allocate_port(endp, &endp->trans_bts,
-				  &endp->cfg->transcoder_ports,
-				  mgcp_bind_trans_bts_rtp_port) != 0) {
-			mgcp_rtp_end_reset(&endp->net_end);
-			mgcp_rtp_end_reset(&endp->bts_end);
-			mgcp_rtp_end_reset(&endp->trans_net);
-			return -1;
-		}
-
-		/* remember that we have set up transcoding */
-		endp->type = MGCP_RTP_TRANSCODED;
-	}
-
 	return 0;
 }
 
@@ -868,7 +843,6 @@ mgcp_header_done:
 			break;
 		case MGCP_POLICY_DEFER:
 			/* stop processing */
-			create_transcoder(endp);
 			return NULL;
 			break;
 		case MGCP_POLICY_CONT:
@@ -887,7 +861,6 @@ mgcp_header_done:
 		send_dummy(endp);
 	}
 
-	create_transcoder(endp);
 	return create_response_with_sdp(endp, "CRCX", p->trans);
 error2:
 	mgcp_release_endp(endp);
@@ -1070,7 +1043,6 @@ static struct msgb *handle_delete_con(struct mgcp_parse_data *p)
 			break;
 		case MGCP_POLICY_DEFER:
 			/* stop processing */
-			delete_transcoder(endp);
 			return NULL;
 			break;
 		case MGCP_POLICY_CONT:
@@ -1086,7 +1058,6 @@ static struct msgb *handle_delete_con(struct mgcp_parse_data *p)
 	/* save the statistics of the current call */
 	mgcp_format_stats(endp, stats, sizeof(stats));
 
-	delete_transcoder(endp);
 	mgcp_release_endp(endp);
 	if (p->cfg->change_cb)
 		p->cfg->change_cb(endp->tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX);
@@ -1204,8 +1175,6 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->source_port = 2427;
 	cfg->source_addr = talloc_strdup(cfg, "0.0.0.0");
 	cfg->osmux_addr = talloc_strdup(cfg, "0.0.0.0");
-
-	cfg->transcoder_remote_base = 4000;
 
 	cfg->bts_ports.base_port = RTP_PORT_DEFAULT;
 	cfg->net_ports.base_port = RTP_PORT_NET_DEFAULT;
@@ -1328,8 +1297,6 @@ int mgcp_endpoints_allocate(struct mgcp_trunk_config *tcfg)
 		tcfg->endpoints[i].tcfg = tcfg;
 		mgcp_rtp_end_init(&tcfg->endpoints[i].net_end);
 		mgcp_rtp_end_init(&tcfg->endpoints[i].bts_end);
-		mgcp_rtp_end_init(&tcfg->endpoints[i].trans_net);
-		mgcp_rtp_end_init(&tcfg->endpoints[i].trans_bts);
 	}
 
 	return 0;
@@ -1351,8 +1318,6 @@ void mgcp_release_endp(struct mgcp_endpoint *endp)
 
 	mgcp_rtp_end_reset(&endp->bts_end);
 	mgcp_rtp_end_reset(&endp->net_end);
-	mgcp_rtp_end_reset(&endp->trans_net);
-	mgcp_rtp_end_reset(&endp->trans_bts);
 	endp->type = MGCP_RTP_DEFAULT;
 
 	memset(&endp->net_state, 0, sizeof(endp->net_state));
@@ -1372,65 +1337,6 @@ void mgcp_release_endp(struct mgcp_endpoint *endp)
 void mgcp_initialize_endp(struct mgcp_endpoint *endp)
 {
 	return mgcp_release_endp(endp);
-}
-
-static int send_trans(struct mgcp_config *cfg, const char *buf, int len)
-{
-	struct sockaddr_in addr;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr = cfg->transcoder_in;
-	addr.sin_port = htons(2427);
-	return sendto(cfg->gw_fd.bfd.fd, buf, len, 0,
-		      (struct sockaddr *) &addr, sizeof(addr));
-}
-
-static void send_msg(struct mgcp_endpoint *endp, int endpoint, int port,
-		     const char *msg, const char *mode)
-{
-	char buf[2096];
-	int len;
-	int nchars;
-
-	/* hardcoded to AMR right now, we do not know the real type at this point */
-	len = snprintf(buf, sizeof(buf),
-			"%s 42 %x@mgw MGCP 1.0\r\n"
-			"C: 4256\r\n"
-			"M: %s\r\n"
-			"\r\n",
-			msg, endpoint, mode);
-
-	if (len < 0)
-		return;
-
-	nchars = write_response_sdp(endp, buf + len, sizeof(buf) + len - 1, NULL);
-	if (nchars < 0)
-		return;
-
-	len += nchars;
-
-	buf[sizeof(buf) - 1] = '\0';
-
-	send_trans(endp->cfg, buf, len);
-}
-
-static void send_dlcx(struct mgcp_endpoint *endp, int endpoint)
-{
-	char buf[2096];
-	int len;
-
-	len = snprintf(buf, sizeof(buf),
-			"DLCX 43 %x@mgw MGCP 1.0\r\n"
-			"C: 4256\r\n"
-			, endpoint);
-
-	if (len < 0)
-		return;
-
-	buf[sizeof(buf) - 1] = '\0';
-
-	send_trans(endp->cfg, buf, len);
 }
 
 static int send_agent(struct mgcp_config *cfg, const char *buf, int len)
@@ -1484,53 +1390,6 @@ static int setup_rtp_processing(struct mgcp_endpoint *endp)
 	else
 		rc |= trans->setup(endp, &endp->bts_end, NULL);
 	return rc;
-}
-
-static void create_transcoder(struct mgcp_endpoint *endp)
-{
-	int port;
-	int in_endp = ENDPOINT_NUMBER(endp);
-	int out_endp = endp_back_channel(in_endp);
-
-	if (endp->type != MGCP_RTP_TRANSCODED)
-		return;
-
-	send_msg(endp, in_endp, endp->trans_bts.local_port, "CRCX", "sendrecv");
-	send_msg(endp, in_endp, endp->trans_bts.local_port, "MDCX", "sendrecv");
-	send_msg(endp, out_endp, endp->trans_net.local_port, "CRCX", "sendrecv");
-	send_msg(endp, out_endp, endp->trans_net.local_port, "MDCX", "sendrecv");
-
-	port = rtp_calculate_port(in_endp, endp->cfg->transcoder_remote_base);
-	endp->trans_bts.rtp_port = htons(port);
-	endp->trans_bts.rtcp_port = htons(port + 1);
-
-	port = rtp_calculate_port(out_endp, endp->cfg->transcoder_remote_base);
-	endp->trans_net.rtp_port = htons(port);
-	endp->trans_net.rtcp_port = htons(port + 1);
-}
-
-static void delete_transcoder(struct mgcp_endpoint *endp)
-{
-	int in_endp = ENDPOINT_NUMBER(endp);
-	int out_endp = endp_back_channel(in_endp);
-
-	if (endp->type != MGCP_RTP_TRANSCODED)
-		return;
-
-	send_dlcx(endp, in_endp);
-	send_dlcx(endp, out_endp);
-}
-
-int mgcp_reset_transcoder(struct mgcp_config *cfg)
-{
-	if (!cfg->transcoder_ip)
-		return 0;
-
-	static const char mgcp_reset[] = {
-	    "RSIP 1 13@mgw MGCP 1.0\r\n"
-	};
-
-	return send_trans(cfg, mgcp_reset, sizeof mgcp_reset -1);
 }
 
 void mgcp_format_stats(struct mgcp_endpoint *endp, char *msg, size_t size)

@@ -145,7 +145,6 @@ struct mgcp_lco {
 
 enum mgcp_type {
 	MGCP_RTP_DEFAULT	= 0,
-	MGCP_RTP_TRANSCODED,
 	MGCP_OSMUX_BSC,
 	MGCP_OSMUX_BSC_NAT,
 };
@@ -179,13 +178,6 @@ struct mgcp_endpoint {
 	struct mgcp_rtp_end bts_end;
 	struct mgcp_rtp_end net_end;
 
-	/*
-	 * For transcoding we will send from the local_port
-	 * of trans_bts and it will arrive at trans_net from
-	 * where we will forward it to the network.
-	 */
-	struct mgcp_rtp_end trans_bts;
-	struct mgcp_rtp_end trans_net;
 	enum mgcp_type type;
 
 	/* sequence bits */
@@ -268,15 +260,7 @@ struct mgcp_parse_data {
 int mgcp_send_dummy(struct mgcp_endpoint *endp);
 int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
 int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
-int mgcp_bind_trans_bts_rtp_port(struct mgcp_endpoint *enp, int rtp_port);
-int mgcp_bind_trans_net_rtp_port(struct mgcp_endpoint *enp, int rtp_port);
 int mgcp_free_rtp_port(struct mgcp_rtp_end *end);
-
-/* For transcoding we need to manage an in and an output that are connected */
-static inline int endp_back_channel(int endpoint)
-{
-	return endpoint + 60;
-}
 
 struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int index);
 struct mgcp_trunk_config *mgcp_trunk_num(struct mgcp_config *cfg, int index);

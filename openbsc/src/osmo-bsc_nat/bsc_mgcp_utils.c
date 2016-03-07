@@ -1116,15 +1116,6 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 		return -1;
 	}
 
-	if (mgcp_reset_transcoder(cfg) < 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to send packet to the transcoder.\n");
-		talloc_free(nat->bsc_endpoints);
-		nat->bsc_endpoints = NULL;
-		close(cfg->gw_fd.bfd.fd);
-		cfg->gw_fd.bfd.fd = -1;
-		return -1;
-	}
-
 	return 0;
 }
 

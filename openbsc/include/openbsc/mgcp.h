@@ -183,16 +183,10 @@ struct mgcp_config {
 
 	struct in_addr bts_in;
 
-	/* transcoder handling */
-	char *transcoder_ip;
-	struct in_addr transcoder_in;
-	int transcoder_remote_base;
-
 	struct osmo_wqueue gw_fd;
 
 	struct mgcp_port_range bts_ports;
 	struct mgcp_port_range net_ports;
-	struct mgcp_port_range transcoder_ports;
 	int endp_dscp;
 
 	int bts_force_ptime;
@@ -244,7 +238,6 @@ int mgcp_vty_init(void);
 int mgcp_endpoints_allocate(struct mgcp_trunk_config *cfg);
 void mgcp_release_endp(struct mgcp_endpoint *endp);
 void mgcp_initialize_endp(struct mgcp_endpoint *endp);
-int mgcp_reset_transcoder(struct mgcp_config *cfg);
 void mgcp_format_stats(struct mgcp_endpoint *endp, char *stats, size_t size);
 int mgcp_parse_stats(struct msgb *msg, uint32_t *ps, uint32_t *os, uint32_t *pr, uint32_t *_or, int *loss, uint32_t *jitter);
 
