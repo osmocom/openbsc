@@ -361,10 +361,6 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 	int rc = 0;
 
 	switch (event) {
-		case GSM_SECURITY_AUTH_FAILED:
-			release_loc_updating_req(conn, 1);
-			break;
-
 		case GSM_SECURITY_ALREADY:
 			LOGP(DMM, LOGL_ERROR, "We don't expect LOCATION "
 				"UPDATING after CM SERVICE REQUEST\n");
@@ -375,6 +371,19 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			rc = finish_lu(conn);
 			break;
 
+		case GSM_SECURITY_AUTH_FAILED:
+			/*
+			 * gsm48_secure_channel() will pass only
+			 * GSM_SECURITY_NOAVAIL in case of failure. If future
+			 * code should add a GSM_SECURITY_AUTH_FAILED status in
+			 * this code path, letting the Location Update time out
+			 * will do all necessary error messaging and logging,
+			 * see loc_upd_rej_cb().
+			 */
+			LOGP(DMM, LOGL_ERROR,
+			     "Authorization failed for subscriber %s\n",
+			     subscr_name(conn->subscr));
+			/* fall through */
 		default:
 			rc = -EINVAL;
 	};
