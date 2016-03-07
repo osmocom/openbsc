@@ -156,7 +156,14 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	 *  - Subscriber equipment doesn't support configured encryption
 	 */
 	if (!net->a5_encryption) {
-		status = GSM_SECURITY_NOAVAIL;
+		if (conn->via_iface == IFACE_IU) {
+			DEBUGP(DMM, "No A5 encryption configured, but doing"
+			       " authentication as required by Iu\n");
+			status = -1;
+		} else {
+			DEBUGP(DMM, "No A5 encryption configured\n");
+			status = GSM_SECURITY_NOAVAIL;
+		}
 	} else if (conn->encr.alg_id > RSL_ENC_ALG_A5(0)) {
 		DEBUGP(DMM, "Requesting to secure an already secure channel");
 		status = GSM_SECURITY_ALREADY;
@@ -169,8 +176,22 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	/* If not done yet, try to get info for this user */
 	if (status < 0) {
 		rc = auth_get_tuple_for_subscr(&atuple, subscr, key_seq);
-		if (rc <= 0)
-			status = GSM_SECURITY_NOAVAIL;
+		DEBUGP(DMM, "auth_get_tuple_for_subscr(%s) == %d\n",
+		       subscr_name(subscr), rc);
+		if (rc <= 0) {
+			if (conn->via_iface == IFACE_IU) {
+				LOGP(DMM, LOGL_ERROR,
+				     "Iu requires authentication but no"
+				     " retreivable Ki for subscriber %s\n",
+				     subscr_name(subscr));
+				status = GSM_SECURITY_AUTH_FAILED;
+			} else {
+				LOGP(DMM, LOGL_NOTICE,
+				     "No retrievable Ki for subscriber,"
+				     " skipping auth\n");
+				status = GSM_SECURITY_NOAVAIL;
+			}
+		}
 	}
 
 	/* Are we done yet ? */
@@ -354,7 +375,9 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			LOGP(DMM, LOGL_ERROR,
 			     "Authorization failed for subscriber %s\n",
 			     subscr_name(conn->subscr));
-			/* fall through */
+			rc = -1;
+			break;
+
 		default:
 			LOGP(DMM, LOGL_DEBUG, "invalid authorization event\n");
 			rc = -EINVAL;

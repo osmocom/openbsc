@@ -82,8 +82,6 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	/* Get subscriber info (if any) */
 	rc = db_get_authinfo_for_subscr(&ainfo, subscr);
 	if (rc < 0) {
-		LOGP(DMM, LOGL_NOTICE,
-			"No retrievable Ki for subscriber, skipping auth\n");
 		return rc == -ENOENT ? AUTH_NOT_AVAIL : -1;
 	}
 
