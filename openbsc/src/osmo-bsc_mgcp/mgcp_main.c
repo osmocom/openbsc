@@ -207,15 +207,13 @@ int main(int argc, char **argv)
 	osmo_init_ignore_signals();
 	osmo_init_logging(&log_info);
 
+#ifdef BUILD_MGCP_TRANSCODING
+	mgcp_default_transcoder = &mgcp_sw_transcoder;
+#endif
+
 	cfg = mgcp_config_alloc();
 	if (!cfg)
 		return -1;
-
-#ifdef BUILD_MGCP_TRANSCODING
-	cfg->setup_rtp_processing_cb = &mgcp_transcoding_setup;
-	cfg->rtp_processing_cb = &mgcp_transcoding_process_rtp;
-	cfg->get_net_downlink_format_cb = &mgcp_transcoding_net_downlink_format;
-#endif
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);

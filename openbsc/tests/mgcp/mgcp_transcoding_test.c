@@ -161,6 +161,12 @@ static int audio_name_to_type(const char *name)
 
 int mgcp_get_trans_frame_size(void *state_, int nsamples, int dst);
 
+static const struct mgcp_transcoding test_transcoder = {
+	.setup_processing_cb = mgcp_transcoding_setup,
+	.processing_cb = mgcp_transcoding_process_rtp,
+	.get_net_downlink_format_cb = mgcp_transcoding_net_downlink_format,
+};
+
 static int given_configured_endpoint(int in_samples, int out_samples,
 				const char *srcfmt, const char *dstfmt,
 				void **out_ctx, struct mgcp_endpoint **out_endp)
@@ -176,10 +182,7 @@ static int given_configured_endpoint(int in_samples, int out_samples,
 	tcfg = talloc_zero(cfg, struct mgcp_trunk_config);
 	endp = talloc_zero(tcfg, struct mgcp_endpoint);
 
-	cfg->setup_rtp_processing_cb = mgcp_transcoding_setup;
-	cfg->rtp_processing_cb = mgcp_transcoding_process_rtp;
-	cfg->get_net_downlink_format_cb = mgcp_transcoding_net_downlink_format;
-
+	tcfg->transcoder = &test_transcoder;
 	tcfg->endpoints = endp;
 	tcfg->number_endpoints = 1;
 	tcfg->cfg = cfg;

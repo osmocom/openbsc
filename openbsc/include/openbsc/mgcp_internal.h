@@ -1,8 +1,8 @@
 /* MGCP Private Data */
 
 /*
- * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2012 by On-Waves
+ * (C) 2009-2016 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2016 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -149,6 +149,17 @@ enum mgcp_type {
 	MGCP_OSMUX_BSC,
 	MGCP_OSMUX_BSC_NAT,
 };
+
+/**
+ * Function pointers for RTP processing/transcoding
+ */
+struct mgcp_transcoding {
+	mgcp_processing processing_cb;
+	mgcp_processing_setup setup_processing_cb;
+	mgcp_get_format get_net_downlink_format_cb;
+};
+
+extern const struct mgcp_transcoding *mgcp_default_transcoder;
 
 #include <openbsc/osmux.h>
 

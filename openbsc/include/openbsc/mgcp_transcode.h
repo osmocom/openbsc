@@ -37,6 +37,8 @@ enum audio_format {
 	AF_PCMU
 };
 
+struct mgcp_transcoding;
+extern const struct mgcp_transcoding mgcp_sw_transcoder;
 
 struct mgcp_process_rtp_state {
 	/* decoding */

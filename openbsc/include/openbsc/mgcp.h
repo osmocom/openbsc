@@ -1,8 +1,8 @@
 /* A Media Gateway Control Protocol Media Gateway: RFC 3435 */
 
 /*
- * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2012 by On-Waves
+ * (C) 2009-2016 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2016 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -69,6 +69,7 @@ struct mgcp_endpoint;
 struct mgcp_config;
 struct mgcp_trunk_config;
 struct mgcp_rtp_end;
+struct mgcp_transcoding;
 
 #define MGCP_ENDP_CRCX 1
 #define MGCP_ENDP_DLCX 2
@@ -158,6 +159,9 @@ struct mgcp_trunk_config {
 	/* spec handling */
 	int force_realloc;
 
+	/* transcoding */
+	const struct mgcp_transcoding *transcoder;
+
 	/* timer */
 	struct osmo_timer_list keepalive_timer;
 
@@ -183,12 +187,6 @@ struct mgcp_config {
 	char *transcoder_ip;
 	struct in_addr transcoder_in;
 	int transcoder_remote_base;
-
-	/* RTP processing */
-	mgcp_processing rtp_processing_cb;
-	mgcp_processing_setup setup_rtp_processing_cb;
-
-	mgcp_get_format get_net_downlink_format_cb;
 
 	struct osmo_wqueue gw_fd;
 

@@ -2,8 +2,8 @@
 /* The protocol implementation */
 
 /*
- * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2012 by On-Waves
+ * (C) 2009-2016 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2016 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -65,6 +65,14 @@ static void delete_transcoder(struct mgcp_endpoint *endp);
 static int setup_rtp_processing(struct mgcp_endpoint *endp);
 
 static int mgcp_analyze_header(struct mgcp_parse_data *parse, char *data);
+
+static const struct mgcp_transcoding no_transcoder = {
+	.processing_cb = &mgcp_rtp_processing_default,
+	.setup_processing_cb = &mgcp_setup_rtp_processing_default,
+	.get_net_downlink_format_cb = &mgcp_get_net_downlink_format_default,
+};
+
+const struct mgcp_transcoding *mgcp_default_transcoder = &no_transcoder;
 
 static int mgcp_check_param(const struct mgcp_endpoint *endp, const char *line)
 {
@@ -197,13 +205,15 @@ static struct msgb *create_err_response(struct mgcp_endpoint *endp,
 static int write_response_sdp(struct mgcp_endpoint *endp,
 			      char *sdp_record, size_t size, const char *addr)
 {
+	const struct mgcp_transcoding *trans;
 	const char *fmtp_extra;
 	const char *audio_name;
 	int payload_type;
 	int len;
 	int nchars;
 
-	endp->cfg->get_net_downlink_format_cb(endp, &payload_type,
+	trans = endp->tcfg->transcoder;
+	trans->get_net_downlink_format_cb(endp, &payload_type,
 					      &audio_name, &fmtp_extra);
 
 	len = snprintf(sdp_record, size,
@@ -1200,12 +1210,8 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->bts_ports.base_port = RTP_PORT_DEFAULT;
 	cfg->net_ports.base_port = RTP_PORT_NET_DEFAULT;
 
-	cfg->rtp_processing_cb = &mgcp_rtp_processing_default;
-	cfg->setup_rtp_processing_cb = &mgcp_setup_rtp_processing_default;
-
-	cfg->get_net_downlink_format_cb = &mgcp_get_net_downlink_format_default;
-
 	/* default trunk handling */
+	cfg->trunk.transcoder = mgcp_default_transcoder;
 	cfg->trunk.cfg = cfg;
 	cfg->trunk.trunk_nr = 0;
 	cfg->trunk.trunk_type = MGCP_TRUNK_VIRTUAL;
@@ -1231,6 +1237,7 @@ struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int nr)
 		return NULL;
 	}
 
+	trunk->transcoder = mgcp_default_transcoder;
 	trunk->cfg = cfg;
 	trunk->trunk_type = MGCP_TRUNK_E1;
 	trunk->trunk_nr = nr;
@@ -1459,7 +1466,7 @@ int mgcp_send_reset_ep(struct mgcp_endpoint *endp, int endpoint)
 static int setup_rtp_processing(struct mgcp_endpoint *endp)
 {
 	int rc = 0;
-	struct mgcp_config *cfg = endp->cfg;
+	const struct mgcp_transcoding *trans = endp->tcfg->transcoder;
 
 	if (endp->type != MGCP_RTP_DEFAULT)
 		return 0;
@@ -1468,14 +1475,14 @@ static int setup_rtp_processing(struct mgcp_endpoint *endp)
 		return 0;
 
 	if (endp->conn_mode & MGCP_CONN_SEND_ONLY)
-		rc |= cfg->setup_rtp_processing_cb(endp, &endp->net_end, &endp->bts_end);
+		rc |= trans->setup_processing_cb(endp, &endp->net_end, &endp->bts_end);
 	else
-		rc |= cfg->setup_rtp_processing_cb(endp, &endp->net_end, NULL);
+		rc |= trans->setup_processing_cb(endp, &endp->net_end, NULL);
 
 	if (endp->conn_mode & MGCP_CONN_RECV_ONLY)
-		rc |= cfg->setup_rtp_processing_cb(endp, &endp->bts_end, &endp->net_end);
+		rc |= trans->setup_processing_cb(endp, &endp->bts_end, &endp->net_end);
 	else
-		rc |= cfg->setup_rtp_processing_cb(endp, &endp->bts_end, NULL);
+		rc |= trans->setup_processing_cb(endp, &endp->bts_end, NULL);
 	return rc;
 }
 

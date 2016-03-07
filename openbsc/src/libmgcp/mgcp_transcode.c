@@ -32,6 +32,12 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/netif/rtp.h>
 
+const struct mgcp_transcoding mgcp_sw_transcoder = {
+	.processing_cb = mgcp_transcoding_process_rtp,
+	.setup_processing_cb = mgcp_transcoding_setup,
+	.get_net_downlink_format_cb = mgcp_transcoding_net_downlink_format,
+};
+
 int mgcp_transcoding_get_frame_size(void *state_, int nsamples, int dst)
 {
 	struct mgcp_process_rtp_state *state = state_;
@@ -470,12 +476,12 @@ struct mgcp_process_rtp_state *check_transcode_state(
 		goto done;
 	/* The matching alternate payload type? Then switch */
 	if (rtp_hdr->payload_type == src_end->alt_codec.payload_type) {
-		struct mgcp_config *cfg = endp->cfg;
+		const struct mgcp_transcoding *trans = endp->tcfg->transcoder;
 		struct mgcp_rtp_codec tmp_codec = src_end->alt_codec;
 		src_end->alt_codec = src_end->codec;
 		src_end->codec = tmp_codec;
-		cfg->setup_rtp_processing_cb(endp, &endp->net_end, &endp->bts_end);
-		cfg->setup_rtp_processing_cb(endp, &endp->bts_end, &endp->net_end);
+		trans->setup_processing_cb(endp, &endp->net_end, &endp->bts_end);
+		trans->setup_processing_cb(endp, &endp->bts_end, &endp->net_end);
 	}
 
 done:

@@ -584,6 +584,7 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	      struct sockaddr_in *addr, char *buf, int rc)
 {
 	struct mgcp_trunk_config *tcfg = endp->tcfg;
+	const struct mgcp_transcoding *trans = tcfg->transcoder;
 	struct mgcp_rtp_end *rtp_end;
 	struct mgcp_rtp_state *rtp_state;
 	int tap_idx;
@@ -613,7 +614,7 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		int nbytes = 0;
 		int len = rc;
 		do {
-			cont = endp->cfg->rtp_processing_cb(endp, rtp_end,
+			cont = trans->processing_cb(endp, rtp_end,
 							buf, &len, RTP_BUF_SIZE);
 			if (cont < 0)
 				break;
