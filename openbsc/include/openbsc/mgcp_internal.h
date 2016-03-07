@@ -154,9 +154,9 @@ enum mgcp_type {
  * Function pointers for RTP processing/transcoding
  */
 struct mgcp_transcoding {
-	mgcp_processing processing_cb;
-	mgcp_processing_setup setup_processing_cb;
-	mgcp_get_format get_net_downlink_format_cb;
+	mgcp_processing process;
+	mgcp_processing_setup setup;
+	mgcp_get_format get_net_downlink_format;
 };
 
 extern const struct mgcp_transcoding *mgcp_default_transcoder;

@@ -67,9 +67,9 @@ static int setup_rtp_processing(struct mgcp_endpoint *endp);
 static int mgcp_analyze_header(struct mgcp_parse_data *parse, char *data);
 
 static const struct mgcp_transcoding no_transcoder = {
-	.processing_cb = &mgcp_rtp_processing_default,
-	.setup_processing_cb = &mgcp_setup_rtp_processing_default,
-	.get_net_downlink_format_cb = &mgcp_get_net_downlink_format_default,
+	.process = &mgcp_rtp_processing_default,
+	.setup = &mgcp_setup_rtp_processing_default,
+	.get_net_downlink_format = &mgcp_get_net_downlink_format_default,
 };
 
 const struct mgcp_transcoding *mgcp_default_transcoder = &no_transcoder;
@@ -213,7 +213,7 @@ static int write_response_sdp(struct mgcp_endpoint *endp,
 	int nchars;
 
 	trans = endp->tcfg->transcoder;
-	trans->get_net_downlink_format_cb(endp, &payload_type,
+	trans->get_net_downlink_format(endp, &payload_type,
 					      &audio_name, &fmtp_extra);
 
 	len = snprintf(sdp_record, size,
@@ -1475,14 +1475,14 @@ static int setup_rtp_processing(struct mgcp_endpoint *endp)
 		return 0;
 
 	if (endp->conn_mode & MGCP_CONN_SEND_ONLY)
-		rc |= trans->setup_processing_cb(endp, &endp->net_end, &endp->bts_end);
+		rc |= trans->setup(endp, &endp->net_end, &endp->bts_end);
 	else
-		rc |= trans->setup_processing_cb(endp, &endp->net_end, NULL);
+		rc |= trans->setup(endp, &endp->net_end, NULL);
 
 	if (endp->conn_mode & MGCP_CONN_RECV_ONLY)
-		rc |= trans->setup_processing_cb(endp, &endp->bts_end, &endp->net_end);
+		rc |= trans->setup(endp, &endp->bts_end, &endp->net_end);
 	else
-		rc |= trans->setup_processing_cb(endp, &endp->bts_end, NULL);
+		rc |= trans->setup(endp, &endp->bts_end, NULL);
 	return rc;
 }
 

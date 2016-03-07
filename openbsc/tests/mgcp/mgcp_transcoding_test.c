@@ -162,9 +162,9 @@ static int audio_name_to_type(const char *name)
 int mgcp_get_trans_frame_size(void *state_, int nsamples, int dst);
 
 static const struct mgcp_transcoding test_transcoder = {
-	.setup_processing_cb = mgcp_transcoding_setup,
-	.processing_cb = mgcp_transcoding_process_rtp,
-	.get_net_downlink_format_cb = mgcp_transcoding_net_downlink_format,
+	.setup = mgcp_transcoding_setup,
+	.process = mgcp_transcoding_process_rtp,
+	.get_net_downlink_format = mgcp_transcoding_net_downlink_format,
 };
 
 static int given_configured_endpoint(int in_samples, int out_samples,

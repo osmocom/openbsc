@@ -614,7 +614,7 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		int nbytes = 0;
 		int len = rc;
 		do {
-			cont = trans->processing_cb(endp, rtp_end,
+			cont = trans->process(endp, rtp_end,
 							buf, &len, RTP_BUF_SIZE);
 			if (cont < 0)
 				break;
