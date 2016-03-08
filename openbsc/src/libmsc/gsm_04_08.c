@@ -175,6 +175,18 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 
 	/* If not done yet, try to get info for this user */
 	if (status < 0) {
+		/* DEV HACK: hardcode keys for Iu */
+		if (conn->via_iface == IFACE_IU) {
+			/* Ki 000102030405060708090a0b0c0d0e0f */
+			atuple = (struct gsm_auth_tuple ) {
+				.key_seq = 0,
+				.rand = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
+				.sres = { 0x61, 0xb5, 0x69, 0xf5 },
+				.kc = { 0xd9, 0xd9, 0xc2, 0xed, 0x62, 0x7d, 0x68, 0x00 },
+			};
+			rc = AUTH_DO_AUTH;
+		}
+		else
 		rc = auth_get_tuple_for_subscr(&atuple, subscr, key_seq);
 		DEBUGP(DMM, "auth_get_tuple_for_subscr(%s) == %d\n",
 		       subscr_name(subscr), rc);
