@@ -234,7 +234,7 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 		/* FIXME: Should start a timer for completion ... */
 
 	/* Then do whatever is needed ... */
-	if (rc == AUTH_DO_AUTH_THEN_CIPH) {
+	if ((rc == AUTH_DO_AUTH_THEN_CIPH) || (rc == AUTH_DO_AUTH)) {
 		/* Start authentication */
 		DEBUGP(DMM, "gsm48_secure_channel(%s) starting authentication\n",
 		       subscr_name(subscr));
@@ -1150,9 +1150,19 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 
 	DEBUGPC(DMM, "OK\n");
 
-	/* Start ciphering */
-	return gsm0808_cipher_mode(conn, net->a5_encryption,
-	                           conn->sec_operation->atuple.kc, 8, 0);
+	if (net->a5_encryption)
+		/* Start ciphering */
+		return gsm0808_cipher_mode(conn, net->a5_encryption,
+					   conn->sec_operation->atuple.kc, 8, 0);
+
+	/* Only authentication requested, and we're done. */
+	if (!conn->loc_operation) {
+		LOGP(DMM, LOGL_ERROR, "Received authentication response, but no"
+		     " location update operation pending for subscriber %s\n",
+		     subscr_name(conn->subscr));
+		return -1;
+	}
+	return finish_lu(conn);
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
