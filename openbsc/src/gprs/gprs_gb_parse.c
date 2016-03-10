@@ -329,17 +329,20 @@ int gprs_gb_parse_dtap(uint8_t *data, size_t data_len,
 		       struct gprs_gb_parse_context *parse_ctx)
 {
 	struct gsm48_hdr *g48h;
+	uint8_t pdisc;
+	uint8_t msg_type;
 
 	if (gprs_shift_v_fixed(&data, &data_len, sizeof(*g48h), (uint8_t **)&g48h) <= 0)
 		return 0;
 
 	parse_ctx->g48_hdr = g48h;
 
-	if ((g48h->proto_discr & 0x0f) != GSM48_PDISC_MM_GPRS &&
-	    (g48h->proto_discr & 0x0f) != GSM48_PDISC_SM_GPRS)
+	pdisc = gsm48_hdr_pdisc(g48h);
+	if (pdisc != GSM48_PDISC_MM_GPRS && pdisc != GSM48_PDISC_SM_GPRS)
 		return 1;
 
-	switch (g48h->msg_type) {
+	msg_type = gsm48_hdr_msg_type(g48h);
+	switch (msg_type) {
 	case GSM48_MT_GMM_ATTACH_REQ:
 		return gprs_gb_parse_gmm_attach_req(data, data_len, parse_ctx);
 
@@ -376,6 +379,10 @@ int gprs_gb_parse_dtap(uint8_t *data, size_t data_len,
 		break;
 
 	default:
+		LOGP(DLLC, LOGL_NOTICE,
+		     "Unknown GSM 04.08 message type 0x%02hhx for protocol"
+		     " discriminator 0x%02hhx.\n",
+		     msg_type, pdisc);
 		break;
 	};
 

@@ -180,8 +180,8 @@ static void bsc_send_ussd_no_srv(struct gsm_subscriber_connection *conn,
 		return;
 
 	gh = msgb_l3(msg);
-	pdisc = gh->proto_discr & 0x0f;
-	mtype = gh->msg_type & 0xbf;
+	pdisc = gsm48_hdr_pdisc(gh);
+	mtype = gsm48_hdr_msg_type(gh);
 
 	/* Is CM service request? */
 	if (pdisc == GSM48_PDISC_MM && mtype == GSM48_MT_MM_CM_SERV_REQ) {
@@ -341,8 +341,8 @@ static int handle_cc_setup(struct gsm_subscriber_connection *conn,
 			   struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	uint8_t pdisc = gh->proto_discr & 0x0f;
-	uint8_t mtype = gh->msg_type & 0xbf;
+	uint8_t pdisc = gsm48_hdr_pdisc(gh);
+	uint8_t mtype = gsm48_hdr_msg_type(gh);
 
 	struct osmo_msc_data *msc;
 	struct gsm_mncc_number called;

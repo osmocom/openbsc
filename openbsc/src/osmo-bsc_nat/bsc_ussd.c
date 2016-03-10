@@ -407,8 +407,8 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	if (!hdr48)
 		return 0;
 
-	proto = hdr48->proto_discr & 0x0f;
-	msg_type = hdr48->msg_type & 0xbf;
+	proto = gsm48_hdr_pdisc(hdr48);
+	msg_type = gsm48_hdr_msg_type(hdr48);
 	ti = (hdr48->proto_discr & 0x70) >> 4;
 	if (proto != GSM48_PDISC_NC_SS)
 		return 0;

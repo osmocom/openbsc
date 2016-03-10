@@ -141,8 +141,8 @@ struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
 	}
 
 	gh = msgb_l3(msg);
-	pdisc = gh->proto_discr & 0x0f;
-	mtype = gh->msg_type & 0xbf;
+	pdisc = gsm48_hdr_pdisc(gh);
+	mtype = gsm48_hdr_msg_type(gh);
 
 	/*
 	 * We are asked to select a MSC here but they are not equal. We
@@ -212,8 +212,8 @@ paging:
 int bsc_scan_bts_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	uint8_t pdisc = gh->proto_discr & 0x0f;
-	uint8_t mtype = gh->msg_type & 0xbf;
+	uint8_t pdisc = gsm48_hdr_pdisc(gh);
+	uint8_t mtype = gsm48_hdr_msg_type(gh);
 
 	if (pdisc == GSM48_PDISC_MM) {
 		if (mtype == GSM48_MT_MM_LOC_UPD_REQUEST)
@@ -348,7 +348,7 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	gh = (struct gsm48_hdr *) msgb_l3(msg);
 	length -= (const char *)&gh->data[0] - (const char *)gh;
 
-	mtype = gh->msg_type & 0xbf;
+	mtype = gsm48_hdr_msg_type(gh);
 	net = conn->bts->network;
 	msc = conn->sccp_con->msc;
 

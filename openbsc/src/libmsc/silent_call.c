@@ -97,7 +97,8 @@ static const struct msg_match silent_call_accept[] = {
 int silent_call_reroute(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	uint8_t pdisc = gh->proto_discr & 0x0f;
+	uint8_t pdisc = gsm48_hdr_pdisc(gh);
+	uint8_t msg_type = gsm48_hdr_msg_type(gh);
 	int i;
 
 	/* if we're not part of a silent call, never reroute */
@@ -107,7 +108,7 @@ int silent_call_reroute(struct gsm_subscriber_connection *conn, struct msgb *msg
 	/* check if we are a special message that is handled in openbsc */
 	for (i = 0; i < ARRAY_SIZE(silent_call_accept); i++) {
 		if (silent_call_accept[i].pdisc == pdisc &&
-		    silent_call_accept[i].msg_type == gh->msg_type)
+		    silent_call_accept[i].msg_type == msg_type)
 			return 0;
 	}
 

@@ -570,6 +570,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 	struct bsc_api *api = msg->lchan->ts->trx->bts->network->bsc_api;
 	struct gsm48_hdr *gh;
 	uint8_t pdisc;
+	uint8_t msg_type;
 	int rc;
 
 	if (msgb_l3len(msg) < sizeof(*gh)) {
@@ -578,7 +579,8 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 	}
 
 	gh = msgb_l3(msg);
-	pdisc = gh->proto_discr & 0x0f;
+	pdisc = gsm48_hdr_pdisc(gh);
+	msg_type = gsm48_hdr_msg_type(gh);
 
 	/* the idea is to handle all RR messages here, and only hand
 	 * MM/CC/SMS-CP/LCS up to the MSC.  Some messages like PAGING
@@ -588,7 +590,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 	 * will call api->compl_l3() for it */
 	switch (pdisc) {
 	case GSM48_PDISC_RR:
-		switch (gh->msg_type) {
+		switch (msg_type) {
 		case GSM48_MT_RR_GPRS_SUSP_REQ:
 			DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
 			break;
@@ -647,7 +649,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			 * messages, but we'd rather forward what we
 			 * don't know than drop it... */
 			LOGP(DRR, LOGL_NOTICE, "BSC: Passing unknown 04.08 "
-			     "RR message type 0x%02x to MSC\n", gh->msg_type);
+			     "RR message type 0x%02x to MSC\n", msg_type);
 			if (api->dtap)
 				api->dtap(conn, link_id, msg);
 		}
