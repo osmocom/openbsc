@@ -132,6 +132,6 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
         db_sync_lastauthtuple_for_subscr(atuple, subscr);
 
 	DEBUGP(DMM, "Need to do authentication and ciphering\n");
-	return AUTH_DO_AUTH_THAN_CIPH;
+	return AUTH_DO_AUTH_THEN_CIPH;
 }
 
