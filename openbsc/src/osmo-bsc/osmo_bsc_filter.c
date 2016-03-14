@@ -336,6 +336,7 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	struct gsm_network *net;
 	struct gsm48_loc_area_id *lai;
 	struct gsm48_hdr *gh;
+	uint8_t pdisc;
 	uint8_t mtype;
 	int length = msgb_l3len(msg);
 
@@ -346,6 +347,10 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 
 	gh = (struct gsm48_hdr *) msgb_l3(msg);
 	length -= (const char *)&gh->data[0] - (const char *)gh;
+
+	pdisc = gsm48_hdr_pdisc(gh);
+	if (pdisc != GSM48_PDISC_MM)
+		return 0;
 
 	mtype = gsm48_hdr_msg_type(gh);
 	net = conn->bts->network;
