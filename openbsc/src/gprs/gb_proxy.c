@@ -462,8 +462,8 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 	if (link_info->imsi_acq_pending && link_info->imsi_len > 0) {
 		int is_ident_resp =
 			parse_ctx->g48_hdr &&
-			parse_ctx->g48_hdr->proto_discr == GSM48_PDISC_MM_GPRS &&
-			parse_ctx->g48_hdr->msg_type == GSM48_MT_GMM_ID_RESP;
+			gsm48_hdr_pdisc(parse_ctx->g48_hdr) == GSM48_PDISC_MM_GPRS &&
+			gsm48_hdr_msg_type(parse_ctx->g48_hdr) == GSM48_MT_GMM_ID_RESP;
 
 		/* The IMSI is now available */
 		gbproxy_flush_stored_messages(peer, msg, now, link_info,

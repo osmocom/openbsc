@@ -339,15 +339,15 @@ int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
 	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	*imsi = NULL;
 
-	proto = hdr48->proto_discr & 0x0f;
-	msg_type = hdr48->msg_type & 0xbf;
+	proto = gsm48_hdr_pdisc(hdr48);
+	msg_type = gsm48_hdr_msg_type(hdr48);
 	if (proto == GSM48_PDISC_MM &&
 	    msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
 		*con_type = FLT_CON_TYPE_LU;
 		ret = _cr_check_loc_upd(req->ctx, &hdr48->data[0],
 					hdr48_len - sizeof(*hdr48), imsi);
 	} else if (proto == GSM48_PDISC_MM &&
-		  msg_type == GSM48_MT_MM_CM_SERV_REQ) {
+		   msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		*con_type = FLT_CON_TYPE_CM_SERV_REQ;
 		ret = _cr_check_cm_serv_req(req->ctx, &hdr48->data[0],
 					     hdr48_len - sizeof(*hdr48),
@@ -388,8 +388,8 @@ int bsc_msg_filter_data(struct gsm48_hdr *hdr48, size_t len,
 	if (state->imsi_checked)
 		return 0;
 
-	proto = hdr48->proto_discr & 0x0f;
-	msg_type = hdr48->msg_type & 0xbf;
+	proto = gsm48_hdr_pdisc(hdr48);
+	msg_type = gsm48_hdr_msg_type(hdr48);
 	if (proto != GSM48_PDISC_MM || msg_type != GSM48_MT_MM_ID_RESP)
 		return 0;
 

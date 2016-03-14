@@ -594,8 +594,8 @@ struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct b
 		return msg;
 
 	link_id = msg->l3h[1];
-	proto = hdr48->proto_discr & 0x0f;
-	msg_type = hdr48->msg_type & 0xbf;
+	proto = gsm48_hdr_pdisc(hdr48);
+	msg_type = gsm48_hdr_msg_type(hdr48);
 
 	if (proto == GSM48_PDISC_CC && msg_type == GSM48_MT_CC_SETUP)
 		new_msg = rewrite_setup(nat, msg, parsed, imsi, hdr48, len);

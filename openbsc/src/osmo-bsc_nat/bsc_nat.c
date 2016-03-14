@@ -670,8 +670,8 @@ static void update_con_authorize(struct nat_sccp_connection *con,
 		if (!hdr48)
 			return;
 
-		proto = hdr48->proto_discr & 0x0f;
-		msg_type = hdr48->msg_type & 0xbf;
+		proto = gsm48_hdr_pdisc(hdr48);
+		msg_type = gsm48_hdr_msg_type(hdr48);
 		if (proto == GSM48_PDISC_MM &&
 		    msg_type == GSM48_MT_MM_CM_SERV_ACC)
 			con->authorized = 1;

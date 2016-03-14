@@ -124,13 +124,12 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 		msg->lchan = trans->conn->lchan;
 	}
 
-
 	if (msg->lchan) {
 		struct e1inp_sign_link *sign_link =
 				msg->lchan->ts->trx->rsl_link;
 
 		msg->dst = sign_link;
-		if ((gh->proto_discr & GSM48_PDISC_MASK) == GSM48_PDISC_CC)
+		if (gsm48_hdr_pdisc(gh) == GSM48_PDISC_CC)
 			DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x) "
 				"Sending '%s' to MS.\n",
 				sign_link->trx->bts->nr,
@@ -1131,7 +1130,7 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	int rc = 0;
 
-	switch (gh->msg_type & 0xbf) {
+	switch (gsm48_hdr_msg_type(gh)) {
 	case GSM48_MT_MM_LOC_UPD_REQUEST:
 		DEBUGP(DMM, "LOCATION UPDATING REQUEST: ");
 		rc = mm_rx_loc_upd_req(conn, msg);
@@ -1860,7 +1859,7 @@ static void gsm48_start_cc_timer(struct gsm_trans *trans, int current,
 static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	uint8_t msg_type = gh->msg_type & 0xbf;
+	uint8_t msg_type = gsm48_hdr_msg_type(gh);
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	struct tlv_parsed tp;
 	struct gsm_mncc setup;
@@ -3487,7 +3486,7 @@ static struct datastate {
 static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	uint8_t msg_type = gh->msg_type & 0xbf;
+	uint8_t msg_type = gsm48_hdr_msg_type(gh);
 	uint8_t transaction_id = ((gh->proto_discr & 0xf0) ^ 0x80) >> 4; /* flip */
 	struct gsm_trans *trans = NULL;
 	int i, rc = 0;
@@ -3578,7 +3577,7 @@ int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	uint8_t pdisc = gh->proto_discr & 0x0f;
+	uint8_t pdisc = gsm48_hdr_pdisc(gh);
 	int rc = 0;
 
 	LOGP(DRLL, LOGL_DEBUG, "Dispatching 04.08 message, pdisc=%d\n", pdisc);
