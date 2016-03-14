@@ -409,7 +409,7 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 
 	proto = gsm48_hdr_pdisc(hdr48);
 	msg_type = gsm48_hdr_msg_type(hdr48);
-	ti = (hdr48->proto_discr & 0x70) >> 4;
+	ti = gsm48_hdr_trans_id_no_ti(hdr48);
 	if (proto != GSM48_PDISC_NC_SS)
 		return 0;
 

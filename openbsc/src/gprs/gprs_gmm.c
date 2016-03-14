@@ -2014,7 +2014,7 @@ static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	uint8_t req_qos_len, req_pdpa_len;
 	uint8_t *req_qos, *req_pdpa;
 	struct tlv_parsed tp;
-	uint8_t transaction_id = (gh->proto_discr >> 4);
+	uint8_t transaction_id = gsm48_hdr_trans_id(gh);
 	struct sgsn_ggsn_ctx *ggsn;
 	struct sgsn_pdp_ctx *pdp;
 	enum gsm48_gsm_cause gsm_cause;
@@ -2184,7 +2184,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	msg = gprs_msgb_copy(_msg, __func__);
 	if (!msg) {
 		struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(_msg);
-		uint8_t transaction_id = (gh->proto_discr >> 4);
+		uint8_t transaction_id = gsm48_hdr_trans_id(gh);
 
 		LOGMMCTXP(LOGL_ERROR, mmctx, "-> ACTIVATE PDP CONTEXT REQ failed copy.\n");
 		/* Send reject with GSM_CAUSE_INV_MAND_INFO */
@@ -2202,7 +2202,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	uint8_t transaction_id = (gh->proto_discr >> 4);
+	uint8_t transaction_id = gsm48_hdr_trans_id(gh);
 	struct sgsn_pdp_ctx *pdp;
 
 	LOGMMCTXP(LOGL_INFO, mm, "-> DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
@@ -2223,7 +2223,7 @@ static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, struct msgb *msg)
 static int gsm48_rx_gsm_deact_pdp_ack(struct sgsn_mm_ctx *mm, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	uint8_t transaction_id = (gh->proto_discr >> 4);
+	uint8_t transaction_id = gsm48_hdr_trans_id(gh);
 	struct sgsn_pdp_ctx *pdp;
 
 	LOGMMCTXP(LOGL_INFO, mm, "-> DEACTIVATE PDP CONTEXT ACK\n");
