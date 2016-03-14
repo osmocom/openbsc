@@ -153,7 +153,7 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	struct gsm48_hdr *gh;
 	struct gsm48_pag_resp *pr;
 
-	/* Other cases mean problem, dispatch direclty */
+	/* Non-success implies a problem, dispatch directly */
 	if (event != GSM_PAGING_SUCCEEDED)
 		return subscr_paging_dispatch(hooknum, event, msg, data, param);
 

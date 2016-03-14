@@ -3371,7 +3371,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 				trans_free(trans);
 				return 0;
 			}
-			/* store setup informations until paging was successfull */
+			/* store setup information until paging succeeds */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
 			/* Request a channel */
