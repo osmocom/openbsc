@@ -361,6 +361,36 @@ try_local:
 	return rc;
 }
 
+static int gsm340_tpdu_dst_addr(struct msgb *msg, struct gsm_sms_addr* dst_addr)
+{
+	uint8_t *smsp = msgb_sms(msg);
+	uint8_t da_len_bytes;
+	uint8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
+
+	/* skip two first octets*/
+	smsp += 2;
+
+	/* length in bytes of the destination address */
+	da_len_bytes = 2 + *smsp/2 + *smsp%2;
+	if (da_len_bytes > 12) {
+		LOGP(DLSMS, LOGL_ERROR, "Destination Address > 12 bytes ?!?\n");
+		return GSM411_RP_CAUSE_SEMANT_INC_MSG;
+	} else if (da_len_bytes < 4) {
+		LOGP(DLSMS, LOGL_ERROR, "Destination Address < 4 bytes ?!?\n");
+		return GSM411_RP_CAUSE_SEMANT_INC_MSG;
+	}
+	memset(address_lv, 0, sizeof(address_lv));
+	memcpy(address_lv, smsp, da_len_bytes);
+	/* mangle first byte to reflect length in bytes, not digits */
+	address_lv[0] = da_len_bytes - 1;
+
+	dst_addr->ton = (address_lv[1] >> 4) & 7;
+	dst_addr->npi = address_lv[1] & 0xF;
+	/* convert to real number */
+	gsm48_decode_bcd_number(dst_addr->addr,
+				sizeof(dst_addr->addr), address_lv, 1);
+	return 0;
+}
 
 /* process an incoming TPDU (called from RP-DATA)
  * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */
@@ -553,7 +583,19 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 
 	DEBUGP(DLSMS, "DST(%u,%s)\n", dst_len, osmo_hexdump(dst, dst_len));
 
-	if (trans->net->sms_client) {
+	struct gsm_sms_addr dst_addr;
+	int res = gsm340_tpdu_dst_addr(msg, &dst_addr);
+
+	if (!res) {
+		DEBUGP(DLSMS, "DA(%d,%s)\n", strlen(dst_addr.addr), dst_addr.addr);
+		DEBUGP(DLSMS, "OA(%d,%s)\n", strlen(trans->conn->subscr->extension), trans->conn->subscr->extension);
+		if ((strlen(trans->conn->subscr->extension) == 5) ||
+		    (strlen(dst_addr.addr) == 5)) {
+			trans->sms_local = 1;
+		}
+	}
+
+	if ((trans->net->sms_client) && (trans->sms_local == 0)) {
 		osmo_counter_inc(trans->conn->bts->network->stats.sms.submitted);
 		trans->msg_ref = rph->msg_ref;
 		return subscr_tx_sms_message(trans->subscr, rph);
@@ -600,7 +642,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 {
 	struct gsm_sms *sms = trans->sms.sms;
 
-	if (trans->net->sms_client) {
+	if ((trans->net->sms_client) && (trans->sms_local == 0)) {
 		return subscr_tx_sms_message(trans->subscr, rph);
 	}
 
@@ -641,7 +683,7 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	     subscr_name(trans->conn->subscr), cause_len, cause,
 	     get_value_string(gsm411_rp_cause_strs, cause));
 
-	if (trans->net->sms_client) {
+	if ((trans->net->sms_client) && (trans->sms_local == 0)) {
 		if (cause == GSM411_RP_CAUSE_MT_MEM_EXCEEDED) {
 			osmo_counter_inc(net->stats.sms.rp_err_mem);
 		} else {
@@ -930,6 +972,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	trans->sms.sms = sms;
 
 	trans->conn = conn;
+	trans->sms_local = 1;
 
 	/* Hardcode SMSC Originating Address for now */
 	data = (uint8_t *)msgb_put(msg, 8);

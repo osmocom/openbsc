@@ -34,6 +34,8 @@ struct gsm_trans {
 
 	/* SMS RP message reference */
 	uint8_t msg_ref;
+	/* handle SMS local */
+	uint8_t sms_local;
 
 	/* if traffic channel receive was requested */
 	int tch_recv;
