@@ -3487,7 +3487,7 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	uint8_t msg_type = gsm48_hdr_msg_type(gh);
-	uint8_t transaction_id = ((gh->proto_discr & 0xf0) ^ 0x80) >> 4; /* flip */
+	uint8_t transaction_id = gsm48_hdr_trans_id_flip_ti(gh);
 	struct gsm_trans *trans = NULL;
 	int i, rc = 0;
 

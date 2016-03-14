@@ -780,7 +780,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	uint8_t msg_type = gh->msg_type;
-	uint8_t transaction_id = ((gh->proto_discr >> 4) ^ 0x8); /* flip */
+	uint8_t transaction_id = gsm48_hdr_trans_id_flip_ti(gh);
 	struct gsm_trans *trans;
 	int new_trans = 0;
 	int rc = 0;
