@@ -73,6 +73,17 @@ fi
 AM_CONDITIONAL(BUILD_MGCP_TRANSCODING, test "x$osmo_ac_mgcp_transcoding" = "xyes")
 AC_SUBST(osmo_ac_mgcp_transcoding)
 
+# trau.h
+AC_ARG_ENABLE([dsptranscode],
+	AS_HELP_STRING([--enable-dsptranscode],
+			[Enable DSP transcoding code for sysmoBTS [default=no]]),
+	[enable_dsptranscode="yes"],[enable_dsptranscode="no"])
+AC_MSG_CHECKING([whether to enable sysmoBTS DSP transcoding])
+AC_MSG_RESULT([$enable_dsptranscode])
+AM_CONDITIONAL(BUILD_MGCP_TRANSCODING_DSP, test "x$enable_dsptranscode" = "xyes")
+
+
+
 
 found_libgtp=yes
 PKG_CHECK_MODULES(LIBGTP, libgtp >= 0.92, , found_libgtp=no)
@@ -176,6 +187,7 @@ fi
 AC_MSG_CHECKING([whether to enable VTY/CTRL tests])
 AC_MSG_RESULT([$enable_ext_tests])
 AM_CONDITIONAL(ENABLE_EXT_TESTS, test "x$enable_ext_tests" = "xyes")
+
 
 dnl Generate the output
 AM_CONFIG_HEADER(bscconfig.h)

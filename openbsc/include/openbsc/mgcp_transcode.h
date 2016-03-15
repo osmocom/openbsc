@@ -1,5 +1,6 @@
 /*
- * (C) 2014 by On-Waves
+ * (C) 2014-2016 by On-Waves
+ * (C) 2016 Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -89,4 +90,10 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 				 char *data, int *len, int buf_size);
 
 int mgcp_transcoding_get_frame_size(void *state_, int nsamples, int dst);
+
+
+#ifdef BUILD_MGCP_TRANSCODING_DSP
+int mgcp_transcoding_dsp_init(void);
+#endif
+
 #endif /* OPENBSC_MGCP_TRANSCODE_H */
