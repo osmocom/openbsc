@@ -2598,7 +2598,7 @@ int abis_nm_ipaccess_restart(struct gsm_bts_trx *trx)
 	fill_om_fom_hdr(oh, 0, NM_MT_IPACC_RESTART, NM_OC_BASEB_TRANSC,
 			trx->bts->nr, trx->nr, 0xff);
 
-	return abis_nm_sendmsg(trx->bts, msg);
+	return abis_nm_sendmsg_direct(trx->bts, msg);
 }
 
 int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, uint8_t obj_class,
