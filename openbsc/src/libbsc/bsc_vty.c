@@ -3185,6 +3185,44 @@ DEFUN(drop_bts,
 	return CMD_SUCCESS;
 }
 
+DEFUN(restart_bts, restart_bts_cmd,
+      "restart-bts <0-65535>",
+      "Restart ip.access nanoBTS through OML\n"
+      "BTS Number\n")
+{
+	struct gsm_network *gsmnet;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts *bts;
+	unsigned int bts_nr;
+
+	gsmnet = gsmnet_from_vty(vty);
+
+	bts_nr = atoi(argv[0]);
+	if (bts_nr >= gsmnet->num_bts) {
+		vty_out(vty, "BTS number must be between 0 and %d. It was %d.%s",
+			gsmnet->num_bts, bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts = gsm_bts_num(gsmnet, bts_nr);
+	if (!bts) {
+		vty_out(vty, "BTS Nr. %d could not be found.%s", bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!is_ipaccess_bts(bts) || is_sysmobts_v2(bts)) {
+		vty_out(vty, "This command only works for ipaccess nanoBTS.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* go from last TRX to c0 */
+	llist_for_each_entry_reverse(trx, &bts->trx_list, list)
+		abis_nm_ipaccess_restart(trx);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(pdch_act, pdch_act_cmd,
 	"bts <0-255> trx <0-255> timeslot <0-7> pdch (activate|deactivate)",
 	"BTS related commands\n" "BTS Number\n" "Transceiver\n" "Transceiver Number\n"
@@ -3410,6 +3448,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(TS_NODE, &cfg_ts_e1_subslot_cmd);
 
 	install_element(ENABLE_NODE, &drop_bts_cmd);
+	install_element(ENABLE_NODE, &restart_bts_cmd);
 	install_element(ENABLE_NODE, &pdch_act_cmd);
 
 	abis_nm_vty_init();
