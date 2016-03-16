@@ -37,6 +37,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/crypt/auth.h>
 #include <osmocom/gprs/gprs_bssgp.h>
 
 #include <openbsc/gsm_04_08_gprs.h>
@@ -393,22 +394,18 @@ reject:
 }
 
 /* Callback for RAB assignment response */
-int sgsn_ranap_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies)
+int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies)
 {
 	uint8_t rab_id;
-	struct sgsn_mm_ctx *mm;
 	struct sgsn_pdp_ctx *pdp = NULL;
 	uint32_t gtp_tei;
 	RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies->raB_SetupOrModifiedItem;
 
 	rab_id = item->rAB_ID.buf[0];
 
-	mm = sgsn_mm_ctx_by_ue_ctx(ctx);
-	/* XXX: Error handling */
-
 	if (item->iuTransportAssociation->present == RANAP_IuTransportAssociation_PR_gTP_TEI) {
 		gtp_tei = asn1str_to_u32(&item->iuTransportAssociation->choice.gTP_TEI);
-		pdp = sgsn_pdp_ctx_by_tei(mm, gtp_tei);
+		pdp = sgsn_pdp_ctx_by_tei(ctx, gtp_tei);
 	}
 
 	if (!pdp) {
@@ -428,29 +425,6 @@ int sgsn_ranap_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_SetupOrModifiedIt
 	return 0;
 
 }
-
-int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, int type, void *data)
-{
-	int rc = -1;
-
-	switch (type) {
-	case IU_EVENT_RAB_ASSIGN:
-		rc = sgsn_ranap_rab_ass_resp(ctx, (RANAP_RAB_SetupOrModifiedItemIEs_t *)data);
-		break;
-	case IU_EVENT_IU_RELEASE:
-		/* Clean up ue_conn_ctx here */
-		break;
-	case IU_EVENT_SECURITY_MODE_COMPLETE:
-		/* Continue authentication here */
-		break;
-	default:
-		LOGP(DRANAP, LOGL_NOTICE, "Unknown event received: %i\n", type);
-		rc = -1;
-		break;
-	}
-	return rc;
-}
-
 
 /* Confirmation of a PDP Context Delete */
 static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)

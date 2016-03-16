@@ -38,9 +38,11 @@
 #include <osmocom/core/signal.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/crypt/auth.h>
 #include <osmocom/gsm/apn.h>
 
 #include <osmocom/gprs/gprs_bssgp.h>
+#include <osmocom/ranap/ranap_ies_defs.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -97,6 +99,38 @@ static const struct tlv_definition gsm48_sm_att_tlvdef = {
 };
 
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx);
+
+int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies);
+int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, int type, void *data)
+{
+	struct sgsn_mm_ctx *mm;
+	int rc = -1;
+
+	mm = sgsn_mm_ctx_by_ue_ctx(ctx);
+	if (!mm) {
+		LOGP(DRANAP, LOGL_NOTICE, "Cannot find mm ctx for IU event %i!\n", type);
+		return rc;
+	}
+
+	switch (type) {
+	case IU_EVENT_RAB_ASSIGN:
+		rc = sgsn_ranap_rab_ass_resp(mm, (RANAP_RAB_SetupOrModifiedItemIEs_t *)data);
+		break;
+	case IU_EVENT_IU_RELEASE:
+		/* Clean up ue_conn_ctx here */
+		LOGMMCTXP(LOGL_INFO, mm, "IU release\n", type);
+		break;
+	case IU_EVENT_SECURITY_MODE_COMPLETE:
+		/* Continue authentication here */
+		break;
+	default:
+		LOGP(DRANAP, LOGL_NOTICE, "Unknown event received: %i\n", type);
+		rc = -1;
+		break;
+	}
+	return rc;
+}
+
 
 /* Our implementation, should be kept in SGSN */
 
