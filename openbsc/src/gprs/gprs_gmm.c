@@ -1326,10 +1326,15 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 			uint8_t mi_len = TLVP_LEN(&tp, GSM48_IE_GMM_ALLOC_PTMSI);
 			uint8_t *mi = TLVP_VAL(&tp, GSM48_IE_GMM_ALLOC_PTMSI);
 			uint8_t mi_type = *mi & GSM_MI_TYPE_MASK;
+			uint32_t tmsi;
+
 			gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
 
-			if (mi_type == GSM_MI_TYPE_TMSI)
-				mmctx = sgsn_mm_ctx_by_ptmsi(mi_string);
+			if (mi_type == GSM_MI_TYPE_TMSI) {
+				memcpy(&tmsi, mi+1, 4);
+				tmsi = ntohl(tmsi);
+				mmctx = sgsn_mm_ctx_by_ptmsi(tmsi);
+			}
 		}
 		if (mmctx) {
 			LOGMMCTXP(LOGL_INFO, mmctx,
