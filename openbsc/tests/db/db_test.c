@@ -200,7 +200,7 @@ int main()
 	alice->lac=42;
 	db_sync_subscriber(alice);
 	/* Get by TMSI */
-	snprintf(scratch_str, sizeof(scratch_str), "%"PRIu32, alice->tmsi);
+	snprintf(scratch_str, sizeof(scratch_str), "0x%08x", alice->tmsi);
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_TMSI, scratch_str);
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);
@@ -227,7 +227,7 @@ int main()
 	db_subscriber_assoc_imei(alice, "1234567890");
 	db_subscriber_assoc_imei(alice, "6543560920");
 	/* Get by TMSI */
-	snprintf(scratch_str, sizeof(scratch_str), "%"PRIu32, alice->tmsi);
+	snprintf(scratch_str, sizeof(scratch_str), "0x%08x", alice->tmsi);
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_TMSI, scratch_str);
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);

@@ -93,7 +93,7 @@ static void test_mi_functionality(void)
 	/* tmsi code */
 	mi_len = gsm48_generate_mid_from_tmsi(mi, tmsi);
 	gsm48_mi_to_string(mi_parsed, sizeof(mi_parsed), mi + 2, mi_len - 2);
-	COMPARE((uint32_t)strtoul(mi_parsed, NULL, 10), ==, tmsi);
+	COMPARE((uint32_t)tmsi_from_string(mi_parsed), ==, tmsi);
 
 	/* imsi code */
 	mi_len = gsm48_generate_mid_from_imsi(mi, imsi_odd);
