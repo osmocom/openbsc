@@ -305,7 +305,7 @@ static const struct log_info gprs_log_info = {
 
 int asn_debug;
 
-int sgsn_ranap_rab_ass_resp(struct ue_conn_ctx *ctx, uint8_t rab_id, struct RANAP_RAB_SetupOrModifiedItemIEs_s *setup_ies);
+int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, int type, void *data);
 
 int main(int argc, char **argv)
 {
@@ -422,7 +422,7 @@ int main(int argc, char **argv)
 	}
 
 	asn_debug = 0;
-	iu_init(tall_bsc_ctx, "127.0.0.2", 14001, gsm0408_gprs_rcvmsg_iu, sgsn_ranap_rab_ass_resp);
+	iu_init(tall_bsc_ctx, "127.0.0.2", 14001, gsm0408_gprs_rcvmsg_iu, sgsn_ranap_iu_event);
 
 	if (daemonize) {
 		rc = osmo_daemonize();

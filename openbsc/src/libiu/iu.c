@@ -35,7 +35,7 @@ void *talloc_asn1_ctx;
 
 
 iu_recv_cb_t global_iu_recv_cb = NULL;
-iu_rab_ass_resp_cb_t global_iu_rab_ass_resp_cb = NULL;
+iu_event_cb_t global_iu_event_cb = NULL;
 
 static LLIST_HEAD(ue_conn_ctx_list);
 
@@ -252,23 +252,20 @@ static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseR
 static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_AssignmentResponseIEs_t *ies)
 {
 	int rc = -1;
-	uint8_t rab_id;
 
 	LOGP(DRANAP, LOGL_INFO, "RAB Asignment Response:");
 	if (ies->presenceMask & RAB_ASSIGNMENTRESPONSEIES_RANAP_RAB_SETUPORMODIFIEDLIST_PRESENT) {
 		/* TODO: Iterate over list of SetupOrModifiedList IEs and handle each one */
 		RANAP_IE_t *ranap_ie = ies->raB_SetupOrModifiedList.raB_SetupOrModifiedList_ies.list.array[0];
 		RANAP_RAB_SetupOrModifiedItemIEs_t setup_ies;
-		RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies.raB_SetupOrModifiedItem;
+
 		rc = ranap_decode_rab_setupormodifieditemies_fromlist(&setup_ies, &ranap_ie->value);
 		if (rc) {
 			LOGP(DRANAP, LOGL_ERROR, "Error in ranap_decode_rab_setupormodifieditemies()\n");
 			return rc;
 		}
 
-		rab_id = item->rAB_ID.buf[0];
-
-		rc = global_iu_rab_ass_resp_cb(ctx, rab_id, &setup_ies);
+		rc = global_iu_event_cb(ctx, IU_EVENT_RAB_ASSIGN, &setup_ies);
 
 		ranap_free_rab_setupormodifieditemies(&setup_ies);
 	}
@@ -311,12 +308,12 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 		case RANAP_ProcedureCode_id_SecurityModeControl:
 			/* Security Mode Complete */
 			LOGP(DRANAP, LOGL_NOTICE, "FIXME: Handle security mode complete\n");
-			rc = -1;
+			rc = global_iu_event_cb(ctx, IU_EVENT_SECURITY_MODE_COMPLETE, NULL);
 			break;
 		case RANAP_ProcedureCode_id_Iu_Release:
 			/* Iu Release Complete */
 			LOGP(DRANAP, LOGL_NOTICE, "FIXME: Handle Iu release complete\n");
-			rc = -1;
+			rc = global_iu_event_cb(ctx, IU_EVENT_IU_RELEASE, NULL);
 			break;
 		default:
 			rc = -1;
@@ -476,13 +473,13 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 }
 
 int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
-	    iu_recv_cb_t iu_recv_cb, iu_rab_ass_resp_cb_t iu_rab_ass_resp_cb)
+	    iu_recv_cb_t iu_recv_cb, iu_event_cb_t iu_event_cb)
 {
 	struct osmo_sua_user *user;
 	talloc_asn1_ctx = talloc_named_const(ctx, 1, "asn1");
 
 	global_iu_recv_cb = iu_recv_cb;
-	global_iu_rab_ass_resp_cb = iu_rab_ass_resp_cb;
+	global_iu_event_cb = iu_event_cb;
 	osmo_sua_set_log_area(DSUA);
 	user = osmo_sua_user_create(ctx, sccp_sap_up, ctx);
 	return osmo_sua_server_listen(user, listen_addr, listen_port);
