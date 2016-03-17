@@ -893,10 +893,9 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 	subscr->id = dbi_result_get_ulonglong(result, "id");
 
 	db_set_from_query(subscr, result);
-	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', "
-		"TMSI 0x%08x, EXTEN '%s', LAC %hu, AUTH %u\n",
-		subscr->id, subscr->imsi, subscr->name, subscr->tmsi,
-		subscr->extension, subscr->lac, subscr->authorized);
+	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
+		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
+		subscr->lac, subscr->authorized);
 	dbi_result_free(result);
 
 	get_equipment_by_subscr(subscr);
@@ -936,7 +935,7 @@ int db_subscriber_update(struct gsm_subscriber *subscr)
 int db_sync_subscriber(struct gsm_subscriber *subscriber)
 {
 	dbi_result result;
-	char tmsi[11];
+	char tmsi[14];
 	char *q_tmsi, *q_name, *q_extension;
 
 	dbi_conn_quote_string_copy(conn, 
@@ -945,7 +944,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 				   subscriber->extension, &q_extension);
 	
 	if (subscriber->tmsi != GSM_RESERVED_TMSI) {
-		sprintf(tmsi, "0x%08x", subscriber->tmsi);
+		sprintf(tmsi, "%u", subscriber->tmsi);
 		dbi_conn_quote_string_copy(conn,
 				   tmsi,
 				   &q_tmsi);
@@ -1195,7 +1194,7 @@ int db_subscriber_expire(void *priv, void (*callback)(void *priv, long long unsi
 int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 {
 	dbi_result result = NULL;
-	char tmsi[11];
+	char tmsi[14];
 	char *tmsi_quoted;
 
 	for (;;) {
@@ -1206,7 +1205,7 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 		if (subscriber->tmsi == GSM_RESERVED_TMSI)
 			continue;
 
-		sprintf(tmsi, "0x%08x", subscriber->tmsi);
+		sprintf(tmsi, "%u", subscriber->tmsi);
 		dbi_conn_quote_string_copy(conn, tmsi, &tmsi_quoted);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "

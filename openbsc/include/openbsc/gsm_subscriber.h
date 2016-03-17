@@ -14,7 +14,7 @@
 
 #define GSM_SUBSCRIBER_FIRST_CONTACT	0x00000001
 /* gprs_sgsn.h defines additional flags including and above bit 16 (0x10000) */
-#define tmsi_from_string(str) strtoul(str + 2, NULL, 16)
+#define tmsi_from_string(str) strtoul(str, NULL, 10)
 
 #define GSM_SUBSCRIBER_NO_EXPIRATION	0x0
 
