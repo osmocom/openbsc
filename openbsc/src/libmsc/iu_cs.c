@@ -36,12 +36,48 @@ static int same_ue_conn(struct ue_conn_ctx *a, struct ue_conn_ctx *b)
 		&& (a->conn_id == b->conn_id);
 }
 
+static inline void log_subscribers(struct gsm_network *network)
+{
+	if (!log_check_level(DIUCS, LOGL_DEBUG))
+		return;
+
+	struct gsm_subscriber_connection *conn;
+	int i = 0;
+	llist_for_each_entry(conn, &network->subscr_conns, entry) {
+		DEBUGP(DIUCS, "%3d: %s", i++, subscr_name(conn->subscr));
+		switch (conn->via_iface) {
+		case IFACE_IU:
+			DEBUGPC(DIUCS, " Iu");
+			if (conn->iu.ue_ctx) {
+				DEBUGPC(DIUCS, " link %p, conn_id %d",
+					conn->iu.ue_ctx->link,
+					conn->iu.ue_ctx->conn_id
+				       );
+			}
+			break;
+		case IFACE_A:
+			DEBUGPC(DIUCS, " A");
+			break;
+		case IFACE_UNKNOWN:
+			DEBUGPC(DIUCS, " ?");
+			break;
+		default:
+			DEBUGPC(DIUCS, " invalid");
+			break;
+		}
+		DEBUGPC(DIUCS, "\n");
+	}
+	DEBUGP(DIUCS, "subscribers registered: %d\n", i);
+}
+
 /* Return an existing IuCS subscriber connection record for the given link and
  * connection IDs, or return NULL if not found. */
 static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_network *network,
 							       struct ue_conn_ctx *ue)
 {
 	struct gsm_subscriber_connection *conn;
+
+	log_subscribers(network);
 
 	llist_for_each_entry(conn, &network->subscr_conns, entry) {
 		if (conn->via_iface != IFACE_IU)
