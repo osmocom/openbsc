@@ -213,7 +213,8 @@ int iu_tx(struct msgb *msg, uint8_t sapi)
 	struct ue_conn_ctx *uectx = msg->dst;
 	struct osmo_scu_prim *prim;
 
-	LOGP(DRANAP, LOGL_INFO, "Transmitting L3 Message as RANAP DT\n");
+	LOGP(DRANAP, LOGL_INFO, "Transmitting L3 Message as RANAP DT (SUA link %p conn_id %u)\n",
+	     uectx->link, uectx->conn_id);
 
 	msg = ranap_new_msg_dt(sapi, msg->data, msgb_length(msg));
 	msg->l2h = msg->data;
