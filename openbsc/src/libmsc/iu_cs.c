@@ -33,7 +33,7 @@ static int same_ue_conn(struct ue_conn_ctx *a, struct ue_conn_ctx *b)
 	if (a == b)
 		return 1;
 	return (a->link == b->link)
-		&& (a->conn_id != b->conn_id);
+		&& (a->conn_id == b->conn_id);
 }
 
 /* Return an existing IuCS subscriber connection record for the given link and
