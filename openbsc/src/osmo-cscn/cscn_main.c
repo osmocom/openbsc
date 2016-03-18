@@ -322,10 +322,10 @@ static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gpr
 	return gsm0408_rcvmsg_iucs(cscn_network, msg);
 }
 
-static int handle_rab_ass_resp(struct ue_conn_ctx *ctx, uint8_t rab_id,
-			       struct RANAP_RAB_SetupOrModifiedItemIEs_s *setup_ies)
+static int handle_iu_event(struct ue_conn_ctx *ctx, int type,
+			   void *data)
 {
-	DEBUGP(DIUCS, "got Iu-CS RAB assignment response for RAB ID %u\n", rab_id);
+	DEBUGP(DIUCS, "got Iu-CS event %u\n", type);
 
 	/* TODO: Handle RAB assignment response for UE */
 	return 0;
@@ -485,7 +485,7 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
 	/* Set up Iu-CS */
-	iu_init(tall_cscn_ctx, "127.0.0.1", 14001, rcvmsg_iu_cs, handle_rab_ass_resp);
+	iu_init(tall_cscn_ctx, "127.0.0.1", 14001, rcvmsg_iu_cs, handle_iu_event);
 
 	if (cscn_cmdline_config.daemonize) {
 		rc = osmo_daemonize();
