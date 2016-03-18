@@ -116,42 +116,36 @@ int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id)
 	return -1;
 }
 
-int gprs_transp_upd_key(struct sgsn_mm_ctx *mm)
+int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp)
 {
-	struct gsm_auth_tuple *tp = &mm->auth_triplet;
+	struct osmo_scu_prim *prim;
+	struct msgb *msg;
+	uint8_t ik[16];
+	uint8_t ck[16];
+	unsigned int i;
 
-	if (mm->ran_type == MM_CTX_T_UTRAN_Iu) {
-		struct ue_conn_ctx *uectx;
-		struct osmo_scu_prim *prim;
-		struct msgb *msg;
-		uint8_t ik[16];
-		uint8_t ck[16];
-		unsigned int i;
+	/* C4 function to dervie CK from Kc */
+	memcpy(ck, tp->kc, 8);
+	memcpy(ck+8, tp->kc, 8);
 
-		uectx = mm->iu.ue_ctx;
+	/* C5 function to derive IK from Kc */
+	for (i = 0; i < 4; i++)
+		ik[i] = tp->kc[i] ^ tp->kc[i+4];
+	memcpy(ik+4, tp->kc, 8);
+	for (i = 12; i < 16; i++)
+		ik[i] = ik[i-12];
 
-		/* C4 function to dervie CK from Kc */
-		memcpy(ck, tp->kc, 8);
-		memcpy(ck+8, tp->kc, 8);
+	/* crate RANAP message */
+	msg = ranap_new_msg_sec_mod_cmd(ik, NULL);
+	msg->l2h = msg->data;
+	/* wrap RANAP message in SCCP N-DATA.req */
+	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));
+	prim->u.data.conn_id = uectx->conn_id;
+	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
+			OSMO_SCU_PRIM_N_DATA,
+			PRIM_OP_REQUEST, msg);
+	osmo_sua_user_link_down(uectx->link, &prim->oph);
 
-		/* C5 function to derive IK from Kc */
-		for (i = 0; i < 4; i++)
-			ik[i] = tp->kc[i] ^ tp->kc[i+4];
-		memcpy(ik+4, tp->kc, 8);
-		for (i = 12; i < 16; i++)
-			ik[i] = ik[i-12];
-
-		/* crate RANAP message */
-		msg = ranap_new_msg_sec_mod_cmd(ik, NULL);
-		msg->l2h = msg->data;
-		/* wrap RANAP message in SCCP N-DATA.req */
-		prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));
-		prim->u.data.conn_id = uectx->conn_id;
-		osmo_prim_init(&prim->oph, SCCP_SAP_USER,
-				OSMO_SCU_PRIM_N_DATA,
-				PRIM_OP_REQUEST, msg);
-		osmo_sua_user_link_down(uectx->link, &prim->oph);
-	}
 
 	return 0;
 }

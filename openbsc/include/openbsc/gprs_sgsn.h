@@ -148,6 +148,7 @@ struct sgsn_mm_ctx {
 		/* Voice Support Match Indicator */
 		void 			*ue_ctx;
 		struct service_info	service;
+		int			integrity_active;
 	} iu;
 	/* VLR number */
 	uint32_t		new_sgsn_addr;

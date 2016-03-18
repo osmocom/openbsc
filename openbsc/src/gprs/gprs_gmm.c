@@ -63,8 +63,6 @@
 
 #define PTMSI_ALLOC
 
-int gprs_transp_upd_key(struct sgsn_mm_ctx *mm);
-
 extern struct sgsn_instance *sgsn;
 
 static const struct tlv_definition gsm48_gmm_att_tlvdef = {
@@ -117,11 +115,14 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, int type, void *data)
 		rc = sgsn_ranap_rab_ass_resp(mm, (RANAP_RAB_SetupOrModifiedItemIEs_t *)data);
 		break;
 	case IU_EVENT_IU_RELEASE:
+		mm->iu.integrity_active = 0;
 		/* Clean up ue_conn_ctx here */
 		LOGMMCTXP(LOGL_INFO, mm, "IU release\n", type);
 		break;
 	case IU_EVENT_SECURITY_MODE_COMPLETE:
 		/* Continue authentication here */
+		mm->iu.integrity_active = 1;
+		rc = gsm48_gmm_authorize(mm);
 		break;
 	default:
 		LOGP(DRANAP, LOGL_NOTICE, "Unknown event received: %i\n", type);
@@ -572,8 +573,6 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	/* Check if we can let the mobile station enter */
 	rc = gsm48_gmm_authorize(ctx);
 
-	gprs_transp_upd_key(ctx);
-
 	return rc;
 }
 
@@ -753,6 +752,9 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	}
 
 	/* The MS is authorized */
+	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu && !ctx->iu.integrity_active) {
+		return iu_tx_sec_mode_cmd(ctx->iu.ue_ctx, &ctx->auth_triplet);
+	}
 
 	switch (ctx->pending_req) {
 	case 0:

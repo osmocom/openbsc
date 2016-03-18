@@ -37,3 +37,4 @@ int iu_tx(struct msgb *msg, uint8_t sapi);
 int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port);
 int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp);
 int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id);
+int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp);
