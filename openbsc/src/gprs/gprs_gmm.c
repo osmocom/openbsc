@@ -696,6 +696,8 @@ static int gsm48_tx_gmm_service_rej(struct sgsn_mm_ctx *mm,
 	return _tx_gmm_service_rej(msg, gmm_cause, mm);
 }
 
+static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm);
+
 /* Check if we can already authorize a subscriber */
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
@@ -790,6 +792,10 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		}
 
 		return gsm48_tx_gmm_service_ack(ctx);
+	case GSM48_MT_GMM_RA_UPD_REQ:
+		/* Send RA UPDATE ACCEPT */
+		return gsm48_tx_gmm_ra_upd_ack(ctx);
+
 	default:
 		LOGMMCTXP(LOGL_ERROR, ctx,
 			  "only Attach Request is supported yet, "
@@ -1430,8 +1436,9 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		process_ms_ctx_status(mmctx, pdp_status);
 	}
 
+	mmctx->pending_req = GSM48_MT_GMM_RA_UPD_REQ;
 	/* Send RA UPDATE ACCEPT */
-	return gsm48_tx_gmm_ra_upd_ack(mmctx);
+	return gsm48_gmm_authorize(mmctx);
 
 rejected:
 	/* Send RA UPDATE REJECT */
