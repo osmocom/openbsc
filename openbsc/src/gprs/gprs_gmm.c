@@ -99,7 +99,7 @@ static const struct tlv_definition gsm48_sm_att_tlvdef = {
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx);
 
 int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies);
-int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, int type, void *data)
+int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *data)
 {
 	struct sgsn_mm_ctx *mm;
 	int rc = -1;

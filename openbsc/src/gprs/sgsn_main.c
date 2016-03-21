@@ -305,7 +305,7 @@ static const struct log_info gprs_log_info = {
 
 int asn_debug;
 
-int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, int type, void *data);
+int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *data);
 
 int main(int argc, char **argv)
 {

@@ -322,7 +322,7 @@ static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gpr
 	return gsm0408_rcvmsg_iucs(cscn_network, msg);
 }
 
-static int handle_iu_event(struct ue_conn_ctx *ctx, int type,
+static int handle_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type,
 			   void *data)
 {
 	DEBUGP(DIUCS, "got Iu-CS event %u\n", type);
