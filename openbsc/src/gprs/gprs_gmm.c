@@ -117,7 +117,7 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, int type, void *data)
 	case IU_EVENT_IU_RELEASE:
 		mm->iu.integrity_active = 0;
 		/* Clean up ue_conn_ctx here */
-		LOGMMCTXP(LOGL_INFO, mm, "IU release\n", type);
+		LOGMMCTXP(LOGL_INFO, mm, "IU release\n");
 		break;
 	case IU_EVENT_SECURITY_MODE_COMPLETE:
 		/* Continue authentication here */

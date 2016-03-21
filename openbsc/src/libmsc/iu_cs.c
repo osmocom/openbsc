@@ -44,7 +44,7 @@ static inline void log_subscribers(struct gsm_network *network)
 	struct gsm_subscriber_connection *conn;
 	int i = 0;
 	llist_for_each_entry(conn, &network->subscr_conns, entry) {
-		DEBUGP(DIUCS, "%3d: %s", i++, subscr_name(conn->subscr));
+		DEBUGP(DIUCS, "%3d: %s", i, subscr_name(conn->subscr));
 		switch (conn->via_iface) {
 		case IFACE_IU:
 			DEBUGPC(DIUCS, " Iu");
@@ -66,6 +66,7 @@ static inline void log_subscribers(struct gsm_network *network)
 			break;
 		}
 		DEBUGPC(DIUCS, "\n");
+		i++;
 	}
 	DEBUGP(DIUCS, "subscribers registered: %d\n", i);
 }
