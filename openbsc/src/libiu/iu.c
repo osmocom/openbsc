@@ -116,17 +116,14 @@ int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id)
 	return -1;
 }
 
-int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp)
+int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
+		       int send_ck)
 {
 	struct osmo_scu_prim *prim;
 	struct msgb *msg;
 	uint8_t ik[16];
 	uint8_t ck[16];
 	unsigned int i;
-
-	/* C4 function to dervie CK from Kc */
-	memcpy(ck, tp->kc, 8);
-	memcpy(ck+8, tp->kc, 8);
 
 	/* C5 function to derive IK from Kc */
 	for (i = 0; i < 4; i++)
@@ -135,8 +132,14 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp)
 	for (i = 12; i < 16; i++)
 		ik[i] = ik[i-12];
 
+	if (send_ck) {
+		/* C4 function to derive CK from Kc */
+		memcpy(ck, tp->kc, 8);
+		memcpy(ck+8, tp->kc, 8);
+	}
+
 	/* crate RANAP message */
-	msg = ranap_new_msg_sec_mod_cmd(ik, NULL);
+	msg = ranap_new_msg_sec_mod_cmd(ik, send_ck? ck : NULL);
 	msg->l2h = msg->data;
 	/* wrap RANAP message in SCCP N-DATA.req */
 	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));

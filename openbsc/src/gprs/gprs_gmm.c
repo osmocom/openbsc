@@ -755,7 +755,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 
 	/* The MS is authorized */
 	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu && !ctx->iu.integrity_active) {
-		return iu_tx_sec_mode_cmd(ctx->iu.ue_ctx, &ctx->auth_triplet);
+		return iu_tx_sec_mode_cmd(ctx->iu.ue_ctx, &ctx->auth_triplet, 0);
 	}
 
 	switch (ctx->pending_req) {
