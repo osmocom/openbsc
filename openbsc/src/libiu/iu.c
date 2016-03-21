@@ -146,10 +146,8 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp)
 			PRIM_OP_REQUEST, msg);
 	osmo_sua_user_link_down(uectx->link, &prim->oph);
 
-
 	return 0;
 }
-
 
 static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *ies)
 {

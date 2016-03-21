@@ -23,8 +23,8 @@ typedef int (* iu_recv_cb_t )(struct msgb *msg, struct gprs_ra_id *ra_id,
 			      /* TODO is ra_id only used for gprs? ^ */
 			      uint16_t *sai);
 
-typedef int (* iu_event_cb_t )(struct ue_conn_ctx *ue_ctx, enum iu_event_type type,
-		void *data);
+typedef int (* iu_event_cb_t )(struct ue_conn_ctx *ue_ctx,
+			       enum iu_event_type type, void *data);
 
 typedef int (* iu_rab_ass_resp_cb_t )(struct ue_conn_ctx *ue_ctx, uint8_t rab_id,
 		struct RANAP_RAB_SetupOrModifiedItemIEs_s *setup_ies);

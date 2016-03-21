@@ -322,8 +322,8 @@ static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gpr
 	return gsm0408_rcvmsg_iucs(cscn_network, msg);
 }
 
-static int handle_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type,
-			   void *data)
+static int rx_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type,
+		       void *data)
 {
 	DEBUGP(DIUCS, "got Iu-CS event %u\n", type);
 
@@ -485,7 +485,7 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
 	/* Set up Iu-CS */
-	iu_init(tall_cscn_ctx, "127.0.0.1", 14001, rcvmsg_iu_cs, handle_iu_event);
+	iu_init(tall_cscn_ctx, "127.0.0.1", 14001, rcvmsg_iu_cs, rx_iu_event);
 
 	if (cscn_cmdline_config.daemonize) {
 		rc = osmo_daemonize();
