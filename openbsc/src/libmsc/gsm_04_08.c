@@ -64,6 +64,7 @@
 #include <osmocom/gsm/tlv.h>
 
 #include <openbsc/msc_ifaces.h>
+#include <openbsc/iu.h>
 
 #include <assert.h>
 
@@ -405,7 +406,7 @@ int gsm0408_authorize(struct gsm_subscriber_connection *conn)
 		     " no location update operation pending\n");
 		return 0;
 	}
-	
+
 	if (authorize_subscriber(conn->loc_operation, conn->subscr))
 		return gsm48_secure_channel(conn, conn->loc_operation->key_seq,
 					    _gsm0408_authorize_sec_cb, NULL);
@@ -1155,6 +1156,28 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 		/* Start ciphering */
 		return gsm0808_cipher_mode(conn, net->a5_encryption,
 					   conn->sec_operation->atuple.kc, 8, 0);
+
+	if (conn->via_iface == IFACE_IU
+	    && !conn->iu.integrity_protection) {
+		LOGP(DIUCS, LOGL_DEBUG,
+		     "Requesting integrity protection for %s\n",
+		     subscr_name(conn->subscr));
+
+		/* send Security Mode Command (IK) to start integrity
+		 * protection */
+
+		/* DEV HACK: hardcoded auth tuple */
+		/* instead, employ auth_get_tuple_for_subscr() */
+		struct gsm_auth_tuple tp;
+		tp = (struct gsm_auth_tuple) {
+			.key_seq = 0,
+			.rand = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
+			.sres = { 0x61, 0xb5, 0x69, 0xf5 },
+			.kc = { 0xd9, 0xd9, 0xc2, 0xed, 0x62, 0x7d, 0x68, 0x00 },
+		};
+
+		return iu_tx_sec_mode_cmd(conn->iu.ue_ctx, &tp, 0);
+	}
 
 	/* Only authentication requested, and we're done. */
 	if (!cb)

@@ -15,3 +15,9 @@ int iu_tx(struct msgb *msg, uint8_t sapi)
 	return 0;
 }
 
+int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
+		       int send_ck)
+{
+	LOGP(DLGLOBAL, LOGL_INFO, "iu_tx_sec_mode_cmd() dummy called, NOT transmitting Security Mode Command\n");
+	return 0;
+}

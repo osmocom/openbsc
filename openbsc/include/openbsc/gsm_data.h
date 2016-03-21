@@ -105,6 +105,12 @@ enum interface_type {
 	IFACE_IU = 1        /* Iu-interface for UMTS aka 3G (IuCS or IuPS) */
 };
 
+enum integrity_protection_state {
+	INTEGRITY_PROTECTION_NONE	= 0,
+	INTEGRITY_PROTECTION_IK		= 1,
+	INTEGRITY_PROTECTION_IK_CK	= 2,
+};
+
 /* mobile subscriber data */
 struct gsm_subscriber_connection {
 	struct llist_head entry;
@@ -151,6 +157,7 @@ struct gsm_subscriber_connection {
 	/* which Iu-CS connection, if any. */
 	struct {
 		struct ue_conn_ctx *ue_ctx;
+		int integrity_protection;
 	} iu;
 
 #else

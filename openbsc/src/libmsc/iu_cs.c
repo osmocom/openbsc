@@ -74,8 +74,9 @@ static inline void log_subscribers(struct gsm_network *network)
 
 /* Return an existing IuCS subscriber connection record for the given link and
  * connection IDs, or return NULL if not found. */
-static struct gsm_subscriber_connection *subscr_conn_lookup_iu(struct gsm_network *network,
-							       struct ue_conn_ctx *ue)
+struct gsm_subscriber_connection *subscr_conn_lookup_iu(
+						struct gsm_network *network,
+						struct ue_conn_ctx *ue)
 {
 	struct gsm_subscriber_connection *conn;
 
@@ -142,5 +143,4 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg)
 
 	return rc;
 }
-
 

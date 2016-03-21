@@ -71,6 +71,8 @@
 #include <openbsc/iu.h>
 #include <openbsc/iu_cs.h>
 
+#include "iucs_ranap.h"
+
 static const char * const osmocscn_copyright =
 	"OsmoCSCN - Osmocom Circuit-Switched Core Network implementation\r\n"
 	"Copyright (C) 2016 by sysmocom s.f.m.c. GmbH <info@sysmocom.de>\r\n"
@@ -327,10 +329,8 @@ static int rx_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type,
 {
 	DEBUGP(DIUCS, "got Iu-CS event %u\n", type);
 
-	/* TODO: Handle RAB assignment response for UE */
-	return 0;
+	return iucs_rx_ranap_event(cscn_network, ctx, type, data);
 }
-
 
 int main(int argc, char **argv)
 {

@@ -1,4 +1,5 @@
-AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
+AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir) \
+	-DCOMPILING_LIBMSC=1
 AM_CFLAGS=-Wall	$(COVERAGE_CFLAGS)			\
   	$(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) \
 	$(LIBOSMOCTRL_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(LIBSMPP34_CFLAGS) \
@@ -8,7 +9,9 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
 bin_PROGRAMS = osmo-cscn
 
-osmo_cscn_SOURCES = cscn_main.c
+noinst_HEADERS = iucs_ranap.h
+
+osmo_cscn_SOURCES = cscn_main.c iucs_ranap.c
 
 osmo_cscn_LDADD = \
 		$(top_builddir)/src/libiu/libiu.a \
