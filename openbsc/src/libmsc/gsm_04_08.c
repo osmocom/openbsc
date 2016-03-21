@@ -398,7 +398,7 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 	return rc;
 }
 
-static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg)
+int gsm0408_authorize(struct gsm_subscriber_connection *conn)
 {
 	if (!conn->loc_operation) {
 		LOGP(DMM, LOGL_DEBUG, "gsm0408_authorize() failed:"
@@ -588,7 +588,7 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 	}
 
 	/* Check if we can let the mobile station enter */
-	return gsm0408_authorize(conn, msg);
+	return gsm0408_authorize(conn);
 }
 
 
@@ -719,7 +719,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 	/* check if we can let the subscriber into our network immediately
 	 * or if we need to wait for identity responses. */
-	return gsm0408_authorize(conn, msg);
+	return gsm0408_authorize(conn);
 }
 
 /* Turn int into semi-octet representation: 98 => 0x89 */
