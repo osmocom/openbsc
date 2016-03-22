@@ -5,6 +5,7 @@ struct msgb;
 struct gprs_ra_id;
 
 struct RANAP_RAB_SetupOrModifiedItemIEs_s;
+struct RANAP_GlobalRNC_ID;
 
 struct ue_conn_ctx {
 	struct llist_head list;

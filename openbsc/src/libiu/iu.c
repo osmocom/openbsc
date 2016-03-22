@@ -30,6 +30,31 @@
 
 #include <asn1c/asn1helpers.h>
 
+/* Parsed global RNC id. See also struct RANAP_GlobalRNC_ID, and note that the
+ * PLMN identity is a BCD representation of the MCC and MNC.
+ * See iu_grnc_id_parse(). */
+struct iu_grnc_id {
+	uint16_t mcc;
+	uint16_t mnc;
+	uint16_t rnc_id;
+};
+
+/* A remote RNC (Radio Network Controller, like BSC but for UMTS) that has
+ * called us and is currently reachable at the given osmo_sua_link. So, when we
+ * know a LAC for a subscriber, we can page it at the RNC matching that LAC or
+ * RAC. An HNB-GW typically presents itself as if it were a single RNC, even
+ * though it may have several RNCs in hNodeBs connected to it. Those will then
+ * share the same RNC id, which they actually receive and adopt from the HNB-GW
+ * in the HNBAP HNB REGISTER ACCEPT message. */
+struct iu_rnc {
+	struct llist_head entry;
+
+	uint16_t rnc_id;
+	uint16_t lac; /* Location Area Code (used for CS and PS) */
+	uint8_t rac; /* Routing Area Code (used for PS only) */
+	struct osmo_sua_link *link;
+};
+
 void *talloc_iu_ctx;
 
 int asn1_xer_print = 1;
@@ -39,6 +64,7 @@ iu_recv_cb_t global_iu_recv_cb = NULL;
 iu_event_cb_t global_iu_event_cb = NULL;
 
 static LLIST_HEAD(ue_conn_ctx_list);
+static LLIST_HEAD(rnc_list);
 
 struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sua_link *link, uint32_t conn_id)
 {
@@ -63,12 +89,72 @@ struct ue_conn_ctx *ue_conn_ctx_find(struct osmo_sua_link *link,
 	return NULL;
 }
 
-/* Discard/invalidate all ue_conn_ctx entries that reference the
+static struct iu_rnc *iu_rnc_alloc(uint16_t rnc_id, uint16_t lac, uint8_t rac,
+				   struct osmo_sua_link *link)
+{
+	struct iu_rnc *rnc = talloc_zero(talloc_iu_ctx, struct iu_rnc);
+
+	rnc->rnc_id = rnc_id;
+	rnc->lac = lac;
+	rnc->rac = rac;
+	rnc->link = link;
+	llist_add(&rnc->entry, &rnc_list);
+
+	LOGP(DRANAP, LOGL_NOTICE, "New RNC %d (LAC=%d RAC=%d)\n",
+	     rnc->rnc_id, rnc->lac, rnc->rac);
+
+	return rnc;
+}
+
+static struct iu_rnc *iu_rnc_register(uint16_t rnc_id, uint16_t lac,
+				      uint8_t rac, struct osmo_sua_link *link)
+{
+	struct iu_rnc *rnc;
+	llist_for_each_entry(rnc, &rnc_list, entry) {
+		if (rnc->rnc_id != rnc_id)
+			continue;
+
+		/* We have this RNC Id registered already. Make sure that the
+		 * details match. */
+
+		/* TODO should a mismatch be an error? */
+		if (rnc->lac != lac || rnc->rac != rac)
+			LOGP(DRANAP, LOGL_NOTICE, "RNC %d changes its details:"
+			     " LAC=%d RAC=%d --> LAC=%d RAC=%d\n",
+			     rnc->rnc_id, rnc->lac, rnc->rac,
+			     lac, rac);
+		rnc->lac = lac;
+		rnc->rac = rac;
+
+		if (link && rnc->link != link)
+			LOGP(DRANAP, LOGL_NOTICE, "RNC %d on new link"
+			     " (LAC=%d RAC=%d)\n",
+			     rnc->rnc_id, rnc->lac, rnc->rac);
+		rnc->link = link;
+		return rnc;
+	}
+
+	/* Not found, make a new one. */
+	return iu_rnc_alloc(rnc_id, lac, rac, link);
+}
+
+/* Discard/invalidate all ue_conn_ctx and iu_rnc entries that reference the
  * given link, since this link is invalid and about to be deallocated. For
  * each ue_conn_ctx, invoke the iu_event_cb_t with IU_EVENT_LINK_INVALIDATED.
  */
 void iu_link_del(struct osmo_sua_link *link)
 {
+	struct iu_rnc *rnc, *rnc_next;
+	llist_for_each_entry_safe(rnc, rnc_next, &rnc_list, entry) {
+		if (!rnc->link)
+			continue;
+		if (rnc->link != link)
+			continue;
+		rnc->link = NULL;
+		llist_del(&rnc->entry);
+		talloc_free(rnc);
+	}
+
 	struct ue_conn_ctx *uec, *uec_next;
 	llist_for_each_entry_safe(uec, uec_next, &ue_conn_ctx_list, list) {
 		if (uec->link != link)
@@ -167,9 +253,40 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 	return 0;
 }
 
+static int iu_grnc_id_parse(struct iu_grnc_id *dst,
+			    struct RANAP_GlobalRNC_ID *src)
+{
+	/* The size is coming from arbitrary sender, check it gracefully */
+	if (src->pLMNidentity.size != 3) {
+		LOGP(DRANAP, LOGL_ERROR, "Invalid PLMN Identity size:"
+		     " should be 3, is %d\n", src->pLMNidentity.size);
+		return -1;
+	}
+	gsm48_mcc_mnc_from_bcd(&src->pLMNidentity.buf[0],
+			       &dst->mcc, &dst->mnc);
+	dst->rnc_id = (uint16_t)src->rNC_ID;
+	return 0;
+}
+
+#if 0
+ -- not used at present --
+static int iu_grnc_id_compose(struct iu_grnc_id *src,
+			      struct RANAP_GlobalRNC_ID *dst)
+{
+	/* The caller must ensure proper size */
+	OSMO_ASSERT(dst->pLMNidentity.size == 3);
+	gsm48_mcc_mnc_to_bcd(&dst->pLMNidentity.buf[0],
+			     src->mcc, src->mnc);
+	dst->rNC_ID = src->rnc_id;
+	return 0;
+}
+#endif
+
 static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *ies)
 {
+	struct ue_conn_ctx *ue_conn = ctx;
 	struct gprs_ra_id ra_id;
+	struct iu_grnc_id grnc_id;
 	uint16_t sai;
 	struct msgb *msg = msgb_alloc(256, "RANAP->NAS");
 
@@ -177,9 +294,19 @@ static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *i
 		LOGP(DRANAP, LOGL_ERROR, "Failed to parse RANAP LAI IE\n");
 		return -1;
 	}
+
+	if (iu_grnc_id_parse(&grnc_id, &ies->globalRNC_ID) != 0) {
+		LOGP(DRANAP, LOGL_ERROR,
+		     "Failed to parse RANAP Global-RNC-ID IE\n");
+		return -1;
+	}
+
 	sai = asn1str_to_u16(&ies->sai.sAC);
 	msgb_gmmh(msg) = msgb_put(msg, ies->nas_pdu.size);
 	memcpy(msgb_gmmh(msg), ies->nas_pdu.buf, ies->nas_pdu.size);
+
+	/* Make sure we know the RNC Id and LAC+RAC coming in on this connection. */
+	iu_rnc_register(grnc_id.rnc_id, ra_id.lac, ra_id.rac, ue_conn->link);
 
 	/* Feed into the MM layer */
 	msg->dst = ctx;
