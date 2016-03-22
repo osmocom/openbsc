@@ -1152,8 +1152,13 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 
 	DEBUGPC(DMM, "OK\n");
 
+	/* TODO separate enable flags and/or A5 algos for auth and encryption */
 	if (net->a5_encryption)
 		/* Start ciphering */
+		/* TODO gsm0808_cipher_mode() is still a dummy, and no code
+		 * to receive a Ciphering Mode Complete exists in the MSC.
+		 * As soon as such a receiver exists, it must call
+		 * iu_tx_sec_mode_cmd() as below. */
 		return gsm0808_cipher_mode(conn, net->a5_encryption,
 					   conn->sec_operation->atuple.kc, 8, 0);
 
