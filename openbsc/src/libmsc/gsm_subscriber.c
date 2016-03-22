@@ -48,20 +48,6 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
                          gsm_cbfn *cb, void *cb_data);
 
 
-/*
- * Struct for pending channel requests. This is managed in the
- * llist_head requests of each subscriber. The reference counting
- * should work in such a way that a subscriber with a pending request
- * remains in memory.
- */
-struct subscr_request {
-	struct llist_head entry;
-
-	/* the callback data */
-	gsm_cbfn *cbfn;
-	void *param;
-};
-
 static struct gsm_subscriber *get_subscriber(struct gsm_subscriber_group *sgrp,
 						int type, const char *ident)
 {

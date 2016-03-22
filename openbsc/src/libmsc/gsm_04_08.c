@@ -1245,6 +1245,47 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 	return rc;
 }
 
+static int handle_paging_resp(struct gsm_subscriber_connection *conn,
+			      struct msgb *msg, struct gsm_subscriber *subscr)
+{
+	struct subscr_request *req, *req2;
+
+	if (!conn->subscr) {
+		conn->subscr = subscr;
+	} else if (conn->subscr != subscr) {
+		LOGP(DRR, LOGL_ERROR, "<- Channel already owned by someone else?\n");
+		subscr_put(subscr);
+		return -EINVAL;
+	} else {
+		DEBUGP(DRR, "<- Channel already owned by us\n");
+		subscr_put(subscr);
+		subscr = conn->subscr;
+	}
+
+	osmo_counter_inc(conn->network->stats.paging.completed);
+
+	if (!subscr->is_paging) {
+		LOGP(DRR, LOGL_ERROR, "Paging Response received for subscriber that is not paging\n");
+		return -1;
+	}
+
+	llist_for_each_entry_safe(req, req2, &subscr->requests, entry) {
+		gsm_cbfn *cbfn = req->cbfn;
+		void *param = req->param;
+
+		llist_del(&req->entry);
+		req = NULL;
+
+		if (conn && cbfn) {
+			LOGP(DPAG, LOGL_DEBUG, "Calling paging cbfn.\n");
+			cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
+			     msg, conn, param);
+		} else
+			LOGP(DPAG, LOGL_DEBUG, "Paging without action.\n");
+	}
+	return 0;
+}
+
 /* Receive a PAGING RESPONSE message from the MS */
 static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
@@ -1254,7 +1295,6 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	struct gsm_subscriber *subscr = NULL;
-	int rc = 0;
 
 	resp = (struct gsm48_pag_resp *) &gh->data[0];
 	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*gh),
@@ -1289,12 +1329,12 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	/* We received a paging */
 	conn->expire_timer_stopped = 1;
 
+	/* FIXME start Integrity Protection in Iu mode */
+
 #if BEFORE_MSCSPLIT
-	rc = gsm48_handle_paging_resp(conn, msg, subscr);
-	return rc;
+	return gsm48_handle_paging_resp(conn, msg, subscr);
 #else
-	LOGP(DRR, LOGL_ERROR, "MSC wants to tell BSC to gsm48_handle_paging_resp() but A-interface not implemented\n");
-	return -1;
+	return handle_paging_resp(conn, msg, subscr);
 #endif
 }
 
