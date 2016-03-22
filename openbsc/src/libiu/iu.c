@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/prim.h>
@@ -16,6 +17,7 @@
 
 #include <osmocom/sigtran/sua.h>
 #include <osmocom/sigtran/sccp_sap.h>
+#include <osmocom/sigtran/sccp_helpers.h>
 
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/iu.h>
@@ -534,6 +536,83 @@ static void cn_ranap_handle_cl(void *ctx, ranap_message *message)
 		/* TODO handling of the error? */
 	}
 }
+
+/***********************************************************************
+ * Paging
+ ***********************************************************************/
+
+/* Send a paging command down a given SUA link. tmsi and paging_cause are
+ * optional and may be passed NULL and 0, respectively, to disable their use.
+ * See enum RANAP_PagingCause.
+ *
+ * If TMSI is given, the IMSI is not sent over the air interface. Nevertheless,
+ * the IMSI is still required for resolution in the HNB-GW and/or(?) RNC. */
+static int iu_tx_paging_cmd(struct osmo_sua_link *link,
+			    const char *imsi, const uint32_t *tmsi,
+			    bool is_ps, uint32_t paging_cause)
+{
+	struct msgb *msg;
+	msg = ranap_new_msg_paging_cmd(imsi, tmsi, is_ps? 1 : 0, paging_cause);
+	msg->l2h = msg->data;
+	return osmo_sccp_tx_unitdata_ranap(link, 1, 2, msg->data,
+					   msgb_length(msg));
+}
+
+static int iu_page(const char *imsi, const uint32_t *tmsi_or_ptimsi,
+		   uint16_t lac, uint8_t rac, bool is_ps)
+{
+	struct iu_rnc *rnc;
+	int pagings_sent = 0;
+
+	llist_for_each_entry(rnc, &rnc_list, entry) {
+		if (!rnc->link) {
+			/* Not actually connected, don't count it. */
+			continue;
+		}
+		if (rnc->lac != lac)
+			continue;
+		if (is_ps && rnc->rac != rac)
+			continue;
+
+		/* Found a match! */
+		if (iu_tx_paging_cmd(rnc->link, imsi, tmsi_or_ptimsi, is_ps, 0)
+		    == 0)
+			pagings_sent ++;
+	}
+
+	/* Some logging... */
+	if (pagings_sent > 0) {
+		LOGP(DRANAP, LOGL_DEBUG,
+		     "%s: %d RNCs were paged for IMSI %s.\n",
+		     is_ps? "IuPS" : "IuCS",
+		     pagings_sent, imsi);
+	}
+	else {
+		if (is_ps) {
+			LOGP(DRANAP, LOGL_ERROR, "IuPS: Found no RNC to page for"
+			     " LAC %d RAC %d (would have paged IMSI %s)\n",
+			     lac, rac, imsi);
+		}
+		else {
+			LOGP(DRANAP, LOGL_ERROR, "IuCS: Found no RNC to page for"
+			     " LAC %d (would have paged IMSI %s)\n",
+			     lac, imsi);
+		}
+	}
+
+	return pagings_sent;
+}
+
+int iu_page_cs(const char *imsi, const uint32_t *tmsi, uint16_t lac)
+{
+	return iu_page(imsi, tmsi, lac, 0, false);
+}
+
+int iu_page_ps(const char *imsi, const uint32_t *ptmsi, uint16_t lac, uint8_t rac)
+{
+	return iu_page(imsi, ptmsi, lac, rac, true);
+}
+
 
 /***********************************************************************
  *

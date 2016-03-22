@@ -42,6 +42,9 @@ void iu_link_del(struct osmo_sua_link *link);
 
 int iu_tx(struct msgb *msg, uint8_t sapi);
 
+int iu_page_cs(const char *imsi, const uint32_t *tmsi, uint16_t lac);
+int iu_page_ps(const char *imsi, const uint32_t *ptmsi, uint16_t lac, uint8_t rac);
+
 int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port);
 int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp);
 int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id);

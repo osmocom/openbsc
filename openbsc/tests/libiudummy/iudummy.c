@@ -21,3 +21,15 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 	LOGP(DLGLOBAL, LOGL_INFO, "iu_tx_sec_mode_cmd() dummy called, NOT transmitting Security Mode Command\n");
 	return 0;
 }
+
+int iu_page_cs(const char *imsi, const uint32_t *tmsi, uint16_t lac)
+{
+	LOGP(DLGLOBAL, LOGL_INFO, "iu_page_cs() dummy called, NOT paging\n");
+	return 0;
+}
+
+int iu_page_ps(const char *imsi, const uint32_t *ptmsi, uint16_t lac, uint8_t rac)
+{
+	LOGP(DLGLOBAL, LOGL_INFO, "iu_page_ps() dummy called, NOT paging\n");
+	return 0;
+}

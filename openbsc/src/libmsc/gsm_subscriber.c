@@ -38,6 +38,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/db.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/iu.h>
 
 void *tall_sub_req_ctx;
 
@@ -168,9 +169,15 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 int msc_paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		       int type, gsm_cbfn *cbfn, void *data)
 {
-	LOGP(DMM, LOGL_ERROR, "MSC paging not implemented! want to page %s\n",
-	     subscr_name(subscr));
-	return -1;
+	/* The subscriber was last seen in subscr->lac. Find out which
+	 * BSCs/RNCs are responsible and send them a paging request via open
+	 * SCCP connections (if any). */
+	/* TODO Implementing only RNC paging, since this is code on the iu branch.
+	 * Need to add BSC paging at some point. */
+	return iu_page_cs(subscr->imsi,
+			  subscr->tmsi == GSM_RESERVED_TMSI?
+				NULL : &subscr->tmsi,
+			  subscr->lac);
 }
 
 struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
