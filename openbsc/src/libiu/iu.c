@@ -30,6 +30,8 @@
 
 #include <asn1c/asn1helpers.h>
 
+void *talloc_iu_ctx;
+
 int asn1_xer_print = 1;
 void *talloc_asn1_ctx;
 
@@ -40,7 +42,7 @@ static LLIST_HEAD(ue_conn_ctx_list);
 
 struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sua_link *link, uint32_t conn_id)
 {
-	struct ue_conn_ctx *ctx = talloc_zero(NULL, struct ue_conn_ctx);
+	struct ue_conn_ctx *ctx = talloc_zero(talloc_iu_ctx, struct ue_conn_ctx);
 
 	ctx->link = link;
 	ctx->conn_id = conn_id;
@@ -491,12 +493,13 @@ int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
 	    iu_recv_cb_t iu_recv_cb, iu_event_cb_t iu_event_cb)
 {
 	struct osmo_sua_user *user;
-	talloc_asn1_ctx = talloc_named_const(ctx, 1, "asn1");
+	talloc_iu_ctx = talloc_named_const(ctx, 1, "iu");
+	talloc_asn1_ctx = talloc_named_const(talloc_iu_ctx, 1, "asn1");
 
 	global_iu_recv_cb = iu_recv_cb;
 	global_iu_event_cb = iu_event_cb;
 	osmo_sua_set_log_area(DSUA);
-	user = osmo_sua_user_create(ctx, sccp_sap_up, ctx);
+	user = osmo_sua_user_create(talloc_iu_ctx, sccp_sap_up, talloc_iu_ctx);
 	return osmo_sua_server_listen(user, listen_addr, listen_port);
 }
 
