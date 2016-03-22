@@ -52,6 +52,8 @@
 
 #include <osmocom/ranap/ranap_ies_defs.h>
 
+#include <asn1c/asn1helpers.h>
+
 #include <gtp.h>
 #include <pdp.h>
 

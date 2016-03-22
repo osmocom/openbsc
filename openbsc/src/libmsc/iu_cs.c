@@ -6,6 +6,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/msc_api.h>
 #include <openbsc/iu.h>
+#include <openbsc/gsm_subscriber.h>
 
 /* For A-interface see libbsc/bsc_api.c subscr_con_allocate() */
 struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *network,
