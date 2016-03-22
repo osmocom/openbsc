@@ -1121,6 +1121,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_auth_resp *ar = (struct gsm48_auth_resp*) gh->data;
 	struct gsm_network *net = conn->network;
+	gsm_cbfn *cb;
 
 	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s): ",
 		osmo_hexdump(ar->sres, 4));
@@ -1131,11 +1132,11 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 		return -EIO;
 	}
 
+	cb = conn->sec_operation->cb;
+
 	/* Validate SRES */
 	if (memcmp(conn->sec_operation->atuple.sres, ar->sres,4)) {
 		int rc;
-		gsm_cbfn *cb = conn->sec_operation->cb;
-
 		DEBUGPC(DMM, "Invalid (expected %s)\n",
 			osmo_hexdump(conn->sec_operation->atuple.sres, 4));
 
@@ -1156,13 +1157,10 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 					   conn->sec_operation->atuple.kc, 8, 0);
 
 	/* Only authentication requested, and we're done. */
-	if (!conn->loc_operation) {
-		LOGP(DMM, LOGL_ERROR, "Received authentication response, but no"
-		     " location update operation pending for subscriber %s\n",
-		     subscr_name(conn->subscr));
-		return -1;
-	}
-	return finish_lu(conn);
+	if (!cb)
+		return 0;
+	return cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
+		  NULL, conn, conn->sec_operation->cb_data);
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
