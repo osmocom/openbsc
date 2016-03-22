@@ -9,13 +9,14 @@
 #include <openbsc/gsm_subscriber.h>
 
 /* For A-interface see libbsc/bsc_api.c subscr_con_allocate() */
-struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *network,
-							  struct ue_conn_ctx *ue)
+static struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *network,
+								 struct ue_conn_ctx *ue,
+								 uint16_t lac)
 {
 	struct gsm_subscriber_connection *conn;
 
-	DEBUGP(DIUCS, "Allocating IuCS subscriber conn: link_id %p, conn_id %" PRIx32 "\n",
-	       ue->link, ue->conn_id);
+	DEBUGP(DIUCS, "Allocating IuCS subscriber conn: lac %d, link_id %p, conn_id %" PRIx32 "\n",
+	       lac, ue->link, ue->conn_id);
 
 	conn = talloc_zero(network, struct gsm_subscriber_connection);
 	if (!conn)
@@ -24,6 +25,7 @@ struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_network *ne
 	conn->network = network;
 	conn->via_iface = IFACE_IU;
 	conn->iu.ue_ctx = ue;
+	conn->lac = lac;
 
 	llist_add_tail(&conn->entry, &network->subscr_conns);
 	return conn;
@@ -101,7 +103,8 @@ struct gsm_subscriber_connection *subscr_conn_lookup_iu(
  * sent the msg.
  *
  * For A-interface see libbsc/bsc_api.c gsm0408_rcvmsg(). */
-int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg)
+int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg,
+			uint16_t *lac)
 {
 	int rc;
 	struct ue_conn_ctx *ue_ctx;
@@ -112,6 +115,19 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg)
 	/* TODO: are there message types that could allow us to skip this
 	 * search? */
 	conn = subscr_conn_lookup_iu(network, ue_ctx);
+
+	if (conn && lac && (conn->lac != *lac)) {
+		LOGP(DIUCS, LOGL_ERROR, "IuCS subscriber has changed LAC"
+		     " within the same connection, discarding connection:"
+		     " %s from LAC %d to %d\n",
+		     subscr_name(conn->subscr), conn->lac, *lac);
+		/* Deallocate conn with previous LAC */
+		msc_subscr_con_free(conn);
+		/* At this point we could be tolerant and allocate a new
+		 * connection, but changing the LAC within the same connection
+		 * is shifty. Rather cancel everything. */
+		return -1;
+	}
 
 	if (conn) {
 		/* if we already have a connection, handle DTAP.
@@ -128,7 +144,15 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg)
 	} else {
 		/* allocate a new connection */
 
-		conn = subscr_conn_allocate_iu(network, ue_ctx);
+		if (!lac) {
+			LOGP(DIUCS, LOGL_ERROR, "New IuCS subscriber"
+			     " but no LAC available. Expecting an InitialUE"
+			     " message containing a LAI IE."
+			     " Dropping connection.\n");
+			return -1;
+		}
+
+		conn = subscr_conn_allocate_iu(network, ue_ctx, *lac);
 		if (!conn)
 			abort();
 
