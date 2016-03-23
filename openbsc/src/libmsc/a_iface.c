@@ -25,14 +25,12 @@
 #include <openbsc/debug.h>
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/msc_ifaces.h>
 
-int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
-			struct msgb *msg, int link_id, int allow_sacch)
+int a_tx(struct msgb *msg)
 {
-	LOGP(DMSC, LOGL_ERROR, "gsm0808_submit_dtap(): message to be sent to"
-	     " BSC, but A interface not yet implemented.\n%s\n",
-	     osmo_hexdump(msg->data, msg->len)
-	     );
+	LOGP(DMSC, LOGL_ERROR, "message to be sent to BSC, but A-interface"
+	     " not implemented.\n%s\n", osmo_hexdump(msg->data, msg->len));
 	return -1;
 }
 
@@ -58,7 +56,7 @@ int gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
 
 	DEBUGP(DMM, "-> CM SERVICE ACK\n");
 
-	return gsm0808_submit_dtap(conn, msg, 0, 0);
+	return msc_tx_dtap(conn, msg);
 }
 
 /* 9.2.6 CM service reject */
@@ -75,5 +73,5 @@ int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 
 	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
 
-	return gsm0808_submit_dtap(conn, msg, 0, 0);
+	return msc_tx_dtap(conn, msg);
 }

@@ -28,10 +28,8 @@ static int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	switch (conn->via_iface) {
 	case IFACE_A:
-		LOGP(DMSC, LOGL_ERROR,
-		     "attempt to send message via A-interface, which is not yet implemented.\n");
-		/* TODO: msg->dst = <A-iface token>; a_tx(msg); */
-		return -1;
+		msg->dst = conn;
+		return a_tx(msg);
 
 	case IFACE_IU:
 		msg->dst = conn->iu.ue_ctx;
