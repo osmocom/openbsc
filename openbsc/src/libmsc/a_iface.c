@@ -37,7 +37,7 @@ int a_tx(struct msgb *msg)
 int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 			const uint8_t *key, int len, int include_imeisv)
 {
-
+	/* TODO generalize for A- and Iu interfaces, don't name after 08.08 */
 	LOGP(DMSC, LOGL_ERROR, "gsm0808_cipher_mode(): message to be sent to"
 	     " BSC, but A interface not yet implemented.\n");
 	return -1;
@@ -48,13 +48,13 @@ int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 /* 9.2.5 CM service accept */
 int gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
 {
-	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERV ACK");
+	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERV ACC");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_CM_SERV_ACC;
 
-	DEBUGP(DMM, "-> CM SERVICE ACK\n");
+	DEBUGP(DMM, "-> CM SERVICE ACCEPT\n");
 
 	return msc_tx_dtap(conn, msg);
 }
