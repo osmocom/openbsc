@@ -43,7 +43,7 @@ static struct osmo_bsc_data *osmo_bsc_data(struct vty *vty)
 
 static struct osmo_msc_data *osmo_msc_data(struct vty *vty)
 {
-	return osmo_msc_data_find(bsc_gsmnet, (int) vty->index);
+	return vty->index;
 }
 
 static struct cmd_node bsc_node = {
@@ -70,7 +70,7 @@ DEFUN(cfg_net_msc, cfg_net_msc_cmd,
 		return CMD_WARNING;
 	}
 
-	vty->index = (void *) index;
+	vty->index = msc;
 	vty->node = MSC_NODE;
 	return CMD_SUCCESS;
 }
