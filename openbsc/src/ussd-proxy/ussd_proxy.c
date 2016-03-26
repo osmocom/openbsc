@@ -787,9 +787,9 @@ int ussd_session_facility(operation_t *op,
 	int decoded_len;
 
 	decoded_len = decode_to_latin1(decoded, MAX_LEN_USSD_STRING,
-				       op->ussd.rigester_msg.ussd_text,
-				       op->ussd.rigester_msg.ussd_text_len,
-				       op->ussd.rigester_msg.ussd_text_language);
+				       ss->ussd_text,
+				       ss->ussd_text_len,
+				       ss->ussd_text_language);
 	if (decoded_len <= 0) {
 		return -1;
 	}
