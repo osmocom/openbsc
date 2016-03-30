@@ -7,6 +7,7 @@ struct gsm_auth_tuple;
 struct gsm_subscriber;
 
 enum auth_action {
+	AUTH_ERROR		= -1,	/* Internal error */
 	AUTH_NOT_AVAIL		= 0,	/* No auth tuple available */
 	AUTH_DO_AUTH_THEN_CIPH	= 1,	/* Firsth authenticate, then cipher */
 	AUTH_DO_CIPH		= 2,	/* Only ciphering */

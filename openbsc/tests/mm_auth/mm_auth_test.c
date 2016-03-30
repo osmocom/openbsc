@@ -141,7 +141,7 @@ static void test_error()
 	test_get_authinfo_rc = -EIO;
 	auth_action = auth_get_tuple_for_subscr_verbose(&atuple, &subscr,
 							key_seq);
-	OSMO_ASSERT(auth_action == -1);
+	OSMO_ASSERT(auth_action == AUTH_ERROR);
 }
 
 static void test_auth_not_avail()

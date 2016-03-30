@@ -33,7 +33,7 @@
 
 const struct value_string auth_action_names[] = {
 #define AUTH_ACTION_STR(X) { X, #X }
-	{ -1, "(internal error)" }, /* soon to be fixed with an enum val */
+	AUTH_ACTION_STR(AUTH_ERROR),
 	AUTH_ACTION_STR(AUTH_NOT_AVAIL),
 	AUTH_ACTION_STR(AUTH_DO_AUTH_THEN_CIPH),
 	AUTH_ACTION_STR(AUTH_DO_CIPH),
@@ -93,7 +93,7 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	if (rc < 0) {
 		LOGP(DMM, LOGL_NOTICE,
 			"No retrievable Ki for subscriber, skipping auth\n");
-		return rc == -ENOENT ? AUTH_NOT_AVAIL : -1;
+		return rc == -ENOENT ? AUTH_NOT_AVAIL : AUTH_ERROR;
 	}
 
 	/* If possible, re-use the last tuple and skip auth */
@@ -114,7 +114,7 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 
 	if (RAND_bytes(atuple->rand, sizeof(atuple->rand)) != 1) {
 		LOGP(DMM, LOGL_NOTICE, "RAND_bytes failed, can't generate new auth tuple\n");
-		return -1;
+		return AUTH_ERROR;
 	}
 
 	switch (ainfo.auth_algo) {
