@@ -100,6 +100,7 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	rc = db_get_lastauthtuple_for_subscr(atuple, subscr);
 	if ((rc == 0) &&
 	    (key_seq != GSM_KEY_SEQ_INVAL) &&
+	    (key_seq == atuple->key_seq) &&
 	    (atuple->use_count < 3))
 	{
 		atuple->use_count++;

@@ -272,6 +272,37 @@ static void test_auth_reuse()
 		));
 }
 
+static void test_auth_reuse_key_seq_mismatch()
+{
+	int auth_action;
+	struct gsm_auth_tuple atuple = {0};
+	struct gsm_subscriber subscr = {0};
+	int key_seq;
+
+	printf("\n* test_auth_reuse_key_seq_mismatch()\n");
+
+	/* Ki entry, auth tuple negotiated, valid+matching incoming key_seq */
+	test_auth_info = default_auth_info;
+	test_last_auth_tuple = default_auth_tuple;
+	test_last_auth_tuple.key_seq = 3;
+	key_seq = 4;
+	test_last_auth_tuple.use_count = 1;
+	test_get_authinfo_rc = 0;
+	test_get_lastauthtuple_rc = 0;
+	auth_action = auth_get_tuple_for_subscr_verbose(&atuple, &subscr,
+							key_seq);
+	OSMO_ASSERT(auth_action == AUTH_DO_AUTH_THEN_CIPH);
+	OSMO_ASSERT(auth_tuple_is(&atuple,
+		"gsm_auth_tuple {\n"
+		"  .use_count = 1\n"
+		"  .key_seq = 4\n"
+		"  .rand = 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 \n"
+		"  .sres = a1 ab c6 90 \n"
+		"  .kc = 0f 27 ed f3 ac 97 ac 00 \n"
+		"}\n"
+		));
+}
+
 int main(void)
 {
 	osmo_init_logging(&log_info);
@@ -282,5 +313,6 @@ int main(void)
 	test_auth_then_ciph1();
 	test_auth_then_ciph2();
 	test_auth_reuse();
+	test_auth_reuse_key_seq_mismatch();
 	return 0;
 }
