@@ -120,22 +120,22 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	switch (ainfo.auth_algo) {
 	case AUTH_ALGO_NONE:
 		DEBUGP(DMM, "No authentication for subscriber\n");
-		return 0;
+		return AUTH_NOT_AVAIL;
 
 	case AUTH_ALGO_XOR:
 		if (_use_xor(&ainfo, atuple))
-			return 0;
+			return AUTH_NOT_AVAIL;
 		break;
 
 	case AUTH_ALGO_COMP128v1:
 		if (_use_comp128_v1(&ainfo, atuple))
-			return 0;
+			return AUTH_NOT_AVAIL;
 		break;
 
 	default:
 		DEBUGP(DMM, "Unsupported auth type algo_id=%d\n",
 			ainfo.auth_algo);
-		return 0;
+		return AUTH_NOT_AVAIL;
 	}
 
         db_sync_lastauthtuple_for_subscr(atuple, subscr);
