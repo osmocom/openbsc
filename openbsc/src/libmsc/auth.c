@@ -110,8 +110,17 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	}
 
 	/* Generate a new one */
+	if (rc != 0) {
+		/* If db_get_lastauthtuple_for_subscr() returned nothing, make
+		 * sure the atuple memory is initialized to zero and thus start
+		 * off with key_seq = 0. */
+		memset(atuple, 0, sizeof(*atuple));
+	} else {
+		/* If db_get_lastauthtuple_for_subscr() returned a previous
+		 * tuple, use the next key_seq. */
+		atuple->key_seq = (atuple->key_seq + 1) % 7;
+	}
 	atuple->use_count = 1;
-	atuple->key_seq = (atuple->key_seq + 1) % 7;
 
 	if (RAND_bytes(atuple->rand, sizeof(atuple->rand)) != 1) {
 		LOGP(DMM, LOGL_NOTICE, "RAND_bytes failed, can't generate new auth tuple\n");

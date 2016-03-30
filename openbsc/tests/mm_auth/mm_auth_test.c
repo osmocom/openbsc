@@ -183,7 +183,29 @@ static void test_auth_then_ciph1()
 	OSMO_ASSERT(auth_tuple_is(&atuple,
 		"gsm_auth_tuple {\n"
 		"  .use_count = 1\n"
-		"  .key_seq = 1\n"
+		"  .key_seq = 0\n"
+		"  .rand = 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 \n"
+		"  .sres = a1 ab c6 90 \n"
+		"  .kc = 0f 27 ed f3 ac 97 ac 00 \n"
+		"}\n"
+		));
+
+	/* With a different last saved key_seq stored in the out-arg of
+	 * db_get_lastauthtuple_for_subscr() by coincidence, expect absolutely
+	 * the same as above. */
+	test_auth_info = default_auth_info;
+	test_last_auth_tuple = default_auth_tuple;
+	test_last_auth_tuple.key_seq = 3;
+	test_get_authinfo_rc = 0;
+	test_get_lastauthtuple_rc = -ENOENT;
+	key_seq = 0;
+	auth_action = auth_get_tuple_for_subscr_verbose(&atuple, &subscr,
+							key_seq);
+	OSMO_ASSERT(auth_action == AUTH_DO_AUTH_THEN_CIPH);
+	OSMO_ASSERT(auth_tuple_is(&atuple,
+		"gsm_auth_tuple {\n"
+		"  .use_count = 1\n"
+		"  .key_seq = 0\n"
 		"  .rand = 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 17 \n"
 		"  .sres = a1 ab c6 90 \n"
 		"  .kc = 0f 27 ed f3 ac 97 ac 00 \n"
