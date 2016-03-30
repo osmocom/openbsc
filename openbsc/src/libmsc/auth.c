@@ -31,6 +31,15 @@
 
 #include <stdlib.h>
 
+const struct value_string auth_action_names[] = {
+#define AUTH_ACTION_STR(X) { X, #X }
+	{ -1, "(internal error)" }, /* soon to be fixed with an enum val */
+	AUTH_ACTION_STR(AUTH_NOT_AVAIL),
+	AUTH_ACTION_STR(AUTH_DO_AUTH_THEN_CIPH),
+	AUTH_ACTION_STR(AUTH_DO_CIPH),
+	AUTH_ACTION_STR(AUTH_DO_AUTH),
+#undef AUTH_ACTION_STR
+};
 
 static int
 _use_xor(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)

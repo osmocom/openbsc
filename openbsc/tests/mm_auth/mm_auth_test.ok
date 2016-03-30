@@ -1,0 +1,8 @@
+
+* test_error()
+wrapped: db_get_authinfo_for_subscr(): rc = -5
+auth_get_tuple_for_subscr(key_seq=0) --> auth_action == (internal error)
+
+* test_auth_not_avail()
+wrapped: db_get_authinfo_for_subscr(): rc = -2
+auth_get_tuple_for_subscr(key_seq=0) --> auth_action == AUTH_NOT_AVAIL
