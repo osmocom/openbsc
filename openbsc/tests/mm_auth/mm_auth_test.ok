@@ -22,3 +22,9 @@ wrapped: db_get_authinfo_for_subscr(): rc = 0
 wrapped: db_get_lastauthtuple_for_subscr(): rc = 0
 wrapped: db_sync_lastauthtuple_for_subscr(): rc = 0
 auth_get_tuple_for_subscr(key_seq=7) --> auth_action == AUTH_DO_AUTH_THEN_CIPH
+
+* test_auth_reuse()
+wrapped: db_get_authinfo_for_subscr(): rc = 0
+wrapped: db_get_lastauthtuple_for_subscr(): rc = 0
+wrapped: db_sync_lastauthtuple_for_subscr(): rc = 0
+auth_get_tuple_for_subscr(key_seq=3) --> auth_action == AUTH_DO_CIPH
