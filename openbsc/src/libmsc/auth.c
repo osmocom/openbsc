@@ -31,6 +31,15 @@
 
 #include <stdlib.h>
 
+const struct value_string auth_action_names[] = {
+#define AUTH_ACTION_STR(X) { X, #X }
+	AUTH_ACTION_STR(AUTH_ERROR),
+	AUTH_ACTION_STR(AUTH_NOT_AVAIL),
+	AUTH_ACTION_STR(AUTH_DO_AUTH_THEN_CIPH),
+	AUTH_ACTION_STR(AUTH_DO_CIPH),
+	AUTH_ACTION_STR(AUTH_DO_AUTH),
+#undef AUTH_ACTION_STR
+};
 
 static int
 _use_xor(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
@@ -82,13 +91,14 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	/* Get subscriber info (if any) */
 	rc = db_get_authinfo_for_subscr(&ainfo, subscr);
 	if (rc < 0) {
-		return rc == -ENOENT ? AUTH_NOT_AVAIL : -1;
+		return rc == -ENOENT ? AUTH_NOT_AVAIL : AUTH_ERROR;
 	}
 
 	/* If possible, re-use the last tuple and skip auth */
 	rc = db_get_lastauthtuple_for_subscr(atuple, subscr);
 	if ((rc == 0) &&
 	    (key_seq != GSM_KEY_SEQ_INVAL) &&
+	    (key_seq == atuple->key_seq) &&
 	    (atuple->use_count < 3))
 	{
 		atuple->use_count++;
@@ -98,35 +108,44 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	}
 
 	/* Generate a new one */
+	if (rc != 0) {
+		/* If db_get_lastauthtuple_for_subscr() returned nothing, make
+		 * sure the atuple memory is initialized to zero and thus start
+		 * off with key_seq = 0. */
+		memset(atuple, 0, sizeof(*atuple));
+	} else {
+		/* If db_get_lastauthtuple_for_subscr() returned a previous
+		 * tuple, use the next key_seq. */
+		atuple->key_seq = (atuple->key_seq + 1) % 7;
+	}
 	atuple->use_count = 1;
-	atuple->key_seq = (atuple->key_seq + 1) % 7;
 
 	if (RAND_bytes(atuple->rand, sizeof(atuple->rand)) != 1) {
 		LOGP(DMM, LOGL_NOTICE, "RAND_bytes failed, can't generate new auth tuple\n");
-		return -1;
+		return AUTH_ERROR;
 	}
 
 	switch (ainfo.auth_algo) {
 	case AUTH_ALGO_NONE:
 		DEBUGP(DMM, "No authentication for subscriber\n");
-		return 0;
+		return AUTH_NOT_AVAIL;
 
 	case AUTH_ALGO_XOR:
 		if (_use_xor(&ainfo, atuple))
 			/* non-zero return value means failure */
-			return 0;
+			return AUTH_NOT_AVAIL;
 		break;
 
 	case AUTH_ALGO_COMP128v1:
 		if (_use_comp128_v1(&ainfo, atuple))
 			/* non-zero return value means failure */
-			return 0;
+			return AUTH_NOT_AVAIL;
 		break;
 
 	default:
 		DEBUGP(DMM, "Unsupported auth type algo_id=%d\n",
 			ainfo.auth_algo);
-		return 0;
+		return AUTH_NOT_AVAIL;
 	}
 
         db_sync_lastauthtuple_for_subscr(atuple, subscr);

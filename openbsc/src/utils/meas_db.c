@@ -314,7 +314,6 @@ err_io:
 
 void meas_db_close(struct meas_db_state *st)
 {
-	int retries;
 	if (sqlite3_finalize(st->stmt_ins_mr) != SQLITE_OK)
 		fprintf(stderr, "DB insert measurement report finalize error: %s\n",
 			sqlite3_errmsg(st->db));
@@ -324,16 +323,8 @@ void meas_db_close(struct meas_db_state *st)
 	if (sqlite3_finalize(st->stmt_upd_mr) != SQLITE_OK)
 		fprintf(stderr, "DB update measurement report finalize error: %s\n",
 			sqlite3_errmsg(st->db));
-	retries = 0;
-	while (1) {
-		if (sqlite3_close(st->db) == SQLITE_OK)
-			break;
-		if ((++retries) >= 3) {
-			fprintf(stderr, "Unable to close DB, abandoning.\n");
-			break;
-		}
-		sleep(1);
-	}
+	if (sqlite3_close(st->db) != SQLITE_OK)
+		fprintf(stderr, "Unable to close DB, abandoning.\n");
 
 	talloc_free(st);
 

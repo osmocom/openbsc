@@ -2400,7 +2400,7 @@ int gsm0408_gprs_rcvmsg_iu(struct msgb *msg, struct gprs_ra_id *ra_id,
 			   uint16_t *sai)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	uint8_t pdisc = gh->proto_discr & 0x0f;
+	uint8_t pdisc = gsm48_hdr_pdisc(gh);
 	struct sgsn_mm_ctx *mmctx;
 	int rc = -EINVAL;
 

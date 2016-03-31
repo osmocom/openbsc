@@ -1,0 +1,40 @@
+
+* test_error()
+wrapped: db_get_authinfo_for_subscr(): rc = -5
+auth_get_tuple_for_subscr(key_seq=0) --> auth_action == AUTH_ERROR
+
+* test_auth_not_avail()
+wrapped: db_get_authinfo_for_subscr(): rc = -2
+auth_get_tuple_for_subscr(key_seq=0) --> auth_action == AUTH_NOT_AVAIL
+
+* test_auth_then_ciph1()
+wrapped: db_get_authinfo_for_subscr(): rc = 0
+wrapped: db_get_lastauthtuple_for_subscr(): rc = -2
+wrapped: db_sync_lastauthtuple_for_subscr(): rc = 0
+auth_get_tuple_for_subscr(key_seq=0) --> auth_action == AUTH_DO_AUTH_THEN_CIPH
+wrapped: db_get_authinfo_for_subscr(): rc = 0
+wrapped: db_get_lastauthtuple_for_subscr(): rc = -2
+wrapped: db_sync_lastauthtuple_for_subscr(): rc = 0
+auth_get_tuple_for_subscr(key_seq=0) --> auth_action == AUTH_DO_AUTH_THEN_CIPH
+
+* test_auth_then_ciph2()
+wrapped: db_get_authinfo_for_subscr(): rc = 0
+wrapped: db_get_lastauthtuple_for_subscr(): rc = 0
+wrapped: db_sync_lastauthtuple_for_subscr(): rc = 0
+auth_get_tuple_for_subscr(key_seq=7) --> auth_action == AUTH_DO_AUTH_THEN_CIPH
+wrapped: db_get_authinfo_for_subscr(): rc = 0
+wrapped: db_get_lastauthtuple_for_subscr(): rc = 0
+wrapped: db_sync_lastauthtuple_for_subscr(): rc = 0
+auth_get_tuple_for_subscr(key_seq=7) --> auth_action == AUTH_DO_AUTH_THEN_CIPH
+
+* test_auth_reuse()
+wrapped: db_get_authinfo_for_subscr(): rc = 0
+wrapped: db_get_lastauthtuple_for_subscr(): rc = 0
+wrapped: db_sync_lastauthtuple_for_subscr(): rc = 0
+auth_get_tuple_for_subscr(key_seq=3) --> auth_action == AUTH_DO_CIPH
+
+* test_auth_reuse_key_seq_mismatch()
+wrapped: db_get_authinfo_for_subscr(): rc = 0
+wrapped: db_get_lastauthtuple_for_subscr(): rc = 0
+wrapped: db_sync_lastauthtuple_for_subscr(): rc = 0
+auth_get_tuple_for_subscr(key_seq=4) --> auth_action == AUTH_DO_AUTH_THEN_CIPH

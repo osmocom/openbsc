@@ -330,7 +330,7 @@ static int decode_audio(struct mgcp_process_rtp_state *state,
 	while (*nbytes >= state->src_frame_size) {
 		if (state->sample_cnt + state->src_samples_per_frame > ARRAY_SIZE(state->samples)) {
 			LOGP(DMGCP, LOGL_ERROR,
-			     "Sample buffer too small: %d > %d.\n",
+			     "Sample buffer too small: %zu > %zu.\n",
 			     state->sample_cnt + state->src_samples_per_frame,
 			     ARRAY_SIZE(state->samples));
 			return -ENOSPC;
@@ -388,7 +388,7 @@ static int encode_audio(struct mgcp_process_rtp_state *state,
 
 			/* Not even one frame fits into the buffer */
 			LOGP(DMGCP, LOGL_INFO,
-			     "Encoding (RTP) buffer too small: %d > %d.\n",
+			     "Encoding (RTP) buffer too small: %zu > %zu.\n",
 			     nbytes + state->dst_frame_size, buf_size);
 			return -ENOSPC;
 		}
@@ -540,7 +540,7 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 				 * instead if the delta is small enough.
 				 */
 				LOGP(DMGCP, LOGL_NOTICE,
-					"0x%x dropping sample buffer due delta=%d sample_cnt=%d\n",
+					"0x%x dropping sample buffer due delta=%d sample_cnt=%zu\n",
 					ENDPOINT_NUMBER(endp), delta, state->sample_cnt);
 				state->sample_cnt = 0;
 				state->next_time = ts_no;
@@ -569,7 +569,7 @@ int mgcp_transcoding_process_rtp(struct mgcp_endpoint *endp,
 
 		if (nbytes > 0)
 			LOGP(DMGCP, LOGL_NOTICE,
-			     "Skipped audio frame in RTP packet: %d octets\n",
+			     "Skipped audio frame in RTP packet: %zu octets\n",
 			     nbytes);
 	} else
 		ts_no = state->next_time;
