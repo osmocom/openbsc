@@ -508,14 +508,8 @@ struct gsm_subscriber *db_create_subscriber(const char *imsi)
 	/* Is this subscriber known in the db? */
 	subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi);
 	if (subscr) {
-		result = dbi_conn_queryf(conn,
-                         "UPDATE Subscriber set updated = datetime('now') "
-                         "WHERE imsi = %s " , imsi);
-		if (!result)
-			LOGP(DDB, LOGL_ERROR, "failed to update timestamp\n");
-		else
-			dbi_result_free(result);
-		return subscr;
+		subscr_put(subscr);
+		return NULL;
 	}
 
 	subscr = subscr_alloc();

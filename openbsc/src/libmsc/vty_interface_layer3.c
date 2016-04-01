@@ -236,11 +236,17 @@ DEFUN(subscriber_create,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr;
 
-	subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0]);
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber created for IMSI %s%s",
-			argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
+	subscr = subscr_get_by_imsi(gsmnet->subscr_group, argv[0]);
+	if (subscr)
+		db_sync_subscriber(subscr);
+	else {
+		subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0]);
+
+		if (!subscr) {
+			vty_out(vty, "%% No subscriber created for IMSI %s%s",
+				argv[0], VTY_NEWLINE);
+			return CMD_WARNING;
+		}
 	}
 
 	/* Show info about the created subscriber. */
