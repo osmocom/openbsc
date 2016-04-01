@@ -523,8 +523,11 @@ struct gsm_subscriber *db_create_subscriber(const char *imsi)
 		"(%s, datetime('now'), datetime('now')) ",
 		imsi
 	);
-	if (!result)
+	if (!result) {
 		LOGP(DDB, LOGL_ERROR, "Failed to create Subscriber by IMSI.\n");
+		subscr_put(subscr);
+		return NULL;
+	}
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
 	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	dbi_result_free(result);
