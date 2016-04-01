@@ -307,6 +307,42 @@ class TestVTYNITB(TestVTYGenericBSC):
             if classNum != 10:
                 self.assertEquals(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
 
+    def testSubscriberCreateDeleteTwice(self):
+        """
+        OS#1657 indicates that there might be an issue creating the
+        same subscriber twice. This test will use the VTY command to
+        create a subscriber and then issue a second create command
+        with the same IMSI. The test passes if the VTY continues to
+        respond to VTY commands.
+        """
+        self.vty.enable()
+
+        imsi = "204300854013739"
+
+        # Initially we don't have this subscriber
+        self.vty.verify('show subscriber imsi '+imsi, ['% No subscriber found for imsi '+imsi])
+
+        # Lets create one
+        res = self.vty.command('subscriber create imsi '+imsi)
+        self.assert_(res.find("    IMSI: "+imsi) > 0)
+        # And now create one again.
+        res2 = self.vty.command('subscriber create imsi '+imsi)
+        self.assert_(res2.find("    IMSI: "+imsi) > 0)
+        self.assertEqual(res, res2)
+
+        # Verify it has been created
+        res = self.vty.command('show subscriber imsi '+imsi)
+        self.assert_(res.find("    IMSI: "+imsi) > 0)
+
+        # Delete it
+        res = self.vty.command('subscriber delete imsi '+imsi)
+        self.assert_(res != "")
+
+        # Now it should not be there anymore
+        res = self.vty.command('show subscriber imsi '+imsi)
+        self.assert_(res != '% No subscriber found for imsi '+imsi)
+
+
     def testSubscriberCreateDelete(self):
         self.vty.enable()
 
