@@ -141,7 +141,7 @@ DEFUN(show_subscr_cache,
 DEFUN(sms_send_pend,
       sms_send_pend_cmd,
       "sms send pending",
-      "SMS related comamnds\n" "SMS Sending related commands\n"
+      "SMS related commands\n" "SMS Sending related commands\n"
       "Send all pending SMS")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
@@ -199,10 +199,10 @@ static struct gsm_subscriber *get_subscr_by_argv(struct gsm_network *gsmnet,
 }
 #define SUBSCR_TYPES "(extension|imsi|tmsi|id)"
 #define SUBSCR_HELP "Operations on a Subscriber\n"			\
-	"Identify subscriber by his extension (phone number)\n"		\
-	"Identify subscriber by his IMSI\n"				\
-	"Identify subscriber by his TMSI\n"				\
-	"Identify subscriber by his database ID\n"			\
+	"Identify subscriber by extension (phone number)\n"		\
+	"Identify subscriber by IMSI\n"					\
+	"Identify subscriber by TMSI\n"					\
+	"Identify subscriber by database ID\n"				\
 	"Identifier for the subscriber\n"
 
 DEFUN(show_subscr,
