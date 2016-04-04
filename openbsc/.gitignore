@@ -90,3 +90,5 @@ tests/testsuite.log
 
 
 src/openbsc.cfg*
+writtenconfig/
+gtphub_restart_count
