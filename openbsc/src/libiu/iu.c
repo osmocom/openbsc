@@ -157,7 +157,10 @@ static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *i
 	uint16_t sai;
 	struct msgb *msg = msgb_alloc(256, "RANAP->NAS");
 
-	ranap_parse_lai(&ra_id, &ies->lai);
+	if (ranap_parse_lai(&ra_id, &ies->lai) != 0) {
+		LOGP(DRANAP, LOGL_ERROR, "Failed to parse RANAP LAI IE\n");
+		return -1;
+	}
 	sai = asn1str_to_u16(&ies->sai.sAC);
 	msgb_gmmh(msg) = msgb_put(msg, ies->nas_pdu.size);
 	memcpy(msgb_gmmh(msg), ies->nas_pdu.buf, ies->nas_pdu.size);
@@ -176,7 +179,10 @@ static int ranap_handle_co_dt(void *ctx, RANAP_DirectTransferIEs_t *ies)
 	struct msgb *msg = msgb_alloc(256, "RANAP->NAS");
 
 	if (ies->presenceMask & DIRECTTRANSFERIES_RANAP_LAI_PRESENT) {
-		ranap_parse_lai(&_ra_id, &ies->lai);
+		if (ranap_parse_lai(&_ra_id, &ies->lai) != 0) {
+			LOGP(DRANAP, LOGL_ERROR, "Failed to parse RANAP LAI IE\n");
+			return -1;
+		}
 		ra_id = &_ra_id;
 		if (ies->presenceMask & DIRECTTRANSFERIES_RANAP_RAC_PRESENT) {
 			_ra_id.rac = asn1str_to_u8(&ies->rac);
