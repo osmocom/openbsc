@@ -469,6 +469,33 @@ class TestCtrlNITB(TestCtrlBase):
         self.assertEquals(r['var'], 'number-of-bts')
         self.assertEquals(r['value'], '1')
 
+    def testSubscriberAddWithKi(self):
+        """Test that we can set the algorithm to none, xor, comp128v1"""
+
+        r = self.do_set('subscriber-modify-v1', '2620345,445566')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'subscriber-modify-v1')
+        self.assertEquals(r['value'], 'OK')
+
+        r = self.do_set('subscriber-modify-v1', '2620345,445566,none')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'subscriber-modify-v1')
+        self.assertEquals(r['value'], 'OK')
+
+        r = self.do_set('subscriber-modify-v1', '2620345,445566,xor')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Value failed verification.')
+
+        r = self.do_set('subscriber-modify-v1', '2620345,445566,comp128v1,00112233445566778899AABBCCDDEEFF')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'subscriber-modify-v1')
+        self.assertEquals(r['value'], 'OK')
+
+        r = self.do_set('subscriber-modify-v1', '2620345,445566,none')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'subscriber-modify-v1')
+        self.assertEquals(r['value'], 'OK')
+
     def testSubscriberAddRemove(self):
         r = self.do_set('subscriber-modify-v1', '2620345,445566')
         self.assertEquals(r['mtype'], 'SET_REPLY')

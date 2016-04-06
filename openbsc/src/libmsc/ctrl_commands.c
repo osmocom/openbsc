@@ -24,9 +24,25 @@
 #include <openbsc/db.h>
 #include <openbsc/debug.h>
 
+static bool alg_supported(const char *alg)
+{
+	/*
+	 * TODO: share this with the vty_interface and extend to all
+	 * algorithms supported by libosmocore now. Make it table based
+	 * as well.
+	 */
+	if (strcasecmp(alg, "none") == 0)
+		return true;
+	if (strcasecmp(alg, "xor") == 0)
+		return true;
+	if (strcasecmp(alg, "comp128v1") == 0)
+		return true;
+	return false;
+}
+
 static int verify_subscriber_modify(struct ctrl_cmd *cmd, const char *value, void *d)
 {
-	char *tmp, *imsi, *msisdn, *saveptr = NULL;
+	char *tmp, *imsi, *msisdn, *alg, *ki, *saveptr = NULL;
 	int rc = 0;
 
 	tmp = talloc_strdup(cmd, value);
@@ -35,6 +51,8 @@ static int verify_subscriber_modify(struct ctrl_cmd *cmd, const char *value, voi
 
 	imsi = strtok_r(tmp, ",", &saveptr);
 	msisdn = strtok_r(NULL, ",", &saveptr);
+	alg = strtok_r(NULL, ",", &saveptr);
+	ki = strtok_r(NULL, ",", &saveptr);
 
 	if (!imsi || !msisdn)
 		rc = 1;
@@ -42,6 +60,12 @@ static int verify_subscriber_modify(struct ctrl_cmd *cmd, const char *value, voi
 		rc = 1;
 	else if (strlen(msisdn) >= GSM_EXTENSION_LENGTH)
 		rc = 1;
+	else if (alg) {
+		if (!alg_supported(alg))
+			rc = 1;
+		else if (strcasecmp(alg, "none") != 0 && !ki)
+			rc = 1;
+	}
 
 	talloc_free(tmp);
 	return rc;
@@ -56,7 +80,7 @@ static int get_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net = cmd->node;
-	char *tmp, *imsi, *msisdn, *saveptr = NULL;
+	char *tmp, *imsi, *msisdn, *alg, *ki, *saveptr = NULL;
 	struct gsm_subscriber* subscr;
 	int rc;
 
@@ -66,6 +90,8 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 
 	imsi = strtok_r(tmp, ",", &saveptr);
 	msisdn = strtok_r(NULL, ",", &saveptr);
+	alg = strtok_r(NULL, ",", &saveptr);
+	ki = strtok_r(NULL, ",", &saveptr);
 
 	subscr = subscr_get_by_imsi(net->subscr_group, imsi);
 	if (!subscr)
@@ -80,6 +106,36 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 	/* put it back to the db */
 	rc = db_sync_subscriber(subscr);
 	db_subscriber_update(subscr);
+
+	/* handle optional ciphering */
+	if (alg) {
+		if (strcasecmp(alg, "none") == 0)
+			db_sync_authinfo_for_subscr(NULL, subscr);
+		else {
+			struct gsm_auth_info ainfo = { 0, };
+			/* the verify should make sure that this is okay */
+			OSMO_ASSERT(alg);
+			OSMO_ASSERT(ki);
+
+			if (strcasecmp(alg, "xor") == 0)
+				ainfo.auth_algo = AUTH_ALGO_XOR;
+			else if (strcasecmp(alg, "comp128v1") == 0)
+				ainfo.auth_algo = AUTH_ALGO_COMP128v1;
+
+			rc = osmo_hexparse(ki, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
+			if (rc < 0) {
+				subscr_put(subscr);
+				talloc_free(tmp);
+				cmd->reply = "Failed to parse KI";
+				return CTRL_CMD_ERROR;
+			}
+
+			ainfo.a3a8_ki_len = rc;
+			db_sync_authinfo_for_subscr(&ainfo, subscr);
+			rc = 0;
+		}
+		db_sync_lastauthtuple_for_subscr(NULL, subscr);
+	}
 	subscr_put(subscr);
 
 	talloc_free(tmp);
