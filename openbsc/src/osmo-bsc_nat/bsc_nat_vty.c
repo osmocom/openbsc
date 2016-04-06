@@ -204,6 +204,14 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_nat_bsc, show_nat_bsc_cmd, "show nat num-bscs-configured",
+      SHOW_STR "Display NAT configuration details\n"
+      "BSCs-related\n")
+{
+	vty_out(vty, "%d BSCs configured%s", _nat->num_bsc, VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_bsc, show_bsc_cmd, "show bsc connections",
       SHOW_STR BSC_STR
       "All active connections\n")
@@ -1169,6 +1177,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	/* show commands */
 	install_element_ve(&show_sccp_cmd);
 	install_element_ve(&show_bsc_cmd);
+	install_element_ve(&show_nat_bsc_cmd);
 	install_element_ve(&show_bsc_cfg_cmd);
 	install_element_ve(&show_stats_cmd);
 	install_element_ve(&show_stats_lac_cmd);
