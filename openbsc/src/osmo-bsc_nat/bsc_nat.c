@@ -1320,8 +1320,8 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 			     bsc->cfg ? bsc->cfg->nr : -1);
 		else
 			LOGP(DNAT, LOGL_ERROR,
-			     "Stream error on BSC Nr: %d. Failed to parse ip access message: %d\n",
-			     bsc->cfg ? bsc->cfg->nr : -1, ret);
+			     "Stream error on BSC Nr: %d. Failed to parse ip access message: %d (%s)\n",
+			     bsc->cfg ? bsc->cfg->nr : -1, ret, strerror(-ret));
 
 		bsc_close_connection(bsc);
 		return -1;
