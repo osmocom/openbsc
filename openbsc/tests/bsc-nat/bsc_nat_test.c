@@ -316,7 +316,7 @@ static void test_contrack()
 	printf("Testing connection tracking.\n");
 	nat = bsc_nat_alloc();
 	con = bsc_connection_alloc(nat);
-	con->cfg = bsc_config_alloc(nat, "foo");
+	con->cfg = bsc_config_alloc(nat, "foo", 0);
 	bsc_config_add_lac(con->cfg, 23);
 	bsc_config_add_lac(con->cfg, 49);
 	bsc_config_add_lac(con->cfg, 42);
@@ -434,7 +434,7 @@ static void test_paging(void)
 
 	nat = bsc_nat_alloc();
 	con = bsc_connection_alloc(nat);
-	cfg = bsc_config_alloc(nat, "unknown");
+	cfg = bsc_config_alloc(nat, "unknown", 0);
 	con->cfg = cfg;
 	bsc_config_add_lac(cfg, 23);
 	con->authenticated = 1;
@@ -476,7 +476,7 @@ static void test_mgcp_allocations(void)
 	nat->mgcp_cfg->trunk.number_endpoints = 64;
 
 	bsc = bsc_connection_alloc(nat);
-	bsc->cfg = bsc_config_alloc(nat, "foo");
+	bsc->cfg = bsc_config_alloc(nat, "foo", 0);
 	bsc->cfg->max_endpoints = 60;
 	bsc_config_add_lac(bsc->cfg, 2323);
 	bsc->last_endpoint = 0x22;
@@ -522,7 +522,7 @@ static void test_mgcp_ass_tracking(void)
 	mgcp_endpoints_allocate(&nat->mgcp_cfg->trunk);
 
 	bsc = bsc_connection_alloc(nat);
-	bsc->cfg = bsc_config_alloc(nat, "foo");
+	bsc->cfg = bsc_config_alloc(nat, "foo", 0);
 	bsc_config_add_lac(bsc->cfg, 2323);
 	bsc->last_endpoint = 0x1e;
 	con.bsc = bsc;
@@ -874,7 +874,7 @@ static void test_cr_filter()
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
-	bsc->cfg = bsc_config_alloc(nat, "foo");
+	bsc->cfg = bsc_config_alloc(nat, "foo", 0);
 	bsc_config_add_lac(bsc->cfg, 1234);
 	bsc->cfg->acc_lst_name = "bsc";
 	nat->acc_lst_name = "nat";
@@ -953,7 +953,7 @@ static void test_dt_filter()
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
 	struct nat_sccp_connection *con = talloc_zero(0, struct nat_sccp_connection);
 
-	bsc->cfg = bsc_config_alloc(nat, "foo");
+	bsc->cfg = bsc_config_alloc(nat, "foo", 0);
 	bsc_config_add_lac(bsc->cfg, 23);
 	con->bsc = bsc;
 
@@ -1525,7 +1525,7 @@ static void test_nat_extract_lac()
 	/* initialize the testcase */
 	nat = bsc_nat_alloc();
 	bsc = bsc_connection_alloc(nat);
-	bsc->cfg = bsc_config_alloc(nat, "foo");
+	bsc->cfg = bsc_config_alloc(nat, "foo", 0);
 
 	memset(&con, 0, sizeof(con));
 	con.bsc = bsc;

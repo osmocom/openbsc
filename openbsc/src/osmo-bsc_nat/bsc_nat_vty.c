@@ -799,17 +799,11 @@ DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR",
       "BSC configuration\n" "Identifier of the BSC\n")
 {
 	int bsc_nr = atoi(argv[0]);
-	struct bsc_config *bsc;
+	struct bsc_config *bsc = bsc_config_num(_nat, bsc_nr);
 
-	if (bsc_nr > _nat->num_bsc) {
-		vty_out(vty, "%% The next unused BSC number is %u%s",
-			_nat->num_bsc, VTY_NEWLINE);
-		return CMD_WARNING;
-	} else if (bsc_nr == _nat->num_bsc) {
-		/* allocate a new one */
-		bsc = bsc_config_alloc(_nat, "unknown");
-	} else
-		bsc = bsc_config_num(_nat, bsc_nr);
+	/* allocate a new one */
+	if (!bsc)
+		bsc = bsc_config_alloc(_nat, "unknown", bsc_nr);
 
 	if (!bsc)
 		return CMD_WARNING;
