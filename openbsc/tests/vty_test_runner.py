@@ -111,6 +111,9 @@ class TestVTYGenericBSC(TestVTYBase):
         self.assertTrue(self.vty.verify("network",['']))
         self.assertEquals(self.vty.node(), 'config-net')
         self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify("virtual-network 0",['']))
+        self.assertEquals(self.vty.node(), 'config-net-virt')
+        self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("bts 0",['']))
         self.assertEquals(self.vty.node(), 'config-net-bts')
         self.checkForEndAndExit()
@@ -130,6 +133,12 @@ class TestVTYGenericBSC(TestVTYBase):
         self.vty.command("write terminal")
         self.assertTrue(self.vty.verify("exit",['']))
         self.assertEquals(self.vty.node(), 'config-net-bts')
+        self.assertTrue(self.vty.verify("exit",['']))
+        self.assertEquals(self.vty.node(), 'config-net')
+        self.assertTrue(self.vty.verify("virtual-network 1",['']))
+        self.assertEquals(self.vty.node(), 'config-net-virt')
+        self.checkForEndAndExit()
+        self.vty.command("write terminal")
         self.assertTrue(self.vty.verify("exit",['']))
         self.assertEquals(self.vty.node(), 'config-net')
         self.assertTrue(self.vty.verify("exit",['']))
@@ -283,6 +292,38 @@ class TestVTYNITB(TestVTYGenericBSC):
         for classNum in range(16):
             if classNum != 10:
                 self.assertEquals(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
+
+    def testVirtualNetworks(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("network")
+        self.vty.command("virtual-network 0")
+
+        # Test invalid input
+        self.vty.verify("imsi-prefix 1234567abcd89", ['% PREFIX has to be numeric'])
+        self.vty.verify("name short Test Net", ['% Unknown command.'])
+        self.vty.verify("name long Test Network", ['% Unknown command.'])
+
+        # Set virtual-networks
+        self.vty.verify("imsi-prefix 00202", [''])
+        self.vty.verify("name short TestNet2", [''])
+        self.vty.verify("name long TestNetwork2", [''])
+        self.vty.verify("exit",[''])
+        self.vty.command("virtual-network 1")
+        self.vty.verify("imsi-prefix 00303300", [''])
+        self.vty.verify("name short TestNet3", [''])
+        self.vty.verify("name long TestNetwork3", [''])
+
+         # Verify settings
+        res = self.vty.command("write terminal")
+        self.assert_(res.find('virtual-network 0') > 0)
+        self.assert_(res.find('imsi-prefix 00202') > 0)
+        self.assert_(res.find('name short TestNet2') > 0)
+        self.assert_(res.find('name long TestNetwork2') > 0)
+        self.assert_(res.find('virtual-network 1') > 0)
+        self.assert_(res.find('imsi-prefix 00303300') > 0)
+        self.assert_(res.find('name short TestNet3') > 0)
+        self.assert_(res.find('name long TestNetwork3') > 0)
 
     def testSubscriberCreateDelete(self):
         self.vty.enable()

@@ -17,6 +17,7 @@ extern struct cmd_element cfg_no_description_cmd;
 
 enum bsc_vty_node {
 	GSMNET_NODE = _LAST_OSMOVTY_NODE + 1,
+	VIRT_NET_NODE,
 	BTS_NODE,
 	TRX_NODE,
 	TS_NODE,
@@ -40,6 +41,7 @@ enum bsc_vty_node {
 
 extern int bsc_vty_is_config_node(struct vty *vty, int node);
 extern void bsc_replace_string(void *ctx, char **dst, const char *newstr);
+extern int osmo_is_digits(const char *str);
 
 struct log_info;
 int bsc_vty_init(const struct log_info *cat);

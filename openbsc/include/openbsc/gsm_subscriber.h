@@ -5,7 +5,6 @@
 #include <osmocom/core/linuxlist.h>
 
 #define GSM_IMEI_LENGTH 17
-#define GSM_IMSI_LENGTH 17
 #define GSM_NAME_LENGTH 160
 
 #define GSM_EXTENSION_LENGTH 15 /* MSISDN can only be 15 digits length */

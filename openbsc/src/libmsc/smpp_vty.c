@@ -227,16 +227,6 @@ DEFUN(cfg_esme_no_passwd, cfg_esme_no_passwd_cmd,
 	return CMD_SUCCESS;
 }
 
-static int osmo_is_digits(const char *str)
-{
-	int i;
-	for (i = 0; i < strlen(str); i++) {
-		if (!isdigit(str[i]))
-			return 0;
-	}
-	return 1;
-}
-
 static const struct value_string route_errstr[] = {
 	{ -EEXIST,	"Route already exists" },
 	{ -ENODEV,	"Route does not exist" },

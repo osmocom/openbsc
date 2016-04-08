@@ -681,6 +681,16 @@ static uint8_t bcdify(uint8_t value)
         return ret;
 }
 
+int is_prefix_match_imsi(char *imsi_prefix, char *imsi)
+{
+	size_t prefix_len = strlen(imsi_prefix);
+	size_t imsi_len = strlen(imsi);
+	if ((prefix_len <= imsi_len) &&
+	    (strncmp(imsi, imsi_prefix, prefix_len) == 0)) {
+		return 1;
+	}
+	return 0;
+}
 
 /* Section 9.2.15a */
 int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
@@ -698,13 +708,29 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	int tzunits;
 	int dst = 0;
 
+	char *name_long = net->name_long;
+	char *name_short = net->name_short;
+	int virt_net_nr;
+
 	msg->lchan = conn->lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_INFO;
 
-	if (net->name_long) {
+	if (net->num_virt_net) {
+		for (virt_net_nr = 0; virt_net_nr < net->num_virt_net; virt_net_nr++) {
+			struct gsm_virt_network* virt_net = gsm_virt_net_num(net, virt_net_nr);
+			if (virt_net && strlen(virt_net->imsi_prefix) &&
+			    is_prefix_match_imsi(virt_net->imsi_prefix, conn->subscr->imsi)) {
+				name_long = virt_net->name_long;
+				name_short = virt_net->name_short;
+				break;
+			}
+		}
+	}
+
+	if (name_long) {
 #if 0
 		name_len = strlen(net->name_long);
 		/* 10.5.3.5a */
@@ -720,8 +746,8 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		/* FIXME: Use Cell Broadcast, not UCS-2, since
 		 * UCS-2 is only supported by later revisions of the spec */
 #endif
-		name_len = (strlen(net->name_long)*7)/8;
-		name_pad = (8 - strlen(net->name_long)*7)%8;
+		name_len = (strlen(name_long)*7)/8;
+		name_pad = (8 - strlen(name_long)*7)%8;
 		if (name_pad > 0)
 			name_len++;
 		/* 10.5.3.5a */
@@ -731,11 +757,11 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		ptr8[2] = 0x80 | name_pad; /* Cell Broadcast DCS, no CI */
 
 		ptr8 = msgb_put(msg, name_len);
-		gsm_7bit_encode_n(ptr8, name_len, net->name_long, NULL);
+		gsm_7bit_encode_n(ptr8, name_len, name_long, NULL);
 
 	}
 
-	if (net->name_short) {
+	if (name_short) {
 #if 0
 		name_len = strlen(net->name_short);
 		/* 10.5.3.5a */
@@ -748,8 +774,8 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		for (i = 0; i < name_len; i++)
 			ptr16[i] = htons(net->name_short[i]);
 #endif
-		name_len = (strlen(net->name_short)*7)/8;
-		name_pad = (8 - strlen(net->name_short)*7)%8;
+		name_len = (strlen(name_short)*7)/8;
+		name_pad = (8 - strlen(name_short)*7)%8;
 		if (name_pad > 0)
 			name_len++;
 		/* 10.5.3.5a */
@@ -759,7 +785,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		ptr8[2] = 0x80 | name_pad; /* Cell Broadcast DCS, no CI */
 
 		ptr8 = msgb_put(msg, name_len);
-		gsm_7bit_encode_n(ptr8, name_len, net->name_short, NULL);
+		gsm_7bit_encode_n(ptr8, name_len, name_short, NULL);
 
 	}
 

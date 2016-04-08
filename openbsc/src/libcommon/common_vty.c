@@ -42,6 +42,15 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
 		break;
+	case VIRT_NET_NODE:
+		vty->node = GSMNET_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_virt_network *virt_net = vty->index;
+			vty->index = virt_net->network;
+			vty->index_sub = NULL;
+		}
+		break;
 	case BTS_NODE:
 		vty->node = GSMNET_NODE;
 		{
@@ -140,4 +149,14 @@ void bsc_replace_string(void *ctx, char **dst, const char *newstr)
 	if (*dst)
 		talloc_free(*dst);
 	*dst = talloc_strdup(ctx, newstr);
+}
+
+int osmo_is_digits(const char *str)
+{
+	int i;
+	for (i = 0; i < strlen(str); i++) {
+		if (!isdigit(str[i]))
+			return 0;
+	}
+	return 1;
 }

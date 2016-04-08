@@ -243,6 +243,9 @@ struct gsm_network {
 	unsigned int num_bts;
 	struct llist_head bts_list;
 
+	unsigned int num_virt_net;
+	struct llist_head virt_net_list;
+
 	/* timer values */
 	int T3101;
 	int T3103;
@@ -284,6 +287,16 @@ struct gsm_network {
 
 	/* control interface */
 	struct ctrl_handle *ctrl;
+};
+
+#define GSM_IMSI_LENGTH 17
+struct gsm_virt_network {
+	struct llist_head list;
+	uint8_t nr;
+	struct gsm_network *network;
+	char imsi_prefix[GSM_IMSI_LENGTH];
+	char *name_long;
+	char *name_short;
 };
 
 struct osmo_esme;
@@ -427,6 +440,9 @@ int gsm_bts_model_register(struct gsm_bts_model *model);
 
 struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan);
 void subscr_con_free(struct gsm_subscriber_connection *conn);
+
+struct gsm_virt_network *gsm_virt_net_alloc_register(struct gsm_network *net);
+struct gsm_virt_network *gsm_virt_net_num(struct gsm_network *net, int num);
 
 struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net,
 					enum gsm_bts_type type,
