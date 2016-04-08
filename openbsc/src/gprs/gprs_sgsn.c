@@ -105,6 +105,10 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_ue_ctx(const void *uectx)
 	return NULL;
 }
 
+uint8_t rab_id_from_mm_ctx(struct sgsn_mm_ctx *mm)
+{
+	return mm->iu.rab_id++;
+}
 
 /* look-up a SGSN MM context based on TLLI + RAI */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
@@ -204,6 +208,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx)
 
 	ctx->ran_type = MM_CTX_T_UTRAN_Iu;
 	ctx->iu.ue_ctx = uectx;
+	ctx->iu.rab_id = 1;
 	ctx->mm_state = GMM_DEREGISTERED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, 0);

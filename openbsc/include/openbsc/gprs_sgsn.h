@@ -149,6 +149,7 @@ struct sgsn_mm_ctx {
 		void 			*ue_ctx;
 		struct service_info	service;
 		int			integrity_active;
+		uint8_t			rab_id;
 	} iu;
 	/* VLR number */
 	uint32_t		new_sgsn_addr;
@@ -225,6 +226,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_ptmsi(uint32_t tmsi);
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_imsi(const char *imsi);
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_ue_ctx(const void *uectx);
+uint8_t rab_id_from_mm_ctx(struct sgsn_mm_ctx *mm);
 
 /* look-up by matching TLLI and P-TMSI (think twice before using this) */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli_and_ptmsi(uint32_t tlli,

@@ -698,9 +698,23 @@ static int gsm48_tx_gmm_service_rej(struct sgsn_mm_ctx *mm,
 
 static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm);
 
+void activate_pdp_rabs(struct sgsn_mm_ctx *ctx)
+{
+	/* Send RAB activation requests for all PDP contexts */
+	if (ctx->iu.service.type == 1) {
+		struct sgsn_pdp_ctx *pdp;
+		uint8_t rab_id;
+		llist_for_each_entry(pdp, &ctx->pdp_list, list) {
+			rab_id = rab_id_from_mm_ctx(ctx);
+			iu_rab_act_ps(rab_id, pdp);
+		}
+	}
+}
+
 /* Check if we can already authorize a subscriber */
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
+	int rc;
 #ifndef PTMSI_ALLOC
 	struct sgsn_signal_data sig_data;
 #endif
@@ -783,15 +797,11 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		/* TODO: PMM State transition */
 		ctx->pending_req = 0;
 
-		/* Send RAB activation requests for all PDP contexts */
-		if (ctx->iu.service.type == 1) {
-			struct sgsn_pdp_ctx *pdp;
-			llist_for_each_entry(pdp, &ctx->pdp_list, list) {
-				iu_rab_act_ps(1, pdp);
-			}
-		}
+		rc = gsm48_tx_gmm_service_ack(ctx);
 
-		return gsm48_tx_gmm_service_ack(ctx);
+		activate_pdp_rabs(ctx);
+
+		return rc;
 	case GSM48_MT_GMM_RA_UPD_REQ:
 		/* Send RA UPDATE ACCEPT */
 		return gsm48_tx_gmm_ra_upd_ack(ctx);
