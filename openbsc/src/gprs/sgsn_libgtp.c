@@ -426,7 +426,10 @@ int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedIt
 
 	}
 
-	send_act_pdp_cont_acc(pdp);
+	if (pdp->state != PDP_STATE_CR_CONF) {
+		send_act_pdp_cont_acc(pdp);
+		pdp->state = PDP_STATE_CR_CONF;
+	}
 	return 0;
 
 }
