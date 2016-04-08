@@ -10,6 +10,7 @@ struct ue_conn_ctx {
 	struct llist_head list;
 	struct osmo_sua_link *link;
 	uint32_t conn_id;
+	int integrity_active;
 };
 
 enum iu_event_type {

@@ -115,13 +115,12 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *
 		rc = sgsn_ranap_rab_ass_resp(mm, (RANAP_RAB_SetupOrModifiedItemIEs_t *)data);
 		break;
 	case IU_EVENT_IU_RELEASE:
-		mm->iu.integrity_active = 0;
 		/* Clean up ue_conn_ctx here */
 		LOGMMCTXP(LOGL_INFO, mm, "IU release\n");
 		break;
 	case IU_EVENT_SECURITY_MODE_COMPLETE:
 		/* Continue authentication here */
-		mm->iu.integrity_active = 1;
+		mm->iu.ue_ctx->integrity_active = 1;
 		rc = gsm48_gmm_authorize(mm);
 		break;
 	default:
@@ -768,7 +767,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	}
 
 	/* The MS is authorized */
-	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu && !ctx->iu.integrity_active) {
+	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu && !ctx->iu.ue_ctx->integrity_active) {
 		return iu_tx_sec_mode_cmd(ctx->iu.ue_ctx, &ctx->auth_triplet, 0);
 	}
 

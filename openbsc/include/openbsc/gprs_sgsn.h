@@ -107,6 +107,8 @@ struct service_info {
 	uint16_t pdp_status;
 };
 
+struct ue_conn_ctx;
+
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
 /* Extended by 3GPP TS 23.060, Table 6: SGSN MM and PDP Contexts */
 struct sgsn_mm_ctx {
@@ -146,9 +148,8 @@ struct sgsn_mm_ctx {
 		/* CSG Subscription Data */
 		/* LIPA Allowed */
 		/* Voice Support Match Indicator */
-		void 			*ue_ctx;
+		struct ue_conn_ctx	*ue_ctx;
 		struct service_info	service;
-		int			integrity_active;
 		uint8_t			rab_id;
 	} iu;
 	/* VLR number */
