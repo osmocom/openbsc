@@ -777,6 +777,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 			  "no pending request, authorization completed\n");
 		break;
 	case GSM48_MT_GMM_ATTACH_REQ:
+		ctx->pending_req = 0;
 
 		extract_subscr_msisdn(ctx);
 		extract_subscr_hlr(ctx);
@@ -802,6 +803,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 
 		return rc;
 	case GSM48_MT_GMM_RA_UPD_REQ:
+		ctx->pending_req = 0;
 		/* Send RA UPDATE ACCEPT */
 		return gsm48_tx_gmm_ra_upd_ack(ctx);
 
@@ -1544,6 +1546,8 @@ static int gsm48_rx_gmm_service_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		reject_cause = GMM_CAUSE_MS_ID_NOT_DERIVED;
 		goto rejected;
 	}
+
+	ctx->mm_state = GMM_COMMON_PROC_INIT;
 
 	ctx->iu.service.type = service_type;
 
