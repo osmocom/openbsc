@@ -373,6 +373,9 @@ static int bootstrap_bts(struct gsm_bts *bts)
 {
 	int i, n;
 
+	if (!bts->model)
+		return -EFAULT;
+
 	if (bts->model->start && !bts->model->started) {
 		int ret = bts->model->start(bts->network);
 		if (ret < 0)
