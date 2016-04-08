@@ -787,7 +787,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		if (ctx->iu.service.type == 1) {
 			struct sgsn_pdp_ctx *pdp;
 			llist_for_each_entry(pdp, &ctx->pdp_list, list) {
-				iu_rab_act_ps(pdp);
+				iu_rab_act_ps(1, pdp);
 			}
 		}
 
