@@ -192,6 +192,46 @@ const char *rrlp_mode_name(enum rrlp_mode mode)
 	return get_value_string(rrlp_mode_names, mode);
 }
 
+struct gsm_virt_network *gsm_virt_net_alloc(void *ctx)
+{
+	struct gsm_virt_network *virt_net = talloc_zero(ctx, struct gsm_virt_network);
+	if (!virt_net)
+		return NULL;
+	return virt_net;
+}
+
+struct gsm_virt_network *gsm_virt_net_alloc_register(struct gsm_network *net)
+{
+	struct gsm_virt_network *virt_net;
+
+	virt_net = gsm_virt_net_alloc(net);
+	if (!virt_net)
+		return NULL;
+
+	virt_net->nr = net->num_virt_net++;
+	virt_net->network = net;
+	virt_net->name_short = talloc_strdup(net, "OpenBSC");
+	virt_net->name_long = talloc_strdup(net, "OpenBSC");
+
+	llist_add_tail(&virt_net->list, &net->virt_net_list);
+	return virt_net;
+}
+
+struct gsm_virt_network *gsm_virt_net_num(struct gsm_network *net, int num)
+{
+	struct gsm_virt_network *virt_net;
+
+	if (num >= net->num_virt_net)
+		return NULL;
+
+	llist_for_each_entry(virt_net, &net->virt_net_list, list) {
+		if (virt_net->nr == num)
+			return virt_net;
+	}
+
+	return NULL;
+}
+
 static const struct value_string bts_gprs_mode_names[] = {
 	{ BTS_GPRS_NONE,	"none" },
 	{ BTS_GPRS_GPRS,	"gprs" },

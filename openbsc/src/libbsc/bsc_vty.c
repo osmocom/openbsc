@@ -112,6 +112,12 @@ struct cmd_node net_node = {
 	1,
 };
 
+struct cmd_node virt_net_node = {
+	VIRT_NET_NODE,
+	"%s(config-net-virt)# ",
+	1,
+};
+
 struct cmd_node bts_node = {
 	BTS_NODE,
 	"%s(config-net-bts)# ",
@@ -339,6 +345,43 @@ DEFUN(show_bts, show_bts_cmd, "show bts [<0-255>]",
 	/* print all BTS's */
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++)
 		bts_dump_vty(vty, gsm_bts_num(net, bts_nr));
+
+	return CMD_SUCCESS;
+}
+
+static void virt_net_dump_vty(struct vty *vty, struct gsm_virt_network *virt_net)
+{
+	vty_out(vty, "Virtual network %u%s", virt_net->nr, VTY_NEWLINE);
+	if (strlen(virt_net->imsi_prefix)) {
+		vty_out(vty, "  imsi-prefix %s%s", virt_net->imsi_prefix, VTY_NEWLINE);
+	}
+	vty_out(vty, "  Long network name: '%s'%s",
+		virt_net->name_long, VTY_NEWLINE);
+	vty_out(vty, "  Short network name: '%s'%s",
+		virt_net->name_short, VTY_NEWLINE);
+}
+
+DEFUN(show_virt_net, show_virt_net_cmd, "show virtual-network [<0-255>]",
+	SHOW_STR "Display information about a virtual network\n"
+		"Virtual network number")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	int virt_net_nr;
+
+	if (argc != 0) {
+		/* use the virtual network number that the user has specified */
+		virt_net_nr = atoi(argv[0]);
+		if (virt_net_nr >= net->num_virt_net) {
+			vty_out(vty, "%% can't find virtual network '%s'%s", argv[0],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		virt_net_dump_vty(vty, gsm_virt_net_num(net, virt_net_nr));
+		return CMD_SUCCESS;
+	}
+	/* print all virtual networks */
+	for (virt_net_nr = 0; virt_net_nr < net->num_virt_net; virt_net_nr++)
+		virt_net_dump_vty(vty, gsm_virt_net_num(net, virt_net_nr));
 
 	return CMD_SUCCESS;
 }
@@ -739,6 +782,27 @@ static int config_write_bts(struct vty *v)
 
 	llist_for_each_entry(bts, &gsmnet->bts_list, list)
 		config_write_bts_single(v, bts);
+
+	return CMD_SUCCESS;
+}
+
+static void config_write_virt_net_single(struct vty *vty, struct gsm_virt_network *virt_net)
+{
+	vty_out(vty, " virtual-network %u%s", virt_net->nr, VTY_NEWLINE);
+	if (strlen(virt_net->imsi_prefix)) {
+		vty_out(vty, "  imsi-prefix %s%s", virt_net->imsi_prefix, VTY_NEWLINE);
+	}
+	vty_out(vty, "  name short %s%s", virt_net->name_short, VTY_NEWLINE);
+	vty_out(vty, "  name long %s%s", virt_net->name_long, VTY_NEWLINE);
+}
+
+static int config_write_virt_net(struct vty *v)
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(v);
+	struct gsm_virt_network *virt_net;
+
+	llist_for_each_entry(virt_net, &gsmnet->virt_net_list, list)
+		config_write_virt_net_single(v, virt_net);
 
 	return CMD_SUCCESS;
 }
@@ -1609,6 +1673,72 @@ DEFUN(cfg_net_subscr_keep,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->subscr_group->keep_subscr = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_virt_net,
+      cfg_virt_net_cmd,
+      "virtual-network <0-255>",
+      "Select a virtual network to configure\n"
+      "Virtual-network Number\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	int virt_net_nr = atoi(argv[0]);
+	struct gsm_virt_network *virt_net;
+
+	if (virt_net_nr > gsmnet->num_virt_net) {
+		vty_out(vty, "%% The next unused Virtual-network number is %u%s",
+			gsmnet->num_virt_net, VTY_NEWLINE);
+		return CMD_WARNING;
+	} else if (virt_net_nr == gsmnet->num_virt_net) {
+		/* allocate a new one */
+		virt_net = gsm_virt_net_alloc_register(gsmnet);
+	} else
+		virt_net = gsm_virt_net_num(gsmnet, virt_net_nr);
+
+	if (!virt_net) {
+		vty_out(vty, "%% Unable to allocate Virtual-network %u%s",
+			gsmnet->num_virt_net, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty->index = virt_net;
+	vty->index_sub = NULL;
+	vty->node = VIRT_NET_NODE;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_virt_net_imsi_prefix,
+      cfg_virt_net_imsi_prefix_cmd,
+      "imsi-prefix PREFIX",
+      "Set the IMSI prefix\n"
+      "Prefix\n")
+{
+	struct gsm_virt_network *virt_net = vty->index;
+	if (!osmo_is_digits(argv[0])) {
+		vty_out(vty, "%% PREFIX has to be numeric%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	snprintf(virt_net->imsi_prefix, sizeof(virt_net->imsi_prefix), "%s", argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_virt_net_name,
+      cfg_virt_net_name_cmd,
+      "name (short|long) NAME",
+      "Set the GSM network name\n"
+      "Short network name\n"
+      "Long network name\n"
+       NAME_CMD_STR NAME_STR)
+{
+	struct gsm_virt_network *virt_net = vty->index;
+
+	if (!strcmp(argv[0], "short"))
+		bsc_replace_string(virt_net->network, &virt_net->name_short, argv[1]);
+	else
+		bsc_replace_string(virt_net->network, &virt_net->name_long, argv[1]);
+
 	return CMD_SUCCESS;
 }
 
@@ -3763,6 +3893,7 @@ int bsc_vty_init(const struct log_info *cat)
 
 
 	install_element_ve(&show_net_cmd);
+	install_element_ve(&show_virt_net_cmd);
 	install_element_ve(&show_bts_cmd);
 	install_element_ve(&show_trx_cmd);
 	install_element_ve(&show_ts_cmd);
@@ -3810,6 +3941,12 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
 	install_element(GSMNET_NODE, &cfg_net_subscr_keep_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
+
+	install_element(GSMNET_NODE, &cfg_virt_net_cmd);
+	install_node(&virt_net_node, config_write_virt_net);
+	vty_install_default(VIRT_NET_NODE);
+	install_element(VIRT_NET_NODE, &cfg_virt_net_imsi_prefix_cmd);
+	install_element(VIRT_NET_NODE, &cfg_virt_net_name_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
