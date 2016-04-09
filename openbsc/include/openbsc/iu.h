@@ -15,8 +15,12 @@ struct ue_conn_ctx {
 
 enum iu_event_type {
 	IU_EVENT_RAB_ASSIGN,
-	IU_EVENT_IU_RELEASE,
 	IU_EVENT_SECURITY_MODE_COMPLETE,
+	IU_EVENT_IU_RELEASE, /* An actual Iu Release message was received */
+	IU_EVENT_LINK_INVALIDATED, /* A SUA link was lost or closed down */
+	/* FIXME: maybe IU_EVENT_IU_RELEASE and IU_EVENT_LINK_INVALIDATED
+	 * should be combined to one generic event that simply means the
+	 * ue_conn_ctx should no longer be used, for whatever reason. */
 };
 
 /* Implementations of iu_recv_cb_t shall find the ue_conn_ctx in msg->dst. */

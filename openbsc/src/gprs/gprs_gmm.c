@@ -115,11 +115,11 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *
 		rc = sgsn_ranap_rab_ass_resp(mm, (RANAP_RAB_SetupOrModifiedItemIEs_t *)data);
 		break;
 	case IU_EVENT_IU_RELEASE:
-		{
+		/* fall thru */
+	case IU_EVENT_LINK_INVALIDATED:
 		/* Clean up ue_conn_ctx here */
 		LOGMMCTXP(LOGL_INFO, mm, "IU release\n");
 		rc = 0;
-		}
 		break;
 	case IU_EVENT_SECURITY_MODE_COMPLETE:
 		/* Continue authentication here */
