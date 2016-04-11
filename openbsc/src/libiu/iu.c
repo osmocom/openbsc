@@ -445,6 +445,8 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 			rc = ranap_handle_co_iu_rel_req(ctx, &message->msg.iu_ReleaseRequestIEs);
 			break;
 		default:
+			LOGP(DRANAP, LOGL_ERROR, "Received Initiating Message: unknown Procedure Code %d\n",
+			     message->procedureCode);
 			rc = -1;
 			break;
 		}
@@ -460,8 +462,14 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 			/* Iu Release Complete */
 			LOGP(DRANAP, LOGL_NOTICE, "FIXME: Handle Iu release complete\n");
 			rc = global_iu_event_cb(ctx, IU_EVENT_IU_RELEASE, NULL);
+			if (rc) {
+				LOGP(DRANAP, LOGL_ERROR, "Iu Release event: Iu Event callback returned %d\n",
+				     rc);
+			}
 			break;
 		default:
+			LOGP(DRANAP, LOGL_ERROR, "Received Successful Outcome: unknown Procedure Code %d\n",
+			     message->procedureCode);
 			rc = -1;
 			break;
 		}
@@ -474,6 +482,8 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 		}
 	case RANAP_RANAP_PDU_PR_unsuccessfulOutcome:
 	default:
+		LOGP(DRANAP, LOGL_ERROR, "Received Unsuccessful Outcome: Procedure Code %d\n",
+		     message->procedureCode);
 		rc = -1;
 		break;
 	}
@@ -564,6 +574,14 @@ static int iu_page(const char *imsi, const uint32_t *tmsi_or_ptimsi,
 	struct iu_rnc *rnc;
 	int pagings_sent = 0;
 
+	LOGP(DRANAP, LOGL_DEBUG, "%s: Looking for RNCs to page for IMSI %s"
+	     " (paging will use %s)\n",
+	     is_ps? "IuPS" : "IuCS",
+	     imsi,
+	     tmsi_or_ptimsi ? (is_ps? "PTMSI" : "TMSI")
+		              : "IMSI"
+	    );
+
 	llist_for_each_entry(rnc, &rnc_list, entry) {
 		if (!rnc->link) {
 			/* Not actually connected, don't count it. */
@@ -576,8 +594,13 @@ static int iu_page(const char *imsi, const uint32_t *tmsi_or_ptimsi,
 
 		/* Found a match! */
 		if (iu_tx_paging_cmd(rnc->link, imsi, tmsi_or_ptimsi, is_ps, 0)
-		    == 0)
+		    == 0) {
+			LOGP(DRANAP, LOGL_DEBUG,
+			     "%s: Paged for IMSI %s on RNC %d, on SUA link %p\n",
+			     is_ps? "IuPS" : "IuCS",
+			     imsi, rnc->rnc_id, rnc->link);
 			pagings_sent ++;
+		}
 	}
 
 	/* Some logging... */

@@ -60,6 +60,7 @@ static inline void log_subscribers(struct gsm_network *network)
 			break;
 		case IFACE_A:
 			DEBUGPC(DIUCS, " A");
+			/* TODO log A-interface connection details */
 			break;
 		case IFACE_UNKNOWN:
 			DEBUGPC(DIUCS, " ?");

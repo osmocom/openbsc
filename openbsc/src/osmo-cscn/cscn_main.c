@@ -332,7 +332,7 @@ static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gpr
 static int rx_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type,
 		       void *data)
 {
-	DEBUGP(DIUCS, "got Iu-CS event %u\n", type);
+	DEBUGP(DIUCS, "got IuCS event %u\n", type);
 
 	return iucs_rx_ranap_event(cscn_network, ctx, type, data);
 }
@@ -489,7 +489,7 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	/* Set up A-Interface */
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
-	/* Set up Iu-CS */
+	/* Set up IuCS */
 	iu_init(tall_cscn_ctx, "127.0.0.1", 14001, rcvmsg_iu_cs, rx_iu_event);
 
 	if (cscn_cmdline_config.daemonize) {

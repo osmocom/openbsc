@@ -188,7 +188,7 @@ struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
 
 	/* Start paging.. we know it is async so we can do it before */
 	if (!subscr->is_paging) {
-		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet.\n",
+		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet, start paging.\n",
 			subscr_name(subscr));
 		rc = msc_paging_request(subscr->group->net, subscr, channel_type,
 					subscr_paging_cb, subscr);
@@ -200,6 +200,12 @@ struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
 		/* reduced on the first paging callback */
 		subscr_get(subscr);
 		subscr->is_paging = 1;
+		LOGP(DMM, LOGL_DEBUG, "Paged subscriber %s.\n",
+		     subscr_name(subscr));
+	}
+	else {
+		LOGP(DMM, LOGL_DEBUG, "Subscriber %s already paged.\n",
+			subscr_name(subscr));
 	}
 
 	/* TODO: Stop paging in case of memory allocation failure */
