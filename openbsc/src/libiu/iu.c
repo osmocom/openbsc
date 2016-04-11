@@ -479,6 +479,11 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 			/* RAB Assignment Response */
 			rc = ranap_handle_co_rab_ass_resp(ctx, &message->msg.raB_AssignmentResponseIEs);
 			break;
+		default:
+			LOGP(DRANAP, LOGL_ERROR, "Received Outcome: unknown Procedure Code %d\n",
+			     message->procedureCode);
+			rc = -1;
+			break;
 		}
 	case RANAP_RANAP_PDU_PR_unsuccessfulOutcome:
 	default:
