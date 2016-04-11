@@ -793,7 +793,6 @@ DEFUN(show_stats,
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 
-	openbsc_vty_print_statistics(vty, net);
 	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
 		osmo_counter_get(net->stats.loc_upd_type.attach),
 		osmo_counter_get(net->stats.loc_upd_type.normal),
