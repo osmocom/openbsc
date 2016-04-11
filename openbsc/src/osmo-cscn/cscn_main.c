@@ -481,11 +481,9 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
-#if 0
 	/* start the SMS queue */
 	if (sms_queue_start(cscn_network, 20) != 0)
 		return -1;
-#endif
 
 	/* Set up A-Interface */
 	/* TODO: implement A-Interface and remove above legacy stuff. */
