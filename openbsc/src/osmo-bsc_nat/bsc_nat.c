@@ -34,6 +34,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #define _GNU_SOURCE
 #include <getopt.h>
@@ -1626,6 +1627,8 @@ int main(int argc, char **argv)
 	local_addr.s_addr = INADDR_ANY;
 	handle_options(argc, argv);
 
+	nat->include_base = dirname(talloc_strdup(tall_bsc_ctx, config_file));
+
 	rate_ctr_init(tall_bsc_ctx);
 	osmo_stats_init(tall_bsc_ctx);
 
@@ -1651,7 +1654,7 @@ int main(int argc, char **argv)
 	/* seed the PRNG */
 	srand(time(NULL));
 
-
+	LOGP(DNAT, LOGL_NOTICE, "BSCs configured from %s\n", nat->resolved_path);
 
 	/*
 	 * Setup the MGCP code..

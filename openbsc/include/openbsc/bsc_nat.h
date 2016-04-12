@@ -264,6 +264,11 @@ struct bsc_nat {
 
 	struct bsc_endpoint *bsc_endpoints;
 
+	/* path to file with BSC config */
+	char *include_file;
+	char *include_base;
+	char *resolved_path;
+
 	/* filter */
 	char *acc_lst_name;
 
