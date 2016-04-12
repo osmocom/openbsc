@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <time.h>
 #include <netinet/in.h>
+#include <openssl/rand.h>
 
 #include "bscconfig.h"
 
@@ -62,6 +63,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/tlv.h>
+#include <osmocom/crypt/auth.h>
 
 #include <openbsc/msc_ifaces.h>
 #include <openbsc/iu.h>
@@ -142,6 +144,33 @@ void allocate_security_operation(struct gsm_subscriber_connection *conn)
 	                                  struct gsm_security_operation);
 }
 
+int iu_hack__get_hardcoded_auth_tuple(struct gsm_auth_tuple *atuple)
+{
+	uint8_t tmp_rand[16];
+	struct osmo_auth_vector vec;
+	/* Ki 000102030405060708090a0b0c0d0e0f */
+	struct osmo_sub_auth_data auth = {
+		.type	= OSMO_AUTH_TYPE_GSM,
+		.algo	= OSMO_AUTH_ALG_COMP128v1,
+		.u.gsm.ki = {
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+			0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+			0x0e, 0x0f
+		},
+	};
+
+	RAND_bytes(&tmp_rand, sizeof(tmp_rand));
+
+	memset(&vec, 0, sizeof(vec));
+	osmo_auth_gen_vec(&vec, &auth, tmp_rand);
+
+	atuple->key_seq = 0;
+	memcpy(&atuple->rand, &tmp_rand, sizeof(tmp_rand));
+	memcpy(&atuple->sres, &vec.sres, sizeof(vec.sres));
+	memcpy(&atuple->kc, &vec.kc, sizeof(vec.kc));
+	return AUTH_DO_AUTH;
+}
+
 int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
                          gsm_cbfn *cb, void *cb_data)
 {
@@ -177,18 +206,10 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	/* If not done yet, try to get info for this user */
 	if (status < 0) {
 		/* DEV HACK: hardcode keys for Iu */
-		if (conn->via_iface == IFACE_IU) {
-			/* Ki 000102030405060708090a0b0c0d0e0f */
-			atuple = (struct gsm_auth_tuple ) {
-				.key_seq = 0,
-				.rand = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-				.sres = { 0x61, 0xb5, 0x69, 0xf5 },
-				.kc = { 0xd9, 0xd9, 0xc2, 0xed, 0x62, 0x7d, 0x68, 0x00 },
-			};
-			rc = AUTH_DO_AUTH;
-		}
+		if (conn->via_iface == IFACE_IU)
+			rc = iu_hack__get_hardcoded_auth_tuple(&atuple);
 		else
-		rc = auth_get_tuple_for_subscr(&atuple, subscr, key_seq);
+			rc = auth_get_tuple_for_subscr(&atuple, subscr, key_seq);
 		DEBUGP(DMM, "auth_get_tuple_for_subscr(%s) == %d\n",
 		       subscr_name(subscr), rc);
 		if (rc <= 0) {
