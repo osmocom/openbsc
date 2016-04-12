@@ -115,8 +115,40 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *
 		rc = sgsn_ranap_rab_ass_resp(mm, (RANAP_RAB_SetupOrModifiedItemIEs_t *)data);
 		break;
 	case IU_EVENT_IU_RELEASE:
+		{
+		uint8_t tmp_rand[16];
+		struct osmo_auth_vector vec;
+		/* Ki 000102030405060708090a0b0c0d0e0f */
+		struct osmo_sub_auth_data auth = {
+			.type	= OSMO_AUTH_TYPE_GSM,
+			.algo	= OSMO_AUTH_ALG_COMP128v1,
+			.u.gsm.ki = {
+				0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+				0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+				0x0e, 0x0f
+			},
+		};
+
+		/* XXX: Hack to make 3G auth work with special SIM card */
+		mm->auth_state = SGSN_AUTH_AUTHENTICATE;
+		mm->is_authenticated = 0;
+
+
+		RAND_bytes(&tmp_rand, 16);
+
+		memset(&vec, 0, sizeof(vec));
+		osmo_auth_gen_vec(&vec, &auth, tmp_rand);
+
+
+
+		mm->auth_triplet.key_seq = 0;
+		memcpy(&mm->auth_triplet.rand, &tmp_rand, sizeof(tmp_rand));
+		memcpy(&mm->auth_triplet.sres, &vec.sres, sizeof(vec.sres));
+		memcpy(&mm->auth_triplet.kc, &vec.kc, sizeof(vec.kc));
 		/* Clean up ue_conn_ctx here */
 		LOGMMCTXP(LOGL_INFO, mm, "IU release\n");
+		rc = 0;
+		}
 		break;
 	case IU_EVENT_SECURITY_MODE_COMPLETE:
 		/* Continue authentication here */
@@ -1076,18 +1108,34 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	ctx->ra = ra_id;
 	if (ctx->ran_type == MM_CTX_T_GERAN_Gb)
 		ctx->gb.cell_id = cid;
-	else if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
-	{
+	else if (ctx->ran_type == MM_CTX_T_UTRAN_Iu) {
+		uint8_t tmp_rand[16];
+		struct osmo_auth_vector vec;
+		/* Ki 000102030405060708090a0b0c0d0e0f */
+		struct osmo_sub_auth_data auth = {
+			.type	= OSMO_AUTH_TYPE_GSM,
+			.algo	= OSMO_AUTH_ALG_COMP128v1,
+			.u.gsm.ki = {
+				0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+				0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+				0x0e, 0x0f
+			},
+		};
 		//ctx->iu.sac = sac;
 		/* XXX: Hack to make 3G auth work with special SIM card */
 		ctx->auth_state = SGSN_AUTH_AUTHENTICATE;
-		/* Ki 000102030405060708090a0b0c0d0e0f */
-		ctx->auth_triplet = (struct gsm_auth_tuple ) {
-			.key_seq = 0,
-			.rand = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-			.sres = { 0x61, 0xb5, 0x69, 0xf5 },
-			.kc = { 0xd9, 0xd9, 0xc2, 0xed, 0x62, 0x7d, 0x68, 0x00 },
-		};
+
+		RAND_bytes(&tmp_rand, 16);
+
+		memset(&vec, 0, sizeof(vec));
+		osmo_auth_gen_vec(&vec, &auth, tmp_rand);
+
+
+
+		ctx->auth_triplet.key_seq = 0;
+		memcpy(&ctx->auth_triplet.rand, &tmp_rand, sizeof(tmp_rand));
+		memcpy(&ctx->auth_triplet.sres, &vec.sres, sizeof(vec.sres));
+		memcpy(&ctx->auth_triplet.kc, &vec.kc, sizeof(vec.kc));
 	}
 
 	/* Update MM Context with other data */
