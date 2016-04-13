@@ -1191,18 +1191,8 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 
 		/* send Security Mode Command (IK) to start integrity
 		 * protection */
-
-		/* DEV HACK: hardcoded auth tuple */
-		/* instead, employ auth_get_tuple_for_subscr() */
-		struct gsm_auth_tuple tp;
-		tp = (struct gsm_auth_tuple) {
-			.key_seq = 0,
-			.rand = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },
-			.sres = { 0x61, 0xb5, 0x69, 0xf5 },
-			.kc = { 0xd9, 0xd9, 0xc2, 0xed, 0x62, 0x7d, 0x68, 0x00 },
-		};
-
-		return iu_tx_sec_mode_cmd(conn->iu.ue_ctx, &tp, 0, 1);
+		return iu_tx_sec_mode_cmd(conn->iu.ue_ctx,
+					  &conn->sec_operation->atuple, 0, 1);
 	}
 
 	/* Only authentication requested, and we're done. */
