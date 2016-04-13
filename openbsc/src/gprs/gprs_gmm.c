@@ -1111,9 +1111,9 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 
 
 		ctx->auth_triplet.key_seq = 0;
-		memcpy(&ctx->auth_triplet.rand, &tmp_rand, sizeof(tmp_rand));
-		memcpy(&ctx->auth_triplet.sres, &vec.sres, sizeof(vec.sres));
-		memcpy(&ctx->auth_triplet.kc, &vec.kc, sizeof(vec.kc));
+		memcpy(&ctx->auth_triplet.rand, &tmp_rand, sizeof(ctx->auth_triplet.rand));
+		memcpy(&ctx->auth_triplet.sres, &vec.sres, sizeof(ctx->auth_triplet.sres));
+		memcpy(&ctx->auth_triplet.kc, &vec.kc, sizeof(ctx->auth_triplet.kc));
 	}
 
 	/* Update MM Context with other data */

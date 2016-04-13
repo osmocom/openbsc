@@ -165,9 +165,9 @@ int iu_hack__get_hardcoded_auth_tuple(struct gsm_auth_tuple *atuple)
 	osmo_auth_gen_vec(&vec, &auth, tmp_rand);
 
 	atuple->key_seq = 0;
-	memcpy(&atuple->rand, &tmp_rand, sizeof(tmp_rand));
-	memcpy(&atuple->sres, &vec.sres, sizeof(vec.sres));
-	memcpy(&atuple->kc, &vec.kc, sizeof(vec.kc));
+	memcpy(&atuple->rand, &tmp_rand, sizeof(atuple->rand));
+	memcpy(&atuple->sres, &vec.sres, sizeof(atuple->sres));
+	memcpy(&atuple->kc, &vec.kc, sizeof(atuple->kc));
 	return AUTH_DO_AUTH;
 }
 
