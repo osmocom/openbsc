@@ -736,13 +736,13 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.assertEqual(data, "\x00\x01\xfe\x04")
 
         print "Going to send ID_RESP response"
-        res = ussdSocket.send("\x00\x07\xfe\x05\x00\x04\x01\x6b\x65\x79")
+        res = ipa_send_resp(ussdSocket, "\x6b\x65\x79")
         self.assertEqual(res, 10)
 
         # initiating PING/PONG cycle to know, that the ID_RESP message has been processed
 
         print "Going to send PING request"
-        res = ussdSocket.send("\x00\x01\xfe\x00")
+        res = ipa_send_ping(ussdSocket)
         self.assertEqual(res, 4)
 
         print "Expecting PONG response"
@@ -1006,6 +1006,31 @@ def add_nat_test(suite, workdir):
         return
     test = unittest.TestLoader().loadTestsFromTestCase(TestVTYNAT)
     suite.addTest(test)
+
+def ipa_send_pong(x, verbose = False):
+    if (verbose):
+        print "\tBSC -> NAT: PONG!"
+    return x.send("\x00\x01\xfe\x01")
+
+def ipa_send_ping(x, verbose = False):
+    if (verbose):
+        print "\tBSC -> NAT: PING?"
+    return x.send("\x00\x01\xfe\x00")
+
+def ipa_send_ack(x, verbose = False):
+    if (verbose):
+            print "\tBSC -> NAT: IPA ID ACK"
+    return x.send("\x00\x01\xfe\x06")
+
+def ipa_send_reset(x, verbose = False):
+    if (verbose):
+        print "\tBSC -> NAT: RESET"
+    return x.send("\x00\x12\xfd\x09\x00\x03\x05\x07\x02\x42\xfe\x02\x42\xfe\x06\x00\x04\x30\x04\x01\x20")
+
+def ipa_send_resp(x, tk, verbose = False):
+    if (verbose):
+        print "\tBSC -> NAT: IPA ID RESP"
+    return x.send("\x00\x07\xfe\x05\x00\x04\x01" + tk)
 
 def add_bsc_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc")):
