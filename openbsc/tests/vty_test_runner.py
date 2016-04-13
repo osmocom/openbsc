@@ -620,11 +620,60 @@ class TestVTYBSC(TestVTYGenericBSC):
 class TestVTYNAT(TestVTYGenericBSC):
 
     def vty_command(self):
-        return ["./src/osmo-bsc_nat/osmo-bsc_nat", "-c",
+        return ["./src/osmo-bsc_nat/osmo-bsc_nat", "-l", "127.0.0.1", "-c",
                 "doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg"]
 
     def vty_app(self):
         return (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat")
+
+    def testBSCreload(self):
+        # use separate ip to avoid interference with other tests
+        ip = "127.0.0.4"
+        self.vty.enable()
+        bscs1 = self.vty.command("show bscs-config")
+        nat_bsc_reload(self)
+        bscs2 = self.vty.command("show bscs-config")
+        # check that multiple calls to bscs-config-file give the same result
+        self.assertEquals(bscs1, bscs2)
+
+        # add new bsc
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.command("bsc 5")
+        self.vty.command("token key")
+        self.vty.command("location_area_code 666")
+        self.vty.command("end")
+
+        # update bsc token
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.command("bsc 1")
+        self.vty.command("token xyu")
+        self.vty.command("end")
+
+        nat_msc_ip(self, ip)
+        msc = nat_msc_test(self, ip)
+        b0 = nat_bsc_sock_test(0, "lol")
+        b1 = nat_bsc_sock_test(1, "xyu")
+        b2 = nat_bsc_sock_test(5, "key")
+
+        self.assertEquals("3 BSCs configured", self.vty.command("show nat num-bscs-configured"))
+        self.assertTrue(3 == nat_bsc_num_con(self))
+        self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
+
+        nat_bsc_reload(self)
+        bscs2 = self.vty.command("show bscs-config")
+        # check that the reset to initial config succeeded
+        self.assertEquals(bscs1, bscs2)
+
+        self.assertEquals("2 BSCs configured", self.vty.command("show nat num-bscs-configured"))
+        self.assertTrue(1 == nat_bsc_num_con(self))
+        rem = self.vty.command("show bsc connections").split(' ')
+        # remaining connection is for BSC0
+        self.assertEquals('0', rem[2])
+        # remaining connection is authorized
+        self.assertEquals('1', rem[4])
+        self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
 
     def testVtyTree(self):
         self.vty.enable()
@@ -1031,6 +1080,75 @@ def ipa_send_resp(x, tk, verbose = False):
     if (verbose):
         print "\tBSC -> NAT: IPA ID RESP"
     return x.send("\x00\x07\xfe\x05\x00\x04\x01" + tk)
+
+def nat_bsc_reload(x):
+    x.vty.command("configure terminal")
+    x.vty.command("nat")
+    x.vty.command("bscs-config-file bscs.config")
+    x.vty.command("end")
+
+def nat_msc_ip(x, ip):
+    x.vty.command("configure terminal")
+    x.vty.command("nat")
+    x.vty.command("msc ip " + ip)
+    x.vty.command("end")
+
+def data2str(d):
+    return "".join("{:02x}".format(ord(c)) for c in d)
+
+def nat_msc_test(x, ip, verbose = False):
+    msc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    msc.settimeout(32)
+    msc.bind((ip, 5000))
+    msc.listen(5)
+    if (verbose):
+        print "MSC is ready at " + ip
+    while "MSC is connected: 0" == x.vty.command("show msc connection"):
+        conn, addr = msc.accept()
+        if (verbose):
+            print "MSC got connection from ", addr
+    return conn
+
+def ipa_handle_small(x, verbose = False):
+    s = data2str(x.recv(4))
+    if "0001fe00" == s:
+        if (verbose):
+            print "\tBSC <- NAT: PING?"
+        ipa_send_pong(x, verbose)
+    elif "0001fe06" == s:
+        if (verbose):
+            print "\tBSC <- NAT: IPA ID ACK"
+        ipa_send_ack(x, verbose)
+    elif "0001fe00" == s:
+        if (verbose):
+            print "\tBSC <- NAT: PONG!"
+    else:
+        if (verbose):
+            print "\tBSC <- NAT: ", s
+
+def ipa_handle_resp(x, tk, verbose = False):
+    s = data2str(x.recv(38))
+    if "0023fe040108010701020103010401050101010011" in s:
+         ipa_send_resp(x, tk, verbose)
+    else:
+        if (verbose):
+            print "\tBSC <- NAT: ", s
+
+def nat_bsc_num_con(x):
+    return len(x.vty.command("show bsc connections").split('\n'))
+
+def nat_bsc_sock_test(nr, tk, verbose = False):
+    bsc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    bsc.bind(('127.0.0.1' + str(nr), 0))
+    bsc.connect(('127.0.0.1', 5000))
+    if (verbose):
+        print "BSC%d " %nr
+        print "\tconnected to %s:%d" % bsc.getpeername()
+    ipa_handle_small(bsc, verbose)
+    ipa_handle_resp(bsc, tk, verbose)
+    bsc.recv(27) # MGCP msg
+    ipa_handle_small(bsc, verbose)
+    return bsc
 
 def add_bsc_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc")):

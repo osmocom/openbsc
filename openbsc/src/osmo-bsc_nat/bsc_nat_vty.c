@@ -39,6 +39,7 @@
 #include <osmocom/sccp/sccp.h>
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 static struct bsc_nat *_nat;
 
@@ -513,6 +514,8 @@ DEFUN(cfg_nat_include,
 {
 	char *path;
 	int rc;
+	struct bsc_config *cf1, *cf2;
+	struct bsc_connection *con1, *con2;
 
 	if ('/' == argv[0][0])
 		bsc_replace_string(_nat, &_nat->resolved_path, argv[0]);
@@ -523,13 +526,32 @@ DEFUN(cfg_nat_include,
 		talloc_free(path);
 	}
 
+	llist_for_each_entry_safe(cf1, cf2, &_nat->bsc_configs, entry) {
+		cf1->remove = true;
+		cf1->token_updated = false;
+	}
+
 	rc = vty_read_config_file(_nat->resolved_path, NULL);
 	if (rc < 0) {
 		vty_out(vty, "Failed to parse the config file %s: %s%s",
 			_nat->resolved_path, strerror(-rc), VTY_NEWLINE);
 		return CMD_WARNING;
 	}
+
 	bsc_replace_string(_nat, &_nat->include_file, argv[0]);
+
+	llist_for_each_entry_safe(con1, con2, &_nat->bsc_connections,
+				  list_entry) {
+		if (con1->cfg)
+			if (con1->cfg->token_updated || con1->cfg->remove)
+				bsc_close_connection(con1);
+	}
+
+	llist_for_each_entry_safe(cf1, cf2, &_nat->bsc_configs, entry) {
+		if (cf1->remove)
+			bsc_config_free(cf1);
+	}
+
 	return CMD_SUCCESS;
 }
 
@@ -846,6 +868,7 @@ DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR",
 	if (!bsc)
 		return CMD_WARNING;
 
+	bsc->remove = false;
 	vty->index = bsc;
 	vty->node = NAT_BSC_NODE;
 
@@ -857,6 +880,12 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN",
       "Token of the BSC, currently transferred in cleartext\n")
 {
 	struct bsc_config *conf = vty->index;
+
+	if (strncmp(conf->token, argv[0], 128) != 0) {
+		vty_out(vty, "updated token: %s -> %s%s", conf->token, argv[0],
+			VTY_NEWLINE);
+		conf->token_updated = true;
+	}
 
 	bsc_replace_string(conf, &conf->token, argv[0]);
 	return CMD_SUCCESS;

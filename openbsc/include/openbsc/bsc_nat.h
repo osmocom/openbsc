@@ -35,6 +35,7 @@
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 
 #include <regex.h>
+#include <stdbool.h>
 
 #define DIR_BSC 1
 #define DIR_MSC 2
@@ -163,6 +164,10 @@ struct bsc_config {
 
 	/* audio handling */
 	int max_endpoints;
+
+	/* used internally for reload handling */
+	bool remove;
+	bool token_updated;
 
 	/* backpointer */
 	struct bsc_nat *nat;
