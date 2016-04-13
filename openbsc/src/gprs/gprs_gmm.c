@@ -31,6 +31,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include <openssl/rand.h>
+
 #include <openbsc/db.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/tlv.h>
