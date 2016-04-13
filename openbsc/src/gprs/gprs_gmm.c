@@ -1087,7 +1087,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	if (ctx->ran_type == MM_CTX_T_GERAN_Gb)
 		ctx->gb.cell_id = cid;
 	else if (ctx->ran_type == MM_CTX_T_UTRAN_Iu) {
-		uint8_t tmp_rand[16];
+		unsigned char tmp_rand[16];
 		struct osmo_auth_vector vec;
 		/* Ki 000102030405060708090a0b0c0d0e0f */
 		struct osmo_sub_auth_data auth = {
@@ -1103,7 +1103,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		/* XXX: Hack to make 3G auth work with special SIM card */
 		ctx->auth_state = SGSN_AUTH_AUTHENTICATE;
 
-		RAND_bytes(&tmp_rand, 16);
+		RAND_bytes(tmp_rand, 16);
 
 		memset(&vec, 0, sizeof(vec));
 		osmo_auth_gen_vec(&vec, &auth, tmp_rand);

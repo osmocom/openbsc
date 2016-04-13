@@ -146,7 +146,7 @@ void allocate_security_operation(struct gsm_subscriber_connection *conn)
 
 int iu_hack__get_hardcoded_auth_tuple(struct gsm_auth_tuple *atuple)
 {
-	uint8_t tmp_rand[16];
+	unsigned char tmp_rand[16];
 	struct osmo_auth_vector vec;
 	/* Ki 000102030405060708090a0b0c0d0e0f */
 	struct osmo_sub_auth_data auth = {
@@ -159,7 +159,7 @@ int iu_hack__get_hardcoded_auth_tuple(struct gsm_auth_tuple *atuple)
 		},
 	};
 
-	RAND_bytes(&tmp_rand, sizeof(tmp_rand));
+	RAND_bytes(tmp_rand, sizeof(tmp_rand));
 
 	memset(&vec, 0, sizeof(vec));
 	osmo_auth_gen_vec(&vec, &auth, tmp_rand);
