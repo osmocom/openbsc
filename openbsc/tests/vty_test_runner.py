@@ -1093,7 +1093,7 @@ def nat_msc_ip(x, ip, port):
     x.vty.command("configure terminal")
     x.vty.command("nat")
     x.vty.command("msc ip " + ip)
-    x.vty.command("msc port " + port)
+    x.vty.command("msc port " + str(port))
     x.vty.command("end")
 
 def data2str(d):
