@@ -1293,6 +1293,7 @@ static int gprs_process_message(struct gprs_ns_inst *nsi, const char *text, stru
 	}
 
 	msg = gprs_ns_msgb_alloc();
+	OSMO_ASSERT(msg);
 	memmove(msg->data, data, data_len);
 	msg->l2h = msg->data;
 	msgb_put(msg, data_len);
