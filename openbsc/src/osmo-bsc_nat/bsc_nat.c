@@ -1153,6 +1153,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			if (!create_sccp_src_ref(bsc, parsed))
 				goto exit2;
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
+			OSMO_ASSERT(con);
 			con->msc_con = bsc->nat->msc_con;
 			con_msc = con->msc_con;
 			con->filter_state.con_type = con_type;
