@@ -627,8 +627,7 @@ class TestVTYNAT(TestVTYGenericBSC):
         return (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat")
 
     def testBSCreload(self):
-        # use separate ip to avoid interference with other tests
-        ip = "127.0.0.4"
+        ip = "127.0.0.1"
         self.vty.enable()
         bscs1 = self.vty.command("show bscs-config")
         nat_bsc_reload(self)
