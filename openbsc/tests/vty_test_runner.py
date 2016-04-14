@@ -630,7 +630,7 @@ class TestVTYNAT(TestVTYGenericBSC):
         # Use different port for the mock msc to avoid clashing with
         # the osmo-bsc_nat itself
         ip = "127.0.0.1"
-        port = 5001
+        port = 5522
         self.vty.enable()
         bscs1 = self.vty.command("show bscs-config")
         nat_bsc_reload(self)
