@@ -627,7 +627,10 @@ class TestVTYNAT(TestVTYGenericBSC):
         return (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat")
 
     def testBSCreload(self):
+        # Use different port for the mock msc to avoid clashing with
+        # the osmo-bsc_nat itself
         ip = "127.0.0.1"
+        port = 5001
         self.vty.enable()
         bscs1 = self.vty.command("show bscs-config")
         nat_bsc_reload(self)
@@ -650,8 +653,8 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.vty.command("token xyu")
         self.vty.command("end")
 
-        nat_msc_ip(self, ip)
-        msc = nat_msc_test(self, ip)
+        nat_msc_ip(self, ip, port)
+        msc = nat_msc_test(self, ip, port)
         b0 = nat_bsc_sock_test(0, "lol")
         b1 = nat_bsc_sock_test(1, "xyu")
         b2 = nat_bsc_sock_test(5, "key")
@@ -1086,19 +1089,20 @@ def nat_bsc_reload(x):
     x.vty.command("bscs-config-file bscs.config")
     x.vty.command("end")
 
-def nat_msc_ip(x, ip):
+def nat_msc_ip(x, ip, port):
     x.vty.command("configure terminal")
     x.vty.command("nat")
     x.vty.command("msc ip " + ip)
+    x.vty.command("msc port " + port)
     x.vty.command("end")
 
 def data2str(d):
     return "".join("{:02x}".format(ord(c)) for c in d)
 
-def nat_msc_test(x, ip, verbose = False):
+def nat_msc_test(x, ip, port, verbose = False):
     msc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     msc.settimeout(32)
-    msc.bind((ip, 5000))
+    msc.bind((ip, port))
     msc.listen(5)
     if (verbose):
         print "MSC is ready at " + ip
