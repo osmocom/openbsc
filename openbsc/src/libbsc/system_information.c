@@ -510,6 +510,7 @@ static struct gsm48_si_ro_info si_info = {
 		.ra_colour = 0,
 		.present = 1,
 	},
+	.si2quater_indicator = 0,
 	.lsa_params = {
 		.present = 0,
 	},
@@ -545,7 +546,12 @@ static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 	} else {
 		si_info.si2ter_indicator = 0;
 	}
-
+	if ((bts->si_valid & (1 << SYSINFO_TYPE_2quater))) {
+		LOGP(DRR, LOGL_INFO, "SI 2quater is included.\n");
+		si_info.si2quater_indicator = 1;
+	} else {
+		si_info.si2quater_indicator = 0;
+	}
 	/* SI3 Rest Octets (10.5.2.34), containing
 		CBQ, CELL_RESELECT_OFFSET, TEMPORARY_OFFSET, PENALTY_TIME
 		Power Offset, 2ter Indicator, Early Classmark Sending,

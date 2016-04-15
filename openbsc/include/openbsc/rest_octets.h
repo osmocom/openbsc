@@ -43,7 +43,8 @@ struct gsm48_si_ro_info {
 			 present:1;
 	} scheduling;
 	struct gsm48_si3_gprs_ind gprs_ind;
-
+	/* SI 3 specific */
+	uint8_t si2quater_indicator;
 	/* SI 4 specific */
 	struct gsm48_lsa_params lsa_params;
 	uint16_t cell_id;

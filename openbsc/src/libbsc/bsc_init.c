@@ -140,6 +140,7 @@ int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx)
 		gen_si[n_si++] = SYSINFO_TYPE_2;
 		gen_si[n_si++] = SYSINFO_TYPE_2bis;
 		gen_si[n_si++] = SYSINFO_TYPE_2ter;
+		gen_si[n_si++] = SYSINFO_TYPE_2quater;
 		gen_si[n_si++] = SYSINFO_TYPE_3;
 		gen_si[n_si++] = SYSINFO_TYPE_4;
 

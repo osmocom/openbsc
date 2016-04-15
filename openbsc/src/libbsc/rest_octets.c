@@ -129,6 +129,15 @@ int rest_octets_si3(uint8_t *data, const struct gsm48_si_ro_info *si3)
 	/* GPRS Indicator */
 	append_gprs_ind(&bv, &si3->gprs_ind);
 
+	/* 3G Early Classmark Sending Restriction controlled by
+	 * early_cm_ctrl above */
+	bitvec_set_bit(&bv, H);
+
+	if (si3->si2quater_indicator) {
+		bitvec_set_bit(&bv, H); /* indicator struct present */
+		bitvec_set_uint(&bv, 0, 1); /* message is sent on BCCH Norm */
+	}
+
 	bitvec_spare_padding(&bv, (bv.data_len*8)-1);
 	return bv.data_len;
 }
