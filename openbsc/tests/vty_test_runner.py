@@ -1142,7 +1142,7 @@ def nat_bsc_num_con(x):
 
 def nat_bsc_sock_test(nr, tk, verbose = False):
     bsc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    bsc.bind(('127.0.0.1' + str(nr), 0))
+    bsc.bind(('127.0.0.1', 0))
     bsc.connect(('127.0.0.1', 5000))
     if (verbose):
         print "BSC%d " %nr
