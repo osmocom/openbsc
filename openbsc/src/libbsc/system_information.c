@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 
 #include <osmocom/core/bitvec.h>
 #include <osmocom/core/utils.h>
@@ -67,8 +68,8 @@ static int is_dcs_net(const struct gsm_bts *bts)
 	return 1;
 }
 
-static int use_arfcn(const struct gsm_bts *bts, const int bis, const int ter,
-			const int pgsm, const int arfcn)
+static inline int use_arfcn(const struct gsm_bts *bts, const bool bis, const bool ter,
+			const bool pgsm, const int arfcn)
 {
 	if (bts->force_combined_si)
 		return !bis && !ter;
@@ -135,9 +136,9 @@ static int freq_list_bmrel_set_arfcn(uint8_t *chan_list, unsigned int arfcn)
 }
 
 /* generate a variable bitmap */
-static int enc_freq_lst_var_bitmap(uint8_t *chan_list,
+static inline int enc_freq_lst_var_bitmap(uint8_t *chan_list,
 				struct bitvec *bv, const struct gsm_bts *bts,
-				int bis, int ter, int min, int pgsm)
+				bool bis, bool ter, int min, bool pgsm)
 {
 	int i;
 
@@ -164,9 +165,9 @@ static int enc_freq_lst_var_bitmap(uint8_t *chan_list,
 }
 
 /* generate a frequency list with the range 512 format */
-static int enc_freq_lst_range(uint8_t *chan_list,
+static inline int enc_freq_lst_range(uint8_t *chan_list,
 				struct bitvec *bv, const struct gsm_bts *bts,
-				int bis, int ter, int pgsm)
+				bool bis, bool ter, bool pgsm)
 {
 	int arfcns[RANGE_ENC_MAX_ARFCNS];
 	int w[RANGE_ENC_MAX_ARFCNS];
@@ -226,15 +227,15 @@ static int enc_freq_lst_range(uint8_t *chan_list,
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
 static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
-			    const struct gsm_bts *bts, int bis, int ter)
+			    const struct gsm_bts *bts, bool bis, bool ter)
 {
-	int i, rc, min = -1, max = -1, pgsm = 0, arfcns = 0;
-
+	int i, rc, min = -1, max = -1, arfcns = 0;
+	bool pgsm = false;
 	memset(chan_list, 0, 16);
 
 	if (bts->band == GSM_BAND_900
 	 && bts->c0->arfcn >= 1 && bts->c0->arfcn <= 124)
-		pgsm = 1;
+		pgsm = true;
 	/* P-GSM-only handsets only support 'bit map 0 format' */
 	if (!bis && !ter && pgsm) {
 		chan_list[0] = 0;
@@ -327,12 +328,12 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 	}
 
 	/* then we generate a GSM 04.08 frequency list from the bitvec */
-	return bitvec2freq_list(chan_list, bv, bts, 0, 0);
+	return bitvec2freq_list(chan_list, bv, bts, false, false);
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
 static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts,
-	int si5, int bis, int ter)
+	bool si5, bool bis, bool ter)
 {
 	struct gsm_bts *cur_bts;
 	struct bitvec *bv;
@@ -422,7 +423,7 @@ static int generate_si2(uint8_t *output, struct gsm_bts *bts)
 	si2->header.skip_indicator = 0;
 	si2->header.system_information = GSM48_MT_RR_SYSINFO_2;
 
-	rc = generate_bcch_chan_list(si2->bcch_frequency_list, bts, 0, 0, 0);
+	rc = generate_bcch_chan_list(si2->bcch_frequency_list, bts, false, false, false);
 	if (rc < 0)
 		return rc;
 	list_arfcn(si2->bcch_frequency_list, 0xce,
@@ -448,7 +449,7 @@ static int generate_si2bis(uint8_t *output, struct gsm_bts *bts)
 	si2b->header.skip_indicator = 0;
 	si2b->header.system_information = GSM48_MT_RR_SYSINFO_2bis;
 
-	rc = generate_bcch_chan_list(si2b->bcch_frequency_list, bts, 0, 1, 0);
+	rc = generate_bcch_chan_list(si2b->bcch_frequency_list, bts, false, true, false);
 	if (rc < 0)
 		return rc;
 	n = list_arfcn(si2b->bcch_frequency_list, 0xce,
@@ -482,7 +483,7 @@ static int generate_si2ter(uint8_t *output, struct gsm_bts *bts)
 	si2t->header.skip_indicator = 0;
 	si2t->header.system_information = GSM48_MT_RR_SYSINFO_2ter;
 
-	rc = generate_bcch_chan_list(si2t->ext_bcch_frequency_list, bts, 0, 0, 1);
+	rc = generate_bcch_chan_list(si2t->ext_bcch_frequency_list, bts, false, false, true);
 	if (rc < 0)
 		return rc;
 	n = list_arfcn(si2t->ext_bcch_frequency_list, 0x8e,
@@ -630,7 +631,7 @@ static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 	si5->rr_protocol_discriminator = GSM48_PDISC_RR;
 	si5->skip_indicator = 0;
 	si5->system_information = GSM48_MT_RR_SYSINFO_5;
-	rc = generate_bcch_chan_list(si5->bcch_frequency_list, bts, 1, 0, 0);
+	rc = generate_bcch_chan_list(si5->bcch_frequency_list, bts, true, false, false);
 	if (rc < 0)
 		return rc;
 	list_arfcn(si5->bcch_frequency_list, 0xce,
@@ -665,7 +666,7 @@ static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
 	si5b->rr_protocol_discriminator = GSM48_PDISC_RR;
 	si5b->skip_indicator = 0;
 	si5b->system_information = GSM48_MT_RR_SYSINFO_5bis;
-	rc = generate_bcch_chan_list(si5b->bcch_frequency_list, bts, 1, 1, 0);
+	rc = generate_bcch_chan_list(si5b->bcch_frequency_list, bts, true, true, false);
 	if (rc < 0)
 		return rc;
 	n = list_arfcn(si5b->bcch_frequency_list, 0xce,
@@ -709,7 +710,7 @@ static int generate_si5ter(uint8_t *output, struct gsm_bts *bts)
 	si5t->rr_protocol_discriminator = GSM48_PDISC_RR;
 	si5t->skip_indicator = 0;
 	si5t->system_information = GSM48_MT_RR_SYSINFO_5ter;
-	rc = generate_bcch_chan_list(si5t->bcch_frequency_list, bts, 1, 0, 1);
+	rc = generate_bcch_chan_list(si5t->bcch_frequency_list, bts, true, false, true);
 	if (rc < 0)
 		return rc;
 	n = list_arfcn(si5t->bcch_frequency_list, 0x8e,

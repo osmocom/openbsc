@@ -31,6 +31,7 @@ struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_bts_trx_ts;
 
+#define GSM48_LEN2PLEN(a)	(((a) << 2) | 1)
 
 int rsl_bcch_info(struct gsm_bts_trx *trx, uint8_t type,
 		  const uint8_t *data, int len);

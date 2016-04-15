@@ -1332,8 +1332,6 @@ static void t3109_expired(void *data)
 	rsl_rf_chan_release(lchan, 1, SACCH_NONE);
 }
 
-#define GSM48_LEN2PLEN(a)	(((a) << 2) | 1)
-
 /* Format an IMM ASS REJ according to 04.08 Chapter 9.1.20 */
 static int rsl_send_imm_ass_rej(struct gsm_bts *bts,
 				unsigned int num_req_refs,
