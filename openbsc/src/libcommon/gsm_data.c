@@ -315,6 +315,11 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 	bts->neigh_list_manual_mode = 0;
 	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
 	bts->si_common.cell_sel_par.rxlev_acc_min = 0;
+	bts->si_common.si2quater_neigh_list.arfcn = bts->si_common.data.earfcn_list;
+	bts->si_common.si2quater_neigh_list.meas_bw = bts->si_common.data.meas_bw_list;
+	bts->si_common.si2quater_neigh_list.length = MAX_EARFCN_LIST;
+	bts->si_common.si2quater_neigh_list.thresh_hi = 0;
+	osmo_earfcn_init(&bts->si_common.si2quater_neigh_list);
 	bts->si_common.neigh_list.data = bts->si_common.data.neigh_list;
 	bts->si_common.neigh_list.data_len =
 				sizeof(bts->si_common.data.neigh_list);

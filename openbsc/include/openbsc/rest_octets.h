@@ -1,10 +1,15 @@
 #ifndef _REST_OCTETS_H
 #define _REST_OCTETS_H
 
+#include <stdbool.h>
 #include <openbsc/gsm_04_08.h>
+#include <osmocom/gsm/sysinfo.h>
 
 /* generate SI1 rest octets */
 int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net);
+int rest_octets_si2quater(uint8_t *data,
+			  const struct osmo_earfcn_si2q *e, bool uarfcn,
+			  bool earfcn);
 
 struct gsm48_si_selection_params {
 	uint16_t penalty_time:5,

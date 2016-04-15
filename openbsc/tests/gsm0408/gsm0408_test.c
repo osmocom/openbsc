@@ -29,7 +29,11 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
 #include <openbsc/arfcn_range_encode.h>
+#include <openbsc/system_information.h>
+#include <openbsc/abis_rsl.h>
+
 #include <osmocom/core/application.h>
+#include <osmocom/gsm/sysinfo.h>
 
 #define COMPARE(result, op, value) \
     if (!((result) op (value))) {\
@@ -77,6 +81,70 @@ static void test_location_area_identifier(void)
     COMPARE(lai48.digits[1], ==, 0xF2);
     COMPARE(lai48.digits[2], ==, 0x10);
     COMPARE(lai48.lac, ==, htons(0x000f));
+}
+
+static inline void add_arfcn_b(struct osmo_earfcn_si2q *e, uint16_t earfcn,
+			       uint8_t bw)
+{
+	int r = osmo_earfcn_add(e, earfcn, bw);
+	if (r)
+		printf("failed to add EARFCN %u: %s\n", earfcn, strerror(r));
+	else
+		printf("added EARFCN %u - ", earfcn);
+}
+
+static inline void gen(struct gsm_bts *bts)
+{
+	int r = gsm_generate_si(bts, SYSINFO_TYPE_2quater);
+	if (r > 0)
+		printf("generated SI2quater: [%d] %s\n", r,
+		       osmo_hexdump(bts->si_buf[SYSINFO_TYPE_2quater], r));
+	else
+		printf("failed to generate SI2quater: %s\n", strerror(-r));
+}
+
+static inline void test_si2q(void)
+{
+	struct gsm_bts *bts;
+	struct gsm_network *network = gsm_network_init(1, 1, NULL);
+	printf("Testing SYSINFO_TYPE_2quater generation:\n");
+
+	if (!network)
+		exit(1);
+	bts = gsm_bts_alloc(network);
+
+	bts->si_common.si2quater_neigh_list.arfcn =
+		bts->si_common.data.earfcn_list;
+	bts->si_common.si2quater_neigh_list.meas_bw =
+		bts->si_common.data.meas_bw_list;
+	bts->si_common.si2quater_neigh_list.length = MAX_EARFCN_LIST;
+	bts->si_common.si2quater_neigh_list.thresh_hi = 5;
+
+	osmo_earfcn_init(&bts->si_common.si2quater_neigh_list);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1917, 1);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1932,
+		    OSMO_EARFCN_MEAS_INVALID);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1937, 2);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1945,
+		    OSMO_EARFCN_MEAS_INVALID);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1965,
+		    OSMO_EARFCN_MEAS_INVALID);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1967, 4);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1982, 3);
+	gen(bts);
 }
 
 static void test_mi_functionality(void)
@@ -486,6 +554,7 @@ int main(int argc, char **argv)
 	test_range_encoding();
 	test_gsm411_rp_ref_wrap();
 
+	test_si2q();
 	printf("Done.\n");
 	return EXIT_SUCCESS;
 }

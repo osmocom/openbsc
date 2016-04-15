@@ -692,6 +692,21 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		}
 	}
 
+	for (i = 0; i < MAX_EARFCN_LIST; i++) {
+		if (bts->si_common.si2quater_neigh_list.arfcn[i] !=
+		    OSMO_EARFCN_INVALID) {
+			vty_out(vty, "  si2quater neighbor-list add earfcn %u threshold %u",
+				bts->si_common.si2quater_neigh_list.arfcn[i],
+				bts->si_common.si2quater_neigh_list.thresh_hi);
+			if (bts->si_common.si2quater_neigh_list.meas_bw[i] !=
+			    OSMO_EARFCN_MEAS_INVALID)
+				vty_out(vty, " %u",
+					bts->si_common.si2quater_neigh_list.meas_bw[i]);
+
+			vty_out(vty, "%s", VTY_NEWLINE);
+		}
+	}
+
 	vty_out(vty, "  codec-support fr");
 	if (bts->codec.hr)
 		vty_out(vty, " hr");
@@ -2743,6 +2758,60 @@ DEFUN(cfg_bts_neigh, cfg_bts_neigh_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
+      "si2quater neighbor-list add earfcn <1900-2200> threshold <0-1000> "
+      "[<0-255>]", "SI2quater Neighbor List\n"
+      "SI2quater Neighbor List\n" "Add to manual SI2quater neighbor list\n"
+      "EARFCN of neighbor\n" "EARFCN of neighbor\n" "threshold high bits\n"
+      "threshold high bits\n" "measurement bandwidth\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+	uint16_t arfcn = atoi(argv[0]);
+	uint8_t meas = OSMO_EARFCN_MEAS_INVALID, thresh = atoi(argv[1]);
+	int r;
+
+	if (3 == argc)
+		meas = atoi(argv[2]);
+
+	r = osmo_earfcn_add(e, arfcn, meas);
+
+	if (r < 0) {
+		vty_out(vty, "Unable to add arfcn %u: %s%s", arfcn, strerror(r),
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (e->thresh_hi && thresh != e->thresh_hi)
+		vty_out(vty, "Warning: multiple thresholds are not supported, "
+			"overriding previous threshold %u%s",
+			e->thresh_hi, VTY_NEWLINE);
+
+	e->thresh_hi = thresh;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_si2quater_neigh_del, cfg_bts_si2quater_neigh_del_cmd,
+	"si2quater neighbor-list del earfcn <1900-2200>",
+	"SI2quater Neighbor List\n"
+	"SI2quater Neighbor List\n"
+	"Delete from SI2quater manual neighbor list\n"
+	"EARFCN of neighbor\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+	uint16_t arfcn = atoi(argv[1]);
+	int r = osmo_earfcn_del(e, arfcn);
+	if (r < 0) {
+		vty_out(vty, "Unable to delete arfcn %u: %s%s", arfcn,
+			strerror(r), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_si5_neigh, cfg_bts_si5_neigh_cmd,
 	"si5 neighbor-list (add|del) arfcn <0-1023>",
 	"SI5 Neighbor List\n"
@@ -3873,6 +3942,8 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_neigh_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
+	install_element(BTS_NODE, &cfg_bts_si2quater_neigh_add_cmd);
+	install_element(BTS_NODE, &cfg_bts_si2quater_neigh_del_cmd);
 	install_element(BTS_NODE, &cfg_bts_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_force_comb_si_cmd);

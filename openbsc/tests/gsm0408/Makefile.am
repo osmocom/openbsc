@@ -7,6 +7,7 @@ EXTRA_DIST = gsm0408_test.ok
 gsm0408_test_SOURCES = gsm0408_test.c
 gsm0408_test_LDADD =	$(top_builddir)/src/libbsc/libbsc.a \
 			$(top_builddir)/src/libmsc/libmsc.a \
+			$(top_builddir)/src/libtrau/libtrau.a \
 			$(top_builddir)/src/libbsc/libbsc.a \
 			$(top_builddir)/src/libcommon/libcommon.a \
-			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) -ldbi
+			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOABIS_LIBS) -ldbi

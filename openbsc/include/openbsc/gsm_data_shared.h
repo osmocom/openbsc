@@ -105,6 +105,7 @@ struct gsm_abis_mo {
 #define A38_XOR_MAX_KEY_LEN	16
 #define A38_COMP128_KEY_LEN	16
 #define RSL_ENC_ALG_A5(x)	(x+1)
+#define MAX_EARFCN_LIST 512
 
 /* is the data link established? who established it? */
 #define LCHAN_SAPI_UNUSED	0
@@ -715,12 +716,16 @@ struct gsm_bts {
 		struct bitvec neigh_list;
 		struct bitvec cell_alloc;
 		struct bitvec si5_neigh_list;
+		struct bitvec si2quater_na_list;
+		struct osmo_earfcn_si2q si2quater_neigh_list;
 		struct {
 			/* bitmask large enough for all possible ARFCN's */
 			uint8_t neigh_list[1024/8];
 			uint8_t cell_alloc[1024/8];
 			/* If the user wants a different neighbor list in SI5 than in SI2 */
 			uint8_t si5_neigh_list[1024/8];
+			uint8_t meas_bw_list[MAX_EARFCN_LIST];
+			uint16_t earfcn_list[MAX_EARFCN_LIST];
 		} data;
 	} si_common;
 

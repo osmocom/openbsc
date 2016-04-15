@@ -494,6 +494,28 @@ static int generate_si2ter(uint8_t *output, struct gsm_bts *bts)
 	return sizeof(*si2t);
 }
 
+static int generate_si2quater(uint8_t *output, struct gsm_bts *bts)
+{
+	int rc;
+	struct gsm48_system_information_type_2quater *si2q =
+		(struct gsm48_system_information_type_2quater *) output;
+
+	memset(si2q, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
+
+	si2q->header.l2_plen = GSM48_LEN2PLEN(22);
+	si2q->header.rr_protocol_discriminator = GSM48_PDISC_RR;
+	si2q->header.skip_indicator = 0;
+	si2q->header.system_information = GSM48_MT_RR_SYSINFO_2quater;
+
+	rc = rest_octets_si2quater(si2q->rest_octets,
+				   &bts->si_common.si2quater_neigh_list, false,
+				   true);
+	if (rc < 0)
+		return rc;
+
+	return sizeof(*si2q) + rc;
+}
+
 static struct gsm48_si_ro_info si_info = {
 	.selection_params = {
 		.present = 0,
@@ -831,6 +853,7 @@ static const gen_si_fn_t gen_si_fn[_MAX_SYSINFO_TYPE] = {
 	[SYSINFO_TYPE_2] = &generate_si2,
 	[SYSINFO_TYPE_2bis] = &generate_si2bis,
 	[SYSINFO_TYPE_2ter] = &generate_si2ter,
+	[SYSINFO_TYPE_2quater] = &generate_si2quater,
 	[SYSINFO_TYPE_3] = &generate_si3,
 	[SYSINFO_TYPE_4] = &generate_si4,
 	[SYSINFO_TYPE_5] = &generate_si5,
