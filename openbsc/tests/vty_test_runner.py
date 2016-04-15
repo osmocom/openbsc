@@ -1097,7 +1097,7 @@ def nat_msc_ip(x, ip, port):
     x.vty.command("end")
 
 def data2str(d):
-    return "".join("{:02x}".format(ord(c)) for c in d)
+    return d.encode('hex').lower()
 
 def nat_msc_test(x, ip, port, verbose = False):
     msc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
