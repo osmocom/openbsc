@@ -881,11 +881,8 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN",
 {
 	struct bsc_config *conf = vty->index;
 
-	if (strncmp(conf->token, argv[0], 128) != 0) {
-		vty_out(vty, "updated token: %s -> %s%s", conf->token, argv[0],
-			VTY_NEWLINE);
+	if (strncmp(conf->token, argv[0], 128) != 0)
 		conf->token_updated = true;
-	}
 
 	bsc_replace_string(conf, &conf->token, argv[0]);
 	return CMD_SUCCESS;
