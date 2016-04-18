@@ -59,6 +59,7 @@
 #include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/gsm0480.h>
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/tlv.h>
@@ -1598,11 +1599,15 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct gsm_bts *remote_bts = remote_lchan->ts->trx->bts;
+	enum gsm_chan_t lt = lchan->type, rt = remote_lchan->type;
 	int rc;
 
-	DEBUGP(DCC, "Setting up TCH map between (bts=%u,trx=%u,ts=%u) and (bts=%u,trx=%u,ts=%u)\n",
-		bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
-		remote_bts->nr, remote_lchan->ts->trx->nr, remote_lchan->ts->nr);
+	DEBUGP(DCC, "Setting up TCH map between (bts=%u,trx=%u,ts=%u,%s) and "
+	       "(bts=%u,trx=%u,ts=%u,%s)\n",
+	       bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+	       get_value_string(gsm_chan_t_names, lt),
+	       remote_bts->nr, remote_lchan->ts->trx->nr, remote_lchan->ts->nr,
+	       get_value_string(gsm_chan_t_names, rt));
 
 	if (bts->type != remote_bts->type) {
 		LOGP(DCC, LOGL_ERROR, "Cannot switch calls between different BTS types yet\n");
@@ -2999,6 +3004,7 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 	struct gsm_bts *bts;
 	struct gsm_lchan *lchan;
 	struct gsm_trans *trans;
+	enum gsm48_chan_mode m;
 
 	/* Find callref */
 	trans = trans_find_by_callref(net, callref);
@@ -3038,8 +3044,11 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 	 */
 	if (lchan->tch_mode == GSM48_CMODE_SIGN) {
 		trans->conn->mncc_rtp_create_pending = 1;
-		return gsm0808_assign_req(trans->conn,
-				mncc_codec_for_mode(lchan->type),
+		m = mncc_codec_for_mode(lchan->type);
+		LOGP(DMNCC, LOGL_DEBUG, "RTP create: codec=%s, chan_type=%s\n",
+		     get_value_string(gsm48_chan_mode_names, m),
+		     get_value_string(gsm_chan_t_names, lchan->type));
+		return gsm0808_assign_req(trans->conn, m,
 				lchan->type != GSM_LCHAN_TCH_H);
 	}
 
@@ -3068,6 +3077,10 @@ static int tch_rtp_connect(struct gsm_network *net, void *arg)
 	}
 
 	lchan = trans->conn->lchan;
+	LOGP(DMNCC, LOGL_DEBUG, "RTP connect: codec=%s, chan_type=%s\n",
+		     get_value_string(gsm48_chan_mode_names,
+				      mncc_codec_for_mode(lchan->type)),
+		     get_value_string(gsm_chan_t_names, lchan->type));
 
 	/* TODO: Check if payload_msg_type is compatible with what we have */
 	if (rtp->payload_type != lchan->abis_ip.rtp_payload) {

@@ -288,8 +288,10 @@ int main(int argc, char **argv)
 		rc = bsc_bootstrap_network(mncc_sock_from_cc, config_file);
 		if (rc >= 0)
 			mncc_sock_init(bsc_gsmnet, mncc_sock_path);
-	} else
+	} else {
+		DEBUGP(DMNCC, "Using internal MNCC handler.\n");
 		rc = bsc_bootstrap_network(int_mncc_recv, config_file);
+	}
 	if (rc < 0)
 		exit(1);
 #ifdef BUILD_SMPP
