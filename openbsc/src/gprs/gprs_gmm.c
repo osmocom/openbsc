@@ -706,13 +706,11 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm);
 void activate_pdp_rabs(struct sgsn_mm_ctx *ctx)
 {
 	/* Send RAB activation requests for all PDP contexts */
-	if (ctx->iu.service.type == 1) {
-		struct sgsn_pdp_ctx *pdp;
-		uint8_t rab_id;
-		llist_for_each_entry(pdp, &ctx->pdp_list, list) {
-			rab_id = rab_id_from_mm_ctx(ctx);
-			iu_rab_act_ps(rab_id, pdp);
-		}
+	struct sgsn_pdp_ctx *pdp;
+	uint8_t rab_id;
+	llist_for_each_entry(pdp, &ctx->pdp_list, list) {
+		rab_id = rab_id_from_mm_ctx(ctx);
+		iu_rab_act_ps(rab_id, pdp);
 	}
 }
 
@@ -807,7 +805,9 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 
 		rc = gsm48_tx_gmm_service_ack(ctx);
 
-		activate_pdp_rabs(ctx);
+		if (ctx->iu.service.type == 1) {
+			activate_pdp_rabs(ctx);
+		}
 
 		return rc;
 	case GSM48_MT_GMM_RA_UPD_REQ:
@@ -1734,6 +1734,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 					  GPRS_ALGO_GEA0, NULL);
 		}
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
+		activate_pdp_rabs(mmctx);
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
