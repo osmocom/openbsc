@@ -1181,7 +1181,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 			.kc = { 0xd9, 0xd9, 0xc2, 0xed, 0x62, 0x7d, 0x68, 0x00 },
 		};
 
-		return iu_tx_sec_mode_cmd(conn->iu.ue_ctx, &tp, 0);
+		return iu_tx_sec_mode_cmd(conn->iu.ue_ctx, &tp, 0, 1);
 	}
 
 	/* Only authentication requested, and we're done. */
