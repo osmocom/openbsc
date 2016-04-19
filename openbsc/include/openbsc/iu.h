@@ -37,6 +37,8 @@ typedef int (* iu_rab_ass_resp_cb_t )(struct ue_conn_ctx *ue_ctx, uint8_t rab_id
 int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
 	    iu_recv_cb_t iu_recv_cb, iu_event_cb_t iu_event_cb);
 
+void iu_link_del(struct osmo_sua_link *link);
+
 int iu_tx(struct msgb *msg, uint8_t sapi);
 
 int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port);

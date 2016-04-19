@@ -62,6 +62,21 @@ struct ue_conn_ctx *ue_conn_ctx_find(struct osmo_sua_link *link,
 	return NULL;
 }
 
+/* Discard/invalidate all ue_conn_ctx entries that reference the
+ * given link, since this link is invalid and about to be deallocated. For
+ * each ue_conn_ctx, invoke the iu_event_cb_t with IU_EVENT_LINK_INVALIDATED.
+ */
+void iu_link_del(struct osmo_sua_link *link)
+{
+	struct ue_conn_ctx *uec, *uec_next;
+	llist_for_each_entry_safe(uec, uec_next, &ue_conn_ctx_list, list) {
+		if (uec->link != link)
+			continue;
+		uec->link = NULL;
+		global_iu_event_cb(uec, IU_EVENT_LINK_INVALIDATED, NULL);
+	}
+}
+
 /***********************************************************************
  * RANAP handling
  ***********************************************************************/
