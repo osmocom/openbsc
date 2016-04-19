@@ -209,6 +209,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx)
 	ctx->ran_type = MM_CTX_T_UTRAN_Iu;
 	ctx->iu.ue_ctx = uectx;
 	ctx->iu.rab_id = 1;
+	ctx->iu.new_key = 1;
 	ctx->mm_state = GMM_DEREGISTERED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, 0);

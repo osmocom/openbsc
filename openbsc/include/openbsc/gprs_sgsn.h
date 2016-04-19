@@ -138,7 +138,7 @@ struct sgsn_mm_ctx {
 		uint32_t		tlli_new;
 	} gb;
 	struct {
-		int			imsi_unauthenticated;
+		int			new_key;
 		uint16_t		sac;		/* Iu: Service Area Code */
 		uint32_t		sac_age;	/* Iu: Service Area Code age */
 		/* CSG ID */

@@ -116,7 +116,7 @@ int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id)
 }
 
 int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
-		       int send_ck)
+		       int send_ck, int new_key)
 {
 	struct osmo_scu_prim *prim;
 	struct msgb *msg;
@@ -138,7 +138,7 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 	}
 
 	/* crate RANAP message */
-	msg = ranap_new_msg_sec_mod_cmd(ik, send_ck? ck : NULL);
+	msg = ranap_new_msg_sec_mod_cmd(ik, send_ck? ck : NULL, new_key ? RANAP_KeyStatus_new : RANAP_KeyStatus_old);
 	msg->l2h = msg->data;
 	/* wrap RANAP message in SCCP N-DATA.req */
 	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));

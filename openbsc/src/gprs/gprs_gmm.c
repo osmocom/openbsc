@@ -116,35 +116,6 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *
 		break;
 	case IU_EVENT_IU_RELEASE:
 		{
-		uint8_t tmp_rand[16];
-		struct osmo_auth_vector vec;
-		/* Ki 000102030405060708090a0b0c0d0e0f */
-		struct osmo_sub_auth_data auth = {
-			.type	= OSMO_AUTH_TYPE_GSM,
-			.algo	= OSMO_AUTH_ALG_COMP128v1,
-			.u.gsm.ki = {
-				0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
-				0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
-				0x0e, 0x0f
-			},
-		};
-
-		/* XXX: Hack to make 3G auth work with special SIM card */
-		mm->auth_state = SGSN_AUTH_AUTHENTICATE;
-		mm->is_authenticated = 0;
-
-
-		RAND_bytes(&tmp_rand, 16);
-
-		memset(&vec, 0, sizeof(vec));
-		osmo_auth_gen_vec(&vec, &auth, tmp_rand);
-
-
-
-		mm->auth_triplet.key_seq = 0;
-		memcpy(&mm->auth_triplet.rand, &tmp_rand, sizeof(tmp_rand));
-		memcpy(&mm->auth_triplet.sres, &vec.sres, sizeof(vec.sres));
-		memcpy(&mm->auth_triplet.kc, &vec.kc, sizeof(vec.kc));
 		/* Clean up ue_conn_ctx here */
 		LOGMMCTXP(LOGL_INFO, mm, "IU release\n");
 		rc = 0;
@@ -599,6 +570,9 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 
 	ctx->is_authenticated = 1;
 
+	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
+		ctx->iu.new_key = 1;
+
 	/* FIXME: enable LLC cipheirng */
 
 	/* Check if we can let the mobile station enter */
@@ -800,7 +774,9 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 
 	/* The MS is authorized */
 	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu && !ctx->iu.ue_ctx->integrity_active) {
-		return iu_tx_sec_mode_cmd(ctx->iu.ue_ctx, &ctx->auth_triplet, 0);
+		rc = iu_tx_sec_mode_cmd(ctx->iu.ue_ctx, &ctx->auth_triplet, 0, ctx->iu.new_key);
+		ctx->iu.new_key = 0;
+		return rc;
 	}
 
 	switch (ctx->pending_req) {
