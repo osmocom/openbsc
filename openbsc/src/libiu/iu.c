@@ -33,7 +33,6 @@
 int asn1_xer_print = 1;
 void *talloc_asn1_ctx;
 
-
 iu_recv_cb_t global_iu_recv_cb = NULL;
 iu_event_cb_t global_iu_event_cb = NULL;
 
@@ -152,7 +151,7 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 		memcpy(ck+8, tp->kc, 8);
 	}
 
-	/* crate RANAP message */
+	/* create RANAP message */
 	msg = ranap_new_msg_sec_mod_cmd(ik, send_ck? ck : NULL, new_key ? RANAP_KeyStatus_new : RANAP_KeyStatus_old);
 	msg->l2h = msg->data;
 	/* wrap RANAP message in SCCP N-DATA.req */

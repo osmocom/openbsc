@@ -25,7 +25,7 @@ enum iu_event_type {
 
 /* Implementations of iu_recv_cb_t shall find the ue_conn_ctx in msg->dst. */
 typedef int (* iu_recv_cb_t )(struct msgb *msg, struct gprs_ra_id *ra_id,
-			      /* TODO is ra_id only used for gprs? ^ */
+			      /* TODO "gprs_" in generic CS+PS domain ^ */
 			      uint16_t *sai);
 
 typedef int (* iu_event_cb_t )(struct ue_conn_ctx *ue_ctx,
