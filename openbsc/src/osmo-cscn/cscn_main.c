@@ -319,8 +319,15 @@ void *talloc_asn1_ctx;
 static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gprs_ in CS code */
 			uint16_t *sai)
 {
-	DEBUGP(DIUCS, "got Iu-CS message: %s\n",
-	       osmo_hexdump(msg->data, msg->len));
+	DEBUGP(DIUCS, "got IuCS message"
+	       " %d bytes: %s\n",
+	       msg->len, osmo_hexdump(msg->data, msg->len));
+	if (ra_id) {
+		DEBUGP(DIUCS, "got IuCS message on"
+		       " MNC %d MCC %d LAC %d RAC %d\n",
+		       ra_id->mnc, ra_id->mcc, ra_id->lac, ra_id->rac);
+	}
+
 	return gsm0408_rcvmsg_iucs(cscn_network, msg, ra_id? &ra_id->lac : NULL);
 }
 
