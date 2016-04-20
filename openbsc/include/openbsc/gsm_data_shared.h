@@ -105,7 +105,7 @@ struct gsm_abis_mo {
 #define A38_XOR_MAX_KEY_LEN	16
 #define A38_COMP128_KEY_LEN	16
 #define RSL_ENC_ALG_A5(x)	(x+1)
-#define MAX_EARFCN_LIST 512
+#define MAX_EARFCN_LIST 32
 
 /* is the data link established? who established it? */
 #define LCHAN_SAPI_UNUSED	0
@@ -716,7 +716,6 @@ struct gsm_bts {
 		struct bitvec neigh_list;
 		struct bitvec cell_alloc;
 		struct bitvec si5_neigh_list;
-		struct bitvec si2quater_na_list;
 		struct osmo_earfcn_si2q si2quater_neigh_list;
 		struct {
 			/* bitmask large enough for all possible ARFCN's */
