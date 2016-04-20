@@ -231,6 +231,20 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         self.assertEquals(self.vty.node(), 'config-mncc-int')
 
+    def testSi2Q(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("network")
+        self.vty.command("bts 0")
+        before = self.vty.command("show running-config")
+        self.vty.command("si2quater neighbor-list add earfcn 1911 threshold 11 2")
+        self.vty.command("si2quater neighbor-list add earfcn 1924 threshold 11 3")
+        self.vty.command("si2quater neighbor-list add earfcn 2111 threshold 11")
+        self.vty.command("si2quater neighbor-list del earfcn 1911")
+        self.vty.command("si2quater neighbor-list del earfcn 1924")
+        self.vty.command("si2quater neighbor-list del earfcn 2111")
+        self.assertEquals(before, self.vty.command("show running-config"))
+
     def testEnableDisablePeriodicLU(self):
         self.vty.enable()
         self.vty.command("configure terminal")

@@ -2802,11 +2802,11 @@ DEFUN(cfg_bts_si2quater_neigh_del, cfg_bts_si2quater_neigh_del_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 	struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
-	uint16_t arfcn = atoi(argv[1]);
+	uint16_t arfcn = atoi(argv[0]);
 	int r = osmo_earfcn_del(e, arfcn);
 	if (r < 0) {
 		vty_out(vty, "Unable to delete arfcn %u: %s%s", arfcn,
-			strerror(r), VTY_NEWLINE);
+			strerror(-r), VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
