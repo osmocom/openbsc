@@ -700,25 +700,25 @@ int db_get_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 	atuple->key_seq = dbi_result_get_ulonglong(result, "key_seq");
 
 	len = dbi_result_get_field_length(result, "rand");
-	if (len != sizeof(atuple->rand))
+	if (len != sizeof(atuple->vec.rand))
 		goto err_size;
 
 	blob = dbi_result_get_binary(result, "rand");
-	memcpy(atuple->rand, blob, len);
+	memcpy(atuple->vec.rand, blob, len);
 
 	len = dbi_result_get_field_length(result, "sres");
-	if (len != sizeof(atuple->sres))
+	if (len != sizeof(atuple->vec.sres))
 		goto err_size;
 
 	blob = dbi_result_get_binary(result, "sres");
-	memcpy(atuple->sres, blob, len);
+	memcpy(atuple->vec.sres, blob, len);
 
 	len = dbi_result_get_field_length(result, "kc");
-	if (len != sizeof(atuple->kc))
+	if (len != sizeof(atuple->vec.kc))
 		goto err_size;
 
 	blob = dbi_result_get_binary(result, "kc");
-	memcpy(atuple->kc, blob, len);
+	memcpy(atuple->vec.kc, blob, len);
 
 	dbi_result_free(result);
 
@@ -759,11 +759,11 @@ int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 
 	/* Update / Insert */
 	dbi_conn_quote_binary_copy(conn,
-		atuple->rand, sizeof(atuple->rand), &rand_str);
+		atuple->vec.rand, sizeof(atuple->vec.rand), &rand_str);
 	dbi_conn_quote_binary_copy(conn,
-		atuple->sres, sizeof(atuple->sres), &sres_str);
+		atuple->vec.sres, sizeof(atuple->vec.sres), &sres_str);
 	dbi_conn_quote_binary_copy(conn,
-		atuple->kc, sizeof(atuple->kc), &kc_str);
+		atuple->vec.kc, sizeof(atuple->vec.kc), &kc_str);
 
 	if (!upd) {
 		result = dbi_conn_queryf(conn,

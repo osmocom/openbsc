@@ -54,9 +54,9 @@ _use_xor(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 	}
 
 	for (i=0; i<4; i++)
-		atuple->sres[i] = atuple->rand[i] ^ ainfo->a3a8_ki[i];
+		atuple->vec.sres[i] = atuple->vec.rand[i] ^ ainfo->a3a8_ki[i];
 	for (i=4; i<12; i++)
-		atuple->kc[i-4] = atuple->rand[i] ^ ainfo->a3a8_ki[i];
+		atuple->vec.kc[i-4] = atuple->vec.rand[i] ^ ainfo->a3a8_ki[i];
 
 	return 0;
 }
@@ -71,7 +71,7 @@ _use_comp128_v1(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 		return -1;
 	}
 
-	comp128(ainfo->a3a8_ki, atuple->rand, atuple->sres, atuple->kc);
+	comp128(ainfo->a3a8_ki, atuple->vec.rand, atuple->vec.sres, atuple->vec.kc);
 
 	return 0;
 }
@@ -122,7 +122,7 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	}
 	atuple->use_count = 1;
 
-	if (RAND_bytes(atuple->rand, sizeof(atuple->rand)) != 1) {
+	if (RAND_bytes(atuple->vec.rand, sizeof(atuple->vec.rand)) != 1) {
 		LOGP(DMM, LOGL_NOTICE, "RAND_bytes failed, can't generate new auth tuple\n");
 		return AUTH_ERROR;
 	}

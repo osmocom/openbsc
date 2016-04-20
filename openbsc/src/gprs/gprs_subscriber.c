@@ -199,18 +199,18 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
-		"Got SendAuthenticationInfoResult, num_auth_tuples = %zu\n",
-		gsup_msg->num_auth_tuples);
+		"Got SendAuthenticationInfoResult, num_auth_vectors = %zu\n",
+		gsup_msg->num_auth_vectors);
 
-	if (gsup_msg->num_auth_tuples > 0) {
+	if (gsup_msg->num_auth_vectors > 0) {
 		memset(sdata->auth_triplets, 0, sizeof(sdata->auth_triplets));
 
 		for (idx = 0; idx < ARRAY_SIZE(sdata->auth_triplets); idx++)
 			sdata->auth_triplets[idx].key_seq = GSM_KEY_SEQ_INVAL;
 	}
 
-	for (idx = 0; idx < gsup_msg->num_auth_tuples; idx++) {
-		size_t key_seq = gsup_msg->auth_tuples[idx].key_seq;
+	for (idx = 0; idx < gsup_msg->num_auth_vectors; idx++) {
+		size_t key_seq = idx;
 		LOGGSUBSCRP(LOGL_DEBUG, subscr,
 			"Adding auth tuple, cksn = %zu\n", key_seq);
 		if (key_seq >= ARRAY_SIZE(sdata->auth_triplets)) {
@@ -219,7 +219,8 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 				key_seq);
 			continue;
 		}
-		sdata->auth_triplets[key_seq] = gsup_msg->auth_tuples[idx];
+		sdata->auth_triplets[key_seq].vec = gsup_msg->auth_vectors[idx];
+		sdata->auth_triplets[key_seq].key_seq = key_seq;
 	}
 
 	sdata->auth_triplets_updated = 1;

@@ -104,8 +104,8 @@ struct gprs_gsup_message {
 	enum gprs_gsup_cancel_type	cancel_type;
 	int				pdp_info_compl;
 	int				freeze_ptmsi;
-	struct gsm_auth_tuple		auth_tuples[GPRS_GSUP_MAX_NUM_AUTH_INFO];
-	size_t				num_auth_tuples;
+	struct osmo_auth_vector		auth_vectors[GPRS_GSUP_MAX_NUM_AUTH_INFO];
+	size_t				num_auth_vectors;
 	struct gprs_gsup_pdp_info	pdp_infos[GPRS_GSUP_MAX_NUM_PDP_INFO];
 	size_t				num_pdp_infos;
 	const uint8_t			*msisdn_enc;

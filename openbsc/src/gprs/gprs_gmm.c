@@ -512,9 +512,9 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 
 	at = &ctx->auth_triplet;
 
-	if (TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_SRES) != sizeof(at->sres) ||
-	    memcmp(TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES), at->sres,
-		   sizeof(at->sres)) != 0) {
+	if (TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_SRES) != sizeof(at->vec.sres) ||
+	    memcmp(TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES), at->vec.sres,
+		   sizeof(at->vec.sres)) != 0) {
 
 		LOGMMCTXP(LOGL_NOTICE, ctx, "Received SRES doesn't match\n");
 		rc = gsm48_tx_gmm_auth_ciph_rej(ctx);
@@ -637,7 +637,8 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		struct gsm_auth_tuple *at = &ctx->auth_triplet;
 
 		mmctx_timer_start(ctx, 3360, sgsn->cfg.timers.T3360);
-		return gsm48_tx_gmm_auth_ciph_req(ctx, at->rand, at->key_seq,
+		return gsm48_tx_gmm_auth_ciph_req(ctx, at->vec.rand,
+						  at->key_seq,
 						  GPRS_ALGO_GEA0);
 	}
 
@@ -1468,7 +1469,8 @@ static void mmctx_timer_cb(void *_mm)
 		}
 		at = &mm->auth_triplet;
 
-		gsm48_tx_gmm_auth_ciph_req(mm, at->rand, at->key_seq, GPRS_ALGO_GEA0);
+		gsm48_tx_gmm_auth_ciph_req(mm, at->vec.rand, at->key_seq,
+					   GPRS_ALGO_GEA0);
 		osmo_timer_schedule(&mm->timer, sgsn->cfg.timers.T3360, 0);
 		break;
 	case 3370:	/* waiting for IDENTITY RESPONSE */

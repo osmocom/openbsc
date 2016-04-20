@@ -94,13 +94,13 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 		vty_out(vty, "     seq # : %d%s",
 			atuple.key_seq, VTY_NEWLINE);
 		vty_out(vty, "     RAND  : %s%s",
-			osmo_hexdump(atuple.rand, sizeof(atuple.rand)),
+			osmo_hexdump(atuple.vec.rand, sizeof(atuple.vec.rand)),
 			VTY_NEWLINE);
 		vty_out(vty, "     SRES  : %s%s",
-			osmo_hexdump(atuple.sres, sizeof(atuple.sres)),
+			osmo_hexdump(atuple.vec.sres, sizeof(atuple.vec.sres)),
 			VTY_NEWLINE);
 		vty_out(vty, "     Kc    : %s%s",
-			osmo_hexdump(atuple.kc, sizeof(atuple.kc)),
+			osmo_hexdump(atuple.vec.kc, sizeof(atuple.vec.kc)),
 			VTY_NEWLINE);
 	}
 

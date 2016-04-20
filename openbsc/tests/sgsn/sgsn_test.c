@@ -1132,7 +1132,7 @@ static void test_gmm_attach_subscr_fake_auth(void)
 int my_subscr_request_auth_info_real_auth(struct sgsn_mm_ctx *mmctx)
 {
 	struct gsm_auth_tuple at = {
-		.sres = {0x51, 0xe5, 0x51, 0xe5},
+		.vec.sres = {0x51, 0xe5, 0x51, 0xe5},
 		.key_seq = 0
 	};
 

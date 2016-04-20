@@ -3,6 +3,7 @@
 /*
  * (C) 2014 by Sysmocom s.f.m.c. GmbH
  * (C) 2015 by Holger Hans Peter Freyther
+ * (C) 2016 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * Author: Jacob Erlbeck
@@ -82,7 +83,7 @@ static int decode_pdp_info(uint8_t *data, size_t data_len,
 }
 
 static int decode_auth_info(uint8_t *data, size_t data_len,
-			   struct gsm_auth_tuple *auth_tuple)
+			   struct osmo_auth_vector *auth_vector)
 {
 	int rc;
 	uint8_t tag;
@@ -100,24 +101,24 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 
 		switch (iei) {
 		case GPRS_GSUP_RAND_IE:
-			if (value_len != sizeof(auth_tuple->rand))
+			if (value_len != sizeof(auth_vector->rand))
 				goto parse_error;
 
-			memcpy(auth_tuple->rand, value, value_len);
+			memcpy(auth_vector->rand, value, value_len);
 			break;
 
 		case GPRS_GSUP_SRES_IE:
-			if (value_len != sizeof(auth_tuple->sres))
+			if (value_len != sizeof(auth_vector->sres))
 				goto parse_error;
 
-			memcpy(auth_tuple->sres, value, value_len);
+			memcpy(auth_vector->sres, value, value_len);
 			break;
 
 		case GPRS_GSUP_KC_IE:
-			if (value_len != sizeof(auth_tuple->kc))
+			if (value_len != sizeof(auth_vector->kc))
 				goto parse_error;
 
-			memcpy(auth_tuple->kc, value, value_len);
+			memcpy(auth_vector->kc, value, value_len);
 			break;
 
 		default:
@@ -149,7 +150,7 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 	uint8_t *value;
 	size_t value_len;
 	static const struct gprs_gsup_pdp_info empty_pdp_info = {0};
-	static const struct gsm_auth_tuple empty_auth_info = {0};
+	static const struct osmo_auth_vector empty_auth_info = {0};
 	static const struct gprs_gsup_message empty_gsup_message = {0};
 
 	*gsup_msg = empty_gsup_message;
@@ -183,7 +184,7 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 	while (data_len > 0) {
 		enum gprs_gsup_iei iei;
 		struct gprs_gsup_pdp_info pdp_info;
-		struct gsm_auth_tuple auth_info;
+		struct osmo_auth_vector auth_info;
 
 		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
 		if (rc < 0)
@@ -252,7 +253,7 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 			break;
 
 		case GPRS_GSUP_AUTH_TUPLE_IE:
-			if (gsup_msg->num_auth_tuples >= GPRS_GSUP_MAX_NUM_AUTH_INFO) {
+			if (gsup_msg->num_auth_vectors >= GPRS_GSUP_MAX_NUM_AUTH_INFO) {
 				LOGP(DGPRS, LOGL_ERROR,
 				     "GSUP IE type %d (AUTH_INFO) max exceeded\n",
 				     iei);
@@ -260,13 +261,12 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 			}
 
 			auth_info = empty_auth_info;
-			auth_info.key_seq = gsup_msg->num_auth_tuples;
 
 			rc = decode_auth_info(value, value_len, &auth_info);
 			if (rc < 0)
 				return rc;
 
-			gsup_msg->auth_tuples[gsup_msg->num_auth_tuples++] =
+			gsup_msg->auth_vectors[gsup_msg->num_auth_vectors++] =
 				auth_info;
 			break;
 
@@ -325,7 +325,7 @@ static void encode_pdp_info(struct msgb *msg, enum gprs_gsup_iei iei,
 }
 
 static void encode_auth_info(struct msgb *msg, enum gprs_gsup_iei iei,
-			     const struct gsm_auth_tuple *auth_tuple)
+			     const struct osmo_auth_vector *auth_vector)
 {
 	uint8_t *len_field;
 	size_t old_len;
@@ -334,13 +334,13 @@ static void encode_auth_info(struct msgb *msg, enum gprs_gsup_iei iei,
 	old_len = msgb_length(msg);
 
 	msgb_tlv_put(msg, GPRS_GSUP_RAND_IE,
-		     sizeof(auth_tuple->rand), auth_tuple->rand);
+		     sizeof(auth_vector->rand), auth_vector->rand);
 
 	msgb_tlv_put(msg, GPRS_GSUP_SRES_IE,
-		     sizeof(auth_tuple->sres), auth_tuple->sres);
+		     sizeof(auth_vector->sres), auth_vector->sres);
 
 	msgb_tlv_put(msg, GPRS_GSUP_KC_IE,
-		     sizeof(auth_tuple->kc), auth_tuple->kc);
+		     sizeof(auth_vector->kc), auth_vector->kc);
 
 	/* Update length field */
 	*len_field = msgb_length(msg) - old_len;
@@ -406,14 +406,11 @@ void gprs_gsup_encode(struct msgb *msg, const struct gprs_gsup_message *gsup_msg
 		}
 	}
 
-	for (idx = 0; idx < gsup_msg->num_auth_tuples; idx++) {
-		const struct gsm_auth_tuple *auth_info;
+	for (idx = 0; idx < gsup_msg->num_auth_vectors; idx++) {
+		const struct osmo_auth_vector *auth_vector;
 
-		auth_info = &gsup_msg->auth_tuples[idx];
+		auth_vector = &gsup_msg->auth_vectors[idx];
 
-		if (auth_info->key_seq == GSM_KEY_SEQ_INVAL)
-			continue;
-
-		encode_auth_info(msg, GPRS_GSUP_AUTH_TUPLE_IE, auth_info);
+		encode_auth_info(msg, GPRS_GSUP_AUTH_TUPLE_IE, auth_vector);
 	}
 }

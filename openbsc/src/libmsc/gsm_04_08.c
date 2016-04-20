@@ -234,11 +234,11 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	/* Then do whatever is needed ... */
 	if (rc == AUTH_DO_AUTH_THEN_CIPH) {
 		/* Start authentication */
-		return gsm48_tx_mm_auth_req(conn, op->atuple.rand, op->atuple.key_seq);
+		return gsm48_tx_mm_auth_req(conn, op->atuple.vec.rand, op->atuple.key_seq);
 	} else if (rc == AUTH_DO_CIPH) {
 		/* Start ciphering directly */
 		return gsm0808_cipher_mode(conn, net->a5_encryption,
-		                           op->atuple.kc, 8, 0);
+		                           op->atuple.vec.kc, 8, 0);
 	}
 
 	return -EINVAL; /* not reached */
@@ -1102,12 +1102,12 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	}
 
 	/* Validate SRES */
-	if (memcmp(conn->sec_operation->atuple.sres, ar->sres,4)) {
+	if (memcmp(conn->sec_operation->atuple.vec.sres, ar->sres,4)) {
 		int rc;
 		gsm_cbfn *cb = conn->sec_operation->cb;
 
 		DEBUGPC(DMM, "Invalid (expected %s)\n",
-			osmo_hexdump(conn->sec_operation->atuple.sres, 4));
+			osmo_hexdump(conn->sec_operation->atuple.vec.sres, 4));
 
 		if (cb)
 			cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
@@ -1122,7 +1122,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 
 	/* Start ciphering */
 	return gsm0808_cipher_mode(conn, net->a5_encryption,
-	                           conn->sec_operation->atuple.kc, 8, 0);
+	                           conn->sec_operation->atuple.vec.kc, 8, 0);
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
