@@ -717,6 +717,7 @@ struct gsm_bts {
 		struct bitvec cell_alloc;
 		struct bitvec si5_neigh_list;
 		struct osmo_earfcn_si2q si2quater_neigh_list;
+		size_t uarfcn_length; /* index for uarfcn and scramble lists */
 		struct {
 			/* bitmask large enough for all possible ARFCN's */
 			uint8_t neigh_list[1024/8];
@@ -725,6 +726,8 @@ struct gsm_bts {
 			uint8_t si5_neigh_list[1024/8];
 			uint8_t meas_bw_list[MAX_EARFCN_LIST];
 			uint16_t earfcn_list[MAX_EARFCN_LIST];
+			uint16_t uarfcn_list[MAX_EARFCN_LIST];
+			uint16_t scramble_list[MAX_EARFCN_LIST];
 		} data;
 	} si_common;
 

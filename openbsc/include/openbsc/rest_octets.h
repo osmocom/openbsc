@@ -5,11 +5,13 @@
 #include <openbsc/gsm_04_08.h>
 #include <osmocom/gsm/sysinfo.h>
 
+#define SI2Q_MAX_LEN 160
+#define SI2Q_MIN_LEN 18
+
 /* generate SI1 rest octets */
 int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net);
-int rest_octets_si2quater(uint8_t *data,
-			  const struct osmo_earfcn_si2q *e, bool uarfcn,
-			  bool earfcn);
+int rest_octets_si2quater(uint8_t *data, const struct osmo_earfcn_si2q *e,
+			  const uint16_t *u, const uint16_t *sc, size_t u_len);
 
 struct gsm48_si_selection_params {
 	uint16_t penalty_time:5,

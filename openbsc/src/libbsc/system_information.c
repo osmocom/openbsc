@@ -68,6 +68,139 @@ static int is_dcs_net(const struct gsm_bts *bts)
 	return 1;
 }
 
+/* Return q(m) for given NR_OF_TDD_CELLS - see Table 9.1.54.1a, 3GPP TS 44.018 */
+unsigned range1024_p(unsigned n)
+{
+	switch (n) {
+	case 0: return 0;
+	case 1: return 10;
+	case 2: return 19;
+	case 3: return 28;
+	case 4: return 36;
+	case 5: return 44;
+	case 6: return 52;
+	case 7: return 60;
+	case 8: return 67;
+	case 9: return 74;
+	case 10: return 81;
+	case 11: return 88;
+	case 12: return 95;
+	case 13: return 102;
+	case 14: return 109;
+	case 15: return 116;
+	case 16: return 122;
+	default: return 0;
+	}
+}
+
+/* Return q(m) for given NR_OF_TDD_CELLS - see Table 9.1.54.1b, 3GPP TS 44.018 */
+unsigned range512_q(unsigned m)
+{
+	switch (m) {
+	case 0: return 0;
+	case 1: return 9;
+	case 2: return 17;
+	case 3: return 25;
+	case 4: return 32;
+	case 5: return 39;
+	case 6: return 46;
+	case 7: return 53;
+	case 8: return 59;
+	case 9: return 65;
+	case 10: return 71;
+	case 11: return 77;
+	case 12: return 83;
+	case 13: return 89;
+	case 14: return 95;
+	case 15: return 101;
+	case 16: return 106;
+	case 17: return 111;
+	case 18: return 116;
+	case 19: return 121;
+	case 20: return 126;
+	default: return 0;
+	}
+}
+
+unsigned earfcn_size(const struct osmo_earfcn_si2q *e)
+{
+	/* account for all the constant bits in append_earfcn() */
+	return 25 + osmo_earfcn_bit_size(e);
+}
+
+unsigned uarfcn_size(const uint16_t *u, const uint16_t *sc, size_t u_len)
+{
+	/*account for all the constant bits in append_uarfcn() */
+	return 29 + range1024_p(u_len);
+}
+
+/* 3GPP TS 44.018, Table 9.1.54.1 - prepend diversity bit to scrambling code */
+uint16_t encode_fdd(uint16_t scramble, bool diversity)
+{
+	if (diversity)
+		return scramble | (1 << 9);
+	return scramble;
+}
+
+int bts_uarfcn_del(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble)
+{
+	uint16_t sc0 = encode_fdd(scramble, false), sc1 = encode_fdd(scramble, true),
+		*ual = bts->si_common.data.uarfcn_list,
+		*scl = bts->si_common.data.scramble_list;
+	size_t len = bts->si_common.uarfcn_length, i;
+	for (i = 0; i < len; i++) {
+		if (arfcn == ual[i] && (sc0 == scl[i] || sc1 == scl[i])) {
+			/* we rely on the assumption that (uarfcn, scramble)
+			   tuple is unique in the lists */
+			if (i != len - 1) { /* move the tail if necessary */
+				memmove(ual + i, ual + i + 1, 2 * (len - i + 1));
+				memmove(scl + i, scl + i + 1, 2 * (len - i + 1));
+			}
+			break;
+		}
+	}
+
+	if (i == len)
+		return -EINVAL;
+
+	bts->si_common.uarfcn_length--;
+	return 0;
+}
+
+int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble,
+		   bool diversity)
+{
+	size_t len = bts->si_common.uarfcn_length, i, k;
+	uint16_t scr, chk,
+		*ual = bts->si_common.data.uarfcn_list,
+		*scl = bts->si_common.data.scramble_list,
+		scramble1 = encode_fdd(scramble, true),
+		scramble0 = encode_fdd(scramble, false);
+
+	scr = diversity ? scramble1 : scramble0;
+	chk = diversity ? scramble0 : scramble1;
+
+	if (len == MAX_EARFCN_LIST)
+		return -ENOMEM;
+
+	for (i = 0, k = 0; i < len; i++) {
+		if (arfcn == ual[i] && (scr == scl[i] || chk == scl[i]))
+			return -EADDRINUSE;
+		if (scr > scl[i])
+			k = i + 1;
+	}
+	/* we keep lists sorted by scramble code:
+	   insert into appropriate position and move the tail */
+	if (len - k) {
+		memmove(ual + k + 1, ual + k, (len - k) * 2);
+		memmove(scl + k + 1, scl + k, (len - k) * 2);
+	}
+	ual[k] = arfcn;
+	scl[k] = scr;
+	bts->si_common.uarfcn_length++;
+	return 0;
+}
+
 static inline int use_arfcn(const struct gsm_bts *bts, const bool bis, const bool ter,
 			const bool pgsm, const int arfcn)
 {
@@ -508,8 +641,10 @@ static int generate_si2quater(uint8_t *output, struct gsm_bts *bts)
 	si2q->header.system_information = GSM48_MT_RR_SYSINFO_2quater;
 
 	rc = rest_octets_si2quater(si2q->rest_octets,
-				   &bts->si_common.si2quater_neigh_list, false,
-				   true);
+				   &bts->si_common.si2quater_neigh_list,
+				   bts->si_common.data.uarfcn_list,
+				   bts->si_common.data.scramble_list,
+				   bts->si_common.uarfcn_length);
 	if (rc < 0)
 		return rc;
 

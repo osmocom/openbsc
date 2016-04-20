@@ -707,6 +707,14 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		}
 	}
 
+	for (i = 0; i < bts->si_common.uarfcn_length; i++) {
+		vty_out(vty, "  si2quater neighbor-list add uarfcn %u %u %u%s",
+			bts->si_common.data.uarfcn_list[i],
+			bts->si_common.data.scramble_list[i] & ~(1 << 9),
+			(bts->si_common.data.scramble_list[i] >> 9) & 1,
+			VTY_NEWLINE);
+	}
+
 	vty_out(vty, "  codec-support fr");
 	if (bts->codec.hr)
 		vty_out(vty, " hr");
@@ -2813,6 +2821,49 @@ DEFUN(cfg_bts_si2quater_neigh_del, cfg_bts_si2quater_neigh_del_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_si2quater_uarfcn_add, cfg_bts_si2quater_uarfcn_add_cmd,
+      "si2quater neighbor-list add uarfcn <1900-2200> <0-511> <0-1>",
+      "SI2quater Neighbor List\n"
+      "SI2quater Neighbor List\n" "Add to manual SI2quater neighbor list\n"
+      "UARFCN of neighbor\n" "UARFCN of neighbor\n" "scrambling code\n"
+      "diversity bit\n")
+{
+	struct gsm_bts *bts = vty->index;
+	uint16_t arfcn = atoi(argv[0]), scramble = atoi(argv[1]);
+
+	switch(bts_uarfcn_add(bts, arfcn, scramble, atoi(argv[2]))) {
+	case -ENOMEM:
+		vty_out(vty, "Unable to add arfcn: max number of UARFCNs (%u) "
+			"reached%s", MAX_EARFCN_LIST, VTY_NEWLINE);
+	case -EADDRINUSE:
+		vty_out(vty, "Unable to add arfcn: (%u, %u) is already added%s",
+			arfcn, scramble, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_si2quater_uarfcn_del, cfg_bts_si2quater_uarfcn_del_cmd,
+      "si2quater neighbor-list del uarfcn <1900-2200> <0-511>",
+      "SI2quater Neighbor List\n"
+      "SI2quater Neighbor List\n"
+      "Delete from SI2quater manual neighbor list\n"
+      "UARFCN of neighbor\n"
+      "UARFCN\n"
+      "scrambling code\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts_uarfcn_del(bts, atoi(argv[0]), atoi(argv[1])) < 0) {
+		vty_out(vty, "Unable to delete uarfcn: pair not found%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_si5_neigh, cfg_bts_si5_neigh_cmd,
 	"si5 neighbor-list (add|del) arfcn <0-1023>",
 	"SI5 Neighbor List\n"
@@ -3945,6 +3996,8 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_si2quater_neigh_add_cmd);
 	install_element(BTS_NODE, &cfg_bts_si2quater_neigh_del_cmd);
+	install_element(BTS_NODE, &cfg_bts_si2quater_uarfcn_add_cmd);
+	install_element(BTS_NODE, &cfg_bts_si2quater_uarfcn_del_cmd);
 	install_element(BTS_NODE, &cfg_bts_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_force_comb_si_cmd);

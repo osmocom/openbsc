@@ -62,7 +62,7 @@ testing RP-Reference wrap
 Allocated reference: 255
 Allocated reference: 0
 Allocated reference: 1
-Testing SYSINFO_TYPE_2quater generation:
+Testing SYSINFO_TYPE_2quater EARFCN generation:
 added EARFCN 1917 - generated SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be c8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1932 - generated SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 30 14 03 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1937 - generated SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 31 07 91 a0 a0 2b 2b 2b 2b 2b 2b 
@@ -70,4 +70,16 @@ added EARFCN 1945 - generated SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be cc 1
 added EARFCN 1965 - generated SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 31 07 91 a8 3c ca 0f 5a 0a 03 2b 
 added EARFCN 1967 - failed to generate SI2quater: Cannot allocate memory
 added EARFCN 1982 - failed to generate SI2quater: Cannot allocate memory
+Testing SYSINFO_TYPE_2quater UARFCN generation:
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 0c 1a 10 99 64 00 0b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 14 1a 1f 00 44 b2 00 03 2b 2b 2b 2b 2b 2b 2b 
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 18 58 12 f0 84 86 59 00 03 2b 2b 2b 2b 2b 2b 
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 20 58 2e f0 f2 04 86 59 00 03 2b 2b 2b 2b 2b 
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 28 58 2e 22 f2 4e 84 86 59 00 03 2b 2b 2b 2b 
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 34 1a 64 26 5d f2 05 04 86 59 00 03 2b 2b 2b 
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 38 58 12 22 fd ce 8e 05 04 86 59 00 03 2b 2b 
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 40 58 1d 22 fa ce 88 85 7b 00 44 b2 00 03 2b 
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 4c 7a 34 0e 64 77 85 43 55 c8 10 99 64 00 0b 
+failed to generate SI2quater: Cannot allocate memory
+failed to generate SI2quater: Cannot allocate memory
 Done.
