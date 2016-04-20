@@ -34,6 +34,7 @@
 #include <openbsc/db.h>
 #include <openbsc/debug.h>
 
+#include <osmocom/gsm/protocol/gsm_23_003.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/statistics.h>
 #include <osmocom/core/rate_ctr.h>
@@ -529,7 +530,7 @@ struct gsm_subscriber *db_create_subscriber(const char *imsi)
 		return NULL;
 	}
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
-	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
+	strncpy(subscr->imsi, imsi, sizeof(subscr->imsi)-1);
 	dbi_result_free(result);
 	LOGP(DDB, LOGL_INFO, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
 	db_subscriber_alloc_exten(subscr);
@@ -803,7 +804,7 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 	const char *string;
 	string = dbi_result_get_string(result, "imsi");
 	if (string)
-		strncpy(subscr->imsi, string, GSM_IMSI_LENGTH-1);
+		strncpy(subscr->imsi, string, sizeof(subscr->imsi)-1);
 
 	string = dbi_result_get_string(result, "tmsi");
 	if (string)
@@ -1317,7 +1318,7 @@ int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t *token
 	return 0;
 }
 
-int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IMEI_LENGTH])
+int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM23003_IMEISV_NUM_DIGITS])
 {
 	unsigned long long equipment_id, watch_id;
 	dbi_result result;

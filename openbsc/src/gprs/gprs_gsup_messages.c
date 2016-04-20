@@ -31,6 +31,7 @@
 
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/gsm/gsm48_ie.h>
 
 #include <stdint.h>
 

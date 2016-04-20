@@ -56,7 +56,7 @@ static int verify_subscriber_modify(struct ctrl_cmd *cmd, const char *value, voi
 
 	if (!imsi || !msisdn)
 		rc = 1;
-	else if (strlen(imsi) >= GSM_IMSI_LENGTH)
+	else if (strlen(imsi) > GSM23003_IMSI_MAX_DIGITS)
 		rc = 1;
 	else if (strlen(msisdn) >= GSM_EXTENSION_LENGTH)
 		rc = 1;

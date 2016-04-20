@@ -5,13 +5,14 @@
 #include "gsm_subscriber.h"
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
+#include <osmocom/gsm/protocol/gsm_23_003.h>
 
 struct ipac_msgt_sccp_state {
 	uint8_t	src_ref[3];
 	uint8_t	dst_ref[3];
 	uint8_t trans_id;
 	uint8_t invoke_id;
-	char	imsi[GSM_IMSI_LENGTH];
+	char	imsi[GSM23003_IMSI_MAX_DIGITS+1];
 	uint8_t data[0];
 } __attribute__((packed));
 

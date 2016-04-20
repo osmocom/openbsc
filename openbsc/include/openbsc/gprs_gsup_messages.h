@@ -22,9 +22,10 @@
 #pragma once
 
 #include <stdint.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/protocol/gsm_23_003.h>
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
-/* Needed for GSM_IMSI_LENGTH: */
-#include <openbsc/gsm_subscriber.h>
+#include <osmocom/crypt/auth.h>
 
 #define GPRS_GSUP_MAX_NUM_PDP_INFO		10 /* GSM 09.02 limits this to 50 */
 #define GPRS_GSUP_MAX_NUM_AUTH_INFO		5
@@ -98,7 +99,7 @@ struct gprs_gsup_pdp_info {
 
 struct gprs_gsup_message {
 	enum gprs_gsup_message_type	message_type;
-	char				imsi[GSM_IMSI_LENGTH];
+	char				imsi[GSM23003_IMSI_MAX_DIGITS+2];
 	enum gsm48_gmm_cause		cause;
 	enum gprs_gsup_cancel_type	cancel_type;
 	int				pdp_info_compl;

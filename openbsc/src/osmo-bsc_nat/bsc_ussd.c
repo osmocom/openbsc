@@ -400,7 +400,7 @@ int bsc_ussd_check(struct nat_sccp_connection *con, struct bsc_nat_parsed *parse
 	if (parsed->bssap != BSSAP_MSG_DTAP)
 		return 0;
 
-	if (strlen(con->filter_state.imsi) >= GSM_IMSI_LENGTH)
+	if (strlen(con->filter_state.imsi) > GSM23003_IMSI_MAX_DIGITS)
 		return 0;
 
 	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
