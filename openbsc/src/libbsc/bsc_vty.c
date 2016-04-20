@@ -2797,7 +2797,8 @@ DEFUN(cfg_bts_si2quater_neigh_del, cfg_bts_si2quater_neigh_del_cmd,
 	"SI2quater Neighbor List\n"
 	"SI2quater Neighbor List\n"
 	"Delete from SI2quater manual neighbor list\n"
-	"EARFCN of neighbor\n")
+	"EARFCN of neighbor\n"
+	"EARFCN\n")
 {
 	struct gsm_bts *bts = vty->index;
 	struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
