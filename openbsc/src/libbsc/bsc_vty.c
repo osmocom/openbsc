@@ -2789,15 +2789,19 @@ DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
+	if (si2q_size_check(bts)) {
+		if (e->thresh_hi && thresh != e->thresh_hi)
+			vty_out(vty, "Warning: multiple thresholds are not "
+				"supported, overriding previous threshold %u%s",
+				e->thresh_hi, VTY_NEWLINE);
 
-	if (e->thresh_hi && thresh != e->thresh_hi)
-		vty_out(vty, "Warning: multiple thresholds are not supported, "
-			"overriding previous threshold %u%s",
-			e->thresh_hi, VTY_NEWLINE);
-
-	e->thresh_hi = thresh;
-
-	return CMD_SUCCESS;
+		e->thresh_hi = thresh;
+		return CMD_SUCCESS;
+	}
+	vty_out(vty, "Warning: not enough space in si2quater for a given arfcn%s"
+		, VTY_NEWLINE);
+	osmo_earfcn_del(e, arfcn);
+	return CMD_WARNING;
 }
 
 DEFUN(cfg_bts_si2quater_neigh_del, cfg_bts_si2quater_neigh_del_cmd,
@@ -2835,6 +2839,9 @@ DEFUN(cfg_bts_si2quater_uarfcn_add, cfg_bts_si2quater_uarfcn_add_cmd,
 	case -ENOMEM:
 		vty_out(vty, "Unable to add arfcn: max number of UARFCNs (%u) "
 			"reached%s", MAX_EARFCN_LIST, VTY_NEWLINE);
+	case -ENOSPC:
+		vty_out(vty, "Warning: not enough space in si2quater for a "
+			"given arfcn%s", VTY_NEWLINE);
 	case -EADDRINUSE:
 		vty_out(vty, "Unable to add arfcn: (%u, %u) is already added%s",
 			arfcn, scramble, VTY_NEWLINE);

@@ -134,6 +134,20 @@ unsigned uarfcn_size(const uint16_t *u, const uint16_t *sc, size_t u_len)
 	return 29 + range1024_p(u_len);
 }
 
+bool si2q_size_check(const struct gsm_bts *bts)
+{
+	const struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+	const uint16_t *u = bts->si_common.data.uarfcn_list,
+		*sc = bts->si_common.data.scramble_list;
+	size_t len = bts->si_common.uarfcn_length;
+	unsigned e_sz = e ? earfcn_size(e) : 1,
+		u_sz = len ? uarfcn_size(u, sc, len) : 1;
+	/* 2 bits are used in between UARFCN and EARFCN structs */
+	if (SI2Q_MIN_LEN + u_sz + 2 + e_sz > SI2Q_MAX_LEN)
+		return false;
+	return true;
+}
+
 /* 3GPP TS 44.018, Table 9.1.54.1 - prepend diversity bit to scrambling code */
 uint16_t encode_fdd(uint16_t scramble, bool diversity)
 {
@@ -198,7 +212,12 @@ int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble,
 	ual[k] = arfcn;
 	scl[k] = scr;
 	bts->si_common.uarfcn_length++;
-	return 0;
+
+	if (si2q_size_check(bts))
+		return 0;
+
+	bts_uarfcn_del(bts, arfcn, scramble);
+	return -ENOSPC;
 }
 
 static inline int use_arfcn(const struct gsm_bts *bts, const bool bis, const bool ter,

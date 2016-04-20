@@ -80,6 +80,7 @@ generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 34 1a 64 26 5d f2 05 04 86 59 
 generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 38 58 12 22 fd ce 8e 05 04 86 59 00 03 2b 2b 
 generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 40 58 1d 22 fa ce 88 85 7b 00 44 b2 00 03 2b 
 generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 4c 7a 34 0e 64 77 85 43 55 c8 10 99 64 00 0b 
-failed to generate SI2quater: Cannot allocate memory
-failed to generate SI2quater: Cannot allocate memory
+failed to add UARFCN to SI2quater: No space left on device
+failed to add UARFCN to SI2quater: No space left on device
+generated SI2quater: [23] 59 06 07 c0 00 25 0f 7c 4c 7a 34 0e 64 77 85 43 55 c8 10 99 64 00 0b 
 Done.

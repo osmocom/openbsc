@@ -103,6 +103,16 @@ static inline void gen(struct gsm_bts *bts)
 		printf("failed to generate SI2quater: %s\n", strerror(-r));
 }
 
+static inline void _bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn,
+			      uint16_t scramble, bool diversity)
+{
+	int r = bts_uarfcn_add(bts, arfcn, scramble, diversity);
+	if (r < 0)
+		printf("failed to add UARFCN to SI2quater: %s\n", strerror(-r));
+	else
+		gen(bts);
+}
+
 static inline void test_si2q_u(void)
 {
 	struct gsm_bts *bts;
@@ -113,37 +123,17 @@ static inline void test_si2q_u(void)
 		exit(1);
 	bts = gsm_bts_alloc(network);
 
-	bts_uarfcn_add(bts, 1982, 13, 1);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 44, 0);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 61, 1);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 89, 1);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 113, 0);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 123, 0);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 56, 1);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 72, 1);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 223, 1);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 14, 0);
-	gen(bts);
-
-	bts_uarfcn_add(bts, 1982, 88, 0);
+	_bts_uarfcn_add(bts, 1982, 13, 1);
+	_bts_uarfcn_add(bts, 1982, 44, 0);
+	_bts_uarfcn_add(bts, 1982, 61, 1);
+	_bts_uarfcn_add(bts, 1982, 89, 1);
+	_bts_uarfcn_add(bts, 1982, 113, 0);
+	_bts_uarfcn_add(bts, 1982, 123, 0);
+	_bts_uarfcn_add(bts, 1982, 56, 1);
+	_bts_uarfcn_add(bts, 1982, 72, 1);
+	_bts_uarfcn_add(bts, 1982, 223, 1);
+	_bts_uarfcn_add(bts, 1982, 14, 0);
+	_bts_uarfcn_add(bts, 1982, 88, 0);
 	gen(bts);
 }
 
