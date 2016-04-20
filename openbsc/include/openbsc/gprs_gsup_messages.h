@@ -22,8 +22,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <openbsc/gsm_04_08_gprs.h>
-#include <openbsc/gsm_data.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 /* Needed for GSM_IMSI_LENGTH: */
 #include <openbsc/gsm_subscriber.h>
 

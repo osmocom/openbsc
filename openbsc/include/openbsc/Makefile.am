@@ -8,7 +8,7 @@ noinst_HEADERS = abis_nm.h abis_rsl.h db.h gsm_04_08.h gsm_data.h \
 		 vty.h socket.h e1_config.h trau_upqueue.h token_auth.h \
 		 handover_decision.h rrlp.h \
 		crc24.h gprs_llc.h gprs_gmm.h \
-		gb_proxy.h gprs_sgsn.h gsm_04_08_gprs.h sgsn.h \
+		gb_proxy.h gprs_sgsn.h sgsn.h \
 		auth.h osmo_msc.h bsc_msc.h bsc_nat.h \
 		osmo_bsc_rf.h osmo_bsc.h network_listen.h bsc_nat_sccp.h \
 		osmo_msc_data.h osmo_bsc_grace.h sms_queue.h abis_om2000.h \

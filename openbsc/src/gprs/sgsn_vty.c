@@ -27,13 +27,13 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/vty.h>
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/gprs_gsup_client.h>
 
 #include <osmocom/vty/command.h>

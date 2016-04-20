@@ -20,6 +20,7 @@
  *
  */
 
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gprs_gsup_client.h>
 

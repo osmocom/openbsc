@@ -24,7 +24,6 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_data_shared.h>
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/debug.h>
 
 #include <osmocom/gprs/protocol/gsm_08_18.h>

@@ -39,6 +39,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/gsm/apn.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 
 #include <osmocom/gprs/gprs_bssgp.h>
 
@@ -46,7 +47,6 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/paging.h>
 #include <openbsc/transaction.h>
 #include <openbsc/gprs_llc.h>

@@ -19,11 +19,11 @@
  *
  */
 
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gsm_subscriber.h>
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/debug.h>
 
 const struct value_string auth_state_names[] = {

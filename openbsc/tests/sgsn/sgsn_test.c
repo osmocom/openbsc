@@ -32,7 +32,6 @@
 #include <osmocom/gprs/gprs_bssgp.h>
 
 #include <osmocom/gsm/gsm_utils.h>
-#include <openbsc/gsm_04_08_gprs.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/msgb.h>

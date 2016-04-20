@@ -19,12 +19,12 @@
  */
 
 #include <osmocom/gsm/gsm48.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 
 #include <openbsc/gprs_gb_parse.h>
 
 #include <openbsc/gprs_utils.h>
 
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/debug.h>
 
 #include <osmocom/gprs/gprs_bssgp.h>
