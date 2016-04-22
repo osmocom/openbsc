@@ -83,7 +83,6 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 
 	/* Inform parts of the system we don't know */
 	sig_data.subscr = subscr;
-	sig_data.lac	= conn ? conn->lac : 0;
 	sig_data.conn	= conn;
 	sig_data.paging_result = event;
 	osmo_signal_dispatch(
