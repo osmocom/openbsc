@@ -29,6 +29,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <osmocom/core/bitvec.h>
+#include <osmocom/gsm/bitvec_gsm.h>
 #include <openbsc/rest_octets.h>
 #include <openbsc/arfcn_range_encode.h>
 #include <openbsc/system_information.h>
