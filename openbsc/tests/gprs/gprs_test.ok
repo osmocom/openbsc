@@ -13,7 +13,6 @@ N(U) = 511, V(UR) = 511 => new
 N(U) = 510, V(UR) = 511 => retransmit
 N(U) = 481, V(UR) = 511 => retransmit
 N(U) = 479, V(UR) = 511 => new
-Test shift functions
 Test GSUP message decoding/encoding
   Testing Send Authentication Info Request
   Testing Send Authentication Info Error

@@ -48,7 +48,6 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/socket.h>
 #include <openbsc/vty.h>
-#include <openbsc/utils.h>
 
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
@@ -1023,7 +1022,7 @@ static int verify_key(struct bsc_connection *conn, struct bsc_config *conf, cons
 		return 0;
 	}
 
-	return constant_time_cmp(vec.res, key, 8) == 0;
+	return osmo_constant_time_cmp(vec.res, key, 8) == 0;
 }
 
 static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc)

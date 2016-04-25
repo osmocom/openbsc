@@ -20,10 +20,10 @@
  *
  */
 
+#include <osmocom/core/utils.h>
 #include <osmocom/crypt/auth.h>
 
 #include <openbsc/oap.h>
-#include <openbsc/utils.h>
 #include <openbsc/debug.h>
 #include <openbsc/oap_messages.h>
 
@@ -103,7 +103,7 @@ static int oap_evaluate_challenge(const struct oap_state *state,
 		return -3;
 	}
 
-	if (constant_time_cmp(vec.autn, rx_autn, sizeof(vec.autn)) != 0) {
+	if (osmo_constant_time_cmp(vec.autn, rx_autn, sizeof(vec.autn)) != 0) {
 		LOGP(DGPRS, LOGL_ERROR, "OAP: AUTN mismatch!\n");
 		LOGP(DGPRS, LOGL_INFO, "OAP: AUTN from server: %s\n",
 		     osmo_hexdump_nospc(rx_autn, sizeof(vec.autn)));
