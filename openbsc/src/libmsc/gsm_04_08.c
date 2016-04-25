@@ -1600,6 +1600,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct gsm_bts *remote_bts = remote_lchan->ts->trx->bts;
 	enum gsm_chan_t lt = lchan->type, rt = remote_lchan->type;
+	enum gsm48_chan_mode lm = lchan->tch_mode, rm = remote_lchan->tch_mode;
 	int rc;
 
 	DEBUGP(DCC, "Setting up TCH map between (bts=%u,trx=%u,ts=%u,%s) and "
@@ -1612,6 +1613,22 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	if (bts->type != remote_bts->type) {
 		LOGP(DCC, LOGL_ERROR, "Cannot switch calls between different BTS types yet\n");
 		return -EINVAL;
+	}
+
+	if (lt != rt) {
+		LOGP(DCC, LOGL_ERROR, "Cannot patch through call with different"
+		     " channel types: local = %s, remote = %s\n",
+		     get_value_string(gsm_chan_t_names, lt),
+		     get_value_string(gsm_chan_t_names, rt));
+		return -EBADSLT;
+	}
+
+	if (lm != rm) {
+		LOGP(DCC, LOGL_ERROR, "Cannot patch through call with different"
+		     " channel modes: local = %s, remote = %s\n",
+		     get_value_string(gsm48_chan_mode_names, lm),
+		     get_value_string(gsm48_chan_mode_names, rm));
+		return -EMEDIUMTYPE;
 	}
 
 	// todo: map between different bts types
@@ -1849,6 +1866,30 @@ static void gsm48_cc_timeout(void *arg)
 			gsm48_cc_tx_release(trans, &mo_rel);
 	}
 
+}
+
+/* disconnect both calls from the bridge */
+static inline void disconnect_bridge(struct gsm_network *net,
+				     struct gsm_mncc_bridge *bridge, int err)
+{
+	struct gsm_trans *trans0 = trans_find_by_callref(net, bridge->callref[0]);
+	struct gsm_trans *trans1 = trans_find_by_callref(net, bridge->callref[1]);
+	struct gsm_mncc mx_rel;
+	if (!trans0 || !trans1)
+		return;
+
+	DEBUGP(DCC, "Failed to bridge TCH for calls %x <-> %x :: %s \n",
+	       trans0->callref, trans1->callref, strerror(err));
+
+	memset(&mx_rel, 0, sizeof(struct gsm_mncc));
+	mncc_set_cause(&mx_rel, GSM48_CAUSE_LOC_INN_NET,
+		       GSM48_CC_CAUSE_CHAN_UNACCEPT);
+
+	mx_rel.callref = trans0->callref;
+	gsm48_cc_tx_disconnect(trans0, &mx_rel);
+
+	mx_rel.callref = trans1->callref;
+	gsm48_cc_tx_disconnect(trans1, &mx_rel);
 }
 
 static void gsm48_start_cc_timer(struct gsm_trans *trans, int current,
@@ -3221,7 +3262,10 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 	/* handle special messages */
 	switch(msg_type) {
 	case MNCC_BRIDGE:
-		return tch_bridge(net, arg);
+		rc = tch_bridge(net, arg);
+		if (rc < 0)
+			disconnect_bridge(net, arg, -rc);
+		return rc;
 	case MNCC_FRAME_DROP:
 		return tch_recv_mncc(net, data->callref, 0);
 	case MNCC_FRAME_RECV:
