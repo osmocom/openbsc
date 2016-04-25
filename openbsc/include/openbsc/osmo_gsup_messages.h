@@ -1,10 +1,8 @@
 /* Osmocom Subscriber Update Protocol message encoder/decoder */
 
-/* (C) 2014 by Sysmocom s.f.m.c. GmbH
+/* (C) 2014 by Sysmocom s.f.m.c. GmbH, Author: Jacob Erlbeck
  * (C) 2016 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
- *
- * Author: Jacob Erlbeck
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -28,12 +26,16 @@
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <osmocom/crypt/auth.h>
 
+/*! Maximum nubmer of PDP inside \ref osmo_gsup_message */
 #define OSMO_GSUP_MAX_NUM_PDP_INFO		10 /* GSM 09.02 limits this to 50 */
+/*! Maximum number of auth info inside \ref osmo_gsup_message */
 #define OSMO_GSUP_MAX_NUM_AUTH_INFO		5
+/*! Maximum number of octets encoding MSISDN in BCD format */
 #define OSMO_GSUP_MAX_MSISDN_LEN		9
 
 #define OSMO_GSUP_PDP_TYPE_SIZE			2
 
+/*! Information Element Identifiers for GSUP IEs */
 enum osmo_gsup_iei {
 	OSMO_GSUP_IMSI_IE			= 0x01,
 	OSMO_GSUP_CAUSE_IE			= 0x02,
@@ -59,6 +61,7 @@ enum osmo_gsup_iei {
 	OSMO_GSUP_RES_IE			= 0x27,
 };
 
+/*! GSUP message type */
 enum osmo_gsup_message_type {
 	OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST	= 0b00000100,
 	OSMO_GSUP_MSGT_UPDATE_LOCATION_ERROR	= 0b00000101,
@@ -94,16 +97,25 @@ enum osmo_gsup_cancel_type {
 	OSMO_GSUP_CANCEL_TYPE_WITHDRAW		= 2, /* on wire: 1 */
 };
 
+/*! parsed/decoded PDP context information */
 struct osmo_gsup_pdp_info {
 	unsigned int			context_id;
 	int				have_info;
+	/*! Type of PDP context */
 	uint16_t			pdp_type;
+	/*! APN information, still in encoded form. Can be NULL if no
+	 * APN information included */
 	const uint8_t			*apn_enc;
+	/*! length (in octets) of apn_enc */
 	size_t				apn_enc_len;
+	/*! QoS information, still in encoded form. Can be NULL if no
+	 * QoS information included */
 	const uint8_t			*qos_enc;
+	/*! length (in octets) of qos_enc */
 	size_t				qos_enc_len;
 };
 
+/*! parsed/decoded GSUP protocol message */
 struct osmo_gsup_message {
 	enum osmo_gsup_message_type	message_type;
 	char				imsi[GSM23003_IMSI_MAX_DIGITS+2];

@@ -174,6 +174,12 @@ parse_error:
 	return -1;
 }
 
+/*! Decode (parse) a GSUP message
+ *  \param[in] const_data input data to be parsed
+ *  \param[in] data_len length of input (\a const_data)
+ *  \param[out] gsup_msg callee-allocated output data structure
+ *  \returns 0 on success; negative otherwise
+ */
 int osmo_gsup_decode(const uint8_t *const_data, size_t data_len,
 		     struct osmo_gsup_message *gsup_msg)
 {
@@ -392,6 +398,10 @@ static void encode_auth_info(struct msgb *msg, enum osmo_gsup_iei iei,
 	*len_field = msgb_length(msg) - old_len;
 }
 
+/*! Encode a GSUP message
+ *  \param[out] msg message buffer to which encoded message is written
+ *  \param[in] gsup_msg \ref osmo_gsup_message data to be encoded
+ */
 void osmo_gsup_encode(struct msgb *msg, const struct osmo_gsup_message *gsup_msg)
 {
 	uint8_t u8;
