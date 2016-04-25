@@ -26,7 +26,7 @@ osmo_sgsn_SOURCES =	gprs_gmm.c gprs_sgsn.c gprs_sndcp.c gprs_sndcp_vty.c \
 			sgsn_main.c sgsn_vty.c sgsn_libgtp.c \
 			gprs_llc.c gprs_llc_parse.c gprs_llc_vty.c crc24.c \
 			sgsn_ctrl.c sgsn_auth.c gprs_subscriber.c \
-			gprs_gsup_messages.c gprs_utils.c gprs_gsup_client.c \
+			osmo_gsup_messages.c gprs_utils.c gprs_gsup_client.c \
 			sgsn_cdr.c sgsn_ares.c \
 			oap.c oap_messages.c
 osmo_sgsn_LDADD = 	\

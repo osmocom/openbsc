@@ -27,7 +27,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
-#include <openbsc/gprs_gsup_messages.h>
+#include <openbsc/osmo_gsup_messages.h>
 #include <openbsc/gprs_utils.h>
 
 #include <openbsc/debug.h>
@@ -159,14 +159,14 @@ void gprs_subscr_cancel(struct gsm_subscriber *subscr)
 }
 
 static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
-				       struct gprs_gsup_message *gsup_msg)
+				       struct osmo_gsup_message *gsup_msg)
 {
 	struct msgb *msg = gprs_gsup_msgb_alloc();
 
 	if (strlen(gsup_msg->imsi) == 0 && subscr)
 		strncpy(gsup_msg->imsi, subscr->imsi, sizeof(gsup_msg->imsi) - 1);
 
-	gprs_gsup_encode(msg, gsup_msg);
+	osmo_gsup_encode(msg, gsup_msg);
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		    "Sending GSUP, will send: %s\n", msgb_hexdump(msg));
@@ -180,21 +180,21 @@ static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 }
 
 static int gprs_subscr_tx_gsup_error_reply(struct gsm_subscriber *subscr,
-					   struct gprs_gsup_message *gsup_orig,
+					   struct osmo_gsup_message *gsup_orig,
 					   enum gsm48_gmm_cause cause)
 {
-	struct gprs_gsup_message gsup_reply = {0};
+	struct osmo_gsup_message gsup_reply = {0};
 
 	strncpy(gsup_reply.imsi, gsup_orig->imsi, sizeof(gsup_reply.imsi) - 1);
 	gsup_reply.cause = cause;
 	gsup_reply.message_type =
-		GPRS_GSUP_TO_MSGT_ERROR(gsup_orig->message_type);
+		OSMO_GSUP_TO_MSGT_ERROR(gsup_orig->message_type);
 
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
 }
 
 static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
-					    struct gprs_gsup_message *gsup_msg)
+					    struct osmo_gsup_message *gsup_msg)
 {
 	unsigned idx;
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
@@ -261,7 +261,7 @@ static struct sgsn_subscriber_pdp_data *gprs_subscr_pdp_data_get_by_id(
 
 
 static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
-					 struct gprs_gsup_message *gsup_msg)
+					 struct osmo_gsup_message *gsup_msg)
 {
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
 	unsigned idx;
@@ -298,7 +298,7 @@ static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
 	}
 
 	for (idx = 0; idx < gsup_msg->num_pdp_infos; idx++) {
-		struct gprs_gsup_pdp_info *pdp_info = &gsup_msg->pdp_infos[idx];
+		struct osmo_gsup_pdp_info *pdp_info = &gsup_msg->pdp_infos[idx];
 		size_t ctx_id = pdp_info->context_id;
 		struct sgsn_subscriber_pdp_data *pdp_data;
 
@@ -338,7 +338,7 @@ static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
 }
 
 static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
-					       struct gprs_gsup_message *gsup_msg)
+					       struct osmo_gsup_message *gsup_msg)
 {
 	gprs_subscr_gsup_insert_data(subscr, gsup_msg);
 
@@ -368,7 +368,7 @@ static int check_cause(int cause)
 }
 
 static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
-					    struct gprs_gsup_message *gsup_msg)
+					    struct osmo_gsup_message *gsup_msg)
 {
 	unsigned idx;
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
@@ -421,7 +421,7 @@ static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
 }
 
 static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
-					       struct gprs_gsup_message *gsup_msg)
+					       struct osmo_gsup_message *gsup_msg)
 {
 	int cause_err;
 
@@ -467,9 +467,9 @@ static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
 }
 
 static int gprs_subscr_handle_gsup_purge_no_subscr(
-	struct gprs_gsup_message *gsup_msg)
+	struct osmo_gsup_message *gsup_msg)
 {
-	if (GPRS_GSUP_IS_MSGT_ERROR(gsup_msg->message_type)) {
+	if (OSMO_GSUP_IS_MSGT_ERROR(gsup_msg->message_type)) {
 		LOGGSUPP(LOGL_NOTICE, gsup_msg,
 			 "Purge MS has failed with cause '%s' (%d)\n",
 			 get_value_string(gsm48_gmm_cause_names, gsup_msg->cause),
@@ -482,7 +482,7 @@ static int gprs_subscr_handle_gsup_purge_no_subscr(
 }
 
 static int gprs_subscr_handle_gsup_purge_res(struct gsm_subscriber *subscr,
-					     struct gprs_gsup_message *gsup_msg)
+					     struct osmo_gsup_message *gsup_msg)
 {
 	LOGGSUBSCRP(LOGL_INFO, subscr, "Completing purge MS\n");
 
@@ -494,7 +494,7 @@ static int gprs_subscr_handle_gsup_purge_res(struct gsm_subscriber *subscr,
 }
 
 static int gprs_subscr_handle_gsup_purge_err(struct gsm_subscriber *subscr,
-					     struct gprs_gsup_message *gsup_msg)
+					     struct osmo_gsup_message *gsup_msg)
 {
 	LOGGSUBSCRP(LOGL_NOTICE, subscr,
 		    "Purge MS has failed with cause '%s' (%d)\n",
@@ -527,17 +527,17 @@ static int gprs_subscr_handle_gsup_purge_err(struct gsm_subscriber *subscr,
 }
 
 static int gprs_subscr_handle_loc_cancel_req(struct gsm_subscriber *subscr,
-					     struct gprs_gsup_message *gsup_msg)
+					     struct osmo_gsup_message *gsup_msg)
 {
-	struct gprs_gsup_message gsup_reply = {0};
+	struct osmo_gsup_message gsup_reply = {0};
 	int is_update_procedure = !gsup_msg->cancel_type ||
-		gsup_msg->cancel_type == GPRS_GSUP_CANCEL_TYPE_UPDATE;
+		gsup_msg->cancel_type == OSMO_GSUP_CANCEL_TYPE_UPDATE;
 
 	LOGGSUBSCRP(LOGL_INFO, subscr, "Cancelling MS subscriber (%s)\n",
 		    is_update_procedure ?
 		    "update procedure" : "subscription withdraw");
 
-	gsup_reply.message_type = GPRS_GSUP_MSGT_LOCATION_CANCEL_RESULT;
+	gsup_reply.message_type = OSMO_GSUP_MSGT_LOCATION_CANCEL_RESULT;
 	gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
 
 	if (is_update_procedure)
@@ -554,16 +554,16 @@ static int gprs_subscr_handle_loc_cancel_req(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-static int gprs_subscr_handle_unknown_imsi(struct gprs_gsup_message *gsup_msg)
+static int gprs_subscr_handle_unknown_imsi(struct osmo_gsup_message *gsup_msg)
 {
-	if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg->message_type)) {
+	if (OSMO_GSUP_IS_MSGT_REQUEST(gsup_msg->message_type)) {
 		gprs_subscr_tx_gsup_error_reply(NULL, gsup_msg,
 						GMM_CAUSE_IMSI_UNKNOWN);
 		LOGP(DGPRS, LOGL_NOTICE,
 		     "Unknown IMSI %s, discarding GSUP request "
 		     "of type 0x%02x\n",
 		     gsup_msg->imsi, gsup_msg->message_type);
-	} else if (GPRS_GSUP_IS_MSGT_ERROR(gsup_msg->message_type)) {
+	} else if (OSMO_GSUP_IS_MSGT_ERROR(gsup_msg->message_type)) {
 		LOGP(DGPRS, LOGL_NOTICE,
 		     "Unknown IMSI %s, discarding GSUP error "
 		     "of type 0x%02x, cause '%s' (%d)\n",
@@ -586,10 +586,10 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 	size_t data_len = msgb_l2len(msg);
 	int rc = 0;
 
-	struct gprs_gsup_message gsup_msg = {0};
+	struct osmo_gsup_message gsup_msg = {0};
 	struct gsm_subscriber *subscr;
 
-	rc = gprs_gsup_decode(data, data_len, &gsup_msg);
+	rc = osmo_gsup_decode(data, data_len, &gsup_msg);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_ERROR,
 		     "decoding GSUP message fails with error '%s' (%d)\n",
@@ -600,21 +600,21 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 	if (!gsup_msg.imsi[0]) {
 		LOGP(DGPRS, LOGL_ERROR, "Missing IMSI in GSUP message\n");
 
-		if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
+		if (OSMO_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
 			gprs_subscr_tx_gsup_error_reply(NULL, &gsup_msg,
 							GMM_CAUSE_INV_MAND_INFO);
 		return -GMM_CAUSE_INV_MAND_INFO;
 	}
 
-	if (!gsup_msg.cause && GPRS_GSUP_IS_MSGT_ERROR(gsup_msg.message_type))
+	if (!gsup_msg.cause && OSMO_GSUP_IS_MSGT_ERROR(gsup_msg.message_type))
 		gsup_msg.cause = GMM_CAUSE_NET_FAIL;
 
 	subscr = gprs_subscr_get_by_imsi(gsup_msg.imsi);
 
 	if (!subscr) {
 		switch (gsup_msg.message_type) {
-		case GPRS_GSUP_MSGT_PURGE_MS_RESULT:
-		case GPRS_GSUP_MSGT_PURGE_MS_ERROR:
+		case OSMO_GSUP_MSGT_PURGE_MS_RESULT:
+		case OSMO_GSUP_MSGT_PURGE_MS_ERROR:
 			return gprs_subscr_handle_gsup_purge_no_subscr(&gsup_msg);
 		default:
 			return gprs_subscr_handle_unknown_imsi(&gsup_msg);
@@ -625,36 +625,36 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		"Received GSUP message of type 0x%02x\n", gsup_msg.message_type);
 
 	switch (gsup_msg.message_type) {
-	case GPRS_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
+	case OSMO_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
 		rc = gprs_subscr_handle_loc_cancel_req(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_RESULT:
+	case OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT:
 		rc = gprs_subscr_handle_gsup_auth_res(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_ERROR:
+	case OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR:
 		rc = gprs_subscr_handle_gsup_auth_err(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_UPDATE_LOCATION_RESULT:
+	case OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT:
 		rc = gprs_subscr_handle_gsup_upd_loc_res(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_UPDATE_LOCATION_ERROR:
+	case OSMO_GSUP_MSGT_UPDATE_LOCATION_ERROR:
 		rc = gprs_subscr_handle_gsup_upd_loc_err(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_PURGE_MS_ERROR:
+	case OSMO_GSUP_MSGT_PURGE_MS_ERROR:
 		rc = gprs_subscr_handle_gsup_purge_err(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_PURGE_MS_RESULT:
+	case OSMO_GSUP_MSGT_PURGE_MS_RESULT:
 		rc = gprs_subscr_handle_gsup_purge_res(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_INSERT_DATA_REQUEST:
-	case GPRS_GSUP_MSGT_DELETE_DATA_REQUEST:
+	case OSMO_GSUP_MSGT_INSERT_DATA_REQUEST:
+	case OSMO_GSUP_MSGT_DELETE_DATA_REQUEST:
 		LOGGSUBSCRP(LOGL_ERROR, subscr,
 			"Rx GSUP message type %d not yet implemented\n",
 			gsup_msg.message_type);
@@ -667,7 +667,7 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		LOGGSUBSCRP(LOGL_ERROR, subscr,
 			"Rx GSUP message type %d not valid at SGSN\n",
 			gsup_msg.message_type);
-		if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
+		if (OSMO_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
 			gprs_subscr_tx_gsup_error_reply(
 				subscr, &gsup_msg, GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		rc = -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
@@ -682,11 +682,11 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 int gprs_subscr_purge(struct gsm_subscriber *subscr)
 {
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
-	struct gprs_gsup_message gsup_msg = {0};
+	struct osmo_gsup_message gsup_msg = {0};
 
 	LOGGSUBSCRP(LOGL_INFO, subscr, "purging MS subscriber\n");
 
-	gsup_msg.message_type = GPRS_GSUP_MSGT_PURGE_MS_REQUEST;
+	gsup_msg.message_type = OSMO_GSUP_MSGT_PURGE_MS_REQUEST;
 
 	/* Provide the HLR number in case it is known */
 	gsup_msg.hlr_enc_len = sdata->hlr_len;
@@ -697,23 +697,23 @@ int gprs_subscr_purge(struct gsm_subscriber *subscr)
 
 int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
 {
-	struct gprs_gsup_message gsup_msg = {0};
+	struct osmo_gsup_message gsup_msg = {0};
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		"subscriber auth info is not available\n");
 
-	gsup_msg.message_type = GPRS_GSUP_MSGT_SEND_AUTH_INFO_REQUEST;
+	gsup_msg.message_type = OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST;
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 
 int gprs_subscr_location_update(struct gsm_subscriber *subscr)
 {
-	struct gprs_gsup_message gsup_msg = {0};
+	struct osmo_gsup_message gsup_msg = {0};
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		"subscriber data is not available\n");
 
-	gsup_msg.message_type = GPRS_GSUP_MSGT_UPDATE_LOCATION_REQUEST;
+	gsup_msg.message_type = OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST;
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 

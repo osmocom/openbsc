@@ -1,4 +1,4 @@
-/* GPRS Subscriber Update Protocol message encoder/decoder */
+/* Osmocom Subscriber Update Protocol message encoder/decoder */
 
 /*
  * (C) 2014 by Sysmocom s.f.m.c. GmbH
@@ -23,10 +23,10 @@
  *
  */
 
-#include <openbsc/gprs_gsup_messages.h>
+#include <openbsc/osmo_gsup_messages.h>
 
 #include <openbsc/debug.h>
-#include <openbsc/gprs_utils.h>
+//#include <openbsc/gprs_utils.h>
 #include <openbsc/utils.h>
 
 #include <osmocom/gsm/tlv.h>
@@ -36,7 +36,7 @@
 #include <stdint.h>
 
 static int decode_pdp_info(uint8_t *data, size_t data_len,
-			  struct gprs_gsup_pdp_info *pdp_info)
+			  struct osmo_gsup_pdp_info *pdp_info)
 {
 	int rc;
 	uint8_t tag;
@@ -45,7 +45,7 @@ static int decode_pdp_info(uint8_t *data, size_t data_len,
 
 	/* specific parts */
 	while (data_len > 0) {
-		enum gprs_gsup_iei iei;
+		enum osmo_gsup_iei iei;
 
 		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
 		if (rc < 0)
@@ -54,21 +54,21 @@ static int decode_pdp_info(uint8_t *data, size_t data_len,
 		iei = tag;
 
 		switch (iei) {
-		case GPRS_GSUP_PDP_CONTEXT_ID_IE:
+		case OSMO_GSUP_PDP_CONTEXT_ID_IE:
 			pdp_info->context_id = decode_big_endian(value, value_len);
 			break;
 
-		case GPRS_GSUP_PDP_TYPE_IE:
+		case OSMO_GSUP_PDP_TYPE_IE:
 			pdp_info->pdp_type =
 				decode_big_endian(value, value_len) & 0x0fff;
 			break;
 
-		case GPRS_GSUP_ACCESS_POINT_NAME_IE:
+		case OSMO_GSUP_ACCESS_POINT_NAME_IE:
 			pdp_info->apn_enc = value;
 			pdp_info->apn_enc_len = value_len;
 			break;
 
-		case GPRS_GSUP_PDP_QOS_IE:
+		case OSMO_GSUP_PDP_QOS_IE:
 			pdp_info->qos_enc = value;
 			pdp_info->qos_enc_len = value_len;
 			break;
@@ -90,7 +90,7 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 	uint8_t tag;
 	uint8_t *value;
 	size_t value_len;
-	enum gprs_gsup_iei iei;
+	enum osmo_gsup_iei iei;
 
 	/* specific parts */
 	while (data_len > 0) {
@@ -101,21 +101,21 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 		iei = tag;
 
 		switch (iei) {
-		case GPRS_GSUP_RAND_IE:
+		case OSMO_GSUP_RAND_IE:
 			if (value_len != sizeof(auth_vector->rand))
 				goto parse_error;
 
 			memcpy(auth_vector->rand, value, value_len);
 			break;
 
-		case GPRS_GSUP_SRES_IE:
+		case OSMO_GSUP_SRES_IE:
 			if (value_len != sizeof(auth_vector->sres))
 				goto parse_error;
 
 			memcpy(auth_vector->sres, value, value_len);
 			break;
 
-		case GPRS_GSUP_KC_IE:
+		case OSMO_GSUP_KC_IE:
 			if (value_len != sizeof(auth_vector->kc))
 				goto parse_error;
 
@@ -138,8 +138,8 @@ parse_error:
 	return -1;
 }
 
-int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
-		     struct gprs_gsup_message *gsup_msg)
+int osmo_gsup_decode(const uint8_t *const_data, size_t data_len,
+		     struct osmo_gsup_message *gsup_msg)
 {
 	int rc;
 	uint8_t tag;
@@ -150,9 +150,9 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 	uint8_t *data = (uint8_t *)const_data;
 	uint8_t *value;
 	size_t value_len;
-	static const struct gprs_gsup_pdp_info empty_pdp_info = {0};
+	static const struct osmo_gsup_pdp_info empty_pdp_info = {0};
 	static const struct osmo_auth_vector empty_auth_info = {0};
-	static const struct gprs_gsup_message empty_gsup_message = {0};
+	static const struct osmo_gsup_message empty_gsup_message = {0};
 
 	*gsup_msg = empty_gsup_message;
 
@@ -163,7 +163,7 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 
 	gsup_msg->message_type = decode_big_endian(value, 1);
 
-	rc = gprs_match_tlv(&data, &data_len, GPRS_GSUP_IMSI_IE,
+	rc = gprs_match_tlv(&data, &data_len, OSMO_GSUP_IMSI_IE,
 			    &value, &value_len);
 
 	if (rc <= 0)
@@ -183,8 +183,8 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 
 	/* specific parts */
 	while (data_len > 0) {
-		enum gprs_gsup_iei iei;
-		struct gprs_gsup_pdp_info pdp_info;
+		enum osmo_gsup_iei iei;
+		struct osmo_gsup_pdp_info pdp_info;
 		struct osmo_auth_vector auth_info;
 
 		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
@@ -194,34 +194,34 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 		iei = tag;
 
 		switch (iei) {
-		case GPRS_GSUP_IMSI_IE:
-		case GPRS_GSUP_PDP_TYPE_IE:
-		case GPRS_GSUP_ACCESS_POINT_NAME_IE:
-		case GPRS_GSUP_RAND_IE:
-		case GPRS_GSUP_SRES_IE:
-		case GPRS_GSUP_KC_IE:
+		case OSMO_GSUP_IMSI_IE:
+		case OSMO_GSUP_PDP_TYPE_IE:
+		case OSMO_GSUP_ACCESS_POINT_NAME_IE:
+		case OSMO_GSUP_RAND_IE:
+		case OSMO_GSUP_SRES_IE:
+		case OSMO_GSUP_KC_IE:
 			LOGP(DGPRS, LOGL_NOTICE,
 			     "GSUP IE type %d not expected (ignored)\n", iei);
 			continue;
 
-		case GPRS_GSUP_CAUSE_IE:
+		case OSMO_GSUP_CAUSE_IE:
 			gsup_msg->cause = decode_big_endian(value, value_len);
 			break;
 
-		case GPRS_GSUP_CANCEL_TYPE_IE:
+		case OSMO_GSUP_CANCEL_TYPE_IE:
 			gsup_msg->cancel_type =
 				decode_big_endian(value, value_len) + 1;
 			break;
 
-		case GPRS_GSUP_PDP_INFO_COMPL_IE:
+		case OSMO_GSUP_PDP_INFO_COMPL_IE:
 			gsup_msg->pdp_info_compl = 1;
 			break;
 
-		case GPRS_GSUP_FREEZE_PTMSI_IE:
+		case OSMO_GSUP_FREEZE_PTMSI_IE:
 			gsup_msg->freeze_ptmsi = 1;
 			break;
 
-		case GPRS_GSUP_PDP_CONTEXT_ID_IE:
+		case OSMO_GSUP_PDP_CONTEXT_ID_IE:
 			/* When these IE appear in the top-level part of the
 			 * message, they are used by Delete Subscr Info to delete
 			 * single entries. We don't have an extra list for
@@ -229,8 +229,8 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 
 			/* fall through */
 
-		case GPRS_GSUP_PDP_INFO_IE:
-			if (gsup_msg->num_pdp_infos >= GPRS_GSUP_MAX_NUM_PDP_INFO) {
+		case OSMO_GSUP_PDP_INFO_IE:
+			if (gsup_msg->num_pdp_infos >= OSMO_GSUP_MAX_NUM_PDP_INFO) {
 				LOGP(DGPRS, LOGL_ERROR,
 				     "GSUP IE type %d (PDP_INFO) max exceeded\n",
 				     iei);
@@ -239,7 +239,7 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 
 			pdp_info = empty_pdp_info;
 
-			if (iei == GPRS_GSUP_PDP_INFO_IE) {
+			if (iei == OSMO_GSUP_PDP_INFO_IE) {
 				rc = decode_pdp_info(value, value_len, &pdp_info);
 				if (rc < 0)
 					return rc;
@@ -253,8 +253,8 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 				pdp_info;
 			break;
 
-		case GPRS_GSUP_AUTH_TUPLE_IE:
-			if (gsup_msg->num_auth_vectors >= GPRS_GSUP_MAX_NUM_AUTH_INFO) {
+		case OSMO_GSUP_AUTH_TUPLE_IE:
+			if (gsup_msg->num_auth_vectors >= OSMO_GSUP_MAX_NUM_AUTH_INFO) {
 				LOGP(DGPRS, LOGL_ERROR,
 				     "GSUP IE type %d (AUTH_INFO) max exceeded\n",
 				     iei);
@@ -271,12 +271,12 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 				auth_info;
 			break;
 
-		case GPRS_GSUP_MSISDN_IE:
+		case OSMO_GSUP_MSISDN_IE:
 			gsup_msg->msisdn_enc = value;
 			gsup_msg->msisdn_enc_len = value_len;
 			break;
 
-		case GPRS_GSUP_HLR_NUMBER_IE:
+		case OSMO_GSUP_HLR_NUMBER_IE:
 			gsup_msg->hlr_enc = value;
 			gsup_msg->hlr_enc_len = value_len;
 			break;
@@ -291,8 +291,8 @@ int gprs_gsup_decode(const uint8_t *const_data, size_t data_len,
 	return 0;
 }
 
-static void encode_pdp_info(struct msgb *msg, enum gprs_gsup_iei iei,
-			    const struct gprs_gsup_pdp_info *pdp_info)
+static void encode_pdp_info(struct msgb *msg, enum osmo_gsup_iei iei,
+			    const struct osmo_gsup_pdp_info *pdp_info)
 {
 	uint8_t *len_field;
 	size_t old_len;
@@ -302,22 +302,22 @@ static void encode_pdp_info(struct msgb *msg, enum gprs_gsup_iei iei,
 	old_len = msgb_length(msg);
 
 	u8 = pdp_info->context_id;
-	msgb_tlv_put(msg, GPRS_GSUP_PDP_CONTEXT_ID_IE, sizeof(u8), &u8);
+	msgb_tlv_put(msg, OSMO_GSUP_PDP_CONTEXT_ID_IE, sizeof(u8), &u8);
 
 	if (pdp_info->pdp_type) {
-		msgb_tlv_put(msg, GPRS_GSUP_PDP_TYPE_IE,
-			     GPRS_GSUP_PDP_TYPE_SIZE,
+		msgb_tlv_put(msg, OSMO_GSUP_PDP_TYPE_IE,
+			     OSMO_GSUP_PDP_TYPE_SIZE,
 			     encode_big_endian(pdp_info->pdp_type | 0xf000,
-					       GPRS_GSUP_PDP_TYPE_SIZE));
+					       OSMO_GSUP_PDP_TYPE_SIZE));
 	}
 
 	if (pdp_info->apn_enc) {
-		msgb_tlv_put(msg, GPRS_GSUP_ACCESS_POINT_NAME_IE,
+		msgb_tlv_put(msg, OSMO_GSUP_ACCESS_POINT_NAME_IE,
 			     pdp_info->apn_enc_len, pdp_info->apn_enc);
 	}
 
 	if (pdp_info->qos_enc) {
-		msgb_tlv_put(msg, GPRS_GSUP_PDP_QOS_IE,
+		msgb_tlv_put(msg, OSMO_GSUP_PDP_QOS_IE,
 				pdp_info->qos_enc_len, pdp_info->qos_enc);
 	}
 
@@ -325,7 +325,7 @@ static void encode_pdp_info(struct msgb *msg, enum gprs_gsup_iei iei,
 	*len_field = msgb_length(msg) - old_len;
 }
 
-static void encode_auth_info(struct msgb *msg, enum gprs_gsup_iei iei,
+static void encode_auth_info(struct msgb *msg, enum osmo_gsup_iei iei,
 			     const struct osmo_auth_vector *auth_vector)
 {
 	uint8_t *len_field;
@@ -334,20 +334,20 @@ static void encode_auth_info(struct msgb *msg, enum gprs_gsup_iei iei,
 	len_field = msgb_tlv_put(msg, iei, 0, NULL) - 1;
 	old_len = msgb_length(msg);
 
-	msgb_tlv_put(msg, GPRS_GSUP_RAND_IE,
+	msgb_tlv_put(msg, OSMO_GSUP_RAND_IE,
 		     sizeof(auth_vector->rand), auth_vector->rand);
 
-	msgb_tlv_put(msg, GPRS_GSUP_SRES_IE,
+	msgb_tlv_put(msg, OSMO_GSUP_SRES_IE,
 		     sizeof(auth_vector->sres), auth_vector->sres);
 
-	msgb_tlv_put(msg, GPRS_GSUP_KC_IE,
+	msgb_tlv_put(msg, OSMO_GSUP_KC_IE,
 		     sizeof(auth_vector->kc), auth_vector->kc);
 
 	/* Update length field */
 	*len_field = msgb_length(msg) - old_len;
 }
 
-void gprs_gsup_encode(struct msgb *msg, const struct gprs_gsup_message *gsup_msg)
+void osmo_gsup_encode(struct msgb *msg, const struct osmo_gsup_message *gsup_msg)
 {
 	uint8_t u8;
 	int idx;
@@ -366,32 +366,32 @@ void gprs_gsup_encode(struct msgb *msg, const struct gprs_gsup_message *gsup_msg
 	/* Note that gsm48_encode_bcd_number puts the length into the first
 	 * octet. Since msgb_tlv_put will add this length byte, we'll have to
 	 * skip it */
-	msgb_tlv_put(msg, GPRS_GSUP_IMSI_IE, bcd_len - 1, &bcd_buf[1]);
+	msgb_tlv_put(msg, OSMO_GSUP_IMSI_IE, bcd_len - 1, &bcd_buf[1]);
 
 	/* specific parts */
 	if (gsup_msg->msisdn_enc)
-		msgb_tlv_put(msg, GPRS_GSUP_MSISDN_IE,
+		msgb_tlv_put(msg, OSMO_GSUP_MSISDN_IE,
 				gsup_msg->msisdn_enc_len, gsup_msg->msisdn_enc);
 	if (gsup_msg->hlr_enc)
-		msgb_tlv_put(msg, GPRS_GSUP_HLR_NUMBER_IE,
+		msgb_tlv_put(msg, OSMO_GSUP_HLR_NUMBER_IE,
 				gsup_msg->hlr_enc_len, gsup_msg->hlr_enc);
 
 	if ((u8 = gsup_msg->cause))
-		msgb_tlv_put(msg, GPRS_GSUP_CAUSE_IE, sizeof(u8), &u8);
+		msgb_tlv_put(msg, OSMO_GSUP_CAUSE_IE, sizeof(u8), &u8);
 
 	if ((u8 = gsup_msg->cancel_type)) {
 		u8 -= 1;
-		msgb_tlv_put(msg, GPRS_GSUP_CANCEL_TYPE_IE, sizeof(u8), &u8);
+		msgb_tlv_put(msg, OSMO_GSUP_CANCEL_TYPE_IE, sizeof(u8), &u8);
 	}
 
 	if (gsup_msg->pdp_info_compl)
-		msgb_tlv_put(msg, GPRS_GSUP_PDP_INFO_COMPL_IE, 0, &u8);
+		msgb_tlv_put(msg, OSMO_GSUP_PDP_INFO_COMPL_IE, 0, &u8);
 
 	if (gsup_msg->freeze_ptmsi)
-		msgb_tlv_put(msg, GPRS_GSUP_FREEZE_PTMSI_IE, 0, &u8);
+		msgb_tlv_put(msg, OSMO_GSUP_FREEZE_PTMSI_IE, 0, &u8);
 
 	for (idx = 0; idx < gsup_msg->num_pdp_infos; idx++) {
-		const struct gprs_gsup_pdp_info *pdp_info;
+		const struct osmo_gsup_pdp_info *pdp_info;
 
 		pdp_info = &gsup_msg->pdp_infos[idx];
 
@@ -399,10 +399,10 @@ void gprs_gsup_encode(struct msgb *msg, const struct gprs_gsup_message *gsup_msg
 			continue;
 
 		if (pdp_info->have_info) {
-			encode_pdp_info(msg, GPRS_GSUP_PDP_INFO_IE, pdp_info);
+			encode_pdp_info(msg, OSMO_GSUP_PDP_INFO_IE, pdp_info);
 		} else {
 			u8 = pdp_info->context_id;
-			msgb_tlv_put(msg, GPRS_GSUP_PDP_CONTEXT_ID_IE,
+			msgb_tlv_put(msg, OSMO_GSUP_PDP_CONTEXT_ID_IE,
 				     sizeof(u8), &u8);
 		}
 	}
@@ -412,6 +412,6 @@ void gprs_gsup_encode(struct msgb *msg, const struct gprs_gsup_message *gsup_msg
 
 		auth_vector = &gsup_msg->auth_vectors[idx];
 
-		encode_auth_info(msg, GPRS_GSUP_AUTH_TUPLE_IE, auth_vector);
+		encode_auth_info(msg, OSMO_GSUP_AUTH_TUPLE_IE, auth_vector);
 	}
 }
