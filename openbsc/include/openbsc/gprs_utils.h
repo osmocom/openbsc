@@ -42,15 +42,4 @@ int gprs_is_mi_imsi(const uint8_t *value, size_t value_len);
 int gprs_parse_mi_tmsi(const uint8_t *value, size_t value_len, uint32_t *tmsi);
 void gprs_parse_tmsi(const uint8_t *value, uint32_t *tmsi);
 
-int osmo_shift_v_fixed(uint8_t **data, size_t *data_len,
-		       size_t len, uint8_t **value);
-int osmo_match_shift_tv_fixed(uint8_t **data, size_t *data_len,
-			      uint8_t tag, size_t len, uint8_t **value);
-int osmo_shift_tlv(uint8_t **data, size_t *data_len,
-		   uint8_t *tag, uint8_t **value, size_t *value_len);
-int osmo_match_shift_tlv(uint8_t **data, size_t *data_len,
-		   uint8_t tag, uint8_t **value, size_t *value_len);
-int osmo_shift_lv(uint8_t **data, size_t *data_len,
-		  uint8_t **value, size_t *value_len);
-
 int gprs_ra_id_equals(const struct gprs_ra_id *id1, const struct gprs_ra_id *id2);
