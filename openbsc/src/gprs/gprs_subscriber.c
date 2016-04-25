@@ -21,13 +21,13 @@
  */
 
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
+#include <osmocom/gsm/gsup.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gprs_gsup_client.h>
 
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
-#include <openbsc/osmo_gsup_messages.h>
 #include <openbsc/gprs_utils.h>
 
 #include <openbsc/debug.h>

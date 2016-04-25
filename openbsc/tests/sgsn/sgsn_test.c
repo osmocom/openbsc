@@ -24,7 +24,7 @@
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_subscriber.h>
-#include <openbsc/gprs_gsup_messages.h>
+#include <osmocom/gsm/gsup.h>
 #include <openbsc/gprs_gsup_client.h>
 #include <openbsc/gprs_utils.h>
 #include <openbsc/gprs_gb_parse.h>
@@ -1266,13 +1266,13 @@ static void test_gmm_attach_subscr_gsup_auth(int retry)
 
 int my_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 {
-	struct gprs_gsup_message to_peer = {0};
-	struct gprs_gsup_message from_peer = {0};
+	struct osmo_gsup_message to_peer = {0};
+	struct osmo_gsup_message from_peer = {0};
 	struct msgb *reply_msg;
 	int rc;
 
 	/* Simulate the GSUP peer */
-	rc = gprs_gsup_decode(msgb_data(msg), msgb_length(msg), &to_peer);
+	rc = osmo_gsup_decode(msgb_data(msg), msgb_length(msg), &to_peer);
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(to_peer.imsi[0] != 0);
 	strncpy(from_peer.imsi, to_peer.imsi, sizeof(from_peer.imsi));
@@ -1281,16 +1281,16 @@ int my_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 	msgb_free(msg);
 
 	switch (to_peer.message_type) {
-	case GPRS_GSUP_MSGT_UPDATE_LOCATION_REQUEST:
+	case OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST:
 		/* Send UPDATE_LOCATION_RESULT */
 		return my_subscr_request_update_gsup_auth(NULL);
 
-	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_REQUEST:
+	case OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST:
 		/* Send SEND_AUTH_INFO_RESULT */
 		return my_subscr_request_auth_info_gsup_auth(NULL);
 
-	case GPRS_GSUP_MSGT_PURGE_MS_REQUEST:
-		from_peer.message_type = GPRS_GSUP_MSGT_PURGE_MS_RESULT;
+	case OSMO_GSUP_MSGT_PURGE_MS_REQUEST:
+		from_peer.message_type = OSMO_GSUP_MSGT_PURGE_MS_RESULT;
 		break;
 
 	default:
@@ -1308,7 +1308,7 @@ int my_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 
 	reply_msg = gprs_gsup_msgb_alloc();
 	reply_msg->l2h = reply_msg->data;
-	gprs_gsup_encode(reply_msg, &from_peer);
+	osmo_gsup_encode(reply_msg, &from_peer);
 	gprs_subscr_rx_gsup_message(reply_msg);
 	msgb_free(reply_msg);
 

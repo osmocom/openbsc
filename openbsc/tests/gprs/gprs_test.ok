@@ -13,18 +13,5 @@ N(U) = 511, V(UR) = 511 => new
 N(U) = 510, V(UR) = 511 => retransmit
 N(U) = 481, V(UR) = 511 => retransmit
 N(U) = 479, V(UR) = 511 => new
-Test GSUP message decoding/encoding
-  Testing Send Authentication Info Request
-  Testing Send Authentication Info Error
-  Testing Send Authentication Info Result
-  Testing Update Location Request
-  Testing Update Location Error
-  Testing Update Location Result
-  Testing Location Cancellation Request
-  Testing Location Cancellation Error
-  Testing Location Cancellation Result
-  Testing Purge MS Request
-  Testing Purge MS Error
-  Testing Purge MS Result
 Test GPRS timer decoding/encoding
 Done.
