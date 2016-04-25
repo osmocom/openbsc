@@ -370,7 +370,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		return send_act_pdp_cont_acc(pctx);
 	} else {
 		/* Activate a radio bearer */
-		iu_rab_act_ps(pdp->nsapi, pctx, 1);
+		iu_rab_act_ps(pdp->nsapi, pctx, 0);
 		return 0;
 	}
 

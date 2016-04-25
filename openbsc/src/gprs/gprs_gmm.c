@@ -710,7 +710,7 @@ void activate_pdp_rabs(struct sgsn_mm_ctx *ctx)
 	/* Send RAB activation requests for all PDP contexts */
 	struct sgsn_pdp_ctx *pdp;
 	llist_for_each_entry(pdp, &ctx->pdp_list, list) {
-		iu_rab_act_ps(pdp->nsapi, pdp, 1);
+		iu_rab_act_ps(pdp->nsapi, pdp, 0);
 	}
 }
 
