@@ -1276,7 +1276,7 @@ static int handle_paging_resp(struct gsm_subscriber_connection *conn,
 		llist_del(&req->entry);
 		req = NULL;
 
-		if (conn && cbfn) {
+		if (cbfn) {
 			LOGP(DPAG, LOGL_DEBUG, "Calling paging cbfn.\n");
 			cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
 			     msg, conn, param);
@@ -3670,6 +3670,9 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	uint8_t pdisc = gsm48_hdr_pdisc(gh);
 	int rc = 0;
+
+	OSMO_ASSERT(conn);
+	OSMO_ASSERT(msg);
 
 	LOGP(DRLL, LOGL_DEBUG, "Dispatching 04.08 message, pdisc=%d\n", pdisc);
 	if (silent_call_reroute(conn, msg))
