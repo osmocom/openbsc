@@ -268,8 +268,15 @@ void gprs_parse_tmsi(const uint8_t *value, uint32_t *tmsi)
 
 /* TODO: Move shift functions to libosmocore */
 
-int gprs_shift_v_fixed(uint8_t **data, size_t *data_len,
-		  size_t len, uint8_t **value)
+/*! Advance the data pointer, subtract length and assign value pointer
+ *  \param data pointer to the pointer to data
+ *  \param data_len pointer to size_t containing \arg data length
+ *  \param[in] len the length that we expect the fixed IE to hav
+ *  \param[out] value pointer to pointer of value part of IE
+ *  \returns length of IE value; negative in case of error
+ */
+int osmo_shift_v_fixed(uint8_t **data, size_t *data_len,
+			size_t len, uint8_t **value)
 {
 	if (len > *data_len)
 		goto fail;
@@ -288,9 +295,17 @@ fail:
 	return -1;
 }
 
-int gprs_match_tv_fixed(uint8_t **data, size_t *data_len,
-		   uint8_t tag, size_t len,
-		   uint8_t **value)
+/*! Match tag, check length and assign value pointer
+ *  \param data pointer to the pointer to data
+ *  \param data_len pointer to size_t containing \arg data length
+ *  \param[in] tag the tag (IEI) that we expect at \arg data
+ *  \param[in] len the length that we expect the fixed IE to have
+ *  \param[out] value pointer to pointer of value part of IE
+ *  \returns length of IE value; negative in case of error
+ */
+int osmo_match_shift_tv_fixed(uint8_t **data, size_t *data_len,
+			      uint8_t tag, size_t len,
+			      uint8_t **value)
 {
 	size_t ie_len;
 
@@ -318,15 +333,24 @@ fail:
 	return -1;
 }
 
-int gprs_match_tlv(uint8_t **data, size_t *data_len,
-	      uint8_t expected_tag, uint8_t **value, size_t *value_len)
+/*! Verify TLV header and advance data / subtract length
+ *  \param data pointer to the pointer to data
+ *  \param data_len pointer to size_t containing \arg data length
+ *  \param[in] expected_tag the tag (IEI) that we expect at \arg data
+ *  \param[out] value pointer to pointer of value part of IE
+ *  \param[out] value_len pointer to length of \arg value
+ *  \returns length of IE value; negative in case of error
+ */
+int osmo_match_shift_tlv(uint8_t **data, size_t *data_len,
+			 uint8_t expected_tag, uint8_t **value,
+			 size_t *value_len)
 {
 	int rc;
 	uint8_t tag;
 	uint8_t *old_data = *data;
 	size_t old_data_len = *data_len;
 
-	rc = gprs_shift_tlv(data, data_len, &tag, value, value_len);
+	rc = osmo_shift_tlv(data, data_len, &tag, value, value_len);
 
 	if (rc > 0 && tag != expected_tag) {
 		*data = old_data;
@@ -337,7 +361,15 @@ int gprs_match_tlv(uint8_t **data, size_t *data_len,
 	return rc;
 }
 
-int gprs_shift_tlv(uint8_t **data, size_t *data_len,
+/*! Extract TLV and advance data pointer + subtract length
+ *  \param data pointer to the pointer to data
+ *  \param data_len  pointer to size_t containing \arg data lengt
+ *  \param[out] tag extract the tag (IEI) at start of \arg data
+ *  \param[out] value extracted pointer to value part of TLV
+ *  \param[out] value_len extracted length of \arg value
+ *  \returns number of bytes subtracted
+ */
+int osmo_shift_tlv(uint8_t **data, size_t *data_len,
 	      uint8_t *tag, uint8_t **value, size_t *value_len)
 {
 	size_t len;
@@ -370,8 +402,15 @@ fail:
 	return -1;
 }
 
-int gprs_shift_lv(uint8_t **data, size_t *data_len,
-	     uint8_t **value, size_t *value_len)
+/*! Extract LV and advance data pointer + subtract length
+ *  \param data pointer to the pointer to data
+ *  \param data_len  pointer to size_t containing \arg data lengt
+ *  \param[out] value extracted pointer to value part of TLV
+ *  \param[out] value_len extracted length of \arg value
+ *  \returns number of bytes subtracted
+ */
+int osmo_shift_lv(uint8_t **data, size_t *data_len,
+		  uint8_t **value, size_t *value_len)
 {
 	size_t len;
 	size_t ie_len;

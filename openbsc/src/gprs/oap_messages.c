@@ -48,7 +48,7 @@ int oap_decode(const uint8_t *const_data, size_t data_len,
 	memset(oap_msg, 0, sizeof(*oap_msg));
 
 	/* message type */
-	rc = gprs_shift_v_fixed(&data, &data_len, 1, &value);
+	rc = osmo_shift_v_fixed(&data, &data_len, 1, &value);
 	if (rc < 0)
 		return -GMM_CAUSE_INV_MAND_INFO;
 	oap_msg->message_type = decode_big_endian(value, 1);
@@ -57,7 +57,7 @@ int oap_decode(const uint8_t *const_data, size_t data_len,
 	while (data_len > 0) {
 		enum oap_iei iei;
 
-		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
+		rc = osmo_shift_tlv(&data, &data_len, &tag, &value, &value_len);
 		if (rc < 0)
 			return -GMM_CAUSE_PROTO_ERR_UNSPEC;
 

@@ -26,7 +26,7 @@
 #include <openbsc/osmo_gsup_messages.h>
 
 #include <openbsc/debug.h>
-//#include <openbsc/gprs_utils.h>
+#include <openbsc/gprs_utils.h>
 #include <openbsc/utils.h>
 
 #include <osmocom/gsm/tlv.h>
@@ -47,7 +47,7 @@ static int decode_pdp_info(uint8_t *data, size_t data_len,
 	while (data_len > 0) {
 		enum osmo_gsup_iei iei;
 
-		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
+		rc = osmo_shift_tlv(&data, &data_len, &tag, &value, &value_len);
 		if (rc < 0)
 			return -GMM_CAUSE_PROTO_ERR_UNSPEC;
 
@@ -94,7 +94,7 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 
 	/* specific parts */
 	while (data_len > 0) {
-		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
+		rc = osmo_shift_tlv(&data, &data_len, &tag, &value, &value_len);
 		if (rc < 0)
 			return -GMM_CAUSE_PROTO_ERR_UNSPEC;
 
@@ -157,13 +157,13 @@ int osmo_gsup_decode(const uint8_t *const_data, size_t data_len,
 	*gsup_msg = empty_gsup_message;
 
 	/* generic part */
-	rc = gprs_shift_v_fixed(&data, &data_len, 1, &value);
+	rc = osmo_shift_v_fixed(&data, &data_len, 1, &value);
 	if (rc < 0)
 		return -GMM_CAUSE_INV_MAND_INFO;
 
 	gsup_msg->message_type = decode_big_endian(value, 1);
 
-	rc = gprs_match_tlv(&data, &data_len, OSMO_GSUP_IMSI_IE,
+	rc = osmo_match_shift_tlv(&data, &data_len, OSMO_GSUP_IMSI_IE,
 			    &value, &value_len);
 
 	if (rc <= 0)
@@ -187,7 +187,7 @@ int osmo_gsup_decode(const uint8_t *const_data, size_t data_len,
 		struct osmo_gsup_pdp_info pdp_info;
 		struct osmo_auth_vector auth_info;
 
-		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
+		rc = osmo_shift_tlv(&data, &data_len, &tag, &value, &value_len);
 		if (rc < 0)
 			return -GMM_CAUSE_PROTO_ERR_UNSPEC;
 
