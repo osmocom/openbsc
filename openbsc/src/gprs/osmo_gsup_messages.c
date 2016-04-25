@@ -90,6 +90,7 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 	uint8_t *value;
 	size_t value_len;
 	enum osmo_gsup_iei iei;
+	uint8_t presence = 0;
 
 	/* specific parts */
 	while (data_len > 0) {
@@ -105,6 +106,7 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 				goto parse_error;
 
 			memcpy(auth_vector->rand, value, value_len);
+			presence |= (1 << 0);
 			break;
 
 		case OSMO_GSUP_SRES_IE:
@@ -112,6 +114,7 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 				goto parse_error;
 
 			memcpy(auth_vector->sres, value, value_len);
+			presence |= (1 << 1);
 			break;
 
 		case OSMO_GSUP_KC_IE:
@@ -119,6 +122,35 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 				goto parse_error;
 
 			memcpy(auth_vector->kc, value, value_len);
+			presence |= (1 << 2);
+			break;
+
+		case OSMO_GSUP_IK_IE:
+			if (value_len != sizeof(auth_vector->ik))
+				goto parse_error;
+			memcpy(auth_vector->ik, value, value_len);
+			presence |= (1 << 4);
+			break;
+
+		case OSMO_GSUP_CK_IE:
+			if (value_len != sizeof(auth_vector->ck))
+				goto parse_error;
+			memcpy(auth_vector->ck, value, value_len);
+			presence |= (1 << 5);
+			break;
+
+		case OSMO_GSUP_AUTN_IE:
+			if (value_len != sizeof(auth_vector->autn))
+				goto parse_error;
+			memcpy(auth_vector->autn, value, value_len);
+			presence |= (1 << 6);
+			break;
+		case OSMO_GSUP_RES_IE:
+			if (value_len > sizeof(auth_vector->res))
+				goto parse_error;
+			memcpy(auth_vector->res, value, value_len);
+			auth_vector->res_len = value_len;
+			presence |= (1 << 7);
 			break;
 
 		default:
@@ -127,6 +159,11 @@ static int decode_auth_info(uint8_t *data, size_t data_len,
 			continue;
 		}
 	}
+
+	if (presence & 0x07)
+		auth_vector->auth_types |= OSMO_AUTH_TYPE_GSM;
+	if (presence & 0xf0)
+		auth_vector->auth_types |= OSMO_AUTH_TYPE_UMTS;
 
 	return 0;
 
@@ -268,6 +305,15 @@ int osmo_gsup_decode(const uint8_t *const_data, size_t data_len,
 
 			gsup_msg->auth_vectors[gsup_msg->num_auth_vectors++] =
 				auth_info;
+			break;
+
+		case OSMO_GSUP_AUTS_IE:
+			if (value_len != 16) {
+				LOGP(DGPRS, LOGL_ERROR,
+					"AUTS length != 16 received\n");
+				return -GMM_CAUSE_COND_IE_ERR;
+			}
+			gsup_msg->auts = value;
 			break;
 
 		case OSMO_GSUP_MSISDN_IE:

@@ -51,6 +51,12 @@ enum osmo_gsup_iei {
 	OSMO_GSUP_RAND_IE			= 0x20,
 	OSMO_GSUP_SRES_IE			= 0x21,
 	OSMO_GSUP_KC_IE				= 0x22,
+	/* 3G support */
+	OSMO_GSUP_IK_IE				= 0x23,
+	OSMO_GSUP_CK_IE				= 0x24,
+	OSMO_GSUP_AUTN_IE			= 0x25,
+	OSMO_GSUP_AUTS_IE			= 0x26,
+	OSMO_GSUP_RES_IE			= 0x27,
 };
 
 enum osmo_gsup_message_type {
@@ -113,6 +119,7 @@ struct osmo_gsup_message {
 	size_t				msisdn_enc_len;
 	const uint8_t			*hlr_enc;
 	size_t				hlr_enc_len;
+	const uint8_t			*auts;
 };
 
 int osmo_gsup_decode(const uint8_t *data, size_t data_len,
