@@ -195,7 +195,7 @@ int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port
 	return iu_rab_act(ue_ctx, msg);
 }
 
-int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp)
+int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp, bool use_x213_nsap)
 {
 	struct msgb *msg;
 	struct sgsn_mm_ctx *mm = pdp->mm;
@@ -208,7 +208,8 @@ int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp)
 	memcpy(&ggsn_ip, pdp->lib->gsnru.v, pdp->lib->gsnru.l);
 	ggsn_ip = htonl(ggsn_ip);
 
-	msg = ranap_new_msg_rab_assign_data(rab_id, ggsn_ip, pdp->lib->teid_own);
+	msg = ranap_new_msg_rab_assign_data(rab_id, ggsn_ip,
+					    pdp->lib->teid_own, use_x213_nsap);
 	msg->l2h = msg->data;
 	return iu_rab_act(uectx, msg);
 }

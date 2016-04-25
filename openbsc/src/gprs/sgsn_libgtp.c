@@ -373,7 +373,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		uint8_t rab_id;
 
 		rab_id = rab_id_from_mm_ctx(pctx);
-		iu_rab_act_ps(rab_id, pctx);
+		iu_rab_act_ps(rab_id, pctx, 1);
 		return 0;
 	}
 

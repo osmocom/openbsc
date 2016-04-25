@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 struct sgsn_pdp_ctx;
 struct msgb;
 struct gprs_ra_id;
@@ -46,7 +48,7 @@ int iu_page_cs(const char *imsi, const uint32_t *tmsi, uint16_t lac);
 int iu_page_ps(const char *imsi, const uint32_t *ptmsi, uint16_t lac, uint8_t rac);
 
 int iu_rab_act_cs(struct ue_conn_ctx *ue_ctx, uint32_t rtp_ip, uint16_t rtp_port);
-int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp);
+int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp, bool use_x213_nsap);
 int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id);
 int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 		       int send_ck, int new_key);
