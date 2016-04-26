@@ -3477,7 +3477,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 
 	/* if paging did not respond yet */
 	if (!conn) {
-		DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
+		DEBUGP(DCC, "(sub %s) "
 			"Received '%s' from MNCC in paging state\n",
 			(trans->subscr)?(trans->subscr->extension):"-",
 			get_mncc_name(msg_type));
@@ -3492,15 +3492,12 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		return rc;
 	}
 
-#if BEFORE_MSCSPLIT
-	DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
+	DEBUGP(DCC, "(ti %02x sub %s) "
 		"Received '%s' from MNCC in state %d (%s)\n",
-		conn->bts->nr, conn->lchan->ts->trx->nr, conn->lchan->ts->nr,
 		trans->transaction_id,
 		(trans->conn->subscr)?(trans->conn->subscr->extension):"-",
 		get_mncc_name(msg_type), trans->cc.state,
 		gsm48_cc_state_name(trans->cc.state));
-#endif
 
 	/* Find function for current state and message */
 	for (i = 0; i < DOWNSLLEN; i++)
