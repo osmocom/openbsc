@@ -364,6 +364,12 @@ int main(int argc, char **argv)
 	xsc_vty_init(cscn_network);
 	cscn_vty_init();
 	bsc_vty_init_extra();
+
+#ifdef BUILD_SMPP
+	if (smpp_openbsc_alloc_init(tall_cscn_ctx) < 0)
+		return -1;
+#endif
+
 	rc = vty_read_config_file(cscn_cmdline_config.config_file, NULL);
 	if (rc < 0) {
 		LOGP(DNM, LOGL_FATAL, "Failed to parse the config file: '%s'\n",
@@ -397,17 +403,13 @@ int main(int argc, char **argv)
 	libosmo_abis_init(tall_cscn_ctx);
 
 	bts_init();
-
-
-#ifdef BUILD_SMPP
-	if (smpp_openbsc_init(tall_cscn_ctx, 0) < 0)
-		return -1;
 #endif
 
-
 #ifdef BUILD_SMPP
-	smpp_openbsc_set_net(cscn_network);
+	smpp_openbsc_start(cscn_network);
 #endif
+
+#if 0
 	bsc_api_init(cscn_network, msc_bsc_api()); // pobably not.
 #endif
 
