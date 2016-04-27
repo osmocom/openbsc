@@ -64,7 +64,7 @@ struct osmo_oap_message {
 	uint8_t			auts[16];
 };
 
-int osmo_oap_decode(const uint8_t *data, size_t data_len,
-		    struct osmo_oap_message *oap_msg);
+int osmo_oap_decode(struct osmo_oap_message *oap_msg,
+		    const uint8_t *data, size_t data_len);
 void osmo_oap_encode(struct msgb *msg, const struct osmo_oap_message *oap_msg);
 

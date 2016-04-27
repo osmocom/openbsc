@@ -31,8 +31,8 @@
 #include <stdint.h>
 
 
-int osmo_oap_decode(const uint8_t *const_data, size_t data_len,
-		    struct osmo_oap_message *oap_msg)
+int osmo_oap_decode(struct osmo_oap_message *oap_msg,
+		    const uint8_t *const_data, size_t data_len)
 {
 	int rc;
 	uint8_t tag;

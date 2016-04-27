@@ -214,7 +214,7 @@ int oap_handle(struct oap_state *state, const struct msgb *msg_rx, struct msgb *
 
 	OSMO_ASSERT(data);
 
-	rc = osmo_oap_decode(data, data_len, &oap_msg);
+	rc = osmo_oap_decode(&oap_msg, data, data_len);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_ERROR,
 		     "Decoding OAP message failed with error '%s' (%d)\n",
