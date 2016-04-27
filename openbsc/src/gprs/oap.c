@@ -119,11 +119,11 @@ static int oap_evaluate_challenge(const struct oap_state *state,
 	return 0;
 }
 
-struct msgb *oap_encoded(const struct oap_message *oap_msg)
+struct msgb *oap_encoded(const struct osmo_oap_message *oap_msg)
 {
 	struct msgb *msg = msgb_alloc_headroom(1000, 64, __func__);
 	OSMO_ASSERT(msg);
-	oap_encode(msg, oap_msg);
+	osmo_oap_encode(msg, oap_msg);
 	return msg;
 }
 
@@ -136,7 +136,7 @@ static struct msgb* oap_msg_register(uint16_t client_id)
 		return NULL;
 	}
 
-	struct oap_message oap_msg = {0};
+	struct osmo_oap_message oap_msg = {0};
 	oap_msg.message_type = OAP_MSGT_REGISTER_REQUEST;
 	oap_msg.client_id = client_id;
 	return oap_encoded(&oap_msg);
@@ -157,7 +157,7 @@ int oap_register(struct oap_state *state, struct msgb **msg_tx)
  * On error, return NULL. */
 static struct msgb* oap_msg_challenge_response(uint8_t *xres)
 {
-	struct oap_message oap_reply = {0};
+	struct osmo_oap_message oap_reply = {0};
 
 	oap_reply.message_type = OAP_MSGT_CHALLENGE_RESULT;
 	memcpy(oap_reply.xres, xres, sizeof(oap_reply.xres));
@@ -166,7 +166,7 @@ static struct msgb* oap_msg_challenge_response(uint8_t *xres)
 }
 
 static int handle_challenge(struct oap_state *state,
-			    struct oap_message *oap_rx,
+			    struct osmo_oap_message *oap_rx,
 			    struct msgb **msg_tx)
 {
 	int rc;
@@ -209,11 +209,11 @@ int oap_handle(struct oap_state *state, const struct msgb *msg_rx, struct msgb *
 	size_t data_len = msgb_l2len(msg_rx);
 	int rc = 0;
 
-	struct oap_message oap_msg = {0};
+	struct osmo_oap_message oap_msg = {0};
 
 	OSMO_ASSERT(data);
 
-	rc = oap_decode(data, data_len, &oap_msg);
+	rc = osmo_oap_decode(data, data_len, &oap_msg);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_ERROR,
 		     "Decoding OAP message failed with error '%s' (%d)\n",

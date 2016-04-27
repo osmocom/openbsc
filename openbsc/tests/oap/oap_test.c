@@ -95,8 +95,8 @@ static void test_oap_api(void)
 
 	printf("  - AUTN failures\n");
 
-	struct oap_message oap_rx;
-	struct oap_message oap_tx;
+	struct osmo_oap_message oap_rx;
+	struct osmo_oap_message oap_tx;
 	struct msgb *msg_rx;
 	struct msgb *msg_tx;
 
@@ -168,7 +168,7 @@ static void test_oap_api(void)
 
 	/* Expect the challenge response in msg_tx */
 	OSMO_ASSERT(msg_tx);
-	OSMO_ASSERT(oap_decode(msg_tx->data, msg_tx->len, &oap_tx) == 0);
+	OSMO_ASSERT(osmo_oap_decode(msg_tx->data, msg_tx->len, &oap_tx) == 0);
 	OSMO_ASSERT(oap_tx.message_type == OAP_MSGT_CHALLENGE_RESULT);
 	OSMO_ASSERT(strcmp("e2d05b598c61d9ba",
 			   osmo_hexdump_nospc(oap_tx.xres, sizeof(oap_tx.xres)))
@@ -191,7 +191,7 @@ static void test_oap_api(void)
 	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == 0);
 	OSMO_ASSERT(state->registration_failures == 1);
 	OSMO_ASSERT(msg_tx);
-	OSMO_ASSERT(oap_decode(msg_tx->data, msg_tx->len, &oap_tx) == 0);
+	OSMO_ASSERT(osmo_oap_decode(msg_tx->data, msg_tx->len, &oap_tx) == 0);
 	OSMO_ASSERT(oap_tx.message_type == OAP_MSGT_REGISTER_REQUEST);
 	OSMO_ASSERT(state->state == OAP_REQUESTED_CHALLENGE);
 	msgb_free(msg_tx);

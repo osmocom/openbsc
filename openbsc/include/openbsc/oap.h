@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 struct msgb;
-struct oap_message;
+struct osmo_oap_message;
 
 /* This is the config part for vty. It is essentially copied in oap_state,
  * where values are copied over once the config is considered valid. */
@@ -74,5 +74,5 @@ int oap_handle(struct oap_state *state, const struct msgb *msg_rx, struct msgb *
 /* Allocate a msgb and in it, return the encoded oap_msg. Return NULL on
  * error. (Like oap_encode(), but also allocates a msgb.)
  * About the name: the idea is do_something(oap_encoded(my_struct)) */
-struct msgb *oap_encoded(const struct oap_message *oap_msg);
+struct msgb *oap_encoded(const struct osmo_oap_message *oap_msg);
 
