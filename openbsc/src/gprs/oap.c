@@ -71,25 +71,25 @@ static int oap_evaluate_challenge(const struct oap_state *state,
 				  const uint8_t *rx_autn,
 				  uint8_t *tx_xres)
 {
-	osmo_static_assert(sizeof(((struct osmo_sub_auth_data*)0)->u.umts.k)
-			   == sizeof(state->secret_k), _secret_k_size_match);
-	osmo_static_assert(sizeof(((struct osmo_sub_auth_data*)0)->u.umts.opc)
-			   == sizeof(state->secret_opc), _secret_opc_size_match);
-
-	switch(state->state) {
-	case OAP_UNINITIALIZED:
-	case OAP_DISABLED:
-		return -1;
-	default:
-		break;
-	}
-
 	struct osmo_auth_vector vec;
 
 	struct osmo_sub_auth_data auth = {
 		.type		= OSMO_AUTH_TYPE_UMTS,
 		.algo		= OSMO_AUTH_ALG_MILENAGE,
 	};
+
+	osmo_static_assert(sizeof(((struct osmo_sub_auth_data*)0)->u.umts.k)
+			   == sizeof(state->secret_k), _secret_k_size_match);
+	osmo_static_assert(sizeof(((struct osmo_sub_auth_data*)0)->u.umts.opc)
+			   == sizeof(state->secret_opc), _secret_opc_size_match);
+
+	switch (state->state) {
+	case OAP_UNINITIALIZED:
+	case OAP_DISABLED:
+		return -1;
+	default:
+		break;
+	}
 
 	memcpy(auth.u.umts.k, state->secret_k, sizeof(auth.u.umts.k));
 	memcpy(auth.u.umts.opc, state->secret_opc, sizeof(auth.u.umts.opc));
@@ -131,12 +131,13 @@ struct msgb *oap_encoded(const struct osmo_oap_message *oap_msg)
  * On error, return NULL. */
 static struct msgb* oap_msg_register(uint16_t client_id)
 {
+	struct osmo_oap_message oap_msg = {0};
+
 	if (client_id < 1) {
 		LOGP(DGPRS, LOGL_ERROR, "OAP: Invalid client ID: %d\n", client_id);
 		return NULL;
 	}
 
-	struct osmo_oap_message oap_msg = {0};
 	oap_msg.message_type = OAP_MSGT_REGISTER_REQUEST;
 	oap_msg.client_id = client_id;
 	return oap_encoded(&oap_msg);
@@ -170,6 +171,8 @@ static int handle_challenge(struct oap_state *state,
 			    struct msgb **msg_tx)
 {
 	int rc;
+	uint8_t xres[8];
+
 	if (!(oap_rx->rand_present && oap_rx->autn_present)) {
 		LOGP(DGPRS, LOGL_ERROR,
 		     "OAP challenge incomplete (rand_present: %d, autn_present: %d)\n",
@@ -178,7 +181,6 @@ static int handle_challenge(struct oap_state *state,
 		goto failure;
 	}
 
-	uint8_t xres[8];
 	rc = oap_evaluate_challenge(state,
 				    oap_rx->rand,
 				    oap_rx->autn,
@@ -203,13 +205,12 @@ failure:
 
 int oap_handle(struct oap_state *state, const struct msgb *msg_rx, struct msgb **msg_tx)
 {
-	*msg_tx = NULL;
-
 	uint8_t *data = msgb_l2(msg_rx);
 	size_t data_len = msgb_l2len(msg_rx);
+	struct osmo_oap_message oap_msg = {0};
 	int rc = 0;
 
-	struct osmo_oap_message oap_msg = {0};
+	*msg_tx = NULL;
 
 	OSMO_ASSERT(data);
 
