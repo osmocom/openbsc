@@ -22,8 +22,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <osmocom/core/msgb.h>
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
-#include <openbsc/gsm_data.h>
 
 /* Some numbers are out of sequence because (so far) they match gprs_gsup_iei.
  */

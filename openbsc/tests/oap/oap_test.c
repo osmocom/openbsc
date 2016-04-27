@@ -26,6 +26,7 @@
 #include <openbsc/oap_messages.h>
 
 #include <stdio.h>
+#include <string.h>
 
 static void test_oap_api(void)
 {

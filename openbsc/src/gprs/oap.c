@@ -20,6 +20,8 @@
  *
  */
 
+#include <string.h>
+
 #include <osmocom/core/utils.h>
 #include <osmocom/crypt/auth.h>
 

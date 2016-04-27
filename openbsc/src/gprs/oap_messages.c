@@ -24,7 +24,6 @@
 #include <openbsc/oap_messages.h>
 
 #include <openbsc/debug.h>
-#include <openbsc/gprs_utils.h>
 
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
