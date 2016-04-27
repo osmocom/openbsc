@@ -1227,8 +1227,6 @@ static int handle_paging_resp(struct msgb *msg,
 			      struct gsm_subscriber_connection *conn,
 			      struct gsm_subscriber *subscr)
 {
-	struct subscr_request *req, *req2;
-
 	if (!conn->subscr) {
 		conn->subscr = subscr;
 	} else if (conn->subscr != subscr) {
@@ -1244,26 +1242,7 @@ static int handle_paging_resp(struct msgb *msg,
 
 	osmo_counter_inc(conn->network->stats.paging.completed);
 
-	if (!subscr->is_paging) {
-		LOGP(DRR, LOGL_ERROR, "Paging Response received for subscriber that is not paging\n");
-		return -1;
-	}
-
-	llist_for_each_entry_safe(req, req2, &subscr->requests, entry) {
-		gsm_cbfn *cbfn = req->cbfn;
-		void *param = req->param;
-
-		llist_del(&req->entry);
-		req = NULL;
-
-		if (cbfn) {
-			LOGP(DPAG, LOGL_DEBUG, "Calling paging cbfn.\n");
-			cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
-			     msg, conn, param);
-		} else
-			LOGP(DPAG, LOGL_DEBUG, "Paging without action.\n");
-	}
-	return 0;
+	return subscr_rx_paging_response(msg, conn);
 }
 
 /* Receive a PAGING RESPONSE message from the MS */
