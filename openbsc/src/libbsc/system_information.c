@@ -68,7 +68,7 @@ static int is_dcs_net(const struct gsm_bts *bts)
 	return 1;
 }
 
-/* Return q(m) for given NR_OF_TDD_CELLS - see Table 9.1.54.1a, 3GPP TS 44.018 */
+/* Return p(n) for given NR_OF_TDD_CELLS - see Table 9.1.54.1a, 3GPP TS 44.018 */
 unsigned range1024_p(unsigned n)
 {
 	switch (n) {
