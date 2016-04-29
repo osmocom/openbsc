@@ -2766,9 +2766,10 @@ DEFUN(cfg_bts_neigh, cfg_bts_neigh_cmd,
 	return CMD_SUCCESS;
 }
 
+
 DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
-      "si2quater neighbor-list add earfcn <1900-2200> threshold <0-1000> "
-      "[<0-255>]", "SI2quater Neighbor List\n"
+      "si2quater neighbor-list add earfcn <0-65535> threshold <0-31> "
+      "[<0-7>]", "SI2quater Neighbor List\n"
       "SI2quater Neighbor List\n" "Add to manual SI2quater neighbor list\n"
       "EARFCN of neighbor\n" "EARFCN of neighbor\n" "threshold high bits\n"
       "threshold high bits\n" "measurement bandwidth\n")
@@ -2805,7 +2806,7 @@ DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
 }
 
 DEFUN(cfg_bts_si2quater_neigh_del, cfg_bts_si2quater_neigh_del_cmd,
-	"si2quater neighbor-list del earfcn <1900-2200>",
+	"si2quater neighbor-list del earfcn <0-65535>",
 	"SI2quater Neighbor List\n"
 	"SI2quater Neighbor List\n"
 	"Delete from SI2quater manual neighbor list\n"
@@ -2826,7 +2827,7 @@ DEFUN(cfg_bts_si2quater_neigh_del, cfg_bts_si2quater_neigh_del_cmd,
 }
 
 DEFUN(cfg_bts_si2quater_uarfcn_add, cfg_bts_si2quater_uarfcn_add_cmd,
-      "si2quater neighbor-list add uarfcn <1900-2200> <0-511> <0-1>",
+      "si2quater neighbor-list add uarfcn <0-16383> <0-511> <0-1>",
       "SI2quater Neighbor List\n"
       "SI2quater Neighbor List\n" "Add to manual SI2quater neighbor list\n"
       "UARFCN of neighbor\n" "UARFCN of neighbor\n" "scrambling code\n"
@@ -2852,7 +2853,7 @@ DEFUN(cfg_bts_si2quater_uarfcn_add, cfg_bts_si2quater_uarfcn_add_cmd,
 }
 
 DEFUN(cfg_bts_si2quater_uarfcn_del, cfg_bts_si2quater_uarfcn_del_cmd,
-      "si2quater neighbor-list del uarfcn <1900-2200> <0-511>",
+      "si2quater neighbor-list del uarfcn <0-16383> <0-511>",
       "SI2quater Neighbor List\n"
       "SI2quater Neighbor List\n"
       "Delete from SI2quater manual neighbor list\n"
