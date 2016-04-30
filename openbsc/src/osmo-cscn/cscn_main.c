@@ -240,7 +240,7 @@ struct gsm_network *cscn_network_init(void *ctx,
 	if (!net)
 		return NULL;
 
-	net->name_long = talloc_strdup(net, "Osmocom Circuit-Switched Core Network");
+	net->name_long = talloc_strdup(net, "OsmoCSCN");
 	net->name_short = talloc_strdup(net, "OsmoCSCN");
 
 	return net;
