@@ -709,10 +709,8 @@ void activate_pdp_rabs(struct sgsn_mm_ctx *ctx)
 {
 	/* Send RAB activation requests for all PDP contexts */
 	struct sgsn_pdp_ctx *pdp;
-	uint8_t rab_id;
 	llist_for_each_entry(pdp, &ctx->pdp_list, list) {
-		rab_id = rab_id_from_mm_ctx(ctx);
-		iu_rab_act_ps(rab_id, pdp, 1);
+		iu_rab_act_ps(pdp->nsapi, pdp, 1);
 	}
 }
 

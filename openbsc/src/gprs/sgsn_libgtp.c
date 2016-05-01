@@ -370,10 +370,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		return send_act_pdp_cont_acc(pctx);
 	} else {
 		/* Activate a radio bearer */
-		uint8_t rab_id;
-
-		rab_id = rab_id_from_mm_ctx(pctx);
-		iu_rab_act_ps(rab_id, pctx, 1);
+		iu_rab_act_ps(pdp->nsapi, pctx, 1);
 		return 0;
 	}
 
@@ -454,7 +451,6 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 			sndcp_sm_deactivate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
 		} else {
 			/* Dectivate a radio bearer */
-			/* TODO: Save and use rab_id */
 			iu_rab_deact(pctx->mm->iu.ue_ctx, 1);
 		}
 
