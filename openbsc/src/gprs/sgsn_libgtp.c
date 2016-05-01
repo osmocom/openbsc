@@ -399,6 +399,7 @@ reject:
 int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies)
 {
 	uint8_t rab_id;
+	bool require_pdp_update = false;
 	struct sgsn_pdp_ctx *pdp = NULL;
 	RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies->raB_SetupOrModifiedItem;
 
@@ -411,13 +412,26 @@ int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedIt
 	}
 
 	if (item->transportLayerAddress) {
-
 		LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)", rab_id, osmo_hexdump(item->transportLayerAddress->buf,
 								     item->transportLayerAddress->size));
 		memcpy(pdp->lib->gsnlu.v, &item->transportLayerAddress->buf[3], 4);
-		gtp_update_context(pdp->ggsn->gsn, pdp->lib, pdp, &pdp->lib->hisaddr0);
-
+		require_pdp_update = true;
 	}
+
+	/* The TEI on the RNC side might have changed, too */
+	if (item->iuTransportAssociation &&
+	    item->iuTransportAssociation->present == RANAP_IuTransportAssociation_PR_gTP_TEI &&
+	    item->iuTransportAssociation->choice.gTP_TEI.buf &&
+	    item->iuTransportAssociation->choice.gTP_TEI.size >= 4) {
+		uint32_t tei = osmo_load32be(item->iuTransportAssociation->choice.gTP_TEI.buf);
+		LOGP(DRANAP, LOGL_DEBUG, "Updating TEID on RNC side from 0x%08x to 0x%08x\n",
+			pdp->lib->teid_own, tei);
+		pdp->lib->teid_own = tei;
+		require_pdp_update = true;
+	}
+
+	if (require_pdp_update)
+		gtp_update_context(pdp->ggsn->gsn, pdp->lib, pdp, &pdp->lib->hisaddr0);
 
 	if (pdp->state != PDP_STATE_CR_CONF) {
 		send_act_pdp_cont_acc(pdp);
