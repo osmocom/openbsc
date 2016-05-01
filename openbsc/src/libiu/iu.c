@@ -209,11 +209,11 @@ int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp, bool use_x213_nsap)
 	ggsn_ip = htonl(ggsn_ip);
 
 	LOGP(DRANAP, LOGL_DEBUG, "Assigning RAB: rab_id=%d, ggsn_ip=%x,"
-	     " teid_own=%x, use_x213_nsap=%d\n",
-	     rab_id, ggsn_ip, pdp->lib->teid_own, use_x213_nsap);
+	     " teid_gn=%x, use_x213_nsap=%d\n",
+	     rab_id, ggsn_ip, pdp->lib->teid_gn, use_x213_nsap);
 
 	msg = ranap_new_msg_rab_assign_data(rab_id, ggsn_ip,
-					    pdp->lib->teid_own, use_x213_nsap);
+					    pdp->lib->teid_gn, use_x213_nsap);
 	msg->l2h = msg->data;
 	return iu_rab_act(uectx, msg);
 }
