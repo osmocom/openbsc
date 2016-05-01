@@ -311,19 +311,6 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_tid(const struct sgsn_mm_ctx *mm,
 	return NULL;
 }
 
-/* look up PDP context by MM context and gtp TEI */
-struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_tei(const struct sgsn_mm_ctx *mm,
-					uint32_t tei)
-{
-	struct sgsn_pdp_ctx *pdp;
-
-	llist_for_each_entry(pdp, &mm->pdp_list, list) {
-		if (pdp->lib->teid_own == tei)
-			return pdp;
-	}
-	return NULL;
-}
-
 /* you don't want to use this directly, call sgsn_create_pdp_ctx() */
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 					uint8_t nsapi)

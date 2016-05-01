@@ -400,17 +400,13 @@ int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedIt
 {
 	uint8_t rab_id;
 	struct sgsn_pdp_ctx *pdp = NULL;
-	uint32_t gtp_tei;
 	RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies->raB_SetupOrModifiedItem;
 
 	rab_id = item->rAB_ID.buf[0];
 
-	if (item->iuTransportAssociation->present == RANAP_IuTransportAssociation_PR_gTP_TEI) {
-		gtp_tei = asn1str_to_u32(&item->iuTransportAssociation->choice.gTP_TEI);
-		pdp = sgsn_pdp_ctx_by_tei(ctx, gtp_tei);
-	}
-
+	pdp = sgsn_pdp_ctx_by_nsapi(ctx, rab_id);
 	if (!pdp) {
+		LOGP(DRANAP, LOGL_ERROR, "RAB Assignment Response for unknown RAB/NSAPI=%u\n", rab_id);
 		return -1;
 	}
 
