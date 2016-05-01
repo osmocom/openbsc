@@ -478,6 +478,7 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 			rc = -1;
 			break;
 		}
+		break;
 	case RANAP_RANAP_PDU_PR_outcome:
 		switch (message->procedureCode) {
 		case RANAP_ProcedureCode_id_RAB_Assignment:
@@ -490,6 +491,7 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 			rc = -1;
 			break;
 		}
+		break;
 	case RANAP_RANAP_PDU_PR_unsuccessfulOutcome:
 	default:
 		LOGP(DRANAP, LOGL_ERROR, "Received Unsuccessful Outcome: Procedure Code %d\n",
