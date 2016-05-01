@@ -414,7 +414,25 @@ int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedIt
 	if (item->transportLayerAddress) {
 		LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)", rab_id, osmo_hexdump(item->transportLayerAddress->buf,
 								     item->transportLayerAddress->size));
-		memcpy(pdp->lib->gsnlu.v, &item->transportLayerAddress->buf[3], 4);
+		switch (item->transportLayerAddress->size) {
+		case 7:
+			/* It must be IPv4 inside a X213 NSAP */
+			memcpy(pdp->lib->gsnlu.v, &item->transportLayerAddress->buf[3], 4);
+			break;
+		case 4:
+			/* It must be a raw IPv4 address */
+			memcpy(pdp->lib->gsnlu.v, item->transportLayerAddress->buf, 4);
+			break;
+		case 16:
+			/* TODO: It must be a raw IPv6 address */
+		case 19:
+			/* TODO: It must be IPv6 inside a X213 NSAP */
+		default:
+			LOGP(DRANAP, LOGL_ERROR, "RAB Assignment Resp: Unknown "
+				"transport layer address size %u\n",
+				item->transportLayerAddress->size);
+			return -1;
+		}
 		require_pdp_update = true;
 	}
 
