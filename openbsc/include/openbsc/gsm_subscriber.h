@@ -140,6 +140,8 @@ bool subscr_authorized(struct gsm_subscriber *subsc);
 struct subscr_request *subscr_request_conn(struct gsm_subscriber *subscr,
 					   gsm_cbfn *cbfn, void *param);
 void subscr_remove_request(struct subscr_request *req);
+int subscr_rx_paging_response(struct msgb *msg,
+			      struct gsm_subscriber_connection *conn);
 
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);
