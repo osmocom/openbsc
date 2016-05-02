@@ -77,6 +77,8 @@ int decode_bcd_number(char *output, int output_len, const uint8_t *bcd_lv,
 int send_siemens_mrpci(struct gsm_lchan *lchan, uint8_t *classmark2_lv);
 int gsm48_extract_mi(uint8_t *classmark2, int length, char *mi_string, uint8_t *mi_type);
 int gsm48_paging_extract_mi(struct gsm48_pag_resp *pag, int length, char *mi_string, uint8_t *mi_type);
+
+/* TODO MSCSPLIT remove gsm48_handle_paging_resp() */
 int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn, struct msgb *msg, struct gsm_subscriber *subscr);
 
 int gsm48_lchan_modify(struct gsm_lchan *lchan, uint8_t lchan_mode);

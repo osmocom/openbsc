@@ -123,6 +123,9 @@ int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
 {
 	struct subscr_request *req;
 
+	/* FIXME the VTY command allows selecting a silent call channel type.
+	 * This doesn't apply to the situation after MSCSPLIT with an
+	 * A-interface. */
 	req = subscr_request_conn(subscr, paging_cb_silent, data);
 	return req != NULL;
 }
