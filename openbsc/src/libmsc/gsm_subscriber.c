@@ -132,7 +132,14 @@ int subscr_rx_paging_response(struct msgb *msg,
 	pr = (struct gsm48_pag_resp *)gh->data;
 
 	/* Secure the connection */
-	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, NULL);
+	if (subscr_authorized(conn->subscr))
+		return gsm48_secure_channel(conn, pr->key_seq,
+					    subscr_paging_sec_cb, NULL);
+
+	/* Not authorized. Failure. */
+	subscr_paging_sec_cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
+			     msg, conn, NULL);
+	return -1;
 }
 
 int msc_paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
