@@ -68,6 +68,15 @@ iu_event_cb_t global_iu_event_cb = NULL;
 static LLIST_HEAD(ue_conn_ctx_list);
 static LLIST_HEAD(rnc_list);
 
+const struct value_string iu_event_type_names[] = {
+#define IU_EVT_STR(X) { X, #X }
+	IU_EVT_STR(IU_EVENT_RAB_ASSIGN),
+	IU_EVT_STR(IU_EVENT_SECURITY_MODE_COMPLETE),
+	IU_EVT_STR(IU_EVENT_IU_RELEASE),
+	IU_EVT_STR(IU_EVENT_LINK_INVALIDATED),
+#undef IU_EVT_STR
+};
+
 struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sua_link *link, uint32_t conn_id)
 {
 	struct ue_conn_ctx *ctx = talloc_zero(talloc_iu_ctx, struct ue_conn_ctx);

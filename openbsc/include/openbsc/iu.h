@@ -26,6 +26,12 @@ enum iu_event_type {
 	 * ue_conn_ctx should no longer be used, for whatever reason. */
 };
 
+extern const struct value_string iu_event_type_names[];
+static inline const char *iu_event_type_str(enum iu_event_type e)
+{
+	return get_value_string(iu_event_type_names, e);
+}
+
 /* Implementations of iu_recv_cb_t shall find the ue_conn_ctx in msg->dst. */
 typedef int (* iu_recv_cb_t )(struct msgb *msg, struct gprs_ra_id *ra_id,
 			      /* TODO "gprs_" in generic CS+PS domain ^ */
