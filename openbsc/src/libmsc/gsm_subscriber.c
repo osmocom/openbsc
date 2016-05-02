@@ -66,6 +66,9 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber *subscr = conn->subscr;
 	struct paging_signal_data sig_data;
 
+	LOGP(DPAG, LOGL_DEBUG, "Running paging response action for %s\n",
+	     subscr_name(conn->subscr));
+
 	if (!subscr->is_paging) {
 		LOGP(DPAG, LOGL_NOTICE,
 		     "Paging Response received for subscriber"
@@ -85,12 +88,18 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 
 	llist_for_each_entry_safe(request, tmp, &subscr->requests, entry) {
 		llist_del(&request->entry);
-		request->cbfn(hooknum, event, msg, data, request->param);
+		if (request->cbfn) {
+			LOGP(DPAG, LOGL_DEBUG, "Calling paging cbfn.\n");
+			request->cbfn(hooknum, event, msg, data, request->param);
+		} else
+			LOGP(DPAG, LOGL_DEBUG, "Paging without action.\n");
 		talloc_free(request);
 	}
 
 	/* balanced with the moment we start paging */
 	subscr->is_paging = 0;
+
+	/* balanced with the moment we receive a paging response */
 	subscr_put(subscr);
 	return 0;
 }
@@ -99,9 +108,15 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
                                 struct msgb *msg, void *data, void *param)
 {
 	int rc;
+	struct gsm_subscriber_connection *conn = data;
+	OSMO_ASSERT(conn);
 
 	switch (event) {
 		case GSM_SECURITY_AUTH_FAILED:
+			LOGP(DPAG, LOGL_ERROR,
+			     "Dropping Paging Response:"
+			     " authorization failed for subscriber %s\n",
+			     subscr_name(conn->subscr));
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
 				msg, data, NULL);
@@ -115,6 +130,8 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
 			break;
 
 		default:
+			LOGP(DPAG, LOGL_FATAL,
+			     "Invalid authorization event: %d\n", event);
 			rc = -EINVAL;
 	}
 
