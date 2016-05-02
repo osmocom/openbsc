@@ -121,23 +121,18 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
 	return rc;
 }
 
-static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
-                            struct msgb *msg, void *data, void *param)
+int subscr_rx_paging_response(struct msgb *msg,
+			      struct gsm_subscriber_connection *conn)
 {
-	struct gsm_subscriber_connection *conn = data;
 	struct gsm48_hdr *gh;
 	struct gsm48_pag_resp *pr;
 
-	/* Non-success implies a problem, dispatch directly */
-	if (event != GSM_PAGING_SUCCEEDED)
-		return subscr_paging_dispatch(hooknum, event, msg, data, param);
-
-	/* Get paging response */
+	/* Get key_seq from Paging Response headers */
 	gh = msgb_l3(msg);
 	pr = (struct gsm48_pag_resp *)gh->data;
 
-	/* We _really_ have a channel, secure it now ! */
-	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, param);
+	/* Secure the connection */
+	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, NULL);
 }
 
 int msc_paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
