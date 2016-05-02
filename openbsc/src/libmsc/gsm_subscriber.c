@@ -142,8 +142,7 @@ int subscr_rx_paging_response(struct msgb *msg,
 	return -1;
 }
 
-static int msc_paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
-		       int type, gsm_cbfn *cbfn, void *data)
+static int msc_paging_request(struct gsm_subscriber *subscr)
 {
 	/* The subscriber was last seen in subscr->lac. Find out which
 	 * BSCs/RNCs are responsible and send them a paging request via open
@@ -166,8 +165,7 @@ struct subscr_request *subscr_request_conn(struct gsm_subscriber *subscr,
 	if (!subscr->is_paging) {
 		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet, start paging.\n",
 			subscr_name(subscr));
-		rc = msc_paging_request(subscr->group->net, subscr, channel_type,
-					subscr_paging_cb, subscr);
+		rc = msc_paging_request(subscr);
 		if (rc <= 0) {
 			LOGP(DMM, LOGL_ERROR, "Subscriber %s paging failed: %d\n",
 				subscr_name(subscr), rc);
