@@ -57,12 +57,9 @@ static struct gsm_subscriber *get_subscriber(struct gsm_subscriber_group *sgrp,
 	return subscr;
 }
 
-/*
- * We got the channel assigned and can now hand this channel
- * over to one of our callbacks.
- */
+/* A connection is established and the paging callbacks may run now. */
 static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
-                                  struct msgb *msg, void *data, void *param)
+				  struct msgb *msg, void *data, void *param)
 {
 	struct subscr_request *request, *tmp;
 	struct gsm_subscriber_connection *conn = data;
@@ -111,7 +108,6 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
 
 	switch (event) {
 		case GSM_SECURITY_AUTH_FAILED:
-			/* Dispatch as paging failure */
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
 				msg, data, param);
@@ -119,7 +115,6 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
 
 		case GSM_SECURITY_NOAVAIL:
 		case GSM_SECURITY_SUCCEEDED:
-			/* Dispatch as paging failure */
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
 				msg, data, param);
