@@ -66,8 +66,11 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber *subscr = conn->subscr;
 	struct paging_signal_data sig_data;
 
-	OSMO_ASSERT(subscr->is_paging);
-
+	if (!subscr->is_paging) {
+		LOGP(DPAG, LOGL_NOTICE,
+		     "Paging Response received for subscriber"
+		     " that is not paging.\n");
+	}
 
 	/* Inform parts of the system we don't know */
 	sig_data.subscr = subscr;
