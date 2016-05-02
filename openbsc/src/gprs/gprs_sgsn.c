@@ -205,6 +205,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx)
 	ctx->iu.ue_ctx = uectx;
 	ctx->iu.new_key = 1;
 	ctx->mm_state = GMM_DEREGISTERED;
+	ctx->pmm_state = PMM_DETACHED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, 0);
 	INIT_LLIST_HEAD(&ctx->pdp_list);
