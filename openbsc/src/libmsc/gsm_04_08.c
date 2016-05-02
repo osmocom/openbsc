@@ -1223,19 +1223,21 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 	return rc;
 }
 
-static int handle_paging_resp(struct gsm_subscriber_connection *conn,
-			      struct msgb *msg, struct gsm_subscriber *subscr)
+static int handle_paging_resp(struct msgb *msg,
+			      struct gsm_subscriber_connection *conn,
+			      struct gsm_subscriber *subscr)
 {
 	struct subscr_request *req, *req2;
 
 	if (!conn->subscr) {
 		conn->subscr = subscr;
 	} else if (conn->subscr != subscr) {
-		LOGP(DRR, LOGL_ERROR, "<- Channel already owned by someone else?\n");
+		LOGP(DPAG, LOGL_ERROR,
+		     "Connection already owned by another subscriber?\n");
 		subscr_put(subscr);
 		return -EINVAL;
 	} else {
-		DEBUGP(DRR, "<- Channel already owned by us\n");
+		DEBUGP(DPAG, "Connection already owned by the subscriber\n");
 		subscr_put(subscr);
 		subscr = conn->subscr;
 	}
@@ -1307,12 +1309,10 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	/* We received a paging */
 	conn->expire_timer_stopped = 1;
 
-	/* FIXME start Integrity Protection in Iu mode */
-
 #if BEFORE_MSCSPLIT
 	return gsm48_handle_paging_resp(conn, msg, subscr);
 #else
-	return handle_paging_resp(conn, msg, subscr);
+	return handle_paging_resp(msg, conn, subscr);
 #endif
 }
 
