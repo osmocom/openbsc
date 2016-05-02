@@ -165,8 +165,8 @@ int msc_paging_request(struct gsm_network *network, struct gsm_subscriber *subsc
 			  subscr->lac);
 }
 
-struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
-			int channel_type, gsm_cbfn *cbfn, void *param)
+struct subscr_request *subscr_request_conn(struct gsm_subscriber *subscr,
+					   gsm_cbfn *cbfn, void *param)
 {
 	int rc;
 	struct subscr_request *request;

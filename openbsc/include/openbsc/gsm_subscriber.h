@@ -137,8 +137,8 @@ bool subscr_authorized(struct gsm_subscriber *subsc);
 /*
  * Paging handling with authentication
  */
-struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
-                        int type, gsm_cbfn *cbfn, void *param);
+struct subscr_request *subscr_request_conn(struct gsm_subscriber *subscr,
+					   gsm_cbfn *cbfn, void *param);
 void subscr_remove_request(struct subscr_request *req);
 
 /* internal */

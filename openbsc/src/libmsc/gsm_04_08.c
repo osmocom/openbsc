@@ -3430,8 +3430,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
 			/* Request a channel */
-			trans->paging_request = subscr_request_channel(subscr,
-							RSL_CHANNEED_TCH_F, setup_trig_pag_evt,
+			trans->paging_request = subscr_request_conn(subscr,
+							setup_trig_pag_evt,
 							trans);
 			if (!trans->paging_request) {
 				LOGP(DCC, LOGL_ERROR, "Failed to allocate paging token.\n");

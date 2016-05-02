@@ -123,7 +123,7 @@ int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
 {
 	struct subscr_request *req;
 
-	req = subscr_request_channel(subscr, type, paging_cb_silent, data);
+	req = subscr_request_conn(subscr, paging_cb_silent, data);
 	return req != NULL;
 }
 
