@@ -82,7 +82,7 @@ int iucs_rx_ranap_event(struct gsm_network *network,
 	conn = subscr_conn_lookup_iu(network, ue_ctx);
 
 	if (!conn) {
-		LOGP(DRANAP, LOGL_NOTICE, "Cannot find subscriber for IU event %u\n", type);
+		LOGP(DRANAP, LOGL_ERROR, "Cannot find subscriber for IU event %u\n", type);
 		return -1;
 	}
 

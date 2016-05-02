@@ -469,12 +469,10 @@ static void cn_ranap_handle_co(void *ctx, ranap_message *message)
 		switch (message->procedureCode) {
 		case RANAP_ProcedureCode_id_SecurityModeControl:
 			/* Security Mode Complete */
-			LOGP(DRANAP, LOGL_NOTICE, "FIXME: Handle security mode complete\n");
 			rc = global_iu_event_cb(ctx, IU_EVENT_SECURITY_MODE_COMPLETE, NULL);
 			break;
 		case RANAP_ProcedureCode_id_Iu_Release:
 			/* Iu Release Complete */
-			LOGP(DRANAP, LOGL_NOTICE, "FIXME: Handle Iu release complete\n");
 			rc = global_iu_event_cb(ctx, IU_EVENT_IU_RELEASE, NULL);
 			if (rc) {
 				LOGP(DRANAP, LOGL_ERROR, "Iu Release event: Iu Event callback returned %d\n",

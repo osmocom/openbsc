@@ -83,6 +83,8 @@ struct gsm_subscriber_connection *subscr_conn_lookup_iu(
 {
 	struct gsm_subscriber_connection *conn;
 
+	DEBUGP(DIUCS, "Looking for IuCS subscriber: link_id %p, conn_id %" PRIx32 "\n",
+	       ue->link, ue->conn_id);
 	log_subscribers(network);
 
 	llist_for_each_entry(conn, &network->subscr_conns, entry) {

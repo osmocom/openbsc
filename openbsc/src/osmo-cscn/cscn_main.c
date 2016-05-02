@@ -332,7 +332,8 @@ static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gpr
 static int rx_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type,
 		       void *data)
 {
-	DEBUGP(DIUCS, "got IuCS event %u\n", type);
+	DEBUGP(DIUCS, "got IuCS event %u: %s\n", type,
+	       iu_event_type_str(type));
 
 	return iucs_rx_ranap_event(cscn_network, ctx, type, data);
 }
