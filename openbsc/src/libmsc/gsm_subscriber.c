@@ -59,10 +59,6 @@ static struct bsc_subscr *vlr_subscr_to_bsc_sub(struct llist_head *bsc_subscribe
 	return sub;
 }
 
-#if 0
-TODO implement paging response in libmsc!
-Excluding this to be able to link without libbsc:
-
 /*
  * We got the channel assigned and can now hand this channel
  * over to one of our callbacks.
@@ -79,17 +75,6 @@ int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 
 	OSMO_ASSERT(vsub && vsub->cs.is_paging);
 	net = vsub->vlr->user_ctx;
-
-	/*
-	 * Stop paging on all other BTS. E.g. if this is
-	 * the first timeout on a BTS then the others will
-	 * timeout soon as well. Let's just stop everything
-	 * and forget we wanted to page.
-	 */
-
-	bsub = vlr_subscr_to_bsc_sub(conn->network->bsc_subscribers, vsub);
-	paging_request_stop(&net->bts_list, NULL, bsub, NULL, NULL);
-	bsc_subscr_put(bsub);
 
 	/* Inform parts of the system we don't know */
 	sig_data.vsub	= vsub;
@@ -143,25 +128,19 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
 	return rc;
 }
 
-static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
-                            struct msgb *msg, void *data, void *param)
+int subscr_rx_paging_response(struct msgb *msg,
+			      struct gsm_subscriber_connection *conn)
 {
-	struct gsm_subscriber_connection *conn = data;
 	struct gsm48_hdr *gh;
 	struct gsm48_pag_resp *pr;
 
-	/* Other cases mean problem, dispatch direclty */
-	if (event != GSM_PAGING_SUCCEEDED)
-		return subscr_paging_dispatch(hooknum, event, msg, data, param);
-
-	/* Get paging response */
+	/* Get key_seq from Paging Response headers */
 	gh = msgb_l3(msg);
 	pr = (struct gsm48_pag_resp *)gh->data;
 
-	/* We _really_ have a channel, secure it now ! */
-	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, param);
+	/* Secure the connection */
+	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, NULL);
 }
-#endif
 
 struct subscr_request *subscr_request_channel(struct vlr_subscr *vsub,
 					      int channel_type,

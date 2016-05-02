@@ -56,6 +56,8 @@ struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
 					   gsm_cbfn *cbfn, void *param);
 
 void subscr_remove_request(struct subscr_request *req);
+int subscr_rx_paging_response(struct msgb *msg,
+			      struct gsm_subscriber_connection *conn);
 
 int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 			   struct msgb *msg, void *data, void *param);
