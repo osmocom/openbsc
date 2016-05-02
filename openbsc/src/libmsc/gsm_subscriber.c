@@ -68,15 +68,6 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 
 	OSMO_ASSERT(subscr->is_paging);
 
-#if BEFORE_MSCSPLIT
-	/*
-	 * Stop paging on all other BTS. E.g. if this is
-	 * the first timeout on a BTS then the others will
-	 * timeout soon as well. Let's just stop everything
-	 * and forget we wanted to page.
-	 */
-	paging_request_stop(NULL, subscr, NULL, NULL);
-#endif
 
 	/* Inform parts of the system we don't know */
 	sig_data.subscr = subscr;
