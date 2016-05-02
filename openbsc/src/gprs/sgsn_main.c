@@ -347,7 +347,7 @@ int main(int argc, char **argv)
 	vty_init(&vty_info);
 	logging_vty_add_cmds(NULL);
 	osmo_stats_vty_add_cmds(&gprs_log_info);
-	sgsn_vty_init();
+	sgsn_vty_init(&sgsn_inst.cfg);
 	ctrl_vty_init(tall_bsc_ctx);
 #ifdef BUILD_IU
 	iu_vty_init(&asn_debug);
@@ -379,7 +379,7 @@ int main(int argc, char **argv)
 	sgsn_cdr_init(&sgsn_inst);
 	/* FIXME: register signal handler for SS_L_NS */
 
-	rc = sgsn_parse_config(sgsn_inst.config_file, &sgsn_inst.cfg);
+	rc = sgsn_parse_config(sgsn_inst.config_file);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_FATAL, "Error in config file\n");
 		exit(2);
