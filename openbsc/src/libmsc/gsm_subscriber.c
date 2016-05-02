@@ -405,3 +405,30 @@ void msc_subscr_con_free(struct gsm_subscriber_connection *conn)
 	llist_del(&conn->entry);
 	talloc_free(conn);
 }
+
+bool subscr_authorized(struct gsm_subscriber *subscriber)
+{
+	switch (subscriber->group->net->auth_policy) {
+	case GSM_AUTH_POLICY_CLOSED:
+		LOGP(DMM, LOGL_DEBUG, "subscriber %s authorized = %d\n",
+		     subscr_name(subscriber), subscriber->authorized);
+		return subscriber->authorized ? true : false;
+	case GSM_AUTH_POLICY_TOKEN:
+		if (subscriber->authorized) {
+			LOGP(DMM, LOGL_DEBUG,
+			     "subscriber %s authorized = %d\n",
+			     subscr_name(subscriber), subscriber->authorized);
+			return subscriber->authorized;
+		}
+		LOGP(DMM, LOGL_DEBUG, "subscriber %s first contact = %d\n",
+		     subscr_name(subscriber),
+		     (int)(subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT));
+		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
+	case GSM_AUTH_POLICY_ACCEPT_ALL:
+		return true;
+	default:
+		LOGP(DMM, LOGL_DEBUG, "unknown auth_policy, rejecting"
+		     " subscriber %s\n", subscr_name(subscriber));
+		return false;
+	}
+}

@@ -272,12 +272,12 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	return -EINVAL; /* not reached */
 }
 
-static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
-				struct gsm_subscriber *subscriber)
+static bool authorize_subscriber(struct gsm_loc_updating_operation *loc,
+				 struct gsm_subscriber *subscriber)
 {
 	if (!subscriber) {
 		LOGP(DMM, LOGL_DEBUG, "authorize_subscriber() on NULL subscriber\n");
-		return 0;
+		return false;
 	}
 
 	/*
@@ -291,32 +291,10 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 		     loc->waiting_for_imsi? " IMSI": "",
 		     loc->waiting_for_imei? " IMEI": "",
 		     subscr_name(subscriber));
-		return 0;
+		return false;
 	}
 
-	switch (subscriber->group->net->auth_policy) {
-	case GSM_AUTH_POLICY_CLOSED:
-		LOGP(DMM, LOGL_DEBUG, "subscriber %s authorized = %d\n",
-		     subscr_name(subscriber), subscriber->authorized);
-		return subscriber->authorized;
-	case GSM_AUTH_POLICY_TOKEN:
-		if (subscriber->authorized) {
-			LOGP(DMM, LOGL_DEBUG,
-			     "subscriber %s authorized = %d\n",
-			     subscr_name(subscriber), subscriber->authorized);
-			return subscriber->authorized;
-		}
-		LOGP(DMM, LOGL_DEBUG, "subscriber %s first contact = %d\n",
-		     subscr_name(subscriber),
-		     (int)(subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT));
-		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
-	case GSM_AUTH_POLICY_ACCEPT_ALL:
-		return 1;
-	default:
-		LOGP(DMM, LOGL_DEBUG, "unknown auth_policy, rejecting"
-		     " subscriber %s\n", subscr_name(subscriber));
-		return 0;
-	}
+	return subscr_authorized(subscriber);
 }
 
 static void release_loc_updating_req(struct gsm_subscriber_connection *conn, int release)
