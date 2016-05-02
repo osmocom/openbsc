@@ -1222,8 +1222,10 @@ DEFUN(cfg_comp_v42bisp, cfg_comp_v42bisp_cmd,
 	return CMD_SUCCESS;
 }
 
-int sgsn_vty_init(void)
+int sgsn_vty_init(struct sgsn_config *cfg)
 {
+	g_cfg = cfg;
+
 	install_element_ve(&show_sgsn_cmd);
 	//install_element_ve(&show_mmctx_tlli_cmd);
 	install_element_ve(&show_mmctx_imsi_cmd);
@@ -1285,11 +1287,12 @@ int sgsn_vty_init(void)
 	return 0;
 }
 
-int sgsn_parse_config(const char *config_file, struct sgsn_config *cfg)
+int sgsn_parse_config(const char *config_file)
 {
 	int rc;
 
-	g_cfg = cfg;
+	/* make sure sgsn_vty_init() was called before this */
+	OSMO_ASSERT(g_cfg);
 
 	g_cfg->timers.T3312 = GSM0408_T3312_SECS;
 	g_cfg->timers.T3322 = GSM0408_T3322_SECS;
