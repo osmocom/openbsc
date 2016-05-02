@@ -142,7 +142,7 @@ int subscr_rx_paging_response(struct msgb *msg,
 	return -1;
 }
 
-int msc_paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
+static int msc_paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		       int type, gsm_cbfn *cbfn, void *data)
 {
 	/* The subscriber was last seen in subscr->lac. Find out which
