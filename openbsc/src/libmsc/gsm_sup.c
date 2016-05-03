@@ -510,13 +510,10 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
 
 	struct gprs_gsup_message gsup_msg = {0};
 	struct gsm_subscriber *subscr;
-#if 0
-    if (*data == GPRS_GSUP_MSGT_MAP) {
-        return rx_uss_message(data, data_len);
-    } else if (*data == GPRS_GSUP_MSGT_SMS) {
-        return rx_sms_message(sup_client, data, data_len);
-    }
-#endif
+
+	if (*data == GPRS_GSUP_MSGT_SMS) {
+		return rx_sms_message(sup_client, data, data_len);
+	}
 	rc = gprs_gsup_decode(data, data_len, &gsup_msg);
 	if (rc < 0) {
 		LOGP(DSUP, LOGL_ERROR,
