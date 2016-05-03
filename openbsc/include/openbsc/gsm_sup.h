@@ -17,9 +17,6 @@ int sup_read_cb(struct gprs_gsup_client *sup_client, struct msgb *msg);
 int subscr_query_auth_info(struct gsm_subscriber *subscr);
 int subscr_location_update(struct gsm_subscriber *subscr);
 
-int subscr_tx_uss_message(struct ss_request *req,
-			  struct gsm_subscriber *subscr);
-
 int subscr_tx_sms_message(struct gsm_subscriber *subscr,
                           struct gsm411_rp_hdr *rph);
 

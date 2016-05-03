@@ -54,6 +54,7 @@
 #include <openbsc/gsm_ussd_map.h>
 
 #include <osmocom/vty/logging.h>
+#include <openbsc/gsm_sup.h>
 
 #include "meas_feed.h"
 
