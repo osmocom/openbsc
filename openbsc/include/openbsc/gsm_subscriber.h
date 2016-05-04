@@ -71,6 +71,7 @@ struct gsm_subscriber {
 
 	/* pending requests */
 	int is_paging;
+	struct osmo_timer_list paging_timeout;
 	struct llist_head requests;
 
 	/* GPRS/SGSN related fields */

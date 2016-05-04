@@ -110,6 +110,31 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	return 0;
 }
 
+static void paging_timeout_release(struct gsm_subscriber *subscr)
+{
+	DEBUGP(DPAG, "Paging timeout released for %s\n", subscr_name(subscr));
+	osmo_timer_del(&subscr->paging_timeout);
+}
+
+static void paging_timeout(void *data)
+{
+	struct gsm_subscriber *subscr = data;
+	DEBUGP(DPAG, "Paging timeout reached for %s\n", subscr_name(subscr));
+	paging_timeout_release(subscr);
+	subscr_paging_dispatch(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
+			       NULL, NULL, subscr);
+}
+
+static void paging_timeout_start(struct gsm_subscriber *subscr)
+{
+	DEBUGP(DPAG, "Starting paging timeout for %s\n", subscr_name(subscr));
+	subscr->paging_timeout.data = subscr;
+	subscr->paging_timeout.cb = paging_timeout;
+	osmo_timer_schedule(&subscr->paging_timeout, 10, 0);
+	/* TODO: configurable timeout duration? */
+}
+
+
 static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
                                 struct msgb *msg, void *data, void *param)
 {
@@ -153,6 +178,8 @@ int subscr_rx_paging_response(struct msgb *msg,
 	/* Get key_seq from Paging Response headers */
 	gh = msgb_l3(msg);
 	pr = (struct gsm48_pag_resp *)gh->data;
+
+	paging_timeout_release(conn->subscr);
 
 	/* Secure the connection */
 	if (subscr_authorized(conn->subscr))
@@ -199,6 +226,7 @@ struct subscr_request *subscr_request_conn(struct gsm_subscriber *subscr,
 		subscr->is_paging = 1;
 		LOGP(DMM, LOGL_DEBUG, "Paged subscriber %s.\n",
 		     subscr_name(subscr));
+		paging_timeout_start(subscr);
 	}
 	else {
 		LOGP(DMM, LOGL_DEBUG, "Subscriber %s already paged.\n",
