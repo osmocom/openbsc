@@ -1,0 +1,57 @@
+[[control]]
+== Control interface
+
+The actual protocol is described in <<common-control-if>>, the variables
+common to all programs using it are described in <<ctrl_common_vars>>. The
+variables shared with OsmoBSC are described in corresponding section of
+OsmoBSC documentation.Here we describe variables specific to OsmoNITB.
+
+.Variables available over control interface
+[options="header",width="100%",cols="20%,5%,5%,50%,20%"]
+|===
+|Name|Access|Trap|Value|Comment
+|subscriber-modify-v1|WO|No|"<imsi>,<msisdn>,<alg>,<ki>"|See <<sub1>> for details.
+|subscriber-delete-v1|WO|No|"<imsi>"|See <<subdel>> for details.
+|subscriber-list-active-v1|RO|No||Return list of active subscribers.
+|===
+
+[[sub1]]
+=== subscriber-modify-v1
+
+Modify (or add if missing) subscriber entry with the give IMSI, MSISDN, Ki and
+algorithm (valid values are "none", "xor" and "comp128v1"). The subscriber is
+automatically marked as authorized.
+
+[[subdel]]
+=== subscriber-delete-v1
+
+Delete the subscriber with the given IMSI. Returns "Removed active subscriber"
+or "Removed" depending on the subscriber's use status.
+
+[[osmo-bsc_nat]]
+
+The following variables are only available over control interface of
+osmo-bsc_nat program.
+
+.Variables available over control interface of osmo-bsc_nat
+[options="header",width="100%",cols="20%,5%,5%,50%,20%"]
+|===
+|Name|Access|Trap|Value|Comment
+|net.0.bsc.N.*|RW|Yes|Arbitrary variable|Forward given command to BSC N control interface.
+|net.0.bsc_cfg.N.access-list-name|RW|No|"<name>"|Set/Get ACL for a given BSC N.
+|net.0.bsc_cfg.N.no-access-list-name|WO|No|Ignored|Remove ACL for a given BSC N.
+|net.0.add.allow.access-list.A|WO|No|"<regexp>"|See <<nacl>> for details.
+|net.0.save-configuration|WO|No|Ignored|Save current running config into file.
+|net.0.bsc.N.notification-rejection-v1|NA|Yes|"imsi=<imis>"|See <<narej>> for details.
+|===
+
+[[nacl]]
+=== allow.access-list
+
+Add given regular expression for matching IMSI(s) to allowed access list A.
+
+[[narej]]
+=== notification-rejection-v1
+
+This TRAP event notifies all connected clients about IMSI which was rejected by
+BSC N.

@@ -9,6 +9,8 @@ include::chapters/overview.adoc[]
 
 include::chapters/running.adoc[]
 
+include::chapters/control.adoc[]
+
 include::../common/chapters/vty.adoc[]
 
 include::../common/chapters/logging.adoc[]
