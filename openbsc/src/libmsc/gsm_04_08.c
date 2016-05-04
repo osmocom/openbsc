@@ -1179,6 +1179,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	if (cb)
 		cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED, NULL,
 		   conn, conn->sec_operation->cb_data);
+	release_security_operation(conn);
 	return 0;
 }
 

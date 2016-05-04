@@ -71,6 +71,7 @@ int iucs_rx_sec_mode_compl(struct gsm_subscriber_connection *conn,
 	if (cb)
 		cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED, NULL,
 		   conn, conn->sec_operation->cb_data);
+	release_security_operation(conn);
 	return 0;
 }
 
