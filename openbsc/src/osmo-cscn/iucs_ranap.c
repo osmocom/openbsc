@@ -68,10 +68,10 @@ int iucs_rx_sec_mode_compl(struct gsm_subscriber_connection *conn,
 	conn->iu.integrity_protection = INTEGRITY_PROTECTION_IK;
 
 	cb = conn->sec_operation->cb;
-	if (!cb)
-		return 0;
-	return cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
-		  NULL, conn, conn->sec_operation->cb_data);
+	if (cb)
+		cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED, NULL,
+		   conn, conn->sec_operation->cb_data);
+	return 0;
 }
 
 int iucs_rx_ranap_event(struct gsm_network *network,

@@ -1176,10 +1176,10 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	}
 
 	/* Only authentication requested, and we're done. */
-	if (!cb)
-		return 0;
-	return cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
-		  NULL, conn, conn->sec_operation->cb_data);
+	if (cb)
+		cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED, NULL,
+		   conn, conn->sec_operation->cb_data);
+	return 0;
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
