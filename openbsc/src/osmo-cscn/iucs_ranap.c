@@ -58,6 +58,14 @@ int iucs_rx_sec_mode_compl(struct gsm_subscriber_connection *conn,
 
 	OSMO_ASSERT(conn->via_iface == IFACE_IU);
 
+	if (!conn->sec_operation) {
+		LOGP(DIUCS, LOGL_ERROR,
+		     "Received Security Mode Complete message, but no"
+		     " authentication/cipher operation in progress"
+		     " for subscr %s\n", subscr_name(conn->subscr));
+		return;
+	}
+
 	/* TODO evalute ies */
 
 	if (conn->iu.integrity_protection)
