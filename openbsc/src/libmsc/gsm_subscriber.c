@@ -63,7 +63,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 {
 	struct subscr_request *request, *tmp;
 	struct gsm_subscriber_connection *conn = data;
-	struct gsm_subscriber *subscr = conn->subscr;
+	struct gsm_subscriber *subscr = param;
 	struct paging_signal_data sig_data;
 
 	LOGP(DPAG, LOGL_DEBUG, "Running paging response action for %s\n",
@@ -119,14 +119,14 @@ static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
 			     subscr_name(conn->subscr));
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
-				msg, data, NULL);
+				msg, conn, conn->subscr);
 			break;
 
 		case GSM_SECURITY_NOAVAIL:
 		case GSM_SECURITY_SUCCEEDED:
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
-				msg, data, NULL);
+				msg, conn, conn->subscr);
 			break;
 
 		default:
