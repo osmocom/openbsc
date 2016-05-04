@@ -189,7 +189,7 @@ struct subscr_request *subscr_request_conn(struct gsm_subscriber *subscr,
 				subscr_name(subscr), rc);
 			return NULL;
 		}
-		/* reduced on the first paging callback */
+		/* reduced in subscr_rx_paging_response() */
 		subscr_get(subscr);
 		subscr->is_paging = 1;
 		LOGP(DMM, LOGL_DEBUG, "Paged subscriber %s.\n",
