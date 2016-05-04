@@ -227,6 +227,8 @@ restart:
 			goto restart;
 		}
 	}
+
+	msc_subscr_con_free(conn);
 }
 
 /* clear all transactions globally; used in case of MNCC socket disconnect */
