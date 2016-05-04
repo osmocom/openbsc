@@ -456,6 +456,8 @@ restart:
 			goto restart;
 		}
 	}
+
+	msc_subscr_con_free(conn);
 }
 
 void gsm0408_clear_all_trans(struct gsm_network *net, int protocol)
