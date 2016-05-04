@@ -39,6 +39,7 @@
 #include <openbsc/gprs_utils.h>
 #include <openbsc/signal.h>
 #include "openbsc/gprs_llc.h"
+#include <openbsc/iu.h>
 
 #include <pdp.h>
 
@@ -208,6 +209,10 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx)
 	ctx->pmm_state = PMM_DETACHED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, 0);
+
+	/* Need to get RAID from IU conn */
+	ctx->ra = ctx->iu.ue_ctx->ra_id;
+
 	INIT_LLIST_HEAD(&ctx->pdp_list);
 
 	llist_add(&ctx->list, &sgsn_mm_ctxts);
