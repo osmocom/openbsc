@@ -328,6 +328,8 @@ static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *i
 	msg->dst = ctx;
 	global_iu_recv_cb(msg, &ra_id, &sai);
 
+	msgb_free(msg);
+
 	return 0;
 }
 
@@ -359,6 +361,8 @@ static int ranap_handle_co_dt(void *ctx, RANAP_DirectTransferIEs_t *ies)
 	msg->dst = ctx;
 	global_iu_recv_cb(msg, ra_id, sai);
 
+	msgb_free(msg);
+
 	return 0;
 }
 
@@ -373,15 +377,17 @@ static int ranap_handle_co_err_ind(void *ctx, RANAP_ErrorIndicationIEs_t *ies)
 	return 0;
 }
 
-int iu_tx(struct msgb *msg, uint8_t sapi)
+int iu_tx(struct msgb *msg_nas, uint8_t sapi)
 {
-	struct ue_conn_ctx *uectx = msg->dst;
+	struct ue_conn_ctx *uectx = msg_nas->dst;
+	struct msgb *msg;
 	struct osmo_scu_prim *prim;
 
 	LOGP(DRANAP, LOGL_INFO, "Transmitting L3 Message as RANAP DT (SUA link %p conn_id %u)\n",
 	     uectx->link, uectx->conn_id);
 
-	msg = ranap_new_msg_dt(sapi, msg->data, msgb_length(msg));
+	msg = ranap_new_msg_dt(sapi, msg_nas->data, msgb_length(msg_nas));
+	msgb_free(msg_nas);
 	msg->l2h = msg->data;
 	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));
 	prim->u.data.conn_id = uectx->conn_id;
