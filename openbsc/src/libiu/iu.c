@@ -311,6 +311,10 @@ static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *i
 		return -1;
 	}
 
+	if (ies->presenceMask & INITIALUE_MESSAGEIES_RANAP_RAC_PRESENT) {
+		ra_id.rac = asn1str_to_u8(&ies->rac);
+	}
+
 	if (iu_grnc_id_parse(&grnc_id, &ies->globalRNC_ID) != 0) {
 		LOGP(DRANAP, LOGL_ERROR,
 		     "Failed to parse RANAP Global-RNC-ID IE\n");
