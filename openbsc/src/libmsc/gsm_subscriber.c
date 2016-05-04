@@ -66,8 +66,9 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber *subscr = param;
 	struct paging_signal_data sig_data;
 
-	LOGP(DPAG, LOGL_DEBUG, "Running paging response action for %s\n",
-	     subscr_name(conn->subscr));
+	LOGP(DPAG, LOGL_DEBUG, "Paging %s for %s (event=%d)\n",
+	     event == GSM_PAGING_SUCCEEDED ? "success" : "failure",
+	     subscr_name(subscr), event);
 
 	if (!subscr->is_paging) {
 		LOGP(DPAG, LOGL_NOTICE,

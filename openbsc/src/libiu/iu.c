@@ -593,13 +593,20 @@ static int iu_page(const char *imsi, const uint32_t *tmsi_or_ptimsi,
 	struct iu_rnc *rnc;
 	int pagings_sent = 0;
 
-	LOGP(DRANAP, LOGL_DEBUG, "%s: Looking for RNCs to page for IMSI %s"
-	     " (paging will use %s)\n",
-	     is_ps? "IuPS" : "IuCS",
-	     imsi,
-	     tmsi_or_ptimsi ? (is_ps? "PTMSI" : "TMSI")
-		              : "IMSI"
-	    );
+	if (tmsi_or_ptimsi) {
+		LOGP(DRANAP, LOGL_DEBUG, "%s: Looking for RNCs to page for IMSI %s"
+		     " (paging will use %s %x)\n",
+		     is_ps? "IuPS" : "IuCS",
+		     imsi,
+		     is_ps? "PTMSI" : "TMSI",
+		     *tmsi_or_ptimsi);
+	} else {
+		LOGP(DRANAP, LOGL_DEBUG, "%s: Looking for RNCs to page for IMSI %s"
+		     " (paging will use IMSI)\n",
+		     is_ps? "IuPS" : "IuCS",
+		     imsi
+		    );
+	}
 
 	llist_for_each_entry(rnc, &rnc_list, entry) {
 		if (!rnc->link) {
