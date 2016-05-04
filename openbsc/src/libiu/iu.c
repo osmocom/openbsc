@@ -327,6 +327,7 @@ static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *i
 
 	/* Make sure we know the RNC Id and LAC+RAC coming in on this connection. */
 	iu_rnc_register(grnc_id.rnc_id, ra_id.lac, ra_id.rac, ue_conn->link);
+	ue_conn->ra_id = ra_id;
 
 	/* Feed into the MM layer */
 	msg->dst = ctx;

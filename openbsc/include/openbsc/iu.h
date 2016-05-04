@@ -14,6 +14,7 @@ struct ue_conn_ctx {
 	struct osmo_sua_link *link;
 	uint32_t conn_id;
 	int integrity_active;
+	struct gprs_ra_id ra_id;
 };
 
 enum iu_event_type {
