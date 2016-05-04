@@ -66,6 +66,11 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber *subscr = param;
 	struct paging_signal_data sig_data;
 
+	OSMO_ASSERT(hooknum == GSM_HOOK_RR_PAGING);
+	OSMO_ASSERT(subscr);
+	OSMO_ASSERT(!(conn && (conn->subscr != subscr)));
+	OSMO_ASSERT(!((event == GSM_PAGING_SUCCEEDED) && !conn));
+
 	LOGP(DPAG, LOGL_DEBUG, "Paging %s for %s (event=%d)\n",
 	     event == GSM_PAGING_SUCCEEDED ? "success" : "failure",
 	     subscr_name(subscr), event);
