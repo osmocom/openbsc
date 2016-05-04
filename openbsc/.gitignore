@@ -89,5 +89,6 @@ tests/package.m4
 tests/testsuite
 tests/testsuite.log
 
+writtenconfig
 
 src/openbsc.cfg*
