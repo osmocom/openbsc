@@ -172,6 +172,7 @@ static int _send_sms_str(struct gsm_subscriber *receiver,
 		sms_free(sms);
 		return CMD_WARNING;
 	}
+	LOGP(DLSMS, LOGL_DEBUG, "SMS stored in DB\n");
 
 	sms_free(sms);
 	sms_queue_trigger(receiver->group->net->sms_queue);
