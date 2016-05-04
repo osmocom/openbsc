@@ -125,7 +125,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg,
 		     " %s from LAC %d to %d\n",
 		     subscr_name(conn->subscr), conn->lac, *lac);
 		/* Deallocate conn with previous LAC */
-		msc_subscr_con_free(conn);
+		gsm0408_clear_request(conn, 0);
 		/* At this point we could be tolerant and allocate a new
 		 * connection, but changing the LAC within the same connection
 		 * is shifty. Rather cancel everything. */
@@ -161,7 +161,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg,
 
 		rc = msc_compl_l3(conn, msg, 0);
 		if (rc != MSC_CONN_ACCEPT) {
-			msc_subscr_con_free(conn);
+			gsm0408_clear_request(conn, 0);
 			rc = -1;
 		}
 		else
