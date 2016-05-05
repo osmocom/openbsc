@@ -340,6 +340,9 @@ static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
 static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
 					       struct osmo_gsup_message *gsup_msg)
 {
+	/* contrary to MAP, we allow piggy-backing subscriber data onto
+	 * the UPDATE LOCATION RESULT, and don't mandate the use of a
+	 * separate nested INSERT SUBSCRIBER DATA transaction */
 	gprs_subscr_gsup_insert_data(subscr, gsup_msg);
 
 	subscr->authorized = 1;
@@ -349,6 +352,22 @@ static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
 
 	gprs_subscr_update(subscr);
 	return 0;
+}
+
+static int gprs_subscr_handle_gsup_isd_req(struct gsm_subscriber *subscr,
+					   struct osmo_gsup_message *gsup_msg)
+{
+	struct osmo_gsup_message gsup_reply = {0};
+
+	gprs_subscr_gsup_insert_data(subscr, gsup_msg);
+
+	subscr->authorized = 1;
+	subscr->sgsn_data->error_cause = SGSN_ERROR_CAUSE_NONE;
+	subscr->flags |= GPRS_SUBSCRIBER_ENABLE_PURGE;
+	gprs_subscr_update(subscr);
+
+	gsup_reply.message_type = OSMO_GSUP_MSGT_INSERT_DATA_RESULT;
+	return gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
 }
 
 static int check_cause(int cause)
@@ -654,6 +673,9 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		break;
 
 	case OSMO_GSUP_MSGT_INSERT_DATA_REQUEST:
+		rc = gprs_subscr_handle_gsup_isd_req(subscr, &gsup_msg);
+		break;
+
 	case OSMO_GSUP_MSGT_DELETE_DATA_REQUEST:
 		LOGGSUBSCRP(LOGL_ERROR, subscr,
 			"Rx GSUP message type %d not yet implemented\n",
