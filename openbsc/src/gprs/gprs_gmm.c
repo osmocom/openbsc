@@ -526,8 +526,20 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	return gsm48_gmm_sendmsg(msg, 1, mm, false);
 }
 
+/* determine if the MS/UE supports R99 or later */
+static bool mmctx_is_r99(const struct sgsn_mm_ctx *mm)
+{
+	if (mm->ms_network_capa.len < 1)
+		return false;
+	if (mm->ms_network_capa.buf[0] & 0x01)
+		return true;
+	else
+		return false;
+}
+
 /* 3GPP TS 24.008 Section 9.4.9: Authentication and Ciphering Request */
-static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
+static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm,
+				      const struct osmo_auth_vector *vec,
 				      uint8_t key_seq, bool force_standby)
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 AUTH CIPH REQ");
@@ -535,8 +547,13 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
 	struct gsm48_auth_ciph_req *acreq;
 	uint8_t *m_rand, *m_cksn, rbyte;
 
-	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS AUTH AND CIPHERING REQ (rand = %s)\n",
-		osmo_hexdump(rnd, 16));
+	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS AUTH AND CIPHERING REQ (rand = %s",
+		osmo_hexdump(vec->rand, sizeof(vec->rand)));
+	if (mmctx_is_r99(mm) && vec && vec->auth_types & OSMO_AUTH_TYPE_UMTS) {
+		LOGPC(DMM, LOGL_INFO, ", autn = %s)\n",
+			osmo_hexdump(vec->autn, sizeof(vec->autn)));
+	} else
+		LOGPC(DMM, LOGL_INFO, ")\n");
 
 	mmctx2msgid(msg, mm);
 
@@ -560,13 +577,24 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
 	mm->ac_ref_nr_used = acreq->ac_ref_nr;
 
 	/* Only if authentication is requested we need to set RAND + CKSN */
-	if (rnd) {
-		m_rand = msgb_put(msg, 16+1);
+	if (vec) {
+		m_rand = msgb_put(msg, sizeof(vec->rand) + 1);
 		m_rand[0] = GSM48_IE_GMM_AUTH_RAND;
-		memcpy(m_rand + 1, rnd, 16);
+		memcpy(m_rand + 1, vec->rand, sizeof(vec->rand));
+
 		/* § 10.5.1.2: */
 		m_cksn = msgb_put(msg, 1);
 		m_cksn[0] = (GSM48_IE_GMM_CIPH_CKSN << 4) | (key_seq & 0x07);
+
+		/* A Release99 or higher MS/UE must be able to handle
+		 * the optional AUTN IE.  If a classic GSM SIM is
+		 * inserted, it will simply ignore AUTN and just use
+		 * RAND */
+		if (mmctx_is_r99(mm) &&
+		    (vec->auth_types & OSMO_AUTH_TYPE_UMTS)) {
+			msgb_tlv_put(msg, GSM48_IE_GMM_AUTN,
+				     sizeof(vec->autn), vec->autn);
+		}
 	}
 	/* FIXME: add AUTN for 3g auth according to 3GPP TS 24.008 § 10.5.3.1.1 */
 	/* FIXME: make sure we don't send any other messages to the MS */
@@ -591,6 +619,37 @@ static int gsm48_tx_gmm_auth_ciph_rej(struct sgsn_mm_ctx *mm)
 	return gsm48_gmm_sendmsg(msg, 0, mm, false);
 }
 
+/* check if the received authentication response matches */
+static bool check_auth_resp(bool is_r99, bool is_utran,
+			   const struct osmo_auth_vector *vec,
+			   const uint8_t *res, uint8_t res_len)
+{
+	if (!vec)
+		return true;
+
+	/* RES must be present and at least 32bit */
+	if (!res || res_len < 4)
+		return false;
+
+	if (is_r99 && vec->auth_types & OSMO_AUTH_TYPE_UMTS) {
+		/* We have a R99 capable UE and have a UMTS AKA
+		 * capable USIM. However, the ME may still chose to only
+		 * perform GSM AKA, as long as the bearer is GERAN */
+		if (is_utran && res_len != vec->res_len)
+			return false;
+	}
+
+	if (res_len == vec->res_len && !memcmp(res, vec->res, res_len)) {
+		/* We have established a UMTS Security Context */
+		return true;
+	} else if (res_len == 4 && !memcmp(res, vec->sres, 4)) {
+		/* We have establieshed a GSM Security Context */
+		return true;
+	}
+
+	return false;
+}
+
 /* Section 9.4.10: Authentication and Ciphering Response */
 static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 					struct msgb *msg)
@@ -599,6 +658,8 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	struct gsm48_auth_ciph_resp *acr = (struct gsm48_auth_ciph_resp *)gh->data;
 	struct tlv_parsed tp;
 	struct gsm_auth_tuple *at;
+	uint8_t res[16];
+	uint8_t res_len;
 	int rc;
 
 	LOGMMCTXP(LOGL_INFO, ctx, "-> GPRS AUTH AND CIPH RESPONSE\n");
@@ -623,24 +684,33 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 			(msg->data + msg->len) - acr->data, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM48_IE_GMM_AUTH_SRES) ||
-	    !TLVP_PRESENT(&tp, GSM48_IE_GMM_IMEISV)) {
+	    !TLVP_PRESENT(&tp, GSM48_IE_GMM_IMEISV) ||
+	    TLVP_LEN(&tp,GSM48_IE_GMM_AUTH_SRES) != 4) {
 		/* TODO: missing mandatory IE, return STATUS or REJ? */
 		LOGMMCTXP(LOGL_ERROR, ctx, "Missing mandantory IE\n");
 		return -EINVAL;
 	}
 
-	/* Compare SRES with what we expected */
-	LOGMMCTXP(LOGL_DEBUG, ctx, "checking received auth info, SRES = %s\n",
-		  osmo_hexdump(TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES),
-			       TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_SRES)));
+	/* Start with the good old 4-byte SRES */
+	memcpy(res, TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES), 4);
+	res_len = 4;
+
+	/* Append extended RES as part of UMTS AKA, if any */
+	if (TLVP_PRESENT(&tp, GSM48_IE_GMM_AUTH_RES_EXT)) {
+		unsigned int l = TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_RES_EXT);
+		if (l > sizeof(res)-4)
+			l = sizeof(res)-4;
+		memcpy(res+4, TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_RES_EXT), l);
+		res_len += l;
+	}
 
 	at = &ctx->auth_triplet;
 
-	if (TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_SRES) != sizeof(at->vec.sres) ||
-	    memcmp(TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES), at->vec.sres,
-		   sizeof(at->vec.sres)) != 0) {
-
-		LOGMMCTXP(LOGL_NOTICE, ctx, "Received SRES doesn't match\n");
+	LOGMMCTXP(LOGL_DEBUG, ctx, "checking received auth info, RES = %s\n",
+		  osmo_hexdump(res, res_len));
+	rc = check_auth_resp(mmctx_is_r99(ctx), false, &at->vec, res, res_len);
+	if (!rc) {
+		LOGMMCTXP(LOGL_NOTICE, ctx, "Received RES doesn't match\n");
 		rc = gsm48_tx_gmm_auth_ciph_rej(ctx);
 		mm_ctx_cleanup_free(ctx, "GPRS AUTH AND CIPH REJECT");
 		return rc;
@@ -836,8 +906,8 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		struct gsm_auth_tuple *at = &ctx->auth_triplet;
 
 		mmctx_timer_start(ctx, 3360, sgsn->cfg.timers.T3360);
-		return gsm48_tx_gmm_auth_ciph_req(ctx, at->vec.rand,
-						  at->key_seq, false);
+		return gsm48_tx_gmm_auth_ciph_req(ctx, &at->vec, at->key_seq,
+						  false);
 	}
 
 	if (ctx->auth_state == SGSN_AUTH_AUTHENTICATE && ctx->is_authenticated &&
@@ -1948,7 +2018,7 @@ static void mmctx_timer_cb(void *_mm)
 		}
 		at = &mm->auth_triplet;
 
-		gsm48_tx_gmm_auth_ciph_req(mm, at->vec.rand, at->key_seq, false);
+		gsm48_tx_gmm_auth_ciph_req(mm, &at->vec, at->key_seq, false);
 		osmo_timer_schedule(&mm->timer, sgsn->cfg.timers.T3360, 0);
 		break;
 	case 3370:	/* waiting for IDENTITY RESPONSE */
