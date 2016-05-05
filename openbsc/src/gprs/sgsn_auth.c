@@ -30,6 +30,7 @@ const struct value_string auth_state_names[] = {
 	{ SGSN_AUTH_ACCEPTED,	"accepted"},
 	{ SGSN_AUTH_REJECTED,	"rejected"},
 	{ SGSN_AUTH_UNKNOWN,	"unknown"},
+	{ SGSN_AUTH_AUTHENTICATE, "authenticate" },
 	{ 0, NULL }
 };
 
