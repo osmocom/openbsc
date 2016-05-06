@@ -8,7 +8,7 @@ OSMO_LIBS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) \
 
 noinst_HEADERS = gprs_sndcp.h
 
-bin_PROGRAMS = osmo-gbproxy
+bin_PROGRAMS = osmo-gbproxy gsup_test_client
 
 if HAVE_LIBGTP
 if HAVE_LIBCARES
@@ -40,3 +40,8 @@ osmo_gtphub_LDADD = 	\
 			$(top_builddir)/src/libcommon/libcommon.a \
 			-lgtp $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) \
 			$(LIBCARES_LIBS) -lrt
+
+gsup_test_client_SOURCES = gprs_gsup_client.c gsup_test_client.c oap.c
+gsup_test_client_LDADD = 	\
+			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOABIS_LIBS) -lrt
+
