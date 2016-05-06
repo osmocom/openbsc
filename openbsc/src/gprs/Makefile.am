@@ -37,6 +37,7 @@ OSMO_LIBS = \
 	$(NULL)
 
 bin_PROGRAMS = \
+	gsup_test_client \
 	osmo-gbproxy \
 	$(NULL)
 if HAVE_LIBGTP
@@ -131,5 +132,18 @@ osmo_gtphub_LDADD = \
 	$(LIBOSMOVTY_LIBS) \
 	$(LIBCARES_LIBS) \
 	$(LIBGTP_LIBS) \
+	-lrt \
+	$(NULL)
+
+gsup_test_client_SOURCES = \
+	gprs_gsup_client.c \
+	gsup_test_client.c \
+	oap.c \
+	$(NULL)
+gsup_test_client_LDADD = \
+	$(LIBOSMOCORE_LIBS) \
+	$(LIBOSMOGSM_LIBS) \
+	$(LIBOSMOVTY_LIBS) \
+	$(LIBOSMOABIS_LIBS) \
 	-lrt \
 	$(NULL)
