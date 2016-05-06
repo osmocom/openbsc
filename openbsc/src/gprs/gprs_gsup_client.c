@@ -25,6 +25,7 @@
 #include <osmocom/abis/ipa.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/logging.h>
 
 #include <openbsc/debug.h>
 
