@@ -727,6 +727,31 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	return gsm48_gmm_authorize(ctx);
 }
 
+/* Section 9.4.10: Authentication and Ciphering Failure */
+static int gsm48_rx_gmm_auth_ciph_fail(struct sgsn_mm_ctx *ctx,
+					struct msgb *msg)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	struct tlv_parsed tp;
+	uint8_t gmm_cause = gh->data[0];
+
+	LOGMMCTXP(LOGL_INFO, ctx, "-> GPRS AUTH AND CIPH FAILURE (cause=%s)\n",
+		  get_value_string(gsm48_gmm_cause_names, gmm_cause));
+
+	tlv_parse(&tp, &gsm48_gmm_att_tlvdef, gh->data+1, msg->len - 1, 0, 0);
+
+	/* Only if GMM cause is present and the AUTS is provided, we can
+	 * start re-sync procedure */
+	if (gmm_cause == GMM_CAUSE_SYNC_FAIL &&
+	    TLVP_PRESENT(&tp, GSM48_IE_GMM_AUTH_FAIL_PAR)) {
+		/* FIXME: Implement auth sync with HLR */
+	}
+
+	/* FIXME: What now? */
+
+	return 0;
+}
+
 static void extract_subscr_msisdn(struct sgsn_mm_ctx *ctx)
 {
 	struct gsm_mncc_number called;
@@ -1949,6 +1974,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		if (!mmctx)
 			goto null_mmctx;
 		rc = gsm48_rx_gmm_auth_ciph_resp(mmctx, msg);
+		break;
+	case GSM48_MT_GMM_AUTH_CIPH_FAIL:
+		rc = gsm48_rx_gmm_auth_ciph_fail(mmctx, msg);
 		break;
 	default:
 		LOGMMCTXP(LOGL_NOTICE, mmctx, "Unknown GSM 04.08 GMM msg type 0x%02x\n",
