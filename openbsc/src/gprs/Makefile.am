@@ -93,7 +93,6 @@ osmo_sgsn_SOURCES = \
 	sgsn_ares.c \
 	slhc.c \
 	oap.c \
-	oap_messages.c \
 	gprs_llc_xid.c \
 	v42bis.c \
 	$(NULL)

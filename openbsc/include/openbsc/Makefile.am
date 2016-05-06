@@ -55,7 +55,6 @@ noinst_HEADERS = \
 	nat_rewrite_trie.h \
 	network_listen.h \
 	oap.h \
-	oap_messages.h \
 	openbscdefines.h \
 	osmo_bsc.h \
 	osmo_bsc_grace.h \
