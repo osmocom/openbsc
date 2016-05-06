@@ -19,11 +19,10 @@
  */
 
 #include <osmocom/core/application.h>
+#include <osmocom/gsm/oap.h>
 
 #include <openbsc/debug.h>
-
 #include <openbsc/oap.h>
-#include <openbsc/oap_messages.h>
 
 #include <stdio.h>
 #include <string.h>
