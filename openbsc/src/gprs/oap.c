@@ -24,10 +24,10 @@
 
 #include <osmocom/core/utils.h>
 #include <osmocom/crypt/auth.h>
+#include <osmocom/gsm/oap.h>
 
 #include <openbsc/oap.h>
 #include <openbsc/debug.h>
-#include <openbsc/oap_messages.h>
 
 int oap_init(struct oap_config *config, struct oap_state *state)
 {
