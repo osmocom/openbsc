@@ -1,5 +1,5 @@
 /*
- * (C) 2010-2013 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2010-2016 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by On-Waves
  * (C) 2015 by Holger Hans Peter Freyther
  * All Rights Reserved
@@ -677,15 +677,30 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 
 		vty_out(vty, "    A3A8 tuple (used %d times): ",
 			at->use_count);
-		vty_out(vty, "     seq # : %d, ",
+		vty_out(vty, "     CKSN: %d, ",
 			at->key_seq);
-		vty_out(vty, "     RAND  : %s, ",
-			osmo_hexdump(at->vec.rand, sizeof(at->vec.rand)));
-		vty_out(vty, "     SRES  : %s, ",
-			osmo_hexdump(at->vec.sres, sizeof(at->vec.sres)));
-		vty_out(vty, "     Kc    : %s%s",
-			osmo_hexdump(at->vec.kc, sizeof(at->vec.kc)),
-			VTY_NEWLINE);
+		if (at->vec.auth_types & OSMO_AUTH_TYPE_GSM) {
+			vty_out(vty, "RAND: %s, ",
+				osmo_hexdump(at->vec.rand,
+					     sizeof(at->vec.rand)));
+			vty_out(vty, "SRES: %s, ",
+				osmo_hexdump(at->vec.sres,
+					     sizeof(at->vec.sres)));
+			vty_out(vty, "Kc: %s%s",
+				osmo_hexdump(at->vec.kc,
+					     sizeof(at->vec.kc)), VTY_NEWLINE);
+		}
+		if (at->vec.auth_types & OSMO_AUTH_TYPE_UMTS) {
+			vty_out(vty, "     AUTN: %s, ",
+				osmo_hexdump(at->vec.autn,
+					     sizeof(at->vec.autn)));
+			vty_out(vty, "RES: %s, ",
+				osmo_hexdump(at->vec.res, at->vec.res_len));
+			vty_out(vty, "IK: %s, ",
+				osmo_hexdump(at->vec.ik, sizeof(at->vec.ik)));
+			vty_out(vty, "CK: %s, ",
+				osmo_hexdump(at->vec.ck, sizeof(at->vec.ck)));
+		}
 	}
 
 	llist_for_each_entry(pdp, &subscr->sgsn_data->pdp_list, list) {
