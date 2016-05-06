@@ -270,9 +270,11 @@ struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,
 	gsupc = talloc_zero(tall_bsc_ctx, struct gprs_gsup_client);
 	OSMO_ASSERT(gsupc);
 
-	rc = oap_init(oap_config, &gsupc->oap_state);
-	if (rc != 0)
-		goto failed;
+	if (oap_config) {
+		rc = oap_init(oap_config, &gsupc->oap_state);
+		if (rc != 0)
+			goto failed;
+	}
 
 	gsupc->link = ipa_client_conn_create(gsupc,
 					     /* no e1inp */ NULL,
