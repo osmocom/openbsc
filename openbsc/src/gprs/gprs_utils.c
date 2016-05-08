@@ -20,11 +20,11 @@
  *
  */
 #include <openbsc/gprs_utils.h>
-#include <openbsc/gsm_04_08_gprs.h>
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/gprs/gprs_ns.h>
 
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/gsm48.h>
 
@@ -264,140 +264,6 @@ void gprs_parse_tmsi(const uint8_t *value, uint32_t *tmsi)
 	memcpy(&tmsi_be, value, sizeof(tmsi_be));
 
 	*tmsi = ntohl(tmsi_be);
-}
-
-/* TODO: Move shift functions to libosmocore */
-
-int gprs_shift_v_fixed(uint8_t **data, size_t *data_len,
-		  size_t len, uint8_t **value)
-{
-	if (len > *data_len)
-		goto fail;
-
-	if (value)
-		*value = *data;
-
-	*data += len;
-	*data_len -= len;
-
-	return len;
-
-fail:
-	*data += *data_len;
-	*data_len = 0;
-	return -1;
-}
-
-int gprs_match_tv_fixed(uint8_t **data, size_t *data_len,
-		   uint8_t tag, size_t len,
-		   uint8_t **value)
-{
-	size_t ie_len;
-
-	if (*data_len == 0)
-		goto fail;
-
-	if ((*data)[0] != tag)
-		return 0;
-
-	if (len > *data_len - 1)
-		goto fail;
-
-	if (value)
-		*value = *data + 1;
-
-	ie_len = len + 1;
-	*data += ie_len;
-	*data_len -= ie_len;
-
-	return ie_len;
-
-fail:
-	*data += *data_len;
-	*data_len = 0;
-	return -1;
-}
-
-int gprs_match_tlv(uint8_t **data, size_t *data_len,
-	      uint8_t expected_tag, uint8_t **value, size_t *value_len)
-{
-	int rc;
-	uint8_t tag;
-	uint8_t *old_data = *data;
-	size_t old_data_len = *data_len;
-
-	rc = gprs_shift_tlv(data, data_len, &tag, value, value_len);
-
-	if (rc > 0 && tag != expected_tag) {
-		*data = old_data;
-		*data_len = old_data_len;
-		return 0;
-	}
-
-	return rc;
-}
-
-int gprs_shift_tlv(uint8_t **data, size_t *data_len,
-	      uint8_t *tag, uint8_t **value, size_t *value_len)
-{
-	size_t len;
-	size_t ie_len;
-
-	if (*data_len < 2)
-		goto fail;
-
-	len = (*data)[1];
-	if (len > *data_len - 2)
-		goto fail;
-
-	if (tag)
-		*tag = (*data)[0];
-	if (value)
-		*value = *data + 2;
-	if (value_len)
-		*value_len = len;
-
-	ie_len = len + 2;
-
-	*data += ie_len;
-	*data_len -= ie_len;
-
-	return ie_len;
-
-fail:
-	*data += *data_len;
-	*data_len = 0;
-	return -1;
-}
-
-int gprs_shift_lv(uint8_t **data, size_t *data_len,
-	     uint8_t **value, size_t *value_len)
-{
-	size_t len;
-	size_t ie_len;
-
-	if (*data_len < 1)
-		goto fail;
-
-	len = (*data)[0];
-	if (len > *data_len - 1)
-		goto fail;
-
-	if (value)
-		*value = *data + 1;
-	if (value_len)
-		*value_len = len;
-
-	ie_len = len + 1;
-	*data += ie_len;
-	*data_len -= ie_len;
-
-	return ie_len;
-
-fail:
-	*data += *data_len;
-	*data_len = 0;
-	return -1;
 }
 
 int gprs_ra_id_equals(const struct gprs_ra_id *id1,

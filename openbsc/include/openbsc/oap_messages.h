@@ -22,8 +22,8 @@
 #pragma once
 
 #include <stdint.h>
-#include <openbsc/gsm_04_08_gprs.h>
-#include <openbsc/gsm_data.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 
 /* Some numbers are out of sequence because (so far) they match gprs_gsup_iei.
  */
@@ -36,7 +36,7 @@ enum oap_iei {
 	OAP_CLIENT_ID_IE		= 0x30,
 };
 
-enum oap_message_type {
+enum osmo_oap_message_type {
 	OAP_MSGT_REGISTER_REQUEST	= 0b00000100,
 	OAP_MSGT_REGISTER_ERROR		= 0b00000101,
 	OAP_MSGT_REGISTER_RESULT	= 0b00000110,
@@ -50,8 +50,8 @@ enum oap_message_type {
 	OAP_MSGT_SYNC_RESULT		= 0b00001110,
 };
 
-struct oap_message {
-	enum oap_message_type	message_type;
+struct osmo_oap_message {
+	enum osmo_oap_message_type	message_type;
 	enum gsm48_gmm_cause	cause;
 	uint16_t		client_id;
 	int			rand_present;
@@ -64,7 +64,7 @@ struct oap_message {
 	uint8_t			auts[16];
 };
 
-int oap_decode(const uint8_t *data, size_t data_len,
-	       struct oap_message *oap_msg);
-void oap_encode(struct msgb *msg, const struct oap_message *oap_msg);
+int osmo_oap_decode(struct osmo_oap_message *oap_msg,
+		    const uint8_t *data, size_t data_len);
+void osmo_oap_encode(struct msgb *msg, const struct osmo_oap_message *oap_msg);
 

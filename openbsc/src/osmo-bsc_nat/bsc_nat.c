@@ -34,6 +34,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #define _GNU_SOURCE
 #include <getopt.h>
@@ -47,7 +48,6 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/socket.h>
 #include <openbsc/vty.h>
-#include <openbsc/utils.h>
 
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
@@ -1022,7 +1022,7 @@ static int verify_key(struct bsc_connection *conn, struct bsc_config *conf, cons
 		return 0;
 	}
 
-	return constant_time_cmp(vec.res, key, 8) == 0;
+	return osmo_constant_time_cmp(vec.res, key, 8) == 0;
 }
 
 static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc)
@@ -1152,6 +1152,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			if (!create_sccp_src_ref(bsc, parsed))
 				goto exit2;
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
+			OSMO_ASSERT(con);
 			con->msc_con = bsc->nat->msc_con;
 			con_msc = con->msc_con;
 			con->filter_state.con_type = con_type;
@@ -1320,8 +1321,8 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 			     bsc->cfg ? bsc->cfg->nr : -1);
 		else
 			LOGP(DNAT, LOGL_ERROR,
-			     "Stream error on BSC Nr: %d. Failed to parse ip access message: %d\n",
-			     bsc->cfg ? bsc->cfg->nr : -1, ret);
+			     "Stream error on BSC Nr: %d. Failed to parse ip access message: %d (%s)\n",
+			     bsc->cfg ? bsc->cfg->nr : -1, ret, strerror(-ret));
 
 		bsc_close_connection(bsc);
 		return -1;
@@ -1626,6 +1627,8 @@ int main(int argc, char **argv)
 	local_addr.s_addr = INADDR_ANY;
 	handle_options(argc, argv);
 
+	nat->include_base = dirname(talloc_strdup(tall_bsc_ctx, config_file));
+
 	rate_ctr_init(tall_bsc_ctx);
 	osmo_stats_init(tall_bsc_ctx);
 
@@ -1651,7 +1654,7 @@ int main(int argc, char **argv)
 	/* seed the PRNG */
 	srand(time(NULL));
 
-
+	LOGP(DNAT, LOGL_NOTICE, "BSCs configured from %s\n", nat->resolved_path);
 
 	/*
 	 * Setup the MGCP code..

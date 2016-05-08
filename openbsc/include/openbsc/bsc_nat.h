@@ -35,6 +35,7 @@
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 
 #include <regex.h>
+#include <stdbool.h>
 
 #define DIR_BSC 1
 #define DIR_MSC 2
@@ -164,6 +165,10 @@ struct bsc_config {
 	/* audio handling */
 	int max_endpoints;
 
+	/* used internally for reload handling */
+	bool remove;
+	bool token_updated;
+
 	/* backpointer */
 	struct bsc_nat *nat;
 
@@ -264,6 +269,11 @@ struct bsc_nat {
 
 	struct bsc_endpoint *bsc_endpoints;
 
+	/* path to file with BSC config */
+	char *include_file;
+	char *include_base;
+	char *resolved_path;
+
 	/* filter */
 	char *acc_lst_name;
 
@@ -320,7 +330,8 @@ struct bsc_nat_ussd_con {
 };
 
 /* create and init the structures */
-struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token);
+struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token,
+				    unsigned int number);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
 struct bsc_config *bsc_config_by_token(struct bsc_nat *nat, const char *token, int len);
 void bsc_config_free(struct bsc_config *);

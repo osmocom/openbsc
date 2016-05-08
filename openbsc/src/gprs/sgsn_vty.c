@@ -27,13 +27,13 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/vty.h>
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/gprs_gsup_client.h>
 
 #include <osmocom/vty/command.h>
@@ -613,11 +613,11 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 		vty_out(vty, "     seq # : %d, ",
 			at->key_seq);
 		vty_out(vty, "     RAND  : %s, ",
-			osmo_hexdump(at->rand, sizeof(at->rand)));
+			osmo_hexdump(at->vec.rand, sizeof(at->vec.rand)));
 		vty_out(vty, "     SRES  : %s, ",
-			osmo_hexdump(at->sres, sizeof(at->sres)));
+			osmo_hexdump(at->vec.sres, sizeof(at->vec.sres)));
 		vty_out(vty, "     Kc    : %s%s",
-			osmo_hexdump(at->kc, sizeof(at->kc)),
+			osmo_hexdump(at->vec.kc, sizeof(at->vec.kc)),
 			VTY_NEWLINE);
 	}
 
@@ -704,17 +704,17 @@ DEFUN(update_subscr_insert_auth_triplet, update_subscr_insert_auth_triplet_cmd,
 
 	OSMO_ASSERT(subscr->sgsn_data);
 
-	if (osmo_hexparse(sres_str, &at.sres[0], sizeof(at.sres)) < 0) {
+	if (osmo_hexparse(sres_str, &at.vec.sres[0], sizeof(at.vec.sres)) < 0) {
 		vty_out(vty, "%% invalid SRES value '%s'%s",
 			sres_str, VTY_NEWLINE);
 		goto failed;
 	}
-	if (osmo_hexparse(rand_str, &at.rand[0], sizeof(at.rand)) < 0) {
+	if (osmo_hexparse(rand_str, &at.vec.rand[0], sizeof(at.vec.rand)) < 0) {
 		vty_out(vty, "%% invalid RAND value '%s'%s",
 			rand_str, VTY_NEWLINE);
 		goto failed;
 	}
-	if (osmo_hexparse(kc_str, &at.kc[0], sizeof(at.kc)) < 0) {
+	if (osmo_hexparse(kc_str, &at.vec.kc[0], sizeof(at.vec.kc)) < 0) {
 		vty_out(vty, "%% invalid Kc value '%s'%s",
 			kc_str, VTY_NEWLINE);
 		goto failed;

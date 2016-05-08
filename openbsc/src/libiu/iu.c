@@ -244,15 +244,15 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 
 	/* C5 function to derive IK from Kc */
 	for (i = 0; i < 4; i++)
-		ik[i] = tp->kc[i] ^ tp->kc[i+4];
-	memcpy(ik+4, tp->kc, 8);
+		ik[i] = tp->vec.kc[i] ^ tp->vec.kc[i+4];
+	memcpy(ik+4, tp->vec.kc, 8);
 	for (i = 12; i < 16; i++)
 		ik[i] = ik[i-12];
 
 	if (send_ck) {
 		/* C4 function to derive CK from Kc */
-		memcpy(ck, tp->kc, 8);
-		memcpy(ck+8, tp->kc, 8);
+		memcpy(ck, tp->vec.kc, 8);
+		memcpy(ck+8, tp->vec.kc, 8);
 	}
 
 	/* create RANAP message */

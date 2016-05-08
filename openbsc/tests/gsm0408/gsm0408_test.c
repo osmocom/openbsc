@@ -29,7 +29,11 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
 #include <openbsc/arfcn_range_encode.h>
+#include <openbsc/system_information.h>
+#include <openbsc/abis_rsl.h>
+
 #include <osmocom/core/application.h>
+#include <osmocom/gsm/sysinfo.h>
 
 #define COMPARE(result, op, value) \
     if (!((result) op (value))) {\
@@ -77,6 +81,104 @@ static void test_location_area_identifier(void)
     COMPARE(lai48.digits[1], ==, 0xF2);
     COMPARE(lai48.digits[2], ==, 0x10);
     COMPARE(lai48.lac, ==, htons(0x000f));
+}
+
+static inline void add_arfcn_b(struct osmo_earfcn_si2q *e, uint16_t earfcn,
+			       uint8_t bw)
+{
+	int r = osmo_earfcn_add(e, earfcn, bw);
+	if (r)
+		printf("failed to add EARFCN %u: %s\n", earfcn, strerror(r));
+	else
+		printf("added EARFCN %u - ", earfcn);
+}
+
+static inline void gen(struct gsm_bts *bts)
+{
+	int r = gsm_generate_si(bts, SYSINFO_TYPE_2quater);
+	if (r > 0)
+		printf("generated SI2quater: [%d] %s\n", r,
+		       osmo_hexdump(bts->si_buf[SYSINFO_TYPE_2quater], r));
+	else
+		printf("failed to generate SI2quater: %s\n", strerror(-r));
+}
+
+static inline void _bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn,
+			      uint16_t scramble, bool diversity)
+{
+	int r = bts_uarfcn_add(bts, arfcn, scramble, diversity);
+	if (r < 0)
+		printf("failed to add UARFCN to SI2quater: %s\n", strerror(-r));
+	else
+		gen(bts);
+}
+
+static inline void test_si2q_u(void)
+{
+	struct gsm_bts *bts;
+	struct gsm_network *network = gsm_network_init(NULL, 1, 1, NULL);
+	printf("Testing SYSINFO_TYPE_2quater UARFCN generation:\n");
+
+	if (!network)
+		exit(1);
+	bts = gsm_bts_alloc(network);
+
+	_bts_uarfcn_add(bts, 1982, 13, 1);
+	_bts_uarfcn_add(bts, 1982, 44, 0);
+	_bts_uarfcn_add(bts, 1982, 61, 1);
+	_bts_uarfcn_add(bts, 1982, 89, 1);
+	_bts_uarfcn_add(bts, 1982, 113, 0);
+	_bts_uarfcn_add(bts, 1982, 123, 0);
+	_bts_uarfcn_add(bts, 1982, 56, 1);
+	_bts_uarfcn_add(bts, 1982, 72, 1);
+	_bts_uarfcn_add(bts, 1982, 223, 1);
+	_bts_uarfcn_add(bts, 1982, 14, 0);
+	_bts_uarfcn_add(bts, 1982, 88, 0);
+	gen(bts);
+}
+
+static inline void test_si2q_e(void)
+{
+	struct gsm_bts *bts;
+	struct gsm_network *network = gsm_network_init(NULL, 1, 1, NULL);
+	printf("Testing SYSINFO_TYPE_2quater EARFCN generation:\n");
+
+	if (!network)
+		exit(1);
+	bts = gsm_bts_alloc(network);
+
+	bts->si_common.si2quater_neigh_list.arfcn =
+		bts->si_common.data.earfcn_list;
+	bts->si_common.si2quater_neigh_list.meas_bw =
+		bts->si_common.data.meas_bw_list;
+	bts->si_common.si2quater_neigh_list.length = MAX_EARFCN_LIST;
+	bts->si_common.si2quater_neigh_list.thresh_hi = 5;
+
+	osmo_earfcn_init(&bts->si_common.si2quater_neigh_list);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1917, 1);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1932,
+		    OSMO_EARFCN_MEAS_INVALID);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1937, 2);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1945,
+		    OSMO_EARFCN_MEAS_INVALID);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1965,
+		    OSMO_EARFCN_MEAS_INVALID);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1967, 4);
+	gen(bts);
+
+	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1982, 3);
+	gen(bts);
 }
 
 static void test_mi_functionality(void)
@@ -162,11 +264,7 @@ static int test_single_range_encoding(int range, const int *orig_arfcns,
 					      f0, &f0_included);
 
 	memset(w, 0, sizeof(w));
-	rc = range_enc_arfcns(range, arfcns, arfcns_used, w, 0);
-	if (rc != 0) {
-		printf("Cannot compute range W(k), rc = %d\n", rc);
-		return 1;
-	}
+	range_enc_arfcns(range, arfcns, arfcns_used, w, 0);
 
 	if (!silent)
 		fprintf(stderr, "range=%d, arfcns_used=%d, f0=%d, f0_included=%d\n",
@@ -175,24 +273,20 @@ static int test_single_range_encoding(int range, const int *orig_arfcns,
 	/* Select the range and the amount of bits needed */
 	switch (range) {
 	case ARFCN_RANGE_128:
-		rc = range_enc_range128(chan_list, f0, w);
+		range_enc_range128(chan_list, f0, w);
 		break;
 	case ARFCN_RANGE_256:
-		rc = range_enc_range256(chan_list, f0, w);
+		range_enc_range256(chan_list, f0, w);
 		break;
 	case ARFCN_RANGE_512:
-		rc = range_enc_range512(chan_list, f0, w);
+		range_enc_range512(chan_list, f0, w);
 		break;
 	case ARFCN_RANGE_1024:
-		rc = range_enc_range1024(chan_list, f0, f0_included, w);
+		range_enc_range1024(chan_list, f0, f0_included, w);
 		break;
 	default:
 		return 1;
 	};
-	if (rc != 0) {
-		printf("Cannot encode range, rc = %d\n", rc);
-		return 1;
-	}
 
 	if (!silent)
 		printf("chan_list = %s\n",
@@ -403,8 +497,7 @@ static void test_print_encoding()
 			break;
 		}
 
-	rc = range_enc_range512(chan_list, (1 << 9) | 0x96, w);
-	VERIFY(rc, ==, 0);
+	range_enc_range512(chan_list, (1 << 9) | 0x96, w);
 
 	printf("Range512: %s\n", osmo_hexdump(chan_list, ARRAY_SIZE(chan_list)));
 }
@@ -428,8 +521,7 @@ static void test_si_range_helpers()
 	printf("Element is: %d => freqs[i] = %d\n", i,  i >= 0 ? freqs3[i] : -1);
 	VERIFY(i, ==, 0);
 
-	i = range_enc_arfcns(1023, freqs1, ARRAY_SIZE(freqs1), ws, 0);
-	VERIFY(i, ==, 0);
+	range_enc_arfcns(1023, freqs1, ARRAY_SIZE(freqs1), ws, 0);
 
 	for (i = 0; i < sizeof(freqs1)/sizeof(freqs1[0]); ++i) {
 		printf("w[%d]=%d\n", i, ws[i]);
@@ -486,6 +578,8 @@ int main(int argc, char **argv)
 	test_range_encoding();
 	test_gsm411_rp_ref_wrap();
 
+	test_si2q_e();
+	test_si2q_u();
 	printf("Done.\n");
 	return EXIT_SUCCESS;
 }

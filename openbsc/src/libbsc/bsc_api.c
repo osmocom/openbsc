@@ -395,11 +395,13 @@ int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, in
 		if (handle_new_assignment(conn, chan_mode, full_rate) != 0)
 			goto error;
 	} else {
-		LOGP(DMSC, LOGL_NOTICE,
-			"Sending ChanModify for speech %d %d\n", chan_mode, full_rate);
 		if (chan_mode == GSM48_CMODE_SPEECH_AMR)
 			handle_mr_config(conn, conn->lchan, full_rate);
 
+		LOGP(DMSC, LOGL_NOTICE,
+		     "Sending ChanModify for speech: %s on channel %s\n",
+		     get_value_string(gsm48_chan_mode_names, chan_mode),
+		     get_value_string(gsm_chan_t_names, conn->lchan->type));
 		gsm48_lchan_modify(conn->lchan, chan_mode);
 	}
 

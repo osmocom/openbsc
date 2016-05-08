@@ -20,11 +20,10 @@
  *
  */
 
+#include <osmocom/core/utils.h>
 #include <openbsc/oap_messages.h>
 
 #include <openbsc/debug.h>
-#include <openbsc/gprs_utils.h>
-#include <openbsc/utils.h>
 
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
@@ -32,8 +31,8 @@
 #include <stdint.h>
 
 
-int oap_decode(const uint8_t *const_data, size_t data_len,
-	       struct oap_message *oap_msg)
+int osmo_oap_decode(struct osmo_oap_message *oap_msg,
+		    const uint8_t *const_data, size_t data_len)
 {
 	int rc;
 	uint8_t tag;
@@ -48,16 +47,16 @@ int oap_decode(const uint8_t *const_data, size_t data_len,
 	memset(oap_msg, 0, sizeof(*oap_msg));
 
 	/* message type */
-	rc = gprs_shift_v_fixed(&data, &data_len, 1, &value);
+	rc = osmo_shift_v_fixed(&data, &data_len, 1, &value);
 	if (rc < 0)
 		return -GMM_CAUSE_INV_MAND_INFO;
-	oap_msg->message_type = decode_big_endian(value, 1);
+	oap_msg->message_type = osmo_decode_big_endian(value, 1);
 
 	/* specific parts */
 	while (data_len > 0) {
 		enum oap_iei iei;
 
-		rc = gprs_shift_tlv(&data, &data_len, &tag, &value, &value_len);
+		rc = osmo_shift_tlv(&data, &data_len, &tag, &value, &value_len);
 		if (rc < 0)
 			return -GMM_CAUSE_PROTO_ERR_UNSPEC;
 
@@ -72,7 +71,7 @@ int oap_decode(const uint8_t *const_data, size_t data_len,
 				return -GMM_CAUSE_PROTO_ERR_UNSPEC;
 			}
 
-			oap_msg->client_id = decode_big_endian(value, value_len);
+			oap_msg->client_id = osmo_decode_big_endian(value, value_len);
 
 			if (oap_msg->client_id == 0) {
 				LOGP(DGPRS, LOGL_NOTICE,
@@ -145,7 +144,7 @@ int oap_decode(const uint8_t *const_data, size_t data_len,
 	return 0;
 }
 
-void oap_encode(struct msgb *msg, const struct oap_message *oap_msg)
+void osmo_oap_encode(struct msgb *msg, const struct osmo_oap_message *oap_msg)
 {
 	uint8_t u8;
 
@@ -159,7 +158,8 @@ void oap_encode(struct msgb *msg, const struct oap_message *oap_msg)
 
 	if (oap_msg->client_id > 0)
 		msgb_tlv_put(msg, OAP_CLIENT_ID_IE, sizeof(oap_msg->client_id),
-			     encode_big_endian(oap_msg->client_id, sizeof(oap_msg->client_id)));
+			     osmo_encode_big_endian(oap_msg->client_id,
+						    sizeof(oap_msg->client_id)));
 
 	if (oap_msg->rand_present)
 		msgb_tlv_put(msg, OAP_RAND_IE, sizeof(oap_msg->rand), oap_msg->rand);

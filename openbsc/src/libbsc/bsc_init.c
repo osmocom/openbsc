@@ -140,6 +140,7 @@ int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx)
 		gen_si[n_si++] = SYSINFO_TYPE_2;
 		gen_si[n_si++] = SYSINFO_TYPE_2bis;
 		gen_si[n_si++] = SYSINFO_TYPE_2ter;
+		gen_si[n_si++] = SYSINFO_TYPE_2quater;
 		gen_si[n_si++] = SYSINFO_TYPE_3;
 		gen_si[n_si++] = SYSINFO_TYPE_4;
 
@@ -191,9 +192,9 @@ int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx)
 
 	return 0;
 err_out:
-	LOGP(DRR, LOGL_ERROR, "Cannot generate SI%s for BTS %u, most likely "
-		"a problem with neighbor cell list generation\n",
-		get_value_string(osmo_sitype_strs, i), bts->nr);
+	LOGP(DRR, LOGL_ERROR, "Cannot generate SI%s for BTS %u: error <%s>,"
+	     "most likely a problem with neighbor cell list generation\n",
+	     get_value_string(osmo_sitype_strs, i), bts->nr, strerror(-rc));
 	return rc;
 }
 
@@ -372,6 +373,9 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 static int bootstrap_bts(struct gsm_bts *bts)
 {
 	int i, n;
+
+	if (!bts->model)
+		return -EFAULT;
 
 	if (bts->model->start && !bts->model->started) {
 		int ret = bts->model->start(bts->network);

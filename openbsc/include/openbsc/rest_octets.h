@@ -1,10 +1,17 @@
 #ifndef _REST_OCTETS_H
 #define _REST_OCTETS_H
 
+#include <stdbool.h>
 #include <openbsc/gsm_04_08.h>
+#include <osmocom/gsm/sysinfo.h>
+
+#define SI2Q_MAX_LEN 160
+#define SI2Q_MIN_LEN 18
 
 /* generate SI1 rest octets */
 int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net);
+int rest_octets_si2quater(uint8_t *data, const struct osmo_earfcn_si2q *e,
+			  const uint16_t *u, const uint16_t *sc, size_t u_len);
 
 struct gsm48_si_selection_params {
 	uint16_t penalty_time:5,
@@ -43,7 +50,8 @@ struct gsm48_si_ro_info {
 			 present:1;
 	} scheduling;
 	struct gsm48_si3_gprs_ind gprs_ind;
-
+	/* SI 3 specific */
+	uint8_t si2quater_indicator;
 	/* SI 4 specific */
 	struct gsm48_lsa_params lsa_params;
 	uint16_t cell_id;

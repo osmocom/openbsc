@@ -55,7 +55,7 @@ struct ggsn_lookup {
 
 	struct gtphub *hub;
 
-	char imsi_str[GSM_IMSI_LENGTH];
+	char imsi_str[GSM23003_IMSI_MAX_DIGITS+1];
 	char apn_ni_str[GSM_APN_LENGTH];
 	char apn_oi_str[GSM_APN_LENGTH];
 	int have_3dig_mnc;

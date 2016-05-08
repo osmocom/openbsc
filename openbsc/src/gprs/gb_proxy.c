@@ -48,7 +48,7 @@
 
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gsm_04_08.h>
-#include <openbsc/gsm_04_08_gprs.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <openbsc/gprs_utils.h>
 
 #include <openssl/rand.h>

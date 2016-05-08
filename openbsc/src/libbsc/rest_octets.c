@@ -24,10 +24,15 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdbool.h>
 
+#include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <osmocom/core/bitvec.h>
+#include <osmocom/gsm/bitvec_gsm.h>
 #include <openbsc/rest_octets.h>
+#include <openbsc/arfcn_range_encode.h>
+#include <openbsc/system_information.h>
 
 /* generate SI1 rest octets */
 int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net)
@@ -50,6 +55,255 @@ int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net)
 		bitvec_set_bit(&bv, H);
 
 	bitvec_spare_padding(&bv, 6);
+	return bv.data_len;
+}
+
+/* Append Repeated E-UTRAN Neighbour Cell to bitvec:
+ * see 3GPP TS 44.018 Table 10.5.2.33b.1
+ */
+static inline void append_eutran_neib_cell(struct bitvec *bv,
+					    const struct osmo_earfcn_si2q *e)
+{
+	unsigned i;
+	for (i = 0; i < e->length; i++) {
+		if (e->arfcn[i] != OSMO_EARFCN_INVALID) {
+			bitvec_set_bit(bv, 1); /* EARFCN: */
+			bitvec_set_uint(bv, e->arfcn[i], 16);
+
+			if (OSMO_EARFCN_MEAS_INVALID == e->meas_bw[i])
+				bitvec_set_bit(bv, 0);
+			else {
+				/* Measurement Bandwidth: 9.1.54 */
+				bitvec_set_bit(bv, 1);
+				bitvec_set_uint(bv, e->meas_bw[i], 3);
+			}
+		}
+	}
+
+	/* stop bit - end of EARFCN + Measurement Bandwidth sequence */
+	bitvec_set_bit(bv, 0);
+
+	if (e->prio_valid) {
+		/* E-UTRAN_PRIORITY: 3GPP TS 45.008*/
+		bitvec_set_bit(bv, 1);
+		bitvec_set_uint(bv, e->prio, 3);
+	} else
+		bitvec_set_bit(bv, 0);
+
+	/* THRESH_E-UTRAN_high */
+	bitvec_set_uint(bv, e->thresh_hi, 5);
+
+	if (e->thresh_lo_valid) {
+		/* THRESH_E-UTRAN_low: */
+		bitvec_set_bit(bv, 1);
+		bitvec_set_uint(bv, e->thresh_lo, 5);
+	} else
+		bitvec_set_bit(bv, 0);
+
+	if (e->qrxlm_valid) {
+		/* E-UTRAN_QRXLEVMIN: */
+		bitvec_set_bit(bv, 1);
+		bitvec_set_uint(bv, e->qrxlm, 5);
+	} else
+		bitvec_set_bit(bv, 0);
+}
+
+static inline void append_earfcn(struct bitvec *bv,
+				const struct osmo_earfcn_si2q *e)
+{
+	/* Additions in Rel-5: */
+	bitvec_set_bit(bv, H);
+	/* No 3G Additional Measurement Param. Descr. */
+	bitvec_set_bit(bv, 0);
+	/* No 3G ADDITIONAL MEASUREMENT Param. Descr. 2 */
+	bitvec_set_bit(bv, 0);
+	/* Additions in Rel-6: */
+	bitvec_set_bit(bv, H);
+	/* 3G_CCN_ACTIVE */
+	bitvec_set_bit(bv, 0);
+	/* Additions in Rel-7: */
+	bitvec_set_bit(bv, H);
+	/* No 700_REPORTING_OFFSET */
+	bitvec_set_bit(bv, 0);
+	/* No 810_REPORTING_OFFSET */
+	bitvec_set_bit(bv, 0);
+	/* Additions in Rel-8: */
+	bitvec_set_bit(bv, H);
+
+	/* Priority and E-UTRAN Parameters Description */
+	bitvec_set_bit(bv, 1);
+
+	/* No Serving Cell Priority Parameters Descr. */
+	bitvec_set_bit(bv, 0);
+	/* No 3G Priority Parameters Description */
+	bitvec_set_bit(bv, 0);
+	/* E-UTRAN Parameters Description */
+	bitvec_set_bit(bv, 1);
+
+	/* E-UTRAN_CCN_ACTIVE */
+	bitvec_set_bit(bv, 0);
+	/* E-UTRAN_Start: 9.1.54 */
+	bitvec_set_bit(bv, 1);
+	/* E-UTRAN_Stop: 9.1.54 */
+	bitvec_set_bit(bv, 1);
+
+	/* No E-UTRAN Measurement Parameters Descr. */
+	bitvec_set_bit(bv, 0);
+	/* No GPRS E-UTRAN Measurement Param. Descr. */
+	bitvec_set_bit(bv, 0);
+
+	/* Note: each of next 3 "repeated" structures might be repeated any
+	   (0, 1, 2...) times - we only support 1 and 0 */
+
+	/* Repeated E-UTRAN Neighbour Cells */
+	bitvec_set_bit(bv, 1);
+
+	/* Note: we don't support different EARFCN arrays each with different
+	   priority, threshold etc. */
+	append_eutran_neib_cell(bv, e);
+
+	/* stop bit - end of Repeated E-UTRAN Neighbour Cells sequence: */
+	bitvec_set_bit(bv, 0);
+
+	/* Note: following 2 repeated structs are not supported ATM */
+	/* stop bit - end of Repeated E-UTRAN Not Allowed Cells sequence: */
+	bitvec_set_bit(bv, 0);
+	/* stop bit - end of Repeated E-UTRAN PCID to TA mapping sequence: */
+	bitvec_set_bit(bv, 0);
+
+	/* Priority and E-UTRAN Parameters Description ends here */
+	/* No 3G CSG Description */
+	bitvec_set_bit(bv, 0);
+	/* No E-UTRAN CSG Description */
+	bitvec_set_bit(bv, 0);
+	/* No Additions in Rel-9: */
+	bitvec_set_bit(bv, L);
+}
+
+static inline void append_uarfcn(struct bitvec *bv, const uint16_t *u,
+				 const uint16_t *sc, size_t length)
+{
+	int f0_inc, i, arfcns_used, w[RANGE_ENC_MAX_ARFCNS], a[length];
+	uint8_t chan_list[16] = {0};
+
+	/* 3G Neighbour Cell Description */
+	bitvec_set_bit(bv, 1);
+	/* No Index_Start_3G */
+	bitvec_set_bit(bv, 0);
+	/* No Absolute_Index_Start_EMR */
+	bitvec_set_bit(bv, 0);
+
+	/* UTRAN FDD Description */
+	bitvec_set_bit(bv, 1);
+	/* No Bandwidth_FDD */
+	bitvec_set_bit(bv, 0);
+
+	memset(w, 0, sizeof(w));
+	for (i = 0; i < length; i++)
+		a[i] = sc[i];
+
+	/* Note: we do not support repeating Neighbour Cells ATM */
+	/* Repeated UTRAN FDD Neighbour Cells */
+	bitvec_set_bit(bv, 1);
+
+	/* FDD-ARFCN */
+	bitvec_set_bit(bv, 0);
+	/* Note: we do not support multiple UARFCN values ATM: */
+	bitvec_set_uint(bv, u[0], 14);
+
+	arfcns_used = range_enc_filter_arfcns(a, length, 0, &f0_inc);
+	range_enc_arfcns(ARFCN_RANGE_1024, a, arfcns_used, w, 0);
+	range_enc_range1024(chan_list, 0, f0_inc, w);
+
+	/* FDD_Indic0: parameter value '0000000000' is not a member of the set */
+	bitvec_set_bit(bv, f0_inc);
+	/* NR_OF_FDD_CELLS */
+	bitvec_set_uint(bv, length, 5);
+
+	i = bv->cur_bit;
+	bitvec_add_range1024(bv, (struct gsm48_range_1024 *)chan_list);
+	bv->cur_bit = i + range1024_p(length);
+
+	/* stop bit - end of Repeated UTRAN FDD Neighbour Cells */
+	bitvec_set_bit(bv, 0);
+
+	/* UTRAN TDD Description */
+	bitvec_set_bit(bv, 0);
+}
+
+/* generate SI2quater rest octets: 3GPP TS 44.018 § 10.5.2.33b */
+int rest_octets_si2quater(uint8_t *data, const struct osmo_earfcn_si2q *e,
+			  const uint16_t *u, const uint16_t *sc, size_t u_len)
+{
+	unsigned sz;
+	struct bitvec bv;
+	bv.data = data;
+	bv.data_len = 20;
+	bitvec_zero(&bv);
+
+	/* BA_IND */
+	bitvec_set_bit(&bv, 1);
+	/* 3G_BA_IND */
+	bitvec_set_bit(&bv, 1);
+	/* MP_CHANGE_MARK */
+	bitvec_set_bit(&bv, 0);
+
+	/* we do not support multiple si2quater messages at the moment: */
+	/* SI2quater_INDEX */
+	bitvec_set_uint(&bv, 0, 4);
+	/* SI2quater_COUNT */
+	bitvec_set_uint(&bv, 0, 4);
+
+	/* No Measurement_Parameters Description */
+	bitvec_set_bit(&bv, 0);
+	/* No GPRS_Real Time Difference Description */
+	bitvec_set_bit(&bv, 0);
+	/* No GPRS_BSIC Description */
+	bitvec_set_bit(&bv, 0);
+	/* No GPRS_REPORT PRIORITY Description */
+	bitvec_set_bit(&bv, 0);
+	/* No GPRS_MEASUREMENT_Parameters Description */
+	bitvec_set_bit(&bv, 0);
+	/* No NC Measurement Parameters */
+	bitvec_set_bit(&bv, 0);
+	/* No extension (length) */
+	bitvec_set_bit(&bv, 0);
+
+	if (u_len) {
+		sz = uarfcn_size(u, sc, u_len);
+		/* Even if we do not append EARFCN we still need to set 3 bits */
+		if (sz + bv.cur_bit + 3 > SI2Q_MAX_LEN) {
+			LOGP(DRR, LOGL_ERROR, "SI2quater: not enough memory to "
+			     "add UARFCNs bits, current %u + required %u + "
+			     "reminder %u > max %u\n", bv.cur_bit, sz, 3,
+			     SI2Q_MAX_LEN);
+			return -ENOMEM;
+		}
+		append_uarfcn(&bv, u, sc, u_len);
+	} else { /* No 3G Neighbour Cell Description */
+		bitvec_set_bit(&bv, 0);
+	}
+
+	/* No 3G Measurement Parameters Description */
+	bitvec_set_bit(&bv, 0);
+	/* No GPRS_3G_MEASUREMENT Parameters Descr. */
+	bitvec_set_bit(&bv, 0);
+
+	if (e) {
+		sz = earfcn_size(e);
+		if (sz + bv.cur_bit > SI2Q_MAX_LEN) {
+			LOGP(DRR, LOGL_ERROR, "SI2quater: not enough memory to "
+			     "add EARFCNs bits, current %u + required %u > max "
+			     "%u\n", bv.cur_bit, sz, SI2Q_MAX_LEN);
+			return -ENOMEM;
+		}
+		append_earfcn(&bv, e);
+	} else {
+		/* No Additions in Rel-5: */
+		bitvec_set_bit(&bv, L);
+	}
+
+	bitvec_spare_padding(&bv, (bv.data_len * 8) - 1);
 	return bv.data_len;
 }
 
@@ -128,6 +382,15 @@ int rest_octets_si3(uint8_t *data, const struct gsm48_si_ro_info *si3)
 
 	/* GPRS Indicator */
 	append_gprs_ind(&bv, &si3->gprs_ind);
+
+	/* 3G Early Classmark Sending Restriction controlled by
+	 * early_cm_ctrl above */
+	bitvec_set_bit(&bv, H);
+
+	if (si3->si2quater_indicator) {
+		bitvec_set_bit(&bv, H); /* indicator struct present */
+		bitvec_set_uint(&bv, 0, 1); /* message is sent on BCCH Norm */
+	}
 
 	bitvec_spare_padding(&bv, (bv.data_len*8)-1);
 	return bv.data_len;

@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 
 #include <osmocom/core/bitvec.h>
 #include <osmocom/core/utils.h>
@@ -67,8 +68,160 @@ static int is_dcs_net(const struct gsm_bts *bts)
 	return 1;
 }
 
-static int use_arfcn(const struct gsm_bts *bts, const int bis, const int ter,
-			const int pgsm, const int arfcn)
+/* Return p(n) for given NR_OF_TDD_CELLS - see Table 9.1.54.1a, 3GPP TS 44.018 */
+unsigned range1024_p(unsigned n)
+{
+	switch (n) {
+	case 0: return 0;
+	case 1: return 10;
+	case 2: return 19;
+	case 3: return 28;
+	case 4: return 36;
+	case 5: return 44;
+	case 6: return 52;
+	case 7: return 60;
+	case 8: return 67;
+	case 9: return 74;
+	case 10: return 81;
+	case 11: return 88;
+	case 12: return 95;
+	case 13: return 102;
+	case 14: return 109;
+	case 15: return 116;
+	case 16: return 122;
+	default: return 0;
+	}
+}
+
+/* Return q(m) for given NR_OF_TDD_CELLS - see Table 9.1.54.1b, 3GPP TS 44.018 */
+unsigned range512_q(unsigned m)
+{
+	switch (m) {
+	case 0: return 0;
+	case 1: return 9;
+	case 2: return 17;
+	case 3: return 25;
+	case 4: return 32;
+	case 5: return 39;
+	case 6: return 46;
+	case 7: return 53;
+	case 8: return 59;
+	case 9: return 65;
+	case 10: return 71;
+	case 11: return 77;
+	case 12: return 83;
+	case 13: return 89;
+	case 14: return 95;
+	case 15: return 101;
+	case 16: return 106;
+	case 17: return 111;
+	case 18: return 116;
+	case 19: return 121;
+	case 20: return 126;
+	default: return 0;
+	}
+}
+
+unsigned earfcn_size(const struct osmo_earfcn_si2q *e)
+{
+	/* account for all the constant bits in append_earfcn() */
+	return 25 + osmo_earfcn_bit_size(e);
+}
+
+unsigned uarfcn_size(const uint16_t *u, const uint16_t *sc, size_t u_len)
+{
+	/*account for all the constant bits in append_uarfcn() */
+	return 29 + range1024_p(u_len);
+}
+
+bool si2q_size_check(const struct gsm_bts *bts)
+{
+	const struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+	const uint16_t *u = bts->si_common.data.uarfcn_list,
+		*sc = bts->si_common.data.scramble_list;
+	size_t len = bts->si_common.uarfcn_length;
+	unsigned e_sz = e ? earfcn_size(e) : 1,
+		u_sz = len ? uarfcn_size(u, sc, len) : 1;
+	/* 2 bits are used in between UARFCN and EARFCN structs */
+	if (SI2Q_MIN_LEN + u_sz + 2 + e_sz > SI2Q_MAX_LEN)
+		return false;
+	return true;
+}
+
+/* 3GPP TS 44.018, Table 9.1.54.1 - prepend diversity bit to scrambling code */
+uint16_t encode_fdd(uint16_t scramble, bool diversity)
+{
+	if (diversity)
+		return scramble | (1 << 9);
+	return scramble;
+}
+
+int bts_uarfcn_del(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble)
+{
+	uint16_t sc0 = encode_fdd(scramble, false), sc1 = encode_fdd(scramble, true),
+		*ual = bts->si_common.data.uarfcn_list,
+		*scl = bts->si_common.data.scramble_list;
+	size_t len = bts->si_common.uarfcn_length, i;
+	for (i = 0; i < len; i++) {
+		if (arfcn == ual[i] && (sc0 == scl[i] || sc1 == scl[i])) {
+			/* we rely on the assumption that (uarfcn, scramble)
+			   tuple is unique in the lists */
+			if (i != len - 1) { /* move the tail if necessary */
+				memmove(ual + i, ual + i + 1, 2 * (len - i + 1));
+				memmove(scl + i, scl + i + 1, 2 * (len - i + 1));
+			}
+			break;
+		}
+	}
+
+	if (i == len)
+		return -EINVAL;
+
+	bts->si_common.uarfcn_length--;
+	return 0;
+}
+
+int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble,
+		   bool diversity)
+{
+	size_t len = bts->si_common.uarfcn_length, i, k;
+	uint16_t scr, chk,
+		*ual = bts->si_common.data.uarfcn_list,
+		*scl = bts->si_common.data.scramble_list,
+		scramble1 = encode_fdd(scramble, true),
+		scramble0 = encode_fdd(scramble, false);
+
+	scr = diversity ? scramble1 : scramble0;
+	chk = diversity ? scramble0 : scramble1;
+
+	if (len == MAX_EARFCN_LIST)
+		return -ENOMEM;
+
+	for (i = 0, k = 0; i < len; i++) {
+		if (arfcn == ual[i] && (scr == scl[i] || chk == scl[i]))
+			return -EADDRINUSE;
+		if (scr > scl[i])
+			k = i + 1;
+	}
+	/* we keep lists sorted by scramble code:
+	   insert into appropriate position and move the tail */
+	if (len - k) {
+		memmove(ual + k + 1, ual + k, (len - k) * 2);
+		memmove(scl + k + 1, scl + k, (len - k) * 2);
+	}
+	ual[k] = arfcn;
+	scl[k] = scr;
+	bts->si_common.uarfcn_length++;
+
+	if (si2q_size_check(bts))
+		return 0;
+
+	bts_uarfcn_del(bts, arfcn, scramble);
+	return -ENOSPC;
+}
+
+static inline int use_arfcn(const struct gsm_bts *bts, const bool bis, const bool ter,
+			const bool pgsm, const int arfcn)
 {
 	if (bts->force_combined_si)
 		return !bis && !ter;
@@ -135,9 +288,9 @@ static int freq_list_bmrel_set_arfcn(uint8_t *chan_list, unsigned int arfcn)
 }
 
 /* generate a variable bitmap */
-static int enc_freq_lst_var_bitmap(uint8_t *chan_list,
+static inline int enc_freq_lst_var_bitmap(uint8_t *chan_list,
 				struct bitvec *bv, const struct gsm_bts *bts,
-				int bis, int ter, int min, int pgsm)
+				bool bis, bool ter, int min, bool pgsm)
 {
 	int i;
 
@@ -164,9 +317,9 @@ static int enc_freq_lst_var_bitmap(uint8_t *chan_list,
 }
 
 /* generate a frequency list with the range 512 format */
-static int enc_freq_lst_range(uint8_t *chan_list,
+static inline int enc_freq_lst_range(uint8_t *chan_list,
 				struct bitvec *bv, const struct gsm_bts *bts,
-				int bis, int ter, int pgsm)
+				bool bis, bool ter, bool pgsm)
 {
 	int arfcns[RANGE_ENC_MAX_ARFCNS];
 	int w[RANGE_ENC_MAX_ARFCNS];
@@ -226,15 +379,15 @@ static int enc_freq_lst_range(uint8_t *chan_list,
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
 static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
-			    const struct gsm_bts *bts, int bis, int ter)
+			    const struct gsm_bts *bts, bool bis, bool ter)
 {
-	int i, rc, min = -1, max = -1, pgsm = 0, arfcns = 0;
-
+	int i, rc, min = -1, max = -1, arfcns = 0;
+	bool pgsm = false;
 	memset(chan_list, 0, 16);
 
 	if (bts->band == GSM_BAND_900
 	 && bts->c0->arfcn >= 1 && bts->c0->arfcn <= 124)
-		pgsm = 1;
+		pgsm = true;
 	/* P-GSM-only handsets only support 'bit map 0 format' */
 	if (!bis && !ter && pgsm) {
 		chan_list[0] = 0;
@@ -327,12 +480,12 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 	}
 
 	/* then we generate a GSM 04.08 frequency list from the bitvec */
-	return bitvec2freq_list(chan_list, bv, bts, 0, 0);
+	return bitvec2freq_list(chan_list, bv, bts, false, false);
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
 static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts,
-	int si5, int bis, int ter)
+	bool si5, bool bis, bool ter)
 {
 	struct gsm_bts *cur_bts;
 	struct bitvec *bv;
@@ -422,7 +575,7 @@ static int generate_si2(uint8_t *output, struct gsm_bts *bts)
 	si2->header.skip_indicator = 0;
 	si2->header.system_information = GSM48_MT_RR_SYSINFO_2;
 
-	rc = generate_bcch_chan_list(si2->bcch_frequency_list, bts, 0, 0, 0);
+	rc = generate_bcch_chan_list(si2->bcch_frequency_list, bts, false, false, false);
 	if (rc < 0)
 		return rc;
 	list_arfcn(si2->bcch_frequency_list, 0xce,
@@ -448,7 +601,7 @@ static int generate_si2bis(uint8_t *output, struct gsm_bts *bts)
 	si2b->header.skip_indicator = 0;
 	si2b->header.system_information = GSM48_MT_RR_SYSINFO_2bis;
 
-	rc = generate_bcch_chan_list(si2b->bcch_frequency_list, bts, 0, 1, 0);
+	rc = generate_bcch_chan_list(si2b->bcch_frequency_list, bts, false, true, false);
 	if (rc < 0)
 		return rc;
 	n = list_arfcn(si2b->bcch_frequency_list, 0xce,
@@ -482,7 +635,7 @@ static int generate_si2ter(uint8_t *output, struct gsm_bts *bts)
 	si2t->header.skip_indicator = 0;
 	si2t->header.system_information = GSM48_MT_RR_SYSINFO_2ter;
 
-	rc = generate_bcch_chan_list(si2t->ext_bcch_frequency_list, bts, 0, 0, 1);
+	rc = generate_bcch_chan_list(si2t->ext_bcch_frequency_list, bts, false, false, true);
 	if (rc < 0)
 		return rc;
 	n = list_arfcn(si2t->ext_bcch_frequency_list, 0x8e,
@@ -491,6 +644,30 @@ static int generate_si2ter(uint8_t *output, struct gsm_bts *bts)
 		bts->si_valid &= ~(1 << SYSINFO_TYPE_2ter);
 
 	return sizeof(*si2t);
+}
+
+static int generate_si2quater(uint8_t *output, struct gsm_bts *bts)
+{
+	int rc;
+	struct gsm48_system_information_type_2quater *si2q =
+		(struct gsm48_system_information_type_2quater *) output;
+
+	memset(si2q, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
+
+	si2q->header.l2_plen = GSM48_LEN2PLEN(22);
+	si2q->header.rr_protocol_discriminator = GSM48_PDISC_RR;
+	si2q->header.skip_indicator = 0;
+	si2q->header.system_information = GSM48_MT_RR_SYSINFO_2quater;
+
+	rc = rest_octets_si2quater(si2q->rest_octets,
+				   &bts->si_common.si2quater_neigh_list,
+				   bts->si_common.data.uarfcn_list,
+				   bts->si_common.data.scramble_list,
+				   bts->si_common.uarfcn_length);
+	if (rc < 0)
+		return rc;
+
+	return sizeof(*si2q) + rc;
 }
 
 static struct gsm48_si_ro_info si_info = {
@@ -510,6 +687,7 @@ static struct gsm48_si_ro_info si_info = {
 		.ra_colour = 0,
 		.present = 1,
 	},
+	.si2quater_indicator = 0,
 	.lsa_params = {
 		.present = 0,
 	},
@@ -545,7 +723,12 @@ static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 	} else {
 		si_info.si2ter_indicator = 0;
 	}
-
+	if ((bts->si_valid & (1 << SYSINFO_TYPE_2quater))) {
+		LOGP(DRR, LOGL_INFO, "SI 2quater is included.\n");
+		si_info.si2quater_indicator = 1;
+	} else {
+		si_info.si2quater_indicator = 0;
+	}
 	/* SI3 Rest Octets (10.5.2.34), containing
 		CBQ, CELL_RESELECT_OFFSET, TEMPORARY_OFFSET, PENALTY_TIME
 		Power Offset, 2ter Indicator, Early Classmark Sending,
@@ -624,7 +807,7 @@ static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 	si5->rr_protocol_discriminator = GSM48_PDISC_RR;
 	si5->skip_indicator = 0;
 	si5->system_information = GSM48_MT_RR_SYSINFO_5;
-	rc = generate_bcch_chan_list(si5->bcch_frequency_list, bts, 1, 0, 0);
+	rc = generate_bcch_chan_list(si5->bcch_frequency_list, bts, true, false, false);
 	if (rc < 0)
 		return rc;
 	list_arfcn(si5->bcch_frequency_list, 0xce,
@@ -659,7 +842,7 @@ static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
 	si5b->rr_protocol_discriminator = GSM48_PDISC_RR;
 	si5b->skip_indicator = 0;
 	si5b->system_information = GSM48_MT_RR_SYSINFO_5bis;
-	rc = generate_bcch_chan_list(si5b->bcch_frequency_list, bts, 1, 1, 0);
+	rc = generate_bcch_chan_list(si5b->bcch_frequency_list, bts, true, true, false);
 	if (rc < 0)
 		return rc;
 	n = list_arfcn(si5b->bcch_frequency_list, 0xce,
@@ -703,7 +886,7 @@ static int generate_si5ter(uint8_t *output, struct gsm_bts *bts)
 	si5t->rr_protocol_discriminator = GSM48_PDISC_RR;
 	si5t->skip_indicator = 0;
 	si5t->system_information = GSM48_MT_RR_SYSINFO_5ter;
-	rc = generate_bcch_chan_list(si5t->bcch_frequency_list, bts, 1, 0, 1);
+	rc = generate_bcch_chan_list(si5t->bcch_frequency_list, bts, true, false, true);
 	if (rc < 0)
 		return rc;
 	n = list_arfcn(si5t->bcch_frequency_list, 0x8e,
@@ -824,6 +1007,7 @@ static const gen_si_fn_t gen_si_fn[_MAX_SYSINFO_TYPE] = {
 	[SYSINFO_TYPE_2] = &generate_si2,
 	[SYSINFO_TYPE_2bis] = &generate_si2bis,
 	[SYSINFO_TYPE_2ter] = &generate_si2ter,
+	[SYSINFO_TYPE_2quater] = &generate_si2quater,
 	[SYSINFO_TYPE_3] = &generate_si3,
 	[SYSINFO_TYPE_4] = &generate_si4,
 	[SYSINFO_TYPE_5] = &generate_si5,

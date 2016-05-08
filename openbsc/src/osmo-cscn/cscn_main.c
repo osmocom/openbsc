@@ -383,6 +383,8 @@ int main(int argc, char **argv)
 				    cscn_cmdline_config.mncc_sock_path);
 		if (rc < 0)
 			exit(1);
+	} else {
+		DEBUGP(DMNCC, "Using internal MNCC handler.\n");
 	}
 
 	/* start telnet after reading config for vty_get_bind_addr() */

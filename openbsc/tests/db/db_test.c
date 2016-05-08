@@ -1,5 +1,5 @@
 /* (C) 2008 by Jan Luebbe <jluebbe@debian.org>
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2016 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2014 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
  * All Rights Reserved
  *
@@ -245,6 +245,10 @@ int main()
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);
 	SUBSCR_PUT(alice);
+
+	/* create it again and see it fails */
+	alice = db_create_subscriber(alice_imsi);
+	OSMO_ASSERT(!alice);
 
 	test_sms();
 	test_sms_migrate();

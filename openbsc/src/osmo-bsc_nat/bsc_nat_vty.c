@@ -39,6 +39,7 @@
 #include <osmocom/sccp/sccp.h>
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 static struct bsc_nat *_nat;
 
@@ -96,6 +97,8 @@ static int config_write_nat(struct vty *vty)
 	vty_out(vty, " timeout auth %d%s", _nat->auth_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout ping %d%s", _nat->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout pong %d%s", _nat->pong_timeout, VTY_NEWLINE);
+	if (_nat->include_file)
+		vty_out(vty, " bscs-config-file %s%s", _nat->include_file, VTY_NEWLINE);
 	if (_nat->token)
 		vty_out(vty, " token %s%s", _nat->token, VTY_NEWLINE);
 	vty_out(vty, " ip-dscp %d%s", _nat->bsc_ip_dscp, VTY_NEWLINE);
@@ -181,6 +184,14 @@ static int config_write_bsc(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_bscs, show_bscs_cmd, "show bscs-config",
+      SHOW_STR "Show configured BSCs\n"
+      "Both from included file and vty\n")
+{
+	vty_out(vty, "BSCs configuration loaded from %s:%s", _nat->resolved_path,
+		VTY_NEWLINE);
+	return config_write_bsc(vty);
+}
 
 DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
       SHOW_STR "Display information about SCCP\n"
@@ -201,6 +212,14 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
 			VTY_NEWLINE);
 	}
 
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_nat_bsc, show_nat_bsc_cmd, "show nat num-bscs-configured",
+      SHOW_STR "Display NAT configuration details\n"
+      "BSCs-related\n")
+{
+	vty_out(vty, "%d BSCs configured%s", _nat->num_bsc, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -484,6 +503,55 @@ DEFUN(cfg_nat_acc_lst_name,
       "The name of the to be used access list.")
 {
 	bsc_replace_string(_nat, &_nat->acc_lst_name, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_include,
+      cfg_nat_include_cmd,
+      "bscs-config-file NAME",
+      "Set the filename of the BSC configuration to include.\n"
+      "The filename to be included.")
+{
+	char *path;
+	int rc;
+	struct bsc_config *cf1, *cf2;
+	struct bsc_connection *con1, *con2;
+
+	if ('/' == argv[0][0])
+		bsc_replace_string(_nat, &_nat->resolved_path, argv[0]);
+	else {
+		path = talloc_asprintf(_nat, "%s/%s", _nat->include_base,
+				       argv[0]);
+		bsc_replace_string(_nat, &_nat->resolved_path, path);
+		talloc_free(path);
+	}
+
+	llist_for_each_entry_safe(cf1, cf2, &_nat->bsc_configs, entry) {
+		cf1->remove = true;
+		cf1->token_updated = false;
+	}
+
+	rc = vty_read_config_file(_nat->resolved_path, NULL);
+	if (rc < 0) {
+		vty_out(vty, "Failed to parse the config file %s: %s%s",
+			_nat->resolved_path, strerror(-rc), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bsc_replace_string(_nat, &_nat->include_file, argv[0]);
+
+	llist_for_each_entry_safe(con1, con2, &_nat->bsc_connections,
+				  list_entry) {
+		if (con1->cfg)
+			if (con1->cfg->token_updated || con1->cfg->remove)
+				bsc_close_connection(con1);
+	}
+
+	llist_for_each_entry_safe(cf1, cf2, &_nat->bsc_configs, entry) {
+		if (cf1->remove)
+			bsc_config_free(cf1);
+	}
+
 	return CMD_SUCCESS;
 }
 
@@ -791,21 +859,16 @@ DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR",
       "BSC configuration\n" "Identifier of the BSC\n")
 {
 	int bsc_nr = atoi(argv[0]);
-	struct bsc_config *bsc;
+	struct bsc_config *bsc = bsc_config_num(_nat, bsc_nr);
 
-	if (bsc_nr > _nat->num_bsc) {
-		vty_out(vty, "%% The next unused BSC number is %u%s",
-			_nat->num_bsc, VTY_NEWLINE);
-		return CMD_WARNING;
-	} else if (bsc_nr == _nat->num_bsc) {
-		/* allocate a new one */
-		bsc = bsc_config_alloc(_nat, "unknown");
-	} else
-		bsc = bsc_config_num(_nat, bsc_nr);
+	/* allocate a new one */
+	if (!bsc)
+		bsc = bsc_config_alloc(_nat, "unknown", bsc_nr);
 
 	if (!bsc)
 		return CMD_WARNING;
 
+	bsc->remove = false;
 	vty->index = bsc;
 	vty->node = NAT_BSC_NODE;
 
@@ -817,6 +880,9 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN",
       "Token of the BSC, currently transferred in cleartext\n")
 {
 	struct bsc_config *conf = vty->index;
+
+	if (strncmp(conf->token, argv[0], 128) != 0)
+		conf->token_updated = true;
 
 	bsc_replace_string(conf, &conf->token, argv[0]);
 	return CMD_SUCCESS;
@@ -863,8 +929,11 @@ DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
 	/* verify that the LACs are unique */
 	llist_for_each_entry(tmp, &_nat->bsc_configs, entry) {
 		if (bsc_config_handles_lac(tmp, lac)) {
-			vty_out(vty, "%% LAC %d is already used.%s", lac, VTY_NEWLINE);
-			return CMD_ERR_INCOMPLETE;
+			if (tmp->nr != conf->nr) {
+				vty_out(vty, "%% LAC %d is already used.%s", lac,
+					VTY_NEWLINE);
+				return CMD_ERR_INCOMPLETE;
+			}
 		}
 	}
 
@@ -1169,6 +1238,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	/* show commands */
 	install_element_ve(&show_sccp_cmd);
 	install_element_ve(&show_bsc_cmd);
+	install_element_ve(&show_nat_bsc_cmd);
 	install_element_ve(&show_bsc_cfg_cmd);
 	install_element_ve(&show_stats_cmd);
 	install_element_ve(&show_stats_lac_cmd);
@@ -1176,6 +1246,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_msc_cmd);
 	install_element_ve(&test_regex_cmd);
 	install_element_ve(&show_bsc_mgcp_cmd);
+	install_element_ve(&show_bscs_cmd);
 	install_element_ve(&show_bar_lst_cmd);
 	install_element_ve(&show_prefix_tree_cmd);
 	install_element_ve(&show_ussd_connection_cmd);
@@ -1197,6 +1268,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_tos_cmd);
 	install_element(NAT_NODE, &cfg_nat_acc_lst_name_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_acc_lst_name_cmd);
+	install_element(NAT_NODE, &cfg_nat_include_cmd);
 	install_element(NAT_NODE, &cfg_nat_imsi_black_list_fn_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_imsi_black_list_fn_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_lst_name_cmd);
@@ -1233,7 +1305,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);
-	install_node(&bsc_node, config_write_bsc);
+	install_node(&bsc_node, NULL);
 	vty_install_default(NAT_BSC_NODE);
 	install_element(NAT_BSC_NODE, &cfg_bsc_token_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_auth_key_cmd);

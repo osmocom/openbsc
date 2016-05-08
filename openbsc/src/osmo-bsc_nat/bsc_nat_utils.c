@@ -155,14 +155,15 @@ struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)
 	return con;
 }
 
-struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token)
+struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token,
+				    unsigned int number)
 {
 	struct bsc_config *conf = talloc_zero(nat, struct bsc_config);
 	if (!conf)
 		return NULL;
 
 	conf->token = talloc_strdup(conf, token);
-	conf->nr = nat->num_bsc;
+	conf->nr = number;
 	conf->nat = nat;
 	conf->max_endpoints = 32;
 	conf->paging_group = PAGIN_GROUP_UNASSIGNED;
@@ -205,6 +206,8 @@ void bsc_config_free(struct bsc_config *cfg)
 	llist_del(&cfg->entry);
 	rate_ctr_group_free(cfg->stats.ctrg);
 	talloc_free(cfg);
+	cfg->nat->num_bsc--;
+	OSMO_ASSERT(cfg->nat->num_bsc >= 0)
 }
 
 static void _add_lac(void *ctx, struct llist_head *list, int _lac)

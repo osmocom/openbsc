@@ -29,12 +29,12 @@
 #include <osmocom/core/backtrace.h>
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/sgsn.h>
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gprs_utils.h>
 #include <openbsc/signal.h>

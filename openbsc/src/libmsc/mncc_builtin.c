@@ -138,7 +138,8 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	memset(&mncc, 0, sizeof(struct gsm_mncc));
 	mncc.callref = call->callref;
 	mncc.lchan_mode = determine_lchan_mode(setup);
-	DEBUGP(DMNCC, "(call %x) Modify channel mode.\n", call->callref);
+	DEBUGP(DMNCC, "(call %x) Modify channel mode: %s\n", call->callref,
+	       get_value_string(gsm48_chan_mode_names, mncc.lchan_mode));
 	mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, &mncc);
 
 	/* send setup to remote */

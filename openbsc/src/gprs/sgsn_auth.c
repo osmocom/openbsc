@@ -19,17 +19,18 @@
  *
  */
 
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gsm_subscriber.h>
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/debug.h>
 
 const struct value_string auth_state_names[] = {
 	{ SGSN_AUTH_ACCEPTED,	"accepted"},
 	{ SGSN_AUTH_REJECTED,	"rejected"},
 	{ SGSN_AUTH_UNKNOWN,	"unknown"},
+	{ SGSN_AUTH_AUTHENTICATE, "authenticate" },
 	{ 0, NULL }
 };
 

@@ -388,7 +388,7 @@ static void test_expiry(void)
 #undef MAP3
 }
 
-char resolve_ggsn_got_imsi[GSM_IMSI_LENGTH];
+char resolve_ggsn_got_imsi[GSM23003_IMSI_MAX_DIGITS+1];
 char resolve_ggsn_got_ni[GSM_APN_LENGTH];
 
 struct osmo_sockaddr resolved_ggsn_addr;

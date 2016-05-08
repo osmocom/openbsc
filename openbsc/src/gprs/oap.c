@@ -20,10 +20,12 @@
  *
  */
 
+#include <string.h>
+
+#include <osmocom/core/utils.h>
 #include <osmocom/crypt/auth.h>
 
 #include <openbsc/oap.h>
-#include <openbsc/utils.h>
 #include <openbsc/debug.h>
 #include <openbsc/oap_messages.h>
 
@@ -69,25 +71,25 @@ static int oap_evaluate_challenge(const struct oap_state *state,
 				  const uint8_t *rx_autn,
 				  uint8_t *tx_xres)
 {
-	osmo_static_assert(sizeof(((struct osmo_sub_auth_data*)0)->u.umts.k)
-			   == sizeof(state->secret_k), _secret_k_size_match);
-	osmo_static_assert(sizeof(((struct osmo_sub_auth_data*)0)->u.umts.opc)
-			   == sizeof(state->secret_opc), _secret_opc_size_match);
-
-	switch(state->state) {
-	case OAP_UNINITIALIZED:
-	case OAP_DISABLED:
-		return -1;
-	default:
-		break;
-	}
-
 	struct osmo_auth_vector vec;
 
 	struct osmo_sub_auth_data auth = {
 		.type		= OSMO_AUTH_TYPE_UMTS,
 		.algo		= OSMO_AUTH_ALG_MILENAGE,
 	};
+
+	osmo_static_assert(sizeof(((struct osmo_sub_auth_data*)0)->u.umts.k)
+			   == sizeof(state->secret_k), _secret_k_size_match);
+	osmo_static_assert(sizeof(((struct osmo_sub_auth_data*)0)->u.umts.opc)
+			   == sizeof(state->secret_opc), _secret_opc_size_match);
+
+	switch (state->state) {
+	case OAP_UNINITIALIZED:
+	case OAP_DISABLED:
+		return -1;
+	default:
+		break;
+	}
 
 	memcpy(auth.u.umts.k, state->secret_k, sizeof(auth.u.umts.k));
 	memcpy(auth.u.umts.opc, state->secret_opc, sizeof(auth.u.umts.opc));
@@ -103,7 +105,7 @@ static int oap_evaluate_challenge(const struct oap_state *state,
 		return -3;
 	}
 
-	if (constant_time_cmp(vec.autn, rx_autn, sizeof(vec.autn)) != 0) {
+	if (osmo_constant_time_cmp(vec.autn, rx_autn, sizeof(vec.autn)) != 0) {
 		LOGP(DGPRS, LOGL_ERROR, "OAP: AUTN mismatch!\n");
 		LOGP(DGPRS, LOGL_INFO, "OAP: AUTN from server: %s\n",
 		     osmo_hexdump_nospc(rx_autn, sizeof(vec.autn)));
@@ -117,11 +119,11 @@ static int oap_evaluate_challenge(const struct oap_state *state,
 	return 0;
 }
 
-struct msgb *oap_encoded(const struct oap_message *oap_msg)
+struct msgb *oap_encoded(const struct osmo_oap_message *oap_msg)
 {
 	struct msgb *msg = msgb_alloc_headroom(1000, 64, __func__);
 	OSMO_ASSERT(msg);
-	oap_encode(msg, oap_msg);
+	osmo_oap_encode(msg, oap_msg);
 	return msg;
 }
 
@@ -129,12 +131,13 @@ struct msgb *oap_encoded(const struct oap_message *oap_msg)
  * On error, return NULL. */
 static struct msgb* oap_msg_register(uint16_t client_id)
 {
+	struct osmo_oap_message oap_msg = {0};
+
 	if (client_id < 1) {
 		LOGP(DGPRS, LOGL_ERROR, "OAP: Invalid client ID: %d\n", client_id);
 		return NULL;
 	}
 
-	struct oap_message oap_msg = {0};
 	oap_msg.message_type = OAP_MSGT_REGISTER_REQUEST;
 	oap_msg.client_id = client_id;
 	return oap_encoded(&oap_msg);
@@ -155,7 +158,7 @@ int oap_register(struct oap_state *state, struct msgb **msg_tx)
  * On error, return NULL. */
 static struct msgb* oap_msg_challenge_response(uint8_t *xres)
 {
-	struct oap_message oap_reply = {0};
+	struct osmo_oap_message oap_reply = {0};
 
 	oap_reply.message_type = OAP_MSGT_CHALLENGE_RESULT;
 	memcpy(oap_reply.xres, xres, sizeof(oap_reply.xres));
@@ -164,10 +167,12 @@ static struct msgb* oap_msg_challenge_response(uint8_t *xres)
 }
 
 static int handle_challenge(struct oap_state *state,
-			    struct oap_message *oap_rx,
+			    struct osmo_oap_message *oap_rx,
 			    struct msgb **msg_tx)
 {
 	int rc;
+	uint8_t xres[8];
+
 	if (!(oap_rx->rand_present && oap_rx->autn_present)) {
 		LOGP(DGPRS, LOGL_ERROR,
 		     "OAP challenge incomplete (rand_present: %d, autn_present: %d)\n",
@@ -176,7 +181,6 @@ static int handle_challenge(struct oap_state *state,
 		goto failure;
 	}
 
-	uint8_t xres[8];
 	rc = oap_evaluate_challenge(state,
 				    oap_rx->rand,
 				    oap_rx->autn,
@@ -201,17 +205,16 @@ failure:
 
 int oap_handle(struct oap_state *state, const struct msgb *msg_rx, struct msgb **msg_tx)
 {
-	*msg_tx = NULL;
-
 	uint8_t *data = msgb_l2(msg_rx);
 	size_t data_len = msgb_l2len(msg_rx);
+	struct osmo_oap_message oap_msg = {0};
 	int rc = 0;
 
-	struct oap_message oap_msg = {0};
+	*msg_tx = NULL;
 
 	OSMO_ASSERT(data);
 
-	rc = oap_decode(data, data_len, &oap_msg);
+	rc = osmo_oap_decode(&oap_msg, data, data_len);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_ERROR,
 		     "Decoding OAP message failed with error '%s' (%d)\n",

@@ -603,6 +603,29 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		}
 	}
 
+	for (i = 0; i < MAX_EARFCN_LIST; i++) {
+		if (bts->si_common.si2quater_neigh_list.arfcn[i] !=
+		    OSMO_EARFCN_INVALID) {
+			vty_out(vty, "  si2quater neighbor-list add earfcn %u threshold %u",
+				bts->si_common.si2quater_neigh_list.arfcn[i],
+				bts->si_common.si2quater_neigh_list.thresh_hi);
+			if (bts->si_common.si2quater_neigh_list.meas_bw[i] !=
+			    OSMO_EARFCN_MEAS_INVALID)
+				vty_out(vty, " %u",
+					bts->si_common.si2quater_neigh_list.meas_bw[i]);
+
+			vty_out(vty, "%s", VTY_NEWLINE);
+		}
+	}
+
+	for (i = 0; i < bts->si_common.uarfcn_length; i++) {
+		vty_out(vty, "  si2quater neighbor-list add uarfcn %u %u %u%s",
+			bts->si_common.data.uarfcn_list[i],
+			bts->si_common.data.scramble_list[i] & ~(1 << 9),
+			(bts->si_common.data.scramble_list[i] >> 9) & 1,
+			VTY_NEWLINE);
+	}
+
 	vty_out(vty, "  codec-support fr");
 	if (bts->codec.hr)
 		vty_out(vty, " hr");
@@ -2265,6 +2288,112 @@ DEFUN(cfg_bts_neigh, cfg_bts_neigh_cmd,
 	return CMD_SUCCESS;
 }
 
+
+DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
+      "si2quater neighbor-list add earfcn <0-65535> threshold <0-31> "
+      "[<0-7>]", "SI2quater Neighbor List\n"
+      "SI2quater Neighbor List\n" "Add to manual SI2quater neighbor list\n"
+      "EARFCN of neighbor\n" "EARFCN of neighbor\n" "threshold high bits\n"
+      "threshold high bits\n" "measurement bandwidth\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+	uint16_t arfcn = atoi(argv[0]);
+	uint8_t meas = OSMO_EARFCN_MEAS_INVALID, thresh = atoi(argv[1]);
+	int r;
+
+	if (3 == argc)
+		meas = atoi(argv[2]);
+
+	r = osmo_earfcn_add(e, arfcn, meas);
+
+	if (r < 0) {
+		vty_out(vty, "Unable to add arfcn %u: %s%s", arfcn, strerror(r),
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (si2q_size_check(bts)) {
+		if (e->thresh_hi && thresh != e->thresh_hi)
+			vty_out(vty, "Warning: multiple thresholds are not "
+				"supported, overriding previous threshold %u%s",
+				e->thresh_hi, VTY_NEWLINE);
+
+		e->thresh_hi = thresh;
+		return CMD_SUCCESS;
+	}
+	vty_out(vty, "Warning: not enough space in si2quater for a given arfcn%s"
+		, VTY_NEWLINE);
+	osmo_earfcn_del(e, arfcn);
+	return CMD_WARNING;
+}
+
+DEFUN(cfg_bts_si2quater_neigh_del, cfg_bts_si2quater_neigh_del_cmd,
+	"si2quater neighbor-list del earfcn <0-65535>",
+	"SI2quater Neighbor List\n"
+	"SI2quater Neighbor List\n"
+	"Delete from SI2quater manual neighbor list\n"
+	"EARFCN of neighbor\n"
+	"EARFCN\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+	uint16_t arfcn = atoi(argv[0]);
+	int r = osmo_earfcn_del(e, arfcn);
+	if (r < 0) {
+		vty_out(vty, "Unable to delete arfcn %u: %s%s", arfcn,
+			strerror(-r), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_si2quater_uarfcn_add, cfg_bts_si2quater_uarfcn_add_cmd,
+      "si2quater neighbor-list add uarfcn <0-16383> <0-511> <0-1>",
+      "SI2quater Neighbor List\n"
+      "SI2quater Neighbor List\n" "Add to manual SI2quater neighbor list\n"
+      "UARFCN of neighbor\n" "UARFCN of neighbor\n" "scrambling code\n"
+      "diversity bit\n")
+{
+	struct gsm_bts *bts = vty->index;
+	uint16_t arfcn = atoi(argv[0]), scramble = atoi(argv[1]);
+
+	switch(bts_uarfcn_add(bts, arfcn, scramble, atoi(argv[2]))) {
+	case -ENOMEM:
+		vty_out(vty, "Unable to add arfcn: max number of UARFCNs (%u) "
+			"reached%s", MAX_EARFCN_LIST, VTY_NEWLINE);
+	case -ENOSPC:
+		vty_out(vty, "Warning: not enough space in si2quater for a "
+			"given arfcn%s", VTY_NEWLINE);
+	case -EADDRINUSE:
+		vty_out(vty, "Unable to add arfcn: (%u, %u) is already added%s",
+			arfcn, scramble, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_si2quater_uarfcn_del, cfg_bts_si2quater_uarfcn_del_cmd,
+      "si2quater neighbor-list del uarfcn <0-16383> <0-511>",
+      "SI2quater Neighbor List\n"
+      "SI2quater Neighbor List\n"
+      "Delete from SI2quater manual neighbor list\n"
+      "UARFCN of neighbor\n"
+      "UARFCN\n"
+      "scrambling code\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts_uarfcn_del(bts, atoi(argv[0]), atoi(argv[1])) < 0) {
+		vty_out(vty, "Unable to delete uarfcn: pair not found%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_si5_neigh, cfg_bts_si5_neigh_cmd,
 	"si5 neighbor-list (add|del) arfcn <0-1023>",
 	"SI5 Neighbor List\n"
@@ -3118,6 +3247,44 @@ DEFUN(drop_bts,
 	return CMD_SUCCESS;
 }
 
+DEFUN(restart_bts, restart_bts_cmd,
+      "restart-bts <0-65535>",
+      "Restart ip.access nanoBTS through OML\n"
+      "BTS Number\n")
+{
+	struct gsm_network *gsmnet;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts *bts;
+	unsigned int bts_nr;
+
+	gsmnet = gsmnet_from_vty(vty);
+
+	bts_nr = atoi(argv[0]);
+	if (bts_nr >= gsmnet->num_bts) {
+		vty_out(vty, "BTS number must be between 0 and %d. It was %d.%s",
+			gsmnet->num_bts, bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts = gsm_bts_num(gsmnet, bts_nr);
+	if (!bts) {
+		vty_out(vty, "BTS Nr. %d could not be found.%s", bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!is_ipaccess_bts(bts) || is_sysmobts_v2(bts)) {
+		vty_out(vty, "This command only works for ipaccess nanoBTS.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* go from last TRX to c0 */
+	llist_for_each_entry_reverse(trx, &bts->trx_list, list)
+		abis_nm_ipaccess_restart(trx);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(smscb_cmd, smscb_cmd_cmd,
 	"bts <0-255> smscb-command <1-4> HEXSTRING",
 	"BTS related commands\n" "BTS Number\n"
@@ -3320,6 +3487,10 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	install_element(BTS_NODE, &cfg_bts_neigh_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
+	install_element(BTS_NODE, &cfg_bts_si2quater_neigh_add_cmd);
+	install_element(BTS_NODE, &cfg_bts_si2quater_neigh_del_cmd);
+	install_element(BTS_NODE, &cfg_bts_si2quater_uarfcn_add_cmd);
+	install_element(BTS_NODE, &cfg_bts_si2quater_uarfcn_del_cmd);
 	install_element(BTS_NODE, &cfg_bts_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_force_comb_si_cmd);
@@ -3380,6 +3551,7 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	install_element(TS_NODE, &cfg_ts_e1_subslot_cmd);
 
 	install_element(ENABLE_NODE, &drop_bts_cmd);
+	install_element(ENABLE_NODE, &restart_bts_cmd);
 	install_element(ENABLE_NODE, &pdch_act_cmd);
 	install_element(ENABLE_NODE, &smscb_cmd_cmd);
 

@@ -26,6 +26,7 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <osmocom/gprs/gprs_msgb.h>
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
@@ -34,7 +35,6 @@
 #include <openbsc/gprs_utils.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_gb_parse.h>
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/debug.h>
 
 #include <openssl/rand.h>
@@ -1293,6 +1293,7 @@ static int gprs_process_message(struct gprs_ns_inst *nsi, const char *text, stru
 	}
 
 	msg = gprs_ns_msgb_alloc();
+	OSMO_ASSERT(msg);
 	memmove(msg->data, data, data_len);
 	msg->l2h = msg->data;
 	msgb_put(msg, data_len);

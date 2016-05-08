@@ -1434,13 +1434,15 @@ static int gtphub_unmap_header_tei(struct gtphub_peer_port **to_port_p,
 		    p->header_tei_rx, gtphub_port_str(from_port));
 		return -1;
 	}
-	OSMO_ASSERT(*unmapped_from_tun);
+
+	if (unmapped_from_tun) {
+		OSMO_ASSERT(*unmapped_from_tun);
+		LOG(LOGL_DEBUG, "Unmapped TEI coming from: %s\n",
+		    gtphub_tunnel_str(*unmapped_from_tun));
+	}
 
 	uint32_t unmapped_tei = to->tei_orig;
 	set_tei(p, unmapped_tei);
-
-	LOG(LOGL_DEBUG, "Unmapped TEI coming from: %s\n",
-	    gtphub_tunnel_str(*unmapped_from_tun));
 
 	/* May be NULL for an invalidated tunnel. */
 	*to_port_p = to->peer;

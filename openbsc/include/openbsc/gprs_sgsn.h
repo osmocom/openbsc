@@ -9,11 +9,10 @@
 #include <osmocom/gsm/gsm48.h>
 
 #include <osmocom/crypt/gprs_cipher.h>
+#include <osmocom/gsm/protocol/gsm_23_003.h>
 
 #include <openbsc/gsm_data.h>
 
-#define GSM_IMSI_LENGTH 17
-#define GSM_IMEI_LENGTH 17
 #define GSM_EXTENSION_LENGTH 15
 #define GSM_APN_LENGTH 102
 
@@ -126,13 +125,13 @@ struct sgsn_mm_ctx {
 
 	enum sgsn_ran_type	ran_type;
 
-	char 			imsi[GSM_IMSI_LENGTH];
+	char 			imsi[GSM23003_IMSI_MAX_DIGITS+1];
 	enum gprs_gmm_state	mm_state;
 	enum gprs_pmm_state	pmm_state;
 	uint32_t 		p_tmsi;
 	uint32_t 		p_tmsi_old;	/* old P-TMSI before new is confirmed */
 	uint32_t 		p_tmsi_sig;
-	char 			imei[GSM_IMEI_LENGTH];
+	char 			imei[GSM23003_IMEISV_NUM_DIGITS+1];
 	/* Opt: Software Version Numbber / TS 23.195 */
 	char 			msisdn[GSM_EXTENSION_LENGTH];
 	struct gprs_ra_id	ra;

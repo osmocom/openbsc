@@ -5,9 +5,8 @@
 
 #include "gsm_data.h"
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/gsm/protocol/gsm_23_003.h>
 
-#define GSM_IMEI_LENGTH 17
-#define GSM_IMSI_LENGTH 17
 #define GSM_NAME_LENGTH 160
 
 #define GSM_EXTENSION_LENGTH 15 /* MSISDN can only be 15 digits length */
@@ -34,7 +33,7 @@ struct gsm_subscriber_group {
 
 struct gsm_equipment {
 	long long unsigned int id;
-	char imei[GSM_IMEI_LENGTH];
+	char imei[GSM23003_IMEISV_NUM_DIGITS+1];
 	char name[GSM_NAME_LENGTH];
 
 	struct gsm48_classmark1 classmark1;
@@ -47,7 +46,7 @@ struct gsm_equipment {
 struct gsm_subscriber {
 	struct gsm_subscriber_group *group;
 	long long unsigned int id;
-	char imsi[GSM_IMSI_LENGTH];
+	char imsi[GSM23003_IMSI_MAX_DIGITS+1];
 	uint32_t tmsi;
 	uint16_t lac;
 	char name[GSM_NAME_LENGTH];

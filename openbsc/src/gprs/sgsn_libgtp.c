@@ -39,8 +39,8 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/crypt/auth.h>
 #include <osmocom/gprs/gprs_bssgp.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 
-#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>

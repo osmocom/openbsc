@@ -34,6 +34,7 @@
 #include <openbsc/db.h>
 #include <openbsc/debug.h>
 
+#include <osmocom/gsm/protocol/gsm_23_003.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/statistics.h>
 #include <osmocom/core/rate_ctr.h>
@@ -508,14 +509,8 @@ struct gsm_subscriber *db_create_subscriber(const char *imsi)
 	/* Is this subscriber known in the db? */
 	subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi);
 	if (subscr) {
-		result = dbi_conn_queryf(conn,
-                         "UPDATE Subscriber set updated = datetime('now') "
-                         "WHERE imsi = %s " , imsi);
-		if (!result)
-			LOGP(DDB, LOGL_ERROR, "failed to update timestamp\n");
-		else
-			dbi_result_free(result);
-		return subscr;
+		subscr_put(subscr);
+		return NULL;
 	}
 
 	subscr = subscr_alloc();
@@ -529,10 +524,13 @@ struct gsm_subscriber *db_create_subscriber(const char *imsi)
 		"(%s, datetime('now'), datetime('now')) ",
 		imsi
 	);
-	if (!result)
+	if (!result) {
 		LOGP(DDB, LOGL_ERROR, "Failed to create Subscriber by IMSI.\n");
+		subscr_put(subscr);
+		return NULL;
+	}
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
-	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
+	strncpy(subscr->imsi, imsi, sizeof(subscr->imsi)-1);
 	dbi_result_free(result);
 	LOGP(DDB, LOGL_INFO, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
 	db_subscriber_alloc_exten(subscr);
@@ -703,25 +701,25 @@ int db_get_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 	atuple->key_seq = dbi_result_get_ulonglong(result, "key_seq");
 
 	len = dbi_result_get_field_length(result, "rand");
-	if (len != sizeof(atuple->rand))
+	if (len != sizeof(atuple->vec.rand))
 		goto err_size;
 
 	blob = dbi_result_get_binary(result, "rand");
-	memcpy(atuple->rand, blob, len);
+	memcpy(atuple->vec.rand, blob, len);
 
 	len = dbi_result_get_field_length(result, "sres");
-	if (len != sizeof(atuple->sres))
+	if (len != sizeof(atuple->vec.sres))
 		goto err_size;
 
 	blob = dbi_result_get_binary(result, "sres");
-	memcpy(atuple->sres, blob, len);
+	memcpy(atuple->vec.sres, blob, len);
 
 	len = dbi_result_get_field_length(result, "kc");
-	if (len != sizeof(atuple->kc))
+	if (len != sizeof(atuple->vec.kc))
 		goto err_size;
 
 	blob = dbi_result_get_binary(result, "kc");
-	memcpy(atuple->kc, blob, len);
+	memcpy(atuple->vec.kc, blob, len);
 
 	dbi_result_free(result);
 
@@ -762,11 +760,11 @@ int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 
 	/* Update / Insert */
 	dbi_conn_quote_binary_copy(conn,
-		atuple->rand, sizeof(atuple->rand), &rand_str);
+		atuple->vec.rand, sizeof(atuple->vec.rand), &rand_str);
 	dbi_conn_quote_binary_copy(conn,
-		atuple->sres, sizeof(atuple->sres), &sres_str);
+		atuple->vec.sres, sizeof(atuple->vec.sres), &sres_str);
 	dbi_conn_quote_binary_copy(conn,
-		atuple->kc, sizeof(atuple->kc), &kc_str);
+		atuple->vec.kc, sizeof(atuple->vec.kc), &kc_str);
 
 	if (!upd) {
 		result = dbi_conn_queryf(conn,
@@ -806,7 +804,7 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 	const char *string;
 	string = dbi_result_get_string(result, "imsi");
 	if (string)
-		strncpy(subscr->imsi, string, GSM_IMSI_LENGTH-1);
+		strncpy(subscr->imsi, string, sizeof(subscr->imsi)-1);
 
 	string = dbi_result_get_string(result, "tmsi");
 	if (string)
@@ -1320,7 +1318,7 @@ int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t *token
 	return 0;
 }
 
-int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IMEI_LENGTH])
+int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM23003_IMEISV_NUM_DIGITS])
 {
 	unsigned long long equipment_id, watch_id;
 	dbi_result result;

@@ -231,6 +231,43 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         self.assertEquals(self.vty.node(), 'config-mncc-int')
 
+    def testSi2Q(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("network")
+        self.vty.command("bts 0")
+        before = self.vty.command("show running-config")
+        self.vty.command("si2quater neighbor-list add earfcn 1911 threshold 11 2")
+        self.vty.command("si2quater neighbor-list add earfcn 1924 threshold 11 3")
+        self.vty.command("si2quater neighbor-list add earfcn 2111 threshold 11")
+        self.vty.command("si2quater neighbor-list del earfcn 1911")
+        self.vty.command("si2quater neighbor-list del earfcn 1924")
+        self.vty.command("si2quater neighbor-list del earfcn 2111")
+        self.assertEquals(before, self.vty.command("show running-config"))
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 13 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 38 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 44 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 120 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 140 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 163 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 166 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 217 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 224 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 225 1")
+        self.vty.command("si2quater neighbor-list add uarfcn 1976 226 1")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 13")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 38")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 44")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 120")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 140")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 163")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 166")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 217")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 224")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 225")
+        self.vty.command("si2quater neighbor-list del uarfcn 1976 226")
+        self.assertEquals(before, self.vty.command("show running-config"))
+
     def testEnableDisablePeriodicLU(self):
         self.vty.enable()
         self.vty.command("configure terminal")
@@ -306,6 +343,42 @@ class TestVTYNITB(TestVTYGenericBSC):
         for classNum in range(16):
             if classNum != 10:
                 self.assertEquals(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
+
+    def testSubscriberCreateDeleteTwice(self):
+        """
+        OS#1657 indicates that there might be an issue creating the
+        same subscriber twice. This test will use the VTY command to
+        create a subscriber and then issue a second create command
+        with the same IMSI. The test passes if the VTY continues to
+        respond to VTY commands.
+        """
+        self.vty.enable()
+
+        imsi = "204300854013739"
+
+        # Initially we don't have this subscriber
+        self.vty.verify('show subscriber imsi '+imsi, ['% No subscriber found for imsi '+imsi])
+
+        # Lets create one
+        res = self.vty.command('subscriber create imsi '+imsi)
+        self.assert_(res.find("    IMSI: "+imsi) > 0)
+        # And now create one again.
+        res2 = self.vty.command('subscriber create imsi '+imsi)
+        self.assert_(res2.find("    IMSI: "+imsi) > 0)
+        self.assertEqual(res, res2)
+
+        # Verify it has been created
+        res = self.vty.command('show subscriber imsi '+imsi)
+        self.assert_(res.find("    IMSI: "+imsi) > 0)
+
+        # Delete it
+        res = self.vty.command('subscriber delete imsi '+imsi)
+        self.assert_(res != "")
+
+        # Now it should not be there anymore
+        res = self.vty.command('show subscriber imsi '+imsi)
+        self.assert_(res != '% No subscriber found for imsi '+imsi)
+
 
     def testSubscriberCreateDelete(self):
         self.vty.enable()
@@ -584,11 +657,62 @@ class TestVTYBSC(TestVTYGenericBSC):
 class TestVTYNAT(TestVTYGenericBSC):
 
     def vty_command(self):
-        return ["./src/osmo-bsc_nat/osmo-bsc_nat", "-c",
+        return ["./src/osmo-bsc_nat/osmo-bsc_nat", "-l", "127.0.0.1", "-c",
                 "doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg"]
 
     def vty_app(self):
         return (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat")
+
+    def testBSCreload(self):
+        # Use different port for the mock msc to avoid clashing with
+        # the osmo-bsc_nat itself
+        ip = "127.0.0.1"
+        port = 5522
+        self.vty.enable()
+        bscs1 = self.vty.command("show bscs-config")
+        nat_bsc_reload(self)
+        bscs2 = self.vty.command("show bscs-config")
+        # check that multiple calls to bscs-config-file give the same result
+        self.assertEquals(bscs1, bscs2)
+
+        # add new bsc
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.command("bsc 5")
+        self.vty.command("token key")
+        self.vty.command("location_area_code 666")
+        self.vty.command("end")
+
+        # update bsc token
+        self.vty.command("configure terminal")
+        self.vty.command("nat")
+        self.vty.command("bsc 1")
+        self.vty.command("token xyu")
+        self.vty.command("end")
+
+        nat_msc_ip(self, ip, port)
+        msc = nat_msc_test(self, ip, port)
+        b0 = nat_bsc_sock_test(0, "lol")
+        b1 = nat_bsc_sock_test(1, "xyu")
+        b2 = nat_bsc_sock_test(5, "key")
+
+        self.assertEquals("3 BSCs configured", self.vty.command("show nat num-bscs-configured"))
+        self.assertTrue(3 == nat_bsc_num_con(self))
+        self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
+
+        nat_bsc_reload(self)
+        bscs2 = self.vty.command("show bscs-config")
+        # check that the reset to initial config succeeded
+        self.assertEquals(bscs1, bscs2)
+
+        self.assertEquals("2 BSCs configured", self.vty.command("show nat num-bscs-configured"))
+        self.assertTrue(1 == nat_bsc_num_con(self))
+        rem = self.vty.command("show bsc connections").split(' ')
+        # remaining connection is for BSC0
+        self.assertEquals('0', rem[2])
+        # remaining connection is authorized
+        self.assertEquals('1', rem[4])
+        self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
 
     def testVtyTree(self):
         self.vty.enable()
@@ -700,13 +824,13 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.assertEqual(data, "\x00\x01\xfe\x04")
 
         print "Going to send ID_RESP response"
-        res = ussdSocket.send("\x00\x07\xfe\x05\x00\x04\x01\x6b\x65\x79")
+        res = ipa_send_resp(ussdSocket, "\x6b\x65\x79")
         self.assertEqual(res, 10)
 
         # initiating PING/PONG cycle to know, that the ID_RESP message has been processed
 
         print "Going to send PING request"
-        res = ussdSocket.send("\x00\x01\xfe\x00")
+        res = ipa_send_ping(ussdSocket)
         self.assertEqual(res, 4)
 
         print "Expecting PONG response"
@@ -970,6 +1094,101 @@ def add_nat_test(suite, workdir):
         return
     test = unittest.TestLoader().loadTestsFromTestCase(TestVTYNAT)
     suite.addTest(test)
+
+def ipa_send_pong(x, verbose = False):
+    if (verbose):
+        print "\tBSC -> NAT: PONG!"
+    return x.send("\x00\x01\xfe\x01")
+
+def ipa_send_ping(x, verbose = False):
+    if (verbose):
+        print "\tBSC -> NAT: PING?"
+    return x.send("\x00\x01\xfe\x00")
+
+def ipa_send_ack(x, verbose = False):
+    if (verbose):
+            print "\tBSC -> NAT: IPA ID ACK"
+    return x.send("\x00\x01\xfe\x06")
+
+def ipa_send_reset(x, verbose = False):
+    if (verbose):
+        print "\tBSC -> NAT: RESET"
+    return x.send("\x00\x12\xfd\x09\x00\x03\x05\x07\x02\x42\xfe\x02\x42\xfe\x06\x00\x04\x30\x04\x01\x20")
+
+def ipa_send_resp(x, tk, verbose = False):
+    if (verbose):
+        print "\tBSC -> NAT: IPA ID RESP"
+    return x.send("\x00\x07\xfe\x05\x00\x04\x01" + tk)
+
+def nat_bsc_reload(x):
+    x.vty.command("configure terminal")
+    x.vty.command("nat")
+    x.vty.command("bscs-config-file bscs.config")
+    x.vty.command("end")
+
+def nat_msc_ip(x, ip, port):
+    x.vty.command("configure terminal")
+    x.vty.command("nat")
+    x.vty.command("msc ip " + ip)
+    x.vty.command("msc port " + str(port))
+    x.vty.command("end")
+
+def data2str(d):
+    return d.encode('hex').lower()
+
+def nat_msc_test(x, ip, port, verbose = False):
+    msc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    msc.settimeout(32)
+    msc.bind((ip, port))
+    msc.listen(5)
+    if (verbose):
+        print "MSC is ready at " + ip
+    while "MSC is connected: 0" == x.vty.command("show msc connection"):
+        conn, addr = msc.accept()
+        if (verbose):
+            print "MSC got connection from ", addr
+    return conn
+
+def ipa_handle_small(x, verbose = False):
+    s = data2str(x.recv(4))
+    if "0001fe00" == s:
+        if (verbose):
+            print "\tBSC <- NAT: PING?"
+        ipa_send_pong(x, verbose)
+    elif "0001fe06" == s:
+        if (verbose):
+            print "\tBSC <- NAT: IPA ID ACK"
+        ipa_send_ack(x, verbose)
+    elif "0001fe00" == s:
+        if (verbose):
+            print "\tBSC <- NAT: PONG!"
+    else:
+        if (verbose):
+            print "\tBSC <- NAT: ", s
+
+def ipa_handle_resp(x, tk, verbose = False):
+    s = data2str(x.recv(38))
+    if "0023fe040108010701020103010401050101010011" in s:
+         ipa_send_resp(x, tk, verbose)
+    else:
+        if (verbose):
+            print "\tBSC <- NAT: ", s
+
+def nat_bsc_num_con(x):
+    return len(x.vty.command("show bsc connections").split('\n'))
+
+def nat_bsc_sock_test(nr, tk, verbose = False):
+    bsc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    bsc.bind(('127.0.0.1', 0))
+    bsc.connect(('127.0.0.1', 5000))
+    if (verbose):
+        print "BSC%d " %nr
+        print "\tconnected to %s:%d" % bsc.getpeername()
+    ipa_handle_small(bsc, verbose)
+    ipa_handle_resp(bsc, tk, verbose)
+    bsc.recv(27) # MGCP msg
+    ipa_handle_small(bsc, verbose)
+    return bsc
 
 def add_bsc_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc")):

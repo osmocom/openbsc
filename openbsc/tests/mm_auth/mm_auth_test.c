@@ -26,9 +26,9 @@ static char *auth_tuple_str(struct gsm_auth_tuple *atuple)
 	print2buf("gsm_auth_tuple {\n");
 	print2buf("  .use_count = %d\n", atuple->use_count);
 	print2buf("  .key_seq = %d\n", atuple->key_seq);
-	print2buf("  .rand = %s\n", osmo_hexdump(atuple->rand, sizeof(atuple->rand)));
-	print2buf("  .sres = %s\n", osmo_hexdump(atuple->sres, sizeof(atuple->sres)));
-	print2buf("  .kc = %s\n", osmo_hexdump(atuple->kc, sizeof(atuple->kc)));
+	print2buf("  .rand = %s\n", osmo_hexdump(atuple->vec.rand, sizeof(atuple->vec.rand)));
+	print2buf("  .sres = %s\n", osmo_hexdump(atuple->vec.sres, sizeof(atuple->vec.sres)));
+	print2buf("  .kc = %s\n", osmo_hexdump(atuple->vec.kc, sizeof(atuple->vec.kc)));
 	print2buf("}\n");
 #undef print2buf
 

@@ -5,6 +5,7 @@
 
 #include <osmocom/core/timer.h>
 #include <osmocom/core/select.h>
+#include <osmocom/crypt/auth.h>
 
 #include <openbsc/rest_octets.h>
 #include <openbsc/xsc.h>
@@ -48,9 +49,7 @@ struct gsm_auth_info {
 struct gsm_auth_tuple {
 	int use_count;
 	int key_seq;
-	uint8_t rand[16];
-	uint8_t sres[4];
-	uint8_t kc[8];
+	struct osmo_auth_vector vec;
 };
 #define GSM_KEY_SEQ_INVAL	7	/* GSM 04.08 - 10.5.1.2 */
 

@@ -60,6 +60,7 @@
 #include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/gsm0480.h>
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/tlv.h>
@@ -147,7 +148,6 @@ void allocate_security_operation(struct gsm_subscriber_connection *conn)
 int iu_hack__get_hardcoded_auth_tuple(struct gsm_auth_tuple *atuple)
 {
 	unsigned char tmp_rand[16];
-	struct osmo_auth_vector vec;
 	/* Ki 000102030405060708090a0b0c0d0e0f */
 	struct osmo_sub_auth_data auth = {
 		.type	= OSMO_AUTH_TYPE_GSM,
@@ -161,13 +161,10 @@ int iu_hack__get_hardcoded_auth_tuple(struct gsm_auth_tuple *atuple)
 
 	RAND_bytes(tmp_rand, sizeof(tmp_rand));
 
-	memset(&vec, 0, sizeof(vec));
-	osmo_auth_gen_vec(&vec, &auth, tmp_rand);
+	memset(&atuple->vec, 0, sizeof(atuple->vec));
+	osmo_auth_gen_vec(&atuple->vec, &auth, tmp_rand);
 
 	atuple->key_seq = 0;
-	memcpy(&atuple->rand, &tmp_rand, sizeof(atuple->rand));
-	memcpy(&atuple->sres, &vec.sres, sizeof(atuple->sres));
-	memcpy(&atuple->kc, &vec.kc, sizeof(atuple->kc));
 	return AUTH_DO_AUTH;
 }
 
@@ -260,13 +257,13 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 		/* Start authentication */
 		DEBUGP(DMM, "gsm48_secure_channel(%s) starting authentication\n",
 		       subscr_name(subscr));
-		return gsm48_tx_mm_auth_req(conn, op->atuple.rand, op->atuple.key_seq);
+		return gsm48_tx_mm_auth_req(conn, op->atuple.vec.rand, op->atuple.key_seq);
 	} else if (rc == AUTH_DO_CIPH) {
 		/* Start ciphering directly */
 		DEBUGP(DMM, "gsm48_secure_channel(%s) starting ciphering\n",
 		       subscr_name(subscr));
 		return gsm0808_cipher_mode(conn, net->a5_encryption,
-		                           op->atuple.kc, 8, 0);
+		                           op->atuple.vec.kc, 8, 0);
 	}
 
 	return -EINVAL; /* not reached */
@@ -1137,10 +1134,10 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	cb = conn->sec_operation->cb;
 
 	/* Validate SRES */
-	if (memcmp(conn->sec_operation->atuple.sres, ar->sres,4)) {
+	if (memcmp(conn->sec_operation->atuple.vec.sres, ar->sres,4)) {
 		int rc;
 		DEBUGPC(DMM, "Invalid (expected %s)\n",
-			osmo_hexdump(conn->sec_operation->atuple.sres, 4));
+			osmo_hexdump(conn->sec_operation->atuple.vec.sres, 4));
 
 		if (cb)
 			cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
@@ -1161,7 +1158,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 		 * As soon as such a receiver exists, it must call
 		 * iu_tx_sec_mode_cmd() as below. */
 		return gsm0808_cipher_mode(conn, net->a5_encryption,
-					   conn->sec_operation->atuple.kc, 8, 0);
+					   conn->sec_operation->atuple.vec.kc, 8, 0);
 
 	if (conn->via_iface == IFACE_IU
 	    && !conn->iu.integrity_protection) {
@@ -1607,15 +1604,36 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct gsm_bts *remote_bts = remote_lchan->ts->trx->bts;
+	enum gsm_chan_t lt = lchan->type, rt = remote_lchan->type;
+	enum gsm48_chan_mode lm = lchan->tch_mode, rm = remote_lchan->tch_mode;
 	int rc;
 
-	DEBUGP(DCC, "Setting up TCH map between (bts=%u,trx=%u,ts=%u) and (bts=%u,trx=%u,ts=%u)\n",
-		bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
-		remote_bts->nr, remote_lchan->ts->trx->nr, remote_lchan->ts->nr);
+	DEBUGP(DCC, "Setting up TCH map between (bts=%u,trx=%u,ts=%u,%s) and "
+	       "(bts=%u,trx=%u,ts=%u,%s)\n",
+	       bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+	       get_value_string(gsm_chan_t_names, lt),
+	       remote_bts->nr, remote_lchan->ts->trx->nr, remote_lchan->ts->nr,
+	       get_value_string(gsm_chan_t_names, rt));
 
 	if (bts->type != remote_bts->type) {
 		LOGP(DCC, LOGL_ERROR, "Cannot switch calls between different BTS types yet\n");
 		return -EINVAL;
+	}
+
+	if (lt != rt) {
+		LOGP(DCC, LOGL_ERROR, "Cannot patch through call with different"
+		     " channel types: local = %s, remote = %s\n",
+		     get_value_string(gsm_chan_t_names, lt),
+		     get_value_string(gsm_chan_t_names, rt));
+		return -EBADSLT;
+	}
+
+	if (lm != rm) {
+		LOGP(DCC, LOGL_ERROR, "Cannot patch through call with different"
+		     " channel modes: local = %s, remote = %s\n",
+		     get_value_string(gsm48_chan_mode_names, lm),
+		     get_value_string(gsm48_chan_mode_names, rm));
+		return -EMEDIUMTYPE;
 	}
 
 	// todo: map between different bts types
@@ -1864,6 +1882,30 @@ static void gsm48_cc_timeout(void *arg)
 			gsm48_cc_tx_release(trans, &mo_rel);
 	}
 
+}
+
+/* disconnect both calls from the bridge */
+static inline void disconnect_bridge(struct gsm_network *net,
+				     struct gsm_mncc_bridge *bridge, int err)
+{
+	struct gsm_trans *trans0 = trans_find_by_callref(net, bridge->callref[0]);
+	struct gsm_trans *trans1 = trans_find_by_callref(net, bridge->callref[1]);
+	struct gsm_mncc mx_rel;
+	if (!trans0 || !trans1)
+		return;
+
+	DEBUGP(DCC, "Failed to bridge TCH for calls %x <-> %x :: %s \n",
+	       trans0->callref, trans1->callref, strerror(err));
+
+	memset(&mx_rel, 0, sizeof(struct gsm_mncc));
+	mncc_set_cause(&mx_rel, GSM48_CAUSE_LOC_INN_NET,
+		       GSM48_CC_CAUSE_CHAN_UNACCEPT);
+
+	mx_rel.callref = trans0->callref;
+	gsm48_cc_tx_disconnect(trans0, &mx_rel);
+
+	mx_rel.callref = trans1->callref;
+	gsm48_cc_tx_disconnect(trans1, &mx_rel);
 }
 
 static void gsm48_start_cc_timer(struct gsm_trans *trans, int current,
@@ -3031,6 +3073,7 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 	struct gsm_bts *bts;
 	struct gsm_lchan *lchan;
 	struct gsm_trans *trans;
+	enum gsm48_chan_mode m;
 
 	/* Find callref */
 	trans = trans_find_by_callref(net, callref);
@@ -3070,8 +3113,11 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 	 */
 	if (lchan->tch_mode == GSM48_CMODE_SIGN) {
 		trans->conn->mncc_rtp_create_pending = 1;
-		return gsm0808_assign_req(trans->conn,
-				mncc_codec_for_mode(lchan->type),
+		m = mncc_codec_for_mode(lchan->type);
+		LOGP(DMNCC, LOGL_DEBUG, "RTP create: codec=%s, chan_type=%s\n",
+		     get_value_string(gsm48_chan_mode_names, m),
+		     get_value_string(gsm_chan_t_names, lchan->type));
+		return gsm0808_assign_req(trans->conn, m,
 				lchan->type != GSM_LCHAN_TCH_H);
 	}
 
@@ -3105,6 +3151,10 @@ static int tch_rtp_connect(struct gsm_network *net, void *arg)
 	}
 
 	lchan = trans->conn->lchan;
+	LOGP(DMNCC, LOGL_DEBUG, "RTP connect: codec=%s, chan_type=%s\n",
+		     get_value_string(gsm48_chan_mode_names,
+				      mncc_codec_for_mode(lchan->type)),
+		     get_value_string(gsm_chan_t_names, lchan->type));
 
 	/* TODO: Check if payload_msg_type is compatible with what we have */
 	if (rtp->payload_type != lchan->abis_ip.rtp_payload) {
@@ -3250,7 +3300,10 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 	/* handle special messages */
 	switch(msg_type) {
 	case MNCC_BRIDGE:
-		return tch_bridge(net, arg);
+		rc = tch_bridge(net, arg);
+		if (rc < 0)
+			disconnect_bridge(net, arg, -rc);
+		return rc;
 	case MNCC_FRAME_DROP:
 		return tch_recv_mncc(net, data->callref, 0);
 	case MNCC_FRAME_RECV:

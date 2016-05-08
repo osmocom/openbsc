@@ -440,7 +440,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 	/*
 	 * fill the channel information element, this code
 	 * should probably be shared with rsl_rx_chan_rqd(),
-	 * gsm48_tx_chan_mode_modify. But beware that 10.5.2.5
+	 * gsm48_lchan_modify(). But beware that 10.5.2.5
 	 * 10.5.2.5.a have slightly different semantic for
 	 * the chan_desc. But as long as multi-slot configurations
 	 * are not used we seem to be fine.
@@ -465,7 +465,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 }
 
 /* 9.1.5 Channel mode modify: Modify the mode on the MS side */
-int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
+int gsm48_lchan_modify(struct gsm_lchan *lchan, uint8_t mode)
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CHN MOD");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -488,17 +488,6 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
 	mr_config_for_ms(lchan, msg);
 
 	return gsm48_sendmsg(msg);
-}
-
-int gsm48_lchan_modify(struct gsm_lchan *lchan, uint8_t lchan_mode)
-{
-	int rc;
-
-	rc = gsm48_tx_chan_mode_modify(lchan, lchan_mode);
-	if (rc < 0)
-		return rc;
-
-	return rc;
 }
 
 int gsm48_rx_rr_modif_ack(struct msgb *msg)

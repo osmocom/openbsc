@@ -92,13 +92,13 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 		vty_out(vty, "     seq # : %d%s",
 			atuple.key_seq, VTY_NEWLINE);
 		vty_out(vty, "     RAND  : %s%s",
-			osmo_hexdump(atuple.rand, sizeof(atuple.rand)),
+			osmo_hexdump(atuple.vec.rand, sizeof(atuple.vec.rand)),
 			VTY_NEWLINE);
 		vty_out(vty, "     SRES  : %s%s",
-			osmo_hexdump(atuple.sres, sizeof(atuple.sres)),
+			osmo_hexdump(atuple.vec.sres, sizeof(atuple.vec.sres)),
 			VTY_NEWLINE);
 		vty_out(vty, "     Kc    : %s%s",
-			osmo_hexdump(atuple.kc, sizeof(atuple.kc)),
+			osmo_hexdump(atuple.vec.kc, sizeof(atuple.vec.kc)),
 			VTY_NEWLINE);
 	}
 
@@ -235,11 +235,17 @@ DEFUN(subscriber_create,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr;
 
-	subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0]);
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber created for IMSI %s%s",
-			argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
+	subscr = subscr_get_by_imsi(gsmnet->subscr_group, argv[0]);
+	if (subscr)
+		db_sync_subscriber(subscr);
+	else {
+		subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0]);
+
+		if (!subscr) {
+			vty_out(vty, "%% No subscriber created for IMSI %s%s",
+				argv[0], VTY_NEWLINE);
+			return CMD_WARNING;
+		}
 	}
 
 	/* Show info about the created subscriber. */

@@ -15,7 +15,6 @@ oap_test_LDADD = \
 	$(top_builddir)/src/gprs/oap.o \
 	$(top_builddir)/src/gprs/oap_messages.o \
 	$(top_builddir)/src/gprs/gprs_utils.o \
-	$(top_builddir)/src/gprs/gsm_04_08_gprs.o \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOCORE_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
