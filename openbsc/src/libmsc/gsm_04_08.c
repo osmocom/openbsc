@@ -197,7 +197,7 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 	 * Cancel any outstanding location updating request
 	 * operation taking place on the subscriber connection.
 	 */
-	//release_loc_updating_req(conn, 1);
+	loc_updating_failure(conn, 0);
 
 	/* We might need to cancel the paging response or such. */
 	if (conn->sec_operation && conn->sec_operation->cb) {
@@ -250,8 +250,6 @@ void gsm0408_clear_all_trans(struct gsm_network *net, int protocol)
 int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 {
 	struct msgb *msg;
-
-	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT]);
 
 	msg = gsm48_create_loc_upd_rej(cause);
 	if (!msg) {
@@ -306,8 +304,6 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn,
 	/* TODO: Per-MS T3312 */
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
-
-	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_ACCEPT]);
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
