@@ -289,7 +289,11 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Allocation failed. Exiting.\n");
 			exit(1);
 		}
-		mncc_sock_init(bsc_gsmnet, mncc_sock_path);
+		rc = mncc_sock_init(bsc_gsmnet, mncc_sock_path);
+		if (rc) {
+			fprintf(stderr, "MNCC socket initialization failed. exiting.\n");
+			exit(1);
+		}
 	} else {
 		DEBUGP(DMNCC, "Using internal MNCC handler.\n");
 		rc = bsc_network_alloc(int_mncc_recv);
