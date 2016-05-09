@@ -815,9 +815,9 @@ DEFUN(show_stats,
 	vty_out(vty, "IMSI Detach Indications : %lu%s",
 		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_DETACH].current,
 		VTY_NEWLINE);
-	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
-		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_ACCEPT].current,
-		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT].current,
+	vty_out(vty, "Location Updating Results: %lu completed, %lu failed%s",
+		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_COMPLETED].current,
+		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_FAILED].current,
 		VTY_NEWLINE);
 	vty_out(vty, "Handover                : %lu attempted, %lu no_channel, %lu timeout, "
 		"%lu completed, %lu failed%s",
