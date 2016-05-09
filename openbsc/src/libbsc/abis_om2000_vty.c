@@ -82,7 +82,7 @@ DEFUN(om2k_class_inst, om2k_class_inst_cmd,
 	struct oml_node_state *oms;
 	int bts_nr = atoi(argv[0]);
 
-	bts = gsm_bts_num(bsc_gsmnet, bts_nr);
+	bts = gsm_bts_num(gsmnet_from_vty(vty), bts_nr);
 	if (!bts) {
 		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
 		return CMD_WARNING;
@@ -122,7 +122,7 @@ DEFUN(om2k_classnum_inst, om2k_classnum_inst_cmd,
 	struct oml_node_state *oms;
 	int bts_nr = atoi(argv[0]);
 
-	bts = gsm_bts_num(bsc_gsmnet, bts_nr);
+	bts = gsm_bts_num(gsmnet_from_vty(vty), bts_nr);
 	if (!bts) {
 		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
 		return CMD_WARNING;

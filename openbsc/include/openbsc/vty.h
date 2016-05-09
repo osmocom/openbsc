@@ -46,4 +46,6 @@ struct log_info;
 int bsc_vty_init(const struct log_info *cat, struct gsm_network *network);
 int bsc_vty_init_extra(void);
 
+struct gsm_network *gsmnet_from_vty(struct vty *vty);
+
 #endif
