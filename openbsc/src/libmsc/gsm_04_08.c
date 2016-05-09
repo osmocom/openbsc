@@ -3664,6 +3664,9 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	uint8_t pdisc = gsm48_hdr_pdisc(gh);
 	int rc = 0;
 
+	OSMO_ASSERT(conn);
+	OSMO_ASSERT(msg);
+
 	LOGP(DRLL, LOGL_DEBUG, "Dispatching 04.08 message, pdisc=%d\n", pdisc);
 	if (silent_call_reroute(conn, msg))
 		return silent_call_rx(conn, msg);
@@ -3687,6 +3690,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	case GSM48_PDISC_SM_GPRS:
 		LOGP(DRLL, LOGL_NOTICE, "Unimplemented "
 			"GSM 04.08 discriminator 0x%02x\n", pdisc);
+		rc = -ENOTSUP;
 		break;
 	case GSM48_PDISC_NC_SS:
 		release_anchor(conn);
@@ -3695,6 +3699,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	default:
 		LOGP(DRLL, LOGL_NOTICE, "Unknown "
 			"GSM 04.08 discriminator 0x%02x\n", pdisc);
+		rc = -EINVAL;
 		break;
 	}
 
