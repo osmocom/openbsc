@@ -23,13 +23,15 @@
 
 #include <stdbool.h>
 
-struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
+struct gsm_network *gsm_network_init(void *ctx,
+				     uint16_t country_code,
+				     uint16_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, struct msgb *))
 {
 	struct gsm_network *net;
 	const char *default_regexp = ".*";
 
-	net = talloc_zero(tall_bsc_ctx, struct gsm_network);
+	net = talloc_zero(ctx, struct gsm_network);
 	if (!net)
 		return NULL;
 

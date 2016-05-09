@@ -477,7 +477,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 	int rc;
 
 	/* initialize our data structures */
-	bsc_gsmnet = gsm_network_init(1, 1, mncc_recv);
+	bsc_gsmnet = gsm_network_init(tall_bsc_ctx, 1, 1, mncc_recv);
 	if (!bsc_gsmnet)
 		return -ENOMEM;
 
