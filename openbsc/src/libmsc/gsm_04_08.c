@@ -99,29 +99,6 @@ struct gsm_lai {
 	uint16_t lac;
 };
 
-static int apply_codec_restrictions(struct gsm_bts *bts,
-	struct gsm_mncc_bearer_cap *bcap)
-{
-	int i, j;
-
-	/* remove unsupported speech versions from list */
-	for (i = 0, j = 0; bcap->speech_ver[i] >= 0; i++) {
-		if (bcap->speech_ver[i] == GSM48_BCAP_SV_FR)
-			bcap->speech_ver[j++] = GSM48_BCAP_SV_FR;
-		if (bcap->speech_ver[i] == GSM48_BCAP_SV_EFR && bts->codec.efr)
-			bcap->speech_ver[j++] = GSM48_BCAP_SV_EFR;
-		if (bcap->speech_ver[i] == GSM48_BCAP_SV_AMR_F && bts->codec.amr)
-			bcap->speech_ver[j++] = GSM48_BCAP_SV_AMR_F;
-		if (bcap->speech_ver[i] == GSM48_BCAP_SV_HR && bts->codec.hr)
-			bcap->speech_ver[j++] = GSM48_BCAP_SV_HR;
-		if (bcap->speech_ver[i] == GSM48_BCAP_SV_AMR_H && bts->codec.amr)
-			bcap->speech_ver[j++] = GSM48_BCAP_SV_AMR_H;
-	}
-	bcap->speech_ver[j] = -1;
-
-	return 0;
-}
-
 static uint32_t new_callref = 0x80000001;
 
 void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg)
@@ -1926,7 +1903,6 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 		setup.fields |= MNCC_F_BEARER_CAP;
 		gsm48_decode_bearer_cap(&setup.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
-		apply_codec_restrictions(trans->conn->bts, &setup.bearer_cap);
 	}
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
@@ -2084,7 +2060,6 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 		call_conf.fields |= MNCC_F_BEARER_CAP;
 		gsm48_decode_bearer_cap(&call_conf.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
-		apply_codec_restrictions(trans->conn->bts, &call_conf.bearer_cap);
 	}
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
@@ -2774,7 +2749,6 @@ static int gsm48_cc_rx_modify(struct gsm_trans *trans, struct msgb *msg)
 		modify.fields |= MNCC_F_BEARER_CAP;
 		gsm48_decode_bearer_cap(&modify.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
-		apply_codec_restrictions(trans->conn->bts, &modify.bearer_cap);
 	}
 
 	new_cc_state(trans, GSM_CSTATE_MO_ORIG_MODIFY);
@@ -2817,7 +2791,6 @@ static int gsm48_cc_rx_modify_complete(struct gsm_trans *trans, struct msgb *msg
 		modify.fields |= MNCC_F_BEARER_CAP;
 		gsm48_decode_bearer_cap(&modify.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
-		apply_codec_restrictions(trans->conn->bts, &modify.bearer_cap);
 	}
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
@@ -2858,7 +2831,6 @@ static int gsm48_cc_rx_modify_reject(struct gsm_trans *trans, struct msgb *msg)
 		modify.fields |= GSM48_IE_BEARER_CAP;
 		gsm48_decode_bearer_cap(&modify.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
-		apply_codec_restrictions(trans->conn->bts, &modify.bearer_cap);
 	}
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
