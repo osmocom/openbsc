@@ -999,6 +999,14 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 		return gsm48_tx_mm_serv_rej(conn,
 					    GSM48_REJECT_IMSI_UNKNOWN_IN_VLR);
 
+	if (subscr->limited_service && req->cm_service_type != 0x04) {
+		LOGP(DMM, LOGL_DEBUG,
+			"Rejecting CM service req of subscr(IMSI=%s)\n",
+			subscr->imsi);
+		subscr_put(subscr);
+		return gsm48_tx_mm_serv_rej(conn, GSM48_REJECT_SERVICES_NOT_ALLOWED);
+	}
+
 	if (!conn->subscr)
 		conn->subscr = subscr;
 	else if (conn->subscr == subscr)

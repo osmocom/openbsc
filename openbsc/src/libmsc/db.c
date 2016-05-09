@@ -47,7 +47,7 @@ static char *db_basename = NULL;
 static char *db_dirname = NULL;
 static dbi_conn conn;
 
-#define SCHEMA_REVISION "4"
+#define SCHEMA_REVISION "9800"
 
 enum {
 	SCHEMA_META,
@@ -85,7 +85,8 @@ static const char *create_stmts[] = {
 		"authorized INTEGER NOT NULL DEFAULT 0, "
 		"tmsi TEXT UNIQUE, "
 		"lac INTEGER NOT NULL DEFAULT 0, "
-		"expire_lu TIMESTAMP DEFAULT NULL"
+		"expire_lu TIMESTAMP DEFAULT NULL, "
+		"limited_service INTEGER NOT NULL DEFAULT 0"
 		")",
 	[SCHEMA_AUTH] = "CREATE TABLE IF NOT EXISTS AuthToken ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -825,7 +826,7 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 		subscr->expire_lu = GSM_SUBSCRIBER_NO_EXPIRATION;
 
 	subscr->authorized = dbi_result_get_ulonglong(result, "authorized");
-
+	subscr->limited_service = dbi_result_get_ulonglong(result, "limited_service");
 }
 
 #define BASE_QUERY "SELECT * FROM Subscriber "
@@ -890,9 +891,9 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 	subscr->id = dbi_result_get_ulonglong(result, "id");
 
 	db_set_from_query(subscr, result);
-	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
+	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u LTD %u\n",
 		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
-		subscr->lac, subscr->authorized);
+		subscr->lac, subscr->authorized, subscr->limited_service);
 	dbi_result_free(result);
 
 	get_equipment_by_subscr(subscr);
@@ -955,6 +956,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			"name = %s, "
 			"extension = %s, "
 			"authorized = %i, "
+			"limited_service = %i, "
 			"tmsi = %s, "
 			"lac = %i, "
 			"expire_lu = NULL "
@@ -962,6 +964,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			q_name,
 			q_extension,
 			subscriber->authorized,
+			subscriber->limited_service,
 			q_tmsi,
 			subscriber->lac,
 			subscriber->imsi);
@@ -972,6 +975,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			"name = %s, "
 			"extension = %s, "
 			"authorized = %i, "
+			"limited_service = %i, "
 			"tmsi = %s, "
 			"lac = %i, "
 			"expire_lu = datetime(%i, 'unixepoch') "
@@ -979,6 +983,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			q_name,
 			q_extension,
 			subscriber->authorized,
+			subscriber->limited_service,
 			q_tmsi,
 			subscriber->lac,
 			(int) subscriber->expire_lu,

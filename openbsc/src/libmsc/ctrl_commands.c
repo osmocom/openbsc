@@ -101,6 +101,7 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 		goto fail;
 
 	subscr->authorized = 1;
+	subscr->limited_service = 0;
 	strncpy(subscr->extension, msisdn, GSM_EXTENSION_LENGTH - 1);
 	subscr->extension[GSM_EXTENSION_LENGTH-1] = '\0';
 
@@ -218,11 +219,12 @@ static int set_subscriber_list(struct ctrl_cmd *cmd, void *d)
 static void list_cb(struct gsm_subscriber *subscr, void *d)
 {
 	char **data = (char **) d;
-	*data = talloc_asprintf_append(*data, "%s,%s,%d,%s\n",
+	*data = talloc_asprintf_append(*data, "%s,%s,%d,%s,%d\n",
 				subscr->imsi, subscr->extension,
 				subscr->authorized,
 				osmo_hexdump_nospc((const uint8_t *) subscr->name,
-							strlen(subscr->name)));
+							strlen(subscr->name)),
+				subscr->limited_service);
 }
 
 static int get_subscriber_list(struct ctrl_cmd *cmd, void *d)
