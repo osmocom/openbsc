@@ -3240,6 +3240,37 @@ DEFUN(cfg_trx_arfcn,
 {
 	int arfcn = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
+	struct gsm_bts *bts = trx->bts;
+
+	switch (bts->band) {
+	case GSM_BAND_1800:
+		if (arfcn < 512 || arfcn > 885) {
+			vty_out(vty, "%%GSM1800 channel must be between 512-885.%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		break;
+	case GSM_BAND_1900:
+		if (arfcn < 512 || arfcn > 810) {
+			vty_out(vty,  "%%GSM1900 channel must be between 512-810.%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		break;
+	case GSM_BAND_900:
+		if ((arfcn > 124 && arfcn < 955) || arfcn > 1023)  {
+			vty_out(vty, "%%GSM900 channel must be between 0-124, 955-1023.%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		break;
+	case GSM_BAND_850:
+		if (arfcn < 128 || arfcn > 251) {
+			vty_out(vty, "%%GSM850 channel must be between 128-251.%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		break;
+	default:
+		vty_out(vty, "%%Unsupported frequency band.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	/* FIXME: check if this ARFCN is supported by this TRX */
 
