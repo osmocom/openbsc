@@ -61,6 +61,7 @@
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/gsm/tlv.h>
 
 #include <assert.h>
@@ -106,6 +107,23 @@ static int apply_codec_restrictions(struct gsm_bts *bts,
 }
 
 static uint32_t new_callref = 0x80000001;
+
+static void reject_trap(struct ctrl_handle *ctrl, const char *imsi)
+{
+	struct ctrl_cmd *cmd;
+
+	cmd = ctrl_cmd_create(NULL, CTRL_TYPE_TRAP);
+	if (!cmd) {
+		LOGP(DCTRL, LOGL_ERROR, "Failed to create TRAP command.\n");
+		return;
+	}
+
+	cmd->id = "0";
+	cmd->variable = talloc_asprintf(cmd, "subscriber-reject-v1");
+	cmd->reply = talloc_strdup(cmd, imsi);
+	ctrl_cmd_send_to_all(ctrl, cmd);
+	talloc_free(cmd);
+}
 
 void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg)
 {
@@ -534,6 +552,7 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 					net->subscr_group, mi_string);
 		}
 		if (!conn->subscr && conn->loc_operation) {
+			reject_trap(net->ctrl, mi_string);
 			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
 			release_loc_updating_req(conn, 1);
 			return 0;
@@ -645,6 +664,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 				bts->network->subscr_group, mi_string);
 		}
 		if (!subscr) {
+			reject_trap(bts->network->ctrl, mi_string);
 			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
 			release_loc_updating_req(conn, 0);
 			return 0;
