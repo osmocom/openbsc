@@ -247,6 +247,7 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 	if (!conn)
 		return NULL;
 
+	conn->network = net;
 	conn->lchan = lchan;
 	conn->bts = lchan->ts->trx->bts;
 	lchan->conn = conn;

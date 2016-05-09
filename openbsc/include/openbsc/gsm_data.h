@@ -134,6 +134,8 @@ struct gsm_subscriber_connection {
 	struct osmo_bsc_sccp_con *sccp_con;
 
 	/* back pointers */
+	struct gsm_network *network;
+
 	int in_release;
 	struct gsm_lchan *lchan;
 	struct gsm_lchan *ho_lchan;
