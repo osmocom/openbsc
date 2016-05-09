@@ -908,7 +908,7 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 	subscr->id = dbi_result_get_ulonglong(result, "id");
 
 	db_set_from_query(subscr, result);
-	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
+	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %x, EXTEN '%s', LAC %hu, AUTH %u\n",
 		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
 		subscr->lac, subscr->authorized);
 	dbi_result_free(result);
