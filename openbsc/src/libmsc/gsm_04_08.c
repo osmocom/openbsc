@@ -506,7 +506,7 @@ static int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t c
 		LOGP(DMM, LOGL_ERROR, "Failed to create msg for LOCATION UPDATING REJECT.\n");
 		return -1;
 	}
-	
+
 	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT\n",
 	     subscr_name(conn->subscr));
 
