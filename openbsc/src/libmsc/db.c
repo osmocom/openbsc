@@ -1086,18 +1086,12 @@ int db_subscriber_delete(struct gsm_subscriber *subscr)
 	return 0;
 }
 
-/**
- * List all the authorized and non-expired subscribers. The callback will
- * be called one by one. The subscr argument is not fully initialize and
- * subscr_get/subscr_put must not be called. The passed in pointer will be
- * deleted after the callback by the database call.
- */
-int db_subscriber_list_active(void (*cb)(struct gsm_subscriber*,void*), void *closure)
+static int db_subscriber_do_list(const char *query,
+			void (*cb)(struct gsm_subscriber*,void*), void *closure)
 {
 	dbi_result result;
 
-	result = dbi_conn_query(conn,
-		       "SELECT * from Subscriber WHERE LAC != 0 AND authorized = 1");
+	result = dbi_conn_query(conn, query);
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR, "Failed to list active subscribers\n");
 		return -1;
@@ -1117,6 +1111,26 @@ int db_subscriber_list_active(void (*cb)(struct gsm_subscriber*,void*), void *cl
 
 	dbi_result_free(result);
 	return 0;
+}
+
+/**
+ * List all the authorized and non-expired subscribers. The callback will
+ * be called one by one. The subscr argument is not fully initialize and
+ * subscr_get/subscr_put must not be called. The passed in pointer will be
+ * deleted after the callback by the database call.
+ */
+int db_subscriber_list_active(void (*cb)(struct gsm_subscriber*,void*), void *closure)
+{
+	return db_subscriber_do_list(
+		       "SELECT * from Subscriber WHERE LAC != 0 AND authorized = 1",
+			cb, closure);
+}
+
+int db_subscriber_list_all(void (cb)(struct gsm_subscriber*,void*), void *closure)
+{
+	return db_subscriber_do_list(
+			"SELECT * from Subscriber",
+			cb, closure);
 }
 
 int db_sync_equipment(struct gsm_equipment *equip)

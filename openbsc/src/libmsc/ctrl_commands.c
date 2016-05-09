@@ -80,7 +80,7 @@ static int get_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net = cmd->node;
-	char *tmp, *imsi, *msisdn, *alg, *ki, *saveptr = NULL;
+	char *tmp, *imsi, *msisdn, *alg, *ki, *name, *saveptr = NULL;
 	struct gsm_subscriber* subscr;
 	int rc;
 
@@ -92,6 +92,7 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 	msisdn = strtok_r(NULL, ",", &saveptr);
 	alg = strtok_r(NULL, ",", &saveptr);
 	ki = strtok_r(NULL, ",", &saveptr);
+	name = strtok_r(NULL, ",", &saveptr);
 
 	subscr = subscr_get_by_imsi(net->subscr_group, imsi);
 	if (!subscr)
@@ -102,6 +103,11 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 	subscr->authorized = 1;
 	strncpy(subscr->extension, msisdn, GSM_EXTENSION_LENGTH - 1);
 	subscr->extension[GSM_EXTENSION_LENGTH-1] = '\0';
+
+	if (name) {
+		osmo_hexparse(name, (uint8_t *) subscr->name, sizeof(subscr->name) - 1);
+		subscr->name[GSM_NAME_LENGTH - 1] = '\0';
+	}
 
 	/* put it back to the db */
 	rc = db_sync_subscriber(subscr);
@@ -212,8 +218,11 @@ static int set_subscriber_list(struct ctrl_cmd *cmd, void *d)
 static void list_cb(struct gsm_subscriber *subscr, void *d)
 {
 	char **data = (char **) d;
-	*data = talloc_asprintf_append(*data, "%s,%s\n",
-				subscr->imsi, subscr->extension);
+	*data = talloc_asprintf_append(*data, "%s,%s,%d,%s\n",
+				subscr->imsi, subscr->extension,
+				subscr->authorized,
+				osmo_hexdump_nospc((const uint8_t *) subscr->name,
+							strlen(subscr->name)));
 }
 
 static int get_subscriber_list(struct ctrl_cmd *cmd, void *d)
@@ -221,10 +230,30 @@ static int get_subscriber_list(struct ctrl_cmd *cmd, void *d)
 	cmd->reply = talloc_strdup(cmd, "");
 
 	db_subscriber_list_active(list_cb, &cmd->reply);
-	printf("%s\n", cmd->reply);
 	return CTRL_CMD_REPLY;
 }
 CTRL_CMD_DEFINE(subscriber_list, "subscriber-list-active-v1");
+
+
+static int verify_subscriber_list_all(struct ctrl_cmd *cmd, const char *value, void *d)
+{
+	return 1;
+}
+
+static int set_subscriber_list_all(struct ctrl_cmd *cmd, void *d)
+{
+	cmd->reply = "Get only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int get_subscriber_list_all(struct ctrl_cmd *cmd, void *d)
+{
+	cmd->reply = talloc_strdup(cmd, "");
+
+	db_subscriber_list_all(list_cb, &cmd->reply);
+	return CTRL_CMD_REPLY;
+}
+CTRL_CMD_DEFINE(subscriber_list_all, "subscriber-list-all-v1");
 
 int msc_ctrl_cmds_install(void)
 {
@@ -233,5 +262,6 @@ int msc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_modify);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_delete);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_list);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_subscriber_list_all);
 	return rc;
 }

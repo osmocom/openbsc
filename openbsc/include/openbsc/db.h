@@ -48,6 +48,7 @@ int db_subscriber_delete(struct gsm_subscriber *subscriber);
 int db_sync_equipment(struct gsm_equipment *equip);
 int db_subscriber_update(struct gsm_subscriber *subscriber);
 int db_subscriber_list_active(void (*list_cb)(struct gsm_subscriber*,void*), void*);
+int db_subscriber_list_all(void (*list_cb)(struct gsm_subscriber*,void*), void*);
 
 /* auth info */
 int db_get_authinfo_for_subscr(struct gsm_auth_info *ainfo,
