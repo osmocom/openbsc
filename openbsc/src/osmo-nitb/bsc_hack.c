@@ -292,9 +292,13 @@ int main(int argc, char **argv)
 #endif
 
 	/* Initialize MNCC socket if appropriate */
-	if (mncc_sock_path)
-		mncc_sock_init(bsc_gsmnet, mncc_sock_path);
-	else
+	if (mncc_sock_path) {
+		rc = mncc_sock_init(bsc_gsmnet, mncc_sock_path);
+		if (rc) {
+			fprintf(stderr, "MNCC socket initialization failed. exiting.\n");
+			exit(1);
+		}
+	} else
 		DEBUGP(DMNCC, "Using internal MNCC handler.\n");
 
 	/* Read the config */
