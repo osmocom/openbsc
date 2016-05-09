@@ -225,10 +225,14 @@ static void sms_submit_pending(void *_data)
 
 
 		sms = take_next_sms(smsq);
-		if (!sms)
+		if (!sms) {
+			LOGP(DLSMS, LOGL_DEBUG, "Sending SMS done (%d attempted)\n",
+			     attempted);
 			break;
+		}
 
 		rounds += 1;
+		LOGP(DLSMS, LOGL_DEBUG, "Sending SMS round %d\n", rounds);
 
 		/*
 		 * This code needs to detect a loop. It assumes that no SMS
@@ -243,6 +247,8 @@ static void sms_submit_pending(void *_data)
 			first_sub = sms->receiver->id;
 			initialized = 1;
 		} else if (first_sub == sms->receiver->id) {
+			LOGP(DLSMS, LOGL_DEBUG, "Sending SMS done (loop) (%d attempted)\n",
+			     attempted);
 			sms_free(sms);
 			break;
 		}
@@ -324,6 +330,7 @@ no_pending_sms:
  */
 int sms_queue_trigger(struct gsm_sms_queue *smsq)
 {
+	LOGP(DLSMS, LOGL_DEBUG, "Triggering SMS queue\n");
 	if (osmo_timer_pending(&smsq->push_queue))
 		return 0;
 
