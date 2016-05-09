@@ -301,7 +301,7 @@ static bool authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	return subscr_authorized(subscriber);
 }
 
-static void release_loc_updating_req(struct gsm_subscriber_connection *conn, int release)
+static void _release_loc_updating_req(struct gsm_subscriber_connection *conn, int release)
 {
 	if (!conn->loc_operation)
 		return;
@@ -316,11 +316,31 @@ static void release_loc_updating_req(struct gsm_subscriber_connection *conn, int
 		msc_release_connection(conn);
 }
 
+static void loc_updating_failure(struct gsm_subscriber_connection *conn, int release)
+{
+	if (!conn->loc_operation)
+		return;
+	LOGP(DMM, LOGL_ERROR, "Location Updating failed for %s\n",
+	     subscr_name(conn->subscr));
+	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_FAILED]);
+	_release_loc_updating_req(conn, release);
+}
+
+static void loc_updating_success(struct gsm_subscriber_connection *conn, int release)
+{
+	if (!conn->loc_operation)
+		return;
+	LOGP(DMM, LOGL_INFO, "Location Updating completed for %s\n",
+	     subscr_name(conn->subscr));
+	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_COMPLETED]);
+	_release_loc_updating_req(conn, release);
+}
+
 static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
 {
 	if (conn->loc_operation)
 		LOGP(DMM, LOGL_ERROR, "Connection already had operation.\n");
-	release_loc_updating_req(conn, 0);
+	loc_updating_failure(conn, 0);
 
 	conn->loc_operation = talloc_zero(tall_locop_ctx,
 					   struct gsm_loc_updating_operation);
@@ -354,9 +374,11 @@ static int finish_lu(struct gsm_subscriber_connection *conn)
 	 * The gsm0408_loc_upd_acc sends a MI with the TMSI. The
 	 * MS needs to respond with a TMSI REALLOCATION COMPLETE
 	 * (even if the TMSI is the same).
+	 * If avoid_tmsi == true, we don't send a TMSI, we don't
+	 * expect a reply and Location Updating is done.
 	 */
 	if (avoid_tmsi)
-		release_loc_updating_req(conn, 1);
+		loc_updating_success(conn, 1);
 
 	return rc;
 }
@@ -426,7 +448,7 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 	 * Cancel any outstanding location updating request
 	 * operation taking place on the subscriber connection.
 	 */
-	release_loc_updating_req(conn, 0);
+	loc_updating_failure(conn, 0);
 
 	/* We might need to cancel the paging response or such. */
 	if (conn->sec_operation && conn->sec_operation->cb) {
@@ -479,8 +501,6 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 {
 	struct msgb *msg;
 
-	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT]);
-
 	msg = gsm48_create_loc_upd_rej(cause);
 	if (!msg) {
 		LOGP(DMM, LOGL_ERROR, "Failed to create msg for LOCATION UPDATING REJECT.\n");
@@ -522,8 +542,6 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 	}
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
-
-	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_ACCEPT]);
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
@@ -579,7 +597,7 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 		}
 		if (!conn->subscr && conn->loc_operation) {
 			gsm0408_loc_upd_rej(conn, net->reject_cause);
-			release_loc_updating_req(conn, 1);
+			loc_updating_failure(conn, 1);
 			return 0;
 		}
 		if (conn->loc_operation)
@@ -608,7 +626,7 @@ static void loc_upd_rej_cb(void *data)
 
 	LOGP(DMM, LOGL_DEBUG, "Location Updating Request procedure timedout.\n");
 	gsm0408_loc_upd_rej(conn, conn->network->reject_cause);
-	release_loc_updating_req(conn, 1);
+	loc_updating_failure(conn, 1);
 }
 
 static void schedule_reject(struct gsm_subscriber_connection *conn)
@@ -685,7 +703,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 			subscr = subscr_create(conn->network, mi_string);
 		if (!subscr) {
 			gsm0408_loc_upd_rej(conn, conn->network->reject_cause);
-			release_loc_updating_req(conn, 0);
+			loc_updating_failure(conn, 0); /* FIXME: set release == true? */
 			return 0;
 		}
 		break;
@@ -1211,7 +1229,7 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 	case GSM48_MT_MM_TMSI_REALL_COMPL:
 		DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
 		       subscr_name(conn->subscr));
-		release_loc_updating_req(conn, 1);
+		loc_updating_success(conn, 1);
 		break;
 	case GSM48_MT_MM_IMSI_DETACH_IND:
 		rc = gsm48_rx_mm_imsi_detach_ind(conn, msg);
