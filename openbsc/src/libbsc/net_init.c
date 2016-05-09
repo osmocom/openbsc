@@ -79,6 +79,7 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
 	INIT_LLIST_HEAD(&net->bts_list);
+	INIT_LLIST_HEAD(&net->subscr_conns);
 
 	/* init statistics */
 	net->bsc_ctrs = rate_ctr_group_alloc(net, &bsc_ctrg_desc, 0);

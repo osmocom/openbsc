@@ -583,7 +583,7 @@ static int set_net_ussd_notify(struct ctrl_cmd *cmd, void *data)
 	alert = atoi(alert_str);
 
 	net = cmd->node;
-	llist_for_each_entry(conn, bsc_api_sub_connections(net), entry) {
+	llist_for_each_entry(conn, &net->subscr_conns, entry) {
 		if (!conn->sccp_con)
 			continue;
 

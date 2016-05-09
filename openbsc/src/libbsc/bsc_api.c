@@ -39,7 +39,6 @@
 
 #define GSM0808_T10_VALUE    6, 0
 
-static LLIST_HEAD(sub_connections);
 
 static void rll_ind_cb(struct gsm_lchan *, uint8_t, void *, enum bsc_rllr_ind);
 static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id);
@@ -242,15 +241,16 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 {
 	struct gsm_subscriber_connection *conn;
+	struct gsm_network *net = lchan->ts->trx->bts->network;
 
-	conn = talloc_zero(lchan->ts->trx->bts->network, struct gsm_subscriber_connection);
+	conn = talloc_zero(net, struct gsm_subscriber_connection);
 	if (!conn)
 		return NULL;
 
 	conn->lchan = lchan;
 	conn->bts = lchan->ts->trx->bts;
 	lchan->conn = conn;
-	llist_add_tail(&conn->entry, &sub_connections);
+	llist_add_tail(&conn->entry, &net->subscr_conns);
 	return conn;
 }
 
@@ -876,7 +876,3 @@ static __attribute__((constructor)) void on_dso_load_bsc(void)
 	osmo_signal_register_handler(SS_LCHAN, bsc_handle_lchan_signal, NULL);
 }
 
-struct llist_head *bsc_api_sub_connections(struct gsm_network *net)
-{
-	return &sub_connections;
-}
