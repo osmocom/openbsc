@@ -103,7 +103,7 @@ struct neigh_meas_proc {
 	uint8_t last_seen_nr;
 };
 
-/* the per subscriber data for lchan */
+/* active radio connection of a mobile subscriber */
 struct gsm_subscriber_connection {
 	struct llist_head entry;
 

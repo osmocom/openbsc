@@ -247,7 +247,6 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 	if (!conn)
 		return NULL;
 
-	/* Configure the time and start it so it will be closed */
 	conn->lchan = lchan;
 	conn->bts = lchan->ts->trx->bts;
 	lchan->conn = conn;

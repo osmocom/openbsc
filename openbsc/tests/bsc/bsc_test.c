@@ -139,7 +139,7 @@ static void test_scan(void)
 	conn->bts = bts;
 	conn->sccp_con = sccp_con;
 
-	/* start testinh with proper messages */
+	/* start testing with proper messages */
 	printf("Testing BTS<->MSC message scan.\n");
 	for (i = 0; i < ARRAY_SIZE(test_scan_defs); ++i) {
 		const struct test_definition *test_def = &test_scan_defs[i];

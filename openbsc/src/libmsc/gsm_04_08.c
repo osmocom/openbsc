@@ -1088,7 +1088,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 
 	if (subscr) {
 		subscr_update(subscr, bts,
-				GSM_SUBSCRIBER_UPDATE_DETACHED);
+			      GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n", subscr_name(subscr));
 
 		subscr->equipment.classmark1 = idi->classmark1;
@@ -3657,7 +3657,7 @@ int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
 	return 0;
 }
 
-/* here we get data from the BSC level... */
+/* Main entry point for GSM 04.08/44.008 Layer 3 data (e.g. from the BSC). */
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
