@@ -187,7 +187,7 @@ void allocate_security_operation(struct gsm_subscriber_connection *conn)
 int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
                          gsm_cbfn *cb, void *cb_data)
 {
-	struct gsm_network *net = conn->bts->network;
+	struct gsm_network *net = conn->network;
 	struct gsm_subscriber *subscr = conn->subscr;
 	struct gsm_security_operation *op;
 	struct gsm_auth_tuple atuple;
@@ -321,7 +321,7 @@ static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
 static int finish_lu(struct gsm_subscriber_connection *conn)
 {
 	int rc = 0;
-	int avoid_tmsi = conn->bts->network->avoid_tmsi;
+	int avoid_tmsi = conn->network->avoid_tmsi;
 
 	/* We're all good */
 	if (avoid_tmsi) {
@@ -332,7 +332,7 @@ static int finish_lu(struct gsm_subscriber_connection *conn)
 	}
 
 	rc = gsm0408_loc_upd_acc(conn);
-	if (conn->bts->network->send_mm_info) {
+	if (conn->network->send_mm_info) {
 		/* send MM INFO with network name */
 		rc = gsm48_tx_mm_info(conn);
 	}
@@ -429,7 +429,7 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 	 * we have a subscriber connection.
 	 */
 restart:
-	llist_for_each_entry_safe(trans, temp, &conn->bts->network->trans_list, entry) {
+	llist_for_each_entry_safe(trans, temp, &conn->network->trans_list, entry) {
 		if (trans->conn == conn) {
 			trans_free(trans);
 			goto restart;
@@ -457,7 +457,7 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg;
 
-	rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT]);
+	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT]);
 
 	msg = gsm48_create_loc_upd_rej(cause);
 	if (!msg) {
@@ -477,7 +477,6 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 /* Chapter 9.2.13 : Send LOCATION UPDATE ACCEPT */
 static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 LOC UPD ACC");
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
@@ -490,8 +489,9 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_ACCEPT;
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
-	gsm48_generate_lai(lai, bts->network->country_code,
-		     bts->network->network_code, bts->location_area_code);
+	gsm48_generate_lai(lai, conn->network->country_code,
+			   conn->network->network_code,
+			   conn->bts->location_area_code);
 
 	if (conn->subscr->tmsi == GSM_RESERVED_TMSI) {
 		uint8_t mi[10];
@@ -506,7 +506,7 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_ACCEPT]);
+	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_ACCEPT]);
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
@@ -543,9 +543,7 @@ static struct gsm_subscriber *subscr_create(const struct gsm_network *net,
 static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	struct gsm_lchan *lchan = msg->lchan;
-	struct gsm_bts *bts = lchan->ts->trx->bts;
-	struct gsm_network *net = bts->network;
+	struct gsm_network *net = conn->network;
 	uint8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[GSM48_MI_SIZE];
 
@@ -565,7 +563,7 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 				conn->subscr = subscr_create(net, mi_string);
 		}
 		if (!conn->subscr && conn->loc_operation) {
-			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
+			gsm0408_loc_upd_rej(conn, net->reject_cause);
 			release_loc_updating_req(conn, 1);
 			return 0;
 		}
@@ -592,11 +590,9 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 static void loc_upd_rej_cb(void *data)
 {
 	struct gsm_subscriber_connection *conn = data;
-	struct gsm_lchan *lchan = conn->lchan;
-	struct gsm_bts *bts = lchan->ts->trx->bts;
 
 	LOGP(DMM, LOGL_DEBUG, "Location Updating Request procedure timedout.\n");
-	gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
+	gsm0408_loc_upd_rej(conn, conn->network->reject_cause);
 	release_loc_updating_req(conn, 1);
 }
 
@@ -620,7 +616,6 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr = NULL;
-	struct gsm_bts *bts = conn->bts;
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 
@@ -637,13 +632,13 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 	switch (lu->type) {
 	case GSM48_LUPD_NORMAL:
-		rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_NORMAL]);
+		rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_NORMAL]);
 		break;
 	case GSM48_LUPD_IMSI_ATT:
-		rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_ATTACH]);
+		rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_ATTACH]);
 		break;
 	case GSM48_LUPD_PERIODIC:
-		rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_PERIODIC]);
+		rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_PERIODIC]);
 		break;
 	}
 
@@ -670,12 +665,11 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 		conn->loc_operation->waiting_for_imei = 1;
 
 		/* look up subscriber based on IMSI, create if not found */
-		subscr = subscr_get_by_imsi(bts->network->subscr_group, mi_string);
+		subscr = subscr_get_by_imsi(conn->network->subscr_group, mi_string);
 		if (!subscr)
-			subscr = subscr_create(bts->network, mi_string);
-
+			subscr = subscr_create(conn->network, mi_string);
 		if (!subscr) {
-			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
+			gsm0408_loc_upd_rej(conn, conn->network->reject_cause);
 			release_loc_updating_req(conn, 0);
 			return 0;
 		}
@@ -683,7 +677,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	case GSM_MI_TYPE_TMSI:
 		DEBUGPC(DMM, "\n");
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
-		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
+		subscr = subscr_get_by_tmsi(conn->network->subscr_group,
 					    tmsi_from_string(mi_string));
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
@@ -738,7 +732,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 MM INF");
 	struct gsm48_hdr *gh;
-	struct gsm_network *net = conn->bts->network;
+	struct gsm_network *net = conn->network;
 	struct gsm_bts *bts = conn->bts;
 	uint8_t *ptr8;
 	int name_len, name_pad;
@@ -973,7 +967,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 
-	struct gsm_bts *bts = conn->bts;
+	struct gsm_network *network = conn->network;
 	struct gsm_subscriber *subscr;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_service_request *req =
@@ -1004,13 +998,13 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 		DEBUGPC(DMM, "serv_type=0x%02x MI(%s)=%s\n",
 			req->cm_service_type, gsm48_mi_type_name(mi_type),
 			mi_string);
-		subscr = subscr_get_by_imsi(bts->network->subscr_group,
+		subscr = subscr_get_by_imsi(network->subscr_group,
 					    mi_string);
 	} else if (mi_type == GSM_MI_TYPE_TMSI) {
 		DEBUGPC(DMM, "serv_type=0x%02x MI(%s)=%s\n",
 			req->cm_service_type, gsm48_mi_type_name(mi_type),
 			mi_string);
-		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
+		subscr = subscr_get_by_tmsi(network->subscr_group,
 				tmsi_from_string(mi_string));
 	} else {
 		DEBUGPC(DMM, "mi_type is not expected: %d\n", mi_type);
@@ -1020,7 +1014,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
 
-	if (is_siemens_bts(bts))
+	if (is_siemens_bts(conn->bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);
 
 
@@ -1051,7 +1045,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 
 static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_bts *bts = conn->bts;
+	struct gsm_network *network = conn->network;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_imsi_detach_ind *idi =
 				(struct gsm48_imsi_detach_ind *) gh->data;
@@ -1063,17 +1057,17 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	DEBUGP(DMM, "IMSI DETACH INDICATION: MI(%s)=%s",
 		gsm48_mi_type_name(mi_type), mi_string);
 
-	rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_DETACH]);
+	rate_ctr_inc(&network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_DETACH]);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
 		DEBUGPC(DMM, "\n");
-		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
+		subscr = subscr_get_by_tmsi(network->subscr_group,
 					    tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
 		DEBUGPC(DMM, "\n");
-		subscr = subscr_get_by_imsi(bts->network->subscr_group,
+		subscr = subscr_get_by_imsi(network->subscr_group,
 					    mi_string);
 		break;
 	case GSM_MI_TYPE_IMEI:
@@ -1087,7 +1081,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	}
 
 	if (subscr) {
-		subscr_update(subscr, bts,
+		subscr_update(subscr, conn->bts,
 			      GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n", subscr_name(subscr));
 
@@ -1119,7 +1113,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_auth_resp *ar = (struct gsm48_auth_resp*) gh->data;
-	struct gsm_network *net = conn->bts->network;
+	struct gsm_network *net = conn->network;
 
 	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s): ",
 		osmo_hexdump(ar->sres, 4));
@@ -1200,7 +1194,6 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 /* Receive a PAGING RESPONSE message from the MS */
 static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_bts *bts = conn->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_pag_resp *resp;
 	uint8_t *classmark2_lv = gh->data + 1;
@@ -1217,11 +1210,11 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
+		subscr = subscr_get_by_tmsi(conn->network->subscr_group,
 					    tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
-		subscr = subscr_get_by_imsi(bts->network->subscr_group,
+		subscr = subscr_get_by_imsi(conn->network->subscr_group,
 					    mi_string);
 		break;
 	}
@@ -3595,7 +3588,7 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 		DEBUGP(DCC, "Unknown transaction ID %x, "
 			"creating new trans.\n", transaction_id);
 		/* Create transaction */
-		trans = trans_alloc(conn->bts->network, conn->subscr,
+		trans = trans_alloc(conn->network, conn->subscr,
 				    GSM48_PDISC_CC,
 				    transaction_id, new_callref++);
 		if (!trans) {
