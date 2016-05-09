@@ -497,7 +497,7 @@ void gsm0408_clear_all_trans(struct gsm_network *net, int protocol)
 }
 
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
-int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
+static int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 {
 	struct msgb *msg;
 
