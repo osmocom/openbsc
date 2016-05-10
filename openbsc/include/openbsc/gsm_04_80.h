@@ -14,7 +14,12 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 			     const struct msgb *msg, 
 			     const struct ss_request *request);
 
-int gsm0480_send_ussdNotify(struct gsm_subscriber_connection *conn, int level, const char *text);
-int gsm0480_send_releaseComplete(struct gsm_subscriber_connection *conn);
+int msc_send_ussd_notify(struct gsm_subscriber_connection *conn, int level,
+			 const char *text);
+int msc_send_ussd_release_complete(struct gsm_subscriber_connection *conn);
+
+int bsc_send_ussd_notify(struct gsm_subscriber_connection *conn, int level,
+			 const char *text);
+int bsc_send_ussd_release_complete(struct gsm_subscriber_connection *conn);
 
 #endif

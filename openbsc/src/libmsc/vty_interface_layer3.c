@@ -473,8 +473,8 @@ DEFUN(subscriber_ussd_notify,
 		return CMD_WARNING;
 	}
 
-	gsm0480_send_ussdNotify(conn, level, text);
-	gsm0480_send_releaseComplete(conn);
+	msc_send_ussd_notify(conn, level, text);
+	msc_send_ussd_release_complete(conn);
 
 	subscr_put(subscr);
 	talloc_free(text);

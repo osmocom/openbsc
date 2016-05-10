@@ -285,8 +285,8 @@ static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
 		return;
 
 	/* send USSD notification */
-	gsm0480_send_ussdNotify(conn, 1, conn->sccp_con->msc->ussd_msc_lost_txt);
-	gsm0480_send_releaseComplete(conn);
+	bsc_send_ussd_notify(conn, 1, conn->sccp_con->msc->ussd_msc_lost_txt);
+	bsc_send_ussd_release_complete(conn);
 }
 
 static void bsc_notify_and_close_conns(struct bsc_msc_connection *msc_con)
