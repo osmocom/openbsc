@@ -211,19 +211,6 @@ int bts_gprs_mode_is_compat(struct gsm_bts *bts, enum bts_gprs_mode mode)
 	return 1;
 }
 
-struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
-{
-	struct gsm_meas_rep *meas_rep;
-
-	meas_rep = &lchan->meas_rep[lchan->meas_rep_idx];
-	memset(meas_rep, 0, sizeof(*meas_rep));
-	meas_rep->lchan = lchan;
-	lchan->meas_rep_idx = (lchan->meas_rep_idx + 1)
-					% ARRAY_SIZE(lchan->meas_rep);
-
-	return meas_rep;
-}
-
 int gsm_btsmodel_set_feature(struct gsm_bts_model *bts, enum gsm_bts_features feat)
 {
 	return bitvec_set_bit_pos(&bts->features, feat, 1);
