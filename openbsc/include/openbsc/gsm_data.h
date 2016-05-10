@@ -26,6 +26,7 @@ struct gsm_subscriber_group;
 struct bsc_subscr;
 struct vlr_instance;
 struct vlr_subscr;
+struct ue_conn_ctx;
 
 #define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
 
@@ -110,6 +111,12 @@ struct gsm_classmark {
 	uint8_t classmark3[14];
 };
 
+enum integrity_protection_state {
+	INTEGRITY_PROTECTION_NONE	= 0,
+	INTEGRITY_PROTECTION_IK		= 1,
+	INTEGRITY_PROTECTION_IK_CK	= 2,
+};
+
 /* active radio connection of a mobile subscriber */
 struct gsm_subscriber_connection {
 	/* global linked list of subscriber_connections */
@@ -186,6 +193,14 @@ struct gsm_subscriber_connection {
 	enum ran_type via_ran;
 
 	struct gsm_classmark classmark;
+
+	uint16_t lac;
+
+	/* which Iu-CS connection, if any. */
+	struct {
+		struct ue_conn_ctx *ue_ctx;
+		int integrity_protection;
+	} iu;
 };
 
 
