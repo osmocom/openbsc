@@ -873,7 +873,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm_trans *trans;
 	uint8_t *data, *rp_ud_len;
-	uint8_t msg_ref = sms_next_rp_msg_ref(conn);
+	uint8_t msg_ref = sms_next_rp_msg_ref(&conn->next_rp_ref);
 	int transaction_id;
 	int rc;
 
