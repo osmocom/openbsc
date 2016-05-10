@@ -33,6 +33,27 @@
 #include <openbsc/handover.h>
 #include <osmocom/gsm/gsm_utils.h>
 
+/* Get reference to a neighbor cell on a given BCCH ARFCN */
+static struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
+					uint16_t arfcn, uint8_t bsic)
+{
+	struct gsm_bts *neigh;
+	/* FIXME: use some better heuristics here to determine which cell
+	 * using this ARFCN really is closest to the target cell.  For
+	 * now we simply assume that each ARFCN will only be used by one
+	 * cell */
+
+	llist_for_each_entry(neigh, &bts->network->bts_list, list) {
+		/* FIXME: this is probably returning the same bts again!? */
+		if (neigh->c0->arfcn == arfcn &&
+		    neigh->bsic == bsic)
+			return neigh;
+	}
+
+	return NULL;
+}
+
+
 /* issue handover to a cell identified by ARFCN and BSIC */
 static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
 				  uint16_t arfcn, uint8_t bsic)
