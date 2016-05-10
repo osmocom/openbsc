@@ -362,18 +362,15 @@ err:
 	return 1;
 }
 
-CTRL_CMD_DEFINE(bts_timezone, "timezone");
-static int get_bts_timezone(struct ctrl_cmd *cmd, void *data)
+CTRL_CMD_DEFINE(net_timezone, "timezone");
+static int get_net_timezone(struct ctrl_cmd *cmd, void *data)
 {
-	struct gsm_bts *bts = (struct gsm_bts *) cmd->node;
-	if (!bts) {
-		cmd->reply = "bts not found.";
-		return CTRL_CMD_ERROR;
-	}
+	struct gsm_network *net = (struct gsm_network*)cmd->node;
 
-	if (bts->tz.override)
+	struct gsm_tz *tz = &net->tz;
+	if (tz->override)
 		cmd->reply = talloc_asprintf(cmd, "%d,%d,%d",
-			       bts->tz.hr, bts->tz.mn, bts->tz.dst);
+			       tz->hr, tz->mn, tz->dst);
 	else
 		cmd->reply = talloc_asprintf(cmd, "off");
 
@@ -385,16 +382,11 @@ static int get_bts_timezone(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-static int set_bts_timezone(struct ctrl_cmd *cmd, void *data)
+static int set_net_timezone(struct ctrl_cmd *cmd, void *data)
 {
 	char *saveptr, *hourstr, *minstr, *dststr, *tmp = 0;
 	int override;
-	struct gsm_bts *bts = (struct gsm_bts *) cmd->node;
-
-	if (!bts) {
-		cmd->reply = "bts not found.";
-		return CTRL_CMD_ERROR;
-	}
+	struct gsm_network *net = (struct gsm_network*)cmd->node;
 
 	tmp = talloc_strdup(cmd, cmd->value);
 	if (!tmp)
@@ -409,25 +401,26 @@ static int set_bts_timezone(struct ctrl_cmd *cmd, void *data)
 	if (hourstr != NULL)
 		override = strcasecmp(hourstr, "off") != 0;
 
-	bts->tz.override = override;
+	struct gsm_tz *tz = &net->tz;
+	tz->override = override;
 
 	if (override) {
-		bts->tz.hr  = hourstr ? atol(hourstr) : 0;
-		bts->tz.mn  = minstr ? atol(minstr) : 0;
-		bts->tz.dst = dststr ? atol(dststr) : 0;
+		tz->hr  = hourstr ? atol(hourstr) : 0;
+		tz->mn  = minstr ? atol(minstr) : 0;
+		tz->dst = dststr ? atol(dststr) : 0;
 	}
 
 	talloc_free(tmp);
 	tmp = NULL;
 
-	return get_bts_timezone(cmd, data);
+	return get_net_timezone(cmd, data);
 
 oom:
 	cmd->reply = "OOM";
 	return CTRL_CMD_ERROR;
 }
 
-static int verify_bts_timezone(struct ctrl_cmd *cmd, const char *value, void *data)
+static int verify_net_timezone(struct ctrl_cmd *cmd, const char *value, void *data)
 {
 	char *saveptr, *hourstr, *minstr, *dststr, *tmp;
 	int override, tz_hours, tz_mins, tz_dst;
@@ -655,7 +648,7 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_loc);
 	if (rc)
 		goto end;
-	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_timezone);
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timezone);
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_msc_connection_status);
