@@ -27,6 +27,7 @@ SUBDIRS = \
 	libmsc \
 	libtrau \
 	libfilter \
+	libxsc \
 	$(NULL)
 
 # Conditional Libraries

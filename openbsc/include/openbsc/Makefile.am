@@ -81,6 +81,7 @@ noinst_HEADERS = \
 	vty.h \
 	v42bis.h \
 	v42bis_private.h \
+	xsc.h \
 	$(NULL)
 
 openbsc_HEADERS = \

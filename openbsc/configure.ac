@@ -204,6 +204,7 @@ AC_OUTPUT(
     src/libcommon/Makefile
     src/libfilter/Makefile
     src/libiu/Makefile
+    src/libxsc/Makefile
     src/osmo-nitb/Makefile
     src/osmo-bsc/Makefile
     src/osmo-bsc_nat/Makefile
