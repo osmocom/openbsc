@@ -57,6 +57,12 @@ void *tall_paging_ctx;
 #define PAGING_TIMER 0, 500000
 
 /*
+ * TODO MSCSPLIT: the paging in libbsc is closely tied to MSC land in that the
+ * MSC realm callback functions used to be invoked from the BSC/BTS level. So
+ * this entire file needs to be rewired for use with an A interface.
+ */
+
+/*
  * Kill one paging request update the internal list...
  */
 static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
