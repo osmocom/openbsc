@@ -27,6 +27,8 @@
 #include <openbsc/common_cs.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/gsm_04_11.h>
 
 /* Warning: if bsc_network_init() is not called, some of the members of
  * gsm_network are not initialized properly and must not be used! (In
@@ -112,4 +114,17 @@ struct msgb *gsm48_create_loc_upd_rej(uint8_t cause)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
 	gh->data[0] = cause;
 	return msg;
+}
+
+uint8_t sms_next_rp_msg_ref(uint8_t *next_rp_ref)
+{
+	const uint8_t rp_msg_ref = *next_rp_ref;
+	/*
+	 * This should wrap as the valid range is 0 to 255. We only
+	 * transfer one SMS at a time so we don't need to check if
+	 * the id has been already assigned.
+	 */
+	*next_rp_ref += 1;
+
+	return rp_msg_ref;
 }
