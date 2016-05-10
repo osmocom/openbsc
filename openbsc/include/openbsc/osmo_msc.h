@@ -50,9 +50,15 @@ static inline const char *subscr_conn_from_name(enum subscr_conn_from val)
 	return get_value_string(subscr_conn_from_names, val);
 }
 
+enum msc_compl_l3_rc {
+	MSC_CONN_ACCEPT = 0,
+	MSC_CONN_REJECT = 1,
+};
+
 void msc_subscr_conn_init(void);
 
 struct bsc_api *msc_bsc_api();
+
 #define subscr_con_get(conn) _subscr_con_get(conn, __BASE_FILE__, __LINE__)
 struct gsm_subscriber_connection *
 _subscr_con_get(struct gsm_subscriber_connection *conn,
@@ -66,6 +72,8 @@ int msc_create_conn_fsm(struct gsm_subscriber_connection *conn, const char *id);
 int msc_vlr_alloc(struct gsm_network *net);
 int msc_vlr_start(struct gsm_network *net);
 
+enum msc_compl_l3_rc msc_compl_l3(struct gsm_subscriber_connection *conn,
+				  struct msgb *msg, uint16_t chosen_channel);
 void msc_close_connection(struct gsm_subscriber_connection *conn);
 
 bool msc_subscr_conn_is_accepted(struct gsm_subscriber_connection *conn);
