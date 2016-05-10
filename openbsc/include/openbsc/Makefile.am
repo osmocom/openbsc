@@ -50,6 +50,7 @@ noinst_HEADERS = \
 	misdn.h \
 	mncc.h \
 	mncc_int.h \
+	msc_ifaces.h \
 	nat_rewrite_trie.h \
 	network_listen.h \
 	oap.h \
