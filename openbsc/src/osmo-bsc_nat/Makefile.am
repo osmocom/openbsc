@@ -41,11 +41,11 @@ osmo_bsc_nat_SOURCES = \
 
 osmo_bsc_nat_LDADD = \
 	$(top_builddir)/src/libmgcp/libmgcp.a \
+	$(top_builddir)/src/libfilter/libfilter.a \
 	$(top_builddir)/src/libbsc/libbsc.a \
 	$(top_builddir)/src/libxsc/libxsc.a \
 	$(top_builddir)/src/libtrau/libtrau.a \
 	$(top_builddir)/src/libcommon/libcommon.a \
-	$(top_builddir)/src/libfilter/libfilter.a \
 	$(LIBOSMOSCCP_LIBS) \
 	$(LIBOSMOCORE_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
