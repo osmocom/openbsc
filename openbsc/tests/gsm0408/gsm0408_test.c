@@ -563,15 +563,15 @@ static void test_gsm411_rp_ref_wrap(void)
 	memset(&conn, 0, sizeof(conn));
 	conn.next_rp_ref = 255;
 
-	res = sms_next_rp_msg_ref(&conn);
+	res = sms_next_rp_msg_ref(&conn.next_rp_ref);
 	printf("Allocated reference: %d\n", res);
 	OSMO_ASSERT(res == 255);
 
-	res = sms_next_rp_msg_ref(&conn);
+	res = sms_next_rp_msg_ref(&conn.next_rp_ref);
 	printf("Allocated reference: %d\n", res);
 	OSMO_ASSERT(res == 0);
 
-	res = sms_next_rp_msg_ref(&conn);
+	res = sms_next_rp_msg_ref(&conn.next_rp_ref);
 	printf("Allocated reference: %d\n", res);
 	OSMO_ASSERT(res == 1);
 }
