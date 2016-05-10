@@ -1293,6 +1293,19 @@ static void print_meas_rep(struct gsm_lchan *lchan, struct gsm_meas_rep *mr)
 	}
 }
 
+static struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
+{
+	struct gsm_meas_rep *meas_rep;
+
+	meas_rep = &lchan->meas_rep[lchan->meas_rep_idx];
+	memset(meas_rep, 0, sizeof(*meas_rep));
+	meas_rep->lchan = lchan;
+	lchan->meas_rep_idx = (lchan->meas_rep_idx + 1)
+					% ARRAY_SIZE(lchan->meas_rep);
+
+	return meas_rep;
+}
+
 static int rsl_rx_meas_res(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);

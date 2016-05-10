@@ -524,7 +524,6 @@ int bts_gprs_mode_is_compat(struct gsm_bts *bts, enum bts_gprs_mode mode);
 
 int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts);
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
-struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 
 int gsm_btsmodel_set_feature(struct gsm_bts_model *model, enum gsm_bts_features feat);
 int gsm_bts_model_register(struct gsm_bts_model *model);
