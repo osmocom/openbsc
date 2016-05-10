@@ -21,6 +21,7 @@
  *
  */
 
+#include <openbsc/osmo_msc.h>
 #include <openbsc/bsc_api.h>
 #include <openbsc/debug.h>
 #include <openbsc/transaction.h>
@@ -64,9 +65,10 @@ static bool keep_conn(struct gsm_subscriber_connection *conn)
 	}
 }
 
-/* Receive a COMPLETE LAYER3 INFO from BSC */
-static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
-			uint16_t chosen_channel)
+/* receive a Level 3 Complete message and return MSC_CONN_ACCEPT or
+ * MSC_CONN_REJECT */
+enum msc_compl_l3_rc msc_compl_l3(struct gsm_subscriber_connection *conn,
+				  struct msgb *msg, uint16_t chosen_channel)
 {
 	gsm0408_new_conn(conn);
 	gsm0408_dispatch(conn, msg);
@@ -76,13 +78,13 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 
 	if (!keep_conn(conn)) {
 		DEBUGP(DMM, "compl_l3: Discarding conn\n");
-		return BSC_API_CONN_POL_REJECT;
+		return MSC_CONN_REJECT;
 	}
 	DEBUGP(DMM, "compl_l3: Keeping conn\n");
 	conn->owned_by_msc = true;
 	DEBUGP(DMM, "%s owned_by_msc = true\n",
 	       vlr_subscr_name(conn->vsub));
-	return BSC_API_CONN_POL_ACCEPT;
+	return MSC_CONN_ACCEPT;
 
 #if 0
 	/*
@@ -91,14 +93,14 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	 * pending transaction or ongoing operation.
 	 */
 	if (conn->silent_call)
-		return BSC_API_CONN_POL_ACCEPT;
-	if (conn->sec_operation || conn->anch_operation)
-		return BSC_API_CONN_POL_ACCEPT;
+		return MSC_CONN_ACCEPT;
+	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
+		return MSC_CONN_ACCEPT;
 	if (trans_has_conn(conn))
-		return BSC_API_CONN_POL_ACCEPT;
+		return MSC_CONN_ACCEPT;
 
 	LOGP(DRR, LOGL_INFO, "MSC Complete L3: Rejecting connection.\n");
-	return BSC_API_CONN_POL_REJECT;
+	return MSC_CONN_REJECT;
 #endif
 }
 
