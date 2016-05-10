@@ -255,7 +255,7 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	op->cb_data = cb_data;
 	memcpy(&op->atuple, &atuple, sizeof(struct gsm_auth_tuple));
 
-		/* FIXME: Should start a timer for completion ... */
+	/* FIXME: Should start a timer for completion ... */
 
 	/* Then do whatever is needed ... */
 	if ((rc == AUTH_DO_AUTH_THEN_CIPH) || (rc == AUTH_DO_AUTH)) {
