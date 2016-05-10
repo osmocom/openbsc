@@ -27,6 +27,7 @@ SUBDIRS = \
 	libmsc \
 	libtrau \
 	libfilter \
+	libcommon-cs \
 	$(NULL)
 
 # Conditional Libraries
