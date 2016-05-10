@@ -258,6 +258,7 @@ int send_siemens_mrpci(struct gsm_lchan *lchan,
 	return rsl_siemens_mrpci(lchan, &mrpci);
 }
 
+/* TODO MSCSPLIT remove gsm48_handle_paging_resp() */
 int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
 			     struct msgb *msg, struct gsm_subscriber *subscr)
 {
