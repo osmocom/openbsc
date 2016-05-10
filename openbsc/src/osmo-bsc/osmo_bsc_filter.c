@@ -271,23 +271,24 @@ static int bsc_patch_mm_info(struct gsm_subscriber_connection *conn,
 		return 0;
 
 	/* Is TZ patching enabled? */
-	if (!bts->tz.override)
+	struct gsm_tz *tz = &bts->network->tz;
+	if (!tz->override)
 		return 0;
 
 	/* Convert tz.hr and tz.mn to units */
-	if (bts->tz.hr < 0) {
-		tzunits = -bts->tz.hr*4;
+	if (tz->hr < 0) {
+		tzunits = -tz->hr*4;
 		tzbsd |= 0x08;
 	} else
-		tzunits = bts->tz.hr*4;
+		tzunits = tz->hr*4;
 
-	tzunits = tzunits + (bts->tz.mn/15);
+	tzunits = tzunits + (tz->mn/15);
 
 	tzbsd |= (tzunits % 10)*0x10 + (tzunits / 10);
 
 	/* Convert DST value */
-	if (bts->tz.dst >= 0 && bts->tz.dst <= 2)
-		dst = bts->tz.dst;
+	if (tz->dst >= 0 && tz->dst <= 2)
+		dst = tz->dst;
 
 	if (TLVP_PRESENT(&tp, GSM48_IE_UTC)) {
 		LOGP(DMSC, LOGL_DEBUG,

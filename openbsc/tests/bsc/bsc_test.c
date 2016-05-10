@@ -147,10 +147,10 @@ static void test_scan(void)
 		struct msgb *msg = msgb_alloc(4096, "test-message");
 		int is_set = 0;
 
-		bts->tz.hr = get_int(test_def->params, test_def->n_params, "tz_hr", 0, &is_set);
-		bts->tz.mn = get_int(test_def->params, test_def->n_params, "tz_mn", 0, &is_set);
-		bts->tz.dst = get_int(test_def->params, test_def->n_params, "tz_dst", 0, &is_set);
-		bts->tz.override = 1;
+		net->tz.hr = get_int(test_def->params, test_def->n_params, "tz_hr", 0, &is_set);
+		net->tz.mn = get_int(test_def->params, test_def->n_params, "tz_mn", 0, &is_set);
+		net->tz.dst = get_int(test_def->params, test_def->n_params, "tz_dst", 0, &is_set);
+		net->tz.override = 1;
 
 		printf("Going to test item: %d\n", i);
 		msg->l3h = msgb_put(msg, test_def->length);

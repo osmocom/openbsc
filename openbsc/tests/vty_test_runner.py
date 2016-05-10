@@ -651,7 +651,6 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.vty.enable()
         self.vty.verify("configure terminal", [''])
         self.vty.verify("network", [''])
-        self.vty.verify("bts 0", [''])
 
         # Test invalid input
         self.vty.verify("timezone", ['% Command incomplete.'])
