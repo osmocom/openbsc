@@ -41,6 +41,7 @@ libbsc_a_SOURCES = \
 	bsc_api.c \
 	bsc_msc.c bsc_vty.c \
 	gsm_04_08_utils.c \
+	gsm_04_80_utils.c \
 	bsc_init.c \
 	bts_init.c \
 	bsc_rf_ctrl.c \
@@ -51,4 +52,3 @@ libbsc_a_SOURCES = \
 	bsc_dyn_ts.c \
 	bts_ipaccess_nanobts_omlattr.c \
 	$(NULL)
-

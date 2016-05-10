@@ -246,8 +246,9 @@ static int send_welcome_ussd(struct gsm_subscriber_connection *conn)
 
 int bsc_send_welcome_ussd(struct gsm_subscriber_connection *conn)
 {
-	gsm0480_send_ussdNotify(conn, 1, conn->sccp_con->msc->ussd_welcome_txt);
-	gsm0480_send_releaseComplete(conn);
+	bsc_gsm0480_send_ussdNotify(conn, 1,
+				    conn->sccp_con->msc->ussd_welcome_txt);
+	bsc_gsm0480_send_releaseComplete(conn);
 
 	return 0;
 }
