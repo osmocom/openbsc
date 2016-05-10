@@ -112,8 +112,8 @@ static int handle_sub(struct gsm_lchan *lchan, const char *text)
 	if (lchan->state != LCHAN_S_ACTIVE)
 		return -1;
 
-	gsm0480_send_ussdNotify(conn, 0, text);
-	gsm0480_send_releaseComplete(conn);
+	bsc_gsm0480_send_ussdNotify(conn, 0, text);
+	bsc_gsm0480_send_releaseComplete(conn);
 
 	return 0;
 }

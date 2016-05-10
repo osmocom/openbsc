@@ -598,8 +598,8 @@ static int set_net_ussd_notify(struct ctrl_cmd *cmd, void *data)
 		 * the release complete when we get a returnResultLast
 		 * for this invoke id.
 		 */
-		gsm0480_send_releaseComplete(conn);
-		gsm0480_send_ussdNotify(conn, alert, text_str);
+		bsc_gsm0480_send_releaseComplete(conn);
+		bsc_gsm0480_send_ussdNotify(conn, alert, text_str);
 		cmd->reply = "Found a connection";
 		break;
 	}

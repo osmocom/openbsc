@@ -205,8 +205,8 @@ static void bsc_send_ussd_no_srv(struct gsm_subscriber_connection *conn,
 	gsm48_tx_mm_serv_ack(conn);
 
 	LOGP(DMSC, LOGL_INFO, "Sending USSD message: '%s'\n", text);
-	gsm0480_send_ussdNotify(conn, 1, text);
-	gsm0480_send_releaseComplete(conn);
+	bsc_gsm0480_send_ussdNotify(conn, 1, text);
+	bsc_gsm0480_send_releaseComplete(conn);
 }
 
 /*
