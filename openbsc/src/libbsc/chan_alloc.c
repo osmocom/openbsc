@@ -481,39 +481,6 @@ int lchan_release(struct gsm_lchan *lchan, int sacch_deact, enum rsl_rel_mode mo
 	return 1;
 }
 
-static struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {
-	struct gsm_bts_trx *trx;
-	int ts_no, lchan_no;
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		for (ts_no = 0; ts_no < 8; ++ts_no) {
-			for (lchan_no = 0; lchan_no < TS_MAX_LCHAN; ++lchan_no) {
-				struct gsm_lchan *lchan =
-					&trx->ts[ts_no].lchan[lchan_no];
-				if (lchan->conn && subscr == lchan->conn->subscr)
-					return lchan;
-			}
-		}
-	}
-
-	return NULL;
-}
-
-struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *subscr)
-{
-	struct gsm_bts *bts;
-	struct gsm_network *net = subscr->group->net;
-	struct gsm_lchan *lchan;
-
-	llist_for_each_entry(bts, &net->bts_list, list) {
-		lchan = lchan_find(bts, subscr);
-		if (lchan)
-			return lchan->conn;
-	}
-
-	return NULL;
-}
-
 void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;

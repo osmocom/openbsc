@@ -374,3 +374,17 @@ void subscr_expire(struct gsm_subscriber_group *sgrp)
 {
 	db_subscriber_expire(sgrp->net, subscr_expire_callback);
 }
+
+struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *subscr)
+{
+	/* FIXME: replace this with a backpointer in gsm_subscriber? */
+	struct gsm_network *net = subscr->group->net;
+	struct gsm_subscriber_connection *conn;
+
+	llist_for_each_entry(conn, &net->subscr_conns, entry) {
+		if (conn->subscr == subscr)
+			return conn;
+	}
+
+	return NULL;
+}
