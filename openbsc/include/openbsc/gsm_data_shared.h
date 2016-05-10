@@ -24,6 +24,8 @@
 #include <osmocom/gsm/lapdm.h>
 #endif
 
+#include <openbsc/xsc.h>
+
 struct osmo_bsc_data;
 
 struct osmo_bsc_sccp_con;
@@ -100,7 +102,6 @@ struct gsm_abis_mo {
 	struct gsm_bts *bts;
 };
 
-#define MAX_A5_KEY_LEN	(128/8)
 #define A38_XOR_MIN_KEY_LEN	12
 #define A38_XOR_MAX_KEY_LEN	16
 #define A38_COMP128_KEY_LEN	16
@@ -202,11 +203,7 @@ struct gsm_lchan {
 	uint8_t bs_power;
 	uint8_t ms_power;
 	/* Encryption information */
-	struct {
-		uint8_t alg_id;
-		uint8_t key_len;
-		uint8_t key[MAX_A5_KEY_LEN];
-	} encr;
+	struct gsm_encr encr;
 
 	/* AMR bits */
 	uint8_t mr_ms_lv[7];
