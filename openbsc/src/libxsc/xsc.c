@@ -79,3 +79,36 @@ struct gsm_network *gsm_network_init(void *ctx,
 
 	return net;
 }
+
+struct msgb *gsm48_create_mm_serv_rej(enum gsm48_reject_value value)
+{
+	struct msgb *msg;
+	struct gsm48_hdr *gh;
+
+	msg = gsm48_msgb_alloc_name("GSM 04.08 SERV REJ");
+	if (!msg)
+		return NULL;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_MM;
+	gh->msg_type = GSM48_MT_MM_CM_SERV_REJ;
+	gh->data[0] = value;
+
+	return msg;
+}
+
+struct msgb *gsm48_create_loc_upd_rej(uint8_t cause)
+{
+	struct gsm48_hdr *gh;
+	struct msgb *msg;
+
+	msg = gsm48_msgb_alloc_name("GSM 04.08 LOC UPD REJ");
+	if (!msg)
+		return NULL;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_MM;
+	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
+	gh->data[0] = cause;
+	return msg;
+}
