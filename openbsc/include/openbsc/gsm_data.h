@@ -23,6 +23,7 @@
 
 struct mncc_sock_state;
 struct gsm_subscriber_group;
+struct ue_conn_ctx;
 
 #define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
 
@@ -104,6 +105,18 @@ struct neigh_meas_proc {
 	uint8_t last_seen_nr;
 };
 
+enum interface_type {
+	IFACE_UNKNOWN = -1,
+	IFACE_A = 0,        /* A-interface for 2G */
+	IFACE_IU = 1        /* Iu-interface for UMTS aka 3G (IuCS or IuPS) */
+};
+
+enum integrity_protection_state {
+	INTEGRITY_PROTECTION_NONE	= 0,
+	INTEGRITY_PROTECTION_IK		= 1,
+	INTEGRITY_PROTECTION_IK_CK	= 2,
+};
+
 /* active radio connection of a mobile subscriber */
 struct gsm_subscriber_connection {
 	struct llist_head entry;
@@ -146,6 +159,16 @@ struct gsm_subscriber_connection {
 	struct osmo_timer_list T10; /* BSC */
 	struct gsm_lchan *secondary_lchan; /* BSC */
 
+	uint16_t lac;
+
+	/* 2G or 3G? See enum interface_type */
+	int via_iface;
+
+	/* which Iu-CS connection, if any. */
+	struct {
+		struct ue_conn_ctx *ue_ctx;
+		int integrity_protection;
+	} iu;
 };
 
 
