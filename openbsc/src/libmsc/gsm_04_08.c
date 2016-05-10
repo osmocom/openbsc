@@ -69,6 +69,8 @@
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/crypt/auth.h>
 
+#include <openbsc/msc_ifaces.h>
+
 #include <assert.h>
 
 
