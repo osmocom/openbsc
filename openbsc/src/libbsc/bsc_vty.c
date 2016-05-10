@@ -4028,7 +4028,7 @@ DEFUN(pdch_act, pdch_act_cmd,
 
 extern int bsc_vty_init_extra(void);
 
-int bsc_vty_init(const struct log_info *cat)
+int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 {
 	cfg_ts_pchan_cmd.string =
 		vty_cmd_string_from_valstr(tall_bsc_ctx,

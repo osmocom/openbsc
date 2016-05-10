@@ -271,7 +271,7 @@ int main(int argc, char **argv)
 
 	/* This needs to precede handle_options() */
 	vty_init(&vty_info);
-	bsc_vty_init(&log_info);
+	bsc_vty_init(&log_info, bsc_gsmnet);
 	ctrl_vty_init(tall_bsc_ctx);
 
 #ifdef BUILD_SMPP
