@@ -458,10 +458,6 @@ extern void talloc_ctx_init(void *ctx_root);
 
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 
-/* Get reference to a neighbor cell on a given BCCH ARFCN */
-struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
-				 uint16_t arfcn, uint8_t bsic);
-
 enum gsm_bts_type parse_btstype(const char *arg);
 const char *btstype2str(enum gsm_bts_type type);
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
