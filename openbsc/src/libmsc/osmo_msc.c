@@ -21,6 +21,7 @@
  *
  */
 
+#include <openbsc/osmo_msc.h>
 #include <openbsc/bsc_api.h>
 #include <openbsc/debug.h>
 #include <openbsc/transaction.h>
@@ -42,8 +43,10 @@ static int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 	return 1;
 }
 
-static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
-			uint16_t chosen_channel)
+/* receive a Level 3 Complete message and return MSC_CONN_ACCEPT or
+ * MSC_CONN_REJECT */
+int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
+		 uint16_t chosen_channel)
 {
 	gsm0408_new_conn(conn);
 	gsm0408_dispatch(conn, msg);
@@ -54,14 +57,14 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	 * pending transaction or ongoing operation.
 	 */
 	if (conn->silent_call)
-		return BSC_API_CONN_POL_ACCEPT;
+		return MSC_CONN_ACCEPT;
 	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
-		return BSC_API_CONN_POL_ACCEPT;
+		return MSC_CONN_ACCEPT;
 	if (trans_has_conn(conn))
-		return BSC_API_CONN_POL_ACCEPT;
+		return MSC_CONN_ACCEPT;
 
 	LOGP(DRR, LOGL_INFO, "MSC Complete L3: Rejecting connection.\n");
-	return BSC_API_CONN_POL_REJECT;
+	return MSC_CONN_REJECT;
 }
 
 static void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
