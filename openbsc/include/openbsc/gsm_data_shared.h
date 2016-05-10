@@ -640,14 +640,6 @@ struct gsm_bts {
 	/* buffers where we put the pre-computed SI */
 	sysinfo_buf_t si_buf[_MAX_SYSINFO_TYPE];
 
-	/* TimeZone hours, mins, and bts specific */
-	struct {
-		int hr;
-		int mn;
-		int override;
-		int dst;
-	} tz;
-
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
 	union {
 		struct {

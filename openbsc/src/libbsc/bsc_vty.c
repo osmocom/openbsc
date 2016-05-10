@@ -554,14 +554,6 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	if (bts->dtxd)
 		vty_out(vty, "  dtx downlink%s", VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
-	if (bts->tz.override != 0) {
-		if (bts->tz.dst)
-			vty_out(vty, "  timezone %d %d %d%s",
-				bts->tz.hr, bts->tz.mn, bts->tz.dst, VTY_NEWLINE);
-		else
-			vty_out(vty, "  timezone %d %d%s",
-				bts->tz.hr, bts->tz.mn, VTY_NEWLINE);
-	}
 	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "  cell reselection hysteresis %u%s",
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
@@ -817,6 +809,15 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
 	vty_out(vty, " subscriber-keep-in-ram %d%s",
 		gsmnet->subscr_group->keep_subscr, VTY_NEWLINE);
+	if (gsmnet->tz.override != 0) {
+		if (gsmnet->tz.dst)
+			vty_out(vty, " timezone %d %d %d%s",
+				gsmnet->tz.hr, gsmnet->tz.mn, gsmnet->tz.dst,
+				VTY_NEWLINE);
+		else
+			vty_out(vty, " timezone %d %d%s",
+				gsmnet->tz.hr, gsmnet->tz.mn, VTY_NEWLINE);
+	}
 
 	return CMD_SUCCESS;
 }
@@ -1685,10 +1686,10 @@ DEFUN(cfg_bts_bsic,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_timezone,
-      cfg_bts_timezone_cmd,
+DEFUN(cfg_net_timezone,
+      cfg_net_timezone_cmd,
       "timezone <-19-19> (0|15|30|45)",
-      "Set the Timezone Offset of this BTS\n"
+      "Set the Timezone Offset of the network\n"
       "Timezone offset (hours)\n"
       "Timezone offset (00 minutes)\n"
       "Timezone offset (15 minutes)\n"
@@ -1696,22 +1697,22 @@ DEFUN(cfg_bts_timezone,
       "Timezone offset (45 minutes)\n"
       )
 {
-	struct gsm_bts *bts = vty->index;
+	struct gsm_network *net = vty->index;
 	int tzhr = atoi(argv[0]);
 	int tzmn = atoi(argv[1]);
 
-	bts->tz.hr = tzhr;
-	bts->tz.mn = tzmn;
-	bts->tz.dst = 0;
-	bts->tz.override = 1;
+	net->tz.hr = tzhr;
+	net->tz.mn = tzmn;
+	net->tz.dst = 0;
+	net->tz.override = 1;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_timezone_dst,
-      cfg_bts_timezone_dst_cmd,
+DEFUN(cfg_net_timezone_dst,
+      cfg_net_timezone_dst_cmd,
       "timezone <-19-19> (0|15|30|45) <0-2>",
-      "Set the Timezone Offset of this BTS\n"
+      "Set the Timezone Offset of the network\n"
       "Timezone offset (hours)\n"
       "Timezone offset (00 minutes)\n"
       "Timezone offset (15 minutes)\n"
@@ -1720,28 +1721,28 @@ DEFUN(cfg_bts_timezone_dst,
       "DST offset (hours)\n"
       )
 {
-	struct gsm_bts *bts = vty->index;
+	struct gsm_network *net = vty->index;
 	int tzhr = atoi(argv[0]);
 	int tzmn = atoi(argv[1]);
 	int tzdst = atoi(argv[2]);
 
-	bts->tz.hr = tzhr;
-	bts->tz.mn = tzmn;
-	bts->tz.dst = tzdst;
-	bts->tz.override = 1;
+	net->tz.hr = tzhr;
+	net->tz.mn = tzmn;
+	net->tz.dst = tzdst;
+	net->tz.override = 1;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_no_timezone,
-      cfg_bts_no_timezone_cmd,
+DEFUN(cfg_net_no_timezone,
+      cfg_net_no_timezone_cmd,
       "no timezone",
       NO_STR
-      "Disable BTS specific timezone\n")
+      "Disable network timezone override, use system tz\n")
 {
-	struct gsm_bts *bts = vty->index;
+	struct gsm_network *net = vty->index;
 
-	bts->tz.override = 0;
+	net->tz.override = 0;
 
 	return CMD_SUCCESS;
 }
@@ -3899,6 +3900,9 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
+	install_element(GSMNET_NODE, &cfg_net_timezone_cmd);
+	install_element(GSMNET_NODE, &cfg_net_timezone_dst_cmd);
+	install_element(GSMNET_NODE, &cfg_net_no_timezone_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
@@ -3917,9 +3921,6 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_rsl_ip_cmd);
-	install_element(BTS_NODE, &cfg_bts_timezone_cmd);
-	install_element(BTS_NODE, &cfg_bts_timezone_dst_cmd);
-	install_element(BTS_NODE, &cfg_bts_no_timezone_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_skip_reset_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_no_loc_rel_cnf_cmd);
 	install_element(BTS_NODE, &cfg_bts_nokia_site_bts_reset_timer_cnf_cmd);

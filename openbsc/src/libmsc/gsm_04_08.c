@@ -733,7 +733,6 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 MM INF");
 	struct gsm48_hdr *gh;
 	struct gsm_network *net = conn->network;
-	struct gsm_bts *bts = conn->bts;
 	uint8_t *ptr8;
 	int name_len, name_pad;
 
@@ -821,23 +820,23 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	ptr8[5] = bcdify(gmt_time->tm_min);
 	ptr8[6] = bcdify(gmt_time->tm_sec);
 
-	if (bts->tz.override) {
+	if (net->tz.override) {
 		/* Convert tz.hr and tz.mn to units */
-		if (bts->tz.hr < 0) {
-			tzunits = ((bts->tz.hr/-1)*4);
-			tzunits = tzunits + (bts->tz.mn/15);
+		if (net->tz.hr < 0) {
+			tzunits = ((net->tz.hr/-1)*4);
+			tzunits = tzunits + (net->tz.mn/15);
 			ptr8[7] = bcdify(tzunits);
 			/* Set negative time */
 			ptr8[7] |= 0x08;
 		}
 		else {
-			tzunits = bts->tz.hr*4;
-			tzunits = tzunits + (bts->tz.mn/15);
+			tzunits = net->tz.hr*4;
+			tzunits = tzunits + (net->tz.mn/15);
 			ptr8[7] = bcdify(tzunits);
 		}
 		/* Convert DST value */
-		if (bts->tz.dst >= 0 && bts->tz.dst <= 2)
-			dst = bts->tz.dst;
+		if (net->tz.dst >= 0 && net->tz.dst <= 2)
+			dst = net->tz.dst;
 	}
 	else {
 		/* Need to get GSM offset and convert into 15 min units */
