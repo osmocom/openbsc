@@ -305,6 +305,12 @@ struct gsm_tz {
 };
 
 struct gsm_network {
+	/* TODO MSCSPLIT the gsm_network struct is basically a kitchen sink for
+	 * global settings and variables, "madly" mixing BSC and MSC stuff. Split
+	 * this in e.g. struct osmo_bsc and struct osmo_msc, with the things
+	 * these have in common, like country and network code, put in yet
+	 * separate structs and placed as members in osmo_bsc and osmo_msc. */
+
 	/* global parameters */
 	uint16_t country_code;
 	uint16_t network_code;
