@@ -119,10 +119,54 @@ static void reject_trap(struct ctrl_handle *ctrl, const char *imsi)
 	}
 
 	cmd->id = "0";
-	cmd->variable = talloc_asprintf(cmd, "subscriber-reject-v1");
+	cmd->variable = talloc_strdup(cmd, "subscriber-reject-v1");
 	cmd->reply = talloc_strdup(cmd, imsi);
 	ctrl_cmd_send_to_all(ctrl, cmd);
 	talloc_free(cmd);
+}
+
+static void send_trap(struct ctrl_handle *ctrl, const char *var, const char *value)
+{
+	struct ctrl_cmd *cmd;
+
+	cmd = ctrl_cmd_create(NULL, CTRL_TYPE_TRAP);
+	if (!cmd) {
+		LOGP(DCTRL, LOGL_ERROR, "Failed to create TRAP command.\n");
+		return;
+	}
+
+	cmd->id = "0";
+	cmd->variable = talloc_strdup(cmd, var);
+	cmd->reply = talloc_strdup(cmd, value);
+	ctrl_cmd_send_to_all(ctrl, cmd);
+	talloc_free(cmd);
+}
+
+static struct gsm_subscriber *maybe_create(struct gsm_network *net, const char *imsi)
+{
+	struct gsm_subscriber *subscr;
+
+	switch (net->create_subscriber_mode) {
+	case SUBSCR_DONT_CREATE:
+		return NULL;
+	case SUBSCR_CREATE_FULL_SERVICE:
+		subscr = subscr_create_subscriber(net->subscr_group, imsi);
+		subscr->limited_service = 0;
+		subscr->authorized = 1;
+		db_sync_subscriber(subscr);
+		send_trap(net->ctrl, "subscriber-created-full-v1", imsi);
+		return subscr;
+	case SUBSCR_CREATE_LMTD_SERVICE:
+		subscr = subscr_create_subscriber(net->subscr_group, imsi);
+		subscr->limited_service = 1;
+		subscr->authorized = 1;
+		db_sync_subscriber(subscr);
+		send_trap(net->ctrl, "subscriber-created-limited-v1", imsi);
+		return subscr;
+	default:
+		LOGP(DMM, LOGL_ERROR, "Unknown mode %d\n", net->create_subscriber_mode);
+		return NULL;
+	}
 }
 
 void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg)
@@ -547,9 +591,8 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 		if (!conn->subscr) {
 			conn->subscr = subscr_get_by_imsi(net->subscr_group,
 							  mi_string);
-			if (!conn->subscr && net->create_subscriber)
-				conn->subscr = subscr_create_subscriber(
-					net->subscr_group, mi_string);
+			if (!conn->subscr)
+				conn->subscr = maybe_create(net, mi_string);
 		}
 		if (!conn->subscr && conn->loc_operation) {
 			reject_trap(net->ctrl, mi_string);
@@ -659,10 +702,8 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 		/* look up subscriber based on IMSI, create if not found */
 		subscr = subscr_get_by_imsi(bts->network->subscr_group, mi_string);
-		if (!subscr && bts->network->create_subscriber) {
-			subscr = subscr_create_subscriber(
-				bts->network->subscr_group, mi_string);
-		}
+		if (!subscr)
+			subscr = maybe_create(bts->network, mi_string);
 		if (!subscr) {
 			reject_trap(bts->network->ctrl, mi_string);
 			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);

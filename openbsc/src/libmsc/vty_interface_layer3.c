@@ -1036,7 +1036,20 @@ DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
       "Make a new record when a subscriber is first seen.\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->create_subscriber = 1;
+	gsmnet->create_subscriber_mode = SUBSCR_CREATE_FULL_SERVICE;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nitb_subscr_create_od, cfg_nitb_subscr_create_od_cmd,
+      "subscriber-create-on-demand (full-service|limited-service)",
+      "Make a new record when a subscriber is first seen.\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
+	if (argv[0][0] == 'f')
+		gsmnet->create_subscriber_mode = SUBSCR_CREATE_FULL_SERVICE;
+	else
+		gsmnet->create_subscriber_mode = SUBSCR_CREATE_LMTD_SERVICE;
 	return CMD_SUCCESS;
 }
 
@@ -1045,7 +1058,7 @@ DEFUN(cfg_nitb_no_subscr_create, cfg_nitb_no_subscr_create_cmd,
       NO_STR "Make a new record when a subscriber is first seen.\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->create_subscriber = 0;
+	gsmnet->create_subscriber_mode = SUBSCR_DONT_CREATE;
 	return CMD_SUCCESS;
 }
 
@@ -1071,8 +1084,17 @@ static int config_write_nitb(struct vty *vty)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	vty_out(vty, "nitb%s", VTY_NEWLINE);
-	vty_out(vty, " %ssubscriber-create-on-demand%s",
-		gsmnet->create_subscriber ? "" : "no ", VTY_NEWLINE);
+	switch (gsmnet->create_subscriber_mode) {
+	case SUBSCR_CREATE_FULL_SERVICE:
+		vty_out(vty, " subscriber-create-on-demand full-service%s", VTY_NEWLINE);
+		break;
+	case SUBSCR_CREATE_LMTD_SERVICE:
+		vty_out(vty, " subscriber-create-on-demand limited-service%s", VTY_NEWLINE);
+		break;
+	default:
+		vty_out(vty, " no subscriber-create-on-demand%s", VTY_NEWLINE);
+		break;
+	}
 	vty_out(vty, " %sassign-tmsi%s",
 		gsmnet->avoid_tmsi ? "no " : "", VTY_NEWLINE);
 	return CMD_SUCCESS;
@@ -1127,6 +1149,7 @@ int bsc_vty_init_extra(void)
 	install_element(CONFIG_NODE, &cfg_nitb_cmd);
 	install_node(&nitb_node, config_write_nitb);
 	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
+	install_element(NITB_NODE, &cfg_nitb_subscr_create_od_cmd);
 	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);
 	install_element(NITB_NODE, &cfg_nitb_assign_tmsi_cmd);
 	install_element(NITB_NODE, &cfg_nitb_no_assign_tmsi_cmd);

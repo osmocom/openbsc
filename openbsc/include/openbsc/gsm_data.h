@@ -208,6 +208,12 @@ enum gsm_auth_policy {
 #define GSM_T3113_DEFAULT 60
 #define GSM_T3122_DEFAULT 10
 
+enum {
+	SUBSCR_DONT_CREATE,
+	SUBSCR_CREATE_FULL_SERVICE,
+	SUBSCR_CREATE_LMTD_SERVICE,
+};
+
 struct gsm_network {
 	/* global parameters */
 	uint16_t country_code;
@@ -282,7 +288,7 @@ struct gsm_network {
 	struct osmo_bsc_data *bsc_data;
 
 	/* subscriber related features */
-	int create_subscriber;
+	int create_subscriber_mode;
 	struct gsm_subscriber_group *subscr_group;
 	struct gsm_sms_queue *sms_queue;
 
