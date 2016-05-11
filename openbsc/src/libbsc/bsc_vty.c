@@ -131,21 +131,6 @@ struct cmd_node ts_node = {
 	1,
 };
 
-extern struct gsm_network *bsc_gsmnet;
-
-struct gsm_network *gsmnet_from_vty(struct vty *v)
-{
-	/* In case we read from the config file, the vty->priv cannot
-	 * point to a struct telnet_connection, and thus conn->priv
-	 * will not point to the gsm_network structure */
-#if 0
-	struct telnet_connection *conn = v->priv;
-	return (struct gsm_network *) conn->priv;
-#else
-	return bsc_gsmnet;
-#endif
-}
-
 static int dummy_config_write(struct vty *v)
 {
 	return CMD_SUCCESS;
@@ -3939,7 +3924,7 @@ DEFUN(smscb_cmd, smscb_cmd_cmd,
 	uint8_t buf[88];
 	int rc;
 
-	bts = gsm_bts_num(bsc_gsmnet, bts_nr);
+	bts = gsm_bts_num(gsmnet_from_vty(vty), bts_nr);
 	if (!bts) {
 		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
 		return CMD_WARNING;
@@ -3990,7 +3975,7 @@ DEFUN(pdch_act, pdch_act_cmd,
 	int ts_nr = atoi(argv[2]);
 	int activate;
 
-	bts = gsm_bts_num(bsc_gsmnet, bts_nr);
+	bts = gsm_bts_num(gsmnet_from_vty(vty), bts_nr);
 	if (!bts) {
 		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
 		return CMD_WARNING;
@@ -4052,6 +4037,7 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 					   "BTS Vendor/Type\n",
 					   "\n", "", 0);
 
+	xsc_vty_init(network);
 
 	install_element_ve(&show_net_cmd);
 	install_element_ve(&show_bts_cmd);
