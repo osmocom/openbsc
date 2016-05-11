@@ -26,7 +26,7 @@
 struct gsm_network *gsm_network_init(void *ctx,
 				     uint16_t country_code,
 				     uint16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, struct msgb *))
+				     mncc_recv_cb_t mncc_recv)
 {
 	struct gsm_network *net;
 	const char *default_regexp = ".*";
