@@ -717,6 +717,9 @@ static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 	si3->cell_sel_par = bts->si_common.cell_sel_par;
 	si3->rach_control = bts->si_common.rach_control;
 
+	/* allow/disallow DTXu */
+	gsm48_set_dtx(&si3->cell_options, bts->dtxu, bts->dtxu, true);
+
 	if ((bts->si_valid & (1 << SYSINFO_TYPE_2ter))) {
 		LOGP(DRR, LOGL_INFO, "SI 2ter is included.\n");
 		si_info.si2ter_indicator = 1;
@@ -928,6 +931,8 @@ static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 			   bts->location_area_code);
 	si6->cell_options = bts->si_common.cell_options;
 	si6->ncc_permitted = bts->si_common.ncc_permitted;
+	/* allow/disallow DTXu */
+	gsm48_set_dtx(&si6->cell_options, bts->dtxu, bts->dtxu, true);
 
 	/* SI6 Rest Octets: 10.5.2.35a: PCH / NCH info, VBS/VGCS options */
 

@@ -23,7 +23,7 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
-
+#include <stdbool.h>
 #include <netinet/in.h>
 
 #include <osmocom/core/linuxlist.h>
@@ -31,6 +31,7 @@
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/statistics.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_msc_data.h>
@@ -311,7 +312,8 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 	bts->type = type;
 	bts->model = model;
 	bts->bsic = bsic;
-
+	bts->dtxu = GSM48_DTX_SHALL_NOT_BE_USED;
+	bts->dtxd = false;
 	bts->neigh_list_manual_mode = 0;
 	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
 	bts->si_common.cell_sel_par.rxlev_acc_min = 0;

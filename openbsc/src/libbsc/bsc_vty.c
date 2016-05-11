@@ -18,6 +18,7 @@
  */
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 
 #include <osmocom/vty/command.h>
@@ -27,7 +28,7 @@
 #include <osmocom/vty/stats.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/misc.h>
-
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/gsm0502.h>
 
 #include <arpa/inet.h>
@@ -273,6 +274,14 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
+	if (bts->dtxu != GSM48_DTX_SHALL_NOT_BE_USED)
+		vty_out(vty, "Uplink DTX: %s%s",
+			(bts->dtxu != GSM48_DTX_SHALL_BE_USED) ?
+			"enabled" : "forced", VTY_NEWLINE);
+	else
+		vty_out(vty, "Uplink DTX: not enabled%s", VTY_NEWLINE);
+	vty_out(vty, "Downlink DTX: %senabled%s", bts->dtxd ? "" : "not ",
+		VTY_NEWLINE);
 	vty_out(vty, "Channel Description Attachment: %s%s",
 		(bts->si_common.chan_desc.att) ? "yes" : "no", VTY_NEWLINE);
 	vty_out(vty, "Channel Description BS-PA-MFRMS: %u%s",
@@ -549,6 +558,12 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  cell_identity %u%s", bts->cell_identity, VTY_NEWLINE);
 	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
 		VTY_NEWLINE);
+	if (bts->dtxu != GSM48_DTX_SHALL_NOT_BE_USED)
+		vty_out(vty, "  dtx uplink%s%s",
+			(bts->dtxu != GSM48_DTX_SHALL_BE_USED) ? "" : " force",
+			VTY_NEWLINE);
+	if (bts->dtxd)
+		vty_out(vty, "  dtx downlink%s", VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
 	if (bts->tz.override != 0) {
 		if (bts->tz.dst)
@@ -809,7 +824,6 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
 	vty_out(vty, " timer t3122 %u%s", gsmnet->T3122, VTY_NEWLINE);
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
-	vty_out(vty, " dtx-used %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
 	vty_out(vty, " subscriber-keep-in-ram %d%s",
 		gsmnet->subscr_group->keep_subscr, VTY_NEWLINE);
 
@@ -1613,15 +1627,14 @@ DECLARE_TIMER(3119, "Currently not used.\n")
 DECLARE_TIMER(3122, "Waiting time (seconds) after IMM ASS REJECT\n")
 DECLARE_TIMER(3141, "Currently not used.\n")
 
-DEFUN(cfg_net_dtx,
-      cfg_net_dtx_cmd,
-      "dtx-used (0|1)",
-      "Enable the usage of DTX.\n"
-      "DTX is disabled\n" "DTX is enabled\n")
+DEFUN_DEPRECATED(cfg_net_dtx,
+		 cfg_net_dtx_cmd,
+		 "dtx-used (0|1)",
+		 ".HIDDEN\n""Obsolete\n""Obsolete\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->dtx_enabled = atoi(argv[0]);
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'dtx-used' is now deprecated: use dtx * "
+		"configuration options of BTS instead%s", VTY_NEWLINE);
+       return CMD_SUCCESS;
 }
 
 DEFUN(cfg_net_subscr_keep,
@@ -1700,6 +1713,54 @@ DEFUN(cfg_bts_band,
 	}
 
 	bts->band = band;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_dtxu, cfg_bts_dtxu_cmd, "dtx uplink [force]",
+      "Configure discontinuous transmission\n"
+      "Enable Uplink DTX for this BTS\n"
+      "MS 'shall' use DTXu instead of 'may' use (might not be supported by "
+      "older phones).\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->dtxu = (argc > 0) ? GSM48_DTX_SHALL_BE_USED : GSM48_DTX_MAY_BE_USED;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_dtxu, cfg_bts_no_dtxu_cmd, "no dtx uplink",
+      NO_STR
+      "Configure discontinuous transmission\n"
+      "Disable Uplink DTX for this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->dtxu = GSM48_DTX_SHALL_NOT_BE_USED;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_dtxd, cfg_bts_dtxd_cmd, "dtx downlink",
+      "Configure discontinuous transmission\n"
+      "Enable Downlink DTX for this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->dtxd = true;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_dtxd, cfg_bts_no_dtxd_cmd, "no dtx downlink",
+      NO_STR
+      "Configure discontinuous transmission\n"
+      "Disable Downlink DTX for this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->dtxd = false;
 
 	return CMD_SUCCESS;
 }
@@ -3948,6 +4009,10 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_no_description_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_ci_cmd);
+	install_element(BTS_NODE, &cfg_bts_dtxu_cmd);
+	install_element(BTS_NODE, &cfg_bts_dtxd_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_dtxu_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_dtxd_cmd);
 	install_element(BTS_NODE, &cfg_bts_lac_cmd);
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);

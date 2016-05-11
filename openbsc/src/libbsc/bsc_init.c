@@ -458,12 +458,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 		return -EINVAL;
 	}
 
-	/* allow/disallow DTXu */
-	if (bts->network->dtx_enabled)
-		bts->si_common.cell_options.dtx = 0;
-	else
-		bts->si_common.cell_options.dtx = 2;
-
 	bts->si_common.cell_options.pwrc = 0; /* PWRC not set */
 
 	bts->si_common.cell_sel_par.acs = 0;

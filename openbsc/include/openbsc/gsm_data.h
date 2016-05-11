@@ -269,9 +269,6 @@ struct gsm_network {
 		enum rrlp_mode mode;
 	} rrlp;
 
-	/* enable the DTXu and DTXd for this network */
-	int dtx_enabled;
-
 	enum gsm_chan_t ctype_by_chreq[16];
 
 	/* Use a TCH for handling requests of type paging any */

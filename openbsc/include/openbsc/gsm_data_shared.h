@@ -14,7 +14,7 @@
 #include <osmocom/gsm/rxlev_stat.h>
 #include <osmocom/gsm/sysinfo.h>
 #include <osmocom/gsm/meas_rep.h>
-
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 
@@ -593,6 +593,10 @@ struct gsm_bts {
 
 	/* number of this BTS on given E1 link */
 	uint8_t bts_nr;
+
+	/* DTX features of this BTS */
+	enum gsm48_dtx_mode dtxu;
+	bool dtxd;
 
 	/* paging state and control */
 	struct gsm_bts_paging_state paging;

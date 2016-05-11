@@ -35,6 +35,8 @@
 #include <openbsc/bsc_rll.h>
 #include <openbsc/debug.h>
 #include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
+#include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/meas_rep.h>
@@ -345,10 +347,11 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 	memset(cm, 0, sizeof(*cm));
 
 	/* FIXME: what to do with data calls ? */
-	if (lchan->ts->trx->bts->network->dtx_enabled)
-		cm->dtx_dtu = 0x03;
-	else
-		cm->dtx_dtu = 0x00;
+	cm->dtx_dtu = 0;
+	if (lchan->ts->trx->bts->dtxu != GSM48_DTX_SHALL_NOT_BE_USED)
+		cm->dtx_dtu |= RSL_CMOD_DTXu;
+	if (lchan->ts->trx->bts->dtxd)
+		cm->dtx_dtu |= RSL_CMOD_DTXd;
 
 	/* set TCH Speech/Data */
 	cm->spd_ind = lchan->rsl_cmode;
