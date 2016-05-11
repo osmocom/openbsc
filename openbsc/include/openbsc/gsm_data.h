@@ -14,6 +14,7 @@
 #include <osmocom/crypt/auth.h>
 
 #include <openbsc/rest_octets.h>
+#include <openbsc/xsc.h>
 
 /** annotations for msgb ownership */
 #define __uses
@@ -292,7 +293,7 @@ struct gsm_network {
 
 	/* layer 4 */
 	struct mncc_sock_state *mncc_state;
-	int (*mncc_recv) (struct gsm_network *net, struct msgb *msg);
+	mncc_recv_cb_t mncc_recv;
 	struct llist_head upqueue;
 	struct llist_head trans_list;
 	struct bsc_api *bsc_api;
@@ -401,7 +402,7 @@ extern void talloc_ctx_init(void *ctx_root);
 struct gsm_network *gsm_network_init(void *ctx,
 				     uint16_t country_code,
 				     uint16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, struct msgb *));
+				     mncc_recv_cb_t mncc_recv);
 
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 

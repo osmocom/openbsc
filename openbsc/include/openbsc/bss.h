@@ -1,11 +1,12 @@
 #ifndef _BSS_H_
 #define _BSS_H_
 
-struct gsm_network;
+#include <openbsc/gsm_data.h>
+
 struct msgb;
 
 /* start and stop network */
-extern int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *), const char *cfg_file);
+extern int bsc_bootstrap_network(mncc_recv_cb_t mncc_recv, const char *cfg_file);
 extern int bsc_shutdown_net(struct gsm_network *net);
 
 /* register all supported BTS */

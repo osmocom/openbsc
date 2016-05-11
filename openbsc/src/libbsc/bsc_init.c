@@ -470,8 +470,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	return 0;
 }
 
-int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
-			  const char *config_file)
+int bsc_bootstrap_network(mncc_recv_cb_t mncc_recv, const char *config_file)
 {
 	struct gsm_bts *bts;
 	int rc;
