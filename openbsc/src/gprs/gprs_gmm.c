@@ -109,6 +109,29 @@ static const struct tlv_definition gsm48_sm_att_tlvdef = {
 
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx);
 
+void mmctx_set_pmm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
+{
+	if (ctx->pmm_state == state)
+		return;
+
+	LOGMMCTXP(LOGL_INFO, ctx, "Changing PMM state from %i to %i\n", ctx->pmm_state, state);
+
+	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
+	{
+		switch (state) {
+		case PMM_IDLE:
+			/* TODO: Change GTP-U endpoints to SGSN, start RA Upd timer */
+			break;
+		case PMM_CONNECTED:
+			break;
+		default:
+			break;
+		}
+	}
+
+	ctx->pmm_state = state;
+}
+
 #ifdef BUILD_IU
 int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies);
 int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *data)
@@ -132,7 +155,7 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *
 		/* Clean up ue_conn_ctx here */
 		LOGMMCTXP(LOGL_INFO, mm, "IU release for imsi %s\n", mm->imsi);
 		if (mm->pmm_state == PMM_CONNECTED)
-			mm->pmm_state = PMM_IDLE;
+			mmctx_set_pmm_state(mm, PMM_IDLE);
 		rc = 0;
 		break;
 	case IU_EVENT_SECURITY_MODE_COMPLETE:
@@ -243,7 +266,8 @@ static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
 
 	/* Mark MM state as deregistered */
 	ctx->mm_state = GMM_DEREGISTERED;
-	ctx->pmm_state = PMM_DETACHED;
+
+	mmctx_set_pmm_state(ctx, PMM_DETACHED);
 
 	sgsn_mm_ctx_cleanup_free(ctx);
 }
@@ -854,9 +878,8 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		return gsm48_tx_gmm_att_ack(ctx);
 #ifdef BUILD_IU
 	case GSM48_MT_GMM_SERVICE_REQ:
-		/* TODO: PMM State transition */
 		ctx->pending_req = 0;
-		ctx->pmm_state = PMM_CONNECTED;
+		mmctx_set_pmm_state(ctx, PMM_CONNECTED);
 		rc = gsm48_tx_gmm_service_ack(ctx);
 
 		if (ctx->iu.service.type != GPRS_SERVICE_T_SIGNALLING)
@@ -1798,7 +1821,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 					  mmctx->gb.tlli_new);
 		}
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
-		mmctx->pmm_state = PMM_CONNECTED;
+		mmctx_set_pmm_state(mmctx, PMM_CONNECTED);
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
@@ -1821,7 +1844,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 					  mmctx->gb.tlli_new);
 		}
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
-		mmctx->pmm_state = PMM_CONNECTED;
+		mmctx_set_pmm_state(mmctx, PMM_CONNECTED);
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
