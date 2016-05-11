@@ -88,7 +88,7 @@ tests/package.m4
 tests/testsuite
 tests/testsuite.log
 
-
+gsn_restart
 src/openbsc.cfg*
 writtenconfig/
 gtphub_restart_count
