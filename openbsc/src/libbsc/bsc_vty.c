@@ -54,15 +54,13 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/osmo_bsc_rf.h>
 
+#include <openbsc/xsc.h>
+
 #include <inttypes.h>
 
 #include "../../bscconfig.h"
 
 
-#define NETWORK_STR "Configure the GSM network\n"
-#define CODE_CMD_STR "Code commands\n"
-#define NAME_CMD_STR "Name Commands\n"
-#define NAME_STR "Name to use\n"
 #define LCHAN_NR_STR "Logical Channel Number\n"
 
 
@@ -105,12 +103,6 @@ const struct value_string bts_loc_fix_names[] = {
 	{ BTS_LOC_FIX_2D,	"fix2d" },
 	{ BTS_LOC_FIX_3D,	"fix3d" },
 	{ 0, NULL }
-};
-
-struct cmd_node net_node = {
-	GSMNET_NODE,
-	"%s(config-net)# ",
-	1,
 };
 
 struct cmd_node bts_node = {
@@ -1336,133 +1328,6 @@ DEFUN(show_paging_group,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net,
-      cfg_net_cmd,
-      "network", NETWORK_STR)
-{
-	vty->index = gsmnet_from_vty(vty);
-	vty->node = GSMNET_NODE;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_ncc,
-      cfg_net_ncc_cmd,
-      "network country code <1-999>",
-      "Set the GSM network country code\n"
-      "Country commands\n"
-      CODE_CMD_STR
-      "Network Country Code to use\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	gsmnet->country_code = atoi(argv[0]);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_mnc,
-      cfg_net_mnc_cmd,
-      "mobile network code <0-999>",
-      "Set the GSM mobile network code\n"
-      "Network Commands\n"
-      CODE_CMD_STR
-      "Mobile Network Code to use\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	gsmnet->network_code = atoi(argv[0]);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_name_short,
-      cfg_net_name_short_cmd,
-      "short name NAME",
-      "Set the short GSM network name\n" NAME_CMD_STR NAME_STR)
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	bsc_replace_string(gsmnet, &gsmnet->name_short, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_name_long,
-      cfg_net_name_long_cmd,
-      "long name NAME",
-      "Set the long GSM network name\n" NAME_CMD_STR NAME_STR)
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	bsc_replace_string(gsmnet, &gsmnet->name_long, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_auth_policy,
-      cfg_net_auth_policy_cmd,
-      "auth policy (closed|accept-all|regexp|token)",
-	"Authentication (not cryptographic)\n"
-	"Set the GSM network authentication policy\n"
-	"Require the MS to be activated in HLR\n"
-	"Accept all MS, whether in HLR or not\n"
-	"Use regular expression for IMSI authorization decision\n"
-	"Use SMS-token based authentication\n")
-{
-	enum gsm_auth_policy policy = gsm_auth_policy_parse(argv[0]);
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	gsmnet->auth_policy = policy;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_authorize_regexp, cfg_net_authorize_regexp_cmd,
-      "authorized-regexp REGEXP",
-      "Set regexp for IMSI which will be used for authorization decision\n"
-      "Regular expression, IMSIs matching it are allowed to use the network\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	if (gsm_parse_reg(gsmnet, &gsmnet->authorized_regexp,
-			  &gsmnet->authorized_reg_str, argc, argv) != 0) {
-		vty_out(vty, "%%Failed to parse the authorized-regexp: '%s'%s",
-			argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_reject_cause,
-      cfg_net_reject_cause_cmd,
-      "location updating reject cause <2-111>",
-      "Set the reject cause of location updating reject\n"
-      "Set the reject cause of location updating reject\n"
-      "Set the reject cause of location updating reject\n"
-      "Set the reject cause of location updating reject\n"
-      "Cause Value as Per GSM TS 04.08\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	gsmnet->reject_cause = atoi(argv[0]);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_encryption,
-      cfg_net_encryption_cmd,
-      "encryption a5 (0|1|2|3)",
-	"Encryption options\n"
-	"A5 encryption\n" "A5/0: No encryption\n"
-	"A5/1: Encryption\n" "A5/2: Export-grade Encryption\n"
-	"A5/3: 'New' Secure Encryption\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	gsmnet->a5_encryption= atoi(argv[0]);
-
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_net_neci,
       cfg_net_neci_cmd,
       "neci (0|1)",
@@ -1473,35 +1338,6 @@ DEFUN(cfg_net_neci,
 
 	gsmnet->neci = atoi(argv[0]);
 	gsm_net_update_ctype(gsmnet);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_rrlp_mode, cfg_net_rrlp_mode_cmd,
-      "rrlp mode (none|ms-based|ms-preferred|ass-preferred)",
-	"Radio Resource Location Protocol\n"
-	"Set the Radio Resource Location Protocol Mode\n"
-	"Don't send RRLP request\n"
-	"Request MS-based location\n"
-	"Request any location, prefer MS-based\n"
-	"Request any location, prefer MS-assisted\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	gsmnet->rrlp.mode = rrlp_mode_parse(argv[0]);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_mm_info, cfg_net_mm_info_cmd,
-      "mm info (0|1)",
-	"Mobility Management\n"
-	"Send MM INFO after LOC UPD ACCEPT\n"
-	"Disable\n" "Enable\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	gsmnet->send_mm_info = atoi(argv[0]);
-
 	return CMD_SUCCESS;
 }
 
@@ -1654,17 +1490,6 @@ DEFUN_DEPRECATED(cfg_net_dtx,
 	vty_out(vty, "%% 'dtx-used' is now deprecated: use dtx * "
 		"configuration options of BTS instead%s", VTY_NEWLINE);
        return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_subscr_keep,
-      cfg_net_subscr_keep_cmd,
-      "subscriber-keep-in-ram (0|1)",
-      "Keep unused subscribers in RAM.\n"
-      "Delete unused subscribers\n" "Keep unused subscribers\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->subscr_group->keep_subscr = atoi(argv[0]);
-	return CMD_SUCCESS;
 }
 
 /* per-BTS configuration */
@@ -4037,7 +3862,7 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 					   "BTS Vendor/Type\n",
 					   "\n", "", 0);
 
-	xsc_vty_init(network);
+	xsc_vty_init(network, config_write_net);
 
 	install_element_ve(&show_net_cmd);
 	install_element_ve(&show_bts_cmd);
@@ -4052,20 +3877,7 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	logging_vty_add_cmds(cat);
 	osmo_stats_vty_add_cmds();
 
-	install_element(CONFIG_NODE, &cfg_net_cmd);
-	install_node(&net_node, config_write_net);
-	vty_install_default(GSMNET_NODE);
-	install_element(GSMNET_NODE, &cfg_net_ncc_cmd);
-	install_element(GSMNET_NODE, &cfg_net_mnc_cmd);
-	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
-	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
-	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
-	install_element(GSMNET_NODE, &cfg_net_authorize_regexp_cmd);
-	install_element(GSMNET_NODE, &cfg_net_reject_cause_cmd);
-	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
-	install_element(GSMNET_NODE, &cfg_net_rrlp_mode_cmd);
-	install_element(GSMNET_NODE, &cfg_net_mm_info_cmd);
 	install_element(GSMNET_NODE, &cfg_net_handover_cmd);
 	install_element(GSMNET_NODE, &cfg_net_ho_win_rxlev_avg_cmd);
 	install_element(GSMNET_NODE, &cfg_net_ho_win_rxqual_avg_cmd);
@@ -4086,7 +3898,6 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	install_element(GSMNET_NODE, &cfg_net_T3122_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
-	install_element(GSMNET_NODE, &cfg_net_subscr_keep_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);

@@ -22,5 +22,6 @@ struct gsm_network *gsm_network_init(void *ctx,
 				     uint16_t network_code,
 				     mncc_recv_cb_t mncc_recv);
 
-int xsc_vty_init(struct gsm_network *network);
+int xsc_vty_init(struct gsm_network *network,
+                 int (* config_write_net )(struct vty *));
 struct gsm_network *gsmnet_from_vty(struct vty *v);
