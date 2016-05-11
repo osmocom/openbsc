@@ -473,7 +473,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 			  const char *config_file)
 {
-	struct telnet_connection dummy_conn;
 	struct gsm_bts *bts;
 	int rc;
 
@@ -485,9 +484,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 	bsc_gsmnet->name_long = talloc_strdup(bsc_gsmnet, "OpenBSC");
 	bsc_gsmnet->name_short = talloc_strdup(bsc_gsmnet, "OpenBSC");
 
-	/* our vty command code expects vty->priv to point to a telnet_connection */
-	dummy_conn.priv = bsc_gsmnet;
-	rc = vty_read_config_file(config_file, &dummy_conn);
+	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {
 		LOGP(DNM, LOGL_FATAL, "Failed to parse the config file: '%s'\n", config_file);
 		return rc;
