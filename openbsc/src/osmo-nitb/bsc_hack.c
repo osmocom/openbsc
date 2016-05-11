@@ -243,8 +243,6 @@ static void subscr_expire_cb(void *data)
 	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
 }
 
-void talloc_ctx_init(void);
-
 extern int bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
@@ -261,7 +259,7 @@ int main(int argc, char **argv)
 	vty_info.copyright = openbsc_copyright;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
-	talloc_ctx_init();
+	talloc_ctx_init(tall_bsc_ctx);
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();

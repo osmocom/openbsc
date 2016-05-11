@@ -36,22 +36,21 @@ extern void *tall_map_ctx;
 extern void *tall_upq_ctx;
 extern void *tall_ctr_ctx;
 
-void talloc_ctx_init(void)
+void talloc_ctx_init(void *ctx_root)
 {
-	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
-	tall_fle_ctx = talloc_named_const(tall_bsc_ctx, 0,
-					  "bs11_file_list_entry");
-	tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 0, "loc_updating_oper");
-	tall_authciphop_ctx = talloc_named_const(tall_bsc_ctx, 0, "auth_ciph_oper");
-	tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 0, "sms");
-	tall_subscr_ctx = talloc_named_const(tall_bsc_ctx, 0, "subscriber");
-	tall_sub_req_ctx = talloc_named_const(tall_bsc_ctx, 0, "subscr_request");
-	tall_call_ctx = talloc_named_const(tall_bsc_ctx, 0, "gsm_call");
-	tall_paging_ctx = talloc_named_const(tall_bsc_ctx, 0, "paging_request");
-	tall_sigh_ctx = talloc_named_const(tall_bsc_ctx, 0, "signal_handler");
-	tall_tqe_ctx = talloc_named_const(tall_bsc_ctx, 0, "subch_txq_entry");
-	tall_trans_ctx = talloc_named_const(tall_bsc_ctx, 0, "transaction");
-	tall_map_ctx = talloc_named_const(tall_bsc_ctx, 0, "trau_map_entry");
-	tall_upq_ctx = talloc_named_const(tall_bsc_ctx, 0, "trau_upq_entry");
-	tall_ctr_ctx = talloc_named_const(tall_bsc_ctx, 0, "counter");
+	tall_msgb_ctx = talloc_named_const(ctx_root, 0, "msgb");
+	tall_fle_ctx = talloc_named_const(ctx_root, 0, "bs11_file_list_entry");
+	tall_locop_ctx = talloc_named_const(ctx_root, 0, "loc_updating_oper");
+	tall_authciphop_ctx = talloc_named_const(ctx_root, 0, "auth_ciph_oper");
+	tall_gsms_ctx = talloc_named_const(ctx_root, 0, "sms");
+	tall_subscr_ctx = talloc_named_const(ctx_root, 0, "subscriber");
+	tall_sub_req_ctx = talloc_named_const(ctx_root, 0, "subscr_request");
+	tall_call_ctx = talloc_named_const(ctx_root, 0, "gsm_call");
+	tall_paging_ctx = talloc_named_const(ctx_root, 0, "paging_request");
+	tall_sigh_ctx = talloc_named_const(ctx_root, 0, "signal_handler");
+	tall_tqe_ctx = talloc_named_const(ctx_root, 0, "subch_txq_entry");
+	tall_trans_ctx = talloc_named_const(ctx_root, 0, "transaction");
+	tall_map_ctx = talloc_named_const(ctx_root, 0, "trau_map_entry");
+	tall_upq_ctx = talloc_named_const(ctx_root, 0, "trau_upq_entry");
+	tall_ctr_ctx = talloc_named_const(ctx_root, 0, "counter");
 }
