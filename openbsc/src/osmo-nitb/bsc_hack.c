@@ -284,15 +284,26 @@ int main(int argc, char **argv)
 
 	/* internal MNCC handler or MNCC socket? */
 	if (mncc_sock_path) {
-		rc = bsc_bootstrap_network(mncc_sock_from_cc, config_file);
-		if (rc >= 0)
-			mncc_sock_init(bsc_gsmnet, mncc_sock_path);
+		rc = bsc_network_alloc(mncc_sock_from_cc);
+		if (rc) {
+			fprintf(stderr, "Allocation failed. Exiting.\n");
+			exit(1);
+		}
+		mncc_sock_init(bsc_gsmnet, mncc_sock_path);
 	} else {
 		DEBUGP(DMNCC, "Using internal MNCC handler.\n");
-		rc = bsc_bootstrap_network(int_mncc_recv, config_file);
+		rc = bsc_network_alloc(int_mncc_recv);
+		if (rc) {
+			fprintf(stderr, "Allocation failed. Exiting.\n");
+			exit(1);
+		}
 	}
-	if (rc < 0)
+	rc = bsc_network_configure(config_file);
+	if (rc < 0) {
+		fprintf(stderr, "Reading config failed. Exiting.\n");
 		exit(1);
+	}
+
 #ifdef BUILD_SMPP
 	smpp_openbsc_start(bsc_gsmnet);
 #endif

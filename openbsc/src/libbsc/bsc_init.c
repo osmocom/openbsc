@@ -471,18 +471,22 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	return 0;
 }
 
-int bsc_bootstrap_network(mncc_recv_cb_t mncc_recv, const char *config_file)
+int bsc_network_alloc(mncc_recv_cb_t mncc_recv)
 {
-	struct gsm_bts *bts;
-	int rc;
-
-	/* initialize our data structures */
 	bsc_gsmnet = bsc_network_init(tall_bsc_ctx, 1, 1, mncc_recv);
 	if (!bsc_gsmnet)
 		return -ENOMEM;
 
 	bsc_gsmnet->name_long = talloc_strdup(bsc_gsmnet, "OpenBSC");
 	bsc_gsmnet->name_short = talloc_strdup(bsc_gsmnet, "OpenBSC");
+
+	return 0;
+}
+
+int bsc_network_configure(const char *config_file)
+{
+	struct gsm_bts *bts;
+	int rc;
 
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {

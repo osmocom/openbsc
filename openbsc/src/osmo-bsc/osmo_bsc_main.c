@@ -219,8 +219,12 @@ int main(int argc, char **argv)
 	/* initialize SCCP */
 	sccp_set_log_area(DSCCP);
 
-
-	rc = bsc_bootstrap_network(NULL, config_file);
+	rc = bsc_network_alloc(NULL);
+	if (rc) {
+		fprintf(stderr, "Allocation failed. exiting.\n");
+		exit(1);
+	}
+	rc = bsc_network_configure(config_file);
 	if (rc < 0) {
 		fprintf(stderr, "Bootstrapping the network failed. exiting.\n");
 		exit(1);
