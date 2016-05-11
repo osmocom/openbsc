@@ -159,10 +159,41 @@ static void test_sms_migrate(void)
 	subscr_put(rcv_subscr);
 }
 
-int main()
+static void test_subs(const char *alice_imsi, char *imei1, char *imei2)
 {
+	struct gsm_subscriber *alice = NULL, *alice_db;
 	char scratch_str[256];
 
+	alice = db_create_subscriber(alice_imsi);
+	db_subscriber_assoc_imei(alice, imei1);
+	if (imei2)
+		db_subscriber_assoc_imei(alice, imei2);
+	db_subscriber_alloc_tmsi(alice);
+	alice->lac=42;
+	db_sync_subscriber(alice);
+	/* Get by TMSI */
+	snprintf(scratch_str, sizeof(scratch_str), "%"PRIu32, alice->tmsi);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_TMSI, scratch_str);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	/* Get by IMSI */
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice_imsi);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	/* Get by id */
+	snprintf(scratch_str, sizeof(scratch_str), "%llu", alice->id);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_ID, scratch_str);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	/* Get by extension */
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, alice->extension);
+	COMPARE(alice, alice_db);
+	SUBSCR_PUT(alice_db);
+	SUBSCR_PUT(alice);
+}
+
+int main()
+{
 	printf("Testing subscriber database code.\n");
 	osmo_init_logging(&log_info);
 	log_set_print_filename(osmo_stderr_target, 0);
@@ -193,58 +224,8 @@ int main()
 	SUBSCR_PUT(alice_db);
 	SUBSCR_PUT(alice);
 
-	alice_imsi = "3693245423445";
-	alice = db_create_subscriber(alice_imsi);
-	db_subscriber_assoc_imei(alice, "1234567890");
-	db_subscriber_alloc_tmsi(alice);
-	alice->lac=42;
-	db_sync_subscriber(alice);
-	/* Get by TMSI */
-	snprintf(scratch_str, sizeof(scratch_str), "%"PRIu32, alice->tmsi);
-	alice_db = db_get_subscriber(GSM_SUBSCRIBER_TMSI, scratch_str);
-	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice_db);
-	/* Get by IMSI */
-	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice_imsi);
-	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice_db);
-	/* Get by id */
-	snprintf(scratch_str, sizeof(scratch_str), "%llu", alice->id);
-	alice_db = db_get_subscriber(GSM_SUBSCRIBER_ID, scratch_str);
-	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice_db);
-	/* Get by extension */
-	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, alice->extension);
-	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice_db);
-	SUBSCR_PUT(alice);
-
-	alice_imsi = "9993245423445";
-	alice = db_create_subscriber(alice_imsi);
-	db_subscriber_alloc_tmsi(alice);
-	alice->lac=42;
-	db_sync_subscriber(alice);
-	db_subscriber_assoc_imei(alice, "1234567890");
-	db_subscriber_assoc_imei(alice, "6543560920");
-	/* Get by TMSI */
-	snprintf(scratch_str, sizeof(scratch_str), "%"PRIu32, alice->tmsi);
-	alice_db = db_get_subscriber(GSM_SUBSCRIBER_TMSI, scratch_str);
-	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice_db);
-	/* Get by IMSI */
-	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice_imsi);
-	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice_db);
-	/* Get by id */
-	snprintf(scratch_str, sizeof(scratch_str), "%llu", alice->id);
-	alice_db = db_get_subscriber(GSM_SUBSCRIBER_ID, scratch_str);
-	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice_db);
-	/* Get by extension */
-	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, alice->extension);
-	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice_db);
-	SUBSCR_PUT(alice);
+	test_subs("3693245423445", "1234567890", NULL);
+	test_subs("9993245423445", "1234567890", "6543560920");
 
 	/* create it again and see it fails */
 	alice = db_create_subscriber(alice_imsi);
