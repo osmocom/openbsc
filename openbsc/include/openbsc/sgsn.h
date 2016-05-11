@@ -138,6 +138,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 					 uint16_t nsapi,
 					 struct tlv_parsed *tp);
 int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx);
+void sgsn_pdp_upd_gtp_u(struct sgsn_pdp_ctx *pdp, void *addr, size_t alen);
 
 /* gprs_sndcp.c */
 

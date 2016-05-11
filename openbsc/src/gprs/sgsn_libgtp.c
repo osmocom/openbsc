@@ -401,6 +401,13 @@ reject:
 	return EOF;
 }
 
+void sgsn_pdp_upd_gtp_u(struct sgsn_pdp_ctx *pdp, void *addr, size_t alen)
+{
+	pdp->lib->gsnlu.l = alen;
+	memcpy(pdp->lib->gsnlu.v, addr, alen);
+	gtp_update_context(pdp->ggsn->gsn, pdp->lib, pdp, &pdp->lib->hisaddr0);
+}
+
 #ifdef BUILD_IU
 /* Callback for RAB assignment response */
 int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies)
@@ -619,6 +626,18 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 		LOGP(DGPRS, LOGL_ERROR,
 		     "PDP context (imsi=%s) without MM context!\n", mm->imsi);
 		return -EIO;
+	}
+
+	if (mm->ran_type == MM_CTX_T_UTRAN_Iu) {
+#ifdef BUILD_IU
+		/* Ignore the packet for now and page the UE to get the RAB
+		 * reestablished */
+		iu_page_ps(mm->imsi, &mm->p_tmsi, mm->ra.lac, mm->ra.rac);
+
+		return 0;
+#else
+		return -ENOTSUP;
+#endif
 	}
 
 	msg = msgb_alloc_headroom(len+256, 128, "GTP->SNDCP");

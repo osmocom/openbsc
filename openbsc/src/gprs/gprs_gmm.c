@@ -109,6 +109,16 @@ static const struct tlv_definition gsm48_sm_att_tlvdef = {
 
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx);
 
+static void mmctx_change_gtpu_endpoints_to_sgsn(struct sgsn_mm_ctx *mm_ctx)
+{
+	struct sgsn_pdp_ctx *pdp;
+	llist_for_each_entry(pdp, &mm_ctx->pdp_list, list) {
+		sgsn_pdp_upd_gtp_u(pdp,
+				   &sgsn->cfg.gtp_listenaddr.sin_addr,
+				   sizeof(sgsn->cfg.gtp_listenaddr.sin_addr));
+	}
+}
+
 void mmctx_set_pmm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
 {
 	if (ctx->pmm_state == state)
@@ -120,7 +130,8 @@ void mmctx_set_pmm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
 	{
 		switch (state) {
 		case PMM_IDLE:
-			/* TODO: Change GTP-U endpoints to SGSN, start RA Upd timer */
+			/* TODO: start RA Upd timer */
+			mmctx_change_gtpu_endpoints_to_sgsn(ctx);
 			break;
 		case PMM_CONNECTED:
 			break;
