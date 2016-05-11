@@ -205,7 +205,7 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 			VTY_NEWLINE);
 }
 
-DEFUN(show_net, show_net_cmd, "show network",
+DEFUN(bsc_show_net, bsc_show_net_cmd, "show network",
 	SHOW_STR "Display information about a GSM NETWORK\n")
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
@@ -3864,7 +3864,7 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 
 	xsc_vty_init(network, config_write_net);
 
-	install_element_ve(&show_net_cmd);
+	install_element_ve(&bsc_show_net_cmd);
 	install_element_ve(&show_bts_cmd);
 	install_element_ve(&show_trx_cmd);
 	install_element_ve(&show_ts_cmd);
