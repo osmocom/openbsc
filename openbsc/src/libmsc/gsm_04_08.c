@@ -507,6 +507,14 @@ static int mm_tx_identity_req(struct gsm_subscriber_connection *conn, uint8_t id
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
+static struct gsm_subscriber *subscr_create(const struct gsm_network *net,
+					    const char *imsi)
+{
+	if (net->subscr_creation_mode != GSM_SUBSCR_DONT_CREATE)
+		return subscr_create_subscriber(net->subscr_group, imsi);
+
+	return NULL;
+}
 
 /* Parse Chapter 9.2.11 Identity Response */
 static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
@@ -530,9 +538,8 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 		if (!conn->subscr) {
 			conn->subscr = subscr_get_by_imsi(net->subscr_group,
 							  mi_string);
-			if (!conn->subscr && net->create_subscriber)
-				conn->subscr = subscr_create_subscriber(
-					net->subscr_group, mi_string);
+			if (!conn->subscr)
+				conn->subscr = subscr_create(net, mi_string);
 		}
 		if (!conn->subscr && conn->loc_operation) {
 			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
@@ -641,10 +648,9 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 		/* look up subscriber based on IMSI, create if not found */
 		subscr = subscr_get_by_imsi(bts->network->subscr_group, mi_string);
-		if (!subscr && bts->network->create_subscriber) {
-			subscr = subscr_create_subscriber(
-				bts->network->subscr_group, mi_string);
-		}
+		if (!subscr)
+			subscr = subscr_create(bts->network, mi_string);
+
 		if (!subscr) {
 			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
 			release_loc_updating_req(conn, 0);

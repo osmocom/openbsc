@@ -19,6 +19,11 @@ struct gsm_subscriber_group;
 
 #define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
 
+enum gsm_subscr_creation_mode {
+	GSM_SUBSCR_DONT_CREATE = 0,
+	GSM_SUBSCR_CREAT_W_RAND_EXT = 1,
+};
+
 enum gsm_security_event {
 	GSM_SECURITY_NOAVAIL,
 	GSM_SECURITY_AUTH_FAILED,
@@ -278,7 +283,7 @@ struct gsm_network {
 	struct osmo_bsc_data *bsc_data;
 
 	/* subscriber related features */
-	int create_subscriber;
+	int subscr_creation_mode;
 	struct gsm_subscriber_group *subscr_group;
 	struct gsm_sms_queue *sms_queue;
 

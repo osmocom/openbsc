@@ -1036,7 +1036,7 @@ DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
       "Make a new record when a subscriber is first seen.\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->create_subscriber = 1;
+	gsmnet->subscr_creation_mode = GSM_SUBSCR_CREAT_W_RAND_EXT;
 	return CMD_SUCCESS;
 }
 
@@ -1045,7 +1045,7 @@ DEFUN(cfg_nitb_no_subscr_create, cfg_nitb_no_subscr_create_cmd,
       NO_STR "Make a new record when a subscriber is first seen.\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->create_subscriber = 0;
+	gsmnet->subscr_creation_mode = GSM_SUBSCR_DONT_CREATE;
 	return CMD_SUCCESS;
 }
 
@@ -1072,7 +1072,7 @@ static int config_write_nitb(struct vty *vty)
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	vty_out(vty, "nitb%s", VTY_NEWLINE);
 	vty_out(vty, " %ssubscriber-create-on-demand%s",
-		gsmnet->create_subscriber ? "" : "no ", VTY_NEWLINE);
+		gsmnet->subscr_creation_mode ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, " %sassign-tmsi%s",
 		gsmnet->avoid_tmsi ? "no " : "", VTY_NEWLINE);
 	return CMD_SUCCESS;
