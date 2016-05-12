@@ -24,7 +24,6 @@ gsm0408_test_SOURCES = \
 
 gsm0408_test_LDADD = \
 	$(top_builddir)/src/libbsc/libbsc.a \
-	$(top_builddir)/src/libmsc/libmsc.a \
 	$(top_builddir)/src/libxsc/libxsc.a \
 	$(top_builddir)/src/libtrau/libtrau.a \
 	$(top_builddir)/src/libcommon/libcommon.a \
