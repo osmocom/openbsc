@@ -278,6 +278,8 @@ int common_cs_vty_init(struct gsm_network *network,
 	OSMO_ASSERT(vty_global_gsm_network == NULL);
 	vty_global_gsm_network = network;
 
+	osmo_stats_vty_add_cmds();
+
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);
 	vty_install_default(GSMNET_NODE);
