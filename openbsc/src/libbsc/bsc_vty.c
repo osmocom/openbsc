@@ -3813,7 +3813,6 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	install_element_ve(&show_paging_group_cmd);
 
 	logging_vty_add_cmds(cat);
-	osmo_stats_vty_add_cmds();
 
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 	install_element(GSMNET_NODE, &cfg_net_handover_cmd);
