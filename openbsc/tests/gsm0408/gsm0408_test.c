@@ -122,7 +122,7 @@ static inline void _bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn,
 static inline void test_si2q_u(void)
 {
 	struct gsm_bts *bts;
-	struct gsm_network *network = gsm_network_init(tall_bsc_ctx, 1, 1, NULL);
+	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
 	printf("Testing SYSINFO_TYPE_2quater UARFCN generation:\n");
 
 	if (!network)
@@ -149,7 +149,7 @@ static inline void test_si2q_u(void)
 static inline void test_si2q_e(void)
 {
 	struct gsm_bts *bts;
-	struct gsm_network *network = gsm_network_init(tall_bsc_ctx, 1, 1, NULL);
+	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
 	printf("Testing SYSINFO_TYPE_2quater EARFCN generation:\n");
 
 	if (!network)

@@ -17,13 +17,14 @@
  *
  */
 
+#include <openbsc/osmo_bsc.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/gsm_subscriber.h>
 
 #include <stdbool.h>
 
-struct gsm_network *gsm_network_init(void *ctx,
+struct gsm_network *bsc_network_init(void *ctx,
 				     uint16_t country_code,
 				     uint16_t network_code,
 				     mncc_recv_cb_t mncc_recv)
