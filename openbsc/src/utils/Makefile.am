@@ -50,6 +50,7 @@ bs11_config_SOURCES = \
 
 bs11_config_LDADD = \
 	$(top_builddir)/src/libbsc/libbsc.a \
+	$(top_builddir)/src/libxsc/libxsc.a \
 	$(top_builddir)/src/libtrau/libtrau.a \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOCORE_LIBS) \

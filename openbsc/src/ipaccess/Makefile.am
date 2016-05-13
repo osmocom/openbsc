@@ -48,6 +48,7 @@ ipaccess_config_SOURCES = \
 # FIXME: resolve the bogus dependencies patched around here:
 ipaccess_config_LDADD = \
 	$(top_builddir)/src/libbsc/libbsc.a \
+	$(top_builddir)/src/libxsc/libxsc.a \
 	$(top_builddir)/src/libtrau/libtrau.a \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBCRYPT) \

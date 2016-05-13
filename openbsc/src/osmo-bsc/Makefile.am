@@ -41,6 +41,7 @@ osmo_bsc_SOURCES = \
 osmo_bsc_LDADD = \
 	$(top_builddir)/src/libfilter/libfilter.a \
 	$(top_builddir)/src/libbsc/libbsc.a \
+	$(top_builddir)/src/libxsc/libxsc.a \
 	$(top_builddir)/src/libmsc/libmsc.a \
 	$(top_builddir)/src/libbsc/libbsc.a \
 	$(top_builddir)/src/libtrau/libtrau.a \
