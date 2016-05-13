@@ -25,6 +25,7 @@
 #include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
 
+#include <openbsc/osmo_bsc.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_subscriber.h>

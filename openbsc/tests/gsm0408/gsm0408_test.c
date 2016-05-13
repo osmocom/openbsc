@@ -24,6 +24,7 @@
 #include <stdbool.h>
 #include <arpa/inet.h>
 
+#include <openbsc/osmo_bsc.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_subscriber.h>
