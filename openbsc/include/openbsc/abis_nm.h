@@ -26,6 +26,8 @@
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 
+#include <openbsc/gsm_data.h>
+
 struct cell_global_id {
 	uint16_t mcc;
 	uint16_t mnc;

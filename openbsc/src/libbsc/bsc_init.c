@@ -36,7 +36,7 @@
 #include <openbsc/ipaccess.h>
 #include <osmocom/gsm/sysinfo.h>
 #include <openbsc/e1_config.h>
-#include <openbsc/osmo_bsc.h>
+#include <openbsc/common_bsc.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
