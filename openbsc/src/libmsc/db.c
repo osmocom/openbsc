@@ -374,9 +374,13 @@ static int check_db_revision(void)
 {
 	dbi_result result;
 	const char *rev_s;
+	int db_rev = 0;
 
+	/* Make a query */
 	result = dbi_conn_query(conn,
-				"SELECT value FROM Meta WHERE key='revision'");
+		"SELECT value FROM Meta "
+		"WHERE key = 'revision'");
+
 	if (!result)
 		return -EINVAL;
 
@@ -384,33 +388,46 @@ static int check_db_revision(void)
 		dbi_result_free(result);
 		return -EINVAL;
 	}
+
+	/* Fetch the DB schema revision */
 	rev_s = dbi_result_get_string(result, "value");
 	if (!rev_s) {
 		dbi_result_free(result);
 		return -EINVAL;
 	}
-	if (!strcmp(rev_s, "2")) {
-		if (update_db_revision_2()) {
-			LOGP(DDB, LOGL_FATAL, "Failed to update database from schema revision '%s'.\n", rev_s);
-			dbi_result_free(result);
-			return -EINVAL;
-		}
-	} else if (!strcmp(rev_s, "3")) {
-		if (update_db_revision_3()) {
-			LOGP(DDB, LOGL_FATAL, "Failed to update database from schema revision '%s'.\n", rev_s);
-			dbi_result_free(result);
-			return -EINVAL;
-		}
-	} else if (!strcmp(rev_s, SCHEMA_REVISION)) {
-		/* everything is fine */
-	} else {
-		LOGP(DDB, LOGL_FATAL, "Invalid database schema revision '%s'.\n", rev_s);
+
+	if (!strcmp(rev_s, SCHEMA_REVISION)) {
+		/* Everything is fine */
 		dbi_result_free(result);
+		return 0;
+	}
+
+	db_rev = atoi(rev_s);
+	dbi_result_free(result);
+
+	/* Incremental migration waterfall */
+	switch (db_rev) {
+	case 2:
+		if (update_db_revision_2())
+			goto error;
+	case 3:
+		if (update_db_revision_3())
+			goto error;
+
+	/* The end of waterfall */
+	break;
+	default:
+		LOGP(DDB, LOGL_FATAL,
+			"Invalid database schema revision '%d'.\n", db_rev);
 		return -EINVAL;
 	}
 
-	dbi_result_free(result);
 	return 0;
+
+error:
+	LOGP(DDB, LOGL_FATAL, "Failed to update database "
+		"from schema revision '%d'.\n", db_rev);
+	return -EINVAL;
 }
 
 static int db_configure(void)
