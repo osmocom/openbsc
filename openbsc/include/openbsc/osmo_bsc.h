@@ -46,6 +46,11 @@ struct osmo_bsc_sccp_con {
 	struct bsc_filter_state filter_state;
 };
 
+struct gsm_network *bsc_network_init(void *ctx,
+				     uint16_t country_code,
+				     uint16_t network_code,
+				     mncc_recv_cb_t mncc_recv);
+
 struct bsc_api *osmo_bsc_api();
 
 int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg);

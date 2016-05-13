@@ -32,7 +32,7 @@
 
 #include <sys/stat.h>
 
-#include <openbsc/gsm_data.h>
+#include <openbsc/osmo_bsc.h>
 #include <openbsc/abis_nm.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/utils.h>

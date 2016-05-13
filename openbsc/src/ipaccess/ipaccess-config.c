@@ -38,7 +38,7 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 #include <openbsc/ipaccess.h>
-#include <openbsc/gsm_data.h>
+#include <openbsc/osmo_bsc.h>
 #include <osmocom/abis/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
