@@ -66,7 +66,7 @@ void test_request_chan(void)
 	printf("Testing the gsm_subscriber chan logic\n");
 
 	/* Create a dummy network */
-	network = gsm_network_init(tall_bsc_ctx, 1, 1, NULL);
+	network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
 	if (!network)
 		exit(1);
 	bts = gsm_bts_alloc(network);

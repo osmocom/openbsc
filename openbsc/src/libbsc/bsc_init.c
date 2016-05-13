@@ -36,6 +36,7 @@
 #include <openbsc/ipaccess.h>
 #include <osmocom/gsm/sysinfo.h>
 #include <openbsc/e1_config.h>
+#include <openbsc/osmo_bsc.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
@@ -476,7 +477,7 @@ int bsc_bootstrap_network(mncc_recv_cb_t mncc_recv, const char *config_file)
 	int rc;
 
 	/* initialize our data structures */
-	bsc_gsmnet = gsm_network_init(tall_bsc_ctx, 1, 1, mncc_recv);
+	bsc_gsmnet = bsc_network_init(tall_bsc_ctx, 1, 1, mncc_recv);
 	if (!bsc_gsmnet)
 		return -ENOMEM;
 
