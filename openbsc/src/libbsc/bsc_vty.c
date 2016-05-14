@@ -1686,67 +1686,6 @@ DEFUN(cfg_bts_bsic,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_timezone,
-      cfg_net_timezone_cmd,
-      "timezone <-19-19> (0|15|30|45)",
-      "Set the Timezone Offset of the network\n"
-      "Timezone offset (hours)\n"
-      "Timezone offset (00 minutes)\n"
-      "Timezone offset (15 minutes)\n"
-      "Timezone offset (30 minutes)\n"
-      "Timezone offset (45 minutes)\n"
-      )
-{
-	struct gsm_network *net = vty->index;
-	int tzhr = atoi(argv[0]);
-	int tzmn = atoi(argv[1]);
-
-	net->tz.hr = tzhr;
-	net->tz.mn = tzmn;
-	net->tz.dst = 0;
-	net->tz.override = 1;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_timezone_dst,
-      cfg_net_timezone_dst_cmd,
-      "timezone <-19-19> (0|15|30|45) <0-2>",
-      "Set the Timezone Offset of the network\n"
-      "Timezone offset (hours)\n"
-      "Timezone offset (00 minutes)\n"
-      "Timezone offset (15 minutes)\n"
-      "Timezone offset (30 minutes)\n"
-      "Timezone offset (45 minutes)\n"
-      "DST offset (hours)\n"
-      )
-{
-	struct gsm_network *net = vty->index;
-	int tzhr = atoi(argv[0]);
-	int tzmn = atoi(argv[1]);
-	int tzdst = atoi(argv[2]);
-
-	net->tz.hr = tzhr;
-	net->tz.mn = tzmn;
-	net->tz.dst = tzdst;
-	net->tz.override = 1;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_no_timezone,
-      cfg_net_no_timezone_cmd,
-      "no timezone",
-      NO_STR
-      "Disable network timezone override, use system tz\n")
-{
-	struct gsm_network *net = vty->index;
-
-	net->tz.override = 0;
-
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_bts_unit_id,
       cfg_bts_unit_id_cmd,
       "ip.access unit_id <0-65534> <0-255>",
@@ -3900,9 +3839,6 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
-	install_element(GSMNET_NODE, &cfg_net_timezone_cmd);
-	install_element(GSMNET_NODE, &cfg_net_timezone_dst_cmd);
-	install_element(GSMNET_NODE, &cfg_net_no_timezone_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
