@@ -208,6 +208,67 @@ DEFUN(cfg_net_subscr_keep,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_timezone,
+      cfg_net_timezone_cmd,
+      "timezone <-19-19> (0|15|30|45)",
+      "Set the Timezone Offset of the network\n"
+      "Timezone offset (hours)\n"
+      "Timezone offset (00 minutes)\n"
+      "Timezone offset (15 minutes)\n"
+      "Timezone offset (30 minutes)\n"
+      "Timezone offset (45 minutes)\n"
+      )
+{
+	struct gsm_network *net = vty->index;
+	int tzhr = atoi(argv[0]);
+	int tzmn = atoi(argv[1]);
+
+	net->tz.hr = tzhr;
+	net->tz.mn = tzmn;
+	net->tz.dst = 0;
+	net->tz.override = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_timezone_dst,
+      cfg_net_timezone_dst_cmd,
+      "timezone <-19-19> (0|15|30|45) <0-2>",
+      "Set the Timezone Offset of the network\n"
+      "Timezone offset (hours)\n"
+      "Timezone offset (00 minutes)\n"
+      "Timezone offset (15 minutes)\n"
+      "Timezone offset (30 minutes)\n"
+      "Timezone offset (45 minutes)\n"
+      "DST offset (hours)\n"
+      )
+{
+	struct gsm_network *net = vty->index;
+	int tzhr = atoi(argv[0]);
+	int tzmn = atoi(argv[1]);
+	int tzdst = atoi(argv[2]);
+
+	net->tz.hr = tzhr;
+	net->tz.mn = tzmn;
+	net->tz.dst = tzdst;
+	net->tz.override = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_no_timezone,
+      cfg_net_no_timezone_cmd,
+      "no timezone",
+      NO_STR
+      "Disable network timezone override, use system tz\n")
+{
+	struct gsm_network *net = vty->index;
+
+	net->tz.override = 0;
+
+	return CMD_SUCCESS;
+}
+
 static struct gsm_network *vty_global_gsm_network = NULL;
 
 /* initialize VTY elements used in both BSC and MSC */
@@ -231,6 +292,9 @@ int xsc_vty_init(struct gsm_network *network,
 	install_element(GSMNET_NODE, &cfg_net_rrlp_mode_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mm_info_cmd);
 	install_element(GSMNET_NODE, &cfg_net_subscr_keep_cmd);
+	install_element(GSMNET_NODE, &cfg_net_timezone_cmd);
+	install_element(GSMNET_NODE, &cfg_net_timezone_dst_cmd);
+	install_element(GSMNET_NODE, &cfg_net_no_timezone_cmd);
 
 	return CMD_SUCCESS;
 }
