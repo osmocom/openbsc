@@ -228,6 +228,7 @@ static int attempt_handover(struct gsm_meas_rep *mr)
 static int process_meas_rep(struct gsm_meas_rep *mr)
 {
 	struct gsm_network *net = mr->lchan->ts->trx->bts->network;
+	enum meas_rep_field dlev, dqual;
 	int av_rxlev;
 
 	/* we currently only do handover for TCH channels */
@@ -239,22 +240,28 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 		return 0;
 	}
 
+	if (mr->flags & MEAS_REP_F_DL_DTX) {
+		dlev = MEAS_REP_DL_RXLEV_SUB;
+		dqual = MEAS_REP_DL_RXQUAL_SUB;
+	} else {
+		dlev = MEAS_REP_DL_RXLEV_FULL;
+		dqual = MEAS_REP_DL_RXQUAL_FULL;
+	}
+
 	/* parse actual neighbor cell info */
 	if (mr->num_cell > 0 && mr->num_cell < 7)
 		process_meas_neigh(mr);
 
-	av_rxlev = get_meas_rep_avg(mr->lchan, MEAS_REP_DL_RXLEV_FULL,
+	av_rxlev = get_meas_rep_avg(mr->lchan, dlev,
 				    net->handover.win_rxlev_avg);
 
 	/* Interference HO */
 	if (rxlev2dbm(av_rxlev) > -85 &&
-	    meas_rep_n_out_of_m_be(mr->lchan, MEAS_REP_DL_RXQUAL_FULL,
-				   3, 4, 5))
+	    meas_rep_n_out_of_m_be(mr->lchan, dqual, 3, 4, 5))
 		return attempt_handover(mr);
 
 	/* Bad Quality */
-	if (meas_rep_n_out_of_m_be(mr->lchan, MEAS_REP_DL_RXQUAL_FULL,
-				   3, 4, 5))
+	if (meas_rep_n_out_of_m_be(mr->lchan, dqual, 3, 4, 5))
 		return attempt_handover(mr);
 
 	/* Low Level */
