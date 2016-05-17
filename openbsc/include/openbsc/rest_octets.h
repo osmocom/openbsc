@@ -5,6 +5,7 @@
 
 /* generate SI1 rest octets */
 int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net);
+int rest_octets_si6(uint8_t *data, int is1800_net);
 
 struct gsm48_si_selection_params {
 	uint16_t penalty_time:5,

@@ -187,6 +187,45 @@ int rest_octets_si4(uint8_t *data, const struct gsm48_si_ro_info *si4)
 	return bv.data_len;
 }
 
+
+/* GSM 04.18 ETSI TS 101 503 V8.27.0 (2006-05)
+
+<SI6 rest octets> ::=
+{L | H <PCH and NCH info>}
+{L | H <VBS/VGCS options : bit(2)>}
+{ < DTM_support : bit == L > I < DTM_support : bit == H >
+< RAC : bit (8) >
+< MAX_LAPDm : bit (3) > }
+< Band indicator >
+{ L | H < GPRS_MS_TXPWR_MAX_CCH : bit (5) > }
+<implicit spare >;
+*/
+int rest_octets_si6(uint8_t *data, int is1800_net)
+{
+	struct bitvec bv;
+
+	memset(&bv, 0, sizeof(bv));
+	bv.data = data;
+	bv.data_len = 1;
+
+	/* no PCH/NCH info */
+	bitvec_set_bit(&bv, L);
+	/* no VBS/VGCS options */
+	bitvec_set_bit(&bv, L);
+	/* no DTM_support */
+	bitvec_set_bit(&bv, L);
+	/* band indicator */
+	if (is1800_net)
+		bitvec_set_bit(&bv, L);
+	else
+		bitvec_set_bit(&bv, H);
+	/* no GPRS_MS_TXPWR_MAX_CCH */
+	bitvec_set_bit(&bv, L);
+
+	bitvec_spare_padding(&bv, 3);
+	return bv.data_len;
+}
+
 /* GPRS Mobile Allocation as per TS 04.60 Chapter 12.10a:
    < GPRS Mobile Allocation IE > ::=
      < HSN : bit (6) >

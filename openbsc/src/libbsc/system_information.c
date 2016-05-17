@@ -707,6 +707,7 @@ static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_6 *si6;
 	int l2_plen = 11;
+	int rc;
 
 	memset(output, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
@@ -735,8 +736,9 @@ static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 	si6->ncc_permitted = bts->si_common.ncc_permitted;
 
 	/* SI6 Rest Octets: 10.5.2.35a: PCH / NCH info, VBS/VGCS options */
+	rc = rest_octets_si6(si6->rest_octets, is_dcs_net(bts));
 
-	return l2_plen;
+	return l2_plen + rc;
 }
 
 static struct gsm48_si13_info si13_default = {
