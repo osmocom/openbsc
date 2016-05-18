@@ -648,7 +648,7 @@ static int generate_si2ter(uint8_t *output, struct gsm_bts *bts)
 
 static int generate_si2quater(uint8_t *output, struct gsm_bts *bts)
 {
-	int rc;
+	int rc, i = MAX_EARFCN_LIST;
 	struct gsm48_system_information_type_2quater *si2q =
 		(struct gsm48_system_information_type_2quater *) output;
 
@@ -666,6 +666,14 @@ static int generate_si2quater(uint8_t *output, struct gsm_bts *bts)
 				   bts->si_common.uarfcn_length);
 	if (rc < 0)
 		return rc;
+
+	if (bts->si_common.si2quater_neigh_list.arfcn)
+		for (i = 0; i < MAX_EARFCN_LIST; i++)
+			if (bts->si_common.si2quater_neigh_list.arfcn[i] !=
+			    OSMO_EARFCN_INVALID)
+				break;
+	if (!bts->si_common.uarfcn_length && i == MAX_EARFCN_LIST)
+		bts->si_valid &= ~(1 << SYSINFO_TYPE_2quater);
 
 	return sizeof(*si2q) + rc;
 }

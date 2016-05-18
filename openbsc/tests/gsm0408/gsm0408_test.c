@@ -21,7 +21,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <stdbool.h>
 #include <arpa/inet.h>
 
 #include <openbsc/gsm_04_08.h>
@@ -95,9 +95,15 @@ static inline void add_arfcn_b(struct osmo_earfcn_si2q *e, uint16_t earfcn,
 
 static inline void gen(struct gsm_bts *bts)
 {
+	bts->si_valid = 0;
+	bts->si_valid |= (1 << SYSINFO_TYPE_2quater);
+	/* should be no-op as entire buffer is filled with padding: */
+	memset(bts->si_buf[SYSINFO_TYPE_2quater], 0xAE, GSM_MACBLOCK_LEN);
 	int r = gsm_generate_si(bts, SYSINFO_TYPE_2quater);
+	bool v = bts->si_valid & (1 << SYSINFO_TYPE_2quater);
 	if (r > 0)
-		printf("generated SI2quater: [%d] %s\n", r,
+		printf("generated %s SI2quater: [%d] %s\n",
+		       v ? "valid" : "invalid", r,
 		       osmo_hexdump(bts->si_buf[SYSINFO_TYPE_2quater], r));
 	else
 		printf("failed to generate SI2quater: %s\n", strerror(-r));
@@ -123,6 +129,9 @@ static inline void test_si2q_u(void)
 		exit(1);
 	bts = gsm_bts_alloc(network);
 
+	/* first generate invalid SI as no UARFCN added */
+	gen(bts);
+	/* subsequent calls should produce valid SI if there's enough memory */
 	_bts_uarfcn_add(bts, 1982, 13, 1);
 	_bts_uarfcn_add(bts, 1982, 44, 0);
 	_bts_uarfcn_add(bts, 1982, 61, 1);
@@ -155,7 +164,9 @@ static inline void test_si2q_e(void)
 	bts->si_common.si2quater_neigh_list.thresh_hi = 5;
 
 	osmo_earfcn_init(&bts->si_common.si2quater_neigh_list);
-
+	/* first generate invalid SI as no EARFCN added */
+	gen(bts);
+	/* subsequent calls should produce valid SI if there's enough memory */
 	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1917, 1);
 	gen(bts);
 
