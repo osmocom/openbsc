@@ -316,7 +316,8 @@ struct gsm_lchan {
 	int s;
 	/* Kind of the release/activation. E.g. RSL or PCU */
 	int rel_act_kind;
-
+	/* RTP header Marker bit to indicate beginning of speech after pause  */
+	bool rtp_tx_marker;
 	/* power handling */
 	struct {
 		uint8_t current;
