@@ -25,7 +25,9 @@ bin_PROGRAMS = \
 
 osmo_nitb_SOURCES = \
 	bsc_hack.c \
+	$(top_builddir)/tests/libiudummy/iudummy.c \
 	$(NULL)
+# libiudummy is temporary until iu_tx() and the ranap libs are linked
 
 osmo_nitb_LDADD = \
 	$(top_builddir)/src/libbsc/libbsc.a \
