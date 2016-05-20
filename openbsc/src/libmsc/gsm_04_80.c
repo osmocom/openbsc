@@ -32,7 +32,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_80.h>
-#include <openbsc/bsc_api.h>
+#include <openbsc/msc_ifaces.h>
 
 #include <osmocom/gsm/gsm0480.h>
 #include <osmocom/gsm/gsm_utils.h>
@@ -106,7 +106,7 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 					| (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
-	return gsm0808_submit_dtap(conn, msg, 0, 0);
+	return msc_tx_dtap(conn, msg);
 }
 
 int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
@@ -135,7 +135,7 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 	gh->proto_discr |= req->transaction_id | (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
-	return gsm0808_submit_dtap(conn, msg, 0, 0);
+	return msc_tx_dtap(conn, msg);
 }
 
 int msc_send_ussd_notify(struct gsm_subscriber_connection *conn, int level, const char *text)
@@ -143,7 +143,7 @@ int msc_send_ussd_notify(struct gsm_subscriber_connection *conn, int level, cons
 	struct msgb *msg = gsm0480_create_ussd_notify(level, text);
 	if (!msg)
 		return -1;
-	return gsm0808_submit_dtap(conn, msg, 0, 0);
+	return msc_tx_dtap(conn, msg);
 }
 
 int msc_send_ussd_release_complete(struct gsm_subscriber_connection *conn)
@@ -151,5 +151,5 @@ int msc_send_ussd_release_complete(struct gsm_subscriber_connection *conn)
 	struct msgb *msg = gsm0480_create_ussd_release_complete();
 	if (!msg)
 		return -1;
-	return gsm0808_submit_dtap(conn, msg, 0, 0);
+	return msc_tx_dtap(conn, msg);
 }
