@@ -40,6 +40,8 @@
 #include <openbsc/signal.h>
 #include "openbsc/gprs_llc.h"
 
+#include <pdp.h>
+
 #include <time.h>
 
 #include <openssl/rand.h>
@@ -337,7 +339,6 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 	return pdp;
 }
 
-#include <pdp.h>
 /*
  * This function will not trigger any GSM DEACT PDP ACK messages, so you
  * probably want to call sgsn_delete_pdp_ctx() instead if the connection
