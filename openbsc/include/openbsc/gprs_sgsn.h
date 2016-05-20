@@ -31,6 +31,16 @@ enum gprs_gmm_state {
 	GMM_DEREGISTERED_INIT,		/* 4.1.3.3.1.4 */
 };
 
+/* TS 23.060 6.1.1 and 6.1.2 Mobility management states A/Gb and Iu mode */
+enum gprs_pmm_state {
+	PMM_DETACHED,
+	PMM_CONNECTED,
+	PMM_IDLE,
+	MM_IDLE = PMM_DETACHED,
+	MM_READY = PMM_CONNECTED,
+	MM_STANDBY = PMM_IDLE,
+};
+
 enum gprs_mm_ctr {
 	GMM_CTR_PKTS_SIG_IN,
 	GMM_CTR_PKTS_SIG_OUT,
@@ -117,6 +127,7 @@ struct sgsn_mm_ctx {
 
 	char 			imsi[GSM23003_IMSI_MAX_DIGITS+1];
 	enum gprs_gmm_state	mm_state;
+	enum gprs_pmm_state	pmm_state;	/* Iu: page when in PMM-IDLE mode */
 	uint32_t 		p_tmsi;
 	uint32_t 		p_tmsi_old;	/* old P-TMSI before new is confirmed */
 	uint32_t 		p_tmsi_sig;

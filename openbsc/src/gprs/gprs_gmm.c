@@ -131,6 +131,8 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *
 	case IU_EVENT_LINK_INVALIDATED:
 		/* Clean up ue_conn_ctx here */
 		LOGMMCTXP(LOGL_INFO, mm, "IU release for imsi %s\n", mm->imsi);
+		if (mm->pmm_state == PMM_CONNECTED)
+			mm->pmm_state = PMM_IDLE;
 		rc = 0;
 		break;
 	case IU_EVENT_SECURITY_MODE_COMPLETE:
@@ -241,6 +243,7 @@ static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
 
 	/* Mark MM state as deregistered */
 	ctx->mm_state = GMM_DEREGISTERED;
+	ctx->pmm_state = PMM_DETACHED;
 
 	sgsn_mm_ctx_cleanup_free(ctx);
 }
@@ -852,6 +855,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	case GSM48_MT_GMM_SERVICE_REQ:
 		/* TODO: PMM State transition */
 		ctx->pending_req = 0;
+		ctx->pmm_state = PMM_CONNECTED;
 		rc = gsm48_tx_gmm_service_ack(ctx);
 
 		if (ctx->iu.service.type != GPRS_SERVICE_T_SIGNALLING)
@@ -1793,6 +1797,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 					  mmctx->gb.tlli_new);
 		}
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
+		mmctx->pmm_state = PMM_CONNECTED;
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
@@ -1815,6 +1820,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 					  mmctx->gb.tlli_new);
 		}
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
+		mmctx->pmm_state = PMM_CONNECTED;
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
