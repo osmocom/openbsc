@@ -281,6 +281,11 @@ static struct log_info_cat gprs_categories[] = {
 		.description = "GPRS Sub-Network Dependent Control Protocol (SNDCP)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DRANAP] = {
+		.name = "DRANAP",
+		.description = "RAN Application Part (RANAP)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 static const struct log_info gprs_log_info = {

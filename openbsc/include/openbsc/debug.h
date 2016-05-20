@@ -34,6 +34,7 @@ enum {
 	DSMPP,
 	DFILTER,
 	DGTPHUB,
+	DRANAP,
 	Debug_LastEntry,
 };
 

@@ -165,6 +165,11 @@ static const struct log_info_cat default_categories[] = {
 		.description = "BSC/NAT IMSI based filtering",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DRANAP] = {
+		.name = "DRANAP",
+		.description = "Radio Access Network Application Part Protocol",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 enum log_filter {
