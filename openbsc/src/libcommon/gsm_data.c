@@ -449,3 +449,10 @@ bool classmark_is_r99(struct gsm_classmark *cm)
 		rev_lev = (cm->classmark2[0] >> 5) & 0x3;
 	return rev_lev >= 2;
 }
+
+const struct value_string ran_type_names[] = {
+	OSMO_VALUE_STRING(RAN_UNKNOWN),
+	OSMO_VALUE_STRING(RAN_GERAN_A),
+	OSMO_VALUE_STRING(RAN_UTRAN_IU),
+	{ 0, NULL }
+};

@@ -455,109 +455,6 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['var'], 'mcc')
         self.assertEquals(r['value'], '202')
 
-class TestCtrlNITB(TestCtrlBase):
-
-    def tearDown(self):
-        TestCtrlBase.tearDown(self)
-        os.unlink("test_hlr.sqlite3")
-
-    def ctrl_command(self):
-        return ["./src/osmo-nitb/osmo-nitb", "-c",
-                "doc/examples/osmo-nitb/nanobts/openbsc.cfg", "-l", "test_hlr.sqlite3"]
-
-    def ctrl_app(self):
-        return (4249, "./src/osmo-nitb/osmo-nitb", "OsmoBSC", "nitb")
-
-    def testNumberOfBTS(self):
-        r = self.do_get('number-of-bts')
-        self.assertEquals(r['mtype'], 'GET_REPLY')
-        self.assertEquals(r['var'], 'number-of-bts')
-        self.assertEquals(r['value'], '1')
-
-    def testSubscriberAddWithKi(self):
-        """Test that we can set the algorithm to none, xor, comp128v1"""
-
-        r = self.do_set('subscriber-modify-v1', '2620345,445566')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
-        self.assertEquals(r['var'], 'subscriber-modify-v1')
-        self.assertEquals(r['value'], 'OK')
-
-        r = self.do_set('subscriber-modify-v1', '2620345,445566,none')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
-        self.assertEquals(r['var'], 'subscriber-modify-v1')
-        self.assertEquals(r['value'], 'OK')
-
-        r = self.do_set('subscriber-modify-v1', '2620345,445566,xor')
-        self.assertEquals(r['mtype'], 'ERROR')
-        self.assertEquals(r['error'], 'Value failed verification.')
-
-        r = self.do_set('subscriber-modify-v1', '2620345,445566,comp128v1,00112233445566778899AABBCCDDEEFF')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
-        self.assertEquals(r['var'], 'subscriber-modify-v1')
-        self.assertEquals(r['value'], 'OK')
-
-        r = self.do_set('subscriber-modify-v1', '2620345,445566,none')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
-        self.assertEquals(r['var'], 'subscriber-modify-v1')
-        self.assertEquals(r['value'], 'OK')
-
-    def testSubscriberAddRemove(self):
-        r = self.do_set('subscriber-modify-v1', '2620345,445566')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
-        self.assertEquals(r['var'], 'subscriber-modify-v1')
-        self.assertEquals(r['value'], 'OK')
-
-        r = self.do_set('subscriber-modify-v1', '2620345,445567')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
-        self.assertEquals(r['var'], 'subscriber-modify-v1')
-        self.assertEquals(r['value'], 'OK')
-
-        # TODO. verify that the entry has been created and modified? Invoke
-        # the sqlite3 CLI or do it through the DB libraries?
-
-        r = self.do_set('subscriber-delete-v1', '2620345')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
-        self.assertEquals(r['value'], 'Removed')
-
-        r = self.do_set('subscriber-delete-v1', '2620345')
-        self.assertEquals(r['mtype'], 'ERROR')
-        self.assertEquals(r['error'], 'Failed to find subscriber')
-
-    def testSubscriberList(self):
-        # TODO. Add command to mark a subscriber as active
-        r = self.do_get('subscriber-list-active-v1')
-        self.assertEquals(r['mtype'], 'GET_REPLY')
-        self.assertEquals(r['var'], 'subscriber-list-active-v1')
-        self.assertEquals(r['value'], None)
-
-    def testApplyConfiguration(self):
-        r = self.do_get('bts.0.apply-configuration')
-        self.assertEquals(r['mtype'], 'ERROR')
-        self.assertEquals(r['error'], 'Write Only attribute')
-
-        r = self.do_set('bts.0.apply-configuration', '1')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
-        self.assertEquals(r['value'], 'Tried to drop the BTS')
-
-    def testGprsMode(self):
-        r = self.do_get('bts.0.gprs-mode')
-        self.assertEquals(r['mtype'], 'GET_REPLY')
-        self.assertEquals(r['var'], 'bts.0.gprs-mode')
-        self.assertEquals(r['value'], 'none')
-
-        r = self.do_set('bts.0.gprs-mode', 'bla')
-        self.assertEquals(r['mtype'], 'ERROR')
-        self.assertEquals(r['error'], 'Mode is not known')
-
-        r = self.do_set('bts.0.gprs-mode', 'egprs')
-        self.assertEquals(r['mtype'], 'SET_REPLY')
-        self.assertEquals(r['value'], 'egprs')
-
-        r = self.do_get('bts.0.gprs-mode')
-        self.assertEquals(r['mtype'], 'GET_REPLY')
-        self.assertEquals(r['var'], 'bts.0.gprs-mode')
-        self.assertEquals(r['value'], 'egprs')
-
 class TestCtrlNAT(TestCtrlBase):
 
     def ctrl_command(self):
@@ -627,10 +524,6 @@ def add_bsc_test(suite, workdir):
     test = unittest.TestLoader().loadTestsFromTestCase(TestCtrlBSC)
     suite.addTest(test)
 
-def add_nitb_test(suite, workdir):
-    test = unittest.TestLoader().loadTestsFromTestCase(TestCtrlNITB)
-    suite.addTest(test)
-
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
         print("Skipping the NAT test")
@@ -676,7 +569,6 @@ if __name__ == '__main__':
     print "Running tests for specific control commands"
     suite = unittest.TestSuite()
     add_bsc_test(suite, workdir)
-    add_nitb_test(suite, workdir)
     add_nat_test(suite, workdir)
     add_sgsn_test(suite, workdir)
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)

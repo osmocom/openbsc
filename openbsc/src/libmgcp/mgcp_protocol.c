@@ -318,26 +318,14 @@ struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
 	int i, code, handled = 0;
 	struct msgb *resp = NULL;
 	char *data;
-	unsigned char *tail = msg->l2h + msgb_l2len(msg); /* char after l2 data */
 
 	if (msgb_l2len(msg) < 4) {
 		LOGP(DMGCP, LOGL_ERROR, "msg too short: %d\n", msg->len);
 		return NULL;
 	}
 
-	/* Ensure that the msg->l2h is NUL terminated. */
-	if (tail[-1] == '\0')
-		/* nothing to do */;
-	else if (msgb_tailroom(msg) > 0)
-		tail[0] = '\0';
-	else if (tail[-1] == '\r' || tail[-1] == '\n')
-		tail[-1] = '\0';
-	else {
-		LOGP(DMGCP, LOGL_ERROR, "Cannot NUL terminate MGCP message: "
-		     "Length: %d, Buffer size: %d\n",
-		     msgb_l2len(msg), msg->data_len);
+	if (mgcp_msg_terminate_nul(msg))
 		return NULL;
-	}
 
         /* attempt to treat it as a response */
         if (sscanf((const char *)&msg->l2h[0], "%3d %*s", &code) == 1) {
@@ -546,6 +534,11 @@ static int parse_conn_mode(const char *msg, struct mgcp_endpoint *endp)
 		endp->conn_mode & MGCP_CONN_SEND_ONLY ? 1 : 0;
 	endp->bts_end.output_enabled =
 		endp->conn_mode & MGCP_CONN_RECV_ONLY ? 1 : 0;
+
+	LOGP(DMGCP, LOGL_DEBUG, "endpoint %x connection mode '%s' %d output_enabled net %d bts %d\n",
+	     ENDPOINT_NUMBER(endp),
+	     msg, endp->conn_mode, endp->net_end.output_enabled,
+	     endp->bts_end.output_enabled);
 
 	return ret;
 }
@@ -972,6 +965,8 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			break;
 		case MGCP_POLICY_DEFER:
 			/* stop processing */
+			LOGP(DMGCP, LOGL_DEBUG, "endp %x MDCX defer\n",
+			     ENDPOINT_NUMBER(endp));
 			return NULL;
 			break;
 		case MGCP_POLICY_CONT:
@@ -1003,6 +998,8 @@ error3:
 
 
 out_silent:
+	LOGP(DMGCP, LOGL_DEBUG, "endp %x Modify endpoint: silent exit\n",
+	     ENDPOINT_NUMBER(endp));
 	return NULL;
 }
 

@@ -27,6 +27,9 @@ void test_no_authen()
 {
 	struct vlr_subscr *vsub;
 	const char *imsi = "901700000004620";
+	
+	/* No auth only works on GERAN */
+	rx_from_ran = RAN_GERAN_A;
 
 	comment_start();
 
@@ -68,6 +71,7 @@ void test_no_authen()
 	btw("a USSD request is serviced");
 	dtap_expect_tx_ussd("Your extension is 46071\r");
 	ms_sends_msg("0b3b1c15a11302010002013b300b04010f0406aa510c061b017f0100");
+	VERBOSE_ASSERT(dtap_tx_confirmed, == true, "%d");
 
 	btw("all requests serviced, conn has been released");
 	EXPECT_CONN_COUNT(0);
@@ -154,6 +158,8 @@ void test_no_authen_tmsi()
 {
 	struct vlr_subscr *vsub;
 	const char *imsi = "901700000004620";
+
+	rx_from_ran = RAN_GERAN_A;
 
 	comment_start();
 
@@ -363,6 +369,8 @@ void test_no_authen_imei()
 	struct vlr_subscr *vsub;
 	const char *imsi = "901700000004620";
 
+	rx_from_ran = RAN_GERAN_A;
+
 	comment_start();
 
 	net->vlr->cfg.check_imei_rqd = true;
@@ -422,6 +430,8 @@ void test_no_authen_tmsi_imei()
 {
 	struct vlr_subscr *vsub;
 	const char *imsi = "901700000004620";
+
+	rx_from_ran = RAN_GERAN_A;
 
 	comment_start();
 

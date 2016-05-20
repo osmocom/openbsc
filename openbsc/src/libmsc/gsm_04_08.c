@@ -31,6 +31,7 @@
 #include <netinet/in.h>
 #include <regex.h>
 #include <sys/types.h>
+#include <openssl/rand.h>
 
 #include "bscconfig.h"
 
@@ -69,6 +70,10 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/gsm/tlv.h>
+#include <osmocom/crypt/auth.h>
+
+#include <openbsc/msc_ifaces.h>
+#include <openbsc/iu.h>
 
 #include <assert.h>
 
@@ -113,7 +118,7 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 		gh->proto_discr = trans->protocol | (trans->transaction_id << 4);
 	}
 
-	return gsm0808_submit_dtap(conn, msg, 0, 0);
+	return msc_tx_dtap(conn, msg);
 }
 
 int gsm48_cc_tx_notify_ss(struct gsm_trans *trans, const char *message)
@@ -149,7 +154,7 @@ void gsm0408_clear_all_trans(struct gsm_network *net, int protocol)
 }
 
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
-int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
+static int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 {
 	struct msgb *msg;
 
@@ -192,12 +197,17 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn,
 		len = gsm48_generate_mid_from_imsi(mi, conn->vsub->imsi);
 		mid = msgb_put(msg, len);
 		memcpy(mid, mi, len);
+		DEBUGP(DMM, "-> %s LOCATION UPDATE ACCEPT\n",
+		       vlr_subscr_name(conn->vsub));
 	} else {
 		/* Include the TMSI, which means that the MS will send a
 		 * TMSI REALLOCATION COMPLETE, and we should wait for
 		 * that until T3250 expiration */
 		mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
 		gsm48_generate_mid_from_tmsi(mid, send_tmsi);
+		DEBUGP(DMM, "-> %s LOCATION UPDATE ACCEPT (TMSI = 0x%08x)\n",
+		       vlr_subscr_name(conn->vsub),
+		       send_tmsi);
 	}
 	/* TODO: Follow-on proceed */
 	/* TODO: CTS permission */
@@ -205,7 +215,6 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn,
 	/* TODO: Emergency Number List */
 	/* TODO: Per-MS T3312 */
 
-	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
@@ -265,11 +274,11 @@ int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	enum vlr_lu_type vlr_lu_type = VLR_LU_TYPE_REGULAR;
-
 	uint32_t tmsi;
 	char *imsi;
 	struct osmo_location_area_id old_lai, new_lai;
 	struct osmo_fsm_inst *lu_fsm;
+	bool is_utran;
 	int rc;
 
  	lu = (struct gsm48_loc_upd_req *) gh->data;
@@ -332,19 +341,21 @@ int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 			 &old_lai.plmn.mnc, &old_lai.lac);
 	new_lai.plmn.mcc = conn->network->country_code;
 	new_lai.plmn.mnc = conn->network->network_code;
-	new_lai.lac = conn->bts->location_area_code;
+	new_lai.lac = conn->lac;
 	DEBUGP(DMM, "LU/new-LAC: %u/%u\n", old_lai.lac, new_lai.lac);
 
+	is_utran = (conn->via_ran == RAN_UTRAN_IU);
 	lu_fsm = vlr_loc_update(conn->conn_fsm,
 				SUBSCR_CONN_E_ACCEPTED,
 				SUBSCR_CONN_E_CN_CLOSE,
 				(void*)&conn_from_lu,
 				net->vlr, conn, vlr_lu_type, tmsi, imsi,
 				&old_lai, &new_lai,
-				conn->network->authentication_required,
-				conn->network->a5_encryption,
+				is_utran || conn->network->authentication_required,
+				is_utran? VLR_CIPH_A5_3
+					: conn->network->a5_encryption,
 				classmark_is_r99(&conn->classmark),
-				conn->via_ran == RAN_UTRAN_IU,
+				is_utran,
 				net->vlr->cfg.assign_tmsi);
 	if (!lu_fsm) {
 		DEBUGP(DRR, "%s: Can't start LU FSM\n", mi_string);
@@ -643,11 +654,12 @@ int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *ms
 	uint8_t mi_len = *(classmark2 + classmark2_len);
 	uint8_t *mi = (classmark2 + classmark2_len + 1);
 	struct osmo_location_area_id lai;
+	bool is_utran;
 	int rc;
 
 	lai.plmn.mcc = conn->network->country_code;
 	lai.plmn.mnc = conn->network->network_code;
-	lai.lac = conn->bts->location_area_code;
+	lai.lac = conn->lac;
 
 	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
@@ -708,16 +720,18 @@ int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *ms
 		send_siemens_mrpci(msg->lchan, classmark2-1);
 #endif
 
+	is_utran = (conn->via_ran == RAN_UTRAN_IU);
 	vlr_proc_acc_req(conn->conn_fsm,
 			 SUBSCR_CONN_E_ACCEPTED,
 			 SUBSCR_CONN_E_CN_CLOSE,
 			 (void*)&conn_from_cm_service_req,
 			 net->vlr, conn,
 			 VLR_PR_ARQ_T_CM_SERV_REQ, mi-1, &lai,
-			 conn->network->authentication_required,
-			 conn->network->a5_encryption,
+			 is_utran || conn->network->authentication_required,
+			 is_utran? VLR_CIPH_A5_3
+				 : conn->network->a5_encryption,
 			 classmark_is_r99(&conn->classmark),
-			 conn->via_ran == RAN_UTRAN_IU);
+			 is_utran);
 
 	return 0;
 }
@@ -1062,6 +1076,7 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	char mi_string[GSM48_MI_SIZE];
 	int rc = 0;
 	struct osmo_location_area_id lai;
+	bool is_utran;
 
 	lai.plmn.mcc = conn->network->country_code;
 	lai.plmn.mnc = conn->network->network_code;
@@ -1087,18 +1102,20 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	memcpy(conn->classmark.classmark2, classmark2_lv+1, *classmark2_lv);
 	conn->classmark.classmark2_len = *classmark2_lv;
 
+	is_utran = (conn->via_ran == RAN_UTRAN_IU);
 	vlr_proc_acc_req(conn->conn_fsm,
 			 SUBSCR_CONN_E_ACCEPTED,
 			 SUBSCR_CONN_E_CN_CLOSE,
 			 (void*)&conn_from_paging_resp,
 			 net->vlr, conn,
 			 VLR_PR_ARQ_T_PAGING_RESP, mi_lv, &lai,
-			 conn->network->authentication_required,
-			 conn->network->a5_encryption,
+			 is_utran || conn->network->authentication_required,
+			 is_utran? VLR_CIPH_A5_3
+				 : conn->network->a5_encryption,
 			 classmark_is_r99(&conn->classmark),
-			 conn->via_ran == RAN_UTRAN_IU);
+			 is_utran);
 
-	return rc;
+	return 0;
 }
 
 static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct msgb *msg)
@@ -1553,8 +1570,7 @@ static int tch_bridge(struct gsm_network *net, struct gsm_mncc_bridge *bridge)
 	/* through-connect channel */
 	return tch_map(trans1->conn->lchan, trans2->conn->lchan);
 #else
-	/* not implemented yet! */
-	return -1;
+	return msc_call_bridge(trans1, trans2);
 #endif
 }
 
@@ -1969,15 +1985,18 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 
 	new_cc_state(trans, GSM_CSTATE_MO_TERM_CALL_CONF);
 
+	msc_call_assignment(trans);
+
 	return mncc_recvmsg(trans->net, trans, MNCC_CALL_CONF_IND,
 			    &call_conf);
 }
 
-static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
+static int gsm48_cc_tx_call_proc_and_assign(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *proceeding = arg;
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC PROC");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	int rc;
 
 	gh->msg_type = GSM48_MT_CC_CALL_PROC;
 
@@ -1993,7 +2012,11 @@ static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
 	if (proceeding->fields & MNCC_F_PROGRESS)
 		gsm48_encode_progress(msg, 0, &proceeding->progress);
 
-	return gsm48_conn_sendmsg(msg, trans->conn, trans);
+	rc = gsm48_conn_sendmsg(msg, trans->conn, trans);
+	if (rc)
+		return rc;
+
+	return msc_call_assignment(trans);
 }
 
 static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
@@ -3073,7 +3096,7 @@ static struct downstate {
 } downstatelist[] = {
 	/* mobile originating call establishment */
 	{SBIT(GSM_CSTATE_INITIATED), /* 5.2.1.2 */
-	 MNCC_CALL_PROC_REQ, gsm48_cc_tx_call_proc},
+	 MNCC_CALL_PROC_REQ, gsm48_cc_tx_call_proc_and_assign},
 	{SBIT(GSM_CSTATE_INITIATED) | SBIT(GSM_CSTATE_MO_CALL_PROC), /* 5.2.1.2 | 5.2.1.5 */
 	 MNCC_ALERT_REQ, gsm48_cc_tx_alerting},
 	{SBIT(GSM_CSTATE_INITIATED) | SBIT(GSM_CSTATE_MO_CALL_PROC) | SBIT(GSM_CSTATE_CALL_DELIVERED), /* 5.2.1.2 | 5.2.1.6 | 5.2.1.6 */
@@ -3304,15 +3327,15 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 				trans_free(trans);
 				return 0;
 			}
-			/* store setup informations until paging was successfull */
+			/* store setup information until paging succeeds */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
 			/* Request a channel */
-			trans->paging_request = subscr_request_channel(
+			trans->paging_request = subscr_request_conn(
 							vsub,
-							RSL_CHANNEED_TCH_F,
 							setup_trig_pag_evt,
-							trans);
+							trans,
+							"MNCC: establish call");
 			if (!trans->paging_request) {
 				LOGP(DCC, LOGL_ERROR, "Failed to allocate paging token.\n");
 				vlr_subscr_put(vsub);
@@ -3323,7 +3346,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			return 0;
 		}
 
-		/* Assign lchan */
+		/* Assign conn */
 		trans->conn = msc_subscr_conn_get(conn);
 		vlr_subscr_put(vsub);
 	} else {
@@ -3577,6 +3600,16 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		return -EACCES;
 	}
 
+	if (conn->vsub && conn->vsub->cs.attached_via_ran != conn->via_ran) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: Illegal situation: RAN type mismatch:"
+		     " attached via %s, received message via %s\n",
+		     vlr_subscr_name(conn->vsub),
+		     ran_type_name(conn->vsub->cs.attached_via_ran),
+		     ran_type_name(conn->via_ran));
+		return -EACCES;
+	}
+
 #if 0
 	if (silent_call_reroute(conn, msg))
 		return silent_call_rx(conn, msg);
@@ -3660,7 +3693,13 @@ static int msc_vlr_tx_lu_rej(void *msc_conn_ref, uint8_t cause)
 static int msc_vlr_tx_cm_serv_acc(void *msc_conn_ref)
 {
 	struct gsm_subscriber_connection *conn = msc_conn_ref;
-	return gsm48_tx_mm_serv_ack(conn);
+	return msc_gsm48_tx_mm_serv_ack(conn);
+}
+
+static int msc_vlr_tx_common_id(void *msc_conn_ref)
+{
+	struct gsm_subscriber_connection *conn = msc_conn_ref;
+	return msc_tx_common_id(conn);
 }
 
 /* VLR asks us to transmit a CM Service Reject */
@@ -3694,7 +3733,7 @@ static int msc_vlr_tx_cm_serv_rej(void *msc_conn_ref, enum vlr_proc_arq_result r
 		break;
 	};
 
-	return gsm48_tx_mm_serv_rej(conn, cause);
+	return msc_gsm48_tx_mm_serv_rej(conn, cause);
 }
 
 /* VLR asks us to start using ciphering */
@@ -3722,9 +3761,41 @@ static int msc_vlr_set_ciph_mode(void *msc_conn_ref,
 		return -EINVAL;
 	}
 
-	/* TODO: MSCSPLIT: don't directly push BSC buttons */
-	return gsm0808_cipher_mode(conn, ciph, tuple->vec.kc, 8,
-				   retrieve_imeisv);
+	switch (conn->via_ran) {
+	case RAN_GERAN_A:
+		DEBUGP(DMM, "-> CIPHER MODE COMMAND %s\n",
+		       vlr_subscr_name(conn->vsub));
+		return msc_gsm0808_tx_cipher_mode(conn, ciph, tuple->vec.kc, 8,
+						  retrieve_imeisv);
+	case RAN_UTRAN_IU:
+		DEBUGP(DMM, "-> SECURITY MODE CONTROL %s\n",
+		       vlr_subscr_name(conn->vsub));
+		return iu_tx_sec_mode_cmd(conn->iu.ue_ctx, tuple, 0, 1);
+
+	default:
+		break;
+	}
+	LOGP(DMM, LOGL_ERROR,
+	     "%s: cannot start ciphering, unknown RAN type %d\n",
+	     vlr_subscr_name(conn->vsub), conn->via_ran);
+	return -ENOTSUP;
+}
+
+void msc_rx_sec_mode_compl(struct gsm_subscriber_connection *conn)
+{
+	struct vlr_ciph_result vlr_res = {};
+
+	if (!conn || !conn->vsub) {
+		LOGP(DMM, LOGL_ERROR,
+		     "Rx Security Mode Complete for invalid conn\n");
+		return;
+	}
+
+	DEBUGP(DMM, "<- SECURITY MODE COMPLETE %s\n",
+	       vlr_subscr_name(conn->vsub));
+
+	vlr_res.cause = VLR_CIPH_COMPL;
+	vlr_subscr_rx_ciph_res(conn->vsub, &vlr_res);
 }
 
 /* VLR informs us that the subscriber data has somehow been modified */
@@ -3740,6 +3811,7 @@ static void msc_vlr_subscr_assoc(void *msc_conn_ref,
 	struct gsm_subscriber_connection *conn = msc_conn_ref;
 	OSMO_ASSERT(!conn->vsub);
 	conn->vsub = vlr_subscr_get(vsub);
+	conn->vsub->cs.attached_via_ran = conn->via_ran;
 }
 
 /* operations that we need to implement for libvlr */
@@ -3752,6 +3824,7 @@ static const struct vlr_ops msc_vlr_ops = {
 	.tx_cm_serv_acc = msc_vlr_tx_cm_serv_acc,
 	.tx_cm_serv_rej = msc_vlr_tx_cm_serv_rej,
 	.set_ciph_mode = msc_vlr_set_ciph_mode,
+	.tx_common_id = msc_vlr_tx_common_id,
 	.subscr_update = msc_vlr_subscr_update,
 	.subscr_assoc = msc_vlr_subscr_assoc,
 };

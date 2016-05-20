@@ -250,6 +250,14 @@ static void _proc_arq_vlr_node2_post_ciph(struct osmo_fsm_inst *fi)
 
 	LOGPFSM(fi, "%s()\n", __func__);
 
+	if (par->is_utran) {
+		int rc;
+		rc = par->vlr->ops.tx_common_id(par->msc_conn_ref);
+		if (rc)
+			LOGPFSML(fi, LOGL_ERROR,
+				 "Error while sending Common ID (%d)\n", rc);
+	}
+
 	vsub->conf_by_radio_contact_ind = true;
 	if (vsub->loc_conf_in_hlr_ind == false) {
 		/* start Update_Location_Child_VLR.  WE use
@@ -674,6 +682,10 @@ vlr_proc_acc_req(struct osmo_fsm_inst *parent,
 		(authentication_required || ciphering_required)?
 			(ciphering_required? "+Ciph" : " (no Ciph)")
 			: "");
+
+	if (is_utran && !authentication_required)
+		LOGPFSML(fi, LOGL_ERROR,
+			 "Authentication off on UTRAN network. Good luck.\n");
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi_lv+1, mi_lv[0]);
 	mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;

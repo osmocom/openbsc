@@ -537,7 +537,11 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	if (payload < 0)
 		return;
 
+#if 0
+	DEBUGP(DMGCP, "Payload hdr payload %u -> endp payload %u\n",
+	       rtp_hdr->payload_type, payload);
 	rtp_hdr->payload_type = payload;
+#endif
 }
 
 /*
@@ -588,6 +592,14 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	struct mgcp_rtp_state *rtp_state;
 	int tap_idx;
 
+	LOGP(DMGCP, LOGL_DEBUG,
+	     "endpoint %x dest %s tcfg->audio_loop %d endp->conn_mode %d (== loopback: %d)\n",
+	     ENDPOINT_NUMBER(endp),
+	     dest == MGCP_DEST_NET? "net" : "bts",
+	     tcfg->audio_loop,
+	     endp->conn_mode,
+	     endp->conn_mode == MGCP_CONN_LOOPBACK);
+
 	/* For loop toggle the destination and then dispatch. */
 	if (tcfg->audio_loop)
 		dest = !dest;
@@ -605,10 +617,35 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		rtp_state = &endp->net_state;
 		tap_idx = MGCP_TAP_BTS_OUT;
 	}
+	LOGP(DMGCP, LOGL_DEBUG,
+	     "endpoint %x dest %s net_end %s %d %d bts_end %s %d %d rtp_end %s %d %d\n",
+	     ENDPOINT_NUMBER(endp),
+	     dest == MGCP_DEST_NET? "net" : "bts",
 
-	if (!rtp_end->output_enabled)
+	     inet_ntoa(endp->net_end.addr),
+	     ntohs(endp->net_end.rtp_port),
+	     ntohs(endp->net_end.rtcp_port),
+
+	     inet_ntoa(endp->bts_end.addr),
+	     ntohs(endp->bts_end.rtp_port),
+	     ntohs(endp->bts_end.rtcp_port),
+
+	     inet_ntoa(rtp_end->addr),
+	     ntohs(rtp_end->rtp_port),
+	     ntohs(rtp_end->rtcp_port)
+	    );
+
+	if (!rtp_end->output_enabled) {
 		rtp_end->dropped_packets += 1;
-	else if (is_rtp) {
+		LOGP(DMGCP, LOGL_DEBUG,
+		     "endpoint %x output disabled, drop to %s %s %d %d\n",
+		     ENDPOINT_NUMBER(endp),
+		     dest == MGCP_DEST_NET? "net" : "bts",
+		     inet_ntoa(rtp_end->addr),
+		     ntohs(rtp_end->rtp_port),
+		     ntohs(rtp_end->rtcp_port)
+		    );
+	} else if (is_rtp) {
 		int cont;
 		int nbytes = 0;
 		int len = rc;
@@ -619,8 +656,17 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 				break;
 
 			mgcp_patch_and_count(endp, rtp_state, rtp_end, addr, buf, len);
+		LOGP(DMGCP, LOGL_DEBUG,
+		     "endpoint %x process/send to %s %s %d %d\n",
+		     ENDPOINT_NUMBER(endp),
+		     (dest == MGCP_DEST_NET)? "net" : "bts",
+		     inet_ntoa(rtp_end->addr),
+		     ntohs(rtp_end->rtp_port),
+		     ntohs(rtp_end->rtcp_port)
+		    );
 			forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx],
 				     buf, len);
+
 			rc = mgcp_udp_send(rtp_end->rtp.fd,
 					   &rtp_end->addr,
 					   rtp_end->rtp_port, buf, len);
@@ -632,6 +678,15 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		} while (len > 0);
 		return nbytes;
 	} else if (!tcfg->omit_rtcp) {
+		LOGP(DMGCP, LOGL_DEBUG,
+		     "endpoint %x send to %s %s %d %d\n",
+		     ENDPOINT_NUMBER(endp),
+		     dest == MGCP_DEST_NET? "net" : "bts",
+		     inet_ntoa(rtp_end->addr),
+		     ntohs(rtp_end->rtp_port),
+		     ntohs(rtp_end->rtcp_port)
+		    );
+
 		return mgcp_udp_send(rtp_end->rtcp.fd,
 				     &rtp_end->addr,
 				     rtp_end->rtcp_port, buf, rc);
@@ -676,9 +731,28 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 	if (rc <= 0)
 		return -1;
 
+	LOGP(DMGCP, LOGL_DEBUG,
+	     "endpoint %x",
+	     ENDPOINT_NUMBER(endp));
+	LOGPC(DMGCP, LOGL_DEBUG,
+	      " from net %s %d",
+	      inet_ntoa(addr.sin_addr),
+	      ntohs(addr.sin_port));
+	LOGPC(DMGCP, LOGL_DEBUG,
+	      " net_end %s %d %d",
+	      inet_ntoa(endp->net_end.addr),
+	      ntohs(endp->net_end.rtp_port),
+	      ntohs(endp->net_end.rtcp_port));
+	LOGPC(DMGCP, LOGL_DEBUG,
+	      " bts_end %s %d %d\n",
+	      inet_ntoa(endp->bts_end.addr),
+	      ntohs(endp->bts_end.rtp_port),
+	      ntohs(endp->bts_end.rtcp_port)
+	     );
+
 	if (memcmp(&addr.sin_addr, &endp->net_end.addr, sizeof(addr.sin_addr)) != 0) {
 		LOGP(DMGCP, LOGL_ERROR,
-			"Endpoint 0x%x data from wrong address %s vs. ",
+			"rtp_data_net: Endpoint 0x%x data from wrong address %s vs. ",
 			ENDPOINT_NUMBER(endp), inet_ntoa(addr.sin_addr));
 		LOGPC(DMGCP, LOGL_ERROR,
 			"%s\n", inet_ntoa(endp->net_end.addr));
@@ -691,7 +765,7 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 		if (endp->net_end.rtp_port != addr.sin_port &&
 		    endp->net_end.rtcp_port != addr.sin_port) {
 			LOGP(DMGCP, LOGL_ERROR,
-				"Data from wrong source port %d on 0x%x\n",
+				"rtp_data_net: Data from wrong source port %d on 0x%x\n",
 				ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
 			return -1;
 		}
@@ -700,6 +774,12 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 	case MGCP_OSMUX_BSC_NAT:
 		break;
 	}
+
+	LOGP(DMGCP, LOGL_DEBUG,
+	     "rtp_data_net: Endpoint %x data from %s %d\n",
+	     ENDPOINT_NUMBER(endp),
+	     inet_ntoa(addr.sin_addr),
+	     ntohs(addr.sin_port));
 
 	/* throw away the dummy message */
 	if (rc == 1 && buf[0] == MGCP_DUMMY_LOAD) {
@@ -780,7 +860,7 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 
 	if (memcmp(&endp->bts_end.addr, &addr.sin_addr, sizeof(addr.sin_addr)) != 0) {
 		LOGP(DMGCP, LOGL_ERROR,
-			"Data from wrong bts %s on 0x%x\n",
+			"rtp_data_bts: Data from wrong bts %s on 0x%x\n",
 			inet_ntoa(addr.sin_addr), ENDPOINT_NUMBER(endp));
 		return -1;
 	}
@@ -788,10 +868,16 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 	if (endp->bts_end.rtp_port != addr.sin_port &&
 	    endp->bts_end.rtcp_port != addr.sin_port) {
 		LOGP(DMGCP, LOGL_ERROR,
-			"Data from wrong bts source port %d on 0x%x\n",
+			"rtp_data_bts: ata from wrong bts source port %d on 0x%x\n",
 			ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
 		return -1;
 	}
+
+	LOGP(DMGCP, LOGL_DEBUG,
+	     "rtp_data_bts: Endpoint %x data from %s %d\n",
+	     ENDPOINT_NUMBER(endp),
+	     inet_ntoa(addr.sin_addr),
+	     ntohs(addr.sin_port));
 
 	/* throw away the dummy message */
 	if (rc == 1 && buf[0] == MGCP_DUMMY_LOAD) {
@@ -808,6 +894,9 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 
 	switch (endp->type) {
 	case MGCP_RTP_DEFAULT:
+		LOGP(DMGCP, LOGL_DEBUG,
+		     "rtp_data_bts: Endpoint %x MGCP_RTP_DEFAULT\n",
+		     ENDPOINT_NUMBER(endp));
 		return mgcp_send(endp, MGCP_DEST_NET, proto == MGCP_PROTO_RTP,
 				 &addr, buf, rc);
 	case MGCP_RTP_TRANSCODED:

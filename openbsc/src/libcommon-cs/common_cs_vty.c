@@ -296,6 +296,34 @@ DEFUN(cfg_net_no_timezone,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_per_loc_upd, cfg_net_per_loc_upd_cmd,
+      "periodic location update <6-1530>",
+      "Periodic Location Updating Interval\n"
+      "Periodic Location Updating Interval\n"
+      "Periodic Location Updating Interval\n"
+      "Periodic Location Updating Interval in Minutes\n")
+{
+	struct gsm_network *net = vty->index;
+
+	net->t3212 = atoi(argv[0]) / 6;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_no_per_loc_upd, cfg_net_no_per_loc_upd_cmd,
+      "no periodic location update",
+      NO_STR
+      "Periodic Location Updating Interval\n"
+      "Periodic Location Updating Interval\n"
+      "Periodic Location Updating Interval\n")
+{
+	struct gsm_network *net = vty->index;
+
+	net->t3212 = 0;
+
+	return CMD_SUCCESS;
+}
+
 static struct gsm_network *vty_global_gsm_network = NULL;
 
 /* initialize VTY elements used in both BSC and MSC */
@@ -325,6 +353,8 @@ int common_cs_vty_init(struct gsm_network *network,
 	install_element(GSMNET_NODE, &cfg_net_timezone_cmd);
 	install_element(GSMNET_NODE, &cfg_net_timezone_dst_cmd);
 	install_element(GSMNET_NODE, &cfg_net_no_timezone_cmd);
+	install_element(GSMNET_NODE, &cfg_net_per_loc_upd_cmd);
+	install_element(GSMNET_NODE, &cfg_net_no_per_loc_upd_cmd);
 	install_element(GSMNET_NODE, &cfg_net_dyn_ts_allow_tch_f_cmd);
 
 	return CMD_SUCCESS;

@@ -41,6 +41,9 @@ enum gsm_subscriber_update_reason {
 struct subscr_request {
        struct llist_head entry;
 
+       /* human readable label to be able to log pending request kinds */
+       const char *label;
+
        /* the callback data */
        gsm_cbfn *cbfn;
        void *param;
@@ -52,10 +55,12 @@ int subscr_update(struct vlr_subscr *vsub, int reason);
  * Paging handling with authentication
  */
 struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
-					   int channel_type,
-					   gsm_cbfn *cbfn, void *param);
+					   gsm_cbfn *cbfn, void *param,
+					   const char *label);
 
 void subscr_remove_request(struct subscr_request *req);
+int subscr_rx_paging_response(struct msgb *msg,
+			      struct gsm_subscriber_connection *conn);
 
 int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 			   struct msgb *msg, void *data, void *param);

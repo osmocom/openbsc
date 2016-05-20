@@ -30,11 +30,14 @@ noinst_HEADERS = \
 	$(NULL)
 
 libmgcp_a_SOURCES = \
+	mgcp_common.c \
 	mgcp_protocol.c \
 	mgcp_network.c \
 	mgcp_vty.c \
 	mgcp_osmux.c \
 	mgcp_sdp.c \
+	mgcpgw_client.c \
+	mgcpgw_client_vty.c \
 	$(NULL)
 if BUILD_MGCP_TRANSCODING
 libmgcp_a_SOURCES += \

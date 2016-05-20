@@ -184,6 +184,11 @@ static const struct log_info_cat default_categories[] = {
 		.description = "Visitor Location Register",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DIUCS] = {
+		.name = "DIUCS",
+		.description = "Iu-CS Protocol",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 static int filter_fn(const struct log_context *ctx, struct log_target *tar)
