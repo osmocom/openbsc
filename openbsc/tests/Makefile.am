@@ -1,4 +1,5 @@
 SUBDIRS = \
+	libiudummy \
 	gsm0408 \
 	db \
 	channel \

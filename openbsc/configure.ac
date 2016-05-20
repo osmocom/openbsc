@@ -214,6 +214,7 @@ AC_OUTPUT(
     src/gprs/Makefile
     tests/Makefile
     tests/atlocal
+    tests/libiudummy/Makefile
     tests/gsm0408/Makefile
     tests/db/Makefile
     tests/channel/Makefile
