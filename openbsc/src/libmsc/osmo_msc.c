@@ -173,5 +173,5 @@ void msc_release_connection(struct gsm_subscriber_connection *conn)
 
 	conn->in_release = 1;
 	gsm0808_clear(conn);
-	subscr_con_free(conn);
+	msc_subscr_con_free(conn);
 }
