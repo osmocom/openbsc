@@ -304,10 +304,22 @@ static const struct cause_map gtp2sm_cause_map[] = {
 	{ 0, 0 }
 };
 
+static int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx)
+{
+	struct sgsn_signal_data sig_data;
+
+	/* Inform others about it */
+	memset(&sig_data, 0, sizeof(sig_data));
+	sig_data.pdp = pctx;
+	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_ACT, &sig_data);
+
+	/* Send PDP CTX ACT to MS */
+	return gsm48_tx_gsm_act_pdp_acc(pctx);
+}
+
 /* The GGSN has confirmed the creation of a PDP Context */
 static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
-	struct sgsn_signal_data sig_data;
 	struct sgsn_pdp_ctx *pctx = cbp;
 	uint8_t reject_cause;
 
@@ -342,14 +354,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 
 	/* Activate the SNDCP layer */
 	sndcp_sm_activate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
-
-	/* Inform others about it */
-	memset(&sig_data, 0, sizeof(sig_data));
-	sig_data.pdp = pctx;
-	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_ACT, &sig_data);
-
-	/* Send PDP CTX ACT to MS */
-	return gsm48_tx_gsm_act_pdp_acc(pctx);
+	return send_act_pdp_cont_acc(pctx);
 
 reject:
 	/*
