@@ -3649,6 +3649,33 @@ int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
 	return 0;
 }
 
+struct gsm_subscriber_connection *msc_subscr_con_allocate(struct gsm_network *network)
+{
+	struct gsm_subscriber_connection *conn;
+
+	conn = talloc_zero(network, struct gsm_subscriber_connection);
+	if (!conn)
+		return NULL;
+
+	conn->network = network;
+	llist_add_tail(&conn->entry, &network->subscr_conns);
+	return conn;
+}
+
+void msc_subscr_con_free(struct gsm_subscriber_connection *conn)
+{
+	if (!conn)
+		return;
+
+	if (conn->subscr) {
+		subscr_put(conn->subscr);
+		conn->subscr = NULL;
+	}
+
+	llist_del(&conn->entry);
+	talloc_free(conn);
+}
+
 /* Main entry point for GSM 04.08/44.008 Layer 3 data (e.g. from the BSC). */
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {

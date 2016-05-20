@@ -238,7 +238,7 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 	return 0;
 }
 
-struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
+struct gsm_subscriber_connection *bsc_subscr_con_allocate(struct gsm_lchan *lchan)
 {
 	struct gsm_subscriber_connection *conn;
 	struct gsm_network *net = lchan->ts->trx->bts->network;
@@ -255,8 +255,7 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 	return conn;
 }
 
-/* TODO: move subscriber put here... */
-void subscr_con_free(struct gsm_subscriber_connection *conn)
+void bsc_subscr_con_free(struct gsm_subscriber_connection *conn)
 {
 	if (!conn)
 		return;
@@ -678,7 +677,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 	} else {
 		/* allocate a new connection */
 		rc = BSC_API_CONN_POL_REJECT;
-		lchan->conn = subscr_con_allocate(msg->lchan);
+		lchan->conn = bsc_subscr_con_allocate(msg->lchan);
 		if (!lchan->conn) {
 			lchan_release(lchan, 1, RSL_REL_NORMAL);
 			return -1;
@@ -689,7 +688,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 		if (rc != BSC_API_CONN_POL_ACCEPT) {
 			lchan->conn->lchan = NULL;
-			subscr_con_free(lchan->conn);
+			bsc_subscr_con_free(lchan->conn);
 			lchan_release(lchan, 1, RSL_REL_NORMAL);
 		}
 	}
@@ -848,7 +847,7 @@ static void handle_release(struct gsm_subscriber_connection *conn,
 	gsm0808_clear(conn);
 
 	if (destruct)
-		subscr_con_free(conn);
+		bsc_subscr_con_free(conn);
 }
 
 static void handle_chan_ack(struct gsm_subscriber_connection *conn,

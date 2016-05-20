@@ -185,7 +185,7 @@ static int bssmap_handle_clear_command(struct osmo_bsc_sccp_con *conn,
 	if (conn->conn) {
 		LOGP(DMSC, LOGL_INFO, "Releasing all transactions on %p\n", conn);
 		gsm0808_clear(conn->conn);
-		subscr_con_free(conn->conn);
+		bsc_subscr_con_free(conn->conn);
 		conn->conn = NULL;
 	}
 
