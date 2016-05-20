@@ -197,10 +197,15 @@ static void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 
 void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 {
-	struct gprs_llc_llme *llme = mm->gb.llme;
+	struct gprs_llc_llme *llme = NULL;
 	uint32_t tlli = mm->gb.tlli;
 	struct sgsn_pdp_ctx *pdp, *pdp2;
 	struct sgsn_signal_data sig_data;
+
+	if (mm->ran_type == MM_CTX_T_GERAN_Gb)
+		llme = mm->gb.llme;
+	else
+		OSMO_ASSERT(mm->gb.llme == NULL);
 
 	/* Forget about ongoing look-ups */
 	if (mm->ggsn_lookup) {
@@ -237,8 +242,10 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 	sgsn_mm_ctx_free(mm);
 	mm = NULL;
 
-	/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
-	gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+	if (llme) {
+		/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
+		gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+	}
 }
 
 
