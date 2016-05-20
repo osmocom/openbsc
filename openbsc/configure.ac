@@ -203,6 +203,7 @@ AC_OUTPUT(
     src/libmgcp/Makefile
     src/libcommon/Makefile
     src/libfilter/Makefile
+    src/libiu/Makefile
     src/osmo-nitb/Makefile
     src/osmo-bsc/Makefile
     src/osmo-bsc_nat/Makefile
