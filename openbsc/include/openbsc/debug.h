@@ -38,6 +38,7 @@ enum {
 	DSUA,
 	DV42BIS,
 	DVLR,
+	DIUCS,
 	Debug_LastEntry,
 };
 
