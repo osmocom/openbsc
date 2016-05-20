@@ -150,6 +150,7 @@ static void gmm_copy_id(struct msgb *msg, const struct msgb *old)
 	msgb_tlli(msg) = msgb_tlli(old);
 	msgb_bvci(msg) = msgb_bvci(old);
 	msgb_nsei(msg) = msgb_nsei(old);
+	msg->dst = old->dst;
 }
 
 /* Store BVCI/NSEI in MM context */
@@ -157,6 +158,8 @@ static void msgid2mmctx(struct sgsn_mm_ctx *mm, const struct msgb *msg)
 {
 	mm->gb.bvci = msgb_bvci(msg);
 	mm->gb.nsei = msgb_nsei(msg);
+	/* In case a Iu connection is reconnected we need to update the ue ctx */
+	mm->iu.ue_ctx = msg->dst;
 }
 
 /* Store BVCI/NSEI in MM context */
@@ -165,6 +168,7 @@ static void mmctx2msgid(struct msgb *msg, const struct sgsn_mm_ctx *mm)
 	msgb_tlli(msg) = mm->gb.tlli;
 	msgb_bvci(msg) = mm->gb.bvci;
 	msgb_nsei(msg) = mm->gb.nsei;
+	msg->dst = mm->iu.ue_ctx;
 }
 
 static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
