@@ -23,7 +23,7 @@ struct gsm_subscriber;
 enum gsm48_gsm_cause;
 
 /* TS 04.08 4.1.3.3 GMM mobility management states on the network side */
-enum gprs_mm_state {
+enum gprs_gmm_state {
 	GMM_DEREGISTERED,		/* 4.1.3.3.1.1 */
 	GMM_COMMON_PROC_INIT,		/* 4.1.3.3.1.2 */
 	GMM_REGISTERED_NORMAL,		/* 4.1.3.3.2.1 */
@@ -98,7 +98,7 @@ struct sgsn_mm_ctx {
 	struct llist_head	list;
 
 	char 			imsi[GSM23003_IMSI_MAX_DIGITS+1];
-	enum gprs_mm_state	mm_state;
+	enum gprs_gmm_state	mm_state;
 	uint32_t 		p_tmsi;
 	uint32_t 		p_tmsi_old;	/* old P-TMSI before new is confirmed */
 	uint32_t 		p_tmsi_sig;
