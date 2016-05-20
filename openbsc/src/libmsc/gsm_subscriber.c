@@ -40,33 +40,16 @@
 #include <openbsc/db.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/vlr.h>
+#include <openbsc/iu.h>
+#include <openbsc/osmo_msc.h>
+#include <openbsc/msc_ifaces.h>
 
 void *tall_sub_req_ctx;
 
 int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
                          gsm_cbfn *cb, void *cb_data);
 
-static struct bsc_subscr *vlr_subscr_to_bsc_sub(struct llist_head *bsc_subscribers,
-						struct vlr_subscr *vsub)
-{
-	struct bsc_subscr *sub;
-	/* TODO MSC split -- creating a BSC subscriber directly from MSC data
-	 * structures in RAM. At some point the MSC will send a message to the
-	 * BSC instead. */
-	sub = bsc_subscr_find_or_create_by_imsi(bsc_subscribers, vsub->imsi);
-	sub->tmsi = vsub->tmsi;
-	sub->lac = vsub->lac;
-	return sub;
-}
-
-#if 0
-TODO implement paging response in libmsc!
-Excluding this to be able to link without libbsc:
-
-/*
- * We got the channel assigned and can now hand this channel
- * over to one of our callbacks.
- */
+/* A connection is established and the paging callbacks may run now. */
 int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 			   struct msgb *msg, void *data, void *param)
 {
@@ -74,38 +57,42 @@ int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber_connection *conn = data;
 	struct vlr_subscr *vsub = param;
 	struct paging_signal_data sig_data;
-	struct bsc_subscr *bsub;
-	struct gsm_network *net;
 
-	OSMO_ASSERT(vsub && vsub->cs.is_paging);
-	net = vsub->vlr->user_ctx;
+	OSMO_ASSERT(vsub);
+	OSMO_ASSERT(hooknum == GSM_HOOK_RR_PAGING);
+	OSMO_ASSERT(!(conn && (conn->vsub != vsub)));
+	OSMO_ASSERT(!((event == GSM_PAGING_SUCCEEDED) && !conn));
 
-	/*
-	 * Stop paging on all other BTS. E.g. if this is
-	 * the first timeout on a BTS then the others will
-	 * timeout soon as well. Let's just stop everything
-	 * and forget we wanted to page.
-	 */
+	LOGP(DPAG, LOGL_DEBUG, "Paging %s for %s (event=%d)\n",
+	     event == GSM_PAGING_SUCCEEDED ? "success" : "failure",
+	     vlr_subscr_name(vsub), event);
 
-	bsub = vlr_subscr_to_bsc_sub(conn->network->bsc_subscribers, vsub);
-	paging_request_stop(&net->bts_list, NULL, bsub, NULL, NULL);
-	bsc_subscr_put(bsub);
+	if (!vsub->cs.is_paging) {
+		LOGP(DPAG, LOGL_ERROR,
+		     "Paging Response received for subscriber"
+		     " that is not paging.\n");
+		return -EINVAL;
+	}
+
+	if (event == GSM_PAGING_SUCCEEDED)
+		msc_stop_paging(vsub);
 
 	/* Inform parts of the system we don't know */
-	sig_data.vsub	= vsub;
-	sig_data.bts	= conn ? conn->bts : NULL;
-	sig_data.conn	= conn;
+	sig_data.vsub = vsub;
+	sig_data.conn = conn;
 	sig_data.paging_result = event;
-	osmo_signal_dispatch(
-		SS_PAGING,
-		event == GSM_PAGING_SUCCEEDED ?
-			S_PAGING_SUCCEEDED : S_PAGING_EXPIRED,
-		&sig_data
-	);
+	osmo_signal_dispatch(SS_PAGING,
+			     event == GSM_PAGING_SUCCEEDED ?
+				S_PAGING_SUCCEEDED : S_PAGING_EXPIRED,
+			     &sig_data);
 
 	llist_for_each_entry_safe(request, tmp, &vsub->cs.requests, entry) {
 		llist_del(&request->entry);
-		request->cbfn(hooknum, event, msg, data, request->param);
+		if (request->cbfn) {
+			LOGP(DPAG, LOGL_DEBUG, "Calling paging cbfn.\n");
+			request->cbfn(hooknum, event, msg, data, request->param);
+		} else
+			LOGP(DPAG, LOGL_DEBUG, "Paging without action.\n");
 		talloc_free(request);
 	}
 
@@ -115,29 +102,48 @@ int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	return 0;
 }
 
-struct subscr_request *subscr_request_channel(struct vlr_subscr *vsub,
-					      int channel_type,
-					      gsm_cbfn *cbfn, void *param)
+int msc_paging_request(struct vlr_subscr *vsub)
+{
+	/* The subscriber was last seen in subscr->lac. Find out which
+	 * BSCs/RNCs are responsible and send them a paging request via open
+	 * SCCP connections (if any). */
+	/* TODO Implementing only RNC paging, since this is code on the iu branch.
+	 * Need to add BSC paging at some point. */
+	switch (vsub->cs.attached_via_ran) {
+	case RAN_GERAN_A:
+		return a_page(vsub->imsi, vsub->tmsi, vsub->lac);
+	case RAN_UTRAN_IU:
+		return iu_page_cs(vsub->imsi,
+				  vsub->tmsi == GSM_RESERVED_TMSI?
+				  NULL : &vsub->tmsi,
+				  vsub->lac);
+	default:
+		break;
+	}
+
+	LOGP(DPAG, LOGL_ERROR, "%s: Cannot page, subscriber not attached\n",
+	     vlr_subscr_name(vsub));
+	return -EINVAL;
+}
+
+/*! \brief Start a paging request for vsub, call cbfn(param) when done.
+ * \param vsub  subscriber to page.
+ * \param cbfn  function to call when the conn is established.
+ * \param param  caller defined param to pass to cbfn().
+ * \param label  human readable label of the request kind used for logging.
+ */
+struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
+					   gsm_cbfn *cbfn, void *param,
+					   const char *label)
 {
 	int rc;
 	struct subscr_request *request;
-	struct bsc_subscr *bsub;
-	struct gsm_network *net = vsub->vlr->user_ctx;
 
 	/* Start paging.. we know it is async so we can do it before */
 	if (!vsub->cs.is_paging) {
-		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet.\n",
+		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet, start paging.\n",
 		     vlr_subscr_name(vsub));
-#if 0
-		TODO implement paging response in libmsc!
-		Excluding this to be able to link without libbsc:
-
-		bsub = vlr_subscr_to_bsc_sub(net->bsc_subscribers, vsub);
-		rc = paging_request(net, bsub, channel_type, NULL, NULL);
-		bsc_subscr_put(bsub);
-#else
-		rc = -ENOTSUP;
-#endif
+		rc = msc_paging_request(vsub);
 		if (rc <= 0) {
 			LOGP(DMM, LOGL_ERROR, "Subscriber %s paging failed: %d\n",
 			     vlr_subscr_name(vsub), rc);
@@ -146,6 +152,9 @@ struct subscr_request *subscr_request_channel(struct vlr_subscr *vsub,
 		/* reduced on the first paging callback */
 		vlr_subscr_get(vsub);
 		vsub->cs.is_paging = true;
+	} else {
+		LOGP(DMM, LOGL_DEBUG, "Subscriber %s already paged.\n",
+			vlr_subscr_name(vsub));
 	}
 
 	/* TODO: Stop paging in case of memory allocation failure */
@@ -177,4 +186,3 @@ struct gsm_subscriber_connection *connection_for_subscr(struct vlr_subscr *vsub)
 
 	return NULL;
 }
-#endif

@@ -155,7 +155,10 @@ struct vlr_subscr {
 	struct {
 		/* pending requests */
 		bool is_paging;
+		/* list of struct subscr_request */
 		struct llist_head requests;
+		uint8_t lac;
+		enum ran_type attached_via_ran;
 	} cs;
 };
 
@@ -188,6 +191,10 @@ struct vlr_ops {
 
 	int (*set_ciph_mode)(void *msc_conn_ref, enum vlr_ciph ciph_mode,
 			     bool retrieve_imeisv);
+
+	/* UTRAN: send Common Id (when auth+ciph are complete) */
+	int (*tx_common_id)(void *msc_conn_ref);
+
 
 	/* notify MSC/SGSN that the subscriber data in VLR has been updated */
 	void (*subscr_update)(struct vlr_subscr *vsub);

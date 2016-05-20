@@ -13,8 +13,10 @@
 
 #include <osmocom/crypt/auth.h>
 
+#include <openbsc/common.h>
 #include <openbsc/rest_octets.h>
 #include <openbsc/common_cs.h>
+#include <openbsc/mgcpgw_client.h>
 
 /** annotations for msgb ownership */
 #define __uses
@@ -102,6 +104,10 @@ enum ran_type {
        RAN_UTRAN_IU,	/* 3G / Iu-interface (IuCS or IuPS) */
 };
 
+extern const struct value_string ran_type_names[];
+static inline const char *ran_type_name(enum ran_type val)
+{	return get_value_string(ran_type_names, val);	}
+
 struct gsm_classmark {
 	bool classmark1_set;
 	struct gsm48_classmark1 classmark1;
@@ -184,6 +190,10 @@ struct gsm_subscriber_connection {
 	struct {
 		struct ue_conn_ctx *ue_ctx;
 		int integrity_protection;
+		unsigned int mgcp_rtp_endpoint;
+		uint16_t mgcp_rtp_port_ue;
+		uint16_t mgcp_rtp_port_cn;
+		uint8_t rab_id;
 	} iu;
 };
 
@@ -364,6 +374,11 @@ struct gsm_network {
 	struct mncc_sock_state *mncc_state;
 	mncc_recv_cb_t mncc_recv;
 	struct llist_head upqueue;
+	/*
+	 * TODO: Move the trans_list into the subscriber connection and
+	 * create a pending list for MT transactions. These exist before
+	 * we have a subscriber connection.
+	 */
 	struct llist_head trans_list;
 	struct bsc_api *bsc_api;
 
@@ -439,6 +454,15 @@ struct gsm_network {
 
 	/* Periodic location update default value */
 	uint8_t t3212;
+
+	struct {
+		struct mgcpgw_client_conf conf;
+		struct mgcpgw_client *client;
+	} mgcpgw;
+
+	struct {
+		enum nsap_addr_enc rab_assign_addr_enc;
+	} iu;
 };
 
 struct osmo_esme;

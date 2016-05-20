@@ -1,0 +1,31 @@
+
+===== test_crcx =====
+composed:
+-----
+CRCX 1 17@mgw MGCP 1.0
+C: 2a
+L: p:20, a:AMR, nt:IN
+M: loopback
+
+-----
+composed response:
+-----
+200 1 OK
+I: 1
+
+v=0
+o=- 1 23 IN IP4 10.9.1.120
+s=-
+c=IN IP4 10.9.1.120
+t=0 0
+m=audio 16002 RTP/AVP 98
+a=rtpmap:98 AMR/8000
+a=ptime:20
+
+-----
+response cb received:
+  head.response_code = 200
+  head.trans_id = 1
+  head.comment = OK
+  audio_port = 16002
+Done

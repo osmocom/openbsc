@@ -28,14 +28,6 @@
 
 #define CI_UNUSED 0
 
-enum mgcp_connection_mode {
-	MGCP_CONN_NONE = 0,
-	MGCP_CONN_RECV_ONLY = 1,
-	MGCP_CONN_SEND_ONLY = 2,
-	MGCP_CONN_RECV_SEND = MGCP_CONN_RECV_ONLY | MGCP_CONN_SEND_ONLY,
-	MGCP_CONN_LOOPBACK  = 4 | MGCP_CONN_RECV_SEND,
-};
-
 enum mgcp_trunk_type {
 	MGCP_TRUNK_VIRTUAL,
 	MGCP_TRUNK_E1,
@@ -340,3 +332,5 @@ static inline const char *mgcp_bts_src_addr(struct mgcp_endpoint *endp)
 		return endp->cfg->bts_ports.bind_addr;
 	return endp->cfg->source_addr;
 }
+
+int mgcp_msg_terminate_nul(struct msgb *msg);

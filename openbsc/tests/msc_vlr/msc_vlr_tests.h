@@ -98,6 +98,7 @@ void paging_expect_imsi(const char *imsi);
 void paging_expect_tmsi(uint32_t tmsi);
 
 void ms_sends_msg(const char *hex);
+void ms_sends_security_mode_complete();
 void gsup_rx(const char *rx_hex, const char *expect_tx_hex);
 void send_sms(struct vlr_subscr *receiver,
 	      struct vlr_subscr *sender,
@@ -126,7 +127,10 @@ void check_talloc(void *msgb_ctx, void *tall_bsc_ctx, int expected_blocks);
 
 #define gsup_expect_tx(hex) do \
 { \
-	OSMO_ASSERT(!gsup_tx_expected); \
+	if (gsup_tx_expected) { \
+		log("Previous expected GSUP tx was not confirmed!"); \
+		OSMO_ASSERT(!gsup_tx_expected); \
+	} \
 	if (!hex) \
 		break; \
 	gsup_tx_expected = hex; \

@@ -5,9 +5,9 @@
 DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
 DMM LU/new-LAC: 1/0
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
@@ -27,7 +27,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
-DMM compl_l3: Keeping conn
+DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
@@ -89,6 +89,7 @@ DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
@@ -136,12 +137,13 @@ DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Removing from paren
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Freeing instance
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Deallocated
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: releasing conn
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
@@ -150,8 +152,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 <-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
 - LU was successful, and the conn has already been closed
@@ -165,9 +167,9 @@ DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_INIT}: Allocated
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_INIT}: is child of Subscr_Conn(901700000004620)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_INIT}: rev=GSM net=GERAN Auth (no Ciph)
@@ -185,7 +187,7 @@ DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...rand=12aca96fb4ffdea5c985cbafa9b6e18b
 - ...expecting sres=20bde240
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
-DMM compl_l3: Keeping conn
+DMM MSISDN:46071: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF MSISDN:46071: MSC conn use - 1 == 1
   cm_service_result_sent == 0
   auth_request_sent == 1
@@ -226,12 +228,14 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: proc_arq_f
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
 - sending CM Service Accept for MSISDN:46071
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_CM_SERVICE_REQ
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: received_cm_service_request = true
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_CM_SERVICE_REQ
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: received_cm_service_request = true
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: still awaiting first request after a CM Service Request
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: still awaiting first request after a CM Service Request
 DREF MSISDN:46071: MSC conn use - 1 == 1
   cm_service_result_sent == 1
 - a USSD request is serviced
@@ -241,22 +245,24 @@ DREF MSISDN:46071: MSC conn use - 1 == 1
 DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=11
 DMM MSISDN:46071 pdisc=11 msg_type=0x3b: received_cm_service_request changes to false
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DMM USSD: Own number requested
 DMM MSISDN:46071: MSISDN = 46071
-- DTAP --> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d27310cd06bbc51a0d
+DMSC msc_tx 43 bytes to MSISDN:46071 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d27310cd06bbc51a0d
 - DTAP matches expected message
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: bump: releasing conn
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 1
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -267,10 +273,9 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage increases to: 2
   llist_count(&vsub->cs.requests) == 0
 DREF VLR subscr MSISDN:46071 usage increases to: 3
-DMM Subscriber MSISDN:46071 not paged yet.
-  BTS/BSC sends out paging request to IMSI:901700000004620 for channel type 1
-  strcmp(paging_expecting_imsi, sub->imsi) == 0
-DREF BSC subscr IMSI:901700000004620 usage decreases to: 0
+DMM Subscriber MSISDN:46071 not paged yet, start paging.
+  RAN_GERAN_A sends out paging request to IMSI 901700000004620, TMSI 0xffffffff, LAC 0
+  strcmp(paging_expecting_imsi, imsi) == 0
 DREF VLR subscr MSISDN:46071 usage increases to: 4
   llist_count(&vsub->cs.requests) == 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 3
@@ -287,9 +292,9 @@ DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=6
 DRR PAGING RESPONSE: MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_INIT}: Allocated
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_INIT}: is child of Subscr_Conn(901700000004620)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_INIT}: rev=GSM net=GERAN Auth (no Ciph)
@@ -307,7 +312,7 @@ DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...rand=e7c03ba7cf0e2fde82b2dc4d63077d42
 - ...expecting sres=a29514ae
 DREF VLR subscr MSISDN:46071 usage decreases to: 4
-DMM compl_l3: Keeping conn
+DMM MSISDN:46071: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF MSISDN:46071: MSC conn use - 1 == 1
   auth_request_sent == 1
 - needs auth, not yet accepted
@@ -346,17 +351,21 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: _proc_arq_
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: proc_arq_fsm_done(VLR_PR_ARQ_RES_PASSED)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_PAGING_RESP
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DREF BSC subscr IMSI:901700000004620 usage decreases to: 0
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_PAGING_RESP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DPAG Paging success for MSISDN:46071 (event=0)
+DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:46071 usage increases to: 5
 DREF MSISDN:46071: MSC conn use + 1 == 3
-- DTAP --> MS: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
+DMSC msc_tx 91 bytes to MSISDN:46071 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 4
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: connection still has active transaction: GSM48_PDISC_SMS
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: connection still has active transaction: GSM48_PDISC_SMS
 DREF MSISDN:46071: MSC conn use - 1 == 2
   dtap_tx_confirmed == 1
   paging_stopped == 1
@@ -370,31 +379,34 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 4
   rx from MS: pdisc=0x89 msg_type=0x04
 DREF MSISDN:46071: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: bump: connection still has active transaction: GSM48_PDISC_SMS
 DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 - MS also sends RP-ACK, MSC in turn sends CP-ACK for that
   rx from MS: pdisc=0x89 msg_type=0x01
 DREF MSISDN:46071: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
-- DTAP --> MS: 0904
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
+DMSC msc_tx 2 bytes to MSISDN:46071 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 0904
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 3
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DREF MSISDN:46071: MSC conn use - 1 == 2
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: bump: releasing conn
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 1
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -413,14 +425,13 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
-DMM No conn_fsm, release conn
-DMM compl_l3: Discarding conn
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_gsm_authen: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_gsm_authen_tmsi
 - Location Update request causes a GSUP Send Auth Info request to HLR
@@ -429,9 +440,9 @@ talloc_total_blocks(tall_bsc_ctx) == 75
 DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
 DMM LU/new-LAC: 1/0
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
@@ -451,7 +462,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
-DMM compl_l3: Keeping conn
+DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
@@ -513,6 +524,7 @@ DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
@@ -591,20 +603,21 @@ DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Removing from paren
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Freeing instance
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Deallocated
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: releasing conn
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 1
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -625,9 +638,9 @@ DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(TMSI)=50462976
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_INIT}: Allocated
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_INIT}: is child of Subscr_Conn(50462976)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_INIT}: rev=GSM net=GERAN Auth (no Ciph)
@@ -645,7 +658,7 @@ DVLR VLR_Authenticate(50462976){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count
 - ...rand=12aca96fb4ffdea5c985cbafa9b6e18b
 - ...expecting sres=20bde240
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
-DMM compl_l3: Keeping conn
+DMM MSISDN:46071: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF MSISDN:46071: MSC conn use - 1 == 1
   cm_service_result_sent == 0
   auth_request_sent == 1
@@ -686,12 +699,14 @@ DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: proc_arq_fsm_done
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
 - sending CM Service Accept for MSISDN:46071
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_CM_SERVICE_REQ
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: received_cm_service_request = true
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_CM_SERVICE_REQ
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: received_cm_service_request = true
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: bump: still awaiting first request after a CM Service Request
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: bump: still awaiting first request after a CM Service Request
 DREF MSISDN:46071: MSC conn use - 1 == 1
   cm_service_result_sent == 1
 - a USSD request is serviced
@@ -701,22 +716,24 @@ DREF MSISDN:46071: MSC conn use - 1 == 1
 DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=11
 DMM MSISDN:46071 pdisc=11 msg_type=0x3b: received_cm_service_request changes to false
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DMM USSD: Own number requested
 DMM MSISDN:46071: MSISDN = 46071
-- DTAP --> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d27310cd06bbc51a0d
+DMSC msc_tx 43 bytes to MSISDN:46071 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d27310cd06bbc51a0d
 - DTAP matches expected message
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: bump: releasing conn
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(50462976)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 1
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -727,10 +744,9 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage increases to: 2
   llist_count(&vsub->cs.requests) == 0
 DREF VLR subscr MSISDN:46071 usage increases to: 3
-DMM Subscriber MSISDN:46071 not paged yet.
-  BTS/BSC sends out paging request to IMSI:901700000004620 for channel type 1
+DMM Subscriber MSISDN:46071 not paged yet, start paging.
+  RAN_GERAN_A sends out paging request to IMSI 901700000004620, TMSI 0x03020100, LAC 0
   paging_expecting_tmsi == 0x03020100
-DREF BSC subscr IMSI:901700000004620 usage decreases to: 0
 DREF VLR subscr MSISDN:46071 usage increases to: 4
   llist_count(&vsub->cs.requests) == 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 3
@@ -747,9 +763,9 @@ DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=6
 DRR PAGING RESPONSE: MI(TMSI)=50462976
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_INIT}: Allocated
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_INIT}: is child of Subscr_Conn(50462976)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_INIT}: rev=GSM net=GERAN Auth (no Ciph)
@@ -767,7 +783,7 @@ DVLR VLR_Authenticate(50462976){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count
 - ...rand=e7c03ba7cf0e2fde82b2dc4d63077d42
 - ...expecting sres=a29514ae
 DREF VLR subscr MSISDN:46071 usage decreases to: 4
-DMM compl_l3: Keeping conn
+DMM MSISDN:46071: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF MSISDN:46071: MSC conn use - 1 == 1
   auth_request_sent == 1
 - needs auth, not yet accepted
@@ -806,17 +822,21 @@ DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_pos
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: proc_arq_fsm_done(VLR_PR_ARQ_RES_PASSED)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_PAGING_RESP
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DREF BSC subscr IMSI:901700000004620 usage decreases to: 0
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_PAGING_RESP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DPAG Paging success for MSISDN:46071 (event=0)
+DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:46071 usage increases to: 5
 DREF MSISDN:46071: MSC conn use + 1 == 3
-- DTAP --> MS: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
+DMSC msc_tx 91 bytes to MSISDN:46071 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 4
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: bump: connection still has active transaction: GSM48_PDISC_SMS
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: bump: connection still has active transaction: GSM48_PDISC_SMS
 DREF MSISDN:46071: MSC conn use - 1 == 2
   dtap_tx_confirmed == 1
   paging_stopped == 1
@@ -830,31 +850,34 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 4
   rx from MS: pdisc=0x89 msg_type=0x04
 DREF MSISDN:46071: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: bump: connection still has active transaction: GSM48_PDISC_SMS
 DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 - MS also sends RP-ACK, MSC in turn sends CP-ACK for that
   rx from MS: pdisc=0x89 msg_type=0x01
 DREF MSISDN:46071: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
-- DTAP --> MS: 0904
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
+DMSC msc_tx 2 bytes to MSISDN:46071 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 0904
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 3
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DREF MSISDN:46071: MSC conn use - 1 == 2
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: bump: releasing conn
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(50462976)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 1
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -869,9 +892,9 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DMM LOCATION UPDATING REQUEST: MI(TMSI)=50462976 type=IMSI ATTACH
 DMM LU/new-LAC: 1/0
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_IDLE}: Allocated
@@ -891,7 +914,7 @@ DVLR VLR_Authenticate(50462976){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count
 - ...rand=fa8f20b781b5881329d4fea26b1a3c51
 - ...expecting sres=5afc8d72
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
-DMM compl_l3: Keeping conn
+DMM MSISDN:46071: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF MSISDN:46071: MSC conn use - 1 == 1
   auth_request_sent == 1
   lu_result_sent == 0
@@ -920,6 +943,7 @@ DVLR upd_hlr_vlr_fsm(50462976){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(50462976){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DMM MSISDN:46071: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF MSISDN:46071: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
@@ -997,20 +1021,21 @@ DVLR lu_compl_vlr_fsm(50462976){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_l
 DVLR lu_compl_vlr_fsm(50462976){LU_COMPL_VLR_S_DONE}: Freeing instance
 DVLR lu_compl_vlr_fsm(50462976){LU_COMPL_VLR_S_DONE}: Deallocated
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: bump: releasing conn
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(50462976)
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 1
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -1035,14 +1060,13 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
-DMM No conn_fsm, release conn
-DMM compl_l3: Discarding conn
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_gsm_authen_tmsi: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_gsm_authen_imei
 - Location Update request causes a GSUP Send Auth Info request to HLR
@@ -1051,9 +1075,9 @@ talloc_total_blocks(tall_bsc_ctx) == 75
 DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
 DMM LU/new-LAC: 1/0
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
@@ -1073,7 +1097,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
-DMM compl_l3: Keeping conn
+DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
@@ -1135,6 +1159,7 @@ DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
@@ -1174,7 +1199,8 @@ DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Freeing instance
 DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Deallocated
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_WAIT_IMEI
-- DTAP --> MS: 051802
+DMSC msc_tx 3 bytes to MSISDN:46071 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 051802
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 <-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
@@ -1210,20 +1236,21 @@ DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Removing from paren
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Freeing instance
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Deallocated
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: releasing conn
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 1
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -1246,14 +1273,13 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
-DMM No conn_fsm, release conn
-DMM compl_l3: Discarding conn
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_gsm_authen_imei: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_gsm_authen_tmsi_imei
 - Location Update request causes a GSUP Send Auth Info request to HLR
@@ -1262,9 +1288,9 @@ talloc_total_blocks(tall_bsc_ctx) == 75
 DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
 DMM LU/new-LAC: 1/0
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
@@ -1284,7 +1310,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
-DMM compl_l3: Keeping conn
+DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
@@ -1346,6 +1372,7 @@ DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
@@ -1385,7 +1412,8 @@ DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Freeing instance
 DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Deallocated
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_WAIT_IMEI_TMSI
-- DTAP --> MS: 051802
+DMSC msc_tx 3 bytes to MSISDN:46071 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 051802
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 <-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
@@ -1415,6 +1443,7 @@ DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_IMEI_TMSI}: Received 
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_IMEI_TMSI}: lu_compl_vlr_new_tmsi()
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_IMEI_TMSI}: state_chg to LU_COMPL_VLR_S_WAIT_TMSI_CNF
 - sending LU Accept for MSISDN:46071, with TMSI 0x03020100
+DMM MSISDN:46071: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF MSISDN:46071: MSC conn use - 1 == 1
 - a LU Accept with a new TMSI was sent, waiting for TMSI Realloc Compl
   llist_count(&net->subscr_conns) == 1
@@ -1451,20 +1480,21 @@ DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Removing from paren
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Freeing instance
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Deallocated
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: releasing conn
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 1
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -1487,14 +1517,13 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
-DMM No conn_fsm, release conn
-DMM compl_l3: Discarding conn
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_gsm_authen_tmsi_imei: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_gsm_milenage_authen
 - Location Update request causes a GSUP Send Auth Info request to HLR
@@ -1503,9 +1532,9 @@ talloc_total_blocks(tall_bsc_ctx) == 75
 DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000010650 type=NORMAL
 DMM LU/new-LAC: 0/0
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: Allocated
@@ -1525,7 +1554,7 @@ DVLR GSUP tx: 08010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000000156f0
 DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000010650 usage decreases to: 1
-DMM compl_l3: Keeping conn
+DMM IMSI:901700000010650: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000010650: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
@@ -1568,6 +1597,7 @@ DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000000156f0
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DMM IMSI:901700000010650: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000010650: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
@@ -1615,12 +1645,13 @@ DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Removing from paren
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Freeing instance
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Deallocated
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: bump: releasing conn
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
@@ -1629,8 +1660,8 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 <-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
 - LU was successful, and the conn has already been closed
@@ -1644,9 +1675,9 @@ DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000010650
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: Allocated
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: is child of Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: rev=GSM net=GERAN Auth (no Ciph)
@@ -1664,7 +1695,7 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...rand=c187a53a5e6b9d573cac7c74451fd46d
 - ...expecting sres=85aa3130
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
-DMM compl_l3: Keeping conn
+DMM MSISDN:42342: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF MSISDN:42342: MSC conn use - 1 == 1
   cm_service_result_sent == 0
   auth_request_sent == 1
@@ -1705,12 +1736,14 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: proc_arq_f
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
 - sending CM Service Accept for MSISDN:42342
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_CM_SERVICE_REQ
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: received_cm_service_request = true
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_CM_SERVICE_REQ
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: received_cm_service_request = true
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: bump: still awaiting first request after a CM Service Request
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: bump: still awaiting first request after a CM Service Request
 DREF MSISDN:42342: MSC conn use - 1 == 1
   cm_service_result_sent == 1
 - a USSD request is serviced
@@ -1720,22 +1753,24 @@ DREF MSISDN:42342: MSC conn use - 1 == 1
 DREF MSISDN:42342: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=11
 DMM MSISDN:42342 pdisc=11 msg_type=0x3b: received_cm_service_request changes to false
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DMM USSD: Own number requested
 DMM MSISDN:42342: MSISDN = 42342
-- DTAP --> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d273104d36a3c91a0d
+DMSC msc_tx 43 bytes to MSISDN:42342 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d273104d36a3c91a0d
 - DTAP matches expected message
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: bump: releasing conn
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 1
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
@@ -1746,10 +1781,9 @@ DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DREF VLR subscr MSISDN:42342 usage increases to: 2
   llist_count(&vsub->cs.requests) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 3
-DMM Subscriber MSISDN:42342 not paged yet.
-  BTS/BSC sends out paging request to IMSI:901700000010650 for channel type 1
-  strcmp(paging_expecting_imsi, sub->imsi) == 0
-DREF BSC subscr IMSI:901700000010650 usage decreases to: 0
+DMM Subscriber MSISDN:42342 not paged yet, start paging.
+  RAN_GERAN_A sends out paging request to IMSI 901700000010650, TMSI 0xffffffff, LAC 0
+  strcmp(paging_expecting_imsi, imsi) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 4
   llist_count(&vsub->cs.requests) == 1
 DREF VLR subscr MSISDN:42342 usage decreases to: 3
@@ -1766,9 +1800,9 @@ DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=6
 DRR PAGING RESPONSE: MI(IMSI)=901700000010650
 DREF unknown: MSC conn use + 1 == 2
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Allocated
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Allocated
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: Allocated
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: is child of Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: rev=GSM net=GERAN Auth (no Ciph)
@@ -1786,7 +1820,7 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...rand=efa9c29a9742148d5c9070348716e1bb
 - ...expecting sres=69d5f9fb
 DREF VLR subscr MSISDN:42342 usage decreases to: 4
-DMM compl_l3: Keeping conn
+DMM MSISDN:42342: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF MSISDN:42342: MSC conn use - 1 == 1
   auth_request_sent == 1
 - needs auth, not yet accepted
@@ -1825,17 +1859,21 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: proc_arq_fsm_done(VLR_PR_ARQ_RES_PASSED)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_PAGING_RESP
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DREF BSC subscr IMSI:901700000010650 usage decreases to: 0
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_PAGING_RESP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DPAG Paging success for MSISDN:42342 (event=0)
+DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:42342 usage increases to: 5
 DREF MSISDN:42342: MSC conn use + 1 == 3
-- DTAP --> MS: 09015801000791447758100650004c0005802443f2000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
+DMSC msc_tx 91 bytes to MSISDN:42342 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 09015801000791447758100650004c0005802443f2000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
 DREF VLR subscr MSISDN:42342 usage decreases to: 4
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: bump: connection still has active transaction: GSM48_PDISC_SMS
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: bump: connection still has active transaction: GSM48_PDISC_SMS
 DREF MSISDN:42342: MSC conn use - 1 == 2
   dtap_tx_confirmed == 1
   paging_stopped == 1
@@ -1849,31 +1887,34 @@ DREF VLR subscr MSISDN:42342 usage decreases to: 4
   rx from MS: pdisc=0x89 msg_type=0x04
 DREF MSISDN:42342: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: bump: connection still has active transaction: GSM48_PDISC_SMS
 DREF MSISDN:42342: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 - MS also sends RP-ACK, MSC in turn sends CP-ACK for that
   rx from MS: pdisc=0x89 msg_type=0x01
 DREF MSISDN:42342: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
-- DTAP --> MS: 0904
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
+DMSC msc_tx 2 bytes to MSISDN:42342 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 0904
 - DTAP matches expected message
 DREF VLR subscr MSISDN:42342 usage decreases to: 3
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
 DREF MSISDN:42342: MSC conn use - 1 == 2
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: bump: releasing conn
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 1
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
@@ -1892,14 +1933,13 @@ DMM Subscriber MSISDN:42342 DETACHED
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DREF VLR subscr MSISDN:42342 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:42342
-DMM No conn_fsm, release conn
-DMM compl_l3: Discarding conn
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_gsm_milenage_authen: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
 talloc_total_blocks(tall_bsc_ctx) == 9

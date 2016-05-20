@@ -21,9 +21,8 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
-#include <stdbool.h>
-#include <inttypes.h>
 #include <time.h>
+#include <inttypes.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/buffer.h>
@@ -902,7 +901,6 @@ DEFUN(logging_fltr_imsi,
       "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
 {
 	struct vlr_subscr *vlr_subscr;
-	struct bsc_subscr *bsc_subscr;
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct log_target *tgt = osmo_log_vty2tgt(vty);
 	const char *imsi = argv[0];
@@ -911,16 +909,14 @@ DEFUN(logging_fltr_imsi,
 		return CMD_WARNING;
 
 	vlr_subscr = vlr_subscr_find_by_imsi(gsmnet->vlr, imsi);
-	bsc_subscr = bsc_subscr_find_by_imsi(gsmnet->bsc_subscribers, imsi);
 
-	if (!vlr_subscr && !bsc_subscr) {
+	if (!vlr_subscr) {
 		vty_out(vty, "%%no subscriber with IMSI(%s)%s",
 			argv[0], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 	log_set_filter_vlr_subscr(tgt, vlr_subscr);
-	log_set_filter_bsc_subscr(tgt, bsc_subscr);
 	return CMD_SUCCESS;
 }
 
@@ -965,92 +961,6 @@ static int config_write_hlr(struct vty *vty)
 		gsmnet->gsup_server_addr_str, VTY_NEWLINE);
 	vty_out(vty, " remote-port %u%s",
 		gsmnet->gsup_server_port, VTY_NEWLINE);
-	return CMD_SUCCESS;
-}
-
-static struct cmd_node nitb_node = {
-	NITB_NODE,
-	"%s(config-nitb)# ",
-	1,
-};
-
-DEFUN(cfg_nitb, cfg_nitb_cmd,
-      "nitb", "Configure NITB options")
-{
-	vty->node = NITB_NODE;
-	return CMD_SUCCESS;
-}
-
-/* Note: limit on the parameter length is set by internal vty code limitations */
-DEFUN(cfg_nitb_subscr_random, cfg_nitb_subscr_random_cmd,
-      "subscriber-create-on-demand random <1-9999999999> <2-9999999999>",
-      "Set random parameters for a new record when a subscriber is first seen.\n"
-      "Set random parameters for a new record when a subscriber is first seen.\n"
-      "Minimum for subscriber extension\n""Maximum for subscriber extension\n")
-{
-	vty_out(vty, "%% 'subscriber-create-on-demand' is no longer supported.%s"
-		"%% This is now up to osmo-hlr.%s",
-		VTY_NEWLINE, VTY_NEWLINE);
-	return CMD_WARNING;
-}
-
-DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
-      "subscriber-create-on-demand [no-extension]",
-      "Make a new record when a subscriber is first seen.\n"
-      "Do not automatically assign extension to created subscribers\n")
-{
-	vty_out(vty, "%% 'subscriber-create-on-demand' is no longer supported.%s"
-		"%% This is now up to osmo-hlr.%s",
-		VTY_NEWLINE, VTY_NEWLINE);
-	return CMD_WARNING;
-}
-
-DEFUN(cfg_nitb_no_subscr_create, cfg_nitb_no_subscr_create_cmd,
-      "no subscriber-create-on-demand",
-      NO_STR "Make a new record when a subscriber is first seen.\n")
-{
-	vty_out(vty, "%% 'subscriber-create-on-demand' is no longer supported.%s"
-		"%% This is now up to osmo-hlr.%s",
-		VTY_NEWLINE, VTY_NEWLINE);
-	return CMD_WARNING;
-}
-
-DEFUN(cfg_nitb_assign_tmsi, cfg_nitb_assign_tmsi_cmd,
-      "assign-tmsi",
-      "Assign TMSI during Location Updating.\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->vlr->cfg.assign_tmsi = true;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nitb_no_assign_tmsi, cfg_nitb_no_assign_tmsi_cmd,
-      "no assign-tmsi",
-      NO_STR "Assign TMSI during Location Updating.\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->vlr->cfg.assign_tmsi = false;
-	return CMD_SUCCESS;
-}
-
-static int config_write_nitb(struct vty *vty)
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	vty_out(vty, "nitb%s", VTY_NEWLINE);
-	if (!gsmnet->auto_create_subscr)
-		vty_out(vty, " no subscriber-create-on-demand%s", VTY_NEWLINE);
-	else
-		vty_out(vty, " subscriber-create-on-demand%s%s",
-			gsmnet->auto_assign_exten ? "" : " no-extension",
-			VTY_NEWLINE);
-
-	if (gsmnet->ext_min != GSM_MIN_EXTEN || gsmnet->ext_max != GSM_MAX_EXTEN)
-		vty_out(vty, " subscriber-create-on-demand random %"PRIu64" %"
-			PRIu64"%s", gsmnet->ext_min, gsmnet->ext_max,
-			VTY_NEWLINE);
-	vty_out(vty, " %sassign-tmsi%s",
-		gsmnet->vlr->cfg.assign_tmsi? "" : "no ", VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -1104,14 +1014,6 @@ int bsc_vty_init_extra(void)
 	install_node(&hlr_node, config_write_hlr);
 	install_element(HLR_NODE, &cfg_hlr_remote_ip_cmd);
 	install_element(HLR_NODE, &cfg_hlr_remote_port_cmd);
-
-	install_element(CONFIG_NODE, &cfg_nitb_cmd);
-	install_node(&nitb_node, config_write_nitb);
-	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
-	install_element(NITB_NODE, &cfg_nitb_subscr_random_cmd);
-	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);
-	install_element(NITB_NODE, &cfg_nitb_assign_tmsi_cmd);
-	install_element(NITB_NODE, &cfg_nitb_no_assign_tmsi_cmd);
 
 	return 0;
 }
