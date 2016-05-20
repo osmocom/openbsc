@@ -286,6 +286,11 @@ static struct log_info_cat gprs_categories[] = {
 		.description = "RAN Application Part (RANAP)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DSUA] = {
+		.name = "DSUA",
+		.description = "SCCP User Adaptation (SUA)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 static const struct log_info gprs_log_info = {

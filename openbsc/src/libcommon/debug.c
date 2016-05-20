@@ -170,6 +170,11 @@ static const struct log_info_cat default_categories[] = {
 		.description = "Radio Access Network Application Part Protocol",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DSUA] = {
+		.name = "DSUA",
+		.description = "SCCP User Adaptation Protocol",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 enum log_filter {

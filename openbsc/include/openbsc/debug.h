@@ -35,6 +35,7 @@ enum {
 	DFILTER,
 	DGTPHUB,
 	DRANAP,
+	DSUA,
 	Debug_LastEntry,
 };
 
