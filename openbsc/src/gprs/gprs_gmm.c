@@ -50,6 +50,7 @@
 
 #ifdef BUILD_IU
 #include <osmocom/ranap/ranap_ies_defs.h>
+#include <osmocom/ranap/ranap_msg_factory.h>
 #endif
 
 #include <openbsc/debug.h>
@@ -853,9 +854,8 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		ctx->pending_req = 0;
 		rc = gsm48_tx_gmm_service_ack(ctx);
 
-		if (ctx->iu.service.type == 1) {
+		if (ctx->iu.service.type != GPRS_SERVICE_T_SIGNALLING)
 			activate_pdp_rabs(ctx);
-		}
 
 		return rc;
 #endif
@@ -1540,8 +1540,11 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		process_ms_ctx_status(mmctx, pdp_status);
 	}
 
-	/* Send RA UPDATE ACCEPT */
-	return gsm48_tx_gmm_ra_upd_ack(mmctx);
+	/* Send RA UPDATE ACCEPT. In Iu, the RA upd request can be called from
+	 * a new Iu connection, so we might need to re-authenticate the
+	 * connection as well as turn on integrity protection. */
+	mmctx->pending_req = GSM48_MT_GMM_RA_UPD_REQ;
+	return gsm48_gmm_authorize(mmctx);
 
 rejected:
 	/* Send RA UPDATE REJECT */
