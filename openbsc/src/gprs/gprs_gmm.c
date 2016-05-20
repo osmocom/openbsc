@@ -2419,3 +2419,28 @@ int gprs_gmm_rx_resume(struct gprs_ra_id *raid, uint32_t tlli,
 	mmctx->mm_state = GMM_REGISTERED_NORMAL;
 	return 0;
 }
+
+#ifdef BUILD_IU
+int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp, bool use_x213_nsap)
+{
+	struct msgb *msg;
+	struct sgsn_mm_ctx *mm = pdp->mm;
+	struct ue_conn_ctx *uectx;
+	uint32_t ggsn_ip;
+
+	uectx = mm->iu.ue_ctx;
+
+	/* Get the IP address for ggsn user plane */
+	memcpy(&ggsn_ip, pdp->lib->gsnru.v, pdp->lib->gsnru.l);
+	ggsn_ip = htonl(ggsn_ip);
+
+	LOGP(DRANAP, LOGL_DEBUG, "Assigning RAB: rab_id=%d, ggsn_ip=%x,"
+	     " teid_gn=%x, use_x213_nsap=%d\n",
+	     rab_id, ggsn_ip, pdp->lib->teid_gn, use_x213_nsap);
+
+	msg = ranap_new_msg_rab_assign_data(rab_id, ggsn_ip,
+					    pdp->lib->teid_gn, use_x213_nsap);
+	msg->l2h = msg->data;
+	return iu_rab_act(uectx, msg);
+}
+#endif

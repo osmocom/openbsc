@@ -366,6 +366,14 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		/* Activate the SNDCP layer */
 		sndcp_sm_activate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
 		return send_act_pdp_cont_acc(pctx);
+	} else if (pctx->mm->ran_type == MM_CTX_T_UTRAN_Iu) {
+#ifdef BUILD_IU
+		/* Activate a radio bearer */
+		iu_rab_act_ps(pdp->nsapi, pctx, 1);
+		return 0;
+#else
+		return -ENOTSUP;
+#endif
 	}
 
 	LOGP(DGPRS, LOGL_ERROR, "Unknown ran_type %d\n",

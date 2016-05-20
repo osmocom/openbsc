@@ -30,4 +30,6 @@ int gprs_gmm_rx_resume(struct gprs_ra_id *raid, uint32_t tlli,
 
 time_t gprs_max_time_to_idle(void);
 
+int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp, bool use_x213_nsap);
+
 #endif /* _GPRS_GMM_H */
