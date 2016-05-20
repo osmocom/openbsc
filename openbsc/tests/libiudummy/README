@@ -1,0 +1,2 @@
+libiudummy, for convenience, implements iu_tx() as a mere dummy data logger,
+for linking scopes that want to avoid linking against libasn1c, osmo-iuh etc.
