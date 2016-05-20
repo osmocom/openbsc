@@ -330,7 +330,7 @@ static int move_to_msc(struct gsm_subscriber_connection *_conn,
 	_conn->sccp_con = NULL;
 	if (complete_layer3(_conn, msg, msc) != BSC_API_CONN_POL_ACCEPT) {
 		gsm0808_clear(_conn);
-		subscr_con_free(_conn);
+		bsc_subscr_con_free(_conn);
 		return 1;
 	}
 
