@@ -1227,8 +1227,8 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
 
 	/* Update the MM context with the new RA-ID */
-	bssgp_parse_cell_id(&mmctx->ra, msgb_bcid(msg));
 	if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
+		bssgp_parse_cell_id(&mmctx->ra, msgb_bcid(msg));
 		/* Update the MM context with the new (i.e. foreign) TLLI */
 		mmctx->gb.tlli = msgb_tlli(msg);
 	}

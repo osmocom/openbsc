@@ -352,9 +352,11 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		goto reject;
 	}
 
-	/* Activate the SNDCP layer */
-	sndcp_sm_activate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
-	return send_act_pdp_cont_acc(pctx);
+	if (pctx->mm->ran_type == MM_CTX_T_GERAN_Gb) {
+		/* Activate the SNDCP layer */
+		sndcp_sm_activate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
+		return send_act_pdp_cont_acc(pctx);
+	}
 
 reject:
 	/*
@@ -392,8 +394,10 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_DEACT, &sig_data);
 
 	if (pctx->mm) {
-		/* Deactivate the SNDCP layer */
-		sndcp_sm_deactivate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
+		if (pctx->mm->ran_type == MM_CTX_T_GERAN_Gb) {
+			/* Deactivate the SNDCP layer */
+			sndcp_sm_deactivate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
+		}
 
 		/* Confirm deactivation of PDP context to MS */
 		rc = gsm48_tx_gsm_deact_pdp_acc(pctx);
