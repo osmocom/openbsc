@@ -54,7 +54,7 @@
 #include <openbsc/paging.h>
 #include <openbsc/bsc_rll.h>
 #include <openbsc/chan_alloc.h>
-#include <openbsc/bsc_api.h>
+#include <openbsc/msc_ifaces.h>
 
 #ifdef BUILD_SMPP
 #include "smpp_smsc.h"
@@ -125,7 +125,7 @@ static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *m
 {
 	DEBUGP(DLSMS, "GSM4.11 TX %s\n", osmo_hexdump(msg->data, msg->len));
 	msg->l3h = msg->data;
-	return gsm0808_submit_dtap(conn, msg, UM_SAPI_SMS, 1);
+	return msc_tx_dtap(conn, msg);
 }
 
 /* Prefix msg with a 04.08/04.11 CP header */

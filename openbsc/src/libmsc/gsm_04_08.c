@@ -134,7 +134,7 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 		gh->proto_discr = trans->protocol | (trans->transaction_id << 4);
 	}
 
-	return gsm0808_submit_dtap(conn, msg, 0, 0);
+	return msc_tx_dtap(conn, msg);
 }
 
 int gsm48_cc_tx_notify_ss(struct gsm_trans *trans, const char *message)
