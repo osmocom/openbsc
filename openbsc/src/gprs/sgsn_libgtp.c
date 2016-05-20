@@ -485,6 +485,13 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		if (pctx->mm->ran_type == MM_CTX_T_GERAN_Gb) {
 			/* Deactivate the SNDCP layer */
 			sndcp_sm_deactivate_ind(&pctx->mm->gb.llme->lle[pctx->sapi], pctx->nsapi);
+		} else {
+#ifdef BUILD_IU
+			/* Deactivate radio bearer */
+			iu_rab_deact(pctx->mm->iu.ue_ctx, 1);
+#else
+			return -ENOTSUP;
+#endif
 		}
 
 		/* Confirm deactivation of PDP context to MS */
