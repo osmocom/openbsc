@@ -612,6 +612,9 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 
 	ctx->is_authenticated = 1;
 
+	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
+		ctx->iu.new_key = 1;
+
 	/* FIXME: enable LLC cipheirng */
 
 	/* Check if we can let the mobile station enter */
@@ -690,6 +693,9 @@ static void extract_subscr_hlr(struct sgsn_mm_ctx *ctx)
 /* Check if we can already authorize a subscriber */
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
+#ifdef BUILD_IU
+	int rc;
+#endif
 #ifndef PTMSI_ALLOC
 	struct sgsn_signal_data sig_data;
 #endif
@@ -743,6 +749,13 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 	}
 
 	/* The MS is authorized */
+#ifdef BUILD_IU
+	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu && !ctx->iu.ue_ctx->integrity_active) {
+		rc = iu_tx_sec_mode_cmd(ctx->iu.ue_ctx, &ctx->auth_triplet, 0, ctx->iu.new_key);
+		ctx->iu.new_key = 0;
+		return rc;
+	}
+#endif
 
 	switch (ctx->pending_req) {
 	case 0:
