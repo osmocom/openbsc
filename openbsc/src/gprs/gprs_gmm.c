@@ -836,6 +836,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 			  "no pending request, authorization completed\n");
 		break;
 	case GSM48_MT_GMM_ATTACH_REQ:
+		ctx->pending_req = 0;
 
 		extract_subscr_msisdn(ctx);
 		extract_subscr_hlr(ctx);
