@@ -961,6 +961,9 @@ struct vlr_instance *vlr_alloc(void *ctx, const struct vlr_ops *ops)
 {
 	struct vlr_instance *vlr = talloc_zero(ctx, struct vlr_instance);
 	OSMO_ASSERT(vlr);
+
+	/* Some of these are needed only on UTRAN, but in case the caller wants
+	 * only GERAN, she should just provide dummy callbacks. */
 	OSMO_ASSERT(ops->tx_auth_req);
 	OSMO_ASSERT(ops->tx_auth_rej);
 	OSMO_ASSERT(ops->tx_id_req);
@@ -969,6 +972,7 @@ struct vlr_instance *vlr_alloc(void *ctx, const struct vlr_ops *ops)
 	OSMO_ASSERT(ops->tx_cm_serv_acc);
 	OSMO_ASSERT(ops->tx_cm_serv_rej);
 	OSMO_ASSERT(ops->set_ciph_mode);
+	OSMO_ASSERT(ops->tx_common_id);
 	OSMO_ASSERT(ops->subscr_update);
 	OSMO_ASSERT(ops->subscr_assoc);
 

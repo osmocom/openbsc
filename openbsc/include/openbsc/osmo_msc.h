@@ -55,13 +55,20 @@ enum msc_compl_l3_rc {
 	MSC_CONN_REJECT = 1,
 };
 
-
 struct bsc_api *msc_bsc_api();
 
 int msc_create_conn_fsm(struct gsm_subscriber_connection *conn, const char *id);
 
 int msc_vlr_alloc(struct gsm_network *net);
 int msc_vlr_start(struct gsm_network *net);
+
+int msc_compl_l3(struct gsm_subscriber_connection *conn,
+		 struct msgb *msg, uint16_t chosen_channel);
+void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id,
+	      struct msgb *msg);
+void msc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
+			   struct msgb *msg, uint8_t alg_id);
+void msc_rx_sec_mode_compl(struct gsm_subscriber_connection *conn);
 
 void msc_subscr_conn_init(void);
 bool msc_subscr_conn_is_accepted(struct gsm_subscriber_connection *conn);
@@ -78,5 +85,7 @@ _msc_subscr_conn_get(struct gsm_subscriber_connection *conn,
 		     const char *file, int line);
 void _msc_subscr_conn_put(struct gsm_subscriber_connection *conn,
 			  const char *file, int line);
+
+void msc_stop_paging(struct vlr_subscr *vsub);
 
 #endif

@@ -30,6 +30,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/transaction.h>
 #include <openbsc/signal.h>
+#include <openbsc/iu.h>
 
 #define SUBSCR_CONN_TIMEOUT 5 /* seconds */
 
@@ -52,8 +53,8 @@ const struct value_string subscr_conn_from_names[] = {
 	{ 0, NULL }
 };
 
-static void paging_resp(struct gsm_subscriber_connection *conn,
-			       enum gsm_paging_event pe)
+static void paging_event(struct gsm_subscriber_connection *conn,
+			 enum gsm_paging_event pe)
 {
 	subscr_paging_dispatch(GSM_HOOK_RR_PAGING, pe, NULL, conn, conn->vsub);
 }
@@ -85,11 +86,17 @@ void subscr_conn_fsm_new(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 
 	case SUBSCR_CONN_E_MO_CLOSE:
 	case SUBSCR_CONN_E_CN_CLOSE:
+		if (data)
+			LOGPFSM(fi, "Close event, cause %u\n",
+				*(uint32_t*)data);
+		/* will release further below, see
+		 * 'if (fi->state != SUBSCR_CONN_S_ACCEPTED)' */
 		break;
 
 	default:
-		LOGPFSM(fi, "Unexpected event: %d %s\n",
-			event, osmo_fsm_event_name(fi->fsm, event));
+		LOGPFSML(fi, LOGL_ERROR,
+			 "Unexpected event: %d %s\n", event,
+			 osmo_fsm_event_name(fi->fsm, event));
 		break;
 	}
 
@@ -102,21 +109,24 @@ void subscr_conn_fsm_new(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 
 	/* signal paging success or failure in case this was a paging */
 	if (from == SUBSCR_CONN_FROM_PAGING_RESP)
-		paging_resp(conn,
-			    success ? GSM_PAGING_SUCCEEDED
-			    	    : GSM_PAGING_EXPIRED);
+		paging_event(conn,
+			     success ? GSM_PAGING_SUCCEEDED
+			     	     : GSM_PAGING_EXPIRED);
+
+	/* FIXME rate counters */
+	/*rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_COMPLETED]);*/
 
 	/* On failure, discard the conn */
 	if (!success) {
 		/* TODO: on MO_CLOSE or CN_CLOSE, first go to RELEASING and
-		 * await BSC confirmation? */
+		 * await BSC/RNC confirmation? */
 		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_S_RELEASED, 0, 0);
 		return;
 	}
 
 	if (from == SUBSCR_CONN_FROM_CM_SERVICE_REQ) {
 		conn->received_cm_service_request = true;
-		LOGPFSM(fi, "received_cm_service_request = true\n");
+		LOGPFSML(fi, LOGL_DEBUG, "received_cm_service_request = true\n");
 	}
 
 	osmo_fsm_inst_dispatch(fi, SUBSCR_CONN_E_BUMP, data);
@@ -125,19 +135,37 @@ void subscr_conn_fsm_new(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 static void subscr_conn_fsm_bump(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_subscriber_connection *conn = fi->priv;
+	struct gsm_trans *trans;
 
-	if (conn->silent_call)
+	if (conn->silent_call) {
+		LOGPFSML(fi, LOGL_DEBUG, "bump: silent call still active\n");
 		return;
+	}
 
-	if (conn->received_cm_service_request)
+	if (conn->received_cm_service_request) {
+		LOGPFSML(fi, LOGL_DEBUG, "bump: still awaiting first request after a CM Service Request\n");
 		return;
+	}
 
-	if (conn->vsub && !llist_empty(&conn->vsub->cs.requests))
+	if (conn->vsub && !llist_empty(&conn->vsub->cs.requests)) {
+		struct subscr_request *sr;
+		if (!log_check_level(fi->fsm->log_subsys, LOGL_DEBUG)) {
+			llist_for_each_entry(sr, &conn->vsub->cs.requests, entry) {
+				LOGPFSML(fi, LOGL_DEBUG, "bump: still active: %s\n",
+					 sr->label);
+			}
+		}
 		return;
+	}
 
-	if (trans_has_conn(conn))
+	if ((trans = trans_has_conn(conn))) {
+		LOGPFSML(fi, LOGL_DEBUG,
+			 "bump: connection still has active transaction: %s\n",
+			 gsm48_pdisc_name(trans->protocol));
 		return;
+	}
 
+	LOGPFSML(fi, LOGL_DEBUG, "bump: releasing conn\n");
 	osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_S_RELEASED, 0, 0);
 }
 
@@ -203,6 +231,12 @@ static void subscr_conn_fsm_cleanup(struct osmo_fsm_inst *fi,
 
 	/* If we're closing in a middle of a trans, we need to clean up */
 	trans_conn_closed(conn);
+
+	if (conn->via_ran == RAN_UTRAN_IU)
+		iu_tx_release(conn->iu.ue_ctx, NULL);
+		/* FIXME: keep the conn until the Iu Release Outcome is
+		 * received from the UE, or a timeout expires. For now, the log
+		 * says "unknown UE" for each release outcome. */
 
 	msc_subscr_conn_put(conn);
 }
@@ -275,7 +309,7 @@ static struct osmo_fsm subscr_conn_fsm = {
 	.num_states = ARRAY_SIZE(subscr_conn_fsm_states),
 	.allstate_event_mask = 0,
 	.allstate_action = NULL,
-	.log_subsys = DVLR,
+	.log_subsys = DMM,
 	.event_names = subscr_conn_fsm_event_names,
 	.cleanup = subscr_conn_fsm_cleanup,
 	.timer_cb = subscr_conn_fsm_timeout,

@@ -80,7 +80,15 @@ struct iu_rnc {
 
 void *talloc_iu_ctx;
 
-int asn1_xer_print = 1;
+/* Implement the extern asn_debug from libasn1c to indicate whether to print
+ * asn.1 debug messages (see libasn1c). */
+int asn_debug = 0;
+
+/* Implement the extern asn1_xer_print to indicate whether the ASN.1 binary
+ * code decoded and encoded during Iu communication should be logged to stderr
+ * (see asn.1 generated code in osmo-iuh). */
+int asn1_xer_print = 0;
+
 void *talloc_asn1_ctx;
 
 iu_recv_cb_t global_iu_recv_cb = NULL;
@@ -241,6 +249,25 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 	return 0;
 }
 
+int iu_tx_common_id(struct ue_conn_ctx *uectx, const char *imsi)
+{
+	struct msgb *msg;
+	struct osmo_scu_prim *prim;
+
+	LOGP(DRANAP, LOGL_INFO, "Transmitting RANAP CommonID (SUA link %p conn_id %u)\n",
+	     uectx->link, uectx->conn_id);
+
+	msg = ranap_new_msg_common_id(imsi);
+	msg->l2h = msg->data;
+	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));
+	prim->u.data.conn_id = uectx->conn_id;
+	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
+			OSMO_SCU_PRIM_N_DATA,
+			PRIM_OP_REQUEST, msg);
+	osmo_sua_user_link_down(uectx->link, &prim->oph);
+	return 0;
+}
+
 static int iu_grnc_id_parse(struct iu_grnc_id *dst,
 			    struct RANAP_GlobalRNC_ID *src)
 {
@@ -375,20 +402,35 @@ int iu_tx(struct msgb *msg_nas, uint8_t sapi)
 	return 0;
 }
 
-static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseRequestIEs_t *ies)
+/* Send Iu Release for the given UE connection.
+ * If cause is NULL, the standard "No remaining RAB" cause is sent, otherwise
+ * the provided cause. */
+int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause)
 {
 	struct msgb *msg;
 	struct osmo_scu_prim *prim;
+	static const struct RANAP_Cause default_cause = {
+		.present = RANAP_Cause_PR_radioNetwork,
+		.choice.radioNetwork = RANAP_CauseRadioNetwork_no_remaining_rab,
+	};
 
-	LOGP(DRANAP, LOGL_INFO, "Received Iu Release Request, Sending Release Command\n");
-	msg = ranap_new_msg_iu_rel_cmd(&ies->cause);
+	if (!cause)
+		cause = &default_cause;
+
+	msg = ranap_new_msg_iu_rel_cmd(cause);
 	msg->l2h = msg->data;
 	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));
 	prim->u.data.conn_id = ctx->conn_id;
 	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
 			OSMO_SCU_PRIM_N_DATA,
 			PRIM_OP_REQUEST, msg);
-	osmo_sua_user_link_down(ctx->link, &prim->oph);
+	return osmo_sua_user_link_down(ctx->link, &prim->oph);
+}
+
+static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseRequestIEs_t *ies)
+{
+	LOGP(DRANAP, LOGL_INFO, "Received Iu Release Request, Sending Release Command\n");
+	iu_tx_release(ctx, &ies->cause);
 	return 0;
 }
 
@@ -413,6 +455,7 @@ static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_Assig
 
 		ranap_free_rab_setupormodifieditemies(&setup_ies);
 	}
+	/* FIXME: handle RAB Ass failure? */
 
 	return rc;
 }

@@ -12,6 +12,7 @@ AM_CFLAGS = \
 	$(COVERAGE_CFLAGS) \
 	$(LIBCRYPTO_CFLAGS) \
 	$(LIBSMPP34_CFLAGS) \
+	$(LIBASN1C_CFLAGS) \
 	$(NULL)
 
 noinst_HEADERS = \
@@ -25,11 +26,14 @@ noinst_LIBRARIES = \
 libmsc_a_SOURCES = \
 	a_iface.c \
 	auth.c \
+	msc_vty.c \
 	db.c \
 	gsm_04_08.c \
 	gsm_04_11.c \
 	gsm_04_80.c \
 	gsm_subscriber.c \
+	iucs.c \
+	iucs_ranap.c \
 	mncc.c \
 	mncc_builtin.c \
 	mncc_sock.c \

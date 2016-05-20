@@ -1,13 +1,25 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
+
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/gsm/gsm48.h>
+
+#include <openbsc/common.h>
 
 struct sgsn_pdp_ctx;
 struct msgb;
-struct gprs_ra_id;
+struct osmo_sccp_link;
+struct gsm_auth_tuple;
 
 struct RANAP_RAB_SetupOrModifiedItemIEs_s;
 struct RANAP_GlobalRNC_ID;
+struct RANAP_Cause;
+
+/* Debugging switches from asn1c and osmo-iuh */
+extern int asn_debug;
+extern int asn1_xer_print;
 
 struct ue_conn_ctx {
 	struct llist_head list;
@@ -15,6 +27,7 @@ struct ue_conn_ctx {
 	uint32_t conn_id;
 	int integrity_active;
 	struct gprs_ra_id ra_id;
+	enum nsap_addr_enc rab_assign_addr_enc;
 };
 
 enum iu_event_type {
@@ -58,5 +71,8 @@ int iu_rab_act(struct ue_conn_ctx *ue_ctx, struct msgb *msg);
 int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id);
 int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 		       int send_ck, int new_key);
+int iu_tx_common_id(struct ue_conn_ctx *ue_ctx, const char *imsi);
+int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause);
 
-void iu_vty_init(int *asn_debug_p);
+void iu_vty_init(int iu_parent_node, enum nsap_addr_enc *rab_assign_addr_enc);
+int iu_vty_config_write(struct vty *vty, const char *indent);

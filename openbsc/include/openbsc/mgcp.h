@@ -170,6 +170,21 @@ enum mgcp_role {
 	MGCP_BSC_NAT,
 };
 
+enum mgcp_connection_mode {
+	MGCP_CONN_NONE = 0,
+	MGCP_CONN_RECV_ONLY = 1,
+	MGCP_CONN_SEND_ONLY = 2,
+	MGCP_CONN_RECV_SEND = MGCP_CONN_RECV_ONLY | MGCP_CONN_SEND_ONLY,
+	MGCP_CONN_LOOPBACK  = 4 | MGCP_CONN_RECV_SEND,
+};
+
+extern const struct value_string mgcp_connection_mode_strs[];
+
+static inline const char *mgcp_cmode_name(enum mgcp_connection_mode mode)
+{
+	return get_value_string(mgcp_connection_mode_strs, mode);
+}
+
 struct mgcp_config {
 	int source_port;
 	char *local_ip;
