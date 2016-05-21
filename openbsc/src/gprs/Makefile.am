@@ -3,6 +3,10 @@ AM_CFLAGS=-Wall -fno-strict-aliasing $(LIBOSMOCORE_CFLAGS) \
 	$(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOCTRL_CFLAGS) \
 	$(LIBOSMOABIS_CFLAGS) $(LIBOSMOGB_CFLAGS) $(COVERAGE_CFLAGS) \
 	$(LIBCARES_CFLAGS) $(LIBCRYPTO_CFLAGS) $(LIBGTP_CFLAGS)
+if BUILD_IU
+AM_CFLAGS += $(LIBASN1C_CFLAGS) $(LIBOSMOSIGTRAN_CFLAGS) $(LIBOSMORANAP_CFLAGS)
+endif
+
 OSMO_LIBS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) \
 	    $(LIBOSMOCTRL_LIBS) $(LIBOSMOGB_LIBS)
 
@@ -28,9 +32,15 @@ osmo_sgsn_SOURCES =	gprs_gmm.c gprs_sgsn.c gprs_sndcp.c gprs_sndcp_vty.c \
 			sgsn_cdr.c sgsn_ares.c \
 			oap.c oap_messages.c gprs_llc_xid.c
 osmo_sgsn_LDADD = 	\
-			$(top_builddir)/src/libcommon/libcommon.a \
-			-lgtp $(OSMO_LIBS) $(LIBOSMOABIS_LIBS) $(LIBCARES_LIBS) \
+			$(top_builddir)/src/libcommon/libcommon.a
+if BUILD_IU
+osmo_sgsn_LDADD +=	$(top_builddir)/src/libiu/libiu.a
+endif
+osmo_sgsn_LDADD +=	-lgtp $(OSMO_LIBS) $(LIBOSMOABIS_LIBS) $(LIBCARES_LIBS) \
 			$(LIBCRYPTO_LIBS) -lrt
+if BUILD_IU
+osmo_sgsn_LDADD +=	$(LIBOSMOSIGTRAN_LIBS) $(LIBOSMORANAP_LIBS) $(LIBASN1C_LIBS)
+endif
 
 osmo_gtphub_SOURCES =	gtphub_main.c gtphub.c gtphub_sock.c gtphub_ares.c \
 			gtphub_vty.c sgsn_ares.c gprs_utils.c

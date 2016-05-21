@@ -33,6 +33,8 @@
 
 #include <openssl/rand.h>
 
+#include "bscconfig.h"
+
 #include <openbsc/db.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/tlv.h>
@@ -44,6 +46,10 @@
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 
 #include <osmocom/gprs/gprs_bssgp.h>
+
+#ifdef BUILD_IU
+#include <osmocom/ranap/ranap_ies_defs.h>
+#endif
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -57,6 +63,10 @@
 #include <openbsc/gprs_utils.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/signal.h>
+
+#ifdef BUILD_IU
+#include <openbsc/iu.h>
+#endif
 
 #include <pdp.h>
 
@@ -96,6 +106,45 @@ static const struct tlv_definition gsm48_sm_att_tlvdef = {
 };
 
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx);
+
+#ifdef BUILD_IU
+int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies);
+int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *data)
+{
+	struct sgsn_mm_ctx *mm;
+	int rc = -1;
+
+	mm = sgsn_mm_ctx_by_ue_ctx(ctx);
+	if (!mm) {
+		LOGP(DRANAP, LOGL_NOTICE, "Cannot find mm ctx for IU event %i!\n", type);
+		return rc;
+	}
+
+	switch (type) {
+	case IU_EVENT_RAB_ASSIGN:
+		rc = sgsn_ranap_rab_ass_resp(mm, (RANAP_RAB_SetupOrModifiedItemIEs_t *)data);
+		break;
+	case IU_EVENT_IU_RELEASE:
+		/* fall thru */
+	case IU_EVENT_LINK_INVALIDATED:
+		/* Clean up ue_conn_ctx here */
+		LOGMMCTXP(LOGL_INFO, mm, "IU release for imsi %s\n", mm->imsi);
+		rc = 0;
+		break;
+	case IU_EVENT_SECURITY_MODE_COMPLETE:
+		/* Continue authentication here */
+		mm->iu.ue_ctx->integrity_active = 1;
+		rc = gsm48_gmm_authorize(mm);
+		break;
+	default:
+		LOGP(DRANAP, LOGL_NOTICE, "Unknown event received: %i\n", type);
+		rc = -1;
+		break;
+	}
+	return rc;
+}
+#endif
+
 
 /* Our implementation, should be kept in SGSN */
 
@@ -2189,6 +2238,45 @@ int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx)
 		mmctx, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
 
 	mm_ctx_cleanup_free(mmctx, "forced reattach");
+
+	return rc;
+}
+
+/* Main entry point for incoming 04.08 GPRS messages from Iu */
+int gsm0408_gprs_rcvmsg_iu(struct msgb *msg, struct gprs_ra_id *ra_id,
+			   uint16_t *sai)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	uint8_t pdisc = gsm48_hdr_pdisc(gh);
+	struct sgsn_mm_ctx *mmctx;
+	int rc = -EINVAL;
+
+	mmctx = sgsn_mm_ctx_by_ue_ctx(msg->dst);
+	if (mmctx) {
+		rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
+		if (ra_id)
+			memcpy(&mmctx->ra, ra_id, sizeof(mmctx->ra));
+	}
+
+	/* MMCTX can be NULL */
+
+	switch (pdisc) {
+	case GSM48_PDISC_MM_GPRS:
+		rc = gsm0408_rcv_gmm(mmctx, msg, NULL, false);
+#warning "set drop_cipherable arg for gsm0408_rcv_gmm() from IuPS?"
+		break;
+	case GSM48_PDISC_SM_GPRS:
+		rc = gsm0408_rcv_gsm(mmctx, msg, NULL);
+		break;
+	default:
+		LOGMMCTXP(LOGL_NOTICE, mmctx,
+			"Unknown GSM 04.08 discriminator 0x%02x: %s\n",
+			pdisc, osmo_hexdump((uint8_t *)gh, msgb_l3len(msg)));
+		/* FIXME: return status message */
+		break;
+	}
+
+	/* MMCTX can be invalid */
 
 	return rc;
 }

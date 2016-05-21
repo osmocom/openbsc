@@ -226,6 +226,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid);
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_ptmsi(uint32_t tmsi);
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_imsi(const char *imsi);
+struct sgsn_mm_ctx *sgsn_mm_ctx_by_ue_ctx(const void *uectx);
 
 /* look-up by matching TLLI and P-TMSI (think twice before using this) */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli_and_ptmsi(uint32_t tlli,
@@ -234,6 +235,8 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli_and_ptmsi(uint32_t tlli,
 /* Allocate a new SGSN MM context */
 struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 					const struct gprs_ra_id *raid);
+struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx);
+
 void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx);
 
 struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,

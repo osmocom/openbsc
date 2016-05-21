@@ -39,6 +39,7 @@
 #include <openbsc/gprs_utils.h>
 #include <openbsc/signal.h>
 #include "openbsc/gprs_llc.h"
+#include <openbsc/iu.h>
 
 #include <pdp.h>
 
@@ -130,6 +131,20 @@ void sgsn_rate_ctr_init() {
 	sgsn->rate_ctrs = rate_ctr_group_alloc(tall_bsc_ctx, &sgsn_ctrg_desc, 0);
 }
 
+/* look-up an SGSN MM context based on Iu UE context (struct ue_conn_ctx)*/
+struct sgsn_mm_ctx *sgsn_mm_ctx_by_ue_ctx(const void *uectx)
+{
+	struct sgsn_mm_ctx *ctx;
+
+	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
+		if (ctx->ran_type == MM_CTX_T_UTRAN_Iu
+		    && uectx == ctx->iu.ue_ctx)
+			return ctx;
+	}
+
+	return NULL;
+}
+
 /* look-up a SGSN MM context based on TLLI + RAI */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid)
@@ -217,6 +232,32 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 
 	return ctx;
 }
+
+/* Allocate a new SGSN MM context */
+struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx)
+{
+	struct sgsn_mm_ctx *ctx;
+
+	ctx = talloc_zero(tall_bsc_ctx, struct sgsn_mm_ctx);
+	if (!ctx)
+		return NULL;
+
+	ctx->ran_type = MM_CTX_T_UTRAN_Iu;
+	ctx->iu.ue_ctx = uectx;
+	ctx->mm_state = GMM_DEREGISTERED;
+	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
+	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, 0);
+
+	/* Need to get RAID from IU conn */
+	ctx->ra = ctx->iu.ue_ctx->ra_id;
+
+	INIT_LLIST_HEAD(&ctx->pdp_list);
+
+	llist_add(&ctx->list, &sgsn_mm_ctxts);
+
+	return ctx;
+}
+
 
 /* this is a hard _free_ function, it doesn't clean up the PDP contexts
  * in libgtp! */

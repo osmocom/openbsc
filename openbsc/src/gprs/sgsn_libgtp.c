@@ -34,6 +34,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "bscconfig.h"
+
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
@@ -47,6 +49,11 @@
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gsm_subscriber.h>
+
+#ifdef BUILD_IU
+#include <openbsc/iu.h>
+#include <osmocom/ranap/ranap_ies_defs.h>
+#endif
 
 #include <gtp.h>
 #include <pdp.h>
@@ -218,7 +225,10 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	memcpy(pdp->gsnlc.v, &sgsn->cfg.gtp_listenaddr.sin_addr,
 		sizeof(sgsn->cfg.gtp_listenaddr.sin_addr));
 
-	/* SGSN address for user plane */
+	/* SGSN address for user plane
+	 * Default to the control plane addr for now. If we are connected to a
+	 * hnbgw via IuPS we'll need to send a PDP context update with the
+	 * correct IP address after the RAB Assignment is complete */
 	pdp->gsnlu.l = sizeof(sgsn->cfg.gtp_listenaddr.sin_addr);
 	memcpy(pdp->gsnlu.v, &sgsn->cfg.gtp_listenaddr.sin_addr,
 		sizeof(sgsn->cfg.gtp_listenaddr.sin_addr));
@@ -382,6 +392,72 @@ reject:
 
 	return EOF;
 }
+
+#ifdef BUILD_IU
+/* Callback for RAB assignment response */
+int sgsn_ranap_rab_ass_resp(struct sgsn_mm_ctx *ctx, RANAP_RAB_SetupOrModifiedItemIEs_t *setup_ies)
+{
+	uint8_t rab_id;
+	bool require_pdp_update = false;
+	struct sgsn_pdp_ctx *pdp = NULL;
+	RANAP_RAB_SetupOrModifiedItem_t *item = &setup_ies->raB_SetupOrModifiedItem;
+
+	rab_id = item->rAB_ID.buf[0];
+
+	pdp = sgsn_pdp_ctx_by_nsapi(ctx, rab_id);
+	if (!pdp) {
+		LOGP(DRANAP, LOGL_ERROR, "RAB Assignment Response for unknown RAB/NSAPI=%u\n", rab_id);
+		return -1;
+	}
+
+	if (item->transportLayerAddress) {
+		LOGPC(DRANAP, LOGL_INFO, " Setup: (%u/%s)", rab_id, osmo_hexdump(item->transportLayerAddress->buf,
+								     item->transportLayerAddress->size));
+		switch (item->transportLayerAddress->size) {
+		case 7:
+			/* It must be IPv4 inside a X213 NSAP */
+			memcpy(pdp->lib->gsnlu.v, &item->transportLayerAddress->buf[3], 4);
+			break;
+		case 4:
+			/* It must be a raw IPv4 address */
+			memcpy(pdp->lib->gsnlu.v, item->transportLayerAddress->buf, 4);
+			break;
+		case 16:
+			/* TODO: It must be a raw IPv6 address */
+		case 19:
+			/* TODO: It must be IPv6 inside a X213 NSAP */
+		default:
+			LOGP(DRANAP, LOGL_ERROR, "RAB Assignment Resp: Unknown "
+				"transport layer address size %u\n",
+				item->transportLayerAddress->size);
+			return -1;
+		}
+		require_pdp_update = true;
+	}
+
+	/* The TEI on the RNC side might have changed, too */
+	if (item->iuTransportAssociation &&
+	    item->iuTransportAssociation->present == RANAP_IuTransportAssociation_PR_gTP_TEI &&
+	    item->iuTransportAssociation->choice.gTP_TEI.buf &&
+	    item->iuTransportAssociation->choice.gTP_TEI.size >= 4) {
+		uint32_t tei = osmo_load32be(item->iuTransportAssociation->choice.gTP_TEI.buf);
+		LOGP(DRANAP, LOGL_DEBUG, "Updating TEID on RNC side from 0x%08x to 0x%08x\n",
+			pdp->lib->teid_own, tei);
+		pdp->lib->teid_own = tei;
+		require_pdp_update = true;
+	}
+
+	if (require_pdp_update)
+		gtp_update_context(pdp->ggsn->gsn, pdp->lib, pdp, &pdp->lib->hisaddr0);
+
+	if (pdp->state != PDP_STATE_CR_CONF) {
+		send_act_pdp_cont_acc(pdp);
+		pdp->state = PDP_STATE_CR_CONF;
+	}
+	return 0;
+
+}
+#endif
 
 /* Confirmation of a PDP Context Delete */
 static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)

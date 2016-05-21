@@ -14,6 +14,8 @@ int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_pdp_ctx *pdp);
 
 int gsm0408_gprs_rcvmsg_gb(struct msgb *msg, struct gprs_llc_llme *llme,
 			   bool drop_cipherable);
+int gsm0408_gprs_rcvmsg_iu(struct msgb *msg, struct gprs_ra_id *ra_id,
+			   uint16_t *sai);
 int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx);
 int gsm0408_gprs_force_reattach_oldmsg(struct msgb *msg,
 				       struct gprs_llc_llme *llme);
