@@ -185,8 +185,21 @@ time_t gprs_max_time_to_idle(void)
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
 			     struct sgsn_mm_ctx *mm, bool encryptable)
 {
-	if (mm)
+	if (mm) {
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_SIG_OUT]);
+#ifdef BUILD_IU
+		if (mm->ran_type == MM_CTX_T_UTRAN_Iu)
+			return iu_tx(msg, GPRS_SAPI_GMM);
+#endif
+	}
+
+#ifdef BUILD_IU
+	/* In Iu mode, msg->dst contains the ue_conn_ctx pointer, in Gb mode
+	 * dst is empty. */
+	/* FIXME: have a more explicit indicator for Iu messages */
+	if (msg->dst)
+		return iu_tx(msg, GPRS_SAPI_GMM);
+#endif
 
 	/* caller needs to provide TLLI, BVCI and NSEI */
 	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command, mm, encryptable);
@@ -907,7 +920,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	uint32_t tmsi;
 	char mi_string[GSM48_MI_SIZE];
 	struct gprs_ra_id ra_id;
-	uint16_t cid;
+	uint16_t cid = 0;
 	enum gsm48_gmm_cause reject_cause;
 	int rc;
 
@@ -918,7 +931,13 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
 	 * or with random TLLI. */
 
-	cid = bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	/* In Iu mode, msg->dst contains the ue_conn_ctx pointer, in Gb mode
+	 * dst is empty. */
+	/* FIXME: have a more explicit indicator for Iu messages */
+	if (!msg->dst) {
+		/* Gb mode */
+		cid = bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	}
 
 	/* MS network capability 10.5.5.12 */
 	msnc_len = *cur++;
@@ -972,7 +991,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 #if 0
 			return gsm48_tx_gmm_att_rej(msg, GMM_CAUSE_IMSI_UNKNOWN);
 #else
-			ctx = sgsn_mm_ctx_alloc(0, &ra_id);
+			if (msg->dst)
+				ctx = sgsn_mm_ctx_alloc_iu(msg->dst);
+			else
+				ctx = sgsn_mm_ctx_alloc(0, &ra_id);
 			if (!ctx) {
 				reject_cause = GMM_CAUSE_NET_FAIL;
 				goto rejected;
@@ -995,7 +1017,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		if (!ctx) {
 			/* Allocate a context as most of our code expects one.
 			 * Context will not have an IMSI ultil ID RESP is received */
-			ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
+			if (msg->dst)
+				ctx = sgsn_mm_ctx_alloc_iu(msg->dst);
+			else
+				ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
 			ctx->p_tmsi = tmsi;
 		}
 		if (ctx->ran_type == MM_CTX_T_GERAN_Gb) {
@@ -1272,7 +1297,31 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		 * is an optimization to avoid the RA reject (impl detached)
 		 * below, which will cause a new attach cycle. */
 		/* Look-up the MM context based on old RA-ID and TLLI */
-		mmctx = sgsn_mm_ctx_by_tlli_and_ptmsi(msgb_tlli(msg), &old_ra_id);
+		/* In Iu mode, msg->dst contains the ue_conn_ctx pointer, in Gb
+		 * mode dst is empty. */
+		/* FIXME: have a more explicit indicator for Iu messages */
+		if (!msg->dst) {
+			mmctx = sgsn_mm_ctx_by_tlli_and_ptmsi(msgb_tlli(msg), &old_ra_id);
+		} else if (TLVP_PRESENT(&tp, GSM48_IE_GMM_ALLOC_PTMSI)) {
+#ifdef BUILD_IU
+			/* In Iu mode search only for ptmsi */
+			char mi_string[GSM48_MI_SIZE];
+			uint8_t mi_len = TLVP_LEN(&tp, GSM48_IE_GMM_ALLOC_PTMSI);
+			uint8_t *mi = TLVP_VAL(&tp, GSM48_IE_GMM_ALLOC_PTMSI);
+			uint8_t mi_type = *mi & GSM_MI_TYPE_MASK;
+			uint32_t tmsi;
+
+			gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
+
+			if (mi_type == GSM_MI_TYPE_TMSI) {
+				memcpy(&tmsi, mi+1, 4);
+				tmsi = ntohl(tmsi);
+				mmctx = sgsn_mm_ctx_by_ptmsi(tmsi);
+			}
+#else
+			goto rejected;
+#endif
+		}
 		if (mmctx) {
 			LOGMMCTXP(LOGL_INFO, mmctx,
 				"Looked up by matching TLLI and P_TMSI. "

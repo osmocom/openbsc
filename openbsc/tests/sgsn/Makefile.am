@@ -1,5 +1,8 @@
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBCARES_CFLAGS)
+if BUILD_IU
+AM_CFLAGS += $(LIBASN1C_CFLAGS) $(LIBOSMOSIGTRAN_CFLAGS) $(LIBOSMORANAP_CFLAGS)
+endif
 
 EXTRA_DIST = sgsn_test.ok
 
@@ -39,4 +42,11 @@ sgsn_test_LDADD = \
 	$(LIBCARES_LIBS) \
 	$(LIBCRYPTO_LIBS) \
 	-lgtp -lrt
+if BUILD_IU
+sgsn_test_LDADD += \
+	$(top_builddir)/src/libiu/libiu.a \
+	$(LIBOSMORANAP_LIBS) \
+	$(LIBOSMOSIGTRAN_LIBS) \
+	$(LIBASN1C_LIBS)
+endif
 
