@@ -1339,6 +1339,15 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		return rc;
 	}
 
+	/*
+	 * For a few messages, mmctx may be NULL. For most, we want to ensure a
+	 * non-NULL mmctx. At the same time, we want to keep the message
+	 * validity check intact, so that all message types appear in the
+	 * switch statement and the default case thus means "unknown message".
+	 * If we split the switch in two parts to check non-NULL halfway, the
+	 * unknown-message check breaks, or we'd need to duplicate the switch
+	 * cases in both parts. Just keep one large switch and add some gotos.
+	 */
 	switch (gh->msg_type) {
 	case GSM48_MT_GMM_RA_UPD_REQ:
 		rc = gsm48_rx_gmm_ra_upd_req(mmctx, msg, llme);
@@ -1348,20 +1357,30 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		break;
 	/* For all the following types mmctx can not be NULL */
 	case GSM48_MT_GMM_ID_RESP:
+		if (!mmctx)
+			goto null_mmctx;
 		rc = gsm48_rx_gmm_id_resp(mmctx, msg);
 		break;
 	case GSM48_MT_GMM_STATUS:
+		if (!mmctx)
+			goto null_mmctx;
 		rc = gsm48_rx_gmm_status(mmctx, msg);
 		break;
 	case GSM48_MT_GMM_DETACH_REQ:
+		if (!mmctx)
+			goto null_mmctx;
 		rc = gsm48_rx_gmm_det_req(mmctx, msg);
 		break;
 	case GSM48_MT_GMM_DETACH_ACK:
+		if (!mmctx)
+			goto null_mmctx;
 		LOGMMCTXP(LOGL_INFO, mmctx, "-> DETACH ACK\n");
 		mm_ctx_cleanup_free(mmctx, "GPRS DETACH ACK");
 		rc = 0;
 		break;
 	case GSM48_MT_GMM_ATTACH_COMPL:
+		if (!mmctx)
+			goto null_mmctx;
 		/* only in case SGSN offered new P-TMSI */
 		LOGMMCTXP(LOGL_INFO, mmctx, "-> ATTACH COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
@@ -1380,6 +1399,8 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		osmo_signal_dispatch(SS_SGSN, S_SGSN_ATTACH, &sig_data);
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
+		if (!mmctx)
+			goto null_mmctx;
 		/* only in case SGSN offered new P-TMSI */
 		LOGMMCTXP(LOGL_INFO, mmctx, "-> ROUTING AREA UPDATE COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
@@ -1398,6 +1419,8 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		osmo_signal_dispatch(SS_SGSN, S_SGSN_UPDATE, &sig_data);
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
+		if (!mmctx)
+			goto null_mmctx;
 		LOGMMCTXP(LOGL_INFO, mmctx, "-> PTMSI REALLLICATION COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->t3350_mode = GMM_T3350_MODE_NONE;
@@ -1409,6 +1432,8 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		rc = 0;
 		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
+		if (!mmctx)
+			goto null_mmctx;
 		rc = gsm48_rx_gmm_auth_ciph_resp(mmctx, msg);
 		break;
 	default:
@@ -1419,6 +1444,13 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	}
 
 	return rc;
+
+null_mmctx:
+	LOGP(DMM, LOGL_ERROR,
+	     "Received GSM 04.08 message type 0x%02x,"
+	     " but no MM context available\n",
+	     gh->msg_type);
+	return -EINVAL;
 }
 
 static void mmctx_timer_cb(void *_mm)
