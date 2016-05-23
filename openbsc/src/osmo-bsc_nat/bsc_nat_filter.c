@@ -109,7 +109,7 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	if (!hdr48)
 		return -1;
 
-	req.ctx = bsc;
+	req.ctx = con;
 	req.black_list = &bsc->nat->imsi_black_list;
 	req.access_lists = &bsc->nat->access_lists;
 	req.local_lst_name = bsc->cfg->acc_lst_name;
