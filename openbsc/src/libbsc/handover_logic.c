@@ -85,9 +85,9 @@ static struct bsc_handover *bsc_ho_by_old_lchan(struct gsm_lchan *old_lchan)
 	return NULL;
 }
 
-/* Hand over the specified logical channel to the specified new BTS.
- * This is the main entry point for the actual handover algorithm,
- * after it has decided it wants to initiate HO to a specific BTS */
+/*! \brief Hand over the specified logical channel to the specified new BTS.
+ * This is the main entry point for the actual handover algorithm, after the
+ * decision whether to initiate HO to a specific BTS. */
 int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 {
 	struct gsm_lchan *new_lchan;
