@@ -932,7 +932,7 @@ static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 	si6->cell_options = bts->si_common.cell_options;
 	si6->ncc_permitted = bts->si_common.ncc_permitted;
 	/* allow/disallow DTXu */
-	gsm48_set_dtx(&si6->cell_options, bts->dtxu, bts->dtxu, true);
+	gsm48_set_dtx(&si6->cell_options, bts->dtxu, bts->dtxu, false);
 
 	/* SI6 Rest Octets: 10.5.2.35a: PCH / NCH info, VBS/VGCS options */
 
