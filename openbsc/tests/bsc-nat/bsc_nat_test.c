@@ -978,10 +978,13 @@ static void test_dt_filter()
 	}
 
 	memset(&cause, 0, sizeof(cause));
+	OSMO_ASSERT(!con->filter_state.imsi);
 	if (bsc_nat_filter_dt(bsc, msg, con, parsed, &cause) != 1) {
 		printf("FAIL: Should have passed..\n");
 		abort();
 	}
+	OSMO_ASSERT(con->filter_state.imsi);
+	OSMO_ASSERT(talloc_parent(con->filter_state.imsi) == con);
 
 	/* just some basic length checking... */
 	for (i = ARRAY_SIZE(id_resp); i >= 0; --i) {
