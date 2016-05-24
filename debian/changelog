@@ -1,4 +1,10 @@
-openbsc (0.14.0) UNRELEASED; urgency=low
+openbsc (0.15.1) UNRELEASED; urgency=medium
+
+  * Move forward toward a new release.
+
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Tue, 24 May 2016 23:14:31 +0200
+
+openbsc (0.14.0) unstable; urgency=low
 
   * New upstream tag and additional patches.
 
