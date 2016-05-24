@@ -231,6 +231,22 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         self.assertEquals(self.vty.node(), 'config-mncc-int')
 
+    def testVtyAuthorization(self):
+        self.vty.enable()
+        self.vty.command("configure terminal")
+        self.vty.command("network")
+        self.assertTrue(self.vty.verify("auth policy closed", ['']))
+        self.assertTrue(self.vty.verify("auth policy regexp", ['']))
+        self.assertTrue(self.vty.verify("authorized-regexp ^001", ['']))
+        self.assertTrue(self.vty.verify("authorized-regexp 02$", ['']))
+        self.assertTrue(self.vty.verify("authorized-regexp *123.*", ['']))
+        self.vty.command("end")
+        self.vty.command("configure terminal")
+        self.vty.command("nitb")
+        self.assertTrue(self.vty.verify("subscriber-create-on-demand", ['']))
+        self.assertTrue(self.vty.verify("subscriber-create-on-demand regexp", ['']))
+        self.vty.command("end")
+
     def testSi2Q(self):
         self.vty.enable()
         self.vty.command("configure terminal")

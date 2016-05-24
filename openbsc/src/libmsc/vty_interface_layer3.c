@@ -1032,11 +1032,15 @@ DEFUN(cfg_nitb, cfg_nitb_cmd,
 }
 
 DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
-      "subscriber-create-on-demand",
-      "Make a new record when a subscriber is first seen.\n")
+      "subscriber-create-on-demand [regexp]",
+      "Make a new record when a subscriber is first seen.\n"
+      "Create subscribers only if IMSI matches the regexp specified in "
+      "authorized-regexp command\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->subscr_creation_mode = GSM_SUBSCR_CREAT_W_RAND_EXT;
+	if (argc)
+		gsmnet->subscr_creation_mode |= GSM_SUBSCR_CREAT_W_REGEXP;
 	return CMD_SUCCESS;
 }
 
@@ -1070,9 +1074,12 @@ DEFUN(cfg_nitb_no_assign_tmsi, cfg_nitb_no_assign_tmsi_cmd,
 static int config_write_nitb(struct vty *vty)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	enum gsm_subscr_creation_mode scm = gsmnet->subscr_creation_mode;
+	const char *reg = (scm & GSM_SUBSCR_CREAT_W_REGEXP) ? " regexp" : "",
+		*pref = scm ? "" : "no ";
 	vty_out(vty, "nitb%s", VTY_NEWLINE);
-	vty_out(vty, " %ssubscriber-create-on-demand%s",
-		gsmnet->subscr_creation_mode ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, " %ssubscriber-create-on-demand%s%s",
+		pref, reg, VTY_NEWLINE);
 	vty_out(vty, " %sassign-tmsi%s",
 		gsmnet->avoid_tmsi ? "no " : "", VTY_NEWLINE);
 	return CMD_SUCCESS;

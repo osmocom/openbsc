@@ -2,6 +2,8 @@
 #define _GSM_DATA_H
 
 #include <stdint.h>
+#include <regex.h>
+#include <sys/types.h>
 
 #include <osmocom/core/timer.h>
 #include <osmocom/core/select.h>
@@ -22,6 +24,7 @@ struct gsm_subscriber_group;
 enum gsm_subscr_creation_mode {
 	GSM_SUBSCR_DONT_CREATE = 0,
 	GSM_SUBSCR_CREAT_W_RAND_EXT = 1,
+	GSM_SUBSCR_CREAT_W_REGEXP = 2,
 };
 
 enum gsm_security_event {
@@ -205,6 +208,7 @@ enum gsm_auth_policy {
 	GSM_AUTH_POLICY_CLOSED, /* only subscribers authorized in DB */
 	GSM_AUTH_POLICY_ACCEPT_ALL, /* accept everyone, even if not authorized in DB */
 	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
+	GSM_AUTH_POLICY_REGEXP, /* accept IMSIs matching given regexp */
 };
 
 #define GSM_T3101_DEFAULT 10
@@ -219,6 +223,8 @@ struct gsm_network {
 	char *name_long;
 	char *name_short;
 	enum gsm_auth_policy auth_policy;
+	regex_t authorized_regexp;
+	char *authorized_reg_str;
 	enum gsm48_reject_value reject_cause;
 	int a5_encryption;
 	int neci;

@@ -25,9 +25,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <time.h>
 #include <netinet/in.h>
+#include <regex.h>
+#include <sys/types.h>
 
 #include "bscconfig.h"
 
@@ -244,6 +247,17 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	return -EINVAL; /* not reached */
 }
 
+static bool subscr_regexp_check(const struct gsm_network *net, const char *imsi)
+{
+	if (!net->authorized_reg_str)
+		return false;
+
+	if (regexec(&net->authorized_regexp, imsi, 0, NULL, 0) != REG_NOMATCH)
+		return true;
+
+	return false;
+}
+
 static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 				struct gsm_subscriber *subscriber)
 {
@@ -260,6 +274,13 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 
 	switch (subscriber->group->net->auth_policy) {
 	case GSM_AUTH_POLICY_CLOSED:
+		return subscriber->authorized;
+	case GSM_AUTH_POLICY_REGEXP:
+		if (subscriber->authorized)
+			return 1;
+		if (subscr_regexp_check(subscriber->group->net,
+					subscriber->imsi))
+			subscriber->authorized = 1;
 		return subscriber->authorized;
 	case GSM_AUTH_POLICY_TOKEN:
 		if (subscriber->authorized)
@@ -509,10 +530,14 @@ static int mm_tx_identity_req(struct gsm_subscriber_connection *conn, uint8_t id
 static struct gsm_subscriber *subscr_create(const struct gsm_network *net,
 					    const char *imsi)
 {
-	if (net->subscr_creation_mode != GSM_SUBSCR_DONT_CREATE)
-		return subscr_create_subscriber(net->subscr_group, imsi);
+	if (net->subscr_creation_mode == GSM_SUBSCR_DONT_CREATE)
+		return NULL;
 
-	return NULL;
+	if (net->subscr_creation_mode & GSM_SUBSCR_CREAT_W_REGEXP)
+		if (!subscr_regexp_check(net, imsi))
+			return NULL;
+
+	return subscr_create_subscriber(net->subscr_group, imsi);
 }
 
 /* Parse Chapter 9.2.11 Identity Response */

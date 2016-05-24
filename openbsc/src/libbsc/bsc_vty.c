@@ -190,8 +190,11 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		net->name_long, VTY_NEWLINE);
 	vty_out(vty, "  Short network name: '%s'%s",
 		net->name_short, VTY_NEWLINE);
-	vty_out(vty, "  Authentication policy: %s%s",
-		gsm_auth_policy_name(net->auth_policy), VTY_NEWLINE);
+	vty_out(vty, "  Authentication policy: %s",
+		gsm_auth_policy_name(net->auth_policy));
+	if (net->authorized_reg_str)
+		vty_out(vty, ", authorized regexp: %s", net->authorized_reg_str);
+	vty_out(vty, "%s", VTY_NEWLINE);
 	vty_out(vty, "  Location updating reject cause: %u%s",
 		net->reject_cause, VTY_NEWLINE);
 	vty_out(vty, "  Encryption: A5/%u%s", net->a5_encryption,
@@ -791,6 +794,8 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
 	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
+	if (gsmnet->authorized_reg_str)
+		vty_out(vty, " authorized-regexp %s%s", gsmnet->authorized_reg_str, VTY_NEWLINE);
 	vty_out(vty, " location updating reject cause %u%s",
 		gsmnet->reject_cause, VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
@@ -1398,17 +1403,34 @@ DEFUN(cfg_net_name_long,
 
 DEFUN(cfg_net_auth_policy,
       cfg_net_auth_policy_cmd,
-      "auth policy (closed|accept-all|token)",
+      "auth policy (closed|accept-all|regexp|token)",
 	"Authentication (not cryptographic)\n"
 	"Set the GSM network authentication policy\n"
 	"Require the MS to be activated in HLR\n"
 	"Accept all MS, whether in HLR or not\n"
+	"Use regular expression for IMSI authorization decision\n"
 	"Use SMS-token based authentication\n")
 {
 	enum gsm_auth_policy policy = gsm_auth_policy_parse(argv[0]);
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
 	gsmnet->auth_policy = policy;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_authorize_regexp, cfg_net_authorize_regexp_cmd,
+      "authorized-regexp REGEXP",
+      "Set regexp for IMSI which will be used for authorization decision\n"
+      "Regular expression, IMSIs matching it are allowed to use the network\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	if (gsm_parse_reg(gsmnet, &gsmnet->authorized_regexp,
+			  &gsmnet->authorized_reg_str, argc, argv) != 0) {
+		vty_out(vty, "%%Failed to parse the authorized-regexp: '%s'%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	return CMD_SUCCESS;
 }
@@ -3973,6 +3995,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
+	install_element(GSMNET_NODE, &cfg_net_authorize_regexp_cmd);
 	install_element(GSMNET_NODE, &cfg_net_reject_cause_cmd);
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
