@@ -62,7 +62,7 @@ OpenBSC(config-net)# mobile network code 89
 
 The __MM INFO__ procedure can be used after a successful __LOCATION
 UPDATE__ in order to transmit the human-readable network name as well as
-local time zone information to the MS.  gq
+local time zone information to the MS.
 
 By default, MM INFO is not active.  You can activate it, and set its
 configuration using the VTY.   An example is provided below.  

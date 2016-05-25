@@ -29,7 +29,7 @@ arguments:
 	for more information.
 *-T, --timestamp*::
 	Enable time-stamping of log messages to stderr. This has mostly
-	been deprecated by VTY based logging configu- ration, see
+	been deprecated by VTY based logging configuration, see
 	<<logging>> for more information.
 *-e, --log-level 'LOGLEVEL'*::
 	Set the global log level for logging to stderr. This has mostly
@@ -42,7 +42,7 @@ arguments:
 	Authorize every subscriber to the network.  This corresponds to
 	the `auth-policy open` VTY configuration option.
 	+
-	WARNING:: This is dangerous as you may disrupt sevices to
+	WARNING:: This is dangerous as you may disrupt services to
 	subscribers that are not part of your network!  Don't use unless
 	you absolutely know what you're doing!
 *-P, --rtp-proxy*::

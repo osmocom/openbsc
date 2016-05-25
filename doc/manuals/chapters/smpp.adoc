@@ -37,7 +37,7 @@ ESMEs are permitted to access the SMSC (`closed`), or whether any
 ESME should be accepted (`accept-all`).
 
 Use the `smpp-first` command to define if SMPP routes have higher
-precendence than MSISDNs contained in the HLR (`smpp-first`), or if
+precedence than MSISDNs contained in the HLR (`smpp-first`), or if
 only MSISDNs found not in the HLR should be considered for routing to
 SMPP (`no smpp-first`).
 

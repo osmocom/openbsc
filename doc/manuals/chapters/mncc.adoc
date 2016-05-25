@@ -181,7 +181,7 @@ NITB and an external MNCC handler.
 
 Direction: both
 
-Transfer the payload of a GSM Enanced Full-Rate (EFR) voice frame
+Transfer the payload of a GSM Enhanced Full-Rate (EFR) voice frame
 between the NITB and an external MNCC handler.
 
 ==== GSM_TCHH_FRAME
