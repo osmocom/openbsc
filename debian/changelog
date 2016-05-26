@@ -1,3 +1,9 @@
+openbsc (0.15.0+z7) UNRELEASED; urgency=medium
+
+  * NAT fix to allocate IMSI on right talloc context
+
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Thu, 26 May 2016 14:33:20 +0200
+
 openbsc (0.15.0+z6) unstable; urgency=medium
 
   * Include gbproxy fix (4339a539585030c4e1b846d024a005f3d5a631a4) on top of z5 
