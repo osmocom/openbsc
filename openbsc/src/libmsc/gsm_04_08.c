@@ -1178,7 +1178,6 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	struct gsm_subscriber *subscr = NULL;
-	int rc = 0;
 
 	resp = (struct gsm48_pag_resp *) &gh->data[0];
 	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*gh),
@@ -1213,8 +1212,14 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	/* We received a paging */
 	conn->expire_timer_stopped = 1;
 
+#if 0
+	TODO implement paging response in libmsc!
+	Excluding this to be able to link without libbsc:
 	rc = gsm48_handle_paging_resp(conn, msg, subscr);
 	return rc;
+#else
+	return -ENOTSUP;
+#endif
 }
 
 static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct msgb *msg)
