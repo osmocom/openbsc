@@ -447,6 +447,9 @@ struct gsm_network {
 	uint16_t gsup_server_port;
 
 	struct vlr_instance *vlr;
+
+	/* Periodic location update default value */
+	uint8_t t3212;
 };
 
 struct osmo_esme;
