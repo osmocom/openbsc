@@ -275,7 +275,7 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn,
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
 	gsm48_generate_lai(lai, conn->network->country_code,
 			   conn->network->network_code,
-			   conn->bts->location_area_code);
+			   conn->lac);
 
 	if (send_tmsi == GSM_RESERVED_TMSI) {
 		/* we did not allocate a TMSI to the MS, so we need to
@@ -792,7 +792,6 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 		DEBUGPC(DMM, ": unknown mobile identity type\n");
 		break;
 	}
-
 
 	/* TODO? We used to remember the subscriber's classmark1 here and
 	 * stored it in the old sqlite db, but now we store it in a conn that

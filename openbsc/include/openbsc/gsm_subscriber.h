@@ -34,7 +34,7 @@ enum gsm_subscriber_update_reason {
 	GSM_SUBSCRIBER_UPDATE_EQUIPMENT,
 };
 
-int subscr_update(struct vlr_subscr *vsub, struct gsm_bts *bts, int reason);
+int subscr_update(struct vlr_subscr *vsub, int reason);
 
 /*
  * Paging handling with authentication
