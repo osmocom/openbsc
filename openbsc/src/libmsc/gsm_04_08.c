@@ -69,10 +69,17 @@
 
 #include <assert.h>
 
+
+/* These debug statements were removed during the BSC/MSC split. It may make
+ * sense to replace them with debug statements that do not access BTS data. */
+#define BEFORE_MSCSPLIT 0
+
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;
 
+#if BEFORE_MSCSPLIT
 static int tch_rtp_signal(struct gsm_lchan *lchan, int signal);
+#endif
 
 static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn);
 static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
@@ -983,9 +990,12 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
 
+#if BEFORE_MSCSPLIT
+	/* see mail on openbsc@ 9 Feb 2016 22:30:15 +0100
+	 * We need to hook sending of MRPCI to Siemens BS11 somewhere else */
 	if (is_siemens_bts(conn->bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);
-
+#endif
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
@@ -1365,6 +1375,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 	struct msgb *msg;
 	unsigned char *data;
 
+#if BEFORE_MSCSPLIT
 	if (trans)
 		if (trans->conn && trans->conn->lchan)
 			DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
@@ -1382,6 +1393,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 	else
 		DEBUGP(DCC, "(bts - trx - ts - ti -- sub -) "
 			"Sending '%s' to MNCC.\n", get_mncc_name(msg_type));
+#endif
 
 	mncc->msg_type = msg_type;
 
@@ -1425,8 +1437,10 @@ void _gsm48_cc_trans_free(struct gsm_trans *trans)
 	}
 	if (trans->cc.state != GSM_CSTATE_NULL)
 		new_cc_state(trans, GSM_CSTATE_NULL);
+#if BEFORE_MSCSPLIT
 	if (trans->conn)
 		trau_mux_unmap(&trans->conn->lchan->ts->e1_link, trans->callref);
+#endif
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
@@ -1473,6 +1487,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable);
 
+#if BEFORE_MSCSPLIT
 /* handle audio path for handover */
 static int switch_for_handover(struct gsm_lchan *old_lchan,
 			struct gsm_lchan *new_lchan)
@@ -1699,6 +1714,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 
 	return 0;
 }
+#endif
 
 /* bridge channels of two transactions */
 static int tch_bridge(struct gsm_network *net, struct gsm_mncc_bridge *bridge)
@@ -1715,13 +1731,19 @@ static int tch_bridge(struct gsm_network *net, struct gsm_mncc_bridge *bridge)
 	/* Which subscriber do we want to track trans1 or trans2? */
 	log_set_context(BSC_CTX_SUBSCR, trans1->subscr);
 
+#if BEFORE_MSCSPLIT
 	/* through-connect channel */
 	return tch_map(trans1->conn->lchan, trans2->conn->lchan);
+#else
+	/* not implemented yet! */
+	return -1;
+#endif
 }
 
 /* enable receive of channels to MNCC upqueue */
 static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 {
+#if BEFORE_MSCSPLIT
 	struct gsm_trans *trans;
 	struct gsm_lchan *lchan;
 	struct gsm_bts *bts;
@@ -1790,6 +1812,10 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 	}
 
 	return 0;
+#else
+	/* not implemented yet! */
+	return -1;
+#endif
 }
 
 static int gsm48_cc_rx_status_enq(struct gsm_trans *trans, struct msgb *msg)
@@ -1930,7 +1956,11 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&setup, 0, sizeof(struct gsm_mncc));
 	setup.callref = trans->callref;
+#if BEFORE_MSCSPLIT
 	setup.lchan_type = trans->conn->lchan->type;
+#else
+	setup.lchan_type = GSM_LCHAN_NONE;
+#endif
 	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* emergency setup is identified by msg_type */
 	if (msg_type == GSM48_MT_CC_EMERG_SETUP)
@@ -2088,7 +2118,11 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&call_conf, 0, sizeof(struct gsm_mncc));
 	call_conf.callref = trans->callref;
+#if BEFORE_MSCSPLIT
 	call_conf.lchan_type = trans->conn->lchan->type;
+#else
+	call_conf.lchan_type = GSM_LCHAN_NONE;
+#endif
 	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 #if 0
 	/* repeat */
@@ -2984,6 +3018,7 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 
 static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
+#if BEFORE_MSCSPLIT
 	struct gsm_mncc *mode = arg;
 	struct gsm_lchan *lchan = trans->conn->lchan;
 
@@ -2999,8 +3034,14 @@ static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 
 	return gsm0808_assign_req(trans->conn, mode->lchan_mode,
 		trans->conn->lchan->type != GSM_LCHAN_TCH_H);
+#else
+	/* not implemented yet! */
+	return -1;
+#endif
+
 }
 
+#if BEFORE_MSCSPLIT
 static void mncc_recv_rtp(struct gsm_network *net, uint32_t callref,
 		int cmd, uint32_t addr, uint16_t port, uint32_t payload_type,
 		uint32_t payload_msg_type)
@@ -3057,9 +3098,11 @@ static void mncc_recv_rtp_err(struct gsm_network *net, uint32_t callref, int cmd
 {
 	return mncc_recv_rtp(net, callref, cmd, 0, 0, 0, 0);
 }
+#endif
 
 static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 {
+#if BEFORE_MSCSPLIT
 	struct gsm_bts *bts;
 	struct gsm_lchan *lchan;
 	struct gsm_trans *trans;
@@ -3113,10 +3156,15 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 
 	mncc_recv_rtp_sock(trans->net, trans, MNCC_RTP_CREATE);
 	return 0;
+#else
+	/* not implemented yet! */
+	return -1;
+#endif
 }
 
 static int tch_rtp_connect(struct gsm_network *net, void *arg)
 {
+#if BEFORE_MSCSPLIT
 	struct gsm_lchan *lchan;
 	struct gsm_trans *trans;
 	struct gsm_mncc_rtp *rtp = arg;
@@ -3154,8 +3202,13 @@ static int tch_rtp_connect(struct gsm_network *net, void *arg)
 	 */
 	trans->conn->mncc_rtp_connect_pending = 1;
 	return rsl_ipacc_mdcx(lchan, rtp->ip, rtp->port, 0);
+#else
+	/* not implemented yet! */
+	return -1;
+#endif
 }
 
+#if BEFORE_MSCSPLIT
 static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 {
 	struct gsm_network *net;
@@ -3203,6 +3256,7 @@ static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 
 	return 0;
 }
+#endif
 
 
 static struct downstate {
@@ -3272,7 +3326,9 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 	int i, rc = 0;
 	struct gsm_trans *trans = NULL, *transt;
 	struct gsm_subscriber_connection *conn = NULL;
+#if BEFORE_MSCSPLIT
 	struct gsm_bts *bts = NULL;
+#endif
 	struct gsm_mncc *data = arg, rel;
 
 	DEBUGP(DMNCC, "receive message %s\n", get_mncc_name(msg_type));
@@ -3310,6 +3366,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
 			return 0;
 		}
+#if BEFORE_MSCSPLIT
 		if (!trans->conn->lchan) {
 			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without lchan\n");
 			return 0;
@@ -3339,6 +3396,10 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
 		}
 		return -EINVAL;
+#else
+		/* not implemented yet! */
+		return -1;
+#endif
 	}
 
 	memset(&rel, 0, sizeof(struct gsm_mncc));
@@ -3573,12 +3634,14 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 	/* Find transaction */
 	trans = trans_find_by_id(conn, GSM48_PDISC_CC, transaction_id);
 
+#if BEFORE_MSCSPLIT
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 		"Received '%s' from MS in state %d (%s)\n",
 		conn->bts->nr, conn->lchan->ts->trx->nr, conn->lchan->ts->nr,
 		transaction_id, (conn->subscr)?(conn->subscr->extension):"-",
 		gsm48_cc_msg_name(msg_type), trans?(trans->cc.state):0,
 		gsm48_cc_state_name(trans?(trans->cc.state):0));
+#endif
 
 	/* Create transaction */
 	if (!trans) {
@@ -3723,6 +3786,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	return rc;
 }
 
+#if BEFORE_MSCSPLIT
 /*
  * This will be ran by the linker when loading the DSO. We use it to
  * do system initialization, e.g. registration of signal handlers.
@@ -3731,3 +3795,4 @@ static __attribute__((constructor)) void on_dso_load_0408(void)
 {
 	osmo_signal_register_handler(SS_ABISIP, handle_abisip_signal, NULL);
 }
+#endif

@@ -207,9 +207,11 @@ static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
 	bridge.callref[1] = call->remote_ref;
 	DEBUGP(DMNCC, "(call %x) Bridging with remote.\n", call->callref);
 
+#if BEFORE_MSCSPLIT
 	/* in direct mode, we always have to bridge the channels */
 	if (ipacc_rtp_direct)
 		return mncc_tx_to_cc(call->net, MNCC_BRIDGE, &bridge);
+#endif
 
 	/* proxy mode */
 	if (!net->handover.active) {
@@ -293,11 +295,16 @@ static int mncc_rcv_data(struct gsm_call *call, int msg_type,
 		return -EIO;
 	}
 
+#if BEFORE_MSCSPLIT
 	/* RTP socket of remote end has meanwhile died */
 	if (!remote_trans->conn->lchan->abis_ip.rtp_socket)
 		return -EIO;
 
 	return rtp_send_frame(remote_trans->conn->lchan->abis_ip.rtp_socket, dfr);
+#else
+	/* not implemented yet! */
+	return -1;
+#endif
 }
 
 
