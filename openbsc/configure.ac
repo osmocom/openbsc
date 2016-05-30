@@ -47,7 +47,7 @@ fi
 AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
 AC_SUBST(osmo_ac_build_bsc)
 
-# Enable/disable smpp support in the nitb?
+# Enable/disable smpp support in the cscn?
 AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface])],
     [osmo_ac_build_smpp="$enableval"],[osmo_ac_build_smpp="no"])
 if test "$osmo_ac_build_smpp" = "yes" ; then
@@ -205,7 +205,7 @@ AC_OUTPUT(
     src/libfilter/Makefile
     src/libiu/Makefile
     src/libxsc/Makefile
-    src/osmo-nitb/Makefile
+    src/osmo-cscn/Makefile
     src/osmo-bsc/Makefile
     src/osmo-bsc_nat/Makefile
     src/osmo-bsc_mgcp/Makefile

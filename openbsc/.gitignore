@@ -55,6 +55,7 @@ src/gprs/osmo-sgsn
 src/gprs/osmo-gbproxy
 src/gprs/osmo-gtphub
 src/osmo-bsc_nat/osmo-bsc_nat
+src/osmo-cscn/osmo-cscn
 
 #tests
 tests/testsuite.dir
