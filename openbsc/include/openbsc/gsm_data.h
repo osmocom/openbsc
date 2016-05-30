@@ -388,6 +388,9 @@ struct gsm_network {
 	 * BTS|RNC specific timezone overrides for multi-tz networks in
 	 * OsmoCSCN, this should be tied to the location area code (LAC). */
 	struct gsm_tz tz;
+
+	/* Periodic location update default value */
+	uint8_t t3212;
 };
 
 struct osmo_esme;
