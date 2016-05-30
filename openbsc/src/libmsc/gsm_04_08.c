@@ -1157,7 +1157,7 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 			 classmark_is_r99(&conn->classmark),
 			 conn->via_ran == RAN_UTRAN_IU);
 
-	return rc;
+	return 0;
 }
 
 static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct msgb *msg)
@@ -3440,13 +3440,11 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 				trans_free(trans);
 				return 0;
 			}
-			/* store setup informations until paging was successfull */
+			/* store setup information until paging succeeds */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
 			/* Request a channel */
-			trans->paging_request = subscr_request_channel(
-							vsub,
-							RSL_CHANNEED_TCH_F,
+			trans->paging_request = subscr_request_conn(subscr,
 							setup_trig_pag_evt,
 							trans);
 			if (!trans->paging_request) {
