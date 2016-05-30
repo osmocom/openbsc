@@ -69,6 +69,7 @@
 #include <osmocom/crypt/auth.h>
 
 #include <openbsc/msc_ifaces.h>
+#include <openbsc/iu.h>
 
 #include <assert.h>
 
