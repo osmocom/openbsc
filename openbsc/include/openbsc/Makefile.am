@@ -44,6 +44,7 @@ noinst_HEADERS = \
 	handover_decision.h \
 	ipaccess.h \
 	iu.h \
+	iucs.h \
 	meas_feed.h \
 	meas_rep.h \
 	mgcp.h \

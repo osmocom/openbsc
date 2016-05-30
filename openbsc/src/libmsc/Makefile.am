@@ -30,6 +30,7 @@ libmsc_a_SOURCES = \
 	gsm_04_11.c \
 	gsm_04_80.c \
 	gsm_subscriber.c \
+	iucs.c \
 	mncc.c \
 	mncc_builtin.c \
 	mncc_sock.c \
