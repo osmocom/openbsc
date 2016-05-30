@@ -272,7 +272,7 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_subscriber_group *sgrp,
 	return get_subscriber(sgrp, GSM_SUBSCRIBER_ID, buf);
 }
 
-int subscr_update_expire_lu(struct gsm_subscriber *s, struct gsm_bts *bts)
+int subscr_update_expire_lu(struct gsm_subscriber *s)
 {
 	int rc;
 	struct gsm_network *network = s->group->net;
@@ -312,7 +312,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		 * The below will set a new expire_lu but as a side-effect
 		 * the new lac will be saved in the database.
 		 */
-		rc = subscr_update_expire_lu(s, bts);
+		rc = subscr_update_expire_lu(s);
 		osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_ATTACHED, s);
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
@@ -356,7 +356,7 @@ static void subscr_expire_callback(void *data, long long unsigned int id)
 	if (conn && conn->expire_timer_stopped) {
 		LOGP(DMM, LOGL_DEBUG, "Not expiring subscriber %s (ID %llu)\n",
 			subscr_name(s), id);
-		subscr_update_expire_lu(s, conn->bts);
+		subscr_update_expire_lu(s);
 		subscr_put(s);
 		return;
 	}

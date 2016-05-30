@@ -169,7 +169,7 @@ void msc_release_connection(struct gsm_subscriber_connection *conn)
 	 * to restarting the timer. Set the new expiration time.
 	 */
 	if (conn->expire_timer_stopped)
-		subscr_update_expire_lu(conn->subscr, conn->bts);
+		subscr_update_expire_lu(conn->subscr);
 
 	conn->in_release = 1;
 	gsm0808_clear(conn);
