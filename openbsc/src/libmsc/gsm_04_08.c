@@ -59,6 +59,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/bitvec.h>
 #include <openbsc/vlr.h>
+#include <openbsc/msc_ifaces.h>
 
 #include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/gsm0480.h>
@@ -697,14 +698,14 @@ int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *ms
 	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
 		DEBUGPC(DMM, "wrong sized message\n");
-		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_INCORRECT_MESSAGE);
+		return msc_gsm48_tx_mm_serv_rej(conn,
+						GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	if (msg->data_len < req->mi_len + 6) {
 		DEBUGPC(DMM, "does not fit in packet\n");
-		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_INCORRECT_MESSAGE);
+		return msc_gsm48_tx_mm_serv_rej(conn,
+						GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
@@ -720,8 +721,8 @@ int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *ms
 			mi_string);
 	} else {
 		DEBUGPC(DMM, "mi_type is not expected: %d\n", mi_type);
-		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_INCORRECT_MESSAGE);
+		return msc_gsm48_tx_mm_serv_rej(conn,
+						GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
