@@ -58,6 +58,7 @@
 #include <openbsc/mncc_int.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/bitvec.h>
+#include <openbsc/msc_ifaces.h>
 
 #include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/gsm0480.h>
@@ -226,8 +227,9 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 		return gsm48_tx_mm_auth_req(conn, op->atuple.vec.rand, op->atuple.key_seq);
 	} else if (rc == AUTH_DO_CIPH) {
 		/* Start ciphering directly */
-		return gsm0808_cipher_mode(conn, net->a5_encryption,
-		                           op->atuple.vec.kc, 8, 0);
+		/* TODO: specific to A interface, move this away */
+		return msc_gsm0808_tx_cipher_mode(conn, net->a5_encryption,
+						  op->atuple.vec.kc, 8, 0);
 	}
 
 	return -EINVAL; /* not reached */
@@ -908,7 +910,7 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
 
 		case GSM_SECURITY_NOAVAIL:
 		case GSM_SECURITY_ALREADY:
-			rc = gsm48_tx_mm_serv_ack(conn);
+			rc = msc_gsm48_tx_mm_serv_ack(conn);
 			implit_attach(conn);
 			break;
 
@@ -953,14 +955,14 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
 		DEBUGPC(DMM, "wrong sized message\n");
-		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_INCORRECT_MESSAGE);
+		return msc_gsm48_tx_mm_serv_rej(conn,
+						GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	if (msg->data_len < req->mi_len + 6) {
 		DEBUGPC(DMM, "does not fit in packet\n");
-		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_INCORRECT_MESSAGE);
+		return msc_gsm48_tx_mm_serv_rej(conn,
+						GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
@@ -980,8 +982,8 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 				tmsi_from_string(mi_string));
 	} else {
 		DEBUGPC(DMM, "mi_type is not expected: %d\n", mi_type);
-		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_INCORRECT_MESSAGE);
+		return msc_gsm48_tx_mm_serv_rej(conn,
+						GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
@@ -995,8 +997,8 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
-		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_IMSI_UNKNOWN_IN_VLR);
+		return msc_gsm48_tx_mm_serv_rej(conn,
+						GSM48_REJECT_IMSI_UNKNOWN_IN_VLR);
 
 	if (!conn->subscr)
 		conn->subscr = subscr;
@@ -1119,8 +1121,9 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	DEBUGPC(DMM, "OK\n");
 
 	/* Start ciphering */
-	return gsm0808_cipher_mode(conn, net->a5_encryption,
-	                           conn->sec_operation->atuple.vec.kc, 8, 0);
+	return msc_gsm0808_tx_cipher_mode(conn, net->a5_encryption,
+					  conn->sec_operation->atuple.vec.kc,
+					  8, 0);
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
