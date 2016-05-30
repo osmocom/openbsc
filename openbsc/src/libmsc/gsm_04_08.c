@@ -662,7 +662,7 @@ int gsm48_tx_mm_auth_rej(struct gsm_subscriber_connection *conn)
  * b) Try to parse the TMSI. If we do not have one reject
  * c) Check that we know the subscriber with the TMSI otherwise reject
  *    with a HLR cause
- * d) Set the subscriber on the gsm_lchan and accept
+ * d) Set the subscriber on the conn and accept
  *
  * Keep this function non-static for direct invocation by unit tests.
  */
@@ -1363,13 +1363,12 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 	OSMO_ASSERT(!transt->conn);
 
-	/* check all tranactions (without lchan) for subscriber */
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
 		DEBUGP(DCC, "Paging subscr %s succeeded!\n",
 		       vlr_subscr_msisdn_or_name(transt->vsub));
 		OSMO_ASSERT(conn);
-		/* Assign lchan */
+		/* Assign conn */
 		transt->conn = conn;
 		/* send SETUP request to called party */
 		gsm48_cc_tx_setup(transt, &transt->cc.msg);
@@ -3334,14 +3333,15 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 					 GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 			return -ENOMEM;
 		}
-		/* Find lchan */
+
+		/* Find conn */
 		conn = connection_for_subscr(vsub);
 
-		/* If subscriber has no lchan */
+		/* If subscriber has no conn */
 		if (!conn) {
 			/* find transaction with this subscriber already paging */
 			llist_for_each_entry(transt, &net->trans_list, entry) {
-				/* Transaction of our lchan? */
+				/* Transaction of our conn? */
 				if (transt == trans ||
 				    transt->vsub != vsub)
 					continue;
@@ -3373,7 +3373,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			vlr_subscr_put(vsub);
 			return 0;
 		}
-		/* Assign lchan */
+
+		/* Assign conn */
 		trans->conn = subscr_con_get(conn);
 		vlr_subscr_put(vsub);
 	} else {
@@ -3386,7 +3387,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 
 	/* if paging did not respond yet */
 	if (!conn) {
-		DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
+		DEBUGP(DCC, "(sub %s) "
 			"Received '%s' from MNCC in paging state\n",
 			vlr_subscr_msisdn_or_name(trans->vsub),
 			get_mncc_name(msg_type));
@@ -3401,9 +3402,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		return rc;
 	}
 
-	DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
+	DEBUGP(DCC, "(ti %02x sub %s) "
 		"Received '%s' from MNCC in state %d (%s)\n",
-		conn->bts->nr, conn->lchan->ts->trx->nr, conn->lchan->ts->nr,
 		trans->transaction_id,
 		vlr_subscr_msisdn_or_name(trans->conn->vsub),
 		get_mncc_name(msg_type), trans->cc.state,
