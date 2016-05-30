@@ -614,6 +614,7 @@ DEFUN(ena_subscr_handover,
 	SUBSCR_HELP "Handover the active connection\n"
 	"Number of the BTS to handover to\n")
 {
+#if BEFORE_MSCSPLIT
 	int ret;
 	struct gsm_subscriber_connection *conn;
 	struct gsm_bts *bts;
@@ -657,6 +658,10 @@ DEFUN(ena_subscr_handover,
 
 	subscr_put(subscr);
 	return CMD_SUCCESS;
+#else
+	vty_out(vty, "%% Not implemented!%s", VTY_NEWLINE);
+	return -1;
+#endif
 }
 
 #define A3A8_ALG_TYPES "(none|xor|comp128v1)"
@@ -771,6 +776,7 @@ DEFUN(subscriber_update,
 static int scall_cbfn(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
+#if BEFORE_MSCSPLIT
 	struct scall_signal_data *sigdata = signal_data;
 	struct vty *vty = sigdata->data;
 
@@ -785,6 +791,10 @@ static int scall_cbfn(unsigned int subsys, unsigned int signal,
 		break;
 	}
 	return 0;
+#else
+	/* not implemented yet! */
+	return -1;
+#endif
 }
 
 DEFUN(show_stats,
