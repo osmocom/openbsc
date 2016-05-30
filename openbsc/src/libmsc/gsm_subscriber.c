@@ -74,6 +74,10 @@ static struct bsc_subscr *vlr_subscr_to_bsc_sub(struct llist_head *bsc_subscribe
 	return sub;
 }
 
+#if 0
+TODO implement paging response in libmsc!
+Excluding this to be able to link without libbsc:
+
 /*
  * We got the channel assigned and can now hand this channel
  * over to one of our callbacks.
@@ -172,6 +176,7 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	/* We _really_ have a channel, secure it now ! */
 	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, param);
 }
+#endif
 
 struct subscr_request *subscr_request_channel(struct vlr_subscr *vsub,
 					      int channel_type,
@@ -186,10 +191,17 @@ struct subscr_request *subscr_request_channel(struct vlr_subscr *vsub,
 	if (!vsub->cs.is_paging) {
 		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet.\n",
 		     vlr_subscr_name(vsub));
+#if 0
+		TODO implement paging response in libmsc!
+		Excluding this to be able to link without libbsc:
+
 		bsub = vlr_subscr_to_bsc_sub(net->bsc_subscribers, vsub);
 		rc = paging_request(net, bsub, channel_type, subscr_paging_cb,
 				    vsub);
 		bsc_subscr_put(bsub);
+#else
+		rc = -ENOTSUP;
+#endif
 		if (rc <= 0) {
 			LOGP(DMM, LOGL_ERROR, "Subscriber %s paging failed: %d\n",
 			     vlr_subscr_name(vsub), rc);
