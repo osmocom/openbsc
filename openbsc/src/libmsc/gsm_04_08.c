@@ -439,7 +439,6 @@ void gsm0408_clear_all_trans(struct gsm_network *net, int protocol)
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
 int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 {
-	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg;
 
 	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT]);
@@ -449,10 +448,9 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 		LOGP(DMM, LOGL_ERROR, "Failed to create msg for LOCATION UPDATING REJECT.\n");
 		return -1;
 	}
-
-	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT "
-	     "LAC=%u BTS=%u\n", subscr_name(conn->subscr),
-	     bts->location_area_code, bts->nr);
+	
+	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT\n",
+	     subscr_name(conn->subscr));
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
