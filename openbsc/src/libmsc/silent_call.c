@@ -52,8 +52,10 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
+#if BEFORE_MSCSPLIT
 		DEBUGPC(DLSMS, "success, using Timeslot %u on ARFCN %u\n",
 			conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
+#endif
 		conn->silent_call = 1;
 		subscr_con_get(conn);
 		/* increment lchan reference count */
@@ -143,8 +145,10 @@ int gsm_silent_call_stop(struct vlr_subscr *vsub)
 	if (!conn->silent_call)
 		return -EINVAL;
 
+#if BEFORE_MSCSPLIT
 	DEBUGPC(DLSMS, "Stopping silent call using Timeslot %u on ARFCN %u\n",
 		conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
+#endif
 
 	conn->silent_call = 0;
 	subscr_con_put(conn);
