@@ -25,6 +25,7 @@ noinst_LIBRARIES = \
 libmsc_a_SOURCES = \
 	a_iface.c \
 	auth.c \
+	cscn_vty.c \
 	db.c \
 	gsm_04_08.c \
 	gsm_04_11.c \
