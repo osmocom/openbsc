@@ -21,8 +21,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
-#include <stdbool.h>
-#include <inttypes.h>
 #include <time.h>
 
 #include <osmocom/vty/command.h>
@@ -1100,14 +1098,6 @@ int bsc_vty_init_extra(void)
 	install_node(&hlr_node, config_write_hlr);
 	install_element(HLR_NODE, &cfg_hlr_remote_ip_cmd);
 	install_element(HLR_NODE, &cfg_hlr_remote_port_cmd);
-
-	install_element(CONFIG_NODE, &cfg_nitb_cmd);
-	install_node(&nitb_node, config_write_nitb);
-	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
-	install_element(NITB_NODE, &cfg_nitb_subscr_random_cmd);
-	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);
-	install_element(NITB_NODE, &cfg_nitb_assign_tmsi_cmd);
-	install_element(NITB_NODE, &cfg_nitb_no_assign_tmsi_cmd);
 
 	return 0;
 }
