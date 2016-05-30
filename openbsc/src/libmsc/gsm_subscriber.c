@@ -40,6 +40,7 @@
 #include <openbsc/db.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/vlr.h>
+#include <openbsc/iu.h>
 
 void *tall_sub_req_ctx;
 
