@@ -132,19 +132,19 @@ struct gsm_subscriber_connection {
 	int mncc_rtp_connect_pending;
 
 	/* bsc structures */
-	struct osmo_bsc_sccp_con *sccp_con;
+	struct osmo_bsc_sccp_con *sccp_con; /* BSC */
 
 	/* back pointers */
 	struct gsm_network *network;
 
 	int in_release;
-	struct gsm_lchan *lchan;
-	struct gsm_lchan *ho_lchan;
-	struct gsm_bts *bts;
+	struct gsm_lchan *lchan; /* BSC */
+	struct gsm_lchan *ho_lchan; /* BSC */
+	struct gsm_bts *bts; /* BSC */
 
 	/* for assignment handling */
-	struct osmo_timer_list T10;
-	struct gsm_lchan *secondary_lchan;
+	struct osmo_timer_list T10; /* BSC */
+	struct gsm_lchan *secondary_lchan; /* BSC */
 
 };
 
