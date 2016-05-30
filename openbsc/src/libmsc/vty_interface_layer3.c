@@ -21,8 +21,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
-#include <stdbool.h>
-#include <inttypes.h>
 #include <time.h>
 
 #include <osmocom/vty/command.h>
@@ -1039,99 +1037,6 @@ DEFUN(logging_fltr_imsi,
 	return CMD_SUCCESS;
 }
 
-static struct cmd_node nitb_node = {
-	NITB_NODE,
-	"%s(config-nitb)# ",
-	1,
-};
-
-DEFUN(cfg_nitb, cfg_nitb_cmd,
-      "nitb", "Configure NITB options")
-{
-	vty->node = NITB_NODE;
-	return CMD_SUCCESS;
-}
-
-/* Note: limit on the parameter length is set by internal vty code limitations */
-DEFUN(cfg_nitb_subscr_random, cfg_nitb_subscr_random_cmd,
-      "subscriber-create-on-demand random <1-9999999999> <2-9999999999>",
-      "Set random parameters for a new record when a subscriber is first seen.\n"
-      "Set random parameters for a new record when a subscriber is first seen.\n"
-      "Minimum for subscriber extension\n""Maximum for subscriber extension\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	uint64_t mi = atoi(argv[0]), ma = atoi(argv[1]);
-	gsmnet->auto_create_subscr = true;
-	gsmnet->auto_assign_exten = true;
-	if (mi >= ma) {
-		vty_out(vty, "Incorrect range: %s >= %s, expected MIN < MAX%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-	gsmnet->ext_min = mi;
-	gsmnet->ext_max = ma;
-        return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
-      "subscriber-create-on-demand [no-extension]",
-      "Make a new record when a subscriber is first seen.\n"
-      "Do not automatically assign extension to created subscribers\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->auto_create_subscr = true;
-	gsmnet->auto_assign_exten = argc ? false : true;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nitb_no_subscr_create, cfg_nitb_no_subscr_create_cmd,
-      "no subscriber-create-on-demand",
-      NO_STR "Make a new record when a subscriber is first seen.\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->auto_create_subscr = false;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nitb_assign_tmsi, cfg_nitb_assign_tmsi_cmd,
-      "assign-tmsi",
-      "Assign TMSI during Location Updating.\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->avoid_tmsi = 0;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nitb_no_assign_tmsi, cfg_nitb_no_assign_tmsi_cmd,
-      "no assign-tmsi",
-      NO_STR "Assign TMSI during Location Updating.\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->avoid_tmsi = 1;
-	return CMD_SUCCESS;
-}
-
-static int config_write_nitb(struct vty *vty)
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-
-	vty_out(vty, "nitb%s", VTY_NEWLINE);
-	if (!gsmnet->auto_create_subscr)
-		vty_out(vty, " no subscriber-create-on-demand%s", VTY_NEWLINE);
-	else
-		vty_out(vty, " subscriber-create-on-demand%s%s",
-			gsmnet->auto_assign_exten ? "" : " no-extension",
-			VTY_NEWLINE);
-
-	if (gsmnet->ext_min != GSM_MIN_EXTEN || gsmnet->ext_max != GSM_MAX_EXTEN)
-		vty_out(vty, " subscriber-create-on-demand random %"PRIu64" %"
-			PRIu64"%s", gsmnet->ext_min, gsmnet->ext_max,
-			VTY_NEWLINE);
-	vty_out(vty, " %sassign-tmsi%s",
-		gsmnet->avoid_tmsi ? "no " : "", VTY_NEWLINE);
-	return CMD_SUCCESS;
-}
-
 int bsc_vty_init_extra(void)
 {
 	osmo_signal_register_handler(SS_SCALL, scall_cbfn, NULL);
@@ -1176,15 +1081,6 @@ int bsc_vty_init_extra(void)
 
 	install_element(CFG_LOG_NODE, &log_level_sms_cmd);
 	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);
-
-
-	install_element(CONFIG_NODE, &cfg_nitb_cmd);
-	install_node(&nitb_node, config_write_nitb);
-	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
-	install_element(NITB_NODE, &cfg_nitb_subscr_random_cmd);
-	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);
-	install_element(NITB_NODE, &cfg_nitb_assign_tmsi_cmd);
-	install_element(NITB_NODE, &cfg_nitb_no_assign_tmsi_cmd);
 
 	return 0;
 }
