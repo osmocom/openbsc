@@ -71,6 +71,10 @@ static struct gsm_subscriber *get_subscriber(struct gsm_subscriber_group *sgrp,
 	return subscr;
 }
 
+#if 0
+TODO implement paging response in libmsc!
+Excluding this to be able to link without libbsc:
+
 /*
  * We got the channel assigned and can now hand this channel
  * over to one of our callbacks.
@@ -163,6 +167,7 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	/* We _really_ have a channel, secure it now ! */
 	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, param);
 }
+#endif
 
 struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
 			int channel_type, gsm_cbfn *cbfn, void *param)
@@ -174,8 +179,14 @@ struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
 	if (!subscr->is_paging) {
 		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet.\n",
 			subscr_name(subscr));
+#if 0
+		TODO implement paging response in libmsc!
+		Excluding this to be able to link without libbsc:
 		rc = paging_request(subscr->group->net, subscr, channel_type,
 				    subscr_paging_cb, subscr);
+#else
+		rc = -ENOTSUP;
+#endif
 		if (rc <= 0) {
 			LOGP(DMM, LOGL_ERROR, "Subscriber %s paging failed: %d\n",
 				subscr_name(subscr), rc);

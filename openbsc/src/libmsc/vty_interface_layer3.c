@@ -802,7 +802,11 @@ DEFUN(show_stats,
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 
+#if 0
+	TODO implement statistics specifically for libmsc!
+	Excluding this to be able to link without libbsc:
 	openbsc_vty_print_statistics(vty, net);
+#endif
 	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
 		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_ATTACH].current,
 		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_NORMAL].current,
