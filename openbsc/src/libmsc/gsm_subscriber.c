@@ -27,6 +27,8 @@
 #include <assert.h>
 #include <time.h>
 #include <stdbool.h>
+#include <regex.h>
+#include <sys/types.h>
 
 #include <osmocom/core/talloc.h>
 
@@ -385,4 +387,52 @@ struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *s
 	}
 
 	return NULL;
+}
+
+/*! Validate IMSI against the authorized IMSI regexp.
+ * \returns true if IMSI matches the configured authorized_regexp.
+ */
+bool subscr_authorized_imsi(const struct gsm_network *net, const char *imsi)
+{
+	if (!net->authorized_reg_str)
+		return false;
+
+	if (regexec(&net->authorized_regexp, imsi, 0, NULL, 0) != REG_NOMATCH)
+		return true;
+
+	return false;
+}
+
+bool subscr_authorized(struct gsm_subscriber *subscriber)
+{
+	switch (subscriber->group->net->auth_policy) {
+	case GSM_AUTH_POLICY_CLOSED:
+		LOGP(DMM, LOGL_DEBUG, "subscriber %s authorized = %d\n",
+		     subscr_name(subscriber), subscriber->authorized);
+		return subscriber->authorized ? true : false;
+	case GSM_AUTH_POLICY_REGEXP:
+		if (subscriber->authorized)
+			return true;
+		if (subscr_authorized_imsi(subscriber->group->net,
+					   subscriber->imsi))
+			subscriber->authorized = true;
+		return subscriber->authorized;
+	case GSM_AUTH_POLICY_TOKEN:
+		if (subscriber->authorized) {
+			LOGP(DMM, LOGL_DEBUG,
+			     "subscriber %s authorized = %d\n",
+			     subscr_name(subscriber), subscriber->authorized);
+			return subscriber->authorized;
+		}
+		LOGP(DMM, LOGL_DEBUG, "subscriber %s first contact = %d\n",
+		     subscr_name(subscriber),
+		     (int)(subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT));
+		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
+	case GSM_AUTH_POLICY_ACCEPT_ALL:
+		return true;
+	default:
+		LOGP(DMM, LOGL_DEBUG, "unknown auth_policy, rejecting"
+		     " subscriber %s\n", subscr_name(subscriber));
+		return false;
+	}
 }

@@ -29,8 +29,6 @@
 #include <errno.h>
 #include <time.h>
 #include <netinet/in.h>
-#include <regex.h>
-#include <sys/types.h>
 #include <openssl/rand.h>
 
 #include "bscconfig.h"
@@ -298,19 +296,8 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	return -EINVAL; /* not reached */
 }
 
-static bool subscr_regexp_check(const struct gsm_network *net, const char *imsi)
-{
-	if (!net->authorized_reg_str)
-		return false;
-
-	if (regexec(&net->authorized_regexp, imsi, 0, NULL, 0) != REG_NOMATCH)
-		return true;
-
-	return false;
-}
-
 static bool authorize_subscriber(struct gsm_loc_updating_operation *loc,
-				struct gsm_subscriber *subscriber)
+				 struct gsm_subscriber *subscriber)
 {
 	if (!subscriber) {
 		LOGP(DMM, LOGL_DEBUG, "authorize_subscriber() on NULL subscriber\n");
@@ -331,25 +318,7 @@ static bool authorize_subscriber(struct gsm_loc_updating_operation *loc,
 		return false;
 	}
 
-	switch (subscriber->group->net->auth_policy) {
-	case GSM_AUTH_POLICY_CLOSED:
-		return subscriber->authorized;
-	case GSM_AUTH_POLICY_REGEXP:
-		if (subscriber->authorized)
-			return true;
-		if (subscr_regexp_check(subscriber->group->net,
-					subscriber->imsi))
-			subscriber->authorized = 1;
-		return subscriber->authorized;
-	case GSM_AUTH_POLICY_TOKEN:
-		if (subscriber->authorized)
-			return subscriber->authorized;
-		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
-	case GSM_AUTH_POLICY_ACCEPT_ALL:
-		return true;
-	default:
-		return false;
-	}
+	return subscr_authorized(subscriber);
 }
 
 static void release_loc_updating_req(struct gsm_subscriber_connection *conn, int release)
@@ -597,7 +566,7 @@ static struct gsm_subscriber *subscr_create(const struct gsm_network *net,
 	if (!net->auto_create_subscr)
 		return NULL;
 
-	if (!subscr_regexp_check(net, imsi))
+	if (!subscr_authorized_imsi(net, imsi))
 		return NULL;
 
 	return subscr_create_subscriber(net->subscr_group, imsi);
