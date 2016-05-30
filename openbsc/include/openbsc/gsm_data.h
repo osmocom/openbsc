@@ -195,6 +195,7 @@ struct gsm_subscriber_connection {
 	struct gsm_classmark classmark;
 
 	uint16_t lac;
+	struct gsm_encr encr;
 
 	/* which Iu-CS connection, if any. */
 	struct {
