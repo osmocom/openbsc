@@ -66,6 +66,9 @@ struct gsm_network *gsm_network_init(void *ctx,
 	net->country_code = country_code;
 	net->network_code = network_code;
 
+	/* Use 30 min periodic update interval as sane default */
+	net->t3212 = 5;
+
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
 	INIT_LLIST_HEAD(&net->subscr_conns);

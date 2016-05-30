@@ -275,6 +275,7 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_subscriber_group *sgrp,
 int subscr_update_expire_lu(struct gsm_subscriber *s, struct gsm_bts *bts)
 {
 	int rc;
+	struct gsm_network *network = s->group->net;
 
 	/* Table 10.5.33: The T3212 timeout value field is coded as the
 	 * binary representation of the timeout value for
@@ -283,11 +284,10 @@ int subscr_update_expire_lu(struct gsm_subscriber *s, struct gsm_bts *bts)
 	 * Timeout is twice the t3212 value plus one minute */
 
 	/* Is expiration handling enabled? */
-	if (bts->si_common.chan_desc.t3212 == 0)
+	if (network->t3212 == 0)
 		s->expire_lu = GSM_SUBSCRIBER_NO_EXPIRATION;
 	else
-		s->expire_lu = time(NULL) +
-			(bts->si_common.chan_desc.t3212 * 60 * 6 * 2) + 60;
+		s->expire_lu = time(NULL) + (network->t3212 * 60 * 6 * 2) + 60;
 
 	rc = db_sync_subscriber(s);
 	db_subscriber_update(s);
