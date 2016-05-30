@@ -59,10 +59,7 @@ static struct bsc_subscr *vlr_subscr_to_bsc_sub(struct llist_head *bsc_subscribe
 	return sub;
 }
 
-/*
- * We got the channel assigned and can now hand this channel
- * over to one of our callbacks.
- */
+/* A connection is established and the paging callbacks may run now. */
 int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 			   struct msgb *msg, void *data, void *param)
 {
@@ -73,12 +70,25 @@ int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	struct bsc_subscr *bsub;
 	struct gsm_network *net;
 
-	OSMO_ASSERT(vsub && vsub->cs.is_paging);
+	OSMO_ASSERT(vsub);
 	net = vsub->vlr->user_ctx;
+	OSMO_ASSERT(hooknum == GSM_HOOK_RR_PAGING);
+	OSMO_ASSERT(!(conn && (conn->vsub != vsub)));
+	OSMO_ASSERT(!((event == GSM_PAGING_SUCCEEDED) && !conn));
+
+	LOGP(DPAG, LOGL_DEBUG, "Paging %s for %s (event=%d)\n",
+	     event == GSM_PAGING_SUCCEEDED ? "success" : "failure",
+	     subscr_name(subscr), event);
+
+	if (!subscr->is_paging) {
+		LOGP(DPAG, LOGL_ERROR,
+		     "Paging Response received for subscriber"
+		     " that is not paging.\n");
+		return -EINVAL;
+	}
 
 	/* Inform parts of the system we don't know */
 	sig_data.vsub	= vsub;
-	sig_data.bts	= conn ? conn->bts : NULL;
 	sig_data.conn	= conn;
 	sig_data.paging_result = event;
 	osmo_signal_dispatch(
@@ -90,7 +100,11 @@ int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 
 	llist_for_each_entry_safe(request, tmp, &vsub->cs.requests, entry) {
 		llist_del(&request->entry);
-		request->cbfn(hooknum, event, msg, data, request->param);
+		if (request->cbfn) {
+			LOGP(DPAG, LOGL_DEBUG, "Calling paging cbfn.\n");
+			request->cbfn(hooknum, event, msg, data, request->param);
+		} else
+			LOGP(DPAG, LOGL_DEBUG, "Paging without action.\n");
 		talloc_free(request);
 	}
 
@@ -100,28 +114,59 @@ int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	return 0;
 }
 
+static void paging_timeout_release(struct gsm_subscriber *subscr)
+{
+	DEBUGP(DPAG, "Paging timeout released for %s\n", subscr_name(subscr));
+	osmo_timer_del(&subscr->paging_timeout);
+}
+
+static void paging_timeout(void *data)
+{
+	struct gsm_subscriber *subscr = data;
+	DEBUGP(DPAG, "Paging timeout reached for %s\n", subscr_name(subscr));
+	paging_timeout_release(subscr);
+	subscr_paging_dispatch(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
+			       NULL, NULL, subscr);
+}
+
+static void paging_timeout_start(struct gsm_subscriber *subscr)
+{
+	DEBUGP(DPAG, "Starting paging timeout for %s\n", subscr_name(subscr));
+	subscr->paging_timeout.data = subscr;
+	subscr->paging_timeout.cb = paging_timeout;
+	osmo_timer_schedule(&subscr->paging_timeout, 10, 0);
+	/* TODO: configurable timeout duration? */
+}
+
+
 static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
                                 struct msgb *msg, void *data, void *param)
 {
 	int rc;
+	struct gsm_subscriber_connection *conn = data;
+	OSMO_ASSERT(conn);
 
 	switch (event) {
 		case GSM_SECURITY_AUTH_FAILED:
-			/* Dispatch as paging failure */
+			LOGP(DPAG, LOGL_ERROR,
+			     "Dropping Paging Response:"
+			     " authorization failed for subscriber %s\n",
+			     subscr_name(conn->subscr));
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
-				msg, data, param);
+				msg, conn, conn->subscr);
 			break;
 
 		case GSM_SECURITY_NOAVAIL:
 		case GSM_SECURITY_SUCCEEDED:
-			/* Dispatch as paging failure */
 			rc = subscr_paging_dispatch(
 				GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
-				msg, data, param);
+				msg, conn, conn->subscr);
 			break;
 
 		default:
+			LOGP(DPAG, LOGL_FATAL,
+			     "Invalid authorization event: %d\n", event);
 			rc = -EINVAL;
 	}
 
@@ -138,6 +183,8 @@ int subscr_rx_paging_response(struct msgb *msg,
 	gh = msgb_l3(msg);
 	pr = (struct gsm48_pag_resp *)gh->data;
 
+	paging_timeout_release(conn->subscr);
+
 	/* Secure the connection */
 	if (subscr_authorized(conn->subscr))
 		return gsm48_secure_channel(conn, pr->key_seq,
@@ -149,9 +196,21 @@ int subscr_rx_paging_response(struct msgb *msg,
 	return -1;
 }
 
-struct subscr_request *subscr_request_channel(struct vlr_subscr *vsub,
-					      int channel_type,
-					      gsm_cbfn *cbfn, void *param)
+static int msc_paging_request(struct gsm_subscriber *subscr)
+{
+	/* The subscriber was last seen in subscr->lac. Find out which
+	 * BSCs/RNCs are responsible and send them a paging request via open
+	 * SCCP connections (if any). */
+	/* TODO Implementing only RNC paging, since this is code on the iu branch.
+	 * Need to add BSC paging at some point. */
+	return iu_page_cs(subscr->imsi,
+			  subscr->tmsi == GSM_RESERVED_TMSI?
+				NULL : &subscr->tmsi,
+			  subscr->lac);
+}
+
+struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
+					   gsm_cbfn *cbfn, void *param)
 {
 	int rc;
 	struct subscr_request *request;
@@ -159,20 +218,10 @@ struct subscr_request *subscr_request_channel(struct vlr_subscr *vsub,
 	struct gsm_network *net = vsub->vlr->user_ctx;
 
 	/* Start paging.. we know it is async so we can do it before */
-	if (!vsub->cs.is_paging) {
-		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet.\n",
+	if (!subscr->is_paging) {
+		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet, start paging.\n",
 		     vlr_subscr_name(vsub));
-#if 0
-		TODO implement paging response in libmsc!
-		Excluding this to be able to link without libbsc:
-
-		bsub = vlr_subscr_to_bsc_sub(net->bsc_subscribers, vsub);
-		rc = paging_request(net, bsub, channel_type, subscr_paging_cb,
-				    vsub);
-		bsc_subscr_put(bsub);
-#else
-		rc = -ENOTSUP;
-#endif
+		rc = msc_paging_request(vsub);
 		if (rc <= 0) {
 			LOGP(DMM, LOGL_ERROR, "Subscriber %s paging failed: %d\n",
 			     vlr_subscr_name(vsub), rc);
@@ -181,6 +230,9 @@ struct subscr_request *subscr_request_channel(struct vlr_subscr *vsub,
 		/* reduced on the first paging callback */
 		vlr_subscr_get(vsub);
 		vsub->cs.is_paging = true;
+	} else {
+		LOGP(DMM, LOGL_DEBUG, "Subscriber %s already paged.\n",
+			subscr_name(subscr));
 	}
 
 	/* TODO: Stop paging in case of memory allocation failure */
