@@ -1249,6 +1249,30 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 	return rc;
 }
 
+static int handle_paging_resp(struct msgb *msg,
+			      struct gsm_subscriber_connection *conn,
+			      struct gsm_subscriber *subscr)
+{
+	if (!conn->subscr) {
+		conn->subscr = subscr;
+	} else if (conn->subscr != subscr) {
+		LOGP(DPAG, LOGL_ERROR,
+		     "Connection already owned by another subscriber?\n");
+		subscr_put(subscr);
+		return -EINVAL;
+	} else {
+		DEBUGP(DPAG, "Connection already owned by the subscriber\n");
+		subscr_put(subscr);
+		subscr = conn->subscr;
+	}
+
+	/* TODO: count successful paging *in MSC*, similarly to BSC:
+	 * rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_PAGING_COMPLETED]); */
+#warning "missing rate counter for paging on MSC level"
+
+	return subscr_rx_paging_response(msg, conn);
+}
+
 /* Receive a PAGING RESPONSE message from the MS */
 static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
@@ -1292,14 +1316,7 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	/* We received a paging */
 	conn->expire_timer_stopped = 1;
 
-#if 0
-	TODO implement paging response in libmsc!
-	Excluding this to be able to link without libbsc:
-	rc = gsm48_handle_paging_resp(conn, msg, subscr);
-	return rc;
-#else
-	return -ENOTSUP;
-#endif
+	return handle_paging_resp(msg, conn, subscr);
 }
 
 static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct msgb *msg)
@@ -3581,12 +3598,12 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 				trans_free(trans);
 				return 0;
 			}
-			/* store setup informations until paging was successfull */
+			/* store setup information until paging succeeds */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
 			/* Request a channel */
-			trans->paging_request = subscr_request_channel(subscr,
-							RSL_CHANNEED_TCH_F, setup_trig_pag_evt,
+			trans->paging_request = subscr_request_conn(subscr,
+							setup_trig_pag_evt,
 							trans);
 			if (!trans->paging_request) {
 				LOGP(DCC, LOGL_ERROR, "Failed to allocate paging token.\n");
