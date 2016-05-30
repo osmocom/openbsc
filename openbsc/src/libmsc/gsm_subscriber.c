@@ -294,16 +294,17 @@ int subscr_update_expire_lu(struct gsm_subscriber *s)
 	return rc;
 }
 
-int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
+int subscr_update(struct gsm_subscriber *s, uint16_t lac, int reason)
 {
 	int rc;
+	struct gsm_network *network = s->group->net;
 
 	/* FIXME: Migrate pending requests from one BSC to another */
 	switch (reason) {
 	case GSM_SUBSCRIBER_UPDATE_ATTACHED:
-		s->group = bts->network->subscr_group;
+		s->group = network->subscr_group;
 		/* Indicate "attached to LAC" */
-		s->lac = bts->location_area_code;
+		s->lac = lac;
 
 		LOGP(DMM, LOGL_INFO, "Subscriber %s ATTACHED LAC=%u\n",
 			subscr_name(s), s->lac);
@@ -317,7 +318,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
 		/* Only detach if we are currently in this area */
-		if (bts->location_area_code == s->lac)
+		if (lac == s->lac)
 			s->lac = GSM_LAC_RESERVED_DETACHED;
 		LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n", subscr_name(s));
 		rc = db_sync_subscriber(s);

@@ -104,7 +104,7 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_subscriber_group *sgrp,
 					unsigned long long id);
 struct gsm_subscriber *subscr_get_or_create(struct gsm_subscriber_group *sgrp,
 					const char *imsi);
-int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
+int subscr_update(struct gsm_subscriber *s, uint16_t lac, int reason);
 struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_subscriber_group *sgrp,
 					     uint32_t tmsi);
 struct gsm_subscriber *subscr_active_by_imsi(struct gsm_subscriber_group *sgrp,
