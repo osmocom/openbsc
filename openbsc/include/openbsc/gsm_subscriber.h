@@ -131,6 +131,9 @@ void subscr_update_from_db(struct gsm_subscriber *subscr);
 void subscr_expire(struct gsm_subscriber_group *sgrp);
 int subscr_update_expire_lu(struct gsm_subscriber *subscr);
 
+bool subscr_authorized_imsi(const struct gsm_network *net, const char *imsi);
+bool subscr_authorized(struct gsm_subscriber *subsc);
+
 /*
  * Paging handling with authentication
  */
