@@ -143,7 +143,7 @@ struct bsc_api *msc_bsc_api() {
 	return &msc_handler;
 }
 
-/* lchan release handling */
+/* conn release handling */
 void msc_release_connection(struct gsm_subscriber_connection *conn)
 {
 	/* skip when we are in release, e.g. due an error */
