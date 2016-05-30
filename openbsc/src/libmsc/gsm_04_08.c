@@ -326,8 +326,7 @@ static int finish_lu(struct gsm_subscriber_connection *conn)
 	/* call subscr_update after putting the loc_upd_acc
 	 * in the transmit queue, since S_SUBSCR_ATTACHED might
 	 * trigger further action like SMS delivery */
-	subscr_update(conn->subscr, conn->bts,
-		      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+	subscr_update(conn->subscr, conn->lac, GSM_SUBSCRIBER_UPDATE_ATTACHED);
 
 	/*
 	 * The gsm0408_loc_upd_acc sends a MI with the TMSI. The
@@ -473,7 +472,7 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
 	gsm48_generate_lai(lai, conn->network->country_code,
 			   conn->network->network_code,
-			   conn->bts->location_area_code);
+			   conn->lac);
 
 	if (conn->subscr->tmsi == GSM_RESERVED_TMSI) {
 		uint8_t mi[10];
@@ -890,8 +889,7 @@ static void implit_attach(struct gsm_subscriber_connection *conn)
 	if (conn->subscr->lac != GSM_LAC_RESERVED_DETACHED)
 		return;
 
-	subscr_update(conn->subscr, conn->bts,
-		      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+	subscr_update(conn->subscr, conn->lac, GSM_SUBSCRIBER_UPDATE_ATTACHED);
 }
 
 
@@ -1060,7 +1058,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	}
 
 	if (subscr) {
-		subscr_update(subscr, conn->bts,
+		subscr_update(subscr, conn->lac,
 			      GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n", subscr_name(subscr));
 
