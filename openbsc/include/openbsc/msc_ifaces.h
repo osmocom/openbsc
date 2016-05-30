@@ -37,3 +37,11 @@ extern int a_tx(struct msgb *msg);
 
 int msc_tx_dtap(struct gsm_subscriber_connection *conn,
 		struct msgb *msg);
+
+int msc_gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn);
+int msc_gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
+			     enum gsm48_reject_value value);
+
+/* TODO: specific to A interface, move this away */
+int msc_gsm0808_tx_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
+			       const uint8_t *key, int len, int include_imeisv);
