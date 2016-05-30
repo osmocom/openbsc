@@ -160,6 +160,7 @@ struct gsm_subscriber_connection {
 	struct gsm_lchan *secondary_lchan; /* BSC */
 
 	uint16_t lac;
+	struct gsm_encr encr;
 
 	/* 2G or 3G? See enum interface_type */
 	int via_iface;
