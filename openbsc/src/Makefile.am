@@ -39,7 +39,7 @@ endif
 
 # Programs
 SUBDIRS += \
-	osmo-nitb \
+	osmo-msc \
 	osmo-bsc_mgcp \
 	utils \
 	ipaccess \
