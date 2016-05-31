@@ -410,7 +410,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 		uint8_t cipher_out[GSM0464_CIPH_MAX_BLOCK];
 		uint32_t iv;
 		int rc, i;
-		uint64_t kc = *(uint64_t *)&lle->llme->kc;
+		uint8_t *kc = lle->llme->kc;
 
 		/* Compute the 'Input' Paraemeter */
 		iv = gprs_cipher_gen_input_ui(iov_ui, sapi, nu, oc);
@@ -611,7 +611,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		uint16_t crypt_len = llhp.data_len + 3;
 		uint8_t cipher_out[GSM0464_CIPH_MAX_BLOCK];
 		uint32_t iv;
-		uint64_t kc = *(uint64_t *)&lle->llme->kc;
+		uint8_t *kc = lle->llme->kc;
 		int rc, i;
 
 		if (lle->llme->algo == GPRS_ALGO_GEA0) {
