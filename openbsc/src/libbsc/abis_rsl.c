@@ -1224,7 +1224,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		LOGP(DRSL, LOGL_ERROR, "%s CHANNEL MODE MODIFY NACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_ACK:
-		DEBUGPC(DRSL, "%s IPAC PDCH ACT ACK\n", ts_name);
+		DEBUGP(DRSL, "%s IPAC PDCH ACT ACK\n", ts_name);
 		msg->lchan->ts->flags |= TS_F_PDCH_MODE;
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_NACK:
@@ -1951,7 +1951,7 @@ int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act)
 	dh->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
 	dh->chan_nr = gsm_ts2chan_nr(ts, 0);
 
-	DEBUGP(DRSL, "%s IPAC_PDCH_%sACT\n", gsm_ts_name(ts),
+	DEBUGP(DRSL, "%s IPAC PDCH %sACT\n", gsm_ts_name(ts),
 		act ? "" : "DE");
 
 	msg->dst = ts->trx->rsl_link;
