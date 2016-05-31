@@ -68,18 +68,13 @@ static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 
 static void do_lchan_free(struct gsm_lchan *lchan)
 {
-	/* We start the error timer to make the channel available again */
-	if (lchan->state == LCHAN_S_REL_ERR) {
-		lchan->error_timer.data = lchan;
-		lchan->error_timer.cb = error_timeout_cb;
-		osmo_timer_schedule(&lchan->error_timer,
-				   lchan->ts->trx->bts->network->T3111 + 2, 0);
-	} else {
+	lchan_free(lchan);
+	if (lchan->state != LCHAN_S_REL_ERR) {
+		/* we don't have an error timer pending to release that */
 		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 		/* defragment TCH/F+PDCH shared channels */
 		do_pdch_defrag(lchan->ts->trx->bts);
 	}
-	lchan_free(lchan);
 }
 
 static uint8_t mdisc_by_msgtype(uint8_t msg_type)
