@@ -44,6 +44,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/core/talloc.h>
+#include <openbsc/pdch_defrag.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
@@ -75,6 +76,8 @@ static void do_lchan_free(struct gsm_lchan *lchan)
 				   lchan->ts->trx->bts->network->T3111 + 2, 0);
 	} else {
 		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+		/* defragment TCH/F+PDCH shared channels */
+		do_pdch_defrag(lchan->ts->trx->bts);
 	}
 	lchan_free(lchan);
 }
@@ -645,9 +648,9 @@ static void error_timeout_cb(void *data)
 	LOGP(DRSL, LOGL_INFO, "%s is back in operation.\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 
-	/* Put PDCH channel back into PDCH mode */
-	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH)
-		rsl_ipacc_pdch_activate(lchan->ts, 1);
+	/* defragment TCH/F+PDCH shared channels */
+	do_pdch_defrag(lchan->ts->trx->bts);
+	/* TODO: Put PDCH channel back into PDCH mode? */
 }
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan);
