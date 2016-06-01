@@ -369,6 +369,9 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 			abis_nm_opstart(trx->bts, obj_class,
 					trx->bts->bts_nr, trx->nr, ts->nr);
 		}
+		if (new_state->operational == NM_OPSTATE_ENABLED
+		    && new_state->availability == NM_AVSTATE_OK)
+			dyn_pdch_init(ts);
 		break;
 	case NM_OC_RADIO_CARRIER:
 		trx = obj;

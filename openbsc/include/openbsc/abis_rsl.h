@@ -106,5 +106,7 @@ int rsl_start_t3109(struct gsm_lchan *lchan);
 
 int rsl_direct_rf_release(struct gsm_lchan *lchan);
 
+void dyn_pdch_init(struct gsm_bts_trx_ts *ts);
+
 #endif /* RSL_MT_H */
 
