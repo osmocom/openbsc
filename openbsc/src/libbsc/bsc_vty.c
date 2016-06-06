@@ -1748,7 +1748,9 @@ DEFUN(cfg_bts_dtxu, cfg_bts_dtxu_cmd, "dtx uplink [force]",
 	struct gsm_bts *bts = vty->index;
 
 	bts->dtxu = (argc > 0) ? GSM48_DTX_SHALL_BE_USED : GSM48_DTX_MAY_BE_USED;
-
+	if (!is_ipaccess_bts(bts))
+		vty_out(vty, "%% DTX enabled on non-IP BTS: this configuration "
+			"neither supported nor tested!%s", VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -1771,7 +1773,9 @@ DEFUN(cfg_bts_dtxd, cfg_bts_dtxd_cmd, "dtx downlink",
 	struct gsm_bts *bts = vty->index;
 
 	bts->dtxd = true;
-
+	if (!is_ipaccess_bts(bts))
+		vty_out(vty, "%% DTX enabled on non-IP BTS: this configuration "
+			"neither supported nor tested!%s", VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
