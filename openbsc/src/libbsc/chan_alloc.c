@@ -161,12 +161,14 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 		if (allow_bigger) {
 			if (lchan == NULL) {
 				lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_H);
-				type = GSM_LCHAN_TCH_H;
+				if (lchan)
+					type = GSM_LCHAN_TCH_H;
 			}
 
 			if (lchan == NULL) {
 				lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F);
-				type = GSM_LCHAN_TCH_F;
+				if (lchan)
+					type = GSM_LCHAN_TCH_F;
 			}
 		}
 		break;
@@ -175,7 +177,8 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 		/* If we don't have TCH/F available, fall-back to TCH/H */
 		if (!lchan) {
 			lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_H);
-			type = GSM_LCHAN_TCH_H;
+			if (lchan)
+				type = GSM_LCHAN_TCH_H;
 		}
 		break;
 	case GSM_LCHAN_TCH_H:
@@ -183,7 +186,8 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 		/* If we don't have TCH/H available, fall-back to TCH/F */
 		if (!lchan) {
 			lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F);
-			type = GSM_LCHAN_TCH_F;
+			if (lchan)
+				type = GSM_LCHAN_TCH_F;
 		}
 		break;
 	default:
