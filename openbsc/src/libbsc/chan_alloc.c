@@ -96,14 +96,7 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 		ts = &trx->ts[j];
 		if (!ts_is_usable(ts))
 			continue;
-		/* ip.access dynamic TCH/F + PDCH combination */
-		if (ts->pchan == GSM_PCHAN_TCH_F_PDCH &&
-		    pchan == GSM_PCHAN_TCH_F) {
-			/* we can only consider such a dynamic channel
-			 * if the PDCH is currently inactive */
-			if (ts->flags & TS_F_PDCH_MODE)
-				continue;
-		} else if (ts->pchan != pchan)
+		if (ts->pchan != pchan)
 			continue;
 		/* check if all sub-slots are allocated yet */
 		for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
@@ -140,7 +133,12 @@ _lc_find_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
 	return NULL;
 }
 
-/* Allocate a logical channel */
+/* Allocate a logical channel.
+ *
+ * For TCH/F, we may return a dynamic TCH/F_PDCH channel (but prefer a pure
+ * TCH/F). If we pick a TCH/F_PDCH time slot, PDCH will be disabled later on;
+ * there is no need to check whether PDCH mode is currently active, here.
+ */
 struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 			      int allow_bigger)
 {
@@ -182,6 +180,14 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 				if (lchan)
 					type = GSM_LCHAN_TCH_F;
 			}
+
+			/* try dynamic TCH/F_PDCH */
+			if (lchan == NULL) {
+				lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F_PDCH);
+				/* TCH/F_PDCH will be used as TCH/F */
+				if (lchan)
+					type = GSM_LCHAN_TCH_F;
+			}
 		}
 		break;
 	case GSM_LCHAN_TCH_F:
@@ -192,12 +198,26 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 			if (lchan)
 				type = GSM_LCHAN_TCH_H;
 		}
+		/* If we don't have TCH/H either, try dynamic TCH/F_PDCH */
+		if (!lchan) {
+			lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F_PDCH);
+			/* TCH/F_PDCH used as TCH/F -- here, type is already
+			 * set to GSM_LCHAN_TCH_F, but for clarity's sake... */
+			if (lchan)
+				type = GSM_LCHAN_TCH_F;
+		}
 		break;
 	case GSM_LCHAN_TCH_H:
 		lchan =_lc_find_bts(bts, GSM_PCHAN_TCH_H);
 		/* If we don't have TCH/H available, fall-back to TCH/F */
 		if (!lchan) {
 			lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F);
+			if (lchan)
+				type = GSM_LCHAN_TCH_F;
+		}
+		/* If we don't have TCH/F either, try dynamic TCH/F_PDCH */
+		if (!lchan) {
+			lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F_PDCH);
 			if (lchan)
 				type = GSM_LCHAN_TCH_F;
 		}
