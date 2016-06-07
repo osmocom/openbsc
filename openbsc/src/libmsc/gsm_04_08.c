@@ -537,7 +537,8 @@ static struct gsm_subscriber *subscr_create(const struct gsm_network *net,
 		if (!subscr_regexp_check(net, imsi))
 			return NULL;
 
-	return subscr_create_subscriber(net->subscr_group, imsi);
+	return subscr_create_subscriber(net->subscr_group, imsi, net->ext_min,
+					net->ext_max);
 }
 
 /* Parse Chapter 9.2.11 Identity Response */

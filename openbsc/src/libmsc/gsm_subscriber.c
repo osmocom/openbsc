@@ -203,9 +203,10 @@ void subscr_remove_request(struct subscr_request *request)
 }
 
 struct gsm_subscriber *subscr_create_subscriber(struct gsm_subscriber_group *sgrp,
-					const char *imsi)
+						const char *imsi, uint64_t smin,
+						uint64_t smax)
 {
-	struct gsm_subscriber *subscr = db_create_subscriber(imsi);
+	struct gsm_subscriber *subscr = db_create_subscriber(imsi, smin, smax);
 	if (subscr)
 		subscr->group = sgrp;
 	return subscr;

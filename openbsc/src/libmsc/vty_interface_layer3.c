@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
+#include <stdbool.h>
+#include <inttypes.h>
 #include <time.h>
 
 #include <osmocom/vty/command.h>
@@ -240,7 +242,9 @@ DEFUN(subscriber_create,
 	if (subscr)
 		db_sync_subscriber(subscr);
 	else {
-		subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0]);
+		subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0],
+						  gsmnet->ext_min,
+						  gsmnet->ext_max);
 
 		if (!subscr) {
 			vty_out(vty, "%% No subscriber created for IMSI %s%s",
@@ -1031,6 +1035,25 @@ DEFUN(cfg_nitb, cfg_nitb_cmd,
 	return CMD_SUCCESS;
 }
 
+/* Note: limit on the parameter length is set by internal vty code limitations */
+DEFUN(cfg_nitb_subscr_random, cfg_nitb_subscr_random_cmd,
+      "subscriber-create-on-demand random <1-9999999999> <2-9999999999>",
+      "Set random parameters for a new record when a subscriber is first seen.\n"
+      "Set random parameters for a new record when a subscriber is first seen.\n"
+      "Minimum for subscriber extension\n""Maximum for subscriber extension\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	uint64_t mi = atoi(argv[0]), ma = atoi(argv[1]);
+	if (mi >= ma) {
+		vty_out(vty, "Incorrect range: %s >= %s, expected MIN < MAX%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	gsmnet->ext_min = mi;
+	gsmnet->ext_max = ma;
+        return CMD_SUCCESS;
+}
+
 DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
       "subscriber-create-on-demand [regexp]",
       "Make a new record when a subscriber is first seen.\n"
@@ -1080,6 +1103,10 @@ static int config_write_nitb(struct vty *vty)
 	vty_out(vty, "nitb%s", VTY_NEWLINE);
 	vty_out(vty, " %ssubscriber-create-on-demand%s%s",
 		pref, reg, VTY_NEWLINE);
+	if (gsmnet->ext_min != GSM_MIN_EXTEN || gsmnet->ext_max != GSM_MAX_EXTEN)
+		vty_out(vty, " subscriber-create-on-demand random %"PRIu64" %"
+			PRIu64"%s", gsmnet->ext_min, gsmnet->ext_max,
+			VTY_NEWLINE);
 	vty_out(vty, " %sassign-tmsi%s",
 		gsmnet->avoid_tmsi ? "no " : "", VTY_NEWLINE);
 	return CMD_SUCCESS;
@@ -1134,6 +1161,7 @@ int bsc_vty_init_extra(void)
 	install_element(CONFIG_NODE, &cfg_nitb_cmd);
 	install_node(&nitb_node, config_write_nitb);
 	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
+	install_element(NITB_NODE, &cfg_nitb_subscr_random_cmd);
 	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);
 	install_element(NITB_NODE, &cfg_nitb_assign_tmsi_cmd);
 	install_element(NITB_NODE, &cfg_nitb_no_assign_tmsi_cmd);

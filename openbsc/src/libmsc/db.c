@@ -518,7 +518,8 @@ int db_fini(void)
 	return 0;
 }
 
-struct gsm_subscriber *db_create_subscriber(const char *imsi)
+struct gsm_subscriber *db_create_subscriber(const char *imsi, uint64_t smin,
+					    uint64_t smax)
 {
 	dbi_result result;
 	struct gsm_subscriber *subscr;
@@ -550,7 +551,7 @@ struct gsm_subscriber *db_create_subscriber(const char *imsi)
 	strncpy(subscr->imsi, imsi, sizeof(subscr->imsi)-1);
 	dbi_result_free(result);
 	LOGP(DDB, LOGL_INFO, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
-	db_subscriber_alloc_exten(subscr);
+	db_subscriber_alloc_exten(subscr, smin, smax);
 	return subscr;
 }
 
@@ -1249,13 +1250,14 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 	return 0;
 }
 
-int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber)
+int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber, uint64_t smin,
+			      uint64_t smax)
 {
 	dbi_result result = NULL;
 	uint32_t try;
 
 	for (;;) {
-		try = (rand()%(GSM_MAX_EXTEN-GSM_MIN_EXTEN+1)+GSM_MIN_EXTEN);
+		try = (rand() % (smax - smin + 1) + smin);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE extension = %i",

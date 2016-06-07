@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 #include <osmocom/ctrl/control_cmd.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
@@ -95,7 +96,9 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 
 	subscr = subscr_get_by_imsi(net->subscr_group, imsi);
 	if (!subscr)
-		subscr = subscr_create_subscriber(net->subscr_group, imsi);
+		subscr = subscr_create_subscriber(net->subscr_group, imsi,
+						  net->ext_min,
+						  net->ext_max);
 	if (!subscr)
 		goto fail;
 

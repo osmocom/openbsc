@@ -104,7 +104,8 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	net->stats.bts.rsl_fail = osmo_counter_alloc("net.bts.rsl_fail");
 
 	net->mncc_recv = mncc_recv;
-
+	net->ext_min = GSM_MIN_EXTEN;
+	net->ext_max = GSM_MAX_EXTEN;
 	gsm_net_update_ctype(net);
 
 	return net;

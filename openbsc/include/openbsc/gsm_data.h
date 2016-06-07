@@ -290,6 +290,8 @@ struct gsm_network {
 
 	/* subscriber related features */
 	int subscr_creation_mode;
+	uint64_t ext_min;
+	uint64_t ext_max;
 	struct gsm_subscriber_group *subscr_group;
 	struct gsm_sms_queue *sms_queue;
 

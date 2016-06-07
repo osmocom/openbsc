@@ -424,11 +424,13 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.vty.enable()
 
         imsi = "204300854013739"
+        imsi2 = "204301824913769"
         wrong_imsi = "204300999999999"
 
         # Lets create one
         res = self.vty.command('subscriber create imsi '+imsi)
         self.assert_(res.find("    IMSI: "+imsi) > 0)
+        self.assert_(res.find("Extension") > 0)
 
         self.vty.verify('subscriber imsi '+wrong_imsi+' name wrong', ['% No subscriber found for imsi '+wrong_imsi])
         res = self.vty.command('subscriber imsi '+imsi+' name '+('X' * 160))
@@ -442,8 +444,27 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         self.vty.verify('subscriber imsi '+imsi+' extension '+('1' * 14), [''])
 
+        # With narrow random interval
+        self.vty.command("configure terminal")
+        self.vty.command("nitb")
+        self.assertTrue(self.vty.verify("subscriber-create-on-demand", ['']))
+        # wrong interval
+        res = self.vty.command("subscriber-create-on-demand random 221 122")
+        self.assert_(res.find("122") > 0)
+        self.assert_(res.find("221") > 0)
+        # correct interval
+        self.assertTrue(self.vty.verify("subscriber-create-on-demand random 221 222", ['']))
+        self.vty.command("end")
+
+        res = self.vty.command('subscriber create imsi ' + imsi2)
+        self.assert_(res.find("    IMSI: " + imsi2) > 0)
+        self.assert_(res.find("221") > 0 or res.find("222") > 0)
+        self.assert_(res.find("    Extension: ") > 0)
+
         # Delete it
         res = self.vty.command('subscriber delete imsi '+imsi)
+        self.assert_(res != "")
+        res = self.vty.command('subscriber delete imsi ' + imsi2)
         self.assert_(res != "")
 
     def testShowPagingGroup(self):

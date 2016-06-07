@@ -35,13 +35,15 @@ int db_prepare(void);
 int db_fini(void);
 
 /* subscriber management */
-struct gsm_subscriber *db_create_subscriber(const char *imsi);
+struct gsm_subscriber *db_create_subscriber(const char *imsi, uint64_t smin,
+					    uint64_t smax);
 struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 					 const char *subscr);
 int db_sync_subscriber(struct gsm_subscriber *subscriber);
 int db_subscriber_expire(void *priv, void (*callback)(void *priv, long long unsigned int id));
 int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber);
-int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber);
+int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber, uint64_t smin,
+			      uint64_t smax);
 int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t* token);
 int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char *imei);
 int db_subscriber_delete(struct gsm_subscriber *subscriber);

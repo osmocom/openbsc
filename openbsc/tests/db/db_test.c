@@ -164,7 +164,7 @@ static void test_subs(const char *alice_imsi, char *imei1, char *imei2)
 	struct gsm_subscriber *alice = NULL, *alice_db;
 	char scratch_str[256];
 
-	alice = db_create_subscriber(alice_imsi);
+	alice = db_create_subscriber(alice_imsi, GSM_MIN_EXTEN, GSM_MAX_EXTEN);
 	db_subscriber_assoc_imei(alice, imei1);
 	if (imei2)
 		db_subscriber_assoc_imei(alice, imei2);
@@ -217,7 +217,7 @@ int main()
 	struct gsm_subscriber *alice_db;
 
 	char *alice_imsi = "3243245432345";
-	alice = db_create_subscriber(alice_imsi);
+	alice = db_create_subscriber(alice_imsi, GSM_MIN_EXTEN, GSM_MAX_EXTEN);
 	db_sync_subscriber(alice);
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice->imsi);
 	COMPARE(alice, alice_db);
@@ -228,7 +228,7 @@ int main()
 	test_subs("9993245423445", "1234567890", "6543560920");
 
 	/* create it again and see it fails */
-	alice = db_create_subscriber(alice_imsi);
+	alice = db_create_subscriber(alice_imsi, GSM_MIN_EXTEN, GSM_MAX_EXTEN);
 	OSMO_ASSERT(!alice);
 
 	test_sms();
