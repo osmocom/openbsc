@@ -292,6 +292,8 @@ struct gsm_lchan {
 		} last_sid;
 		uint8_t last_cmr;
 		uint32_t last_fn;
+		/* indicates if DTXd was active during DL measurement period */
+		bool dtxd_active;
 	} tch;
 	/* BTS-side ciphering state (rx only, bi-directional, ...) */
 	uint8_t ciph_state;
