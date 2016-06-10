@@ -163,7 +163,9 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		return -EINVAL;
 	}
 
-	if (payload_len > MAX_RTP_PAYLOAD_LEN) {
+	if (payload_len > MAX_RTP_PAYLOAD_LEN ||
+	    (rtph->payload_type == RTP_PT_AMR &&
+	     payload_len > MAX_RTP_PAYLOAD_LEN - 1)) {
 		DEBUGPC(DLMUX, "RTP payload too large (%d octets)\n",
 			payload_len);
 		return -EINVAL;
