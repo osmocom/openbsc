@@ -289,7 +289,12 @@ struct gsm_lchan {
 		struct {
 			uint8_t buf[16];
 			uint8_t len;
+			uint32_t fn;
+			bool is_update;
 		} last_sid;
+		/* set for each SID frame to detect talkspurt for codecs without
+		   explicit ONSET event */
+		bool ul_sid;
 		uint8_t last_cmr;
 		uint32_t last_fn;
 		/* indicates if DTXd was active during DL measurement period */
