@@ -1201,8 +1201,59 @@ static int rsl_rx_hando_det(struct msgb *msg)
 	return 0;
 }
 
+static bool lchan_may_change_pdch(struct gsm_lchan *lchan, bool pdch_act)
+{
+	struct gsm_bts_trx_ts *ts;
+	bool ok;
+
+	OSMO_ASSERT(lchan);
+
+	ts = lchan->ts;
+	OSMO_ASSERT(ts);
+	OSMO_ASSERT(ts->trx);
+	OSMO_ASSERT(ts->trx->bts);
+
+	if (lchan->ts->pchan != GSM_PCHAN_TCH_F_PDCH) {
+		LOGP(DRSL, LOGL_ERROR, "(bts %u, trx %u, ts %u, pchan %s)"
+		     " Rx PDCH %s ACK for channel that is no TCH/F_PDCH\n",
+		     ts->trx->bts->nr, ts->trx->nr, ts->nr,
+		     gsm_pchan_name(ts->pchan),
+		     pdch_act? "ACT" : "DEACT");
+		return false;
+	}
+
+	/* During BTS initialization, we expect to PDCH ACT in channel state ==
+	 * NONE. However, during dynamic channel switching, we will PDCH ACT
+	 * while in state DEACTIVATION REQUESTED (we're deactivating TCH/F
+	 * while activating PDCH); and we will PDCH DEACT while in state
+	 * ACTIVATION REQUESTED (we're activating TCH/F while deactivating
+	 * PDCH). */
+	/* FIXME: rather switch PDCH while in state NONE, i.e. after
+	 * deactivation of TCH/F and before activation of TCH/F? */
+	if (pdch_act)
+		ok = (lchan->state == LCHAN_S_NONE
+		      || lchan->state == LCHAN_S_REL_REQ);
+	else
+		ok = (lchan->state == LCHAN_S_NONE
+		      || lchan->state == LCHAN_S_ACT_REQ);
+
+	if (!ok) {
+		LOGP(DRSL, LOGL_ERROR, "(bts %u, trx %u, ts %u, pchan %s)"
+		     " Rx PDCH %s ACK in unexpected state: %s\n",
+		     ts->trx->bts->nr, ts->trx->nr, ts->nr,
+		     gsm_pchan_name(ts->pchan),
+		     pdch_act? "ACT" : "DEACT",
+		     gsm_lchans_name(lchan->state));
+		return false;
+	}
+	return true;
+}
+
 static int rsl_rx_pdch_act_ack(struct msgb *msg)
 {
+	if (!lchan_may_change_pdch(msg->lchan, true))
+		return -EINVAL;
+
 	msg->lchan->ts->flags |= TS_F_PDCH_ACTIVE;
 	msg->lchan->ts->flags &= ~TS_F_PDCH_ACT_PENDING;
 
@@ -1214,6 +1265,9 @@ static int rsl_rx_pdch_act_ack(struct msgb *msg)
 
 static int rsl_rx_pdch_deact_ack(struct msgb *msg)
 {
+	if (!lchan_may_change_pdch(msg->lchan, false))
+		return -EINVAL;
+
 	msg->lchan->ts->flags &= ~TS_F_PDCH_ACTIVE;
 	msg->lchan->ts->flags &= ~TS_F_PDCH_DEACT_PENDING;
 
