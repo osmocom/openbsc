@@ -1120,10 +1120,13 @@ static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 			       lchan->meas_rep_idx, 1);
 	mr =  &lchan->meas_rep[idx];
 
-	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, Lchan %u, Type %s - "
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u %s, Lchan %u, Type %s, State %s - "
 		"L1 MS Power: %u dBm RXL-FULL-dl: %4d dBm RXL-FULL-ul: %4d dBm%s",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
-		lchan->nr, gsm_lchant_name(lchan->type), mr->ms_l1.pwr,
+		gsm_pchan_name(lchan->ts->pchan),
+		lchan->nr,
+		gsm_lchant_name(lchan->type), gsm_lchans_name(lchan->state),
+		mr->ms_l1.pwr,
 		rxlev2dbm(mr->dl.full.rx_lev),
 		rxlev2dbm(mr->ul.full.rx_lev),
 		VTY_NEWLINE);
