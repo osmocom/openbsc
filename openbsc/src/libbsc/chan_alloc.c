@@ -43,6 +43,13 @@ static int ts_is_usable(struct gsm_bts_trx_ts *ts)
 			return 0;
 	}
 
+	/* If a dyn PDCH channel is busy changing, it is already taken or not
+	 * yet available. */
+	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH) {
+		if (ts->flags & TS_F_PDCH_PENDING_MASK)
+			return 0;
+	}
+
 	return 1;
 }
 

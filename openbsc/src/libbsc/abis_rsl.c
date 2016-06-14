@@ -479,6 +479,8 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 		return rsl_ipacc_pdch_activate(lchan->ts, 0);
 	}
 
+	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
+
 	ta = lchan->rqd_ta;
 
 	/* BS11 requires TA shifted by 2 bits */
@@ -756,11 +758,11 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 			gsm_lchan_name(lchan),
 			gsm_lchans_name(lchan->state));
 
+	do_lchan_free(lchan);
+
 	/* Put PDCH channel back into PDCH mode first */
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH)
 		return rsl_ipacc_pdch_activate(lchan->ts, 1);
-
-	do_lchan_free(lchan);
 
 	return 0;
 }
@@ -1204,7 +1206,6 @@ static int rsl_rx_hando_det(struct msgb *msg)
 static bool lchan_may_change_pdch(struct gsm_lchan *lchan, bool pdch_act)
 {
 	struct gsm_bts_trx_ts *ts;
-	bool ok;
 
 	OSMO_ASSERT(lchan);
 
@@ -1222,22 +1223,7 @@ static bool lchan_may_change_pdch(struct gsm_lchan *lchan, bool pdch_act)
 		return false;
 	}
 
-	/* During BTS initialization, we expect to PDCH ACT in channel state ==
-	 * NONE. However, during dynamic channel switching, we will PDCH ACT
-	 * while in state DEACTIVATION REQUESTED (we're deactivating TCH/F
-	 * while activating PDCH); and we will PDCH DEACT while in state
-	 * ACTIVATION REQUESTED (we're activating TCH/F while deactivating
-	 * PDCH). */
-	/* FIXME: rather switch PDCH while in state NONE, i.e. after
-	 * deactivation of TCH/F and before activation of TCH/F? */
-	if (pdch_act)
-		ok = (lchan->state == LCHAN_S_NONE
-		      || lchan->state == LCHAN_S_REL_REQ);
-	else
-		ok = (lchan->state == LCHAN_S_NONE
-		      || lchan->state == LCHAN_S_ACT_REQ);
-
-	if (!ok) {
+	if (lchan->state != LCHAN_S_NONE) {
 		LOGP(DRSL, LOGL_ERROR, "(bts %u, trx %u, ts %u, pchan %s)"
 		     " Rx PDCH %s ACK in unexpected state: %s\n",
 		     ts->trx->bts->nr, ts->trx->nr, ts->nr,
@@ -1256,9 +1242,6 @@ static int rsl_rx_pdch_act_ack(struct msgb *msg)
 
 	msg->lchan->ts->flags |= TS_F_PDCH_ACTIVE;
 	msg->lchan->ts->flags &= ~TS_F_PDCH_ACT_PENDING;
-
-	/* We have activated PDCH, so now the channel is available again. */
-	do_lchan_free(msg->lchan);
 
 	return 0;
 }
@@ -1532,7 +1515,6 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		return -ENOMEM;
 	}
 
-	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 	memcpy(lchan->rqd_ref, rqd_ref, sizeof(*rqd_ref));
 	lchan->rqd_ta = rqd_ta;
 
