@@ -9,6 +9,6 @@ osmo_bsc_mgcp_SOURCES = mgcp_main.c
 
 osmo_bsc_mgcp_LDADD = $(top_builddir)/src/libcommon/libcommon.a \
 		 $(top_builddir)/src/libmgcp/libmgcp.a -lrt \
-		 $(LIBOSMOVTY_LIBS) $(LIBOSMOCORE_LIBS) \
+		 $(LIBOSMOVTY_LIBS) $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) \
 		 $(LIBOSMONETIF_LIBS) $(LIBBCG729_LIBS) \
 		 $(LIBRARY_GSM)

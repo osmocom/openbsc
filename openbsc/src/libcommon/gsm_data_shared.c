@@ -92,19 +92,10 @@ enum gsm_phys_chan_config gsm_pchan_parse(const char *name)
 	return get_string_value(gsm_pchant_names, name);
 }
 
-const struct value_string gsm_lchant_names[8] = {
-	{ GSM_LCHAN_NONE,	"NONE" },
-	{ GSM_LCHAN_SDCCH,	"SDCCH" },
-	{ GSM_LCHAN_TCH_F,	"TCH/F" },
-	{ GSM_LCHAN_TCH_H,	"TCH/H" },
-	{ GSM_LCHAN_UNKNOWN,	"UNKNOWN" },
-	{ GSM_LCHAN_CBCH,	"CBCH" },
-	{ 0,			NULL }
-};
-
+/* TODO: move to libosmocore, next to gsm_chan_t_names? */
 const char *gsm_lchant_name(enum gsm_chan_t c)
 {
-	return get_value_string(gsm_lchant_names, c);
+	return get_value_string(gsm_chan_t_names, c);
 }
 
 static const struct value_string lchan_s_names[] = {

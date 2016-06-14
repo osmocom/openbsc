@@ -10,4 +10,4 @@ smpp_test_SOURCES = smpp_test.c \
 	$(top_builddir)/src/libmsc/smpp_utils.c
 smpp_test_LDADD = \
 	$(top_builddir)/src/libcommon/libcommon.a \
-	$(LIBOSMOCORE_LIBS)
+	$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS)

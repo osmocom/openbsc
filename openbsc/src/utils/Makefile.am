@@ -27,7 +27,7 @@ isdnsync_SOURCES = isdnsync.c
 
 smpp_mirror_SOURCES = smpp_mirror.c
 smpp_mirror_LDADD = $(top_builddir)/src/libcommon/libcommon.a \
-		    $(LIBOSMOCORE_LIBS) $(LIBSMPP34_LIBS)
+		    $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBSMPP34_LIBS)
 
 meas_vis_SOURCES = meas_vis.c
 meas_vis_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) -lcdk -lncurses
