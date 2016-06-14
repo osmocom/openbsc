@@ -919,7 +919,7 @@ static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 		gsm_pchan_name(ts->pchan), gsm_ts_tsc(ts));
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
 		vty_out(vty, " (%s mode)",
-			ts->flags & TS_F_PDCH_MODE ? "PDCH" : "TCH/F");
+			ts->flags & TS_F_PDCH_ACTIVE ? "PDCH" : "TCH/F");
 	vty_out(vty, "%s", VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &ts->mo.nm_state);

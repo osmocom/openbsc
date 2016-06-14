@@ -332,7 +332,14 @@ struct gsm_lchan {
 #endif
 };
 
-#define TS_F_PDCH_MODE	0x1000
+enum {
+	TS_F_PDCH_ACTIVE =		0x1000,
+	TS_F_PDCH_ACT_PENDING =		0x2000,
+	TS_F_PDCH_DEACT_PENDING =	0x4000,
+	TS_F_PDCH_PENDING_MASK =	0x6000 /*<
+			TS_F_PDCH_ACT_PENDING | TS_F_PDCH_DEACT_PENDING */
+} gsm_bts_trx_ts_flags;
+
 /* One Timeslot in a TRX */
 struct gsm_bts_trx_ts {
 	struct gsm_bts_trx *trx;

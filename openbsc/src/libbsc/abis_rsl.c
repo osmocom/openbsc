@@ -472,7 +472,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 
 	/* if channel is in PDCH mode, deactivate PDCH first */
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
-	    && (lchan->ts->flags & TS_F_PDCH_MODE)) {
+	    && (lchan->ts->flags & TS_F_PDCH_ACTIVE)) {
 		/* store activation type and handover reference */
 		lchan->dyn_pdch.act_type = act_type;
 		lchan->dyn_pdch.ho_ref = ho_ref;
@@ -1203,7 +1203,7 @@ static int rsl_rx_hando_det(struct msgb *msg)
 
 static int rsl_rx_pdch_act_ack(struct msgb *msg)
 {
-	msg->lchan->ts->flags |= TS_F_PDCH_MODE;
+	msg->lchan->ts->flags |= TS_F_PDCH_ACTIVE;
 
 	/* We have activated PDCH, so now the channel is available again. */
 	do_lchan_free(msg->lchan);
@@ -1213,7 +1213,7 @@ static int rsl_rx_pdch_act_ack(struct msgb *msg)
 
 static int rsl_rx_pdch_deact_ack(struct msgb *msg)
 {
-	msg->lchan->ts->flags &= ~TS_F_PDCH_MODE;
+	msg->lchan->ts->flags &= ~TS_F_PDCH_ACTIVE;
 
 	rsl_chan_activate_lchan(msg->lchan, msg->lchan->dyn_pdch.act_type,
 				msg->lchan->dyn_pdch.ho_ref);
