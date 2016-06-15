@@ -1204,6 +1204,7 @@ static int rsl_rx_hando_det(struct msgb *msg)
 static int rsl_rx_pdch_act_ack(struct msgb *msg)
 {
 	msg->lchan->ts->flags |= TS_F_PDCH_ACTIVE;
+	msg->lchan->ts->flags &= ~TS_F_PDCH_ACT_PENDING;
 
 	/* We have activated PDCH, so now the channel is available again. */
 	do_lchan_free(msg->lchan);
@@ -1214,6 +1215,7 @@ static int rsl_rx_pdch_act_ack(struct msgb *msg)
 static int rsl_rx_pdch_deact_ack(struct msgb *msg)
 {
 	msg->lchan->ts->flags &= ~TS_F_PDCH_ACTIVE;
+	msg->lchan->ts->flags &= ~TS_F_PDCH_DEACT_PENDING;
 
 	rsl_chan_activate_lchan(msg->lchan, msg->lchan->dyn_pdch.act_type,
 				msg->lchan->dyn_pdch.ho_ref);
@@ -1975,10 +1977,24 @@ int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act)
 	struct abis_rsl_dchan_hdr *dh;
 	uint8_t msg_type;
 
-	if (act)
+	if (ts->flags & TS_F_PDCH_PENDING_MASK) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s PDCH %s requested, but a PDCH%s%s is still pending\n",
+		     gsm_ts_name(ts),
+		     act ? "ACT" : "DEACT",
+		     ts->flags & TS_F_PDCH_ACT_PENDING? " ACT" : "",
+		     ts->flags & TS_F_PDCH_DEACT_PENDING? " DEACT" : "");
+		return -EINVAL;
+	}
+
+	if (act){
 		msg_type = RSL_MT_IPAC_PDCH_ACT;
-	else
+		ts->flags |= TS_F_PDCH_ACT_PENDING;
+	} else {
 		msg_type = RSL_MT_IPAC_PDCH_DEACT;
+		ts->flags |= TS_F_PDCH_DEACT_PENDING;
+	}
+	/* TODO add timeout to cancel PDCH DE/ACT */
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, msg_type);
