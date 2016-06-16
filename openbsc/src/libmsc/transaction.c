@@ -33,6 +33,12 @@ void *tall_trans_ctx;
 
 void _gsm48_cc_trans_free(struct gsm_trans *trans);
 
+/* Find a transaction in connection for given protocol + transaction ID
+ * \param[in] conn Connection in whihc we want to find transaction
+ * \param[in] proto Protocol of transaction
+ * \param[in] trans_id Transaction ID of transaction
+ * \returns Matching transaction, if any
+ */
 struct gsm_trans *trans_find_by_id(struct gsm_subscriber_connection *conn,
 				   uint8_t proto, uint8_t trans_id)
 {
@@ -49,6 +55,11 @@ struct gsm_trans *trans_find_by_id(struct gsm_subscriber_connection *conn,
 	return NULL;
 }
 
+/* Find a transaction by call reference
+ * \param[in] net Network in which we should search
+ * \param[in] callref Call Reference of transaction
+ * \returns Matching transaction, if any
+ */
 struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 					uint32_t callref)
 {
@@ -61,6 +72,13 @@ struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 	return NULL;
 }
 
+/*! Allocate a new transaction and add it to network list
+ *  \param[in] net Netwokr in which we allocate transaction
+ *  \param[in] subscr Subscriber for which we allocate transaction
+ *  \param[in] protocol Protocol (CC/SMS/...)
+ *  \param[in] callref Call Reference
+ *  \returns Transaction
+ */
 struct gsm_trans *trans_alloc(struct gsm_network *net,
 			      struct gsm_subscriber *subscr,
 			      uint8_t protocol, uint8_t trans_id,
@@ -87,6 +105,9 @@ struct gsm_trans *trans_alloc(struct gsm_network *net,
 	return trans;
 }
 
+/* Release a transaction
+ * \param[in] trans Transaction to be released
+ */
 void trans_free(struct gsm_trans *trans)
 {
 	switch (trans->protocol) {
@@ -118,7 +139,12 @@ void trans_free(struct gsm_trans *trans)
 }
 
 /* allocate an unused transaction ID for the given subscriber
- * in the given protocol using the ti_flag specified */
+ * in the given protocol using the ti_flag specified
+ * \param[in] net GSM network
+ * \param[in] subscr Subscriber for which to find ID
+ * \param[in] protocol Protocol for whihc to find ID
+ * \param[in] ti_flag FIXME
+ */
 int trans_assign_trans_id(struct gsm_network *net, struct gsm_subscriber *subscr,
 			  uint8_t protocol, uint8_t ti_flag)
 {
@@ -151,6 +177,10 @@ int trans_assign_trans_id(struct gsm_network *net, struct gsm_subscriber *subscr
 	return -1;
 }
 
+/* Check if we have any transaction for given connection
+ * \param[in] conn Connection to check
+ * \returns 1 in case there is a transaction, 0 otherwise
+ */
 int trans_has_conn(const struct gsm_subscriber_connection *conn)
 {
 	struct gsm_trans *trans;

@@ -200,6 +200,7 @@ AC_OUTPUT(
     src/libtrau/Makefile
     src/libbsc/Makefile
     src/libmsc/Makefile
+    src/libvlr/Makefile
     src/libmgcp/Makefile
     src/libcommon/Makefile
     src/libfilter/Makefile
@@ -229,6 +230,7 @@ AC_OUTPUT(
     tests/oap/Makefile
     tests/gtphub/Makefile
     tests/mm_auth/Makefile
+    tests/vlr/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

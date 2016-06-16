@@ -1018,6 +1018,7 @@ void _gsm411_sms_trans_free(struct gsm_trans *trans)
 	}
 }
 
+/* Process incoming SAPI N-REJECT from BSC */
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 {
 	struct gsm_network *net;

@@ -1,7 +1,7 @@
 /* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
-/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2016 by Harald Welte <laforge@gnumonks.org>
  * (C) 2008-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
@@ -58,6 +58,7 @@
 #include <openbsc/mncc_int.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/bitvec.h>
+#include <openbsc/vlr.h>
 
 #include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/gsm0480.h>
@@ -72,12 +73,13 @@
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;
 
+static struct vlr_instance *g_vlr;
+
 static int tch_rtp_signal(struct gsm_lchan *lchan, int signal);
 
 static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn);
 static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 			   uint8_t pdisc, uint8_t msg_type);
-static void schedule_reject(struct gsm_subscriber_connection *conn);
 static void release_anchor(struct gsm_subscriber_connection *conn);
 
 struct gsm_lai {
@@ -249,154 +251,7 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	return -EINVAL; /* not reached */
 }
 
-static bool subscr_regexp_check(const struct gsm_network *net, const char *imsi)
-{
-	if (!net->authorized_reg_str)
-		return false;
-
-	if (regexec(&net->authorized_regexp, imsi, 0, NULL, 0) != REG_NOMATCH)
-		return true;
-
-	return false;
-}
-
-static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
-				struct gsm_subscriber *subscriber)
-{
-	if (!subscriber)
-		return 0;
-
-	/*
-	 * Do not send accept yet as more information should arrive. Some
-	 * phones will not send us the information and we will have to check
-	 * what we want to do with that.
-	 */
-	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei))
-		return 0;
-
-	switch (subscriber->group->net->auth_policy) {
-	case GSM_AUTH_POLICY_CLOSED:
-		return subscriber->authorized;
-	case GSM_AUTH_POLICY_REGEXP:
-		if (subscriber->authorized)
-			return 1;
-		if (subscr_regexp_check(subscriber->group->net,
-					subscriber->imsi))
-			subscriber->authorized = 1;
-		return subscriber->authorized;
-	case GSM_AUTH_POLICY_TOKEN:
-		if (subscriber->authorized)
-			return subscriber->authorized;
-		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
-	case GSM_AUTH_POLICY_ACCEPT_ALL:
-		return 1;
-	default:
-		return 0;
-	}
-}
-
-static void release_loc_updating_req(struct gsm_subscriber_connection *conn, int release)
-{
-	if (!conn->loc_operation)
-		return;
-
-	/* No need to keep the connection up */
-	release_anchor(conn);
-
-	osmo_timer_del(&conn->loc_operation->updating_timer);
-	talloc_free(conn->loc_operation);
-	conn->loc_operation = NULL;
-	subscr_con_put(conn);
-}
-
-static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
-{
-	if (conn->loc_operation)
-		LOGP(DMM, LOGL_ERROR, "Connection already had operation.\n");
-	release_loc_updating_req(conn, 0);
-
-	conn->loc_operation = talloc_zero(tall_locop_ctx,
-					   struct gsm_loc_updating_operation);
-	if (conn->loc_operation)
-		subscr_con_get(conn);
-}
-
-static int finish_lu(struct gsm_subscriber_connection *conn)
-{
-	int rc = 0;
-	int avoid_tmsi = conn->bts->network->avoid_tmsi;
-
-	/* We're all good */
-	if (avoid_tmsi) {
-		conn->subscr->tmsi = GSM_RESERVED_TMSI;
-		db_sync_subscriber(conn->subscr);
-	} else {
-		db_subscriber_alloc_tmsi(conn->subscr);
-	}
-
-	rc = gsm0408_loc_upd_acc(conn);
-	if (conn->bts->network->send_mm_info) {
-		/* send MM INFO with network name */
-		rc = gsm48_tx_mm_info(conn);
-	}
-
-	/* call subscr_update after putting the loc_upd_acc
-	 * in the transmit queue, since S_SUBSCR_ATTACHED might
-	 * trigger further action like SMS delivery */
-	subscr_update(conn->subscr, conn->bts,
-		      GSM_SUBSCRIBER_UPDATE_ATTACHED);
-
-	/*
-	 * The gsm0408_loc_upd_acc sends a MI with the TMSI. The
-	 * MS needs to respond with a TMSI REALLOCATION COMPLETE
-	 * (even if the TMSI is the same).
-	 */
-	if (avoid_tmsi)
-		release_loc_updating_req(conn, 1);
-
-	return rc;
-}
-
-static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
-                                     struct msgb *msg, void *data, void *param)
-{
-	struct gsm_subscriber_connection *conn = data;
-	int rc = 0;
-
-	switch (event) {
-		case GSM_SECURITY_AUTH_FAILED:
-			release_loc_updating_req(conn, 1);
-			break;
-
-		case GSM_SECURITY_ALREADY:
-			LOGP(DMM, LOGL_ERROR, "We don't expect LOCATION "
-				"UPDATING after CM SERVICE REQUEST\n");
-			/* fall through */
-
-		case GSM_SECURITY_NOAVAIL:
-		case GSM_SECURITY_SUCCEEDED:
-			rc = finish_lu(conn);
-			break;
-
-		default:
-			rc = -EINVAL;
-	};
-
-	return rc;
-}
-
-static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg)
-{
-	if (!conn->loc_operation)
-		return 0;
-
-	if (authorize_subscriber(conn->loc_operation, conn->subscr))
-		return gsm48_secure_channel(conn,
-			conn->loc_operation->key_seq,
-			_gsm0408_authorize_sec_cb, NULL);
-	return 0;
-}
-
+/* Clear Requeest was received from MSC, release all transactions */
 void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
 	struct gsm_trans *trans, *temp;
@@ -408,7 +263,7 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 	 * Cancel any outstanding location updating request
 	 * operation taking place on the subscriber connection.
 	 */
-	release_loc_updating_req(conn, 0);
+	//release_loc_updating_req(conn, 1);
 
 	/* We might need to cancel the paging response or such. */
 	if (conn->sec_operation && conn->sec_operation->cb) {
@@ -440,6 +295,7 @@ restart:
 	}
 }
 
+/* clear all transactions gloablly; used in case of MNCC socket disconnect */
 void gsm0408_clear_all_trans(struct gsm_network *net, int protocol)
 {
 	struct gsm_trans *trans, *temp;
@@ -497,15 +353,26 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 		     bts->network->network_code, bts->location_area_code);
 
 	if (conn->subscr->tmsi == GSM_RESERVED_TMSI) {
+		/* we did not allocate a TMSI to the MS, so we need to
+		 * include the IMSI in order for the MS to delete any
+		 * old TMSI that might still be allocated */
 		uint8_t mi[10];
 		int len;
 		len = gsm48_generate_mid_from_imsi(mi, conn->subscr->imsi);
 		mid = msgb_put(msg, len);
 		memcpy(mid, mi, len);
 	} else {
+		/* Include the TMSI, which means that the MS will send a
+		 * TMSI REALLOCATION COMPLETE, and we should wait for
+		 * that until T3250 expiration */
 		mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
 		gsm48_generate_mid_from_tmsi(mid, conn->subscr->tmsi);
 	}
+	/* TODO: Follow-on proceed */
+	/* TODO: CTS permission */
+	/* TODO: Equivalent PLMNs */
+	/* TODO: Emergency Number List */
+	/* TODO: Per-MS T3312 */
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
@@ -530,27 +397,10 @@ static int mm_tx_identity_req(struct gsm_subscriber_connection *conn, uint8_t id
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
-static struct gsm_subscriber *subscr_create(const struct gsm_network *net,
-					    const char *imsi)
-{
-	if (net->subscr_creation_mode == GSM_SUBSCR_DONT_CREATE)
-		return NULL;
-
-	if (net->subscr_creation_mode & GSM_SUBSCR_CREAT_W_REGEXP)
-		if (!subscr_regexp_check(net, imsi))
-			return NULL;
-
-	return subscr_create_subscriber(net->subscr_group, imsi, net->ext_min,
-					net->ext_max);
-}
-
 /* Parse Chapter 9.2.11 Identity Response */
 static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	struct gsm_lchan *lchan = msg->lchan;
-	struct gsm_bts *bts = lchan->ts->trx->bts;
-	struct gsm_network *net = bts->network;
 	uint8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[GSM48_MI_SIZE];
 
@@ -560,58 +410,10 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
 
-	switch (mi_type) {
-	case GSM_MI_TYPE_IMSI:
-		/* look up subscriber based on IMSI, create if not found */
-		if (!conn->subscr) {
-			conn->subscr = subscr_get_by_imsi(net->subscr_group,
-							  mi_string);
-			if (!conn->subscr)
-				conn->subscr = subscr_create(net, mi_string);
-		}
-		if (!conn->subscr && conn->loc_operation) {
-			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
-			release_loc_updating_req(conn, 1);
-			return 0;
-		}
-		if (conn->loc_operation)
-			conn->loc_operation->waiting_for_imsi = 0;
-		break;
-	case GSM_MI_TYPE_IMEI:
-	case GSM_MI_TYPE_IMEISV:
-		/* update subscribe <-> IMEI mapping */
-		if (conn->subscr) {
-			db_subscriber_assoc_imei(conn->subscr, mi_string);
-			db_sync_equipment(&conn->subscr->equipment);
-		}
-		if (conn->loc_operation)
-			conn->loc_operation->waiting_for_imei = 0;
-		break;
-	}
-
-	/* Check if we can let the mobile station enter */
-	return gsm0408_authorize(conn, msg);
+	return vlr_sub_rx_id_resp(conn->subscr, gh->data+1, gh->data[0]);
 }
 
-
-static void loc_upd_rej_cb(void *data)
-{
-	struct gsm_subscriber_connection *conn = data;
-	struct gsm_lchan *lchan = conn->lchan;
-	struct gsm_bts *bts = lchan->ts->trx->bts;
-
-	LOGP(DMM, LOGL_DEBUG, "Location Updating Request procedure timedout.\n");
-	gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
-	release_loc_updating_req(conn, 1);
-}
-
-static void schedule_reject(struct gsm_subscriber_connection *conn)
-{
-	conn->loc_operation->updating_timer.cb = loc_upd_rej_cb;
-	conn->loc_operation->updating_timer.data = conn;
-	osmo_timer_schedule(&conn->loc_operation->updating_timer, 5, 0);
-}
-
+/* FIXME: to libosmogsm */
 static const struct value_string lupd_names[] = {
 	{ GSM48_LUPD_NORMAL, "NORMAL" },
 	{ GSM48_LUPD_PERIODIC, "PERIODIC" },
@@ -628,6 +430,11 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	struct gsm_bts *bts = conn->bts;
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
+	enum vlr_lu_type vlr_lu_type = VLR_LU_TYPE_REGULAR;
+
+	uint32_t tmsi;
+	char *imsi;
+	struct osmo_location_area_id old_lai, new_lai;
 
  	lu = (struct gsm48_loc_upd_req *) gh->data;
 
@@ -643,75 +450,47 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	switch (lu->type) {
 	case GSM48_LUPD_NORMAL:
 		osmo_counter_inc(bts->network->stats.loc_upd_type.normal);
+		vlr_lu_type = VLR_LU_TYPE_REGULAR;
 		break;
 	case GSM48_LUPD_IMSI_ATT:
 		osmo_counter_inc(bts->network->stats.loc_upd_type.attach);
+		vlr_lu_type = VLR_LU_TYPE_IMSI_ATTACH;
 		break;
 	case GSM48_LUPD_PERIODIC:
 		osmo_counter_inc(bts->network->stats.loc_upd_type.periodic);
+		vlr_lu_type = VLR_LU_TYPE_PERIODIC;
 		break;
 	}
 
-	/*
-	 * Pseudo Spoof detection: Just drop a second/concurrent
-	 * location updating request.
-	 */
-	if (conn->loc_operation) {
-		DEBUGPC(DMM, "ignoring request due an existing one: %p.\n",
-			conn->loc_operation);
-		gsm0408_loc_upd_rej(conn, GSM48_REJECT_PROTOCOL_ERROR);
-		return 0;
-	}
-
-	allocate_loc_updating_req(conn);
-
-	conn->loc_operation->key_seq = lu->key_seq;
+	/* TODO: 10.5.1.6 MS Classmark for UMTS / Classmark 2 */
+	/* TODO: 10.5.3.14 Aditional update parameters (CS fallback calls) */
+	/* TODO: 10.5.7.8 Device properties */
+	/* TODO: 10.5.1.15 MS network feature support */
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
-		DEBUGPC(DMM, "\n");
-		/* we always want the IMEI, too */
-		mm_tx_identity_req(conn, GSM_MI_TYPE_IMEI);
-		conn->loc_operation->waiting_for_imei = 1;
-
-		/* look up subscriber based on IMSI, create if not found */
-		subscr = subscr_get_by_imsi(bts->network->subscr_group, mi_string);
-		if (!subscr)
-			subscr = subscr_create(bts->network, mi_string);
-
-		if (!subscr) {
-			gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
-			release_loc_updating_req(conn, 0);
-			return 0;
-		}
+		tmsi = GSM_RESERVED_TMSI;
+		imsi = mi_string;
 		break;
 	case GSM_MI_TYPE_TMSI:
-		DEBUGPC(DMM, "\n");
-		/* look up the subscriber based on TMSI, request IMSI if it fails */
-		subscr = subscr_get_by_tmsi(bts->network->subscr_group,
-					    tmsi_from_string(mi_string));
-		if (!subscr) {
-			/* send IDENTITY REQUEST message to get IMSI */
-			mm_tx_identity_req(conn, GSM_MI_TYPE_IMSI);
-			conn->loc_operation->waiting_for_imsi = 1;
-		}
-		/* we always want the IMEI, too */
-		mm_tx_identity_req(conn, GSM_MI_TYPE_IMEI);
-		conn->loc_operation->waiting_for_imei = 1;
+		tmsi = tmsi_from_string(mi_string);
+		imsi = NULL;
 		break;
-	case GSM_MI_TYPE_IMEI:
-	case GSM_MI_TYPE_IMEISV:
-		/* no sim card... FIXME: what to do ? */
-		DEBUGPC(DMM, "unimplemented mobile identity type\n");
-		break;
-	default:	
+	default:
 		DEBUGPC(DMM, "unknown mobile identity type\n");
+		tmsi = GSM_RESERVED_TMSI;
+		imsi = NULL;
 		break;
 	}
 
-	/* schedule the reject timer */
-	schedule_reject(conn);
+	gsm48_decode_lai(&lu->lai, &old_lai.plmn.mcc,
+			 &old_lai.plmn.mnc, &old_lai.lac);
+	new_lai.plmn.mcc = bts->network->country_code;
+	new_lai.plmn.mnc = bts->network->network_code;
+	new_lai.lac = bts->location_area_code;
 
+	subscr = vlr_loc_update(g_vlr, conn, vlr_lu_type, tmsi, imsi,
+				&old_lai, &new_lai);
 	if (!subscr) {
 		DEBUGPC(DRR, "<- Can't find any subscriber for this ID\n");
 		/* FIXME: request id? close channel? */
@@ -721,12 +500,11 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	conn->subscr = subscr;
 	conn->subscr->equipment.classmark1 = lu->classmark1;
 
-	/* check if we can let the subscriber into our network immediately
-	 * or if we need to wait for identity responses. */
-	return gsm0408_authorize(conn, msg);
+	return 0;
 }
 
 /* Turn int into semi-octet representation: 98 => 0x89 */
+/* FIXME: libosmocore/libosmogsm */
 static uint8_t bcdify(uint8_t value)
 {
         uint8_t ret;
@@ -1124,39 +902,19 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_auth_resp *ar = (struct gsm48_auth_resp*) gh->data;
-	struct gsm_network *net = conn->bts->network;
+	bool is_r99 = false;	/* FIXME */
 
 	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s): ",
 		osmo_hexdump(ar->sres, 4));
 
-	/* Safety check */
-	if (!conn->sec_operation) {
-		DEBUGP(DMM, "No authentication/cipher operation in progress !!!\n");
-		return -EIO;
-	}
+	return vlr_sub_rx_auth_resp(conn->subscr, is_r99, false, ar->sres, 4);
+}
 
-	/* Validate SRES */
-	if (memcmp(conn->sec_operation->atuple.vec.sres, ar->sres,4)) {
-		int rc;
-		gsm_cbfn *cb = conn->sec_operation->cb;
-
-		DEBUGPC(DMM, "Invalid (expected %s)\n",
-			osmo_hexdump(conn->sec_operation->atuple.vec.sres, 4));
-
-		if (cb)
-			cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
-			   NULL, conn, conn->sec_operation->cb_data);
-
-		rc = gsm48_tx_mm_auth_rej(conn);
-		release_security_operation(conn);
-		return rc;
-	}
-
-	DEBUGPC(DMM, "OK\n");
-
-	/* Start ciphering */
-	return gsm0808_cipher_mode(conn, net->a5_encryption,
-	                           conn->sec_operation->atuple.vec.kc, 8, 0);
+static int gsm48_rx_mm_tmsi_reall_compl(struct gsm_subscriber_connection *conn)
+{
+	DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
+	       subscr_name(conn->subscr));
+	return vlr_sub_rx_tmsi_realloc_req(conn);
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
@@ -1180,9 +938,7 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 		rc = gsm48_rx_mm_status(msg);
 		break;
 	case GSM48_MT_MM_TMSI_REALL_COMPL:
-		DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
-		       subscr_name(conn->subscr));
-		release_loc_updating_req(conn, 1);
+		rc = gsm48_rx_mm_tmsi_reall_compl(conn);
 		break;
 	case GSM48_MT_MM_IMSI_DETACH_IND:
 		rc = gsm48_rx_mm_imsi_detach_ind(conn, msg);
@@ -3707,6 +3463,78 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	return rc;
 }
 
+/***********************************************************************
+ * VLR integration
+ ***********************************************************************/
+
+/* VLR asks us to send an authentication request */
+static int msc_vlr_tx_auth_req(void *msc_conn_ref, struct gsm_auth_tuple *at)
+{
+	struct gsm_subscriber_connection *conn = msc_conn_ref;
+	return gsm48_tx_mm_auth_req(conn, at->vec.rand, at->key_seq);
+}
+
+/* VLR asks us to send an authentication reject */
+static int msc_vlr_tx_auth_rej(void *msc_conn_ref)
+{
+	struct gsm_subscriber_connection *conn = msc_conn_ref;
+	return gsm48_tx_mm_auth_rej(conn);
+}
+
+/* VLR asks us to transmit an Identity Request of given type */
+static int msc_vlr_tx_id_req(void *msc_conn_ref, uint8_t mi_type)
+{
+	struct gsm_subscriber_connection *conn = msc_conn_ref;
+	return mm_tx_identity_req(conn, mi_type);
+}
+
+/* VLR asks us to transmit a Location Update Accept */
+static int msc_vlr_tx_lu_ack(void *msc_conn_ref)
+{
+	struct gsm_subscriber_connection *conn = msc_conn_ref;
+	return gsm0408_loc_upd_acc(conn);
+}
+
+/* VLR asks us to transmit a Location Update Reject */
+static int msc_vlr_tx_lu_rej(void *msc_conn_ref, uint8_t cause)
+{
+	struct gsm_subscriber_connection *conn = msc_conn_ref;
+	return gsm0408_loc_upd_rej(conn, cause);
+}
+
+/* VLR asks us to start using ciphering */
+static int msc_vlr_set_ciph_mode(void *msc_conn_ref)
+{
+	struct gsm_subscriber_connection *conn = msc_conn_ref;
+#if 0
+	struct vlr_subscriber *vsub = conn->subscr;
+	struct gms_auth_tuple *tuple = subscr->last_tuple;
+
+	if (!tuple)
+		return -1;
+
+	return gsm0808_cipher_mode(conn, subscr->net->a5_encryption,
+		                   tuple->vec.kc, 8, 0);
+#endif
+}
+
+/* VLR informs us that the subscriber data has somehow been modified */
+static void msc_vlr_subscr_update(struct vlr_subscriber *subscr)
+{
+	/* FIXME */
+}
+
+/* operations that we need to implement for libvlr */
+static const struct vlr_ops msc_vlr_ops = {
+	.tx_auth_req = msc_vlr_tx_auth_req,
+	.tx_auth_rej = msc_vlr_tx_auth_rej,
+	.tx_id_req = msc_vlr_tx_id_req,
+	.tx_lu_ack = msc_vlr_tx_lu_ack,
+	.tx_lu_rej = msc_vlr_tx_lu_rej,
+	.set_ciph_mode = msc_vlr_set_ciph_mode,
+	.subscr_update = msc_vlr_subscr_update,
+};
+
 /*
  * This will be ran by the linker when loading the DSO. We use it to
  * do system initialization, e.g. registration of signal handlers.
@@ -3714,4 +3542,6 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
 	osmo_signal_register_handler(SS_ABISIP, handle_abisip_signal, NULL);
+
+	g_vlr = vlr_init(tall_bsc_ctx, &msc_vlr_ops, NULL, 0);
 }

@@ -320,11 +320,15 @@ void gprs_gsup_client_destroy(struct gprs_gsup_client *gsupc)
 int gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 {
 	if (!gsupc) {
+		LOGP(DGPRS, LOGL_NOTICE, "No GSUP client, unable to "
+			"send %s\n", msgb_hexdump(msg));
 		msgb_free(msg);
 		return -ENOTCONN;
 	}
 
 	if (!gsupc->is_connected) {
+		LOGP(DGPRS, LOGL_NOTICE, "GSUP not connected, unable to "
+			"send %s\n", msgb_hexdump(msg));
 		msgb_free(msg);
 		return -EAGAIN;
 	}

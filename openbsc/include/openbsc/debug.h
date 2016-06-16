@@ -36,6 +36,7 @@ enum {
 	DGTPHUB,
 	DRANAP,
 	DSUA,
+	DVLR,
 	Debug_LastEntry,
 };
 
