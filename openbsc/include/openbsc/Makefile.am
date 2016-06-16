@@ -84,6 +84,7 @@ noinst_HEADERS = \
 	trau_mux.h \
 	trau_upqueue.h \
 	ussd.h \
+	vlr.h \
 	vty.h \
 	v42bis.h \
 	v42bis_private.h \
