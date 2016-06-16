@@ -175,6 +175,11 @@ static const struct log_info_cat default_categories[] = {
 		.description = "SCCP User Adaptation Protocol",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DVLR] = {
+		.name = "DVLR",
+		.description = "Visitor Location Register",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 enum log_filter {

@@ -210,6 +210,7 @@ AC_OUTPUT(
     src/libtrau/Makefile
     src/libbsc/Makefile
     src/libmsc/Makefile
+    src/libvlr/Makefile
     src/libmgcp/Makefile
     src/libcommon/Makefile
     src/libfilter/Makefile
@@ -246,6 +247,7 @@ AC_OUTPUT(
     tests/slhc/Makefile
     tests/v42bis/Makefile
     tests/nanobts_omlattr/Makefile
+    tests/vlr/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

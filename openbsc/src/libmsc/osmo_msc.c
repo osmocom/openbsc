@@ -28,6 +28,7 @@
 
 #include <openbsc/gsm_04_11.h>
 
+/* Receive a SAPI-N-REJECT from BSC */
 static void msc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
 	int sapi = dlci & 0x7;
@@ -36,12 +37,14 @@ static void msc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 		gsm411_sapi_n_reject(conn);
 }
 
+/* Receive a CLEAR REQUEST from BSC */
 static int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
 	gsm0408_clear_request(conn, cause);
 	return 1;
 }
 
+/* Receive a COMPLETE LAYER3 INFO from BSC */
 static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			uint16_t chosen_channel)
 {
@@ -64,11 +67,13 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	return BSC_API_CONN_POL_REJECT;
 }
 
+/* Receive a DTAP message from BSC */
 static void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
 {
 	gsm0408_dispatch(conn, msg);
 }
 
+/* Receive an ASSIGNMENT COMPLETE from BSC */
 static void msc_assign_compl(struct gsm_subscriber_connection *conn,
 			     uint8_t rr_cause, uint8_t chosen_channel,
 			     uint8_t encr_alg_id, uint8_t speec)
@@ -76,12 +81,14 @@ static void msc_assign_compl(struct gsm_subscriber_connection *conn,
 	LOGP(DRR, LOGL_DEBUG, "MSC assign complete (do nothing).\n");
 }
 
+/* Receive an ASSIGNMENT FAILURE from BSC */
 static void msc_assign_fail(struct gsm_subscriber_connection *conn,
 			    uint8_t cause, uint8_t *rr_cause)
 {
 	LOGP(DRR, LOGL_DEBUG, "MSC assign failure (do nothing).\n");
 }
 
+/* Receive a CLASSMARK CHNAGE from BSC */
 static void msc_classmark_chg(struct gsm_subscriber_connection *conn,
 			      const uint8_t *cm2, uint8_t cm2_len,
 			      const uint8_t *cm3, uint8_t cm3_len)
@@ -99,6 +106,7 @@ static void msc_classmark_chg(struct gsm_subscriber_connection *conn,
 	}
 }
 
+/* Receive a CIPHERING MODE COMPLETE from BSC */
 static void msc_ciph_m_compl(struct gsm_subscriber_connection *conn,
 			     struct msgb *msg, uint8_t alg_id)
 {
@@ -127,7 +135,7 @@ static void msc_ciph_m_compl(struct gsm_subscriber_connection *conn,
 }
 
 
-
+/* MSC-level operations to be called by libbsc in NITB */
 static struct bsc_api msc_handler = {
 	.sapi_n_reject = msc_sapi_n_reject,
 	.compl_l3 = msc_compl_l3,
@@ -171,6 +179,11 @@ static void msc_release_connection(struct gsm_subscriber_connection *conn)
 		subscr_update_expire_lu(conn->subscr, conn->bts);
 
 	conn->in_release = 1;
+
+	/* Let VLR know that a given subscriber is gone */
+	if (conn->subscr)
+		vlr_sub_disconnected(conn->subscr);
+
 	gsm0808_clear(conn);
 	msc_subscr_con_free(conn);
 }

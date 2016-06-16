@@ -60,20 +60,6 @@ struct gsm_auth_tuple {
 #define GSM_KEY_SEQ_INVAL	7	/* GSM 04.08 - 10.5.1.2 */
 
 /*
- * LOCATION UPDATING REQUEST state
- *
- * Our current operation is:
- *	- Get imei/tmsi
- *	- Accept/Reject according to global policy
- */
-struct gsm_loc_updating_operation {
-        struct osmo_timer_list updating_timer;
-	unsigned int waiting_for_imsi : 1;
-	unsigned int waiting_for_imei : 1;
-	unsigned int key_seq : 4;
-};
-
-/*
  * AUTHENTICATION/CIPHERING state
  */
 struct gsm_security_operation {
@@ -124,7 +110,6 @@ struct gsm_subscriber_connection {
 	/*
 	 * Operations that have a state and might be pending
 	 */
-	struct gsm_loc_updating_operation *loc_operation;
 	struct gsm_security_operation *sec_operation;
 	struct gsm_anchor_operation *anch_operation;
 
