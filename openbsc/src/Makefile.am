@@ -22,6 +22,7 @@ AM_LDFLAGS = \
 # Libraries
 SUBDIRS = \
 	libcommon \
+	libvlr \
 	libmgcp \
 	libbsc \
 	libmsc \
