@@ -27,6 +27,8 @@ void dyn_pdch_init(struct gsm_bts_trx_ts *ts)
 {
 	int rc;
 
+	ts->flags &= ~(TS_F_PDCH_PENDING_MASK | TS_F_PDCH_ACTIVE);
+
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH) {
 		LOGP(DRSL, LOGL_DEBUG, "trying to PDCH ACT on"
 		     " BTS %u TRX %u TS %u\n",
