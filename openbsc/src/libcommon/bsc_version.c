@@ -1,5 +1,5 @@
 /* Hold the copyright and version string */
-/* (C) 2010 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2010-2016 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,9 +20,9 @@
 #include "../../bscconfig.h"
 
 const char *openbsc_copyright =
-	"Copyright (C) 2008-2012 Harald Welte, Holger Freyther\r\n"
+	"Copyright (C) 2008-2016 Harald Welte, Holger Freyther\r\n"
 	"Contributions by Daniel Willmann, Jan Lübbe, Stefan Schmidt\r\n"
-	"Dieter Spaar, Andreas Eversberg, Sylvain Munaut\r\n\r\n"
+	"Dieter Spaar, Andreas Eversberg, Sylvain Munaut, Neels Hofmeyr\r\n\r\n"
 	"License AGPLv3+: GNU AGPL version 3 or later <http://gnu.org/licenses/agpl-3.0.html>\r\n"
 	"This is free software: you are free to change and redistribute it.\r\n"
 	"There is NO WARRANTY, to the extent permitted by law.\r\n";
