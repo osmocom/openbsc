@@ -48,13 +48,17 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	struct ss_request req;
 	struct gsm48_hdr *gh;
 
+	/* TODO: Use subscriber_connection ref-counting if we ever want
+	 * to keep the connection alive due ot ongoing USSD exchange.
+	 * As we answer everytying synchronously so far, there's no need
+	 * yet */
+
 	memset(&req, 0, sizeof(req));
 	gh = msgb_l3(msg);
 	rc = gsm0480_decode_ss_request(gh, msgb_l3len(msg), &req);
 	if (!rc) {
 		DEBUGP(DMM, "Unhandled SS\n");
 		rc = gsm0480_send_ussd_reject(conn, msg, &req);
-		msc_release_connection(conn);
 		return rc;
 	}
 
@@ -78,8 +82,6 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		rc = gsm0480_send_ussd_reject(conn, msg, &req);
 	}
 
-	/* check if we can release it */
-	msc_release_connection(conn);
 	return rc;
 }
 

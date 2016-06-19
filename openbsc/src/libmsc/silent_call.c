@@ -55,6 +55,7 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 		DEBUGPC(DLSMS, "success, using Timeslot %u on ARFCN %u\n",
 			conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
 		conn->silent_call = 1;
+		subscr_con_get(conn);
 		/* increment lchan reference count */
 		osmo_signal_dispatch(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
 		break;
@@ -142,7 +143,7 @@ int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 		conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
 
 	conn->silent_call = 0;
-	msc_release_connection(conn);
+	subscr_con_put(conn);
 
 	return 0;
 }
