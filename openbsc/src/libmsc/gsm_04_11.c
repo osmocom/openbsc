@@ -56,6 +56,7 @@
 #include <openbsc/bsc_rll.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_api.h>
+#include <openbsc/osmo_msc.h>
 
 #ifdef BUILD_SMPP
 #include "smpp_smsc.h"
@@ -831,7 +832,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		gsm411_smr_init(&trans->sms.smr_inst, 0, 1,
 			gsm411_rl_recv, gsm411_mn_send);
 
-		trans->conn = conn;
+		trans->conn = subscr_con_get(conn);
 
 		new_trans = 1;
 	}
@@ -910,7 +911,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 		gsm411_rl_recv, gsm411_mn_send);
 	trans->sms.sms = sms;
 
-	trans->conn = conn;
+	trans->conn = subscr_con_get(conn);
 
 	/* Hardcode SMSC Originating Address for now */
 	data = (uint8_t *)msgb_put(msg, 8);

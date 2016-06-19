@@ -176,13 +176,15 @@ void release_security_operation(struct gsm_subscriber_connection *conn)
 
 	talloc_free(conn->sec_operation);
 	conn->sec_operation = NULL;
-	msc_release_connection(conn);
+	subscr_con_put(conn);
 }
 
 void allocate_security_operation(struct gsm_subscriber_connection *conn)
 {
 	conn->sec_operation = talloc_zero(tall_authciphop_ctx,
 	                                  struct gsm_security_operation);
+	if (conn->sec_operation)
+		subscr_con_get(conn);
 }
 
 int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
@@ -306,8 +308,7 @@ static void release_loc_updating_req(struct gsm_subscriber_connection *conn, int
 	osmo_timer_del(&conn->loc_operation->updating_timer);
 	talloc_free(conn->loc_operation);
 	conn->loc_operation = NULL;
-	if (release)
-		msc_release_connection(conn);
+	subscr_con_put(conn);
 }
 
 static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
@@ -318,6 +319,8 @@ static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
 
 	conn->loc_operation = talloc_zero(tall_locop_ctx,
 					   struct gsm_loc_updating_operation);
+	if (conn->loc_operation)
+		subscr_con_get(conn);
 }
 
 static int finish_lu(struct gsm_subscriber_connection *conn)
@@ -3743,7 +3746,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			return 0;
 		}
 		/* Assign lchan */
-		trans->conn = conn;
+		trans->conn = subscr_con_get(conn);
 		subscr_put(subscr);
 	} else {
 		/* update the subscriber we deal with */
@@ -3892,7 +3895,7 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 			return -ENOMEM;
 		}
 		/* Assign transaction */
-		trans->conn = conn;
+		trans->conn = subscr_con_get(conn);
 	}
 
 	/* find function for current state and message */
@@ -3921,6 +3924,7 @@ static void release_anchor(struct gsm_subscriber_connection *conn)
 	osmo_timer_del(&conn->anch_operation->timeout);
 	talloc_free(conn->anch_operation);
 	conn->anch_operation = NULL;
+	subscr_con_put(conn);
 }
 
 static void anchor_timeout(void *_data)
@@ -3928,7 +3932,6 @@ static void anchor_timeout(void *_data)
 	struct gsm_subscriber_connection *con = _data;
 
 	release_anchor(con);
-	msc_release_connection(con);
 }
 
 int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
@@ -3937,6 +3940,7 @@ int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
 	if (!conn->anch_operation)
 		return -1;
 
+	subscr_con_get(conn);
 	conn->anch_operation->timeout.data = conn;
 	conn->anch_operation->timeout.cb = anchor_timeout;
 	osmo_timer_schedule(&conn->anch_operation->timeout, 5, 0);
