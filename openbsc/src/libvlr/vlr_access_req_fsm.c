@@ -343,6 +343,7 @@ static void proc_arq_vlr_fn_init(struct osmo_fsm_inst *fi,
 		vsub = vlr_subscr_find_by_tmsi(par->vlr, par->tmsi);
 	}
 	if (vsub) {
+		log_set_context(LOG_CTX_VLR_SUBSCR, vsub);
 		if (vsub->proc_arq_fsm && fi != vsub->proc_arq_fsm) {
 			LOGPFSML(fi, LOGL_ERROR,
 				 "Another proc_arq_fsm is already"

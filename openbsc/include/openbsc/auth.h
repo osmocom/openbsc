@@ -4,7 +4,6 @@
 #include <osmocom/core/utils.h>
 
 struct gsm_auth_tuple;
-struct gsm_subscriber;
 
 enum auth_action {
 	AUTH_ERROR		= -1,	/* Internal error */
@@ -19,8 +18,5 @@ static inline const char *auth_action_str(enum auth_action a)
 {
 	return get_value_string(auth_action_names, a);
 }
-
-int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
-                              struct gsm_subscriber *subscr, int key_seq);
 
 #endif /* _AUTH_H */

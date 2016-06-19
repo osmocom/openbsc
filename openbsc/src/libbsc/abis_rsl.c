@@ -159,7 +159,7 @@ static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		     gsm_ts_and_pchan_name(lchan->ts), log_name, chan_nr);
 
 	if (lchan->conn)
-		log_set_context(LOG_CTX_VLR_SUBSCR, lchan->conn->subscr);
+		log_set_context(LOG_CTX_VLR_SUBSCR, lchan->conn->vsub);
 
 	return lchan;
 }

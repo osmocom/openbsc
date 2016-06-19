@@ -238,7 +238,6 @@ AC_OUTPUT(
     tests/Makefile
     tests/atlocal
     tests/gsm0408/Makefile
-    tests/db/Makefile
     tests/channel/Makefile
     tests/bsc/Makefile
     tests/bsc-nat/Makefile
@@ -261,6 +260,7 @@ AC_OUTPUT(
     tests/nanobts_omlattr/Makefile
     tests/vlr/Makefile
     tests/subscr_conn/Makefile
+    tests/sms_queue/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

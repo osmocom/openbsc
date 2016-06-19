@@ -65,14 +65,14 @@ static int send_rrlp_req(struct gsm_subscriber_connection *conn)
 static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 			 void *handler_data, void *signal_data)
 {
-	struct gsm_subscriber *subscr;
+	struct vlr_subscr *vsub;
 	struct gsm_subscriber_connection *conn;
 
 	switch (signal) {
 	case S_SUBSCR_ATTACHED:
 		/* A subscriber has attached. */
-		subscr = signal_data;
-		conn = connection_for_subscr(subscr);
+		vsub = signal_data;
+		conn = connection_for_subscr(vsub);
 		if (!conn)
 			break;
 		send_rrlp_req(conn);

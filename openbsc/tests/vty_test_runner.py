@@ -247,8 +247,10 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.vty.command("end")
         self.vty.command("configure terminal")
         self.vty.command("nitb")
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand", ['']))
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand no-extension", ['']))
+        self.assertTrue(self.vty.verify('subscriber-create-on-demand',
+                ["% 'subscriber-create-on-demand' is no longer supported.", '% This is now up to osmo-hlr.']))
+        self.assertTrue(self.vty.verify("subscriber-create-on-demand no-extension",
+                ["% 'subscriber-create-on-demand' is no longer supported.", '% This is now up to osmo-hlr.']))
         self.vty.command("end")
 
     def testSi2Q(self):
@@ -364,42 +366,6 @@ class TestVTYNITB(TestVTYGenericBSC):
             if classNum != 10:
                 self.assertEquals(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
 
-    def testSubscriberCreateDeleteTwice(self):
-        """
-        OS#1657 indicates that there might be an issue creating the
-        same subscriber twice. This test will use the VTY command to
-        create a subscriber and then issue a second create command
-        with the same IMSI. The test passes if the VTY continues to
-        respond to VTY commands.
-        """
-        self.vty.enable()
-
-        imsi = "204300854013739"
-
-        # Initially we don't have this subscriber
-        self.vty.verify('show subscriber imsi '+imsi, ['% No subscriber found for imsi '+imsi])
-
-        # Lets create one
-        res = self.vty.command('subscriber create imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
-        # And now create one again.
-        res2 = self.vty.command('subscriber create imsi '+imsi)
-        self.assert_(res2.find("    IMSI: "+imsi) > 0)
-        self.assertEqual(res, res2)
-
-        # Verify it has been created
-        res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
-
-        # Delete it
-        res = self.vty.command('subscriber imsi ' + imsi + ' delete')
-        self.assert_("" == res)
-
-        # Now it should not be there anymore
-        res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(('% No subscriber found for imsi ' + imsi) == res)
-
-
     def testSubscriberCreateDelete(self):
         self.vty.enable()
 
@@ -409,118 +375,24 @@ class TestVTYNITB(TestVTYGenericBSC):
         imsi4 = "444583744053764"
 
         # Initially we don't have this subscriber
-        self.vty.verify('show subscriber imsi '+imsi, ['% No subscriber found for imsi '+imsi])
+        self.assertTrue(self.vty.verify('show subscriber imsi '+imsi, ['% No subscriber found for imsi '+imsi]))
 
-        # Lets create one
-        res = self.vty.command('subscriber create imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
-        self.assert_(res.find("Extension") > 0)
-
-        # Now we have it
-        res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
-
-        # With narrow random interval
-        self.vty.command("configure terminal")
-        self.vty.command("nitb")
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand", ['']))
-        # wrong interval
-        res = self.vty.command("subscriber-create-on-demand random 221 122")
-        # error string will contain arguments
-        self.assert_(res.find("122") > 0)
-        self.assert_(res.find("221") > 0)
-        # correct interval - silent ok
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand random 221 222", ['']))
-        self.vty.command("end")
-
-        res = self.vty.command('subscriber create imsi ' + imsi2)
-        self.assert_(res.find("    IMSI: " + imsi2) > 0)
-        self.assert_(res.find("221") > 0 or res.find("222") > 0)
-        self.assert_(res.find("    Extension: ") > 0)
-
-        # Without extension
-        self.vty.command("configure terminal")
-        self.vty.command("nitb")
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand no-extension", ['']))
-        self.vty.command("end")
-        res = self.vty.command('subscriber create imsi ' + imsi3)
-        self.assert_(res.find("    IMSI: " + imsi3) > 0)
-        self.assertEquals(res.find("Extension"), -1)
-
-        # With extension again
-        self.vty.command("configure terminal")
-        self.vty.command("nitb")
-        self.assertTrue(self.vty.verify("no subscriber-create-on-demand", ['']))
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand", ['']))
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand random 221 666", ['']))
-        self.vty.command("end")
-
-        res = self.vty.command('subscriber create imsi ' + imsi4)
-        self.assert_(res.find("    IMSI: " + imsi4) > 0)
-        self.assert_(res.find("    Extension: ") > 0)
-
-        # Delete it
-        res = self.vty.command('subscriber imsi ' + imsi + ' delete')
-        self.assert_("" == res)
-        res = self.vty.command('subscriber imsi ' + imsi2 + ' delete')
-        self.assert_("" == res)
-        res = self.vty.command('subscriber imsi ' + imsi3 + ' delete')
-        self.assert_("" == res)
-        res = self.vty.command('subscriber imsi ' + imsi4 + ' delete')
-        self.assert_("" == res)
-
-        # Now it should not be there anymore
-        res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(('% No subscriber found for imsi ' + imsi) == res)
+        # deprecated
+        self.assertTrue(self.vty.verify('subscriber create imsi '+imsi, ["% 'subscriber create' now needs to be done at osmo-hlr"]))
 
     def testSubscriberSettings(self):
         self.vty.enable()
 
         imsi = "204300854013739"
-        imsi2 = "204301824913769"
-        wrong_imsi = "204300999999999"
 
-        # Lets create one
-        res = self.vty.command('subscriber create imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
-        self.assert_(res.find("Extension") > 0)
-
-        self.vty.verify('subscriber imsi '+wrong_imsi+' name wrong', ['% No subscriber found for imsi '+wrong_imsi])
-        res = self.vty.command('subscriber imsi '+imsi+' name '+('X' * 160))
-        self.assert_(res.find("NAME is too long") > 0)
-
-        self.vty.verify('subscriber imsi '+imsi+' name '+('G' * 159), [''])
-
-        self.vty.verify('subscriber imsi '+wrong_imsi+' extension 840', ['% No subscriber found for imsi '+wrong_imsi])
-        res = self.vty.command('subscriber imsi '+imsi+' extension '+('9' * 15))
-        self.assert_(res.find("EXTENSION is too long") > 0)
-
-        self.vty.verify('subscriber imsi '+imsi+' extension '+('1' * 14), [''])
+        self.assertTrue(self.vty.verify('subscriber imsi '+imsi+' name foo', ["% 'subscriber name' is no longer supported.", '% This is now up to osmo-hlr.']))
+        self.assertTrue(self.vty.verify('subscriber imsi '+imsi+' extension 1234', ["% 'subscriber extension' is no longer supported.", '% This is now up to osmo-hlr.']))
+        self.assertTrue(self.vty.verify('subscriber imsi '+imsi+' delete', ["% 'subscriber delete' is no longer supported.", '% This is now up to osmo-hlr.']))
 
         # With narrow random interval
         self.vty.command("configure terminal")
         self.vty.command("nitb")
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand", ['']))
-        # wrong interval
-        res = self.vty.command("subscriber-create-on-demand random 221 122")
-        self.assert_(res.find("122") > 0)
-        self.assert_(res.find("221") > 0)
-        # correct interval
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand random 221 222", ['']))
-        self.vty.command("end")
-
-        # create subscriber with extension in a configured interval
-        res = self.vty.command('subscriber create imsi ' + imsi2)
-        self.assert_(res.find("    IMSI: " + imsi2) > 0)
-        self.assert_(res.find("221") > 0 or res.find("222") > 0)
-        self.assert_(res.find("    Extension: ") > 0)
-
-        # Delete it
-        res = self.vty.command('subscriber imsi ' + imsi + ' delete')
-        self.assert_(res != "")
-        # imsi2 is inactive so deletion should succeed
-        res = self.vty.command('subscriber imsi ' + imsi2 + ' delete')
-        self.assert_("" == res)
+        self.assertTrue(self.vty.verify('subscriber-create-on-demand', ["% 'subscriber-create-on-demand' is no longer supported.", '% This is now up to osmo-hlr.']))
 
     def testShowPagingGroup(self):
         res = self.vty.command("show paging-group 255 1234567")
