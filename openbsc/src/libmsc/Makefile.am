@@ -42,6 +42,7 @@ libmsc_a_SOURCES = \
 	osmo_msc.c \
 	ctrl_commands.c \
 	meas_feed.c \
+	subscr_conn.c \
 	$(NULL)
 
 if BUILD_SMPP

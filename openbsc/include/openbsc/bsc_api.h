@@ -41,6 +41,9 @@ struct bsc_api {
 	 */
 	void (*mr_config)(struct gsm_subscriber_connection *conn,
 				struct gsm_lchan *lchan, int full_rate);
+
+	/** Callback for additional actions during conn cleanup */
+	void (*conn_cleanup)(struct gsm_subscriber_connection *conn);
 };
 
 int bsc_api_init(struct gsm_network *network, struct bsc_api *api);

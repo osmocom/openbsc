@@ -138,10 +138,8 @@ enum signal_rf {
 	S_RF_GRACE,
 };
 
-struct gsm_subscriber;
-
 struct paging_signal_data {
-	struct gsm_subscriber *subscr;
+	struct vlr_subscr *vsub;
 	struct gsm_bts *bts;
 
 	int paging_result;

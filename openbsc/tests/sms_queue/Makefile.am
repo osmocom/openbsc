@@ -8,36 +8,38 @@ AM_CFLAGS = \
 	-ggdb3 \
 	$(LIBOSMOCORE_CFLAGS) \
 	$(LIBOSMOGSM_CFLAGS) \
-	$(LIBOSMOABIS_CFLAGS) \
-	$(LIBSMPP34_CFLAGS) \
-	$(COVERAGE_CFLAGS) \
-	$(NULL)
-
-AM_LDFLAGS = \
-	$(COVERAGE_LDFLAGS) \
 	$(NULL)
 
 EXTRA_DIST = \
-	bsc_subscr_test.ok \
-	bsc_subscr_test.err \
+	sms_queue_test.ok \
+	sms_queue_test.err \
 	$(NULL)
 
 noinst_PROGRAMS = \
-	bsc_subscr_test \
+	sms_queue_test \
 	$(NULL)
 
-bsc_subscr_test_SOURCES = \
-	bsc_subscr_test.c \
+sms_queue_test_SOURCES = \
+	sms_queue_test.c \
 	$(NULL)
 
-bsc_subscr_test_LDADD = \
+sms_queue_test_LDADD = \
+	$(top_builddir)/src/libmsc/libmsc.a \
+	$(top_builddir)/src/libvlr/libvlr.a \
 	$(top_builddir)/src/libbsc/libbsc.a \
-	$(top_builddir)/src/libcommon-cs/libcommon-cs.a \
 	$(top_builddir)/src/libtrau/libtrau.a \
 	$(top_builddir)/src/libcommon/libcommon.a \
-	$(LIBOSMOCORE_LIBS) \
-	$(LIBOSMOABIS_LIBS) \
-	$(LIBOSMOGSM_LIBS) \
+	$(top_builddir)/src/libcommon-cs/libcommon-cs.a \
 	$(LIBSMPP34_LIBS) \
+	$(LIBOSMOCORE_LIBS) \
+	$(LIBOSMOGSM_LIBS) \
+	$(LIBCRYPTO_LIBS) \
 	$(LIBOSMOVTY_LIBS) \
+	$(LIBOSMOABIS_LIBS) \
+	-ldbi \
+	-lrt \
+	$(NULL)
+
+sms_queue_test_LDFLAGS = \
+	-Wl,--wrap=db_sms_get_next_unsent_rr_msisdn \
 	$(NULL)
