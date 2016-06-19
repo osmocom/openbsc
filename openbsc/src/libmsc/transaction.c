@@ -111,7 +111,7 @@ void trans_free(struct gsm_trans *trans)
 	llist_del(&trans->entry);
 
 	if (trans->conn)
-		msc_release_connection(trans->conn);
+		subscr_con_put(trans->conn);
 
 	trans->conn = NULL;
 	talloc_free(trans);

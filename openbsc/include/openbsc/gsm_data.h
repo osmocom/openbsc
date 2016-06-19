@@ -107,7 +107,12 @@ struct neigh_meas_proc {
 
 /* the per subscriber data for lchan */
 struct gsm_subscriber_connection {
+	/* global linked list of subscriber_connections */
 	struct llist_head entry;
+
+	/* usage count. If this drops to zero, we start the release
+	 * towards A/Iu */
+	uint32_t use_count;
 
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
