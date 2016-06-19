@@ -53,8 +53,8 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/bsc_msc_data.h>
 #include <openbsc/osmo_bsc_rf.h>
-
 #include <openbsc/common_cs.h>
+#include <openbsc/vlr.h>
 
 #include <inttypes.h>
 
@@ -791,6 +791,9 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " location updating reject cause %u%s",
 		gsmnet->reject_cause, VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
+	vty_out(vty, " authentication %s%s",
+		gsmnet->authentication_required ?  "required" : "optional",
+		VTY_NEWLINE);
 	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
 	vty_out(vty, " paging any use tch %d%s", gsmnet->pag_any_tch, VTY_NEWLINE);
 	vty_out(vty, " rrlp mode %s%s", rrlp_mode_name(gsmnet->rrlp.mode),
@@ -821,8 +824,11 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
 	vty_out(vty, " timer t3122 %u%s", gsmnet->T3122, VTY_NEWLINE);
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
+	/*
+	TODO: add in libvlr?
 	vty_out(vty, " subscriber-keep-in-ram %d%s",
 		gsmnet->subscr_group->keep_subscr, VTY_NEWLINE);
+	*/
 	if (gsmnet->tz.override != 0) {
 		if (gsmnet->tz.dst)
 			vty_out(vty, " timezone %d %d %d%s",
@@ -1006,21 +1012,24 @@ DEFUN(show_ts,
 	return CMD_SUCCESS;
 }
 
-static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
+static void subscr_dump_vty(struct vty *vty, struct vlr_subscr *vsub)
 {
-	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
-		subscr->authorized, VTY_NEWLINE);
-	if (strlen(subscr->name))
-		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
-	if (strlen(subscr->extension))
-		vty_out(vty, "    Extension: %s%s", subscr->extension,
+	OSMO_ASSERT(vsub);
+	if (strlen(vsub->name))
+		vty_out(vty, "    Name: '%s'%s", vsub->name, VTY_NEWLINE);
+	if (strlen(vsub->msisdn))
+		vty_out(vty, "    Extension: %s%s", vsub->msisdn,
 			VTY_NEWLINE);
-	vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
-	if (subscr->tmsi != GSM_RESERVED_TMSI)
-		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
+	if (strlen(vsub->imsi))
+		vty_out(vty, "    IMSI: %s%s", vsub->imsi, VTY_NEWLINE);
+	if (vsub->tmsi != GSM_RESERVED_TMSI)
+		vty_out(vty, "    TMSI: %08X%s", vsub->tmsi,
+			VTY_NEWLINE);
+	if (vsub->tmsi_new != GSM_RESERVED_TMSI)
+		vty_out(vty, "    new TMSI: %08X%s", vsub->tmsi_new,
 			VTY_NEWLINE);
 
-	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
+	vty_out(vty, "    Use count: %u%s", vsub->use_count, VTY_NEWLINE);
 }
 
 static void bsc_subscr_dump_vty(struct vty *vty, struct bsc_subscr *bsub)
@@ -1149,9 +1158,9 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 	vty_out(vty, "  Channel Mode / Codec: %s%s",
 		get_value_string(gsm48_cmode_names, lchan->tch_mode),
 		VTY_NEWLINE);
-	if (lchan->conn && lchan->conn->subscr) {
+	if (lchan->conn && lchan->conn->vsub) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_vty(vty, lchan->conn->subscr);
+		subscr_dump_vty(vty, lchan->conn->vsub);
 	} else
 		vty_out(vty, "  No Subscriber%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(lchan->ts->trx->bts)) {

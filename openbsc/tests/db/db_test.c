@@ -254,3 +254,10 @@ int main()
 
 /* stubs */
 void vty_out() {}
+void vlr_subscr_disconnected() {}
+void vlr_subscr_rx_tmsi_reall_compl() {}
+void vlr_subscr_rx_id_resp() {}
+void vlr_subscr_rx_auth_resp() {}
+void vlr_loc_update() {}
+void vlr_proc_acc_req() {}
+void vlr_init() {}

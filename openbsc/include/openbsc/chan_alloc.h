@@ -25,7 +25,7 @@
 struct gsm_subscriber_connection;
 
 /* Find an allocated channel for a specified subscriber */
-struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *subscr);
+struct gsm_subscriber_connection *connection_for_subscr(struct vlr_subscr *vsub);
 
 /* Allocate a logical channel (SDCCH, TCH, ...) */
 struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type, int allow_bigger);

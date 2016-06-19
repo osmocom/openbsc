@@ -7,25 +7,11 @@ cat $abs_srcdir/gsm0408/gsm0408_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/gsm0408/gsm0408_test], [], [expout], [ignore])
 AT_CLEANUP
 
-AT_SETUP([subscr])
-AT_KEYWORDS([subscr])
-cat $abs_srcdir/subscr/subscr_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/subscr/subscr_test], [], [expout], [ignore])
-AT_CLEANUP
-
 AT_SETUP([bsc_subscr])
 AT_KEYWORDS([bsc_subscr])
 cat $abs_srcdir/subscr/bsc_subscr_test.ok > expout
 cat $abs_srcdir/subscr/bsc_subscr_test.err > experr
 AT_CHECK([$abs_top_builddir/tests/subscr/bsc_subscr_test], [], [expout], [experr])
-AT_CLEANUP
-
-AT_SETUP([db])
-AT_KEYWORDS([db])
-cat $abs_srcdir/db/db_test.ok > expout
-cat $abs_srcdir/db/db_test.err > experr
-cat $abs_srcdir/db/hlr.sqlite3 > hlr.sqlite3
-AT_CHECK([$abs_top_builddir/tests/db/db_test], [], [expout], [experr])
 AT_CLEANUP
 
 AT_SETUP([channel])
@@ -164,4 +150,11 @@ AT_SETUP([nanobts_omlattr])
 AT_KEYWORDS([nanobts_omlattr])
 cat $abs_srcdir/nanobts_omlattr/nanobts_omlattr_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/nanobts_omlattr/nanobts_omlattr_test], [], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([sms_queue_test])
+AT_KEYWORDS([sms_queue_test])
+cat $abs_srcdir/sms_queue/sms_queue_test.ok > expout
+cat $abs_srcdir/sms_queue/sms_queue_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/sms_queue/sms_queue_test], [], [expout], [experr])
 AT_CLEANUP

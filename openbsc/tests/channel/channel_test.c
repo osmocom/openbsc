@@ -29,68 +29,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_subscriber.h>
-
-static int s_end = 0;
-static struct gsm_subscriber_connection s_conn;
-static void *s_data;
-static gsm_cbfn *s_cbfn = NULL;
-
-/* our handler */
-static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, void *data, void *param)
-{
-	assert(hook == 101);
-	assert(event == 200);
-	assert(msg == (void*)0x1323L);
-	assert(data == &s_conn);
-	assert(param == (void*)0x2342L);
-	printf("Reached, didn't crash, test passed\n");
-	s_end = true;
-	return 0;
-}
-
-/* mock object for testing, directly invoke the cb... maybe later through the timer */
-int paging_request(struct gsm_bts *bts, struct bsc_subscr *bsub, int type, gsm_cbfn *cbfn, void *data)
-{
-	s_data = data;
-	s_cbfn = cbfn;
-
-	/* claim we have patched */
-	return 1;
-}
-
-
-void test_request_chan(void)
-{
-	struct gsm_network *network;
-	struct gsm_bts *bts;
-
-	printf("Testing the gsm_subscriber chan logic\n");
-
-	/* Create a dummy network */
-	network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
-	if (!network)
-		exit(1);
-	bts = gsm_bts_alloc(network);
-	bts->location_area_code = 23;
-	s_conn.network = network;
-
-	/* Create a dummy subscriber */
-	struct gsm_subscriber *subscr = subscr_alloc();
-	subscr->lac = 23;
-	subscr->group = network->subscr_group;
-
-	OSMO_ASSERT(subscr->group);
-	OSMO_ASSERT(subscr->group->net == network);
-
-	/* Ask for a channel... */
-	struct subscr_request *sr;
-	sr = subscr_request_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
-	OSMO_ASSERT(sr);
-	OSMO_ASSERT(s_cbfn);
-	s_cbfn(101, 200, (void*)0x1323L, &s_conn, s_data);
-
-	OSMO_ASSERT(s_end);
-}
+#include <openbsc/vlr.h>
 
 void test_dyn_ts_subslots(void)
 {
@@ -126,7 +65,6 @@ int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
 
-	test_request_chan();
 	test_dyn_ts_subslots();
 
 	return EXIT_SUCCESS;
@@ -140,5 +78,13 @@ void gsm48_secure_channel() {}
 void paging_request_stop() {}
 void vty_out() {}
 
-struct tlv_definition nm_att_tlvdef;
+void ipa_client_conn_clear_queue() {}
+void ipa_client_conn_close() {}
+void ipa_client_conn_create() {}
+void ipa_client_conn_destroy() {}
+void ipa_client_conn_open() {}
+void ipa_client_conn_send() {}
+void ipa_msg_push_header() {}
+void ipaccess_bts_handle_ccm() {}
 
+struct tlv_definition nm_att_tlvdef;
