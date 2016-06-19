@@ -6,6 +6,7 @@
 #include "bsc_api.h"
 
 struct bsc_api *msc_bsc_api();
-void msc_release_connection(struct gsm_subscriber_connection *conn);
+struct gsm_subscriber_connection *subscr_con_get(struct gsm_subscriber_connection *conn);
+void subscr_con_put(struct gsm_subscriber_connection *conn);
 
 #endif

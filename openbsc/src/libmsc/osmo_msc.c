@@ -144,22 +144,21 @@ struct bsc_api *msc_bsc_api() {
 }
 
 /* lchan release handling */
-void msc_release_connection(struct gsm_subscriber_connection *conn)
+static void msc_release_connection(struct gsm_subscriber_connection *conn)
 {
 	/* skip when we are in release, e.g. due an error */
 	if (conn->in_release)
 		return;
 
-	/* skip releasing of silent calls as they have no transaction */
 	if (conn->silent_call)
-		return;
+		LOGP(DMSC, LOGL_ERROR, "release_connection() but silent_call active?!?\n");
 
 	/* check if there is a pending operation */
 	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
-		return;
+		LOGP(DMSC, LOGL_ERROR, "relase_connection() but {loc,sec,anch}_operation alive?!?\n");
 
 	if (trans_has_conn(conn))
-		return;
+		LOGP(DMSC, LOGL_ERROR, "release_conncetion() but transactions alive?!?\n");
 
 	/* no more connections, asking to release the channel */
 
@@ -174,4 +173,36 @@ void msc_release_connection(struct gsm_subscriber_connection *conn)
 	conn->in_release = 1;
 	gsm0808_clear(conn);
 	msc_subscr_con_free(conn);
+}
+
+/* increment the ref-count. Needs to be called by every user */
+struct gsm_subscriber_connection *subscr_con_get(struct gsm_subscriber_connection *conn)
+{
+	OSMO_ASSERT(conn);
+
+	if (conn->in_release)
+		return NULL;
+
+	conn->use_count++;
+	DEBUGP(DMSC, "increased subscr_con use_count to %u\n", conn->use_count);
+
+	return conn;
+}
+
+/* decrement the ref-count. Once it reaches zero, we release */
+void subscr_con_put(struct gsm_subscriber_connection *conn)
+{
+	OSMO_ASSERT(conn);
+
+	if (conn->use_count == 0) {
+		LOGP(DMSC, LOGL_ERROR, "tryin to decrement conn use count, but is alrady 0\n");
+		return;
+	}
+
+	conn->use_count--;
+	DEBUGP(DMSC, "decreased subscr_con use_count to %u\n", conn->use_count);
+
+	if (conn->use_count == 0) {
+		msc_release_connection(conn);
+	}
 }
