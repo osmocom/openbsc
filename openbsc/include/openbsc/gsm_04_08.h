@@ -9,7 +9,6 @@
 
 struct msgb;
 struct gsm_bts;
-struct gsm_subscriber;
 struct gsm_network;
 struct gsm_trans;
 struct gsm_subscriber_connection;
@@ -26,14 +25,15 @@ static inline struct msgb *gsm48_msgb_alloc_name(const char *name)
 				   name);
 }
 
+void cm_service_request_concludes(struct gsm_subscriber_connection *conn,
+				  struct msgb *msg);
+
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
-void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause);
 void gsm0408_clear_all_trans(struct gsm_network *net, int protocol);
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id);
-int gsm0408_new_conn(struct gsm_subscriber_connection *conn);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *bts, uint8_t ra);
 /* don't use "enum gsm_chreq_reason_t" to avoid circular dependency */
 int get_reason_by_chreq(uint8_t ra, int neci);

@@ -3,6 +3,10 @@
 
 #include <osmocom/gsm/protocol/gsm_04_11.h>
 
+struct vlr_subscr;
+struct gsm_subscriber_connection;
+struct gsm_trans;
+
 #define UM_SAPI_SMS 3	/* See GSM 04.05/04.06 */
 
 /* SMS deliver PDU */
@@ -29,10 +33,12 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
 struct gsm_sms *sms_alloc(void);
 void sms_free(struct gsm_sms *sms);
-struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, struct gsm_subscriber *sender, int dcs, const char *text);
+struct gsm_sms *sms_from_text(struct vlr_subscr *receiver,
+			      struct vlr_subscr *sender,
+			      int dcs, const char *text);
 
 void _gsm411_sms_trans_free(struct gsm_trans *trans);
-int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
+int gsm411_send_sms_subscr(struct vlr_subscr *vsub,
 			   struct gsm_sms *sms);
 int gsm411_send_sms(struct gsm_subscriber_connection *conn,
 		    struct gsm_sms *sms);

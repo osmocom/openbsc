@@ -88,7 +88,7 @@ struct osmo_smpp_route {
 
 struct osmo_smpp_cmd {
 	struct llist_head	list;
-	struct gsm_subscriber	*subscr;
+	struct vlr_subscr	*vsub;
 	struct gsm_sms		*sms;
 	uint32_t		sequence_nr;
 	struct osmo_timer_list	response_timer;

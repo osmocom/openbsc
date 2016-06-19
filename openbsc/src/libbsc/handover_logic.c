@@ -40,6 +40,7 @@
 #include <osmocom/core/talloc.h>
 #include <openbsc/transaction.h>
 #include <openbsc/trau_mux.h>
+#include <openbsc/vlr.h>
 
 struct bsc_handover {
 	struct llist_head list;
@@ -260,7 +261,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 
 	net = new_lchan->ts->trx->bts->network;
 	LOGP(DHO, LOGL_INFO, "Subscriber %s HO from BTS %u->%u on ARFCN "
-	     "%u->%u\n", subscr_name(ho->old_lchan->conn->subscr),
+	     "%u->%u\n", vlr_subscr_name(ho->old_lchan->conn->vsub),
 	     ho->old_lchan->ts->trx->bts->nr, new_lchan->ts->trx->bts->nr,
 	     ho->old_lchan->ts->trx->arfcn, new_lchan->ts->trx->arfcn);
 

@@ -38,6 +38,7 @@
 #include <openbsc/e1_config.h>
 #include <openbsc/common_bsc.h>
 #include <openbsc/pcu_if.h>
+#include <openbsc/osmo_msc.h>
 #include <limits.h>
 
 /* global pointer to the gsm network data structure */
@@ -511,6 +512,12 @@ int bsc_network_alloc(mncc_recv_cb_t mncc_recv)
 
 	bsc_gsmnet->name_long = talloc_strdup(bsc_gsmnet, "OpenBSC");
 	bsc_gsmnet->name_short = talloc_strdup(bsc_gsmnet, "OpenBSC");
+
+	/* TODO: move to libmsc when gsm_network is split between libbsc and
+	 * libmsc */
+	bsc_gsmnet->gsup_server_addr_str = talloc_strdup(bsc_gsmnet,
+							 MSC_HLR_REMOTE_IP_DEFAULT);
+	bsc_gsmnet->gsup_server_port = MSC_HLR_REMOTE_PORT_DEFAULT;
 
 	return 0;
 }

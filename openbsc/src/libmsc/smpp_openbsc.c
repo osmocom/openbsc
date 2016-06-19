@@ -45,31 +45,32 @@
 #include <openbsc/transaction.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/vlr.h>
 
 #include "smpp_smsc.h"
 
-/*! \brief find gsm_subscriber for a given SMPP NPI/TON/Address */
-static struct gsm_subscriber *subscr_by_dst(struct gsm_network *net,
-					    uint8_t npi, uint8_t ton, const char *addr)
+/*! \brief find vlr_subscr for a given SMPP NPI/TON/Address */
+static struct vlr_subscr *subscr_by_dst(struct gsm_network *net,
+					    uint8_t npi, uint8_t ton,
+					    const char *addr)
 {
-	struct gsm_subscriber *subscr = NULL;
+	struct vlr_subscr *vsub = NULL;
 
 	switch (npi) {
 	case NPI_Land_Mobile_E212:
-		subscr = subscr_get_by_imsi(net->subscr_group, addr);
+		vsub = vlr_subscr_find_by_imsi(net->vlr, addr);
 		break;
 	case NPI_ISDN_E163_E164:
 	case NPI_Private:
-		subscr = subscr_get_by_extension(net->subscr_group, addr);
+		vsub = vlr_subscr_find_by_msisdn(net->vlr, addr);
 		break;
 	default:
 		LOGP(DSMPP, LOGL_NOTICE, "Unsupported NPI: %u\n", npi);
 		break;
 	}
 
-	/* tag the context in case we know it */
-	log_set_context(LOG_CTX_VLR_SUBSCR, subscr);
-	return subscr;
+	log_set_context(LOG_CTX_VLR_SUBSCR, vsub);
+	return vsub;
 }
 
 /*! \brief find a TLV with given tag in list of libsmpp34 TLVs */
@@ -88,7 +89,7 @@ static struct tlv_t *find_tlv(struct tlv_t *head, uint16_t tag)
 static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 			 const struct submit_sm_t *submit)
 {
-	struct gsm_subscriber *dest;
+	struct vlr_subscr *dest;
 	struct gsm_sms *sms;
 	struct tlv_t *t;
 	const uint8_t *sms_msg;
@@ -111,7 +112,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 			/* ERROR: we cannot have both! */
 			LOGP(DLSMS, LOGL_ERROR, "SMPP Cannot have payload in "
 				"TLV _and_ in the header\n");
-			subscr_put(dest);
+			vlr_subscr_put(dest);
 			return ESME_ROPTPARNOTALLWD;
 		}
 		sms_msg = t->value.octet;
@@ -122,7 +123,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	} else {
 		LOGP(DLSMS, LOGL_ERROR,
 			"SMPP neither message payload nor valid sm_length.\n");
-		subscr_put(dest);
+		vlr_subscr_put(dest);
 		return ESME_RINVPARLEN;
 	}
 
@@ -134,7 +135,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	sms->receiver = dest;
 	sms->dst.ton = submit->dest_addr_ton;
 	sms->dst.npi = submit->dest_addr_npi;
-	osmo_strlcpy(sms->dst.addr, dest->extension, sizeof(sms->dst.addr));
+	osmo_strlcpy(sms->dst.addr, dest->msisdn, sizeof(sms->dst.addr));
 
 	/* fill in the source address */
 	sms->src.ton = submit->source_addr_ton;
@@ -252,7 +253,7 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 	return rc;
 }
 
-static void alert_all_esme(struct smsc *smsc, struct gsm_subscriber *subscr,
+static void alert_all_esme(struct smsc *smsc, struct vlr_subscr *vsub,
 			   uint8_t smpp_avail_status)
 {
 	struct osmo_esme *esme;
@@ -265,11 +266,11 @@ static void alert_all_esme(struct smsc *smsc, struct gsm_subscriber *subscr,
 		if (esme->acl && esme->acl->deliver_src_imsi) {
 			smpp_tx_alert(esme, TON_Subscriber_Number,
 				      NPI_Land_Mobile_E212,
-				      subscr->imsi, smpp_avail_status);
+				      vsub->imsi, smpp_avail_status);
 		} else {
 			smpp_tx_alert(esme, TON_Network_Specific,
 				      NPI_ISDN_E163_E164,
-				      subscr->extension, smpp_avail_status);
+				      vsub->msisdn, smpp_avail_status);
 		}
 	}
 }
@@ -316,7 +317,7 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 		}
 		break;
 	case S_SMS_SMMA:
-		if (!sig_sms->trans || !sig_sms->trans->subscr) {
+		if (!sig_sms->trans || !sig_sms->trans->vsub) {
 			/* SMMA without a subscriber? strange... */
 			LOGP(DLSMS, LOGL_NOTICE, "SMMA without subscriber?\n");
 			break;
@@ -325,7 +326,7 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 		/* There's no real 1:1 match for SMMA in SMPP.  However,
 		 * an ALERT NOTIFICATION seems to be the most logical
 		 * choice */
-		alert_all_esme(smsc, sig_sms->trans->subscr, 0);
+		alert_all_esme(smsc, sig_sms->trans->vsub, 0);
 		break;
 	}
 
@@ -336,7 +337,7 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 static int smpp_subscr_cb(unsigned int subsys, unsigned int signal,
 			  void *handler_data, void *signal_data)
 {
-	struct gsm_subscriber *subscr = signal_data;
+	struct vlr_subscr *vsub = signal_data;
 	struct smsc *smsc = handler_data;
 	uint8_t smpp_avail_status;
 
@@ -352,7 +353,7 @@ static int smpp_subscr_cb(unsigned int subsys, unsigned int signal,
 		return 0;
 	}
 
-	alert_all_esme(smsc, subscr, smpp_avail_status);
+	alert_all_esme(smsc, vsub, smpp_avail_status);
 
 	return 0;
 }
@@ -452,12 +453,12 @@ static void append_osmo_tlvs(tlv_t **req_tlv, const struct gsm_lchan *lchan)
 			      dl_meas->full.rx_qual);
 	}
 
-	if (lchan->conn && lchan->conn->subscr) {
-		struct gsm_subscriber *subscr = lchan->conn->subscr;
-		size_t imei_len = strlen(subscr->equipment.imei);
+	if (lchan->conn && lchan->conn->vsub) {
+		struct vlr_subscr *vsub = lchan->conn->vsub;
+		size_t imei_len = strlen(vsub->imei);
 		if (imei_len)
 			append_tlv(req_tlv, TLVID_osmo_imei,
-				   (uint8_t *)subscr->equipment.imei, imei_len+1);
+				   (uint8_t *)vsub->imei, imei_len+1);
 	}
 }
 
@@ -496,7 +497,7 @@ static void smpp_cmd_free(struct osmo_smpp_cmd *cmd)
 {
 	osmo_timer_del(&cmd->response_timer);
 	llist_del(&cmd->list);
-	subscr_put(cmd->subscr);
+	vlr_subscr_put(cmd->vsub);
 	sms_free(cmd->sms);
 	talloc_free(cmd);
 }
@@ -514,7 +515,7 @@ void smpp_cmd_ack(struct osmo_smpp_cmd *cmd)
 	struct gsm_subscriber_connection *conn;
 	struct gsm_trans *trans;
 
-	conn = connection_for_subscr(cmd->subscr);
+	conn = connection_for_subscr(cmd->vsub);
 	if (!conn) {
 		LOGP(DSMPP, LOGL_ERROR, "No connection to subscriber anymore\n");
 		return;
@@ -538,7 +539,7 @@ void smpp_cmd_err(struct osmo_smpp_cmd *cmd, uint32_t status)
 	struct gsm_trans *trans;
 	int gsm411_cause;
 
-	conn = connection_for_subscr(cmd->subscr);
+	conn = connection_for_subscr(cmd->vsub);
 	if (!conn) {
 		LOGP(DSMPP, LOGL_ERROR, "No connection to subscriber anymore\n");
 		return;
@@ -566,7 +567,7 @@ static void smpp_deliver_sm_cb(void *data)
 }
 
 static int smpp_cmd_enqueue(struct osmo_esme *esme,
-			    struct gsm_subscriber *subscr, struct gsm_sms *sms,
+			    struct vlr_subscr *vsub, struct gsm_sms *sms,
 			    uint32_t sequence_number, bool *deferred)
 {
 	struct osmo_smpp_cmd *cmd;
@@ -577,7 +578,7 @@ static int smpp_cmd_enqueue(struct osmo_esme *esme,
 
 	cmd->sequence_nr	= sequence_number;
 	cmd->sms		= sms;
-	cmd->subscr		= subscr_get(subscr);
+	cmd->vsub		= vlr_subscr_get(vsub);
 
 	/* FIXME: No predefined value for this response_timer as specified by
 	 * SMPP 3.4 specs, section 7.2. Make this configurable? Don't forget
@@ -623,13 +624,13 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 		deliver.source_addr_npi = NPI_Land_Mobile_E212;
 		snprintf((char *)deliver.source_addr,
 			sizeof(deliver.source_addr), "%s",
-			conn->subscr->imsi);
+			conn->vsub->imsi);
 	} else {
 		deliver.source_addr_ton = TON_Network_Specific;
 		deliver.source_addr_npi = NPI_ISDN_E163_E164;
 		snprintf((char *)deliver.source_addr,
 			 sizeof(deliver.source_addr), "%s",
-			 conn->subscr->extension);
+			 conn->vsub->msisdn);
 	}
 
 	deliver.dest_addr_ton	= sms->dst.ton;
@@ -686,7 +687,7 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 	if (ret < 0)
 		return ret;
 
-	return smpp_cmd_enqueue(esme, conn->subscr, sms,
+	return smpp_cmd_enqueue(esme, conn->vsub, sms,
 				deliver.sequence_number, deferred);
 }
 

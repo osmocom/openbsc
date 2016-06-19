@@ -32,6 +32,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/trau_mux.h>
+#include <openbsc/vlr.h>
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm48.h>
@@ -273,12 +274,13 @@ void bsc_subscr_con_free(struct gsm_subscriber_connection *conn)
 	if (!conn)
 		return;
 
+	if (conn->network->bsc_api->conn_cleanup)
+		conn->network->bsc_api->conn_cleanup(conn);
 
-	if (conn->subscr) {
-		subscr_put(conn->subscr);
-		conn->subscr = NULL;
+	if (conn->vsub) {
+		LOGP(DNM, LOGL_ERROR, "conn->vsub should have been cleared.\n");
+		conn->vsub = NULL;
 	}
-
 
 	if (conn->ho_lchan) {
 		LOGP(DNM, LOGL_ERROR, "The ho_lchan should have been cleared.\n");

@@ -23,25 +23,31 @@
 #include <openbsc/mncc.h>
 #include <openbsc/debug.h>
 #include <osmocom/core/talloc.h>
-#include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/mncc.h>
 #include <openbsc/paging.h>
 #include <openbsc/osmo_msc.h>
+#include <openbsc/vlr.h>
 
 void *tall_trans_ctx;
 
 void _gsm48_cc_trans_free(struct gsm_trans *trans);
 
+/* Find a transaction in connection for given protocol + transaction ID
+ * \param[in] conn Connection in whihc we want to find transaction
+ * \param[in] proto Protocol of transaction
+ * \param[in] trans_id Transaction ID of transaction
+ * \returns Matching transaction, if any
+ */
 struct gsm_trans *trans_find_by_id(struct gsm_subscriber_connection *conn,
 				   uint8_t proto, uint8_t trans_id)
 {
 	struct gsm_trans *trans;
 	struct gsm_network *net = conn->network;
-	struct gsm_subscriber *subscr = conn->subscr;
+	struct vlr_subscr *vsub = conn->vsub;
 
 	llist_for_each_entry(trans, &net->trans_list, entry) {
-		if (trans->subscr == subscr &&
+		if (trans->vsub == vsub &&
 		    trans->protocol == proto &&
 		    trans->transaction_id == trans_id)
 			return trans;
@@ -49,6 +55,11 @@ struct gsm_trans *trans_find_by_id(struct gsm_subscriber_connection *conn,
 	return NULL;
 }
 
+/* Find a transaction by call reference
+ * \param[in] net Network in which we should search
+ * \param[in] callref Call Reference of transaction
+ * \returns Matching transaction, if any
+ */
 struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 					uint32_t callref)
 {
@@ -61,21 +72,27 @@ struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 	return NULL;
 }
 
+/*! Allocate a new transaction and add it to network list
+ *  \param[in] net Netwokr in which we allocate transaction
+ *  \param[in] subscr Subscriber for which we allocate transaction
+ *  \param[in] protocol Protocol (CC/SMS/...)
+ *  \param[in] callref Call Reference
+ *  \returns Transaction
+ */
 struct gsm_trans *trans_alloc(struct gsm_network *net,
-			      struct gsm_subscriber *subscr,
+			      struct vlr_subscr *vsub,
 			      uint8_t protocol, uint8_t trans_id,
 			      uint32_t callref)
 {
 	struct gsm_trans *trans;
 
-	DEBUGP(DCC, "subscr=%p, net=%p\n", subscr, net);
+	DEBUGP(DCC, "subscr=%p, net=%p\n", vsub, net);
 
 	trans = talloc_zero(tall_trans_ctx, struct gsm_trans);
 	if (!trans)
 		return NULL;
 
-	trans->subscr = subscr;
-	subscr_get(trans->subscr);
+	trans->vsub = vlr_subscr_get(vsub);
 
 	trans->protocol = protocol;
 	trans->transaction_id = trans_id;
@@ -87,6 +104,9 @@ struct gsm_trans *trans_alloc(struct gsm_network *net,
 	return trans;
 }
 
+/* Release a transaction
+ * \param[in] trans Transaction to be released
+ */
 void trans_free(struct gsm_trans *trans)
 {
 	switch (trans->protocol) {
@@ -103,23 +123,28 @@ void trans_free(struct gsm_trans *trans)
 		trans->paging_request = NULL;
 	}
 
-	if (trans->subscr) {
-		subscr_put(trans->subscr);
-		trans->subscr = NULL;
+	if (trans->vsub) {
+		vlr_subscr_put(trans->vsub);
+		trans->vsub = NULL;
 	}
 
 	llist_del(&trans->entry);
 
 	if (trans->conn)
-		msc_release_connection(trans->conn);
+		msc_subscr_conn_put(trans->conn);
 
 	trans->conn = NULL;
 	talloc_free(trans);
 }
 
 /* allocate an unused transaction ID for the given subscriber
- * in the given protocol using the ti_flag specified */
-int trans_assign_trans_id(struct gsm_network *net, struct gsm_subscriber *subscr,
+ * in the given protocol using the ti_flag specified
+ * \param[in] net GSM network
+ * \param[in] subscr Subscriber for which to find ID
+ * \param[in] protocol Protocol for whihc to find ID
+ * \param[in] ti_flag FIXME
+ */
+int trans_assign_trans_id(struct gsm_network *net, struct vlr_subscr *vsub,
 			  uint8_t protocol, uint8_t ti_flag)
 {
 	struct gsm_trans *trans;
@@ -131,7 +156,7 @@ int trans_assign_trans_id(struct gsm_network *net, struct gsm_subscriber *subscr
 
 	/* generate bitmask of already-used TIDs for this (subscr,proto) */
 	llist_for_each_entry(trans, &net->trans_list, entry) {
-		if (trans->subscr != subscr ||
+		if (trans->vsub != vsub ||
 		    trans->protocol != protocol ||
 		    trans->transaction_id == 0xff)
 			continue;
@@ -151,6 +176,10 @@ int trans_assign_trans_id(struct gsm_network *net, struct gsm_subscriber *subscr
 	return -1;
 }
 
+/* Check if we have any transaction for given connection
+ * \param[in] conn Connection to check
+ * \returns 1 in case there is a transaction, 0 otherwise
+ */
 int trans_has_conn(const struct gsm_subscriber_connection *conn)
 {
 	struct gsm_trans *trans;
@@ -160,4 +189,14 @@ int trans_has_conn(const struct gsm_subscriber_connection *conn)
 			return 1;
 
 	return 0;
+}
+
+void trans_conn_closed(struct gsm_subscriber_connection *conn)
+{
+	struct gsm_trans *trans, *t2;
+
+	llist_for_each_entry_safe(trans, t2, &conn->network->trans_list, entry) {
+		if (trans->conn == conn)
+			trans_free(trans);
+	}
 }

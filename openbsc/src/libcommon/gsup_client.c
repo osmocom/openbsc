@@ -72,12 +72,12 @@ static int gsup_client_connect(struct gsup_client *gsupc)
 	rc = ipa_client_conn_open(gsupc->link);
 
 	if (rc >= 0) {
-		LOGP(DLGSUP, LOGL_INFO, "GSUP connecting to %s:%d\n",
+		LOGP(DLGSUP, LOGL_NOTICE, "GSUP connecting to %s:%d\n",
 		     gsupc->link->addr, gsupc->link->port);
 		return 0;
 	}
 
-	LOGP(DLGSUP, LOGL_INFO, "GSUP failed to connect to %s:%d: %s\n",
+	LOGP(DLGSUP, LOGL_ERROR, "GSUP failed to connect to %s:%d: %s\n",
 	     gsupc->link->addr, gsupc->link->port, strerror(-rc));
 
 	if (rc == -EBADF || rc == -ENOTSOCK || rc == -EAFNOSUPPORT ||
@@ -331,11 +331,15 @@ void gsup_client_destroy(struct gsup_client *gsupc)
 int gsup_client_send(struct gsup_client *gsupc, struct msgb *msg)
 {
 	if (!gsupc) {
+		LOGP(DGPRS, LOGL_NOTICE, "No GSUP client, unable to "
+			"send %s\n", msgb_hexdump(msg));
 		msgb_free(msg);
 		return -ENOTCONN;
 	}
 
 	if (!gsupc->is_connected) {
+		LOGP(DGPRS, LOGL_NOTICE, "GSUP not connected, unable to "
+			"send %s\n", msgb_hexdump(msg));
 		msgb_free(msg);
 		return -EAGAIN;
 	}

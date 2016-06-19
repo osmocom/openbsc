@@ -31,133 +31,34 @@
 #include <osmocom/core/utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
+#include <openbsc/vlr.h>
 
 LLIST_HEAD(active_subscribers);
 void *tall_subscr_ctx;
 
-/* for the gsm_subscriber.c */
-struct llist_head *subscr_bsc_active_subscribers(void)
+/* return static buffer with printable name of VLR subscriber */
+const char *vlr_subscr_name(struct vlr_subscr *vsub)
 {
-	return &active_subscribers;
-}
-
-
-char *subscr_name(struct gsm_subscriber *subscr)
-{
-	if (!subscr)
+	static char buf[32];
+	if (!vsub)
 		return "unknown";
-
-	if (strlen(subscr->name))
-		return subscr->name;
-
-	return subscr->imsi;
+	if (vsub->msisdn[0])
+		snprintf(buf, sizeof(buf), "MSISDN:%s", vsub->msisdn);
+	else if (vsub->imsi[0])
+		snprintf(buf, sizeof(buf), "IMSI:%s", vsub->imsi);
+	else if (vsub->tmsi != GSM_RESERVED_TMSI)
+		snprintf(buf, sizeof(buf), "TMSI:0x%08x", vsub->tmsi);
+	else if (vsub->tmsi_new != GSM_RESERVED_TMSI)
+		snprintf(buf, sizeof(buf), "TMSI(new):0x%08x", vsub->tmsi_new);
+	else
+		return "unknown";
+	buf[sizeof(buf)-1] = '\0';
+	return buf;
 }
 
-struct gsm_subscriber *subscr_alloc(void)
+const char *vlr_subscr_msisdn_or_name(struct vlr_subscr *vsub)
 {
-	struct gsm_subscriber *s;
-
-	s = talloc_zero(tall_subscr_ctx, struct gsm_subscriber);
-	if (!s)
-		return NULL;
-
-	llist_add_tail(&s->entry, &active_subscribers);
-	s->use_count = 1;
-	s->tmsi = GSM_RESERVED_TMSI;
-
-	INIT_LLIST_HEAD(&s->requests);
-
-	return s;
-}
-
-static void subscr_free(struct gsm_subscriber *subscr)
-{
-	llist_del(&subscr->entry);
-	talloc_free(subscr);
-}
-
-void subscr_direct_free(struct gsm_subscriber *subscr)
-{
-	OSMO_ASSERT(subscr->use_count == 1);
-	subscr_free(subscr);
-}
-
-struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr)
-{
-	subscr->use_count++;
-	DEBUGP(DREF, "subscr %s usage increases usage to: %d\n",
-			subscr->extension, subscr->use_count);
-	return subscr;
-}
-
-struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr)
-{
-	subscr->use_count--;
-	DEBUGP(DREF, "subscr %s usage decreased usage to: %d\n",
-			subscr->extension, subscr->use_count);
-	if (subscr->use_count <= 0 &&
-	    !((subscr->group && subscr->group->keep_subscr) ||
-	      subscr->keep_in_ram))
-		subscr_free(subscr);
-	return NULL;
-}
-
-struct gsm_subscriber *subscr_get_or_create(struct gsm_subscriber_group *sgrp,
-					    const char *imsi)
-{
-	struct gsm_subscriber *subscr;
-
-	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
-		if (strcmp(subscr->imsi, imsi) == 0 && subscr->group == sgrp)
-			return subscr_get(subscr);
-	}
-
-	subscr = subscr_alloc();
-	if (!subscr)
-		return NULL;
-
-	osmo_strlcpy(subscr->imsi, imsi, sizeof(subscr->imsi));
-	subscr->group = sgrp;
-	return subscr;
-}
-
-struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_subscriber_group *sgrp,
-					     uint32_t tmsi)
-{
-	struct gsm_subscriber *subscr;
-
-	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
-		if (subscr->tmsi == tmsi && subscr->group == sgrp)
-			return subscr_get(subscr);
-	}
-
-	return NULL;
-}
-
-struct gsm_subscriber *subscr_active_by_imsi(struct gsm_subscriber_group *sgrp,
-					     const char *imsi)
-{
-	struct gsm_subscriber *subscr;
-
-	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
-		if (strcmp(subscr->imsi, imsi) == 0 && subscr->group == sgrp)
-			return subscr_get(subscr);
-	}
-
-	return NULL;
-}
-
-int subscr_purge_inactive(struct gsm_subscriber_group *sgrp)
-{
-	struct gsm_subscriber *subscr, *tmp;
-	int purged = 0;
-
-	llist_for_each_entry_safe(subscr, tmp, subscr_bsc_active_subscribers(), entry) {
-		if (subscr->group == sgrp && subscr->use_count <= 0) {
-			subscr_free(subscr);
-			purged += 1;
-		}
-	}
-
-	return purged;
+	if (!vsub || !vsub->msisdn[0])
+		return vlr_subscr_name(vsub);
+	return vsub->msisdn;
 }

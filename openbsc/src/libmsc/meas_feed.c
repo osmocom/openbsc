@@ -18,6 +18,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/meas_feed.h>
 #include <openbsc/vty.h>
+#include <openbsc/vlr.h>
 
 #include "meas_feed.h"
 
@@ -35,13 +36,13 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 {
 	struct msgb *msg;
 	struct meas_feed_meas *mfm;
-	struct gsm_subscriber *subscr;
+	struct vlr_subscr *vsub;
 
 	/* ignore measurements as long as we don't know who it is */
-	if (!mr->lchan || !mr->lchan->conn || !mr->lchan->conn->subscr)
+	if (!mr->lchan || !mr->lchan->conn || !mr->lchan->conn->vsub)
 		return 0;
 
-	subscr = mr->lchan->conn->subscr;
+	vsub = mr->lchan->conn->vsub;
 
 	msg = msgb_alloc(sizeof(struct meas_feed_meas), "Meas. Feed");
 	if (!msg)
@@ -53,8 +54,8 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 	mfm->hdr.version = MEAS_FEED_VERSION;
 
 	/* fill in MEAS_FEED_MEAS specific header */
-	osmo_strlcpy(mfm->imsi, subscr->imsi, sizeof(mfm->imsi));
-	osmo_strlcpy(mfm->name, subscr->name, sizeof(mfm->name));
+	osmo_strlcpy(mfm->imsi, vsub->imsi, sizeof(mfm->imsi));
+	osmo_strlcpy(mfm->name, vsub->name, sizeof(mfm->name));
 	osmo_strlcpy(mfm->scenario, g_mfs.scenario, sizeof(mfm->scenario));
 
 	/* copy the entire measurement report */

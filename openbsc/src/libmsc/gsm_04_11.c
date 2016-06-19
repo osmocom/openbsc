@@ -56,6 +56,8 @@
 #include <openbsc/bsc_rll.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_api.h>
+#include <openbsc/osmo_msc.h>
+#include <openbsc/vlr.h>
 
 #ifdef BUILD_SMPP
 #include "smpp_smsc.h"
@@ -74,7 +76,7 @@ void sms_free(struct gsm_sms *sms)
 {
 	/* drop references to subscriber structure */
 	if (sms->receiver)
-		subscr_put(sms->receiver);
+		vlr_subscr_put(sms->receiver);
 #ifdef BUILD_SMPP
 	if (sms->smpp.esme)
 		smpp_esme_put(sms->smpp.esme);
@@ -83,8 +85,8 @@ void sms_free(struct gsm_sms *sms)
 	talloc_free(sms);
 }
 
-struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver,
-                              struct gsm_subscriber *sender,
+struct gsm_sms *sms_from_text(struct vlr_subscr *receiver,
+			      struct vlr_subscr *sender,
                               int dcs, const char *text)
 {
 	struct gsm_sms *sms = sms_alloc();
@@ -92,16 +94,16 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver,
 	if (!sms)
 		return NULL;
 
-	sms->receiver = subscr_get(receiver);
+	sms->receiver = vlr_subscr_get(receiver);
 	osmo_strlcpy(sms->text, text, sizeof(sms->text));
 
-	osmo_strlcpy(sms->src.addr, sender->extension, sizeof(sms->src.addr));
+	osmo_strlcpy(sms->src.addr, sender->msisdn, sizeof(sms->src.addr));
 	sms->reply_path_req = 0;
 	sms->status_rep_req = 0;
 	sms->ud_hdr_ind = 0;
 	sms->protocol_id = 0; /* implicit */
 	sms->data_coding_scheme = dcs;
-	osmo_strlcpy(sms->dst.addr, receiver->extension, sizeof(sms->dst.addr));
+	osmo_strlcpy(sms->dst.addr, receiver->msisdn, sizeof(sms->dst.addr));
 	/* Generate user_data */
 	sms->user_data_len = gsm_7bit_encode_n(sms->user_data, sizeof(sms->user_data),
 						sms->text, NULL);
@@ -297,7 +299,7 @@ int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			goto try_local;
 		if (rc < 0) {
 	 		LOGP(DLSMS, LOGL_ERROR, "%s: SMS delivery error: %d.",
-			     subscr_name(conn->subscr), rc);
+			     vlr_subscr_name(conn->vsub), rc);
 	 		rc = GSM411_RP_CAUSE_MO_TEMP_FAIL;
 			/* rc will be logged by gsm411_send_rp_error() */
 	 		rate_ctr_inc(&conn->bts->network->msc_ctrs->ctr[
@@ -310,8 +312,8 @@ try_local:
 #endif
 
 	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(conn->network->subscr_group,
-						 gsms->dst.addr);
+	gsms->receiver = vlr_subscr_find_by_msisdn(conn->network->vlr,
+						   gsms->dst.addr);
 	if (!gsms->receiver) {
 #ifdef BUILD_SMPP
 		/* Avoid a second look-up */
@@ -325,7 +327,7 @@ try_local:
 			rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
 		} else if (rc < 0) {
 	 		LOGP(DLSMS, LOGL_ERROR, "%s: SMS delivery error: %d.",
-			     subscr_name(conn->subscr), rc);
+			     vlr_subscr_name(conn->vsub), rc);
 	 		rc = GSM411_RP_CAUSE_MO_TEMP_FAIL;
 			/* rc will be logged by gsm411_send_rp_error() */
 	 		rate_ctr_inc(&conn->bts->network->msc_ctrs->ctr[
@@ -469,13 +471,12 @@ static int gsm340_rx_tpdu(struct gsm_trans *trans, struct msgb *msg,
 		}
 	}
 
-	osmo_strlcpy(gsms->src.addr, conn->subscr->extension,
-		     sizeof(gsms->src.addr));
+	osmo_strlcpy(gsms->src.addr, conn->vsub->msisdn, sizeof(gsms->src.addr));
 
 	LOGP(DLSMS, LOGL_INFO, "RX SMS: Sender: %s, MTI: 0x%02x, VPF: 0x%02x, "
 	     "MR: 0x%02x PID: 0x%02x, DCS: 0x%02x, DA: %s, "
 	     "UserDataLength: 0x%02x, UserData: \"%s\"\n",
-	     subscr_name(conn->subscr), sms_mti, sms_vpf, gsms->msg_ref,
+	     vlr_subscr_name(conn->vsub), sms_mti, sms_vpf, gsms->msg_ref,
 	     gsms->protocol_id, gsms->data_coding_scheme, gsms->dst.addr,
 	     gsms->user_data_len,
 			sms_alphabet == DCS_7BIT_DEFAULT ? gsms->text :
@@ -634,7 +635,7 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	 * the cause and take action depending on it */
 
 	LOGP(DLSMS, LOGL_NOTICE, "%s: RX SMS RP-ERROR, cause %d:%d (%s)\n",
-	     subscr_name(trans->conn->subscr), cause_len, cause,
+	     vlr_subscr_name(trans->conn->vsub), cause_len, cause,
 	     get_value_string(gsm411_rp_cause_strs, cause));
 
 	if (!sms) {
@@ -804,7 +805,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 	int new_trans = 0;
 	int rc = 0;
 
-	if (!conn->subscr)
+	if (!conn->vsub)
 		return -EIO;
 		/* FIXME: send some error message */
 
@@ -824,7 +825,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 
 	if (!trans) {
 		DEBUGP(DLSMS, " -> (new transaction)\n");
-		trans = trans_alloc(conn->network, conn->subscr,
+		trans = trans_alloc(conn->network, conn->vsub,
 				    GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {
@@ -837,9 +838,10 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		gsm411_smr_init(&trans->sms.smr_inst, 0, 1,
 			gsm411_rl_recv, gsm411_mn_send);
 
-		trans->conn = conn;
+		trans->conn = msc_subscr_conn_get(conn);
 
 		new_trans = 1;
+		cm_service_request_concludes(conn, msg);
 	}
 
 	/* 5.4: For MO, if a CP-DATA is received for a new
@@ -866,6 +868,8 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		}
 	}
 
+	msc_subscr_conn_communicating(conn);
+
 	gsm411_smc_recv(&trans->sms.smc_inst,
 		(new_trans) ? GSM411_MMSMS_EST_IND : GSM411_MMSMS_DATA_IND,
 		msg, msg_type);
@@ -886,7 +890,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	int rc;
 
 	transaction_id =
-		trans_assign_trans_id(conn->network, conn->subscr,
+		trans_assign_trans_id(conn->network, conn->vsub,
 				      GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DLSMS, LOGL_ERROR, "No available transaction ids\n");
@@ -899,7 +903,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	DEBUGP(DLSMS, "%s()\n", __func__);
 
 	/* FIXME: allocate transaction with message reference */
-	trans = trans_alloc(conn->network, conn->subscr,
+	trans = trans_alloc(conn->network, conn->vsub,
 			    GSM48_PDISC_SMS,
 			    transaction_id, new_callref++);
 	if (!trans) {
@@ -916,7 +920,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 		gsm411_rl_recv, gsm411_mn_send);
 	trans->sms.sms = sms;
 
-	trans->conn = conn;
+	trans->conn = msc_subscr_conn_get(conn);
 
 	/* Hardcode SMSC Originating Address for now */
 	data = (uint8_t *)msgb_put(msg, 8);
@@ -994,7 +998,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 /* high-level function to send a SMS to a given subscriber. The function
  * will take care of paging the subscriber, establishing the RLL SAPI3
  * connection, etc. */
-int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
+int gsm411_send_sms_subscr(struct vlr_subscr *vsub,
 			   struct gsm_sms *sms)
 {
 	struct gsm_subscriber_connection *conn;
@@ -1002,18 +1006,18 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 
 	/* check if we already have an open lchan to the subscriber.
 	 * if yes, send the SMS this way */
-	conn = connection_for_subscr(subscr);
+	conn = connection_for_subscr(vsub);
 	if (conn) {
 		LOGP(DLSMS, LOGL_DEBUG, "Sending SMS via already open connection %p to %s\n",
-		     conn, subscr_name(subscr));
+		     conn, vlr_subscr_name(vsub));
 		return gsm411_send_sms(conn, sms);
 	}
 
 	/* if not, we have to start paging */
 	LOGP(DLSMS, LOGL_DEBUG, "Sending SMS: no connection open, start paging %s\n",
-	     subscr_name(subscr));
-	res = subscr_request_channel(subscr, RSL_CHANNEED_SDCCH,
-					paging_cb_send_sms, sms);
+	     vlr_subscr_name(vsub));
+	res = subscr_request_channel(vsub, RSL_CHANNEED_SDCCH,
+				     paging_cb_send_sms, sms);
 	if (!res) {
 		send_signal(S_SMS_UNKNOWN_ERROR, NULL, sms, GSM_PAGING_BUSY);
 		sms_free(sms);
@@ -1040,6 +1044,7 @@ void _gsm411_sms_trans_free(struct gsm_trans *trans)
 	}
 }
 
+/* Process incoming SAPI N-REJECT from BSC */
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 {
 	struct gsm_network *net;

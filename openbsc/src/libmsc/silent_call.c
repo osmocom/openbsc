@@ -55,6 +55,7 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 		DEBUGPC(DLSMS, "success, using Timeslot %u on ARFCN %u\n",
 			conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
 		conn->silent_call = 1;
+		msc_subscr_conn_get(conn);
 		/* increment lchan reference count */
 		osmo_signal_dispatch(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
 		break;
@@ -121,20 +122,20 @@ int silent_call_reroute(struct gsm_subscriber_connection *conn, struct msgb *msg
 
 
 /* initiate a silent call with a given subscriber */
-int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
+int gsm_silent_call_start(struct vlr_subscr *vsub, void *data, int type)
 {
 	struct subscr_request *req;
 
-	req = subscr_request_channel(subscr, type, paging_cb_silent, data);
+	req = subscr_request_channel(vsub, type, paging_cb_silent, data);
 	return req != NULL;
 }
 
 /* end a silent call with a given subscriber */
-int gsm_silent_call_stop(struct gsm_subscriber *subscr)
+int gsm_silent_call_stop(struct vlr_subscr *vsub)
 {
 	struct gsm_subscriber_connection *conn;
 
-	conn = connection_for_subscr(subscr);
+	conn = connection_for_subscr(vsub);
 	if (!conn)
 		return -EINVAL;
 
@@ -146,7 +147,7 @@ int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 		conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
 
 	conn->silent_call = 0;
-	msc_release_connection(conn);
+	msc_subscr_conn_put(conn);
 
 	return 0;
 }

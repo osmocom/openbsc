@@ -30,7 +30,6 @@
 
 struct gsm_bts;
 struct gsm_lchan;
-struct gsm_subscriber;
 struct gsm_bts_trx_ts;
 
 #define GSM48_LEN2PLEN(a)	(((a) << 2) | 1)
