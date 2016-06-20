@@ -536,7 +536,7 @@ static void test_subscriber_gsup(void)
 		0x10, 0x01, 0x03,
 	};
 
-	printf("Testing subcriber GSUP handling\n");
+	printf("Testing subscriber GSUP handling\n");
 
 	update_subscriber_data_cb = my_dummy_sgsn_update_subscriber_data;
 
