@@ -953,6 +953,9 @@ int rsl_lchan_mark_broken(struct gsm_lchan *lchan, const char *reason)
 
 int rsl_lchan_set_state(struct gsm_lchan *lchan, int state)
 {
+	DEBUGP(DRSL, "%s state %s -> %s\n",
+	       gsm_lchan_name(lchan), gsm_lchans_name(lchan->state),
+	       gsm_lchans_name(state));
 	lchan->state = state;
 	return 0;
 }
