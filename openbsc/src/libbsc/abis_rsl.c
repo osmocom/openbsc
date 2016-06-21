@@ -1233,18 +1233,18 @@ static bool lchan_may_change_pdch(struct gsm_lchan *lchan, bool pdch_act)
 	OSMO_ASSERT(ts->trx->bts);
 
 	if (lchan->ts->pchan != GSM_PCHAN_TCH_F_PDCH) {
-		LOGP(DRSL, LOGL_ERROR, "(bts %u, trx %u, ts %u, pchan %s)"
-		     " Rx PDCH %s ACK for channel that is no TCH/F_PDCH\n",
-		     ts->trx->bts->nr, ts->trx->nr, ts->nr,
+		LOGP(DRSL, LOGL_ERROR, "%s pchan=%s Rx PDCH %s ACK"
+		     " for channel that is no TCH/F_PDCH\n",
+		     gsm_lchan_name(lchan),
 		     gsm_pchan_name(ts->pchan),
 		     pdch_act? "ACT" : "DEACT");
 		return false;
 	}
 
 	if (lchan->state != LCHAN_S_NONE) {
-		LOGP(DRSL, LOGL_ERROR, "(bts %u, trx %u, ts %u, pchan %s)"
-		     " Rx PDCH %s ACK in unexpected state: %s\n",
-		     ts->trx->bts->nr, ts->trx->nr, ts->nr,
+		LOGP(DRSL, LOGL_ERROR, "%s pchan=%s Rx PDCH %s ACK"
+		     " in unexpected state: %s\n",
+		     gsm_lchan_name(lchan),
 		     gsm_pchan_name(ts->pchan),
 		     pdch_act? "ACT" : "DEACT",
 		     gsm_lchans_name(lchan->state));
