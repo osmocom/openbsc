@@ -644,6 +644,10 @@ static void error_timeout_cb(void *data)
 	/* go back to the none state */
 	LOGP(DRSL, LOGL_INFO, "%s is back in operation.\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+
+	/* Put PDCH channel back into PDCH mode */
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH)
+		rsl_ipacc_pdch_activate(lchan->ts, 1);
 }
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan);
@@ -761,7 +765,8 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 	do_lchan_free(lchan);
 
 	/* Put PDCH channel back into PDCH mode first */
-	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH)
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
+	    && lchan->state == LCHAN_S_NONE)
 		return rsl_ipacc_pdch_activate(lchan->ts, 1);
 
 	return 0;
