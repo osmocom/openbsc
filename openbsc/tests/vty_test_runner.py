@@ -388,12 +388,12 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assert_(res.find("    IMSI: "+imsi) > 0)
 
         # Delete it
-        res = self.vty.command('subscriber delete imsi '+imsi)
-        self.assert_(res != "")
+        res = self.vty.command('subscriber imsi ' + imsi + ' delete')
+        self.assert_("" == res)
 
         # Now it should not be there anymore
         res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(res != '% No subscriber found for imsi '+imsi)
+        self.assert_(('% No subscriber found for imsi ' + imsi) == res)
 
 
     def testSubscriberCreateDelete(self):
@@ -413,12 +413,12 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assert_(res.find("    IMSI: "+imsi) > 0)
 
         # Delete it
-        res = self.vty.command('subscriber delete imsi '+imsi)
-        self.assert_(res != "")
+        res = self.vty.command('subscriber imsi ' + imsi + ' delete')
+        self.assert_("" == res)
 
         # Now it should not be there anymore
         res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(res != '% No subscriber found for imsi '+imsi)
+        self.assert_(('% No subscriber found for imsi ' + imsi) == res)
 
     def testSubscriberSettings(self):
         self.vty.enable()
@@ -456,16 +456,18 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assertTrue(self.vty.verify("subscriber-create-on-demand random 221 222", ['']))
         self.vty.command("end")
 
+        # create subscriber with extension in a configured interval
         res = self.vty.command('subscriber create imsi ' + imsi2)
         self.assert_(res.find("    IMSI: " + imsi2) > 0)
         self.assert_(res.find("221") > 0 or res.find("222") > 0)
         self.assert_(res.find("    Extension: ") > 0)
 
         # Delete it
-        res = self.vty.command('subscriber delete imsi '+imsi)
+        res = self.vty.command('subscriber imsi ' + imsi + ' delete')
         self.assert_(res != "")
-        res = self.vty.command('subscriber delete imsi ' + imsi2)
-        self.assert_(res != "")
+        # imsi2 is inactive so deletion should succeed
+        res = self.vty.command('subscriber imsi ' + imsi2 + ' delete')
+        self.assert_("" == res)
 
     def testShowPagingGroup(self):
         res = self.vty.command("show paging-group 255 1234567")
