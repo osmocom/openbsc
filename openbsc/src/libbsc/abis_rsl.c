@@ -764,7 +764,17 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 
 	do_lchan_free(lchan);
 
-	/* Put PDCH channel back into PDCH mode first */
+	/*
+	 * Put a dynamic TCH/F_PDCH channel back to PDCH mode iff it was
+	 * released successfully. If in error, the PDCH ACT will follow after
+	 * T3111 in error_timeout_cb().
+	 *
+	 * Any state other than LCHAN_S_REL_ERR became LCHAN_S_NONE after above
+	 * do_lchan_free(). Assert this, because that's what ensures a PDCH ACT
+	 * on a dynamic channel in all cases.
+	 */
+	OSMO_ASSERT(lchan->state == LCHAN_S_NONE
+		    || lchan->state == LCHAN_S_REL_ERR);
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && lchan->state == LCHAN_S_NONE)
 		return rsl_ipacc_pdch_activate(lchan->ts, 1);
