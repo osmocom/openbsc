@@ -982,8 +982,7 @@ rejected:
 	if (ctx)
 		mm_ctx_cleanup_free(ctx, "GPRS ATTACH REJ");
 	else
-		/* TLLI unassignment */
-		gprs_llgmm_assign(llme, llme->tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+		gprs_llgmm_unassign(llme);
 
 	return rc;
 
@@ -1286,11 +1285,8 @@ rejected:
 	if (mmctx)
 		mm_ctx_cleanup_free(mmctx, "GPRS RA UPDATE REJ");
 	else {
-		if (llme) {
-			/* TLLI unassignment */
-			gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
-					  GPRS_ALGO_GEA0, NULL);
-		}
+		if (llme)
+			gprs_llgmm_unassign(llme);
 	}
 
 	return rc;
@@ -1323,17 +1319,13 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		/* 4.7.10 */
 		if (gh->msg_type == GSM48_MT_GMM_STATUS) {
 			/* TLLI unassignment */
-			gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
-					  GPRS_ALGO_GEA0, NULL);
+			gprs_llgmm_unassign(llme);
 			return 0;
 		}
 
 		/* Don't reply or establish a LLME on DETACH_ACK */
-		if (gh->msg_type == GSM48_MT_GMM_DETACH_ACK) {
-			/* TLLI unassignment */
-			return gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
-						 GPRS_ALGO_GEA0, NULL);
-		}
+		if (gh->msg_type == GSM48_MT_GMM_DETACH_ACK)
+			return gprs_llgmm_unassign(llme);
 
 		gprs_llgmm_reset(llme);
 
@@ -1343,8 +1335,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 			rc = gsm48_rx_gmm_det_req(NULL, msg);
 
 			/* TLLI unassignment */
-			gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
-					  GPRS_ALGO_GEA0, NULL);
+			gprs_llgmm_unassign(llme);
 			return rc;
 		}
 
@@ -1352,8 +1343,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		rc = sgsn_force_reattach_oldmsg(msg);
 
 		/* TLLI unassignment */
-		gprs_llgmm_assign(llme, llme->tlli, 0xffffffff,
-				  GPRS_ALGO_GEA0, NULL);
+		gprs_llgmm_unassign(llme);
 		return rc;
 	}
 

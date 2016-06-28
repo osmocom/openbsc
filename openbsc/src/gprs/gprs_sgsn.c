@@ -770,7 +770,7 @@ static void sgsn_llme_cleanup_free(struct gprs_llc_llme *llme)
 	/* No MM context found */
 	LOGP(DGPRS, LOGL_INFO, "Deleting orphaned LLME, TLLI 0x%08x\n",
 	     llme->tlli);
-	gprs_llgmm_assign(llme, llme->tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+	gprs_llgmm_unassign(llme);
 }
 
 static void sgsn_llme_check_cb(void *data_)

@@ -218,6 +218,7 @@ int gprs_llgmm_reset_oldmsg(struct msgb* oldmsg, uint8_t sapi);
 int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 		      uint32_t old_tlli, uint32_t new_tlli,
 		      enum gprs_ciph_algo alg, const uint8_t *kc);
+int gprs_llgmm_unassign(struct gprs_llc_llme *llme);
 
 int gprs_llc_init(const char *cipher_plugin_path);
 int gprs_llc_vty_init(void);

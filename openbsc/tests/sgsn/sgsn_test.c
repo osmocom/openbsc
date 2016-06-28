@@ -222,7 +222,7 @@ static void test_llme(void)
 	OSMO_ASSERT(count(gprs_llme_list()) == 1);
 
 	/* unassign which should delete it*/
-	gprs_llgmm_assign(lle->llme, lle->llme->tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+	gprs_llgmm_unassign(lle->llme);
 
 	/* Check that everything was cleaned up */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);

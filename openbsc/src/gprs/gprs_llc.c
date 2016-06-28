@@ -745,6 +745,13 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 	return 0;
 }
 
+/* TLLI unassignment */
+int gprs_llgmm_unassign(struct gprs_llc_llme *llme)
+{
+	return gprs_llgmm_assign(llme, llme->tlli, 0xffffffff, GPRS_ALGO_GEA0,
+				 NULL);
+}
+
 /* Chapter 7.2.1.2 LLGMM-RESET.req */
 int gprs_llgmm_reset(struct gprs_llc_llme *llme)
 {
