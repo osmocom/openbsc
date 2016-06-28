@@ -3,7 +3,7 @@
 
 
 #include <osmocom/core/msgb.h>
-
+#include <osmocom/crypt/gprs_cipher.h>
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/oap.h>
@@ -35,6 +35,7 @@ struct sgsn_config {
 	struct gprs_ns_inst *nsi;
 
 	enum sgsn_auth_policy auth_policy;
+	enum gprs_ciph_algo cipher;
 	struct llist_head imsi_acl;
 
 	struct sockaddr_in gsup_server_addr;

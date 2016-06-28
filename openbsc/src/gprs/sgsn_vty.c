@@ -39,7 +39,7 @@
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/misc.h>
-
+#include <osmocom/crypt/gprs_cipher.h>
 #include <osmocom/abis/ipa.h>
 
 #include <pdp.h>
@@ -213,6 +213,10 @@ static int config_write_sgsn(struct vty *vty)
 	vty_out(vty, " auth-policy %s%s",
 		get_value_string(sgsn_auth_pol_strs, g_cfg->auth_policy),
 		VTY_NEWLINE);
+	if (g_cfg->cipher != GPRS_ALGO_GEA0)
+		vty_out(vty, " encryption %s%s",
+			get_value_string(gprs_cipher_names, g_cfg->cipher),
+			VTY_NEWLINE);
 	if (g_cfg->gsup_server_addr.sin_addr.s_addr)
 		vty_out(vty, " gsup remote-ip %s%s",
 			inet_ntoa(g_cfg->gsup_server_addr.sin_addr), VTY_NEWLINE);
@@ -549,6 +553,30 @@ DEFUN(imsi_acl, cfg_imsi_acl_cmd,
 
 		return CMD_WARNING;
 	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_encrypt, cfg_encrypt_cmd,
+      "encryption (GEA0|GEA1|GEA2|GEA3|GEA4)",
+      "Set encryption algorithm for SGSN\n"
+      "Use GEA0 (no encryption)\n"
+      "Use GEA1\nUse GEA2\nUse GEA3\nUse GEA4\n")
+{
+	if (!g_cfg->require_authentication) {
+		vty_out(vty, "%% unable to use encryption without "
+			"authentication: adjust auth-policy%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	enum gprs_ciph_algo c = get_string_value(gprs_cipher_names, argv[0]);
+	if (!gprs_cipher_supported(c)) {
+		vty_out(vty, "%% cipher %s is unsupported in current version%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	g_cfg->cipher = c;
 
 	return CMD_SUCCESS;
 }
@@ -1060,6 +1088,7 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_ggsn_gtp_version_cmd);
 	install_element(SGSN_NODE, &cfg_imsi_acl_cmd);
 	install_element(SGSN_NODE, &cfg_auth_policy_cmd);
+	install_element(SGSN_NODE, &cfg_encrypt_cmd);
 	install_element(SGSN_NODE, &cfg_gsup_remote_ip_cmd);
 	install_element(SGSN_NODE, &cfg_gsup_remote_port_cmd);
 	install_element(SGSN_NODE, &cfg_gsup_oap_id_cmd);
