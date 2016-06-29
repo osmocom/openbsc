@@ -28,6 +28,7 @@ int osmux_used_cid(void);
 
 enum osmux_state {
 	OSMUX_STATE_DISABLED = 0,
+	OSMUX_STATE_NEGOTIATING,
 	OSMUX_STATE_ACTIVATING,
 	OSMUX_STATE_ENABLED,
 };

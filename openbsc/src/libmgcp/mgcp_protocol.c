@@ -277,7 +277,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	if (!addr)
 		addr = mgcp_net_src_addr(endp);
 
-	if (endp->osmux.state == OSMUX_STATE_ACTIVATING)
+	if (endp->osmux.state == OSMUX_STATE_NEGOTIATING)
 		sprintf(osmux_extension, "\nX-Osmux: %u", endp->osmux.cid);
 	else
 		osmux_extension[0] = '\0';
@@ -811,13 +811,13 @@ mgcp_header_done:
 	if (endp->ci == CI_UNUSED)
 		goto error2;
 
-	/* Annotate Osmux circuit ID and set it to activating state until this
+	/* Annotate Osmux circuit ID and set it to negotiating state until this
 	 * is fully set up from the dummy load.
 	 */
 	endp->osmux.state = OSMUX_STATE_DISABLED;
 	if (osmux_cid >= 0) {
 		endp->osmux.cid = osmux_cid;
-		endp->osmux.state = OSMUX_STATE_ACTIVATING;
+		endp->osmux.state = OSMUX_STATE_NEGOTIATING;
 	} else if(endp->cfg->osmux == OSMUX_USAGE_ONLY) {
 		LOGP(DMGCP, LOGL_ERROR,
 			"Osmux only and no osmux offered on 0x%x\n", ENDPOINT_NUMBER(endp));
