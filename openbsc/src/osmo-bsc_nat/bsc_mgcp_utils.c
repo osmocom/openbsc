@@ -590,7 +590,7 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 		 */
 		if (mgcp_endp->osmux.allocated_cid >= 0 &&
 		    mgcp_endp->osmux.state != OSMUX_STATE_ENABLED) {
-			mgcp_endp->osmux.state = OSMUX_STATE_ACTIVATING;
+			mgcp_endp->osmux.state = OSMUX_STATE_NEGOTIATING;
 			mgcp_endp->osmux.cid = mgcp_endp->osmux.allocated_cid;
 		}
 
@@ -680,6 +680,7 @@ static void bsc_mgcp_osmux_confirm(struct mgcp_endpoint *endp, const char *str)
 
 	LOGP(DMGCP, LOGL_NOTICE, "bsc accepted to use Osmux (cid=%u)\n",
 	     osmux_cid);
+	endp->osmux.state = OSMUX_STATE_ACTIVATING;
 	return;
 err:
 	osmux_release_cid(endp);
@@ -747,7 +748,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	if (endp->osmux.state == OSMUX_STATE_ACTIVATING)
+	if (endp->osmux.state == OSMUX_STATE_NEGOTIATING)
 		bsc_mgcp_osmux_confirm(endp, (const char *) msg->l2h);
 
 	/* If we require osmux and it is disabled.. fail */
