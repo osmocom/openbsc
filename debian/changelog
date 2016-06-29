@@ -1,8 +1,15 @@
-openbsc (0.15.0+z7) UNRELEASED; urgency=medium
+openbsc (0.15.0+z8) unstable; urgency=medium
 
+  * Fix mgcp osmux negotiation on high-latency links
+
+ -- Daniel Willmann <daniel@totalueberwachung.de>  Wed, 29 Jun 2016 19:07:41 +0200
+
+openbsc (0.15.0+z7) unstable; urgency=medium
+
+  [ Holger Hans Peter Freyther ]
   * NAT fix to allocate IMSI on right talloc context
 
- -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Thu, 26 May 2016 14:33:20 +0200
+ -- Daniel Willmann <dwillmann@sysmocom.de>  Wed, 29 Jun 2016 19:05:40 +0200
 
 openbsc (0.15.0+z6) unstable; urgency=medium
 
