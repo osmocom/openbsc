@@ -242,9 +242,7 @@ DEFUN(subscriber_create,
 	if (subscr)
 		db_sync_subscriber(subscr);
 	else {
-		subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0],
-						  gsmnet->ext_min,
-						  gsmnet->ext_max);
+		subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0]);
 
 		if (!subscr) {
 			vty_out(vty, "%% No subscriber created for IMSI %s%s",
@@ -1044,6 +1042,8 @@ DEFUN(cfg_nitb_subscr_random, cfg_nitb_subscr_random_cmd,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	uint64_t mi = atoi(argv[0]), ma = atoi(argv[1]);
+	gsmnet->auto_create_subscr = true;
+	gsmnet->auto_assign_exten = true;
 	if (mi >= ma) {
 		vty_out(vty, "Incorrect range: %s >= %s, expected MIN < MAX%s",
 			argv[0], argv[1], VTY_NEWLINE);
@@ -1055,15 +1055,13 @@ DEFUN(cfg_nitb_subscr_random, cfg_nitb_subscr_random_cmd,
 }
 
 DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
-      "subscriber-create-on-demand [regexp]",
+      "subscriber-create-on-demand [no-extension]",
       "Make a new record when a subscriber is first seen.\n"
-      "Create subscribers only if IMSI matches the regexp specified in "
-      "authorized-regexp command\n")
+      "Do not automatically assign extension to created subscribers\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->subscr_creation_mode = GSM_SUBSCR_CREAT_W_RAND_EXT;
-	if (argc)
-		gsmnet->subscr_creation_mode |= GSM_SUBSCR_CREAT_W_REGEXP;
+	gsmnet->auto_create_subscr = true;
+	gsmnet->auto_assign_exten = argc ? false : true;
 	return CMD_SUCCESS;
 }
 
@@ -1072,7 +1070,7 @@ DEFUN(cfg_nitb_no_subscr_create, cfg_nitb_no_subscr_create_cmd,
       NO_STR "Make a new record when a subscriber is first seen.\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->subscr_creation_mode = GSM_SUBSCR_DONT_CREATE;
+	gsmnet->auto_create_subscr = false;
 	return CMD_SUCCESS;
 }
 
@@ -1097,12 +1095,15 @@ DEFUN(cfg_nitb_no_assign_tmsi, cfg_nitb_no_assign_tmsi_cmd,
 static int config_write_nitb(struct vty *vty)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	enum gsm_subscr_creation_mode scm = gsmnet->subscr_creation_mode;
-	const char *reg = (scm & GSM_SUBSCR_CREAT_W_REGEXP) ? " regexp" : "",
-		*pref = scm ? "" : "no ";
+
 	vty_out(vty, "nitb%s", VTY_NEWLINE);
-	vty_out(vty, " %ssubscriber-create-on-demand%s%s",
-		pref, reg, VTY_NEWLINE);
+	if (!gsmnet->auto_create_subscr)
+		vty_out(vty, " no subscriber-create-on-demand%s", VTY_NEWLINE);
+	else
+		vty_out(vty, " subscriber-create-on-demand%s%s",
+			gsmnet->auto_assign_exten ? "" : " no-extension",
+			VTY_NEWLINE);
+
 	if (gsmnet->ext_min != GSM_MIN_EXTEN || gsmnet->ext_max != GSM_MAX_EXTEN)
 		vty_out(vty, " subscriber-create-on-demand random %"PRIu64" %"
 			PRIu64"%s", gsmnet->ext_min, gsmnet->ext_max,

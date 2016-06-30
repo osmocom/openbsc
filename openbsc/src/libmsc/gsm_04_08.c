@@ -530,15 +530,13 @@ static int mm_tx_identity_req(struct gsm_subscriber_connection *conn, uint8_t id
 static struct gsm_subscriber *subscr_create(const struct gsm_network *net,
 					    const char *imsi)
 {
-	if (net->subscr_creation_mode == GSM_SUBSCR_DONT_CREATE)
+	if (!net->auto_create_subscr)
 		return NULL;
 
-	if (net->subscr_creation_mode & GSM_SUBSCR_CREAT_W_REGEXP)
-		if (!subscr_regexp_check(net, imsi))
-			return NULL;
+	if (!subscr_regexp_check(net, imsi))
+		return NULL;
 
-	return subscr_create_subscriber(net->subscr_group, imsi, net->ext_min,
-					net->ext_max);
+	return subscr_create_subscriber(net->subscr_group, imsi);
 }
 
 /* Parse Chapter 9.2.11 Identity Response */

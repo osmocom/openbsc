@@ -21,10 +21,13 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/gsm_subscriber.h>
 
+#include <stdbool.h>
+
 struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, struct msgb *))
 {
 	struct gsm_network *net;
+	const char *default_regexp = "*";
 
 	net = talloc_zero(tall_bsc_ctx, struct gsm_network);
 	if (!net)
@@ -42,13 +45,18 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 		return NULL;
 	}
 
+	if (gsm_parse_reg(net, &net->authorized_regexp, &net->authorized_reg_str, 1,
+			  &default_regexp) != 0)
+		return NULL;
+
 	/* Init back pointer */
 	net->bsc_data->auto_off_timeout = -1;
 	net->bsc_data->network = net;
 	INIT_LLIST_HEAD(&net->bsc_data->mscs);
 
 	net->subscr_group->net = net;
-	net->subscr_creation_mode = GSM_SUBSCR_CREAT_W_RAND_EXT;
+	net->auto_create_subscr = true;
+	net->auto_assign_exten = true;
 
 	net->country_code = country_code;
 	net->network_code = network_code;

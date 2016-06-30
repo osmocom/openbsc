@@ -23,6 +23,7 @@
 #include <inttypes.h>
 #include <libgen.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -519,7 +520,7 @@ int db_fini(void)
 }
 
 struct gsm_subscriber *db_create_subscriber(const char *imsi, uint64_t smin,
-					    uint64_t smax)
+					    uint64_t smax, bool alloc_exten)
 {
 	dbi_result result;
 	struct gsm_subscriber *subscr;
@@ -551,7 +552,8 @@ struct gsm_subscriber *db_create_subscriber(const char *imsi, uint64_t smin,
 	strncpy(subscr->imsi, imsi, sizeof(subscr->imsi)-1);
 	dbi_result_free(result);
 	LOGP(DDB, LOGL_INFO, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
-	db_subscriber_alloc_exten(subscr, smin, smax);
+	if (alloc_exten)
+		db_subscriber_alloc_exten(subscr, smin, smax);
 	return subscr;
 }
 
@@ -956,8 +958,11 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 
 	dbi_conn_quote_string_copy(conn, 
 				   subscriber->name, &q_name);
-	dbi_conn_quote_string_copy(conn, 
-				   subscriber->extension, &q_extension);
+	if (subscriber->extension[0] != '\0')
+		dbi_conn_quote_string_copy(conn,
+					   subscriber->extension, &q_extension);
+	else
+		q_extension = strdup("NULL");
 	
 	if (subscriber->tmsi != GSM_RESERVED_TMSI) {
 		sprintf(tmsi, "%u", subscriber->tmsi);
@@ -1062,15 +1067,17 @@ int db_subscriber_delete(struct gsm_subscriber *subscr)
 	}
 	dbi_result_free(result);
 
-	result = dbi_conn_queryf(conn,
-			"DELETE FROM SMS WHERE src_addr=%s OR dest_addr=%s",
-			subscr->extension, subscr->extension);
-	if (!result) {
-		LOGP(DDB, LOGL_ERROR,
-			"Failed to delete SMS for %llu\n", subscr->id);
-		return -1;
+	if (subscr->extension[0] != '\0') {
+		result = dbi_conn_queryf(conn,
+			    "DELETE FROM SMS WHERE src_addr=%s OR dest_addr=%s",
+					 subscr->extension, subscr->extension);
+		if (!result) {
+			LOGP(DDB, LOGL_ERROR,
+			     "Failed to delete SMS for %llu\n", subscr->id);
+			return -1;
+		}
+		dbi_result_free(result);
 	}
-	dbi_result_free(result);
 
 	result = dbi_conn_queryf(conn,
 			"DELETE FROM VLR WHERE subscriber_id=%llu",

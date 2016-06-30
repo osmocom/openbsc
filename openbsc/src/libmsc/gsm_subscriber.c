@@ -26,6 +26,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include <osmocom/core/talloc.h>
 
@@ -203,10 +204,12 @@ void subscr_remove_request(struct subscr_request *request)
 }
 
 struct gsm_subscriber *subscr_create_subscriber(struct gsm_subscriber_group *sgrp,
-						const char *imsi, uint64_t smin,
-						uint64_t smax)
+						const char *imsi)
 {
-	struct gsm_subscriber *subscr = db_create_subscriber(imsi, smin, smax);
+	struct gsm_subscriber *subscr = db_create_subscriber(imsi,
+							     sgrp->net->ext_min,
+							     sgrp->net->ext_max,
+							     sgrp->net->auto_assign_exten);
 	if (subscr)
 		subscr->group = sgrp;
 	return subscr;

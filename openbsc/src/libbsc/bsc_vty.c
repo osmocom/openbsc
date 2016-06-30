@@ -195,6 +195,10 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 	if (net->authorized_reg_str)
 		vty_out(vty, ", authorized regexp: %s", net->authorized_reg_str);
 	vty_out(vty, "%s", VTY_NEWLINE);
+	vty_out(vty, "  Auto create subscriber: %s%s",
+		net->auto_create_subscr ? "yes" : "no", VTY_NEWLINE);
+	vty_out(vty, "  Auto assign extension: %s%s",
+		net->auto_assign_exten ? "yes" : "no", VTY_NEWLINE);
 	vty_out(vty, "  Location updating reject cause: %u%s",
 		net->reject_cause, VTY_NEWLINE);
 	vty_out(vty, "  Encryption: A5/%u%s", net->a5_encryption,

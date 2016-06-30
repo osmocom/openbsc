@@ -25,6 +25,8 @@
 #include <openbsc/db.h>
 #include <openbsc/debug.h>
 
+#include <stdbool.h>
+
 static bool alg_supported(const char *alg)
 {
 	/*
@@ -96,9 +98,7 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 
 	subscr = subscr_get_by_imsi(net->subscr_group, imsi);
 	if (!subscr)
-		subscr = subscr_create_subscriber(net->subscr_group, imsi,
-						  net->ext_min,
-						  net->ext_max);
+		subscr = subscr_create_subscriber(net->subscr_group, imsi);
 	if (!subscr)
 		goto fail;
 

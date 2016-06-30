@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <regex.h>
 #include <sys/types.h>
+#include <stdbool.h>
 
 #include <osmocom/core/timer.h>
 #include <osmocom/core/select.h>
@@ -20,12 +21,6 @@ struct mncc_sock_state;
 struct gsm_subscriber_group;
 
 #define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
-
-enum gsm_subscr_creation_mode {
-	GSM_SUBSCR_DONT_CREATE = 0,
-	GSM_SUBSCR_CREAT_W_RAND_EXT = 1,
-	GSM_SUBSCR_CREAT_W_REGEXP = 2,
-};
 
 enum gsm_security_event {
 	GSM_SECURITY_NOAVAIL,
@@ -289,7 +284,8 @@ struct gsm_network {
 	struct osmo_bsc_data *bsc_data;
 
 	/* subscriber related features */
-	int subscr_creation_mode;
+	bool auto_create_subscr;
+	bool auto_assign_exten;
 	uint64_t ext_min;
 	uint64_t ext_max;
 	struct gsm_subscriber_group *subscr_group;

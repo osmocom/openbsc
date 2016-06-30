@@ -20,6 +20,8 @@
 #ifndef _DB_H
 #define _DB_H
 
+#include <stdbool.h>
+
 #include "gsm_subscriber.h"
 
 struct gsm_equipment;
@@ -36,7 +38,7 @@ int db_fini(void);
 
 /* subscriber management */
 struct gsm_subscriber *db_create_subscriber(const char *imsi, uint64_t smin,
-					    uint64_t smax);
+					    uint64_t smax, bool alloc_exten);
 struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 					 const char *subscr);
 int db_sync_subscriber(struct gsm_subscriber *subscriber);

@@ -5,6 +5,8 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/protocol/gsm_23_003.h>
 
+#include <stdbool.h>
+
 #define GSM_NAME_LENGTH 160
 
 #define GSM_EXTENSION_LENGTH 15 /* MSISDN can only be 15 digits length */
@@ -90,8 +92,7 @@ enum gsm_subscriber_update_reason {
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_create_subscriber(struct gsm_subscriber_group *sgrp,
-						const char *imsi, uint64_t smin,
-						uint64_t smax);
+						const char *imsi);
 struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_subscriber_group *sgrp,
 					  uint32_t tmsi);
 struct gsm_subscriber *subscr_get_by_imsi(struct gsm_subscriber_group *sgrp,

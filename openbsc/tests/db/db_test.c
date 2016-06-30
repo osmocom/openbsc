@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <inttypes.h>
 
 static struct gsm_network dummy_net;
@@ -159,12 +160,13 @@ static void test_sms_migrate(void)
 	subscr_put(rcv_subscr);
 }
 
-static void test_subs(const char *alice_imsi, char *imei1, char *imei2)
+static void test_subs(const char *imsi, char *imei1, char *imei2, bool make_ext)
 {
 	struct gsm_subscriber *alice = NULL, *alice_db;
 	char scratch_str[256];
 
-	alice = db_create_subscriber(alice_imsi, GSM_MIN_EXTEN, GSM_MAX_EXTEN);
+	alice = db_create_subscriber(imsi, GSM_MIN_EXTEN, GSM_MAX_EXTEN,
+				     make_ext);
 	db_subscriber_assoc_imei(alice, imei1);
 	if (imei2)
 		db_subscriber_assoc_imei(alice, imei2);
@@ -177,7 +179,7 @@ static void test_subs(const char *alice_imsi, char *imei1, char *imei2)
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);
 	/* Get by IMSI */
-	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice_imsi);
+	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi);
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);
 	/* Get by id */
@@ -187,8 +189,14 @@ static void test_subs(const char *alice_imsi, char *imei1, char *imei2)
 	SUBSCR_PUT(alice_db);
 	/* Get by extension */
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, alice->extension);
-	COMPARE(alice, alice_db);
-	SUBSCR_PUT(alice_db);
+	if (alice_db) {
+		if (!make_ext)
+			printf("FAIL: bogus extension created for IMSI %s\n",
+			       imsi);
+		COMPARE(alice, alice_db);
+		SUBSCR_PUT(alice_db);
+	} else if (make_ext)
+		printf("FAIL: no subscriber extension for IMSI %s\n", imsi);
 	SUBSCR_PUT(alice);
 }
 
@@ -217,18 +225,22 @@ int main()
 	struct gsm_subscriber *alice_db;
 
 	char *alice_imsi = "3243245432345";
-	alice = db_create_subscriber(alice_imsi, GSM_MIN_EXTEN, GSM_MAX_EXTEN);
+	alice = db_create_subscriber(alice_imsi, GSM_MIN_EXTEN, GSM_MAX_EXTEN,
+				     true);
 	db_sync_subscriber(alice);
 	alice_db = db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice->imsi);
 	COMPARE(alice, alice_db);
 	SUBSCR_PUT(alice_db);
 	SUBSCR_PUT(alice);
 
-	test_subs("3693245423445", "1234567890", NULL);
-	test_subs("9993245423445", "1234567890", "6543560920");
+	test_subs("3693245423445", "1234567890", NULL, true);
+	test_subs("9993245423445", "1234567890", "6543560920", true);
+	test_subs("3123122223445", "1234567890", NULL, false);
+	test_subs("9123121223445", "1234567890", "6543560920", false);
 
 	/* create it again and see it fails */
-	alice = db_create_subscriber(alice_imsi, GSM_MIN_EXTEN, GSM_MAX_EXTEN);
+	alice = db_create_subscriber(alice_imsi, GSM_MIN_EXTEN, GSM_MAX_EXTEN,
+				     true);
 	OSMO_ASSERT(!alice);
 
 	test_sms();
