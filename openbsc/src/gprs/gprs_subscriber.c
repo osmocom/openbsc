@@ -165,7 +165,7 @@ static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 
 	if (strlen(gsup_msg->imsi) == 0 && subscr)
 		strncpy(gsup_msg->imsi, subscr->imsi, sizeof(gsup_msg->imsi) - 1);
-
+	gsup_msg->cn_domain = OSMO_GSUP_CN_DOMAIN_PS;
 	osmo_gsup_encode(msg, gsup_msg);
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
