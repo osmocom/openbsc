@@ -1086,6 +1086,8 @@ class TestVTYSGSN(TestVTYGenericBSC):
         self.assertTrue(self.vty.verify('auth-policy closed', ['']))
         res = self.vty.command("show running-config")
         self.assert_(res.find('auth-policy closed') > 0)
+        self.assertTrue(self.vty.verify('gsup remote-ip 127.0.0.4', ['']))
+        self.assertTrue(self.vty.verify('gsup remote-port 2222', ['']))
         self.assertTrue(self.vty.verify('auth-policy remote', ['']))
         res = self.vty.command("show running-config")
         self.assert_(res.find('auth-policy remote') > 0)

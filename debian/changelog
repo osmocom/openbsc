@@ -1,6 +1,8 @@
 openbsc (0.15.1) UNRELEASED; urgency=medium
 
   * Move forward toward a new release.
+  * Prevent SGSN starting with 'auth-policy remote' when no 'gsup remote-*' are configured.
+    Note: such configs are broken without extra workarounds anyway.
 
  -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Tue, 24 May 2016 23:14:31 +0200
 

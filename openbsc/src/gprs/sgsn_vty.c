@@ -210,9 +210,6 @@ static int config_write_sgsn(struct vty *vty)
 	for (server = sgsn->ares_servers; server; server = server->next)
 		vty_out(vty, " grx-dns-add %s%s", inet_ntoa(server->addr.addr4), VTY_NEWLINE);
 
-	vty_out(vty, " auth-policy %s%s",
-		get_value_string(sgsn_auth_pol_strs, g_cfg->auth_policy),
-		VTY_NEWLINE);
 	if (g_cfg->cipher != GPRS_ALGO_GEA0)
 		vty_out(vty, " encryption %s%s",
 			get_value_string(gprs_cipher_names, g_cfg->cipher),
@@ -223,6 +220,9 @@ static int config_write_sgsn(struct vty *vty)
 	if (g_cfg->gsup_server_port)
 		vty_out(vty, " gsup remote-port %d%s",
 			g_cfg->gsup_server_port, VTY_NEWLINE);
+	vty_out(vty, " auth-policy %s%s",
+		get_value_string(sgsn_auth_pol_strs, g_cfg->auth_policy),
+		VTY_NEWLINE);
 
 	vty_out(vty, " gsup oap-id %d%s",
 		(int)g_cfg->oap.client_id, VTY_NEWLINE);
@@ -591,6 +591,17 @@ DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
 {
 	int val = get_string_value(sgsn_auth_pol_strs, argv[0]);
 	OSMO_ASSERT(val >= SGSN_AUTH_POLICY_OPEN && val <= SGSN_AUTH_POLICY_REMOTE);
+	if (val == SGSN_AUTH_POLICY_REMOTE) {
+		const char *err = "%% auth-policy remote requires";
+		if (!g_cfg->gsup_server_addr.sin_addr.s_addr) {
+			vty_out(vty, "%s 'gsup remote-ip'%s", err, VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		if (!g_cfg->gsup_server_port) {
+			vty_out(vty, "%s 'gsup remote-port'%s", err, VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	}
 	g_cfg->auth_policy = val;
 	g_cfg->require_authentication = (val == SGSN_AUTH_POLICY_REMOTE);
 	g_cfg->require_update_location = (val == SGSN_AUTH_POLICY_REMOTE);
