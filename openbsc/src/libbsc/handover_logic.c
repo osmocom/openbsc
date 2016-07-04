@@ -284,7 +284,6 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	new_lchan->conn->lchan = new_lchan;
 	ho->old_lchan->conn = NULL;
 
-	rsl_lchan_set_state(ho->old_lchan, LCHAN_S_INACTIVE);
 	lchan_release(ho->old_lchan, 0, RSL_REL_LOCAL_END);
 
 	handover_free(ho);
