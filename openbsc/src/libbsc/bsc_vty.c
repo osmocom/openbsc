@@ -3996,8 +3996,13 @@ DEFUN(pdch_act, pdch_act_cmd,
 		return CMD_WARNING;
 	}
 
-	if (!is_ipaccess_bts(bts)) {
-		vty_out(vty, "%% This command only works for ipaccess BTS%s",
+	switch (bts->type) {
+	case GSM_BTS_TYPE_RBS2000:
+	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_OSMO_SYSMO:
+		break;
+	default:
+		vty_out(vty, "%% This command only works for IPA and RBS2000 BTS%s",
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -4020,7 +4025,7 @@ DEFUN(pdch_act, pdch_act_cmd,
 	else
 		activate = 0;
 
-	rsl_ipacc_pdch_activate(ts, activate);
+	rsl_dyn_pdch_activate(ts, activate);
 
 	return CMD_SUCCESS;
 
