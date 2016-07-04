@@ -53,6 +53,7 @@ enum sacch_deact {
 	SACCH_DEACTIVATE,
 };
 
+static int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act);
 static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
 static void error_timeout_cb(void *data);
 static int dyn_ts_switchover_continue(struct gsm_bts_trx_ts *ts);
@@ -507,6 +508,37 @@ static int rsl_chan_activate_lchan_as_pdch(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
+static int rsl_rbs2k_pdch_activate(struct gsm_bts_trx_ts *ts, int is_activation)
+{
+	struct gsm_bts_trx *trx = ts->trx;
+	struct gsm_lchan *lchan = &ts->lchan[0];
+	struct abis_rsl_dchan_hdr *dh;
+	struct msgb *msg;
+	uint8_t chan_nr;
+
+	OSMO_ASSERT(trx->bts->type == GSM_BTS_TYPE_RBS2000);
+
+	/* Ericsson proprietary encoding of PDCH channel number */
+	chan_nr = (0x18 << 3) | (ts->nr & 0x7);
+
+	msg = rsl_msgb_alloc();
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+
+	if (is_activation) {
+		rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
+		init_dchan_hdr(dh, RSL_MT_CHAN_ACTIV);
+		dh->chan_nr = chan_nr;
+	} else {
+		rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
+		init_dchan_hdr(dh, RSL_MT_RF_CHAN_REL);
+		dh->chan_nr = chan_nr;
+	}
+
+	msg->dst = trx->rsl_link;
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* Chapter 8.4.1 */
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 			    uint8_t ho_ref)
@@ -526,7 +558,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 		/* store activation type and handover reference */
 		lchan->dyn.act_type = act_type;
 		lchan->dyn.ho_ref = ho_ref;
-		return rsl_ipacc_pdch_activate(lchan->ts, 0);
+		return rsl_dyn_pdch_activate(lchan->ts, 0);
 	}
 
 	/*
@@ -757,6 +789,7 @@ int rsl_deact_sacch(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
+
 static bool dyn_ts_should_switch_to_pdch(struct gsm_bts_trx_ts *ts)
 {
 	int ss;
@@ -791,6 +824,19 @@ static bool dyn_ts_should_switch_to_pdch(struct gsm_bts_trx_ts *ts)
 	return true;
 }
 
+int rsl_dyn_pdch_activate(struct gsm_bts_trx_ts *ts, int is_activation)
+{
+	switch (ts->trx->bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_OSMO_SYSMO:
+		return rsl_ipacc_pdch_activate(ts, is_activation);
+	case GSM_BTS_TYPE_RBS2000:
+		return rsl_rbs2k_pdch_activate(ts, is_activation);
+	default:
+		return -1;
+	}
+}
+
 static void error_timeout_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
@@ -807,7 +853,7 @@ static void error_timeout_cb(void *data)
 	/* Put PDCH channel back into PDCH mode, if GPRS is enabled */
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && lchan->ts->trx->bts->gprs.mode != BTS_GPRS_NONE)
-		rsl_ipacc_pdch_activate(lchan->ts, 1);
+		rsl_dyn_pdch_activate(lchan->ts, 1);
 
 	if (dyn_ts_should_switch_to_pdch(lchan->ts))
 		dyn_ts_switchover_start(lchan->ts, GSM_PCHAN_PDCH);
@@ -976,7 +1022,8 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 		return 0;
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && lchan->state == LCHAN_S_NONE)
-		return rsl_ipacc_pdch_activate(ts, 1);
+		return rsl_dyn_pdch_activate(lchan->ts, 1);
+
 	return 0;
 }
 
@@ -2247,7 +2294,7 @@ int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan)
 	return rc;
 }
 
-int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act)
+static int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;

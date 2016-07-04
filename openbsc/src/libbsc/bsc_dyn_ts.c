@@ -37,7 +37,7 @@ void tchf_pdch_ts_init(struct gsm_bts_trx_ts *ts)
 	LOGP(DRSL, LOGL_DEBUG, "%s: trying to PDCH ACT\n",
 	     gsm_ts_and_pchan_name(ts));
 
-	rc = rsl_ipacc_pdch_activate(ts, 1);
+	rc = rsl_dyn_pdch_activate(ts, 1);
 	if (rc != 0)
 		LOGP(DRSL, LOGL_ERROR, "%s %s: PDCH ACT failed\n",
 		     gsm_ts_name(ts), gsm_pchan_name(ts->pchan));
