@@ -342,6 +342,7 @@ int main(int argc, char **argv)
 	bssgp_nsi = sgsn_inst.cfg.nsi = sgsn_nsi;
 
 	gprs_llc_init("/usr/local/lib/osmocom/crypt/");
+	sgsn_rate_ctr_init();
 	sgsn_inst_init();
 
 	gprs_ns_vty_init(bssgp_nsi);

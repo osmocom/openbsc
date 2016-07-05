@@ -290,6 +290,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 #endif
 
 	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS ATTACH ACCEPT (new P-TMSI=0x%08x)\n", mm->p_tmsi);
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_GPRS_ATTACH_ACKED]);
 
 	mmctx2msgid(msg, mm);
 
@@ -341,6 +342,7 @@ static int _tx_gmm_att_rej(struct msgb *msg, uint8_t gmm_cause,
 
 	LOGMMCTXP(LOGL_NOTICE, mm, "<- GPRS ATTACH REJECT: %s\n",
 		  get_value_string(gsm48_gmm_cause_names, gmm_cause));
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_GPRS_ATTACH_REJECTED]);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -373,6 +375,7 @@ static int _tx_detach_ack(struct msgb *msg, uint8_t force_stby,
 	/* MMCTX might be NULL! */
 
 	DEBUGP(DMM, "<- GPRS MM DETACH ACC (force-standby: %d)\n", force_stby);
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_GPRS_DETACH_ACKED]);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -854,6 +857,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	int rc;
 
 	LOGMMCTXP(LOGL_INFO, ctx, "-> GMM ATTACH REQUEST ");
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_GPRS_ATTACH_REQUEST]);
 
 	/* As per TS 04.08 Chapter 4.7.1.4, the attach request arrives either
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
@@ -1024,7 +1028,7 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	power_off = gh->data[0] & 0x8;
 
 	/* FIXME: In 24.008 there is an optional P-TMSI and P-TMSI signature IE */
-
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_GPRS_DETACH_REQUEST]);
 	LOGMMCTXP(LOGL_INFO, ctx, "-> GMM DETACH REQUEST TLLI=0x%08x type=%s %s\n",
 		msgb_tlli(msg), get_value_string(gprs_det_t_mo_strs, detach_type),
 		power_off ? "Power-off" : "");
@@ -1058,6 +1062,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 	struct gsm48_ra_upd_ack *rua;
 	uint8_t *mid;
 
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_GPRS_ROUTING_AREA_ACKED]);
 	LOGMMCTXP(LOGL_INFO, mm, "<- ROUTING AREA UPDATE ACCEPT\n");
 
 	mmctx2msgid(msg, mm);
@@ -1104,6 +1109,7 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 	struct gsm48_hdr *gh;
 
 	LOGP(DMM, LOGL_NOTICE, "<- ROUTING AREA UPDATE REJECT\n");
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_GPRS_ROUTING_AREA_REJECT]);
 
 	gmm_copy_id(msg, old_msg);
 
@@ -1166,6 +1172,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	/* Update Type 10.5.5.18 */
 	upd_type = *cur++ & 0x0f;
 
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_GPRS_ROUTING_AREA_REQUEST]);
 	LOGP(DMM, LOGL_INFO, "-> GMM RA UPDATE REQUEST type=\"%s\"\n",
 		get_value_string(gprs_upd_t_strs, upd_type));
 
@@ -1613,7 +1620,7 @@ static void msgb_put_pdp_addr_ppp(struct msgb *msg)
 }
 #endif
 
-/* Section 9.5.2: Ativate PDP Context Accept */
+/* Section 9.5.2: Activate PDP Context Accept */
 int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 PDP ACC");
@@ -1621,6 +1628,7 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 	uint8_t transaction_id = pdp->ti ^ 0x8; /* flip */
 
 	LOGPDPCTXP(LOGL_INFO, pdp, "<- ACTIVATE PDP CONTEXT ACK\n");
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_PDP_ACTIVATE_ACCEPT]);
 
 	mmctx2msgid(msg, pdp->mm);
 
@@ -1665,6 +1673,7 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
 	LOGMMCTXP(LOGL_NOTICE, mm, "<- ACTIVATE PDP CONTEXT REJ(cause=%u)\n", cause);
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_PDP_ACTIVATE_REJECT]);
 
 	mmctx2msgid(msg, mm);
 
@@ -1688,6 +1697,7 @@ static int _gsm48_tx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, uint8_t tid,
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
 	LOGMMCTXP(LOGL_INFO, mm, "<- DEACTIVATE PDP CONTEXT REQ\n");
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_PDP_DL_DEACTIVATE_REQUEST]);
 
 	mmctx2msgid(msg, mm);
 
@@ -1714,6 +1724,7 @@ static int _gsm48_tx_gsm_deact_pdp_acc(struct sgsn_mm_ctx *mm, uint8_t tid)
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
 	LOGMMCTXP(LOGL_INFO, mm, "<- DEACTIVATE PDP CONTEXT ACK\n");
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_PDP_DL_DEACTIVATE_ACCEPT]);
 
 	mmctx2msgid(msg, mm);
 
@@ -1993,6 +2004,8 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	struct msgb *msg;
 	int rc;
 
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_PDP_ACTIVATE_REQUEST]);
+
 	/*
 	 * This is painful. We might not have a static GGSN
 	 * configuration and then would need to copy the msg
@@ -2028,6 +2041,7 @@ static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, struct msgb *msg)
 
 	LOGMMCTXP(LOGL_INFO, mm, "-> DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
 		get_value_string(gsm48_gsm_cause_names, gh->data[0]));
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_PDP_UL_DEACTIVATE_REQUEST]);
 
 	pdp = sgsn_pdp_ctx_by_tid(mm, transaction_id);
 	if (!pdp) {
@@ -2048,6 +2062,7 @@ static int gsm48_rx_gsm_deact_pdp_ack(struct sgsn_mm_ctx *mm, struct msgb *msg)
 	struct sgsn_pdp_ctx *pdp;
 
 	LOGMMCTXP(LOGL_INFO, mm, "-> DEACTIVATE PDP CONTEXT ACK\n");
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_PDP_UL_DEACTIVATE_ACCEPT]);
 
 	pdp = sgsn_pdp_ctx_by_tid(mm, transaction_id);
 	if (!pdp) {

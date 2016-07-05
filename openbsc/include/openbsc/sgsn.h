@@ -20,6 +20,30 @@ enum sgsn_auth_policy {
 	SGSN_AUTH_POLICY_REMOTE
 };
 
+
+enum sgsn_rate_ctr_keys {
+	CTR_GPRS_ATTACH_REQUEST,
+	CTR_GPRS_ATTACH_ACKED,
+	CTR_GPRS_ATTACH_REJECTED,
+	CTR_GPRS_DETACH_REQUEST,
+	CTR_GPRS_DETACH_ACKED,
+	CTR_GPRS_ROUTING_AREA_REQUEST,
+	CTR_GPRS_ROUTING_AREA_ACKED,
+	CTR_GPRS_ROUTING_AREA_REJECT,
+	/* PDP single packet counter / GSM 04.08 9.5.1 - 9.5.9 */
+	CTR_PDP_ACTIVATE_REQUEST,
+	CTR_PDP_ACTIVATE_REJECT,
+	CTR_PDP_ACTIVATE_ACCEPT,
+	CTR_PDP_REQUEST_ACTIVATE, /* unused */
+	CTR_PDP_REQUEST_ACTIVATE_REJ, /* unused */
+	CTR_PDP_MODIFY_REQUEST, /* unsued */
+	CTR_PDP_MODIFY_ACCEPT, /* unused */
+	CTR_PDP_DL_DEACTIVATE_REQUEST,
+	CTR_PDP_DL_DEACTIVATE_ACCEPT,
+	CTR_PDP_UL_DEACTIVATE_REQUEST,
+	CTR_PDP_UL_DEACTIVATE_ACCEPT,
+};
+
 struct sgsn_cdr {
 	char *filename;
 	int interval;
@@ -88,6 +112,8 @@ struct sgsn_instance {
 	struct llist_head ares_fds;
 	ares_channel ares_channel;
 	struct ares_addr_node *ares_servers;
+
+	struct rate_ctr_group *rate_ctrs;
 };
 
 extern struct sgsn_instance *sgsn;

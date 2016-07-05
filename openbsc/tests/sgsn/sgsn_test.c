@@ -2429,6 +2429,7 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(osmo_sgsn_ctx, 0, "bsc");
 	tall_msgb_ctx = talloc_named_const(osmo_sgsn_ctx, 0, "msgb");
 
+	sgsn_rate_ctr_init();
 	sgsn_auth_init();
 	gprs_subscr_init(sgsn);
 
@@ -2458,7 +2459,7 @@ int main(int argc, char **argv)
 
 	talloc_report_full(osmo_sgsn_ctx, stderr);
 	OSMO_ASSERT(talloc_total_blocks(tall_msgb_ctx) == 1);
-	OSMO_ASSERT(talloc_total_blocks(tall_bsc_ctx) == 1);
+	OSMO_ASSERT(talloc_total_blocks(tall_bsc_ctx) == 2);
 	return 0;
 }
 

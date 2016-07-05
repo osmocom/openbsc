@@ -453,4 +453,6 @@ int gprs_sndcp_vty_init(void);
 struct sgsn_instance;
 int sgsn_gtp_init(struct sgsn_instance *sgi);
 
+void sgsn_rate_ctr_init();
+
 #endif /* _GPRS_SGSN_H */

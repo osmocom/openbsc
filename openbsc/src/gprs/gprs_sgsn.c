@@ -90,6 +90,40 @@ static const struct rate_ctr_group_desc pdpctx_ctrg_desc = {
 	.class_id = OSMO_STATS_CLASS_SUBSCRIBER,
 };
 
+static const struct rate_ctr_desc sgsn_ctr_description[] = {
+	{ "gprs.attach_requested", "Received attach requests" },
+	{ "gprs.attach_accepted", "Sent attach accepts" },
+	{ "gprs.attach_rejected", "Sent attach rejects" },
+	{ "gprs.detach_requested", "Received detach requests" },
+	{ "gprs.detach_acked", "Sent detach acks" },
+	{ "gprs.routing_area_requested", "Received routing area requests" },
+	{ "gprs.routing_area_requested", "Sent routing area acks" },
+	{ "gprs.routing_area_requested", "Sent routing area rejects" },
+	{ "pdp.activate_requested", "Received activate requests" },
+	{ "pdp.activate_rejected", "Sent activate rejects" },
+	{ "pdp.activate_accepted", "Sent activate accepts" },
+	{ "pdp.request_activated", "unused" },
+	{ "pdp.request_activate_rejected", "unused" },
+	{ "pdp.modify_requested", "unused" },
+	{ "pdp.modify_accepted", "unused" },
+	{ "pdp.dl_deactivate_requested", "Sent deactivate requests" },
+	{ "pdp.dl_deactivate_accepted", "Sent deactivate accepted" },
+	{ "pdp.ul_deactivate_requested", "Received deactivate requests" },
+	{ "pdp.ul_deactivate_accepted", "Received deactivate accepts" },
+};
+
+static const struct rate_ctr_group_desc sgsn_ctrg_desc = {
+	"sgsn",
+	"SGSN Overall Statistics",
+	OSMO_STATS_CLASS_GLOBAL,
+	ARRAY_SIZE(sgsn_ctr_description),
+	sgsn_ctr_description,
+};
+
+void sgsn_rate_ctr_init() {
+	sgsn->rate_ctrs = rate_ctr_group_alloc(tall_bsc_ctx, &sgsn_ctrg_desc, 0);
+}
+
 /* look-up a SGSN MM context based on TLLI + RAI */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid)
