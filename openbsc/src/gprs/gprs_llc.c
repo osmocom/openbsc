@@ -29,6 +29,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/rate_ctr.h>
 #include <osmocom/gprs/gprs_bssgp.h>
 
 #include <openbsc/gsm_data.h>
@@ -330,6 +331,9 @@ int gprs_llc_tx_u(struct msgb *msg, uint8_t sapi, int command,
 	fcs[2] = (fcs_calc >> 16) & 0xff;
 
 	/* Identifiers passed down: (BVCI, NSEI) */
+
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_LLC_DL_PACKETS]);
+	rate_ctr_add(&sgsn->rate_ctrs->ctr[CTR_LLC_DL_BYTES], msg->len);
 
 	/* Send BSSGP-DL-UNITDATA.req */
 	return _bssgp_tx_dl_ud(msg, NULL);
@@ -672,6 +676,9 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	rc = gprs_llc_hdr_rx(&llhp, lle);
 	if (rc < 0)
 		return rc;
+
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_LLC_UL_PACKETS]);
+	rate_ctr_add(&sgsn->rate_ctrs->ctr[CTR_LLC_UL_BYTES], msg->len);
 
 	/* llhp.data is only set when we need to send LL_[UNIT]DATA_IND up */
 	if (llhp.cmd == GPRS_LLC_UI && llhp.data && llhp.data_len) {

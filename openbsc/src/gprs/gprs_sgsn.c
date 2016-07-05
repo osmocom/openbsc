@@ -91,6 +91,10 @@ static const struct rate_ctr_group_desc pdpctx_ctrg_desc = {
 };
 
 static const struct rate_ctr_desc sgsn_ctr_description[] = {
+	{ "llc.dl_bytes", "Count sent LLC bytes before giving it to the bssgp layer" },
+	{ "llc.ul_bytes", "Count sucessful received LLC bytes (encrypt & fcs correct)" },
+	{ "llc.dl_packets", "Count sucessful sent LLC packets before giving it to the bssgp layer" },
+	{ "llc.ul_packets", "Count sucessful received LLC packets (encrypt & fcs correct)" },
 	{ "gprs.attach_requested", "Received attach requests" },
 	{ "gprs.attach_accepted", "Sent attach accepts" },
 	{ "gprs.attach_rejected", "Sent attach rejects" },
