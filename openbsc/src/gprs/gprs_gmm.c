@@ -31,6 +31,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include <openssl/rand.h>
+
 #include <openbsc/db.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/tlv.h>
@@ -417,16 +419,16 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 }
 
 /* Section 9.4.9: Authentication and Ciphering Request */
-static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
+static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
 				      uint8_t key_seq, uint8_t algo)
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 AUTH CIPH REQ");
 	struct gsm48_hdr *gh;
 	struct gsm48_auth_ciph_req *acreq;
-	uint8_t *m_rand, *m_cksn;
+	uint8_t *m_rand, *m_cksn, rbyte;
 
 	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS AUTH AND CIPHERING REQ (rand = %s)\n",
-		osmo_hexdump(rand, 16));
+		osmo_hexdump(rnd, 16));
 
 	mmctx2msgid(msg, mm);
 
@@ -438,13 +440,20 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 	acreq->ciph_alg = algo & 0xf;
 	acreq->imeisv_req = 0x1;
 	acreq->force_stby = 0x0;
-	acreq->ac_ref_nr = 0x0;	/* FIXME: increment this? */
+	/* 3GPP TS 24.008 § 10.5.5.19: */
+	if (RAND_bytes(&rbyte, 1) != 1) {
+		LOGP(DMM, LOGL_NOTICE, "RAND_bytes failed for A&C ref, falling "
+		     "back to rand()\n");
+		acreq->ac_ref_nr = rand();
+	} else
+		acreq->ac_ref_nr = rbyte;
+	mm->ac_ref_nr_used = acreq->ac_ref_nr;
 
 	/* Only if authentication is requested we need to set RAND + CKSN */
-	if (rand) {
+	if (rnd) {
 		m_rand = msgb_put(msg, 16+1);
 		m_rand[0] = GSM48_IE_GMM_AUTH_RAND;
-		memcpy(m_rand+1, rand, 16);
+		memcpy(m_rand + 1, rnd, 16);
 
 		m_cksn = msgb_put(msg, 1);
 		m_cksn[0] = (GSM48_IE_GMM_CIPH_CKSN << 4) | (key_seq & 0x07);
@@ -490,13 +499,18 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 		return 0;
 	}
 
+	if (acr->ac_ref_nr != ctx->ac_ref_nr_used) {
+		LOGMMCTXP(LOGL_NOTICE, ctx, "Reference mismatch for Auth & Ciph"
+			  " Response: %u received, %u expected\n",
+			  acr->ac_ref_nr, ctx->ac_ref_nr_used);
+		return 0;
+	}
+
 	/* Stop T3360 */
 	mmctx_timer_stop(ctx, 3360);
 
 	tlv_parse(&tp, &gsm48_gmm_att_tlvdef, acr->data,
 			(msg->data + msg->len) - acr->data, 0, 0);
-
-	/* FIXME: compare ac_ref? */
 
 	if (!TLVP_PRESENT(&tp, GSM48_IE_GMM_AUTH_SRES) ||
 	    !TLVP_PRESENT(&tp, GSM48_IE_GMM_IMEISV)) {

@@ -101,6 +101,25 @@ int bssgp_tx_dl_ud(struct msgb *msg, uint16_t pdu_lifetime,
 	return 0;
 }
 
+/* override, requires '-Wl,--wrap=RAND_bytes' */
+int __real_RAND_bytes(unsigned char *buf, int num);
+int mock_RAND_bytes(unsigned char *buf, int num);
+int (*RAND_bytes_cb)(unsigned char *, int) =
+  &mock_RAND_bytes;
+
+int __wrap_RAND_bytes(unsigned char *buf, int num)
+{
+	return (*RAND_bytes_cb)(buf, num);
+}
+/* make results of A&C ref predictable */
+int mock_RAND_bytes(unsigned char *buf, int num)
+{
+	if (num > 1)
+		return __real_RAND_bytes(buf, num);
+	buf[0] = 0;
+	return 1;
+}
+
 /* override, requires '-Wl,--wrap=sgsn_update_subscriber_data' */
 void __real_sgsn_update_subscriber_data(struct sgsn_mm_ctx *);
 void (*update_subscriber_data_cb)(struct sgsn_mm_ctx *) =

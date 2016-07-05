@@ -158,6 +158,8 @@ struct sgsn_mm_ctx {
 	/* Iu: CK, IK, KSI */
 	/* CKSN */
 	enum gprs_ciph_algo	ciph_algo;
+	/* Auth & Ciphering Request reference from 3GPP TS 24.008 § 10.5.5.19: */
+	uint8_t ac_ref_nr_used;
 
 	struct {
 		uint8_t	len;
