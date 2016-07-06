@@ -645,8 +645,9 @@ static void error_timeout_cb(void *data)
 	LOGP(DRSL, LOGL_INFO, "%s is back in operation.\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 
-	/* Put PDCH channel back into PDCH mode */
-	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH)
+	/* Put PDCH channel back into PDCH mode, if GPRS is enabled */
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
+	    && lchan->ts->trx->bts->gprs.mode != BTS_GPRS_NONE)
 		rsl_ipacc_pdch_activate(lchan->ts, 1);
 }
 
@@ -772,9 +773,13 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 	 * Any state other than LCHAN_S_REL_ERR became LCHAN_S_NONE after above
 	 * do_lchan_free(). Assert this, because that's what ensures a PDCH ACT
 	 * on a dynamic channel in all cases.
+	 *
+	 * If GPRS is disabled, always skip the PDCH ACT.
 	 */
 	OSMO_ASSERT(lchan->state == LCHAN_S_NONE
 		    || lchan->state == LCHAN_S_REL_ERR);
+	if (lchan->ts->trx->bts->gprs.mode == BTS_GPRS_NONE)
+		return 0;
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && lchan->state == LCHAN_S_NONE)
 		return rsl_ipacc_pdch_activate(lchan->ts, 1);
@@ -2042,6 +2047,8 @@ int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act)
 	}
 
 	if (act){
+		/* Callers should heed the GPRS mode. */
+		OSMO_ASSERT(ts->trx->bts->gprs.mode != BTS_GPRS_NONE);
 		msg_type = RSL_MT_IPAC_PDCH_ACT;
 		ts->flags |= TS_F_PDCH_ACT_PENDING;
 	} else {
