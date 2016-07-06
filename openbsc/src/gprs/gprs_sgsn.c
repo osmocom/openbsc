@@ -244,7 +244,7 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 
 	if (llme) {
 		/* TLLI unassignment, must be called after sgsn_mm_ctx_free */
-		gprs_llgmm_assign(llme, tlli, 0xffffffff, GPRS_ALGO_GEA0, NULL);
+		gprs_llgmm_assign(llme, tlli, 0xffffffff);
 	}
 }
 

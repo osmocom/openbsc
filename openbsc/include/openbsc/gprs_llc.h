@@ -155,7 +155,10 @@ struct gprs_llc_llme {
 
 	/* Crypto parameters */
 	enum gprs_ciph_algo algo;
-	uint8_t kc[8];
+	uint8_t kc[16];
+	uint8_t cksn;
+	/* 3GPP TS 44.064 § 8.9.2: */
+	uint32_t iov_ui;
 
 	/* over which BSSGP BTS ctx do we need to transmit */
 	uint16_t bvci;
@@ -216,8 +219,7 @@ int gprs_llgmm_reset_oldmsg(struct msgb* oldmsg, uint8_t sapi);
 
 /* 04.64 Chapter 7.2.1.1 LLGMM-ASSIGN */
 int gprs_llgmm_assign(struct gprs_llc_llme *llme,
-		      uint32_t old_tlli, uint32_t new_tlli,
-		      enum gprs_ciph_algo alg, const uint8_t *kc);
+		      uint32_t old_tlli, uint32_t new_tlli);
 int gprs_llgmm_unassign(struct gprs_llc_llme *llme);
 
 int gprs_llc_init(const char *cipher_plugin_path);
@@ -240,6 +242,7 @@ static inline int gprs_llc_is_retransmit(uint16_t nu, uint16_t vur)
 }
 
 /* LLC low level functions */
+void gprs_llme_copy_key(struct sgsn_mm_ctx *mm, struct gprs_llc_llme *llme);
 
 /* parse a GPRS LLC header, also check for invalid frames */
 int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,

@@ -236,6 +236,7 @@ static struct gprs_llc_llme *llme_alloc(uint32_t tlli)
 	llme->old_tlli = 0xffffffff;
 	llme->state = GPRS_LLMS_UNASSIGNED;
 	llme->age_timestamp = GPRS_LLME_RESET_AGE;
+	llme->cksn = GSM_KEY_SEQ_INVAL;
 
 	for (i = 0; i < ARRAY_SIZE(llme->lle); i++)
 		lle_init(llme, i);
@@ -365,6 +366,8 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 		msgb_free(msg);
 		return -EFBIG;
 	}
+
+	gprs_llme_copy_key(mmctx, lle->llme);
 
 	/* Update LLE's (BVCI, NSEI) tuple */
 	lle->llme->bvci = msgb_bvci(msg);
@@ -687,17 +690,28 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	return rc;
 }
 
+/* Propagate crypto parameters MM -> LLME */
+void gprs_llme_copy_key(struct sgsn_mm_ctx *mm, struct gprs_llc_llme *llme)
+{
+	if (!mm)
+		return;
+	if (mm->ciph_algo != GPRS_ALGO_GEA0) {
+		llme->algo = mm->ciph_algo;
+		if (llme->cksn != mm->auth_triplet.key_seq &&
+		    mm->auth_triplet.key_seq != GSM_KEY_SEQ_INVAL) {
+			memcpy(llme->kc, mm->auth_triplet.vec.kc,
+			       gprs_cipher_key_length(mm->ciph_algo));
+			llme->cksn = mm->auth_triplet.key_seq;
+		}
+	} else
+		llme->cksn = GSM_KEY_SEQ_INVAL;
+}
+
 /* 04.64 Chapter 7.2.1.1 LLGMM-ASSIGN */
 int gprs_llgmm_assign(struct gprs_llc_llme *llme,
-		      uint32_t old_tlli, uint32_t new_tlli,
-		      enum gprs_ciph_algo alg, const uint8_t *kc)
+		      uint32_t old_tlli, uint32_t new_tlli)
 {
 	unsigned int i;
-
-	/* Update the crypto parameters */
-	llme->algo = alg;
-	if (alg != GPRS_ALGO_GEA0)
-		memcpy(llme->kc, kc, sizeof(llme->kc));
 
 	if (old_tlli == 0xffffffff && new_tlli != 0xffffffff) {
 		/* TLLI Assignment 8.3.1 */
@@ -748,8 +762,7 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 /* TLLI unassignment */
 int gprs_llgmm_unassign(struct gprs_llc_llme *llme)
 {
-	return gprs_llgmm_assign(llme, llme->tlli, 0xffffffff, GPRS_ALGO_GEA0,
-				 NULL);
+	return gprs_llgmm_assign(llme, llme->tlli, 0xffffffff);
 }
 
 /* Chapter 7.2.1.2 LLGMM-RESET.req */

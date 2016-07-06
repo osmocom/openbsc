@@ -976,8 +976,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		ctx->gb.tlli_new = gprs_tmsi2tlli(ctx->p_tmsi, TLLI_LOCAL);
 
 		/* Inform LLC layer about new TLLI but keep old active */
-		gprs_llgmm_assign(ctx->gb.llme, ctx->gb.tlli, ctx->gb.tlli_new,
-				  GPRS_ALGO_GEA0, NULL);
+		if (ctx->is_authenticated)
+			gprs_llme_copy_key(ctx, ctx->gb.llme);
+
+		gprs_llgmm_assign(ctx->gb.llme, ctx->gb.tlli, ctx->gb.tlli_new);
 	}
 
 	ctx->pending_req = GSM48_MT_GMM_ATTACH_REQ;
@@ -1276,8 +1278,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 		/* Inform LLC layer about new TLLI but keep old active */
 		gprs_llgmm_assign(mmctx->gb.llme, mmctx->gb.tlli,
-				  mmctx->gb.tlli_new, GPRS_ALGO_GEA0,
-				  NULL);
+				  mmctx->gb.tlli_new);
 	}
 
 	/* Look at PDP Context Status IE and see if MS's view of
@@ -1412,9 +1413,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
 			/* Unassign the old TLLI */
 			mmctx->gb.tlli = mmctx->gb.tlli_new;
+			gprs_llme_copy_key(mmctx, mmctx->gb.llme);
 			gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff,
-					  mmctx->gb.tlli_new,
-					  GPRS_ALGO_GEA0, NULL);
+					  mmctx->gb.tlli_new);
 		}
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		rc = 0;
@@ -1435,8 +1436,8 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		if (mmctx->ran_type == MM_CTX_T_GERAN_Gb) {
 			/* Unassign the old TLLI */
 			mmctx->gb.tlli = mmctx->gb.tlli_new;
-			gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff, mmctx->gb.tlli_new,
-					  GPRS_ALGO_GEA0, NULL);
+			gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff,
+					  mmctx->gb.tlli_new);
 		}
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		rc = 0;
