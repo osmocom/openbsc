@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <openssl/rand.h>
 
@@ -346,9 +347,12 @@ static int gprs_llc_tx_xid(struct gprs_llc_lle *lle, struct msgb *msg,
 	return gprs_llc_tx_u(msg, lle->sapi, command, GPRS_LLC_U_XID, 1);
 }
 
-/* Transmit a UI frame over the given SAPI */
+/* Transmit a UI frame over the given SAPI:
+   'encryptable' indicates whether particular message can be encrypted according
+   to 3GPP TS 24.008 § 4.7.1.2
+ */
 int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
-		   void *mmctx)
+		   struct sgsn_mm_ctx *mmctx, bool encryptable)
 {
 	struct gprs_llc_lle *lle;
 	uint8_t *fcs, *llch;
@@ -409,7 +413,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 	fcs[2] = (fcs_calc >> 16) & 0xff;
 
 	/* encrypt information field + FCS, if needed! */
-	if (lle->llme->algo != GPRS_ALGO_GEA0) {
+	if (lle->llme->algo != GPRS_ALGO_GEA0 && encryptable) {
 		uint32_t iov_ui = 0; /* FIXME: randomly select for TLLI */
 		uint16_t crypt_len = (fcs + 3) - (llch + 3);
 		uint8_t cipher_out[GSM0464_CIPH_MAX_BLOCK];
@@ -567,6 +571,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	struct gprs_llc_hdr *lh = (struct gprs_llc_hdr *) msgb_llch(msg);
 	struct gprs_llc_hdr_parsed llhp;
 	struct gprs_llc_lle *lle;
+	bool drop_cipherable = false;
 	int rc = 0;
 
 	/* Identifiers from DOWN: NSEI, BVCI, TLLI */
@@ -640,11 +645,9 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		for (i = 0; i < crypt_len; i++)
 			*(llhp.data + i) ^= cipher_out[i];
 	} else {
-		if (lle->llme->algo != GPRS_ALGO_GEA0) {
-			LOGP(DLLC, LOGL_NOTICE, "unencrypted frame for LLC "
-				"that is supposed to be encrypted. Dropping.\n");
-			return 0;
-		}
+		if (lle->llme->algo != GPRS_ALGO_GEA0 &&
+		    lle->llme->cksn != GSM_KEY_SEQ_INVAL)
+			drop_cipherable = true;
 	}
 
 	/* We have to do the FCS check _after_ decryption */
@@ -669,7 +672,8 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		switch (llhp.sapi) {
 		case GPRS_SAPI_GMM:
 			/* send LL_UNITDATA_IND to GMM */
-			rc = gsm0408_gprs_rcvmsg_gb(msg, lle->llme);
+			rc = gsm0408_gprs_rcvmsg_gb(msg, lle->llme,
+						    drop_cipherable);
 			break;
 		case GPRS_SAPI_SNDCP3:
 		case GPRS_SAPI_SNDCP5:

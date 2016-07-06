@@ -2,6 +2,7 @@
 #define _GPRS_LLC_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <openbsc/gprs_sgsn.h>
 
 /* Section 4.7 LLC Layer Structure */
@@ -211,7 +212,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv);
 
 /* LL-UNITDATA.req */
 int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
-		   void *mmctx);
+		   struct sgsn_mm_ctx *mmctx, bool encryptable);
 
 /* Chapter 7.2.1.2 LLGMM-RESET.req */
 int gprs_llgmm_reset(struct gprs_llc_llme *llme);

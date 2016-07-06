@@ -215,7 +215,7 @@ static void send_0408_message(struct gprs_llc_llme *llme, uint32_t tlli,
 	msg = create_msg(data, data_len);
 	msgb_tlli(msg) = tlli;
 	bssgp_create_cell_id(msgb_bcid(msg), bssgp_raid, 0);
-	gsm0408_gprs_rcvmsg_gb(msg, llme);
+	gsm0408_gprs_rcvmsg_gb(msg, llme, false);
 	msgb_free(msg);
 }
 

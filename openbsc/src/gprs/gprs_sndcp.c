@@ -22,6 +22,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/linuxlist.h>
@@ -417,7 +418,7 @@ static int sndcp_send_ud_frag(struct sndcp_frag_state *fs)
 	/* set the MORE bit of the SNDCP header accordingly */
 	sch->more = more;
 
-	rc = gprs_llc_tx_ui(fmsg, lle->sapi, 0, fs->mmcontext);
+	rc = gprs_llc_tx_ui(fmsg, lle->sapi, 0, fs->mmcontext, true);
 	/* abort in case of error, do not advance frag_nr / next_byte */
 	if (rc < 0) {
 		msgb_free(fs->msg);
@@ -498,7 +499,7 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 	sch->type = 1;
 	sch->nsapi = nsapi;
 
-	return gprs_llc_tx_ui(msg, lle->sapi, 0, mmcontext);
+	return gprs_llc_tx_ui(msg, lle->sapi, 0, mmcontext, true);
 }
 
 /* Section 5.1.2.17 LL-UNITDATA.ind */

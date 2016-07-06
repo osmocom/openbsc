@@ -26,7 +26,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
-
+#include <stdbool.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -132,13 +132,13 @@ time_t gprs_max_time_to_idle(void)
 
 /* Send a message through the underlying layer */
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
-			     struct sgsn_mm_ctx *mm)
+			     struct sgsn_mm_ctx *mm, bool encryptable)
 {
 	if (mm)
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_SIG_OUT]);
 
 	/* caller needs to provide TLLI, BVCI and NSEI */
-	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command, mm);
+	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command, mm, encryptable);
 }
 
 /* copy identifiers from old message to new message, this
@@ -196,7 +196,7 @@ static int _tx_status(struct msgb *msg, uint8_t cause,
 	}
 	gh->data[0] = cause;
 
-	return gsm48_gmm_sendmsg(msg, 0, mmctx);
+	return gsm48_gmm_sendmsg(msg, 0, mmctx, true);
 }
 
 static int gsm48_tx_gmm_status(struct sgsn_mm_ctx *mmctx, uint8_t cause)
@@ -234,7 +234,7 @@ static int _tx_detach_req(struct msgb *msg, uint8_t detach_type, uint8_t cause,
 
 	msgb_tv_put(msg, GSM48_IE_GMM_CAUSE, cause);
 
-	return gsm48_gmm_sendmsg(msg, 0, mmctx);
+	return gsm48_gmm_sendmsg(msg, 0, mmctx, true);
 }
 
 static int gsm48_tx_gmm_detach_req(struct sgsn_mm_ctx *mmctx,
@@ -330,7 +330,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	/* Optional: MS-identity (combined attach) */
 	/* Optional: GMM cause (partial attach result for combined attach) */
 
-	return gsm48_gmm_sendmsg(msg, 0, mm);
+	return gsm48_gmm_sendmsg(msg, 0, mm, true);
 }
 
 /* Chapter 9.4.5: Attach reject */
@@ -347,7 +347,7 @@ static int _tx_gmm_att_rej(struct msgb *msg, uint8_t gmm_cause,
 	gh->msg_type = GSM48_MT_GMM_ATTACH_REJ;
 	gh->data[0] = gmm_cause;
 
-	return gsm48_gmm_sendmsg(msg, 0, NULL);
+	return gsm48_gmm_sendmsg(msg, 0, NULL, false);
 }
 static int gsm48_tx_gmm_att_rej_oldmsg(const struct msgb *old_msg,
 					uint8_t gmm_cause)
@@ -379,7 +379,7 @@ static int _tx_detach_ack(struct msgb *msg, uint8_t force_stby,
 	gh->msg_type = GSM48_MT_GMM_DETACH_ACK;
 	gh->data[0] = force_stby;
 
-	return gsm48_gmm_sendmsg(msg, 0, mm);
+	return gsm48_gmm_sendmsg(msg, 0, mm, true);
 }
 
 static int gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
@@ -415,7 +415,7 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	/* 10.5.5.9 ID type 2 + identity type and 10.5.5.7 'force to standby' IE */
 	gh->data[0] = id_type & 0xf;
 
-	return gsm48_gmm_sendmsg(msg, 1, mm);
+	return gsm48_gmm_sendmsg(msg, 1, mm, false);
 }
 
 /* 3GPP TS 24.008 Section 9.4.9: Authentication and Ciphering Request */
@@ -463,7 +463,7 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
 	/* FIXME: add AUTN for 3g auth according to 3GPP TS 24.008 § 10.5.3.1.1 */
 	/* FIXME: make sure we don't send any other messages to the MS */
 
-	return gsm48_gmm_sendmsg(msg, 1, mm);
+	return gsm48_gmm_sendmsg(msg, 1, mm, false);
 }
 
 /* Section 9.4.11: Authentication and Ciphering Reject */
@@ -480,7 +480,7 @@ static int gsm48_tx_gmm_auth_ciph_rej(struct sgsn_mm_ctx *mm)
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
 	gh->msg_type = GSM48_MT_GMM_AUTH_CIPH_REJ;
 
-	return gsm48_gmm_sendmsg(msg, 0, mm);
+	return gsm48_gmm_sendmsg(msg, 0, mm, false);
 }
 
 /* Section 9.4.10: Authentication and Ciphering Response */
@@ -1094,7 +1094,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 		    gprs_secs_to_tmr_floor(sgsn->cfg.timers.T3314));
 
 	/* Option: MS ID, ... */
-	return gsm48_gmm_sendmsg(msg, 0, mm);
+	return gsm48_gmm_sendmsg(msg, 0, mm, true);
 }
 
 /* Chapter 9.4.17: Routing area update reject */
@@ -1114,7 +1114,7 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 	gh->data[1] = 0; /* ? */
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
-	return gsm48_gmm_sendmsg(msg, 0, NULL);
+	return gsm48_gmm_sendmsg(msg, 0, NULL, false);
 }
 
 static void process_ms_ctx_status(struct sgsn_mm_ctx *mmctx,
@@ -1328,13 +1328,20 @@ static int gsm48_rx_gmm_status(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 
 /* GPRS Mobility Management */
 static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
-			   struct gprs_llc_llme *llme)
+			   struct gprs_llc_llme *llme, bool drop_cipherable)
 {
 	struct sgsn_signal_data sig_data;
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	int rc;
 
 	/* MMCTX can be NULL when called */
+	if (drop_cipherable && gsm48_hdr_gmm_cipherable(gh)) {
+		LOGMMCTXP(LOGL_NOTICE, mmctx, "Dropping cleartext GMM %s which "
+			  "is expected to be encrypted for TLLI 0x%08x\n",
+			  get_value_string(gprs_msgt_gmm_names, gh->msg_type),
+			  llme->tlli);
+		return -EBADMSG;
+	}
 
 	if (llme && !mmctx &&
 	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
@@ -1646,7 +1653,7 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 
 	/* Optional: Packet Flow Identifier */
 
-	return gsm48_gmm_sendmsg(msg, 0, pdp->mm);
+	return gsm48_gmm_sendmsg(msg, 0, pdp->mm, true);
 }
 
 /* Section 9.5.3: Activate PDP Context reject */
@@ -1669,7 +1676,7 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 	if (pco_len && pco_v)
 		msgb_tlv_put(msg, GSM48_IE_GSM_PROTO_CONF_OPT, pco_len, pco_v);
 
-	return gsm48_gmm_sendmsg(msg, 0, mm);
+	return gsm48_gmm_sendmsg(msg, 0, mm, true);
 }
 
 /* Section 9.5.8: Deactivate PDP Context Request */
@@ -1690,7 +1697,7 @@ static int _gsm48_tx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, uint8_t tid,
 
 	msgb_v_put(msg, sm_cause);
 
-	return gsm48_gmm_sendmsg(msg, 0, mm);
+	return gsm48_gmm_sendmsg(msg, 0, mm, true);
 }
 int gsm48_tx_gsm_deact_pdp_req(struct sgsn_pdp_ctx *pdp, uint8_t sm_cause)
 {
@@ -1714,7 +1721,7 @@ static int _gsm48_tx_gsm_deact_pdp_acc(struct sgsn_mm_ctx *mm, uint8_t tid)
 	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
 	gh->msg_type = GSM48_MT_GSM_DEACT_PDP_ACK;
 
-	return gsm48_gmm_sendmsg(msg, 0, mm);
+	return gsm48_gmm_sendmsg(msg, 0, mm, true);
 }
 int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_pdp_ctx *pdp)
 {
@@ -2163,7 +2170,8 @@ int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx)
 }
 
 /* Main entry point for incoming 04.08 GPRS messages from Gb */
-int gsm0408_gprs_rcvmsg_gb(struct msgb *msg, struct gprs_llc_llme *llme)
+int gsm0408_gprs_rcvmsg_gb(struct msgb *msg, struct gprs_llc_llme *llme,
+			   bool drop_cipherable)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t pdisc = gsm48_hdr_pdisc(gh);
@@ -2183,7 +2191,7 @@ int gsm0408_gprs_rcvmsg_gb(struct msgb *msg, struct gprs_llc_llme *llme)
 
 	switch (pdisc) {
 	case GSM48_PDISC_MM_GPRS:
-		rc = gsm0408_rcv_gmm(mmctx, msg, llme);
+		rc = gsm0408_rcv_gmm(mmctx, msg, llme, drop_cipherable);
 		break;
 	case GSM48_PDISC_SM_GPRS:
 		rc = gsm0408_rcv_gsm(mmctx, msg, llme);
