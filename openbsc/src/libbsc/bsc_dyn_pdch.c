@@ -27,18 +27,18 @@ void dyn_pdch_init(struct gsm_bts_trx_ts *ts)
 {
 	int rc;
 
+	/* Clear all dyn PDCH flags */
 	ts->flags &= ~(TS_F_PDCH_PENDING_MASK | TS_F_PDCH_ACTIVE);
 
-	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH) {
-		LOGP(DRSL, LOGL_DEBUG, "trying to PDCH ACT on"
-		     " BTS %u TRX %u TS %u\n",
-		     ts->trx->bts->nr, ts->trx->nr, ts->nr);
-		rc = rsl_ipacc_pdch_activate(ts, 1);
-		if (rc != 0) {
-			LOGP(DRSL, LOGL_ERROR,
-			     "Failed to activate PDCH on"
-			     " BTS %u TRX %u TS %u: %d\n",
-			     ts->trx->bts->nr, ts->trx->nr, ts->nr, rc);
-		}
-	}
+	/* Nothing to do if not a dynamic channel. */
+	if (ts->pchan != GSM_PCHAN_TCH_F_PDCH)
+		return;
+
+	LOGP(DRSL, LOGL_DEBUG, "%s %s: trying to PDCH ACT\n",
+	     gsm_ts_name(ts), gsm_pchan_name(ts->pchan));
+
+	rc = rsl_ipacc_pdch_activate(ts, 1);
+	if (rc != 0)
+		LOGP(DRSL, LOGL_ERROR, "%s %s: PDCH ACT failed\n",
+		     gsm_ts_name(ts), gsm_pchan_name(ts->pchan));
 }
