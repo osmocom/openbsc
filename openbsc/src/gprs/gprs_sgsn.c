@@ -169,6 +169,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 	ctx->gb.tlli = tlli;
 	ctx->mm_state = GMM_DEREGISTERED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
+	ctx->ciph_algo = sgsn->cfg.cipher;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, tlli);
 	INIT_LLIST_HEAD(&ctx->pdp_list);
 
@@ -602,11 +603,6 @@ int drop_all_pdp_for_ggsn(struct sgsn_ggsn_ctx *ggsn)
 	}
 
 	return num;
-}
-
-int sgsn_force_reattach_oldmsg(struct msgb *oldmsg)
-{
-	return gsm0408_gprs_force_reattach_oldmsg(oldmsg);
 }
 
 void sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)

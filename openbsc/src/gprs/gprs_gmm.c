@@ -418,9 +418,9 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	return gsm48_gmm_sendmsg(msg, 1, mm);
 }
 
-/* Section 9.4.9: Authentication and Ciphering Request */
+/* 3GPP TS 24.008 Section 9.4.9: Authentication and Ciphering Request */
 static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
-				      uint8_t key_seq, uint8_t algo)
+				      uint8_t key_seq, bool force_standby)
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 AUTH CIPH REQ");
 	struct gsm48_hdr *gh;
@@ -437,9 +437,11 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
 	gh->msg_type = GSM48_MT_GMM_AUTH_CIPH_REQ;
 
 	acreq = (struct gsm48_auth_ciph_req *) msgb_put(msg, sizeof(*acreq));
-	acreq->ciph_alg = algo & 0xf;
+	acreq->ciph_alg = mm->ciph_algo & 0xf;
+	/* § 10.5.5.10: */
 	acreq->imeisv_req = 0x1;
-	acreq->force_stby = 0x0;
+	/* § 10.5.5.7: */
+	acreq->force_stby = force_standby;
 	/* 3GPP TS 24.008 § 10.5.5.19: */
 	if (RAND_bytes(&rbyte, 1) != 1) {
 		LOGP(DMM, LOGL_NOTICE, "RAND_bytes failed for A&C ref, falling "
@@ -454,11 +456,11 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
 		m_rand = msgb_put(msg, 16+1);
 		m_rand[0] = GSM48_IE_GMM_AUTH_RAND;
 		memcpy(m_rand + 1, rnd, 16);
-
+		/* § 10.5.1.2: */
 		m_cksn = msgb_put(msg, 1);
 		m_cksn[0] = (GSM48_IE_GMM_CIPH_CKSN << 4) | (key_seq & 0x07);
 	}
-
+	/* FIXME: add AUTN for 3g auth according to 3GPP TS 24.008 § 10.5.3.1.1 */
 	/* FIXME: make sure we don't send any other messages to the MS */
 
 	return gsm48_gmm_sendmsg(msg, 1, mm);
@@ -652,8 +654,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 
 		mmctx_timer_start(ctx, 3360, sgsn->cfg.timers.T3360);
 		return gsm48_tx_gmm_auth_ciph_req(ctx, at->vec.rand,
-						  at->key_seq,
-						  GPRS_ALGO_GEA0);
+						  at->key_seq, false);
 	}
 
 	if (ctx->auth_state == SGSN_AUTH_AUTHENTICATE && ctx->is_authenticated &&
@@ -959,7 +960,15 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		ctx->ms_radio_access_capa.len);
 	ctx->ms_network_capa.len = msnc_len;
 	memcpy(ctx->ms_network_capa.buf, msnc, msnc_len);
-
+	if (!gprs_ms_net_cap_gea_supported(ctx->ms_network_capa.buf, msnc_len,
+					   ctx->ciph_algo)) {
+		reject_cause = GMM_CAUSE_PROTO_ERR_UNSPEC;
+		LOGMMCTXP(LOGL_NOTICE, ctx, "Rejecting ATTACH REQUEST with MI "
+			  "type %s because MS do not support required %s "
+			  "encryption\n", gsm48_mi_type_name(mi_type),
+			  get_value_string(gprs_cipher_names,ctx->ciph_algo));
+		goto rejected;
+	}
 #ifdef PTMSI_ALLOC
 	/* Allocate a new P-TMSI (+ P-TMSI signature) and update TLLI */
 	/* Don't change the P-TMSI if a P-TMSI re-assignment is under way */
@@ -1355,7 +1364,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		}
 
 		/* Force the MS to re-attach */
-		rc = sgsn_force_reattach_oldmsg(msg);
+		rc = gsm0408_gprs_force_reattach_oldmsg(msg, llme);
 
 		/* TLLI unassignment */
 		gprs_llgmm_unassign(llme);
@@ -1534,8 +1543,7 @@ static void mmctx_timer_cb(void *_mm)
 		}
 		at = &mm->auth_triplet;
 
-		gsm48_tx_gmm_auth_ciph_req(mm, at->vec.rand, at->key_seq,
-					   GPRS_ALGO_GEA0);
+		gsm48_tx_gmm_auth_ciph_req(mm, at->vec.rand, at->key_seq, false);
 		osmo_timer_schedule(&mm->timer, sgsn->cfg.timers.T3360, 0);
 		break;
 	case 3370:	/* waiting for IDENTITY RESPONSE */
@@ -2094,7 +2102,7 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		if (gh->msg_type == GSM48_MT_GSM_STATUS)
 			return 0;
 
-		return sgsn_force_reattach_oldmsg(msg);
+		return gsm0408_gprs_force_reattach_oldmsg(msg, llme);
 	}
 
 	switch (gh->msg_type) {
@@ -2128,10 +2136,11 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	return rc;
 }
 
-int gsm0408_gprs_force_reattach_oldmsg(struct msgb *msg)
+int gsm0408_gprs_force_reattach_oldmsg(struct msgb *msg,
+				       struct gprs_llc_llme *llme)
 {
 	int rc;
-	gprs_llgmm_reset_oldmsg(msg, GPRS_SAPI_GMM);
+	gprs_llgmm_reset_oldmsg(msg, GPRS_SAPI_GMM, llme);
 
 	rc = gsm48_tx_gmm_detach_req_oldmsg(
 		msg, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);

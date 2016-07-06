@@ -22,6 +22,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <openssl/rand.h>
+
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
@@ -598,7 +600,8 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		case GPRS_SAPI_SNDCP9:
 		case GPRS_SAPI_SNDCP11:
 			/* Ask an upper layer for help. */
-			return sgsn_force_reattach_oldmsg(msg);
+			return gsm0408_gprs_force_reattach_oldmsg(msg,
+								  lle->llme);
 		default:
 			break;
 		}
@@ -769,13 +772,18 @@ int gprs_llgmm_unassign(struct gprs_llc_llme *llme)
 int gprs_llgmm_reset(struct gprs_llc_llme *llme)
 {
 	struct msgb *msg = msgb_alloc_headroom(4096, 1024, "LLC_XID");
-	int random = rand();
 	struct gprs_llc_lle *lle = &llme->lle[1];
+
+	if (RAND_bytes((uint8_t *) &llme->iov_ui, 4) != 1) {
+		LOGP(DLLC, LOGL_NOTICE, "RAND_bytes failed for LLC XID reset, "
+		     "falling back to rand()\n");
+		llme->iov_ui = rand();
+	}
 
 	/* First XID component must be RESET */
 	msgb_put_xid_par(msg, GPRS_LLC_XID_T_RESET, 0, NULL);
 	/* randomly select new IOV-UI */
-	msgb_put_xid_par(msg, GPRS_LLC_XID_T_IOV_UI, 4, (uint8_t *) &random);
+	msgb_put_xid_par(msg, GPRS_LLC_XID_T_IOV_UI, 4, (uint8_t *) &llme->iov_ui);
 
 	/* Reset some of the LLC parameters. See GSM 04.64, 8.5.3.1 */
 	lle->vu_recv = 0;
@@ -787,15 +795,21 @@ int gprs_llgmm_reset(struct gprs_llc_llme *llme)
 	return gprs_llc_tx_xid(lle, msg, 1);
 }
 
-int gprs_llgmm_reset_oldmsg(struct msgb* oldmsg, uint8_t sapi)
+int gprs_llgmm_reset_oldmsg(struct msgb* oldmsg, uint8_t sapi,
+			    struct gprs_llc_llme *llme)
 {
 	struct msgb *msg = msgb_alloc_headroom(4096, 1024, "LLC_XID");
-	int random = rand();
+
+	if (RAND_bytes((uint8_t *) &llme->iov_ui, 4) != 1) {
+		LOGP(DLLC, LOGL_NOTICE, "RAND_bytes failed for LLC XID reset, "
+		     "falling back to rand()\n");
+		llme->iov_ui = rand();
+	}
 
 	/* First XID component must be RESET */
 	msgb_put_xid_par(msg, GPRS_LLC_XID_T_RESET, 0, NULL);
 	/* randomly select new IOV-UI */
-	msgb_put_xid_par(msg, GPRS_LLC_XID_T_IOV_UI, 4, (uint8_t *) &random);
+	msgb_put_xid_par(msg, GPRS_LLC_XID_T_IOV_UI, 4, (uint8_t *) &llme->iov_ui);
 
 	/* FIXME: Start T200, wait for XID response */
 

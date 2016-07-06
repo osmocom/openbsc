@@ -12,7 +12,8 @@ int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_pdp_ctx *pdp);
 
 int gsm0408_gprs_rcvmsg_gb(struct msgb *msg, struct gprs_llc_llme *llme);
 int gsm0408_gprs_force_reattach(struct sgsn_mm_ctx *mmctx);
-int gsm0408_gprs_force_reattach_oldmsg(struct msgb *msg);
+int gsm0408_gprs_force_reattach_oldmsg(struct msgb *msg,
+				       struct gprs_llc_llme *llme);
 void gsm0408_gprs_access_granted(struct sgsn_mm_ctx *mmctx);
 void gsm0408_gprs_access_denied(struct sgsn_mm_ctx *mmctx, int gmm_cause);
 void gsm0408_gprs_access_cancelled(struct sgsn_mm_ctx *mmctx, int gmm_cause);
