@@ -34,18 +34,20 @@
 static void bootstrap_om_bts(struct gsm_bts *bts)
 {
 	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for BTS %u\n", bts->nr);
-	abis_om2k_tx_start_req(bts, &om2k_mo_cf);
-	/* FIXME */
+
+	/* FIXME: this is global init, not bootstrapping */
+	abis_om2k_bts_init(bts);
+	abis_om2k_trx_init(bts->c0);
+
+	/* TODO: Should we wait for a Failure report? */
+	om2k_bts_fsm_start(bts);
 }
 
 static void bootstrap_om_trx(struct gsm_bts_trx *trx)
 {
-	struct abis_om2k_mo trx_mo = { OM2K_MO_CLS_TRXC, 0, 255, trx->nr };
-
 	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for TRX %u/%u\n",
 	     trx->bts->nr, trx->nr);
-
-	abis_om2k_tx_reset_cmd(trx->bts, &trx_mo);
+	/* FIXME */
 }
 
 static int shutdown_om(struct gsm_bts *bts)
@@ -137,103 +139,6 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-static void nm_statechg_evt(unsigned int signal,
-			    struct nm_statechg_signal_data *nsd)
-{
-	struct abis_om2k_mo mo;
-
-	if (nsd->bts->type != GSM_BTS_TYPE_RBS2000)
-		return;
-
-	switch (nsd->om2k_mo->class) {
-	case OM2K_MO_CLS_CF:
-		if (nsd->new_state->operational != NM_OPSTATE_ENABLED ||
-		    nsd->new_state->availability != OM2K_MO_S_STARTED)
-			break;
-		/* CF has started, we can trigger IS and TF start */
-		abis_om2k_tx_connect_cmd(nsd->bts, &om2k_mo_is);
-		abis_om2k_tx_connect_cmd(nsd->bts, &om2k_mo_tf);
-		break;
-	case OM2K_MO_CLS_IS:
-		if (nsd->new_state->availability == OM2K_MO_S_ENABLED) {
-			/* IS is enabled, we can proceed with TRXC/RX/TX/TS */
-			break;
-		}
-		if (nsd->new_state->operational != NM_OPSTATE_ENABLED)
-			break;
-		/* IS has started, we can configure + enable it */
-		abis_om2k_tx_is_conf_req(nsd->bts);
-		break;
-	case OM2K_MO_CLS_TF:
-		if (nsd->new_state->operational != NM_OPSTATE_ENABLED ||
-		    nsd->new_state->availability == OM2K_MO_S_DISABLED)
-			break;
-		if (nsd->new_state->availability == OM2K_MO_S_STARTED) {
-			/* TF has started, configure + enable it */
-			abis_om2k_tx_tf_conf_req(nsd->bts);
-		}
-		break;
-	case OM2K_MO_CLS_TRXC:
-		if (nsd->new_state->availability != OM2K_MO_S_STARTED)
-			break;
-		/* TRXC is started, connect the TX and RX objects */
-		memcpy(&mo, nsd->om2k_mo, sizeof(mo));
-		mo.class = OM2K_MO_CLS_TX;
-		abis_om2k_tx_connect_cmd(nsd->bts, &mo);
-		mo.class = OM2K_MO_CLS_RX;
-		abis_om2k_tx_connect_cmd(nsd->bts, &mo);
-		break;
-	case OM2K_MO_CLS_RX:
-		if (nsd->new_state->operational != NM_OPSTATE_ENABLED ||
-		    nsd->new_state->availability != OM2K_MO_S_STARTED)
-			break;
-		/* RX is started, configure + enable it */
-		abis_om2k_tx_rx_conf_req(nsd->obj);
-		break;
-	case OM2K_MO_CLS_TX:
-		if (nsd->new_state->operational != NM_OPSTATE_ENABLED ||
-		    nsd->new_state->availability != OM2K_MO_S_STARTED)
-			break;
-		/* RX is started, configure + enable it */
-		abis_om2k_tx_tx_conf_req(nsd->obj);
-		break;
-	}
-}
-
-static void nm_conf_res(struct nm_om2k_signal_data *nsd)
-{
-	switch (nsd->om2k_mo->class) {
-	case OM2K_MO_CLS_IS:
-	case OM2K_MO_CLS_TF:
-	case OM2K_MO_CLS_RX:
-	case OM2K_MO_CLS_TX:
-		/* If configuration was a success, enable it */
-		abis_om2k_tx_enable_req(nsd->bts, nsd->om2k_mo);
-		break;
-	}
-}
-
-static int nm_sig_cb(unsigned int subsys, unsigned int signal,
-		     void *handler_data, void *signal_data)
-{
-	if (subsys != SS_NM)
-		return 0;
-
-	switch (signal) {
-	case S_NM_STATECHG_OPER:
-	case S_NM_STATECHG_ADM:
-		nm_statechg_evt(signal, signal_data);
-		break;
-	case S_NM_OM2K_CONF_RES:
-		nm_conf_res(signal_data);
-		break;
-	default:
-		break;
-	}
-
-	return 0;
-}
-
 static void config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 	abis_om2k_config_write_bts(vty, bts);
@@ -266,7 +171,6 @@ static int bts_model_rbs2k_start(struct gsm_network *net)
 
 	osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
 	osmo_signal_register_handler(SS_L_GLOBAL, gbl_sig_cb, NULL);
-	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 
 	return 0;
 }

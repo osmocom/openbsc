@@ -1,7 +1,7 @@
 /* Ericsson RBS 2xxx GSM O&M (OM2000) messages on the A-bis interface
  * implemented based on protocol trace analysis, no formal documentation */
 
-/* (C) 2010-2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2010-2011,2016 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -34,6 +34,7 @@
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
+#include <osmocom/core/fsm.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
@@ -42,8 +43,38 @@
 #include <openbsc/signal.h>
 #include <osmocom/abis/e1_input.h>
 
+/* FIXME: move to libosmocore */
+struct osmo_fsm_inst *osmo_fsm_inst_alloc_child_id(struct osmo_fsm *fsm,
+						   struct osmo_fsm_inst *parent,
+						   uint32_t parent_term_event,
+						   const char *id)
+{
+	struct osmo_fsm_inst *fi;
+
+	fi = osmo_fsm_inst_alloc(fsm, parent, NULL, parent->log_level,
+				 id ? id : parent->id);
+	if (!fi) {
+		/* indicate immediate termination to caller */
+		osmo_fsm_inst_dispatch(parent, parent_term_event, NULL);
+		return NULL;
+	}
+
+	LOGPFSM(fi, "is child of %s\n", osmo_fsm_inst_name(parent));
+
+	fi->proc.parent = parent;
+	fi->proc.parent_term_event = parent_term_event;
+	llist_add(&fi->proc.child, &parent->proc.children);
+
+	return fi;
+}
+
+
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
+
+#define OM2K_TIMEOUT	10
+#define TRX_FSM_TIMEOUT	60
+#define BTS_FSM_TIMEOUT	60
 
 /* use following functions from abis_nm.c:
 	* om2k_msgb_alloc()
@@ -625,6 +656,96 @@ const struct value_string om2k_mo_class_short_vals[] = {
 	{ 0, NULL }
 };
 
+const struct value_string om2k_result_strings[] = {
+	{ 0x02, "Wrong state or out of sequence" },
+	{ 0x03, "File error" },
+	{ 0x04, "Fault, unspecified" },
+	{ 0x05, "Tuning fault" },
+	{ 0x06, "Protocol error" },
+	{ 0x07, "MO not connected" },
+	{ 0x08, "Parameter error" },
+	{ 0x09, "Optional function not supported" },
+	{ 0x0a, "Local access state LOCALLY DISCONNECTED" },
+	{ 0, NULL }
+};
+
+const struct value_string om2k_accordance_strings[] = {
+	{ 0x00, "Data according to request" },
+	{ 0x01, "Data not according to request" },
+	{ 0x02, "Inconsistent MO data" },
+	{ 0x03, "Capability constraint violation" },
+	{ 0, NULL }
+};
+
+const struct value_string om2k_mostate_vals[] = {
+	{ 0x00, "RESET" },
+	{ 0x01, "STARTED" },
+	{ 0x02, "ENABLED" },
+	{ 0x03, "DISABLED" },
+	{ 0, NULL }
+};
+
+/* entire decoded OM2K message (header + parsed TLV) */
+struct om2k_decoded_msg {
+	struct abis_om2k_hdr o2h;
+	uint16_t msg_type;
+	struct tlv_parsed tp;
+};
+
+/* resolve the OM2000 Managed Object by BTS + MO Address */
+static struct om2k_mo *
+get_om2k_mo(struct gsm_bts *bts, const struct abis_om2k_mo *abis_mo)
+{
+	struct om2k_mo *mo = NULL;
+	struct gsm_bts_trx *trx;
+
+	switch (abis_mo->class) {
+	case OM2K_MO_CLS_CF:
+		mo = &bts->rbs2000.cf.om2k_mo;
+		break;
+	case OM2K_MO_CLS_CON:
+		mo = &bts->rbs2000.con.om2k_mo;
+		break;
+	case OM2K_MO_CLS_IS:
+		mo = &bts->rbs2000.is.om2k_mo;
+		break;
+	case OM2K_MO_CLS_TF:
+		mo = &bts->rbs2000.tf.om2k_mo;
+		break;
+
+	case OM2K_MO_CLS_TRXC:
+		trx = gsm_bts_trx_num(bts, abis_mo->inst);
+		if (!trx)
+			return NULL;
+		mo = &trx->rbs2000.trxc.om2k_mo;
+		break;
+	case OM2K_MO_CLS_TX:
+		trx = gsm_bts_trx_num(bts, abis_mo->inst);
+		if (!trx)
+			return NULL;
+		mo = &trx->rbs2000.tx.om2k_mo;
+		break;
+	case OM2K_MO_CLS_RX:
+		trx = gsm_bts_trx_num(bts, abis_mo->inst);
+		if (!trx)
+			return NULL;
+		mo = &trx->rbs2000.rx.om2k_mo;
+		break;
+	case OM2K_MO_CLS_TS:
+		trx = gsm_bts_trx_num(bts, abis_mo->assoc_so);
+		if (!trx)
+			return NULL;
+		if (abis_mo->inst >= ARRAY_SIZE(trx->ts))
+			return NULL;
+		mo = &trx->ts[abis_mo->inst].rbs2000.om2k_mo;
+		break;
+	default:
+		return NULL;
+	};
+
+	return mo;
+}
+
 static struct msgb *om2k_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE,
@@ -639,6 +760,15 @@ static int abis_om2k_tlv_parse(struct tlv_parsed *tp, const uint8_t *buf, int le
 static int abis_om2k_msg_tlv_parse(struct tlv_parsed *tp, struct abis_om2k_hdr *oh)
 {
 	return abis_om2k_tlv_parse(tp, oh->data, oh->om.length - 6);
+}
+
+/* decode/parse the message */
+static int om2k_decode_msg(struct om2k_decoded_msg *odm, struct msgb *msg)
+{
+	struct abis_om2k_hdr *o2h = msgb_l2(msg);
+	odm->msg_type = ntohs(o2h->msg_type);
+	odm->o2h = *o2h;
+	return abis_om2k_msg_tlv_parse(&odm->tp, o2h);
 }
 
 static char *om2k_mo_name(const struct abis_om2k_mo *mo)
@@ -783,23 +913,6 @@ static void update_op_state(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 	nm_state->operational = new_state.operational;
 }
 
-static void signal_op_state(struct gsm_bts *bts, struct abis_om2k_mo *mo)
-{
-	struct gsm_nm_state *nm_state = mo2nm_state(bts, mo);
-	struct nm_statechg_signal_data nsd;
-
-	if (!nm_state)
-		return;
-
-	nsd.bts = bts;
-	nsd.obj = mo2obj(bts, mo);
-	nsd.old_state = nm_state;
-	nsd.new_state = nm_state;
-	nsd.om2k_mo = mo;
-
-	osmo_signal_dispatch(SS_NM, S_NM_STATECHG_OPER, &nsd);
-}
-
 static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om2k_hdr *o2h;
@@ -854,11 +967,6 @@ static void fill_om2k_hdr(struct abis_om2k_hdr *o2h, const struct abis_om2k_mo *
 	memcpy(&o2h->mo, mo, sizeof(o2h->mo));
 }
 
-const struct abis_om2k_mo om2k_mo_cf = { OM2K_MO_CLS_CF, 0, 0xFF, 0 };
-const struct abis_om2k_mo om2k_mo_is = { OM2K_MO_CLS_IS, 0, 0xFF, 0 };
-const struct abis_om2k_mo om2k_mo_con = { OM2K_MO_CLS_CON, 0, 0xFF, 0 };
-const struct abis_om2k_mo om2k_mo_tf = { OM2K_MO_CLS_TF, 0, 0xFF, 0 };
-
 static int abis_om2k_cal_time_resp(struct gsm_bts *bts)
 {
 	struct msgb *msg = om2k_msgb_alloc();
@@ -867,7 +975,8 @@ static int abis_om2k_cal_time_resp(struct gsm_bts *bts)
 	struct tm *tm;
 
 	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
-	fill_om2k_hdr(o2k, &om2k_mo_cf, OM2K_MSGT_CAL_TIME_RESP);
+	fill_om2k_hdr(o2k, &bts->rbs2000.cf.om2k_mo.addr,
+			OM2K_MSGT_CAL_TIME_RESP);
 
 	tm_t = time(NULL);
 	tm = localtime(&tm_t);
@@ -989,7 +1098,8 @@ int abis_om2k_tx_is_conf_req(struct gsm_bts *bts)
 		om2k_fill_is_conn_grp(&cg[i++], grp->icp1, grp->icp2, grp->ci);
 
 	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
-	fill_om2k_hdr(o2k, &om2k_mo_is, OM2K_MSGT_IS_CONF_REQ);
+	fill_om2k_hdr(o2k, &bts->rbs2000.is.om2k_mo.addr,
+			OM2K_MSGT_IS_CONF_REQ);
 
 	msgb_tv_put(msg, OM2K_DEI_LIST_NR, 1);
 	msgb_tv_put(msg, OM2K_DEI_END_LIST_NR, 1);
@@ -999,7 +1109,8 @@ int abis_om2k_tx_is_conf_req(struct gsm_bts *bts)
 
 	talloc_free(cg);
 
-	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(&om2k_mo_is),
+	DEBUGP(DNM, "Tx MO=%s %s\n",
+		om2k_mo_name(&bts->rbs2000.is.om2k_mo.addr),
 		get_value_string(om2k_msgcode_vals, OM2K_MSGT_IS_CONF_REQ));
 
 	return abis_om2k_sendmsg(bts, msg);
@@ -1012,14 +1123,16 @@ int abis_om2k_tx_con_conf_req(struct gsm_bts *bts, uint8_t *data,
 	struct abis_om2k_hdr *o2k;
 
 	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
-	fill_om2k_hdr(o2k, &om2k_mo_con, OM2K_MSGT_CON_CONF_REQ);
+	fill_om2k_hdr(o2k, &bts->rbs2000.con.om2k_mo.addr,
+			OM2K_MSGT_CON_CONF_REQ);
 
 	msgb_tv_put(msg, OM2K_DEI_LIST_NR, 1);
 	msgb_tv_put(msg, OM2K_DEI_END_LIST_NR, 1);
 
 	msgb_tlv_put(msg, OM2K_DEI_CON_CONN_LIST, len, data);
 
-	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(&om2k_mo_con),
+	DEBUGP(DNM, "Tx MO=%s %s\n",
+		om2k_mo_name(&bts->rbs2000.con.om2k_mo.addr),
 		get_value_string(om2k_msgcode_vals, OM2K_MSGT_CON_CONF_REQ));
 
 	return abis_om2k_sendmsg(bts, msg);
@@ -1098,14 +1211,16 @@ int abis_om2k_tx_tf_conf_req(struct gsm_bts *bts)
 	struct abis_om2k_hdr *o2k;
 
 	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
-	fill_om2k_hdr(o2k, &om2k_mo_tf, OM2K_MSGT_TF_CONF_REQ);
+	fill_om2k_hdr(o2k, &bts->rbs2000.tf.om2k_mo.addr,
+			OM2K_MSGT_TF_CONF_REQ);
 
 	msgb_tv_put(msg, OM2K_DEI_TF_MODE, OM2K_TF_MODE_STANDALONE);
 	msgb_tv_put(msg, OM2K_DEI_TF_SYNC_SRC, 0x00);
 	msgb_tv_fixed_put(msg, OM2K_DEI_FS_OFFSET,
 			  sizeof(fs_offset_undef), fs_offset_undef);
 
-	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(&om2k_mo_tf),
+	DEBUGP(DNM, "Tx MO=%s %s\n",
+		om2k_mo_name(&bts->rbs2000.tf.om2k_mo.addr),
 		get_value_string(om2k_msgcode_vals, OM2K_MSGT_TF_CONF_REQ));
 
 	return abis_om2k_sendmsg(bts, msg);
@@ -1256,8 +1371,859 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 		break;
 	}
 
+	DEBUGP(DNM, "Tx MO=%s %s\n",
+		om2k_mo_name(&mo),
+		get_value_string(om2k_msgcode_vals, OM2K_MSGT_TS_CONF_REQ));
+
 	return abis_om2k_sendmsg(ts->trx->bts, msg);
 }
+
+
+/***********************************************************************
+ * OM2000 Managed Object (MO) FSM
+ ***********************************************************************/
+
+#define S(x)	(1 << (x))
+
+enum om2k_event_name {
+	OM2K_MO_EVT_START,
+	OM2K_MO_EVT_RX_CONN_COMPL,
+	OM2K_MO_EVT_RX_RESET_COMPL,
+	OM2K_MO_EVT_RX_START_REQ_ACCEPT,
+	OM2K_MO_EVT_RX_START_RES,
+	OM2K_MO_EVT_RX_CFG_REQ_ACCEPT,
+	OM2K_MO_EVT_RX_CFG_RES,
+	OM2K_MO_EVT_RX_ENA_REQ_ACCEPT,
+	OM2K_MO_EVT_RX_ENA_RES,
+	OM2K_MO_EVT_RX_OPINFO_ACC,
+};
+
+static const struct value_string om2k_event_names[] = {
+	{ OM2K_MO_EVT_START,			"START" },
+	{ OM2K_MO_EVT_RX_CONN_COMPL,		"RX-CONN-COMPL" },
+	{ OM2K_MO_EVT_RX_RESET_COMPL,		"RX-RESET-COMPL" },
+	{ OM2K_MO_EVT_RX_START_REQ_ACCEPT,	"RX-RESET-REQ-ACCEPT" },
+	{ OM2K_MO_EVT_RX_START_RES,		"RX-START-RESULT" },
+	{ OM2K_MO_EVT_RX_CFG_REQ_ACCEPT,	"RX-CFG-REQ-ACCEPT" },
+	{ OM2K_MO_EVT_RX_CFG_RES,		"RX-CFG-RESULT" },
+	{ OM2K_MO_EVT_RX_ENA_REQ_ACCEPT,	"RX-ENABLE-REQ-ACCEPT" },
+	{ OM2K_MO_EVT_RX_ENA_RES,		"RX-ENABLE-RESULT" },
+	{ OM2K_MO_EVT_RX_OPINFO_ACC,		"RX-OPINFO-ACCEPT" },
+	{ 0, NULL }
+};
+
+enum om2k_mo_fsm_state {
+	OM2K_ST_INIT,
+	OM2K_ST_WAIT_CONN_COMPL,
+	OM2K_ST_WAIT_RES_COMPL,
+	OM2K_ST_WAIT_START_ACCEPT,
+	OM2K_ST_WAIT_START_RES,
+	OM2K_ST_WAIT_CFG_ACCEPT,
+	OM2K_ST_WAIT_CFG_RES,
+	OM2K_ST_WAIT_ENABLE_ACCEPT,
+	OM2K_ST_WAIT_ENABLE_RES,
+	OM2K_ST_WAIT_OPINFO_ACCEPT,
+	OM2K_ST_DONE,
+	OM2K_ST_ERROR,
+};
+
+struct om2k_mo_fsm_priv {
+	struct gsm_bts_trx *trx;
+	struct om2k_mo *mo;
+	uint8_t ts_nr;
+};
+
+static void om2k_mo_st_init(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+
+	OSMO_ASSERT(event == OM2K_MO_EVT_START);
+
+	switch (omfp->mo->addr.class) {
+	case OM2K_MO_CLS_CF:
+		/* no Connect required, is always connected */
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_START_ACCEPT,
+					OM2K_TIMEOUT, 0);
+		abis_om2k_tx_start_req(omfp->trx->bts, &omfp->mo->addr);
+		break;
+	case OM2K_MO_CLS_TRXC:
+		/* no Connect required, start with Reset */
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_RES_COMPL,
+					OM2K_TIMEOUT, 0);
+		abis_om2k_tx_reset_cmd(omfp->trx->bts, &omfp->mo->addr);
+		break;
+	default:
+		/* start with Connect */
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_CONN_COMPL,
+					OM2K_TIMEOUT, 0);
+		abis_om2k_tx_connect_cmd(omfp->trx->bts, &omfp->mo->addr);
+		break;
+	}
+}
+
+static void om2k_mo_st_wait_conn_compl(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+
+	switch (omfp->mo->addr.class) {
+#if 0
+	case OM2K_MO_CLS_TF:
+		/* skip the reset, hope that helps */
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_START_ACCEPT,
+					OM2K_TIMEOUT, 0);
+		abis_om2k_tx_start_req(omfp->trx->bts, &omfp->mo->addr);
+		break;
+#endif
+	default:
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_RES_COMPL,
+					OM2K_TIMEOUT, 0);
+		abis_om2k_tx_reset_cmd(omfp->trx->bts, &omfp->mo->addr);
+		break;
+	}
+}
+
+static void om2k_mo_st_wait_res_compl(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+
+	osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_START_ACCEPT,
+				OM2K_TIMEOUT, 0);
+	abis_om2k_tx_start_req(omfp->trx->bts, &omfp->mo->addr);
+}
+
+static void om2k_mo_st_wait_start_accept(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_decoded_msg *omd = data;
+
+	switch (omd->msg_type) {
+	case OM2K_MSGT_START_REQ_ACK:
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_START_RES,
+					OM2K_TIMEOUT, 0);
+		break;
+	case OM2K_MSGT_START_REQ_REJ:
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_ERROR, 0, 0);
+		break;
+	}
+}
+
+static void om2k_mo_st_wait_start_res(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+	struct gsm_bts_trx_ts *ts;
+
+	switch (omfp->mo->addr.class) {
+	case OM2K_MO_CLS_CF:
+	case OM2K_MO_CLS_TRXC:
+		/* Transition directly to Operational Info */
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_OPINFO_ACCEPT,
+				OM2K_TIMEOUT, 0);
+		abis_om2k_tx_op_info(omfp->trx->bts, &omfp->mo->addr, 1);
+		break;
+	case OM2K_MO_CLS_DP:
+		/* Transition directoy to WAIT_ENABLE_ACCEPT */
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_ENABLE_ACCEPT,
+					OM2K_TIMEOUT, 0);
+		abis_om2k_tx_enable_req(omfp->trx->bts, &omfp->mo->addr);
+		return;
+#if 0
+	case OM2K_MO_CLS_TF:
+		/* skip the config, hope that helps speeding things up */
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_ENABLE_ACCEPT,
+					OM2K_TIMEOUT, 0);
+		abis_om2k_tx_enable_req(omfp->trx->bts, &omfp->mo->addr);
+		return;
+#endif
+	}
+
+	osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_CFG_ACCEPT,
+				OM2K_TIMEOUT, 0);
+	switch (omfp->mo->addr.class) {
+	case OM2K_MO_CLS_TF:
+		abis_om2k_tx_tf_conf_req(omfp->trx->bts);
+		break;
+	case OM2K_MO_CLS_IS:
+		abis_om2k_tx_is_conf_req(omfp->trx->bts);
+		break;
+	case OM2K_MO_CLS_CON:
+		/* TODO */
+		//abis_om2k_tx_con_conf_req(omfp->trx->bts, data, len);
+		break;
+	case OM2K_MO_CLS_TX:
+		abis_om2k_tx_tx_conf_req(omfp->trx);
+		break;
+	case OM2K_MO_CLS_RX:
+		abis_om2k_tx_rx_conf_req(omfp->trx);
+		break;
+	case OM2K_MO_CLS_TS:
+		ts = mo2obj(omfp->trx->bts, &omfp->mo->addr);
+		abis_om2k_tx_ts_conf_req(ts);
+		break;
+	}
+}
+
+static void om2k_mo_st_wait_cfg_accept(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+	uint32_t timeout = OM2K_TIMEOUT;
+
+	if (omfp->mo->addr.class == OM2K_MO_CLS_TF)
+		timeout = 600;
+
+	osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_CFG_RES, timeout, 0);
+}
+
+static void om2k_mo_st_wait_cfg_res(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+	struct om2k_decoded_msg *omd = data;
+	uint8_t accordance;
+
+	if (!TLVP_PRESENT(&omd->tp, OM2K_DEI_ACCORDANCE_IND)) {
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_ERROR, 0, 0);
+		return;
+	}
+	accordance = *TLVP_VAL(&omd->tp, OM2K_DEI_ACCORDANCE_IND);
+
+	if (accordance != 0) {
+		/* accordance not OK */
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_ERROR, 0, 0);
+		return;
+	}
+
+	osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_ENABLE_ACCEPT,
+				OM2K_TIMEOUT, 0);
+	abis_om2k_tx_enable_req(omfp->trx->bts, &omfp->mo->addr);
+}
+
+static void om2k_mo_st_wait_enable_accept(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_decoded_msg *omd = data;
+
+	switch (omd->msg_type) {
+	case OM2K_MSGT_ENABLE_REQ_REJ:
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_ERROR, 0, 0);
+		break;
+	case OM2K_MSGT_ENABLE_REQ_ACK:
+		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_ENABLE_RES,
+					OM2K_TIMEOUT, 0);
+	}
+}
+
+static void om2k_mo_st_wait_enable_res(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+	//struct om2k_decoded_msg *omd = data;
+	/* TODO: check if state is actually enabled now? */
+
+	osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_OPINFO_ACCEPT,
+				OM2K_TIMEOUT, 0);
+	abis_om2k_tx_op_info(omfp->trx->bts, &omfp->mo->addr, 1);
+}
+
+static void om2k_mo_st_wait_opinfo_accept(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	osmo_fsm_inst_state_chg(fi, OM2K_ST_DONE, 0, 0);
+}
+
+static void om2k_mo_s_done_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	osmo_fsm_inst_term(fi, OSMO_FSM_TERM_REGULAR, NULL);
+}
+
+static const struct osmo_fsm_state om2k_is_states[] = {
+	[OM2K_ST_INIT] = {
+		.name = "INIT",
+		.in_event_mask = S(OM2K_MO_EVT_START),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR) |
+				  S(OM2K_ST_WAIT_CONN_COMPL) |
+				  S(OM2K_ST_WAIT_START_ACCEPT) |
+				  S(OM2K_ST_WAIT_RES_COMPL),
+		.action = om2k_mo_st_init,
+	},
+	[OM2K_ST_WAIT_CONN_COMPL] = {
+		.name = "WAIT-CONN-COMPL",
+		.in_event_mask = S(OM2K_MO_EVT_RX_CONN_COMPL),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR) |
+				  S(OM2K_ST_WAIT_START_ACCEPT) |
+				  S(OM2K_ST_WAIT_RES_COMPL),
+		.action = om2k_mo_st_wait_conn_compl,
+	},
+	[OM2K_ST_WAIT_RES_COMPL] = {
+		.name = "WAIT-RES-COMPL",
+		.in_event_mask = S(OM2K_MO_EVT_RX_RESET_COMPL),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR) |
+				  S(OM2K_ST_WAIT_START_ACCEPT),
+		.action = om2k_mo_st_wait_res_compl,
+	},
+	[OM2K_ST_WAIT_START_ACCEPT] = {
+		.name = "WAIT-START-ACCEPT",
+		.in_event_mask = S(OM2K_MO_EVT_RX_START_REQ_ACCEPT),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR) |
+				  S(OM2K_ST_WAIT_START_RES),
+		.action =om2k_mo_st_wait_start_accept,
+	},
+	[OM2K_ST_WAIT_START_RES] = {
+		.name = "WAIT-START-RES",
+		.in_event_mask = S(OM2K_MO_EVT_RX_START_RES),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR) |
+				  S(OM2K_ST_WAIT_CFG_ACCEPT) |
+				  S(OM2K_ST_WAIT_OPINFO_ACCEPT),
+		.action = om2k_mo_st_wait_start_res,
+	},
+	[OM2K_ST_WAIT_CFG_ACCEPT] = {
+		.name = "WAIT-CFG-ACCEPT",
+		.in_event_mask = S(OM2K_MO_EVT_RX_CFG_REQ_ACCEPT),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR) |
+				  S(OM2K_ST_WAIT_CFG_RES),
+		.action = om2k_mo_st_wait_cfg_accept,
+	},
+	[OM2K_ST_WAIT_CFG_RES] = {
+		.name = "WAIT-CFG-RES",
+		.in_event_mask = S(OM2K_MO_EVT_RX_CFG_RES),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR) |
+				  S(OM2K_ST_WAIT_ENABLE_ACCEPT),
+		.action = om2k_mo_st_wait_cfg_res,
+	},
+	[OM2K_ST_WAIT_ENABLE_ACCEPT] = {
+		.name = "WAIT-ENABLE-ACCEPT",
+		.in_event_mask = S(OM2K_MO_EVT_RX_ENA_REQ_ACCEPT),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR) |
+				  S(OM2K_ST_WAIT_ENABLE_RES),
+		.action = om2k_mo_st_wait_enable_accept,
+	},
+	[OM2K_ST_WAIT_ENABLE_RES] = {
+		.name = "WAIT-ENABLE-RES",
+		.in_event_mask = S(OM2K_MO_EVT_RX_ENA_RES),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR) |
+				  S(OM2K_ST_WAIT_OPINFO_ACCEPT),
+		.action = om2k_mo_st_wait_enable_res,
+	},
+	[OM2K_ST_WAIT_OPINFO_ACCEPT] = {
+		.name = "WAIT-OPINFO-ACCEPT",
+		.in_event_mask = S(OM2K_MO_EVT_RX_OPINFO_ACC),
+		.out_state_mask = S(OM2K_ST_DONE) |
+				  S(OM2K_ST_ERROR),
+		.action = om2k_mo_st_wait_opinfo_accept,
+	},
+	[OM2K_ST_DONE] = {
+		.name = "DONE",
+		.in_event_mask = 0,
+		.out_state_mask = 0,
+		.onenter = om2k_mo_s_done_onenter,
+	},
+	[OM2K_ST_ERROR] = {
+		.name = "ERROR",
+		.in_event_mask = 0,
+		.out_state_mask = 0,
+		.onenter = om2k_mo_s_done_onenter,
+	},
+
+};
+
+static int om2k_mo_timer_cb(struct osmo_fsm_inst *fi)
+{
+	osmo_fsm_inst_state_chg(fi, OM2K_ST_ERROR, 0, 0);
+	return 0;
+}
+
+static struct osmo_fsm om2k_mo_fsm = {
+	.name = "OM2000-MO",
+	.states = om2k_is_states,
+	.num_states = ARRAY_SIZE(om2k_is_states),
+	.log_subsys = DNM,
+	.event_names = om2k_event_names,
+	.timer_cb = om2k_mo_timer_cb,
+};
+
+struct osmo_fsm_inst *om2k_mo_fsm_start(struct osmo_fsm_inst *parent,
+					uint32_t term_event,
+					struct gsm_bts_trx *trx, struct om2k_mo *mo)
+{
+	struct osmo_fsm_inst *fi;
+	struct om2k_mo_fsm_priv *omfp;
+	char idbuf[64];
+
+	snprintf(idbuf, sizeof(idbuf), "%s-%s", parent->id,
+		 om2k_mo_name(&mo->addr));
+
+	fi = osmo_fsm_inst_alloc_child_id(&om2k_mo_fsm, parent,
+					  term_event, idbuf);
+	if (!fi)
+		return NULL;
+
+	mo->fsm = fi;
+	omfp = talloc_zero(fi, struct om2k_mo_fsm_priv);
+	omfp->mo = mo;
+	omfp->trx = trx;
+	fi->priv = omfp;
+
+	osmo_fsm_inst_dispatch(fi, OM2K_MO_EVT_START, NULL);
+
+	return fi;
+}
+
+int om2k_mo_fsm_recvmsg(struct gsm_bts *bts, struct om2k_mo *mo,
+			struct om2k_decoded_msg *odm)
+{
+	switch (odm->msg_type) {
+	case OM2K_MSGT_CONNECT_COMPL:
+	case OM2K_MSGT_CONNECT_REJ:
+		osmo_fsm_inst_dispatch(mo->fsm,
+				OM2K_MO_EVT_RX_CONN_COMPL, odm);
+		break;
+
+	case OM2K_MSGT_RESET_COMPL:
+	case OM2K_MSGT_RESET_REJ:
+		osmo_fsm_inst_dispatch(mo->fsm,
+				OM2K_MO_EVT_RX_RESET_COMPL, odm);
+		break;
+
+	case OM2K_MSGT_START_REQ_ACK:
+	case OM2K_MSGT_START_REQ_REJ:
+		osmo_fsm_inst_dispatch(mo->fsm,
+				OM2K_MO_EVT_RX_START_REQ_ACCEPT, odm);
+		break;
+
+	case OM2K_MSGT_START_RES:
+		osmo_fsm_inst_dispatch(mo->fsm,
+				OM2K_MO_EVT_RX_START_RES, odm);
+		break;
+
+	case OM2K_MSGT_CON_CONF_REQ_ACK:
+	case OM2K_MSGT_IS_CONF_REQ_ACK:
+	case OM2K_MSGT_RX_CONF_REQ_ACK:
+	case OM2K_MSGT_TF_CONF_REQ_ACK:
+	case OM2K_MSGT_TS_CONF_REQ_ACK:
+	case OM2K_MSGT_TX_CONF_REQ_ACK:
+		osmo_fsm_inst_dispatch(mo->fsm,
+				OM2K_MO_EVT_RX_CFG_REQ_ACCEPT, odm);
+		break;
+
+	case OM2K_MSGT_CON_CONF_RES:
+	case OM2K_MSGT_IS_CONF_RES:
+	case OM2K_MSGT_RX_CONF_RES:
+	case OM2K_MSGT_TF_CONF_RES:
+	case OM2K_MSGT_TS_CONF_RES:
+	case OM2K_MSGT_TX_CONF_RES:
+		osmo_fsm_inst_dispatch(mo->fsm,
+				OM2K_MO_EVT_RX_CFG_RES, odm);
+		break;
+
+	case OM2K_MSGT_ENABLE_REQ_ACK:
+	case OM2K_MSGT_ENABLE_REQ_REJ:
+		osmo_fsm_inst_dispatch(mo->fsm,
+				OM2K_MO_EVT_RX_ENA_REQ_ACCEPT, odm);
+		break;
+	case OM2K_MSGT_ENABLE_RES:
+		osmo_fsm_inst_dispatch(mo->fsm,
+				OM2K_MO_EVT_RX_ENA_RES, odm);
+		break;
+
+	case OM2K_MSGT_OP_INFO_ACK:
+	case OM2K_MSGT_OP_INFO_REJ:
+		osmo_fsm_inst_dispatch(mo->fsm,
+				OM2K_MO_EVT_RX_OPINFO_ACC, odm);
+		break;
+	default:
+		return -1;
+	}
+
+	return 0;
+}
+
+/***********************************************************************
+ * OM2000 TRX Finite State Machine, initializes TRXC and all siblings
+ ***********************************************************************/
+
+enum om2k_trx_event {
+	OM2K_TRX_EVT_START,
+	OM2K_TRX_EVT_TRXC_DONE,
+	OM2K_TRX_EVT_TX_DONE,
+	OM2K_TRX_EVT_RX_DONE,
+	OM2K_TRX_EVT_TS_DONE,
+	OM2K_TRX_EVT_STOP,
+};
+
+static struct value_string om2k_trx_events[] = {
+	{ OM2K_TRX_EVT_START,		"START" },
+	{ OM2K_TRX_EVT_TRXC_DONE,	"TRXC-DONE" },
+	{ OM2K_TRX_EVT_TX_DONE,		"TX-DONE" },
+	{ OM2K_TRX_EVT_RX_DONE,		"RX-DONE" },
+	{ OM2K_TRX_EVT_TS_DONE,		"TS-DONE" },
+	{ OM2K_TRX_EVT_STOP,		"STOP" },
+	{ 0, NULL }
+};
+
+enum om2k_trx_state {
+	 OM2K_TRX_S_INIT,
+	 OM2K_TRX_S_WAIT_TRXC,
+	 OM2K_TRX_S_WAIT_TX,
+	 OM2K_TRX_S_WAIT_RX,
+	 OM2K_TRX_S_WAIT_TS,
+	 OM2K_TRX_S_DONE,
+	 OM2K_TRX_S_ERROR
+};
+
+struct om2k_trx_fsm_priv {
+	struct gsm_bts_trx *trx;
+	uint8_t next_ts_nr;
+};
+
+static void om2k_trx_s_init(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_trx_fsm_priv *otfp = fi->priv;
+
+	/* First initialize TRXC */
+	osmo_fsm_inst_state_chg(fi, OM2K_TRX_S_WAIT_TRXC,
+				TRX_FSM_TIMEOUT, 0);
+	om2k_mo_fsm_start(fi, OM2K_TRX_EVT_TRXC_DONE, otfp->trx,
+			  &otfp->trx->rbs2000.trxc.om2k_mo);
+}
+
+static void om2k_trx_s_wait_trxc(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_trx_fsm_priv *otfp = fi->priv;
+
+	/* Initialize TX after TRXC */
+	osmo_fsm_inst_state_chg(fi, OM2K_TRX_S_WAIT_TX,
+				TRX_FSM_TIMEOUT, 0);
+	om2k_mo_fsm_start(fi, OM2K_TRX_EVT_TX_DONE, otfp->trx,
+			  &otfp->trx->rbs2000.tx.om2k_mo);
+}
+
+static void om2k_trx_s_wait_tx(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_trx_fsm_priv *otfp = fi->priv;
+
+	/* Initialize RX after TX */
+	osmo_fsm_inst_state_chg(fi, OM2K_TRX_S_WAIT_RX,
+				TRX_FSM_TIMEOUT, 0);
+	om2k_mo_fsm_start(fi, OM2K_TRX_EVT_RX_DONE, otfp->trx,
+			  &otfp->trx->rbs2000.rx.om2k_mo);
+}
+
+static void om2k_trx_s_wait_rx(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_trx_fsm_priv *otfp = fi->priv;
+	struct gsm_bts_trx_ts *ts;
+
+	/* Initialize Timeslots after TX */
+	osmo_fsm_inst_state_chg(fi, OM2K_TRX_S_WAIT_TS,
+				TRX_FSM_TIMEOUT, 0);
+	otfp->next_ts_nr = 0;
+	ts = &otfp->trx->ts[otfp->next_ts_nr++];
+	om2k_mo_fsm_start(fi, OM2K_TRX_EVT_TS_DONE, otfp->trx,
+			  &ts->rbs2000.om2k_mo);
+}
+
+static void om2k_trx_s_wait_ts(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_trx_fsm_priv *otfp = fi->priv;
+	struct gsm_bts_trx_ts *ts;
+
+	if (otfp->next_ts_nr < 8) {
+		/* iterate to the next timeslot */
+		ts = &otfp->trx->ts[otfp->next_ts_nr++];
+		om2k_mo_fsm_start(fi, OM2K_TRX_EVT_TS_DONE, otfp->trx,
+				  &ts->rbs2000.om2k_mo);
+	} else {
+		/* only after all 8 TS */
+		osmo_fsm_inst_state_chg(fi, OM2K_TRX_S_DONE, 0, 0);
+	}
+}
+
+static void om2k_trx_s_done_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	struct om2k_trx_fsm_priv *otfp = fi->priv;
+	gsm_bts_trx_set_system_infos(otfp->trx);
+	osmo_fsm_inst_term(fi, OSMO_FSM_TERM_REGULAR, NULL);
+}
+
+static const struct osmo_fsm_state om2k_trx_states[] = {
+	[OM2K_TRX_S_INIT] = {
+		.in_event_mask = S(OM2K_TRX_EVT_START),
+		.out_state_mask = S(OM2K_TRX_S_WAIT_TRXC),
+		.name = "INIT",
+		.action = om2k_trx_s_init,
+	},
+	[OM2K_TRX_S_WAIT_TRXC] = {
+		.in_event_mask = S(OM2K_TRX_EVT_TRXC_DONE),
+		.out_state_mask = S(OM2K_TRX_S_ERROR) |
+				  S(OM2K_TRX_S_WAIT_TX),
+		.name = "WAIT-TRXC",
+		.action = om2k_trx_s_wait_trxc,
+	},
+	[OM2K_TRX_S_WAIT_TX] = {
+		.in_event_mask = S(OM2K_TRX_EVT_TX_DONE),
+		.out_state_mask = S(OM2K_TRX_S_ERROR) |
+				  S(OM2K_TRX_S_WAIT_RX),
+		.name = "WAIT-TX",
+		.action = om2k_trx_s_wait_tx,
+	},
+	[OM2K_TRX_S_WAIT_RX] = {
+		.in_event_mask = S(OM2K_TRX_EVT_RX_DONE),
+		.out_state_mask = S(OM2K_TRX_S_ERROR) |
+				  S(OM2K_TRX_S_WAIT_TS),
+		.name = "WAIT-RX",
+		.action = om2k_trx_s_wait_rx,
+	},
+	[OM2K_TRX_S_WAIT_TS] = {
+		.in_event_mask = S(OM2K_TRX_EVT_TS_DONE),
+		.out_state_mask = S(OM2K_TRX_S_ERROR) |
+				  S(OM2K_TRX_S_DONE),
+		.name = "WAIT-TS",
+		.action = om2k_trx_s_wait_ts,
+	},
+	[OM2K_TRX_S_DONE] = {
+		.name = "DONE",
+		.onenter = om2k_trx_s_done_onenter,
+	},
+	[OM2K_TRX_S_ERROR] = {
+		.name = "ERROR",
+	},
+};
+
+static int om2k_trx_timer_cb(struct osmo_fsm_inst *fi)
+{
+	osmo_fsm_inst_state_chg(fi, OM2K_TRX_S_ERROR, 0, 0);
+	return 0;
+}
+
+static struct osmo_fsm om2k_trx_fsm = {
+	.name = "OM2000-TRX",
+	.states = om2k_trx_states,
+	.num_states = ARRAY_SIZE(om2k_trx_states),
+	.log_subsys = DNM,
+	.event_names = om2k_trx_events,
+	.timer_cb = om2k_trx_timer_cb,
+};
+
+struct osmo_fsm_inst *om2k_trx_fsm_start(struct osmo_fsm_inst *parent,
+					 struct gsm_bts_trx *trx,
+					 uint32_t term_event)
+{
+	struct osmo_fsm_inst *fi;
+	struct om2k_trx_fsm_priv *otfp;
+	char idbuf[32];
+
+	snprintf(idbuf, sizeof(idbuf), "%u/%u", trx->bts->nr, trx->nr);
+
+	fi = osmo_fsm_inst_alloc_child_id(&om2k_trx_fsm, parent, term_event,
+					  idbuf);
+	if (!fi)
+		return NULL;
+
+	otfp = talloc_zero(fi, struct om2k_trx_fsm_priv);
+	otfp->trx = trx;
+	fi->priv = otfp;
+
+	osmo_fsm_inst_dispatch(fi, OM2K_TRX_EVT_START, NULL);
+
+	return fi;
+}
+
+
+/***********************************************************************
+ * OM2000 BTS Finite State Machine, initializes CF and all siblings
+ ***********************************************************************/
+
+enum om2k_bts_event {
+	OM2K_BTS_EVT_START,
+	OM2K_BTS_EVT_CF_DONE,
+	OM2K_BTS_EVT_IS_DONE,
+	OM2K_BTS_EVT_TF_DONE,
+	OM2K_BTS_EVT_TRX_DONE,
+	OM2K_BTS_EVT_STOP,
+};
+
+static const struct value_string om2k_bts_events[] = {
+	{ OM2K_BTS_EVT_START,		"START" },
+	{ OM2K_BTS_EVT_CF_DONE,		"CF-DONE" },
+	{ OM2K_BTS_EVT_IS_DONE,		"IS-DONE" },
+	{ OM2K_BTS_EVT_TF_DONE,		"TF-DONE" },
+	{ OM2K_BTS_EVT_TRX_DONE,	"TRX-DONE" },
+	{ OM2K_BTS_EVT_STOP,		"STOP" },
+	{ 0, NULL }
+};
+
+enum om2k_bts_state {
+	OM2K_BTS_S_INIT,
+	OM2K_BTS_S_WAIT_CF,
+	OM2K_BTS_S_WAIT_IS,
+	OM2K_BTS_S_WAIT_TF,
+	OM2K_BTS_S_WAIT_TRX,
+	OM2K_BTS_S_DONE,
+	OM2K_BTS_S_ERROR,
+};
+
+struct om2k_bts_fsm_priv {
+	struct gsm_bts *bts;
+	uint8_t next_trx_nr;
+};
+
+static void om2k_bts_s_init(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_bts_fsm_priv *obfp = fi->priv;
+	struct gsm_bts *bts = obfp->bts;
+
+	OSMO_ASSERT(event == OM2K_BTS_EVT_START);
+	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_CF,
+				BTS_FSM_TIMEOUT, 0);
+	om2k_mo_fsm_start(fi, OM2K_BTS_EVT_CF_DONE, bts->c0,
+			  &bts->rbs2000.cf.om2k_mo);
+}
+
+static void om2k_bts_s_wait_cf(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_bts_fsm_priv *obfp = fi->priv;
+	struct gsm_bts *bts = obfp->bts;
+
+	OSMO_ASSERT(event == OM2K_BTS_EVT_CF_DONE);
+	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_IS,
+				BTS_FSM_TIMEOUT, 0);
+	om2k_mo_fsm_start(fi, OM2K_BTS_EVT_IS_DONE, bts->c0,
+			  &bts->rbs2000.is.om2k_mo);
+}
+
+static void om2k_bts_s_wait_is(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_bts_fsm_priv *obfp = fi->priv;
+	struct gsm_bts *bts = obfp->bts;
+
+	OSMO_ASSERT(event == OM2K_BTS_EVT_IS_DONE);
+	/* TF can take a long time to initialize, wait for 10min */
+	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_TF, 600, 0);
+	om2k_mo_fsm_start(fi, OM2K_BTS_EVT_TF_DONE, bts->c0,
+			  &bts->rbs2000.tf.om2k_mo);
+}
+
+static void om2k_bts_s_wait_tf(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_bts_fsm_priv *obfp = fi->priv;
+	struct gsm_bts_trx *trx;
+
+	OSMO_ASSERT(event == OM2K_BTS_EVT_TF_DONE);
+
+	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_TRX,
+				BTS_FSM_TIMEOUT, 0);
+	obfp->next_trx_nr = 0;
+	trx = gsm_bts_trx_num(obfp->bts, obfp->next_trx_nr++);
+	om2k_trx_fsm_start(fi, trx, OM2K_BTS_EVT_TRX_DONE);
+}
+
+static void om2k_bts_s_wait_trx(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct om2k_bts_fsm_priv *obfp = fi->priv;
+
+	OSMO_ASSERT(event == OM2K_BTS_EVT_TRX_DONE);
+
+	if (obfp->next_trx_nr < obfp->bts->num_trx) {
+		struct gsm_bts_trx *trx;
+		trx = gsm_bts_trx_num(obfp->bts, obfp->next_trx_nr++);
+		om2k_trx_fsm_start(fi, trx, OM2K_BTS_EVT_TRX_DONE);
+	} else {
+		osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_DONE, 0, 0);
+	}
+}
+
+static void om2k_bts_s_done_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	osmo_fsm_inst_term(fi, OSMO_FSM_TERM_REGULAR, NULL);
+}
+
+static const struct osmo_fsm_state om2k_bts_states[] = {
+	[OM2K_BTS_S_INIT] = {
+		.in_event_mask = S(OM2K_BTS_EVT_START),
+		.out_state_mask = S(OM2K_BTS_S_WAIT_CF),
+		.name = "INIT",
+		.action = om2k_bts_s_init,
+	},
+	[OM2K_BTS_S_WAIT_CF] = {
+		.in_event_mask = S(OM2K_BTS_EVT_CF_DONE),
+		.out_state_mask = S(OM2K_BTS_S_ERROR) |
+				  S(OM2K_BTS_S_WAIT_IS),
+		.name = "WAIT-CF",
+		.action = om2k_bts_s_wait_cf,
+	},
+	[OM2K_BTS_S_WAIT_IS] = {
+		.in_event_mask = S(OM2K_BTS_EVT_IS_DONE),
+		.out_state_mask = S(OM2K_BTS_S_ERROR) |
+				  S(OM2K_BTS_S_WAIT_TF),
+		.name = "WAIT-IS",
+		.action = om2k_bts_s_wait_is,
+	},
+	[OM2K_BTS_S_WAIT_TF] = {
+		.in_event_mask = S(OM2K_BTS_EVT_TF_DONE),
+		.out_state_mask = S(OM2K_BTS_S_ERROR) |
+				  S(OM2K_BTS_S_WAIT_TRX),
+		.name = "WAIT-TF",
+		.action = om2k_bts_s_wait_tf,
+	},
+	[OM2K_BTS_S_WAIT_TRX] = {
+		.in_event_mask = S(OM2K_BTS_EVT_TRX_DONE),
+		.out_state_mask = S(OM2K_BTS_S_ERROR) |
+				  S(OM2K_BTS_S_DONE),
+		.name = "WAIT-TRX",
+		.action = om2k_bts_s_wait_trx,
+	},
+	[OM2K_BTS_S_DONE] = {
+		.name = "DONE",
+		.onenter = om2k_bts_s_done_onenter,
+	},
+	[OM2K_BTS_S_ERROR] = {
+		.name = "ERROR",
+	},
+};
+
+static int om2k_bts_timer_cb(struct osmo_fsm_inst *fi)
+{
+	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_ERROR, 0, 0);
+	return 0;
+}
+
+static struct osmo_fsm om2k_bts_fsm = {
+	.name = "OM2000-BTS",
+	.states = om2k_bts_states,
+	.num_states = ARRAY_SIZE(om2k_bts_states),
+	.log_subsys = DNM,
+	.event_names = om2k_bts_events,
+	.timer_cb = om2k_bts_timer_cb,
+};
+
+struct osmo_fsm_inst *
+om2k_bts_fsm_start(struct gsm_bts *bts)
+{
+	struct osmo_fsm_inst *fi;
+	struct om2k_bts_fsm_priv *obfp;
+	char idbuf[16];
+
+	snprintf(idbuf, sizeof(idbuf), "%u", bts->nr);
+
+	fi = osmo_fsm_inst_alloc(&om2k_bts_fsm, bts, NULL,
+				 LOGL_DEBUG, idbuf);
+	if (!fi)
+		return NULL;
+	fi->priv = obfp = talloc_zero(fi, struct om2k_bts_fsm_priv);
+	obfp->bts = bts;
+
+	osmo_fsm_inst_dispatch(fi, OM2K_BTS_EVT_START, NULL);
+
+	return fi;
+}
+
+
+/***********************************************************************
+ * OM2000 Negotiation
+ ***********************************************************************/
 
 static int abis_om2k_tx_negot_req_ack(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 				      uint8_t *data, unsigned int len)
@@ -1345,60 +2311,10 @@ static int om2k_rx_negot_req(struct msgb *msg)
 	return abis_om2k_tx_negot_req_ack(sign_link->trx->bts, &o2h->mo, out_buf, out_cur - out_buf);
 }
 
-static int om2k_rx_start_res(struct msgb *msg)
-{
-	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg->dst;
-	struct abis_om2k_hdr *o2h = msgb_l2(msg);
-	int rc;
 
-	rc = abis_om2k_tx_simple(sign_link->trx->bts, &o2h->mo, OM2K_MSGT_START_RES_ACK);
-	rc = abis_om2k_tx_op_info(sign_link->trx->bts, &o2h->mo, 1);
-
-	return rc;
-}
-
-static int om2k_rx_op_info_ack(struct msgb *msg)
-{
-	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg->dst;
-	struct abis_om2k_hdr *o2h = msgb_l2(msg);
-
-	/* This Acknowledgement does not contain the actual operational state,
-	 * so we signal whatever state we saved when we sent the Op Info
-	 * request */
-
-	signal_op_state(sign_link->trx->bts, &o2h->mo);
-
-	return 0;
-}
-
-const struct value_string om2k_result_strings[] = {
-	{ 0x02, "Wrong state or out of sequence" },
-	{ 0x03, "File error" },
-	{ 0x04, "Fault, unspecified" },
-	{ 0x05, "Tuning fault" },
-	{ 0x06, "Protocol error" },
-	{ 0x07, "MO not connected" },
-	{ 0x08, "Parameter error" },
-	{ 0x09, "Optional function not supported" },
-	{ 0x0a, "Local access state LOCALLY DISCONNECTED" },
-	{ 0, NULL }
-};
-
-const struct value_string om2k_accordance_strings[] = {
-	{ 0x00, "Data according to request" },
-	{ 0x01, "Data not according to request" },
-	{ 0x02, "Inconsistent MO data" },
-	{ 0x03, "Capability constraint violation" },
-	{ 0, NULL }
-};
-
-const struct value_string om2k_mostate_vals[] = {
-	{ 0x00, "RESET" },
-	{ 0x01, "STARTED" },
-	{ 0x02, "ENABLED" },
-	{ 0x03, "DISABLED" },
-	{ 0, NULL }
-};
+/***********************************************************************
+ * OM2000 Receive Message Handler
+ ***********************************************************************/
 
 static int om2k_rx_nack(struct msgb *msg)
 {
@@ -1423,68 +2339,20 @@ static int om2k_rx_nack(struct msgb *msg)
 	return 0;
 }
 
-/* Process a Configuration Result message */
-static int process_conf_res(struct gsm_bts *bts, struct msgb *msg)
+static int process_mo_state(struct gsm_bts *bts, struct om2k_decoded_msg *odm)
 {
-	struct abis_om2k_hdr *o2h = msgb_l2(msg);
-	uint16_t msg_type = ntohs(o2h->msg_type);
-	struct nm_om2k_signal_data nsd;
-	struct tlv_parsed tp;
-	uint8_t acc;
-	unsigned int log_level;
-	int ret;
-
-	memset(&nsd, 0, sizeof(nsd));
-
-	abis_om2k_msg_tlv_parse(&tp, o2h);
-	if (!TLVP_PRESENT(&tp, OM2K_DEI_ACCORDANCE_IND))
-		return -EIO;
-
-	acc = *TLVP_VAL(&tp, OM2K_DEI_ACCORDANCE_IND);
-
-	switch (acc) {
-	case 0:
-		log_level = LOGL_DEBUG;
-		ret = 0;
-		break;
-	default:
-		log_level = LOGL_ERROR;
-		ret = -EINVAL;
-		break;
-	}
-
-	LOGP(DNM, log_level, "Rx MO=%s %s, Accordance: %s\n",
-		om2k_mo_name(&o2h->mo),
-		get_value_string(om2k_msgcode_vals, msg_type),
-		get_value_string(om2k_accordance_strings, acc));
-
-	nsd.bts = bts;
-	nsd.obj = mo2obj(bts, &o2h->mo);
-	nsd.om2k_mo = &o2h->mo;
-	nsd.accordance_ind = acc;
-	osmo_signal_dispatch(SS_NM, S_NM_OM2K_CONF_RES, &nsd);
-
-	return ret;
-}
-
-static int process_mo_state(struct gsm_bts *bts, struct msgb *msg)
-{
-	struct abis_om2k_hdr *o2h = msgb_l2(msg);
-	uint16_t msg_type = ntohs(o2h->msg_type);
-	struct tlv_parsed tp;
 	uint8_t mo_state;
 
-	abis_om2k_msg_tlv_parse(&tp, o2h);
-	if (!TLVP_PRESENT(&tp, OM2K_DEI_MO_STATE))
+	if (!TLVP_PRESENT(&odm->tp, OM2K_DEI_MO_STATE))
 		return -EIO;
-	mo_state = *TLVP_VAL(&tp, OM2K_DEI_MO_STATE);
+	mo_state = *TLVP_VAL(&odm->tp, OM2K_DEI_MO_STATE);
 
 	LOGP(DNM, LOGL_DEBUG, "Rx MO=%s %s, MO State: %s\n",
-		om2k_mo_name(&o2h->mo),
-		get_value_string(om2k_msgcode_vals, msg_type),
+		om2k_mo_name(&odm->o2h.mo),
+		get_value_string(om2k_msgcode_vals, odm->msg_type),
 		get_value_string(om2k_mostate_vals, mo_state));
 
-	update_mo_state(bts, &o2h->mo, mo_state);
+	update_mo_state(bts, &odm->o2h.mo, mo_state);
 
 	return 0;
 }
@@ -1496,6 +2364,8 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
 	struct abis_om_hdr *oh = &o2h->om;
 	uint16_t msg_type = ntohs(o2h->msg_type);
+	struct om2k_decoded_msg odm;
+	struct om2k_mo *mo;
 	int rc = 0;
 
 	/* Various consistency checks */
@@ -1523,80 +2393,53 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		get_value_string(om2k_msgcode_vals, msg_type),
 		osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
+	om2k_decode_msg(&odm, msg);
+
+	process_mo_state(bts, &odm);
+
 	switch (msg_type) {
 	case OM2K_MSGT_CAL_TIME_REQ:
 		rc = abis_om2k_cal_time_resp(bts);
 		break;
 	case OM2K_MSGT_FAULT_REP:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_FAULT_REP_ACK);
-		process_mo_state(bts, msg);
 		break;
 	case OM2K_MSGT_NEGOT_REQ:
 		rc = om2k_rx_negot_req(msg);
 		break;
 	case OM2K_MSGT_START_RES:
-		rc = om2k_rx_start_res(msg);
-		process_mo_state(bts, msg);
-		break;
-	case OM2K_MSGT_OP_INFO_ACK:
-		rc = om2k_rx_op_info_ack(msg);
+		/* common processing here */
+		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_START_RES_ACK);
+		/* below we dispatch into MO */
 		break;
 	case OM2K_MSGT_IS_CONF_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_IS_CONF_RES_ACK);
-		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_CON_CONF_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_CON_CONF_RES_ACK);
-		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_TX_CONF_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TX_CONF_RES_ACK);
-		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_RX_CONF_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_RX_CONF_RES_ACK);
-		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_TS_CONF_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TS_CONF_RES_ACK);
-		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_TF_CONF_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TF_CONF_RES_ACK);
-		process_conf_res(bts, msg);
-		break;
-	case OM2K_MSGT_CONNECT_COMPL:
-		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_RESET_CMD);
-		break;
-	case OM2K_MSGT_RESET_COMPL:
-		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_START_REQ);
 		break;
 	case OM2K_MSGT_ENABLE_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_ENABLE_RES_ACK);
-		process_mo_state(bts, msg);
 		break;
 	case OM2K_MSGT_DISABLE_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_DISABLE_RES_ACK);
-		process_mo_state(bts, msg);
 		break;
 	case OM2K_MSGT_TEST_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TEST_RES_ACK);
-		process_mo_state(bts, msg);
 		break;
-	case OM2K_MSGT_STATUS_RESP:
-		process_mo_state(bts, msg);
-		break;
-	case OM2K_MSGT_START_REQ_ACK:
-	case OM2K_MSGT_CON_CONF_REQ_ACK:
-	case OM2K_MSGT_IS_CONF_REQ_ACK:
-	case OM2K_MSGT_TX_CONF_REQ_ACK:
-	case OM2K_MSGT_RX_CONF_REQ_ACK:
-	case OM2K_MSGT_TS_CONF_REQ_ACK:
-	case OM2K_MSGT_TF_CONF_REQ_ACK:
-	case OM2K_MSGT_ENABLE_REQ_ACK:
-	case OM2K_MSGT_ALARM_STATUS_REQ_ACK:
-	case OM2K_MSGT_DISABLE_REQ_ACK:
-		break;
+	/* ERrors */
 	case OM2K_MSGT_START_REQ_REJ:
 	case OM2K_MSGT_CONNECT_REJ:
 	case OM2K_MSGT_OP_INFO_REJ:
@@ -1613,11 +2456,74 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	case OM2K_MSGT_DISABLE_REQ_REJ:
 		rc = om2k_rx_nack(msg);
 		break;
-	default:
-		LOGP(DNM, LOGL_NOTICE, "Rx unhandled OM2000 msg %s\n",
-			get_value_string(om2k_msgcode_vals, msg_type));
 	}
+
+	/* Resolve the MO for this message */
+	mo = get_om2k_mo(bts, &o2h->mo);
+	if (!mo) {
+		LOGP(DNM, LOGL_ERROR, "Couldn't resolve MO for OM2K msg "
+		     "%s: %s\n", get_value_string(om2k_msgcode_vals, msg_type),
+		     msgb_hexdump(msg));
+		return 0;
+	}
+
+	/* Dispatch message to that MO */
+	om2k_mo_fsm_recvmsg(bts, mo, &odm);
 
 	msgb_free(msg);
 	return rc;
+}
+
+static void om2k_mo_init(struct om2k_mo *mo, uint8_t class,
+			 uint8_t bts_nr, uint8_t assoc_so, uint8_t inst)
+{
+	mo->addr.class = class;
+	mo->addr.bts = bts_nr;
+	mo->addr.assoc_so = assoc_so;
+	mo->addr.inst = inst;
+}
+
+/* initialize the OM2K_MO members of gsm_bts_trx and its timeslots */
+void abis_om2k_trx_init(struct gsm_bts_trx *trx)
+{
+	struct gsm_bts *bts = trx->bts;
+	unsigned int i;
+
+	OSMO_ASSERT(bts->type == GSM_BTS_TYPE_RBS2000);
+
+	om2k_mo_init(&trx->rbs2000.trxc.om2k_mo, OM2K_MO_CLS_TRXC,
+		     bts->nr, 255, trx->nr);
+	om2k_mo_init(&trx->rbs2000.tx.om2k_mo, OM2K_MO_CLS_TX,
+		     bts->nr, 255, trx->nr);
+	om2k_mo_init(&trx->rbs2000.rx.om2k_mo, OM2K_MO_CLS_RX,
+		     bts->nr, 255, trx->nr);
+
+	for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
+		om2k_mo_init(&trx->ts[i].rbs2000.om2k_mo, OM2K_MO_CLS_TS,
+				bts->nr, trx->nr, i);
+	}
+}
+
+/* initialize the OM2K_MO members of gsm_bts */
+void abis_om2k_bts_init(struct gsm_bts *bts)
+{
+	OSMO_ASSERT(bts->type == GSM_BTS_TYPE_RBS2000);
+
+	om2k_mo_init(&bts->rbs2000.cf.om2k_mo, OM2K_MO_CLS_CF,
+			bts->nr, 0xFF, 0);
+	om2k_mo_init(&bts->rbs2000.is.om2k_mo, OM2K_MO_CLS_IS,
+			bts->nr, 0xFF, 0);
+	om2k_mo_init(&bts->rbs2000.con.om2k_mo, OM2K_MO_CLS_CON,
+			bts->nr, 0xFF, 0);
+	om2k_mo_init(&bts->rbs2000.dp.om2k_mo, OM2K_MO_CLS_DP,
+			bts->nr, 0xFF, 0);
+	om2k_mo_init(&bts->rbs2000.tf.om2k_mo, OM2K_MO_CLS_TF,
+			bts->nr, 0xFF, 0);
+}
+
+static __attribute__((constructor)) void abis_om2k_init(void)
+{
+	osmo_fsm_register(&om2k_mo_fsm);
+	osmo_fsm_register(&om2k_bts_fsm);
+	osmo_fsm_register(&om2k_trx_fsm);
 }

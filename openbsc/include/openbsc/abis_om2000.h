@@ -41,13 +41,6 @@ enum om2k_mo_state {
 	OM2K_MO_S_DISABLED,
 };
 
-struct abis_om2k_mo {
-	uint8_t class;
-	uint8_t bts;
-	uint8_t assoc_so;
-	uint8_t inst;
-} __attribute__ ((packed));
-
 /* on-wire format for IS conn group */
 struct om2k_is_conn_grp {
 	uint16_t icp1;
@@ -89,6 +82,10 @@ int abis_om2k_tx_tf_conf_req(struct gsm_bts *bts);
 int abis_om2k_tx_rx_conf_req(struct gsm_bts_trx *trx);
 int abis_om2k_tx_tx_conf_req(struct gsm_bts_trx *trx);
 int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts);
+
+struct osmo_fsm_inst *om2k_bts_fsm_start(struct gsm_bts *bts);
+void abis_om2k_bts_init(struct gsm_bts *bts);
+void abis_om2k_trx_init(struct gsm_bts_trx *trx);
 
 int abis_om2k_vty_init(void);
 

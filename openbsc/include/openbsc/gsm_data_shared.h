@@ -104,6 +104,19 @@ struct gsm_abis_mo {
 	struct gsm_bts *bts;
 };
 
+/* Ericsson OM2000 Managed Object */
+struct abis_om2k_mo {
+	uint8_t class;
+	uint8_t bts;
+	uint8_t assoc_so;
+	uint8_t inst;
+} __attribute__ ((packed));
+
+struct om2k_mo {
+	struct abis_om2k_mo addr;
+	struct osmo_fsm_inst *fsm;
+};
+
 #define MAX_A5_KEY_LEN	(128/8)
 #define A38_XOR_MIN_KEY_LEN	12
 #define A38_XOR_MAX_KEY_LEN	16
@@ -387,6 +400,12 @@ struct gsm_bts_trx_ts {
 	/* To which E1 subslot are we connected */
 	struct gsm_e1_subslot e1_link;
 
+	union {
+		struct {
+			struct om2k_mo om2k_mo;
+		} rbs2000;
+	};
+
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
 
@@ -441,6 +460,17 @@ struct gsm_bts_trx {
 			uint8_t test_nr;
 			struct rxlev_stats rxlev_stat;
 		} ipaccess;
+		struct {
+			struct {
+				struct om2k_mo om2k_mo;
+			} trxc;
+			struct {
+				struct om2k_mo om2k_mo;
+			} rx;
+			struct {
+				struct om2k_mo om2k_mo;
+			} tx;
+		} rbs2000;
 	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
@@ -679,17 +709,26 @@ struct gsm_bts {
 		} bs11;
 		struct {
 			struct {
+				struct om2k_mo om2k_mo;
+				struct gsm_abis_mo mo;
+				struct llist_head conn_groups;
+			} cf;
+			struct {
+				struct om2k_mo om2k_mo;
 				struct gsm_abis_mo mo;
 				struct llist_head conn_groups;
 			} is;
 			struct {
+				struct om2k_mo om2k_mo;
 				struct gsm_abis_mo mo;
 				struct llist_head conn_groups;
 			} con;
 			struct {
+				struct om2k_mo om2k_mo;
 				struct gsm_abis_mo mo;
 			} dp;
 			struct {
+				struct om2k_mo om2k_mo;
 				struct gsm_abis_mo mo;
 			} tf;
 		} rbs2000;
