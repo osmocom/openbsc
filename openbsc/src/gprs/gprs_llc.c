@@ -357,7 +357,7 @@ static int apply_gea(struct gprs_llc_lle *lle, uint16_t crypt_len, uint16_t nu,
 		return -EINVAL;
 
 	/* Compute the 'Input' Paraemeter */
-	uint32_t iv = gprs_cipher_gen_input_ui(lle->llme->iov_ui, sapi,
+	uint32_t fcs_calc, iv = gprs_cipher_gen_input_ui(lle->llme->iov_ui, sapi,
 							 nu, oc);
 	/* Compute gamma that we need to XOR with the data */
 	int r = gprs_cipher_run(cipher_out, crypt_len, lle->llme->algo,
@@ -371,6 +371,12 @@ static int apply_gea(struct gprs_llc_lle *lle, uint16_t crypt_len, uint16_t nu,
 	}
 
 	if (fcs) {
+		/* Mark frame as encrypted and update FCS */
+		data[2] |= 0x02;
+		fcs_calc = gprs_llc_fcs(data, fcs - data);
+		fcs[0] = fcs_calc & 0xff;
+		fcs[1] = (fcs_calc >> 8) & 0xff;
+		fcs[2] = (fcs_calc >> 16) & 0xff;
 		data += 3;
 	}
 
@@ -452,9 +458,6 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 			msgb_free(msg);
 			return rc;
 		}
-
-		/* Mark frame as encrypted */
-		ctrl[1] |= 0x02;
 	}
 
 	/* Identifiers passed down: (BVCI, NSEI) */
@@ -640,6 +643,9 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 				       llhp.data);
 			if (rc < 0)
 				return rc;
+		llhp.fcs = *(llhp.data + llhp.data_len);
+		llhp.fcs |= *(llhp.data + llhp.data_len + 1) << 8;
+		llhp.fcs |= *(llhp.data + llhp.data_len + 2) << 16;
 		} else {
 			LOGP(DLLC, LOGL_NOTICE, "encrypted frame for LLC that "
 				"has no KC/Algo! Dropping.\n");
