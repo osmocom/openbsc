@@ -347,6 +347,40 @@ static int gprs_llc_tx_xid(struct gprs_llc_lle *lle, struct msgb *msg,
 	return gprs_llc_tx_u(msg, lle->sapi, command, GPRS_LLC_U_XID, 1);
 }
 
+/* encrypt information field + FCS, if needed! */
+static int apply_gea(struct gprs_llc_lle *lle, uint16_t crypt_len, uint16_t nu,
+		     uint32_t oc, uint8_t sapi, uint8_t *fcs, uint8_t *data)
+{
+	uint8_t cipher_out[GSM0464_CIPH_MAX_BLOCK];
+
+	if (lle->llme->algo == GPRS_ALGO_GEA0)
+		return -EINVAL;
+
+	/* Compute the 'Input' Paraemeter */
+	uint32_t iv = gprs_cipher_gen_input_ui(lle->llme->iov_ui, sapi,
+							 nu, oc);
+	/* Compute gamma that we need to XOR with the data */
+	int r = gprs_cipher_run(cipher_out, crypt_len, lle->llme->algo,
+				lle->llme->kc, iv,
+				fcs ? GPRS_CIPH_SGSN2MS : GPRS_CIPH_MS2SGSN);
+	if (r < 0) {
+		LOGP(DLLC, LOGL_ERROR, "Error producing %s gamma for UI "
+		     "frame: %d\n", get_value_string(gprs_cipher_names,
+						     lle->llme->algo), r);
+		return -ENOMSG;
+	}
+
+	if (fcs) {
+		data += 3;
+	}
+
+	/* XOR the cipher output with the data */
+	for (r = 0; r < crypt_len; r++)
+		*(data + r) ^= cipher_out[r];
+
+	return 0;
+}
+
 /* Transmit a UI frame over the given SAPI:
    'encryptable' indicates whether particular message can be encrypted according
    to 3GPP TS 24.008 § 4.7.1.2
@@ -412,30 +446,12 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 	fcs[1] = (fcs_calc >> 8) & 0xff;
 	fcs[2] = (fcs_calc >> 16) & 0xff;
 
-	/* encrypt information field + FCS, if needed! */
 	if (lle->llme->algo != GPRS_ALGO_GEA0 && encryptable) {
-		uint32_t iov_ui = 0; /* FIXME: randomly select for TLLI */
-		uint16_t crypt_len = (fcs + 3) - (llch + 3);
-		uint8_t cipher_out[GSM0464_CIPH_MAX_BLOCK];
-		uint32_t iv;
-		int rc, i;
-		uint8_t *kc = lle->llme->kc;
-
-		/* Compute the 'Input' Paraemeter */
-		iv = gprs_cipher_gen_input_ui(iov_ui, sapi, nu, oc);
-
-		/* Compute the keystream that we need to XOR with the data */
-		rc = gprs_cipher_run(cipher_out, crypt_len, lle->llme->algo,
-				     kc, iv, GPRS_CIPH_SGSN2MS);
+		int rc = apply_gea(lle, fcs - llch, nu, oc, sapi, fcs, llch);
 		if (rc < 0) {
-			LOGP(DLLC, LOGL_ERROR, "Error crypting UI frame: %d\n", rc);
 			msgb_free(msg);
 			return rc;
 		}
-
-		/* XOR the cipher output with the information field + FCS */
-		for (i = 0; i < crypt_len; i++)
-			*(llch + 3 + i) ^= cipher_out[i];
 
 		/* Mark frame as encrypted */
 		ctrl[1] |= 0x02;
@@ -618,32 +634,17 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 
 	/* decrypt information field + FCS, if needed! */
 	if (llhp.is_encrypted) {
-		uint32_t iov_ui = 0; /* FIXME: randomly select for TLLI */
-		uint16_t crypt_len = llhp.data_len + 3;
-		uint8_t cipher_out[GSM0464_CIPH_MAX_BLOCK];
-		uint32_t iv;
-		uint8_t *kc = lle->llme->kc;
-		int rc, i;
-
-		if (lle->llme->algo == GPRS_ALGO_GEA0) {
+		if (lle->llme->algo != GPRS_ALGO_GEA0) {
+			rc = apply_gea(lle, llhp.data_len + 3, llhp.seq_tx,
+				       lle->oc_ui_recv, lle->sapi, NULL,
+				       llhp.data);
+			if (rc < 0)
+				return rc;
+		} else {
 			LOGP(DLLC, LOGL_NOTICE, "encrypted frame for LLC that "
 				"has no KC/Algo! Dropping.\n");
 			return 0;
 		}
-
-		iv = gprs_cipher_gen_input_ui(iov_ui, lle->sapi, llhp.seq_tx,
-						lle->oc_ui_recv);
-		rc = gprs_cipher_run(cipher_out, crypt_len, lle->llme->algo,
-				     kc, iv, GPRS_CIPH_MS2SGSN);
-		if (rc < 0) {
-			LOGP(DLLC, LOGL_ERROR, "Error decrypting frame: %d\n",
-			     rc);
-			return rc;
-		}
-
-		/* XOR the cipher output with the information field + FCS */
-		for (i = 0; i < crypt_len; i++)
-			*(llhp.data + i) ^= cipher_out[i];
 	} else {
 		if (lle->llme->algo != GPRS_ALGO_GEA0 &&
 		    lle->llme->cksn != GSM_KEY_SEQ_INVAL)
