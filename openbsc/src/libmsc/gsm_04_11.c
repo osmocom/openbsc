@@ -309,8 +309,10 @@ try_local:
 	if (!gsms->receiver) {
 #ifdef BUILD_SMPP
 		/* Avoid a second look-up */
-		if (smpp_first)
+		if (smpp_first) {
+			rate_ctr_inc(&conn->bts->network->ratectrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
 			return 1; /* cause 1: unknown subscriber */
+		}
 
 		rc = smpp_try_deliver(gsms, conn);
 		if (rc == 1) {
