@@ -850,10 +850,11 @@ static void handle_options(int argc, char **argv)
 			break;
 		}
 	}
-	if (optind < argc)
+	if (optind < argc) {
 		command = argv[optind];
 	        if (optind+1 < argc)
 			value = argv[optind+1];
+	}
 
 }
 
