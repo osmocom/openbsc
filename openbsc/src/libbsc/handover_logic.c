@@ -103,7 +103,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
 		old_lchan->ts->trx->bts->nr, bts->nr);
 
-	osmo_counter_inc(bts->network->stats.handover.attempted);
+	rate_ctr_inc(&bts->network->ratectrs->ctr[MSC_CTR_HANDOVER_ATTEMPTED]);
 
 	if (!old_lchan->conn) {
 		LOGP(DHO, LOGL_ERROR, "Old lchan lacks connection data.\n");
@@ -113,7 +113,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	new_lchan = lchan_alloc(bts, old_lchan->type, 0);
 	if (!new_lchan) {
 		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
-		osmo_counter_inc(bts->network->stats.handover.no_channel);
+		rate_ctr_inc(&bts->network->ratectrs->ctr[MSC_CTR_HANDOVER_NO_CHANNEL]);
 		return -ENOSPC;
 	}
 
@@ -188,7 +188,7 @@ static void ho_T3103_cb(void *_ho)
 	struct gsm_network *net = ho->new_lchan->ts->trx->bts->network;
 
 	DEBUGP(DHO, "HO T3103 expired\n");
-	osmo_counter_inc(net->stats.handover.timeout);
+	rate_ctr_inc(&net->ratectrs->ctr[MSC_CTR_HANDOVER_TIMEOUT]);
 
 	ho->new_lchan->conn->ho_lchan = NULL;
 	ho->new_lchan->conn = NULL;
@@ -265,7 +265,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	     ho->old_lchan->ts->trx->bts->nr, new_lchan->ts->trx->bts->nr,
 	     ho->old_lchan->ts->trx->arfcn, new_lchan->ts->trx->arfcn);
 
-	osmo_counter_inc(net->stats.handover.completed);
+	rate_ctr_inc(&net->ratectrs->ctr[MSC_CTR_HANDOVER_COMPLETED]);
 
 	osmo_timer_del(&ho->T3103);
 
@@ -303,7 +303,7 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 		return -ENODEV;
 	}
 
-	osmo_counter_inc(net->stats.handover.failed);
+	rate_ctr_inc(&net->ratectrs->ctr[MSC_CTR_HANDOVER_FAILED]);
 
 	new_lchan = ho->new_lchan;
 

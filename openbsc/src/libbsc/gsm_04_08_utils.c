@@ -304,7 +304,7 @@ int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
 		subscr = conn->subscr;
 	}
 
-	osmo_counter_inc(bts->network->stats.paging.completed);
+	rate_ctr_inc(&bts->network->ratectrs->ctr[MSC_CTR_PAGING_COMPLETED]);
 
 	/* Stop paging on the bts we received the paging response */
 	paging_request_stop(conn->bts, subscr, conn, msg);

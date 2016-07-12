@@ -7,7 +7,10 @@
 #include <stdbool.h>
 
 #include <osmocom/core/timer.h>
+#include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/select.h>
+#include <osmocom/core/stats.h>
+
 #include <osmocom/crypt/auth.h>
 
 #include <openbsc/rest_octets.h>
@@ -148,55 +151,79 @@ struct gsm_subscriber_connection {
 
 
 /* Some statistics of our network */
-struct gsmnet_stats {
-	struct {
-		struct osmo_counter *total;
-		struct osmo_counter *no_channel;
-	} chreq;
-	struct {
-		struct osmo_counter *attempted;
-		struct osmo_counter *no_channel;	/* no channel available */
-		struct osmo_counter *timeout;		/* T3103 timeout */
-		struct osmo_counter *completed;	/* HO COMPL received */
-		struct osmo_counter *failed;		/* HO FAIL received */
-	} handover;
-	struct {
-		struct osmo_counter *attach;
-		struct osmo_counter *normal;
-		struct osmo_counter *periodic;
-		struct osmo_counter *detach;
-	} loc_upd_type;
-	struct {
-		struct osmo_counter *reject;
-		struct osmo_counter *accept;
-	} loc_upd_resp;
-	struct {
-		struct osmo_counter *attempted;
-		struct osmo_counter *detached;
-		struct osmo_counter *completed;
-		struct osmo_counter *expired;
-	} paging;
-	struct {
-		struct osmo_counter *submitted; /* MO SMS submissions */
-		struct osmo_counter *no_receiver;
-		struct osmo_counter *delivered; /* MT SMS deliveries */
-		struct osmo_counter *rp_err_mem;
-		struct osmo_counter *rp_err_other;
-	} sms;
-	struct {
-		struct osmo_counter *mo_setup;
-		struct osmo_counter *mo_connect_ack;
-		struct osmo_counter *mt_setup;
-		struct osmo_counter *mt_connect;
-	} call;
-	struct {
-		struct osmo_counter *rf_fail;
-		struct osmo_counter *rll_err;
-	} chan;
-	struct {
-		struct osmo_counter *oml_fail;
-		struct osmo_counter *rsl_fail;
-	} bts;
+enum {
+	MSC_CTR_CHREQ_TOTAL,
+	MSC_CTR_CHREQ_NO_CHANNEL,
+	MSC_CTR_HANDOVER_ATTEMPTED,
+	MSC_CTR_HANDOVER_NO_CHANNEL,
+	MSC_CTR_HANDOVER_TIMEOUT,
+	MSC_CTR_HANDOVER_COMPLETED,
+	MSC_CTR_HANDOVER_FAILED,
+	MSC_CTR_LOC_UPDATE_TYPE_ATTACH,
+	MSC_CTR_LOC_UPDATE_TYPE_NORMAL,
+	MSC_CTR_LOC_UPDATE_TYPE_PERIODIC,
+	MSC_CTR_LOC_UPDATE_TYPE_DETACH,
+	MSC_CTR_LOC_UPDATE_RESP_REJECT,
+	MSC_CTR_LOC_UPDATE_RESP_ACCEPT,
+	MSC_CTR_PAGING_ATTEMPTED,
+	MSC_CTR_PAGING_DETACHED,
+	MSC_CTR_PAGING_COMPLETED,
+	MSC_CTR_PAGING_EXPIRED,
+	MSC_CTR_SMS_SUBMITTED,
+	MSC_CTR_SMS_NO_RECEIVER,
+	MSC_CTR_SMS_DELIVERED,
+	MSC_CTR_SMS_RP_ERR_MEM,
+	MSC_CTR_SMS_RP_ERR_OTHER,
+	MSC_CTR_CALL_MO_SETUP,
+	MSC_CTR_CALL_MO_CONNECT_ACK,
+	MSC_CTR_CALL_MT_SETUP,
+	MSC_CTR_CALL_MT_CONNECT,
+	MSC_CTR_CHAN_RF_FAIL,
+	MSC_CTR_CHAN_RLL_ERR,
+	MSC_CTR_BTS_OML_FAIL,
+	MSC_CTR_BTS_RSL_FAIL,
+};
+
+static const struct rate_ctr_desc msc_ctr_description[] = {
+	[MSC_CTR_CHREQ_TOTAL] = 		{"chreq.total", "Received channel requests."},
+	[MSC_CTR_CHREQ_NO_CHANNEL] = 		{"chreq.no_channel", "Sent to MS no channel available."},
+	[MSC_CTR_HANDOVER_ATTEMPTED] = 		{"handover.attempted", "Received handover attempts."},
+	[MSC_CTR_HANDOVER_NO_CHANNEL] = 		{"handover.no_channel", "Sent no channel available responses."},
+	[MSC_CTR_HANDOVER_TIMEOUT] = 		{"handover.timeout", "Count the amount of timeouts of timer T3103."},
+	[MSC_CTR_HANDOVER_COMPLETED] = 		{"handover.completed", "Received handover completed."},
+	[MSC_CTR_HANDOVER_FAILED] = 		{"handover.failed", "Receive HO FAIL messages."},
+	[MSC_CTR_LOC_UPDATE_TYPE_ATTACH] = 		{"loc_update_type.attach", "Received location update imsi attach requests."},
+	[MSC_CTR_LOC_UPDATE_TYPE_NORMAL] = 		{"loc_update_type.normal", "Received location update normal requests."},
+	[MSC_CTR_LOC_UPDATE_TYPE_PERIODIC] = 		{"loc_update_type.periodic", "Received location update periodic requests."},
+	[MSC_CTR_LOC_UPDATE_TYPE_DETACH] = 		{"loc_update_type.detach", "Received location update detach indication."},
+	[MSC_CTR_LOC_UPDATE_RESP_REJECT] = 		{"loc_update_resp.reject", "Sent location update reject responses."},
+	[MSC_CTR_LOC_UPDATE_RESP_ACCEPT] = 		{"loc_update_resp.accept", "Sent location update accept responses."},
+	[MSC_CTR_PAGING_ATTEMPTED] = 		{"paging.attempted", "Paging attempts for a MS."},
+	[MSC_CTR_PAGING_DETACHED] = 		{"paging.detached", "Counts the amount of paging attempts which couldn't sent out any paging request because no responsible bts found."},
+	[MSC_CTR_PAGING_COMPLETED] = 		{"paging.completed", "Paging successful completed."},
+	[MSC_CTR_PAGING_EXPIRED] = 		{"paging.expired", "Paging Request expired because of timeout T3113."},
+	[MSC_CTR_SMS_SUBMITTED] = 		{"sms.submitted", "Received a RPDU from a MS (MO)."},
+	[MSC_CTR_SMS_NO_RECEIVER] = 		{"sms.no_receiver", "Counts SMS which couldn't routed because no receiver found."},
+	[MSC_CTR_SMS_DELIVERED] = 		{"sms.delivered", "Global SMS Deliver attempts."},
+	[MSC_CTR_SMS_RP_ERR_MEM] = 		{"sms.rp_err_mem", "CAUSE_MT_MEM_EXCEEDED errors of MS responses on a sms deliver attempt."},
+	[MSC_CTR_SMS_RP_ERR_OTHER] = 		{"sms.rp_err_other", "Other error of MS responses on a sms delive attempt."},
+	/* FIXME: count also sms delivered */
+	[MSC_CTR_CALL_MO_SETUP] = 		{"call.mo_setup", "Received setup requests from a MS to init a MO call."},
+	[MSC_CTR_CALL_MO_CONNECT_ACK] = 		{"call.mo_connect_ack", "Received a connect ack from MS of a MO call. Call is now succesful connected up."},
+	[MSC_CTR_CALL_MT_SETUP] = 		{"call.mt_setup", "Sent setup requests to the MS (MT)."},
+	[MSC_CTR_CALL_MT_CONNECT] = 		{"call.mt_connect", "Sent a connect to the MS (MT)."},
+	[MSC_CTR_CHAN_RF_FAIL] = 		{"chan.rf_fail", "Received a RF failure indication from BTS."},
+	[MSC_CTR_CHAN_RLL_ERR] = 		{"chan.rll_err", "Received a RLL failure with T200 cause from BTS."},
+	[MSC_CTR_BTS_OML_FAIL] = 		{"bts.oml_fail", "Received a TEI down on a OML link."},
+	[MSC_CTR_BTS_RSL_FAIL] = 		{"bts.rsl_fail", "Received a TEI down on a OML link."},
+};
+
+static const struct rate_ctr_group_desc msc_ctrg_desc = {
+	"msc",
+	"mobile switching center",
+	OSMO_STATS_CLASS_GLOBAL,
+	ARRAY_SIZE(msc_ctr_description),
+	msc_ctr_description,
 };
 
 enum gsm_auth_policy {
@@ -241,7 +268,8 @@ struct gsm_network {
 		unsigned int max_distance;	/* TA values */
 	} handover;
 
-	struct gsmnet_stats stats;
+	struct rate_ctr_group *ratectrs;
+
 
 	/* layer 4 */
 	struct mncc_sock_state *mncc_state;

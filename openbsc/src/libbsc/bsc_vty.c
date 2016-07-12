@@ -3784,18 +3784,22 @@ DEFUN(cfg_ts_e1_subslot,
 void openbsc_vty_print_statistics(struct vty *vty, struct gsm_network *net)
 {
 	vty_out(vty, "Channel Requests        : %lu total, %lu no channel%s",
-		osmo_counter_get(net->stats.chreq.total),
-		osmo_counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
+		net->ratectrs->ctr[MSC_CTR_CHREQ_TOTAL].current,
+		net->ratectrs->ctr[MSC_CTR_CHREQ_NO_CHANNEL].current,
+		VTY_NEWLINE);
 	vty_out(vty, "Channel Failures        : %lu rf_failures, %lu rll failures%s",
-		osmo_counter_get(net->stats.chan.rf_fail),
-		osmo_counter_get(net->stats.chan.rll_err), VTY_NEWLINE);
+		net->ratectrs->ctr[MSC_CTR_CHAN_RF_FAIL].current,
+		net->ratectrs->ctr[MSC_CTR_CHAN_RLL_ERR].current,
+		VTY_NEWLINE);
 	vty_out(vty, "Paging                  : %lu attempted, %lu complete, %lu expired%s",
-		osmo_counter_get(net->stats.paging.attempted),
-		osmo_counter_get(net->stats.paging.completed),
-		osmo_counter_get(net->stats.paging.expired), VTY_NEWLINE);
+		net->ratectrs->ctr[MSC_CTR_PAGING_ATTEMPTED].current,
+		net->ratectrs->ctr[MSC_CTR_PAGING_COMPLETED].current,
+		net->ratectrs->ctr[MSC_CTR_PAGING_EXPIRED].current,
+		VTY_NEWLINE);
 	vty_out(vty, "BTS failures            : %lu OML, %lu RSL%s",
-		osmo_counter_get(net->stats.bts.oml_fail),
-		osmo_counter_get(net->stats.bts.rsl_fail), VTY_NEWLINE);
+		net->ratectrs->ctr[MSC_CTR_BTS_OML_FAIL].current,
+		net->ratectrs->ctr[MSC_CTR_BTS_RSL_FAIL].current,
+		VTY_NEWLINE);
 }
 
 DEFUN(drop_bts,

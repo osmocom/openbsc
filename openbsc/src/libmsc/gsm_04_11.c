@@ -315,14 +315,14 @@ try_local:
 		rc = smpp_try_deliver(gsms, conn);
 		if (rc == 1) {
 			rc = 1; /* cause 1: unknown subscriber */
-			osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+			rate_ctr_inc(&conn->bts->network->ratectrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
 		} else if (rc < 0) {
 			rc = 21; /* cause 21: short message transfer rejected */
 			/* FIXME: handle the error somehow? */
 		}
 #else
 		rc = 1; /* cause 1: unknown subscriber */
-		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+		rate_ctr_inc(&conn->bts->network->ratectrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
 #endif
 		return rc;
 	}
@@ -363,7 +363,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	uint8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
-	osmo_counter_inc(conn->bts->network->stats.sms.submitted);
+	rate_ctr_inc(&conn->bts->network->ratectrs->ctr[MSC_CTR_SMS_SUBMITTED]);
 
 	gsms = sms_alloc();
 	if (!gsms)
@@ -633,10 +633,10 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 		 * to store this in our database and wait for a SMMA message */
 		/* FIXME */
 		send_signal(S_SMS_MEM_EXCEEDED, trans, sms, 0);
-		osmo_counter_inc(net->stats.sms.rp_err_mem);
+		rate_ctr_inc(&net->ratectrs->ctr[MSC_CTR_SMS_RP_ERR_MEM]);
 	} else {
 		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
-		osmo_counter_inc(net->stats.sms.rp_err_other);
+		rate_ctr_inc(&net->ratectrs->ctr[MSC_CTR_SMS_RP_ERR_OTHER]);
 	}
 
 	sms_free(sms);
@@ -932,7 +932,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 
 	DEBUGP(DLSMS, "TX: SMS DELIVER\n");
 
-	osmo_counter_inc(conn->bts->network->stats.sms.delivered);
+	rate_ctr_inc(&conn->bts->network->ratectrs->ctr[MSC_CTR_SMS_DELIVERED]);
 	db_sms_inc_deliver_attempts(trans->sms.sms);
 
 	return gsm411_rp_sendmsg(&trans->sms.smr_inst, msg,
