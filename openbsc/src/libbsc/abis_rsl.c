@@ -470,7 +470,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	if (rc < 0)
 		return rc;
 
-	/* if channel is in PDCH mode, deactivate PDCH first */
+	/* If a TCH_F/PDCH TS is in PDCH mode, deactivate PDCH first. */
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && (lchan->ts->flags & TS_F_PDCH_ACTIVE)) {
 		/* store activation type and handover reference */
@@ -772,7 +772,7 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 	 *
 	 * Any state other than LCHAN_S_REL_ERR became LCHAN_S_NONE after above
 	 * do_lchan_free(). Assert this, because that's what ensures a PDCH ACT
-	 * on a dynamic channel in all cases.
+	 * on a TCH/F_PDCH TS in all cases.
 	 *
 	 * If GPRS is disabled, always skip the PDCH ACT.
 	 */

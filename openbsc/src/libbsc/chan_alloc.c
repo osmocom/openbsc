@@ -43,7 +43,7 @@ static int ts_is_usable(struct gsm_bts_trx_ts *ts)
 			return 0;
 	}
 
-	/* If a dyn PDCH channel is busy changing, it is already taken or not
+	/* If a TCH/F_PDCH TS is busy changing, it is already taken or not
 	 * yet available. */
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH) {
 		if (ts->flags & TS_F_PDCH_PENDING_MASK)
@@ -142,9 +142,12 @@ _lc_find_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
 
 /* Allocate a logical channel.
  *
- * For TCH/F, we may return a dynamic TCH/F_PDCH channel (but prefer a pure
- * TCH/F). If we pick a TCH/F_PDCH time slot, PDCH will be disabled later on;
- * there is no need to check whether PDCH mode is currently active, here.
+ * Dynamic channel types: we always prefer a dedicated TS, and only pick +
+ * switch a dynamic TS if no pure TS of the requested PCHAN is available.
+ *
+ * TCH_F/PDCH: if we pick a PDCH ACT style dynamic TS as TCH/F channel, PDCH
+ * will be disabled in rsl_chan_activate_lchan(); there is no need to check
+ * whether PDCH mode is currently active, here.
  */
 struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 			      int allow_bigger)
