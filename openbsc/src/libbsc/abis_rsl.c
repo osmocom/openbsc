@@ -979,34 +979,35 @@ int rsl_lchan_set_state(struct gsm_lchan *lchan, int state)
 static int rsl_rx_chan_act_ack(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
+	struct gsm_lchan *lchan = msg->lchan;
 
 	/* BTS has confirmed channel activation, we now need
 	 * to assign the activated channel to the MS */
 	if (rslh->ie_chan != RSL_IE_CHAN_NR)
 		return -EINVAL;
 
-	osmo_timer_del(&msg->lchan->act_timer);
+	osmo_timer_del(&lchan->act_timer);
 
-	if (msg->lchan->state == LCHAN_S_BROKEN) {
+	if (lchan->state == LCHAN_S_BROKEN) {
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK for broken channel.\n",
-			gsm_lchan_name(msg->lchan));
+			gsm_lchan_name(lchan));
 		return 0;
 	}
 
-	if (msg->lchan->state != LCHAN_S_ACT_REQ)
+	if (lchan->state != LCHAN_S_ACT_REQ)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK, but state %s\n",
-			gsm_lchan_name(msg->lchan),
-			gsm_lchans_name(msg->lchan->state));
-	rsl_lchan_set_state(msg->lchan, LCHAN_S_ACTIVE);
+			gsm_lchan_name(lchan),
+			gsm_lchans_name(lchan->state));
+	rsl_lchan_set_state(lchan, LCHAN_S_ACTIVE);
 
-	if (msg->lchan->rqd_ref) {
-		rsl_send_imm_assignment(msg->lchan);
-		talloc_free(msg->lchan->rqd_ref);
-		msg->lchan->rqd_ref = NULL;
-		msg->lchan->rqd_ta = 0;
+	if (lchan->rqd_ref) {
+		rsl_send_imm_assignment(lchan);
+		talloc_free(lchan->rqd_ref);
+		lchan->rqd_ref = NULL;
+		lchan->rqd_ta = 0;
 	}
 
-	send_lchan_signal(S_LCHAN_ACTIVATE_ACK, msg->lchan, NULL);
+	send_lchan_signal(S_LCHAN_ACTIVATE_ACK, lchan, NULL);
 
 	return 0;
 }
