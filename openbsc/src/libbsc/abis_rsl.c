@@ -1560,7 +1560,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		gsm_lchant_name(lchan->type), gsm_chreq_name(chreq_reason),
 		rqd_ref->ra, rqd_ta);
 
-	rsl_chan_activate_lchan(lchan, 0x00, 0);
+	rsl_chan_activate_lchan(lchan, RSL_ACT_INTRA_IMM_ASS, 0);
 
 	return 0;
 }
