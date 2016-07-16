@@ -343,6 +343,55 @@ char *gsm_ts_name(const struct gsm_bts_trx_ts *ts)
 	return ts2str;
 }
 
+/*! Log timeslot number with full pchan information */
+char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts)
+{
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		if (ts->dyn.pchan_is == ts->dyn.pchan_want)
+			snprintf(ts2str, sizeof(ts2str),
+				 "(bts=%d,trx=%d,ts=%d,pchan=%s as %s)",
+				 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+				 gsm_pchan_name(ts->pchan),
+				 gsm_pchan_name(ts->dyn.pchan_is));
+		else
+			snprintf(ts2str, sizeof(ts2str),
+				 "(bts=%d,trx=%d,ts=%d,pchan=%s"
+				 " switching %s -> %s)",
+				 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+				 gsm_pchan_name(ts->pchan),
+				 gsm_pchan_name(ts->dyn.pchan_is),
+				 gsm_pchan_name(ts->dyn.pchan_want));
+		break;
+	case GSM_PCHAN_TCH_F_PDCH:
+		if ((ts->flags & TS_F_PDCH_PENDING_MASK) == 0)
+			snprintf(ts2str, sizeof(ts2str),
+				 "(bts=%d,trx=%d,ts=%d,pchan=%s as %s)",
+				 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+				 gsm_pchan_name(ts->pchan),
+				 (ts->flags & TS_F_PDCH_ACTIVE)? "PDCH"
+							       : "TCH/F");
+		else
+			snprintf(ts2str, sizeof(ts2str),
+				 "(bts=%d,trx=%d,ts=%d,pchan=%s"
+				 " switching %s -> %s)",
+				 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+				 gsm_pchan_name(ts->pchan),
+				 (ts->flags & TS_F_PDCH_ACTIVE)? "PDCH"
+							       : "TCH/F",
+				 (ts->flags & TS_F_PDCH_ACT_PENDING)? "PDCH"
+								    : "TCH/F");
+		break;
+	default:
+		snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d,pchan=%s)",
+			 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+			 gsm_pchan_name(ts->pchan));
+		break;
+	}
+
+	return ts2str;
+}
+
 char *gsm_lchan_name_compute(const struct gsm_lchan *lchan)
 {
 	struct gsm_bts_trx_ts *ts = lchan->ts;
