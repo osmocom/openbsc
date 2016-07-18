@@ -342,6 +342,9 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 	case GSM_LCHAN_NONE:
 	case GSM_LCHAN_UNKNOWN:
 	default:
+		LOGP(DRSL, LOGL_ERROR,
+		     "unsupported activation lchan->type %u %s\n",
+		     lchan->type, gsm_lchant_name(lchan->type));
 		return -EINVAL;
 	}
 
@@ -375,6 +378,9 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 				cm->chan_rate = RSL_CMOD_SP_NT_6k0;
 				break;
 			default:
+				LOGP(DRSL, LOGL_ERROR,
+				     "unsupported lchan->tch_mode %u\n",
+				     lchan->tch_mode);
 				return -EINVAL;
 			}
 			break;
@@ -404,9 +410,15 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 			cm->chan_rate = RSL_CMOD_CSD_T_32000;
 			break;
 		default:
+			LOGP(DRSL, LOGL_ERROR,
+			     "unsupported lchan->csd_mode %u\n",
+			     lchan->csd_mode);
 			return -EINVAL;
 		}
 	default:
+		LOGP(DRSL, LOGL_ERROR,
+		     "unsupported lchan->tch_mode %u\n",
+		     lchan->tch_mode);
 		return -EINVAL;
 	}
 
