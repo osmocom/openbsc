@@ -552,11 +552,12 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 }
 
 /* See Table 10.5.25 of GSM04.08 */
-uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr)
+uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
+			  uint8_t ts_nr, uint8_t lchan_nr)
 {
 	uint8_t cbits, chan_nr;
 
-	switch (ts->pchan) {
+	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_PDCH:
 	case GSM_PCHAN_TCH_F_PDCH:
@@ -596,14 +597,20 @@ uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr)
 		break;
 	}
 
-	chan_nr = (cbits << 3) | (ts->nr & 0x7);
+	chan_nr = (cbits << 3) | (ts_nr & 0x7);
 
 	return chan_nr;
 }
 
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 {
-	return gsm_ts2chan_nr(lchan->ts, lchan->nr);
+	return gsm_pchan2chan_nr(lchan->ts->pchan, lchan->ts->nr, lchan->nr);
+}
+
+uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
+				   enum gsm_phys_chan_config as_pchan)
+{
+	return gsm_pchan2chan_nr(as_pchan, lchan->ts->nr, lchan->nr);
 }
 
 /* return the gsm_lchan for the CBCH (if it exists at all) */

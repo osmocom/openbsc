@@ -825,8 +825,11 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 /* reset the state of all MO in the BTS */
 void gsm_bts_mo_reset(struct gsm_bts *bts);
 
-uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr);
+uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
+			  uint8_t ts_nr, uint8_t lchan_nr);
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
+uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
+				   enum gsm_phys_chan_config as_pchan);
 
 /* return the gsm_lchan for the CBCH (if it exists at all) */
 struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts);
