@@ -447,8 +447,12 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	struct gsm48_chan_desc cd;
 
 	rc = channel_mode_from_lchan(&cm, lchan);
-	if (rc < 0)
+	if (rc < 0) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Cannot find channel mode from lchan type\n",
+		     gsm_ts_and_pchan_name(lchan->ts));
 		return rc;
+	}
 
 	/* If a TCH_F/PDCH TS is in PDCH mode, deactivate PDCH first. */
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
