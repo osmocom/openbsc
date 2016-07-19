@@ -2084,8 +2084,7 @@ static void pdpctx_timer_cb(void *_pdp)
 			sgsn_delete_pdp_ctx(pdp);
 			break;
 		}
-		gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_NET_FAIL); 
-		osmo_timer_schedule(&pdp->timer, sgsn->cfg.timers.T3395, 0);
+		gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_NET_FAIL);
 		break;
 	default:
 		LOGPDPCTXP(LOGL_ERROR, pdp, "timer expired in unknown mode %u\n",
