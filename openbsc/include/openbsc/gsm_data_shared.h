@@ -696,6 +696,7 @@ struct gsm_bts {
 
 	/* Not entirely sure how ip.access specific this is */
 	struct {
+		uint8_t supports_egprs_11bit_rach;
 		enum bts_gprs_mode mode;
 		struct {
 			struct gsm_abis_mo mo;

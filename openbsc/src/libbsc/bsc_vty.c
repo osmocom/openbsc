@@ -448,6 +448,9 @@ static void config_write_bts_gprs(struct vty *vty, struct gsm_bts *bts)
 	if (bts->gprs.mode == BTS_GPRS_NONE)
 		return;
 
+	vty_out(vty, "  gprs 11bit_rach_support_for_egprs %u%s",
+		bts->gprs.supports_egprs_11bit_rach, VTY_NEWLINE);
+
 	vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac,
 		VTY_NEWLINE);
 	vty_out(vty, "  gprs network-control-order nc%u%s",
@@ -2724,6 +2727,32 @@ DEFUN(cfg_bts_gprs_mode, cfg_bts_gprs_mode_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_gprs_11bit_rach_support_for_egprs,
+	cfg_bts_gprs_11bit_rach_support_for_egprs_cmd,
+	"gprs 11bit_rach_support_for_egprs (0|1)",
+	GPRS_TEXT "11 bit RACH options\n"
+	"Disable 11 bit RACH for EGPRS\n"
+	"Enable 11 bit RACH for EGPRS")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->gprs.supports_egprs_11bit_rach = atoi(argv[0]);
+
+	if (bts->gprs.supports_egprs_11bit_rach > 1) {
+		vty_out(vty, "Error in RACH type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if ((bts->gprs.mode == BTS_GPRS_NONE) &&
+		(bts->gprs.supports_egprs_11bit_rach == 1)) {
+		vty_out(vty, "Error:gprs mode is none and 11bit rach is"
+			" enabled%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 #define SI_TEXT		"System Information Messages\n"
 #define SI_TYPE_TEXT "(1|2|3|4|5|6|7|8|9|10|13|16|17|18|19|20|2bis|2ter|2quater|5bis|5ter)"
 #define SI_TYPE_HELP 	"System Information Type 1\n"	\
@@ -4085,6 +4114,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_penalty_time_rsvd_cmd);
 	install_element(BTS_NODE, &cfg_bts_radio_link_timeout_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_mode_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_11bit_rach_support_for_egprs_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_ns_timer_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_net_ctrl_ord_cmd);

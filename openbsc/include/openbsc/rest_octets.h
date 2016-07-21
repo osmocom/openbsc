@@ -88,6 +88,7 @@ struct gprs_cell_options {
 	uint32_t t3192;	/* in milliseconds */
 	uint32_t drx_timer_max;/* in seconds */
 	uint32_t bs_cv_max;
+	uint8_t  supports_egprs_11bit_rach;
 
 	uint8_t ext_info_present;
 	struct {

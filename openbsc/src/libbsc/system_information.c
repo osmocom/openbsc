@@ -957,6 +957,7 @@ static struct gsm48_si13_info si13_default = {
 		.drx_timer_max	= 3,
 		.bs_cv_max	= 15,
 		.ext_info_present = 0,
+		.supports_egprs_11bit_rach = 0,
 		.ext_info = {
 			/* The values below are just guesses ! */
 			.egprs_supported = 0,
@@ -1004,6 +1005,8 @@ static int generate_si13(uint8_t *output, struct gsm_bts *bts)
 
 	/* Information about the other SIs */
 	si13_default.bcch_change_mark = bts->bcch_change_mark;
+	si13_default.cell_opts.supports_egprs_11bit_rach =
+					bts->gprs.supports_egprs_11bit_rach;
 
 	ret = rest_octets_si13(si13->rest_octets, &si13_default);
 	if (ret < 0)
