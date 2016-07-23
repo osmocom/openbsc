@@ -358,6 +358,10 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		return send_act_pdp_cont_acc(pctx);
 	}
 
+	LOGP(DGPRS, LOGL_ERROR, "Unknown ran_type %d\n",
+	     pctx->mm->ran_type);
+	reject_cause = GSM_CAUSE_PROTO_ERR_UNSPEC;
+
 reject:
 	/*
 	 * In case of a timeout pdp will be NULL but we have a valid pointer
