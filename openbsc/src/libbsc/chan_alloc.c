@@ -88,6 +88,15 @@ static const uint8_t subslots_per_pchan[] = {
 	 */
 };
 
+/*! According to ts->pchan and possibly ts->dyn_pchan, return the number of
+ * logical channels available in the timeslot. */
+uint8_t ts_subslots(struct gsm_bts_trx_ts *ts)
+{
+	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
+		return subslots_per_pchan[ts->dyn.pchan_is];
+	return subslots_per_pchan[ts->pchan];
+}
+
 static struct gsm_lchan *
 _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan,
 	     enum gsm_phys_chan_config dyn_as_pchan)

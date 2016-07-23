@@ -261,6 +261,8 @@ struct gsm_lchan {
 		/* channel activation type and handover ref */
 		uint8_t act_type;
 		uint8_t ho_ref;
+		struct gsm48_req_ref *rqd_ref;
+		uint8_t rqd_ta;
 	} dyn;
 #else
 	/* Number of different GsmL1_Sapi_t used in osmo_bts_sysmo is 23.

@@ -55,6 +55,11 @@ enum sacch_deact {
 
 static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
 static void error_timeout_cb(void *data);
+static int dyn_ts_switchover_start(struct gsm_lchan *lchan,
+				   enum gsm_phys_chan_config to_pchan);
+static int dyn_ts_switchover_continue(struct gsm_lchan *lchan);
+static int dyn_ts_switchover_failed(struct gsm_lchan *lchan, int rc);
+static void dyn_ts_switchover_complete(struct gsm_lchan *lchan);
 
 static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 			      struct gsm_meas_rep *resp)
@@ -432,6 +437,49 @@ static void mr_config_for_bts(struct gsm_lchan *lchan, struct msgb *msg)
 			     lchan->mr_bts_lv + 1);
 }
 
+static enum gsm_phys_chan_config pchan_for_lchant(enum gsm_chan_t type)
+{
+	switch (type) {
+	case GSM_LCHAN_TCH_F:
+		return GSM_PCHAN_TCH_F;
+	case GSM_LCHAN_TCH_H:
+		return GSM_PCHAN_TCH_H;
+	case GSM_LCHAN_NONE:
+	case GSM_LCHAN_PDTCH:
+		/* TODO: so far lchan->type is NONE in PDCH mode. PDTCH is only
+		 * used in osmo-bts. Maybe set PDTCH and drop the NONE case
+		 * here. */
+		return GSM_PCHAN_PDCH;
+	default:
+		return GSM_PCHAN_UNKNOWN;
+	}
+}
+
+/*! Tx simplified channel activation message for non-standard PDCH type. */
+static int rsl_chan_activate_lchan_as_pdch(struct gsm_lchan *lchan)
+{
+	struct msgb *msg;
+	struct abis_rsl_dchan_hdr *dh;
+
+	/* This might be called after release of the second lchan of a TCH/H,
+	 * but PDCH activation should always happen on the first lchan. So
+	 * switch to lchan->nr == 0. */
+	lchan = lchan->ts->lchan;
+
+	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
+
+	msg = rsl_msgb_alloc();
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_CHAN_ACTIV);
+	dh->chan_nr = gsm_lchan_as_pchan2chan_nr(lchan, GSM_PCHAN_PDCH);
+
+	msgb_tv_put(msg, RSL_IE_ACT_TYPE, RSL_ACT_OSMO_PDCH);
+
+	msg->dst = lchan->ts->trx->rsl_link;
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* Chapter 8.4.1 */
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 			    uint8_t ho_ref)
@@ -452,6 +500,63 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 		lchan->dyn.act_type = act_type;
 		lchan->dyn.ho_ref = ho_ref;
 		return rsl_ipacc_pdch_activate(lchan->ts, 0);
+	}
+
+	/*
+	 * If necessary, release PDCH on dynamic TS. Note that sending a
+	 * release here is only necessary when in PDCH mode; for TCH types, an
+	 * RSL RF Chan Release is initiated by the BTS when a voice call ends,
+	 * so when we reach this, it will already be released. If a dyn TS is
+	 * in PDCH mode, it is still active and we need to initiate a release
+	 * from the BSC side here.
+	 *
+	 * If pchan_is != pchan_want, the PDCH has already been taken down and
+	 * the switchover now needs to enable the TCH lchan.
+	 *
+	 * To switch a dyn TS between TCH/H and TCH/F, it is sufficient to send
+	 * a chan activ with the new lchan type, because it will already be
+	 * released.
+	 */
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+	    && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH
+	    && lchan->ts->dyn.pchan_is == lchan->ts->dyn.pchan_want) {
+		enum gsm_phys_chan_config pchan_want;
+		pchan_want = pchan_for_lchant(lchan->type);
+		if (lchan->ts->dyn.pchan_is != pchan_want) {
+			lchan->dyn.act_type = act_type,
+			lchan->dyn.ho_ref = ho_ref;
+			lchan->dyn.rqd_ref = lchan->rqd_ref;
+			lchan->dyn.rqd_ta = lchan->rqd_ta;
+			lchan->rqd_ref = NULL;
+			lchan->rqd_ta = 0;
+			DEBUGP(DRSL, "%s saved rqd_ref=%p ta=%u\n",
+			       gsm_lchan_name(lchan), lchan->rqd_ref,
+			       lchan->rqd_ta);
+			return dyn_ts_switchover_start(lchan, pchan_want);
+		}
+	}
+
+	DEBUGP(DRSL, "%s Tx RSL Channel Activate with act_type=%s\n",
+	       gsm_ts_and_pchan_name(lchan->ts),
+	       rsl_act_type_name(act_type));
+
+	if (act_type == RSL_ACT_OSMO_PDCH) {
+		if (lchan->ts->pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+			LOGP(DRSL, LOGL_ERROR,
+			     "%s PDCH channel activation only allowed on %s\n",
+			     gsm_ts_and_pchan_name(lchan->ts),
+			     gsm_pchan_name(GSM_PCHAN_TCH_F_TCH_H_PDCH));
+			return -EINVAL;
+		}
+		return rsl_chan_activate_lchan_as_pdch(lchan);
+	}
+
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+	    && lchan->ts->dyn.pchan_want == GSM_PCHAN_PDCH) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Expected PDCH activation kind\n",
+		     gsm_ts_and_pchan_name(lchan->ts));
+		return -EINVAL;
 	}
 
 	rc = channel_mode_from_lchan(&cm, lchan);
@@ -721,6 +826,7 @@ static int rsl_rf_chan_release_err(struct gsm_lchan *lchan)
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 {
+	int ss;
 	struct gsm_bts_trx_ts *ts = lchan->ts;
 
 	DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", gsm_lchan_name(lchan));
@@ -753,6 +859,46 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 			gsm_lchans_name(lchan->state));
 
 	do_lchan_free(lchan);
+
+	/*
+	 * Check Osmocom RSL CHAN ACT style dynamic TCH/F_TCH/H_PDCH TS for pending
+	 * transitions in these cases:
+	 *
+	 * a) after PDCH was released due to switchover request, activate TCH.
+	 *    BSC initiated this switchover, so dyn.pchan_is != pchan_want and
+	 *    lchan->type has been set to the desired GSM_LCHAN_*.
+	 *
+	 * b) Voice call ended and a TCH is released. If the TS is now unused,
+	 *    switch to PDCH. Here still dyn.pchan_is == dyn.pchan_want because
+	 *    we're only just notified and may decide to switch to PDCH now.
+	 */
+	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+		DEBUGP(DRSL, "%s Rx RSL Channel Release ack for lchan %u\n",
+		       gsm_ts_and_pchan_name(ts), lchan->nr);
+
+		/* (a) */
+		if (ts->dyn.pchan_is != ts->dyn.pchan_want)
+			return dyn_ts_switchover_continue(lchan);
+		
+		/* (b) */
+		if (ts->dyn.pchan_is != GSM_PCHAN_PDCH
+		    && ts->trx->bts->gprs.mode != BTS_GPRS_NONE) {
+			for (ss = 0; ss < ts_subslots(ts); ss++) {
+				struct gsm_lchan *lc = &ts->lchan[ss];
+				if (lc->state != LCHAN_S_NONE) {
+					DEBUGP(DRSL, "%s lchan %u still in use\n",
+					       gsm_ts_and_pchan_name(ts),
+					       lc->nr);
+					/* An lchan is still used. */
+					return 0;
+				}
+			}
+			/* All channels are released, go to PDCH mode. */
+			DEBUGP(DRSL, "%s back to PDCH\n",
+			       gsm_ts_and_pchan_name(ts));
+			return dyn_ts_switchover_start(lchan, GSM_PCHAN_PDCH);
+		}
+	}
 
 	/*
 	 * Put a dynamic TCH/F_PDCH channel back to PDCH mode iff it was
@@ -987,6 +1133,9 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 			gsm_lchan_name(lchan),
 			gsm_lchans_name(lchan->state));
 	rsl_lchan_set_state(lchan, LCHAN_S_ACTIVE);
+
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
+		dyn_ts_switchover_complete(lchan);
 
 	if (lchan->rqd_ref) {
 		rsl_send_imm_assignment(lchan);
@@ -1514,7 +1663,15 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		return 0;
 	}
 
-	if (lchan->state != LCHAN_S_NONE)
+	/*
+	 * Expecting lchan state to be NONE, except for dyn TS in PDCH mode.
+	 * Those are expected to be ACTIVE: the PDCH release will be sent from
+	 * rsl_chan_activate_lchan() below.
+	 */
+	if (lchan->state != LCHAN_S_NONE
+	    && !(lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+		 && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH
+		 && lchan->state == LCHAN_S_ACTIVE))
 		LOGP(DRSL, LOGL_NOTICE, "%s lchan_alloc() returned channel "
 		     "in state %s\n", gsm_lchan_name(lchan),
 		     gsm_lchans_name(lchan->state));
@@ -2164,6 +2321,186 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 	return rc;
 }
 
+static int dyn_ts_switchover_start(struct gsm_lchan *lchan,
+				   enum gsm_phys_chan_config to_pchan)
+{
+	int ss;
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+	int rc = -EIO;
+
+	OSMO_ASSERT(ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH);
+	DEBUGP(DRSL, "%s starting switchover to %s\n",
+	       gsm_ts_and_pchan_name(ts), gsm_pchan_name(to_pchan));
+
+	if (ts->dyn.pchan_is != ts->dyn.pchan_want) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s: Attempt to switch dynamic channel to %s,"
+		     " but is already in switchover.\n",
+		     gsm_ts_and_pchan_name(ts),
+		     gsm_pchan_name(to_pchan));
+		return ts->dyn.pchan_want == to_pchan? 0 : -EAGAIN;
+	}
+
+	if (ts->dyn.pchan_is == to_pchan) {
+		LOGP(DRSL, LOGL_INFO,
+		     "%s %s Already is in %s mode, skipping switchover.\n",
+		     gsm_ts_name(ts), gsm_pchan_name(ts->pchan),
+		     gsm_pchan_name(to_pchan));
+		dyn_ts_switchover_complete(lchan);
+		return 0;
+	}
+
+	/* Paranoia: let's make sure all is indeed released. */
+	for (ss = 0; ss < ts_subslots(lchan->ts); ss++) {
+		struct gsm_lchan *lc = &ts->lchan[ss];
+		if (lc->state != LCHAN_S_NONE) {
+			LOGP(DRSL, LOGL_ERROR,
+			     "%s Attempt to switch dynamic channel to %s,"
+			     " but is not fully released.\n",
+			     gsm_ts_and_pchan_name(ts),
+			     gsm_pchan_name(to_pchan));
+			return -EAGAIN;
+		}
+	}
+
+	/* Record that we're busy switching. */
+	ts->dyn.pchan_want = to_pchan;
+
+	/*
+	 * To switch from PDCH, we need to initiate the release from the BSC
+	 * side. dyn_ts_switchover_continue() will be called from
+	 * rsl_rx_rf_chan_rel_ack().
+	 */
+	if (ts->dyn.pchan_is == GSM_PCHAN_PDCH) {
+		rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
+		rc = rsl_rf_chan_release(lchan, 0, SACCH_NONE);
+		if (rc) {
+			LOGP(DRSL, LOGL_ERROR,
+			     "%s RSL RF Chan Release failed\n",
+			     gsm_ts_and_pchan_name(ts));
+			return dyn_ts_switchover_failed(lchan, rc);
+		}
+		return 0;
+	}
+
+	/*
+	 * To switch from TCH/F and TCH/H pchans, this has been called from
+	 * rsl_rx_rf_chan_rel_ack(), i.e. release is complete. Go ahead and
+	 * activate as new type. This will always be PDCH.
+	 */
+	return dyn_ts_switchover_continue(lchan);
+}
+
+static int dyn_ts_switchover_continue(struct gsm_lchan *lchan)
+{
+	int rc;
+	uint8_t act_type;
+	uint8_t ho_ref;
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+
+	OSMO_ASSERT(ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH);
+	DEBUGP(DRSL, "%s switchover: release complete,"
+	       " activating new pchan type\n",
+	       gsm_ts_and_pchan_name(ts));
+
+	if (ts->dyn.pchan_is == ts->dyn.pchan_want) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Requested to switchover dynamic channel to the"
+		     " same type it is already in.\n",
+		     gsm_ts_and_pchan_name(ts));
+		return 0;
+	}
+	
+	/*
+	 * For TCH/x, the lchan->type has been set in lchan_alloc(), but it may
+	 * have been lost during channel release due to dynamic switchover.
+	 *
+	 * For PDCH, the lchan->type will actually remain NONE.
+	 * TODO: set GSM_LCHAN_PDTCH?
+	 */
+	switch (ts->dyn.pchan_want) {
+	case GSM_PCHAN_TCH_F:
+		lchan->type = GSM_LCHAN_TCH_F;
+		break;
+	case GSM_PCHAN_TCH_H:
+		lchan->type = GSM_LCHAN_TCH_H;
+		break;
+	case GSM_PCHAN_PDCH:
+		lchan->type = GSM_LCHAN_NONE;
+		break;
+	default:
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Invalid target pchan for dynamic TS\n",
+		     gsm_ts_and_pchan_name(ts));
+	}
+
+	act_type = (ts->dyn.pchan_want == GSM_PCHAN_PDCH)
+		? RSL_ACT_OSMO_PDCH
+		: lchan->dyn.act_type;
+	ho_ref = (ts->dyn.pchan_want == GSM_PCHAN_PDCH)
+		? 0
+		: lchan->dyn.ho_ref;
+
+	/* Fetch the rqd_ref back from before switchover started. */
+	if (lchan->rqd_ref) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s During dyn TS switchover, expecting no"
+		     " Request Reference to be pending. Discarding!\n",
+		     gsm_lchan_name(lchan));
+		talloc_free(lchan->rqd_ref);
+		lchan->rqd_ref = NULL;
+	}
+	lchan->rqd_ref = lchan->dyn.rqd_ref;
+	lchan->rqd_ta = lchan->dyn.rqd_ta;
+	lchan->dyn.rqd_ref = NULL;
+	lchan->dyn.rqd_ta = 0;
+
+	rc = rsl_chan_activate_lchan(lchan, act_type, ho_ref);
+	if (rc) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s RSL Chan Activate failed\n",
+		     gsm_ts_and_pchan_name(ts));
+		return dyn_ts_switchover_failed(lchan, rc);
+	}
+	return 0;
+}
+
+static int dyn_ts_switchover_failed(struct gsm_lchan *lchan, int rc)
+{
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+	ts->dyn.pchan_want = ts->dyn.pchan_is;
+	LOGP(DRSL, LOGL_ERROR, "%s Error %d during dynamic channel switchover."
+	     " Going back to previous pchan.\n", gsm_ts_and_pchan_name(ts),
+	     rc);
+	return rc;
+}
+
+static void dyn_ts_switchover_complete(struct gsm_lchan *lchan)
+{
+	enum gsm_phys_chan_config pchan_act;
+	enum gsm_phys_chan_config pchan_was;
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+
+	OSMO_ASSERT(ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH);
+
+	pchan_act = pchan_for_lchant(lchan->type);
+	/*
+	 * Paranoia: do the types match?
+	 * In case of errors: we've received an act ack already, so what to do
+	 * about it? Logging the error should suffice for now.
+	 */
+	if (pchan_act != ts->dyn.pchan_want)
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Requested transition does not match lchan type %s\n",
+		     gsm_ts_and_pchan_name(ts),
+		     gsm_lchant_name(ts->lchan[0].type));
+
+	pchan_was = ts->dyn.pchan_is;
+	ts->dyn.pchan_is = ts->dyn.pchan_want = pchan_act;
+
+	LOGP(DRSL, LOGL_INFO, "%s switchover from %s complete.\n",
+	     gsm_ts_and_pchan_name(ts), gsm_pchan_name(pchan_was));
+}
 
 /* Entry-point where L2 RSL from BTS enters */
 int abis_rsl_rcvmsg(struct msgb *msg)
