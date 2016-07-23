@@ -733,6 +733,7 @@ static int rsl_rf_chan_release_err(struct gsm_lchan *lchan)
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 {
+	struct gsm_bts_trx_ts *ts = lchan->ts;
 
 	DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", gsm_lchan_name(lchan));
 
@@ -748,7 +749,7 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 	 * will be sent. So let's "repair" the channel.
 	 */
 	if (lchan->state == LCHAN_S_BROKEN) {
-		int do_free = is_sysmobts_v2(lchan->ts->trx->bts);
+		int do_free = is_sysmobts_v2(ts->trx->bts);
 		LOGP(DRSL, LOGL_NOTICE,
 			"%s CHAN REL ACK for broken channel. %s.\n",
 			gsm_lchan_name(lchan),
@@ -778,12 +779,11 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 	 */
 	OSMO_ASSERT(lchan->state == LCHAN_S_NONE
 		    || lchan->state == LCHAN_S_REL_ERR);
-	if (lchan->ts->trx->bts->gprs.mode == BTS_GPRS_NONE)
+	if (ts->trx->bts->gprs.mode == BTS_GPRS_NONE)
 		return 0;
-	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
+	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && lchan->state == LCHAN_S_NONE)
-		return rsl_ipacc_pdch_activate(lchan->ts, 1);
-
+		return rsl_ipacc_pdch_activate(ts, 1);
 	return 0;
 }
 
