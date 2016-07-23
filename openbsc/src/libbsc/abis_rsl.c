@@ -450,8 +450,8 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && (lchan->ts->flags & TS_F_PDCH_ACTIVE)) {
 		/* store activation type and handover reference */
-		lchan->dyn_pdch.act_type = act_type;
-		lchan->dyn_pdch.ho_ref = ho_ref;
+		lchan->dyn.act_type = act_type;
+		lchan->dyn.ho_ref = ho_ref;
 		return rsl_ipacc_pdch_activate(lchan->ts, 0);
 	}
 
@@ -1262,8 +1262,8 @@ static int rsl_rx_pdch_deact_ack(struct msgb *msg)
 	msg->lchan->ts->flags &= ~TS_F_PDCH_ACTIVE;
 	msg->lchan->ts->flags &= ~TS_F_PDCH_DEACT_PENDING;
 
-	rsl_chan_activate_lchan(msg->lchan, msg->lchan->dyn_pdch.act_type,
-				msg->lchan->dyn_pdch.ho_ref);
+	rsl_chan_activate_lchan(msg->lchan, msg->lchan->dyn.act_type,
+				msg->lchan->dyn.ho_ref);
 
 	return 0;
 }
