@@ -55,8 +55,6 @@ enum sacch_deact {
 
 static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
 static void error_timeout_cb(void *data);
-static int dyn_ts_switchover_start(struct gsm_lchan *lchan,
-				   enum gsm_phys_chan_config to_pchan);
 static int dyn_ts_switchover_continue(struct gsm_lchan *lchan);
 static int dyn_ts_switchover_failed(struct gsm_lchan *lchan, int rc);
 static void dyn_ts_switchover_complete(struct gsm_lchan *lchan);
@@ -2321,8 +2319,8 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 	return rc;
 }
 
-static int dyn_ts_switchover_start(struct gsm_lchan *lchan,
-				   enum gsm_phys_chan_config to_pchan)
+int dyn_ts_switchover_start(struct gsm_lchan *lchan,
+			    enum gsm_phys_chan_config to_pchan)
 {
 	int ss;
 	struct gsm_bts_trx_ts *ts = lchan->ts;
