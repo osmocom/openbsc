@@ -604,12 +604,19 @@ uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 {
+	enum gsm_phys_chan_config pchan = lchan->ts->pchan;
+	if (pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
+		return gsm_lchan_as_pchan2chan_nr(lchan,
+						  lchan->ts->dyn.pchan_is);
 	return gsm_pchan2chan_nr(lchan->ts->pchan, lchan->ts->nr, lchan->nr);
 }
 
 uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 				   enum gsm_phys_chan_config as_pchan)
 {
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+	    && as_pchan == GSM_PCHAN_PDCH)
+		return RSL_CHAN_OSMO_PDCH | (lchan->ts->nr & ~RSL_CHAN_NR_MASK);
 	return gsm_pchan2chan_nr(as_pchan, lchan->ts->nr, lchan->nr);
 }
 
