@@ -51,7 +51,7 @@ static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
 	gsm_abis_mo_reset(mo);
 }
 
-const struct value_string gsm_pchant_names[12] = {
+const struct value_string gsm_pchant_names[13] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
 	{ GSM_PCHAN_CCCH,	"CCCH" },
 	{ GSM_PCHAN_CCCH_SDCCH4,"CCCH+SDCCH4" },
@@ -63,10 +63,11 @@ const struct value_string gsm_pchant_names[12] = {
 	{ GSM_PCHAN_UNKNOWN,	"UNKNOWN" },
 	{ GSM_PCHAN_CCCH_SDCCH4_CBCH, "CCCH+SDCCH4+CBCH" },
 	{ GSM_PCHAN_SDCCH8_SACCH8C_CBCH, "SDCCH8+CBCH" },
+	{ GSM_PCHAN_TCH_F_TCH_H_PDCH, "TCH/F_TCH/H_PDCH" },
 	{ 0,			NULL }
 };
 
-const struct value_string gsm_pchant_descs[12] = {
+const struct value_string gsm_pchant_descs[13] = {
 	{ GSM_PCHAN_NONE,	"Physical Channel not configured" },
 	{ GSM_PCHAN_CCCH,	"FCCH + SCH + BCCH + CCCH (Comb. IV)" },
 	{ GSM_PCHAN_CCCH_SDCCH4,
@@ -79,6 +80,7 @@ const struct value_string gsm_pchant_descs[12] = {
 	{ GSM_PCHAN_UNKNOWN,	"Unknown / Unsupported channel combination" },
 	{ GSM_PCHAN_CCCH_SDCCH4_CBCH, "FCCH + SCH + BCCH + CCCH + CBCH + 3 SDCCH + 2 SACCH (Comb. V)" },
 	{ GSM_PCHAN_SDCCH8_SACCH8C_CBCH, "7 SDCCH + 4 SACCH + CBCH (Comb. VII)" },
+	{ GSM_PCHAN_TCH_F_TCH_H_PDCH, "Dynamic TCH/F or TCH/H or GPRS PDCH" },
 	{ 0,			NULL }
 };
 

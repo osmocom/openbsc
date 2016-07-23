@@ -234,7 +234,10 @@ class TestCtrlBSC(TestCtrlBase):
         # No RSL link so everything is 0
         r = self.do_get('bts.0.channel-load')
         self.assertEquals(r['mtype'], 'GET_REPLY')
-        self.assertEquals(r['value'], 'CCCH+SDCCH4,0,0 TCH/F,0,0 TCH/H,0,0 SDCCH8,0,0 TCH/F_PDCH,0,0 CCCH+SDCCH4+CBCH,0,0 SDCCH8+CBCH,0,0')
+        self.assertEquals(r['value'],
+		'CCCH+SDCCH4,0,0 TCH/F,0,0 TCH/H,0,0 SDCCH8,0,0'
+		+ ' TCH/F_PDCH,0,0 CCCH+SDCCH4+CBCH,0,0'
+		+ ' SDCCH8+CBCH,0,0 TCH/F_TCH/H_PDCH,0,0')
 
     def testBtsOmlConnectionState(self):
         """Check OML state. It will not be connected"""
