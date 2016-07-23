@@ -442,7 +442,6 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	uint8_t *len;
 	uint8_t ta;
 
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	struct rsl_ie_chan_mode cm;
 	struct gsm48_chan_desc cd;
 
@@ -477,7 +476,12 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	msg = rsl_msgb_alloc();
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_CHAN_ACTIV);
-	dh->chan_nr = chan_nr;
+
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
+		dh->chan_nr = gsm_lchan_as_pchan2chan_nr(
+					lchan, lchan->ts->dyn.pchan_want);
+	else
+		dh->chan_nr = gsm_lchan2chan_nr(lchan);
 
 	msgb_tv_put(msg, RSL_IE_ACT_TYPE, act_type);
 	msgb_tlv_put(msg, RSL_IE_CHAN_MODE, sizeof(cm),
