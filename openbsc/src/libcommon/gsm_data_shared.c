@@ -560,24 +560,38 @@ uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr)
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_PDCH:
 	case GSM_PCHAN_TCH_F_PDCH:
+		OSMO_ASSERT(lchan_nr == 0);
 		cbits = 0x01;
 		break;
 	case GSM_PCHAN_TCH_H:
+		OSMO_ASSERT(lchan_nr < 2);
 		cbits = 0x02;
 		cbits += lchan_nr;
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
+		/*
+		 * As a special hack for BCCH, lchan_nr == 4 may be passed
+		 * here. This should never be sent in an RSL message, so just
+		 * return 0. See osmo-bts-xxx/oml.c:opstart_compl().
+		 */
+		if (lchan_nr == 4) {
+			chan_nr = 0;
+			break;
+		}
+		OSMO_ASSERT(lchan_nr < 4);
 		cbits = 0x04;
 		cbits += lchan_nr;
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
+		OSMO_ASSERT(lchan_nr < 8);
 		cbits = 0x08;
 		cbits += lchan_nr;
 		break;
 	default:
 	case GSM_PCHAN_CCCH:
+		OSMO_ASSERT(lchan_nr == 0);
 		cbits = 0x10;
 		break;
 	}
