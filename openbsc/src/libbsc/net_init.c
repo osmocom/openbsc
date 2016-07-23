@@ -116,6 +116,8 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	net->ext_max = GSM_MAX_EXTEN;
 	gsm_net_update_ctype(net);
 
+	net->dyn_ts_allow_tch_f = true;
+
 	return net;
 }
 

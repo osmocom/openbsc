@@ -309,8 +309,9 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 			if (lchan)
 				type = GSM_LCHAN_TCH_F;
 		}
+
 		/* Try fully dynamic TCH/F_TCH/H_PDCH as TCH/F... */
-		if (!lchan) {
+		if (!lchan && bts->network->dyn_ts_allow_tch_f) {
 			lchan = _lc_dyn_find_bts(bts,
 						 GSM_PCHAN_TCH_F_TCH_H_PDCH,
 						 GSM_PCHAN_TCH_F);
