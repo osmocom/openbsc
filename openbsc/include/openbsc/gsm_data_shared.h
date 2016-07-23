@@ -844,5 +844,7 @@ static inline uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts)
 		return ts->trx->bts->bsic & 7;
 }
 
+struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
+				   int *rc);
 
 #endif

@@ -612,3 +612,52 @@ struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts)
 
 	return lchan;
 }
+
+/* determine logical channel based on TRX and channel number IE */
+struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
+				   int *rc)
+{
+	uint8_t ts_nr = chan_nr & 0x07;
+	uint8_t cbits = chan_nr >> 3;
+	uint8_t lch_idx;
+	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+	bool ok = true;
+
+	if (rc)
+		*rc = -EINVAL;
+
+	if (cbits == 0x01) {
+		lch_idx = 0;	/* TCH/F */	
+		if (ts->pchan != GSM_PCHAN_TCH_F &&
+		    ts->pchan != GSM_PCHAN_PDCH &&
+		    ts->pchan != GSM_PCHAN_TCH_F_PDCH)
+			ok = false;
+	} else if ((cbits & 0x1e) == 0x02) {
+		lch_idx = cbits & 0x1;	/* TCH/H */
+		if (ts->pchan != GSM_PCHAN_TCH_H)
+			ok = false;
+	} else if ((cbits & 0x1c) == 0x04) {
+		lch_idx = cbits & 0x3;	/* SDCCH/4 */
+		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
+		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
+			ok = false;
+	} else if ((cbits & 0x18) == 0x08) {
+		lch_idx = cbits & 0x7;	/* SDCCH/8 */
+		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C &&
+		    ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
+			ok = false;
+	} else if (cbits == 0x10 || cbits == 0x11 || cbits == 0x12) {
+		lch_idx = 0;
+		if (ts->pchan != GSM_PCHAN_CCCH &&
+		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
+		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
+			ok = false;
+		/* FIXME: we should not return first sdcch4 !!! */
+	} else
+		return NULL;
+
+	if (rc && ok)
+		*rc = 0;
+
+	return &ts->lchan[lch_idx];
+}

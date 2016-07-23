@@ -106,53 +106,21 @@ static inline void init_dchan_hdr(struct abis_rsl_dchan_hdr *dh,
 	dh->ie_chan = RSL_IE_CHAN_NR;
 }
 
-/* determine logical channel based on TRX and channel number IE */
-struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
+/* call rsl_lchan_lookup and set the log context */
+static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
-	struct gsm_lchan *lchan;
-	uint8_t ts_nr = chan_nr & 0x07;
-	uint8_t cbits = chan_nr >> 3;
-	uint8_t lch_idx;
-	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+	int rc;
+	struct gsm_lchan *lchan = rsl_lchan_lookup(trx, chan_nr, &rc);
 
-	if (cbits == 0x01) {
-		lch_idx = 0;	/* TCH/F */	
-		if (ts->pchan != GSM_PCHAN_TCH_F &&
-		    ts->pchan != GSM_PCHAN_PDCH &&
-		    ts->pchan != GSM_PCHAN_TCH_F_PDCH)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-	} else if ((cbits & 0x1e) == 0x02) {
-		lch_idx = cbits & 0x1;	/* TCH/H */
-		if (ts->pchan != GSM_PCHAN_TCH_H)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-	} else if ((cbits & 0x1c) == 0x04) {
-		lch_idx = cbits & 0x3;	/* SDCCH/4 */
-		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
-		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-	} else if ((cbits & 0x18) == 0x08) {
-		lch_idx = cbits & 0x7;	/* SDCCH/8 */
-		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C &&
-		    ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-	} else if (cbits == 0x10 || cbits == 0x11 || cbits == 0x12) {
-		lch_idx = 0;
-		if (ts->pchan != GSM_PCHAN_CCCH &&
-		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
-		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-		/* FIXME: we should not return first sdcch4 !!! */
-	} else {
+	if (!lchan) {
 		LOGP(DRSL, LOGL_ERROR, "unknown chan_nr=0x%02x\n", chan_nr);
 		return NULL;
 	}
 
-	lchan = &ts->lchan[lch_idx];
+	if (rc < 0)
+		LOGP(DRSL, LOGL_ERROR, "%s mismatching chan_nr=0x%02x\n",
+		     gsm_ts_and_pchan_name(lchan->ts), chan_nr);
+
 	log_set_context(BSC_CTX_LCHAN, lchan);
 	if (lchan->conn)
 		log_set_context(BSC_CTX_SUBSCR, lchan->conn->subscr);
