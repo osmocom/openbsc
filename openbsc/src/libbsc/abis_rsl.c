@@ -446,14 +446,6 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	struct rsl_ie_chan_mode cm;
 	struct gsm48_chan_desc cd;
 
-	rc = channel_mode_from_lchan(&cm, lchan);
-	if (rc < 0) {
-		LOGP(DRSL, LOGL_ERROR,
-		     "%s Cannot find channel mode from lchan type\n",
-		     gsm_ts_and_pchan_name(lchan->ts));
-		return rc;
-	}
-
 	/* If a TCH_F/PDCH TS is in PDCH mode, deactivate PDCH first. */
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && (lchan->ts->flags & TS_F_PDCH_ACTIVE)) {
@@ -461,6 +453,14 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 		lchan->dyn_pdch.act_type = act_type;
 		lchan->dyn_pdch.ho_ref = ho_ref;
 		return rsl_ipacc_pdch_activate(lchan->ts, 0);
+	}
+
+	rc = channel_mode_from_lchan(&cm, lchan);
+	if (rc < 0) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Cannot find channel mode from lchan type\n",
+		     gsm_ts_and_pchan_name(lchan->ts));
+		return rc;
 	}
 
 	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
