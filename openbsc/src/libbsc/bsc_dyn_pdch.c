@@ -35,14 +35,14 @@ void dyn_pdch_init(struct gsm_bts_trx_ts *ts)
 		return;
 
 	if (ts->trx->bts->gprs.mode == BTS_GPRS_NONE) {
-		LOGP(DRSL, LOGL_NOTICE, "%s %s: GPRS mode is 'none':"
+		LOGP(DRSL, LOGL_NOTICE, "%s: GPRS mode is 'none':"
 		     " not activating PDCH.\n",
-		     gsm_ts_name(ts), gsm_pchan_name(ts->pchan));
+		     gsm_ts_and_pchan_name(ts));
 		return;
 	}
 
-	LOGP(DRSL, LOGL_DEBUG, "%s %s: trying to PDCH ACT\n",
-	     gsm_ts_name(ts), gsm_pchan_name(ts->pchan));
+	LOGP(DRSL, LOGL_DEBUG, "%s: trying to PDCH ACT\n",
+	     gsm_ts_and_pchan_name(ts));
 
 	rc = rsl_ipacc_pdch_activate(ts, 1);
 	if (rc != 0)
