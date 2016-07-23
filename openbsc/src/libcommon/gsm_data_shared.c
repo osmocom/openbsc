@@ -169,6 +169,8 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		ts->trx = trx;
 		ts->nr = k;
 		ts->pchan = GSM_PCHAN_NONE;
+		ts->dyn.pchan_is = GSM_PCHAN_NONE;
+		ts->dyn.pchan_want = GSM_PCHAN_NONE;
 		ts->tsc = -1;
 
 		gsm_mo_init(&ts->mo, bts, NM_OC_CHANNEL,

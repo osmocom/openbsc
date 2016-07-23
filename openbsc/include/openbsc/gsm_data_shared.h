@@ -348,6 +348,12 @@ struct gsm_bts_trx_ts {
 
 	enum gsm_phys_chan_config pchan;
 
+	struct {
+		enum gsm_phys_chan_config pchan_is;
+		enum gsm_phys_chan_config pchan_want;
+		struct msgb *pending_chan_activ;
+	} dyn;
+
 	unsigned int flags;
 	struct gsm_abis_mo mo;
 	struct tlv_parsed nm_attr;
