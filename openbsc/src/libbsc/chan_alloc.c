@@ -239,6 +239,10 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 	if (lchan) {
 		lchan->type = type;
 
+		LOGP(DRLL, LOGL_INFO, "%s Allocating lchan=%u as %s\n",
+		     gsm_ts_and_pchan_name(lchan->ts),
+		     lchan->nr, gsm_lchant_name(lchan->type));
+
 		/* clear sapis */
 		memset(lchan->sapis, 0, ARRAY_SIZE(lchan->sapis));
 
@@ -248,6 +252,10 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 		lchan->broken_reason = "";
 	} else {
 		struct challoc_signal_data sig;
+
+		LOGP(DRLL, LOGL_ERROR, "Failed to allocate %s channel\n",
+		     gsm_lchant_name(type));
+
 		sig.bts = bts;
 		sig.type = type;
 		osmo_signal_dispatch(SS_CHALLOC, S_CHALLOC_ALLOC_FAIL, &sig);
