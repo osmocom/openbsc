@@ -1773,13 +1773,16 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		rsl_handle_release(msg->lchan);
 		break;
 	case RSL_MT_ERROR_IND:
+		DEBUGPC(DRLL, "ERROR INDICATION\n");
 		rc = rsl_rx_rll_err_ind(msg);
 		break;
 	case RSL_MT_UNIT_DATA_IND:
+		DEBUGPC(DRLL, "UNIT DATA INDICATION\n");
 		LOGP(DRLL, LOGL_NOTICE, "unimplemented Abis RLL message "
 			"type 0x%02x\n", rllh->c.msg_type);
 		break;
 	default:
+		DEBUGPC(DRLL, "UNKNOWN\n");
 		LOGP(DRLL, LOGL_NOTICE, "unknown Abis RLL message "
 			"type 0x%02x\n", rllh->c.msg_type);
 	}
