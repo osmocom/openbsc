@@ -12,6 +12,7 @@ rm -rf "$inst"
 build_dep() {
 	project="$1"
 	branch="$2"
+	cfg="$3"
 	set +x
 	echo
 	echo
@@ -32,11 +33,11 @@ build_dep() {
 	fi
 	git rev-parse HEAD
 	autoreconf --install --force
-	./configure --prefix="$inst"
+	./configure --prefix="$inst" $cfg
 	$MAKE $PARALLEL_MAKE install
 }
 
-build_dep libosmocore
+build_dep libosmocore "" ac_cv_path_DOXYGEN=false
 
 # All below builds want this PKG_CONFIG_PATH
 export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
