@@ -618,8 +618,8 @@ static int append_gprs_cell_opt(struct bitvec *bv,
 	bitvec_set_uint(bv, drx_timer_max, 3);
 	/* ACCESS_BURST_TYPE: Hard-code 8bit */
 	bitvec_set_bit(bv, 0);
-	/* CONTROL_ACK_TYPE: Hard-code to RLC/MAC control block */
-	bitvec_set_bit(bv, 1);
+	/* CONTROL_ACK_TYPE: */
+	bitvec_set_bit(bv, gco->ctrl_ack_type_use_block);
 	bitvec_set_uint(bv, gco->bs_cv_max, 4);
 
 	if (0) {

@@ -455,6 +455,8 @@ static void config_write_bts_gprs(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  gprs network-control-order nc%u%s",
 		bts->gprs.net_ctrl_ord, VTY_NEWLINE);
+	if (!bts->gprs.ctrl_ack_type_use_block)
+		vty_out(vty, "  gprs control-ack-type-rach%s", VTY_NEWLINE);
 	vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
 		VTY_NEWLINE);
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.cell.timer); i++)
@@ -2685,6 +2687,40 @@ DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_gprs_ctrl_ack, cfg_bts_gprs_ctrl_ack_cmd,
+	"gprs control-ack-type-rach", GPRS_TEXT
+	"Set GPRS Control Ack Type for PACKET CONTROL ACKNOWLEDGMENT message to "
+	"four access bursts format instead of default RLC/MAC control block\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.ctrl_ack_type_use_block = false;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_bts_gprs_ctrl_ack, cfg_no_bts_gprs_ctrl_ack_cmd,
+	"no gprs control-ack-type-rach", NO_STR GPRS_TEXT
+	"Set GPRS Control Ack Type for PACKET CONTROL ACKNOWLEDGMENT message to "
+	"four access bursts format instead of default RLC/MAC control block\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.ctrl_ack_type_use_block = true;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_gprs_net_ctrl_ord, cfg_bts_gprs_net_ctrl_ord_cmd,
 	"gprs network-control-order (nc0|nc1|nc2)",
 	GPRS_TEXT
@@ -4122,6 +4158,8 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_gprs_ns_timer_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_net_ctrl_ord_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_ctrl_ack_cmd);
+	install_element(BTS_NODE, &cfg_no_bts_gprs_ctrl_ack_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_bvci_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_cell_timer_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsei_cmd);

@@ -956,6 +956,7 @@ static struct gsm48_si13_info si13_default = {
 		.t3192		= 1500,
 		.drx_timer_max	= 3,
 		.bs_cv_max	= 15,
+		.ctrl_ack_type_use_block = true,
 		.ext_info_present = 0,
 		.supports_egprs_11bit_rach = 0,
 		.ext_info = {
@@ -1002,6 +1003,9 @@ static int generate_si13(uint8_t *output, struct gsm_bts *bts)
 
 	si13_default.no_pbcch.rac = bts->gprs.rac;
 	si13_default.no_pbcch.net_ctrl_ord = bts->gprs.net_ctrl_ord;
+
+	si13_default.cell_opts.ctrl_ack_type_use_block =
+		bts->gprs.ctrl_ack_type_use_block;
 
 	/* Information about the other SIs */
 	si13_default.bcch_change_mark = bts->bcch_change_mark;

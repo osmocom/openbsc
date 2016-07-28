@@ -315,6 +315,7 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 	bts->bsic = bsic;
 	bts->dtxu = GSM48_DTX_SHALL_NOT_BE_USED;
 	bts->dtxd = false;
+	bts->gprs.ctrl_ack_type_use_block = true; /* use RLC/MAC control block */
 	bts->neigh_list_manual_mode = 0;
 	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
 	bts->si_common.cell_sel_par.rxlev_acc_min = 0;
