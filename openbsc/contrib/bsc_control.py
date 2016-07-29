@@ -44,61 +44,62 @@ def do_get(var, id, sck):
 	getmsg = "GET %s %s" %(options.id, var)
 	send(sck, getmsg)
 
-parser = OptionParser("Usage: %prog [options] var [value]")
-parser.add_option("-d", "--host", dest="host",
-  help="connect to HOST", metavar="HOST")
-parser.add_option("-p", "--port", dest="port", type="int",
-  help="use PORT", metavar="PORT", default=4249)
-parser.add_option("-g", "--get", action="store_true",
-  dest="cmd_get", help="perform GET operation")
-parser.add_option("-s", "--set", action="store_true",
-  dest="cmd_set", help="perform SET operation")
-parser.add_option("-i", "--id", dest="id", default="1",
-  help="set id manually", metavar="ID")
-parser.add_option("-v", "--verbose", action="store_true",
-  dest="verbose", help="be verbose", default=False)
-parser.add_option("-m", "--monitor", action="store_true",
-  dest="monitor", help="monitor the connection for traps", default=False)
+if __name__ == '__main__':
+        parser = OptionParser("Usage: %prog [options] var [value]")
+        parser.add_option("-d", "--host", dest="host",
+                          help="connect to HOST", metavar="HOST")
+        parser.add_option("-p", "--port", dest="port", type="int",
+                          help="use PORT", metavar="PORT", default=4249)
+        parser.add_option("-g", "--get", action="store_true",
+                          dest="cmd_get", help="perform GET operation")
+        parser.add_option("-s", "--set", action="store_true",
+                          dest="cmd_set", help="perform SET operation")
+        parser.add_option("-i", "--id", dest="id", default="1",
+                          help="set id manually", metavar="ID")
+        parser.add_option("-v", "--verbose", action="store_true",
+                          dest="verbose", help="be verbose", default=False)
+        parser.add_option("-m", "--monitor", action="store_true",
+                          dest="monitor", help="monitor the connection for traps", default=False)
 
-(options, args) = parser.parse_args()
+        (options, args) = parser.parse_args()
 
-verbose = options.verbose
+        verbose = options.verbose
 
-if options.cmd_set and options.cmd_get:
-	parser.error("Get and set options are mutually exclusive!")
+        if options.cmd_set and options.cmd_get:
+	        parser.error("Get and set options are mutually exclusive!")
 
-if not (options.cmd_get or options.cmd_set or options.monitor):
-	parser.error("One of -m, -g, or -s must be set")
+        if not (options.cmd_get or options.cmd_set or options.monitor):
+	        parser.error("One of -m, -g, or -s must be set")
 
-if not (options.host):
-	parser.error("Destination host and port required!")
+        if not (options.host):
+	        parser.error("Destination host and port required!")
 
-sock = connect(options.host, options.port)
+        sock = connect(options.host, options.port)
 
-if options.cmd_set:
-	if len(args) < 2:
-		parser.error("Set requires var and value arguments")
-	do_set(args[0], ' '.join(args[1:]), options.id, sock)
+        if options.cmd_set:
+	        if len(args) < 2:
+		        parser.error("Set requires var and value arguments")
+	        do_set(args[0], ' '.join(args[1:]), options.id, sock)
 
-if options.cmd_get:
-	if len(args) != 1:
-		parser.error("Get requires the var argument")
-	do_get(args[0], options.id, sock)
+        if options.cmd_get:
+	        if len(args) != 1:
+		        parser.error("Get requires the var argument")
+	        do_get(args[0], options.id, sock)
 
-data = sock.recv(1024)
-while (len(data)>0):
-	(answer, data) = remove_ipa_ctrl_header(data)
-	print "Got message:", answer
+        data = sock.recv(1024)
+        while (len(data)>0):
+	        (answer, data) = remove_ipa_ctrl_header(data)
+	        print "Got message:", answer
 
-if options.monitor:
-	while (True):
-		data = sock.recv(1024)
-		if len(data) == 0:
-			print "Connection is gone."
-			break
+        if options.monitor:
+	        while (True):
+		        data = sock.recv(1024)
+		        if len(data) == 0:
+			        print "Connection is gone."
+			        break
 
-		while (len(data)>0):
-			(answer, data) = remove_ipa_ctrl_header(data)
-			print "Got message:", answer
+		        while (len(data)>0):
+			        (answer, data) = remove_ipa_ctrl_header(data)
+			        print "Got message:", answer
 
-sock.close()
+        sock.close()
