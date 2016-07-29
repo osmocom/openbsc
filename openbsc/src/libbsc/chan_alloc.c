@@ -555,12 +555,14 @@ void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
 			struct gsm_bts_trx_ts *ts = &trx->ts[i];
 			struct load_counter *pl = &cl->pchan[ts->pchan];
 			int j;
+			int subslots;
 
 			/* skip administratively deactivated timeslots */
 			if (!nm_is_running(&ts->mo.nm_state))
 				continue;
 
-			for (j = 0; j < subslots_per_pchan[ts->pchan]; j++) {
+			subslots = ts_subslots(ts);
+			for (j = 0; j < subslots; j++) {
 				struct gsm_lchan *lchan = &ts->lchan[j];
 
 				pl->total++;
