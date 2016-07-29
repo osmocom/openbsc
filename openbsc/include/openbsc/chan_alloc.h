@@ -51,6 +51,4 @@ void network_chan_load(struct pchan_load *pl, struct gsm_network *net);
 
 int trx_is_usable(struct gsm_bts_trx *trx);
 
-uint8_t ts_subslots(struct gsm_bts_trx_ts *ts);
-
 #endif /* _CHAN_ALLOC_H */
