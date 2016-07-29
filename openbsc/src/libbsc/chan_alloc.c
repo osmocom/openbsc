@@ -170,13 +170,13 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan,
 				/* The requested type matches the dynamic
 				 * timeslot's current mode. A channel may still
 				 * be available (think TCH/H). */
-				check_subslots = subslots_per_pchan[ts->dyn.pchan_is];
+				check_subslots = ts_subslots(ts);
 			} else
 				/* Otherwise this slot is not applicable. */
 				continue;
 		} else {
 			/* Not a dynamic channel, there is only one pchan kind: */
-			check_subslots = subslots_per_pchan[pchan];
+			check_subslots = ts_subslots(ts);
 		}
 
 		/* Is a sub-slot still available? */
