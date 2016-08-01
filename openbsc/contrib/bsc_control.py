@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys,os
+import sys,os, random
 from optparse import OptionParser
 import socket
 import struct
@@ -36,15 +36,17 @@ def send(sck, data):
 	data = prefix_ipa_ctrl_header(data)
 	sck.send(data)
 
-def do_set(var, value, id, sck):
-	setmsg = "SET %s %s %s" %(options.id, var, value)
+def do_set(var, value, op_id, sck):
+	setmsg = "SET %s %s %s" %(op_id, var, value)
 	send(sck, setmsg)
 
-def do_get(var, id, sck):
-	getmsg = "GET %s %s" %(options.id, var)
+def do_get(var, op_id, sck):
+	getmsg = "GET %s %s" %(op_id, var)
 	send(sck, getmsg)
 
 if __name__ == '__main__':
+        random.seed()
+
         parser = OptionParser("Usage: %prog [options] var [value]")
         parser.add_option("-d", "--host", dest="host",
                           help="connect to HOST", metavar="HOST")
@@ -54,7 +56,7 @@ if __name__ == '__main__':
                           dest="cmd_get", help="perform GET operation")
         parser.add_option("-s", "--set", action="store_true",
                           dest="cmd_set", help="perform SET operation")
-        parser.add_option("-i", "--id", dest="id", default="1",
+        parser.add_option("-i", "--id", dest="op_id", default=random.randint(1, sys.maxint),
                           help="set id manually", metavar="ID")
         parser.add_option("-v", "--verbose", action="store_true",
                           dest="verbose", help="be verbose", default=False)
@@ -79,12 +81,12 @@ if __name__ == '__main__':
         if options.cmd_set:
 	        if len(args) < 2:
 		        parser.error("Set requires var and value arguments")
-	        do_set(args[0], ' '.join(args[1:]), options.id, sock)
+	        do_set(args[0], ' '.join(args[1:]), options.op_id, sock)
 
         if options.cmd_get:
 	        if len(args) != 1:
 		        parser.error("Get requires the var argument")
-	        do_get(args[0], options.id, sock)
+	        do_get(args[0], options.op_id, sock)
 
         data = sock.recv(1024)
         while (len(data)>0):
