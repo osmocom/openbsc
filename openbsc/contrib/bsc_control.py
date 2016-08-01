@@ -10,15 +10,18 @@ verbose = False
 def prefix_ipa_ctrl_header(data):
 	return struct.pack(">HBB", len(data)+1, 0xee, 0) + data
 
+def ipa_ctrl_header(header):
+        (plen, ipa_proto, osmo_proto) = struct.unpack(">HBB", header)
+        return None if (ipa_proto != 0xee or osmo_proto != 0) else plen
+
 def remove_ipa_ctrl_header(data):
 	if (len(data) < 4):
 		raise BaseException("Answer too short!")
-	(plen, ipa_proto, osmo_proto) = struct.unpack(">HBB", data[:4])
+        plen = ipa_ctrl_header(data[:4])
+        if (None == plen):
+                raise BaseException("Wrong protocol in answer!")
 	if (plen + 3 > len(data)):
 		print "Warning: Wrong payload length (expected %i, got %i)" % (plen, len(data) - 3)
-	if (ipa_proto != 0xee or osmo_proto != 0):
-		raise BaseException("Wrong protocol in answer!")
-
 	return data[4:plen+3], data[plen+3:]
 
 def connect(host, port):
@@ -43,6 +46,26 @@ def do_set(var, value, op_id, sck):
 def do_get(var, op_id, sck):
 	getmsg = "GET %s %s" %(op_id, var)
 	send(sck, getmsg)
+
+def do_set_get(sck, var, value = None):
+        r = random.randint(1, sys.maxint)
+        if (value != None):
+                s = 'SET_REPLY'
+                do_set(var, value, r, sck)
+        else:
+                s = 'GET_REPLY'
+                do_get(var, r, sck)
+        (answer, data) = remove_ipa_ctrl_header(sck.recv(4096))
+        x  = answer.split()
+        if (s == x[0] and str(r) == x[1] and var == x[2]):
+                return None if ('SET_REPLY' == s and value != x[3]) else x[3]
+        return None
+
+def set_var(sck, var, val):
+        return do_set_get(sck, var, val)
+
+def get_var(sck, var):
+        return do_set_get(sck, var)
 
 if __name__ == '__main__':
         random.seed()
