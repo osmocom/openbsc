@@ -150,25 +150,49 @@ struct gsm_subscriber_connection {
 #include "gsm_data_shared.h"
 
 
-/* Some statistics of our network */
 enum {
-	MSC_CTR_CHREQ_TOTAL,
-	MSC_CTR_CHREQ_NO_CHANNEL,
-	MSC_CTR_HANDOVER_ATTEMPTED,
-	MSC_CTR_HANDOVER_NO_CHANNEL,
-	MSC_CTR_HANDOVER_TIMEOUT,
-	MSC_CTR_HANDOVER_COMPLETED,
-	MSC_CTR_HANDOVER_FAILED,
+	BSC_CTR_CHREQ_TOTAL,
+	BSC_CTR_CHREQ_NO_CHANNEL,
+	BSC_CTR_HANDOVER_ATTEMPTED,
+	BSC_CTR_HANDOVER_NO_CHANNEL,
+	BSC_CTR_HANDOVER_TIMEOUT,
+	BSC_CTR_HANDOVER_COMPLETED,
+	BSC_CTR_HANDOVER_FAILED,
+	BSC_CTR_PAGING_ATTEMPTED,
+	BSC_CTR_PAGING_DETACHED,
+	BSC_CTR_PAGING_COMPLETED,
+	BSC_CTR_PAGING_EXPIRED,
+	BSC_CTR_CHAN_RF_FAIL,
+	BSC_CTR_CHAN_RLL_ERR,
+	BSC_CTR_BTS_OML_FAIL,
+	BSC_CTR_BTS_RSL_FAIL,
+};
+
+static const struct rate_ctr_desc bsc_ctr_description[] = {
+	[BSC_CTR_CHREQ_TOTAL] = 		{"chreq.total", "Received channel requests."},
+	[BSC_CTR_CHREQ_NO_CHANNEL] = 		{"chreq.no_channel", "Sent to MS no channel available."},
+	[BSC_CTR_HANDOVER_ATTEMPTED] = 		{"handover.attempted", "Received handover attempts."},
+	[BSC_CTR_HANDOVER_NO_CHANNEL] = 		{"handover.no_channel", "Sent no channel available responses."},
+	[BSC_CTR_HANDOVER_TIMEOUT] = 		{"handover.timeout", "Count the amount of timeouts of timer T3103."},
+	[BSC_CTR_HANDOVER_COMPLETED] = 		{"handover.completed", "Received handover completed."},
+	[BSC_CTR_HANDOVER_FAILED] = 		{"handover.failed", "Receive HO FAIL messages."},
+	[BSC_CTR_PAGING_ATTEMPTED] = 		{"paging.attempted", "Paging attempts for a MS."},
+	[BSC_CTR_PAGING_DETACHED] = 		{"paging.detached", "Counts the amount of paging attempts which couldn't sent out any paging request because no responsible bts found."},
+	[BSC_CTR_PAGING_COMPLETED] = 		{"paging.completed", "Paging successful completed."},
+	[BSC_CTR_PAGING_EXPIRED] = 		{"paging.expired", "Paging Request expired because of timeout T3113."},
+	[BSC_CTR_CHAN_RF_FAIL] = 		{"chan.rf_fail", "Received a RF failure indication from BTS."},
+	[BSC_CTR_CHAN_RLL_ERR] = 		{"chan.rll_err", "Received a RLL failure with T200 cause from BTS."},
+	[BSC_CTR_BTS_OML_FAIL] = 		{"bts.oml_fail", "Received a TEI down on a OML link."},
+	[BSC_CTR_BTS_RSL_FAIL] = 		{"bts.rsl_fail", "Received a TEI down on a OML link."},
+};
+
+enum {
 	MSC_CTR_LOC_UPDATE_TYPE_ATTACH,
 	MSC_CTR_LOC_UPDATE_TYPE_NORMAL,
 	MSC_CTR_LOC_UPDATE_TYPE_PERIODIC,
 	MSC_CTR_LOC_UPDATE_TYPE_DETACH,
 	MSC_CTR_LOC_UPDATE_RESP_REJECT,
 	MSC_CTR_LOC_UPDATE_RESP_ACCEPT,
-	MSC_CTR_PAGING_ATTEMPTED,
-	MSC_CTR_PAGING_DETACHED,
-	MSC_CTR_PAGING_COMPLETED,
-	MSC_CTR_PAGING_EXPIRED,
 	MSC_CTR_SMS_SUBMITTED,
 	MSC_CTR_SMS_NO_RECEIVER,
 	MSC_CTR_SMS_DELIVERED,
@@ -178,30 +202,15 @@ enum {
 	MSC_CTR_CALL_MO_CONNECT_ACK,
 	MSC_CTR_CALL_MT_SETUP,
 	MSC_CTR_CALL_MT_CONNECT,
-	MSC_CTR_CHAN_RF_FAIL,
-	MSC_CTR_CHAN_RLL_ERR,
-	MSC_CTR_BTS_OML_FAIL,
-	MSC_CTR_BTS_RSL_FAIL,
 };
 
 static const struct rate_ctr_desc msc_ctr_description[] = {
-	[MSC_CTR_CHREQ_TOTAL] = 		{"chreq.total", "Received channel requests."},
-	[MSC_CTR_CHREQ_NO_CHANNEL] = 		{"chreq.no_channel", "Sent to MS no channel available."},
-	[MSC_CTR_HANDOVER_ATTEMPTED] = 		{"handover.attempted", "Received handover attempts."},
-	[MSC_CTR_HANDOVER_NO_CHANNEL] = 		{"handover.no_channel", "Sent no channel available responses."},
-	[MSC_CTR_HANDOVER_TIMEOUT] = 		{"handover.timeout", "Count the amount of timeouts of timer T3103."},
-	[MSC_CTR_HANDOVER_COMPLETED] = 		{"handover.completed", "Received handover completed."},
-	[MSC_CTR_HANDOVER_FAILED] = 		{"handover.failed", "Receive HO FAIL messages."},
 	[MSC_CTR_LOC_UPDATE_TYPE_ATTACH] = 		{"loc_update_type.attach", "Received location update imsi attach requests."},
 	[MSC_CTR_LOC_UPDATE_TYPE_NORMAL] = 		{"loc_update_type.normal", "Received location update normal requests."},
 	[MSC_CTR_LOC_UPDATE_TYPE_PERIODIC] = 		{"loc_update_type.periodic", "Received location update periodic requests."},
 	[MSC_CTR_LOC_UPDATE_TYPE_DETACH] = 		{"loc_update_type.detach", "Received location update detach indication."},
 	[MSC_CTR_LOC_UPDATE_RESP_REJECT] = 		{"loc_update_resp.reject", "Sent location update reject responses."},
 	[MSC_CTR_LOC_UPDATE_RESP_ACCEPT] = 		{"loc_update_resp.accept", "Sent location update accept responses."},
-	[MSC_CTR_PAGING_ATTEMPTED] = 		{"paging.attempted", "Paging attempts for a MS."},
-	[MSC_CTR_PAGING_DETACHED] = 		{"paging.detached", "Counts the amount of paging attempts which couldn't sent out any paging request because no responsible bts found."},
-	[MSC_CTR_PAGING_COMPLETED] = 		{"paging.completed", "Paging successful completed."},
-	[MSC_CTR_PAGING_EXPIRED] = 		{"paging.expired", "Paging Request expired because of timeout T3113."},
 	[MSC_CTR_SMS_SUBMITTED] = 		{"sms.submitted", "Received a RPDU from a MS (MO)."},
 	[MSC_CTR_SMS_NO_RECEIVER] = 		{"sms.no_receiver", "Counts SMS which couldn't routed because no receiver found."},
 	[MSC_CTR_SMS_DELIVERED] = 		{"sms.delivered", "Global SMS Deliver attempts."},
@@ -212,10 +221,15 @@ static const struct rate_ctr_desc msc_ctr_description[] = {
 	[MSC_CTR_CALL_MO_CONNECT_ACK] = 		{"call.mo_connect_ack", "Received a connect ack from MS of a MO call. Call is now succesful connected up."},
 	[MSC_CTR_CALL_MT_SETUP] = 		{"call.mt_setup", "Sent setup requests to the MS (MT)."},
 	[MSC_CTR_CALL_MT_CONNECT] = 		{"call.mt_connect", "Sent a connect to the MS (MT)."},
-	[MSC_CTR_CHAN_RF_FAIL] = 		{"chan.rf_fail", "Received a RF failure indication from BTS."},
-	[MSC_CTR_CHAN_RLL_ERR] = 		{"chan.rll_err", "Received a RLL failure with T200 cause from BTS."},
-	[MSC_CTR_BTS_OML_FAIL] = 		{"bts.oml_fail", "Received a TEI down on a OML link."},
-	[MSC_CTR_BTS_RSL_FAIL] = 		{"bts.rsl_fail", "Received a TEI down on a OML link."},
+};
+
+
+static const struct rate_ctr_group_desc bsc_ctrg_desc = {
+	"bsc",
+	"base station controller",
+	OSMO_STATS_CLASS_GLOBAL,
+	ARRAY_SIZE(bsc_ctr_description),
+	bsc_ctr_description,
 };
 
 static const struct rate_ctr_group_desc msc_ctrg_desc = {
@@ -268,7 +282,8 @@ struct gsm_network {
 		unsigned int max_distance;	/* TA values */
 	} handover;
 
-	struct rate_ctr_group *ratectrs;
+	struct rate_ctr_group *bsc_ctrs;
+	struct rate_ctr_group *msc_ctrs;
 
 
 	/* layer 4 */

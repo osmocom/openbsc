@@ -795,41 +795,41 @@ DEFUN(show_stats,
 
 	openbsc_vty_print_statistics(vty, net);
 	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
-		net->ratectrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_ATTACH].current,
-		net->ratectrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_NORMAL].current,
-		net->ratectrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_PERIODIC].current,
+		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_ATTACH].current,
+		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_NORMAL].current,
+		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_PERIODIC].current,
 		VTY_NEWLINE);
 	vty_out(vty, "IMSI Detach Indications : %lu%s",
-		net->ratectrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_DETACH].current,
+		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_DETACH].current,
 		VTY_NEWLINE);
 	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
-		net->ratectrs->ctr[MSC_CTR_LOC_UPDATE_RESP_ACCEPT].current,
-		net->ratectrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT].current,
+		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_ACCEPT].current,
+		net->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT].current,
 		VTY_NEWLINE);
 	vty_out(vty, "Handover                : %lu attempted, %lu no_channel, %lu timeout, "
 		"%lu completed, %lu failed%s",
-		net->ratectrs->ctr[MSC_CTR_HANDOVER_ATTEMPTED].current,
-		net->ratectrs->ctr[MSC_CTR_HANDOVER_NO_CHANNEL].current,
-		net->ratectrs->ctr[MSC_CTR_HANDOVER_TIMEOUT].current,
-		net->ratectrs->ctr[MSC_CTR_HANDOVER_COMPLETED].current,
-		net->ratectrs->ctr[MSC_CTR_HANDOVER_FAILED].current,
+		net->msc_ctrs->ctr[BSC_CTR_HANDOVER_ATTEMPTED].current,
+		net->msc_ctrs->ctr[BSC_CTR_HANDOVER_NO_CHANNEL].current,
+		net->msc_ctrs->ctr[BSC_CTR_HANDOVER_TIMEOUT].current,
+		net->msc_ctrs->ctr[BSC_CTR_HANDOVER_COMPLETED].current,
+		net->msc_ctrs->ctr[BSC_CTR_HANDOVER_FAILED].current,
 		VTY_NEWLINE);
 	vty_out(vty, "SMS MO                  : %lu submitted, %lu no receiver%s",
-		net->ratectrs->ctr[MSC_CTR_SMS_SUBMITTED].current,
-		net->ratectrs->ctr[MSC_CTR_SMS_NO_RECEIVER].current,
+		net->msc_ctrs->ctr[MSC_CTR_SMS_SUBMITTED].current,
+		net->msc_ctrs->ctr[MSC_CTR_SMS_NO_RECEIVER].current,
 		VTY_NEWLINE);
 	vty_out(vty, "SMS MT                  : %lu delivered, %lu no memory, %lu other error%s",
-		net->ratectrs->ctr[MSC_CTR_SMS_DELIVERED].current,
-		net->ratectrs->ctr[MSC_CTR_SMS_RP_ERR_MEM].current,
-		net->ratectrs->ctr[MSC_CTR_SMS_RP_ERR_OTHER].current,
+		net->msc_ctrs->ctr[MSC_CTR_SMS_DELIVERED].current,
+		net->msc_ctrs->ctr[MSC_CTR_SMS_RP_ERR_MEM].current,
+		net->msc_ctrs->ctr[MSC_CTR_SMS_RP_ERR_OTHER].current,
 		VTY_NEWLINE);
 	vty_out(vty, "MO Calls                : %lu setup, %lu connect ack%s",
-		net->ratectrs->ctr[MSC_CTR_CALL_MO_SETUP].current,
-		net->ratectrs->ctr[MSC_CTR_CALL_MO_CONNECT_ACK].current,
+		net->msc_ctrs->ctr[MSC_CTR_CALL_MO_SETUP].current,
+		net->msc_ctrs->ctr[MSC_CTR_CALL_MO_CONNECT_ACK].current,
 		VTY_NEWLINE);
 	vty_out(vty, "MT Calls                : %lu setup, %lu connect%s",
-		net->ratectrs->ctr[MSC_CTR_CALL_MT_SETUP].current,
-		net->ratectrs->ctr[MSC_CTR_CALL_MT_CONNECT].current,
+		net->msc_ctrs->ctr[MSC_CTR_CALL_MT_SETUP].current,
+		net->msc_ctrs->ctr[MSC_CTR_CALL_MT_CONNECT].current,
 		VTY_NEWLINE);
 	return CMD_SUCCESS;
 }

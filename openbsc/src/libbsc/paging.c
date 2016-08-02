@@ -260,7 +260,7 @@ static void paging_T3113_expired(void *data)
 		req, req->subscr->imsi);
 
 	/* must be destroyed before calling cbfn, to prevent double free */
-	rate_ctr_inc(&req->bts->network->ratectrs->ctr[MSC_CTR_PAGING_EXPIRED]);
+	rate_ctr_inc(&req->bts->network->bsc_ctrs->ctr[BSC_CTR_PAGING_EXPIRED]);
 	cbfn_param = req->cbfn_param;
 	cbfn = req->cbfn;
 
@@ -330,7 +330,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	struct gsm_bts *bts = NULL;
 	int num_pages = 0;
 
-	rate_ctr_inc(&network->ratectrs->ctr[MSC_CTR_PAGING_ATTEMPTED]);
+	rate_ctr_inc(&network->bsc_ctrs->ctr[BSC_CTR_PAGING_ATTEMPTED]);
 
 	/* start paging subscriber on all BTS within Location Area */
 	do {
@@ -349,7 +349,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	} while (1);
 
 	if (num_pages == 0)
-		rate_ctr_inc(&network->ratectrs->ctr[MSC_CTR_PAGING_DETACHED]);
+		rate_ctr_inc(&network->bsc_ctrs->ctr[BSC_CTR_PAGING_DETACHED]);
 
 	return num_pages;
 }

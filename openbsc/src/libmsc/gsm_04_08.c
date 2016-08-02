@@ -457,7 +457,7 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg;
 
-	rate_ctr_inc(&bts->network->ratectrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT]);
+	rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_REJECT]);
 
 	msg = gsm48_create_loc_upd_rej(cause);
 	if (!msg) {
@@ -506,7 +506,7 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	rate_ctr_inc(&bts->network->ratectrs->ctr[MSC_CTR_LOC_UPDATE_RESP_ACCEPT]);
+	rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_RESP_ACCEPT]);
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
@@ -637,13 +637,13 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 	switch (lu->type) {
 	case GSM48_LUPD_NORMAL:
-		rate_ctr_inc(&bts->network->ratectrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_NORMAL]);
+		rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_NORMAL]);
 		break;
 	case GSM48_LUPD_IMSI_ATT:
-		rate_ctr_inc(&bts->network->ratectrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_ATTACH]);
+		rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_ATTACH]);
 		break;
 	case GSM48_LUPD_PERIODIC:
-		rate_ctr_inc(&bts->network->ratectrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_PERIODIC]);
+		rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_PERIODIC]);
 		break;
 	}
 
@@ -1063,7 +1063,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	DEBUGP(DMM, "IMSI DETACH INDICATION: MI(%s)=%s",
 		gsm48_mi_type_name(mi_type), mi_string);
 
-	rate_ctr_inc(&bts->network->ratectrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_DETACH]);
+	rate_ctr_inc(&bts->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_DETACH]);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
@@ -2002,7 +2002,7 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 	     subscr_name(trans->subscr), trans->subscr->extension,
 	     setup.called.number);
 
-	rate_ctr_inc(&trans->net->ratectrs->ctr[MSC_CTR_CALL_MO_SETUP]);
+	rate_ctr_inc(&trans->net->msc_ctrs->ctr[MSC_CTR_CALL_MO_SETUP]);
 
 	/* indicate setup to MNCC */
 	mncc_recvmsg(trans->net, trans, MNCC_SETUP_IND, &setup);
@@ -2080,7 +2080,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	
 	new_cc_state(trans, GSM_CSTATE_CALL_PRESENT);
 
-	rate_ctr_inc(&trans->net->ratectrs->ctr[MSC_CTR_CALL_MT_SETUP]);
+	rate_ctr_inc(&trans->net->msc_ctrs->ctr[MSC_CTR_CALL_MT_SETUP]);
 
 	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
@@ -2306,7 +2306,7 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 	}
 
 	new_cc_state(trans, GSM_CSTATE_CONNECT_REQUEST);
-	rate_ctr_inc(&trans->net->ratectrs->ctr[MSC_CTR_CALL_MT_CONNECT]);
+	rate_ctr_inc(&trans->net->msc_ctrs->ctr[MSC_CTR_CALL_MT_CONNECT]);
 
 	return mncc_recvmsg(trans->net, trans, MNCC_SETUP_CNF, &connect);
 }
@@ -2319,7 +2319,7 @@ static int gsm48_cc_rx_connect_ack(struct gsm_trans *trans, struct msgb *msg)
 	gsm48_stop_cc_timer(trans);
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
-	rate_ctr_inc(&trans->net->ratectrs->ctr[MSC_CTR_CALL_MO_CONNECT_ACK]);
+	rate_ctr_inc(&trans->net->msc_ctrs->ctr[MSC_CTR_CALL_MO_CONNECT_ACK]);
 	
 	memset(&connect_ack, 0, sizeof(struct gsm_mncc));
 	connect_ack.callref = trans->callref;

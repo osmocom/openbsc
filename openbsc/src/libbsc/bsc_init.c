@@ -340,9 +340,9 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		LOGP(DLMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", isd->link_type, trx);
 
 		if (isd->link_type == E1INP_SIGN_OML)
-			rate_ctr_inc(&trx->bts->network->ratectrs->ctr[MSC_CTR_BTS_OML_FAIL]);
+			rate_ctr_inc(&trx->bts->network->bsc_ctrs->ctr[BSC_CTR_BTS_OML_FAIL]);
 		else if (isd->link_type == E1INP_SIGN_RSL)
-			rate_ctr_inc(&trx->bts->network->ratectrs->ctr[MSC_CTR_BTS_RSL_FAIL]);
+			rate_ctr_inc(&trx->bts->network->bsc_ctrs->ctr[BSC_CTR_BTS_RSL_FAIL]);
 
 		/*
 		 * free all allocated channels. change the nm_state so the
