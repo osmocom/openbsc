@@ -573,14 +573,13 @@ uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		/*
 		 * As a special hack for BCCH, lchan_nr == 4 may be passed
-		 * here. This should never be sent in an RSL message, so just
-		 * return 0. See osmo-bts-xxx/oml.c:opstart_compl().
+		 * here. This should never be sent in an RSL message.
+		 * See osmo-bts-xxx/oml.c:opstart_compl().
 		 */
-		if (lchan_nr == 4) {
+		if (lchan_nr == 4)
 			chan_nr = 0;
-			break;
-		}
-		OSMO_ASSERT(lchan_nr < 4);
+		else
+			OSMO_ASSERT(lchan_nr < 4);
 		cbits = 0x04;
 		cbits += lchan_nr;
 		break;
