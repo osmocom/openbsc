@@ -34,8 +34,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/sgsn.h>
-
-#include "gprs_sndcp.h"
+#include <openbsc/gprs_sndcp.h>
 
 /* Chapter 7.2: SN-PDU Formats */
 struct sndcp_common_hdr {
