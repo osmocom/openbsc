@@ -124,3 +124,8 @@ cat $abs_srcdir/mm_auth/mm_auth_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/mm_auth/mm_auth_test], [], [expout], [ignore])
 AT_CLEANUP
 
+AT_SETUP([xid])
+AT_KEYWORDS([xid])
+cat $abs_srcdir/xid/xid_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/xid/xid_test], [], [expout], [ignore])
+AT_CLEANUP

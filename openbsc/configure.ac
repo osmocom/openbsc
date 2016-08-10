@@ -229,6 +229,7 @@ AC_OUTPUT(
     tests/oap/Makefile
     tests/gtphub/Makefile
     tests/mm_auth/Makefile
+    tests/xid/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)
