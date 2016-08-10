@@ -231,6 +231,7 @@ AC_OUTPUT(
     tests/gtphub/Makefile
     tests/mm_auth/Makefile
     tests/xid/Makefile
+    tests/sndcp_xid/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

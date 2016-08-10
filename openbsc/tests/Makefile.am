@@ -10,7 +10,9 @@ SUBDIRS = \
 	subscr \
 	mm_auth \
 	xid \
+	sndcp_xid \
 	$(NULL)
+
 if BUILD_NAT
 SUBDIRS += \
 	bsc-nat \

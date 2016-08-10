@@ -129,3 +129,10 @@ AT_KEYWORDS([xid])
 cat $abs_srcdir/xid/xid_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/xid/xid_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([sndcp_xid])
+AT_KEYWORDS([sndcp_xid])
+cat $abs_srcdir/sndcp_xid/sndcp_xid_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/sndcp_xid/sndcp_xid_test], [], [expout], [ignore])
+AT_CLEANUP
+

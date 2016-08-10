@@ -72,6 +72,7 @@ osmo_sgsn_SOURCES = \
 	gprs_sgsn.c \
 	gprs_sndcp.c \
 	gprs_sndcp_vty.c \
+	gprs_sndcp_xid.c \
 	sgsn_main.c \
 	sgsn_vty.c \
 	sgsn_libgtp.c \
@@ -98,6 +99,7 @@ osmo_sgsn_LDADD = \
 	$(LIBCRYPTO_LIBS) \
 	-lrt \
 	-lgtp \
+	-lm \
 	$(NULL)
 if BUILD_IU
 osmo_sgsn_LDADD += \
