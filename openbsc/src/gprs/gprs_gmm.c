@@ -130,7 +130,9 @@ time_t gprs_max_time_to_idle(void)
 	return sgsn->cfg.timers.T3314 + (sgsn->cfg.timers.T3312 + 4 * 60);
 }
 
-/* Send a message through the underlying layer */
+/* Send a message through the underlying layer.
+ * For param encryptable, see 3GPP TS 24.008 § 4.7.1.2 and
+ * gsm48_hdr_gmm_cipherable(). Pass false for not cipherable messages. */
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
 			     struct sgsn_mm_ctx *mm, bool encryptable)
 {
