@@ -312,8 +312,10 @@ static bool subscr_regexp_check(const struct gsm_network *net, const char *imsi)
 static bool authorize_subscriber(struct gsm_loc_updating_operation *loc,
 				struct gsm_subscriber *subscriber)
 {
-	if (!subscriber)
+	if (!subscriber) {
+		LOGP(DMM, LOGL_DEBUG, "authorize_subscriber() on NULL subscriber\n");
 		return false;
+	}
 
 	/*
 	 * Do not send accept yet as more information should arrive. Some
