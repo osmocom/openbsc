@@ -322,8 +322,14 @@ static bool authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	 * phones will not send us the information and we will have to check
 	 * what we want to do with that.
 	 */
-	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei))
+	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei)) {
+		LOGP(DMM, LOGL_DEBUG, "authorize_subscriber() failed:"
+		     " still waiting for%s%s of subscriber %s\n",
+		     loc->waiting_for_imsi? " IMSI": "",
+		     loc->waiting_for_imei? " IMEI": "",
+		     subscr_name(subscriber));
 		return false;
+	}
 
 	switch (subscriber->group->net->auth_policy) {
 	case GSM_AUTH_POLICY_CLOSED:
@@ -413,10 +419,6 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 	int rc = 0;
 
 	switch (event) {
-		case GSM_SECURITY_AUTH_FAILED:
-			release_loc_updating_req(conn, 1);
-			break;
-
 		case GSM_SECURITY_ALREADY:
 			LOGP(DMM, LOGL_ERROR, "We don't expect LOCATION "
 				"UPDATING after CM SERVICE REQUEST\n");
@@ -427,22 +429,40 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			rc = finish_lu(conn);
 			break;
 
+		case GSM_SECURITY_AUTH_FAILED:
+			/*
+			 * gsm48_secure_channel() will pass only
+			 * GSM_SECURITY_NOAVAIL in case of failure. If future
+			 * code should add a GSM_SECURITY_AUTH_FAILED status in
+			 * this code path, letting the Location Update time out
+			 * will do all necessary error messaging and logging,
+			 * see loc_upd_rej_cb().
+			 */
+			LOGP(DMM, LOGL_ERROR,
+			     "Authorization failed for subscriber %s\n",
+			     subscr_name(conn->subscr));
+			rc = -1;
+			break;
+
 		default:
+			LOGP(DMM, LOGL_DEBUG, "invalid authorization event\n");
 			rc = -EINVAL;
 	};
 
 	return rc;
 }
 
-static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg)
+int gsm0408_authorize(struct gsm_subscriber_connection *conn)
 {
-	if (!conn->loc_operation)
+	if (!conn->loc_operation) {
+		LOGP(DMM, LOGL_DEBUG, "gsm0408_authorize() failed:"
+		     " no location update operation pending\n");
 		return 0;
+	}
 
 	if (authorize_subscriber(conn->loc_operation, conn->subscr))
-		return gsm48_secure_channel(conn,
-			conn->loc_operation->key_seq,
-			_gsm0408_authorize_sec_cb, NULL);
+		return gsm48_secure_channel(conn, conn->loc_operation->key_seq,
+					    _gsm0408_authorize_sec_cb, NULL);
 	return 0;
 }
 
@@ -627,7 +647,7 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 	}
 
 	/* Check if we can let the mobile station enter */
-	return gsm0408_authorize(conn, msg);
+	return gsm0408_authorize(conn);
 }
 
 
@@ -756,7 +776,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 	/* check if we can let the subscriber into our network immediately
 	 * or if we need to wait for identity responses. */
-	return gsm0408_authorize(conn, msg);
+	return gsm0408_authorize(conn);
 }
 
 /* Turn int into semi-octet representation: 98 => 0x89 */
@@ -1246,6 +1266,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	uint8_t res_len;
 	int rc;
 	bool is_r99;
+	gsm_cbfn *cb;
 
 	if (!conn->subscr) {
 		LOGP(DMM, LOGL_ERROR,
@@ -1293,11 +1314,11 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 		return -EIO;
 	}
 
+	cb = conn->sec_operation->cb;
+
 	/* Validate SRES */
 	if (memcmp(conn->sec_operation->atuple.vec.sres, res, 4)) {
 		int rc;
-		gsm_cbfn *cb = conn->sec_operation->cb;
-
 		DEBUGPC(DMM, "Invalid (expected %s)\n",
 			osmo_hexdump(conn->sec_operation->atuple.vec.sres, 4));
 
@@ -1312,10 +1333,35 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 
 	DEBUGPC(DMM, "OK\n");
 
-	/* Start ciphering */
-	return msc_gsm0808_tx_cipher_mode(conn, net->a5_encryption,
-					  conn->sec_operation->atuple.vec.kc,
-					  8, 0);
+	/* TODO separate enable flags and/or A5 algos for auth and encryption */
+	if (net->a5_encryption)
+		/* Start ciphering */
+		/* TODO gsm0808_cipher_mode() is still a dummy, and no code
+		 * to receive a Ciphering Mode Complete exists in the MSC.
+		 * As soon as such a receiver exists, it must call
+		 * iu_tx_sec_mode_cmd() as below. */
+		return msc_gsm0808_tx_cipher_mode(conn, net->a5_encryption,
+						  conn->sec_operation->atuple.vec.kc,
+						  8, 0);
+
+	if (conn->via_iface == IFACE_IU
+	    && !conn->iu.integrity_protection) {
+		LOGP(DIUCS, LOGL_DEBUG,
+		     "Requesting integrity protection for %s\n",
+		     subscr_name(conn->subscr));
+
+		/* send Security Mode Command (IK) to start integrity
+		 * protection */
+		return iu_tx_sec_mode_cmd(conn->iu.ue_ctx,
+					  &conn->sec_operation->atuple, 0, 1);
+	}
+
+	/* Only authentication requested, and we're done. */
+	if (cb)
+		cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED, NULL,
+		   conn, conn->sec_operation->cb_data);
+	release_security_operation(conn);
+	return 0;
 }
 
 static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct msgb *msg)
