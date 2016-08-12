@@ -246,11 +246,11 @@ static bool subscr_regexp_check(const struct gsm_network *net, const char *imsi)
 	return false;
 }
 
-static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
+static bool authorize_subscriber(struct gsm_loc_updating_operation *loc,
 				struct gsm_subscriber *subscriber)
 {
 	if (!subscriber)
-		return 0;
+		return false;
 
 	/*
 	 * Do not send accept yet as more information should arrive. Some
@@ -258,14 +258,14 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	 * what we want to do with that.
 	 */
 	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei))
-		return 0;
+		return false;
 
 	switch (subscriber->group->net->auth_policy) {
 	case GSM_AUTH_POLICY_CLOSED:
 		return subscriber->authorized;
 	case GSM_AUTH_POLICY_REGEXP:
 		if (subscriber->authorized)
-			return 1;
+			return true;
 		if (subscr_regexp_check(subscriber->group->net,
 					subscriber->imsi))
 			subscriber->authorized = 1;
@@ -275,9 +275,9 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 			return subscriber->authorized;
 		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
 	case GSM_AUTH_POLICY_ACCEPT_ALL:
-		return 1;
+		return true;
 	default:
-		return 0;
+		return false;
 	}
 }
 
