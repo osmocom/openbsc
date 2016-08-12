@@ -135,11 +135,13 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 
 	case AUTH_ALGO_XOR:
 		if (_use_xor(&ainfo, atuple))
+			/* non-zero return value means failure */
 			return AUTH_NOT_AVAIL;
 		break;
 
 	case AUTH_ALGO_COMP128v1:
 		if (_use_comp128_v1(&ainfo, atuple))
+			/* non-zero return value means failure */
 			return AUTH_NOT_AVAIL;
 		break;
 
