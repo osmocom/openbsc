@@ -31,6 +31,7 @@
 #include <netinet/in.h>
 #include <regex.h>
 #include <sys/types.h>
+#include <openssl/rand.h>
 
 #include "bscconfig.h"
 
@@ -67,6 +68,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/tlv.h>
+#include <osmocom/crypt/auth.h>
 
 #include <assert.h>
 
@@ -171,6 +173,29 @@ void allocate_security_operation(struct gsm_subscriber_connection *conn)
 	                                  struct gsm_security_operation);
 }
 
+int iu_hack__get_hardcoded_auth_tuple(struct gsm_auth_tuple *atuple)
+{
+	unsigned char tmp_rand[16];
+	/* Ki 000102030405060708090a0b0c0d0e0f */
+	struct osmo_sub_auth_data auth = {
+		.type	= OSMO_AUTH_TYPE_GSM,
+		.algo	= OSMO_AUTH_ALG_COMP128v1,
+		.u.gsm.ki = {
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+			0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+			0x0e, 0x0f
+		},
+	};
+
+	RAND_bytes(tmp_rand, sizeof(tmp_rand));
+
+	memset(&atuple->vec, 0, sizeof(atuple->vec));
+	osmo_auth_gen_vec(&atuple->vec, &auth, tmp_rand);
+
+	atuple->key_seq = 0;
+	return AUTH_DO_AUTH;
+}
+
 int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
                          gsm_cbfn *cb, void *cb_data)
 {
@@ -186,8 +211,15 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	 *  - Subscriber equipment doesn't support configured encryption
 	 */
 	if (!net->a5_encryption) {
-		status = GSM_SECURITY_NOAVAIL;
-	} else if (conn->lchan->encr.alg_id > RSL_ENC_ALG_A5(0)) {
+		if (conn->via_iface == IFACE_IU) {
+			DEBUGP(DMM, "No A5 encryption configured, but doing"
+			       " authentication as required by Iu\n");
+			status = -1;
+		} else {
+			DEBUGP(DMM, "No A5 encryption configured\n");
+			status = GSM_SECURITY_NOAVAIL;
+		}
+	} else if (conn->encr.alg_id > RSL_ENC_ALG_A5(0)) {
 		DEBUGP(DMM, "Requesting to secure an already secure channel");
 		status = GSM_SECURITY_ALREADY;
 	} else if (!ms_cm2_a5n_support(subscr->equipment.classmark2,
@@ -198,20 +230,47 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 
 	/* If not done yet, try to get info for this user */
 	if (status < 0) {
-		rc = auth_get_tuple_for_subscr(&atuple, subscr, key_seq);
-		if (rc <= 0)
-			status = GSM_SECURITY_NOAVAIL;
+		/* DEV HACK: hardcode keys for Iu */
+		if (conn->via_iface == IFACE_IU)
+			rc = iu_hack__get_hardcoded_auth_tuple(&atuple);
+		else
+			rc = auth_get_tuple_for_subscr(&atuple, subscr, key_seq);
+		DEBUGP(DMM, "auth_get_tuple_for_subscr(%s) == %d\n",
+		       subscr_name(subscr), rc);
+		if (rc <= 0) {
+			if (conn->via_iface == IFACE_IU) {
+				LOGP(DMM, LOGL_ERROR,
+				     "Iu requires authentication but no"
+				     " retreivable Ki for subscriber %s\n",
+				     subscr_name(subscr));
+				status = GSM_SECURITY_AUTH_FAILED;
+			} else {
+				LOGP(DMM, LOGL_NOTICE,
+				     "No retrievable Ki for subscriber,"
+				     " skipping auth\n");
+				status = GSM_SECURITY_NOAVAIL;
+			}
+		}
 	}
 
 	/* Are we done yet ? */
-	if (status >= 0)
+	if (status >= 0) {
+		DEBUGP(DMM, "gsm48_secure_channel(%s) returning with status %d\n",
+		       subscr_name(subscr), status);
 		return cb ?
 			cb(GSM_HOOK_RR_SECURITY, status, NULL, conn, cb_data) :
 			0;
+	}
 
 	/* Start an operation (can't have more than one pending !!!) */
-	if (conn->sec_operation)
+	if (conn->sec_operation) {
+		DEBUGP(DMM, "gsm48_secure_channel(%s) error: attempt to start"
+		       " second security operation\n",
+		       subscr_name(subscr));
 		return -EBUSY;
+	}
+	DEBUGP(DMM, "gsm48_secure_channel(%s) starting security operation\n",
+	       subscr_name(subscr));
 
 	allocate_security_operation(conn);
 	op = conn->sec_operation;
@@ -222,11 +281,15 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 		/* FIXME: Should start a timer for completion ... */
 
 	/* Then do whatever is needed ... */
-	if (rc == AUTH_DO_AUTH_THEN_CIPH) {
+	if ((rc == AUTH_DO_AUTH_THEN_CIPH) || (rc == AUTH_DO_AUTH)) {
 		/* Start authentication */
+		DEBUGP(DMM, "gsm48_secure_channel(%s) starting authentication\n",
+		       subscr_name(subscr));
 		return gsm48_tx_mm_auth_req(conn, op->atuple.vec.rand, op->atuple.key_seq);
 	} else if (rc == AUTH_DO_CIPH) {
 		/* Start ciphering directly */
+		DEBUGP(DMM, "gsm48_secure_channel(%s) starting ciphering\n",
+		       subscr_name(subscr));
 		/* TODO: specific to A interface, move this away */
 		return msc_gsm0808_tx_cipher_mode(conn, net->a5_encryption,
 						  op->atuple.vec.kc, 8, 0);
