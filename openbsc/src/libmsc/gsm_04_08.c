@@ -31,6 +31,7 @@
 #include <netinet/in.h>
 #include <regex.h>
 #include <sys/types.h>
+#include <openssl/rand.h>
 
 #include "bscconfig.h"
 
@@ -69,6 +70,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/gsm/tlv.h>
+#include <osmocom/crypt/auth.h>
 
 #include <assert.h>
 
@@ -172,6 +174,29 @@ void allocate_security_operation(struct gsm_subscriber_connection *conn)
 	                                  struct gsm_security_operation);
 	if (conn->sec_operation)
 		subscr_con_get(conn);
+}
+
+int iu_hack__get_hardcoded_auth_tuple(struct gsm_auth_tuple *atuple)
+{
+	unsigned char tmp_rand[16];
+	/* Ki 000102030405060708090a0b0c0d0e0f */
+	struct osmo_sub_auth_data auth = {
+		.type	= OSMO_AUTH_TYPE_GSM,
+		.algo	= OSMO_AUTH_ALG_COMP128v1,
+		.u.gsm.ki = {
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+			0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+			0x0e, 0x0f
+		},
+	};
+
+	RAND_bytes(tmp_rand, sizeof(tmp_rand));
+
+	memset(&atuple->vec, 0, sizeof(atuple->vec));
+	osmo_auth_gen_vec(&atuple->vec, &auth, tmp_rand);
+
+	atuple->key_seq = 0;
+	return AUTH_DO_AUTH;
 }
 
 int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
