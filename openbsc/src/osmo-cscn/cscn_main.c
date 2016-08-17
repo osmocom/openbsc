@@ -227,7 +227,9 @@ static void handle_options(int argc, char **argv)
 			exit(0);
 			break;
 		default:
-			/* ignore */
+			/* catch unknown options *as well as* missing arguments. */
+			fprintf(stderr, "Error in command line options. Exiting.\n");
+			exit(-1);
 			break;
 		}
 	}
