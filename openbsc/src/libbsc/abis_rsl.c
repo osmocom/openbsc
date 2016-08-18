@@ -1172,6 +1172,7 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts_trx_ts *ts = lchan->ts;
 
 	/* BTS has confirmed channel activation, we now need
 	 * to assign the activated channel to the MS */
@@ -1181,8 +1182,32 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 	osmo_timer_del(&lchan->act_timer);
 
 	if (lchan->state == LCHAN_S_BROKEN) {
-		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK for broken channel.\n",
-			gsm_lchan_name(lchan));
+		int do_release = is_sysmobts_v2(ts->trx->bts);
+		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK for broken channel. %s\n",
+			gsm_lchan_name(lchan),
+			do_release ? "Releasing it" : "Keeping it broken");
+		if (do_release) {
+			talloc_free(lchan->rqd_ref);
+			lchan->rqd_ref = NULL;
+			lchan->rqd_ta = 0;
+			rsl_lchan_set_state(msg->lchan, LCHAN_S_ACTIVE);
+			if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+				/*
+				 * lchan_act_tmr_cb() already called
+				 * lchan_free() and cleared the lchan->type, so
+				 * calling dyn_ts_switchover_complete() here
+				 * would not have the desired effect of
+				 * mimicking an activated lchan that we can
+				 * release. Instead hack the dyn ts state to
+				 * make sure that rsl_rx_rf_chan_rel_ack() will
+				 * switch back to PDCH, i.e. have pchan_is ==
+				 * pchan_want, both != GSM_PCHAN_PDCH:
+				 */
+				ts->dyn.pchan_is = GSM_PCHAN_NONE;
+				ts->dyn.pchan_want = GSM_PCHAN_NONE;
+			}
+			rsl_rf_chan_release(msg->lchan, 0, SACCH_NONE);
+		}
 		return 0;
 	}
 
@@ -1192,7 +1217,7 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 			gsm_lchans_name(lchan->state));
 	rsl_lchan_set_state(lchan, LCHAN_S_ACTIVE);
 
-	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
+	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
 		dyn_ts_switchover_complete(lchan);
 
 	if (lchan->rqd_ref) {
