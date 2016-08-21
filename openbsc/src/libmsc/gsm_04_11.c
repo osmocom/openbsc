@@ -40,6 +40,7 @@
 
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/gsm0411_utils.h>
+#include <osmocom/gsm/protocol/gsm_04_11.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -294,8 +295,12 @@ int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
 		if (rc == 1)
 			goto try_local;
 		if (rc < 0) {
-			rc = 21; /* cause 21: short message transfer rejected */
-			/* FIXME: handle the error somehow? */
+	 		LOGP(DLSMS, LOGL_ERROR, "%s: SMS delivery error: %d.",
+			     subscr_name(conn->subscr), rc);
+	 		rc = GSM411_RP_CAUSE_MO_TEMP_FAIL;
+			/* rc will be logged by gsm411_send_rp_error() */
+	 		rate_ctr_inc(&conn->bts->network->msc_ctrs->ctr[
+					MSC_CTR_SMS_DELIVER_UNKNOWN_ERROR]);
 		}
 		return rc;
 	}
@@ -319,8 +324,12 @@ try_local:
 			rc = 1; /* cause 1: unknown subscriber */
 			rate_ctr_inc(&conn->bts->network->msc_ctrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
 		} else if (rc < 0) {
-			rc = 21; /* cause 21: short message transfer rejected */
-			/* FIXME: handle the error somehow? */
+	 		LOGP(DLSMS, LOGL_ERROR, "%s: SMS delivery error: %d.",
+			     subscr_name(conn->subscr), rc);
+	 		rc = GSM411_RP_CAUSE_MO_TEMP_FAIL;
+			/* rc will be logged by gsm411_send_rp_error() */
+	 		rate_ctr_inc(&conn->bts->network->msc_ctrs->ctr[
+					MSC_CTR_SMS_DELIVER_UNKNOWN_ERROR]);
 		}
 #else
 		rc = 1; /* cause 1: unknown subscriber */

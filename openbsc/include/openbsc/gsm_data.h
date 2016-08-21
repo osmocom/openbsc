@@ -198,6 +198,7 @@ enum {
 	MSC_CTR_SMS_DELIVERED,
 	MSC_CTR_SMS_RP_ERR_MEM,
 	MSC_CTR_SMS_RP_ERR_OTHER,
+	MSC_CTR_SMS_DELIVER_UNKNOWN_ERROR,
 	MSC_CTR_CALL_MO_SETUP,
 	MSC_CTR_CALL_MO_CONNECT_ACK,
 	MSC_CTR_CALL_MT_SETUP,
@@ -216,6 +217,7 @@ static const struct rate_ctr_desc msc_ctr_description[] = {
 	[MSC_CTR_SMS_DELIVERED] = 		{"sms.delivered", "Global SMS Deliver attempts."},
 	[MSC_CTR_SMS_RP_ERR_MEM] = 		{"sms.rp_err_mem", "CAUSE_MT_MEM_EXCEEDED errors of MS responses on a sms deliver attempt."},
 	[MSC_CTR_SMS_RP_ERR_OTHER] = 		{"sms.rp_err_other", "Other error of MS responses on a sms delive attempt."},
+	[MSC_CTR_SMS_DELIVER_UNKNOWN_ERROR] =	{"sms.deliver_unknown_error", "Unknown error occured during sms delivery."},
 	/* FIXME: count also sms delivered */
 	[MSC_CTR_CALL_MO_SETUP] = 		{"call.mo_setup", "Received setup requests from a MS to init a MO call."},
 	[MSC_CTR_CALL_MO_CONNECT_ACK] = 		{"call.mo_connect_ack", "Received a connect ack from MS of a MO call. Call is now succesful connected up."},
