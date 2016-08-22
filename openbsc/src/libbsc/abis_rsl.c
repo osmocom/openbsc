@@ -110,19 +110,21 @@ static inline void init_dchan_hdr(struct abis_rsl_dchan_hdr *dh,
 }
 
 /* call rsl_lchan_lookup and set the log context */
-static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
+static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
+				      const char *log_name)
 {
 	int rc;
 	struct gsm_lchan *lchan = rsl_lchan_lookup(trx, chan_nr, &rc);
 
 	if (!lchan) {
-		LOGP(DRSL, LOGL_ERROR, "unknown chan_nr=0x%02x\n", chan_nr);
+		LOGP(DRSL, LOGL_ERROR, "%sunknown chan_nr=0x%02x\n",
+		     log_name, chan_nr);
 		return NULL;
 	}
 
 	if (rc < 0)
-		LOGP(DRSL, LOGL_ERROR, "%s mismatching chan_nr=0x%02x\n",
-		     gsm_ts_and_pchan_name(lchan->ts), chan_nr);
+		LOGP(DRSL, LOGL_ERROR, "%s %smismatching chan_nr=0x%02x\n",
+		     gsm_ts_and_pchan_name(lchan->ts), log_name, chan_nr);
 
 	log_set_context(BSC_CTX_LCHAN, lchan);
 	if (lchan->conn)
@@ -1452,7 +1454,8 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	char *ts_name;
 	struct e1inp_sign_link *sign_link = msg->dst;
 
-	msg->lchan = lchan_lookup(sign_link->trx, rslh->chan_nr);
+	msg->lchan = lchan_lookup(sign_link->trx, rslh->chan_nr,
+				  "Abis RSL rx DCHAN: ");
 	ts_name = gsm_lchan_name(msg->lchan);
 
 	switch (rslh->c.msg_type) {
@@ -1813,7 +1816,8 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 	int rc = 0;
 
-	msg->lchan = lchan_lookup(sign_link->trx, rslh->chan_nr);
+	msg->lchan = lchan_lookup(sign_link->trx, rslh->chan_nr,
+				  "Abis RSL rx CCHAN: ");
 
 	switch (rslh->c.msg_type) {
 	case RSL_MT_CHAN_RQD:
@@ -1914,7 +1918,8 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	char *ts_name;
 	uint8_t sapi = rllh->link_id & 7;
 
-	msg->lchan = lchan_lookup(sign_link->trx, rllh->chan_nr);
+	msg->lchan = lchan_lookup(sign_link->trx, rllh->chan_nr,
+				  "Abis RSL rx RLL: ");
 	ts_name = gsm_lchan_name(msg->lchan);
 	DEBUGP(DRLL, "%s SAPI=%u ", ts_name, sapi);
 	
@@ -2308,7 +2313,8 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 	char *ts_name;
 	int rc = 0;
 
-	msg->lchan = lchan_lookup(sign_link->trx, rllh->chan_nr);
+	msg->lchan = lchan_lookup(sign_link->trx, rllh->chan_nr,
+				  "Abis RSL rx IPACC: ");
 	ts_name = gsm_lchan_name(msg->lchan);
 	
 	switch (rllh->c.msg_type) {
