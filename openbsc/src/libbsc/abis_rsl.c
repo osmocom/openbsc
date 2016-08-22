@@ -803,7 +803,11 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 	msg->lchan = lchan;
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	DEBUGP(DRSL, "%s RF Channel Release CMD due error %d\n", gsm_lchan_name(lchan), error);
+	if (error)
+		DEBUGP(DRSL, "%s RF Channel Release due to error: %d\n",
+		       gsm_lchan_name(lchan), error);
+	else
+		DEBUGP(DRSL, "%s RF Channel Release\n", gsm_lchan_name(lchan));
 
 	if (error) {
 		/*
