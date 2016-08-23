@@ -86,6 +86,7 @@ struct gsm_network *gsm_network_init(void *ctx,
 	/* init statistics */
 	net->bsc_ctrs = rate_ctr_group_alloc(net, &bsc_ctrg_desc, 0);
 	net->msc_ctrs = rate_ctr_group_alloc(net, &msc_ctrg_desc, 0);
+	net->active_calls = osmo_counter_alloc("msc.active_calls");
 
 	net->mncc_recv = mncc_recv;
 	net->ext_min = GSM_MIN_EXTEN;

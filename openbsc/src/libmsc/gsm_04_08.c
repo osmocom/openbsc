@@ -1299,6 +1299,39 @@ int gsm48_send_rr_app_info(struct gsm_subscriber_connection *conn, uint8_t apdu_
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
+/* FIXME: this count_statistics is a state machine behaviour. we should convert
+ * the complete call control into a state machine. Afterwards we can move this
+ * code into state transitions.
+ */
+static void count_statistics(struct gsm_trans *trans, int new_state)
+{
+	int old_state = trans->cc.state;
+	struct rate_ctr_group *msc = trans->net->msc_ctrs;
+
+	if (old_state == new_state)
+		return;
+
+	/* state incoming */
+	switch (new_state) {
+	case GSM_CSTATE_ACTIVE:
+		osmo_counter_inc(trans->net->active_calls);
+		rate_ctr_inc(&msc->ctr[MSC_CTR_CALL_ACTIVE]);
+		break;
+	}
+
+	/* state outgoing */
+	switch (old_state) {
+	case GSM_CSTATE_ACTIVE:
+		osmo_counter_dec(trans->net->active_calls);
+		if (new_state == GSM_CSTATE_DISCONNECT_REQ ||
+				new_state == GSM_CSTATE_DISCONNECT_IND)
+			rate_ctr_inc(&msc->ctr[MSC_CTR_CALL_COMPLETE]);
+		else
+			rate_ctr_inc(&msc->ctr[MSC_CTR_CALL_INCOMPLETE]);
+		break;
+	}
+}
+
 /* Call Control */
 
 /* The entire call control code is written in accordance with Figure 7.10c
@@ -1315,6 +1348,7 @@ static void new_cc_state(struct gsm_trans *trans, int state)
 		gsm48_cc_state_name(trans->cc.state),
 		gsm48_cc_state_name(state));
 
+	count_statistics(trans, state);
 	trans->cc.state = state;
 }
 

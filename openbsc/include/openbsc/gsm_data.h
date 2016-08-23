@@ -215,6 +215,9 @@ enum {
 	MSC_CTR_CALL_MO_CONNECT_ACK,
 	MSC_CTR_CALL_MT_SETUP,
 	MSC_CTR_CALL_MT_CONNECT,
+	MSC_CTR_CALL_ACTIVE,
+	MSC_CTR_CALL_COMPLETE,
+	MSC_CTR_CALL_INCOMPLETE,
 };
 
 static const struct rate_ctr_desc msc_ctr_description[] = {
@@ -235,6 +238,9 @@ static const struct rate_ctr_desc msc_ctr_description[] = {
 	[MSC_CTR_CALL_MO_CONNECT_ACK] = 		{"call.mo_connect_ack", "Received a connect ack from MS of a MO call. Call is now succesful connected up."},
 	[MSC_CTR_CALL_MT_SETUP] = 		{"call.mt_setup", "Sent setup requests to the MS (MT)."},
 	[MSC_CTR_CALL_MT_CONNECT] = 		{"call.mt_connect", "Sent a connect to the MS (MT)."},
+	[MSC_CTR_CALL_ACTIVE] =			{"call.active", "Count total amount of calls that ever reached active state."},
+	[MSC_CTR_CALL_COMPLETE] = 		{"call.complete", "Count total amount of calls which got terminated by disconnect req or ind after reaching active state."},
+	[MSC_CTR_CALL_INCOMPLETE] = 		{"call.incomplete", "Count total amount of call which got terminated by any other reason after reaching active state."},
 };
 
 
@@ -298,7 +304,7 @@ struct gsm_network {
 
 	struct rate_ctr_group *bsc_ctrs;
 	struct rate_ctr_group *msc_ctrs;
-
+	struct osmo_counter *active_calls;
 
 	/* layer 4 */
 	struct mncc_sock_state *mncc_state;
