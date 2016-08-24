@@ -723,6 +723,38 @@ int rsl_deact_sacch(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
+static bool dyn_ts_should_switch_to_pdch(struct gsm_bts_trx_ts *ts)
+{
+	int ss;
+
+	if (ts->pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH)
+		return false;
+
+	if (ts->trx->bts->gprs.mode == BTS_GPRS_NONE)
+		return false;
+
+	/* Already in PDCH mode? */
+	if (ts->dyn.pchan_is == GSM_PCHAN_PDCH)
+		return false;
+
+	/* See if all lchans are released. */
+	for (ss = 0; ss < ts_subslots(ts); ss++) {
+		struct gsm_lchan *lc = &ts->lchan[ss];
+		if (lc->state != LCHAN_S_NONE) {
+			DEBUGP(DRSL, "%s lchan %u still in use\n",
+			       gsm_ts_and_pchan_name(ts),
+			       lc->nr);
+			/* An lchan is still used. */
+			return false;
+		}
+	}
+
+	/* All channels are released, go to PDCH mode. */
+	DEBUGP(DRSL, "%s back to PDCH\n",
+	       gsm_ts_and_pchan_name(ts));
+	return true;
+}
+
 static void error_timeout_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
@@ -824,7 +856,6 @@ static int rsl_rf_chan_release_err(struct gsm_lchan *lchan)
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 {
-	int ss;
 	struct gsm_bts_trx_ts *ts = lchan->ts;
 
 	DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", gsm_lchan_name(lchan));
@@ -879,23 +910,8 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 			return dyn_ts_switchover_continue(lchan);
 		
 		/* (b) */
-		if (ts->dyn.pchan_is != GSM_PCHAN_PDCH
-		    && ts->trx->bts->gprs.mode != BTS_GPRS_NONE) {
-			for (ss = 0; ss < ts_subslots(ts); ss++) {
-				struct gsm_lchan *lc = &ts->lchan[ss];
-				if (lc->state != LCHAN_S_NONE) {
-					DEBUGP(DRSL, "%s lchan %u still in use\n",
-					       gsm_ts_and_pchan_name(ts),
-					       lc->nr);
-					/* An lchan is still used. */
-					return 0;
-				}
-			}
-			/* All channels are released, go to PDCH mode. */
-			DEBUGP(DRSL, "%s back to PDCH\n",
-			       gsm_ts_and_pchan_name(ts));
+		if (dyn_ts_should_switch_to_pdch(ts))
 			return dyn_ts_switchover_start(lchan, GSM_PCHAN_PDCH);
-		}
 	}
 
 	/*
