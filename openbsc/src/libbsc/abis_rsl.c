@@ -2538,8 +2538,9 @@ static void dyn_ts_switchover_complete(struct gsm_lchan *lchan)
 	pchan_was = ts->dyn.pchan_is;
 	ts->dyn.pchan_is = ts->dyn.pchan_want = pchan_act;
 
-	LOGP(DRSL, LOGL_INFO, "%s switchover from %s complete.\n",
-	     gsm_ts_and_pchan_name(ts), gsm_pchan_name(pchan_was));
+	if (pchan_was != ts->dyn.pchan_is)
+		LOGP(DRSL, LOGL_INFO, "%s switchover from %s complete.\n",
+		     gsm_ts_and_pchan_name(ts), gsm_pchan_name(pchan_was));
 }
 
 /* Entry-point where L2 RSL from BTS enters */
