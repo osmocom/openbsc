@@ -2487,6 +2487,13 @@ static int dyn_ts_switchover_continue(struct gsm_bts_trx_ts *ts)
 	lchan->dyn.rqd_ref = NULL;
 	lchan->dyn.rqd_ta = 0;
 
+	/* During switchover, we have received a release ack, which means that
+	 * the act_timer has been stopped. Start the timer again so we mark
+	 * this channel broken if the activation ack comes too late. */
+	lchan->act_timer.cb = lchan_act_tmr_cb;
+	lchan->act_timer.data = lchan;
+	osmo_timer_schedule(&lchan->act_timer, 4, 0);
+
 	rc = rsl_chan_activate_lchan(lchan, act_type, ho_ref);
 	if (rc) {
 		LOGP(DRSL, LOGL_ERROR,
