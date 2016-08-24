@@ -108,7 +108,7 @@ int rsl_start_t3109(struct gsm_lchan *lchan);
 int rsl_direct_rf_release(struct gsm_lchan *lchan);
 
 void dyn_ts_init(struct gsm_bts_trx_ts *ts);
-int dyn_ts_switchover_start(struct gsm_lchan *lchan,
+int dyn_ts_switchover_start(struct gsm_bts_trx_ts *ts,
 			    enum gsm_phys_chan_config to_pchan);
 
 #endif /* RSL_MT_H */

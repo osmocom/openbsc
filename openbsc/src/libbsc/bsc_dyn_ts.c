@@ -52,7 +52,7 @@ void tchf_tchh_pdch_ts_init(struct gsm_bts_trx_ts *ts)
 		return;
 	}
 
-	dyn_ts_switchover_start(ts->lchan, GSM_PCHAN_PDCH);
+	dyn_ts_switchover_start(ts, GSM_PCHAN_PDCH);
 }
 
 void dyn_ts_init(struct gsm_bts_trx_ts *ts)
