@@ -746,9 +746,11 @@ static bool dyn_ts_should_switch_to_pdch(struct gsm_bts_trx_ts *ts)
 	for (ss = 0; ss < ts_subslots(ts); ss++) {
 		struct gsm_lchan *lc = &ts->lchan[ss];
 		if (lc->state != LCHAN_S_NONE) {
-			DEBUGP(DRSL, "%s lchan %u still in use\n",
-			       gsm_ts_and_pchan_name(ts),
-			       lc->nr);
+			DEBUGP(DRSL, "%s lchan %u still in use"
+			       " (type=%s,state=%s)\n",
+			       gsm_ts_and_pchan_name(ts), lc->nr,
+			       gsm_lchant_name(lc->type),
+			       gsm_lchans_name(lc->state));
 			/* An lchan is still used. */
 			return false;
 		}
