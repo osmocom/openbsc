@@ -790,7 +790,7 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 	osmo_timer_del(&lchan->T3109);
 
 	if (lchan->state == LCHAN_S_REL_ERR) {
-		LOGP(DRSL, LOGL_NOTICE, "%s is in error state not sending release.\n",
+		LOGP(DRSL, LOGL_NOTICE, "%s is in error state, not sending release.\n",
 		     gsm_lchan_name(lchan));
 		return -1;
 	}
