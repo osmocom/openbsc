@@ -772,6 +772,9 @@ static void error_timeout_cb(void *data)
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && lchan->ts->trx->bts->gprs.mode != BTS_GPRS_NONE)
 		rsl_ipacc_pdch_activate(lchan->ts, 1);
+
+	if (dyn_ts_should_switch_to_pdch(lchan->ts))
+		dyn_ts_switchover_start(lchan, GSM_PCHAN_PDCH);
 }
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan);
