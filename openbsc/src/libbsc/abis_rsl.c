@@ -887,6 +887,8 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 			do_free ? "Releasing it" : "Keeping it broken");
 		if (do_free)
 			do_lchan_free(lchan);
+		if (dyn_ts_should_switch_to_pdch(lchan->ts))
+			dyn_ts_switchover_start(lchan->ts, GSM_PCHAN_PDCH);
 		return 0;
 	}
 
