@@ -209,6 +209,7 @@ static void signal_handler(int signal)
 		exit(0);
 		break;
 	case SIGABRT:
+		osmo_generate_backtrace();
 		/* in case of abort, we want to obtain a talloc report
 		 * and then return to the caller, who will abort the process */
 	case SIGUSR1:
