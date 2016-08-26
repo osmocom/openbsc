@@ -40,6 +40,7 @@
 #include <openbsc/crc24.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_llc_xid.h>
+#include <openbsc/gprs_sndcp_comp.h>
 #include <openbsc/gprs_sndcp.h>
 
 static struct gprs_llc_llme *llme_alloc(uint32_t tlli);
@@ -140,6 +141,16 @@ static int gprs_llc_process_xid_conf(uint8_t *bytes, int bytes_len,
 
 	struct llist_head *xid_fields;
 	struct gprs_llc_xid_field *xid_field;
+	struct gprs_llc_xid_field *xid_field_request;
+	struct gprs_llc_xid_field *xid_field_request_l3 = NULL;
+
+	/* Pick layer3 XID from the XID request we have sent last */
+	if (lle->llme->xid) {
+		llist_for_each_entry(xid_field_request, lle->llme->xid, list) {
+			if (xid_field_request->type == GPRS_LLC_XID_T_L3_PAR)
+				xid_field_request_l3 = xid_field_request;
+		}
+	}
 
 	/* Parse and analyze XID-Response */
 	xid_fields = gprs_llc_parse_xid(NULL, bytes, bytes_len);
@@ -150,12 +161,10 @@ static int gprs_llc_process_xid_conf(uint8_t *bytes, int bytes_len,
 		llist_for_each_entry(xid_field, xid_fields, list) {
 
 			/* Forward SNDCP-XID fields to Layer 3 (SNDCP) */
-			if (xid_field->type == GPRS_LLC_XID_T_L3_PAR) {
-				LOGP(DLLC, LOGL_NOTICE,
-				     "Ignoring SNDCP-XID-Field: XID: type=%i, data_len=%i, data=%s\n",
-				     xid_field->type, xid_field->data_len,
-				     osmo_hexdump_nospc(xid_field->data,
-				     xid_field->data_len));
+			if (xid_field->type == GPRS_LLC_XID_T_L3_PAR &&
+			    xid_field_request_l3) {
+				sndcp_sn_xid_conf(xid_field,
+						  xid_field_request_l3, lle);
 			}
 
 			/* Process LLC-XID fields: */
@@ -204,10 +213,6 @@ static int gprs_llc_process_xid_ind(uint8_t *bytes_request,
 	struct gprs_llc_xid_field *xid_field;
 	struct gprs_llc_xid_field *xid_field_response;
 
-	/* Flush eventually pending XID fields */
-	talloc_free(lle->llme->xid);
-	lle->llme->xid = NULL;
-
 	/* Parse and analyze XID-Request */
 	xid_fields =
 	    gprs_llc_parse_xid(lle->llme, bytes_request, bytes_request_len);
@@ -236,6 +241,23 @@ static int gprs_llc_process_xid_ind(uint8_t *bytes_request,
 				    (lle->llme, xid_field);
 				llist_add(&xid_field_response->list,
 					  xid_fields_response);
+			}
+		}
+
+		/* Forward SNDCP-XID fields to Layer 3 (SNDCP) */
+		llist_for_each_entry(xid_field, xid_fields, list) {
+			if (xid_field->type == GPRS_LLC_XID_T_L3_PAR) {
+
+				xid_field_response =
+				    talloc_zero(lle->llme,
+						struct gprs_llc_xid_field);
+				rc = sndcp_sn_xid_ind(xid_field,
+						      xid_field_response, lle);
+				if (rc == 0)
+					llist_add(&xid_field_response->list,
+						  xid_fields_response);
+				else
+					talloc_free(xid_field_response);
 			}
 		}
 
@@ -269,9 +291,13 @@ static void rx_llc_xid(struct gprs_llc_lle *lle,
 		    gprs_llc_process_xid_ind(gph->data, gph->data_len,
 					     response, sizeof(response),
 					     lle);
-		xid = msgb_put(resp, response_len);
-		memcpy(xid, response, response_len);
-
+		if (response_len < 0) {
+			LOGP(DLLC, LOGL_ERROR,
+			     "invalid XID indication received!\n");
+		} else {
+			xid = msgb_put(resp, response_len);
+			memcpy(xid, response, response_len);
+		}
 		gprs_llc_tx_xid(lle, resp, 0);
 	} else {
 		LOGP(DLLC, LOGL_NOTICE,
@@ -525,11 +551,16 @@ static struct gprs_llc_llme *llme_alloc(uint32_t tlli)
 
 	llist_add(&llme->list, &gprs_llc_llmes);
 
+	llme->comp.proto = gprs_sndcp_comp_alloc(llme);
+	llme->comp.data = gprs_sndcp_comp_alloc(llme);
+
 	return llme;
 }
 
 static void llme_free(struct gprs_llc_llme *llme)
 {
+	gprs_sndcp_comp_free(llme->comp.proto);
+	gprs_sndcp_comp_free(llme->comp.data);
 	talloc_free(llme->xid);
 	llist_del(&llme->list);
 	talloc_free(llme);

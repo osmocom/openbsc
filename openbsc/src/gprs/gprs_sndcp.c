@@ -35,6 +35,131 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sndcp.h>
+#include <openbsc/gprs_llc_xid.h>
+#include <openbsc/gprs_sndcp_xid.h>
+#include <openbsc/gprs_sndcp_pcomp.h>
+#include <openbsc/gprs_sndcp_comp.h>
+
+#define DEBUG_IP_PACKETS 0	/* 0=Disabled, 1=Enabled */
+
+#if DEBUG_IP_PACKETS == 1
+/* Calculate TCP/IP checksum */
+static uint16_t calc_ip_csum(uint8_t *data, int len)
+{
+	int i;
+	uint32_t accumulator = 0;
+	uint16_t *pointer = (uint16_t *) data;
+
+	for (i = len; i > 1; i -= 2) {
+		accumulator += *pointer;
+		pointer++;
+	}
+
+	if (len % 2)
+		accumulator += *pointer;
+
+	accumulator = (accumulator & 0xffff) + ((accumulator >> 16) & 0xffff);
+	accumulator += (accumulator >> 16) & 0xffff;
+	return (~accumulator);
+}
+
+/* Calculate TCP/IP checksum */
+static uint16_t calc_tcpip_csum(const void *ctx, uint8_t *packet, int len)
+{
+	uint8_t *buf;
+	uint16_t csum;
+
+	buf = talloc_zero_size(ctx, len);
+	memset(buf, 0, len);
+	memcpy(buf, packet + 12, 8);
+	buf[9] = packet[9];
+	buf[11] = (len - 20) & 0xFF;
+	buf[10] = (len - 20) >> 8 & 0xFF;
+	memcpy(buf + 12, packet + 20, len - 20);
+	csum = calc_ip_csum(buf, len - 20 + 12);
+	talloc_free(buf);
+	return csum;
+}
+
+/* Show some ip packet details */
+static void debug_ip_packet(uint8_t *data, int len, int dir, char *info)
+{
+	uint8_t tcp_flags;
+	char flags_debugmsg[256];
+	int len_short;
+	static unsigned int packet_count = 0;
+	static unsigned int tcp_csum_err_count = 0;
+	static unsigned int ip_csum_err_count = 0;
+
+	packet_count++;
+
+	if (len > 80)
+		len_short = 80;
+	else
+		len_short = len;
+
+	if (dir)
+		DEBUGP(DSNDCP, "%s: MS => SGSN: %s\n", info,
+		       osmo_hexdump_nospc(data, len_short));
+	else
+		DEBUGP(DSNDCP, "%s: MS <= SGSN: %s\n", info,
+		       osmo_hexdump_nospc(data, len_short));
+
+	DEBUGP(DSNDCP, "%s: Length.: %d\n", info, len);
+	DEBUGP(DSNDCP, "%s: NO.: %d\n", info, packet_count);
+
+	if (len < 20) {
+		DEBUGP(DSNDCP, "%s: Error: Short IP packet!\n", info);
+		return;
+	}
+
+	if (calc_ip_csum(data, 20) != 0) {
+		DEBUGP(DSNDCP, "%s: Bad IP-Header checksum!\n", info);
+		ip_csum_err_count++;
+	} else
+		DEBUGP(DSNDCP, "%s: IP-Header checksum ok.\n", info);
+
+	if (data[9] == 0x06) {
+		if (len < 40) {
+			DEBUGP(DSNDCP, "%s: Error: Short TCP packet!\n", info);
+			return;
+		}
+
+		DEBUGP(DSNDCP, "%s: Protocol type: TCP\n", info);
+		tcp_flags = data[33];
+
+		if (calc_tcpip_csum(NULL, data, len) != 0) {
+			DEBUGP(DSNDCP, "%s: Bad TCP checksum!\n", info);
+			tcp_csum_err_count++;
+		} else
+			DEBUGP(DSNDCP, "%s: TCP checksum ok.\n", info);
+
+		memset(flags_debugmsg, 0, sizeof(flags_debugmsg));
+		if (tcp_flags & 1)
+			strcat(flags_debugmsg, "FIN ");
+		if (tcp_flags & 2)
+			strcat(flags_debugmsg, "SYN ");
+		if (tcp_flags & 4)
+			strcat(flags_debugmsg, "RST ");
+		if (tcp_flags & 8)
+			strcat(flags_debugmsg, "PSH ");
+		if (tcp_flags & 16)
+			strcat(flags_debugmsg, "ACK ");
+		if (tcp_flags & 32)
+			strcat(flags_debugmsg, "URG ");
+		DEBUGP(DSNDCP, "%s: FLAGS: %s\n", info, flags_debugmsg);
+	} else if (data[9] == 0x11) {
+		DEBUGP(DSNDCP, "%s: Protocol type: UDP\n", info);
+	} else {
+		DEBUGP(DSNDCP, "%s: Protocol type: (%02x)\n", info, data[9]);
+	}
+
+	DEBUGP(DSNDCP, "%s: IP-Header checksum errors: %d\n", info,
+	       ip_csum_err_count);
+	DEBUGP(DSNDCP, "%s: TCP-Checksum errors: %d\n", info,
+	       tcp_csum_err_count);
+}
+#endif
 
 /* Chapter 7.2: SN-PDU Formats */
 struct sndcp_common_hdr {
@@ -76,6 +201,14 @@ struct defrag_queue_entry {
 };
 
 LLIST_HEAD(gprs_sndcp_entities);
+
+/* Check if any compression parameters are set in the sgsn configuration */
+static inline int any_pcomp_or_dcomp_active(struct sgsn_instance *sgsn) {
+	if (sgsn->cfg.pcomp_rfc1144.active || sgsn->cfg.pcomp_rfc1144.passive)
+		return true;
+	else
+		return false;
+}
 
 /* Enqueue a fragment into the defragment queue */
 static int defrag_enqueue(struct gprs_sndcp_entity *sne, uint8_t seg_nr,
@@ -143,6 +276,9 @@ static int defrag_segments(struct gprs_sndcp_entity *sne)
 	struct msgb *msg;
 	unsigned int seg_nr;
 	uint8_t *npdu;
+	int npdu_len;
+	int rc;
+	uint8_t *expnd = NULL;
 
 	LOGP(DSNDCP, LOGL_DEBUG, "TLLI=0x%08x NSAPI=%u: Defragment output PDU %u "
 		"num_seg=%u tot_len=%u\n", sne->lle->llme->tlli, sne->nsapi,
@@ -173,16 +309,58 @@ static int defrag_segments(struct gprs_sndcp_entity *sne)
 		talloc_free(dqe);
 	}
 
+	npdu_len = sne->defrag.tot_len;
+
 	/* FIXME: cancel timer */
 
 	/* actually send the N-PDU to the SGSN core code, which then
 	 * hands it off to the correct GTP tunnel + GGSN via gtp_data_req() */
-	return sgsn_rx_sndcp_ud_ind(&sne->ra_id, sne->lle->llme->tlli,
-				    sne->nsapi, msg, sne->defrag.tot_len, npdu);
+
+	/* Decompress packet */
+#if DEBUG_IP_PACKETS == 1
+	DEBUGP(DSNDCP, "                                                   \n");
+	DEBUGP(DSNDCP, ":::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+	DEBUGP(DSNDCP, "===================================================\n");
+#endif
+	if (any_pcomp_or_dcomp_active(sgsn)) {
+
+		expnd = talloc_zero_size(msg, npdu_len + MAX_HDRDECOMPR_INCR);
+		memcpy(expnd, npdu, npdu_len);
+
+		/* Apply header decompression */
+		rc = gprs_sndcp_pcomp_expand(expnd, npdu_len, sne->defrag.pcomp,
+					     sne->defrag.proto);
+		if (rc < 0) {
+			LOGP(DSNDCP, LOGL_ERROR,
+			     "TCP/IP Header decompression failed!\n");
+			talloc_free(expnd);
+			return -EIO;
+		}
+
+		/* Modify npu length, expnd is handed directly handed
+		 * over to gsn_rx_sndcp_ud_ind(), see below */
+		npdu_len = rc;
+	} else
+		expnd = npdu;
+#if DEBUG_IP_PACKETS == 1
+	debug_ip_packet(expnd, npdu_len, 1, "defrag_segments()");
+	DEBUGP(DSNDCP, "===================================================\n");
+	DEBUGP(DSNDCP, ":::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+	DEBUGP(DSNDCP, "                                                   \n");
+#endif
+
+	/* Hand off packet to gtp */
+	rc = sgsn_rx_sndcp_ud_ind(&sne->ra_id, sne->lle->llme->tlli,
+				  sne->nsapi, msg, npdu_len, expnd);
+
+	if (any_pcomp_or_dcomp_active(sgsn))
+		talloc_free(expnd);
+
+	return rc;
 }
 
-static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t *hdr,
-			unsigned int len)
+static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg,
+			uint8_t *hdr, unsigned int len)
 {
 	struct sndcp_common_hdr *sch;
 	struct sndcp_udata_hdr *suh;
@@ -343,7 +521,8 @@ struct sndcp_frag_state {
 };
 
 /* returns '1' if there are more fragments to send, '0' if none */
-static int sndcp_send_ud_frag(struct sndcp_frag_state *fs)
+static int sndcp_send_ud_frag(struct sndcp_frag_state *fs,
+			      uint8_t pcomp, uint8_t dcomp)
 {
 	struct gprs_sndcp_entity *sne = fs->sne;
 	struct gprs_llc_lle *lle = sne->lle;
@@ -380,8 +559,8 @@ static int sndcp_send_ud_frag(struct sndcp_frag_state *fs)
 	if (sch->first) {
 		scomph = (struct sndcp_comp_hdr *)
 				msgb_put(fmsg, sizeof(*scomph));
-		scomph->pcomp = 0;
-		scomph->dcomp = 0;
+		scomph->pcomp = pcomp;
+		scomph->dcomp = dcomp;
 	}
 
 	/* append the user-data header */
@@ -446,8 +625,40 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 	struct sndcp_comp_hdr *scomph;
 	struct sndcp_udata_hdr *suh;
 	struct sndcp_frag_state fs;
+	uint8_t pcomp = 0;
+	uint8_t dcomp = 0;
+	int rc;
 
 	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
+
+	/* Compress packet */
+#if DEBUG_IP_PACKETS == 1
+	DEBUGP(DSNDCP, "                                                   \n");
+	DEBUGP(DSNDCP, ":::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+	DEBUGP(DSNDCP, "===================================================\n");
+	debug_ip_packet(msg->data, msg->len, 0, "sndcp_initdata_req()");
+#endif
+	if (any_pcomp_or_dcomp_active(sgsn)) {
+
+		/* Apply header compression */
+		rc = gprs_sndcp_pcomp_compress(msg->data, msg->len, &pcomp,
+					       lle->llme->comp.proto, nsapi);
+		if (rc < 0) {
+			LOGP(DSNDCP, LOGL_ERROR,
+			     "TCP/IP Header compression failed!\n");
+			return -EIO;
+		}
+
+		/* Fixup pointer locations and sizes in message buffer to match
+		 * the new, compressed buffer size */
+		msgb_get(msg, msg->len);
+		msgb_put(msg, rc);
+	}
+#if DEBUG_IP_PACKETS == 1
+	DEBUGP(DSNDCP, "===================================================\n");
+	DEBUGP(DSNDCP, ":::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+	DEBUGP(DSNDCP, "                                                   \n");
+#endif
 
 	sne = gprs_sndcp_entity_by_lle(lle, nsapi);
 	if (!sne) {
@@ -469,7 +680,7 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 		/* call function to generate and send fragments until all
 		 * of the N-PDU has been sent */
 		while (1) {
-			int rc = sndcp_send_ud_frag(&fs);
+			int rc = sndcp_send_ud_frag(&fs,pcomp,dcomp);
 			if (rc == 0)
 				return 0;
 			if (rc < 0)
@@ -489,8 +700,8 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 	sne->tx_npdu_nr = (sne->tx_npdu_nr + 1) % 0xfff;
 
 	scomph = (struct sndcp_comp_hdr *) msgb_push(msg, sizeof(*scomph));
-	scomph->pcomp = 0;
-	scomph->dcomp = 0;
+	scomph->pcomp = pcomp;
+	scomph->dcomp = dcomp;
 
 	/* prepend common SNDCP header */
 	sch = (struct sndcp_common_hdr *) msgb_push(msg, sizeof(*sch));
@@ -512,6 +723,8 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
 	uint8_t *npdu;
 	uint16_t npdu_num __attribute__((unused));
 	int npdu_len;
+	int rc;
+	uint8_t *expnd = NULL;
 
 	sch = (struct sndcp_common_hdr *) hdr;
 	if (sch->first) {
@@ -540,26 +753,70 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
 	/* FIXME: move this RA_ID up to the LLME or even higher */
 	bssgp_parse_cell_id(&sne->ra_id, msgb_bcid(msg));
 
+	if(scomph) {
+		sne->defrag.pcomp = scomph->pcomp;
+		sne->defrag.dcomp = scomph->dcomp;
+		sne->defrag.proto = lle->llme->comp.proto;
+		sne->defrag.data = lle->llme->comp.data;
+	}
+
 	/* any non-first segment is by definition something to defragment
 	 * as is any segment that tells us there are more segments */
 	if (!sch->first || sch->more)
 		return defrag_input(sne, msg, hdr, len);
 
-	if (scomph && (scomph->pcomp || scomph->dcomp)) {
-		LOGP(DSNDCP, LOGL_ERROR, "We don't support compression yet\n");
-		return -EIO;
-	}
-
 	npdu_num = (suh->npdu_high << 8) | suh->npdu_low;
 	npdu = (uint8_t *)suh + sizeof(*suh);
-	npdu_len = (msg->data + msg->len) - npdu;
+	npdu_len = (msg->data + msg->len) - npdu - 3;	/* -3 'removes' the FCS */
+
 	if (npdu_len <= 0) {
 		LOGP(DSNDCP, LOGL_ERROR, "Short SNDCP N-PDU: %d\n", npdu_len);
 		return -EIO;
 	}
 	/* actually send the N-PDU to the SGSN core code, which then
 	 * hands it off to the correct GTP tunnel + GGSN via gtp_data_req() */
-	return sgsn_rx_sndcp_ud_ind(&sne->ra_id, lle->llme->tlli, sne->nsapi, msg, npdu_len, npdu);
+
+	/* Decompress packet */
+#if DEBUG_IP_PACKETS == 1
+	DEBUGP(DSNDCP, "                                                   \n");
+	DEBUGP(DSNDCP, ":::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+	DEBUGP(DSNDCP, "===================================================\n");
+#endif
+	if (any_pcomp_or_dcomp_active(sgsn)) {
+
+		expnd = talloc_zero_size(msg, npdu_len + MAX_HDRDECOMPR_INCR);
+		memcpy(expnd, npdu, npdu_len);
+
+		/* Apply header decompression */
+		rc = gprs_sndcp_pcomp_expand(expnd, npdu_len, sne->defrag.pcomp,
+					     sne->defrag.proto);
+		if (rc < 0) {
+			LOGP(DSNDCP, LOGL_ERROR,
+			     "TCP/IP Header decompression failed!\n");
+			talloc_free(expnd);
+			return -EIO;
+		}
+
+		/* Modify npu length, expnd is handed directly handed
+		 * over to gsn_rx_sndcp_ud_ind(), see below */
+		npdu_len = rc;
+	} else
+		expnd = npdu;
+#if DEBUG_IP_PACKETS == 1
+	debug_ip_packet(expnd, npdu_len, 1, "sndcp_llunitdata_ind()");
+	DEBUGP(DSNDCP, "===================================================\n");
+	DEBUGP(DSNDCP, ":::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+	DEBUGP(DSNDCP, "                                                   \n");
+#endif
+
+	/* Hand off packet to gtp */
+	rc = sgsn_rx_sndcp_ud_ind(&sne->ra_id, lle->llme->tlli,
+				  sne->nsapi, msg, npdu_len, expnd);
+
+	if (any_pcomp_or_dcomp_active(sgsn))
+		talloc_free(expnd);
+
+	return rc;
 }
 
 #if 0
@@ -619,3 +876,322 @@ static int sndcp_rx_llc_prim()
 	case LL_STATUS_IND:
 }
 #endif
+
+/* Generate SNDCP-XID message */
+static int gprs_llc_gen_sndcp_xid(uint8_t *bytes, int bytes_len, uint8_t nsapi)
+{
+	int entity = 0;
+	LLIST_HEAD(comp_fields);
+	struct gprs_sndcp_pcomp_rfc1144_params rfc1144_params;
+	struct gprs_sndcp_comp_field rfc1144_comp_field;
+
+	memset(&rfc1144_comp_field, 0, sizeof(struct gprs_sndcp_comp_field));
+
+	/* Setup rfc1144 */
+	if (sgsn->cfg.pcomp_rfc1144.active) {
+		rfc1144_params.nsapi[0] = nsapi;
+		rfc1144_params.nsapi_len = 1;
+		rfc1144_params.s01 = sgsn->cfg.pcomp_rfc1144.s01;
+		rfc1144_comp_field.p = 1;
+		rfc1144_comp_field.entity = entity;
+		rfc1144_comp_field.algo = RFC_1144;
+		rfc1144_comp_field.comp[RFC1144_PCOMP1] = 1;
+		rfc1144_comp_field.comp[RFC1144_PCOMP2] = 2;
+		rfc1144_comp_field.comp_len = RFC1144_PCOMP_NUM;
+		rfc1144_comp_field.rfc1144_params = &rfc1144_params;
+		entity++;
+		llist_add(&rfc1144_comp_field.list, &comp_fields);
+	}
+
+	/* Compile bytestream */
+	return gprs_sndcp_compile_xid(bytes, bytes_len, &comp_fields);
+}
+
+/* Set of SNDCP-XID bnegotiation (See also: TS 144 065,
+ * Section 6.8 XID parameter negotiation) */
+int sndcp_sn_xid_req(struct gprs_llc_lle *lle, uint8_t nsapi)
+{
+	/* Note: The specification requires the SNDCP-User to set of an
+	 * SNDCP xid request. See also 3GPP TS 44.065, 6.8 XID parameter
+	 * negotiation, Figure 11: SNDCP XID negotiation procedure. In
+	 * our case the SNDCP-User is sgsn_libgtp.c, which calls
+	 * sndcp_sn_xid_req directly. */
+
+	uint8_t l3params[1024];
+	int xid_len;
+	struct gprs_llc_xid_field xid_field_request;
+
+	/* Wipe off all compression entities and their states to
+	 * get rid of possible leftovers from a previous session */
+	gprs_sndcp_comp_free(lle->llme->comp.proto);
+	gprs_sndcp_comp_free(lle->llme->comp.data);
+	lle->llme->comp.proto = gprs_sndcp_comp_alloc(lle->llme);
+	lle->llme->comp.data = gprs_sndcp_comp_alloc(lle->llme);
+	talloc_free(lle->llme->xid);
+	lle->llme->xid = NULL;
+
+	/* Generate compression parameter bytestream */
+	xid_len = gprs_llc_gen_sndcp_xid(l3params, sizeof(l3params), nsapi);
+
+	/* Send XID with the SNDCP-XID bytetsream included */
+	if (xid_len > 0) {
+		xid_field_request.type = GPRS_LLC_XID_T_L3_PAR;
+		xid_field_request.data = l3params;
+		xid_field_request.data_len = xid_len;
+		return gprs_ll_xid_req(lle, &xid_field_request);
+	}
+
+	/* When bytestream can not be generated, proceed without SNDCP-XID */
+	return gprs_ll_xid_req(lle, NULL);
+
+}
+
+/* Handle header compression entites */
+static int handle_pcomp_entities(struct gprs_sndcp_comp_field *comp_field,
+				 struct gprs_llc_lle *lle)
+{
+	/* Note: This functions also transforms the comp_field into its
+	 * echo form (strips comp values, resets propose bit etc...)
+	 * the processed comp_fields can then be sent back as XID-
+	 * Response without further modification. */
+
+	/* Delete propose bit */
+	comp_field->p = 0;
+
+	/* Process proposed parameters */
+	switch (comp_field->algo) {
+	case RFC_1144:
+		if (sgsn->cfg.pcomp_rfc1144.passive
+		    && comp_field->rfc1144_params->nsapi_len > 0) {
+			DEBUGP(DSNDCP,
+			       "Accepting RFC1144 header compression...\n");
+			gprs_sndcp_comp_add(lle->llme, lle->llme->comp.proto,
+					    comp_field);
+		} else {
+			DEBUGP(DSNDCP,
+			       "Rejecting RFC1144 header compression...\n");
+			gprs_sndcp_comp_delete(lle->llme->comp.proto,
+					       comp_field->entity);
+			comp_field->rfc1144_params->nsapi_len = 0;
+		}
+		break;
+	case RFC_2507:
+		/* RFC 2507 is not yet supported,
+		 * so we set applicable nsapis to zero */
+		DEBUGP(DSNDCP, "Rejecting RFC2507 header compression...\n");
+		comp_field->rfc2507_params->nsapi_len = 0;
+		gprs_sndcp_comp_delete(lle->llme->comp.proto,
+				       comp_field->entity);
+		break;
+	case ROHC:
+		/* ROHC is not yet supported,
+		 * so we set applicable nsapis to zero */
+		DEBUGP(DSNDCP, "Rejecting ROHC header compression...\n");
+		comp_field->rohc_params->nsapi_len = 0;
+		gprs_sndcp_comp_delete(lle->llme->comp.proto,
+				       comp_field->entity);
+		break;
+	}
+
+	return 0;
+}
+
+/* Hanle data compression entites */
+static int handle_dcomp_entities(struct gprs_sndcp_comp_field *comp_field,
+				 struct gprs_llc_lle *lle)
+{
+	/* See note in handle_pcomp_entities() */
+
+	/* Delete propose bit */
+	comp_field->p = 0;
+
+	/* Process proposed parameters */
+	switch (comp_field->algo) {
+	case V42BIS:
+		/* V42BIS is not yet supported,
+		 * so we set applicable nsapis to zero */
+		LOGP(DSNDCP, LOGL_DEBUG,
+		     "Rejecting V.42bis data compression...\n");
+		comp_field->v42bis_params->nsapi_len = 0;
+		gprs_sndcp_comp_delete(lle->llme->comp.data,
+				       comp_field->entity);
+		break;
+	case V44:
+		/* V44 is not yet supported,
+		 * so we set applicable nsapis to zero */
+		DEBUGP(DSNDCP, "Rejecting V.44 data compression...\n");
+		comp_field->v44_params->nsapi_len = 0;
+		gprs_sndcp_comp_delete(lle->llme->comp.data,
+				       comp_field->entity);
+		break;
+	}
+
+	return 0;
+
+}
+
+/* Process SNDCP-XID indication
+ * (See also: TS 144 065, Section 6.8 XID parameter negotiation) */
+int sndcp_sn_xid_ind(struct gprs_llc_xid_field *xid_field_indication,
+		     struct gprs_llc_xid_field *xid_field_response,
+		     struct gprs_llc_lle *lle)
+{
+	/* Note: This function computes the SNDCP-XID response that is sent
+	 * back to the ms when a ms originated XID is received. The
+	 * Input XID fields are directly processed and the result is directly
+	 * handed back. */
+
+	int rc;
+	int compclass;
+
+	struct llist_head *comp_fields;
+	struct gprs_sndcp_comp_field *comp_field;
+
+	OSMO_ASSERT(xid_field_indication);
+	OSMO_ASSERT(xid_field_response);
+	OSMO_ASSERT(lle);
+
+	/* Parse SNDCP-CID XID-Field */
+	comp_fields = gprs_sndcp_parse_xid(lle->llme,
+					   xid_field_indication->data,
+					   xid_field_indication->data_len,
+					   NULL);
+	if (!comp_fields)
+		return -EINVAL;
+
+	/* Don't bother with empty indications */
+	if (llist_empty(comp_fields)) {
+		xid_field_response->data = NULL;
+		xid_field_response->data_len = 0;
+		DEBUGP(DSNDCP,
+		       "SNDCP-XID indication did not contain any parameters!\n");
+		return 0;
+	}
+
+	/* Handle compression entites */
+	DEBUGP(DSNDCP, "SNDCP-XID-IND (ms):\n");
+	gprs_sndcp_dump_comp_fields(comp_fields, LOGL_DEBUG);
+
+	llist_for_each_entry(comp_field, comp_fields, list) {
+		compclass = gprs_sndcp_get_compression_class(comp_field);
+		if (compclass == SNDCP_XID_PROTOCOL_COMPRESSION)
+			rc = handle_pcomp_entities(comp_field, lle);
+		else if (compclass == SNDCP_XID_DATA_COMPRESSION)
+			rc = handle_dcomp_entities(comp_field, lle);
+		else {
+			gprs_sndcp_comp_delete(lle->llme->comp.proto,
+					       comp_field->entity);
+			gprs_sndcp_comp_delete(lle->llme->comp.data,
+					       comp_field->entity);
+			rc = 0;
+		}
+
+		if (rc < 0) {
+			talloc_free(comp_fields);
+			return -EINVAL;
+		}
+	}
+
+	DEBUGP(DSNDCP, "SNDCP-XID-RES (sgsn):\n");
+	gprs_sndcp_dump_comp_fields(comp_fields, LOGL_DEBUG);
+
+	/* Reserve some memory to store the modified SNDCP-XID bytes */
+	xid_field_response->data =
+	    talloc_zero_size(lle->llme, xid_field_indication->data_len);
+
+	/* Set Type flag for response */
+	xid_field_response->type = GPRS_LLC_XID_T_L3_PAR;
+
+	/* Compile modified SNDCP-XID bytes */
+	rc = gprs_sndcp_compile_xid(xid_field_response->data,
+				    xid_field_indication->data_len,
+				    comp_fields);
+
+	if (rc > 0)
+		xid_field_response->data_len = rc;
+	else {
+		talloc_free(xid_field_response->data);
+		xid_field_response->data = NULL;
+		xid_field_response->data_len = 0;
+		return -EINVAL;
+	}
+
+	talloc_free(comp_fields);
+
+	return 0;
+}
+
+/* Process SNDCP-XID indication
+ * (See also: TS 144 065, Section 6.8 XID parameter negotiation) */
+int sndcp_sn_xid_conf(struct gprs_llc_xid_field *xid_field_conf,
+		      struct gprs_llc_xid_field *xid_field_request,
+		      struct gprs_llc_lle *lle)
+{
+	/* Note: This function handles an incomming SNDCP-XID confirmiation.
+	 * Since the confirmation fields may lack important parameters we
+	 * will reconstruct these missing fields using the original request
+	 * we have sent. After that we will create (or delete) the
+	 * compression entites */
+
+	struct llist_head *comp_fields_req;
+	struct llist_head *comp_fields_conf;
+	struct gprs_sndcp_comp_field *comp_field;
+	int rc;
+	int compclass;
+
+	/* We need both, the confirmation that is sent back by the ms,
+	 * and the original request we have sent. If one of this is missing
+	 * we can not process the confirmation, the caller must check if
+	 * request and confirmation fields are available. */
+	OSMO_ASSERT(xid_field_conf);
+	OSMO_ASSERT(xid_field_request);
+
+	/* Parse SNDCP-CID XID-Field */
+	comp_fields_req = gprs_sndcp_parse_xid(lle->llme,
+					       xid_field_request->data,
+					       xid_field_request->data_len,
+					       NULL);
+	if (!comp_fields_req)
+		return -EINVAL;
+
+	DEBUGP(DSNDCP, "SNDCP-XID-REQ (sgsn):\n");
+	gprs_sndcp_dump_comp_fields(comp_fields_req, LOGL_DEBUG);
+
+	/* Parse SNDCP-CID XID-Field */
+	comp_fields_conf = gprs_sndcp_parse_xid(lle->llme,
+						xid_field_conf->data,
+						xid_field_conf->data_len,
+						comp_fields_req);
+	if (!comp_fields_conf)
+		return -EINVAL;
+
+	DEBUGP(DSNDCP, "SNDCP-XID-CONF (ms):\n");
+	gprs_sndcp_dump_comp_fields(comp_fields_conf, LOGL_DEBUG);
+
+	/* Handle compression entites */
+	llist_for_each_entry(comp_field, comp_fields_conf, list) {
+		compclass = gprs_sndcp_get_compression_class(comp_field);
+		if (compclass == SNDCP_XID_PROTOCOL_COMPRESSION)
+			rc = handle_pcomp_entities(comp_field, lle);
+		else if (compclass == SNDCP_XID_DATA_COMPRESSION)
+			rc = handle_dcomp_entities(comp_field, lle);
+		else {
+			gprs_sndcp_comp_delete(lle->llme->comp.proto,
+					       comp_field->entity);
+			gprs_sndcp_comp_delete(lle->llme->comp.data,
+					       comp_field->entity);
+			rc = 0;
+		}
+
+		if (rc < 0) {
+			talloc_free(comp_fields_req);
+			talloc_free(comp_fields_conf);
+			return -EINVAL;
+		}
+	}
+
+	talloc_free(comp_fields_req);
+	talloc_free(comp_fields_conf);
+
+	return 0;
+}

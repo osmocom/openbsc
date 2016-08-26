@@ -21,6 +21,16 @@ struct defrag_state {
 	struct llist_head frag_list;
 
 	struct osmo_timer_list timer;
+
+	/* Holds state to know which compression mode is used
+	 * when the packet is re-assembled */
+	uint8_t pcomp;
+	uint8_t dcomp;
+
+	/* Holds the pointers to the compression entity list
+	 * that is used when the re-assembled packet is decompressed */
+	struct llist_head *proto;
+	struct llist_head *data;
 };
 
 /* See 6.7.1.2 Reassembly */
@@ -49,5 +59,21 @@ struct gprs_sndcp_entity {
 };
 
 extern struct llist_head gprs_sndcp_entities;
+
+/* Set of SNDCP-XID negotiation (See also: TS 144 065,
+ * Section 6.8 XID parameter negotiation) */
+int sndcp_sn_xid_req(struct gprs_llc_lle *lle, uint8_t nsapi);
+
+/* Process SNDCP-XID indication (See also: TS 144 065,
+ * Section 6.8 XID parameter negotiation) */
+int sndcp_sn_xid_ind(struct gprs_llc_xid_field *xid_field_indication,
+		     struct gprs_llc_xid_field *xid_field_response,
+		     struct gprs_llc_lle *lle);
+
+/* Process SNDCP-XID indication
+ * (See also: TS 144 065, Section 6.8 XID parameter negotiation) */
+int sndcp_sn_xid_conf(struct gprs_llc_xid_field *xid_field_conf,
+		      struct gprs_llc_xid_field *xid_field_request,
+		      struct gprs_llc_lle *lle);
 
 #endif	/* INT_SNDCP_H */

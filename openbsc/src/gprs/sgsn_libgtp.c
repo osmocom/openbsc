@@ -49,6 +49,7 @@
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/gprs_sndcp.h>
 
 #ifdef BUILD_IU
 #include <openbsc/iu.h>
@@ -317,6 +318,8 @@ static const struct cause_map gtp2sm_cause_map[] = {
 static int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx)
 {
 	struct sgsn_signal_data sig_data;
+	int rc;
+	struct gprs_llc_lle *lle;
 
 	/* Inform others about it */
 	memset(&sig_data, 0, sizeof(sig_data));
@@ -324,7 +327,17 @@ static int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx)
 	osmo_signal_dispatch(SS_SGSN, S_SGSN_PDP_ACT, &sig_data);
 
 	/* Send PDP CTX ACT to MS */
-	return gsm48_tx_gsm_act_pdp_acc(pctx);
+	rc = gsm48_tx_gsm_act_pdp_acc(pctx);
+	if(rc < 0)
+		return rc;
+
+	/* Send SNDCP XID to MS */
+	lle = &pctx->mm->gb.llme->lle[pctx->sapi];
+	rc = sndcp_sn_xid_req(lle,pctx->nsapi);
+	if(rc < 0)
+		return rc;
+
+	return 0;
 }
 
 /* The GGSN has confirmed the creation of a PDP Context */

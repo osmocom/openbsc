@@ -269,6 +269,14 @@ static int config_write_sgsn(struct vty *vty)
 	vty_out(vty, " timer t3395 %d%s", g_cfg->timers.T3395, VTY_NEWLINE);
 	vty_out(vty, " timer t3397 %d%s", g_cfg->timers.T3397, VTY_NEWLINE);
 
+	if (g_cfg->pcomp_rfc1144.active) {
+		vty_out(vty, " compression rfc1144 active slots %d%s",
+			g_cfg->pcomp_rfc1144.s01 + 1, VTY_NEWLINE);
+	} else if (g_cfg->pcomp_rfc1144.passive) {
+		vty_out(vty, " compression rfc1144 passive%s", VTY_NEWLINE);
+	} else
+		vty_out(vty, " no compression rfc1144%s", VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -1074,6 +1082,41 @@ DEFUN(cfg_cdr_interval, cfg_cdr_interval_cmd,
 	return CMD_SUCCESS;
 }
 
+#define COMPRESSION_STR "Configure compression\n"
+DEFUN(cfg_no_comp_rfc1144, cfg_no_comp_rfc1144_cmd,
+      "no compression rfc1144",
+      NO_STR COMPRESSION_STR "disable rfc1144 TCP/IP header compression\n")
+{
+	g_cfg->pcomp_rfc1144.active = 0;
+	g_cfg->pcomp_rfc1144.passive = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_comp_rfc1144, cfg_comp_rfc1144_cmd,
+      "compression rfc1144 active slots <1-256>",
+      COMPRESSION_STR
+      "RFC1144 Header compresion scheme\n"
+      "Compression is actively proposed\n"
+      "Number of compression state slots\n"
+      "Number of compression state slots\n")
+{
+	g_cfg->pcomp_rfc1144.active = 1;
+	g_cfg->pcomp_rfc1144.passive = 1;
+	g_cfg->pcomp_rfc1144.s01 = atoi(argv[0]) - 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_comp_rfc1144p, cfg_comp_rfc1144p_cmd,
+      "compression rfc1144 passive",
+      COMPRESSION_STR
+      "RFC1144 Header compresion scheme\n"
+      "Compression is available on request\n")
+{
+	g_cfg->pcomp_rfc1144.active = 0;
+	g_cfg->pcomp_rfc1144.passive = 1;
+	return CMD_SUCCESS;
+}
+
 int sgsn_vty_init(void)
 {
 	install_element_ve(&show_sgsn_cmd);
@@ -1127,6 +1170,10 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_sgsn_T3386_cmd);
 	install_element(SGSN_NODE, &cfg_sgsn_T3395_cmd);
 	install_element(SGSN_NODE, &cfg_sgsn_T3397_cmd);
+
+	install_element(SGSN_NODE, &cfg_no_comp_rfc1144_cmd);
+	install_element(SGSN_NODE, &cfg_comp_rfc1144_cmd);
+	install_element(SGSN_NODE, &cfg_comp_rfc1144p_cmd);
 
 	return 0;
 }
