@@ -1,0 +1,52 @@
+Allocating compression state...
+csum=b3a9
+Compressing...
+Decompressing...
+Results:
+Original Packet:    (52 bytes) 4510003446dd40004006a9b3c0a8646ec0a864640017ad8b81980100f3ac984d501800e371410000fffd18fffd20fffd23fffd27
+DecompressedPacket: (52 bytes) 4510003446dd40004006a9b3c0a8646ec0a864640017ad8b81980100f3ac984d501800e371410000fffd18fffd20fffd23fffd27
+CompressedPacket:   (52 bytes) 7510003446dd40004000a9b3c0a8646ec0a864640017ad8b81980100f3ac984d501800e371410000fffd18fffd20fffd23fffd27
+
+csum=97a9
+Compressing...
+Decompressing...
+Results:
+Original Packet:    (79 bytes) 4510004f46de40004006a997c0a8646ec0a864640017ad8b8198010cf3ac984d501800e3cda40000fffb03fffd1ffffd21fffe22fffb05fffa2001fff0fffa2301fff0fffa2701fff0fffa1801fff0
+DecompressedPacket: (79 bytes) 4510004f46de40004006a997c0a8646ec0a864640017ad8b8198010cf3ac984d501800e3cda40000fffb03fffd1ffffd21fffe22fffb05fffa2001fff0fffa2301fff0fffa2701fff0fffa1801fff0
+CompressedPacket:   (43 bytes) df00cda4fffb03fffd1ffffd21fffe22fffb05fffa2001fff0fffa2301fff0fffa2701fff0fffa1801fff0
+
+csum=baa9
+Compressing...
+Decompressing...
+Results:
+Original Packet:    (43 bytes) 4510002b46df40004006a9bac0a8646ec0a864640017ad8b81980133f3ac989f501800e3a70a0000fffd01
+DecompressedPacket: (43 bytes) 4510002b46df40004006a9bac0a8646ec0a864640017ad8b81980133f3ac989f501800e3a70a0000fffd01
+CompressedPacket:   (9 bytes) dc00a70a5227fffd01
+
+csum=b9a9
+Compressing...
+Decompressing...
+Results:
+Original Packet:    (43 bytes) 4510002b46e040004006a9b9c0a8646ec0a864640017ad8b81980136f3ac98a2501800e3a7060000fffb01
+DecompressedPacket: (43 bytes) 4510002b46e040004006a9b9c0a8646ec0a864640017ad8b81980136f3ac98a2501800e3a7060000fffb01
+CompressedPacket:   (7 bytes) db00a706fffb01
+
+csum=7ba9
+Compressing...
+Decompressing...
+Results:
+Original Packet:    (100 bytes) 4510006846e140004006a97bc0a8646ec0a864640017ad8b81980139f3ac98a5501800e3c2d000000d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0d0a57656c6c636f6d6520746f20706f6c6c75780d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d
+DecompressedPacket: (100 bytes) 4510006846e140004006a97bc0a8646ec0a864640017ad8b81980139f3ac98a5501800e3c2d000000d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0d0a57656c6c636f6d6520746f20706f6c6c75780d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d
+CompressedPacket:   (68 bytes) db00c2d00d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0d0a57656c6c636f6d6520746f20706f6c6c75780d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0d0a0d0a
+
+csum=aca9
+Compressing...
+Decompressing...
+Results:
+Original Packet:    (54 bytes) 4510003646e240004006a9acc0a8646ec0a864640017ad8b81980179f3ac98a5501800e321fb0000706f6c6c7578206c6f67696e3a20
+DecompressedPacket: (54 bytes) 4510003646e240004006a9acc0a8646ec0a864640017ad8b81980179f3ac98a5501800e321fb0000706f6c6c7578206c6f67696e3a20
+CompressedPacket:   (18 bytes) df0021fb706f6c6c7578206c6f67696e3a20
+
+Freeing compression state...
+
+Done

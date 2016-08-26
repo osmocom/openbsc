@@ -232,6 +232,7 @@ AC_OUTPUT(
     tests/mm_auth/Makefile
     tests/xid/Makefile
     tests/sndcp_xid/Makefile
+    tests/slhc/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

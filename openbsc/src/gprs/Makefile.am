@@ -87,6 +87,7 @@ osmo_sgsn_SOURCES = \
 	gprs_gsup_client.c \
 	sgsn_cdr.c \
 	sgsn_ares.c \
+	slhc.c \
 	oap.c \
 	oap_messages.c \
 	gprs_llc_xid.c \

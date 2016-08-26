@@ -29,6 +29,7 @@ enum {
 	DBSSGP,
 	DLLC,
 	DSNDCP,
+	DSLHC,
 	DNAT,
 	DCTRL,
 	DSMPP,

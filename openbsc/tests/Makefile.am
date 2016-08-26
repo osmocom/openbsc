@@ -11,6 +11,7 @@ SUBDIRS = \
 	mm_auth \
 	xid \
 	sndcp_xid \
+	slhc \
 	$(NULL)
 
 if BUILD_NAT

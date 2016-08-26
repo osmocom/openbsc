@@ -50,61 +50,77 @@
  *	driver code belonging close to PPP and SLIP
  */
 
-#include <linux/module.h>
-#include <linux/slab.h>
-#include <linux/types.h>
-#include <linux/string.h>
-#include <linux/errno.h>
-#include <linux/kernel.h>
-#include <net/slhc_vj.h>
+#include <string.h>
+#include <stdio.h>
+#include <errno.h>
+#include <stdint.h>
+#include <arpa/inet.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/core/talloc.h>
+#include <openbsc/slhc.h>
+#include <openbsc/debug.h>
 
-#ifdef CONFIG_INET
-/* Entire module is for IP only */
-#include <linux/mm.h>
-#include <linux/socket.h>
-#include <linux/sockios.h>
-#include <linux/termios.h>
-#include <linux/in.h>
-#include <linux/fcntl.h>
-#include <linux/inet.h>
-#include <linux/netdevice.h>
-#include <net/ip.h>
-#include <net/protocol.h>
-#include <net/icmp.h>
-#include <net/tcp.h>
-#include <linux/skbuff.h>
-#include <net/sock.h>
-#include <linux/timer.h>
-#include <asm/uaccess.h>
-#include <net/checksum.h>
-#include <asm/unaligned.h>
+#define ERR_PTR(x) x
+
 
 static unsigned char *encode(unsigned char *cp, unsigned short n);
 static long decode(unsigned char **cpp);
 static unsigned char * put16(unsigned char *cp, unsigned short x);
 static unsigned short pull16(unsigned char **cpp);
 
+/* Replacement for kernel space function ip_fast_csum() */
+static uint16_t ip_fast_csum(uint8_t *iph, int ihl)
+{
+	int i;
+	uint16_t temp;
+	uint32_t accumulator = 0xFFFF;
+
+	for(i=0;i<ihl*2;i++)
+	{
+		temp = ((*iph) << 8)&0xFF00;
+		iph++;
+		temp |= (*iph)&0xFF;
+		iph++;
+
+		accumulator+=temp;
+		if(accumulator>0xFFFF)
+		{
+			accumulator++;
+			accumulator&=0xFFFF;
+		}
+	}
+
+    return (uint16_t)(htons(~accumulator)&0xFFFF);
+}
+
+/* Replacement for kernel space function put_unaligned() */
+static void put_unaligned(uint16_t val, void *ptr)
+{
+	memcpy(ptr,&val,sizeof(val));
+}
+
+
 /* Allocate compression data structure
  *	slots must be in range 0 to 255 (zero meaning no compression)
  * Returns pointer to structure or ERR_PTR() on error.
  */
 struct slcompress *
-slhc_init(int rslots, int tslots)
+slhc_init(const void *ctx, int rslots, int tslots)
 {
 	register short i;
 	register struct cstate *ts;
 	struct slcompress *comp;
 
 	if (rslots < 0 || rslots > 255 || tslots < 0 || tslots > 255)
-		return ERR_PTR(-EINVAL);
+		return NULL;
 
-	comp = kzalloc(sizeof(struct slcompress), GFP_KERNEL);
+	comp = (struct slcompress *)talloc_zero_size(ctx,sizeof(struct slcompress));
 	if (! comp)
 		goto out_fail;
 
 	if (rslots > 0) {
 		size_t rsize = rslots * sizeof(struct cstate);
-		comp->rstate = kzalloc(rsize, GFP_KERNEL);
+		comp->rstate = (struct cstate *) talloc_zero_size(ctx, rsize);
 		if (! comp->rstate)
 			goto out_free;
 		comp->rslot_limit = rslots - 1;
@@ -112,7 +128,7 @@ slhc_init(int rslots, int tslots)
 
 	if (tslots > 0) {
 		size_t tsize = tslots * sizeof(struct cstate);
-		comp->tstate = kzalloc(tsize, GFP_KERNEL);
+		comp->tstate = (struct cstate *) talloc_zero_size(ctx, tsize);
 		if (! comp->tstate)
 			goto out_free2;
 		comp->tslot_limit = tslots - 1;
@@ -141,11 +157,11 @@ slhc_init(int rslots, int tslots)
 	return comp;
 
 out_free2:
-	kfree(comp->rstate);
+	talloc_free(comp->rstate);
 out_free:
-	kfree(comp);
+	talloc_free(comp);
 out_fail:
-	return ERR_PTR(-ENOMEM);
+	return NULL;
 }
 
 
@@ -153,16 +169,18 @@ out_fail:
 void
 slhc_free(struct slcompress *comp)
 {
+	DEBUGP(DSLHC, "slhc_free(): Freeing compression states...\n");
+
 	if ( comp == NULLSLCOMPR )
 		return;
 
 	if ( comp->tstate != NULLSLSTATE )
-		kfree( comp->tstate );
+		talloc_free(comp->tstate );
 
 	if ( comp->rstate != NULLSLSTATE )
-		kfree( comp->rstate );
+		talloc_free( comp->rstate );
 
-	kfree( comp );
+	talloc_free( comp );
 }
 
 
@@ -187,6 +205,8 @@ encode(unsigned char *cp, unsigned short n)
 	} else {
 		*cp++ = n;
 	}
+
+	DEBUGP(DSLHC, "encode(): n=%04x\n",n);
 	return cp;
 }
 
@@ -256,6 +276,7 @@ slhc_compress(struct slcompress *comp, unsigned char *icp, int isize,
 			comp->sls_o_nontcp++;
 		else
 			comp->sls_o_tcp++;
+		DEBUGP(DSLHC, "slhc_compress(): Not a TCP packat, will not touch...\n");
 		return isize;
 	}
 	/* Extract TCP header */
@@ -271,6 +292,7 @@ slhc_compress(struct slcompress *comp, unsigned char *icp, int isize,
 	    ! (th->ack)){
 		/* TCP connection stuff; send as regular IP */
 		comp->sls_o_tcp++;
+		DEBUGP(DSLHC, "slhc_compress(): Packet is part of a TCP connection, will not touch...\n");
 		return isize;
 	}
 	/*
@@ -287,6 +309,9 @@ slhc_compress(struct slcompress *comp, unsigned char *icp, int isize,
 	 * states via linear search.  If we don't find a state
 	 * for the datagram, the oldest state is (re-)used.
 	 */
+
+	DEBUGP(DSLHC, "slhc_compress(): Compressible packet detected!\n");
+
 	for ( ; ; ) {
 		if( ip->saddr == cs->cs_ip.saddr
 		 && ip->daddr == cs->cs_ip.daddr
@@ -310,11 +335,14 @@ slhc_compress(struct slcompress *comp, unsigned char *icp, int isize,
 	 * state points to the newest and we only need to set
 	 * xmit_oldest to update the lru linkage.
 	 */
+
+	DEBUGP(DSLHC, "slhc_compress(): Header not yet seen, will memorize header for the next turn...\n");
 	comp->sls_o_misses++;
 	comp->xmit_oldest = lcs->cs_this;
 	goto uncompressed;
 
 found:
+		DEBUGP(DSLHC, "slhc_compress(): Header already seen, trying to compress...\n");
 	/*
 	 * Found it -- move to the front on the connection list.
 	 */
@@ -344,6 +372,39 @@ found:
 	 */
 	oth = &cs->cs_tcp;
 
+	/* Display a little more debug information about which of the
+	 * header fields changed unexpectedly */
+	if(ip->version != cs->cs_ip.version)
+		DEBUGP(DSLHC, "slhc_compress(): Unexpected change: ip->version != cs->cs_ip.version\n");
+	if(ip->ihl != cs->cs_ip.ihl)
+		DEBUGP(DSLHC, "slhc_compress(): Unexpected change: ip->ihl != cs->cs_ip.ihl\n");
+	if(ip->tos != cs->cs_ip.tos)
+		DEBUGP(DSLHC, "slhc_compress(): Unexpected change: ip->tos != cs->cs_ip.tos\n");
+	if((ip->frag_off & htons(0x4000)) != (cs->cs_ip.frag_off & htons(0x4000)))
+		DEBUGP(DSLHC, "slhc_compress(): Unexpected change: (ip->frag_off & htons(0x4000)) != (cs->cs_ip.frag_off & htons(0x4000))\n");
+	if(ip->ttl != cs->cs_ip.ttl)
+		DEBUGP(DSLHC, "slhc_compress(): Unexpected change: ip->ttl != cs->cs_ip.ttl\n");
+	if(th->doff != cs->cs_tcp.doff)
+		DEBUGP(DSLHC, "slhc_compress(): Unexpected change: th->doff != cs->cs_tcp.doff\n");
+	if(ip->ihl > 5 && memcmp(ip+1,cs->cs_ipopt,((ip->ihl)-5)*4) != 0) {
+		DEBUGP(DSLHC, "slhc_compress(): Unexpected change: (ip->ihl > 5 && memcmp(ip+1,cs->cs_ipopt,((ip->ihl)-5)*4) != 0)\n");
+		DEBUGP(DSLHC, "slhc_compress(): ip->ihl = %i\n", ip->ihl);
+		DEBUGP(DSLHC, "slhc_compress(): ip+1 =          %s\n",
+		       osmo_hexdump_nospc((uint8_t*)(ip+1),((ip->ihl)-5)*4));
+		DEBUGP(DSLHC, "slhc_compress(): Unexpected change: cs->cs_ipopt =  %s\n",
+		       osmo_hexdump_nospc((uint8_t*)(cs->cs_ipopt),((ip->ihl)-5)*4));
+	}
+	if(th->doff > 5 && memcmp(th+1,cs->cs_tcpopt,((th->doff)-5)*4) != 0) {
+		DEBUGP(DSLHC, "slhc_compress(): Unexpected change: (th->doff > 5 && memcmp(th+1,cs->cs_tcpopt,((th->doff)-5)*4) != 0)\n");
+		DEBUGP(DSLHC, "slhc_compress(): th->doff = %i\n", th->doff);
+		DEBUGP(DSLHC, "slhc_compress(): th+1 =          %s\n",
+		       osmo_hexdump_nospc((uint8_t*)(th+1),((th->doff)-5)*4));
+		DEBUGP(DSLHC, "slhc_compress(): cs->cs_tcpopt = %s\n",
+		       osmo_hexdump_nospc((uint8_t*)cs->cs_tcpopt,
+					  ((th->doff)-5)*4));
+	}
+
+
 	if(ip->version != cs->cs_ip.version || ip->ihl != cs->cs_ip.ihl
 	 || ip->tos != cs->cs_ip.tos
 	 || (ip->frag_off & htons(0x4000)) != (cs->cs_ip.frag_off & htons(0x4000))
@@ -351,6 +412,7 @@ found:
 	 || th->doff != cs->cs_tcp.doff
 	 || (ip->ihl > 5 && memcmp(ip+1,cs->cs_ipopt,((ip->ihl)-5)*4) != 0)
 	 || (th->doff > 5 && memcmp(th+1,cs->cs_tcpopt,((th->doff)-5)*4) != 0)){
+		DEBUGP(DSLHC, "slhc_compress(): The header contains unexpected changes, can't compress...\n");
 		goto uncompressed;
 	}
 
@@ -362,6 +424,7 @@ found:
 	 */
 	if(th->urg){
 		deltaS = ntohs(th->urg_ptr);
+		DEBUGP(DSLHC, "slhc_compress(): flag: Urgent Pointer (U) = 1\n");
 		cp = encode(cp,deltaS);
 		changes |= NEW_U;
 	} else if(th->urg_ptr != oth->urg_ptr){
@@ -369,21 +432,29 @@ found:
 		 * implementation should never do this but RFC793
 		 * doesn't prohibit the change so we have to deal
 		 * with it. */
+		DEBUGP(DSLHC, "slhc_compress(): URG not set but urp changed, can't compress...\n");
 		goto uncompressed;
 	}
 	if((deltaS = ntohs(th->window) - ntohs(oth->window)) != 0){
+		DEBUGP(DSLHC, "slhc_compress(): flag: Delta Window (W) = 1\n");
 		cp = encode(cp,deltaS);
 		changes |= NEW_W;
 	}
 	if((deltaA = ntohl(th->ack_seq) - ntohl(oth->ack_seq)) != 0L){
-		if(deltaA > 0x0000ffff)
+		if(deltaA > 0x0000ffff)	{
+			DEBUGP(DSLHC, "slhc_compress(): (deltaA = ntohl(th->ack_seq) - ntohl(oth->ack_seq)) != 0L, can't compress...\n");
 			goto uncompressed;
+		}
+		DEBUGP(DSLHC, "slhc_compress(): flag: Delta Ack (A) = 1\n");
 		cp = encode(cp,deltaA);
 		changes |= NEW_A;
 	}
 	if((deltaS = ntohl(th->seq) - ntohl(oth->seq)) != 0L){
-		if(deltaS > 0x0000ffff)
+		if(deltaS > 0x0000ffff)	{
+			DEBUGP(DSLHC, "slhc_compress(): (deltaS = ntohl(th->seq) - ntohl(oth->seq)) != 0L, can't compress...\n");
 			goto uncompressed;
+		}
+		DEBUGP(DSLHC, "slhc_compress(): flag: Delta Sequence (S) = 1\n");
 		cp = encode(cp,deltaS);
 		changes |= NEW_S;
 	}
@@ -399,17 +470,21 @@ found:
 		if(ip->tot_len != cs->cs_ip.tot_len &&
 		   ntohs(cs->cs_ip.tot_len) == hlen)
 			break;
+		DEBUGP(DSLHC, "slhc_compress(): Retransmitted packet detected, can't compress...\n");
 		goto uncompressed;
 	case SPECIAL_I:
 	case SPECIAL_D:
 		/* actual changes match one of our special case encodings --
 		 * send packet uncompressed.
 		 */
+		DEBUGP(DSLHC, "slhc_compress(): Special case detected, can't compress...\n");
 		goto uncompressed;
 	case NEW_S|NEW_A:
 		if(deltaS == deltaA &&
 		    deltaS == ntohs(cs->cs_ip.tot_len) - hlen){
 			/* special case for echoed terminal traffic */
+			DEBUGP(DSLHC, "slhc_compress(): Special case for echoed terminal traffic detected...\n");
+			DEBUGP(DSLHC, "slhc_compress(): flag: Delta Sequence (S) = 1, Delta Window (W) = 1, Urgent Pointer (U) = 1\n");
 			changes = SPECIAL_I;
 			cp = new_seq;
 		}
@@ -417,6 +492,8 @@ found:
 	case NEW_S:
 		if(deltaS == ntohs(cs->cs_ip.tot_len) - hlen){
 			/* special case for data xfer */
+			DEBUGP(DSLHC, "slhc_compress(): Special case for data xfer detected...\n");
+			DEBUGP(DSLHC, "slhc_compress(): flag: Delta Sequence (S) = 1, Delta Ack (A) = 1, Delta Window (W) = 1, Urgent Pointer (U) = 1\n");
 			changes = SPECIAL_D;
 			cp = new_seq;
 		}
@@ -424,11 +501,14 @@ found:
 	}
 	deltaS = ntohs(ip->id) - ntohs(cs->cs_ip.id);
 	if(deltaS != 1){
+		DEBUGP(DSLHC, "slhc_compress(): flag: Delta IP ID (I) = 1\n");
 		cp = encode(cp,deltaS);
 		changes |= NEW_I;
 	}
-	if(th->psh)
+	if(th->psh) {
+		DEBUGP(DSLHC, "slhc_compress(): flag: Push (P) = 1\n");
 		changes |= TCP_PUSH_BIT;
+	}
 	/* Grab the cksum before we overwrite it below.  Then update our
 	 * state with this packet's header.
 	 */
@@ -445,6 +525,7 @@ found:
 	if(compress_cid == 0 || comp->xmit_current != cs->cs_this){
 		cp = ocp;
 		*cpp = ocp;
+		DEBUGP(DSLHC, "slhc_compress(): flag: Connection number (C) = 1\n");
 		*cp++ = changes | NEW_C;
 		*cp++ = cs->cs_this;
 		comp->xmit_current = cs->cs_this;
@@ -456,6 +537,10 @@ found:
 	*(__sum16 *)cp = csum;
 	cp += 2;
 /* deltaS is now the size of the change section of the compressed header */
+
+	DEBUGP(DSLHC, "slhc_compress(): Delta-list length (deltaS) = %li\n",deltaS);
+	DEBUGP(DSLHC, "slhc_compress(): Original header len (hlen) = %i\n",hlen);
+
 	memcpy(cp,new_seq,deltaS);	/* Write list of deltas */
 	memcpy(cp+deltaS,icp+hlen,isize-hlen);
 	comp->sls_o_compressed++;
@@ -467,6 +552,7 @@ found:
 	 * to use on future compressed packets in the protocol field).
 	 */
 uncompressed:
+	DEBUGP(DSLHC, "slhc_compress(): Packet will be sent uncompressed...\n");
 	memcpy(&cs->cs_ip,ip,20);
 	memcpy(&cs->cs_tcp,th,20);
 	if (ip->ihl > 5)
@@ -538,6 +624,8 @@ slhc_uncompress(struct slcompress *comp, unsigned char *icp, int isize)
 
 	switch(changes & SPECIALS_MASK){
 	case SPECIAL_I:		/* Echoed terminal traffic */
+		DEBUGP(DSLHC, "slhc_uncompress(): Echoed terminal traffic detected\n");
+
 		{
 		register short i;
 		i = ntohs(ip->tot_len) - hdrlen;
@@ -547,11 +635,13 @@ slhc_uncompress(struct slcompress *comp, unsigned char *icp, int isize)
 		break;
 
 	case SPECIAL_D:			/* Unidirectional data */
+		DEBUGP(DSLHC, "slhc_uncompress(): Unidirectional data detected\n");
 		thp->seq = htonl( ntohl(thp->seq) +
 				  ntohs(ip->tot_len) - hdrlen);
 		break;
 
 	default:
+		DEBUGP(DSLHC, "slhc_uncompress(): default packet type detected\n");
 		if(changes & NEW_U){
 			thp->urg = 1;
 			if((x = decode(&cp)) == -1) {
@@ -601,6 +691,7 @@ slhc_uncompress(struct slcompress *comp, unsigned char *icp, int isize)
 	ip->tot_len = htons(len);
 	ip->check = 0;
 
+	DEBUGP(DSLHC, "slhc_uncompress(): making space for the reconstructed header...\n");
 	memmove(icp + hdrlen, cp, len - hdrlen);
 
 	cp = icp;
@@ -625,6 +716,7 @@ slhc_uncompress(struct slcompress *comp, unsigned char *icp, int isize)
 
 	return len;
 bad:
+	DEBUGP(DSLHC, "slhc_uncompress(): bad packet detected!\n");
 	comp->sls_i_error++;
 	return slhc_toss( comp );
 }
@@ -641,6 +733,7 @@ slhc_remember(struct slcompress *comp, unsigned char *icp, int isize)
 	if(isize < 20) {
 		/* The packet is shorter than a legal IP header */
 		comp->sls_i_runt++;
+		DEBUGP(DSLHC, "slhc_remember(): The packet is shorter than a legal IP header ==> slhc_toss()\n");
 		return slhc_toss( comp );
 	}
 	/* Peek at the IP header's IHL field to find its length */
@@ -648,6 +741,7 @@ slhc_remember(struct slcompress *comp, unsigned char *icp, int isize)
 	if(ihl < 20 / 4){
 		/* The IP header length field is too small */
 		comp->sls_i_runt++;
+		DEBUGP(DSLHC, "slhc_remember(): The IP header length field is too small ==> slhc_toss()\n");
 		return slhc_toss( comp );
 	}
 	index = icp[9];
@@ -656,10 +750,12 @@ slhc_remember(struct slcompress *comp, unsigned char *icp, int isize)
 	if (ip_fast_csum(icp, ihl)) {
 		/* Bad IP header checksum; discard */
 		comp->sls_i_badcheck++;
+		DEBUGP(DSLHC, "slhc_remember(): Bad IP header checksum; discard ==> slhc_toss()\n");
 		return slhc_toss( comp );
 	}
 	if(index > comp->rslot_limit) {
 		comp->sls_i_error++;
+		DEBUGP(DSLHC, "slhc_remember(): index > comp->rslot_limit ==> slhc_toss()\n");
 		return slhc_toss(comp);
 	}
 
@@ -683,6 +779,7 @@ slhc_remember(struct slcompress *comp, unsigned char *icp, int isize)
 int
 slhc_toss(struct slcompress *comp)
 {
+	DEBUGP(DSLHC, "slhc_toss(): Reset compression state...\n");
 	if ( comp == NULLSLCOMPR )
 		return 0;
 
@@ -690,55 +787,27 @@ slhc_toss(struct slcompress *comp)
 	return 0;
 }
 
-#else /* CONFIG_INET */
-
-int
-slhc_toss(struct slcompress *comp)
+void slhc_i_status(struct slcompress *comp)
 {
-  printk(KERN_DEBUG "Called IP function on non IP-system: slhc_toss");
-  return -EINVAL;
-}
-int
-slhc_uncompress(struct slcompress *comp, unsigned char *icp, int isize)
-{
-  printk(KERN_DEBUG "Called IP function on non IP-system: slhc_uncompress");
-  return -EINVAL;
-}
-int
-slhc_compress(struct slcompress *comp, unsigned char *icp, int isize,
-	unsigned char *ocp, unsigned char **cpp, int compress_cid)
-{
-  printk(KERN_DEBUG "Called IP function on non IP-system: slhc_compress");
-  return -EINVAL;
+	if (comp != NULLSLCOMPR) {
+		DEBUGP(DSLHC, "slhc_i_status(): %d Cmp, %d Uncmp, %d Bad, %d Tossed\n",
+			comp->sls_i_compressed,
+			comp->sls_i_uncompressed,
+			comp->sls_i_error,
+			comp->sls_i_tossed);
+	}
 }
 
-int
-slhc_remember(struct slcompress *comp, unsigned char *icp, int isize)
+void slhc_o_status(struct slcompress *comp)
 {
-  printk(KERN_DEBUG "Called IP function on non IP-system: slhc_remember");
-  return -EINVAL;
+	if (comp != NULLSLCOMPR) {
+		DEBUGP(DSLHC, "slhc_o_status(): %d Cmp, %d Uncmp, %d AsIs, %d NotTCP %d Searches, %d Misses\n",
+			comp->sls_o_compressed,
+			comp->sls_o_uncompressed,
+			comp->sls_o_tcp,
+			comp->sls_o_nontcp,
+			comp->sls_o_searches,
+			comp->sls_o_misses);
+	}
 }
 
-void
-slhc_free(struct slcompress *comp)
-{
-  printk(KERN_DEBUG "Called IP function on non IP-system: slhc_free");
-}
-struct slcompress *
-slhc_init(int rslots, int tslots)
-{
-  printk(KERN_DEBUG "Called IP function on non IP-system: slhc_init");
-  return NULL;
-}
-
-#endif /* CONFIG_INET */
-
-/* VJ header compression */
-EXPORT_SYMBOL(slhc_init);
-EXPORT_SYMBOL(slhc_free);
-EXPORT_SYMBOL(slhc_remember);
-EXPORT_SYMBOL(slhc_compress);
-EXPORT_SYMBOL(slhc_uncompress);
-EXPORT_SYMBOL(slhc_toss);
-
-MODULE_LICENSE("Dual BSD/GPL");

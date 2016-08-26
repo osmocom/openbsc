@@ -294,6 +294,11 @@ static struct log_info_cat gprs_categories[] = {
 		.description = "SCCP User Adaptation (SUA)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DSLHC] = {
+		.name = "DSLHC",
+		.description = "RFC1144 TCP/IP Header compression (SLHC)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 static const struct log_info gprs_log_info = {

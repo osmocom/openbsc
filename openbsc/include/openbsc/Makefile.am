@@ -65,6 +65,7 @@ noinst_HEADERS = \
 	sgsn.h \
 	signal.h \
 	silent_call.h \
+	slhc.h \
 	smpp.h \
 	sms_queue.h \
 	socket.h \
