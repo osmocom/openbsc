@@ -14,7 +14,7 @@ struct gsm_trans {
 	/* Entry in list of all transactions */
 	struct llist_head entry;
 
-	/* Back pointer to the netweork struct */
+	/* Back pointer to the network struct */
 	struct gsm_network *net;
 
 	/* The protocol within which we live */
@@ -22,7 +22,7 @@ struct gsm_trans {
 
 	/* The current transaction ID */
 	uint8_t transaction_id;
-	
+
 	/* To whom we belong, unique identifier of remote MM entity */
 	struct gsm_subscriber *subscr;
 
