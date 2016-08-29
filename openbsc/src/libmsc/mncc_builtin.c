@@ -1,5 +1,5 @@
 /* mncc_builtin.c - default, minimal built-in MNCC Application for
- *		    standalone bsc_hack (netowrk-in-the-box mode) */
+ *		    standalone bsc_hack (network-in-the-box mode) */
 
 /* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Andreas Eversberg <Andreas.Eversberg@versatel.de>

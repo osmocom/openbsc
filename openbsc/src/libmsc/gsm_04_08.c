@@ -464,7 +464,7 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 		LOGP(DMM, LOGL_ERROR, "Failed to create msg for LOCATION UPDATING REJECT.\n");
 		return -1;
 	}
-	
+
 	msg->lchan = conn->lchan;
 
 	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT "
@@ -481,7 +481,7 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
 	uint8_t *mid;
-	
+
 	msg->lchan = conn->lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -693,7 +693,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 		/* no sim card... FIXME: what to do ? */
 		DEBUGPC(DMM, "unimplemented mobile identity type\n");
 		break;
-	default:	
+	default:
 		DEBUGPC(DMM, "unknown mobile identity type\n");
 		break;
 	}
@@ -1075,7 +1075,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 		/* no sim card... FIXME: what to do ? */
 		DEBUGPC(DMM, ": unimplemented mobile identity type\n");
 		break;
-	default:	
+	default:
 		DEBUGPC(DMM, ": unknown mobile identity type\n");
 		break;
 	}
@@ -1249,7 +1249,7 @@ static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct m
 	apdu_id_flags = gh->data[0];
 	apdu_len = gh->data[1];
 	apdu_data = gh->data+2;
-	
+
 	DEBUGP(DRR, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
 		apdu_id_flags, apdu_len, osmo_hexdump(apdu_data, apdu_len));
 
@@ -1285,10 +1285,10 @@ int gsm48_send_rr_app_info(struct gsm_subscriber_connection *conn, uint8_t apdu_
 	struct gsm48_hdr *gh;
 
 	msg->lchan = conn->lchan;
-	
+
 	DEBUGP(DRR, "TX APPLICATION INFO id=0x%02x, len=%u\n",
 		apdu_id, apdu_len);
-	
+
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 2 + apdu_len);
 	gh->proto_discr = GSM48_PDISC_RR;
 	gh->msg_type = GSM48_MT_RR_APP_INFO;
@@ -1419,7 +1419,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 			"Sending '%s' to MNCC.\n", get_mncc_name(msg_type));
 
 	mncc->msg_type = msg_type;
-	
+
 	msg = msgb_alloc(sizeof(struct gsm_mncc), "MNCC");
 	if (!msg)
 		return -ENOMEM;
@@ -2061,7 +2061,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 		trans_free(trans);
 		return rc;
 	}
-	
+
 	/* Get free transaction_id */
 	trans_id = trans_assign_trans_id(trans->net, trans->subscr,
 					 GSM48_PDISC_CC, 0);
@@ -2104,7 +2104,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	/* signal */
 	if (setup->fields & MNCC_F_SIGNAL)
 		gsm48_encode_signal(msg, setup->signal);
-	
+
 	new_cc_state(trans, GSM_CSTATE_CALL_PRESENT);
 
 	rate_ctr_inc(&trans->net->msc_ctrs->ctr[MSC_CTR_CALL_MT_SETUP]);
@@ -2192,7 +2192,7 @@ static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	struct tlv_parsed tp;
 	struct gsm_mncc alerting;
-	
+
 	gsm48_stop_cc_timer(trans);
 	gsm48_start_cc_timer(trans, 0x301, GSM48_T301);
 
@@ -2244,7 +2244,7 @@ static int gsm48_cc_tx_alerting(struct gsm_trans *trans, void *arg)
 		gsm48_encode_useruser(msg, 0, &alerting->useruser);
 
 	new_cc_state(trans, GSM_CSTATE_CALL_DELIVERED);
-	
+
 	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
@@ -2347,7 +2347,7 @@ static int gsm48_cc_rx_connect_ack(struct gsm_trans *trans, struct msgb *msg)
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 	rate_ctr_inc(&trans->net->msc_ctrs->ctr[MSC_CTR_CALL_MO_CONNECT_ACK]);
-	
+
 	memset(&connect_ack, 0, sizeof(struct gsm_mncc));
 	connect_ack.callref = trans->callref;
 
@@ -2611,7 +2611,7 @@ static int gsm48_cc_tx_release_compl(struct gsm_trans *trans, void *arg)
 	gh->msg_type = GSM48_MT_CC_RELEASE_COMPL;
 
 	trans->callref = 0;
-	
+
 	gsm48_stop_cc_timer(trans);
 
 	/* cause */
@@ -3697,7 +3697,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	LOGP(DRLL, LOGL_DEBUG, "Dispatching 04.08 message, pdisc=%d\n", pdisc);
 	if (silent_call_reroute(conn, msg))
 		return silent_call_rx(conn, msg);
-	
+
 	switch (pdisc) {
 	case GSM48_PDISC_CC:
 		release_anchor(conn);
