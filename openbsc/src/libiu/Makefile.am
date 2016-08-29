@@ -6,5 +6,5 @@ AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) \
 
 noinst_LIBRARIES = libiu.a
 
-libiu_a_SOURCES = iu.c
+libiu_a_SOURCES = iu.c iu_vty.c
 
