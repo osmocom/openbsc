@@ -119,7 +119,7 @@ static int can_send_pag_req(struct gsm_bts *bts, int rsl_type)
 	int count;
 
 	memset(&pl, 0, sizeof(pl));
-	bts_chan_load(&pl, bts);
+	bts_chan_load(&pl, bts, 0);
 
 	switch (rsl_type) {
 	case RSL_CHANNEED_TCH_F:

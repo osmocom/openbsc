@@ -514,7 +514,28 @@ struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *s
 	return NULL;
 }
 
-void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
+static int chan_is_tch(struct gsm_bts_trx_ts *ts)
+{
+	switch (ts->pchan) {
+		case GSM_PCHAN_TCH_F:
+		case GSM_PCHAN_TCH_H:
+			return 1;
+		case GSM_PCHAN_TCH_F_PDCH:
+		case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+			if (ts->dyn.pchan_is == GSM_PCHAN_TCH_F ||
+					ts->dyn.pchan_is == GSM_PCHAN_TCH_H)
+				return 1;
+			else
+				return 0;
+		default:
+			return 0;
+	}
+}
+
+
+
+void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts,
+		   int only_count_tch)
 {
 	struct gsm_bts_trx *trx;
 
@@ -534,6 +555,9 @@ void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
 
 			/* skip administratively deactivated timeslots */
 			if (!nm_is_running(&ts->mo.nm_state))
+				continue;
+
+			if (only_count_tch && !chan_is_tch(ts))
 				continue;
 
 			subslots = ts_subslots(ts);
@@ -561,6 +585,5 @@ void network_chan_load(struct pchan_load *pl, struct gsm_network *net)
 	memset(pl, 0, sizeof(*pl));
 
 	llist_for_each_entry(bts, &net->bts_list, list)
-		bts_chan_load(pl, bts);
+		bts_chan_load(pl, bts, 0);
 }
-

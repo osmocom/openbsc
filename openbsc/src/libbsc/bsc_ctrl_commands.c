@@ -239,7 +239,7 @@ static int get_bts_chan_load(struct ctrl_cmd *cmd, void *data)
 
 	bts = cmd->node;
 	memset(&pl, 0, sizeof(pl));
-	bts_chan_load(&pl, bts);
+	bts_chan_load(&pl, bts, 0);
 
 	cmd->reply = talloc_strdup(cmd, "");
 

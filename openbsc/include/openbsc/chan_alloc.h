@@ -46,7 +46,7 @@ struct pchan_load {
 	struct load_counter pchan[_GSM_PCHAN_MAX];
 };
 
-void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts);
+void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts, int only_count_tch);
 void network_chan_load(struct pchan_load *pl, struct gsm_network *net);
 
 int trx_is_usable(struct gsm_bts_trx *trx);
