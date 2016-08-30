@@ -859,8 +859,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		case GPRS_SAPI_SNDCP9:
 		case GPRS_SAPI_SNDCP11:
 			/* Ask an upper layer for help. */
-			return gsm0408_gprs_force_reattach_oldmsg(msg,
-								  lle->llme);
+			return gsm0408_gprs_force_reattach_oldmsg(msg, NULL);
 		default:
 			break;
 		}
