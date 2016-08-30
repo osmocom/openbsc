@@ -2554,7 +2554,8 @@ int gsm0408_gprs_force_reattach_oldmsg(struct msgb *msg,
 				       struct gprs_llc_llme *llme)
 {
 	int rc;
-	gprs_llgmm_reset_oldmsg(msg, GPRS_SAPI_GMM, llme);
+	if (llme)
+		gprs_llgmm_reset_oldmsg(msg, GPRS_SAPI_GMM, llme);
 
 	rc = gsm48_tx_gmm_detach_req_oldmsg(
 		msg, GPRS_DET_T_MT_REATT_REQ, GMM_CAUSE_IMPL_DETACHED);
