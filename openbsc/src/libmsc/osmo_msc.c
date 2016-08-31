@@ -134,7 +134,7 @@ static void msc_ciph_m_compl(struct gsm_subscriber_connection *conn,
 static struct bsc_api msc_handler = {
 	.sapi_n_reject = msc_sapi_n_reject,
 	.compl_l3 = msc_compl_l3,
-	.dtap  = msc_dtap,
+	.dtap = msc_dtap,
 	.clear_request = msc_clear_request,
 	.assign_compl = msc_assign_compl,
 	.assign_fail = msc_assign_fail,
