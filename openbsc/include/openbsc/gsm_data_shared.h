@@ -126,8 +126,14 @@ enum gsm_lchan_state {
 
 /* BTS ONLY */
 #define MAX_NUM_UL_MEAS	104
+#define MAX_NUM_MEAS_PREPROC	32
 #define LC_UL_M_F_L1_VALID	(1 << 0)
 #define LC_UL_M_F_RES_VALID	(1 << 1)
+#define LC_NCELL_M_F_BA1	(1 << 2)
+#define LC_UL_M_F_DTX		(1 << 3)
+#define LC_DL_M_F_RES_VALID	(1 << 4)
+#define LC_AVE_F_RES_VALID	(1 << 5)
+#define LC_AVE_F_CACHE_VALID	(1 << 6)
 
 struct bts_ul_meas {
 	/* BER in units of 0.01%: 10.000 == 100% ber, 0 == 0% ber */
@@ -293,6 +299,58 @@ struct gsm_lchan {
 		struct gsm_meas_rep_unidir ul_res;
 	} meas;
 	struct {
+		/* UL measurement result */
+		struct gsm_meas_rep_unidir ul_res;
+		/* DL measurement result */
+		struct gsm_meas_rep_unidir dl_res;
+		/* UL RxLev measurement cache*/
+		uint8_t ul_ave_vec[MAX_NUM_MEAS_PREPROC];
+		/* UL RxLev measurement averaged buffer */
+		uint8_t ul_ave_res[MAX_NUM_MEAS_PREPROC];
+		/* DL RxLev measurement cache*/
+		uint8_t dl_ave_vec[MAX_NUM_MEAS_PREPROC];
+		/* DL RxLev measurement averaged buffer */
+		uint8_t dl_ave_res[MAX_NUM_MEAS_PREPROC];
+		/* UL RxQual measurement cache*/
+		uint8_t ul_qual_ave_vec[MAX_NUM_MEAS_PREPROC];
+		/* UL RxQual measurement averaged buffer */
+		uint8_t ul_qual_ave_res[MAX_NUM_MEAS_PREPROC];
+		/* DL RxQual measurement cache*/
+		uint8_t dl_qual_ave_vec[MAX_NUM_MEAS_PREPROC];
+		/* DL RxQual measurement averaged buffer */
+		uint8_t dl_qual_ave_res[MAX_NUM_MEAS_PREPROC];
+		/* MS-BTS distance measurement cache*/
+		uint8_t ms_bts_ave_vec[MAX_NUM_MEAS_PREPROC];
+		/* MS-BTS distance averaged buffer*/
+		uint8_t ms_bts_ave_res[MAX_NUM_MEAS_PREPROC];
+		/* MS power in dBm */
+		int8_t ms_pwr;
+		/* MS timing advance */
+		uint8_t ms_ta;
+		/* neighbor measurement reports for up to 6 cells */
+		uint8_t num_cell;
+		/* current HO cause flags */
+		uint32_t cur_ho_causes;
+		/* recorded HO cause flags */
+		uint32_t rec_ho_causes;
+		/* neighbor cell measurement */
+		struct {
+			uint8_t rxlev;
+			uint8_t rxlev_vec[MAX_NUM_MEAS_PREPROC];
+			uint8_t rxlev_ave_res[MAX_NUM_MEAS_PREPROC];
+			uint8_t bsic;
+			uint8_t bcch_freq;
+		} cell[6];
+		/* measurement result index */
+		uint8_t meas_idx;
+		/* measurement averaging index */
+		uint8_t meas_ave_idx;
+		/* better candidate cell index */
+		uint8_t better_ncell;
+		/* measurement preprocessing HO timer */
+		struct osmo_timer_list preproc_ho_timer;
+	} meas_preproc;
+	struct {
 		struct amr_multirate_conf amr_mr;
 		struct {
 			uint8_t buf[16];
@@ -434,6 +492,9 @@ struct gsm_bts_trx {
 		} ipaccess;
 	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
+
+	/*measurement preprocessing parameters */
+	struct ipac_preproc_cfg trx_preproc_cfg;
 };
 
 #define GSM_BTS_SI(bts, i)	(void *)(bts->si_buf[i])
