@@ -277,6 +277,26 @@ static int config_write_sgsn(struct vty *vty)
 	} else
 		vty_out(vty, " no compression rfc1144%s", VTY_NEWLINE);
 
+	if (g_cfg->dcomp_v42bis.active && g_cfg->dcomp_v42bis.p0 == 1) {
+		vty_out(vty,
+			" compression v42bis active direction sgsn codewords %d strlen %d%s",
+			g_cfg->dcomp_v42bis.p1, g_cfg->dcomp_v42bis.p2,
+			VTY_NEWLINE);
+	} else if (g_cfg->dcomp_v42bis.active && g_cfg->dcomp_v42bis.p0 == 2) {
+		vty_out(vty,
+			" compression v42bis active direction ms codewords %d strlen %d%s",
+			g_cfg->dcomp_v42bis.p1, g_cfg->dcomp_v42bis.p2,
+			VTY_NEWLINE);
+	} else if (g_cfg->dcomp_v42bis.active && g_cfg->dcomp_v42bis.p0 == 3) {
+		vty_out(vty,
+			" compression v42bis active direction both codewords %d strlen %d%s",
+			g_cfg->dcomp_v42bis.p1, g_cfg->dcomp_v42bis.p2,
+			VTY_NEWLINE);
+	} else if (g_cfg->dcomp_v42bis.passive) {
+		vty_out(vty, " compression v42bis passive%s", VTY_NEWLINE);
+	} else
+		vty_out(vty, " no compression v42bis%s", VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -1117,6 +1137,59 @@ DEFUN(cfg_comp_rfc1144p, cfg_comp_rfc1144p_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_no_comp_v42bis, cfg_no_comp_v42bis_cmd,
+      "no compression v42bis",
+      NO_STR COMPRESSION_STR "disable V.42bis data compression\n")
+{
+	g_cfg->dcomp_v42bis.active = 0;
+	g_cfg->dcomp_v42bis.passive = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_comp_v42bis, cfg_comp_v42bis_cmd,
+      "compression v42bis active direction (ms|sgsn|both) codewords <512-65535> strlen <6-250>",
+      COMPRESSION_STR
+      "V.42bis data compresion scheme\n"
+      "Compression is actively proposed\n"
+      "Direction in which the compression shall be active (p0)\n"
+      "Compress ms->sgsn direction only\n"
+      "Compress sgsn->ms direction only\n"
+      "Both directions\n"
+      "Number of codewords (p1)\n"
+      "Number of codewords\n"
+      "Maximum string length (p2)\n" "Maximum string length\n")
+{
+	g_cfg->dcomp_v42bis.active = 1;
+	g_cfg->dcomp_v42bis.passive = 1;
+
+	switch (argv[0][0]) {
+	case 'm':
+		g_cfg->dcomp_v42bis.p0 = 1;
+		break;
+	case 's':
+		g_cfg->dcomp_v42bis.p0 = 2;
+		break;
+	case 'b':
+		g_cfg->dcomp_v42bis.p0 = 3;
+		break;
+	}
+
+	g_cfg->dcomp_v42bis.p1 = atoi(argv[1]);
+	g_cfg->dcomp_v42bis.p2 = atoi(argv[2]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_comp_v42bisp, cfg_comp_v42bisp_cmd,
+      "compression v42bis passive",
+      COMPRESSION_STR
+      "V.42bis data compresion scheme\n"
+      "Compression is available on request\n")
+{
+	g_cfg->dcomp_v42bis.active = 0;
+	g_cfg->dcomp_v42bis.passive = 1;
+	return CMD_SUCCESS;
+}
+
 int sgsn_vty_init(void)
 {
 	install_element_ve(&show_sgsn_cmd);
@@ -1174,7 +1247,9 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_no_comp_rfc1144_cmd);
 	install_element(SGSN_NODE, &cfg_comp_rfc1144_cmd);
 	install_element(SGSN_NODE, &cfg_comp_rfc1144p_cmd);
-
+	install_element(SGSN_NODE, &cfg_no_comp_v42bis_cmd);
+	install_element(SGSN_NODE, &cfg_comp_v42bis_cmd);
+	install_element(SGSN_NODE, &cfg_comp_v42bisp_cmd);
 	return 0;
 }
 

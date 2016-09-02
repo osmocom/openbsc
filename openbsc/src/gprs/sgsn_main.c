@@ -299,6 +299,11 @@ static struct log_info_cat gprs_categories[] = {
 		.description = "RFC1144 TCP/IP Header compression (SLHC)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DV42BIS] = {
+		.name = "DV42BIS",
+		.description = "V.42bis data compression (SNDCP)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	}
 };
 
 static const struct log_info gprs_log_info = {
