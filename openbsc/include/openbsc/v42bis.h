@@ -31,8 +31,12 @@ conjunction with the error correction scheme defined in V.42.
 \section v42bis_page_sec_2 How does it work?
 */
 
+#include <stdint.h>
+
 #if !defined(_SPANDSP_V42BIS_H_)
 #define _SPANDSP_V42BIS_H_
+
+#define SPAN_DECLARE(x) x
 
 #define V42BIS_MIN_STRING_SIZE      6
 #define V42BIS_MAX_STRING_SIZE      250
@@ -55,6 +59,8 @@ enum
     V42BIS_COMPRESSION_MODE_ALWAYS,
     V42BIS_COMPRESSION_MODE_NEVER
 };
+
+typedef void (*put_msg_func_t)(void *user_data, const uint8_t *msg, int len);
 
 /*!
     V.42bis compression/decompression descriptor. This defines the working state for a
@@ -111,7 +117,8 @@ SPAN_DECLARE(void) v42bis_compression_control(v42bis_state_t *s, int mode);
     \param decode_user_data An opaque pointer passed to the decode callback handler.
     \param max_decode_len The maximum length that should be passed to the decode handler.
     \return The V.42bis context. */
-SPAN_DECLARE(v42bis_state_t *) v42bis_init(v42bis_state_t *s,
+SPAN_DECLARE(v42bis_state_t *) v42bis_init(const void *ctx,
+                                           v42bis_state_t *s,
                                            int negotiated_p0,
                                            int negotiated_p1,
                                            int negotiated_p2,

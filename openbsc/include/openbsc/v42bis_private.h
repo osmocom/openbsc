@@ -120,7 +120,6 @@ struct v42bis_state_s
     v42bis_comp_state_t decompress;
 
     /*! \brief Error and flow logging control */
-    logging_state_t logging;
 };
 
 #endif

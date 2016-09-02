@@ -12,6 +12,7 @@ SUBDIRS = \
 	xid \
 	sndcp_xid \
 	slhc \
+	v42bis \
 	$(NULL)
 
 if BUILD_NAT

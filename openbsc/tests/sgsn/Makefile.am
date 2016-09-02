@@ -61,6 +61,7 @@ sgsn_test_LDADD = \
         $(top_builddir)/src/gprs/slhc.o \
         $(top_builddir)/src/gprs/gprs_sndcp_comp.o \
         $(top_builddir)/src/gprs/gprs_sndcp_pcomp.o \
+        $(top_builddir)/src/gprs/v42bis.o \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOABIS_LIBS) \
 	$(LIBOSMOCORE_LIBS) \

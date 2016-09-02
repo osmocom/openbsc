@@ -84,6 +84,7 @@ tests/mm_auth/mm_auth_test
 tests/xid/xid_test
 tests/sndcp_xid/sndcp_xid_test
 tests/slhc/slhc_test
+tests/v42bis/v42bis_test
 
 tests/atconfig
 tests/atlocal

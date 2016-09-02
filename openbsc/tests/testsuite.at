@@ -141,3 +141,9 @@ AT_KEYWORDS([slhc])
 cat $abs_srcdir/slhc/slhc_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/slhc/slhc_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([v42bis])
+AT_KEYWORDS([v42bis])
+cat $abs_srcdir/v42bis/v42bis_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/v42bis/v42bis_test], [], [expout], [ignore])
+AT_CLEANUP

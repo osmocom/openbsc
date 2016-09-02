@@ -233,6 +233,7 @@ AC_OUTPUT(
     tests/xid/Makefile
     tests/sndcp_xid/Makefile
     tests/slhc/Makefile
+    tests/v42bis/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

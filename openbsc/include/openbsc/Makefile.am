@@ -78,6 +78,8 @@ noinst_HEADERS = \
 	trau_upqueue.h \
 	ussd.h \
 	vty.h \
+	v42bis.h \
+	v42bis_private.h \
 	$(NULL)
 
 openbsc_HEADERS = \

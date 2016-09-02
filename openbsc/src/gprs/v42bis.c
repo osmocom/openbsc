@@ -29,10 +29,6 @@
 
 /*! \file */
 
-#if defined(HAVE_CONFIG_H)
-#include "config.h"
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -42,14 +38,19 @@
 #include <ctype.h>
 #include <assert.h>
 
-#include "spandsp/telephony.h"
-#include "spandsp/logging.h"
-#include "spandsp/bit_operations.h"
-#include "spandsp/async.h"
-#include "spandsp/v42bis.h"
+#include <openbsc/v42bis.h>
+#include <openbsc/v42bis_private.h>
+#include <openbsc/debug.h>
+#include <osmocom/core/talloc.h>
 
-#include "spandsp/private/logging.h"
-#include "spandsp/private/v42bis.h"
+
+#define span_log(x,y,msg, ...) DEBUGP(DV42BIS,msg, ##__VA_ARGS__)
+#define span_log_init(x,y,z)
+#define span_log_set_protocol(x,y)
+
+
+#define FALSE 0
+#define TRUE 1
 
 /* Fixed parameters from the spec. */
 /* Character size (bits) */
@@ -708,7 +709,8 @@ SPAN_DECLARE(void) v42bis_compression_control(v42bis_state_t *s, int mode)
 }
 /*- End of function --------------------------------------------------------*/
 
-SPAN_DECLARE(v42bis_state_t *) v42bis_init(v42bis_state_t *s,
+SPAN_DECLARE(v42bis_state_t *) v42bis_init(const void *ctx,
+                                           v42bis_state_t *s,
                                            int negotiated_p0,
                                            int negotiated_p1,
                                            int negotiated_p2,
@@ -727,7 +729,7 @@ SPAN_DECLARE(v42bis_state_t *) v42bis_init(v42bis_state_t *s,
         return NULL;
     if (s == NULL)
     {
-        if ((s = (v42bis_state_t *) malloc(sizeof(*s))) == NULL)
+        if ((s = (v42bis_state_t *) talloc_zero_size(ctx,sizeof(*s))) == NULL)
             return NULL;
     }
     memset(s, 0, sizeof(*s));
@@ -758,6 +760,7 @@ SPAN_DECLARE(int) v42bis_free(v42bis_state_t *s)
 {
     comp_exit(&s->compress);
     comp_exit(&s->decompress);
+    talloc_free(s);
     return 0;
 }
 /*- End of function --------------------------------------------------------*/

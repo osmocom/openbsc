@@ -93,6 +93,7 @@ osmo_sgsn_SOURCES = \
 	oap.c \
 	oap_messages.c \
 	gprs_llc_xid.c \
+	v42bis.c \
 	$(NULL)
 osmo_sgsn_LDADD = \
 	$(top_builddir)/src/libcommon/libcommon.a \
