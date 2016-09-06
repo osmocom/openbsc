@@ -2190,11 +2190,12 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 			    &call_conf);
 }
 
-static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
+static int gsm48_cc_tx_call_proc_and_assign(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *proceeding = arg;
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 CC PROC");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	int rc;
 
 	gh->msg_type = GSM48_MT_CC_CALL_PROC;
 
@@ -2210,7 +2211,11 @@ static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
 	if (proceeding->fields & MNCC_F_PROGRESS)
 		gsm48_encode_progress(msg, 0, &proceeding->progress);
 
-	return gsm48_conn_sendmsg(msg, trans->conn, trans);
+	rc = gsm48_conn_sendmsg(msg, trans->conn, trans);
+	if (rc)
+		return rc;
+
+	return msc_call_assignment(trans);
 }
 
 static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
@@ -3292,7 +3297,7 @@ static struct downstate {
 } downstatelist[] = {
 	/* mobile originating call establishment */
 	{SBIT(GSM_CSTATE_INITIATED), /* 5.2.1.2 */
-	 MNCC_CALL_PROC_REQ, gsm48_cc_tx_call_proc},
+	 MNCC_CALL_PROC_REQ, gsm48_cc_tx_call_proc_and_assign},
 	{SBIT(GSM_CSTATE_INITIATED) | SBIT(GSM_CSTATE_MO_CALL_PROC), /* 5.2.1.2 | 5.2.1.5 */
 	 MNCC_ALERT_REQ, gsm48_cc_tx_alerting},
 	{SBIT(GSM_CSTATE_INITIATED) | SBIT(GSM_CSTATE_MO_CALL_PROC) | SBIT(GSM_CSTATE_CALL_DELIVERED), /* 5.2.1.2 | 5.2.1.6 | 5.2.1.6 */
