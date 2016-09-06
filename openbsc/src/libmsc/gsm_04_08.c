@@ -2136,6 +2136,57 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 			    &call_conf);
 }
 
+/* TODO move to libosmocore/src/gsm/gsm0808.c */
+#define BSSMAP_MSG_SIZE 512
+#define BSSMAP_MSG_HEADROOM 128
+
+#define BSSMAP_CHANTYPE_SPEECH 0x1
+#define BSSMAP_CHANTYPE_DATA 0x2
+#define BSSMAP_CHANTYPE_SIGN 0x3
+
+#define BSSMAP_CHANTYPE_RATE_TCH_F 0x08
+#define BSSMAP_CHANTYPE_RATE_TCH_H 0x09
+#define BSSMAP_CHANTYPE_RATE_PREFER_TCH_F 0x0a
+#define BSSMAP_CHANTYPE_RATE_PREFER_TCH_H 0x0b
+#define BSSMAP_CHANTYPE_RATE_PREFER_TCH_F_FIXED 0x0c
+#define BSSMAP_CHANTYPE_RATE_PREFER_TCH_H_FIXED 0x0d
+
+struct bssmap_channel_type {
+	uint8_t speech_data_ind;
+	uint8_t chan_rate_and_type;
+	uint8_t permitted_speech[2];
+};
+
+struct msgb *gsm0808_create_assignment_request(struct gsm_trans *trans,
+					       uint8_t speech_mode)
+{
+	struct bssmap_channel_type chan_type;
+	struct msgb *msg = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
+						"bssmap: ass rqst");
+	if (!msg)
+		return NULL;
+
+	msgb_v_put(msg, BSS_MAP_MSG_ASSIGMENT_RQST);
+
+	/* Channel Type 3.2.2.11 */
+	chan_type.speech_data_ind = BSSMAP_CHANTYPE_SPEECH;
+	chan_type.chan_rate_and_type = BSSMAP_CHANTYPE_RATE_PREFER_TCH_H;
+	chan_type.permitted_speech[0] = 0xa1; /* 10100001 ext, TCH/F v3 */
+	chan_type.permitted_speech[1] = 0x25; /* 00100101 no ext, TCH/H v3 */
+	msgb_tlv_put(msg, GSM0808_IE_CHANNEL_TYPE, sizeof(chan_type), &chan_type);
+
+	/* Circuit ID 3.2.2.2 */
+	msgb_tv_put(msg, GSM0808_IE_CIRCUIT_IDENTITY_CODE, todo);
+
+
+	/* write LSA identifier 3.2.2.15 */
+	?
+
+	msg->l3h = msgb_tv_push(msg, BSSAP_MSG_BSS_MANAGEMENT, msgb_length(msg));
+
+	return msg;
+}
+
 static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *proceeding = arg;
