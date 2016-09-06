@@ -25,6 +25,7 @@
 #include <openbsc/msc_ifaces.h>
 #include <openbsc/iu.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/transaction.h>
 
 #include "../../bscconfig.h"
 
@@ -99,4 +100,9 @@ int msc_tx_common_id(struct gsm_subscriber_connection *conn)
 	     "Cannot send CommonID: IFACE_IU but IuCS support not built\n");
 	return -ENOTSUP;
 #endif
+}
+
+int msc_call_assignment(struct gsm_trans *trans)
+{
+	return 0;
 }
