@@ -47,3 +47,4 @@ int msc_gsm0808_tx_cipher_mode(struct gsm_subscriber_connection *conn, int ciphe
 			       const uint8_t *key, int len, int include_imeisv);
 
 int msc_tx_common_id(struct gsm_subscriber_connection *conn);
+int msc_call_assignment(struct gsm_trans *trans);
