@@ -170,6 +170,9 @@ struct gsm_subscriber_connection {
 	struct {
 		struct ue_conn_ctx *ue_ctx;
 		int integrity_protection;
+		unsigned int mgcp_rtp_endpoint;
+		uint16_t mgcp_rtp_port_ue;
+		uint16_t mgcp_rtp_port_cn;
 	} iu;
 };
 
