@@ -972,6 +972,7 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
 			/* nothing to do. CIPHER MODE COMMAND is
 			 * implicit CM SERV ACK */
 			implit_attach(conn);
+			rc = msc_tx_common_id(conn);
 			break;
 
 		default:
