@@ -26,8 +26,15 @@
 #include <openbsc/iu.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/transaction.h>
+#include <openbsc/mgcp.h>
+#include <openbsc/mgcpgw_client.h>
 
 #include "../../bscconfig.h"
+
+extern struct msgb *ranap_new_msg_rab_assign_voice(uint8_t rab_id,
+						   uint32_t rtp_ip,
+						   uint16_t rtp_port,
+						   bool use_x213_nsap);
 
 static int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
@@ -102,7 +109,80 @@ int msc_tx_common_id(struct gsm_subscriber_connection *conn)
 #endif
 }
 
+#ifdef BUILD_IU
+static int iu_rab_act_cs(struct ue_conn_ctx *uectx, uint8_t rab_id,
+			 uint32_t rtp_ip, uint16_t rtp_port,
+			 bool use_x213_nsap)
+{
+	struct msgb *msg;
+
+	LOGP(DIUCS, LOGL_DEBUG, "Assigning RAB: rab_id=%d, rtp=%x:%u,"
+	     " use_x213_nsap=%d\n", rab_id, rtp_ip, rtp_port, use_x213_nsap);
+
+	msg = ranap_new_msg_rab_assign_voice(rab_id, rtp_ip, rtp_port,
+					     use_x213_nsap);
+	msg->l2h = msg->data;
+
+	return iu_rab_act(uectx, msg);
+}
+
+static int conn_iu_rab_act_cs(struct gsm_trans *trans)
+{
+	struct gsm_subscriber_connection *conn = trans->conn;
+	struct ue_conn_ctx *uectx = conn->iu.ue_ctx;
+
+	/* HACK. where to scope the RAB Id? At the conn / subscriber /
+	 * ue_conn_ctx? */
+	static uint8_t next_rab_id = 1;
+
+	conn->iu.mgcp_rtp_endpoint =
+		mgcpgw_client_next_endpoint(conn->network->mgcpgw.client);
+	/* HACK: the addresses should be known from CRCX response
+	 * and config. */
+	conn->iu.mgcp_rtp_port_ue = 4000 + 2 * conn->iu.mgcp_rtp_endpoint;
+	conn->iu.mgcp_rtp_port_cn = 16000 + 2 * conn->iu.mgcp_rtp_endpoint;
+
+	/* Establish the RTP stream first as looping back to the originator.
+	 * The MDCX will patch through to the counterpart. TODO: play a ring
+	 * tone instead. */
+	mgcpgw_client_tx_crcx(conn->network->mgcpgw.client,
+			      conn->iu.mgcp_rtp_endpoint, trans->callref,
+			      MGCP_CONN_LOOPBACK);
+
+	uint32_t rtp_ip =
+		mgcpgw_client_remote_addr_n(conn->network->mgcpgw.client);
+
+	return iu_rab_act_cs(uectx, next_rab_id++, rtp_ip, conn->iu.mgcp_rtp_port_ue, 1);
+	/* use_x213_nsap == 0 for ip.access nano3G */
+	/* TODO: store the RAB Id? At the conn / subscriber / ue_conn_ctx? */
+}
+#endif
+
 int msc_call_assignment(struct gsm_trans *trans)
 {
-	return 0;
+	struct gsm_subscriber_connection *conn = trans->conn;
+
+	switch (conn->via_iface) {
+	case IFACE_A:
+		LOGP(DMSC, LOGL_ERROR,
+		     "msc_call_assignment(): A-interface BSSMAP Assignment"
+		     " Request not yet implemented\n");
+		return -ENOTSUP;
+
+	case IFACE_IU:
+#ifdef BUILD_IU
+		return conn_iu_rab_act_cs(trans);
+#else
+		LOGP(DMSC, LOGL_ERROR,
+		     "msc_call_assignment(): IuCS RAB Activation not supported"
+		     " in this build\n");
+		return -ENOTSUP;
+#endif
+
+	default:
+		LOGP(DMSC, LOGL_ERROR,
+		     "msc_tx(): conn->via_iface invalid (%d)\n",
+		     conn->via_iface);
+		return -EINVAL;
+	}
 }
