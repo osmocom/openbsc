@@ -33,3 +33,9 @@ int iu_page_ps(const char *imsi, const uint32_t *ptmsi, uint16_t lac, uint8_t ra
 	LOGP(DLGLOBAL, LOGL_INFO, "iu_page_ps() dummy called, NOT paging\n");
 	return 0;
 }
+
+int iu_tx_common_id(struct ue_conn_ctx *uectx, const char *imsi)
+{
+	LOGP(DLGLOBAL, LOGL_INFO, "iu_tx_common_id() dummy called, NOT sending CommonID\n");
+	return 0;
+}

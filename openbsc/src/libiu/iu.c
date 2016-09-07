@@ -256,6 +256,25 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 	return 0;
 }
 
+int iu_tx_common_id(struct ue_conn_ctx *uectx, const char *imsi)
+{
+	struct msgb *msg;
+	struct osmo_scu_prim *prim;
+
+	LOGP(DRANAP, LOGL_INFO, "Transmitting RANAP CommonID (SUA link %p conn_id %u)\n",
+	     uectx->link, uectx->conn_id);
+
+	msg = ranap_new_msg_common_id(imsi);
+	msg->l2h = msg->data;
+	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));
+	prim->u.data.conn_id = uectx->conn_id;
+	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
+			OSMO_SCU_PRIM_N_DATA,
+			PRIM_OP_REQUEST, msg);
+	osmo_sua_user_link_down(uectx->link, &prim->oph);
+	return 0;
+}
+
 static int iu_grnc_id_parse(struct iu_grnc_id *dst,
 			    struct RANAP_GlobalRNC_ID *src)
 {

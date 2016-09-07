@@ -23,6 +23,10 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/msc_ifaces.h>
+#include <openbsc/iu.h>
+#include <openbsc/gsm_subscriber.h>
+
+#include "../../bscconfig.h"
 
 static int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
@@ -80,4 +84,19 @@ int msc_gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
 
 	return msc_tx_dtap(conn, msg);
+}
+
+int msc_tx_common_id(struct gsm_subscriber_connection *conn)
+{
+	/* Common ID is only sent over IuCS */
+	if (conn->via_iface != IFACE_IU)
+		return 0;
+
+#ifdef BUILD_IU
+	return iu_tx_common_id(conn->iu.ue_ctx, conn->subscr->imsi);
+#else
+	LOGP(DMM, LOGL_ERROR,
+	     "Cannot send CommonID: IFACE_IU but IuCS support not built\n");
+	return -ENOTSUP;
+#endif
 }
