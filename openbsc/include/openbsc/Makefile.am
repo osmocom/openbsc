@@ -50,6 +50,7 @@ noinst_HEADERS = \
 	mgcp.h \
 	mgcp_internal.h \
 	mgcp_transcode.h \
+	mgcpgw_client.h \
 	misdn.h \
 	mncc.h \
 	mncc_int.h \
