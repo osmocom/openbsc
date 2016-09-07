@@ -22,6 +22,7 @@
 #include <openbsc/db.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_11.h>
+#include <openbsc/mgcp.h>
 
 #include <osmocom/core/application.h>
 
@@ -254,3 +255,13 @@ int main()
 
 /* stubs */
 void vty_out() {}
+unsigned int mgcpgw_client_next_endpoint(struct mgcpgw_client *client)
+{ return 0; }
+int mgcpgw_client_tx_crcx(struct mgcpgw_client *client,
+			  uint16_t rtp_endpoint, unsigned int call_id,
+			  enum mgcp_connection_mode mode)
+{ return -ENOTSUP; }
+const char *mgcpgw_client_remote_addr_str(struct mgcpgw_client *mgcp)
+{ return "0.0.0.0"; }
+uint32_t mgcpgw_client_remote_addr_n(struct mgcpgw_client *mgcp)
+{ return 0; }
