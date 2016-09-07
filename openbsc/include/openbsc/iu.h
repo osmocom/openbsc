@@ -58,5 +58,6 @@ int iu_rab_act(struct ue_conn_ctx *ue_ctx, struct msgb *msg);
 int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id);
 int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 		       int send_ck, int new_key);
+int iu_tx_common_id(struct ue_conn_ctx *ue_ctx, const char *imsi);
 
 void iu_vty_init(int *asn_debug_p);
