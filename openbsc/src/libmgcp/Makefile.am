@@ -30,6 +30,7 @@ noinst_HEADERS = \
 	$(NULL)
 
 libmgcp_a_SOURCES = \
+	mgcp_common.c \
 	mgcp_protocol.c \
 	mgcp_network.c \
 	mgcp_vty.c \
