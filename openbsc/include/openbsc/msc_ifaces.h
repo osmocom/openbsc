@@ -45,3 +45,5 @@ int msc_gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 /* TODO: specific to A interface, move this away */
 int msc_gsm0808_tx_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 			       const uint8_t *key, int len, int include_imeisv);
+
+int msc_tx_common_id(struct gsm_subscriber_connection *conn);
