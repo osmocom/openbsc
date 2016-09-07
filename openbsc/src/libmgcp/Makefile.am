@@ -36,6 +36,8 @@ libmgcp_a_SOURCES = \
 	mgcp_vty.c \
 	mgcp_osmux.c \
 	mgcp_sdp.c \
+	mgcpgw_client.c \
+	mgcpgw_client_vty.c \
 	$(NULL)
 if BUILD_MGCP_TRANSCODING
 libmgcp_a_SOURCES += \
