@@ -1,24 +1,44 @@
-SUBDIRS = gsm0408 db channel mgcp gprs abis gbproxy trau subscr mm_auth xid
-
+SUBDIRS = \
+	gsm0408 \
+	db \
+	channel \
+	mgcp \
+	gprs \
+	abis \
+	gbproxy \
+	trau \
+	subscr \
+	mm_auth \
+	xid \
+	$(NULL)
 if BUILD_NAT
-SUBDIRS += bsc-nat bsc-nat-trie
+SUBDIRS += \
+	bsc-nat \
+	bsc-nat-trie \
+	$(NULL)
 endif
-
 if BUILD_BSC
-SUBDIRS += bsc
+SUBDIRS += \
+	bsc \
+	$(NULL)
 endif
-
 if BUILD_SMPP
-SUBDIRS += smpp
+SUBDIRS += \
+	smpp \
+	$(NULL)
 endif
-
 if HAVE_LIBGTP
-SUBDIRS += gtphub
-if HAVE_LIBCARES
-SUBDIRS += sgsn oap
-endif
-endif
+SUBDIRS += \
+	gtphub \
+	$(NULL)
 
+if HAVE_LIBCARES
+SUBDIRS += \
+	sgsn \
+	oap \
+	$(NULL)
+endif
+endif
 
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
 $(srcdir)/package.m4: $(top_srcdir)/configure.ac
@@ -38,9 +58,20 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
                echo '  [$(PACKAGE_URL)])'; \
              } >'$(srcdir)/package.m4'
 
-EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) vty_test_runner.py ctrl_test_runner.py smpp_test_runner.py
+EXTRA_DIST = \
+	testsuite.at \
+	$(srcdir)/package.m4 \
+	$(TESTSUITE) \
+	vty_test_runner.py \
+	ctrl_test_runner.py \
+	smpp_test_runner.py \
+	$(NULL)
+
 TESTSUITE = $(srcdir)/testsuite
-DISTCLEANFILES = atconfig
+
+DISTCLEANFILES = \
+	atconfig \
+	$(NULL)
 
 if ENABLE_EXT_TESTS
 python-tests: $(BUILT_SOURCES)

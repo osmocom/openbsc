@@ -1,1 +1,3 @@
-SUBDIRS = examples
+SUBDIRS = \
+	examples \
+	$(NULL)

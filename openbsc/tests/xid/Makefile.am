@@ -1,11 +1,27 @@
-AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
-AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBCARES_CFLAGS)
+AM_CPPFLAGS = \
+	$(all_includes) \
+	-I$(top_srcdir)/include \
+	$(NULL)
 
-EXTRA_DIST = xid_test.ok
+AM_CFLAGS = \
+	-Wall \
+	-ggdb3 \
+	$(LIBOSMOCORE_CFLAGS) \
+	$(LIBOSMOGSM_CFLAGS) \
+	$(LIBCARES_CFLAGS) \
+	$(NULL)
 
-noinst_PROGRAMS = xid_test
+EXTRA_DIST = \
+	xid_test.ok \
+	$(NULL)
 
-xid_test_SOURCES = xid_test.c
+noinst_PROGRAMS = \
+	xid_test \
+	$(NULL)
+
+xid_test_SOURCES = \
+	xid_test.c \
+	$(NULL)
 
 xid_test_LDADD = \
 	$(top_builddir)/src/gprs/gprs_llc_xid.o \
@@ -16,6 +32,8 @@ xid_test_LDADD = \
 	$(LIBOSMOGB_LIBS) \
 	$(LIBCARES_LIBS) \
 	$(LIBCRYPTO_LIBS) \
-	-lgtp -lrt -lm
-
+	-lgtp \
+	-lrt \
+	-lm \
+	$(NULL)
 

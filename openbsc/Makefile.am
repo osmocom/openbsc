@@ -1,7 +1,16 @@
 AUTOMAKE_OPTIONS = foreign dist-bzip2 1.6
 
-AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
-SUBDIRS = doc include src tests
+AM_CPPFLAGS = \
+	$(all_includes) \
+	-I$(top_srcdir)/include \
+	$(NULL)
+
+SUBDIRS = \
+	doc \
+	include \
+	src \
+	tests \
+	$(NULL)
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = openbsc.pc

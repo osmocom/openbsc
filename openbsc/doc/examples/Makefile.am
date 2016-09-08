@@ -1,4 +1,3 @@
-
 CFG_FILES = find $(srcdir) -name '*.cfg*' | sed -e 's,^$(srcdir),,'
 
 dist-hook:

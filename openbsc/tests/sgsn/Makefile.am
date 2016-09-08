@@ -1,20 +1,42 @@
-AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
-AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBCARES_CFLAGS)
+AM_CPPFLAGS = \
+	$(all_includes) \
+	-I$(top_srcdir)/include \
+	$(NULL)
+
+AM_CFLAGS = \
+	-Wall \
+	-ggdb3 \
+	$(LIBOSMOCORE_CFLAGS) \
+	$(LIBOSMOGSM_CFLAGS) \
+	$(LIBCARES_CFLAGS) \
+	$(NULL)
 if BUILD_IU
-AM_CFLAGS += $(LIBASN1C_CFLAGS) $(LIBOSMOSIGTRAN_CFLAGS) $(LIBOSMORANAP_CFLAGS)
+AM_CFLAGS += \
+	$(LIBASN1C_CFLAGS) \
+	$(LIBOSMOSIGTRAN_CFLAGS) \
+	$(LIBOSMORANAP_CFLAGS) \
+	$(NULL)
 endif
 
-EXTRA_DIST = sgsn_test.ok
+EXTRA_DIST = \
+	sgsn_test.ok \
+	$(NULL)
 
-noinst_PROGRAMS = sgsn_test
+noinst_PROGRAMS = \
+	sgsn_test \
+	$(NULL)
 
-sgsn_test_SOURCES = sgsn_test.c
+sgsn_test_SOURCES = \
+	sgsn_test.c \
+	$(NULL)
+
 sgsn_test_LDFLAGS = \
 	-Wl,--wrap=RAND_bytes \
 	-Wl,--wrap=sgsn_update_subscriber_data \
 	-Wl,--wrap=gprs_subscr_request_update_location \
 	-Wl,--wrap=gprs_subscr_request_auth_info \
-	-Wl,--wrap=gprs_gsup_client_send
+	-Wl,--wrap=gprs_gsup_client_send \
+	$(NULL)
 
 sgsn_test_LDADD = \
 	$(top_builddir)/src/gprs/gprs_llc_parse.o \
@@ -33,7 +55,7 @@ sgsn_test_LDADD = \
 	$(top_builddir)/src/gprs/gprs_gb_parse.o \
 	$(top_builddir)/src/gprs/oap.o \
 	$(top_builddir)/src/gprs/oap_messages.o \
-        $(top_builddir)/src/gprs/gprs_llc_xid.o \
+	$(top_builddir)/src/gprs/gprs_llc_xid.o \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOABIS_LIBS) \
 	$(LIBOSMOCORE_LIBS) \
@@ -41,12 +63,14 @@ sgsn_test_LDADD = \
 	$(LIBOSMOGB_LIBS) \
 	$(LIBCARES_LIBS) \
 	$(LIBCRYPTO_LIBS) \
-	-lgtp -lrt
+	-lgtp \
+	-lrt \
+	$(NULL)
 if BUILD_IU
 sgsn_test_LDADD += \
 	$(top_builddir)/src/libiu/libiu.a \
 	$(LIBOSMORANAP_LIBS) \
 	$(LIBOSMOSIGTRAN_LIBS) \
-	$(LIBASN1C_LIBS)
+	$(LIBASN1C_LIBS) \
+	$(NULL)
 endif
-
