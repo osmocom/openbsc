@@ -55,6 +55,7 @@ struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 	struct gsm_trans *trans;
 
 	llist_for_each_entry(trans, &net->trans_list, entry) {
+		return trans;
 		if (trans->callref == callref)
 			return trans;
 	}

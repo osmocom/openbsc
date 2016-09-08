@@ -80,6 +80,9 @@ static uint8_t determine_lchan_mode(struct gsm_mncc *setup)
 	return mncc_codec_for_mode(setup->lchan_type);
 }
 
+static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
+			  struct gsm_mncc *connect);
+
 /* on incoming call, look up database and send setup to remote subscr. */
 static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 			  struct gsm_mncc *setup)
@@ -146,8 +149,11 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 //	setup->fields |= MNCC_F_SIGNAL;
 //	setup->signal = GSM48_SIGNAL_DIALTONE;
 	setup->callref = remote->callref;
-	DEBUGP(DMNCC, "(call %x) Forwarding SETUP to remote.\n", call->callref);
-	return mncc_tx_to_cc(remote->net, MNCC_SETUP_REQ, setup);
+	DEBUGP(DMNCC, "(call %x) NOT Forwarding SETUP to remote.\n", call->callref);
+	//return mncc_tx_to_cc(remote->net, MNCC_SETUP_REQ, setup);
+
+	return 0;
+	//return mncc_setup_cnf(call, msg_type, setup);
 
 out_reject:
 	mncc_tx_to_cc(call->net, MNCC_REJ_REQ, &mncc);
@@ -214,7 +220,7 @@ static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
 #endif
 
 	/* proxy mode */
-	if (!net->handover.active) {
+	if (false && !net->handover.active) {
 		/* in the no-handover case, we can bridge, i.e. use
 		 * the old RTP proxy code */
 		return mncc_tx_to_cc(call->net, MNCC_BRIDGE, &bridge);
