@@ -28,10 +28,12 @@ endif
 
 OSMO_LIBS = \
 	$(LIBOSMOCORE_LIBS) \
+	$(LIBOSMOABIS_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBOSMOVTY_LIBS) \
 	$(LIBOSMOCTRL_LIBS) \
 	$(LIBOSMOGB_LIBS) \
+	$(LIBGTP_LIBS) \
 	$(NULL)
 
 bin_PROGRAMS = \
@@ -121,6 +123,6 @@ osmo_gtphub_LDADD = \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBOSMOVTY_LIBS) \
 	$(LIBCARES_LIBS) \
+	$(LIBGTP_LIBS) \
 	-lrt \
-	-lgtp \
 	$(NULL)

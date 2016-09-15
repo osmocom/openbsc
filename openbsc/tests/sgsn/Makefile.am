@@ -7,6 +7,7 @@ AM_CFLAGS = \
 	-Wall \
 	-ggdb3 \
 	$(LIBOSMOCORE_CFLAGS) \
+	$(LIBOSMOABIS_CFLAGS) \
 	$(LIBOSMOGSM_CFLAGS) \
 	$(LIBCARES_CFLAGS) \
 	$(NULL)
@@ -63,7 +64,7 @@ sgsn_test_LDADD = \
 	$(LIBOSMOGB_LIBS) \
 	$(LIBCARES_LIBS) \
 	$(LIBCRYPTO_LIBS) \
-	-lgtp \
+	$(LIBGTP_LIBS) \
 	-lrt \
 	$(NULL)
 if BUILD_IU

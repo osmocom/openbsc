@@ -32,7 +32,7 @@ xid_test_LDADD = \
 	$(LIBOSMOGB_LIBS) \
 	$(LIBCARES_LIBS) \
 	$(LIBCRYPTO_LIBS) \
-	-lgtp \
+	$(LIBGTP_LIBS) \
 	-lrt \
 	-lm \
 	$(NULL)

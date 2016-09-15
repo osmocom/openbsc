@@ -7,6 +7,8 @@ AM_CFLAGS = \
 	-Wall \
 	-ggdb3 \
 	$(LIBOSMOCORE_CFLAGS) \
+	$(LIBOSMOABIS_CFLAGS) \
+	$(LIBGTP_CFLAGS) \
 	$(NULL)
 
 EXTRA_DIST = \
@@ -35,6 +37,6 @@ gtphub_test_LDADD = \
 	$(top_builddir)/src/gprs/gtphub.o \
 	$(top_builddir)/src/gprs/gprs_utils.o \
 	$(LIBOSMOCORE_LIBS) \
-	-lgtp \
+	$(LIBGTP_LIBS) \
 	-lrt \
 	$(NULL)
