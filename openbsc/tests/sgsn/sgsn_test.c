@@ -39,8 +39,6 @@
 
 #include <stdio.h>
 
-extern void *tall_msgb_ctx;
-
 void *tall_bsc_ctx;
 static struct sgsn_instance sgsn_inst = {
 	.config_file = "osmo_sgsn.cfg",
@@ -2423,11 +2421,12 @@ static struct log_info info = {
 int main(int argc, char **argv)
 {
 	void *osmo_sgsn_ctx;
+	void *msgb_ctx;
 
 	osmo_init_logging(&info);
 	osmo_sgsn_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");
 	tall_bsc_ctx = talloc_named_const(osmo_sgsn_ctx, 0, "bsc");
-	tall_msgb_ctx = talloc_named_const(osmo_sgsn_ctx, 0, "msgb");
+	msgb_ctx = msgb_talloc_ctx_init(osmo_sgsn_ctx, 0);
 
 	sgsn_rate_ctr_init();
 	sgsn_auth_init();
@@ -2458,7 +2457,7 @@ int main(int argc, char **argv)
 	printf("Done\n");
 
 	talloc_report_full(osmo_sgsn_ctx, stderr);
-	OSMO_ASSERT(talloc_total_blocks(tall_msgb_ctx) == 1);
+	OSMO_ASSERT(talloc_total_blocks(msgb_ctx) == 1);
 	OSMO_ASSERT(talloc_total_blocks(tall_bsc_ctx) == 2);
 	return 0;
 }

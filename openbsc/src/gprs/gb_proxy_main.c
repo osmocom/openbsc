@@ -189,8 +189,6 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
-extern void *tall_msgb_ctx;
-
 extern int bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
@@ -231,7 +229,7 @@ int main(int argc, char **argv)
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 0, "nsip_proxy");
-	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
+	msgb_talloc_ctx_init(tall_bsc_ctx, 0);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);

@@ -20,7 +20,6 @@
 #include <osmocom/core/talloc.h>
 
 extern void *tall_bsc_ctx;
-extern void *tall_msgb_ctx;
 extern void *tall_fle_ctx;
 extern void *tall_locop_ctx;
 extern void *tall_authciphop_ctx;
@@ -38,7 +37,7 @@ extern void *tall_ctr_ctx;
 
 void talloc_ctx_init(void *ctx_root)
 {
-	tall_msgb_ctx = talloc_named_const(ctx_root, 0, "msgb");
+	msgb_talloc_ctx_init(ctx_root, 0);
 	tall_fle_ctx = talloc_named_const(ctx_root, 0, "bs11_file_list_entry");
 	tall_locop_ctx = talloc_named_const(ctx_root, 0, "loc_updating_oper");
 	tall_authciphop_ctx = talloc_named_const(ctx_root, 0, "auth_ciph_oper");

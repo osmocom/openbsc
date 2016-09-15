@@ -163,7 +163,6 @@ static void signal_handler(int signal)
 
 /* NSI that BSSGP uses when transmitting on NS */
 extern struct gprs_ns_inst *bssgp_nsi;
-extern void *tall_msgb_ctx;
 
 extern int bsc_vty_go_parent(struct vty *vty);
 
@@ -328,7 +327,7 @@ int main(int argc, char **argv)
 
 	srand(time(NULL));
 	tall_bsc_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");
-	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
+	msgb_talloc_ctx_init(tall_bsc_ctx, 0);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
