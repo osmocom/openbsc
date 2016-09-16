@@ -890,6 +890,8 @@ int main(int argc, char **argv)
 	struct gsm_network *gsmnet;
 	struct e1inp_line *line;
 
+	tall_bs11cfg_ctx = talloc_named_const(NULL, 0, "bs11-config");
+
 	osmo_init_logging(&log_info);
 	handle_options(argc, argv);
 	bts_model_bs11_init();
