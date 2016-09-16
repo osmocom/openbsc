@@ -852,6 +852,8 @@ int main(int argc, char **argv)
 	struct sockaddr_in sin;
 	int rc, option_index = 0, stream_id = 0xff;
 
+	tall_ctx_config = talloc_named_const(NULL, 0, "ipaccess-config");
+
 	osmo_init_logging(&log_info);
 	log_parse_category_mask(osmo_stderr_target, "DNM,0");
 	bts_model_nanobts_init();
