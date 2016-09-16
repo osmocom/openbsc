@@ -4842,6 +4842,8 @@ static struct log_info info = {
 
 int main(int argc, char **argv)
 {
+	msgb_talloc_ctx_init(NULL, 0);
+
 	osmo_init_logging(&info);
 	log_set_use_color(osmo_stderr_target, 0);
 	log_set_print_filename(osmo_stderr_target, 0);

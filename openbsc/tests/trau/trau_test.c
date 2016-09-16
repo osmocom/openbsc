@@ -66,6 +66,8 @@ int main()
 	unsigned char data[33];
 	int i;
 
+	msgb_talloc_ctx_init(NULL, 0);
+
 	memset(data, 0x00, sizeof(data));
 	test_trau_fr_efr(data);
 	memset(data, 0xff, sizeof(data));

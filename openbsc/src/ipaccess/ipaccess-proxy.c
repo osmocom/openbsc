@@ -1200,6 +1200,7 @@ int main(int argc, char **argv)
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "ipaccess-proxy");
+	msgb_talloc_ctx_init(tall_bsc_ctx, 0);
 
 	osmo_init_logging(&log_info);
 	log_parse_category_mask(osmo_stderr_target, "DLINP:DLMI");

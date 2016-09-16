@@ -299,6 +299,7 @@ int main(int argc, char **argv)
 	struct gtphub *hub = &_hub;
 
 	osmo_gtphub_ctx = talloc_named_const(NULL, 0, "osmo_gtphub");
+	msgb_talloc_ctx_init(osmo_gtphub_ctx, 0);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);

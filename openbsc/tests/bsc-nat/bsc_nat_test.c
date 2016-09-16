@@ -1551,6 +1551,7 @@ static void test_nat_extract_lac()
 
 int main(int argc, char **argv)
 {
+	msgb_talloc_ctx_init(NULL, 0);
 	sccp_set_log_area(DSCCP);
 	osmo_init_logging(&log_info);
 

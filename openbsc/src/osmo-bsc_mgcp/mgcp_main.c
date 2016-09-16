@@ -203,6 +203,7 @@ int main(int argc, char **argv)
 	int on = 1, rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "mgcp-callagent");
+	msgb_talloc_ctx_init(tall_bsc_ctx, 0);
 
 	osmo_init_ignore_signals();
 	osmo_init_logging(&log_info);

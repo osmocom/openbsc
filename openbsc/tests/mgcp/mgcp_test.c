@@ -1202,6 +1202,7 @@ static void test_osmux_cid(void)
 
 int main(int argc, char **argv)
 {
+	msgb_talloc_ctx_init(NULL, 0);
 	osmo_init_logging(&log_info);
 
 	test_strline();

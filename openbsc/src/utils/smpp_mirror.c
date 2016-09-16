@@ -302,6 +302,8 @@ int main(int argc, char **argv)
 	int port = 0;
 	int rc;
 
+	msgb_talloc_ctx_init(NULL, 0);
+
 	memset(&esme, 0, sizeof(esme));
 
 	osmo_init_logging(&log_info);

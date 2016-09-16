@@ -234,6 +234,7 @@ static struct log_info info = {
 
 int main(int argc, char **argv)
 {
+	msgb_talloc_ctx_init(NULL, 0);
 	osmo_init_logging(&info);
 
 	test_oap_api();

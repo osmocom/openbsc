@@ -90,6 +90,8 @@ int main(int argc, char **argv)
 	char *db_fname;
 	int rc;
 
+	msgb_talloc_ctx_init(NULL, 0);
+
 	if (argc < 2) {
 		fprintf(stderr, "You have to specify the database file name\n");
 		exit(2);

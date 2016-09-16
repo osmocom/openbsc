@@ -264,6 +264,8 @@ int main(int argc, char **argv)
 	char *header[1];
 	char *title[1];
 
+	msgb_talloc_ctx_init(NULL, 0);
+
 	printf("sizeof(gsm_meas_rep)=%u\n", sizeof(struct gsm_meas_rep));
 	printf("sizeof(meas_feed_meas)=%u\n", sizeof(struct meas_feed_meas));
 
