@@ -31,7 +31,6 @@
 
 #include <osmocom/core/socket.h>
 #include <osmocom/core/utils.h>
-#include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/talloc.h>
 
