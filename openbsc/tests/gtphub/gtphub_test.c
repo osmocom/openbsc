@@ -26,7 +26,6 @@
 #include <unistd.h>
 
 #include <osmocom/core/utils.h>
-#include <osmocom/core/msgb.h>
 #include <osmocom/core/application.h>
 
 #include <openbsc/debug.h>
