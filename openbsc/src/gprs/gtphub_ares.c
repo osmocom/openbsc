@@ -27,6 +27,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <netdb.h>
 
 #include <openbsc/gtphub.h>
 #include <openbsc/debug.h>
