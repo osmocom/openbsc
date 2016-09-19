@@ -134,6 +134,7 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	/* HACK. where to scope the RAB Id? At the conn / subscriber /
 	 * ue_conn_ctx? */
 	static uint8_t next_rab_id = 1;
+	conn->iu.rab_id = next_rab_id ++;
 
 	conn->iu.mgcp_rtp_endpoint =
 		mgcpgw_client_next_endpoint(conn->network->mgcpgw.client);
@@ -152,9 +153,9 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	uint32_t rtp_ip =
 		mgcpgw_client_remote_addr_n(conn->network->mgcpgw.client);
 
-	return iu_rab_act_cs(uectx, next_rab_id++, rtp_ip, conn->iu.mgcp_rtp_port_ue, 1);
+	return iu_rab_act_cs(uectx, conn->iu.rab_id, rtp_ip,
+			     conn->iu.mgcp_rtp_port_ue, 1);
 	/* use_x213_nsap == 0 for ip.access nano3G */
-	/* TODO: store the RAB Id? At the conn / subscriber / ue_conn_ctx? */
 }
 #endif
 

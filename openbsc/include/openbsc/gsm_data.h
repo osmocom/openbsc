@@ -173,6 +173,7 @@ struct gsm_subscriber_connection {
 		unsigned int mgcp_rtp_endpoint;
 		uint16_t mgcp_rtp_port_ue;
 		uint16_t mgcp_rtp_port_cn;
+		uint8_t rab_id;
 	} iu;
 };
 
