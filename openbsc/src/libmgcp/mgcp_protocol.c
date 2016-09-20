@@ -546,6 +546,11 @@ static int parse_conn_mode(const char *msg, struct mgcp_endpoint *endp)
 	endp->bts_end.output_enabled =
 		endp->conn_mode & MGCP_CONN_RECV_ONLY ? 1 : 0;
 
+	LOGP(DMGCP, LOGL_DEBUG, "endpoint %x connection mode '%s' %d output_enabled net %d bts %d\n",
+	     ENDPOINT_NUMBER(endp),
+	     msg, endp->conn_mode, endp->net_end.output_enabled,
+	     endp->bts_end.output_enabled);
+
 	return ret;
 }
 
@@ -971,6 +976,8 @@ static struct msgb *handle_modify_con(struct mgcp_parse_data *p)
 			break;
 		case MGCP_POLICY_DEFER:
 			/* stop processing */
+			LOGP(DMGCP, LOGL_DEBUG, "endp %x MDCX defer\n",
+			     ENDPOINT_NUMBER(endp));
 			return NULL;
 			break;
 		case MGCP_POLICY_CONT:
@@ -1002,6 +1009,8 @@ error3:
 
 
 out_silent:
+	LOGP(DMGCP, LOGL_DEBUG, "endp %x Modify endpoint: silent exit\n",
+	     ENDPOINT_NUMBER(endp));
 	return NULL;
 }
 
