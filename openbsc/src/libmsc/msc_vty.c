@@ -121,6 +121,9 @@ static int config_write_msc(struct vty *vty)
 			VTY_NEWLINE);
 	vty_out(vty, " %sassign-tmsi%s",
 		gsmnet->avoid_tmsi ? "no " : "", VTY_NEWLINE);
+
+	mgcpgw_client_config_write(vty, " ");
+
 	return CMD_SUCCESS;
 }
 
@@ -172,4 +175,5 @@ void msc_vty_init(struct gsm_network *msc_network)
 	install_element(MSC_NODE, &cfg_msc_no_subscr_create_cmd);
 	install_element(MSC_NODE, &cfg_msc_assign_tmsi_cmd);
 	install_element(MSC_NODE, &cfg_msc_no_assign_tmsi_cmd);
+	mgcpgw_client_vty_init(MSC_NODE, &msc_network->mgcpgw.conf);
 }
