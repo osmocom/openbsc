@@ -1766,8 +1766,7 @@ static int tch_bridge(struct gsm_network *net, struct gsm_mncc_bridge *bridge)
 	/* through-connect channel */
 	return tch_map(trans1->conn->lchan, trans2->conn->lchan);
 #else
-	/* not implemented yet! */
-	return -1;
+	return msc_call_bridge(trans1, trans2);
 #endif
 }
 
