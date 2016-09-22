@@ -2186,6 +2186,8 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 
 	new_cc_state(trans, GSM_CSTATE_MO_TERM_CALL_CONF);
 
+	msc_call_assignment(trans);
+
 	return mncc_recvmsg(trans->net, trans, MNCC_CALL_CONF_IND,
 			    &call_conf);
 }
