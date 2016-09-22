@@ -15,6 +15,7 @@
 
 #include <openbsc/rest_octets.h>
 #include <openbsc/common_cs.h>
+#include <openbsc/mgcpgw_client.h>
 
 /** annotations for msgb ownership */
 #define __uses
@@ -414,6 +415,11 @@ struct gsm_network {
 
 	/* Periodic location update default value */
 	uint8_t t3212;
+
+	struct {
+		struct mgcpgw_client_conf conf;
+		struct mgcpgw_client *client;
+	} mgcpgw;
 };
 
 struct osmo_esme;
