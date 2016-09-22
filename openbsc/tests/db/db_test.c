@@ -261,6 +261,10 @@ int mgcpgw_client_tx_crcx(struct mgcpgw_client *client,
 			  uint16_t rtp_endpoint, unsigned int call_id,
 			  enum mgcp_connection_mode mode)
 { return -ENOTSUP; }
+int mgcpgw_client_tx_mdcx(struct mgcpgw_client *client, uint16_t rtp_endpoint,
+			  const char *rtp_conn_addr, uint16_t rtp_port,
+			  enum mgcp_connection_mode mode)
+{ return -ENOTSUP; }
 const char *mgcpgw_client_remote_addr_str(struct mgcpgw_client *mgcp)
 { return "0.0.0.0"; }
 uint32_t mgcpgw_client_remote_addr_n(struct mgcpgw_client *mgcp)

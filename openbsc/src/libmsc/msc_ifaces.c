@@ -186,3 +186,32 @@ int msc_call_assignment(struct gsm_trans *trans)
 		return -EINVAL;
 	}
 }
+
+int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2)
+{
+	struct gsm_subscriber_connection *conn1 = trans1->conn;
+	struct gsm_subscriber_connection *conn2 = trans2->conn;
+
+	struct mgcpgw_client *mgcp = conn1->network->mgcpgw.client;
+	OSMO_ASSERT(mgcp);
+
+	const char *ip = mgcpgw_client_remote_addr_str(mgcp);
+
+	/* First setup the counterparts' endpoints, so that when transmission
+	 * starts the originating addresses are already known to be valid. */
+	mgcpgw_client_tx_mdcx(mgcp, conn1->iu.mgcp_rtp_endpoint,
+			      ip, conn2->iu.mgcp_rtp_port_cn,
+			      MGCP_CONN_LOOPBACK);
+	mgcpgw_client_tx_mdcx(mgcp, conn2->iu.mgcp_rtp_endpoint,
+			      ip, conn1->iu.mgcp_rtp_port_cn,
+			      MGCP_CONN_LOOPBACK);
+	/* Now enable sending to and receiving from the peer. */
+	mgcpgw_client_tx_mdcx(mgcp, conn1->iu.mgcp_rtp_endpoint,
+			      ip, conn2->iu.mgcp_rtp_port_cn,
+			      MGCP_CONN_RECV_SEND);
+	mgcpgw_client_tx_mdcx(mgcp, conn2->iu.mgcp_rtp_endpoint,
+			      ip, conn1->iu.mgcp_rtp_port_cn,
+			      MGCP_CONN_RECV_SEND);
+
+	return 0;
+}
