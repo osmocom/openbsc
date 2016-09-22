@@ -180,25 +180,33 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *
 	int rc = -1;
 
 	mm = sgsn_mm_ctx_by_ue_ctx(ctx);
-	if (!mm) {
-		LOGP(DRANAP, LOGL_NOTICE, "Cannot find mm ctx for IU event %i!\n", type);
-		return rc;
+
+#define REQUIRE_MM \
+	if (!mm) { \
+		LOGP(DRANAP, LOGL_NOTICE, "Cannot find mm ctx for IU event %i!\n", type); \
+		return rc; \
 	}
 
 	switch (type) {
 	case IU_EVENT_RAB_ASSIGN:
+		REQUIRE_MM
 		rc = sgsn_ranap_rab_ass_resp(mm, (RANAP_RAB_SetupOrModifiedItemIEs_t *)data);
 		break;
 	case IU_EVENT_IU_RELEASE:
 		/* fall thru */
 	case IU_EVENT_LINK_INVALIDATED:
 		/* Clean up ue_conn_ctx here */
-		LOGMMCTXP(LOGL_INFO, mm, "IU release for imsi %s\n", mm->imsi);
-		if (mm->pmm_state == PMM_CONNECTED)
+		if (mm)
+			LOGMMCTXP(LOGL_INFO, mm, "IU release for imsi %s\n", mm->imsi);
+		else
+			LOGMMCTXP(LOGL_INFO, mm, "IU release for UE conn 0x%x\n",
+				  ctx->conn_id);
+		if (mm && mm->pmm_state == PMM_CONNECTED)
 			mmctx_set_pmm_state(mm, PMM_IDLE);
 		rc = 0;
 		break;
 	case IU_EVENT_SECURITY_MODE_COMPLETE:
+		REQUIRE_MM
 		/* Continue authentication here */
 		mm->iu.ue_ctx->integrity_active = 1;
 		rc = gsm48_gmm_authorize(mm);
