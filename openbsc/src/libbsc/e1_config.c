@@ -37,7 +37,7 @@
 #define SAPI_OML	62
 #define SAPI_RSL	0	/* 63 ? */
 
-/* The e1_reconfig_*() functions below tale the configuration present in the
+/* The e1_reconfig_*() functions below take the configuration present in the
  * bts/trx/ts data structures and ensure the E1 configuration reflects the
  * timeslot/subslot/TEI configuration */
 
