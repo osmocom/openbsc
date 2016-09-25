@@ -58,12 +58,10 @@ int paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscriber, int t
 }
 
 
-int main(int argc, char **argv)
+void test_request_chan(void)
 {
 	struct gsm_network *network;
 	struct gsm_bts *bts;
-
-	osmo_init_logging(&log_info);
 
 	printf("Testing the gsm_subscriber chan logic\n");
 
@@ -90,6 +88,13 @@ int main(int argc, char **argv)
 	s_cbfn(101, 200, (void*)0x1323L, &s_conn, s_data);
 
 	OSMO_ASSERT(s_end);
+}
+
+int main(int argc, char **argv)
+{
+	osmo_init_logging(&log_info);
+
+	test_request_chan();
 
 	return EXIT_SUCCESS;
 }
