@@ -90,11 +90,42 @@ void test_request_chan(void)
 	OSMO_ASSERT(s_end);
 }
 
+void test_dyn_ts_subslots(void)
+{
+	struct gsm_bts_trx_ts ts;
+
+	printf("Testing subslot numbers for pchan types\n");
+
+	ts.pchan = GSM_PCHAN_TCH_F;
+	OSMO_ASSERT(ts_subslots(&ts) == 1);
+
+	ts.pchan = GSM_PCHAN_TCH_H;
+	OSMO_ASSERT(ts_subslots(&ts) == 2);
+
+	ts.pchan = GSM_PCHAN_PDCH;
+	OSMO_ASSERT(ts_subslots(&ts) == 0);
+
+	ts.pchan = GSM_PCHAN_TCH_F_PDCH;
+	ts.flags = 0; /* TCH_F mode */
+	OSMO_ASSERT(ts_subslots(&ts) == 1);
+	ts.flags = TS_F_PDCH_ACTIVE;
+	OSMO_ASSERT(ts_subslots(&ts) == 1 /* SHOULD BE 0 */);
+
+	ts.pchan = GSM_PCHAN_TCH_F_TCH_H_PDCH;
+	ts.dyn.pchan_is = GSM_PCHAN_TCH_F;
+	OSMO_ASSERT(ts_subslots(&ts) == 1);
+	ts.dyn.pchan_is = GSM_PCHAN_TCH_H;
+	OSMO_ASSERT(ts_subslots(&ts) == 2);
+	ts.dyn.pchan_is = GSM_PCHAN_PDCH;
+	OSMO_ASSERT(ts_subslots(&ts) == 0);
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
 
 	test_request_chan();
+	test_dyn_ts_subslots();
 
 	return EXIT_SUCCESS;
 }
