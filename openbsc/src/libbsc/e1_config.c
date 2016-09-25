@@ -63,15 +63,10 @@ int e1_reconfig_ts(struct gsm_bts_trx_ts *ts)
 		return -ENOMEM;
 	}
 
-	switch (ts->pchan) {
-	case GSM_PCHAN_TCH_F:
-	case GSM_PCHAN_TCH_H:
+	if (ts_is_tch(ts)) {
 		e1_ts = &line->ts[e1_link->e1_ts-1];
 		e1inp_ts_config_trau(e1_ts, line, subch_cb);
 		subch_demux_activate(&e1_ts->trau.demux, e1_link->e1_ts_ss);
-		break;
-	default:
-		break;
 	}
 
 	return 0;

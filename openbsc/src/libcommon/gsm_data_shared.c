@@ -747,3 +747,19 @@ uint8_t ts_subslots(struct gsm_bts_trx_ts *ts)
 {
 	return subslots_per_pchan[ts_pchan(ts)];
 }
+
+static bool pchan_is_tch(enum gsm_phys_chan_config pchan)
+{
+	switch (pchan) {
+	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_TCH_H:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool ts_is_tch(struct gsm_bts_trx_ts *ts)
+{
+	return pchan_is_tch(ts_pchan(ts));
+}

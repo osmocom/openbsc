@@ -855,5 +855,6 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 				   int *rc);
 
 uint8_t ts_subslots(struct gsm_bts_trx_ts *ts);
+bool ts_is_tch(struct gsm_bts_trx_ts *ts);
 
 #endif
