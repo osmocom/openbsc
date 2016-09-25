@@ -1123,10 +1123,24 @@ static uint8_t pchan2comb(enum gsm_phys_chan_config pchan)
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_TCH_H:
 	case GSM_PCHAN_PDCH:
-	case GSM_PCHAN_TCH_F_PDCH:
 		return 8;
 	default:
 		return 0;
+	}
+}
+
+static uint8_t ts2comb(struct gsm_bts_trx_ts *ts)
+{
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_PDCH:
+		if (ts->flags & TS_F_PDCH_ACTIVE)
+			return pchan2comb(GSM_PCHAN_PDCH);
+		else
+			return pchan2comb(GSM_PCHAN_TCH_F);
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		return pchan2comb(ts->dyn.pchan_is);
+	default:
+		return pchan2comb(ts->pchan);
 	}
 }
 
@@ -1179,7 +1193,7 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
 	fill_om2k_hdr(o2k, &mo, OM2K_MSGT_TS_CONF_REQ);
 
-	msgb_tv_put(msg, OM2K_DEI_COMBINATION, pchan2comb(ts->pchan));
+	msgb_tv_put(msg, OM2K_DEI_COMBINATION, ts2comb(ts));
 	msgb_tv_put(msg, OM2K_DEI_TS_NR, ts->nr);
 	msgb_tlv_put(msg, OM2K_DEI_FREQ_LIST, freq_list_len, freq_list);
 	msgb_tv_put(msg, OM2K_DEI_HSN, ts->hopping.hsn);
