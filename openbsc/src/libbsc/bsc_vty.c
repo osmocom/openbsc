@@ -329,7 +329,7 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 
 	/* FIXME: chan_desc */
 	memset(&pl, 0, sizeof(pl));
-	bts_chan_load(&pl, bts, 0);
+	bts_chan_load(&pl, bts);
 	vty_out(vty, "  Current Channel Load:%s", VTY_NEWLINE);
 	dump_pchan_load_vty(vty, "    ", &pl);
 }
