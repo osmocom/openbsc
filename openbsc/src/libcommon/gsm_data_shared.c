@@ -712,24 +712,38 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 static const uint8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_NONE] = 0,
 	[GSM_PCHAN_CCCH] = 0,
+	[GSM_PCHAN_PDCH] = 0,
 	[GSM_PCHAN_CCCH_SDCCH4] = 4,
 	[GSM_PCHAN_TCH_F] = 1,
 	[GSM_PCHAN_TCH_H] = 2,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
-	[GSM_PCHAN_TCH_F_PDCH] = 1,
 	[GSM_PCHAN_CCCH_SDCCH4_CBCH] = 4,
 	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH] = 8,
 	/*
-	 * GSM_PCHAN_TCH_F_TCH_H_PDCH should not be part of this, those TS are
-	 * handled according to their ts->dyn state.
+	 * GSM_PCHAN_TCH_F_PDCH and GSM_PCHAN_TCH_F_TCH_H_PDCH should not be
+	 * part of this, those TS are handled according to their dynamic state.
 	 */
 };
+
+/*! Return the actual pchan type, also heeding dynamic TS. */
+static enum gsm_phys_chan_config ts_pchan(struct gsm_bts_trx_ts *ts)
+{
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		return ts->dyn.pchan_is;
+	case GSM_PCHAN_TCH_F_PDCH:
+		if (ts->flags & TS_F_PDCH_ACTIVE)
+			return GSM_PCHAN_PDCH;
+		else
+			return GSM_PCHAN_TCH_F;
+	default:
+		return ts->pchan;
+	}
+}
 
 /*! According to ts->pchan and possibly ts->dyn_pchan, return the number of
  * logical channels available in the timeslot. */
 uint8_t ts_subslots(struct gsm_bts_trx_ts *ts)
 {
-	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
-		return subslots_per_pchan[ts->dyn.pchan_is];
-	return subslots_per_pchan[ts->pchan];
+	return subslots_per_pchan[ts_pchan(ts)];
 }

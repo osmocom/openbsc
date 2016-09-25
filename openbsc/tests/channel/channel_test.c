@@ -109,7 +109,7 @@ void test_dyn_ts_subslots(void)
 	ts.flags = 0; /* TCH_F mode */
 	OSMO_ASSERT(ts_subslots(&ts) == 1);
 	ts.flags = TS_F_PDCH_ACTIVE;
-	OSMO_ASSERT(ts_subslots(&ts) == 1 /* SHOULD BE 0 */);
+	OSMO_ASSERT(ts_subslots(&ts) == 0);
 
 	ts.pchan = GSM_PCHAN_TCH_F_TCH_H_PDCH;
 	ts.dyn.pchan_is = GSM_PCHAN_TCH_F;
