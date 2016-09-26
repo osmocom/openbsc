@@ -1233,10 +1233,14 @@ def nat_msc_test(x, ip, port, verbose = False):
     msc.listen(5)
     if (verbose):
         print "MSC is ready at " + ip
+    conn = None
     while "MSC is connected: 0" == x.vty.command("show msc connection"):
         conn, addr = msc.accept()
         if (verbose):
             print "MSC got connection from ", addr
+    if not conn:
+	raise Exception("VTY reports MSC is connected, but I haven't"
+			" connected yet: %r %r" % (ip, port))
     return conn
 
 def ipa_handle_small(x, verbose = False):
