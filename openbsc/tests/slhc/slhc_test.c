@@ -38,14 +38,27 @@
 #define DISP_MAX_BYTES 100
 
 /* Sample packets to test with */
-#define PACKETS_LEN 6
+#define PACKETS_LEN 15
 char *packets[] = {
+	/* With TCP Option 10 (Timestamps) in place (forces UNCOMPRESSED_TCP) */
 	"4510004046dd40004006a9a7c0a8646ec0a864640017ad8b81980100f3ac984d801800e32a1600000101080a000647de06d1bf5efffd18fffd20fffd23fffd27",
 	"4510005b46de40004006a98bc0a8646ec0a864640017ad8b8198010cf3ac984d801800e3867500000101080a000647df06d1bf61fffb03fffd1ffffd21fffe22fffb05fffa2001fff0fffa2301fff0fffa2701fff0fffa1801fff0",
 	"4510003746df40004006a9aec0a8646ec0a864640017ad8b81980133f3ac989f801800e35fd700000101080a000647e106d1bf63fffd01",
 	"4510003746e040004006a9adc0a8646ec0a864640017ad8b81980136f3ac98a2801800e35fd200000101080a000647e106d1bf64fffb01",
 	"4510007446e140004006a96fc0a8646ec0a864640017ad8b81980139f3ac98a5801800e37b9b00000101080a000647e206d1bf640d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0d0a57656c6c636f6d6520746f20706f6c6c75780d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0d0a0d0a",
-	"4510004246e240004006a9a0c0a8646ec0a864640017ad8b81980179f3ac98a5801800e3dab000000101080a000647ec06d1bf6f706f6c6c7578206c6f67696e3a20"
+	"4510004246e240004006a9a0c0a8646ec0a864640017ad8b81980179f3ac98a5801800e3dab000000101080a000647ec06d1bf6f706f6c6c7578206c6f67696e3a20",
+	/* Regular TCP packets (COMPRESSED_TCP) */
+	"4510003446dd40004006a9b3c0a8646ec0a864640017ad8b81980100f3ac984d501800e371410000fffd18fffd20fffd23fffd27",
+	"4510004f46de40004006a997c0a8646ec0a864640017ad8b8198010cf3ac984d501800e3cda40000fffb03fffd1ffffd21fffe22fffb05fffa2001fff0fffa2301fff0fffa2701fff0fffa1801fff0",
+	"4510002b46df40004006a9bac0a8646ec0a864640017ad8b81980133f3ac989f501800e3a70a0000fffd01",
+	"4510002b46e040004006a9b9c0a8646ec0a864640017ad8b81980136f3ac98a2501800e3a7060000fffb01",
+	"4510006846e140004006a97bc0a8646ec0a864640017ad8b81980139f3ac98a5501800e3c2d000000d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0d0a57656c6c636f6d6520746f20706f6c6c75780d0a2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d0d0a0d0a",
+	"4510003646e240004006a9acc0a8646ec0a864640017ad8b81980179f3ac98a5501800e321fb0000706f6c6c7578206c6f67696e3a20",
+	/* UDP packets (TYPE_IP */
+	"450000396e0b40004011a0310a0901650a09170105da003500255489a60f01000001000000000000076f736d6f636f6d036f72670000010001",
+	"450000dc9eeb00004011aeae0a0917010a090165003505da00c83fbaa60f81800001000100030004076f736d6f636f6d036f72670000010001c00c00010001000079be0004904c2b4cc00c000200010000173d00130773756e6265616d08676e756d6f6e6b73c014c00c000200010000173d000603646e73c041c00c000200010000173d000a0767616e65736861c041c058000100010000173d0004d55f2e45c058001c00010000173d0010200107800045f0460000000000690001c06a0001000100006a710004d55f1b78c039000100010000173d000453ecb2cb",
+	"45000037652340004011a91b0a0901650a091701ef1b0035002376a2c3910100000100000000000006676f6f676c650264650000010001",
+	"0050b6162c10000db93a3ff908004500004726a6000038114083080808080a0901650035ef1b00338a8cc3918180000100010000000006676f6f676c650264650000010001c00c000100010000012b0004d83ad503",
 };
 
 /* Compress a packet using Van Jacobson RFC1144 header compression */
@@ -134,54 +147,13 @@ static void check_packet(const void *ctx, uint8_t *packet, int len)
 	OSMO_ASSERT(len > 20);
 	OSMO_ASSERT(calc_ip_csum(packet, 20) == 0);
 
+	printf("packet[9]=%02x\n", packet[9]);
+
 	/* Check TCP packet */
 	if (packet[9] != 0x06)
 		return;
 	OSMO_ASSERT(len > 40);
 	OSMO_ASSERT(calc_tcpip_csum(ctx, packet, len) == 0);
-}
-
-/* Strip TCP options from TCP/IP packet */
-static int strip_tcp_options(const void *ctx, uint8_t *packet, int len)
-{
-	uint8_t doff;
-	uint16_t csum;
-
-	/* Check if the packet can be handled here */
-	if (len < 37)
-		return len;
-	if (packet[9] != 0x06)
-		return len;
-
-	/* Strip TCP/IP options from packet */
-	doff = ((packet[32] >> 4) & 0x0F) * 4;
-	memmove(packet + 40, packet + doff + 20, len - 40 - (doff - 20));
-	len = len - (doff - 20);
-
-	/* Repair data offset (TCP header length) */
-	packet[32] &= 0x0F;
-	packet[32] |= 0x50;
-
-	/* Repair checksum */
-	packet[36] = 0;
-	packet[37] = 0;
-	csum = calc_tcpip_csum(ctx, packet, len);
-	packet[36] = csum & 0xFF;
-	packet[37] = csum >> 8 & 0xFF;
-
-	/* Repair total length */
-	packet[3] = len & 0xFF;
-	packet[2] = len >> 8 & 0xFF;
-
-	/* Repair IP header checksum */
-	packet[10] = 0;
-	packet[11] = 0;
-	csum = calc_ip_csum(packet, 20);
-	packet[10] = csum & 0xFF;
-	packet[11] = csum >> 8 & 0xFF;
-	printf("csum=%04x\n", csum);
-
-	return len;
 }
 
 /* Compress / Decompress packets */
@@ -202,18 +174,18 @@ static void test_slhc(const void *ctx)
 	comp = slhc_init(ctx, SLOTS, SLOTS);
 	OSMO_ASSERT(comp);
 
-	for(i=0;i<PACKETS_LEN;i++) {
+	for (i = 0; i < PACKETS_LEN; i++) {
+		printf("Testing with packet No. %d\n", i);
+
 		/* Read input file */
 		memset(packet_ascii, 0, sizeof(packet_ascii));
 		memset(packet, 0, sizeof(packet));
 		memset(packet_compr, 0, sizeof(packet_compr));
 		memset(packet_decompr, 0, sizeof(packet_decompr));
-		strcpy(packet_ascii,packets[i]);
+		strcpy(packet_ascii, packets[i]);
 
 		packet_len =
 		    osmo_hexparse(packet_ascii, packet, sizeof(packet));
-		check_packet(ctx, packet, packet_len);
-		packet_len = strip_tcp_options(ctx, packet, packet_len);
 		check_packet(ctx, packet, packet_len);
 
 		/* Run compression/decompression algorithm */
@@ -225,7 +197,7 @@ static void test_slhc(const void *ctx)
 		    expand(packet_decompr, packet_compr, packet_compr_len,
 			   comp);
 		OSMO_ASSERT(packet_decompr_len == packet_len);
-		check_packet(ctx,packet_decompr,packet_decompr_len);
+		check_packet(ctx, packet_decompr, packet_decompr_len);
 
 		/* Display results */
 		printf("Results:\n");
