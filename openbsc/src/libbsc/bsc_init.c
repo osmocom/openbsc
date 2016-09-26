@@ -491,8 +491,6 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 	}
 
 	/* start telnet after reading config for vty_get_bind_addr() */
-	LOGP(DNM, LOGL_NOTICE, "VTY at %s %d\n",
-	     vty_get_bind_addr(), OSMO_VTY_PORT_NITB_BSC);
 	rc = telnet_init_dynif(tall_bsc_ctx, bsc_gsmnet, vty_get_bind_addr(),
 			       OSMO_VTY_PORT_NITB_BSC);
 	if (rc < 0)

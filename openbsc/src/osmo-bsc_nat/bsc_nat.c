@@ -1639,8 +1639,6 @@ int main(int argc, char **argv)
 	}
 
 	/* start telnet after reading config for vty_get_bind_addr() */
-	LOGP(DNAT, LOGL_NOTICE, "VTY at %s %d\n",
-	     vty_get_bind_addr(), OSMO_VTY_PORT_BSC_NAT);
 	if (telnet_init_dynif(tall_bsc_ctx, NULL, vty_get_bind_addr(),
 			      OSMO_VTY_PORT_BSC_NAT)) {
 		fprintf(stderr, "Creating VTY telnet line failed\n");

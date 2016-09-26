@@ -271,8 +271,6 @@ int main(int argc, char **argv)
 	}
 
 	/* start telnet after reading config for vty_get_bind_addr() */
-	LOGP(DGPRS, LOGL_NOTICE, "VTY at %s %d\n",
-	     vty_get_bind_addr(), OSMO_VTY_PORT_GBPROXY);
 	rc = telnet_init_dynif(tall_bsc_ctx, &dummy_network,
 			       vty_get_bind_addr(), OSMO_VTY_PORT_GBPROXY);
 	if (rc < 0)

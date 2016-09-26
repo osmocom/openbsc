@@ -233,8 +233,6 @@ int main(int argc, char **argv)
 		return rc;
 
 	/* start telnet after reading config for vty_get_bind_addr() */
-	LOGP(DMGCP, LOGL_NOTICE, "VTY at %s %d\n",
-	     vty_get_bind_addr(), OSMO_VTY_PORT_BSC_MGCP);
 	rc = telnet_init_dynif(tall_bsc_ctx, &dummy_network,
 			       vty_get_bind_addr(), OSMO_VTY_PORT_BSC_MGCP);
 	if (rc < 0)

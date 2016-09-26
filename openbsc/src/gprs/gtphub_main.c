@@ -325,8 +325,6 @@ int main(int argc, char **argv)
 	}
 
 	/* start telnet after reading config for vty_get_bind_addr() */
-	LOGP(DGTPHUB, LOGL_NOTICE, "VTY at %s %d\n",
-	     vty_get_bind_addr(), OSMO_VTY_PORT_GTPHUB);
 	rc = telnet_init_dynif(osmo_gtphub_ctx, 0, vty_get_bind_addr(),
 			       OSMO_VTY_PORT_GTPHUB);
 	if (rc < 0)
