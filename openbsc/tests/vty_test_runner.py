@@ -1338,3 +1338,5 @@ if __name__ == '__main__':
     add_sgsn_test(suite, workdir)
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
     sys.exit(len(res.errors) + len(res.failures))
+
+# vim: set shiftwidth=4 expandtab nocin ai
