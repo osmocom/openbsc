@@ -400,15 +400,9 @@ static void nm_reconfig_ts(struct gsm_bts_trx_ts *ts)
 	if (is_ipaccess_bts(ts->trx->bts))
 		return;
 
-	switch (ts->pchan) {
-	case GSM_PCHAN_TCH_F:
-	case GSM_PCHAN_TCH_H:
+	if (ts_is_tch(ts))
 		abis_nm_conn_terr_traf(ts, e1l->e1_nr, e1l->e1_ts,
 					e1l->e1_ts_ss);
-		break;
-	default:
-		break;
-	}
 }
 
 static void nm_reconfig_trx(struct gsm_bts_trx *trx)
