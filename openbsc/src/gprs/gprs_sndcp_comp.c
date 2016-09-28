@@ -70,7 +70,7 @@ static struct gprs_sndcp_comp *gprs_sndcp_comp_create(const void *ctx,
 		       comp_field->v42bis_params->nsapi,
 		       sizeof(comp_entity->nsapi));
 	} else if (comp_field->v44_params) {
-		comp_entity->nsapi_len = comp_field->v42bis_params->nsapi_len;
+		comp_entity->nsapi_len = comp_field->v44_params->nsapi_len;
 		memcpy(comp_entity->nsapi,
 		       comp_field->v42bis_params->nsapi,
 		       sizeof(comp_entity->nsapi));

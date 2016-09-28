@@ -141,6 +141,7 @@ static int rfc1144_expand(uint8_t *data, unsigned int len, uint8_t pcomp_index,
 	switch (pcomp_index) {
 	case 0:
 		type = SL_TYPE_IP;
+		break;
 	case 1:
 		type = SL_TYPE_UNCOMPRESSED_TCP;
 		break;

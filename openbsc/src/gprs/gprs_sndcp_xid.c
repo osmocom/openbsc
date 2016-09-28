@@ -206,7 +206,6 @@ static int encode_pcomp_rohc_params(uint8_t *dst, unsigned int dst_maxlen,
 
 	/* Bail if number of ROHC profiles exceeds limit
 	 * (ROHC supports only a maximum of 16 different profiles) */
-	OSMO_ASSERT(params->profile_len >= 0);
 	OSMO_ASSERT(params->profile_len <= 16);
 
 	/* Zero out buffer */
@@ -475,8 +474,7 @@ static int encode_comp_field(uint8_t *dst, unsigned int dst_maxlen,
 		for (i = 0; i < comp_field->comp_len; i++) {
 			/* Check if submitted PCOMP/DCOMP
 			   values are within bounds */
-			if ((comp_field->comp[i] < 0)
-			    || (comp_field->comp[i] > 0x0F))
+			if (comp_field->comp[i] > 0x0F)
 				return -EINVAL;
 
 			if (i & 1) {
@@ -1360,26 +1358,29 @@ static int gprs_sndcp_fill_table(struct
 {
 	struct gprs_sndcp_comp_field *comp_field;
 	int i = 0;
+	int rc;
 
 	if (!comp_fields)
 		return -EINVAL;
 	if (!lt)
 		return -EINVAL;
 
-	memset(lt, 0, lt_len * sizeof(lt));
+	memset(lt, 0, sizeof(*lt));
 
 	llist_for_each_entry(comp_field, comp_fields, list) {
+		if (comp_field->algo >= 0) {
+			lt[i].entity = comp_field->entity;
+			lt[i].algo = comp_field->algo;
+			rc = gprs_sndcp_get_compression_class(comp_field);
 
-		lt[i].entity = comp_field->entity;
-		lt[i].algo = comp_field->algo;
-		lt[i].compclass = gprs_sndcp_get_compression_class(comp_field);
+			if (rc < 0) {
+				memset(lt, 0, sizeof(*lt));
+				return -EINVAL;
+			}
 
-		if (lt[i].compclass < 0) {
-			memset(lt, 0, lt_len * sizeof(lt));
-			return -EINVAL;
+			lt[i].compclass = rc;
+			i++;
 		}
-
-		i++;
 	}
 
 	return i;

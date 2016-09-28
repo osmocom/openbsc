@@ -182,6 +182,8 @@ static void test_slhc(const void *ctx)
 		memset(packet, 0, sizeof(packet));
 		memset(packet_compr, 0, sizeof(packet_compr));
 		memset(packet_decompr, 0, sizeof(packet_decompr));
+
+		OSMO_ASSERT(strlen(packets[i]) < sizeof(packet_ascii));
 		strcpy(packet_ascii, packets[i]);
 
 		packet_len =

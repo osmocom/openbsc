@@ -318,6 +318,7 @@ static void test_v42bis_tcpip(const void *ctx, int packet_id)
 	len = strlen(uncompr_packets[packet_id]);
 	testvec = talloc_zero_size(ctx, len);
 	len = osmo_hexparse(uncompr_packets[packet_id], testvec, len);
+	OSMO_ASSERT(len > 0);
 	v42bis(ctx, V42BIS_COMPRESSION_MODE_DYNAMIC, testvec, len);
 	v42bis(ctx, V42BIS_COMPRESSION_MODE_ALWAYS, testvec, len);
 	v42bis(ctx, V42BIS_COMPRESSION_MODE_NEVER, testvec, len);
