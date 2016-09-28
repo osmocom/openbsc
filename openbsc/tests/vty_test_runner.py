@@ -1228,16 +1228,33 @@ def data2str(d):
 
 def nat_msc_test(x, ip, port, verbose = False):
     msc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    msc.settimeout(32)
+    msc.settimeout(5)
     msc.bind((ip, port))
     msc.listen(5)
     if (verbose):
         print "MSC is ready at " + ip
     conn = None
-    while "MSC is connected: 0" == x.vty.command("show msc connection"):
-        conn, addr = msc.accept()
-        if (verbose):
-            print "MSC got connection from ", addr
+    while True:
+        vty_response = x.vty.command("show msc connection")
+        print "'show msc connection' says: %r" % vty_response
+        if vty_response == "MSC is connected: 1":
+            # success
+            break;
+        if vty_response != "MSC is connected: 0":
+            raise Exception("Unexpected response to 'show msc connection'"
+                            " vty command: %r" % vty_response)
+
+        timeout_retries = 6
+        while timeout_retries > 0:
+            try:
+                conn, addr = msc.accept()
+                print "MSC got connection from ", addr
+                break
+            except socket.timeout:
+                print "socket timed out."
+                timeout_retries -= 1
+                continue
+
     if not conn:
 	raise Exception("VTY reports MSC is connected, but I haven't"
 			" connected yet: %r %r" % (ip, port))
