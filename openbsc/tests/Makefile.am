@@ -9,10 +9,6 @@ SUBDIRS = \
 	trau \
 	subscr \
 	mm_auth \
-	xid \
-	sndcp_xid \
-	slhc \
-	v42bis \
 	$(NULL)
 
 if BUILD_NAT
@@ -40,6 +36,10 @@ if HAVE_LIBCARES
 SUBDIRS += \
 	sgsn \
 	oap \
+	xid \
+	sndcp_xid \
+	slhc \
+	v42bis \
 	$(NULL)
 endif
 endif

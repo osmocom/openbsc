@@ -126,24 +126,28 @@ AT_CLEANUP
 
 AT_SETUP([xid])
 AT_KEYWORDS([xid])
+AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
 cat $abs_srcdir/xid/xid_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/xid/xid_test], [], [expout], [ignore])
 AT_CLEANUP
 
 AT_SETUP([sndcp_xid])
 AT_KEYWORDS([sndcp_xid])
+AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
 cat $abs_srcdir/sndcp_xid/sndcp_xid_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/sndcp_xid/sndcp_xid_test], [], [expout], [ignore])
 AT_CLEANUP
 
 AT_SETUP([slhc])
 AT_KEYWORDS([slhc])
+AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
 cat $abs_srcdir/slhc/slhc_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/slhc/slhc_test], [], [expout], [ignore])
 AT_CLEANUP
 
 AT_SETUP([v42bis])
 AT_KEYWORDS([v42bis])
+AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
 cat $abs_srcdir/v42bis/v42bis_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/v42bis/v42bis_test], [], [expout], [ignore])
 AT_CLEANUP
