@@ -1066,7 +1066,7 @@ int gprs_llgmm_reset(struct gprs_llc_llme *llme)
 	/* Generate XID message */
 	xid_bytes_len = gprs_llc_generate_xid_for_gmm_reset(xid_bytes,
 					sizeof(xid_bytes),llme->iov_ui,llme);
-	if(xid_bytes_len < 0)
+	if (xid_bytes_len < 0)
 		return -EINVAL;
 	xid = msgb_put(msg, xid_bytes_len);
 	memcpy(xid, xid_bytes, xid_bytes_len);
@@ -1099,7 +1099,7 @@ int gprs_llgmm_reset_oldmsg(struct msgb* oldmsg, uint8_t sapi,
 	/* Generate XID message */
 	xid_bytes_len = gprs_llc_generate_xid_for_gmm_reset(xid_bytes,
 					sizeof(xid_bytes),llme->iov_ui,llme);
-	if(xid_bytes_len < 0)
+	if (xid_bytes_len < 0)
 		return -EINVAL;
 	xid = msgb_put(msg, xid_bytes_len);
 	memcpy(xid, xid_bytes, xid_bytes_len);

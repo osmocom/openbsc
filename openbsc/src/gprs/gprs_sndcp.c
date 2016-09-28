@@ -779,7 +779,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
 	/* FIXME: move this RA_ID up to the LLME or even higher */
 	bssgp_parse_cell_id(&sne->ra_id, msgb_bcid(msg));
 
-	if(scomph) {
+	if (scomph) {
 		sne->defrag.pcomp = scomph->pcomp;
 		sne->defrag.dcomp = scomph->dcomp;
 		sne->defrag.proto = lle->llme->comp.proto;

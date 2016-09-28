@@ -328,13 +328,13 @@ static int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx)
 
 	/* Send PDP CTX ACT to MS */
 	rc = gsm48_tx_gsm_act_pdp_acc(pctx);
-	if(rc < 0)
+	if (rc < 0)
 		return rc;
 
 	/* Send SNDCP XID to MS */
 	lle = &pctx->mm->gb.llme->lle[pctx->sapi];
 	rc = sndcp_sn_xid_req(lle,pctx->nsapi);
-	if(rc < 0)
+	if (rc < 0)
 		return rc;
 
 	return 0;
