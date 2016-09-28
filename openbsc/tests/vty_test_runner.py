@@ -1357,7 +1357,7 @@ if __name__ == '__main__':
     add_nat_test(suite, workdir)
     add_gbproxy_test(suite, workdir)
     add_sgsn_test(suite, workdir)
-    res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
+    res = unittest.TextTestRunner(verbosity=verbose_level, stream=sys.stdout).run(suite)
     sys.exit(len(res.errors) + len(res.failures))
 
 # vim: set shiftwidth=4 expandtab nocin ai
