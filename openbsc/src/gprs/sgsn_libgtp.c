@@ -331,11 +331,13 @@ static int send_act_pdp_cont_acc(struct sgsn_pdp_ctx *pctx)
 	if (rc < 0)
 		return rc;
 
-	/* Send SNDCP XID to MS */
-	lle = &pctx->mm->gb.llme->lle[pctx->sapi];
-	rc = sndcp_sn_xid_req(lle,pctx->nsapi);
-	if (rc < 0)
-		return rc;
+	if (pctx->mm->ran_type == MM_CTX_T_GERAN_Gb) {
+		/* Send SNDCP XID to MS */
+		lle = &pctx->mm->gb.llme->lle[pctx->sapi];
+		rc = sndcp_sn_xid_req(lle,pctx->nsapi);
+		if (rc < 0)
+			return rc;
+	}
 
 	return 0;
 }
