@@ -65,38 +65,38 @@ class TestVTYMGCP(TestVTYBase):
         return (4243, "./src/osmo-bsc_mgcp/osmo-bsc_mgcp", "OpenBSC MGCP", "mgcp")
 
     def testForcePtime(self):
-	self.vty.enable()
-	res = self.vty.command("show running-config")
-	self.assert_(res.find('  rtp force-ptime 20\r') > 0)
-	self.assertEquals(res.find('  no rtp force-ptime\r'), -1)
+        self.vty.enable()
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('  rtp force-ptime 20\r') > 0)
+        self.assertEquals(res.find('  no rtp force-ptime\r'), -1)
 
-	self.vty.command("configure terminal")
-	self.vty.command("mgcp")
-	self.vty.command("no rtp force-ptime")
-	res = self.vty.command("show running-config")
-	self.assertEquals(res.find('  rtp force-ptime 20\r'), -1)
-	self.assertEquals(res.find('  no rtp force-ptime\r'), -1)
+        self.vty.command("configure terminal")
+        self.vty.command("mgcp")
+        self.vty.command("no rtp force-ptime")
+        res = self.vty.command("show running-config")
+        self.assertEquals(res.find('  rtp force-ptime 20\r'), -1)
+        self.assertEquals(res.find('  no rtp force-ptime\r'), -1)
 
     def testOmitAudio(self):
         self.vty.enable()
-	res = self.vty.command("show running-config")
-	self.assert_(res.find('  sdp audio-payload send-name\r') > 0)
-	self.assertEquals(res.find('  no sdp audio-payload send-name\r'), -1)
+        res = self.vty.command("show running-config")
+        self.assert_(res.find('  sdp audio-payload send-name\r') > 0)
+        self.assertEquals(res.find('  no sdp audio-payload send-name\r'), -1)
 
-	self.vty.command("configure terminal")
-	self.vty.command("mgcp")
-	self.vty.command("no sdp audio-payload send-name")
-	res = self.vty.command("show running-config")
-	self.assertEquals(res.find('  rtp sdp audio-payload send-name\r'), -1)
-	self.assert_(res.find('  no sdp audio-payload send-name\r') > 0)
+        self.vty.command("configure terminal")
+        self.vty.command("mgcp")
+        self.vty.command("no sdp audio-payload send-name")
+        res = self.vty.command("show running-config")
+        self.assertEquals(res.find('  rtp sdp audio-payload send-name\r'), -1)
+        self.assert_(res.find('  no sdp audio-payload send-name\r') > 0)
 
         # TODO: test it for the trunk!
 
     def testBindAddr(self):
         self.vty.enable()
 
-	self.vty.command("configure terminal")
-	self.vty.command("mgcp")
+        self.vty.command("configure terminal")
+        self.vty.command("mgcp")
 
         # enable.. disable bts-bind-ip
         self.vty.command("rtp bts-bind-ip 254.253.252.250")
@@ -540,7 +540,7 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command("write terminal")
         self.assert_(res.find('meas-feed scenario bla') > 0)
 
-	self.vty.command("meas-feed scenario abcdefghijklmnopqrstuvwxyz01234567890")
+        self.vty.command("meas-feed scenario abcdefghijklmnopqrstuvwxyz01234567890")
         res = self.vty.command("write terminal")
         self.assertEquals(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz01234567890'), -1)
         self.assertEquals(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz012345'), -1)
@@ -733,7 +733,7 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.assertEquals(res.find("core-location-area-code"), -1)
         self.assertEquals(res.find("core-cell-identity"), -1)
 
-	self.vty.command("configure terminal")
+        self.vty.command("configure terminal")
         self.vty.command("msc 0")
         self.vty.command("core-location-area-code 666")
         self.vty.command("core-cell-identity 333")
@@ -1256,8 +1256,8 @@ def nat_msc_test(x, ip, port, verbose = False):
                 continue
 
     if not conn:
-	raise Exception("VTY reports MSC is connected, but I haven't"
-			" connected yet: %r %r" % (ip, port))
+        raise Exception("VTY reports MSC is connected, but I haven't"
+                        " connected yet: %r %r" % (ip, port))
     return conn
 
 def ipa_handle_small(x, verbose = False):
@@ -1360,4 +1360,4 @@ if __name__ == '__main__':
     res = unittest.TextTestRunner(verbosity=verbose_level, stream=sys.stdout).run(suite)
     sys.exit(len(res.errors) + len(res.failures))
 
-# vim: set shiftwidth=4 expandtab nocin ai
+# vim: shiftwidth=4 expandtab nocin ai
