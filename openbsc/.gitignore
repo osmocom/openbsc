@@ -85,6 +85,7 @@ tests/xid/xid_test
 tests/sndcp_xid/sndcp_xid_test
 tests/slhc/slhc_test
 tests/v42bis/v42bis_test
+tests/nanobts_omlattr/nanobts_omlattr_test
 
 tests/atconfig
 tests/atlocal

@@ -244,6 +244,7 @@ AC_OUTPUT(
     tests/sndcp_xid/Makefile
     tests/slhc/Makefile
     tests/v42bis/Makefile
+    tests/nanobts_omlattr/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

@@ -151,3 +151,9 @@ AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
 cat $abs_srcdir/v42bis/v42bis_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/v42bis/v42bis_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([nanobts_omlattr])
+AT_KEYWORDS([nanobts_omlattr])
+cat $abs_srcdir/nanobts_omlattr/nanobts_omlattr_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/nanobts_omlattr/nanobts_omlattr_test], [], [expout], [ignore])
+AT_CLEANUP

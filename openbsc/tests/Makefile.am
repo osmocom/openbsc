@@ -9,6 +9,7 @@ SUBDIRS = \
 	trau \
 	subscr \
 	mm_auth \
+	nanobts_omlattr \
 	$(NULL)
 
 if BUILD_NAT

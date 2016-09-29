@@ -11,6 +11,7 @@ noinst_HEADERS = \
 	bsc_nat_sccp.h \
 	bsc_rll.h \
 	bss.h \
+	bts_ipaccess_nanobts_omlattr.h \
 	chan_alloc.h \
 	crc24.h \
 	ctrl.h \

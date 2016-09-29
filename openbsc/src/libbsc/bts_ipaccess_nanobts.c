@@ -39,6 +39,7 @@
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/logging.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/bts_ipaccess_nanobts_omlattr.h>
 
 extern struct gsm_network *bsc_gsmnet;
 
@@ -100,211 +101,6 @@ struct gsm_bts_model bts_model_nanobts = {
 	},
 };
 
-static unsigned char nanobts_attr_bts[] = {
-	NM_ATT_INTERF_BOUND, 0x55, 0x5b, 0x61, 0x67, 0x6d, 0x73,
-	/* interference avg. period in numbers of SACCH multifr */
-	NM_ATT_INTAVE_PARAM, 0x06,
-	/* conn fail based on SACCH error rate */
-	NM_ATT_CONN_FAIL_CRIT, 0x00, 0x02, 0x01, 0x10,
-	NM_ATT_T200, 0x1e, 0x24, 0x24, 0xa8, 0x34, 0x21, 0xa8,
-	NM_ATT_MAX_TA, 0x3f,
-	NM_ATT_OVERL_PERIOD, 0x00, 0x01, 10, /* seconds */
-	NM_ATT_CCCH_L_T, 10, /* percent */
-	NM_ATT_CCCH_L_I_P, 1, /* seconds */
-	NM_ATT_RACH_B_THRESH, 10, /* busy threshold in - dBm */
-	NM_ATT_LDAVG_SLOTS, 0x03, 0xe8, /* rach load averaging 1000 slots */
-	NM_ATT_BTS_AIR_TIMER, 128, /* miliseconds */
-	NM_ATT_NY1, 10, /* 10 retransmissions of physical config */
-	NM_ATT_BCCH_ARFCN, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
-	NM_ATT_BSIC, HARDCODED_BSIC,
-	NM_ATT_IPACC_CGI, 0, 7,  0x00, 0xf1, 0x10, 0x00, 0x01, 0x00, 0x00,
-};
-
-static unsigned char nanobts_attr_radio[] = {
-	NM_ATT_RF_MAXPOWR_R, 0x0c, /* number of -2dB reduction steps / Pn */
-	NM_ATT_ARFCN_LIST, 0x00, 0x02, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
-};
-
-static unsigned char nanobts_attr_nse[] = {
-	NM_ATT_IPACC_NSEI, 0, 2,  0x03, 0x9d, /* NSEI 925 */
-	/* all timers in seconds */
-	NM_ATT_IPACC_NS_CFG, 0, 7,  3,  /* (un)blocking timer (Tns-block) */
-				    3,  /* (un)blocking retries */
-				    3,  /* reset timer (Tns-reset) */
-				    3,  /* reset retries */
-				    30,  /* test timer (Tns-test) */
-				    3,  /* alive timer (Tns-alive) */
-				    10, /* alive retrires */
-	/* all timers in seconds, unless otherwise stated */
-	NM_ATT_IPACC_BSSGP_CFG, 0, 11,
-				    3,  /* blockimg timer (T1) */
-				    3,  /* blocking retries */
-				    3,  /* unblocking retries */
-				    3,  /* reset timer (T2) */
-				    3,  /* reset retries */
-				    10, /* suspend timer (T3) in 100ms */
-				    3,  /* suspend retries */
-				    10, /* resume timer (T4) in 100ms */
-				    3,  /* resume retries */
-				    10, /* capability update timer (T5) */
-				    3,  /* capability update retries */
-};
-
-static unsigned char nanobts_attr_cell[] = {
-	NM_ATT_IPACC_RAC, 0, 1,  1, /* routing area code */
-	NM_ATT_IPACC_GPRS_PAGING_CFG, 0, 2,
-		5,	/* repeat time (50ms) */
-		3,	/* repeat count */
-	NM_ATT_IPACC_BVCI, 0, 2,  0x03, 0x9d, /* BVCI 925 */
-	/* all timers in seconds, unless otherwise stated */
-	NM_ATT_IPACC_RLC_CFG, 0, 9,
-		20, 	/* T3142 */
-		5, 	/* T3169 */
-		5,	/* T3191 */
-		160,	/* T3193 (units of 10ms) */
-		5,	/* T3195 */
-		10,	/* N3101 */
-		4,	/* N3103 */
-		8,	/* N3105 */
-		15,	/* RLC CV countdown */
-	NM_ATT_IPACC_CODING_SCHEMES, 0, 2,  0x0f, 0x00,	/* CS1..CS4 */
-	NM_ATT_IPACC_RLC_CFG_2, 0, 5,
-		0x00, 250,	/* T downlink TBF extension (0..500) */
-		0x00, 250,	/* T uplink TBF extension (0..500) */
-		2,	/* CS2 */
-#if 0
-	/* EDGE model only, breaks older models.
-	 * Should inquire the BTS capabilities */
-	NM_ATT_IPACC_RLC_CFG_3, 0, 1,
-		2,	/* MCS2 */
-#endif
-};
-
-static unsigned char nanobts_attr_nsvc0[] = {
-	NM_ATT_IPACC_NSVCI, 0, 2,  0x03, 0x9d, /* 925 */
-	NM_ATT_IPACC_NS_LINK_CFG, 0, 8,
-		0x59, 0xd8, /* remote udp port (23000) */
-		192, 168, 100, 11, /* remote ip address */
-		0x59, 0xd8, /* local udp port (23000) */
-};
-
-static void patch_16(uint8_t *data, const uint16_t val)
-{
-	memcpy(data, &val, sizeof(val));
-}
-
-static void patch_32(uint8_t *data, const uint32_t val)
-{
-	memcpy(data, &val, sizeof(val));
-}
-
-/*
- * Patch the various SYSTEM INFORMATION tables to update
- * the LAI
- */
-static void patch_nm_tables(struct gsm_bts *bts)
-{
-	uint8_t arfcn_low = bts->c0->arfcn & 0xff;
-	uint8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
-
-	/* patch ARFCN into BTS Attributes */
-	nanobts_attr_bts[42] &= 0xf0;
-	nanobts_attr_bts[42] |= arfcn_high;
-	nanobts_attr_bts[43] = arfcn_low;
-
-	/* patch the RACH attributes */
-	if (bts->rach_b_thresh != -1) {
-		nanobts_attr_bts[33] = bts->rach_b_thresh & 0xff;
-	}
-
-	if (bts->rach_ldavg_slots != -1) {
-		uint8_t avg_high = bts->rach_ldavg_slots & 0xff;
-		uint8_t avg_low = (bts->rach_ldavg_slots >> 8) & 0x0f;
-
-		nanobts_attr_bts[35] = avg_high;
-		nanobts_attr_bts[36] = avg_low;
-	}
-
-	/* patch BSIC */
-	nanobts_attr_bts[sizeof(nanobts_attr_bts)-11] = bts->bsic;
-
-	/* patch CGI */
-	abis_nm_ipaccess_cgi(nanobts_attr_bts+sizeof(nanobts_attr_bts)-7, bts);
-
-	/* patch CON_FAIL_CRIT */
-	nanobts_attr_bts[13] =
-		get_radio_link_timeout(&bts->si_common.cell_options);
-
-	/* patch the power reduction */
-	nanobts_attr_radio[1] = bts->c0->max_power_red / 2;
-
-	/* patch NSEI */
-	nanobts_attr_nse[3] = bts->gprs.nse.nsei >> 8;
-	nanobts_attr_nse[4] = bts->gprs.nse.nsei & 0xff;
-	memcpy(nanobts_attr_nse+8, bts->gprs.nse.timer,
-		ARRAY_SIZE(bts->gprs.nse.timer));
-	memcpy(nanobts_attr_nse+18, bts->gprs.cell.timer,
-		ARRAY_SIZE(bts->gprs.cell.timer));
-
-	/* patch NSVCI */
-	nanobts_attr_nsvc0[3] = bts->gprs.nsvc[0].nsvci >> 8;
-	nanobts_attr_nsvc0[4] = bts->gprs.nsvc[0].nsvci & 0xff;
-
-	/* patch IP address as SGSN IP */
-	patch_16(nanobts_attr_nsvc0 + 8, 
-			htons(bts->gprs.nsvc[0].remote_port));
-	patch_32(nanobts_attr_nsvc0 + 10,
-			htonl(bts->gprs.nsvc[0].remote_ip));
-	patch_16(nanobts_attr_nsvc0 + 14,
-			htons(bts->gprs.nsvc[0].local_port));
-
-	/* patch BVCI */
-	nanobts_attr_cell[12] = bts->gprs.cell.bvci >> 8;
-	nanobts_attr_cell[13] = bts->gprs.cell.bvci & 0xff;
-	/* patch RAC */
-	nanobts_attr_cell[3] = bts->gprs.rac;
-
-	if (bts->gprs.mode == BTS_GPRS_EGPRS) {
-		/* patch EGPRS coding schemes MCS 1..9 */
-		nanobts_attr_cell[29] = 0x8f;
-		nanobts_attr_cell[30] = 0xff;
-	}
-}
-
-static uint8_t *nanobts_attr_bts_get(struct gsm_bts *bts, size_t *data_len)
-{
-	patch_nm_tables(bts);
-	*data_len = sizeof(nanobts_attr_bts);
-	return nanobts_attr_bts;
-}
-
-static uint8_t *nanobts_attr_nse_get(struct gsm_bts *bts, size_t *data_len)
-{
-	patch_nm_tables(bts);
-	*data_len = sizeof(nanobts_attr_nse);
-	return nanobts_attr_nse;
-}
-
-static uint8_t *nanobts_attr_cell_get(struct gsm_bts *bts, size_t *data_len)
-{
-	patch_nm_tables(bts);
-	*data_len = sizeof(nanobts_attr_cell);
-	return nanobts_attr_cell;
-}
-
-static uint8_t *nanobts_attr_nscv_get(struct gsm_bts *bts, size_t *data_len)
-{
-	patch_nm_tables(bts);
-	*data_len = sizeof(nanobts_attr_nsvc0);
-	return nanobts_attr_nsvc0;
-}
-
-static uint8_t *nanobts_attr_radio_get(struct gsm_bts *bts, size_t *data_len)
-{
-	patch_nm_tables(bts);
-	*data_len = sizeof(nanobts_attr_radio);
-	return nanobts_attr_radio;
-}
 
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
 static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
@@ -318,8 +114,7 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_bts_gprs_nsvc *nsvc;
 
-	uint8_t *data;
-	size_t data_len;
+	struct msgb *msgb;
 
 	if (!is_ipaccess_bts(nsd->bts))
 		return 0;
@@ -343,8 +138,9 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 	case NM_OC_BTS:
 		bts = obj;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			data = nanobts_attr_bts_get(bts, &data_len);
-			abis_nm_set_bts_attr(bts, data, data_len);
+			msgb = nanobts_attr_bts_get(bts);
+			abis_nm_set_bts_attr(bts, msgb->data, msgb->len);
+			msgb_free(msgb);
 			abis_nm_chg_adm_state(bts, obj_class,
 					      bts->bts_nr, 0xff, 0xff,
 					      NM_STATE_UNLOCKED);
@@ -385,9 +181,11 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			data = nanobts_attr_nse_get(bts, &data_len);
+			msgb = nanobts_attr_nse_get(bts);
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
-						  0xff, 0xff, data, data_len);
+						  0xff, 0xff, msgb->data,
+						  msgb->len);
+			msgb_free(msgb);
 			abis_nm_opstart(bts, obj_class, bts->bts_nr,
 					0xff, 0xff);
 		}
@@ -397,9 +195,11 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			data = nanobts_attr_cell_get(bts, &data_len);
+			msgb = nanobts_attr_cell_get(bts);
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
-						  0, 0xff, data, data_len);
+						  0, 0xff, msgb->data,
+						  msgb->len);
+			msgb_free(msgb);
 			abis_nm_opstart(bts, obj_class, bts->bts_nr,
 					0, 0xff);
 			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
@@ -418,10 +218,11 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 			break;
 		if ((new_state->availability == NM_AVSTATE_OFF_LINE) ||
 		    (new_state->availability == NM_AVSTATE_DEPENDENCY)) {
-			data = nanobts_attr_nscv_get(bts, &data_len);
+			msgb = nanobts_attr_nscv_get(bts);
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
 						  nsvc->id, 0xff,
-						  data, data_len);
+						  msgb->data, msgb->len);
+			msgb_free(msgb);
 			abis_nm_opstart(bts, obj_class, bts->bts_nr,
 					nsvc->id, 0xff);
 			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
@@ -471,12 +272,9 @@ static int sw_activ_rep(struct msgb *mb)
 		 */
 		int rc_state = trx->mo.nm_state.administrative;
 		/* Patch ARFCN into radio attribute */
-		size_t data_len;
-		uint8_t *data = nanobts_attr_radio_get(trx->bts, &data_len);
-		data[5] &= 0xf0;
-		data[5] |= trx->arfcn >> 8;
-		data[6] = trx->arfcn & 0xff;
-		abis_nm_set_radio_attr(trx, data, data_len);
+		struct msgb *msgb = nanobts_attr_radio_get(trx->bts, trx);
+		abis_nm_set_radio_attr(trx, msgb->data, msgb->len);
+		msgb_free(msgb);
 		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
 				      trx->bts->bts_nr, trx->nr, 0xff,
 				      rc_state);

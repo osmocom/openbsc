@@ -49,5 +49,6 @@ libbsc_a_SOURCES = \
 	bsc_ctrl_lookup.c \
 	net_init.c \
 	bsc_dyn_ts.c \
+	bts_ipaccess_nanobts_omlattr.c \
 	$(NULL)
 
