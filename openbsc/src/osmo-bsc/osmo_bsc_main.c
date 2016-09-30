@@ -229,8 +229,6 @@ int main(int argc, char **argv)
 
 	/* start control interface after reading config for
 	 * ctrl_vty_get_bind_addr() */
-	LOGP(DNM, LOGL_NOTICE, "CTRL at %s %d\n",
-	     ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_NITB_BSC);
 	bsc_gsmnet->ctrl = bsc_controlif_setup(bsc_gsmnet,
 					       ctrl_vty_get_bind_addr(),
 					       OSMO_CTRL_PORT_NITB_BSC);

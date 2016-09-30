@@ -389,8 +389,6 @@ int main(int argc, char **argv)
 
 	/* start control interface after reading config for
 	 * ctrl_vty_get_bind_addr() */
-	LOGP(DGPRS, LOGL_NOTICE, "CTRL at %s %d\n",
-	     ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_SGSN);
 	ctrl = sgsn_controlif_setup(NULL, ctrl_vty_get_bind_addr(),
 				    OSMO_CTRL_PORT_SGSN);
 	if (!ctrl) {

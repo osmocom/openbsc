@@ -1669,8 +1669,6 @@ int main(int argc, char **argv)
 
 	/* start control interface after reading config for
 	 * ctrl_vty_get_bind_addr() */
-	LOGP(DNAT, LOGL_NOTICE, "CTRL at %s %d\n",
-	     ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_BSC_NAT);
 	nat->ctrl = bsc_nat_controlif_setup(nat, ctrl_vty_get_bind_addr(),
 					    OSMO_CTRL_PORT_BSC_NAT);
 	if (!nat->ctrl) {
