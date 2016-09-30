@@ -18,6 +18,13 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 
+dnl check for pkg-config (explained in detail in libosmocore/configure.ac)
+AC_PATH_PROG(PKG_CONFIG_INSTALLED, pkg-config, no)
+if test "x$PKG_CONFIG_INSTALLED" = "xno"; then
+        AC_MSG_WARN([You need to install pkg-config])
+fi
+PKG_PROG_PKG_CONFIG([0.20])
+
 dnl checks for libraries
 AC_SEARCH_LIBS([dlopen], [dl dld], [LIBRARY_DL="$LIBS";LIBS=""])
 AC_SUBST(LIBRARY_DL)
