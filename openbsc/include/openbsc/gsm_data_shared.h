@@ -300,9 +300,14 @@ struct gsm_lchan {
 			uint32_t fn;
 			bool is_update;
 		} last_sid;
+		/* FIXME: 2 flags below are mutually exclusive - is it worth it
+		   to merge them? */
 		/* set for each SID frame to detect talkspurt for codecs without
 		   explicit ONSET event */
 		bool ul_sid;
+		/* set for each SID_FIRST_P1 sent to L1 but not followed by
+		   either of _P2 or InH */
+		bool dl_fst;
 		uint8_t last_cmr;
 		uint32_t last_fn;
 		/* indicates if DTXd was active during DL measurement period */
