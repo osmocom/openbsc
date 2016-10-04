@@ -774,6 +774,9 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 		}
 	}
 
+	rate_ctr_inc(&sgsn->rate_ctrs->ctr[CTR_LLC_DL_PACKETS]);
+	rate_ctr_add(&sgsn->rate_ctrs->ctr[CTR_LLC_DL_BYTES], msg->len);
+
 	/* Identifiers passed down: (BVCI, NSEI) */
 
 	/* Send BSSGP-DL-UNITDATA.req */
