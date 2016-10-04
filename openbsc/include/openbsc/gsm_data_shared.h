@@ -295,7 +295,7 @@ struct gsm_lchan {
 	struct {
 		struct amr_multirate_conf amr_mr;
 		struct {
-			uint8_t buf[16];
+			uint8_t buf[18];
 			uint8_t len;
 			uint32_t fn;
 			bool is_update;
