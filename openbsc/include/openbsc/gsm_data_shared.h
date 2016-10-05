@@ -295,23 +295,20 @@ struct gsm_lchan {
 	struct {
 		struct amr_multirate_conf amr_mr;
 		struct {
-			uint8_t buf[18];
+			struct osmo_fsm_inst *dl_amr_fsm;
+			uint8_t cache[20];
 			uint8_t len;
 			uint32_t fn;
 			bool is_update;
-		} last_sid;
-		/* FIXME: 2 flags below are mutually exclusive - is it worth it
-		   to merge them? */
-		/* set for each SID frame to detect talkspurt for codecs without
-		   explicit ONSET event */
-		bool ul_sid;
-		/* set for each SID_FIRST_P1 sent to L1 but not followed by
-		   either of _P2 or InH */
-		bool dl_fst;
+			/* set for each SID frame to detect talkspurt for codecs
+			   without explicit ONSET event */
+			bool ul_sid;
+			/* indicates if DTXd was active during DL measurement
+			   period */
+			bool dl_active;
+		} dtx;
 		uint8_t last_cmr;
 		uint32_t last_fn;
-		/* indicates if DTXd was active during DL measurement period */
-		bool dtxd_active;
 	} tch;
 	/* BTS-side ciphering state (rx only, bi-directional, ...) */
 	uint8_t ciph_state;
