@@ -34,6 +34,7 @@
 #include <openbsc/trau_mux.h>
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include <osmocom/core/talloc.h>
 
@@ -587,11 +588,13 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 	case GSM48_PDISC_RR:
 		switch (msg_type) {
 		case GSM48_MT_RR_GPRS_SUSP_REQ:
-			DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
+			DEBUGP(DRR, "%s\n",
+			       gsm48_rr_msg_name(GSM48_MT_RR_GPRS_SUSP_REQ));
 			break;
 		case GSM48_MT_RR_STATUS:
-			LOGP(DRR, LOGL_NOTICE, "RR STATUS (cause: %s)\n",
-				rr_cause_name(gh->data[0]));
+			LOGP(DRR, LOGL_NOTICE, "%s (cause: %s)\n",
+			     gsm48_rr_msg_name(GSM48_MT_RR_GPRS_SUSP_REQ),
+			     rr_cause_name(gh->data[0]));
 			break;
 		case GSM48_MT_RR_MEAS_REP:
 			/* This shouldn't actually end up here, as RSL treats
@@ -643,8 +646,9 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			/* Normally, a MSC should never receive RR
 			 * messages, but we'd rather forward what we
 			 * don't know than drop it... */
-			LOGP(DRR, LOGL_NOTICE, "BSC: Passing unknown 04.08 "
-			     "RR message type 0x%02x to MSC\n", msg_type);
+			LOGP(DRR, LOGL_NOTICE,
+			     "BSC: Passing %s 04.08 RR message to MSC\n",
+			     gsm48_rr_msg_name(msg_type));
 			if (api->dtap)
 				api->dtap(conn, link_id, msg);
 		}

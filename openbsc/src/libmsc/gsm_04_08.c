@@ -1270,8 +1270,8 @@ static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *m
 		rc = gsm48_rx_rr_app_info(conn, msg);
 		break;
 	default:
-		LOGP(DRR, LOGL_NOTICE, "MSC: Unimplemented "
-			"GSM 04.08 RR msg type 0x%02x\n", gh->msg_type);
+		LOGP(DRR, LOGL_NOTICE, "MSC: Unimplemented %s GSM 04.08 RR "
+		     "message\n", gsm48_rr_msg_name(gh->msg_type));
 		break;
 	}
 
