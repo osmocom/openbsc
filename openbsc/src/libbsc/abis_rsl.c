@@ -82,39 +82,6 @@ static void do_lchan_free(struct gsm_lchan *lchan)
 	lchan_free(lchan);
 }
 
-static void count_codecs(struct gsm_bts *bts, struct gsm_lchan *lchan)
-{
-	if (lchan->type == GSM_LCHAN_TCH_H) {
-		switch (lchan->tch_mode) {
-		case GSM48_CMODE_SPEECH_AMR:
-			rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_CODEC_AMR_H]);
-			break;
-		case GSM48_CMODE_SPEECH_V1:
-			rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_CODEC_V1_HR]);
-			break;
-		default:
-			break;
-		}
-	} else if (lchan->type == GSM_LCHAN_TCH_F) {
-		switch (lchan->tch_mode) {
-		case GSM48_CMODE_SPEECH_AMR:
-			rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_CODEC_AMR_F]);
-			break;
-		case GSM48_CMODE_SPEECH_V1:
-			rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_CODEC_V1_FR]);
-			break;
-		case GSM48_CMODE_SPEECH_EFR:
-			rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_CODEC_EFR]);
-			break;
-		default:
-			break;
-		}
-	} else {
-		LOGP(DRSL, LOGL_ERROR, "count_codecs unknown lchan->type %x on channel %s\n",
-		     lchan->type, gsm_ts_and_pchan_name(lchan->ts));
-	}
-}
-
 static uint8_t mdisc_by_msgtype(uint8_t msg_type)
 {
 	/* mask off the transparent bit ? */
@@ -1203,7 +1170,6 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 		lchan->rqd_ta = 0;
 	}
 
-	count_codecs(msg->trx->bts, lchan);
 	send_lchan_signal(S_LCHAN_ACTIVATE_ACK, lchan, NULL);
 
 	return 0;
@@ -1513,7 +1479,6 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_rf_chan_rel_ack(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
-		count_codecs(msg->trx->bts, msg->lchan);
 		DEBUGP(DRSL, "%s CHANNEL MODE MODIFY ACK\n", ts_name);
 		break;
 	case RSL_MT_MODE_MODIFY_NACK:

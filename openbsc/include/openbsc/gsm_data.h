@@ -168,11 +168,6 @@ enum {
 	BSC_CTR_CHAN_RLL_ERR,
 	BSC_CTR_BTS_OML_FAIL,
 	BSC_CTR_BTS_RSL_FAIL,
-	BSC_CTR_CODEC_AMR_F,
-	BSC_CTR_CODEC_AMR_H,
-	BSC_CTR_CODEC_EFR,
-	BSC_CTR_CODEC_V1_FR,
-	BSC_CTR_CODEC_V1_HR,
 };
 
 static const struct rate_ctr_desc bsc_ctr_description[] = {
@@ -191,11 +186,6 @@ static const struct rate_ctr_desc bsc_ctr_description[] = {
 	[BSC_CTR_CHAN_RLL_ERR] = 		{"chan.rll_err", "Received a RLL failure with T200 cause from BTS."},
 	[BSC_CTR_BTS_OML_FAIL] = 		{"bts.oml_fail", "Received a TEI down on a OML link."},
 	[BSC_CTR_BTS_RSL_FAIL] = 		{"bts.rsl_fail", "Received a TEI down on a OML link."},
-	[BSC_CTR_CODEC_AMR_F] =			{"bts.codec_amr_f", "Count the usage of AMR/F codec by channel mode requested."},
-	[BSC_CTR_CODEC_AMR_H] =			{"bts.codec_amr_h", "Count the usage of AMR/H codec by channel mode requested."},
-	[BSC_CTR_CODEC_EFR] = 			{"bts.codec_efr", "Count the usage of EFR codec by channel mode requested."},
-	[BSC_CTR_CODEC_V1_FR] =			{"bts.codec_fr", "Count the usage of FR codec by channel mode requested."},
-	[BSC_CTR_CODEC_V1_HR] =			{"bts.codec_hr", "Count the usage of HR codec by channel mode requested."},
 };
 
 enum {
