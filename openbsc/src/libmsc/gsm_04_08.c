@@ -206,6 +206,10 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 		status = GSM_SECURITY_NOAVAIL;
 	}
 
+	if (status < 0 && conn->via_iface == IFACE_IU
+	    && conn->iu.integrity_protection != INTEGRITY_PROTECTION_NONE)
+		status = GSM_SECURITY_ALREADY;
+
 	/* If not done yet, try to get info for this user */
 	if (status < 0) {
 		/* DEV HACK: hardcode keys for Iu */
