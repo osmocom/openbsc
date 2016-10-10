@@ -811,6 +811,12 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_DETACHED, vsub);
 	vlr_subscr_put(vsub);
 
+#if 0
+	/* FIXME: for IuCS, always wait until the UE releases. */
+	if (conn->via_ran == RAN_UTRAN_IU)
+		return 0;
+#endif
+
 	msc_close_connection(conn);
 	return 0;
 }
