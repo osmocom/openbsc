@@ -1456,6 +1456,8 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 
 	msg->lchan = lchan_lookup(sign_link->trx, rslh->chan_nr,
 				  "Abis RSL rx DCHAN: ");
+	if (!msg->lchan)
+		return -1;
 	ts_name = gsm_lchan_name(msg->lchan);
 
 	switch (rslh->c.msg_type) {
