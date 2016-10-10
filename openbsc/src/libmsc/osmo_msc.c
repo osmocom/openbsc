@@ -149,6 +149,10 @@ struct bsc_api *msc_bsc_api() {
 /* conn release handling */
 void msc_release_connection(struct gsm_subscriber_connection *conn)
 {
+	/* For IuCS, always wait until the UE releases. */
+	if (conn->via_iface == IFACE_IU)
+		return;
+
 	/* skip when we are in release, e.g. due an error */
 	if (conn->in_release)
 		return;
