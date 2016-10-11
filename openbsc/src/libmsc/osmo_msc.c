@@ -26,6 +26,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/transaction.h>
 #include <openbsc/db.h>
+#include <openbsc/iu.h>
 
 #include <openbsc/gsm_04_11.h>
 
@@ -149,10 +150,6 @@ struct bsc_api *msc_bsc_api() {
 /* conn release handling */
 void msc_release_connection(struct gsm_subscriber_connection *conn)
 {
-	/* For IuCS, always wait until the UE releases. */
-	if (conn->via_iface == IFACE_IU)
-		return;
-
 	/* skip when we are in release, e.g. due an error */
 	if (conn->in_release)
 		return;
@@ -179,5 +176,12 @@ void msc_release_connection(struct gsm_subscriber_connection *conn)
 		subscr_update_expire_lu(conn->subscr);
 
 	conn->in_release = 1;
+
+	if (conn->via_iface == IFACE_IU)
+		iu_tx_release(conn->iu.ue_ctx, NULL);
+		/* FIXME: keep the conn until the Iu Release Outcome is
+		 * received from the UE, or a timeout expires. For now, the log
+		 * says "unknown UE" for each release outcome. */
+
 	msc_subscr_con_free(conn);
 }
