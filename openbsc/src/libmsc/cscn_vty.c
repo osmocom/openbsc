@@ -26,10 +26,11 @@
 #include <inttypes.h>
 
 #include <osmocom/vty/command.h>
-#include <openbsc/vty.h>
 
+#include <openbsc/vty.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/iu.h>
 
 static struct cmd_node cscn_node = {
 	CSCN_NODE,
@@ -123,6 +124,7 @@ static int config_write_cscn(struct vty *vty)
 		gsmnet->avoid_tmsi ? "no " : "", VTY_NEWLINE);
 
 	mgcpgw_client_config_write(vty, " ");
+	iu_vty_config_write(vty, " ");
 
 	return CMD_SUCCESS;
 }
@@ -175,4 +177,5 @@ void cscn_vty_init(struct gsm_network *cscn_network)
 	install_element(CSCN_NODE, &cfg_cscn_assign_tmsi_cmd);
 	install_element(CSCN_NODE, &cfg_cscn_no_assign_tmsi_cmd);
 	mgcpgw_client_vty_init(CSCN_NODE, &cscn_network->mgcpgw.conf);
+	iu_vty_init(CSCN_NODE, &cscn_network->iu.rab_assign_addr_enc);
 }

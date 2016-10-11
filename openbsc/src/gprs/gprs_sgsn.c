@@ -244,6 +244,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx)
 
 	ctx->ran_type = MM_CTX_T_UTRAN_Iu;
 	ctx->iu.ue_ctx = uectx;
+	ctx->iu.ue_ctx->rab_assign_addr_enc = sgsn->cfg.iu.rab_assign_addr_enc;
 	ctx->iu.new_key = 1;
 	ctx->mm_state = GMM_DEREGISTERED;
 	ctx->pmm_state = PMM_DETACHED;
