@@ -28,6 +28,7 @@
 #include <openbsc/db.h>
 #include <openbsc/vlr.h>
 #include <openbsc/osmo_msc.h>
+#include <openbsc/iu.h>
 
 #include <openbsc/gsm_04_11.h>
 
