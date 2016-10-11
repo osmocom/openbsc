@@ -1,10 +1,15 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
+
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/gsm/gsm48.h>
 
 struct sgsn_pdp_ctx;
 struct msgb;
-struct gprs_ra_id;
+struct osmo_sccp_link;
+struct gsm_auth_tuple;
 
 struct RANAP_RAB_SetupOrModifiedItemIEs_s;
 struct RANAP_GlobalRNC_ID;
