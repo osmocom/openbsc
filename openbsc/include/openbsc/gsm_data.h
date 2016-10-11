@@ -13,6 +13,7 @@
 
 #include <osmocom/crypt/auth.h>
 
+#include <openbsc/common.h>
 #include <openbsc/rest_octets.h>
 #include <openbsc/common_cs.h>
 #include <openbsc/mgcpgw_client.h>
@@ -424,6 +425,10 @@ struct gsm_network {
 		struct mgcpgw_client_conf conf;
 		struct mgcpgw_client *client;
 	} mgcpgw;
+
+	struct {
+		enum nsap_addr_enc rab_assign_addr_enc;
+	} iu;
 };
 
 struct osmo_esme;
