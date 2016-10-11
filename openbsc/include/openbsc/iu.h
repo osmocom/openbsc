@@ -8,6 +8,7 @@ struct gprs_ra_id;
 
 struct RANAP_RAB_SetupOrModifiedItemIEs_s;
 struct RANAP_GlobalRNC_ID;
+struct RANAP_Cause;
 
 struct ue_conn_ctx {
 	struct llist_head list;
@@ -59,5 +60,6 @@ int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id);
 int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 		       int send_ck, int new_key);
 int iu_tx_common_id(struct ue_conn_ctx *ue_ctx, const char *imsi);
+int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause);
 
 void iu_vty_init(int *asn_debug_p);
