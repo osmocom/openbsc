@@ -6,6 +6,8 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/gsm48.h>
 
+#include <openbsc/common.h>
+
 struct sgsn_pdp_ctx;
 struct msgb;
 struct osmo_sccp_link;
@@ -72,4 +74,5 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 int iu_tx_common_id(struct ue_conn_ctx *ue_ctx, const char *imsi);
 int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause);
 
-void iu_vty_init(void);
+void iu_vty_init(int iu_parent_node, enum nsap_addr_enc *rab_assign_addr_enc);
+int iu_vty_config_write(struct vty *vty, const char *indent);

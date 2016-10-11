@@ -7,6 +7,7 @@
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/oap_client.h>
+#include <openbsc/common.h>
 
 #include <ares.h>
 
@@ -109,6 +110,10 @@ struct sgsn_config {
 		int p1;
 		int p2;
 	} dcomp_v42bis;
+
+	struct {
+		enum nsap_addr_enc rab_assign_addr_enc;
+	} iu;
 };
 
 struct sgsn_instance {
