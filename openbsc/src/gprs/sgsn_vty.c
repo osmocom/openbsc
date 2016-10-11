@@ -1250,6 +1250,10 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_no_comp_v42bis_cmd);
 	install_element(SGSN_NODE, &cfg_comp_v42bis_cmd);
 	install_element(SGSN_NODE, &cfg_comp_v42bisp_cmd);
+
+#ifdef BUILD_IU
+	iu_vty_init();
+#endif
 	return 0;
 }
 

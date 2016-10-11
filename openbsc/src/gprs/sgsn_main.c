@@ -311,12 +311,6 @@ static const struct log_info gprs_log_info = {
 	.num_cat = ARRAY_SIZE(gprs_categories),
 };
 
-/* Implement the extern asn_debug from libasn1c to indicate whether the ASN.1
- * binary code decoded and encoded during Iu communication should be logged to
- * stderr. See osmocom's libasn1c, asn_internal.h, at "if (asn_debug)":
- * http://git.osmocom.org/libasn1c/tree/include/asn1c/asn_internal.h */
-int asn_debug = 0;
-
 int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *data);
 
 int main(int argc, char **argv)
@@ -344,9 +338,6 @@ int main(int argc, char **argv)
 	osmo_stats_vty_add_cmds(&gprs_log_info);
 	sgsn_vty_init();
 	ctrl_vty_init(tall_bsc_ctx);
-#ifdef BUILD_IU
-	iu_vty_init(&asn_debug);
-#endif
 
 	handle_options(argc, argv);
 

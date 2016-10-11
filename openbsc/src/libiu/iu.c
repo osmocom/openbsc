@@ -79,7 +79,15 @@ struct iu_rnc {
 
 void *talloc_iu_ctx;
 
-int asn1_xer_print = 1;
+/* Implement the extern asn_debug from libasn1c to indicate whether to print
+ * asn.1 debug messages (see libasn1c). */
+int asn_debug = 0;
+
+/* Implement the extern asn1_xer_print to indicate whether the ASN.1 binary
+ * code decoded and encoded during Iu communication should be logged to stderr
+ * (see asn.1 generated code in osmo-iuh). */
+int asn1_xer_print = 0;
+
 void *talloc_asn1_ctx;
 
 iu_recv_cb_t global_iu_recv_cb = NULL;
