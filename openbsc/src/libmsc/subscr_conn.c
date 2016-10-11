@@ -240,6 +240,12 @@ static void subscr_conn_fsm_cleanup(struct osmo_fsm_inst *fi,
 		return;
 	}
 
+	if (conn->via_iface == IFACE_IU)
+		iu_tx_release(conn->iu.ue_ctx, NULL);
+		/* FIXME: keep the conn until the Iu Release Outcome is
+		 * received from the UE, or a timeout expires. For now, the log
+		 * says "unknown UE" for each release outcome. */
+
 	DEBUGP(DMM, "%s calling bsc_subscr_con_free(), owned_by_msc = true\n",
 	       vlr_subscr_name(conn->vsub));
 	gsm0808_clear(conn);
