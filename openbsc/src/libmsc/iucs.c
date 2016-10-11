@@ -50,6 +50,7 @@ static struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_netw
 	conn->network = network;
 	conn->via_ran = RAN_UTRAN_IU;
 	conn->iu.ue_ctx = ue;
+	conn->iu.ue_ctx->rab_assign_addr_enc = network->iu.rab_assign_addr_enc;
 	conn->lac = lac;
 
 	llist_add_tail(&conn->entry, &network->subscr_conns);

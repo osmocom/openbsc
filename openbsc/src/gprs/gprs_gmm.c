@@ -297,6 +297,10 @@ static void msgid2mmctx(struct sgsn_mm_ctx *mm, const struct msgb *msg)
 	mm->gb.nsei = msgb_nsei(msg);
 	/* In case a Iu connection is reconnected we need to update the ue ctx */
 	mm->iu.ue_ctx = msg->dst;
+	if (mm->ran_type == MM_CTX_T_UTRAN_Iu
+	    && mm->iu.ue_ctx)
+		mm->iu.ue_ctx->rab_assign_addr_enc =
+			sgsn->cfg.iu.rab_assign_addr_enc;
 }
 
 /* Store BVCI/NSEI in MM context */
