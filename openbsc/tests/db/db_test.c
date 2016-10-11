@@ -269,3 +269,6 @@ const char *mgcpgw_client_remote_addr_str(struct mgcpgw_client *mgcp)
 { return "0.0.0.0"; }
 uint32_t mgcpgw_client_remote_addr_n(struct mgcpgw_client *mgcp)
 { return 0; }
+struct RANAP_Cause;
+int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause)
+{ return 0; }

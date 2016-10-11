@@ -409,20 +409,35 @@ int iu_tx(struct msgb *msg_nas, uint8_t sapi)
 	return 0;
 }
 
-static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseRequestIEs_t *ies)
+/* Send Iu Release for the given UE connection.
+ * If cause is NULL, the standard "No remaining RAB" cause is sent, otherwise
+ * the provided cause. */
+int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause)
 {
 	struct msgb *msg;
 	struct osmo_scu_prim *prim;
+	static const struct RANAP_Cause default_cause = {
+		.present = RANAP_Cause_PR_radioNetwork,
+		.choice.radioNetwork = RANAP_CauseRadioNetwork_no_remaining_rab,
+	};
 
-	LOGP(DRANAP, LOGL_INFO, "Received Iu Release Request, Sending Release Command\n");
-	msg = ranap_new_msg_iu_rel_cmd(&ies->cause);
+	if (!cause)
+		cause = &default_cause;
+
+	msg = ranap_new_msg_iu_rel_cmd(cause);
 	msg->l2h = msg->data;
 	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));
 	prim->u.data.conn_id = ctx->conn_id;
 	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
 			OSMO_SCU_PRIM_N_DATA,
 			PRIM_OP_REQUEST, msg);
-	osmo_sua_user_link_down(ctx->link, &prim->oph);
+	return osmo_sua_user_link_down(ctx->link, &prim->oph);
+}
+
+static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseRequestIEs_t *ies)
+{
+	LOGP(DRANAP, LOGL_INFO, "Received Iu Release Request, Sending Release Command\n");
+	iu_tx_release(ctx, &ies->cause);
 	return 0;
 }
 
