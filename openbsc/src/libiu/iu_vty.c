@@ -22,29 +22,34 @@
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/logging.h>
 
-/* Pointer to the actual asn_debug value as passed from main scopes. */
-static int *g_asn_debug_p = NULL;
+#include <openbsc/iu.h>
 
 DEFUN(logging_asn_debug,
       logging_asn_debug_cmd,
       "logging asn1-debug (1|0)",
       LOGGING_STR
+      "Log ASN.1 debug messages to stderr\n"
+      "Log ASN.1 debug messages to stderr\n"
+      "Do not log ASN.1 debug messages to stderr\n")
+{
+	asn_debug = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_asn_xer_print,
+      logging_asn_xer_print_cmd,
+      "logging asn1-xer-print (1|0)",
+      LOGGING_STR
       "Log human readable representations of all ASN.1 messages to stderr\n"
       "Log decoded ASN.1 messages to stderr\n"
       "Do not log decoded ASN.1 messages to stderr\n")
 {
-	if (!g_asn_debug_p) {
-		vty_out(vty, "%%ASN.1 debugging not available%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	*g_asn_debug_p = atoi(argv[0]);
+	asn1_xer_print = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
-void iu_vty_init(int *asn_debug_p)
+void iu_vty_init(void)
 {
-	g_asn_debug_p = asn_debug_p;
-
 	install_element(CFG_LOG_NODE, &logging_asn_debug_cmd);
+	install_element(CFG_LOG_NODE, &logging_asn_xer_print_cmd);
 }
