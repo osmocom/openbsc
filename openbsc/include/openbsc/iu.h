@@ -15,6 +15,10 @@ struct RANAP_RAB_SetupOrModifiedItemIEs_s;
 struct RANAP_GlobalRNC_ID;
 struct RANAP_Cause;
 
+/* Debugging switches from asn1c and osmo-iuh */
+extern int asn_debug;
+extern int asn1_xer_print;
+
 struct ue_conn_ctx {
 	struct llist_head list;
 	struct osmo_sccp_link *link;
@@ -67,4 +71,4 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 int iu_tx_common_id(struct ue_conn_ctx *ue_ctx, const char *imsi);
 int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause);
 
-void iu_vty_init(int *asn_debug_p);
+void iu_vty_init(void);
