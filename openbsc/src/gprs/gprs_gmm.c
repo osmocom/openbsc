@@ -973,10 +973,12 @@ static int gsm48_tx_gmm_service_rej(struct sgsn_mm_ctx *mm,
 static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm);
 
 #ifdef BUILD_IU
+/* Send RAB activation requests for all PDP contexts */
 void activate_pdp_rabs(struct sgsn_mm_ctx *ctx)
 {
-	/* Send RAB activation requests for all PDP contexts */
 	struct sgsn_pdp_ctx *pdp;
+	if (ctx->ran_type != MM_CTX_T_UTRAN_Iu)
+		return;
 	llist_for_each_entry(pdp, &ctx->pdp_list, list) {
 		iu_rab_act_ps(pdp->nsapi, pdp, 1);
 	}
