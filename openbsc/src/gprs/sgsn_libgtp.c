@@ -407,7 +407,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	} else if (pctx->mm->ran_type == MM_CTX_T_UTRAN_Iu) {
 #ifdef BUILD_IU
 		/* Activate a radio bearer */
-		iu_rab_act_ps(pdp->nsapi, pctx, 1);
+		iu_rab_act_ps(pdp->nsapi, pctx);
 		return 0;
 #else
 		return -ENOTSUP;
