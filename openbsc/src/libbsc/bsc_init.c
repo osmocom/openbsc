@@ -437,9 +437,14 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	switch (n) {
 	case 0:
 		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
-		/* Limit reserved block to 2 on combined channel */
-		if (bts->si_common.chan_desc.bs_ag_blks_res > 2)
+		/* Limit reserved block to 2 on combined channel according to
+		   3GPP TS 44.018 Table 10.5.2.11.1 */
+		if (bts->si_common.chan_desc.bs_ag_blks_res > 2) {
+			LOGP(DNM, LOGL_NOTICE, "CCCH is combined with SDCCHs, "
+			     "reducing BS-AG-BLKS-RES value %d -> 2\n",
+			     bts->si_common.chan_desc.bs_ag_blks_res);
 			bts->si_common.chan_desc.bs_ag_blks_res = 2;
+		}
 		break;
 	case 1:
 		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_NC;
