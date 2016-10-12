@@ -140,8 +140,8 @@ extern struct sgsn_instance *sgsn;
 
 /* sgsn_vty.c */
 
-int sgsn_vty_init(void);
-int sgsn_parse_config(const char *config_file, struct sgsn_config *cfg);
+int sgsn_vty_init(struct sgsn_config *cfg);
+int sgsn_parse_config(const char *config_file);
 
 /* sgsn.c */
 
