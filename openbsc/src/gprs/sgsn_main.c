@@ -336,7 +336,7 @@ int main(int argc, char **argv)
 	vty_init(&vty_info);
 	logging_vty_add_cmds(&gprs_log_info);
 	osmo_stats_vty_add_cmds(&gprs_log_info);
-	sgsn_vty_init();
+	sgsn_vty_init(&sgsn_inst.cfg);
 	ctrl_vty_init(tall_bsc_ctx);
 
 	handle_options(argc, argv);
@@ -365,7 +365,7 @@ int main(int argc, char **argv)
 	sgsn_cdr_init(&sgsn_inst);
 	/* FIXME: register signal handler for SS_L_NS */
 
-	rc = sgsn_parse_config(sgsn_inst.config_file, &sgsn_inst.cfg);
+	rc = sgsn_parse_config(sgsn_inst.config_file);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
 		exit(2);
