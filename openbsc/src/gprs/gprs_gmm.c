@@ -826,7 +826,7 @@ void activate_pdp_rabs(struct sgsn_mm_ctx *ctx)
 	/* Send RAB activation requests for all PDP contexts */
 	struct sgsn_pdp_ctx *pdp;
 	llist_for_each_entry(pdp, &ctx->pdp_list, list) {
-		iu_rab_act_ps(pdp->nsapi, pdp, 1);
+		iu_rab_act_ps(pdp->nsapi, pdp);
 	}
 }
 #endif
@@ -2758,14 +2758,16 @@ int gprs_gmm_rx_resume(struct gprs_ra_id *raid, uint32_t tlli,
 }
 
 #ifdef BUILD_IU
-int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp, bool use_x213_nsap)
+int iu_rab_act_ps(uint8_t rab_id, struct sgsn_pdp_ctx *pdp)
 {
 	struct msgb *msg;
 	struct sgsn_mm_ctx *mm = pdp->mm;
 	struct ue_conn_ctx *uectx;
 	uint32_t ggsn_ip;
+	bool use_x213_nsap;
 
 	uectx = mm->iu.ue_ctx;
+	use_x213_nsap = (uectx->rab_assign_addr_enc == NSAP_ADDR_ENC_X213);
 
 	/* Get the IP address for ggsn user plane */
 	memcpy(&ggsn_ip, pdp->lib->gsnru.v, pdp->lib->gsnru.l);

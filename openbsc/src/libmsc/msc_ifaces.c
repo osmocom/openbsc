@@ -111,10 +111,12 @@ int msc_tx_common_id(struct gsm_subscriber_connection *conn)
 
 #ifdef BUILD_IU
 static int iu_rab_act_cs(struct ue_conn_ctx *uectx, uint8_t rab_id,
-			 uint32_t rtp_ip, uint16_t rtp_port,
-			 bool use_x213_nsap)
+			 uint32_t rtp_ip, uint16_t rtp_port)
 {
 	struct msgb *msg;
+	bool use_x213_nsap;
+
+	use_x213_nsap = (uectx->rab_assign_addr_enc == NSAP_ADDR_ENC_X213);
 
 	LOGP(DIUCS, LOGL_DEBUG, "Assigning RAB: rab_id=%d, rtp=%x:%u,"
 	     " use_x213_nsap=%d\n", rab_id, rtp_ip, rtp_port, use_x213_nsap);
@@ -154,7 +156,7 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 		mgcpgw_client_remote_addr_n(conn->network->mgcpgw.client);
 
 	return iu_rab_act_cs(uectx, conn->iu.rab_id, rtp_ip,
-			     conn->iu.mgcp_rtp_port_ue, 1);
+			     conn->iu.mgcp_rtp_port_ue);
 	/* use_x213_nsap == 0 for ip.access nano3G */
 }
 #endif

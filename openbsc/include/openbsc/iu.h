@@ -25,6 +25,7 @@ struct ue_conn_ctx {
 	uint32_t conn_id;
 	int integrity_active;
 	struct gprs_ra_id ra_id;
+	enum nsap_addr_enc rab_assign_addr_enc;
 };
 
 enum iu_event_type {
