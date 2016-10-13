@@ -44,7 +44,7 @@ SMPP (`no smpp-first`).
 
 === ESME configuration
 
-nder the `smpp` vty node, you can add any number of `esme` nodes, one
+Under the `smpp` vty node, you can add any number of `esme` nodes, one
 for each ESME that you wish to configure.
 
 Use the `esme NAME` command (where NAME corresponds to the system-id of
