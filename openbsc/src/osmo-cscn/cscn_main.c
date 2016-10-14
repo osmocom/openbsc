@@ -96,16 +96,6 @@ void *tall_map_ctx = NULL;
 void *tall_upq_ctx = NULL;
 /* end deps from libbsc legacy. */
 
-static void mgcp_rx_cb(struct msgb *msg, void *priv)
-{
-	static char strbuf[4096];
-	unsigned int l = msg->len < sizeof(strbuf)-1 ? msg->len : sizeof(strbuf)-1;
-	strncpy(strbuf, (const char*)msg->data, l);
-	strbuf[l] = '\0';
-	DEBUGP(DMGCP, "Rx MGCP msg from MGCP GW: '%s'\n", strbuf);
-	talloc_free(msg);
-}
-
 static struct {
 	const char *database_name;
 	const char *config_file;
@@ -470,8 +460,7 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	 * should try to use the nanoseconds part of the current time. */
 
 	cscn_network->mgcpgw.client = mgcpgw_client_init(
-			cscn_network, &cscn_network->mgcpgw.conf,
-			mgcp_rx_cb, NULL);
+			cscn_network, &cscn_network->mgcpgw.conf);
 
 	if (db_init(cscn_cmdline_config.database_name)) {
 		printf("DB: Failed to init database: %s\n",
