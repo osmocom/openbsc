@@ -20,6 +20,8 @@
  *
  */
 
+#include <errno.h>
+
 #include <osmocom/core/utils.h>
 #include <openbsc/mgcp.h>
 
@@ -30,3 +32,22 @@ const struct value_string mgcp_connection_mode_strs[] = {
 	{ MGCP_CONN_RECV_ONLY, "recvonly" },
 	{ MGCP_CONN_LOOPBACK, "loopback" },
 };
+
+/* Ensure that the msg->l2h is NUL terminated. */
+int mgcp_msg_terminate_nul(struct msgb *msg)
+{
+	unsigned char *tail = msg->l2h + msgb_l2len(msg); /* char after l2 data */
+	if (tail[-1] == '\0')
+		/* nothing to do */;
+	else if (msgb_tailroom(msg) > 0)
+		tail[0] = '\0';
+	else if (tail[-1] == '\r' || tail[-1] == '\n')
+		tail[-1] = '\0';
+	else {
+		LOGP(DMGCP, LOGL_ERROR, "Cannot NUL terminate MGCP message: "
+		     "Length: %d, Buffer size: %d\n",
+		     msgb_l2len(msg), msg->data_len);
+		return -ENOTSUP;
+	}
+	return 0;
+}
