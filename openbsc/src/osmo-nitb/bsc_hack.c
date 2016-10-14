@@ -108,6 +108,7 @@ static void print_help()
 	printf("  -m --mncc-sock 	     Same as `-M /tmp/bsc_mncc' (deprecated).\n");
 	printf("  -C --no-dbcounter          Disable regular syncing of counters to database.\n");
 	printf("  -r --rf-ctl PATH           A unix domain socket to listen for cmds.\n");
+	printf("  -p --pcap PATH             Write abis communication to pcap trace file.\n");
 }
 
 static void handle_options(int argc, char **argv)
