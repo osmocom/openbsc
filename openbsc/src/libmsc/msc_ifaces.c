@@ -128,6 +128,32 @@ static int iu_rab_act_cs(struct ue_conn_ctx *uectx, uint8_t rab_id,
 	return iu_rab_act(uectx, msg);
 }
 
+static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
+{
+	struct gsm_trans *trans = priv;
+	int rc;
+
+	if (r->head.response_code != 200) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "MGCPGW response yields error: %d %s\n",
+		     r->head.response_code, r->head.comment);
+		goto rab_act_cs_error;
+	}
+	
+	rc = mgcp_response_parse_params(r);
+	if (rc) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Cannot parse MGCP response, for %s\n",
+		     subscr_name(trans->subscr));
+		goto rab_act_cs_error;
+	}
+
+
+rab_act_cs_error:
+	/* FIXME abort call, invalidate conn, ... */
+	return;
+}
+
 static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 {
 	struct gsm_subscriber_connection *conn = trans->conn;
@@ -149,6 +175,7 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	 * The MDCX will patch through to the counterpart. TODO: play a ring
 	 * tone instead. */
 	mgcpgw_client_tx_crcx(conn->network->mgcpgw.client,
+			      mgcp_response_rab_act_cs_crcx, trans,
 			      conn->iu.mgcp_rtp_endpoint, trans->callref,
 			      MGCP_CONN_LOOPBACK);
 
@@ -190,6 +217,11 @@ int msc_call_assignment(struct gsm_trans *trans)
 	}
 }
 
+static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
+{
+	/* TODO */
+}
+
 int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2)
 {
 	struct gsm_subscriber_connection *conn1 = trans1->conn;
@@ -202,17 +234,25 @@ int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2)
 
 	/* First setup the counterparts' endpoints, so that when transmission
 	 * starts the originating addresses are already known to be valid. */
-	mgcpgw_client_tx_mdcx(mgcp, conn1->iu.mgcp_rtp_endpoint,
+	mgcpgw_client_tx_mdcx(mgcp,
+			      mgcp_response_bridge_mdcx, trans1,
+			      conn1->iu.mgcp_rtp_endpoint,
 			      ip, conn2->iu.mgcp_rtp_port_cn,
 			      MGCP_CONN_LOOPBACK);
-	mgcpgw_client_tx_mdcx(mgcp, conn2->iu.mgcp_rtp_endpoint,
+	mgcpgw_client_tx_mdcx(mgcp,
+			      mgcp_response_bridge_mdcx, trans2,
+			      conn2->iu.mgcp_rtp_endpoint,
 			      ip, conn1->iu.mgcp_rtp_port_cn,
 			      MGCP_CONN_LOOPBACK);
 	/* Now enable sending to and receiving from the peer. */
-	mgcpgw_client_tx_mdcx(mgcp, conn1->iu.mgcp_rtp_endpoint,
+	mgcpgw_client_tx_mdcx(mgcp,
+			      mgcp_response_bridge_mdcx, trans1,
+			      conn1->iu.mgcp_rtp_endpoint,
 			      ip, conn2->iu.mgcp_rtp_port_cn,
 			      MGCP_CONN_RECV_SEND);
-	mgcpgw_client_tx_mdcx(mgcp, conn2->iu.mgcp_rtp_endpoint,
+	mgcpgw_client_tx_mdcx(mgcp,
+			      mgcp_response_bridge_mdcx, trans2,
+			      conn2->iu.mgcp_rtp_endpoint,
 			      ip, conn1->iu.mgcp_rtp_port_cn,
 			      MGCP_CONN_RECV_SEND);
 

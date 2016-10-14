@@ -25,6 +25,7 @@
 
 #include <openbsc/mgcpgw_client.h>
 #include <openbsc/mgcp.h>
+#include <openbsc/mgcp_internal.h>
 #include <openbsc/debug.h>
 
 #include <netinet/in.h>
@@ -38,10 +39,9 @@ struct mgcpgw_client {
 	struct mgcpgw_client_conf actual;
 	uint32_t remote_addr;
 	struct osmo_wqueue wq;
-	mgcp_rx_cb_t rx_cb;
-	void *rx_cb_priv;
 	unsigned int next_trans_id;
 	uint16_t next_endpoint;
+	struct llist_head responses_pending;
 };
 
 void mgcpgw_client_conf_init(struct mgcpgw_client_conf *conf)
@@ -58,6 +58,138 @@ void mgcpgw_client_conf_init(struct mgcpgw_client_conf *conf)
 unsigned int mgcpgw_client_next_endpoint(struct mgcpgw_client *client)
 {
 	return client->next_endpoint ++;
+}
+
+static void mgcpgw_client_handle_response(struct mgcpgw_client *mgcp,
+					  struct mgcp_response_pending *pending,
+					  struct mgcp_response *response)
+{
+	if (!pending)
+		return;
+	if (pending->response_cb)
+		pending->response_cb(response, pending->priv);
+	else
+		LOGP(DMGCP, LOGL_INFO, "MGCP response ignored (NULL cb)\n");
+	talloc_free(pending);
+}
+
+static int mgcp_response_parse_head(struct mgcp_response *r, struct msgb *msg)
+{
+	int comment_pos;
+
+	if (mgcp_msg_terminate_nul(msg))
+		goto response_parse_failure;
+
+	r->data = (char *)msg->data;
+
+        if (sscanf(r->data, "%3d %u %n",
+		   &r->head.response_code, &r->head.trans_id,
+		   &comment_pos) != 2)
+		goto response_parse_failure;
+
+	r->head.comment = r->data + comment_pos;
+	return 0;
+
+response_parse_failure:
+	LOGP(DMGCP, LOGL_ERROR,
+	     "Failed to parse MGCP response header\n");
+	return -EINVAL;
+}
+
+/* TODO undup against mgcp_protocol.c:mgcp_check_param() */
+static bool mgcp_line_is_valid(const char *line)
+{
+	const size_t line_len = strlen(line);
+	if (line[0] == '\0')
+		return true;
+
+	if (line_len < 2
+	    || line[1] != '=') {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Wrong MGCP option format: '%s'\n",
+		     line);
+		return false;
+	}
+
+	return true;
+}
+
+/* Parse a line like "m=audio 16002 RTP/AVP 98" */
+static int mgcp_parse_audio(struct mgcp_response *r, const char *line)
+{
+        if (sscanf(line, "m=audio %hu",
+		   &r->audio_port) != 1)
+		goto response_parse_failure;
+
+	return 0;
+
+response_parse_failure:
+	LOGP(DMGCP, LOGL_ERROR,
+	     "Failed to parse MGCP response header\n");
+	return -EINVAL;
+}
+
+int mgcp_response_parse_params(struct mgcp_response *r)
+{
+	char *line;
+	char *data = r->data;
+	int rc;
+	for_each_line(line, data) {
+		if (!mgcp_line_is_valid(line))
+			return -EINVAL;
+
+		switch (line[0]) {
+		case 'm':
+			rc = mgcp_parse_audio(r, line);
+			if (rc)
+				return rc;
+			break;
+		default:
+			/* skip unhandled parameters */
+			break;
+		}
+	}
+	return 0;
+}
+
+static struct mgcp_response_pending *mgcpgw_client_response_pending_get(
+					 struct mgcpgw_client *mgcp,
+					 struct mgcp_response *r)
+{
+	struct mgcp_response_pending *pending;
+	if (!r)
+		return NULL;
+	llist_for_each_entry(pending, &mgcp->responses_pending, entry) {
+		if (pending->trans_id == r->head.trans_id) {
+			llist_del(&pending->entry);
+			return pending;
+		}
+	}
+	return NULL;
+}
+
+static int mgcpgw_client_read(struct mgcpgw_client *mgcp, struct msgb *msg)
+{
+	struct mgcp_response r;
+	struct mgcp_response_pending *pending;
+	int rc;
+
+	rc = mgcp_response_parse_head(&r, msg);
+	if (rc) {
+		LOGP(DMGCP, LOGL_ERROR, "Cannot parse MGCP response\n");
+		return -1;
+	}
+	
+	pending = mgcpgw_client_response_pending_get(mgcp, &r);
+	if (!pending) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Cannot find matching MGCP transaction for trans_id %d\n",
+		     r.head.trans_id);
+		return -1;
+	}
+
+	mgcpgw_client_handle_response(mgcp, pending, &r);
+	return 0;
 }
 
 static int mgcp_do_read(struct osmo_fd *fd)
@@ -84,9 +216,9 @@ static int mgcp_do_read(struct osmo_fd *fd)
         }
 
 	msg->l2h = msgb_put(msg, ret);
-	if (mgcp->rx_cb)
-		mgcp->rx_cb(msg, mgcp->rx_cb_priv);
-	return 0;
+	ret = mgcpgw_client_read(mgcp, msg);
+	talloc_free(msg);
+	return ret;
 }
 
 static int mgcp_do_write(struct osmo_fd *fd, struct msgb *msg)
@@ -109,8 +241,7 @@ static int mgcp_do_write(struct osmo_fd *fd, struct msgb *msg)
 }
 
 struct mgcpgw_client *mgcpgw_client_init(void *ctx,
-					 struct mgcpgw_client_conf *conf,
-					 mgcp_rx_cb_t rx_cb, void *rx_cb_priv)
+					 struct mgcpgw_client_conf *conf)
 {
 	int on;
 	struct sockaddr_in addr;
@@ -118,6 +249,8 @@ struct mgcpgw_client *mgcpgw_client_init(void *ctx,
 	struct osmo_wqueue *wq;
 
 	mgcp = talloc_zero(ctx, struct mgcpgw_client);
+
+	INIT_LLIST_HEAD(&mgcp->responses_pending);
 
 	mgcp->next_trans_id = 1;
 	mgcp->next_endpoint = 1;
@@ -132,8 +265,6 @@ struct mgcpgw_client *mgcpgw_client_init(void *ctx,
 	mgcp->actual.remote_port = conf->remote_port >= 0 ? (uint16_t)conf->remote_port :
 		MGCPGW_CLIENT_REMOTE_PORT_DEFAULT;
 
-	mgcp->rx_cb = rx_cb;
-	mgcp->rx_cb_priv = rx_cb_priv;
 	wq = &mgcp->wq;
 
 	wq->bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -214,30 +345,48 @@ uint32_t mgcpgw_client_remote_addr_n(struct mgcpgw_client *mgcp)
 	return mgcp->remote_addr;
 }
 
-int mgcpgw_client_tx(struct mgcpgw_client *mgcp, struct msgb *msg)
+int mgcpgw_client_tx(struct mgcpgw_client *mgcp,
+		     mgcp_response_cb_t response_cb, void *priv,
+		     struct msgb *msg, unsigned int trans_id)
 {
+	struct mgcp_response_pending *pending;
 	int rc;
+
+	pending = talloc_zero(mgcp, struct mgcp_response_pending);
+	pending->trans_id = trans_id;
+	pending->response_cb = response_cb;
+	pending->priv = priv;
+	llist_add_tail(&pending->entry, &mgcp->responses_pending);
 
 	if (msgb_l2len(msg) > 4096) {
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Cannot send, MGCP message too large: %u\n",
 		     msgb_l2len(msg));
 		msgb_free(msg);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto mgcp_tx_error;
 	}
 
 	rc = osmo_wqueue_enqueue(&mgcp->wq, msg);
 	if (rc) {
 		LOGP(DMGCP, LOGL_FATAL, "Could not queue message to MGCP GW\n");
 		msgb_free(msg);
-		return rc;
+		goto mgcp_tx_error;
 	} else
 		LOGP(DMGCP, LOGL_INFO, "Queued %u bytes for MGCP GW\n",
 		     msgb_l2len(msg));
 	return 0;
+
+mgcp_tx_error:
+	/* Pass NULL to response cb to indicate an error */
+	mgcpgw_client_handle_response(mgcp, pending, NULL);
+	return -1;
 }
 
-int mgcpgw_client_tx_buf(struct mgcpgw_client *mgcp, const char *buf, int len)
+int mgcpgw_client_tx_buf(struct mgcpgw_client *mgcp,
+			 mgcp_response_cb_t response_cb, void *priv,
+			 const char *buf, int len,
+			 unsigned int trans_id)
 {
 	struct msgb *msg;
 
@@ -254,10 +403,13 @@ int mgcpgw_client_tx_buf(struct mgcpgw_client *mgcp, const char *buf, int len)
 	memcpy(dst, buf, len);
 	msg->l2h = msg->data;
 
-	return mgcpgw_client_tx(mgcp, msg);
+	return mgcpgw_client_tx(mgcp, response_cb, priv, msg, trans_id);
 }
 
-int mgcpgw_client_tx_str(struct mgcpgw_client *mgcp, const char *fmt, ...)
+int mgcpgw_client_tx_str(struct mgcpgw_client *mgcp,
+			 mgcp_response_cb_t response_cb, void *priv,
+			 unsigned int trans_id,
+			 const char *fmt, ...)
 {
 	char compose[4096 - 128];
 	va_list ap;
@@ -271,37 +423,44 @@ int mgcpgw_client_tx_str(struct mgcpgw_client *mgcp, const char *fmt, ...)
 		return -EMSGSIZE;
 	if (len < 1)
 		return -EIO;
-	return mgcpgw_client_tx_buf(mgcp, compose, len);
+	return mgcpgw_client_tx_buf(mgcp, response_cb, priv, compose, len, trans_id);
 }
 
-int mgcpgw_client_tx_crcx(struct mgcpgw_client *client,
+int mgcpgw_client_tx_crcx(struct mgcpgw_client *mgcp,
+			  mgcp_response_cb_t response_cb, void *priv,
 			  uint16_t rtp_endpoint, unsigned int call_id,
 			  enum mgcp_connection_mode mode)
 {
-	return mgcpgw_client_tx_str(client,
+	unsigned int trans_id = mgcp->next_trans_id ++;
+	return mgcpgw_client_tx_str(mgcp,
+		 response_cb, priv, trans_id,
 		 "CRCX %u %x@mgw MGCP 1.0\r\n"
 		 "C: %x\r\n"
 		 "L: p:20, a:AMR, nt:IN\r\n"
 		 "M: %s\r\n"
 		 ,
-		 client->next_trans_id ++,
+		 trans_id,
 		 rtp_endpoint,
 		 call_id,
 		 mgcp_cmode_name(mode));
 }
 
-int mgcpgw_client_tx_mdcx(struct mgcpgw_client *client, uint16_t rtp_endpoint,
-			  const char *rtp_conn_addr, uint16_t rtp_port,
-			  enum mgcp_connection_mode mode)
+int mgcpgw_client_tx_mdcx(struct mgcpgw_client *mgcp,
+			  mgcp_response_cb_t response_cb, void *priv,
+			  uint16_t rtp_endpoint, const char *rtp_conn_addr,
+			  uint16_t rtp_port, enum mgcp_connection_mode mode)
+
 {
-	return mgcpgw_client_tx_str(client,
+	unsigned int trans_id = mgcp->next_trans_id ++;
+	return mgcpgw_client_tx_str(mgcp,
+		 response_cb, priv, trans_id,
 		 "MDCX %u %x@mgw MGCP 1.0\r\n"
 		 "M: %s\r\n"
 		 "\r\n"
 		 "c=IN IP4 %s\r\n"
 		 "m=audio %u RTP/AVP 255\r\n"
 		 ,
-		 client->next_trans_id ++,
+		 trans_id,
 		 rtp_endpoint,
 		 mgcp_cmode_name(mode),
 		 rtp_conn_addr,

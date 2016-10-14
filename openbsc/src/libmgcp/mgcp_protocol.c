@@ -318,29 +318,17 @@ struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
 	int i, code, handled = 0;
 	struct msgb *resp = NULL;
 	char *data;
-	unsigned char *tail = msg->l2h + msgb_l2len(msg); /* char after l2 data */
 
 	if (msgb_l2len(msg) < 4) {
 		LOGP(DMGCP, LOGL_ERROR, "msg too short: %d\n", msg->len);
 		return NULL;
 	}
 
-	/* Ensure that the msg->l2h is NUL terminated. */
-	if (tail[-1] == '\0')
-		/* nothing to do */;
-	else if (msgb_tailroom(msg) > 0)
-		tail[0] = '\0';
-	else if (tail[-1] == '\r' || tail[-1] == '\n')
-		tail[-1] = '\0';
-	else {
-		LOGP(DMGCP, LOGL_ERROR, "Cannot NUL terminate MGCP message: "
-		     "Length: %d, Buffer size: %d\n",
-		     msgb_l2len(msg), msg->data_len);
+	if (mgcp_msg_terminate_nul(msg))
 		return NULL;
-	}
 
         /* attempt to treat it as a response */
-        if (sscanf((const char *)&msg->l2h[0], "%3d %*s", &code) == 1) {
+        if (sscanf((const char *)&msg->l2h[0], "%3d %u*s", &code) == 1) {
 		LOGP(DMGCP, LOGL_DEBUG, "Response: Code: %d\n", code);
 		return NULL;
 	}
