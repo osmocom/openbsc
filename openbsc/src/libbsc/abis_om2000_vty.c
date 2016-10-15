@@ -236,6 +236,17 @@ DEFUN(om2k_test, om2k_test_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(om2k_cap_req, om2k_cap_req_cmd,
+	"capabilities-request",
+	"Request MO capabilities\n")
+{
+	struct oml_node_state *oms = vty->index;
+
+	abis_om2k_tx_cap_req(oms->bts, &oms->mo);
+	return CMD_SUCCESS;
+}
+
+
 struct con_conn_group {
 	struct llist_head list;
 
@@ -455,6 +466,7 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_disable_cmd);
 	install_element(OM2K_NODE, &om2k_op_info_cmd);
 	install_element(OM2K_NODE, &om2k_test_cmd);
+	install_element(OM2K_NODE, &om2k_cap_req_cmd);
 	install_element(OM2K_NODE, &om2k_conf_req_cmd);
 	install_element(OM2K_NODE, &om2k_con_list_dec_cmd);
 	install_element(OM2K_NODE, &om2k_con_list_tei_cmd);

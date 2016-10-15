@@ -190,6 +190,13 @@ enum abis_om2k_msgtype {
 	OM2K_MSGT_TX_CONF_RES_NACK		= 0x00b5,
 	OM2K_MSGT_TX_CONF_RES			= 0x00b6,
 
+	OM2K_MSGT_CAPA_REQ			= 0x00e8,
+	OM2K_MSGT_CAPA_REQ_ACK			= 0x00ea,
+	OM2K_MSGT_CAPA_REQ_REJ			= 0x00eb,
+	OM2K_MSGT_CAPA_RES			= 0x00ee,
+	OM2K_MSGT_CAPA_RES_ACK			= 0x00ec,
+	OM2K_MSGT_CAPA_RES_NACK			= 0x00ed,
+
 	OM2K_MSGT_NEGOT_REQ_ACK			= 0x0104,
 	OM2K_MSGT_NEGOT_REQ_NACK		= 0x0105,
 	OM2K_MSGT_NEGOT_REQ			= 0x0106,
@@ -1065,6 +1072,11 @@ int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 	update_op_state(bts, mo, operational);
 
 	return abis_om2k_sendmsg(bts, msg);
+}
+
+int abis_om2k_tx_cap_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
+{
+	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_CAPA_REQ);
 }
 
 static void om2k_fill_is_conn_grp(struct om2k_is_conn_grp *grp, uint16_t icp1,
@@ -2438,6 +2450,9 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		break;
 	case OM2K_MSGT_TEST_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TEST_RES_ACK);
+		break;
+	case OM2K_MSGT_CAPA_RES:
+		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_CAPA_RES_ACK);
 		break;
 	/* ERrors */
 	case OM2K_MSGT_START_REQ_REJ:
