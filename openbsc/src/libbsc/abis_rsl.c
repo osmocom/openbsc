@@ -534,6 +534,9 @@ static int rsl_rbs2k_pdch_activate(struct gsm_bts_trx_ts *ts, int is_activation)
 		dh->chan_nr = chan_nr;
 	}
 
+	/* Activation Type: Related to packet channel */
+	msgb_tv_put(msg, RSL_IE_ACT_TYPE, 0x0F);
+
 	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
