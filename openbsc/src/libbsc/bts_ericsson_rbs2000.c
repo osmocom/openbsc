@@ -104,6 +104,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		      void *handler_data, void *signal_data)
 {
 	struct input_signal_data *isd = signal_data;
+	struct e1inp_ts *e1i_ts;
 
 	if (subsys != SS_L_INPUT)
 		return 0;
@@ -120,6 +121,17 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 				bootstrap_om_trx(isd->trx);
 			break;
 		}
+		break;
+	case S_L_INP_TEI_DN:
+		if (isd->trx->bts->type != GSM_BTS_TYPE_RBS2000)
+			break;
+		LOGP(DNM, LOGL_NOTICE, "Line-%u TS-%u TEI-%u SAPI-%u: Link "
+		     "Lost for Ericsson RBS2000. Re-starting DL Establishment\n",
+		     isd->line->num, isd->ts_nr, isd->tei, isd->sapi);
+		/* Some datalink for a given TEI/SAPI went down, try to re-start it */
+		e1i_ts = &isd->line->ts[isd->ts_nr-1];
+		OSMO_ASSERT(e1i_ts->type == E1INP_TS_TYPE_SIGN);
+		lapd_sap_start(e1i_ts->lapd, isd->tei, isd->sapi);
 		break;
 	case S_L_INP_LINE_INIT:
 	case S_L_INP_LINE_NOALARM:
