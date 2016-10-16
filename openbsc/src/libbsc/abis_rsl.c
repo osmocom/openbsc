@@ -898,9 +898,23 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
  */
 static int rsl_rf_chan_release_err(struct gsm_lchan *lchan)
 {
+	enum sacch_deact sacch_deact;
 	if (lchan->state != LCHAN_S_ACTIVE)
 		return 0;
-	return rsl_rf_chan_release(lchan, 1, SACCH_DEACTIVATE);
+	switch (ts_pchan(lchan->ts)) {
+	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_TCH_H:
+	case GSM_PCHAN_CCCH_SDCCH4:
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
+	case GSM_PCHAN_SDCCH8_SACCH8C:
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
+		sacch_deact = SACCH_DEACTIVATE;
+		break;
+	default:
+		sacch_deact = SACCH_NONE;
+		break;
+	}
+	return rsl_rf_chan_release(lchan, 1, sacch_deact);
 }
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)

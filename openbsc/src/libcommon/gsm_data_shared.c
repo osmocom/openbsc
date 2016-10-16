@@ -729,7 +729,7 @@ static const uint8_t subslots_per_pchan[] = {
 };
 
 /*! Return the actual pchan type, also heeding dynamic TS. */
-static enum gsm_phys_chan_config ts_pchan(struct gsm_bts_trx_ts *ts)
+enum gsm_phys_chan_config ts_pchan(struct gsm_bts_trx_ts *ts)
 {
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
