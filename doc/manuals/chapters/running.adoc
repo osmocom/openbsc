@@ -3,11 +3,11 @@
 The OsmoNITB executable (`osmo-nitb`) offers the following command-line
 arguments:
 
-==== SYNOPSIS
+=== SYNOPSIS
 
 *osmo-nitb* [-h|-V] [-d 'DBGMASK'] [-D] [-c 'CONFIGFILE'] [-s] [-T] [-e 'LOGLEVEL'] [-l 'DATABASE'] [-a] [-P] [-m] [-C] [-r 'RFCTL']
 
-==== OPTIONS
+=== OPTIONS
 
 *-h, --help*::
 	Print a short help message about the supported options
