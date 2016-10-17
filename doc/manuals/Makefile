@@ -22,8 +22,10 @@ include $(TOPDIR)/build/Makefile.inc
 osmonitb-usermanual.pdf: chapters/*.adoc
 
 clean:
-	rm -rf $(cleanfiles)
-	rm -rf osmonitb-usermanual__*.{svg,png,check}
+	-rm -rf $(cleanfiles)
+	-rm osmonitb-usermanual__*.svg
+	-rm osmonitb-usermanual__*.png
+	-rm osmonitb-usermanual.check
 
 gen-nitb-vty-docbook: FORCE
 	$(call command,xsltproc -o generated/combined1.xml \
