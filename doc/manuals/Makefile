@@ -23,6 +23,7 @@ osmonitb-usermanual.pdf: chapters/*.adoc
 
 clean:
 	rm -rf $(cleanfiles)
+	rm -rf osmonitb-usermanual__*.{svg,png}
 
 gen-nitb-vty-docbook: FORCE
 	$(call command,xsltproc -o generated/combined1.xml \
