@@ -652,14 +652,15 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 				break;
 
 			mgcp_patch_and_count(endp, rtp_state, rtp_end, addr, buf, len);
-		LOGP(DMGCP, LOGL_DEBUG,
-		     "endpoint %x process/send to %s %s %d %d\n",
-		     ENDPOINT_NUMBER(endp),
-		     (dest == MGCP_DEST_NET)? "net" : "bts",
-		     inet_ntoa(rtp_end->addr),
-		     ntohs(rtp_end->rtp_port),
-		     ntohs(rtp_end->rtcp_port)
-		    );
+
+			LOGP(DMGCP, LOGL_DEBUG,
+			     "endpoint %x process/send to %s %s %d %d\n",
+			     ENDPOINT_NUMBER(endp),
+			     (dest == MGCP_DEST_NET)? "net" : "bts",
+			     inet_ntoa(rtp_end->addr),
+			     ntohs(rtp_end->rtp_port),
+			     ntohs(rtp_end->rtcp_port)
+			    );
 			forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx],
 				     buf, len);
 			rc = mgcp_udp_send(rtp_end->rtp.fd,
@@ -770,8 +771,9 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 	}
 
 	LOGP(DMGCP, LOGL_DEBUG,
-	     "rtp_data_net: Endpoint %x data from %s %d\n",
+	     "rtp_data_net: Endpoint %x %s data from %s %d\n",
 	     ENDPOINT_NUMBER(endp),
+	     (fd == &endp->net_end.rtp) ? "RTP" : "RTPC",
 	     inet_ntoa(addr.sin_addr),
 	     ntohs(addr.sin_port));
 

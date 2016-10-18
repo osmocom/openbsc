@@ -157,6 +157,8 @@ static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 	}
 
 	conn->iu.mgcp_rtp_port_cn = r->audio_port;
+	DEBUGP(DMGCP, "MGCP audio port %u for %s\n",
+	       conn->iu.mgcp_rtp_port_cn, subscr_name(trans->subscr));
 
 	rtp_ip = mgcpgw_client_remote_addr_n(conn->network->mgcpgw.client);
 	iu_rab_act_cs(uectx, conn->iu.rab_id, rtp_ip,
@@ -237,6 +239,8 @@ static void mgcp_bridge(struct gsm_trans *from, struct gsm_trans *to,
 
 	OSMO_ASSERT(mgcp);
 
+	DEBUGP(DMGCP, "mgcpgw_client_tx(trans=%p) in state %d -> %d\n", from, from->bridge.state, state);
+
 	from->bridge.peer = to;
 	from->bridge.state = state;
 
@@ -258,9 +262,12 @@ static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
 	struct gsm_trans *trans = priv;
 	struct gsm_trans *peer = trans->bridge.peer;
 
+	DEBUGP(DMGCP, "mgcp_response_bridge_mdcx(trans=%p) in state %d\n", trans, trans->bridge.state);
+
 	switch (trans->bridge.state) {
 	case BRIDGE_STATE_LOOPBACK_PENDING:
 		trans->bridge.state = BRIDGE_STATE_LOOPBACK_ESTABLISHED;
+		DEBUGP(DMGCP, "trans=%p --> state %d\n", trans, trans->bridge.state);
 
 		switch (peer->bridge.state) {
 		case BRIDGE_STATE_LOOPBACK_PENDING:
@@ -284,6 +291,7 @@ static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
 
 	case BRIDGE_STATE_BRIDGE_PENDING:
 		trans->bridge.state = BRIDGE_STATE_BRIDGE_ESTABLISHED;
+		DEBUGP(DMGCP, "trans=%p --> state %d\n", trans, trans->bridge.state);
 		break;
 		
 	default:
