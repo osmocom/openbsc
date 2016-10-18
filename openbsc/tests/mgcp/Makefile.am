@@ -22,10 +22,12 @@ AM_LDFLAGS = \
 EXTRA_DIST = \
 	mgcp_test.ok \
 	mgcp_transcoding_test.ok \
+	mgcpgw_client_test.ok \
 	$(NULL)
 
 noinst_PROGRAMS = \
 	mgcp_test \
+	mgcpgw_client_test \
 	$(NULL)
 if BUILD_MGCP_TRANSCODING
 noinst_PROGRAMS += \
@@ -69,4 +71,22 @@ mgcp_transcoding_test_LDADD = \
 	$(LIBRARY_GSM) \
 	-lrt \
 	-lm \
+	$(NULL)
+
+mgcpgw_client_test_SOURCES = \
+	mgcpgw_client_test.c \
+	$(NULL)
+
+mgcpgw_client_test_LDADD = \
+	$(top_builddir)/src/libbsc/libbsc.a \
+	$(top_builddir)/src/libmgcp/libmgcp.a \
+	$(top_builddir)/src/libcommon/libcommon.a \
+	$(LIBOSMOCORE_LIBS) \
+	$(LIBOSMOGSM_LIBS) \
+	$(LIBOSMOSCCP_LIBS) \
+	$(LIBOSMOVTY_LIBS) \
+	$(LIBRARY_DL) \
+	$(LIBOSMONETIF_LIBS) \
+	-lrt \
+	-lm  \
 	$(NULL)

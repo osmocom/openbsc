@@ -459,9 +459,6 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	/* TODO: is this used for crypto?? Improve randomness, at least we
 	 * should try to use the nanoseconds part of the current time. */
 
-	cscn_network->mgcpgw.client = mgcpgw_client_init(
-			cscn_network, &cscn_network->mgcpgw.conf);
-
 	if (db_init(cscn_cmdline_config.database_name)) {
 		printf("DB: Failed to init database: %s\n",
 		       cscn_cmdline_config.database_name);
@@ -491,6 +488,14 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	/* start the SMS queue */
 	if (sms_queue_start(cscn_network, 20) != 0)
 		return -1;
+
+	cscn_network->mgcpgw.client = mgcpgw_client_init(
+			cscn_network, &cscn_network->mgcpgw.conf);
+
+	if (mgcpgw_client_connect(cscn_network->mgcpgw.client)) {
+		printf("MGCPGW connect failed\n");
+		return 7;
+	}
 
 	/* Set up A-Interface */
 	/* TODO: implement A-Interface and remove above legacy stuff. */
