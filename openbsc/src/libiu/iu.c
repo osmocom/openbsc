@@ -411,7 +411,8 @@ static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_Assig
 {
 	int rc = -1;
 
-	LOGP(DRANAP, LOGL_INFO, "RAB Asignment Response:");
+	LOGP(DRANAP, LOGL_INFO,
+	     "Rx RAB Assignment Response for UE conn_id %u\n", ctx->conn_id);
 	if (ies->presenceMask & RAB_ASSIGNMENTRESPONSEIES_RANAP_RAB_SETUPORMODIFIEDLIST_PRESENT) {
 		/* TODO: Iterate over list of SetupOrModifiedList IEs and handle each one */
 		RANAP_IE_t *ranap_ie = ies->raB_SetupOrModifiedList.raB_SetupOrModifiedList_ies.list.array[0];
@@ -427,8 +428,6 @@ static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_Assig
 
 		ranap_free_rab_setupormodifieditemies(&setup_ies);
 	}
-
-	LOGPC(DRANAP, LOGL_INFO, "\n");
 
 	return rc;
 }
