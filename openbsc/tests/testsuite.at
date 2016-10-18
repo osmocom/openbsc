@@ -33,6 +33,13 @@ cat $abs_srcdir/mgcp/mgcp_transcoding_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/mgcp/mgcp_transcoding_test], [], [expout], [ignore])
 AT_CLEANUP
 
+AT_SETUP([mgcpgw_client])
+AT_KEYWORDS([mgcpgw_client])
+cat $abs_srcdir/mgcp/mgcpgw_client_test.ok > expout
+cat $abs_srcdir/mgcp/mgcpgw_client_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/mgcp/mgcpgw_client_test], [], [expout], [experr])
+AT_CLEANUP
+
 AT_SETUP([gprs])
 AT_KEYWORDS([gprs])
 cat $abs_srcdir/gprs/gprs_test.ok > expout
