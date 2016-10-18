@@ -156,6 +156,8 @@ static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 		goto rab_act_cs_error;
 	}
 
+	conn->iu.mgcp_rtp_port_cn = r->audio_port;
+
 	rtp_ip = mgcpgw_client_remote_addr_n(conn->network->mgcpgw.client);
 	iu_rab_act_cs(uectx, conn->iu.rab_id, rtp_ip,
 		      conn->iu.mgcp_rtp_port_ue);
@@ -182,7 +184,6 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	/* HACK: the addresses should be known from CRCX response
 	 * and config. */
 	conn->iu.mgcp_rtp_port_ue = 4000 + 2 * conn->iu.mgcp_rtp_endpoint;
-	conn->iu.mgcp_rtp_port_cn = 16000 + 2 * conn->iu.mgcp_rtp_endpoint;
 
 	/* Establish the RTP stream first as looping back to the originator.
 	 * The MDCX will patch through to the counterpart. TODO: play a ring
@@ -279,6 +280,7 @@ static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
 			     trans->bridge.state, subscr_name(trans->subscr));
 			break;
 		}
+		break;
 
 	case BRIDGE_STATE_BRIDGE_PENDING:
 		trans->bridge.state = BRIDGE_STATE_BRIDGE_ESTABLISHED;
@@ -296,7 +298,7 @@ int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2)
 {
 	/* First setup as loopback and configure the counterparts' endpoints,
 	 * so that when transmission starts the originating addresses are
-	 * already known to be valid. The callback will continue. */
+	 * already known to be valid. The mgcp callback will continue. */
 	mgcp_bridge(trans1, trans2, BRIDGE_STATE_LOOPBACK_PENDING,
 		    MGCP_CONN_LOOPBACK);
 	mgcp_bridge(trans2, trans1, BRIDGE_STATE_LOOPBACK_PENDING,
