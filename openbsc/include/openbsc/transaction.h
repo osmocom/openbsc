@@ -9,6 +9,14 @@
 #include <osmocom/gsm/gsm0411_smc.h>
 #include <osmocom/gsm/gsm0411_smr.h>
 
+enum bridge_state {
+	BRIDGE_STATE_NONE,
+	BRIDGE_STATE_LOOPBACK_PENDING,
+	BRIDGE_STATE_LOOPBACK_ESTABLISHED,
+	BRIDGE_STATE_BRIDGE_PENDING,
+	BRIDGE_STATE_BRIDGE_ESTABLISHED,
+};
+
 /* One transaction */
 struct gsm_trans {
 	/* Entry in list of all transactions */
@@ -57,6 +65,11 @@ struct gsm_trans {
 			struct gsm_sms *sms;
 		} sms;
 	};
+
+	struct {
+		struct gsm_trans *peer;
+		enum bridge_state state;
+	} bridge;
 };
 
 

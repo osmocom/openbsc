@@ -110,27 +110,35 @@ int msc_tx_common_id(struct gsm_subscriber_connection *conn)
 }
 
 #ifdef BUILD_IU
-static int iu_rab_act_cs(struct ue_conn_ctx *uectx, uint8_t rab_id,
-			 uint32_t rtp_ip, uint16_t rtp_port)
+static void iu_rab_act_cs(struct ue_conn_ctx *uectx, uint8_t rab_id,
+			  uint32_t rtp_ip, uint16_t rtp_port)
 {
 	struct msgb *msg;
 	bool use_x213_nsap;
+	uint32_t conn_id = uectx->conn_id;
 
 	use_x213_nsap = (uectx->rab_assign_addr_enc == NSAP_ADDR_ENC_X213);
 
-	LOGP(DIUCS, LOGL_DEBUG, "Assigning RAB: rab_id=%d, rtp=%x:%u,"
-	     " use_x213_nsap=%d\n", rab_id, rtp_ip, rtp_port, use_x213_nsap);
+	LOGP(DIUCS, LOGL_DEBUG, "Assigning RAB: conn_id=%u, rab_id=%d,"
+	     " rtp=%x:%u, use_x213_nsap=%d\n", conn_id, rab_id, rtp_ip,
+	     rtp_port, use_x213_nsap);
 
 	msg = ranap_new_msg_rab_assign_voice(rab_id, rtp_ip, rtp_port,
 					     use_x213_nsap);
 	msg->l2h = msg->data;
 
-	return iu_rab_act(uectx, msg);
+	if (iu_rab_act(uectx, msg))
+		LOGP(DIUCS, LOGL_ERROR, "Failed to send RAB Assignment:"
+		     " conn_id=%d rab_id=%d rtp=%x:%u\n",
+		     conn_id, rab_id, rtp_ip, rtp_port);
 }
 
 static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 {
 	struct gsm_trans *trans = priv;
+	struct gsm_subscriber_connection *conn = trans->conn;
+	struct ue_conn_ctx *uectx = conn->iu.ue_ctx;
+	uint32_t rtp_ip;
 	int rc;
 
 	if (r->head.response_code != 200) {
@@ -148,6 +156,10 @@ static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 		goto rab_act_cs_error;
 	}
 
+	rtp_ip = mgcpgw_client_remote_addr_n(conn->network->mgcpgw.client);
+	iu_rab_act_cs(uectx, conn->iu.rab_id, rtp_ip,
+		      conn->iu.mgcp_rtp_port_ue);
+	/* use_x213_nsap == 0 for ip.access nano3G */
 
 rab_act_cs_error:
 	/* FIXME abort call, invalidate conn, ... */
@@ -157,7 +169,8 @@ rab_act_cs_error:
 static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 {
 	struct gsm_subscriber_connection *conn = trans->conn;
-	struct ue_conn_ctx *uectx = conn->iu.ue_ctx;
+	struct mgcpgw_client *mgcp = conn->network->mgcpgw.client;
+	struct msgb *msg;
 
 	/* HACK. where to scope the RAB Id? At the conn / subscriber /
 	 * ue_conn_ctx? */
@@ -174,17 +187,9 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	/* Establish the RTP stream first as looping back to the originator.
 	 * The MDCX will patch through to the counterpart. TODO: play a ring
 	 * tone instead. */
-	mgcpgw_client_tx_crcx(conn->network->mgcpgw.client,
-			      mgcp_response_rab_act_cs_crcx, trans,
-			      conn->iu.mgcp_rtp_endpoint, trans->callref,
-			      MGCP_CONN_LOOPBACK);
-
-	uint32_t rtp_ip =
-		mgcpgw_client_remote_addr_n(conn->network->mgcpgw.client);
-
-	return iu_rab_act_cs(uectx, conn->iu.rab_id, rtp_ip,
-			     conn->iu.mgcp_rtp_port_ue);
-	/* use_x213_nsap == 0 for ip.access nano3G */
+	msg = mgcp_msg_crcx(mgcp, conn->iu.mgcp_rtp_endpoint, trans->callref,
+			    MGCP_CONN_LOOPBACK);
+	return mgcpgw_client_tx(mgcp, msg, mgcp_response_rab_act_cs_crcx, trans);
 }
 #endif
 
@@ -217,44 +222,85 @@ int msc_call_assignment(struct gsm_trans *trans)
 	}
 }
 
+static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv);
+
+static void mgcp_bridge(struct gsm_trans *from, struct gsm_trans *to,
+			enum bridge_state state,
+			enum mgcp_connection_mode mode)
+{
+	struct gsm_subscriber_connection *conn1 = from->conn;
+	struct gsm_subscriber_connection *conn2 = to->conn;
+	struct mgcpgw_client *mgcp = conn1->network->mgcpgw.client;
+	const char *ip;
+	struct msgb *msg;
+
+	OSMO_ASSERT(mgcp);
+
+	from->bridge.peer = to;
+	from->bridge.state = state;
+
+	/* Loop back to the same MGCP GW */
+	ip = mgcpgw_client_remote_addr_str(mgcp);
+
+	msg = mgcp_msg_mdcx(mgcp,
+			    conn1->iu.mgcp_rtp_endpoint,
+			    ip, conn2->iu.mgcp_rtp_port_cn,
+			    mode);
+	if (mgcpgw_client_tx(mgcp, msg, mgcp_response_bridge_mdcx, from))
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Failed to send MDCX message for %s\n",
+		     subscr_name(from->subscr));
+}
+
 static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
 {
-	/* TODO */
+	struct gsm_trans *trans = priv;
+	struct gsm_trans *peer = trans->bridge.peer;
+
+	switch (trans->bridge.state) {
+	case BRIDGE_STATE_LOOPBACK_PENDING:
+		trans->bridge.state = BRIDGE_STATE_LOOPBACK_ESTABLISHED;
+
+		switch (peer->bridge.state) {
+		case BRIDGE_STATE_LOOPBACK_PENDING:
+			/* Wait until the other is done as well. */
+			return;
+		case BRIDGE_STATE_LOOPBACK_ESTABLISHED:
+			/* Now that both are in loopback, switch both to
+			 * forwarding. */
+			mgcp_bridge(trans, peer, BRIDGE_STATE_BRIDGE_PENDING,
+				    MGCP_CONN_RECV_SEND);
+			mgcp_bridge(peer, trans, BRIDGE_STATE_BRIDGE_PENDING,
+				    MGCP_CONN_RECV_SEND);
+			break;
+		default:
+			LOGP(DMGCP, LOGL_ERROR,
+			     "Unexpected bridge state: %d for %s\n",
+			     trans->bridge.state, subscr_name(trans->subscr));
+			break;
+		}
+
+	case BRIDGE_STATE_BRIDGE_PENDING:
+		trans->bridge.state = BRIDGE_STATE_BRIDGE_ESTABLISHED;
+		break;
+		
+	default:
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Unexpected bridge state: %d for %s\n",
+		     trans->bridge.state, subscr_name(trans->subscr));
+		break;
+	}
 }
 
 int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2)
 {
-	struct gsm_subscriber_connection *conn1 = trans1->conn;
-	struct gsm_subscriber_connection *conn2 = trans2->conn;
-
-	struct mgcpgw_client *mgcp = conn1->network->mgcpgw.client;
-	OSMO_ASSERT(mgcp);
-
-	const char *ip = mgcpgw_client_remote_addr_str(mgcp);
-
-	/* First setup the counterparts' endpoints, so that when transmission
-	 * starts the originating addresses are already known to be valid. */
-	mgcpgw_client_tx_mdcx(mgcp,
-			      mgcp_response_bridge_mdcx, trans1,
-			      conn1->iu.mgcp_rtp_endpoint,
-			      ip, conn2->iu.mgcp_rtp_port_cn,
-			      MGCP_CONN_LOOPBACK);
-	mgcpgw_client_tx_mdcx(mgcp,
-			      mgcp_response_bridge_mdcx, trans2,
-			      conn2->iu.mgcp_rtp_endpoint,
-			      ip, conn1->iu.mgcp_rtp_port_cn,
-			      MGCP_CONN_LOOPBACK);
-	/* Now enable sending to and receiving from the peer. */
-	mgcpgw_client_tx_mdcx(mgcp,
-			      mgcp_response_bridge_mdcx, trans1,
-			      conn1->iu.mgcp_rtp_endpoint,
-			      ip, conn2->iu.mgcp_rtp_port_cn,
-			      MGCP_CONN_RECV_SEND);
-	mgcpgw_client_tx_mdcx(mgcp,
-			      mgcp_response_bridge_mdcx, trans2,
-			      conn2->iu.mgcp_rtp_endpoint,
-			      ip, conn1->iu.mgcp_rtp_port_cn,
-			      MGCP_CONN_RECV_SEND);
+	/* First setup as loopback and configure the counterparts' endpoints,
+	 * so that when transmission starts the originating addresses are
+	 * already known to be valid. The callback will continue. */
+	mgcp_bridge(trans1, trans2, BRIDGE_STATE_LOOPBACK_PENDING,
+		    MGCP_CONN_LOOPBACK);
+	mgcp_bridge(trans2, trans1, BRIDGE_STATE_LOOPBACK_PENDING,
+		    MGCP_CONN_LOOPBACK);
 
 	return 0;
 }
