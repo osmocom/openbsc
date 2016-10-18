@@ -257,16 +257,17 @@ int main()
 void vty_out() {}
 unsigned int mgcpgw_client_next_endpoint(struct mgcpgw_client *client)
 { return 0; }
-int mgcpgw_client_tx_crcx(struct mgcpgw_client *mgcp,
-			  mgcp_response_cb_t response_cb, void *priv,
-			  uint16_t rtp_endpoint, unsigned int call_id,
-			  enum mgcp_connection_mode mode)
-{ return -ENOTSUP; }
-int mgcpgw_client_tx_mdcx(struct mgcpgw_client *mgcp,
-			  mgcp_response_cb_t response_cb, void *priv,
-			  uint16_t rtp_endpoint, const char *rtp_conn_addr,
-			  uint16_t rtp_port, enum mgcp_connection_mode mode)
-{ return -ENOTSUP; }
+struct msgb *mgcp_msg_crcx(struct mgcpgw_client *mgcp,
+			   uint16_t rtp_endpoint, unsigned int call_id,
+			   enum mgcp_connection_mode mode)
+{ return NULL; }
+struct msgb *mgcp_msg_mdcx(struct mgcpgw_client *mgcp,
+			   uint16_t rtp_endpoint, const char *rtp_conn_addr,
+			   uint16_t rtp_port, enum mgcp_connection_mode mode)
+{ return NULL; }
+int mgcpgw_client_tx(struct mgcpgw_client *mgcp, struct msgb *msg,
+		     mgcp_response_cb_t response_cb, void *priv)
+{ return -EINVAL; }
 const char *mgcpgw_client_remote_addr_str(struct mgcpgw_client *mgcp)
 { return "0.0.0.0"; }
 uint32_t mgcpgw_client_remote_addr_n(struct mgcpgw_client *mgcp)
