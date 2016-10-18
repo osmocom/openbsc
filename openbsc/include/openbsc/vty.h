@@ -38,7 +38,6 @@ enum bsc_vty_node {
 	SMPP_NODE,
 	SMPP_ESME_NODE,
 	GTPHUB_NODE,
-	MSC_NODE,
 };
 
 extern int bsc_vty_is_config_node(struct vty *vty, int node);
