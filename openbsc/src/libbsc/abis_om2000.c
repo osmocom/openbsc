@@ -238,6 +238,7 @@ enum abis_om2k_dei {
 	OM2K_DEI_POWER				= 0x2f,
 	OM2K_DEI_REASON_CODE			= 0x32,
 	OM2K_DEI_RX_DIVERSITY			= 0x33,
+	OM2K_DEI_REPL_UNIT_MAP			= 0x34,
 	OM2K_DEI_RESULT_CODE			= 0x35,
 	OM2K_DEI_T3105				= 0x38,
 	OM2K_DEI_TF_MODE			= 0x3a,
@@ -252,7 +253,7 @@ enum abis_om2k_dei {
 	OM2K_DEI_RSL_FUNC_MAP_2			= 0x46,
 	OM2K_DEI_EXT_RANGE			= 0x47,
 	OM2K_DEI_REQ_IND			= 0x48,
-	OM2K_DEI_REPL_UNIT_MAP			= 0x50,
+	OM2K_DEI_REPL_UNIT_MAP_EXT		= 0x50,
 	OM2K_DEI_ICM_BOUND_PARAMS		= 0x74,
 	OM2K_DEI_LSC				= 0x79,
 	OM2K_DEI_LSC_FILT_TIME			= 0x7a,
@@ -268,6 +269,7 @@ enum abis_om2k_dei {
 	OM2K_DEI_INTERF_REJ_COMB		= 0x94,
 	OM2K_DEI_FS_OFFSET			= 0x98,
 	OM2K_DEI_EXT_COND_MAP_2_EXT		= 0x9c,
+	OM2K_DEI_TSS_MO_STATE			= 0x9d,
 };
 
 const struct tlv_definition om2k_att_tlvdef = {
@@ -322,6 +324,7 @@ const struct tlv_definition om2k_att_tlvdef = {
 		[OM2K_DEI_EXT_RANGE] =		{ TLV_TYPE_TV },
 		[OM2K_DEI_REQ_IND] =		{ TLV_TYPE_TV },
 		[OM2K_DEI_REPL_UNIT_MAP] =	{ TLV_TYPE_FIXED, 6 },
+		[OM2K_DEI_REPL_UNIT_MAP_EXT] =	{TLV_TYPE_FIXED, 6},
 		[OM2K_DEI_ICM_BOUND_PARAMS] =	{ TLV_TYPE_FIXED, 5 },
 		[OM2K_DEI_LSC] =		{ TLV_TYPE_TV },
 		[OM2K_DEI_LSC_FILT_TIME] =	{ TLV_TYPE_TV },
@@ -337,6 +340,7 @@ const struct tlv_definition om2k_att_tlvdef = {
 		[OM2K_DEI_INTERF_REJ_COMB] =	{ TLV_TYPE_TV },
 		[OM2K_DEI_FS_OFFSET] =		{ TLV_TYPE_FIXED, 5 },
 		[OM2K_DEI_EXT_COND_MAP_2_EXT] = { TLV_TYPE_FIXED, 4 },
+		[OM2K_DEI_TSS_MO_STATE] = 	{ TLV_TYPE_FIXED, 4 },
 	},
 };
 
@@ -2369,6 +2373,129 @@ static int process_mo_state(struct gsm_bts *bts, struct om2k_decoded_msg *odm)
 	return 0;
 }
 
+/* Display fault report bits (helper function of display_fault_maps()) */
+static bool display_fault_bits(const uint8_t *vect, unsigned int len,
+			       uint8_t dei, const struct abis_om2k_mo *mo)
+{
+	int i;
+	int k;
+	bool faults_present = false;
+	int first = 1;
+	char string[255];
+
+	/* Check if errors are present at all */
+	for (i = 0; i < len; i++)
+		if (vect[i])
+			faults_present = true;
+	if (!faults_present)
+		return false;
+
+	sprintf(string, "Fault Report: %s (",
+		get_value_string(om2k_attr_vals, dei));
+
+	for (i = 0; i < len; i++) {
+		for (k = 0; k < 8; k++) {
+			if ((vect[i] >> k) & 1) {
+				if (!first)
+					sprintf(string + strlen(string), ",");
+				sprintf(string + strlen(string), "%d", k + i*8);
+				first = 0;
+			}
+		}
+	}
+
+	sprintf(string + strlen(string), ")\n");
+	DEBUGP(DNM, "Rx MO=%s %s", om2k_mo_name(mo), string);
+
+	return true;
+}
+
+/* Display fault report maps */
+static void display_fault_maps(const uint8_t *src, unsigned int src_len,
+			       const struct abis_om2k_mo *mo)
+{
+	uint8_t tag;
+	uint16_t tag_len;
+	const uint8_t *val;
+	int src_pos = 0;
+	int rc;
+	int tlv_count = 0;
+	uint16_t msg_code;
+	bool faults_present = false;
+
+	/* Chop off header */
+	src+=4;
+	src_len-=4;
+
+	/* Check message type */
+	msg_code = (*src & 0xff) << 8;
+	src++;
+	src_len--;
+	msg_code |= (*src & 0xff);
+	src++;
+	src_len--;
+	if (msg_code != OM2K_MSGT_FAULT_REP) {
+		LOGP(DNM, LOGL_ERROR, "Rx MO=%s Fault report: invalid message code!\n",
+		     om2k_mo_name(mo));
+		return;
+	}
+
+	/* Chop off mo-interface */
+	src += 4;
+	src_len -= 4;
+
+	/* Iterate over each TLV element */
+	while (1) {
+
+		/* Bail if an the maximum number of TLV fields
+		 * have been parsed */
+		if (tlv_count >= 11) {
+			LOGP(DNM, LOGL_ERROR,
+			     "Rx MO=%s Fault Report: too many tlv elements!\n",
+			     om2k_mo_name(mo));
+			return;
+		}
+
+		/* Parse TLV field */
+		rc = tlv_parse_one(&tag, &tag_len, &val, &om2k_att_tlvdef,
+				   src + src_pos, src_len - src_pos);
+		if (rc > 0)
+			src_pos += rc;
+		else {
+			LOGP(DNM, LOGL_ERROR,
+			     "Rx MO=%s Fault Report: invalid tlv element!\n",
+			     om2k_mo_name(mo));
+			return;
+		}
+
+		switch (tag) {
+		case OM2K_DEI_INT_FAULT_MAP_1A:
+		case OM2K_DEI_INT_FAULT_MAP_1B:
+		case OM2K_DEI_INT_FAULT_MAP_2A:
+		case OM2K_DEI_EXT_COND_MAP_1:
+		case OM2K_DEI_EXT_COND_MAP_2:
+		case OM2K_DEI_REPL_UNIT_MAP:
+		case OM2K_DEI_INT_FAULT_MAP_2A_EXT:
+		case OM2K_DEI_EXT_COND_MAP_2_EXT:
+		case OM2K_DEI_REPL_UNIT_MAP_EXT:
+			faults_present |= display_fault_bits(val, tag_len,
+							     tag, mo);
+			break;
+		}
+
+		/* Stop when no further TLV elements can be expected */
+		if (src_len - src_pos < 2)
+			break;
+
+		tlv_count++;
+	}
+
+	if (!faults_present) {
+		DEBUGP(DNM, "Rx MO=%s Fault Report: All faults ceased!\n",
+		       om2k_mo_name(mo));
+	}
+}
+
 int abis_om2k_rcvmsg(struct msgb *msg)
 {
 	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg->dst;
@@ -2414,6 +2541,7 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		rc = abis_om2k_cal_time_resp(bts);
 		break;
 	case OM2K_MSGT_FAULT_REP:
+		display_fault_maps(msg->l2h, msgb_l2len(msg), &o2h->mo);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_FAULT_REP_ACK);
 		break;
 	case OM2K_MSGT_NEGOT_REQ:
