@@ -64,6 +64,7 @@ struct mgcp_rtp_state {
 	uint32_t stats_jitter;
 	int32_t stats_transit;
 	int stats_cycles;
+	bool patched_first_rtp_payload;
 };
 
 struct mgcp_rtp_codec {
