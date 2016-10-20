@@ -537,6 +537,8 @@ void mgcp_patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *sta
 	if (payload < 0)
 		return;
 
+	DEBUGP(DMGCP, "Payload hdr payload %u -> endp payload %u\n",
+	       rtp_hdr->payload_type, payload);
 	rtp_hdr->payload_type = payload;
 }
 
