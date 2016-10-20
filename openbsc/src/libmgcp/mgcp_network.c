@@ -667,6 +667,10 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 			    );
 			forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx],
 				     buf, len);
+
+			uint32_t *ssrc = &buf[8];
+			(*ssrc) ++;
+
 			rc = mgcp_udp_send(rtp_end->rtp.fd,
 					   &rtp_end->addr,
 					   rtp_end->rtp_port, buf, len);
@@ -686,6 +690,10 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		     ntohs(rtp_end->rtp_port),
 		     ntohs(rtp_end->rtcp_port)
 		    );
+
+		uint32_t *ssrc = &buf[4];
+		(*ssrc) ++;
+
 		return mgcp_udp_send(rtp_end->rtcp.fd,
 				     &rtp_end->addr,
 				     rtp_end->rtcp_port, buf, rc);
