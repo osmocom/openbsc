@@ -694,6 +694,10 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		uint32_t *ssrc = &buf[4];
 		(*ssrc) ++;
 
+		mgcp_udp_send(rtp_end->rtcp.fd,
+				     &rtp_end->addr,
+				     rtp_end->rtcp_port, buf, rc);
+		buf[1] = 201;
 		return mgcp_udp_send(rtp_end->rtcp.fd,
 				     &rtp_end->addr,
 				     rtp_end->rtcp_port, buf, rc);
