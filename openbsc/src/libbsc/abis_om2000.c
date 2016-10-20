@@ -2368,6 +2368,16 @@ static int process_mo_state(struct gsm_bts *bts, struct om2k_decoded_msg *odm)
 		get_value_string(om2k_msgcode_vals, odm->msg_type),
 		get_value_string(om2k_mostate_vals, mo_state));
 
+	/* Throw error message in case we see an enable rsponse that does
+	 * not yield an enabled mo-state */
+	if (odm->msg_type == OM2K_MSGT_ENABLE_RES
+	    && mo_state != OM2K_MO_S_ENABLED) {
+		LOGP(DNM, LOGL_ERROR,
+		     "Rx MO=%s %s Failed to enable MO State!\n",
+		     om2k_mo_name(&odm->o2h.mo),
+		     get_value_string(om2k_msgcode_vals, odm->msg_type));
+	}
+
 	update_mo_state(bts, &odm->o2h.mo, mo_state);
 
 	return 0;
