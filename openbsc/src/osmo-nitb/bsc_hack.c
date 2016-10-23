@@ -270,7 +270,18 @@ int main(int argc, char **argv)
 	osmo_stats_init(tall_bsc_ctx);
 	bts_init();
 
-	/* This needs to precede handle_options() */
+	/* Parse options */
+	handle_options(argc, argv);
+
+	/* Allocate global gsm_network struct; choose socket/internal MNCC */
+	rc = bsc_network_alloc(mncc_sock_path?
+			       mncc_sock_from_cc : int_mncc_recv);
+	if (rc) {
+		fprintf(stderr, "Allocation failed. Exiting.\n");
+		exit(1);
+	}
+
+	/* Initialize VTY */
 	vty_init(&vty_info);
 	bsc_vty_init(&log_info, bsc_gsmnet);
 	ctrl_vty_init(tall_bsc_ctx);
@@ -280,25 +291,13 @@ int main(int argc, char **argv)
 		return -1;
 #endif
 
-	/* parse options */
-	handle_options(argc, argv);
-
-	/* internal MNCC handler or MNCC socket? */
-	if (mncc_sock_path) {
-		rc = bsc_network_alloc(mncc_sock_from_cc);
-		if (rc) {
-			fprintf(stderr, "Allocation failed. Exiting.\n");
-			exit(1);
-		}
+	/* Initialize MNCC socket if appropriate */
+	if (mncc_sock_path)
 		mncc_sock_init(bsc_gsmnet, mncc_sock_path);
-	} else {
+	else
 		DEBUGP(DMNCC, "Using internal MNCC handler.\n");
-		rc = bsc_network_alloc(int_mncc_recv);
-		if (rc) {
-			fprintf(stderr, "Allocation failed. Exiting.\n");
-			exit(1);
-		}
-	}
+
+	/* Read the config */
 	rc = bsc_network_configure(config_file);
 	if (rc < 0) {
 		fprintf(stderr, "Reading config failed. Exiting.\n");

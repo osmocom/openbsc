@@ -194,6 +194,13 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	msgb_talloc_ctx_init(tall_bsc_ctx, 0);
 
+	/* Allocate global gsm_network struct */
+	rc = bsc_network_alloc(NULL);
+	if (rc) {
+		fprintf(stderr, "Allocation failed. exiting.\n");
+		exit(1);
+	}
+
 	osmo_init_logging(&log_info);
 	osmo_stats_init(tall_bsc_ctx);
 
@@ -220,11 +227,7 @@ int main(int argc, char **argv)
 	/* initialize SCCP */
 	sccp_set_log_area(DSCCP);
 
-	rc = bsc_network_alloc(NULL);
-	if (rc) {
-		fprintf(stderr, "Allocation failed. exiting.\n");
-		exit(1);
-	}
+	/* Read the config */
 	rc = bsc_network_configure(config_file);
 	if (rc < 0) {
 		fprintf(stderr, "Bootstrapping the network failed. exiting.\n");
