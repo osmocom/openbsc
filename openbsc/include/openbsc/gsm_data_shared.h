@@ -300,7 +300,10 @@ struct gsm_lchan {
 		struct amr_multirate_conf amr_mr;
 		struct {
 			struct osmo_fsm_inst *dl_amr_fsm;
+			/* TCH cache */
 			uint8_t cache[20];
+			/* FACCH cache */
+			uint8_t facch[GSM_MACBLOCK_LEN];
 			uint8_t len;
 			uint32_t fn;
 			bool is_update;
