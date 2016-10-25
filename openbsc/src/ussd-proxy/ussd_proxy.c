@@ -575,7 +575,7 @@ static int decode_to_latin1(char* outbuf, unsigned size,
 			    const uint8_t* msg, unsigned msg_len, uint8_t lang)
 {
 	if (lang == 0x0f) {
-		return gsm_7bit_decode_n_ussd(outbuf, size, msg, msg_len);
+		return gsm_7bit_decode_n_ussd(outbuf, size, msg, msg_len * 8 / 7);
 	} else {
 		LOGP(DLCTRL, LOGL_ERROR, "Unknown language: 0x%02x\n", lang);
 		return 0;
