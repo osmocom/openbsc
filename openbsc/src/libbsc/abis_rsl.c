@@ -44,6 +44,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/core/talloc.h>
+#include <openbsc/pcu_if.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
@@ -1259,6 +1260,12 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 
 	send_lchan_signal(S_LCHAN_ACTIVATE_ACK, lchan, NULL);
 
+	/* Update bts attributes inside the PCU */
+	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH ||
+	    ts->pchan == GSM_PCHAN_TCH_F_PDCH ||
+	    ts->pchan == GSM_PCHAN_PDCH)
+		pcu_info_update(ts->trx->bts);
+
 	return 0;
 }
 
@@ -1733,6 +1740,39 @@ static int rsl_send_imm_ass_rej(struct gsm_bts *bts,
 	return rsl_imm_assign_cmd(bts, sizeof(*iar), (uint8_t *) iar);
 }
 
+/* Handle packet channel rach requests */
+static int rsl_rx_pchan_rqd(struct msgb *msg, struct gsm_bts *bts)
+{
+	struct gsm48_req_ref *rqd_ref;
+	struct abis_rsl_dchan_hdr *rqd_hdr = msgb_l2(msg);
+	rqd_ref = (struct gsm48_req_ref *) &rqd_hdr->data[1];
+	uint8_t ra = rqd_ref->ra;
+	uint8_t t1, t2, t3;
+	uint32_t fn;
+	uint8_t rqd_ta;
+	uint8_t is_11bit;
+
+	/* Process rach request and forward contained information to PCU */
+	if (ra == 0x7F) {
+		is_11bit = 1;
+
+		/* FIXME: Also handle 11 bit rach requests */
+		LOGP(DRSL, LOGL_ERROR, "BTS %d eleven bit access burst not supported yet!\n",bts->nr);
+		return -EINVAL;
+	} else {
+		is_11bit = 0;
+		t1 = rqd_ref->t1;
+		t2 = rqd_ref->t2;
+		t3 = rqd_ref->t3_low | (rqd_ref->t3_high << 3);
+		fn = (51 * ((t3-t2) % 26) + t3 + 51 * 26 * t1);
+
+		rqd_ta = rqd_hdr->data[sizeof(struct gsm48_req_ref)+2];
+	}
+
+	return pcu_tx_rach_ind(bts, rqd_ta, ra, fn, is_11bit, 
+			       GSM_L1_BURST_TYPE_ACCESS_0);
+}
+
 /* MS has requested a channel on the RACH */
 static int rsl_rx_chan_rqd(struct msgb *msg)
 {
@@ -1760,10 +1800,16 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		return -EINVAL;
 	rqd_ta = rqd_hdr->data[sizeof(struct gsm48_req_ref)+2];
 
+	/* Determine channel request cause code */
+	chreq_reason = get_reason_by_chreq(rqd_ref->ra, bts->network->neci);
+
+	/* Hanle PBCH related rach requests (in case of BSC-co-located-PCU */
+	if (chreq_reason == GSM_CHREQ_REASON_PBCH)
+		return rsl_rx_pchan_rqd(msg, bts);
+
 	/* determine channel type (SDCCH/TCH_F/TCH_H) based on
 	 * request reference RA */
 	lctype = get_ctype_by_chreq(bts->network, rqd_ref->ra);
-	chreq_reason = get_reason_by_chreq(rqd_ref->ra, bts->network->neci);
 
 	rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_CHREQ_TOTAL]);
 
