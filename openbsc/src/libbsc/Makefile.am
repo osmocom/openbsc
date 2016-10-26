@@ -35,6 +35,7 @@ libbsc_a_SOURCES = \
 	handover_decision.c \
 	handover_logic.c \
 	meas_rep.c \
+	pcu_sock.c \
 	rest_octets.c \
 	system_information.c \
 	e1_config.c \

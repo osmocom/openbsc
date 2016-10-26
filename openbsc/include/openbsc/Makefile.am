@@ -63,6 +63,8 @@ noinst_HEADERS = \
 	osmo_msc_data.h \
 	osmux.h \
 	paging.h \
+	pcu_if.h \
+	pcuif_proto.h \
 	rest_octets.h \
 	rrlp.h \
 	rs232.h \

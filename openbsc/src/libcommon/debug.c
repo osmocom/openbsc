@@ -175,6 +175,11 @@ static const struct log_info_cat default_categories[] = {
 		.description = "SCCP User Adaptation Protocol",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DPCU] = {
+		.name = "DPCU",
+		.description = "PCU Interface",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 enum log_filter {
