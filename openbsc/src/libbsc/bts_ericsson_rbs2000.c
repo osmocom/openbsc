@@ -71,6 +71,9 @@ static void start_sabm_in_line(struct e1inp_line *line, int start)
 			continue;
 
 		llist_for_each_entry(link, &ts->sign.sign_links, list) {
+			lapd_instance_set_profile(ts->lapd,
+						  &lapd_profile_abis_ericsson);
+
 			if (start)
 				lapd_sap_start(ts->lapd, link->tei, link->sapi);
 			else
