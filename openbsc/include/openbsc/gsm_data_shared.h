@@ -869,6 +869,9 @@ struct gsm_bts {
 	struct amr_multirate_conf mr_full;
 	struct amr_multirate_conf mr_half;
 
+	/* PCU socket state */
+	struct pcu_sock_state *pcu_state;
+
 #endif /* ROLE_BSC */
 	void *role;
 };
