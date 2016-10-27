@@ -180,6 +180,8 @@ static int bts_model_rbs2k_start(struct gsm_network *net)
 	model_rbs2k.features.data = &model_rbs2k._features_data[0];
 	model_rbs2k.features.data_len = sizeof(model_rbs2k._features_data);
 
+	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_GPRS);
+	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_EGPRS);
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_HOPPING);
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_HSCSD);
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_MULTI_TSC);
