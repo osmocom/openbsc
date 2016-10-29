@@ -386,8 +386,10 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 	case MNCC_FACILITY_IND:
 		break;
 	case MNCC_START_DTMF_IND:
+		rc = mncc_tx_to_cc(net, MNCC_START_DTMF_REJ, data);
 		break;
 	case MNCC_STOP_DTMF_IND:
+		rc = mncc_tx_to_cc(net, MNCC_STOP_DTMF_RSP, data);
 		break;
 	case MNCC_MODIFY_IND:
 		mncc_set_cause(data, GSM48_CAUSE_LOC_PRN_S_LU,
