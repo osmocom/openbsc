@@ -1264,12 +1264,8 @@ static uint8_t ts2comb(struct gsm_bts_trx_ts *ts)
 {
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_PDCH:
-		if (ts->flags & TS_F_PDCH_ACTIVE)
-			return pchan2comb(GSM_PCHAN_PDCH);
-		else
-			return pchan2comb(GSM_PCHAN_TCH_F);
 	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
-		return pchan2comb(ts->dyn.pchan_is);
+		return pchan2comb(GSM_PCHAN_TCH_F);
 	default:
 		return pchan2comb(ts->pchan);
 	}
