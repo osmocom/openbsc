@@ -112,8 +112,8 @@ static void count_codecs(struct gsm_bts *bts, struct gsm_lchan *lchan)
 			break;
 		}
 	} else {
-		LOGP(DRSL, LOGL_ERROR, "count_codecs unknown lchan->type %x on channel %s\n",
-		     lchan->type, gsm_ts_and_pchan_name(lchan->ts));
+		LOGP(DRSL, LOGL_DEBUG, "count_codecs unknown lchan->type %s on channel %s\n",
+		     gsm_lchant_name(lchan->type), gsm_ts_and_pchan_name(lchan->ts));
 	}
 }
 
