@@ -141,13 +141,15 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	case S_L_INP_LINE_INIT:
 	case S_L_INP_LINE_NOALARM:
 		if (strcasecmp(isd->line->driver->name, "DAHDI")
-		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD"))
+		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD")
+		 && strcasecmp(isd->line->driver->name, "UNIXSOCKET"))
 			break;
 		start_sabm_in_line(isd->line, 1);
 		break;
 	case S_L_INP_LINE_ALARM:
 		if (strcasecmp(isd->line->driver->name, "DAHDI")
-		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD"))
+		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD")
+		 && strcasecmp(isd->line->driver->name, "UNIXSOCKET"))
 			break;
 		start_sabm_in_line(isd->line, 0);
 		break;
