@@ -59,6 +59,15 @@
 #include <gtp.h>
 #include <pdp.h>
 
+/* TS 23.003: The MSISDN shall take the dummy MSISDN value composed of
+ * 15 digits set to 0 (encoded as an E.164 international number) when
+ * the MSISDN is not available in messages in which the presence of the
+ * MSISDN parameter */
+static const uint8_t dummy_msisdn[] =
+	{ 0x91, /* No extension, international, E.164 */
+	  0, 0, 0, 0, 0, 0, 0, /* 14 digits of zeroes */
+	  0xF0 /* 15th digit of zero + padding */ };
+
 const struct value_string gtp_cause_strs[] = {
 	{ GTPCAUSE_REQ_IMSI, "Request IMSI" },
 	{ GTPCAUSE_REQ_IMEI, "Request IMEI" },
@@ -167,12 +176,16 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	/* IMSI, TEID/TEIC, FLLU/FLLC, TID, NSAPI set in pdp_newpdp */
 
 	/* Put the MSISDN in case we have it */
-	if (mmctx->subscr) {
+	if (mmctx->subscr && mmctx->subscr->sgsn_data->msisdn_len) {
 		pdp->msisdn.l = mmctx->subscr->sgsn_data->msisdn_len;
 		if (pdp->msisdn.l > sizeof(pdp->msisdn.v))
 			pdp->msisdn.l = sizeof(pdp->msisdn.v);
 		memcpy(pdp->msisdn.v, mmctx->subscr->sgsn_data->msisdn,
 			pdp->msisdn.l);
+	} else {
+		/* use the dummy 15-digits-zero MSISDN value */
+		pdp->msisdn.l = sizeof(dummy_msisdn);
+		memcpy(pdp->msisdn.v, dummy_msisdn, pdp->msisdn.l);
 	}
 
 	/* End User Address from GMM requested PDP address */
