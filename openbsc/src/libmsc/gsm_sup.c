@@ -355,10 +355,11 @@ static int subscr_handle_sup_upd_loc_res(struct gsm_subscriber *subscr,
 
 	struct gsm_subscriber_connection *conn = connection_for_subscr(subscr);
 
-	if (conn->loc_operation)
-		conn->loc_operation->waiting_for_remote_accept = 0;
-
-	gsm0408_authorize(conn,NULL);
+	if (conn) {
+		if (conn->loc_operation)
+			conn->loc_operation->waiting_for_remote_accept = 0;
+		gsm0408_authorize(conn,NULL);
+	}
 
 	return 0;
 }
