@@ -1078,6 +1078,38 @@ static const struct value_string gsm48_cmode_names[] = {
 	{ 0, NULL }
 };
 
+/* call vty_out() to print a string like " as TCH/H" for dynamic timeslots.
+ * Don't do anything if the ts is not dynamic. */
+static void vty_out_dyn_ts_status(struct vty *vty, struct gsm_bts_trx_ts *ts)
+{
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		if (ts->dyn.pchan_is == ts->dyn.pchan_want)
+			vty_out(vty, " as %s",
+				gsm_pchan_name(ts->dyn.pchan_is));
+		else
+			vty_out(vty, " switching %s -> %s",
+				gsm_pchan_name(ts->dyn.pchan_is),
+				gsm_pchan_name(ts->dyn.pchan_want));
+		break;
+	case GSM_PCHAN_TCH_F_PDCH:
+		if ((ts->flags & TS_F_PDCH_PENDING_MASK) == 0)
+			vty_out(vty, " as %s",
+				(ts->flags & TS_F_PDCH_ACTIVE)? "PDCH"
+							      : "TCH/F");
+		else
+			vty_out(vty, " switching %s -> %s",
+				(ts->flags & TS_F_PDCH_ACTIVE)? "PDCH"
+							      : "TCH/F",
+				(ts->flags & TS_F_PDCH_ACT_PENDING)? "PDCH"
+								   : "TCH/F");
+		break;
+	default:
+		/* no dyn ts */
+		break;
+	}
+}
+
 static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
 	int idx;
@@ -1085,6 +1117,22 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, Lchan %u: Type %s%s",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		lchan->nr, gsm_lchant_name(lchan->type), VTY_NEWLINE);
+	/* show dyn TS details, if applicable */
+	switch (lchan->ts->pchan) {
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		vty_out(vty, "  Osmocom Dyn TS:");
+		vty_out_dyn_ts_status(vty, lchan->ts);
+		vty_out(vty, VTY_NEWLINE);
+		break;
+	case GSM_PCHAN_TCH_F_PDCH:
+		vty_out(vty, "  IPACC Dyn PDCH TS:");
+		vty_out_dyn_ts_status(vty, lchan->ts);
+		vty_out(vty, VTY_NEWLINE);
+		break;
+	default:
+		/* no dyn ts */
+		break;
+	}
 	vty_out(vty, "  Connection: %u, State: %s%s%s%s",
 		lchan->conn ? 1: 0,
 		gsm_lchans_name(lchan->state),
@@ -1129,10 +1177,12 @@ static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 			       lchan->meas_rep_idx, 1);
 	mr =  &lchan->meas_rep[idx];
 
-	vty_out(vty, "BTS %u, TRX %u, Timeslot %u %s, Lchan %u, Type %s, State %s - "
-		"L1 MS Power: %u dBm RXL-FULL-dl: %4d dBm RXL-FULL-ul: %4d dBm%s",
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u %s",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
-		gsm_pchan_name(lchan->ts->pchan),
+		gsm_pchan_name(lchan->ts->pchan));
+	vty_out_dyn_ts_status(vty, lchan->ts);
+	vty_out(vty, ", Lchan %u, Type %s, State %s - "
+		"L1 MS Power: %u dBm RXL-FULL-dl: %4d dBm RXL-FULL-ul: %4d dBm%s",
 		lchan->nr,
 		gsm_lchant_name(lchan->type), gsm_lchans_name(lchan->state),
 		mr->ms_l1.pwr,
