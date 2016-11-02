@@ -1,3 +1,9 @@
+openbsc (0.15.0+z9) unstable; urgency=medium
+
+  * Send dummy MSISDN on PDP context activation if it is not known
+
+ -- Daniel Willmann <dwillmann@sysmocom.de>  Wed, 02 Nov 2016 13:00:22 +0100
+
 openbsc (0.15.0+z8) unstable; urgency=medium
 
   * Fix mgcp osmux negotiation on high-latency links
