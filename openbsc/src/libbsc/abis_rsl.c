@@ -241,8 +241,17 @@ int rsl_bcch_info(struct gsm_bts_trx *trx, uint8_t type,
 	init_dchan_hdr(dh, RSL_MT_BCCH_INFO);
 	dh->chan_nr = RSL_CHAN_BCCH;
 
-	msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
-	msgb_tlv_put(msg, RSL_IE_FULL_BCCH_INFO, len, data);
+	if (trx->bts->type == GSM_BTS_TYPE_RBS2000
+	    && type == RSL_SYSTEM_INFO_13) {
+		/* Ericsson proprietary encoding of SI13 */
+		msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, 0x0C);
+		msgb_tlv_put(msg, RSL_IE_FULL_BCCH_INFO, len, data);
+		msgb_tv_put(msg, 0xF2, 0x00);
+	} else {
+		/* Normal encoding */
+		msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
+		msgb_tlv_put(msg, RSL_IE_FULL_BCCH_INFO, len, data);
+	}
 
 	msg->dst = trx->rsl_link;
 
