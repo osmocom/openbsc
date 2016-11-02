@@ -1706,7 +1706,17 @@ static void om2k_mo_st_wait_opinfo_accept(struct osmo_fsm_inst *fi, uint32_t eve
 
 static void om2k_mo_s_done_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+	omfp->mo->fsm = NULL;
 	osmo_fsm_inst_term(fi, OSMO_FSM_TERM_REGULAR, NULL);
+}
+
+static void om2k_mo_s_error_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+
+	omfp->mo->fsm = NULL;
+	osmo_fsm_inst_term(fi, OSMO_FSM_TERM_ERROR, NULL);
 }
 
 static const struct osmo_fsm_state om2k_is_states[] = {
@@ -1803,7 +1813,7 @@ static const struct osmo_fsm_state om2k_is_states[] = {
 		.name = "ERROR",
 		.in_event_mask = 0,
 		.out_state_mask = 0,
-		.onenter = om2k_mo_s_done_onenter,
+		.onenter = om2k_mo_s_error_onenter,
 	},
 
 };
@@ -2702,6 +2712,12 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	mo = get_om2k_mo(bts, &o2h->mo);
 	if (!mo) {
 		LOGP(DNM, LOGL_ERROR, "Couldn't resolve MO for OM2K msg "
+		     "%s: %s\n", get_value_string(om2k_msgcode_vals, msg_type),
+		     msgb_hexdump(msg));
+		return 0;
+	}
+	if (!mo->fsm) {
+		LOGP(DNM, LOGL_ERROR, "MO object should not generate any message. fsm == NULL "
 		     "%s: %s\n", get_value_string(om2k_msgcode_vals, msg_type),
 		     msgb_hexdump(msg));
 		return 0;
