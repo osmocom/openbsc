@@ -40,6 +40,7 @@ int sip_send(struct sip_client *sip_client, osip_t *osip,
 	status = osip_transaction_init(&transaction, transaction_type, osip, msg);
 	if (status) {
 		printf("Failed to init transaction %d",status);
+		osip_message_free(msg);
 		return -1;
 	}
 
@@ -122,6 +123,7 @@ int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi)
 	sprintf(call_id_num, "%u", osip_build_random_number());
 	osip_call_id_set_number(call_id, call_id_num);
 	reg_msg->call_id = call_id;
+	osip_free(call_id_num);
 
 	if (osip_cseq_init(&cseq)) {
 		OSIP_TRACE(osip_trace(__FILE__,__LINE__,OSIP_BUG,NULL,"seq init failed!\n"));
@@ -134,6 +136,7 @@ int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi)
 	osip_cseq_set_number(cseq, seq_num_str);
 	osip_cseq_set_method(cseq, osip_strdup("REGISTER"));
 	reg_msg->cseq = cseq;
+	osip_free(seq_num_str);
 
 	osip_message_set_max_forwards(reg_msg, "70");
 
@@ -213,12 +216,16 @@ int sip_cb_send(osip_transaction_t *tr, osip_message_t *sip_msg, char *host, int
 	printf("SIP Send Msg\n");
 	
 	if ((err = osip_message_to_str(sip_msg, &msg_p, &msg_len)) != 0){
+		osip_message_free(sip_msg);
+		msgb_free(msg);
 		printf("SIP failed to convert message: %d\n", err);
 		return -1;
 	}
 	printf("SIP convert message ok\n");
 
 	if (!msg_p) {
+		msgb_free(msg);
+		osip_message_free(sip_msg);
 		printf("SIP msg_p = NULL fail!\n");
 		return -1;
 	}
@@ -226,6 +233,9 @@ int sip_cb_send(osip_transaction_t *tr, osip_message_t *sip_msg, char *host, int
 	if (sip_client == NULL) {
 		osip_dialog_t* diag = (osip_dialog_t* )sip_msg->application_data;
 		if (diag == NULL) {
+			msgb_free(msg);
+			osip_free(msg_p);
+			osip_message_free(sip_msg);
 			printf("Unable to send:\n%s\n", msg_p);
 			return -1;
 		}
@@ -237,6 +247,7 @@ int sip_cb_send(osip_transaction_t *tr, osip_message_t *sip_msg, char *host, int
 	msg->data_len = msg_len;
 	msg->len += msg_len;
 	printf("SIP ready to send msg via IPA\n");
+	osip_free(msg_p);
 	return sip_client_send(sip_client, msg);
 }
 
@@ -260,14 +271,14 @@ void sip_cb_rcv2xx(int type, osip_transaction_t *tr, osip_message_t *sip_msg)
 	
 	to = osip_message_get_to(sip_msg);
 	memcpy(imsi, to->url->username, 16);
-
+	osip_message_free(sip_msg);
 	printf("OSIP_NICT_STATUS_2XX_RECEIVED imsi = %s \n", imsi);
 	printf("OSIP_NICT_STATUS_2XX_RECEIVED msisdn = %d \n", msisdn);
 	printf("OSIP_NICT_STATUS_2XX_RECEIVED msisdn = %s \n", msisdn);
 
 
 	handle_location_update_result(reg->sup_server, imsi, msisdn);
-
+	osip_transaction_free(tr);
 }
 
 void sip_cb_rcv2xx_again(int type, osip_transaction_t *pott,osip_message_t *pomt)
