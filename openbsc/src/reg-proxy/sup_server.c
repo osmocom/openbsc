@@ -46,6 +46,7 @@ static int ipa_sock_server_cb(struct ipa_server_conn *conn, struct msgb *msg)
 		goto invalid;
 	case 1:
 		/* this is an IPA control message, skip further processing */
+		msgb_free(msg);
 		return 0;
 	case 0:
 		/* this is not an IPA control message, continue */
