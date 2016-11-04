@@ -123,7 +123,6 @@ int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi)
 	sprintf(call_id_num, "%u", osip_build_random_number());
 	osip_call_id_set_number(call_id, call_id_num);
 	reg_msg->call_id = call_id;
-	osip_free(call_id_num);
 
 	if (osip_cseq_init(&cseq)) {
 		OSIP_TRACE(osip_trace(__FILE__,__LINE__,OSIP_BUG,NULL,"seq init failed!\n"));
@@ -136,7 +135,6 @@ int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi)
 	osip_cseq_set_number(cseq, seq_num_str);
 	osip_cseq_set_method(cseq, osip_strdup("REGISTER"));
 	reg_msg->cseq = cseq;
-	osip_free(seq_num_str);
 
 	osip_message_set_max_forwards(reg_msg, "70");
 
