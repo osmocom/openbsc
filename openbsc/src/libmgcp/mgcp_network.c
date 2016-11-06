@@ -670,6 +670,12 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 
 			uint32_t *ssrc = &buf[8];
 			(*ssrc) ++;
+			
+			uint16_t *seqnr = &buf[2];
+			(*seqnr) += 1000;
+
+			uint32_t *timestamp = &buf[4];
+			(*timestamp) += 1000;
 
 			rc = mgcp_udp_send(rtp_end->rtp.fd,
 					   &rtp_end->addr,

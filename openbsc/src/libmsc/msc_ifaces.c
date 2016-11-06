@@ -178,7 +178,7 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 
 	/* HACK. where to scope the RAB Id? At the conn / subscriber /
 	 * ue_conn_ctx? */
-	static uint8_t next_rab_id = 1;
+	static uint8_t next_rab_id = 234;
 	conn->iu.rab_id = next_rab_id ++;
 
 	conn->iu.mgcp_rtp_endpoint =
