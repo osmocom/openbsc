@@ -1379,7 +1379,7 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 		}
 	} else {
 		/* Forward this message to all NS-VC to BSS */
-		struct gprs_ns_inst *nsi = cfg->nsi;
+		struct gprs_ns_inst *nsi = cfg->bss_nsi;
 		struct gprs_nsvc *next_nsvc;
 
 		llist_for_each_entry(next_nsvc, &nsi->gprs_nsvcs, list) {

@@ -592,7 +592,7 @@ DEFUN(delete_gb_nsei, delete_gb_nsei_cmd,
 	}
 
 	if (delete_nsvc) {
-		struct gprs_ns_inst *nsi = g_cfg->nsi;
+		struct gprs_ns_inst *nsi = g_cfg->bss_nsi;
 		struct gprs_nsvc *nsvc, *nsvc2;
 
 		counter = 0;

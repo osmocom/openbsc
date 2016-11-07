@@ -256,7 +256,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	gbproxy_init_config(&gbcfg);
-	gbcfg.nsi = bssgp_nsi;
+	gbcfg.bss_nsi = gbcfg.sgsn_nsi = bssgp_nsi;
 	gprs_ns_vty_init();
 	gprs_ns_set_log_ss(DNS);
 	bssgp_set_log_ss(DBSSGP);
@@ -274,7 +274,7 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 
-	if (!gprs_nsvc_by_nsei(gbcfg.nsi, gbcfg.nsip_sgsn_nsei)) {
+	if (!gprs_nsvc_by_nsei(gbcfg.sgsn_nsi, gbcfg.nsip_sgsn_nsei)) {
 		LOGP(DGPRS, LOGL_FATAL, "You cannot proxy to NSEI %u "
 			"without creating that NSEI before\n",
 			gbcfg.nsip_sgsn_nsei);

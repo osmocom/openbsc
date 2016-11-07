@@ -92,7 +92,8 @@ struct gbproxy_config {
 	uint16_t nsip_sgsn_nsei;
 
 	/* misc */
-	struct gprs_ns_inst *nsi;
+	struct gprs_ns_inst *sgsn_nsi;
+	struct gprs_ns_inst *bss_nsi;
 
 	/* Linked list of all Gb peers (except SGSN) */
 	struct llist_head bts_peers;
