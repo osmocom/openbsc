@@ -318,7 +318,7 @@ static void gbproxy_reset_imsi_acquisition(struct gbproxy_link_info* link_info)
 	link_info->vu_gen_tx_bss = GBPROXY_INIT_VU_GEN_TX;
 }
 
-static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
+static int gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 					  struct msgb *msg,
 					  time_t now,
 					  struct gbproxy_link_info* link_info,
@@ -349,8 +349,13 @@ static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 				    peer, link_info, &len_change,
 				    &tmp_parse_ctx);
 
-		gbproxy_update_link_state_after(peer, link_info, now,
-						&tmp_parse_ctx);
+		rc = gbproxy_update_link_state_after(peer, link_info, now,
+				&tmp_parse_ctx);
+		if (rc == 1) {
+			LOGP(DLLC, LOGL_NOTICE, "link_info deleted while flushing stored messages\n");
+			msgb_free(stored_msg);
+			return -1;
+		}
 
 		rc = gbprox_relay2sgsn(peer->cfg, stored_msg,
 				       msgb_bvci(msg), link_info->sgsn_nsei);
@@ -364,6 +369,8 @@ static void gbproxy_flush_stored_messages(struct gbproxy_peer *peer,
 			     parse_ctx->llc_msg_name : "BSSGP");
 		msgb_free(stored_msg);
 	}
+
+	return 0;
 }
 
 static int gbproxy_gsm48_to_peer(struct gbproxy_peer *peer,
@@ -465,9 +472,12 @@ static int gbproxy_imsi_acquisition(struct gbproxy_peer *peer,
 			gsm48_hdr_pdisc(parse_ctx->g48_hdr) == GSM48_PDISC_MM_GPRS &&
 			gsm48_hdr_msg_type(parse_ctx->g48_hdr) == GSM48_MT_GMM_ID_RESP;
 
-		/* The IMSI is now available */
-		gbproxy_flush_stored_messages(peer, msg, now, link_info,
-					      parse_ctx);
+		/* The IMSI is now available. If flushing the messages fails,
+		 * then link_info has been deleted and we should return
+		 * immediately. */
+		if (gbproxy_flush_stored_messages(peer, msg, now, link_info,
+					      parse_ctx) < 0)
+			return 0;
 
 		gbproxy_reset_imsi_acquisition(link_info);
 
