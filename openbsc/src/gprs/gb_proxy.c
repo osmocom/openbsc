@@ -761,7 +761,7 @@ static int gbprox_relay2sgsn(struct gbproxy_config *cfg, struct msgb *old_msg,
 
 	strip_ns_hdr(msg);
 
-	rc = gprs_ns_sendmsg(bssgp_nsi, msg);
+	rc = gprs_ns_sendmsg(cfg->sgsn_nsi, msg);
 	if (rc < 0)
 		rate_ctr_inc(&cfg->ctrg->ctr[GBPROX_GLOB_CTR_TX_ERR_SGSN]);
 
@@ -786,7 +786,7 @@ static int gbprox_relay2peer(struct msgb *old_msg, struct gbproxy_peer *peer,
 	/* Strip the old NS header, it will be replaced with a new one */
 	strip_ns_hdr(msg);
 
-	rc = gprs_ns_sendmsg(bssgp_nsi, msg);
+	rc = gprs_ns_sendmsg(peer->cfg->bss_nsi, msg);
 	if (rc < 0)
 		rate_ctr_inc(&peer->ctrg->ctr[GBPROX_PEER_CTR_TX_ERR]);
 
