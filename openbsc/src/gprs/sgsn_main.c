@@ -366,7 +366,7 @@ int main(int argc, char **argv)
 	sgsn_rate_ctr_init();
 	sgsn_inst_init();
 
-	gprs_ns_vty_init(bssgp_nsi);
+	gprs_ns_vty_init();
 	bssgp_vty_init();
 	gprs_llc_vty_init();
 	gprs_sndcp_vty_init();

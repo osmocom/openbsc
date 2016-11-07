@@ -257,7 +257,7 @@ int main(int argc, char **argv)
 	}
 	gbproxy_init_config(&gbcfg);
 	gbcfg.nsi = bssgp_nsi;
-	gprs_ns_vty_init(bssgp_nsi);
+	gprs_ns_vty_init();
 	gprs_ns_set_log_ss(DNS);
 	bssgp_set_log_ss(DBSSGP);
 	osmo_signal_register_handler(SS_L_NS, &gbprox_signal, &gbcfg);
