@@ -208,7 +208,7 @@ struct gbproxy_link_info *gbproxy_update_link_state_ul(
 struct gbproxy_link_info *gbproxy_update_link_state_dl(
 	struct gbproxy_peer *peer, time_t now,
 	struct gprs_gb_parse_context *parse_ctx);
-void gbproxy_update_link_state_after(
+int gbproxy_update_link_state_after(
 	struct gbproxy_peer *peer, struct gbproxy_link_info *link_info,
 	time_t now, struct gprs_gb_parse_context *parse_ctx);
 int gbproxy_remove_stale_link_infos(struct gbproxy_peer *peer, time_t now);

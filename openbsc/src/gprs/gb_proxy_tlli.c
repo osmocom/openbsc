@@ -348,18 +348,18 @@ static void gbproxy_touch_link_info(struct gbproxy_peer *peer,
 	gbproxy_attach_link_info(peer, now, link_info);
 }
 
-static void gbproxy_unregister_link_info(struct gbproxy_peer *peer,
+static int gbproxy_unregister_link_info(struct gbproxy_peer *peer,
 					 struct gbproxy_link_info *link_info)
 {
 	if (!link_info)
-		return;
+		return 1;
 
 	if (link_info->tlli.ptmsi == GSM_RESERVED_TMSI && !link_info->imsi_len) {
 		LOGP(DGPRS, LOGL_INFO,
 		     "Removing TLLI %08x from list (P-TMSI or IMSI are not set)\n",
 		     link_info->tlli.current);
 		gbproxy_delete_link_info(peer, link_info);
-		return;
+		return 1;
 	}
 
 	link_info->tlli.current = 0;
@@ -371,7 +371,7 @@ static void gbproxy_unregister_link_info(struct gbproxy_peer *peer,
 
 	gbproxy_reset_link(link_info);
 
-	return;
+	return 0;
 }
 
 int gbproxy_imsi_matches(struct gbproxy_config *cfg,
@@ -668,12 +668,13 @@ struct gbproxy_link_info *gbproxy_update_link_state_dl(
 	return link_info;
 }
 
-void gbproxy_update_link_state_after(
+int gbproxy_update_link_state_after(
 	struct gbproxy_peer *peer,
 	struct gbproxy_link_info *link_info,
 	time_t now,
 	struct gprs_gb_parse_context *parse_ctx)
 {
+	int rc = 0;
 	if (parse_ctx->invalidate_tlli && link_info) {
 		int keep_info =
 			peer->cfg->keep_link_infos == GBPROX_KEEP_ALWAYS ||
@@ -684,11 +685,12 @@ void gbproxy_update_link_state_after(
 		if (keep_info) {
 			LOGP(DGPRS, LOGL_INFO, "Unregistering TLLI %08x\n",
 			     link_info->tlli.current);
-			gbproxy_unregister_link_info(peer, link_info);
+			rc = gbproxy_unregister_link_info(peer, link_info);
 		} else {
 			LOGP(DGPRS, LOGL_INFO, "Removing TLLI %08x from list\n",
 			     link_info->tlli.current);
 			gbproxy_delete_link_info(peer, link_info);
+			rc = 1;
 		}
 	} else if (parse_ctx->to_bss && parse_ctx->tlli_enc &&
 		   parse_ctx->new_ptmsi_enc && link_info) {
@@ -714,6 +716,8 @@ void gbproxy_update_link_state_after(
 	}
 
 	gbproxy_remove_stale_link_infos(peer, now);
+
+	return rc;
 }
 
 
