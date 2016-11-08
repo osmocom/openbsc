@@ -269,14 +269,12 @@ void sip_cb_rcv2xx(int type, osip_transaction_t *tr, osip_message_t *sip_msg)
 	
 	to = osip_message_get_to(sip_msg);
 	memcpy(imsi, to->url->username, 16);
-	osip_message_free(sip_msg);
 	printf("OSIP_NICT_STATUS_2XX_RECEIVED imsi = %s \n", imsi);
 	printf("OSIP_NICT_STATUS_2XX_RECEIVED msisdn = %d \n", msisdn);
 	printf("OSIP_NICT_STATUS_2XX_RECEIVED msisdn = %s \n", msisdn);
 
 
 	handle_location_update_result(reg->sup_server, imsi, msisdn);
-	osip_transaction_free(tr);
 }
 
 void sip_cb_rcv2xx_again(int type, osip_transaction_t *pott,osip_message_t *pomt)

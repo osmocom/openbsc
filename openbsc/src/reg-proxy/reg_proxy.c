@@ -209,6 +209,17 @@ void printf_trace_func (char *fi, int li, osip_trace_level_t level, char *chfr, 
     printf ("\n");
 }
 
+void nict_trans_free(osip_t * osip)
+{
+	int pos = 0;
+	while (!osip_list_eol(&osip->osip_nict_transactions, pos)) {
+		osip_transaction_t *tr = (osip_transaction_t*) osip_list_get(&osip->osip_nict_transactions, pos);
+		if (tr->state== NICT_TERMINATED)
+			osip_transaction_free(tr);
+		else
+			pos++;
+	}
+}
 
 int main(int argc, char **argv)
 {
@@ -314,5 +325,6 @@ int main(int argc, char **argv)
 		osip_timers_ist_execute(reg->osip);
 
 		osip_retransmissions_execute(reg->osip);
+		nict_trans_free(reg->osip);
 	}
 }
