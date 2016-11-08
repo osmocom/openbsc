@@ -97,8 +97,8 @@ int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi)
 
 	/////
 	osip_uri_init(&(reg_msg->req_uri));
-	osip_uri_set_scheme(reg_msg->req_uri, SIP_URI_SCHEME);
-	osip_uri_set_host (reg_msg->req_uri, sip_client->dst_ip);
+	osip_uri_set_scheme(reg_msg->req_uri, osip_strdup(SIP_URI_SCHEME));
+	osip_uri_set_host(reg_msg->req_uri, osip_strdup(sip_client->dst_ip));
 	//if (osip_uri_parse(reg_msg->req_uri, SIP_SERVER)) {
 	//	OSIP_TRACE(osip_trace(__FILE__,__LINE__,OSIP_BUG,NULL,"uri parse failed!\n"));
 	//	osip_message_free(reg_msg);
