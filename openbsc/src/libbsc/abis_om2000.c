@@ -1264,6 +1264,15 @@ static uint8_t ts2comb(struct gsm_bts_trx_ts *ts)
 {
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_PDCH:
+		LOGP(DNM, LOGL_ERROR, "%s pchan %s not intended for use"
+		     " with OM2000, use %s instead\n",
+		     gsm_ts_and_pchan_name(ts),
+		     gsm_pchan_name(GSM_PCHAN_TCH_F_PDCH),
+		     gsm_pchan_name(GSM_PCHAN_TCH_F_TCH_H_PDCH));
+		/* If we allowed initialization of TCH/F_PDCH, it would fail
+		 * when we try to send the ip.access specific RSL PDCH Act
+		 * message for it. Rather fail completely right now: */
+		return 0;
 	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
 		return pchan2comb(GSM_PCHAN_TCH_F);
 	default:
