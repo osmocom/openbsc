@@ -205,9 +205,9 @@ void bsc_config_free(struct bsc_config *cfg)
 {
 	llist_del(&cfg->entry);
 	rate_ctr_group_free(cfg->stats.ctrg);
-	talloc_free(cfg);
 	cfg->nat->num_bsc--;
 	OSMO_ASSERT(cfg->nat->num_bsc >= 0)
+	talloc_free(cfg);
 }
 
 static void _add_lac(void *ctx, struct llist_head *list, int _lac)
