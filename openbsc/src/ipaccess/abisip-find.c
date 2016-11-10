@@ -138,8 +138,8 @@ static int read_response(int fd)
 	if (len < 0)
 		return len;
 
-	/* 2 bytes length, 1 byte protocol (0xfe) */
-	if (buf[2] != 0xfe)
+	/* 2 bytes length, 1 byte protocol */
+	if (buf[2] != IPAC_PROTO_IPACCESS)
 		return 0;
 
 	if (buf[4] != IPAC_MSGT_ID_RESP)
