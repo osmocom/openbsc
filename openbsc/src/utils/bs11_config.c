@@ -75,8 +75,6 @@ static const uint8_t obj_pa0_attr[] = {
 static const char *trx1_password = "1111111111";
 #define TEI_OML	25
 
-static const uint8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
-
 /* dummy function to keep gsm_data.c happy */
 struct osmo_counter *osmo_counter_alloc(const char *name)
 {
@@ -653,6 +651,8 @@ static int abis_nm_bs11cfg_rcvmsg(struct msgb *rx_msg)
 	int rc = -1;
 
 #if 0
+	const uint8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
+
 	if (rx_msg->len < LAPD_HDR_LEN
 			  + sizeof(struct abis_om_fom_hdr)
 			  + sizeof(struct abis_om_hdr)) {
