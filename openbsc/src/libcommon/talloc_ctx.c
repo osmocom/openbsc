@@ -18,6 +18,7 @@
  */
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/msgb.h>
 
 extern void *tall_bsc_ctx;
 extern void *tall_fle_ctx;
