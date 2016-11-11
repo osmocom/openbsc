@@ -349,7 +349,7 @@ DEFUN(cfg_om2k_con_group, cfg_om2k_con_group_cmd,
 			"Contiguity Index\n"				\
 
 DEFUN(cfg_om2k_con_path_dec, cfg_om2k_con_path_dec_cmd,
-	"con-path (add|del) <0-1023> <0-7> deconcentrated <0-63>",
+	"con-path (add|del) <0-2047> <0-255> deconcentrated <0-63>",
 	CON_PATH_HELP "De-concentrated in/outlet\n" "TEI Value\n")
 {
 	struct con_group *cg = vty->index;
@@ -371,7 +371,7 @@ DEFUN(cfg_om2k_con_path_dec, cfg_om2k_con_path_dec_cmd,
 }
 
 DEFUN(cfg_om2k_con_path_conc, cfg_om2k_con_path_conc_cmd,
-	"con-path (add|del) <0-1023> <0-7> concentrated <1-16>",
+	"con-path (add|del) <0-2047> <0-255> concentrated <1-16>",
 	CON_PATH_HELP "Concentrated in/outlet\n" "Tag Number\n")
 {
 	struct con_group *cg = vty->index;
