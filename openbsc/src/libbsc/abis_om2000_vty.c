@@ -348,6 +348,12 @@ DEFUN(cfg_bts_is_conn_list, cfg_bts_is_conn_list_cmd,
 	uint8_t ci = atoi(argv[3]);
 	struct is_conn_group *grp, *grp2;
 
+	if (bts->type != GSM_BTS_TYPE_RBS2000) {
+		vty_out(vty, "%% IS MO only exists in RBS2000%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	if (!strcmp(argv[0], "add")) {
 		grp = talloc_zero(bts, struct is_conn_group);
 		grp->icp1 = icp1;
