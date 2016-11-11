@@ -2102,6 +2102,7 @@ static void om2k_bts_s_init(struct osmo_fsm_inst *fi, uint32_t event, void *data
 	struct gsm_bts *bts = obfp->bts;
 
 	OSMO_ASSERT(event == OM2K_BTS_EVT_START);
+	e1inp_ericsson_set_altc(obfp->bts->oml_link->ts->line, 0);
 	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_CF,
 				BTS_FSM_TIMEOUT, 0);
 	om2k_mo_fsm_start(fi, OM2K_BTS_EVT_CF_DONE, bts->c0,
@@ -2139,6 +2140,7 @@ static void om2k_bts_s_wait_tf(struct osmo_fsm_inst *fi, uint32_t event, void *d
 
 	OSMO_ASSERT(event == OM2K_BTS_EVT_TF_DONE);
 
+	e1inp_ericsson_set_altc(obfp->bts->oml_link->ts->line, 1);
 	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_TRX,
 				BTS_FSM_TIMEOUT, 0);
 	obfp->next_trx_nr = 0;
