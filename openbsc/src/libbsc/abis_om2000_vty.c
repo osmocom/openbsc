@@ -48,9 +48,18 @@ static struct cmd_node om2k_node = {
 	1,
 };
 
+static struct cmd_node om2k_con_group_node = {
+	OM2K_CON_GROUP_NODE,
+	"%s(om2k-con-group)# ",
+	1,
+};
+
+struct con_group;
+
 struct oml_node_state {
 	struct gsm_bts *bts;
 	struct abis_om2k_mo mo;
+	struct con_group *cg;
 };
 
 static int dummy_config_write(struct vty *v)
@@ -246,65 +255,113 @@ DEFUN(om2k_cap_req, om2k_cap_req_cmd,
 	return CMD_SUCCESS;
 }
 
-
-struct con_conn_group {
-	struct llist_head list;
-
-	uint8_t cg;
-	uint16_t ccp;
-	uint8_t tag;
-	uint8_t tei;
-};
-
-static void add_con_list(struct gsm_bts *bts, uint8_t cg, uint16_t ccp,
-			 uint8_t tag, uint8_t tei)
+static struct con_group *con_group_find_or_create(struct gsm_bts *bts, uint8_t cg)
 {
-	struct con_conn_group *ent = talloc_zero(bts, struct con_conn_group);
+	struct con_group *ent;
 
+	llist_for_each_entry(ent, &bts->rbs2000.con.conn_groups, list) {
+		if (ent->cg == cg)
+			return ent;
+	}
+
+	ent = talloc_zero(bts, struct con_group);
+	ent->bts = bts;
 	ent->cg = cg;
-	ent->ccp = ccp;
-	ent->tag = tag;
-	ent->tei = tei;
-
+	INIT_LLIST_HEAD(&ent->paths);
 	llist_add_tail(&ent->list, &bts->rbs2000.con.conn_groups);
+
+	return ent;
 }
 
-static int del_con_list(struct gsm_bts *bts, uint8_t cg, uint16_t ccp,
-			uint8_t tag, uint8_t tei)
+static int con_group_del(struct gsm_bts *bts, uint8_t cg_id)
 {
-	struct con_conn_group *grp, *grp2;
+	struct con_group *cg, *cg2;
 
-	llist_for_each_entry_safe(grp, grp2, &bts->rbs2000.con.conn_groups, list) {
-		if (grp->cg == cg && grp->ccp == ccp && grp->tag == tag
-		    && grp->tei == tei) {
-			llist_del(&grp->list);
-			talloc_free(grp);
+	llist_for_each_entry_safe(cg, cg2, &bts->rbs2000.con.conn_groups, list) {
+		if (cg->cg == cg_id) {
+			llist_del(&cg->list);
+			talloc_free(cg);
+			return 0;
+		};
+	}
+	return -ENOENT;
+}
+
+static void con_group_add_path(struct con_group *cg, uint16_t ccp,
+				uint8_t ci, uint8_t tag, uint8_t tei)
+{
+	struct con_path *cp = talloc_zero(cg, struct con_path);
+
+	cp->ccp = ccp;
+	cp->ci = ci;
+	cp->tag = tag;
+	cp->tei = tei;
+	llist_add(&cp->list, &cg->paths);
+}
+
+static int con_group_del_path(struct con_group *cg, uint16_t ccp,
+				uint8_t ci, uint8_t tag, uint8_t tei)
+{
+	struct con_path *cp, *cp2;
+	llist_for_each_entry_safe(cp, cp2, &cg->paths, list) {
+		if (cp->ccp == ccp && cp->ci == ci && cp->tag == tag &&
+		    cp->tei == tei) {
+			llist_del(&cp->list);
+			talloc_free(cp);
 			return 0;
 		}
 	}
 	return -ENOENT;
 }
 
-#define CON_LIST_HELP	"CON connetiton list\n"			\
-			"Add entry to CON list\n"		\
-			"Delete entry from CON list\n"		\
-			"Connection Group Number\n"		\
-			"CON Connection Point\n"		\
-
-DEFUN(om2k_con_list_dec, om2k_con_list_dec_cmd,
-	"con-connection-list (add|del) <1-255> <0-1023> deconcentrated",
-	CON_LIST_HELP "De-concentrated in/outlet\n")
+DEFUN(cfg_om2k_con_group, cfg_om2k_con_group_cmd,
+	"con-connection-group <1-31>",
+	"Configure a CON (Concentrator) Connection Group\n"
+	"CON Connection Group Number\n")
 {
-	struct oml_node_state *oms = vty->index;
-	struct gsm_bts *bts = oms->bts;
-	uint8_t cg = atoi(argv[1]);
-	uint16_t ccp = atoi(argv[2]);
+	struct gsm_bts *bts = vty->index;
+	struct con_group *cg;
+	uint8_t cgid = atoi(argv[0]);
+
+	if (bts->type != GSM_BTS_TYPE_RBS2000) {
+		vty_out(vty, "%% CON MO only exists in RBS2000%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	cg = con_group_find_or_create(bts, cgid);
+	if (!cg) {
+		vty_out(vty, "%% Cannot create CON Group%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty->node = OM2K_CON_GROUP_NODE;
+	vty->index = cg;
+
+	return CMD_SUCCESS;
+}
+
+#define CON_PATH_HELP	"CON Path (In/Out)\n"				\
+			"Add CON Path to Concentration Group\n"		\
+			"Delete CON Path from Concentration Group\n"	\
+			"CON Conection Point\n"				\
+			"Contiguity Index\n"				\
+
+DEFUN(cfg_om2k_con_path_dec, cfg_om2k_con_path_dec_cmd,
+	"con-path (add|del) <0-1023> <0-7> deconcentrated <0-63>",
+	CON_PATH_HELP "De-concentrated in/outlet\n" "TEI Value\n")
+{
+	struct con_group *cg = vty->index;
+	uint16_t ccp = atoi(argv[1]);
+	uint8_t ci = atoi(argv[2]);
+	uint8_t tei = atoi(argv[3]);
 
 	if (!strcmp(argv[0], "add"))
-		add_con_list(bts, cg, ccp, 0, 0xff);
+		con_group_add_path(cg, ccp, ci, 0, tei);
 	else {
-		if (del_con_list(bts, cg, ccp, 0, 0xff) < 0) {
-			vty_out(vty, "%% No matching CON list entry%s",
+		if (con_group_del_path(cg, ccp, ci, 0, tei) < 0) {
+			vty_out(vty, "%% No matching CON Path%s",
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
@@ -313,20 +370,19 @@ DEFUN(om2k_con_list_dec, om2k_con_list_dec_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(om2k_con_list_tei, om2k_con_list_tei_cmd,
-	"con-connection-list (add|del) <1-255> <0-1023> tei <0-63>",
-	CON_LIST_HELP "Concentrated in/outlet with TEI\n" "TEI Number\n")
+DEFUN(cfg_om2k_con_path_conc, cfg_om2k_con_path_conc_cmd,
+	"con-path (add|del) <0-1023> <0-7> concentrated <1-16>",
+	CON_PATH_HELP "Concentrated in/outlet\n" "Tag Number\n")
 {
-	struct oml_node_state *oms = vty->index;
-	struct gsm_bts *bts = oms->bts;
-	uint8_t cg = atoi(argv[1]);
-	uint16_t ccp = atoi(argv[2]);
-	uint8_t tei = atoi(argv[3]);
+	struct con_group *cg = vty->index;
+	uint16_t ccp = atoi(argv[1]);
+	uint8_t ci = atoi(argv[2]);
+	uint8_t tag = atoi(argv[3]);
 
 	if (!strcmp(argv[0], "add"))
-		add_con_list(bts, cg, ccp, cg, tei);
+		con_group_add_path(cg, ccp, ci, tag, 0xff);
 	else {
-		if (del_con_list(bts, cg, ccp, cg, tei) < 0) {
+		if (con_group_del_path(cg, ccp, ci, tag, 0xff) < 0) {
 			vty_out(vty, "%% No matching CON list entry%s",
 				VTY_NEWLINE);
 			return CMD_WARNING;
@@ -437,22 +493,35 @@ DEFUN(om2k_conf_req, om2k_conf_req_cmd,
 	return CMD_SUCCESS;
 }
 
+static void dump_con_group(struct vty *vty, struct con_group *cg)
+{
+	struct con_path *cp;
+
+	llist_for_each_entry(cp, &cg->paths, list) {
+		vty_out(vty, "   con-path add %u %u ", cp->ccp, cp->ci);
+		if (cp->tei == 0xff) {
+			vty_out(vty, "concentrated %u%s", cp->tag,
+				VTY_NEWLINE);
+		} else {
+			vty_out(vty, "deconcentrated %u%s", cp->tei,
+				VTY_NEWLINE);
+		}
+	}
+}
+
 void abis_om2k_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 	struct is_conn_group *igrp;
-	struct con_conn_group *cgrp;
+	struct con_group *cgrp;
 
 	llist_for_each_entry(igrp, &bts->rbs2000.is.conn_groups, list)
 		vty_out(vty, "  is-connection-list add %u %u %u%s",
 			igrp->icp1, igrp->icp2, igrp->ci, VTY_NEWLINE);
 
 	llist_for_each_entry(cgrp, &bts->rbs2000.con.conn_groups, list) {
-		vty_out(vty, "  con-connection-list add %u %u ",
-			cgrp->cg, cgrp->ccp);
-		if (cgrp->tei == 0xff)
-			vty_out(vty, "deconcentrated%s", VTY_NEWLINE);
-		else
-			vty_out(vty, "tei %u%s", cgrp->tei, VTY_NEWLINE);
+		vty_out(vty, "  con-connection-group %u%s", cgrp->cg,
+			VTY_NEWLINE);
+		dump_con_group(vty, cgrp);
 	}
 }
 
@@ -474,10 +543,14 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_test_cmd);
 	install_element(OM2K_NODE, &om2k_cap_req_cmd);
 	install_element(OM2K_NODE, &om2k_conf_req_cmd);
-	install_element(OM2K_NODE, &om2k_con_list_dec_cmd);
-	install_element(OM2K_NODE, &om2k_con_list_tei_cmd);
+
+	install_node(&om2k_con_group_node, dummy_config_write);
+	vty_install_default(OM2K_CON_GROUP_NODE);
+	install_element(OM2K_CON_GROUP_NODE, &cfg_om2k_con_path_dec_cmd);
+	install_element(OM2K_CON_GROUP_NODE, &cfg_om2k_con_path_conc_cmd);
 
 	install_element(BTS_NODE, &cfg_bts_is_conn_list_cmd);
+	install_element(BTS_NODE, &cfg_om2k_con_group_cmd);
 
 	return 0;
 }

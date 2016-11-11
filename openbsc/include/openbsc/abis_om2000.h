@@ -56,6 +56,39 @@ struct is_conn_group {
 	uint8_t ci;
 };
 
+/* on-wire format for CON Path */
+struct om2k_con_path {
+	uint16_t ccp;
+	uint8_t ci;
+	uint8_t tag;
+	uint8_t tei;
+} __attribute__ ((packed));
+
+/* internal data format for CON group */
+struct con_group {
+	/* links list of CON groups in BTS */
+	struct llist_head list;
+	struct gsm_bts *bts;
+	/* CON Group ID */
+	uint8_t cg;
+	/* list of CON paths in this group */
+	struct llist_head paths;
+};
+
+/* internal data format for CON path */
+struct con_path {
+	/* links with con_group.paths */
+	struct llist_head list;
+	/* CON Connection Point */
+	uint16_t ccp;
+	/* Contiguity Index */
+	uint8_t ci;
+	/* Tag */
+	uint8_t tag;
+	/* TEI */
+	uint8_t tei;
+};
+
 extern const struct abis_om2k_mo om2k_mo_cf;
 extern const struct abis_om2k_mo om2k_mo_is;
 extern const struct abis_om2k_mo om2k_mo_con;

@@ -28,6 +28,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/bsc_nat.h>
+#include <openbsc/abis_om2000.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/command.h>
@@ -78,6 +79,15 @@ int bsc_vty_go_parent(struct vty *vty)
 		 */
 		talloc_free(vty->index);
 		vty->index = NULL;
+		break;
+	case OM2K_CON_GROUP_NODE:
+		vty->node = BTS_NODE;
+		{
+			struct con_group *cg = vty->index;
+			struct gsm_bts *bts = cg->bts;
+			vty->index = bts;
+			vty->index_sub = &bts->description;
+		}
 		break;
 	case NAT_BSC_NODE:
 		vty->node = NAT_NODE;
