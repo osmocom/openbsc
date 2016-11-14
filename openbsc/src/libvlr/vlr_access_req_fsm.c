@@ -27,7 +27,6 @@
 #include "vlr_core.h"
 #include "vlr_auth_fsm.h"
 #include "vlr_lu_fsm.h"
-#include "vlr_access_req_fsm.h"
 
 #define S(x)	(1 << (x))
 
@@ -82,7 +81,6 @@ static void assoc_par_with_subscr(struct osmo_fsm_inst *fi, struct vlr_subscribe
 	struct vlr_instance *vlr = par->vlr;
 
 	OSMO_ASSERT(vsub->proc_arq_fsm == NULL);
-	vsub->proc_arq_fsm = fi;
 	vsub->msc_conn_ref = par->msc_conn_ref;
 	par->vsub = vsub;
 	/* Tell MSC to associate this subscriber with the given
@@ -472,30 +470,47 @@ static struct osmo_fsm proc_arq_vlr_fsm = {
 };
 
 struct osmo_fsm_inst *
-vlr_proc_acc_req(struct vlr_instance *vlr, void *msc_conn_ref,
-		   enum vlr_parq_type type, uint32_t tmsi, const char *imsi,
-		   const struct osmo_location_area_id *lai)
+vlr_proc_acc_req(struct osmo_fsm_inst *parent, uint32_t parent_term,
+		 struct vlr_instance *vlr, void *msc_conn_ref,
+		 enum vlr_parq_type type, const uint8_t *mi_lv,
+		 const struct osmo_location_area_id *lai)
 {
 	struct osmo_fsm_inst *fi;
 	struct proc_arq_priv *par;
+	char mi_string[GSM48_MI_SIZE];
+	uint8_t mi_type;
 
-	fi = osmo_fsm_inst_alloc_child(&proc_arq_vlr_fsm, parent, term_event);
+	fi = osmo_fsm_inst_alloc_child(&proc_arq_vlr_fsm, parent,
+					parent_term);;
 	if (!fi)
 		return NULL;
 
 	par = talloc_zero(fi, struct proc_arq_priv);
+	fi->priv = par;
 	par->vlr = vlr;
 	par->msc_conn_ref = msc_conn_ref;
-	par->tmsi = tmsi;
 	par->type = type;
 	par->lai = *lai;
-	if (imsi) {
-		strncpy(par->imsi, imsi, sizeof(par->imsi)-1);
+
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi_lv+1, mi_lv[0]);
+	mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;
+	switch (mi_type) {
+	case GSM_MI_TYPE_IMSI:
+		strncpy(par->imsi, mi_string, sizeof(par->imsi)-1);
 		par->imsi[sizeof(par->imsi)-1] = '\0';
 		par->by_tmsi = false;
-	} else
+		break;
+	case GSM_MI_TYPE_TMSI:
 		par->by_tmsi = true;
-	fi->priv = par;
+		par->tmsi = osmo_load32be(mi_lv+2);
+		break;
+	case GSM_MI_TYPE_IMEI:
+		/* TODO: IMEI (emergency call) */
+	default:
+		/* FIXME: directly send reject? */
+		osmo_fsm_inst_term(fi, OSMO_FSM_TERM_ERROR, NULL);
+		return NULL;
+	}
 
 	osmo_fsm_inst_dispatch(fi, PR_ARQ_E_START, NULL);
 

@@ -113,6 +113,8 @@ struct gsm_subscriber_connection {
 	struct gsm_security_operation *sec_operation;
 	struct gsm_anchor_operation *anch_operation;
 
+	struct osmo_fsm_inst *master_fsm;
+
 	/* Are we part of a special "silent" call */
 	int silent_call;
 

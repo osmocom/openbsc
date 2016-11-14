@@ -120,9 +120,9 @@ struct vlr_subscriber {
 	int use_count;
 	time_t expire_lu;	/* FIXME: overlap with periodic_lu_timer/age_indicator */
 
-	struct osmo_fsm_inst *auth_fsm;
 	struct osmo_fsm_inst *lu_fsm;
-	struct omso_fsm_inst *proc_arq_fsm;
+	struct osmo_fsm_inst *auth_fsm;
+	struct osmo_fsm_inst *proc_arq_fsm;
 
 	void *msc_conn_ref;
 
@@ -186,16 +186,18 @@ struct vlr_instance {
 	} cfg;
 };
 
-struct vlr_subscriber *
-vlr_loc_update(struct vlr_instance *vlr, void *msc_conn_ref,
+struct osmo_fsm_inst *
+vlr_loc_update(struct osmo_fsm_inst *parent, uint32_t parent_term,
+		struct vlr_instance *vlr, void *msc_conn_ref,
 		enum vlr_lu_type type, uint32_t tmsi, const char *imsi,
 		const struct osmo_location_area_id *old_lai,
 		const struct osmo_location_area_id *new_lai);
 
 /* Process_Access_Request (CM SERV REQ / PAGING RESP) */
-struct vlr_subscriber *
-vlr_process_access_req(struct vlr_instance *vlr, void *msc_conn_ref, uint32_t tmsi,
-			const char *imsi, const struct osmo_location_area_id *lai);
+struct osmo_fsm_inst *
+vlr_process_access_req(struct osmo_fsm_inst *parent, uint32_t parent_term,
+			struct vlr_instance *vlr, void *msc_conn_ref, uint32_t tmsi,
+		const char *imsi, const struct osmo_location_area_id *lai);
 
 /* tell the VLR that the subscriber connection is gone */
 int vlr_sub_disconnected(struct vlr_subscriber *vsub);
@@ -238,3 +240,42 @@ void vlr_sub_cancel(struct vlr_subscriber *vsub);
 int vlr_sub_alloc_tmsi(struct vlr_subscriber *vsub);
 
 uint32_t vlr_timer(struct vlr_instance *vlr, uint32_t timer);
+
+
+
+/* Process Acccess Request FSM */
+
+enum vlr_proc_arq_result {
+	VLR_PR_ARQ_RES_SYSTEM_FAILURE,
+	VLR_PR_ARQ_RES_ILLEGAL_SUBSCR,
+	VLR_PR_ARQ_RES_UNIDENT_SUBSCR,
+	VLR_PR_ARQ_RES_ROAMING_NOTALLOWED,
+	VLR_PR_ARQ_RES_ILLEGAL_EQUIP,
+	VLR_PR_ARQ_RES_UNKNOWN_ERROR,
+	VLR_PR_ARQ_RES_PASSED,
+};
+
+enum proc_arq_vlr_event {
+	PR_ARQ_E_START,
+	PR_ARQ_E_ID_IMSI,
+	PR_ARQ_E_AUTH_RES,
+	PR_ARQ_E_UPD_LOC_RES,
+	PR_ARQ_E_TRACE_RES,
+	PR_ARQ_E_IMEI_RES,
+	PR_ARQ_E_PRES_RES,
+	PR_ARQ_E_TMSI_ACK,
+};
+
+enum vlr_parq_type {
+	VLR_PR_ARQ_T_CM_SERV_REQ,
+	VLR_PR_ARQ_T_PAGING_RESP,
+	/* FIXME: differentiate between services of 24.008 10.5.3.3 */
+};
+
+struct osmo_fsm_inst *
+vlr_proc_acc_req(struct osmo_fsm_inst *parent, uint32_t parent_term,
+		 struct vlr_instance *vlr, void *msc_conn_ref,
+		 enum vlr_parq_type type, const uint8_t *mi_lv,
+		 const struct osmo_location_area_id *lai);
+
+void vlr_parq_fsm_init(void);

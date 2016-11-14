@@ -25,6 +25,8 @@
 #include <openbsc/debug.h>
 #include <openbsc/transaction.h>
 #include <openbsc/db.h>
+#include <openbsc/vlr.h>
+#include <openbsc/osmo_msc.h>
 
 #include <openbsc/gsm_04_11.h>
 
@@ -58,7 +60,7 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	 */
 	if (conn->silent_call)
 		return BSC_API_CONN_POL_ACCEPT;
-	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
+	if (conn->sec_operation || conn->anch_operation)
 		return BSC_API_CONN_POL_ACCEPT;
 	if (trans_has_conn(conn))
 		return BSC_API_CONN_POL_ACCEPT;
@@ -152,7 +154,7 @@ struct bsc_api *msc_bsc_api() {
 }
 
 /* lchan release handling */
-static void msc_release_connection(struct gsm_subscriber_connection *conn)
+void msc_release_connection(struct gsm_subscriber_connection *conn)
 {
 	/* skip when we are in release, e.g. due an error */
 	if (conn->in_release)
@@ -162,7 +164,7 @@ static void msc_release_connection(struct gsm_subscriber_connection *conn)
 		LOGP(DMSC, LOGL_ERROR, "release_connection() but silent_call active?!?\n");
 
 	/* check if there is a pending operation */
-	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
+	if (conn->sec_operation || conn->anch_operation)
 		LOGP(DMSC, LOGL_ERROR, "relase_connection() but {loc,sec,anch}_operation alive?!?\n");
 
 	if (trans_has_conn(conn))
@@ -185,7 +187,8 @@ static void msc_release_connection(struct gsm_subscriber_connection *conn)
 		vlr_sub_disconnected(conn->subscr);
 
 	gsm0808_clear(conn);
-	msc_subscr_con_free(conn);
+	/* TODO: is there anything to wait for? */
+	osmo_fsm_inst_dispatch(conn->master_fsm, SUB_CON_E_CLOSE_CONF, NULL);
 }
 
 /* increment the ref-count. Needs to be called by every user */
@@ -215,7 +218,6 @@ void subscr_con_put(struct gsm_subscriber_connection *conn)
 	conn->use_count--;
 	DEBUGP(DMSC, "decreased subscr_con use_count to %u\n", conn->use_count);
 
-	if (conn->use_count == 0) {
-		msc_release_connection(conn);
-	}
+	if (conn->use_count == 0)
+		osmo_fsm_inst_dispatch(conn->master_fsm, SUB_CON_E_MO_CLOSE, NULL);
 }

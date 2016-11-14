@@ -426,7 +426,6 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_loc_upd_req *lu;
-	struct gsm_subscriber *subscr = NULL;
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	enum vlr_lu_type vlr_lu_type = VLR_LU_TYPE_REGULAR;
@@ -488,16 +487,18 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	new_lai.plmn.mnc = bts->network->network_code;
 	new_lai.lac = bts->location_area_code;
 
-	subscr = vlr_loc_update(g_vlr, conn, vlr_lu_type, tmsi, imsi,
-				&old_lai, &new_lai);
-	if (!subscr) {
-		DEBUGPC(DRR, "<- Can't find any subscriber for this ID\n");
-		/* FIXME: request id? close channel? */
-		return -EINVAL;
+	conn->lu_fsm = vlr_loc_update(conn->master_fsm, SUB_CON_E_LU_RES,
+				      g_vlr, conn, vlr_lu_type, tmsi, imsi,
+				      &old_lai, &new_lai);
+	if (!conn->lu_fsm) {
+		DEBUGPC(DRR, "%s: Can't start LU FSM\n", mi_string);
+		return 0;
 	}
 
-	conn->subscr = subscr;
-	conn->subscr->equipment.classmark1 = lu->classmark1;
+	/* increase conn ref count for the LU FSM */
+	subscr_con_get(conn);
+
+	//FIXME conn->subscr->equipment.classmark1 = lu->classmark1;
 
 	return 0;
 }
@@ -755,7 +756,6 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	char mi_string[GSM48_MI_SIZE];
 
 	struct gsm_network *network = conn->network;
-	struct gsm_subscriber *subscr;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_service_request *req =
 			(struct gsm48_service_request *)gh->data;
@@ -764,6 +764,11 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	uint8_t *classmark2 = gh->data+2;
 	uint8_t mi_len = *(classmark2 + classmark2_len);
 	uint8_t *mi = (classmark2 + classmark2_len + 1);
+	struct osmo_location_area_id lai;
+
+	lai.plmn.mcc = bts->network->country_code;
+	lai.plmn.mnc = bts->network->network_code;
+	lai.lac = bts->location_area_code;
 
 	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
@@ -785,39 +790,31 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 		DEBUGPC(DMM, "serv_type=0x%02x MI(%s)=%s\n",
 			req->cm_service_type, gsm48_mi_type_name(mi_type),
 			mi_string);
-		subscr = subscr_get_by_imsi(network->subscr_group,
-					    mi_string);
 	} else if (mi_type == GSM_MI_TYPE_TMSI) {
 		DEBUGPC(DMM, "serv_type=0x%02x MI(%s)=%s\n",
 			req->cm_service_type, gsm48_mi_type_name(mi_type),
 			mi_string);
-		subscr = subscr_get_by_tmsi(network->subscr_group,
-				tmsi_from_string(mi_string));
 	} else {
 		DEBUGPC(DMM, "mi_type is not expected: %d\n", mi_type);
 		return gsm48_tx_mm_serv_rej(conn,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
-	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
+	proc_arq_fsm = vlr_proc_acc_req(conn->master_fsm,
+					SUB_CON_E_PARQ_RES, g_vlr,
+					conn, VLR_PR_ARQ_T_CM_SERV_REQ,
+					mi-1, &lai);
+	if (!proc_arq_fsm)
+		return gsm48_tx_mm_serv_rej(conn,
+					    GSM48_REJECT_IMSI_UNKNOWN_IN_VLR);
+	/* increase use count for new PARQ FSM */
+	subscr_con_get(conn);
 
 	if (is_siemens_bts(conn->bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);
 
-
-	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
-	if (!subscr)
-		return gsm48_tx_mm_serv_rej(conn,
-					    GSM48_REJECT_IMSI_UNKNOWN_IN_VLR);
-
-	if (!conn->subscr)
-		conn->subscr = subscr;
-	else if (conn->subscr == subscr)
-		subscr_put(subscr); /* lchan already has a ref, don't need another one */
-	else {
-		DEBUGP(DMM, "<- CM Channel already owned by someone else?\n");
-		subscr_put(subscr);
-	}
+#if 0
+	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
 
 	subscr->equipment.classmark2_len = classmark2_len;
 	memcpy(subscr->equipment.classmark2, classmark2, classmark2_len);
@@ -825,6 +822,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 
 	/* we will send a MM message soon */
 	conn->expire_timer_stopped = 1;
+#endif
 
 	return gsm48_secure_channel(conn, req->cipher_key_seq,
 			_gsm48_rx_mm_serv_req_sec_cb, NULL);
@@ -956,16 +954,34 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 	return rc;
 }
 
+static uint8_t *gsm48_cm2_get_mi(uint8_t *classmark2_lv, unsigned int tot_len)
+{
+	/* Check the size for the classmark */
+	if (tot_len < 1 + *classmark2_lv)
+		return NULL;
+
+	uint8_t *mi_lv = classmark2_lv + *classmark2_lv + 1;
+	if (tot_len < 2 + *classmark2_lv + mi_lv[0])
+		return NULL;
+
+	return mi_lv;
+}
+
 /* Receive a PAGING RESPONSE message from the MS */
 static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_pag_resp *resp;
 	uint8_t *classmark2_lv = gh->data + 1;
+	uint8_t *mi_lv;
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
-	struct gsm_subscriber *subscr = NULL;
 	int rc = 0;
+	struct osmo_location_area_id lai;
+
+	lai.plmn.mcc = bts->network->country_code;
+	lai.plmn.mnc = bts->network->network_code;
+	lai.lac = bts->location_area_code;
 
 	resp = (struct gsm48_pag_resp *) &gh->data[0];
 	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*gh),
@@ -973,25 +989,25 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	DEBUGP(DRR, "PAGING RESPONSE: MI(%s)=%s\n",
 		gsm48_mi_type_name(mi_type), mi_string);
 
-	switch (mi_type) {
-	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(conn->network->subscr_group,
-					    tmsi_from_string(mi_string));
-		break;
-	case GSM_MI_TYPE_IMSI:
-		subscr = subscr_get_by_imsi(conn->network->subscr_group,
-					    mi_string);
-		break;
+	mi_lv = gsm48_cm2_get_mi(classmark2_lv, msgb_l3len(msg) - sizeof(*gh));
+	if (!mi_lv) {
+		/* FIXME */
+		return -1;
 	}
 
-	if (!subscr) {
-		DEBUGP(DRR, "<- Can't find any subscriber for this ID\n");
-		/* FIXME: request id? close channel? */
-		return -EINVAL;
+	proc_arq_fsm = vlr_proc_acc_req(conn->master_fsm,
+					SUB_CON_E_PARQ_RES, g_vlr,
+					conn, VLR_PR_ARQ_T_PAGING_RESP,
+					mi_lv, &lai);
+	if (!proc_arq_fsm) {
+		/* FIXME */
+		return -1;
 	}
+	subscr_con_get(conn);
+
+#if 0
+	/* FIXME */
 	log_set_context(BSC_CTX_SUBSCR, subscr);
-	DEBUGP(DRR, "<- Channel was requested by %s\n",
-		subscr->name && strlen(subscr->name) ? subscr->name : subscr->imsi);
 
 	subscr->equipment.classmark2_len = *classmark2_lv;
 	memcpy(subscr->equipment.classmark2, classmark2_lv+1, *classmark2_lv);
@@ -1001,6 +1017,7 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	conn->expire_timer_stopped = 1;
 
 	rc = gsm48_handle_paging_resp(conn, msg, subscr);
+#endif
 	return rc;
 }
 
