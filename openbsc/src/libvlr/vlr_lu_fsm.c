@@ -1034,8 +1034,9 @@ static struct osmo_fsm vlr_lu_fsm = {
 	.event_names = fsm_lu_event_names,
 };
 
-struct vlr_subscriber *
-vlr_loc_update(struct vlr_instance *vlr, void *msc_conn_ref,
+struct osmo_fsm_inst *
+vlr_loc_update(struct osmo_fsm_inst *parent, uint32_t parent_term,
+		struct vlr_instance *vlr, void *msc_conn_ref,
 		enum vlr_lu_type type, uint32_t tmsi, const char *imsi,
 		const struct osmo_location_area_id *old_lai,
 		const struct osmo_location_area_id *new_lai)
@@ -1052,8 +1053,7 @@ vlr_loc_update(struct vlr_instance *vlr, void *msc_conn_ref,
 		id_str = buf;
 	}
 
-	fi = osmo_fsm_inst_alloc(&vlr_lu_fsm, vlr, NULL, LOGL_DEBUG,
-				 id_str);
+	fi = osmo_fsm_inst_alloc_child(&vlr_lu_fsm, parent, parent_term);
 	if (!fi)
 		return NULL;
 

@@ -246,6 +246,10 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 	conn = talloc_zero(lchan->ts->trx->bts->network, struct gsm_subscriber_connection);
 	if (!conn)
 		return NULL;
+	if (!msc_create_conn_fsm(conn, NULL)) {
+		talloc_free(conn);
+		return NULL;
+	}
 
 	/* Configure the time and start it so it will be closed */
 	conn->lchan = lchan;

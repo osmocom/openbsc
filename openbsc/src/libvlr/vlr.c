@@ -38,7 +38,6 @@
 
 #include "vlr_core.h"
 #include "vlr_auth_fsm.h"
-#include "vlr_access_req_fsm.h"
 #include "vlr_lu_fsm.h"
 
 #define SGSN_SUBSCR_MAX_RETRIES 3
@@ -751,6 +750,8 @@ struct vlr_instance *vlr_init(void *ctx, const struct vlr_ops *ops,
 	osmo_fsm_register(&vlr_auth_fsm);
 	/* osmo_lu_fsm.c */
 	vlr_lu_fsm_init();
+	/* vlr_access_request_fsm.c */
+	vlr_parq_fsm_init();
 
 	return vlr;
 }
