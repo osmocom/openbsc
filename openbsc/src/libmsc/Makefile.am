@@ -35,6 +35,7 @@ libmsc_a_SOURCES = \
 	rrlp.c \
 	silent_call.c \
 	sms_queue.c \
+	subscr_conn_fsm.c \
 	token_auth.c \
 	ussd.c \
 	vty_interface_layer3.c \

@@ -247,6 +247,10 @@ struct gsm_subscriber_connection *bsc_subscr_con_allocate(struct gsm_lchan *lcha
 	conn = talloc_zero(net, struct gsm_subscriber_connection);
 	if (!conn)
 		return NULL;
+	if (!msc_create_conn_fsm(conn, NULL)) {
+		talloc_free(conn);
+		return NULL;
+	}
 
 	conn->network = net;
 	conn->lchan = lchan;
