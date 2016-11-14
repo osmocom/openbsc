@@ -1,3 +1,9 @@
+openbsc (0.15.0+z10) unstable; urgency=medium
+
+  * Prevent a possible memory corruption in gbproxy
+
+ -- Daniel Willmann <daniel@sysmocom.de>  Mon, 14 Nov 2016 17:27:37 +0100
+
 openbsc (0.15.0+z9) unstable; urgency=medium
 
   * Send dummy MSISDN on PDP context activation if it is not known
