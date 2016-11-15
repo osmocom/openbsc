@@ -835,11 +835,13 @@ mo2nm_state(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 		trx = gsm_bts_trx_num(bts, mo->assoc_so);
 		if (!trx)
 			return NULL;
+		/* FIXME */
 		break;
 	case OM2K_MO_CLS_RX:
 		trx = gsm_bts_trx_num(bts, mo->assoc_so);
 		if (!trx)
 			return NULL;
+		/* FIXME */
 		break;
 	}
 
