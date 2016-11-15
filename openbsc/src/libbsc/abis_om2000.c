@@ -2179,22 +2179,23 @@ static void om2k_bts_s_wait_con(struct osmo_fsm_inst *fi, uint32_t event, void *
 	struct gsm_bts *bts = obfp->bts;
 
 	OSMO_ASSERT(event == OM2K_BTS_EVT_CON_DONE);
-	/* TF can take a long time to initialize, wait for 10min */
-	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_TF, 600, 0);
-	om2k_mo_fsm_start(fi, OM2K_BTS_EVT_TF_DONE, bts->c0,
-			  &bts->rbs2000.tf.om2k_mo);
+
+	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_IS,
+				BTS_FSM_TIMEOUT, 0);
+	om2k_mo_fsm_start(fi, OM2K_BTS_EVT_IS_DONE, bts->c0,
+			  &bts->rbs2000.is.om2k_mo);
 }
 
-static void om2k_bts_s_wait_tf(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+static void om2k_bts_s_wait_is(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct om2k_bts_fsm_priv *obfp = fi->priv;
 	struct gsm_bts_trx *trx;
 
-	OSMO_ASSERT(event == OM2K_BTS_EVT_TF_DONE);
+	OSMO_ASSERT(event == OM2K_BTS_EVT_IS_DONE);
 
 	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_TRX,
 				BTS_FSM_TIMEOUT, 0);
-	obfp->next_trx_nr = 0;
+	obfp->next_trx_nr = 1;
 	trx = gsm_bts_trx_num(obfp->bts, obfp->next_trx_nr++);
 	om2k_trx_fsm_start(fi, trx, OM2K_BTS_EVT_TRX_DONE);
 }
