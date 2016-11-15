@@ -2438,10 +2438,10 @@ static int process_mo_state(struct gsm_bts *bts, struct om2k_decoded_msg *odm)
 }
 
 /* Display fault report bits (helper function of display_fault_maps()) */
-static bool display_fault_bits(const uint8_t *vect, unsigned int len,
+static bool display_fault_bits(const uint8_t *vect, uint16_t len,
 			       uint8_t dei, const struct abis_om2k_mo *mo)
 {
-	int i;
+	uint16_t i;
 	int k;
 	bool faults_present = false;
 	int first = 1;
