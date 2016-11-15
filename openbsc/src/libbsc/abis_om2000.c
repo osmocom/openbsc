@@ -1417,6 +1417,10 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 		msgb_tv_put(msg, OM2K_DEI_LSC_FILT_TIME, 10);	/* units of 100ms */
 		msgb_tv_put(msg, OM2K_DEI_CALL_SUPV_TIME, 8);
 		msgb_tv_put(msg, OM2K_DEI_ENCR_ALG, 0x00);
+		/* Not sure what those below mean */
+		msgb_tv_put(msg, 0x9e, 0x00);
+		msgb_tv_put(msg, 0x9f, 0x37);
+		msgb_tv_put(msg, 0xa0, 0x01);
 		break;
 	}
 
