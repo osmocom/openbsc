@@ -417,6 +417,29 @@ DEFUN(cfg_om2k_con_path_conc, cfg_om2k_con_path_conc_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_alt_mode, cfg_bts_alt_mode_cmd,
+	"abis-lower-transport (single-timeslot|super-channel)",
+	"Configure thee Abis Lower Transport\n"
+	"Single Timeslot (classic Abis)\n"
+	"SuperChannel (Packet Abis)\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct con_group *cg;
+
+	if (bts->type != GSM_BTS_TYPE_RBS2000) {
+		vty_out(vty, "%% Command only works for RBS2000%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[0], "super-channel"))
+		bts->rbs2000.use_superchannel = 1;
+	else
+		bts->rbs2000.use_superchannel = 0;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_is_conn_list, cfg_bts_is_conn_list_cmd,
 	"is-connection-list (add|del) <0-2047> <0-2047> <0-255>",
 	"Interface Switch Connection List\n"
@@ -548,6 +571,9 @@ void abis_om2k_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 			VTY_NEWLINE);
 		dump_con_group(vty, cgrp);
 	}
+	if (bts->rbs2000.use_superchannel)
+		vty_out(vty, "  abis-lower-transport super-channel%s",
+			VTY_NEWLINE);
 }
 
 int abis_om2k_vty_init(void)
@@ -575,6 +601,7 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_CON_GROUP_NODE, &cfg_om2k_con_path_conc_cmd);
 
 	install_element(BTS_NODE, &cfg_bts_is_conn_list_cmd);
+	install_element(BTS_NODE, &cfg_bts_alt_mode_cmd);
 	install_element(BTS_NODE, &cfg_om2k_con_group_cmd);
 	install_element(BTS_NODE, &del_om2k_con_group_cmd);
 
