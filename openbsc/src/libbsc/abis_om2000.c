@@ -2212,7 +2212,7 @@ static void om2k_bts_s_wait_is(struct osmo_fsm_inst *fi, uint32_t event, void *d
 
 	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_TRX,
 				BTS_FSM_TIMEOUT, 0);
-	obfp->next_trx_nr = 0;
+	obfp->next_trx_nr = 1;
 	trx = gsm_bts_trx_num(obfp->bts, obfp->next_trx_nr++);
 	om2k_trx_fsm_start(fi, trx, OM2K_BTS_EVT_TRX_DONE);
 }
