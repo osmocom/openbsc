@@ -39,6 +39,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/abis_rsl.h>
 #include <openbsc/abis_om2000.h>
 #include <openbsc/signal.h>
 #include <osmocom/abis/e1_input.h>
@@ -1282,6 +1283,8 @@ static uint8_t pchan2comb(enum gsm_phys_chan_config pchan)
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_TCH_H:
 	case GSM_PCHAN_PDCH:
+	case GSM_PCHAN_TCH_F_PDCH:
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
 		return 8;
 	default:
 		return 0;
@@ -1674,6 +1677,15 @@ static void om2k_mo_st_wait_enable_res(struct osmo_fsm_inst *fi, uint32_t event,
 
 static void om2k_mo_st_wait_opinfo_accept(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
+	struct om2k_mo_fsm_priv *omfp = fi->priv;
+
+	/* if we have just received opinfo accept for the timeslot,
+	 * start dynamic TCH switching procedures */
+	if (omfp->mo->addr.class == OM2K_MO_CLS_TS) {
+		struct gsm_bts_trx_s *ts;
+		ts = mo2obj(omfp->trx->bts, &omfp->mo->addr);
+		dyn_ts_init(ts);
+	}
 	osmo_fsm_inst_state_chg(fi, OM2K_ST_DONE, 0, 0);
 }
 
