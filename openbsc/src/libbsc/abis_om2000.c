@@ -1284,6 +1284,8 @@ static uint8_t pchan2comb(enum gsm_phys_chan_config pchan)
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_TCH_H:
 	case GSM_PCHAN_PDCH:
+	case GSM_PCHAN_TCH_F_PDCH:
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
 		return 8;
 	default:
 		return 0;
