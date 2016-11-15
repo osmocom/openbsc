@@ -2157,18 +2157,19 @@ static void om2k_bts_s_wait_cf(struct osmo_fsm_inst *fi, uint32_t event, void *d
 	struct gsm_bts *bts = obfp->bts;
 
 	OSMO_ASSERT(event == OM2K_BTS_EVT_CF_DONE);
-	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_IS,
-				BTS_FSM_TIMEOUT, 0);
-	om2k_mo_fsm_start(fi, OM2K_BTS_EVT_IS_DONE, bts->c0,
-			  &bts->rbs2000.is.om2k_mo);
+	/* TF can take a long time to initialize, wait for 10min */
+	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_TF, 600, 0);
+	om2k_mo_fsm_start(fi, OM2K_BTS_EVT_TF_DONE, bts->c0,
+			  &bts->rbs2000.tf.om2k_mo);
 }
 
-static void om2k_bts_s_wait_is(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+static void om2k_bts_s_wait_tf(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct om2k_bts_fsm_priv *obfp = fi->priv;
 	struct gsm_bts *bts = obfp->bts;
 
-	OSMO_ASSERT(event == OM2K_BTS_EVT_IS_DONE);
+	OSMO_ASSERT(event == OM2K_BTS_EVT_TF_DONE);
+
 	osmo_fsm_inst_state_chg(fi, OM2K_BTS_S_WAIT_CON,
 				BTS_FSM_TIMEOUT, 0);
 	om2k_mo_fsm_start(fi, OM2K_BTS_EVT_CON_DONE, bts->c0,
@@ -2232,30 +2233,30 @@ static const struct osmo_fsm_state om2k_bts_states[] = {
 	[OM2K_BTS_S_WAIT_CF] = {
 		.in_event_mask = S(OM2K_BTS_EVT_CF_DONE),
 		.out_state_mask = S(OM2K_BTS_S_ERROR) |
-				  S(OM2K_BTS_S_WAIT_IS),
+				  S(OM2K_BTS_S_WAIT_TF),
 		.name = "WAIT-CF",
 		.action = om2k_bts_s_wait_cf,
-	},
-	[OM2K_BTS_S_WAIT_IS] = {
-		.in_event_mask = S(OM2K_BTS_EVT_IS_DONE),
-		.out_state_mask = S(OM2K_BTS_S_ERROR) |
-				  S(OM2K_BTS_S_WAIT_CON),
-		.name = "WAIT-IS",
-		.action = om2k_bts_s_wait_is,
-	},
-	[OM2K_BTS_S_WAIT_CON] = {
-		.in_event_mask = S(OM2K_BTS_EVT_CON_DONE),
-		.out_state_mask = S(OM2K_BTS_S_ERROR) |
-				  S(OM2K_BTS_S_WAIT_TF),
-		.name = "WAIT-CON",
-		.action = om2k_bts_s_wait_con,
 	},
 	[OM2K_BTS_S_WAIT_TF] = {
 		.in_event_mask = S(OM2K_BTS_EVT_TF_DONE),
 		.out_state_mask = S(OM2K_BTS_S_ERROR) |
-				  S(OM2K_BTS_S_WAIT_TRX),
+				  S(OM2K_BTS_S_WAIT_CON),
 		.name = "WAIT-TF",
 		.action = om2k_bts_s_wait_tf,
+	},
+	[OM2K_BTS_S_WAIT_CON] = {
+		.in_event_mask = S(OM2K_BTS_EVT_CON_DONE),
+		.out_state_mask = S(OM2K_BTS_S_ERROR) |
+				  S(OM2K_BTS_S_WAIT_IS),
+		.name = "WAIT-CON",
+		.action = om2k_bts_s_wait_con,
+	},
+	[OM2K_BTS_S_WAIT_IS] = {
+		.in_event_mask = S(OM2K_BTS_EVT_IS_DONE),
+		.out_state_mask = S(OM2K_BTS_S_ERROR) |
+				  S(OM2K_BTS_S_WAIT_TRX),
+		.name = "WAIT-IS",
+		.action = om2k_bts_s_wait_is,
 	},
 	[OM2K_BTS_S_WAIT_TRX] = {
 		.in_event_mask = S(OM2K_BTS_EVT_TRX_DONE),
