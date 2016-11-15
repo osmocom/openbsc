@@ -891,29 +891,31 @@ DEFUN(show_trx,
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
-		if (trx_nr >= bts->num_trx) {
+		trx = gsm_bts_trx_num(bts, trx_nr);
+		if (!trx) {
 			vty_out(vty, "%% can't find TRX '%s'%s", argv[1],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		trx = gsm_bts_trx_num(bts, trx_nr);
 		trx_dump_vty(vty, trx);
 		return CMD_SUCCESS;
 	}
 	if (bts) {
 		/* print all TRX in this BTS */
-		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+		for (trx_nr = 0; 255; trx_nr++) {
 			trx = gsm_bts_trx_num(bts, trx_nr);
-			trx_dump_vty(vty, trx);
+			if (trx)
+				trx_dump_vty(vty, trx);
 		}
 		return CMD_SUCCESS;
 	}
 
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
 		bts = gsm_bts_num(net, bts_nr);
-		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+		for (trx_nr = 0; trx_nr < 255; trx_nr++) {
 			trx = gsm_bts_trx_num(bts, trx_nr);
-			trx_dump_vty(vty, trx);
+			if (trx)
+				trx_dump_vty(vty, trx);
 		}
 	}
 
@@ -962,12 +964,12 @@ DEFUN(show_ts,
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
-		if (trx_nr >= bts->num_trx) {
+		trx = gsm_bts_trx_num(bts, trx_nr);
+		if (!trx) {
 			vty_out(vty, "%% can't find TRX '%s'%s", argv[1],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		trx = gsm_bts_trx_num(bts, trx_nr);
 	}
 	if (argc >= 3) {
 		ts_nr = atoi(argv[2]);
@@ -990,8 +992,10 @@ DEFUN(show_ts,
 		}
 	} else if (bts) {
 		/* Iterate over all TRX in this BTS, TS in each TRX */
-		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+		for (trx_nr = 0; trx_nr < 255; trx_nr++) {
 			trx = gsm_bts_trx_num(bts, trx_nr);
+			if (!trx)
+				continue;
 			for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
 				ts = &trx->ts[ts_nr];
 				ts_dump_vty(vty, ts);
@@ -1001,8 +1005,10 @@ DEFUN(show_ts,
 		/* Iterate over all BTS, TRX in each BTS, TS in each TRX */
 		for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
 			bts = gsm_bts_num(net, bts_nr);
-			for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+			for (trx_nr = 0; trx_nr < 255; trx_nr++) {
 				trx = gsm_bts_trx_num(bts, trx_nr);
+				if (!trx)
+					continue;
 				for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
 					ts = &trx->ts[ts_nr];
 					ts_dump_vty(vty, ts);
@@ -1224,9 +1230,10 @@ static int dump_lchan_bts(struct gsm_bts *bts, struct vty *vty,
 {
 	int trx_nr;
 
-	for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+	for (trx_nr = 0; trx_nr < 255; trx_nr++) {
 		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_nr);
-		dump_lchan_trx(trx, vty, dump_cb);
+		if (trx)
+			dump_lchan_trx(trx, vty, dump_cb);
 	}
 
 	return CMD_SUCCESS;
@@ -1257,13 +1264,12 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
-		if (trx_nr >= bts->num_trx) {
+		trx = gsm_bts_trx_num(bts, trx_nr);
+		if (!trx) {
 			vty_out(vty, "%% can't find TRX %s%s", argv[1],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		trx = gsm_bts_trx_num(bts, trx_nr);
-
 		if (argc == 2)
 			return dump_lchan_trx(trx, vty, dump_cb);
 	}
@@ -3550,16 +3556,11 @@ DEFUN(cfg_trx,
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_trx *trx;
 
-	if (trx_nr > bts->num_trx) {
-		vty_out(vty, "%% The next unused TRX number in this BTS is %u%s",
-			bts->num_trx, VTY_NEWLINE);
-		return CMD_WARNING;
-	} else if (trx_nr == bts->num_trx) {
+	trx = gsm_bts_trx_num(bts, trx_nr);
+	if (!trx) {
 		/* we need to allocate a new one */
 		trx = gsm_bts_trx_alloc(bts);
-	} else
-		trx = gsm_bts_trx_num(bts, trx_nr);
-
+	}
 	if (!trx)
 		return CMD_WARNING;
 
