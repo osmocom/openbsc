@@ -803,7 +803,7 @@ mo2nm_state(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 
 	switch (mo->class) {
 	case OM2K_MO_CLS_TRXC:
-		trx = gsm_bts_trx_num(bts, mo->assoc_so);
+		trx = gsm_bts_trx_num(bts, mo->inst);
 		if (!trx)
 			return NULL;
 		nm_state = &trx->mo.nm_state;
@@ -832,12 +832,12 @@ mo2nm_state(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 		nm_state = &bts->mo.nm_state;
 		break;
 	case OM2K_MO_CLS_TX:
-		trx = gsm_bts_trx_num(bts, mo->assoc_so);
+		trx = gsm_bts_trx_num(bts, mo->inst);
 		if (!trx)
 			return NULL;
 		break;
 	case OM2K_MO_CLS_RX:
-		trx = gsm_bts_trx_num(bts, mo->assoc_so);
+		trx = gsm_bts_trx_num(bts, mo->inst);
 		if (!trx)
 			return NULL;
 		break;
@@ -854,7 +854,7 @@ static void *mo2obj(struct gsm_bts *bts, struct abis_om2k_mo *mo)
 	case OM2K_MO_CLS_TX:
 	case OM2K_MO_CLS_RX:
 	case OM2K_MO_CLS_TRXC:
-		return gsm_bts_trx_num(bts, mo->assoc_so);
+		return gsm_bts_trx_num(bts, mo->inst);
 	case OM2K_MO_CLS_TS:
 		trx = gsm_bts_trx_num(bts, mo->assoc_so);
 		if (!trx)
