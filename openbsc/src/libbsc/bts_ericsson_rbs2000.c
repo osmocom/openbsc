@@ -187,6 +187,8 @@ static int bts_model_rbs2k_start(struct gsm_network *net)
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_HOPPING);
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_HSCSD);
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_MULTI_TSC);
+	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_GPRS);
+	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_EGPRS);
 
 	osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
 	osmo_signal_register_handler(SS_L_GLOBAL, gbl_sig_cb, NULL);
