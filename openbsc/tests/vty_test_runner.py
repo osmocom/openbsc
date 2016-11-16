@@ -15,13 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
+import os, sys
 import time
 import unittest
 import socket
 
 import osmopy.obscvty as obscvty
 import osmopy.osmoutil as osmoutil
+
+sys.path.append("../contrib")
+from ipa import IPA
 
 confpath = '.'
 
@@ -911,13 +914,13 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.assertEqual(data, "\x00\x01\xfe\x04")
 
         print "Going to send ID_RESP response"
-        res = ipa_send_resp(ussdSocket, "\x6b\x65\x79")
+        res = ussdSocket.send(IPA().id_resp(IPA().tag_name('key')))
         self.assertEqual(res, 10)
 
         # initiating PING/PONG cycle to know, that the ID_RESP message has been processed
 
         print "Going to send PING request"
-        res = ipa_send_ping(ussdSocket)
+        res = ussdSocket.send(IPA().ping())
         self.assertEqual(res, 4)
 
         print "Expecting PONG response"
@@ -1184,31 +1187,6 @@ def add_nat_test(suite, workdir):
     test = unittest.TestLoader().loadTestsFromTestCase(TestVTYNAT)
     suite.addTest(test)
 
-def ipa_send_pong(x, verbose = False):
-    if (verbose):
-        print "\tBSC -> NAT: PONG!"
-    return x.send("\x00\x01\xfe\x01")
-
-def ipa_send_ping(x, verbose = False):
-    if (verbose):
-        print "\tBSC -> NAT: PING?"
-    return x.send("\x00\x01\xfe\x00")
-
-def ipa_send_ack(x, verbose = False):
-    if (verbose):
-            print "\tBSC -> NAT: IPA ID ACK"
-    return x.send("\x00\x01\xfe\x06")
-
-def ipa_send_reset(x, verbose = False):
-    if (verbose):
-        print "\tBSC -> NAT: RESET"
-    return x.send("\x00\x12\xfd\x09\x00\x03\x05\x07\x02\x42\xfe\x02\x42\xfe\x06\x00\x04\x30\x04\x01\x20")
-
-def ipa_send_resp(x, tk, verbose = False):
-    if (verbose):
-        print "\tBSC -> NAT: IPA ID RESP"
-    return x.send("\x00\x07\xfe\x05\x00\x04\x01" + tk)
-
 def nat_bsc_reload(x):
     x.vty.command("configure terminal")
     x.vty.command("nat")
@@ -1264,11 +1242,11 @@ def ipa_handle_small(x, verbose = False):
     if "0001fe00" == s:
         if (verbose):
             print "\tBSC <- NAT: PING?"
-        ipa_send_pong(x, verbose)
+        x.send(IPA().pong())
     elif "0001fe06" == s:
         if (verbose):
             print "\tBSC <- NAT: IPA ID ACK"
-        ipa_send_ack(x, verbose)
+        x.send(IPA().id_ack())
     elif "0001fe00" == s:
         if (verbose):
             print "\tBSC <- NAT: PONG!"
@@ -1279,7 +1257,7 @@ def ipa_handle_small(x, verbose = False):
 def ipa_handle_resp(x, tk, verbose = False):
     s = data2str(x.recv(38))
     if "0023fe040108010701020103010401050101010011" in s:
-         ipa_send_resp(x, tk, verbose)
+        x.send(IPA().id_resp(IPA().identity(name = tk.encode('utf-8'))))
     else:
         if (verbose):
             print "\tBSC <- NAT: ", s
