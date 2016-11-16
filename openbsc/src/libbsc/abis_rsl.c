@@ -508,6 +508,14 @@ static int rsl_chan_activate_lchan_as_pdch(struct gsm_lchan *lchan)
 
 	msgb_tv_put(msg, RSL_IE_ACT_TYPE, RSL_ACT_OSMO_PDCH);
 
+	if (lchan->ts->trx->bts->type == GSM_BTS_TYPE_RBS2000) {
+		/* TODO: make this conditional to the use of P-GSL /
+		 * SuperChannel, and use a #define for 0x49 */
+		const uint8_t eric_pgsl_tmr[] = { 30, 1 };
+		msgb_tv_fixed_put(msg, 0x49, sizeof(eric_pgsl_tmr),
+				  eric_pgsl_tmr);
+	}
+
 	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
