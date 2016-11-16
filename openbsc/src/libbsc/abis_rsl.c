@@ -509,6 +509,13 @@ static int rsl_chan_activate_lchan_as_pdch(struct gsm_lchan *lchan)
 
 	msgb_tv_put(msg, RSL_IE_ACT_TYPE, RSL_ACT_OSMO_PDCH);
 
+	if (lchan->ts->trx->bts->type == GSM_BTS_TYPE_RBS2000 &&
+	    lchan->ts->trx->bts->rbs2000.use_superchannel) {
+		const uint8_t eric_pgsl_tmr[] = { 30, 1 };
+		msgb_tv_fixed_put(msg, RSL_IE_ERIC_PGSL_TIMERS,
+				  sizeof(eric_pgsl_tmr), eric_pgsl_tmr);
+	}
+
 	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
