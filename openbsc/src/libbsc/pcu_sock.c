@@ -396,6 +396,40 @@ int pcu_tx_pch_data_cnf(struct gsm_bts *bts, uint32_t fn, uint8_t *data, uint8_t
 	return pcu_sock_send(bts, msg);
 }
 
+
+/* we need to decode the raw RR paging messsage (see PCU code
+ * Encoding::write_paging_request) and extract the mobile identity
+ * (P-TMSI) from it */
+static int pcu_rx_rr_paging(struct gsm_bts *bts, uint8_t paging_group,
+			    const uint8_t *raw_rr_msg)
+{
+	struct gsm48_hdr *gsmh = (struct gsm48_hdr *) raw_rr_msg;
+	struct gsm48_paging1 *p1 = (struct gsm48_paging1 *) gsmh;
+	uint8_t chan_needed;
+	unsigned int mi_len;
+	const uint8_t *mi;
+	int rc;
+
+	switch (gsmh->msg_type) {
+	case GSM48_MT_RR_PAG_REQ_1:
+		chan_needed = (p1->cneed2 << 2) | p1->cneed1;
+		mi_len = p1->data[0];
+		mi = p1->data+1;
+		/* FIXME: why does rsl_paging_cmd add 2 to mi? */
+		rc = rsl_paging_cmd(bts, paging_group, mi_len, mi,
+				    chan_needed, true);
+		break;
+	case GSM48_MT_RR_PAG_REQ_2:
+	case GSM48_MT_RR_PAG_REQ_3:
+		LOGP(DPCU, LOGL_ERROR, "PCU Sends unsupported paging "
+			"request type\n");
+		rc = -EINVAL;
+		break;
+	}
+
+	return rc;
+}
+
 static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	struct gsm_pcu_if_data *data_req)
 {
@@ -403,6 +437,8 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 	struct msgb *msg;
+	char imsi_digit_buf[4];
+	uint8_t pag_grp;
 	int rc = 0;
 
 	LOGP(DPCU, LOGL_DEBUG, "Data request received: sapi=%s arfcn=%d "
@@ -422,15 +458,15 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	//	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
 		break;
 	case PCU_IF_SAPI_PCH:
-		if (msg_type == PCU_IF_MSG_PAG_REQ) {
-			/* FIXME: Add function to schedule paging request.
-			 * This might not be required, if PCU_IF_MSG_DATA_REQ
-			 * is used instead. */
-		} else {
-			struct gsm_bts_role_bts *btsb = bts->role;
-
-			printf("paging_add_imm_ass(btsb->paging_state, data_req->data,data_req->len);\n");
-		}
+		/* the first three bytes are the last three digits of
+		 * the IMSI, which we need to compute the paging group */
+		imsi_digit_buf[0] = data_req->data[0];
+		imsi_digit_buf[1] = data_req->data[1];
+		imsi_digit_buf[2] = data_req->data[2];
+		imsi_digit_buf[3] = '\0';
+		pag_grp = gsm0502_calc_paging_group(&bts->si_common.chan_desc,
+						str_to_imsi(imsi_digit_buf));
+		pcu_rx_rr_paging(bts, pag_grp, data_req->data+3);
 		break;
 	case PCU_IF_SAPI_AGCH:
 		msg = msgb_alloc(data_req->len, "pcu_agch");
