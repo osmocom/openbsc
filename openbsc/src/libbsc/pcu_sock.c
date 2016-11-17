@@ -248,33 +248,6 @@ void pcu_info_update(struct gsm_bts *bts)
 		pcu_tx_info_ind(bts);
 }
 
-
-int pcu_tx_rts_req(struct gsm_bts *bts, struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
-	uint16_t arfcn, uint8_t block_nr)
-{
-	struct msgb *msg;
-	struct gsm_pcu_if *pcu_prim;
-	struct gsm_pcu_if_rts_req *rts_req;
-
-	LOGP(DPCU, LOGL_DEBUG, "Sending rts request: is_ptcch=%d arfcn=%d "
-		"block=%d\n", is_ptcch, arfcn, block_nr);
-
-	msg = pcu_msgb_alloc(PCU_IF_MSG_RTS_REQ, bts->nr);
-	if (!msg)
-		return -ENOMEM;
-	pcu_prim = (struct gsm_pcu_if *) msg->data;
-	rts_req = &pcu_prim->u.rts_req;
-
-	rts_req->sapi = (is_ptcch) ? PCU_IF_SAPI_PTCCH : PCU_IF_SAPI_PDTCH;
-	rts_req->fn = fn;
-	rts_req->arfcn = arfcn;
-	rts_req->trx_nr = ts->trx->nr;
-	rts_req->ts_nr = ts->nr;
-	rts_req->block_nr = block_nr;
-
-	return pcu_sock_send(bts, msg);
-}
-
 int pcu_tx_data_ind(struct gsm_bts *bts, struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len,
 	int8_t rssi, uint16_t ber10k, int16_t bto, int16_t lqual)
