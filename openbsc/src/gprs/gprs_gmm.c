@@ -1978,7 +1978,7 @@ static void pdpctx_timer_start(struct sgsn_pdp_ctx *pdp, unsigned int T,
 				unsigned int seconds)
 {
 	if (osmo_timer_pending(&pdp->timer))
-		LOGMMCTXP(LOGL_ERROR, pdp->mm, "Starting MM timer %u while old "
+		LOGPDPCTXP(LOGL_ERROR, pdp, "Starting PDP timer %u while old "
 			"timer %u pending\n", T, pdp->T);
 	pdp->T = T;
 	pdp->num_T_exp = 0;
