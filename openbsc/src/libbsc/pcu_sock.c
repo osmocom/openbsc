@@ -56,18 +56,6 @@ static const char *sapi_string[] = {
 	[PCU_IF_SAPI_PTCCH] = 	"PTCCH",
 };
 
-static struct gsm_bts_trx *trx_by_nr(struct gsm_bts *bts, uint8_t trx_nr)
-{
-	struct gsm_bts_trx *trx;
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		if (trx->nr == trx_nr)
-			return trx;
-	}
-
-	return NULL;
-}
-
 /* Check if BTS has a PCU connection */
 static bool pcu_connected(struct gsm_bts *bts)
 {
@@ -230,7 +218,7 @@ static int pcu_tx_info_ind(struct gsm_bts *bts)
 	}
 
 	for (i = 0; i < 8; i++) {
-		trx = trx_by_nr(bts, i);
+		trx = gsm_bts_trx_num(bts, i);
 		if (!trx)
 			break;
 		info_ind->trx[i].pdch_mask = 0;
@@ -487,7 +475,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		break;
 	case PCU_IF_SAPI_PDTCH:
 	case PCU_IF_SAPI_PTCCH:
-		trx = trx_by_nr(bts, data_req->trx_nr);
+		trx = gsm_bts_trx_num(bts, data_req->trx_nr);
 		if (!trx) {
 			LOGP(DPCU, LOGL_ERROR, "Received PCU data request with "
 				"not existing TRX %d\n", data_req->trx_nr);
@@ -517,7 +505,7 @@ static int pcu_rx_act_req(struct gsm_bts *bts, struct gsm_pcu_if_act_req *act_re
 		(act_req->activate) ? "Activate" : "Deactivate",
 		act_req->trx_nr, act_req->ts_nr);
 
-	trx = trx_by_nr(bts, act_req->trx_nr);
+	trx = gsm_bts_trx_num(bts, act_req->trx_nr);
 	if (!trx || act_req->ts_nr >= 8)
 		return -EINVAL;
 
@@ -623,7 +611,7 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 
 	/* release PDCH */
 	for (i = 0; i < 8; i++) {
-		trx = trx_by_nr(bts, i);
+		trx = gsm_bts_trx_num(bts, i);
 		if (!trx)
 			break;
 		for (j = 0; j < 8; j++) {
