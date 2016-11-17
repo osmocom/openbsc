@@ -1,29 +1,12 @@
 #!/usr/bin/python
 # -*- mode: python-mode; py-indent-tabs-mode: nil -*-
 
-import sys,os, random
+import random
 from optparse import OptionParser
+from ipa import Ctrl
 import socket
-import struct
 
 verbose = False
-
-def prefix_ipa_ctrl_header(data):
-	return struct.pack(">HBB", len(data)+1, 0xee, 0) + data
-
-def ipa_ctrl_header(header):
-        (plen, ipa_proto, osmo_proto) = struct.unpack(">HBB", header)
-        return None if (ipa_proto != 0xee or osmo_proto != 0) else plen
-
-def remove_ipa_ctrl_header(data):
-	if (len(data) < 4):
-		raise BaseException("Answer too short!")
-        plen = ipa_ctrl_header(data[:4])
-        if (None == plen):
-                raise BaseException("Wrong protocol in answer!")
-	if (plen + 3 > len(data)):
-		print "Warning: Wrong payload length (expected %i, got %i)" % (plen, len(data) - 3)
-	return data[4:plen+3], data[plen+3:]
 
 def connect(host, port):
         if verbose:
@@ -34,39 +17,31 @@ def connect(host, port):
         sck.connect((host, port))
         return sck
 
-def send(sck, data):
-	if verbose:
-		print "Sending \"%s\"" %(data)
-	data = prefix_ipa_ctrl_header(data)
-	sck.send(data)
-
-def do_set(var, value, op_id, sck):
-	setmsg = "SET %s %s %s" %(op_id, var, value)
-	send(sck, setmsg)
-
-def do_get(var, op_id, sck):
-	getmsg = "GET %s %s" %(op_id, var)
-	send(sck, getmsg)
-
 def do_set_get(sck, var, value = None):
-        r = random.randint(1, sys.maxint)
-        if (value != None):
-                s = 'SET_REPLY'
-                do_set(var, value, r, sck)
-        else:
-                s = 'GET_REPLY'
-                do_get(var, r, sck)
-        (answer, data) = remove_ipa_ctrl_header(sck.recv(4096))
-        x  = answer.split()
-        if (s == x[0] and str(r) == x[1] and var == x[2]):
-                return None if ('SET_REPLY' == s and value != x[3]) else x[3]
-        return None
+        (r, c) = Ctrl().cmd(var, value)
+        sck.send(c)
+        answer = Ctrl().rem_header(sck.recv(4096))
+        return (answer,) + Ctrl().verify(answer, r, var, value)
 
 def set_var(sck, var, val):
-        return do_set_get(sck, var, val)
+        (a, _, _) = do_set_get(sck, var, val)
+        return a
 
 def get_var(sck, var):
-        return do_set_get(sck, var)
+        (_, _, v) = do_set_get(sck, var)
+        return v
+
+def _leftovers(sck):
+        data = sck.recv(1024)
+        if len(data) != 0:
+                tail = data
+                while True:
+                        (head, tail) = Ctrl().split_combined(tail)
+                        print "Got message:", Ctrl().rem_header(head)
+                        if len(tail) == 0:
+                                break
+                return True
+        return False
 
 if __name__ == '__main__':
         random.seed()
@@ -105,27 +80,19 @@ if __name__ == '__main__':
         if options.cmd_set:
                 if len(args) < 2:
                         parser.error("Set requires var and value arguments")
-	        do_set(args[0], ' '.join(args[1:]), options.op_id, sock)
+                _leftovers(sock)
+                print "Got message:", set_var(sock, args[0], ' '.join(args[1:]))
 
         if options.cmd_get:
                 if len(args) != 1:
                         parser.error("Get requires the var argument")
-	        do_get(args[0], options.op_id, sock)
-
-        data = sock.recv(1024)
-        while (len(data)>0):
-	        (answer, data) = remove_ipa_ctrl_header(data)
-	        print "Got message:", answer
+                _leftovers(sock)
+                (a, _, _) = do_set_get(sock, args[0])
+                print "Got message:", a
 
         if options.monitor:
                 while True:
-                        data = sock.recv(1024)
-                        if len(data) == 0:
+                        if not _leftovers(sock):
                                 print "Connection is gone."
                                 break
-
-                        while len(data) > 0:
-                                (answer, data) = remove_ipa_ctrl_header(data)
-                                print "Got message:", answer
-
         sock.close()
