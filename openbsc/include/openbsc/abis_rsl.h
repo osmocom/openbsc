@@ -22,6 +22,7 @@
 #ifndef _RSL_H
 #define _RSL_H
 
+#include <stdbool.h>
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/gsm_utils.h>
 
@@ -49,7 +50,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 int rsl_chan_mode_modify_req(struct gsm_lchan *ts);
 int rsl_encryption_cmd(struct msgb *msg);
 int rsl_paging_cmd(struct gsm_bts *bts, uint8_t paging_group, uint8_t len,
-		   uint8_t *ms_ident, uint8_t chan_needed);
+		   uint8_t *ms_ident, uint8_t chan_needed, bool is_gprs);
 int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val);
 
 int rsl_data_request(struct msgb *msg, uint8_t link_id);
