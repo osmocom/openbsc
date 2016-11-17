@@ -1275,6 +1275,7 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
+	struct gsm_bts_trx_ts *ts = msg->lchan->ts;
 
 	osmo_timer_del(&msg->lchan->act_timer);
 
@@ -1299,12 +1300,17 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 		msg->lchan->error_cause = *cause;
 		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC) {
-			rsl_lchan_mark_broken(msg->lchan, "NACK on activation");
+			//rsl_lchan_mark_broken(msg->lchan, "NACK on activation");
 		} else
 			rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
 
 	} else {
-		rsl_lchan_mark_broken(msg->lchan, "NACK on activation no IE");
+		//rsl_lchan_mark_broken(msg->lchan, "NACK on activation no IE");
+	}
+	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+		enum gsm_phys_chan_config want = ts->dyn.pchan_want;
+		ts->dyn.pchan_want = ts->dyn.pchan_is;
+		dyn_ts_switchover_start(ts, want);
 	}
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
