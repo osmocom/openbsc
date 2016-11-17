@@ -417,7 +417,7 @@ error:
 int gsm0808_page(struct gsm_bts *bts, unsigned int page_group, unsigned int mi_len,
 		 uint8_t *mi, int chan_type)
 {
-	return rsl_paging_cmd(bts, page_group, mi_len, mi, chan_type);
+	return rsl_paging_cmd(bts, page_group, mi_len, mi, chan_type, false);
 }
 
 static void handle_ass_compl(struct gsm_subscriber_connection *conn,

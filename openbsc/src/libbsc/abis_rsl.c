@@ -1010,7 +1010,7 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 }
 
 int rsl_paging_cmd(struct gsm_bts *bts, uint8_t paging_group, uint8_t len,
-		   uint8_t *ms_ident, uint8_t chan_needed)
+		   uint8_t *ms_ident, uint8_t chan_needed, bool is_gprs)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg = rsl_msgb_alloc();
@@ -1022,6 +1022,11 @@ int rsl_paging_cmd(struct gsm_bts *bts, uint8_t paging_group, uint8_t len,
 	msgb_tv_put(msg, RSL_IE_PAGING_GROUP, paging_group);
 	msgb_tlv_put(msg, RSL_IE_MS_IDENTITY, len-2, ms_ident+2);
 	msgb_tv_put(msg, RSL_IE_CHAN_NEEDED, chan_needed);
+
+	/* Ericsson wants to have this IE in case a paging message
+	 * relates to packet paging */
+	if (bts->type == GSM_BTS_TYPE_RBS2000 && is_gprs)
+		msgb_tv_put(msg, RSL_IE_ERIC_PACKET_PAG_IND, 0);
 
 	msg->dst = bts->c0->rsl_link;
 
