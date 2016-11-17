@@ -209,7 +209,7 @@ static int pcu_tx_info_ind(struct gsm_bts *bts)
 	info_ind->initial_mcs = rlcc->initial_mcs;
 
 	/* NSVC */
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < ARRAY_SIZE(info_ind->nsvci); i++) {
 		nsvc = &bts->gprs.nsvc[i];
 		info_ind->nsvci[i] = nsvc->nsvci;
 		info_ind->local_port[i] = nsvc->local_port;
@@ -217,13 +217,13 @@ static int pcu_tx_info_ind(struct gsm_bts *bts)
 		info_ind->remote_ip[i] = nsvc->remote_ip;
 	}
 
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < ARRAY_SIZE(info_ind->trx); i++) {
 		trx = gsm_bts_trx_num(bts, i);
 		if (!trx)
 			break;
 		info_ind->trx[i].pdch_mask = 0;
 		info_ind->trx[i].arfcn = trx->arfcn;
-		for (j = 0; j < 8; j++) {
+		for (j = 0; j < ARRAY_SIZE(trx->ts); j++) {
 			ts = &trx->ts[j];
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
 			    && ts_should_be_pdch(ts)) {
