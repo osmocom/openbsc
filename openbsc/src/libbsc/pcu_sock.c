@@ -58,18 +58,6 @@ static const char *sapi_string[] = {
 	[PCU_IF_SAPI_PTCCH] = 	"PTCCH",
 };
 
-static struct gsm_bts_trx *trx_by_nr(struct gsm_bts *bts, uint8_t trx_nr)
-{
-	struct gsm_bts_trx *trx;
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		if (trx->nr == trx_nr)
-			return trx;
-	}
-
-	return NULL;
-}
-
 /* Check if BTS has a PCU connection */
 static bool pcu_connected(struct gsm_bts *bts)
 {
@@ -232,7 +220,7 @@ static int pcu_tx_info_ind(struct gsm_bts *bts)
 	}
 
 	for (i = 0; i < 8; i++) {
-		trx = trx_by_nr(bts, i);
+		trx = gsm_bts_trx_num(bts, i);
 		if (!trx)
 			break;
 		info_ind->trx[i].pdch_mask = 0;
@@ -427,7 +415,7 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 
 	/* release PDCH */
 	for (i = 0; i < 8; i++) {
-		trx = trx_by_nr(bts, i);
+		trx = gsm_bts_trx_num(bts, i);
 		if (!trx)
 			break;
 		for (j = 0; j < 8; j++) {
