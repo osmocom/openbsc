@@ -1990,6 +1990,14 @@ static void pdpctx_timer_start(struct sgsn_pdp_ctx *pdp, unsigned int T,
 	osmo_timer_schedule(&pdp->timer, seconds, 0);
 }
 
+static void pdpctx_timer_stop(struct sgsn_pdp_ctx *pdp, unsigned int T)
+{
+	if (pdp->T != T)
+		LOGPDPCTXP(LOGL_ERROR, pdp, "Stopping PDP timer %u but "
+			"%u is running\n", T, pdp->T);
+	osmo_timer_del(&pdp->timer);
+}
+
 #if 0
 static void msgb_put_pdp_addr_ipv4(struct msgb *msg, uint32_t ipaddr)
 {
@@ -2464,7 +2472,8 @@ static int gsm48_rx_gsm_deact_pdp_ack(struct sgsn_mm_ctx *mm, struct msgb *msg)
 			mm->imsi, transaction_id);
 		return 0;
 	}
-
+	/* stop timer 3395 */
+	pdpctx_timer_stop(pdp, 3395);
 	return sgsn_delete_pdp_ctx(pdp);
 }
 
