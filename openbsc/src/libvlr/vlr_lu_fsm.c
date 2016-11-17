@@ -761,7 +761,7 @@ static void lu_fsm_idle(struct osmo_fsm_inst *fi, uint32_t event,
 	OSMO_ASSERT(event == VLR_ULA_E_UPDATE_LA);
 
 	if (1) { // FIXME
-	//if (lfp->type == VLR_LU_TYPE_PERIODIC && lfp->vsub->imeisv[0]) {
+	//if (lfp->type == VLR_LU_TYPE_PERIODIC && lfp->vsub->imeisv[0]) 
 		/* R_IMEISV_IR1 passed */
 		_start_lu_main(fi);
 	} else {
