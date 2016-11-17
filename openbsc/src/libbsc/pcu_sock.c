@@ -68,6 +68,18 @@ static struct gsm_bts_trx *trx_by_nr(struct gsm_bts *bts, uint8_t trx_nr)
 	return NULL;
 }
 
+/* Check if BTS has a PCU connection */
+static bool pcu_connected(struct gsm_bts *bts)
+{
+	struct pcu_sock_state *state = bts->pcu_state;
+
+	if (!state)
+		return false;
+	if (state->conn_bfd.fd <= 0)
+		return false;
+	return true;
+}
+
 /*
  * PCU messages
  */
@@ -317,6 +329,13 @@ int pcu_tx_rach_ind(struct gsm_bts *bts, int16_t qta, uint16_t ra, uint32_t fn,
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
 	struct gsm_pcu_if_rach_ind *rach_ind;
+
+	/* Bail if no PCU is connected */
+	if (!pcu_connected(bts)) {
+		LOGP(DRSL, LOGL_ERROR, "BTS %d CHAN RQD(GPRS) but PCU not "
+			"connected!\n", bts->nr);
+		return -ENODEV;
+	}
 
 	LOGP(DPCU, LOGL_INFO, "Sending RACH indication: qta=%d, ra=%d, "
 		"fn=%d\n", qta, ra, fn);
@@ -829,14 +848,3 @@ void pcu_sock_exit(struct gsm_bts *bts)
 	bts->pcu_state = NULL;
 }
 
-/* Check if BTS has a PCU connection */
-bool pcu_connected(struct gsm_bts *bts)
-{
-	struct pcu_sock_state *state = bts->pcu_state;
-
-	if (!state)
-		return false;
-	if (state->conn_bfd.fd <= 0)
-		return false;
-	return true;
-}

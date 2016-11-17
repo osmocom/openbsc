@@ -44,7 +44,4 @@ int pcu_sock_init(const char *path, struct gsm_bts *bts);
 /* Close connection to PCU */
 void pcu_sock_exit(struct gsm_bts *bts);
 
-/* Check if BTS has a PCU connection */
-bool pcu_connected(struct gsm_bts *bts);
-
 #endif /* _PCU_IF_H */

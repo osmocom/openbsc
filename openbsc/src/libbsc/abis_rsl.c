@@ -1740,12 +1740,6 @@ static int rsl_rx_pchan_rqd(struct msgb *msg, struct gsm_bts *bts)
 	uint8_t rqd_ta;
 	uint8_t is_11bit;
 
-	/* Bail if no PCU is connected */
-	if (!pcu_connected(bts)) {
-		LOGP(DRSL, LOGL_ERROR, "BTS %d PCU not availabe!\n",bts->nr);
-		return -EINVAL;
-	}
-
 	/* Process rach request and forward contained information to PCU */
 	if (ra == 0x7F) {
 		is_11bit = 1;
