@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- mode: python-mode; py-indent-tabs-mode: nil -*-
 
 import sys,os, random
 from optparse import OptionParser
@@ -25,13 +26,13 @@ def remove_ipa_ctrl_header(data):
 	return data[4:plen+3], data[plen+3:]
 
 def connect(host, port):
-	if verbose:
-		print "Connecting to host %s:%i" % (host, port)
+        if verbose:
+                print "Connecting to host %s:%i" % (host, port)
 
-	sck = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sck.setblocking(1)
-	sck.connect((host, port))
-	return sck
+        sck = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sck.setblocking(1)
+        sck.connect((host, port))
+        return sck
 
 def send(sck, data):
 	if verbose:
@@ -91,24 +92,24 @@ if __name__ == '__main__':
         verbose = options.verbose
 
         if options.cmd_set and options.cmd_get:
-	        parser.error("Get and set options are mutually exclusive!")
+                parser.error("Get and set options are mutually exclusive!")
 
         if not (options.cmd_get or options.cmd_set or options.monitor):
-	        parser.error("One of -m, -g, or -s must be set")
+                parser.error("One of -m, -g, or -s must be set")
 
         if not (options.host):
-	        parser.error("Destination host and port required!")
+                parser.error("Destination host and port required!")
 
         sock = connect(options.host, options.port)
 
         if options.cmd_set:
-	        if len(args) < 2:
-		        parser.error("Set requires var and value arguments")
+                if len(args) < 2:
+                        parser.error("Set requires var and value arguments")
 	        do_set(args[0], ' '.join(args[1:]), options.op_id, sock)
 
         if options.cmd_get:
-	        if len(args) != 1:
-		        parser.error("Get requires the var argument")
+                if len(args) != 1:
+                        parser.error("Get requires the var argument")
 	        do_get(args[0], options.op_id, sock)
 
         data = sock.recv(1024)
@@ -117,14 +118,14 @@ if __name__ == '__main__':
 	        print "Got message:", answer
 
         if options.monitor:
-	        while (True):
-		        data = sock.recv(1024)
-		        if len(data) == 0:
-			        print "Connection is gone."
-			        break
+                while True:
+                        data = sock.recv(1024)
+                        if len(data) == 0:
+                                print "Connection is gone."
+                                break
 
-		        while (len(data)>0):
-			        (answer, data) = remove_ipa_ctrl_header(data)
-			        print "Got message:", answer
+                        while len(data) > 0:
+                                (answer, data) = remove_ipa_ctrl_header(data)
+                                print "Got message:", answer
 
         sock.close()
