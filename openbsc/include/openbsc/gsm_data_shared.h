@@ -43,6 +43,7 @@ enum gsm_chreq_reason_t {
 	GSM_CHREQ_REASON_PAG,
 	GSM_CHREQ_REASON_CALL,
 	GSM_CHREQ_REASON_LOCATION_UPD,
+	GSM_CHREQ_REASON_PBCH,
 	GSM_CHREQ_REASON_OTHER,
 };
 
@@ -831,6 +832,9 @@ struct gsm_bts {
 	/* full and half rate multirate config */
 	struct amr_multirate_conf mr_full;
 	struct amr_multirate_conf mr_half;
+
+	/* PCU socket state */
+	struct pcu_sock_state *pcu_state;
 
 #endif /* ROLE_BSC */
 	void *role;
