@@ -35,6 +35,23 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_llc_xid.h>
 
+const struct value_string gprs_llc_xid_type_names[] = {
+	{ GPRS_LLC_XID_T_VERSION,	"VERSION"},
+	{ GPRS_LLC_XID_T_IOV_UI,	"IOV_UI"},
+	{ GPRS_LLC_XID_T_IOV_I,		"IOV_I"},
+	{ GPRS_LLC_XID_T_T200,		"T200"},
+	{ GPRS_LLC_XID_T_N200,		"N200"},
+	{ GPRS_LLC_XID_T_N201_U,	"N201_"},
+	{ GPRS_LLC_XID_T_N201_I,	"N201_I"},
+	{ GPRS_LLC_XID_T_mD,		"mD"},
+	{ GPRS_LLC_XID_T_mU,		"mU"},
+	{ GPRS_LLC_XID_T_kD,		"kD"},
+	{ GPRS_LLC_XID_T_kU,		"kU"},
+	{ GPRS_LLC_XID_T_L3_PAR,	"L3_PAR"},
+	{ GPRS_LLC_XID_T_RESET,		"RESET"},
+	{ 0, NULL },
+};
+
 /* Parse XID parameter field */
 static int decode_xid_field(struct gprs_llc_xid_field *xid_field,
 			    const uint8_t *src, uint8_t src_len)
@@ -249,8 +266,10 @@ void gprs_llc_dump_xid_fields(const struct llist_head *xid_fields,
 		if (xid_field->data_len) {
 			OSMO_ASSERT(xid_field->data);
 			LOGP(DLLC, logl,
-			     "XID: type=%d, data_len=%d, data=%s\n",
-			     xid_field->type, xid_field->data_len,
+			     "XID: type %s, data_len=%d, data=%s\n",
+			     get_value_string(gprs_llc_xid_type_names,
+					      xid_field->type),
+			     xid_field->data_len,
 			     osmo_hexdump_nospc(xid_field->data,
 						xid_field->data_len));
 		} else {

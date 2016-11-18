@@ -73,9 +73,11 @@ static void vty_dump_llme(struct vty *vty, struct gprs_llc_llme *llme)
 	struct timespec now_tp = {0};
 	clock_gettime(CLOCK_MONOTONIC, &now_tp);
 
-	vty_out(vty, "TLLI %08x (Old TLLI %08x) BVCI=%u NSEI=%u Age=%d: State %s%s",
-		llme->tlli, llme->old_tlli, llme->bvci, llme->nsei,
-		llme->age_timestamp == GPRS_LLME_RESET_AGE ? 0 :
+	vty_out(vty, "TLLI %08x (Old TLLI %08x) BVCI=%u NSEI=%u %s: "
+		"IOV-UI=0x%06x CKSN=%d Age=%d: State %s%s", llme->tlli,
+		llme->old_tlli, llme->bvci, llme->nsei,
+		get_value_string(gprs_cipher_names, llme->algo), llme->iov_ui,
+		llme->cksn, llme->age_timestamp == GPRS_LLME_RESET_AGE ? 0 :
 		(int)(now_tp.tv_sec - (time_t)llme->age_timestamp),
 		get_value_string(gprs_llc_state_strs, llme->state), VTY_NEWLINE);
 

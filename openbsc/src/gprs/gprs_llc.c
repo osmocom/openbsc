@@ -39,6 +39,7 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/crc24.h>
 #include <openbsc/sgsn.h>
+#include <openbsc/gsm_subscriber.h>
 #include <openbsc/gprs_llc_xid.h>
 #include <openbsc/gprs_sndcp_comp.h>
 #include <openbsc/gprs_sndcp.h>
@@ -178,8 +179,10 @@ static int gprs_llc_process_xid_conf(uint8_t *bytes, int bytes_len,
 				 * inquiry. There is a remainig risk of
 				 * malfunction! */
 				LOGP(DLLC, LOGL_NOTICE,
-				     "Ignoring XID-Field: XID: type=%d, data_len=%d, data=%s\n",
-				     xid_field->type, xid_field->data_len,
+				     "Ignoring XID-Field: XID: type %s, data_len=%d, data=%s\n",
+				     get_value_string(gprs_llc_xid_type_names,
+						      xid_field->type),
+				     xid_field->data_len,
 				     osmo_hexdump_nospc(xid_field->data,
 				     xid_field->data_len));
 			}
@@ -232,8 +235,10 @@ static int gprs_llc_process_xid_ind(uint8_t *bytes_request,
 				 * when a phone submits values which defer from
 				 * the default! */
 				LOGP(DLLC, LOGL_NOTICE,
-				     "Echoing XID-Field: XID: type=%d, data_len=%d, data=%s\n",
-				     xid_field->type, xid_field->data_len,
+				     "Echoing XID-Field: XID: type %s, data_len=%d, data=%s\n",
+				     get_value_string(gprs_llc_xid_type_names,
+						      xid_field->type),
+				     xid_field->data_len,
 				     osmo_hexdump_nospc(xid_field->data,
 							xid_field->data_len));
 				xid_field_response =
@@ -308,7 +313,6 @@ static void rx_llc_xid(struct gprs_llc_lle *lle,
 	}
 }
 
-
 /* Set of LL-XID negotiation (See also: TS 101 351, Section 7.2.2.4) */
 int gprs_ll_xid_req(struct gprs_llc_lle *lle,
 		    struct gprs_llc_xid_field *l3_xid_field)
@@ -319,6 +323,7 @@ int gprs_ll_xid_req(struct gprs_llc_lle *lle,
 	int xid_bytes_len;
 	uint8_t *xid;
 	struct msgb *msg;
+	const char *ftype;
 
 	/* Generate XID */
 	xid_bytes_len =
@@ -331,7 +336,13 @@ int gprs_ll_xid_req(struct gprs_llc_lle *lle,
 		msg = msgb_alloc_headroom(4096, 1024, "LLC_XID");
 		xid = msgb_put(msg, xid_bytes_len);
 		memcpy(xid, xid_bytes, xid_bytes_len);
-		LOGP(DLLC, LOGL_NOTICE, "Sending XID request to phone...\n");
+		if (l3_xid_field)
+			ftype = get_value_string(gprs_llc_xid_type_names,
+						 l3_xid_field->type);
+		else
+			ftype = "NULL";
+		LOGP(DLLC, LOGL_NOTICE, "Sending XID type %s (%d bytes) request"
+		     " to phone...\n", ftype, xid_bytes_len);
 		gprs_llc_tx_xid(lle, msg, 1);
 	} else {
 		LOGP(DLLC, LOGL_ERROR,
@@ -858,7 +869,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 {
 	struct gprs_llc_hdr *lh = (struct gprs_llc_hdr *) msgb_llch(msg);
 	struct gprs_llc_hdr_parsed llhp;
-	struct gprs_llc_lle *lle;
+	struct gprs_llc_lle *lle = NULL;
 	bool drop_cipherable = false;
 	int rc = 0;
 
@@ -866,7 +877,6 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 
 	memset(&llhp, 0, sizeof(llhp));
 	rc = gprs_llc_hdr_parse(&llhp, (uint8_t *) lh, TLVP_LEN(tv, BSSGP_IE_LLC_PDU));
-	gprs_llc_hdr_dump(&llhp);
 	if (rc < 0) {
 		LOGP(DLLC, LOGL_NOTICE, "Error during LLC header parsing\n");
 		return rc;
@@ -899,7 +909,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		}
 		return 0;
 	}
-
+	gprs_llc_hdr_dump(&llhp, lle);
 	/* reset age computation */
 	lle->llme->age_timestamp = GPRS_LLME_RESET_AGE;
 

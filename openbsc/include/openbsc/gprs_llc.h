@@ -46,6 +46,8 @@ enum gprs_llc_xid_type {
 	GPRS_LLC_XID_T_RESET		= 12,
 };
 
+extern const struct value_string gprs_llc_xid_type_names[];
+
 /* TS 04.64 Section 7.1.2 Table 7: LLC layer primitives (GMM/SNDCP/SMS/TOM) */
 /* TS 04.65 Section 5.1.2 Table 2: Service primitives used by SNDCP */
 enum gprs_llc_primitive {
@@ -270,7 +272,7 @@ void gprs_llme_copy_key(struct sgsn_mm_ctx *mm, struct gprs_llc_llme *llme);
 /* parse a GPRS LLC header, also check for invalid frames */
 int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 		       uint8_t *llc_hdr, int len);
-void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph);
+void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph, struct gprs_llc_lle *lle);
 int gprs_llc_fcs(uint8_t *data, unsigned int len);
 
 

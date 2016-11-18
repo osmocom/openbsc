@@ -398,7 +398,7 @@ int gprs_gb_parse_llc(uint8_t *llc, size_t llc_len,
 
 	/* parse LLC */
 	rc = gprs_llc_hdr_parse(ghp, llc, llc_len);
-	gprs_llc_hdr_dump(ghp);
+	gprs_llc_hdr_dump(ghp, NULL);
 	if (rc != 0) {
 		LOGP(DLLC, LOGL_NOTICE, "Error during LLC header parsing\n");
 		return 0;

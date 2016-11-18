@@ -67,11 +67,19 @@ int gprs_llc_fcs(uint8_t *data, unsigned int len)
 	return fcs_calc;
 }
 
-void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
+void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph, struct gprs_llc_lle *lle)
 {
-	DEBUGP(DLLC, "LLC SAPI=%u %c %c FCS=0x%06x",
-		gph->sapi, gph->is_cmd ? 'C' : 'R', gph->ack_req ? 'A' : ' ',
-		gph->fcs);
+	const char *gea;
+	uint32_t iov_ui = 0;
+	if (lle) {
+		gea = get_value_string(gprs_cipher_names, lle->llme->algo);
+		iov_ui = lle->llme->iov_ui;
+	} else
+		gea = "GEA?";
+	DEBUGP(DLLC, "LLC SAPI=%u %c %c %c %s IOV-UI=0x%06x FCS=0x%06x ",
+	       gph->sapi, gph->is_cmd ? 'C' : 'R', gph->ack_req ? 'A' : ' ',
+	       gph->is_encrypted ? 'E' : 'U',
+	       gea, iov_ui, gph->fcs);
 
 	if (gph->cmd)
 		DEBUGPC(DLLC, "CMD=%s ", get_value_string(llc_cmd_strs, gph->cmd));
