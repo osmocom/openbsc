@@ -221,6 +221,7 @@ static int pcu_tx_info_ind(struct gsm_bts *bts)
 		trx = gsm_bts_trx_num(bts, i);
 		if (!trx)
 			break;
+		info_ind->trx[i].hlayer1 = 0x2342;
 		info_ind->trx[i].pdch_mask = 0;
 		info_ind->trx[i].arfcn = trx->arfcn;
 		for (j = 0; j < ARRAY_SIZE(trx->ts); j++) {
