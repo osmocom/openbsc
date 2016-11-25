@@ -831,8 +831,10 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 		subscr->tmsi = tmsi_from_string(string);
 
 	string = dbi_result_get_string(result, "name");
-	if (string)
+	if (string) {
 		strncpy(subscr->name, string, GSM_NAME_LENGTH);
+		subscr->name[sizeof(subscr->name)-1] = '\0';
+	}
 
 	string = dbi_result_get_string(result, "extension");
 	if (string)
