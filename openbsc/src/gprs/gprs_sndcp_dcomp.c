@@ -84,6 +84,7 @@ int gprs_sndcp_dcomp_init(const void *ctx, struct gprs_sndcp_comp *comp_entity,
 
 	if (comp_entity->compclass == SNDCP_XID_DATA_COMPRESSION
 	    && comp_entity->algo == V42BIS) {
+		OSMO_ASSERT(comp_field->v42bis_params);
 		comp_entity->state =
 		    v42bis_init(ctx, NULL, comp_field->v42bis_params->p0,
 				comp_field->v42bis_params->p1,

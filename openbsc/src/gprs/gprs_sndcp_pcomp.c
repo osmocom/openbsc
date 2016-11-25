@@ -54,6 +54,7 @@ int gprs_sndcp_pcomp_init(const void *ctx, struct gprs_sndcp_comp *comp_entity,
 
 	if (comp_entity->compclass == SNDCP_XID_PROTOCOL_COMPRESSION
 	    && comp_entity->algo == RFC_1144) {
+		OSMO_ASSERT(comp_field->rfc1144_params);
 		comp_entity->state =
 		    slhc_init(ctx, comp_field->rfc1144_params->s01 + 1,
 			      comp_field->rfc1144_params->s01 + 1);
