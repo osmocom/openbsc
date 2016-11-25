@@ -2305,6 +2305,7 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 	bs11_sw->forced = forced;
 
 	strncpy(bs11_sw->swl_fname, fname, sizeof(bs11_sw->swl_fname));
+	bs11_sw->swl_fname[sizeof(bs11_sw->swl_fname)-1] = '\0';
 	rc = bs11_read_swl_file(bs11_sw);
 	if (rc < 0)
 		return rc;
