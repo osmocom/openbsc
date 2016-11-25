@@ -2234,6 +2234,7 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 
 		/* construct new filename */
 		strncpy(dir, bs11_sw->swl_fname, sizeof(dir));
+		dir[sizeof(dir)-1] = '\0';
 		strncat(fle->fname, dirname(dir), sizeof(fle->fname) - 1);
 		strcat(fle->fname, "/");
 		strncat(fle->fname, file_id, sizeof(fle->fname) - 1 -strlen(fle->fname));
