@@ -837,8 +837,10 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 	}
 
 	string = dbi_result_get_string(result, "extension");
-	if (string)
+	if (string) {
 		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
+		subscr->extension[sizeof(subscr->extension)-1] = '\0';
+	}
 
 	subscr->lac = dbi_result_get_ulonglong(result, "lac");
 
