@@ -453,6 +453,7 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 			     lchan->csd_mode);
 			return -EINVAL;
 		}
+		break;
 	default:
 		LOGP(DRSL, LOGL_ERROR,
 		     "unsupported lchan->tch_mode %u\n",
