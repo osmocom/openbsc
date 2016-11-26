@@ -28,10 +28,10 @@
 #include <time.h>
 #include <limits.h>
 
-#include <sys/socket.h>
 #include <arpa/inet.h>
 
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/socket.h>
 #include <osmocom/core/select.h>
 
 #include <osmocom/netif/rtp.h>
@@ -884,28 +884,9 @@ static int rtp_data_trans_bts(struct osmo_fd *fd, unsigned int what)
 
 int mgcp_create_bind(const char *source_addr, struct osmo_fd *fd, int port)
 {
-	struct sockaddr_in addr;
-	int on = 1;
-
-	fd->fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (fd->fd < 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to create UDP port.\n");
-		return -1;
-	}
-
-	setsockopt(fd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	inet_aton(source_addr, &addr.sin_addr);
-
-	if (bind(fd->fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		close(fd->fd);
-		fd->fd = -1;
-		return -1;
-	}
-
-	return 0;
+	return osmo_sock_init_ofd(fd, AF_INET, SOCK_DGRAM, IPPROTO_UDP,
+				 source_addr, port,
+				 OSMO_SOCK_F_BIND|OSMO_SOCK_F_NONBLOCK);
 }
 
 int mgcp_set_ip_tos(int fd, int tos)
