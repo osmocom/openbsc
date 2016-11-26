@@ -24,10 +24,10 @@
 #include <openbsc/bsc_nat_sccp.h>
 #include <openbsc/bsc_msg_filter.h>
 #include <openbsc/ipaccess.h>
-#include <openbsc/socket.h>
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0480.h>
+#include <osmocom/core/socket.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/ipa.h>
@@ -287,8 +287,10 @@ int bsc_ussd_init(struct bsc_nat *nat)
 		inet_aton(nat->ussd_local, &addr);
 
 	nat->ussd_listen.data = nat;
-	return make_sock(&nat->ussd_listen, IPPROTO_TCP,
-			 ntohl(addr.s_addr), 5001, 0, ussd_listen_cb, nat);
+	nat->ussd_listen.cb = ussd_listen_cb;
+	return osmo_sock_init_ofd(&nat->ussd_listen, AF_INET, SOCK_STREAM,
+				  IPPROTO_TCP, inet_ntoa(addr), 5001,
+				  OSMO_SOCK_F_BIND|OSMO_SOCK_F_NONBLOCK);
 }
 
 static int forward_ussd_simple(struct nat_sccp_connection *con, struct msgb *input)

@@ -74,7 +74,6 @@ noinst_HEADERS = \
 	slhc.h \
 	smpp.h \
 	sms_queue.h \
-	socket.h \
 	system_information.h \
 	token_auth.h \
 	transaction.h \

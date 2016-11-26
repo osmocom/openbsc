@@ -46,7 +46,6 @@
 #include <openbsc/bsc_msg_filter.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/socket.h>
 #include <openbsc/vty.h>
 
 #include <osmocom/ctrl/control_cmd.h>
@@ -59,6 +58,7 @@
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/stats.h>
+#include <osmocom/core/socket.h>
 
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/gsm0808.h>
@@ -1684,8 +1684,11 @@ int main(int argc, char **argv)
 	bsc_msc_connect(nat->msc_con);
 
 	/* wait for the BSC */
-	rc = make_sock(&bsc_listen, IPPROTO_TCP, ntohl(local_addr.s_addr),
-		       5000, 0, ipaccess_listen_bsc_cb, nat);
+	bsc_listen.cb = ipaccess_listen_bsc_cb;
+	bsc_listen.data = nat;
+	rc = osmo_sock_init_ofd(&bsc_listen, AF_INET, SOCK_STREAM, IPPROTO_TCP,
+				 inet_ntoa(local_addr), 5000,
+				 OSMO_SOCK_F_BIND|OSMO_SOCK_F_NONBLOCK);
 	if (rc != 0) {
 		fprintf(stderr, "Failed to listen for BSC.\n");
 		exit(1);
