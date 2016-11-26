@@ -65,10 +65,7 @@
 #include <openbsc/gprs_utils.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/signal.h>
-
-#ifdef BUILD_IU
 #include <openbsc/iu.h>
-#endif
 
 #include <pdp.h>
 
@@ -1076,7 +1073,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	if (!msg->dst) {
 		/* Gb mode */
 		cid = bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
-	}
+	} else
+		ra_id = ((struct ue_conn_ctx*)msg->dst)->ra_id;
 
 	/* MS network capability 10.5.5.12 */
 	msnc_len = *cur++;
