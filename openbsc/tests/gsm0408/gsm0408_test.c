@@ -89,7 +89,7 @@ static inline void add_arfcn_b(struct osmo_earfcn_si2q *e, uint16_t earfcn,
 {
 	int r = osmo_earfcn_add(e, earfcn, bw);
 	if (r)
-		printf("failed to add EARFCN %u: %s\n", earfcn, strerror(r));
+		printf("failed to add EARFCN %u: %s\n", earfcn, strerror(-r));
 	else
 		printf("added EARFCN %u - ", earfcn);
 }
