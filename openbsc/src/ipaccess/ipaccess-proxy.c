@@ -1023,7 +1023,13 @@ static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, v
 		return NULL;
 	}
 
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	ret = setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	if (ret < 0) {
+		LOGP(DLINP, LOGL_ERROR, "Could not set socket option\n");
+		close(bfd->fd);
+		talloc_free(ipc);
+		return NULL;
+	}
 
 	ret = connect(bfd->fd, (struct sockaddr *) sa, sizeof(*sa));
 	if (ret < 0) {
