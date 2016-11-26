@@ -194,7 +194,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	osmo_fd_register(&bfd);
+	rc = osmo_fd_register(&bfd);
+	if (rc < 0) {
+		fprintf(stderr, "Cannot register FD\n");
+		exit(1);
+	}
 
 	timer.cb = timer_cb;
 	timer.data = &bfd;
