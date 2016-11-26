@@ -2995,7 +2995,7 @@ DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
 	r = osmo_earfcn_add(e, arfcn, meas);
 
 	if (r < 0) {
-		vty_out(vty, "Unable to add arfcn %u: %s%s", arfcn, strerror(r),
+		vty_out(vty, "Unable to add arfcn %u: %s%s", arfcn, strerror(-r),
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
