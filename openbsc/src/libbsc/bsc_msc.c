@@ -158,6 +158,9 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 		return -1;
 	}
 
+	/* TODO: Why are we not using the libosmocore soecket
+	 * abstraction, or libosmo-netif? */
+
 	/* move to the next connection */
 	dest = (struct bsc_msc_dest *) con->dests->next;
 	llist_del(&dest->list);
@@ -197,7 +200,10 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 	sin.sin_port = htons(dest->port);
 	inet_aton(dest->ip, &sin.sin_addr);
 
-	setsockopt(fd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	ret = setsockopt(fd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	if (ret != 0)
+		LOGP(DMSC, LOGL_ERROR,
+		     "Failed to set SO_REUSEADDR socket option\n");
 	ret = connect(fd->fd, (struct sockaddr *) &sin, sizeof(sin));
 
 	if (ret == -1 && errno == EINPROGRESS) {
