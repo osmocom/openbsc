@@ -2799,9 +2799,11 @@ DEFUN(cfg_bts_si2quater_uarfcn_add, cfg_bts_si2quater_uarfcn_add_cmd,
 	case -ENOMEM:
 		vty_out(vty, "Unable to add arfcn: max number of UARFCNs (%u) "
 			"reached%s", MAX_EARFCN_LIST, VTY_NEWLINE);
+		return CMD_WARNING;
 	case -ENOSPC:
 		vty_out(vty, "Warning: not enough space in si2quater for a "
 			"given arfcn%s", VTY_NEWLINE);
+		return CMD_WARNING;
 	case -EADDRINUSE:
 		vty_out(vty, "Unable to add arfcn: (%u, %u) is already added%s",
 			arfcn, scramble, VTY_NEWLINE);
