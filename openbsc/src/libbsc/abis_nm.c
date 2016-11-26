@@ -838,7 +838,9 @@ static int is_last_line(FILE *stream)
 		return 1;
 
 	if (!fgets(next_seg_buf, sizeof(next_seg_buf)-2, stream)) {
-		fseek(stream, pos, SEEK_SET);
+		int rc = fseek(stream, pos, SEEK_SET);
+		if (rc < 0)
+			return rc;
 		return 1;
 	}
 
