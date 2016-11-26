@@ -108,7 +108,12 @@ static int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 		return -EIO;
 	}
 
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	ret = setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	if (ret < 0) {
+		LOGP(DLINP, LOGL_ERROR, "could not set socket option\n");
+		close(bfd->fd);
+		return -EIO;
+	}
 
 	ret = connect(bfd->fd, (struct sockaddr *) sa, sizeof(*sa));
 	if (ret < 0) {
