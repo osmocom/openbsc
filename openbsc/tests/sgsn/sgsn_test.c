@@ -627,7 +627,7 @@ static void test_subscriber_gsup(void)
 	/* Inject InsertSubscrData GSUP message */
 	last_updated_subscr = NULL;
 	rc = rx_gsup_message(insert_data_req, sizeof(insert_data_req));
-	OSMO_ASSERT(rc = -ENOTSUP);	/* not connected */
+	OSMO_ASSERT(rc == -ENOTSUP);	/* not connected */
 	OSMO_ASSERT(last_updated_subscr == s1);
 
 	/* Inject DeleteSubscrData GSUP message */
