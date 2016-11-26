@@ -568,6 +568,7 @@ DEFUN(ena_subscr_name,
 	}
 
 	strncpy(subscr->name, name, sizeof(subscr->name));
+	subscr->name[sizeof(subscr->name)-1] = '\0';
 	talloc_free(name);
 	db_sync_subscriber(subscr);
 
