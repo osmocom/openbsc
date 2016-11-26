@@ -612,6 +612,7 @@ static int verify_net_ussd_notify(struct ctrl_cmd *cmd, const char *value, void 
 	char *saveptr = NULL;
 	char *inp, *cic, *alert, *text;
 
+	OSMO_ASSERT(cmd);
 	inp = talloc_strdup(cmd, value);
 
 	cic = strtok_r(inp, ",", &saveptr);
