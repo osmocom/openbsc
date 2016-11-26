@@ -447,6 +447,7 @@ static int mgcp_analyze_header(struct mgcp_parse_data *pdata, char *data)
 	int i = 0;
 	char *elem, *save = NULL;
 
+	OSMO_ASSERT(data);
 	pdata->trans = "000000";
 
 	for (elem = strtok_r(data, " ", &save); elem;
