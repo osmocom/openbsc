@@ -46,6 +46,7 @@ enum gsm_chreq_reason_t {
 	GSM_CHREQ_REASON_CALL,
 	GSM_CHREQ_REASON_LOCATION_UPD,
 	GSM_CHREQ_REASON_OTHER,
+	GSM_CHREQ_REASON_PDCH,
 };
 
 /* lchans 0..3 are SDCCH in combined channel configuration,
