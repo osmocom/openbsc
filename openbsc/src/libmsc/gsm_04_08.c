@@ -3690,7 +3690,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			/* Temporarily out of order */
 			return mncc_release_ind(net, NULL, data->callref,
 						GSM48_CAUSE_LOC_PRN_S_LU,
-						GSM48_CC_CAUSE_DEST_OOO);
+						GSM48_CC_CAUSE_USER_NOTRESPOND);
 		}
 		/* Create transaction */
 		trans = trans_alloc(net, subscr, GSM48_PDISC_CC, 0xff, data->callref);
