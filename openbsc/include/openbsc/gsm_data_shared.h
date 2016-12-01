@@ -709,6 +709,7 @@ struct gsm_bts {
 				struct om2k_mo om2k_mo;
 				struct gsm_abis_mo mo;
 				struct llist_head conn_groups;
+				struct osmo_timer_list delay_superchannel;
 			} is;
 			struct {
 				struct om2k_mo om2k_mo;

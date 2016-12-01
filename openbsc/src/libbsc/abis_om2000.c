@@ -1652,6 +1652,11 @@ static void om2k_mo_st_wait_cfg_res(struct osmo_fsm_inst *fi, uint32_t event, vo
 	abis_om2k_tx_enable_req(omfp->trx->bts, &omfp->mo->addr);
 }
 
+static void om2k_delay_superchannel_wait_enable_res(void *data) {
+	struct gsm_bts *bts = data;
+	e1inp_ericsson_set_altc(bts->oml_link->ts->line, 1);
+}
+
 static void om2k_mo_st_wait_enable_accept(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct om2k_mo_fsm_priv *omfp = fi->priv;
@@ -1663,8 +1668,12 @@ static void om2k_mo_st_wait_enable_accept(struct osmo_fsm_inst *fi, uint32_t eve
 		break;
 	case OM2K_MSGT_ENABLE_REQ_ACK:
 		if (omfp->mo->addr.class == OM2K_MO_CLS_IS &&
-		    omfp->trx->bts->rbs2000.use_superchannel)
-			e1inp_ericsson_set_altc(omfp->trx->bts->oml_link->ts->line, 1);
+		    omfp->trx->bts->rbs2000.use_superchannel) {
+			omfp->trx->bts->rbs2000.is.delay_superchannel.data = omfp->trx->bts;
+			omfp->trx->bts->rbs2000.is.delay_superchannel.cb = om2k_delay_superchannel_wait_enable_res;
+			osmo_timer_add(&omfp->trx->bts->rbs2000.is.delay_superchannel);
+			osmo_timer_schedule(&omfp->trx->bts->rbs2000.is.delay_superchannel, 3, 0);
+		}
 		osmo_fsm_inst_state_chg(fi, OM2K_ST_WAIT_ENABLE_RES,
 					OM2K_TIMEOUT, 0);
 	}
