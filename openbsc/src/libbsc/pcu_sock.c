@@ -35,12 +35,14 @@
 #include <osmocom/core/socket.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/gsm/l1sap.h>
+#include <osmocom/gsm/gsm0502.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/pcu_if.h>
 #include <openbsc/pcuif_proto.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
+#include <openbsc/abis_rsl.h>
 
 static int pcu_sock_send(struct gsm_bts *bts, struct msgb *msg);
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx);
