@@ -1682,7 +1682,7 @@ static void om2k_mo_st_wait_opinfo_accept(struct osmo_fsm_inst *fi, uint32_t eve
 	/* if we have just received opinfo accept for the timeslot,
 	 * start dynamic TCH switching procedures */
 	if (omfp->mo->addr.class == OM2K_MO_CLS_TS) {
-		struct gsm_bts_trx_s *ts;
+		struct gsm_bts_trx_ts *ts;
 		ts = mo2obj(omfp->trx->bts, &omfp->mo->addr);
 		dyn_ts_init(ts);
 	}
