@@ -1074,10 +1074,7 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val)
 
 	msg->dst = bts->c0->rsl_link;
 	msgb_put_u8(msg, 0xf1);
-	msgb_put_u8(msg, random() & 0xff);
-	msgb_put_u8(msg, random() & 0xff);
-	msgb_put_u8(msg, random() & 0xff);
-	msgb_put_u8(msg, 0x0);
+	msgb_put_u32(msg, random());
 
 	return abis_rsl_sendmsg(msg);
 }
