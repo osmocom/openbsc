@@ -56,7 +56,7 @@ static const char *sapi_string[] = {
 	[PCU_IF_SAPI_PDTCH] =	"PDTCH",
 	[PCU_IF_SAPI_PRACH] =	"PRACH",
 	[PCU_IF_SAPI_PTCCH] = 	"PTCCH",
-	[PCU_IF_SAPI_AGCH_DT] = 	"PTCCH",
+	[PCU_IF_SAPI_AGCH_DT] = 	"AGCH_DT",
 };
 
 /* Check if BTS has a PCU connection */
