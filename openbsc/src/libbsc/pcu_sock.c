@@ -400,6 +400,27 @@ int pcu_tx_pch_data_cnf(struct gsm_bts *bts, uint32_t fn, uint8_t *data, uint8_t
 	return pcu_sock_send(bts, msg);
 }
 
+/* Confirm the sending of an immediate assignment to the pcu */
+int pcu_tx_imm_ass_sent(struct gsm_bts *bts, uint32_t tlli)
+{
+	printf("======================================> GOT TLLI! %x\n", tlli);
+	struct msgb *msg;
+	struct gsm_pcu_if *pcu_prim;
+	struct gsm_pcu_if_data_cnf_dt *data_cnf_dt;
+
+	LOGP(DPCU, LOGL_INFO, "Sending PCH confirm with direct TLLI\n");
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_DATA_CNF_DT, bts->nr);
+	if (!msg)
+		return -ENOMEM;
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	data_cnf_dt = &pcu_prim->u.data_cnf_dt;
+
+	data_cnf_dt->sapi = PCU_IF_SAPI_PCH;
+	data_cnf_dt->tlli = tlli;
+
+	return pcu_sock_send(bts, msg);
+}
 
 /* we need to decode the raw RR paging messsage (see PCU code
  * Encoding::write_paging_request) and extract the mobile identity

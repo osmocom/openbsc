@@ -6,6 +6,7 @@
 /* msg_type */
 #define PCU_IF_MSG_DATA_REQ	0x00	/* send data to given channel */
 #define PCU_IF_MSG_DATA_CNF	0x01	/* confirm (e.g. transmission on PCH) */
+#define PCU_IF_MSG_DATA_CNF_DT	0x11	/* confirm (with direct tlli) */
 #define PCU_IF_MSG_DATA_IND	0x02	/* receive data from given channel */	
 #define PCU_IF_MSG_RTS_REQ	0x10	/* ready to send request */
 #define PCU_IF_MSG_RACH_IND	0x22	/* receive RACH */
@@ -54,6 +55,21 @@ struct gsm_pcu_if_data {
 	uint16_t	ber10k;		/*!< \brief BER in units of 0.01% */
 	int16_t		ta_offs_qbits;	/* !< \brief Burst TA Offset in quarter bits */
 	int16_t		lqual_cb;	/* !< \brief Link quality in centiBel */
+} __attribute__ ((packed));
+
+/* data confirmation with direct tlli (instead of raw mac block with tlli) */
+struct gsm_pcu_if_data_cnf_dt {
+	uint8_t		sapi;
+	uint32_t	tlli;
+	uint32_t	fn;
+	uint16_t	arfcn;
+	uint8_t		trx_nr;
+	uint8_t		ts_nr;
+	uint8_t		block_nr;
+	int8_t		rssi;
+	uint16_t ber10k;	/*!< \brief BER in units of 0.01% */
+	int16_t ta_offs_qbits;	/* !< \brief Burst TA Offset in quarter bits */
+	int16_t lqual_cb;	/* !< \brief Link quality in centiBel */
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_rts_req {
@@ -146,6 +162,7 @@ struct gsm_pcu_if {
 	union {
 		struct gsm_pcu_if_data		data_req;
 		struct gsm_pcu_if_data		data_cnf;
+		struct gsm_pcu_if_data_cnf_dt	data_cnf_dt;
 		struct gsm_pcu_if_data		data_ind;
 		struct gsm_pcu_if_rts_req	rts_req;
 		struct gsm_pcu_if_rach_ind	rach_ind;

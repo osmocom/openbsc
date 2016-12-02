@@ -31,6 +31,10 @@ int pcu_tx_data_ind(struct gsm_bts *bts, struct gsm_bts_trx_ts *ts, uint8_t is_p
 int pcu_tx_pag_req(struct gsm_bts *bts, const uint8_t *identity_lv, uint8_t chan_needed);
 int pcu_tx_pch_data_cnf(struct gsm_bts *bts, uint32_t fn, uint8_t *data, uint8_t len);
 
+
+/* Confirm the sending of an immediate assignment to the pcu */
+int pcu_tx_imm_ass_sent(struct gsm_bts *bts, uint32_t tlli);
+
 /* Open connection to PCU */
 int pcu_sock_init(const char *path, struct gsm_bts *bts);
 
