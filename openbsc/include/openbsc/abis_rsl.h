@@ -57,6 +57,9 @@ int rsl_data_request(struct msgb *msg, uint8_t link_id);
 int rsl_establish_request(struct gsm_lchan *lchan, uint8_t link_id);
 int rsl_relase_request(struct gsm_lchan *lchan, uint8_t link_id);
 
+/* Ericcson vendor specific RSL extensions */
+int rsl_ericsson_imm_assign_cmd(struct gsm_bts *bts, uint32_t tlli, uint8_t len, uint8_t *val);
+
 /* Siemens vendor-specific RSL extensions */
 int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci);
 
