@@ -1051,7 +1051,7 @@ int imsi_str2bcd(uint8_t *bcd_out, const char *str_in)
 }
 
 /* Chapter 8.5.6 */
-int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val)
+struct msgb *rsl_imm_assign_cmd_common(struct gsm_bts *bts, uint8_t len, uint8_t *val)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
@@ -1073,8 +1073,27 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val)
 	}
 
 	msg->dst = bts->c0->rsl_link;
+	return msg;
+}
+
+/* Chapter 8.5.6 */
+int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val)
+{
+	struct msgb *msg = rsl_imm_assign_cmd_common(bts, len, val);
+	if (!msg)
+		return 1;
+	return abis_rsl_sendmsg(msg);
+}
+
+/* Chapter 8.5.6 */
+int rsl_ericsson_imm_assign_cmd(struct gsm_bts *bts, uint32_t tlli, uint8_t len, uint8_t *val)
+{
+	struct msgb *msg = rsl_imm_assign_cmd_common(bts, len, val);
+
+	/* ericsson can handle a reference at the end of the message which is used in
+	 * the confirm message. The confirm message is only sent if the trailer is present */
 	msgb_put_u8(msg, 0xf1);
-	msgb_put_u32(msg, random());
+	msgb_put_u32(msg, tlli);
 
 	return abis_rsl_sendmsg(msg);
 }
