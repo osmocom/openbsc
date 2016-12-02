@@ -24,6 +24,10 @@ int pcu_tx_rach_ind(struct gsm_bts *bts, int16_t qta, uint16_t ra, uint32_t fn,
 /* Confirm the sending of an immediate assignment to the pcu */
 int pcu_tx_imm_ass_sent(struct gsm_bts *bts, uint32_t tlli);
 
+
+/* Confirm the sending of an immediate assignment to the pcu */
+int pcu_tx_imm_ass_sent(struct gsm_bts *bts, uint32_t tlli);
+
 /* Open connection to PCU */
 int pcu_sock_init(const char *path, struct gsm_bts *bts);
 
