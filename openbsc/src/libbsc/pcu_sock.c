@@ -56,6 +56,7 @@ static const char *sapi_string[] = {
 	[PCU_IF_SAPI_PDTCH] =	"PDTCH",
 	[PCU_IF_SAPI_PRACH] =	"PRACH",
 	[PCU_IF_SAPI_PTCCH] = 	"PTCCH",
+	[PCU_IF_SAPI_AGCH_DT] = 	"AGCH_DT",
 };
 
 /* Check if BTS has a PCU connection */
@@ -326,6 +327,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	struct gsm_bts_trx_ts *ts;
 	struct msgb *msg;
 	char imsi_digit_buf[4];
+	uint32_t tlli = -1;
 	uint8_t pag_grp;
 	int rc = 0;
 
@@ -342,6 +344,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		imsi_digit_buf[1] = data_req->data[1];
 		imsi_digit_buf[2] = data_req->data[2];
 		imsi_digit_buf[3] = '\0';
+		LOGP(DPCU, LOGL_DEBUG, "SAPI PCH imsi %s", imsi_digit_buf);
 		pag_grp = gsm0502_calc_paging_group(&bts->si_common.chan_desc,
 						str_to_imsi(imsi_digit_buf));
 		pcu_rx_rr_paging(bts, pag_grp, data_req->data+3);
@@ -356,6 +359,34 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		memcpy(msg->l3h, data_req->data, data_req->len);
 
 		if (rsl_imm_assign_cmd(bts, msg->len, msg->data)) {
+			msgb_free(msg);
+			rc = -EIO;
+		}
+		break;
+	case PCU_IF_SAPI_AGCH_DT:
+		/* DT = direct tlli. A tlli is prefixed */
+
+		if (data_req->len < 5) {
+			LOGP(DPCU, LOGL_ERROR, "Received PCU data request with "
+					"invalid/small length %d\n", data_req->len);
+			break;
+		}
+		tlli = *((uint32_t *)data_req->data);
+
+		msg = msgb_alloc(data_req->len - 4, "pcu_agch");
+		if (!msg) {
+			rc = -ENOMEM;
+			break;
+		}
+		msg->l3h = msgb_put(msg, data_req->len - 4);
+		memcpy(msg->l3h, data_req->data + 4, data_req->len - 4);
+
+		if (bts->type == GSM_BTS_TYPE_RBS2000)
+			rc = rsl_ericsson_imm_assign_cmd(bts, tlli, msg->len, msg->data);
+		else
+			rc = rsl_imm_assign_cmd(bts, msg->len, msg->data);
+
+		if (rc) {
 			msgb_free(msg);
 			rc = -EIO;
 		}
