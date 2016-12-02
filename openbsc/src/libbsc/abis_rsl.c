@@ -1993,6 +1993,7 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 	struct e1inp_sign_link *sign_link = msg->dst;
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 	int rc = 0;
+	uint32_t tlli;
 
 	msg->lchan = lchan_lookup(sign_link->trx, rslh->chan_nr,
 				  "Abis RSL rx CCHAN: ");
@@ -2012,6 +2013,22 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 		/* current load on the CBCH */
 		LOGP(DRSL, LOGL_NOTICE, "Unimplemented Abis RSL TRX message "
 			"type 0x%02x\n", rslh->c.msg_type);
+		break;
+	case 0x10: /* Ericsson specific: Immediate Assign Sent */
+		/* FIXME: Replace the messy message parsing below
+		 * with proper TV parser */
+		LOGP(DRSL, LOGL_INFO, "IMM.ass sent\n");
+		if(msg->len < 8)
+			LOGP(DRSL, LOGL_ERROR, "short IMM.ass sent message!\n");
+		else if(msg->data[4] != 0xf1)
+			LOGP(DRSL, LOGL_ERROR, "unsupported IMM.ass message format! (please fix)\n");
+		else {
+			tlli =  msg->data[8];
+			tlli |= msg->data[7] << 8;
+			tlli |= msg->data[6] << 16;
+			tlli |= msg->data[5] << 24;
+			pcu_tx_imm_ass_sent(sign_link->trx->bts, tlli);
+		}
 		break;
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "Unknown Abis RSL TRX message type "
