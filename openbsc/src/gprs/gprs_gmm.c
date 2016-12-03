@@ -2033,8 +2033,8 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 	msgb_v_put(msg, pdp->sapi);
 
 	/* FIXME: copy QoS parameters from original request */
-	//msgb_lv_put(msg, pdp->lib->qos_neg.l, pdp->lib->qos_neg.v);
-	msgb_lv_put(msg, sizeof(default_qos), (uint8_t *)&default_qos);
+	msgb_lv_put(msg, pdp->lib->qos_neg.l, pdp->lib->qos_neg.v);
+//	msgb_lv_put(msg, sizeof(default_qos), (uint8_t *)&default_qos);
 
 	/* Radio priority 10.5.7.2 */
 	msgb_v_put(msg, pdp->lib->radio_pri);
