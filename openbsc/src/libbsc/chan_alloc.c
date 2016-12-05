@@ -124,7 +124,8 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan,
 		 * to check whether a dynamic timeslot is already in TCH/H mode
 		 * and whether one of the two channels is still available.
 		 */
-		if (pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+		switch (pchan) {
+		case GSM_PCHAN_TCH_F_TCH_H_PDCH:
 			if (ts->dyn.pchan_is != ts->dyn.pchan_want) {
 				/* The TS's mode is being switched. Not
 				 * available anymore/yet. */
@@ -141,17 +142,19 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan,
 					continue;
 				return ts->lchan;
 			}
-			if (ts->dyn.pchan_is == dyn_as_pchan) {
-				/* The requested type matches the dynamic
-				 * timeslot's current mode. A channel may still
-				 * be available (think TCH/H). */
-				check_subslots = ts_subslots(ts);
-			} else
-				/* Otherwise this slot is not applicable. */
+			if (ts->dyn.pchan_is != dyn_as_pchan)
+				/* not applicable. */
 				continue;
-		} else {
+			/* The requested type matches the dynamic timeslot's
+			 * current mode. A channel may still be available
+			 * (think TCH/H). */
+			check_subslots = ts_subslots(ts);
+			break;
+
+		default:
 			/* Not a dynamic channel, there is only one pchan kind: */
 			check_subslots = ts_subslots(ts);
+			break;
 		}
 
 		/* Is a sub-slot still available? */
