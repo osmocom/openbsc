@@ -77,9 +77,9 @@ static int gprs_llc_generate_xid(uint8_t *bytes, int bytes_len,
 	xid_n201i.data_len = 2;
 
 	/* Add locally managed XID Fields */
-	llist_add(&xid_n201i.list, &xid_fields);
-	llist_add(&xid_n201u.list, &xid_fields);
 	llist_add(&xid_version.list, &xid_fields);
+	llist_add(&xid_n201u.list, &xid_fields);
+	llist_add(&xid_n201i.list, &xid_fields);
 
 	/* Append layer 3 XID field (if present) */
 	if (l3_xid_field) {
