@@ -151,6 +151,13 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan,
 			check_subslots = ts_subslots(ts);
 			break;
 
+		case GSM_PCHAN_TCH_F_PDCH:
+			/* Available for voice when in PDCH mode */
+			if (ts_pchan(ts) != GSM_PCHAN_PDCH)
+				continue;
+			/* Subslots of a PDCH ts don't need to be checked. */
+			return ts->lchan;
+
 		default:
 			/* Not a dynamic channel, there is only one pchan kind: */
 			check_subslots = ts_subslots(ts);
