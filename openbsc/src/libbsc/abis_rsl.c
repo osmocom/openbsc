@@ -1318,7 +1318,7 @@ static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
 static void print_meas_rep(struct gsm_lchan *lchan, struct gsm_meas_rep *mr)
 {
 	int i;
-	char *name = "";
+	const char *name = "";
 
 	if (lchan && lchan->conn)
 		name = subscr_name(lchan->conn->subscr);
