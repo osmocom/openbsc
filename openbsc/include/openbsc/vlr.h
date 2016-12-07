@@ -44,7 +44,7 @@ enum vlr_sub_auth_state {
 enum vlr_lu_event {
 	VLR_ULA_E_UPDATE_LA,	/* Initial trigger (LU from MS) */
 	VLR_ULA_E_SEND_ID_ACK,	/* Result of Send-ID from PVLR */
-	VLR_ULA_E_SEND_ID_NACK,/* Result of Send-ID from PVLR */
+	VLR_ULA_E_SEND_ID_NACK,	/* Result of Send-ID from PVLR */
 	VLR_ULA_E_AUTH_RES,	/* Result of auth procedure */
 	VLR_ULA_E_ID_IMSI,	/* IMSI recieved from MS */
 	VLR_ULA_E_ID_IMEI,	/* IMEI received from MS */
@@ -82,7 +82,7 @@ struct vlr_subscriber {
 	struct llist_head list;
 	struct vlr_instance *vlr;
 
-	/* Data from HLR */
+	/* Data from HLR */                             /* 3GPP TS 23.008 */
 	char imsi[GSM23003_IMSI_MAX_DIGITS+1];		/* 2.1.1.1 */
 	char msisdn[15+1];				/* 2.1.2 */
 	OSMO_LBUF_DECL(hlr, 16);			/* 2.4.7 */
@@ -157,7 +157,7 @@ struct vlr_ops {
 
 	/* notify MSC/SGSN that the subscriber data in VLR has been updated */
 	void (*subscr_update)(struct vlr_subscriber *vsub);
-	/* notify MSC/SGSN that the given subscriber has bene associated
+	/* notify MSC/SGSN that the given subscriber has been associated
 	 * with this msc_conn_ref */
 	void (*subscr_assoc)(void *msc_conn_ref, struct vlr_subscriber *vsub);
 };

@@ -3616,7 +3616,7 @@ static const struct vlr_ops msc_vlr_ops = {
 };
 
 /*
- * This will be ran by the linker when loading the DSO. We use it to
+ * This will be run by the linker when loading the DSO. We use it to
  * do system initialization, e.g. registration of signal handlers.
  */
 static __attribute__((constructor)) void on_dso_load_0408(void)
