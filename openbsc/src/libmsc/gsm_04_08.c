@@ -498,6 +498,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	/* increase conn ref count for the LU FSM */
 	subscr_con_get(conn);
 
+	conn->classmark1 = lu->classmark1;
 	//FIXME conn->subscr->equipment.classmark1 = lu->classmark1;
 
 	return 0;

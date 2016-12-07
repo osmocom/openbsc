@@ -138,6 +138,7 @@ struct gsm_subscriber_connection {
 	struct osmo_timer_list T10; /* BSC */
 	struct gsm_lchan *secondary_lchan; /* BSC */
 
+	struct gsm48_classmark1 classmark1;
 };
 
 
