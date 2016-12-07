@@ -755,7 +755,6 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 
-	struct gsm_network *network = conn->network;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_service_request *req =
 			(struct gsm48_service_request *)gh->data;
@@ -765,6 +764,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	uint8_t mi_len = *(classmark2 + classmark2_len);
 	uint8_t *mi = (classmark2 + classmark2_len + 1);
 	struct osmo_location_area_id lai;
+	struct osmo_fsm_inst *proc_arq_fsm;
 
 	lai.plmn.mcc = bts->network->country_code;
 	lai.plmn.mnc = bts->network->network_code;
@@ -978,6 +978,7 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	char mi_string[GSM48_MI_SIZE];
 	int rc = 0;
 	struct osmo_location_area_id lai;
+	struct osmo_fsm_inst *proc_arq_fsm;
 
 	lai.plmn.mcc = bts->network->country_code;
 	lai.plmn.mnc = bts->network->network_code;

@@ -100,7 +100,6 @@ static void _proc_arq_vlr_post_imei(struct osmo_fsm_inst *fi)
 {
 	struct proc_arq_priv *par = fi->priv;
 	struct vlr_subscriber *vsub = par->vsub;
-	struct vlr_instance *vlr = vsub->vlr;
 
 	/* TODO: Identity := IMSI */
 	/* FIXME: send process acess response already now?!? */
@@ -148,10 +147,6 @@ static void _proc_arq_vlr_post_trace(struct osmo_fsm_inst *fi)
 /* After Subscriber_Present_VLR */
 static void _proc_arq_vlr_post_pres(struct osmo_fsm_inst *fi)
 {
-	struct proc_arq_priv *par = fi->priv;
-	struct vlr_subscriber *vsub = par->vsub;
-	struct vlr_instance *vlr = vsub->vlr;
-
 	if (0 /* TODO: tracing required */) {
 		/* TODO: Trace_Subscriber_Activity_VLR */
 		osmo_fsm_inst_state_chg(fi, PR_ARQ_S_WAIT_TRACE_SUB, 0, 0);
@@ -164,7 +159,6 @@ static void _proc_arq_vlr_node2_post_vlr(struct osmo_fsm_inst *fi)
 {
 	struct proc_arq_priv *par = fi->priv;
 	struct vlr_subscriber *vsub = par->vsub;
-	struct vlr_instance *vlr = vsub->vlr;
 
 	if (!vsub->sub_dataconf_by_hlr_ind) {
 		/* Set User Error: Unidentified Subscriber */
@@ -191,7 +185,6 @@ static void _proc_arq_vlr_node2(struct osmo_fsm_inst *fi)
 {
 	struct proc_arq_priv *par = fi->priv;
 	struct vlr_subscriber *vsub = par->vsub;
-	struct vlr_instance *vlr = vsub->vlr;
 
 	vsub->conf_by_radio_contact_ind = true;
 	if (vsub->loc_conf_in_hlr_ind == false) {
@@ -211,7 +204,6 @@ static void proc_arq_vlr_fn_post_imsi(struct osmo_fsm_inst *fi)
 {
 	struct proc_arq_priv *par = fi->priv;
 	struct vlr_subscriber *vsub = par->vsub;
-	struct vlr_instance *vlr = vsub->vlr;
 
 	OSMO_ASSERT(vsub);
 
@@ -296,9 +288,6 @@ static void proc_arq_vlr_fn_w_auth(struct osmo_fsm_inst *fi,
 				   uint32_t event, void *data)
 {
 	enum vlr_auth_fsm_result *res = data;
-	struct proc_arq_priv *par = fi->priv;
-	struct vlr_subscriber *vsub = par->vsub;
-	struct vlr_instance *vlr = vsub->vlr;
 	enum vlr_proc_arq_result ret = VLR_PR_ARQ_RES_UNKNOWN_ERROR;
 
 	OSMO_ASSERT(event == PR_ARQ_E_AUTH_RES);

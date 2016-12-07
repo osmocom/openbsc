@@ -1043,15 +1043,6 @@ vlr_loc_update(struct osmo_fsm_inst *parent, uint32_t parent_term,
 {
 	struct osmo_fsm_inst *fi;
 	struct lu_fsm_priv *lfp;
-	char buf[16];
-	const char *id_str;
-
-	if (imsi)
-		id_str = imsi;
-	else {
-		snprintf(buf, sizeof(buf), "%08x", tmsi);
-		id_str = buf;
-	}
 
 	fi = osmo_fsm_inst_alloc_child(&vlr_lu_fsm, parent, parent_term);
 	if (!fi)
