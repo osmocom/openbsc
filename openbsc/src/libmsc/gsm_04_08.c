@@ -1037,7 +1037,12 @@ static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct m
 	DEBUGP(DRR, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
 		apdu_id_flags, apdu_len, osmo_hexdump(apdu_data, apdu_len));
 
+	/* we're not using the app info blob anywhere, so ignore. */
+#if 0
 	return db_apdu_blob_store(conn->subscr, apdu_id_flags, apdu_len, apdu_data);
+#else
+	return 0;
+#endif
 }
 
 /* Receive a GSM 04.08 Radio Resource (RR) message */
