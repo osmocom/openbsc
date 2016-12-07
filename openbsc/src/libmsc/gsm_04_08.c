@@ -707,8 +707,10 @@ static void implit_attach(struct gsm_subscriber_connection *conn)
 	if (conn->subscr->lac != GSM_LAC_RESERVED_DETACHED)
 		return;
 
+#if BEFORE_VLR
 	subscr_update(conn->subscr, conn->bts,
 		      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+#endif
 }
 
 
