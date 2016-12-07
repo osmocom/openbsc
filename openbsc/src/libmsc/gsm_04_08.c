@@ -487,9 +487,9 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 	gsm48_decode_lai(&lu->lai, &old_lai.plmn.mcc,
 			 &old_lai.plmn.mnc, &old_lai.lac);
-	new_lai.plmn.mcc = bts->network->country_code;
-	new_lai.plmn.mnc = bts->network->network_code;
-	new_lai.lac = bts->location_area_code;
+	new_lai.plmn.mcc = conn->network->country_code;
+	new_lai.plmn.mnc = conn->network->network_code;
+	new_lai.lac = conn->subscr->lac; /* FIXME this is probably incorrect */
 
 	conn->lu_fsm = vlr_loc_update(conn->master_fsm, SUB_CON_E_LU_RES,
 				      g_vlr, conn, vlr_lu_type, tmsi,
@@ -773,9 +773,9 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	struct osmo_location_area_id lai;
 	struct osmo_fsm_inst *proc_arq_fsm;
 
-	lai.plmn.mcc = bts->network->country_code;
-	lai.plmn.mnc = bts->network->network_code;
-	lai.lac = bts->location_area_code;
+	lai.plmn.mcc = conn->network->country_code;
+	lai.plmn.mnc = conn->network->network_code;
+	lai.lac = 23; /* FIXME -- used to be bts' LAC */
 
 	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
@@ -987,9 +987,9 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	struct osmo_location_area_id lai;
 	struct osmo_fsm_inst *proc_arq_fsm;
 
-	lai.plmn.mcc = bts->network->country_code;
-	lai.plmn.mnc = bts->network->network_code;
-	lai.lac = bts->location_area_code;
+	lai.plmn.mcc = conn->network->country_code;
+	lai.plmn.mnc = conn->network->network_code;
+	lai.lac = 23; /* FIXME bts->location_area_code; */
 
 	resp = (struct gsm48_pag_resp *) &gh->data[0];
 	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*gh),
