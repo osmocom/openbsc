@@ -71,6 +71,8 @@ uint32_t vlr_timer(struct vlr_instance *vlr, uint32_t timer)
 const char *vlr_sub_name(struct vlr_subscriber *vsub)
 {
 	static char buf[32];
+	if (!vsub)
+		return "-";
 	if (vsub->imsi[0])
 		strncpy(buf, vsub->imsi, sizeof(buf));
 	else
