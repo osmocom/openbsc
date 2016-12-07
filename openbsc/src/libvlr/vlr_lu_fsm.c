@@ -1074,9 +1074,7 @@ vlr_loc_update(struct osmo_fsm_inst *parent, uint32_t parent_term,
 
 	osmo_fsm_inst_dispatch(fi, VLR_ULA_E_UPDATE_LA, NULL);
 
-	/* ugly: we assume that dispatching the start event has created
-	 * the subscriber */
-	return lfp->vsub;
+	return fi;
 }
 
 void vlr_lu_fsm_init(void)
