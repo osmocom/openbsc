@@ -99,6 +99,9 @@ struct gsm_subscriber_connection {
 	 * towards A/Iu */
 	uint32_t use_count;
 
+	/* Location Updating FSM, may not have a subscr yet */
+	struct osmo_fsm_inst *lu_fsm;
+
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
 

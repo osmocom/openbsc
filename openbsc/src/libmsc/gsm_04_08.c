@@ -488,8 +488,8 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	new_lai.lac = bts->location_area_code;
 
 	conn->lu_fsm = vlr_loc_update(conn->master_fsm, SUB_CON_E_LU_RES,
-				      g_vlr, conn, vlr_lu_type, tmsi, imsi,
-				      &old_lai, &new_lai);
+				      g_vlr, conn, vlr_lu_type, tmsi,
+				      imsi, &old_lai, &new_lai);
 	if (!conn->lu_fsm) {
 		DEBUGPC(DRR, "%s: Can't start LU FSM\n", mi_string);
 		return 0;
