@@ -541,7 +541,7 @@ static int generate_si1(uint8_t *output, struct gsm_bts *bts)
 
 	memset(si1, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
-	si1->header.l2_plen = (21 << 2) | 1;
+	si1->header.l2_plen = GSM48_LEN2PLEN(21);
 	si1->header.rr_protocol_discriminator = GSM48_PDISC_RR;
 	si1->header.skip_indicator = 0;
 	si1->header.system_information = GSM48_MT_RR_SYSINFO_1;
@@ -570,7 +570,7 @@ static int generate_si2(uint8_t *output, struct gsm_bts *bts)
 
 	memset(si2, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
-	si2->header.l2_plen = (22 << 2) | 1;
+	si2->header.l2_plen = GSM48_LEN2PLEN(22);
 	si2->header.rr_protocol_discriminator = GSM48_PDISC_RR;
 	si2->header.skip_indicator = 0;
 	si2->header.system_information = GSM48_MT_RR_SYSINFO_2;
@@ -596,7 +596,7 @@ static int generate_si2bis(uint8_t *output, struct gsm_bts *bts)
 
 	memset(si2b, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
-	si2b->header.l2_plen = (22 << 2) | 1;
+	si2b->header.l2_plen = GSM48_LEN2PLEN(22);
 	si2b->header.rr_protocol_discriminator = GSM48_PDISC_RR;
 	si2b->header.skip_indicator = 0;
 	si2b->header.system_information = GSM48_MT_RR_SYSINFO_2bis;
@@ -630,7 +630,7 @@ static int generate_si2ter(uint8_t *output, struct gsm_bts *bts)
 
 	memset(si2t, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
-	si2t->header.l2_plen = (22 << 2) | 1;
+	si2t->header.l2_plen = GSM48_LEN2PLEN(22);
 	si2t->header.rr_protocol_discriminator = GSM48_PDISC_RR;
 	si2t->header.skip_indicator = 0;
 	si2t->header.system_information = GSM48_MT_RR_SYSINFO_2ter;
@@ -711,7 +711,7 @@ static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 
 	memset(si3, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
-	si3->header.l2_plen = (18 << 2) | 1;
+	si3->header.l2_plen = GSM48_LEN2PLEN(18);
 	si3->header.rr_protocol_discriminator = GSM48_PDISC_RR;
 	si3->header.skip_indicator = 0;
 	si3->header.system_information = GSM48_MT_RR_SYSINFO_3;
@@ -784,7 +784,7 @@ static int generate_si4(uint8_t *output, struct gsm_bts *bts)
 		/* we don't use hopping and thus don't need a CBCH MA */
 	}
 
-	si4->header.l2_plen = (l2_plen << 2) | 1;
+	si4->header.l2_plen = GSM48_LEN2PLEN(l2_plen);
 
 	/* SI4 Rest Octets (10.5.2.35), containing
 		Optional Power offset, GPRS Indicator,
@@ -805,7 +805,7 @@ static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
-		*output++ = (l2_plen << 2) | 1;
+		*output++ = GSM48_LEN2PLEN(l2_plen);
 		l2_plen++;
 		break;
 	default:
@@ -840,7 +840,7 @@ static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
-		*output++ = (l2_plen << 2) | 1;
+		*output++ = GSM48_LEN2PLEN(l2_plen);
 		l2_plen++;
 		break;
 	default:
@@ -884,7 +884,7 @@ static int generate_si5ter(uint8_t *output, struct gsm_bts *bts)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
-		*output++ = (l2_plen << 2) | 1;
+		*output++ = GSM48_LEN2PLEN(l2_plen);
 		l2_plen++;
 		break;
 	default:
@@ -921,7 +921,7 @@ static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
-		*output++ = (l2_plen << 2) | 1;
+		*output++ = GSM48_LEN2PLEN(l2_plen);
 		l2_plen++;
 		break;
 	default:
