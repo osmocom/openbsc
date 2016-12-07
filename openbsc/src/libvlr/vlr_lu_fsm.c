@@ -440,6 +440,7 @@ static const struct osmo_fsm_state lu_compl_vlr_states[] = {
 	[LU_COMPL_VLR_S_WAIT_SUB_PRES] = {
 		.in_event_mask = S(LU_COMPL_VLR_E_SUB_PRES_COMPL),
 		.out_state_mask = S(LU_COMPL_VLR_S_WAIT_IMEI) |
+				  S(LU_COMPL_VLR_S_WAIT_IMEI_TMSI) |
 				  S(LU_COMPL_VLR_S_WAIT_TMSI_CNF) |
 				  S(LU_COMPL_VLR_S_DONE),
 		.name = "WAIT-SUBSCR-PRES-COMPL",
