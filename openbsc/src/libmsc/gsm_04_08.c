@@ -3606,6 +3606,17 @@ static void msc_vlr_subscr_update(struct vlr_subscriber *subscr)
 	/* FIXME */
 }
 
+/* VLR informs us that the subscriber has been associated with a conn */
+static void msc_vlr_subscr_assoc(void *msc_conn_ref,
+				 struct vlr_subscriber *subscr)
+{
+	struct gsm_subscriber_connection *conn = msc_conn_ref;
+	DEBUGP(DVLR, "%s: msc_vlr_subscr_assoc(%p)\n",
+	       vlr_sub_name(subscr), conn);
+	OSMO_ASSERT(conn->lu_fsm == subscr->lu_fsm);
+	conn->subscr = subscr;
+}
+
 /* operations that we need to implement for libvlr */
 static const struct vlr_ops msc_vlr_ops = {
 	.tx_auth_req = msc_vlr_tx_auth_req,
@@ -3615,6 +3626,7 @@ static const struct vlr_ops msc_vlr_ops = {
 	.tx_lu_rej = msc_vlr_tx_lu_rej,
 	.set_ciph_mode = msc_vlr_set_ciph_mode,
 	.subscr_update = msc_vlr_subscr_update,
+	.subscr_assoc = msc_vlr_subscr_assoc,
 };
 
 /*
