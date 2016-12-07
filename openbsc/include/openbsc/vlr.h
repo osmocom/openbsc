@@ -207,6 +207,7 @@ int vlr_sub_rx_auth_resp(struct vlr_subscriber *vsub, bool is_r99, bool is_utran
 			 const uint8_t *res, uint8_t res_len);
 int vlr_sub_rx_auth_fail(struct vlr_subscriber *vsub, const uint8_t *auts);
 int vlr_sub_tx_auth_fail_rep(struct vlr_subscriber *vsub);
+int vlr_sub_rx_tmsi_reall_compl(struct vlr_subscriber *vsub);
 
 struct vlr_instance *
 vlr_init(void *ctx, const struct vlr_ops *ops, const char *addr_str, uint16_t port);

@@ -910,8 +910,8 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 static int gsm48_rx_mm_tmsi_reall_compl(struct gsm_subscriber_connection *conn)
 {
 	DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
-	       subscr_name(conn->subscr));
-	return vlr_sub_rx_tmsi_realloc_req(conn);
+	       vlr_sub_name(conn->subscr));
+	return vlr_sub_rx_tmsi_reall_compl(conn->subscr);
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */

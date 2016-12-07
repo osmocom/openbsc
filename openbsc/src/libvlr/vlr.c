@@ -715,17 +715,18 @@ int vlr_sub_rx_id_resp(struct vlr_subscriber *vsub,
 }
 
 /* MSC->VLR: Subscriber has provided IDENTITY RESPONSE */
-void vlr_sub_rx_tmsi_reall_compl(struct vlr_subscriber *vsub)
+int vlr_sub_rx_tmsi_reall_compl(struct vlr_subscriber *vsub)
 {
 	if (vsub->lu_fsm) {
-		osmo_fsm_inst_dispatch(vsub->lu_fsm,
-					VLR_ULA_E_NEW_TMSI_ACK, NULL);
+		return osmo_fsm_inst_dispatch(vsub->lu_fsm,
+					      VLR_ULA_E_NEW_TMSI_ACK, NULL);
 	} else if (vsub->proc_arq_fsm) {
-		osmo_fsm_inst_dispatch(vsub->proc_arq_fsm,
-					PR_ARQ_E_TMSI_ACK, NULL);
+		return osmo_fsm_inst_dispatch(vsub->proc_arq_fsm,
+					      PR_ARQ_E_TMSI_ACK, NULL);
 	} else {
 		LOGVSUBP(LOGL_NOTICE, vsub,
 			 "gratuitous TMSI REALLOC COMPL");
+		return -EINVAL;
 	}
 }
 
