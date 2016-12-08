@@ -92,7 +92,6 @@ osmo_sgsn_SOURCES = \
 	sgsn_cdr.c \
 	sgsn_ares.c \
 	slhc.c \
-	oap.c \
 	gprs_llc_xid.c \
 	v42bis.c \
 	$(NULL)
@@ -137,9 +136,9 @@ osmo_gtphub_LDADD = \
 gsup_test_client_SOURCES = \
 	gprs_gsup_client.c \
 	gsup_test_client.c \
-	oap.c \
 	$(NULL)
 gsup_test_client_LDADD = \
+	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOCORE_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBOSMOVTY_LIBS) \
