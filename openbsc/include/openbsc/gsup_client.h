@@ -41,7 +41,7 @@ struct gsup_client {
 	gsup_client_read_cb_t read_cb;
 	void *data;
 
-	struct oap_state oap_state;
+	struct oap_client_state oap_state;
 
 	struct osmo_timer_list ping_timer;
 	struct osmo_timer_list connect_timer;
@@ -52,7 +52,7 @@ struct gsup_client {
 struct gsup_client *gsup_client_create(const char *ip_addr,
 				       unsigned int tcp_port,
 				       gsup_client_read_cb_t read_cb,
-				       struct oap_config *oap_config);
+				       struct oap_client_config *oap_config);
 
 void gsup_client_destroy(struct gsup_client *gsupc);
 int gsup_client_send(struct gsup_client *gsupc, struct msgb *msg);

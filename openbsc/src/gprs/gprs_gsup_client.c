@@ -116,7 +116,7 @@ static void gsup_client_oap_register(struct gsup_client *gsupc)
 {
 	struct msgb *msg_tx;
 	int rc;
-	rc = oap_register(&gsupc->oap_state, &msg_tx);
+	rc = oap_client_register(&gsupc->oap_state, &msg_tx);
 
 	if ((rc < 0) || (!msg_tx)) {
 		LOGP(DLGSUP, LOGL_ERROR, "GSUP OAP set up, but cannot register.\n");
@@ -155,7 +155,7 @@ static int gsup_client_oap_handle(struct gsup_client *gsupc, struct msgb *msg_rx
 	int rc;
 	struct msgb *msg_tx;
 
-	rc = oap_handle(&gsupc->oap_state, msg_rx, &msg_tx);
+	rc = oap_client_handle(&gsupc->oap_state, msg_rx, &msg_tx);
 	msgb_free(msg_rx);
 	if (rc < 0)
 		return rc;
@@ -265,7 +265,7 @@ static void start_test_procedure(struct gsup_client *gsupc)
 struct gsup_client *gsup_client_create(const char *ip_addr,
 				       unsigned int tcp_port,
 				       gsup_client_read_cb_t read_cb,
-				       struct oap_config *oap_config)
+				       struct oap_client_config *oap_config)
 {
 	struct gsup_client *gsupc;
 	int rc;
@@ -273,7 +273,7 @@ struct gsup_client *gsup_client_create(const char *ip_addr,
 	gsupc = talloc_zero(tall_bsc_ctx, struct gsup_client);
 	OSMO_ASSERT(gsupc);
 
-	rc = oap_init(oap_config, &gsupc->oap_state);
+	rc = oap_client_init(oap_config, &gsupc->oap_state);
 	if (rc != 0)
 		goto failed;
 

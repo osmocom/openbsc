@@ -31,11 +31,11 @@ static void test_oap_api(void)
 {
 	printf("Testing OAP API\n  - Config parsing\n");
 
-	struct oap_config _config;
-	struct oap_config *config = &_config;
+	struct oap_client_config _config;
+	struct oap_client_config *config = &_config;
 
-	struct oap_state _state;
-	struct oap_state *state = &_state;
+	struct oap_client_state _state;
+	struct oap_client_state *state = &_state;
 
 	memset(config, 0, sizeof(*config));
 	memset(state, 0, sizeof(*state));
@@ -50,7 +50,7 @@ static void test_oap_api(void)
 	config->client_id = 0;
 	config->secret_k_present = 0;
 	config->secret_opc_present = 0;
-	OSMO_ASSERT( oap_init(config, state) == 0 );
+	OSMO_ASSERT( oap_client_init(config, state) == 0 );
 	OSMO_ASSERT(state->state == OAP_DISABLED);
 
 	/* reset state */
@@ -60,7 +60,7 @@ static void test_oap_api(void)
 	config->client_id = 0;
 	config->secret_k_present = 1;
 	config->secret_opc_present = 1;
-	OSMO_ASSERT( oap_init(config, state) == 0 );
+	OSMO_ASSERT( oap_client_init(config, state) == 0 );
 	OSMO_ASSERT(state->state == OAP_DISABLED);
 
 	memset(state, 0, sizeof(*state));
@@ -69,7 +69,7 @@ static void test_oap_api(void)
 	config->client_id = 12345;
 	config->secret_k_present = 0;
 	config->secret_opc_present = 1;
-	OSMO_ASSERT( oap_init(config, state) == 0 );
+	OSMO_ASSERT( oap_client_init(config, state) == 0 );
 	OSMO_ASSERT(state->state == OAP_DISABLED);
 
 	memset(state, 0, sizeof(*state));
@@ -78,7 +78,7 @@ static void test_oap_api(void)
 	config->client_id = 12345;
 	config->secret_k_present = 1;
 	config->secret_opc_present = 0;
-	OSMO_ASSERT( oap_init(config, state) == 0 );
+	OSMO_ASSERT( oap_client_init(config, state) == 0 );
 	OSMO_ASSERT(state->state == OAP_DISABLED);
 
 	memset(state, 0, sizeof(*state));
@@ -89,7 +89,7 @@ static void test_oap_api(void)
 	config->secret_k_present = 1;
 	config->secret_opc_present = 1;
 	/*config->secret_* buffers are still set from the top */
-	OSMO_ASSERT( oap_init(config, state) == 0 );
+	OSMO_ASSERT( oap_client_init(config, state) == 0 );
 	OSMO_ASSERT(state->state == OAP_INITIALIZED);
 
 	printf("  - AUTN failures\n");
@@ -105,8 +105,8 @@ static void test_oap_api(void)
 	oap_rx.message_type = OAP_MSGT_CHALLENGE_REQUEST;
 	oap_rx.rand_present = 0;
 	oap_rx.autn_present = 0;
-	msg_rx = oap_encoded(&oap_rx);
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == -2);
+	msg_rx = oap_client_encoded(&oap_rx);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -2);
 	msgb_free(msg_rx);
 	OSMO_ASSERT(!msg_tx);
 
@@ -114,8 +114,8 @@ static void test_oap_api(void)
 	osmo_hexparse("0102030405060708090a0b0c0d0e0f10",
 		      oap_rx.rand, 16);
 	oap_rx.rand_present = 1;
-	msg_rx = oap_encoded(&oap_rx);
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == -2);
+	msg_rx = oap_client_encoded(&oap_rx);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -2);
 	msgb_free(msg_rx);
 	OSMO_ASSERT(!msg_tx);
 
@@ -124,8 +124,8 @@ static void test_oap_api(void)
 	osmo_hexparse("cec4e3848a33000086781158ca40f136",
 		      oap_rx.autn, 16);
 	oap_rx.autn_present = 1;
-	msg_rx = oap_encoded(&oap_rx);
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == -2);
+	msg_rx = oap_client_encoded(&oap_rx);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -2);
 	msgb_free(msg_rx);
 	OSMO_ASSERT(!msg_tx);
 
@@ -136,25 +136,25 @@ static void test_oap_api(void)
 		      oap_rx.autn, 16);
 	oap_rx.rand_present = 1;
 	oap_rx.autn_present = 1;
-	msg_rx = oap_encoded(&oap_rx);
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == -2);
+	msg_rx = oap_client_encoded(&oap_rx);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -2);
 	msgb_free(msg_rx);
 	OSMO_ASSERT(!msg_tx);
 
 	/* all data correct */
 	osmo_hexparse("cec4e3848a33000086781158ca40f136",
 		      oap_rx.autn, 16);
-	msg_rx = oap_encoded(&oap_rx);
+	msg_rx = oap_client_encoded(&oap_rx);
 
 	/* but refuse to evaluate in uninitialized state */
 	OSMO_ASSERT(state->state == OAP_INITIALIZED);
 
 	state->state = OAP_UNINITIALIZED;
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == -1);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -1);
 	OSMO_ASSERT(!msg_tx);
 
 	state->state = OAP_DISABLED;
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == -1);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -1);
 	OSMO_ASSERT(!msg_tx);
 
 	state->state = OAP_INITIALIZED;
@@ -162,7 +162,7 @@ static void test_oap_api(void)
 	/* now everything is correct */
 	printf("  - AUTN success\n");
 	/* a successful return value here indicates correct autn */
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == 0);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == 0);
 	msgb_free(msg_rx);
 
 	/* Expect the challenge response in msg_tx */
@@ -176,18 +176,18 @@ static void test_oap_api(void)
 	msgb_free(msg_tx);
 	msg_tx = 0;
 
-	struct oap_state saved_state = _state;
+	struct oap_client_state saved_state = _state;
 
 	printf("  - Registration failure\n");
 
 	memset(&oap_rx, 0, sizeof(oap_rx));
 	oap_rx.message_type = OAP_MSGT_REGISTER_ERROR;
 	oap_rx.cause = GMM_CAUSE_PROTO_ERR_UNSPEC;
-	msg_rx = oap_encoded(&oap_rx);
+	msg_rx = oap_client_encoded(&oap_rx);
 
 	/* Receive registration error for the first time. */
 	OSMO_ASSERT(state->registration_failures == 0);
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == 0);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == 0);
 	OSMO_ASSERT(state->registration_failures == 1);
 	OSMO_ASSERT(msg_tx);
 	OSMO_ASSERT(osmo_oap_decode(&oap_tx, msg_tx->data, msg_tx->len) == 0);
@@ -198,7 +198,7 @@ static void test_oap_api(void)
 
 	/* Receive registration error for the Nth time. */
 	state->registration_failures = 999;
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == -11);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -11);
 	OSMO_ASSERT(!msg_tx);
 	OSMO_ASSERT(state->state == OAP_INITIALIZED);
 	msgb_free(msg_tx);
@@ -211,8 +211,8 @@ static void test_oap_api(void)
 	_state = saved_state;
 	memset(&oap_rx, 0, sizeof(oap_rx));
 	oap_rx.message_type = OAP_MSGT_REGISTER_RESULT;
-	msg_rx = oap_encoded(&oap_rx);
-	OSMO_ASSERT(oap_handle(state, msg_rx, &msg_tx) == 0);
+	msg_rx = oap_client_encoded(&oap_rx);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == 0);
 	OSMO_ASSERT(!msg_tx);
 	OSMO_ASSERT(state->state == OAP_REGISTERED);
 	msgb_free(msg_rx);

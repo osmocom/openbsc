@@ -27,9 +27,10 @@
 struct msgb;
 struct osmo_oap_message;
 
-/* This is the config part for vty. It is essentially copied in oap_state,
- * where values are copied over once the config is considered valid. */
-struct oap_config {
+/* This is the config part for vty. It is essentially copied in
+ * oap_client_state, where values are copied over once the config is
+ * considered valid. */
+struct oap_client_config {
 	uint16_t client_id;
 	int secret_k_present;
 	uint8_t secret_k[16];
@@ -38,9 +39,10 @@ struct oap_config {
 };
 
 /* The runtime state of the OAP client. client_id and the secrets are in fact
- * duplicated from oap_config, so that a separate validation of the config data
- * is possible, and so that only a struct oap_state* is passed around. */
-struct oap_state {
+ * duplicated from oap_client_config, so that a separate validation of the
+ * config data is possible, and so that only a struct oap_client_state* is
+ * passed around. */
+struct oap_client_state {
 	enum {
 		OAP_UNINITIALIZED = 0,	/* just allocated. */
 		OAP_DISABLED,		/* disabled by config. */
@@ -56,23 +58,25 @@ struct oap_state {
 };
 
 /* From config, initialize state. Return 0 on success. */
-int oap_init(struct oap_config *config, struct oap_state *state);
+int oap_client_init(struct oap_client_config *config,
+		    struct oap_client_state *state);
 
 /* Construct an OAP registration message and return in *msg_tx. Use
  * state->client_id and update state->state.
  * Return 0 on success, or a negative value on error.
  * If an error is returned, *msg_tx is guaranteed to be NULL. */
-int oap_register(struct oap_state *state, struct msgb **msg_tx);
+int oap_client_register(struct oap_client_state *state, struct msgb **msg_tx);
 
 /* Decode and act on a received OAP message msg_rx. Update state->state.  If a
  * non-NULL pointer is returned in *msg_tx, that msgb should be sent to the OAP
  * server (and freed) by the caller. The received msg_rx is not freed.
  * Return 0 on success, or a negative value on error.
  * If an error is returned, *msg_tx is guaranteed to be NULL. */
-int oap_handle(struct oap_state *state, const struct msgb *msg_rx, struct msgb **msg_tx);
+int oap_client_handle(struct oap_client_state *state,
+		      const struct msgb *msg_rx, struct msgb **msg_tx);
 
-/* Allocate a msgb and in it, return the encoded oap_msg. Return NULL on
- * error. (Like oap_encode(), but also allocates a msgb.)
- * About the name: the idea is do_something(oap_encoded(my_struct)) */
-struct msgb *oap_encoded(const struct osmo_oap_message *oap_msg);
-
+/* Allocate a msgb and in it, return the encoded oap_client_msg. Return
+ * NULL on error. (Like oap_client_encode(), but also allocates a msgb.)
+ * About the name: the idea is do_something(oap_client_encoded(my_struct))
+ */
+struct msgb *oap_client_encoded(const struct osmo_oap_message *oap_client_msg);

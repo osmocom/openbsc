@@ -29,7 +29,8 @@
 #include <openbsc/oap.h>
 #include <openbsc/debug.h>
 
-int oap_init(struct oap_config *config, struct oap_state *state)
+int oap_client_init(struct oap_client_config *config,
+		    struct oap_client_state *state)
 {
 	OSMO_ASSERT(state->state == OAP_UNINITIALIZED);
 
@@ -66,7 +67,7 @@ disable:
  * response message and update the state.
  * Return 0 on success; -1 if OAP is disabled; -2 if rx_random and rx_autn fail
  * the authentication check; -3 for any other errors. */
-static int oap_evaluate_challenge(const struct oap_state *state,
+static int oap_evaluate_challenge(const struct oap_client_state *state,
 				  const uint8_t *rx_random,
 				  const uint8_t *rx_autn,
 				  uint8_t *tx_xres)
@@ -119,7 +120,7 @@ static int oap_evaluate_challenge(const struct oap_state *state,
 	return 0;
 }
 
-struct msgb *oap_encoded(const struct osmo_oap_message *oap_msg)
+struct msgb *oap_client_encoded(const struct osmo_oap_message *oap_msg)
 {
 	struct msgb *msg = msgb_alloc_headroom(1000, 64, __func__);
 	OSMO_ASSERT(msg);
@@ -140,10 +141,10 @@ static struct msgb* oap_msg_register(uint16_t client_id)
 
 	oap_msg.message_type = OAP_MSGT_REGISTER_REQUEST;
 	oap_msg.client_id = client_id;
-	return oap_encoded(&oap_msg);
+	return oap_client_encoded(&oap_msg);
 }
 
-int oap_register(struct oap_state *state, struct msgb **msg_tx)
+int oap_client_register(struct oap_client_state *state, struct msgb **msg_tx)
 {
 	*msg_tx = oap_msg_register(state->client_id);
 	if (!(*msg_tx))
@@ -163,10 +164,10 @@ static struct msgb* oap_msg_challenge_response(uint8_t *xres)
 	oap_reply.message_type = OAP_MSGT_CHALLENGE_RESULT;
 	memcpy(oap_reply.xres, xres, sizeof(oap_reply.xres));
 	oap_reply.xres_present = 1;
-	return oap_encoded(&oap_reply);
+	return oap_client_encoded(&oap_reply);
 }
 
-static int handle_challenge(struct oap_state *state,
+static int handle_challenge(struct oap_client_state *state,
 			    struct osmo_oap_message *oap_rx,
 			    struct msgb **msg_tx)
 {
@@ -203,7 +204,8 @@ failure:
 	return rc;
 }
 
-int oap_handle(struct oap_state *state, const struct msgb *msg_rx, struct msgb **msg_tx)
+int oap_client_handle(struct oap_client_state *state,
+		      const struct msgb *msg_rx, struct msgb **msg_tx)
 {
 	uint8_t *data = msgb_l2(msg_rx);
 	size_t data_len = msgb_l2len(msg_rx);
@@ -237,7 +239,7 @@ int oap_handle(struct oap_state *state, const struct msgb *msg_rx, struct msgb *
 		state->state = OAP_INITIALIZED;
 		if (state->registration_failures < 3) {
 			state->registration_failures ++;
-			return oap_register(state, msg_tx);
+			return oap_client_register(state, msg_tx);
 		}
 		return -11;
 
