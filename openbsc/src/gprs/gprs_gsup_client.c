@@ -1,9 +1,10 @@
-/* GPRS Subscriber Update Protocol client */
+/* Generic Subscriber Update Protocol client */
 
-/* (C) 2014 by Sysmocom s.f.m.c. GmbH
+/* (C) 2014-2016 by Sysmocom s.f.m.c. GmbH
  * All Rights Reserved
  *
  * Author: Jacob Erlbeck
+ * Author: Neels Hofmeyr
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
