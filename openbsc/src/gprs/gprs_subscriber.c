@@ -45,7 +45,7 @@
 
 extern void *tall_bsc_ctx;
 
-static int gsup_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg);
+static int gsup_read_cb(struct gsup_client *gsupc, struct msgb *msg);
 
 /* TODO: Some functions are specific to the SGSN, but this file is more general
  * (it has gprs_* name). Either move these functions elsewhere, split them and
@@ -62,7 +62,7 @@ int gprs_subscr_init(struct sgsn_instance *sgi)
 
 	addr_str = inet_ntoa(sgi->cfg.gsup_server_addr.sin_addr);
 
-	sgi->gsup_client = gprs_gsup_client_create(
+	sgi->gsup_client = gsup_client_create(
 		addr_str, sgi->cfg.gsup_server_port,
 		&gsup_read_cb,
 		&sgi->cfg.oap);
@@ -73,7 +73,7 @@ int gprs_subscr_init(struct sgsn_instance *sgi)
 	return 1;
 }
 
-static int gsup_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg)
+static int gsup_read_cb(struct gsup_client *gsupc, struct msgb *msg)
 {
 	int rc;
 
@@ -161,7 +161,7 @@ void gprs_subscr_cancel(struct gsm_subscriber *subscr)
 static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 				       struct osmo_gsup_message *gsup_msg)
 {
-	struct msgb *msg = gprs_gsup_msgb_alloc();
+	struct msgb *msg = gsup_client_msgb_alloc();
 
 	if (strlen(gsup_msg->imsi) == 0 && subscr)
 		strncpy(gsup_msg->imsi, subscr->imsi, sizeof(gsup_msg->imsi) - 1);
@@ -176,7 +176,7 @@ static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 		return -ENOTSUP;
 	}
 
-	return gprs_gsup_client_send(sgsn->gsup_client, msg);
+	return gsup_client_send(sgsn->gsup_client, msg);
 }
 
 static int gprs_subscr_tx_gsup_error_reply(struct gsm_subscriber *subscr,

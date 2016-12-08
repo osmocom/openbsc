@@ -146,14 +146,14 @@ int __wrap_gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx) {
 	return (*subscr_request_auth_info_cb)(mmctx);
 };
 
-/* override, requires '-Wl,--wrap=gprs_gsup_client_send' */
-int __real_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg);
-int (*gprs_gsup_client_send_cb)(struct gprs_gsup_client *gsupc, struct msgb *msg) =
-	&__real_gprs_gsup_client_send;
+/* override, requires '-Wl,--wrap=gsup_client_send' */
+int __real_gsup_client_send(struct gsup_client *gsupc, struct msgb *msg);
+int (*gsup_client_send_cb)(struct gsup_client *gsupc, struct msgb *msg) =
+	&__real_gsup_client_send;
 
-int __wrap_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
+int __wrap_gsup_client_send(struct gsup_client *gsupc, struct msgb *msg)
 {
-	return (*gprs_gsup_client_send_cb)(gsupc, msg);
+	return (*gsup_client_send_cb)(gsupc, msg);
 };
 
 static int count(struct llist_head *head)
@@ -714,7 +714,7 @@ static void test_subscriber_gsup(void)
 	cleanup_test();
 }
 
-int my_gprs_gsup_client_send_dummy(struct gprs_gsup_client *gsupc, struct msgb *msg)
+int my_gsup_client_send_dummy(struct gsup_client *gsupc, struct msgb *msg)
 {
 	msgb_free(msg);
 	return 0;
@@ -1281,7 +1281,7 @@ static void test_gmm_attach_subscr_gsup_auth(int retry)
 	cleanup_test();
 }
 
-int my_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
+int my_gsup_client_send(struct gsup_client *gsupc, struct msgb *msg)
 {
 	struct osmo_gsup_message to_peer = {0};
 	struct osmo_gsup_message from_peer = {0};
@@ -1323,7 +1323,7 @@ int my_gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 		return 0;
 	}
 
-	reply_msg = gprs_gsup_msgb_alloc();
+	reply_msg = gsup_client_msgb_alloc();
 	reply_msg->l2h = reply_msg->data;
 	osmo_gsup_encode(reply_msg, &from_peer);
 	gprs_subscr_rx_gsup_message(reply_msg);
@@ -1338,9 +1338,9 @@ static void test_gmm_attach_subscr_real_gsup_auth(int retry)
 	struct gsm_subscriber *subscr;
 
 	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
-	gprs_gsup_client_send_cb = my_gprs_gsup_client_send;
+	gsup_client_send_cb = my_gsup_client_send;
 
-	sgsn->gsup_client = talloc_zero(tall_bsc_ctx, struct gprs_gsup_client);
+	sgsn->gsup_client = talloc_zero(tall_bsc_ctx, struct gsup_client);
 
 	if (retry) {
 		upd_loc_skip = 3;
@@ -1355,7 +1355,7 @@ static void test_gmm_attach_subscr_real_gsup_auth(int retry)
 	assert_no_subscrs();
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
-	gprs_gsup_client_send_cb = __real_gprs_gsup_client_send;
+	gsup_client_send_cb = __real_gsup_client_send;
 	upd_loc_skip = 0;
 	auth_info_skip = 0;
 	talloc_free(sgsn->gsup_client);
@@ -2239,7 +2239,7 @@ static void test_ggsn_selection(void)
 
 	printf("Testing GGSN selection\n");
 
-	gprs_gsup_client_send_cb = my_gprs_gsup_client_send_dummy;
+	gsup_client_send_cb = my_gsup_client_send_dummy;
 
 	/* Check for emptiness */
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
@@ -2358,7 +2358,7 @@ static void test_ggsn_selection(void)
 	sgsn_ggsn_ctx_free(ggcs[1]);
 	sgsn_ggsn_ctx_free(ggcs[2]);
 
-	gprs_gsup_client_send_cb = __real_gprs_gsup_client_send;
+	gsup_client_send_cb = __real_gsup_client_send;
 
 	cleanup_test();
 }

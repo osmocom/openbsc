@@ -36,7 +36,7 @@ sgsn_test_LDFLAGS = \
 	-Wl,--wrap=sgsn_update_subscriber_data \
 	-Wl,--wrap=gprs_subscr_request_update_location \
 	-Wl,--wrap=gprs_subscr_request_auth_info \
-	-Wl,--wrap=gprs_gsup_client_send \
+	-Wl,--wrap=gsup_client_send \
 	$(NULL)
 
 sgsn_test_LDADD = \

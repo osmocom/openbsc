@@ -123,7 +123,7 @@ struct sgsn_instance {
 	/* GSN instance for libgtp */
 	struct gsn_t *gsn;
 	/* Subscriber */
-	struct gprs_gsup_client *gsup_client;
+	struct gsup_client *gsup_client;
 	/* LLME inactivity timer */
 	struct osmo_timer_list llme_timer;
 

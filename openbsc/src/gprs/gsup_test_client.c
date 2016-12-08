@@ -12,7 +12,7 @@
 #include <openbsc/gprs_gsup_client.h>
 #include <openbsc/debug.h>
 
-static struct gprs_gsup_client *g_gc;
+static struct gsup_client *g_gc;
 
 
 /***********************************************************************
@@ -113,7 +113,7 @@ int req_auth_info(const char *imsi)
 
 	osmo_gsup_encode(msg, &gsup);
 
-	return gprs_gsup_client_send(g_gc, msg);
+	return gsup_client_send(g_gc, msg);
 }
 
 /* allocate + generate + send Send-Auth-Info */
@@ -128,7 +128,7 @@ int req_loc_upd(const char *imsi)
 
 	osmo_gsup_encode(msg, &gsup);
 
-	return gprs_gsup_client_send(g_gc, msg);
+	return gsup_client_send(g_gc, msg);
 }
 
 int resp_isd(struct imsi_op *io)
@@ -143,7 +143,7 @@ int resp_isd(struct imsi_op *io)
 
 	imsi_op_release(io);
 
-	return gprs_gsup_client_send(g_gc, msg);
+	return gsup_client_send(g_gc, msg);
 }
 
 /* receive an incoming GSUP message */
@@ -196,7 +196,7 @@ static int op_type_by_gsup_msgt(enum osmo_gsup_message_type msg_type)
 	}
 }
 
-static int gsupc_read_cb(struct gprs_gsup_client *gsupc, struct msgb *msg)
+static int gsupc_read_cb(struct gsup_client *gsupc, struct msgb *msg)
 {
 	struct osmo_gsup_message gsup_msg = {0};
 	struct imsi_op *io;
@@ -281,8 +281,8 @@ int main(int argc, char **argv)
 
 	osmo_init_logging(&gprs_log_info);
 
-	g_gc = gprs_gsup_client_create(server_host, server_port,
-					gsupc_read_cb, NULL);
+	g_gc = gsup_client_create(server_host, server_port, gsupc_read_cb,
+				       NULL);
 
 
 	signal(SIGINT, sig_cb);

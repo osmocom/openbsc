@@ -35,11 +35,11 @@
 
 extern void *tall_bsc_ctx;
 
-static void start_test_procedure(struct gprs_gsup_client *gsupc);
+static void start_test_procedure(struct gsup_client *gsupc);
 
-static void gsup_client_send_ping(struct gprs_gsup_client *gsupc)
+static void gsup_client_send_ping(struct gsup_client *gsupc)
 {
-	struct msgb *msg = gprs_gsup_msgb_alloc();
+	struct msgb *msg = gsup_client_msgb_alloc();
 
 	msg->l2h = msgb_put(msg, 1);
 	msg->l2h[0] = IPAC_MSGT_PING;
@@ -47,7 +47,7 @@ static void gsup_client_send_ping(struct gprs_gsup_client *gsupc)
 	ipa_client_conn_send(gsupc->link, msg);
 }
 
-static int gsup_client_connect(struct gprs_gsup_client *gsupc)
+static int gsup_client_connect(struct gsup_client *gsupc)
 {
 	int rc;
 
@@ -84,7 +84,8 @@ static int gsup_client_connect(struct gprs_gsup_client *gsupc)
 	    rc == -EINVAL)
 		return rc;
 
-	osmo_timer_schedule(&gsupc->connect_timer, GPRS_GSUP_RECONNECT_INTERVAL, 0);
+	osmo_timer_schedule(&gsupc->connect_timer,
+			    GSUP_CLIENT_RECONNECT_INTERVAL, 0);
 
 	LOGP(DGPRS, LOGL_INFO, "Scheduled timer to retry GSUP connect to %s:%d\n",
 	     gsupc->link->addr, gsupc->link->port);
@@ -94,7 +95,7 @@ static int gsup_client_connect(struct gprs_gsup_client *gsupc)
 
 static void connect_timer_cb(void *gsupc_)
 {
-	struct gprs_gsup_client *gsupc = gsupc_;
+	struct gsup_client *gsupc = gsupc_;
 
 	if (gsupc->is_connected)
 		return;
@@ -102,7 +103,8 @@ static void connect_timer_cb(void *gsupc_)
 	gsup_client_connect(gsupc);
 }
 
-static void gsup_client_send(struct gprs_gsup_client *gsupc, int proto_ext, struct msgb *msg_tx)
+static void client_send(struct gsup_client *gsupc, int proto_ext,
+			struct msgb *msg_tx)
 {
 	ipa_prepend_header_ext(msg_tx, proto_ext);
 	ipa_msg_push_header(msg_tx, IPAC_PROTO_OSMO);
@@ -110,7 +112,7 @@ static void gsup_client_send(struct gprs_gsup_client *gsupc, int proto_ext, stru
 	/* msg_tx is now queued and will be freed. */
 }
 
-static void gsup_client_oap_register(struct gprs_gsup_client *gsupc)
+static void gsup_client_oap_register(struct gsup_client *gsupc)
 {
 	struct msgb *msg_tx;
 	int rc;
@@ -121,12 +123,12 @@ static void gsup_client_oap_register(struct gprs_gsup_client *gsupc)
 		return;
 	}
 
-	gsup_client_send(gsupc, IPAC_PROTO_EXT_OAP, msg_tx);
+	client_send(gsupc, IPAC_PROTO_EXT_OAP, msg_tx);
 }
 
 static void gsup_client_updown_cb(struct ipa_client_conn *link, int up)
 {
-	struct gprs_gsup_client *gsupc = link->data;
+	struct gsup_client *gsupc = link->data;
 
 	LOGP(DGPRS, LOGL_INFO, "GSUP link to %s:%d %s\n",
 		     link->addr, link->port, up ? "UP" : "DOWN");
@@ -144,11 +146,11 @@ static void gsup_client_updown_cb(struct ipa_client_conn *link, int up)
 		osmo_timer_del(&gsupc->ping_timer);
 
 		osmo_timer_schedule(&gsupc->connect_timer,
-				    GPRS_GSUP_RECONNECT_INTERVAL, 0);
+				    GSUP_CLIENT_RECONNECT_INTERVAL, 0);
 	}
 }
 
-static int gsup_client_oap_handle(struct gprs_gsup_client *gsupc, struct msgb *msg_rx)
+static int gsup_client_oap_handle(struct gsup_client *gsupc, struct msgb *msg_rx)
 {
 	int rc;
 	struct msgb *msg_tx;
@@ -159,7 +161,7 @@ static int gsup_client_oap_handle(struct gprs_gsup_client *gsupc, struct msgb *m
 		return rc;
 
 	if (msg_tx)
-		gsup_client_send(gsupc, IPAC_PROTO_EXT_OAP, msg_tx);
+		client_send(gsupc, IPAC_PROTO_EXT_OAP, msg_tx);
 
 	return 0;
 }
@@ -168,7 +170,7 @@ static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 {
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	struct ipaccess_head_ext *he = (struct ipaccess_head_ext *) msgb_l2(msg);
-	struct gprs_gsup_client *gsupc = (struct gprs_gsup_client *)link->data;
+	struct gsup_client *gsupc = (struct gsup_client *)link->data;
 	int rc;
 	static struct ipaccess_unit ipa_dev = {
 		.unit_name = "SGSN"
@@ -231,7 +233,7 @@ invalid:
 
 static void ping_timer_cb(void *gsupc_)
 {
-	struct gprs_gsup_client *gsupc = gsupc_;
+	struct gsup_client *gsupc = gsupc_;
 
 	LOGP(DGPRS, LOGL_INFO, "GSUP ping callback (%s, %s PONG)\n",
 	     gsupc->is_connected ? "connected" : "not connected",
@@ -249,26 +251,26 @@ static void ping_timer_cb(void *gsupc_)
 	gsup_client_connect(gsupc);
 }
 
-static void start_test_procedure(struct gprs_gsup_client *gsupc)
+static void start_test_procedure(struct gsup_client *gsupc)
 {
 	gsupc->ping_timer.data = gsupc;
 	gsupc->ping_timer.cb = &ping_timer_cb;
 
 	gsupc->got_ipa_pong = 0;
-	osmo_timer_schedule(&gsupc->ping_timer, GPRS_GSUP_PING_INTERVAL, 0);
+	osmo_timer_schedule(&gsupc->ping_timer, GSUP_CLIENT_PING_INTERVAL, 0);
 	LOGP(DGPRS, LOGL_DEBUG, "GSUP sending PING\n");
 	gsup_client_send_ping(gsupc);
 }
 
-struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,
-						 unsigned int tcp_port,
-						 gprs_gsup_read_cb_t read_cb,
-						 struct oap_config *oap_config)
+struct gsup_client *gsup_client_create(const char *ip_addr,
+				       unsigned int tcp_port,
+				       gsup_client_read_cb_t read_cb,
+				       struct oap_config *oap_config)
 {
-	struct gprs_gsup_client *gsupc;
+	struct gsup_client *gsupc;
 	int rc;
 
-	gsupc = talloc_zero(tall_bsc_ctx, struct gprs_gsup_client);
+	gsupc = talloc_zero(tall_bsc_ctx, struct gsup_client);
 	OSMO_ASSERT(gsupc);
 
 	rc = oap_init(oap_config, &gsupc->oap_state);
@@ -299,11 +301,11 @@ struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,
 	return gsupc;
 
 failed:
-	gprs_gsup_client_destroy(gsupc);
+	gsup_client_destroy(gsupc);
 	return NULL;
 }
 
-void gprs_gsup_client_destroy(struct gprs_gsup_client *gsupc)
+void gsup_client_destroy(struct gsup_client *gsupc)
 {
 	osmo_timer_del(&gsupc->connect_timer);
 	osmo_timer_del(&gsupc->ping_timer);
@@ -316,7 +318,7 @@ void gprs_gsup_client_destroy(struct gprs_gsup_client *gsupc)
 	talloc_free(gsupc);
 }
 
-int gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
+int gsup_client_send(struct gsup_client *gsupc, struct msgb *msg)
 {
 	if (!gsupc) {
 		msgb_free(msg);
@@ -328,12 +330,12 @@ int gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg)
 		return -EAGAIN;
 	}
 
-	gsup_client_send(gsupc, IPAC_PROTO_EXT_GSUP, msg);
+	client_send(gsupc, IPAC_PROTO_EXT_GSUP, msg);
 
 	return 0;
 }
 
-struct msgb *gprs_gsup_msgb_alloc(void)
+struct msgb *gsup_client_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(4000, 64, __func__);
 }

@@ -25,35 +25,36 @@
 
 #include <openbsc/oap.h>
 
-#define GPRS_GSUP_RECONNECT_INTERVAL 10
-#define GPRS_GSUP_PING_INTERVAL 20
+#define GSUP_CLIENT_RECONNECT_INTERVAL 10
+#define GSUP_CLIENT_PING_INTERVAL 20
 
 struct msgb;
 struct ipa_client_conn;
-struct gprs_gsup_client;
+struct gsup_client;
 
 /* Expects message in msg->l2h */
-typedef int (*gprs_gsup_read_cb_t)(struct gprs_gsup_client *gsupc, struct msgb *msg);
+typedef int (*gsup_client_read_cb_t)(struct gsup_client *gsupc,
+				     struct msgb *msg);
 
-struct gprs_gsup_client {
-	struct ipa_client_conn	*link;
-	gprs_gsup_read_cb_t	read_cb;
-	void			*data;
+struct gsup_client {
+	struct ipa_client_conn *link;
+	gsup_client_read_cb_t read_cb;
+	void *data;
 
-	struct oap_state	oap_state;
+	struct oap_state oap_state;
 
-	struct osmo_timer_list	ping_timer;
-	struct osmo_timer_list	connect_timer;
-	int			is_connected;
-	int			got_ipa_pong;
+	struct osmo_timer_list ping_timer;
+	struct osmo_timer_list connect_timer;
+	int is_connected;
+	int got_ipa_pong;
 };
 
-struct gprs_gsup_client *gprs_gsup_client_create(const char *ip_addr,
-						 unsigned int tcp_port,
-						 gprs_gsup_read_cb_t read_cb,
-						 struct oap_config *oap_config);
+struct gsup_client *gsup_client_create(const char *ip_addr,
+				       unsigned int tcp_port,
+				       gsup_client_read_cb_t read_cb,
+				       struct oap_config *oap_config);
 
-void gprs_gsup_client_destroy(struct gprs_gsup_client *gsupc);
-int gprs_gsup_client_send(struct gprs_gsup_client *gsupc, struct msgb *msg);
-struct msgb *gprs_gsup_msgb_alloc(void);
+void gsup_client_destroy(struct gsup_client *gsupc);
+int gsup_client_send(struct gsup_client *gsupc, struct msgb *msg);
+struct msgb *gsup_client_msgb_alloc(void);
 
