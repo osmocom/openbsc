@@ -266,7 +266,7 @@ static void start_test_procedure(struct gsup_client *gsupc)
 struct gsup_client *gsup_client_create(const char *ip_addr,
 				       unsigned int tcp_port,
 				       gsup_client_read_cb_t read_cb,
-				       struct oap_client_config *oap_config)
+				       struct oap_client_config *oapc_config)
 {
 	struct gsup_client *gsupc;
 	int rc;
@@ -274,7 +274,8 @@ struct gsup_client *gsup_client_create(const char *ip_addr,
 	gsupc = talloc_zero(tall_bsc_ctx, struct gsup_client);
 	OSMO_ASSERT(gsupc);
 
-	rc = oap_client_init(oap_config, &gsupc->oap_state);
+	/* a NULL oapc_config will mark oap_state disabled. */
+	rc = oap_client_init(oapc_config, &gsupc->oap_state);
 	if (rc != 0)
 		goto failed;
 

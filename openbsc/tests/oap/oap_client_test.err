@@ -1,6 +1,7 @@
 - make sure filling with zeros means uninitialized
 - reject messages in uninitialized state
 DLOAP Received OAP message 5, but the OAP client is not initialized
+- NULL config should disable
 - reject messages in disabled state
 DLOAP Received OAP message 5, but the OAP client is disabled
 - invalid client_id and shared secret

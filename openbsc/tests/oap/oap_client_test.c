@@ -62,6 +62,10 @@ static void test_oap_api(void)
 	msgb_free(msg_rx);
 	OSMO_ASSERT(!msg_tx);
 
+	fprintf(stderr, "- NULL config should disable\n");
+	OSMO_ASSERT( oap_client_init(NULL, state) == 0 );
+	OSMO_ASSERT(state->state == OAP_DISABLED);
+
 	fprintf(stderr, "- reject messages in disabled state\n");
 	memset(state, 0, sizeof(*state));
 	memset(&oap_rx, 0, sizeof(oap_rx));

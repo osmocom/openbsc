@@ -35,6 +35,9 @@ int oap_client_init(struct oap_client_config *config,
 {
 	OSMO_ASSERT(state->state == OAP_UNINITIALIZED);
 
+	if (!config)
+		goto disable;
+
 	if (config->client_id == 0)
 		goto disable;
 
