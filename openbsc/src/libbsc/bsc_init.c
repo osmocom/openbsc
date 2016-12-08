@@ -320,6 +320,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_L_INP_TEI_UP:
+		LOGP(DLMI, LOGL_DEBUG, "%s() signal: S_L_INP_TEI_UP\n", __func__);
 		if (isd->link_type == E1INP_SIGN_OML) {
 			/* TODO: this is required for the Nokia BTS, hopping is configured
 			   during OML, other MA is not set.  */
@@ -344,6 +345,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 			bootstrap_rsl(trx);
 		break;
 	case S_L_INP_TEI_DN:
+		LOGP(DLMI, LOGL_DEBUG, "%s() signal: S_L_INP_TEI_DN\n", __func__);
 		LOGP(DLMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", isd->link_type, trx);
 
 		if (isd->link_type == E1INP_SIGN_OML)
