@@ -6,7 +6,7 @@
 #include <osmocom/crypt/gprs_cipher.h>
 #include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
-#include <openbsc/oap.h>
+#include <openbsc/oap_client.h>
 
 #include <ares.h>
 

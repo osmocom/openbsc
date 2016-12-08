@@ -23,7 +23,7 @@
 
 #include <osmocom/core/timer.h>
 
-#include <openbsc/oap.h>
+#include <openbsc/oap_client.h>
 
 #define GSUP_CLIENT_RECONNECT_INTERVAL 10
 #define GSUP_CLIENT_PING_INTERVAL 20

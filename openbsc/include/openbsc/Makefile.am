@@ -54,7 +54,7 @@ noinst_HEADERS = \
 	mncc_int.h \
 	nat_rewrite_trie.h \
 	network_listen.h \
-	oap.h \
+	oap_client.h \
 	openbscdefines.h \
 	osmo_bsc.h \
 	osmo_bsc_grace.h \
