@@ -52,19 +52,15 @@ static void test_oap_api(void)
 	fprintf(stderr, "- make sure filling with zeros means uninitialized\n");
 	OSMO_ASSERT(state->state == OAP_UNINITIALIZED);
 
-	fprintf(stderr, "- reject messages in uninitialized state EXPECTING BUGS\n");
+	fprintf(stderr, "- reject messages in uninitialized state\n");
 	memset(&oap_rx, 0, sizeof(oap_rx));
 	state->client_id = 1;
 	oap_rx.message_type = OAP_MSGT_REGISTER_ERROR;
 	msg_rx = oap_client_encoded(&oap_rx);
-	/* ATTENTION: This shows a bug in OAP: the rc should be < 0, but OAP
-	 * happily accepts this message and breaks the uninitialized state. The
-	 * expected rc, state and msg_tx will be fixed along with the fix. */
-	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == 0 /* BUG, expecting < 0 */);
-	OSMO_ASSERT(state->state == OAP_REQUESTED_CHALLENGE /* BUG, expecting OAP_UNINITIALIZED */);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) < 0);
+	OSMO_ASSERT(state->state == OAP_UNINITIALIZED);
 	msgb_free(msg_rx);
-	OSMO_ASSERT(msg_tx /* BUG, expecting NULL */);
-	msgb_free(msg_tx);
+	OSMO_ASSERT(!msg_tx);
 
 	fprintf(stderr, "- reject messages in disabled state\n");
 	memset(state, 0, sizeof(*state));
@@ -73,14 +69,10 @@ static void test_oap_api(void)
 	state->client_id = 1;
 	oap_rx.message_type = OAP_MSGT_REGISTER_ERROR;
 	msg_rx = oap_client_encoded(&oap_rx);
-	/* ATTENTION: This shows a bug in OAP: the rc should be < 0, but OAP
-	 * happily accepts this message and breaks the uninitialized state. The
-	 * expected rc, state and msg_tx will be fixed along with the fix. */
-	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == 0 /* BUG, expecting < 0 */);
-	OSMO_ASSERT(state->state == OAP_REQUESTED_CHALLENGE /* BUG, expecting OAP_DISABLED */);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) < 0);
+	OSMO_ASSERT(state->state == OAP_DISABLED);
 	msgb_free(msg_rx);
-	OSMO_ASSERT(msg_tx /* BUG, expecting NULL */);
-	msgb_free(msg_tx);
+	OSMO_ASSERT(!msg_tx);
 
 	fprintf(stderr, "- invalid client_id and shared secret\n");
 	memset(state, 0, sizeof(*state));
@@ -180,11 +172,11 @@ static void test_oap_api(void)
 	OSMO_ASSERT(state->state == OAP_INITIALIZED);
 
 	state->state = OAP_UNINITIALIZED;
-	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -1);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) < 0);
 	OSMO_ASSERT(!msg_tx);
 
 	state->state = OAP_DISABLED;
-	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -1);
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) < 0);
 	OSMO_ASSERT(!msg_tx);
 
 	state->state = OAP_INITIALIZED;

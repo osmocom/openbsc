@@ -21,6 +21,7 @@
  */
 
 #include <string.h>
+#include <errno.h>
 
 #include <osmocom/core/utils.h>
 #include <osmocom/crypt/auth.h>
@@ -222,6 +223,21 @@ int oap_client_handle(struct oap_client_state *state,
 		     "Decoding OAP message failed with error '%s' (%d)\n",
 		     get_value_string(gsm48_gmm_cause_names, -rc), -rc);
 		return -10;
+	}
+
+	switch (state->state) {
+	case OAP_UNINITIALIZED:
+		LOGP(DLOAP, LOGL_ERROR,
+		     "Received OAP message %d, but the OAP client is"
+		     " not initialized\n", oap_msg.message_type);
+		return -ENOTCONN;
+	case OAP_DISABLED:
+		LOGP(DLOAP, LOGL_ERROR,
+		     "Received OAP message %d, but the OAP client is"
+		     " disabled\n", oap_msg.message_type);
+		return -ENOTCONN;
+	default:
+		break;
 	}
 
 	switch (oap_msg.message_type) {

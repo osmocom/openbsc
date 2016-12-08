@@ -1,8 +1,8 @@
 - make sure filling with zeros means uninitialized
-- reject messages in uninitialized state EXPECTING BUGS
-DLOAP OAP registration failed
+- reject messages in uninitialized state
+DLOAP Received OAP message 5, but the OAP client is not initialized
 - reject messages in disabled state
-DLOAP OAP registration failed
+DLOAP Received OAP message 5, but the OAP client is disabled
 - invalid client_id and shared secret
 - reset state
 - only client_id is invalid
@@ -23,6 +23,8 @@ DLOAP OAP: AUTN from server: dec4e3848a33000086781158ca40f136
 DLOAP OAP: AUTN expected:    cec4e3848a33000086781158ca40f136
 - all data correct
 - but refuse to evaluate in uninitialized state
+DLOAP Received OAP message 8, but the OAP client is not initialized
+DLOAP Received OAP message 8, but the OAP client is disabled
 - now everything is correct
 - Expect the challenge response in msg_tx
 - Receive registration error for the first time.

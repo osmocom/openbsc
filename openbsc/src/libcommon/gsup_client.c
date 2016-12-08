@@ -155,6 +155,7 @@ static int gsup_client_oap_handle(struct gsup_client *gsupc, struct msgb *msg_rx
 	int rc;
 	struct msgb *msg_tx;
 
+	/* If the oap_state is disabled, this will reject the messages. */
 	rc = oap_client_handle(&gsupc->oap_state, msg_rx, &msg_tx);
 	msgb_free(msg_rx);
 	if (rc < 0)
