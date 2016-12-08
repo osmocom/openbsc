@@ -11,22 +11,22 @@ AM_CFLAGS = \
 	$(NULL)
 
 EXTRA_DIST = \
-	oap_test.ok \
+	oap_client_test.ok \
 	$(NULL)
 
 if HAVE_LIBGTP
 if HAVE_LIBCARES
 noinst_PROGRAMS = \
-	oap_test \
+	oap_client_test \
 	$(NULL)
 endif
 endif
 
-oap_test_SOURCES = \
-	oap_test.c \
+oap_client_test_SOURCES = \
+	oap_client_test.c \
 	$(NULL)
 
-oap_test_LDADD = \
+oap_client_test_LDADD = \
 	$(top_builddir)/src/gprs/gprs_utils.o \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOCORE_LIBS) \
