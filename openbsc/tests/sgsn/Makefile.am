@@ -50,7 +50,6 @@ sgsn_test_LDADD = \
 	$(top_builddir)/src/gprs/sgsn_libgtp.o \
 	$(top_builddir)/src/gprs/sgsn_auth.o \
 	$(top_builddir)/src/gprs/sgsn_ares.o \
-	$(top_builddir)/src/gprs/gprs_gsup_client.o \
 	$(top_builddir)/src/gprs/gprs_utils.o \
 	$(top_builddir)/src/gprs/gprs_subscriber.o \
 	$(top_builddir)/src/gprs/gprs_gb_parse.o \
