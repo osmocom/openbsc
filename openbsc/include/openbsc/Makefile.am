@@ -23,7 +23,6 @@ noinst_HEADERS = \
 	gb_proxy.h \
 	gprs_gb_parse.h \
 	gprs_gmm.h \
-	gprs_gsup_client.h \
 	gprs_llc.h \
 	gprs_llc_xid.h \
 	gprs_sgsn.h \
@@ -39,6 +38,7 @@ noinst_HEADERS = \
 	gsm_data.h \
 	gsm_data_shared.h \
 	gsm_subscriber.h \
+	gsup_client.h \
 	gtphub.h \
 	handover.h \
 	handover_decision.h \
