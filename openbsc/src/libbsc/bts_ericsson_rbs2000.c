@@ -116,6 +116,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_L_INP_TEI_UP:
+		LOGP(DNM, LOGL_DEBUG, "inp_sig_cb() signal: S_L_INP_TEI_UP\n");
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
 			if (isd->trx->bts->type != GSM_BTS_TYPE_RBS2000)
@@ -128,6 +129,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		}
 		break;
 	case S_L_INP_TEI_DN:
+		LOGP(DNM, LOGL_DEBUG, "inp_sig_cb() signal: S_L_INP_TEI_DN\n");
 		if (isd->trx->bts->type != GSM_BTS_TYPE_RBS2000)
 			break;
 		LOGP(DNM, LOGL_NOTICE, "Line-%u TS-%u TEI-%u SAPI-%u: Link "
@@ -139,7 +141,9 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		lapd_sap_start(e1i_ts->lapd, isd->tei, isd->sapi);
 		break;
 	case S_L_INP_LINE_INIT:
+		LOGP(DNM, LOGL_DEBUG, "inp_sig_cb() signal: S_L_INP_LINE_INIT\n");
 	case S_L_INP_LINE_NOALARM:
+		LOGP(DNM, LOGL_DEBUG, "inp_sig_cb() signal: S_L_INP_LINE_NOALARM\n");
 		if (strcasecmp(isd->line->driver->name, "DAHDI")
 		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD")
 		 && strcasecmp(isd->line->driver->name, "UNIXSOCKET"))
@@ -147,6 +151,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		start_sabm_in_line(isd->line, 1);
 		break;
 	case S_L_INP_LINE_ALARM:
+		LOGP(DNM, LOGL_DEBUG, "inp_sig_cb() signal: S_L_INP_LINE_ALARM\n");
 		if (strcasecmp(isd->line->driver->name, "DAHDI")
 		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD")
 		 && strcasecmp(isd->line->driver->name, "UNIXSOCKET"))
