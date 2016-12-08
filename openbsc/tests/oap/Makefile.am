@@ -12,6 +12,7 @@ AM_CFLAGS = \
 
 EXTRA_DIST = \
 	oap_client_test.ok \
+	oap_client_test.err \
 	$(NULL)
 
 if HAVE_LIBGTP

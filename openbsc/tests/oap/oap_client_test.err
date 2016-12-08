@@ -1,0 +1,28 @@
+- make sure filling with zeros means uninitialized
+- invalid client_id and shared secret
+- reset state
+- only client_id is invalid
+- valid id, but omitted shared_secret (1/2)
+DGPRS OAP: client ID set, but secret K missing.
+- valid id, but omitted shared_secret (2/2)
+DGPRS OAP: client ID set, but secret OPC missing.
+- mint configuration
+- Missing challenge data
+DGPRS OAP challenge incomplete (rand_present: 0, autn_present: 0)
+- AUTN missing
+DGPRS OAP challenge incomplete (rand_present: 1, autn_present: 0)
+- RAND missing
+DGPRS OAP challenge incomplete (rand_present: 0, autn_present: 1)
+- wrong autn (by one bit)
+DGPRS OAP: AUTN mismatch!
+DGPRS OAP: AUTN from server: dec4e3848a33000086781158ca40f136
+DGPRS OAP: AUTN expected:    cec4e3848a33000086781158ca40f136
+- all data correct
+- but refuse to evaluate in uninitialized state
+- now everything is correct
+- Expect the challenge response in msg_tx
+- Receive registration error for the first time.
+DGPRS OAP registration failed
+- Receive registration error for the Nth time.
+DGPRS OAP registration failed
+- Registration success

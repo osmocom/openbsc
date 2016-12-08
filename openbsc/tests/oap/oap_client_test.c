@@ -29,7 +29,7 @@
 
 static void test_oap_api(void)
 {
-	printf("Testing OAP API\n  - Config parsing\n");
+	printf("Testing OAP API\n");
 
 	struct oap_client_config _config;
 	struct oap_client_config *config = &_config;
@@ -43,20 +43,20 @@ static void test_oap_api(void)
 	OSMO_ASSERT(osmo_hexparse("0102030405060708090a0b0c0d0e0f10", config->secret_k, 16) == 16);
 	OSMO_ASSERT(osmo_hexparse("1112131415161718191a1b1c1d1e1f20", config->secret_opc, 16) == 16);
 
-	/* make sure filling with zeros means uninitialized */
+	fprintf(stderr, "- make sure filling with zeros means uninitialized\n");
 	OSMO_ASSERT(state->state == OAP_UNINITIALIZED);
 
-	/* invalid client_id and shared secret */
+	fprintf(stderr, "- invalid client_id and shared secret\n");
 	config->client_id = 0;
 	config->secret_k_present = 0;
 	config->secret_opc_present = 0;
 	OSMO_ASSERT( oap_client_init(config, state) == 0 );
 	OSMO_ASSERT(state->state == OAP_DISABLED);
 
-	/* reset state */
+	fprintf(stderr, "- reset state\n");
 	memset(state, 0, sizeof(*state));
 
-	/* only client_id is invalid */
+	fprintf(stderr, "- only client_id is invalid\n");
 	config->client_id = 0;
 	config->secret_k_present = 1;
 	config->secret_opc_present = 1;
@@ -65,7 +65,7 @@ static void test_oap_api(void)
 
 	memset(state, 0, sizeof(*state));
 
-	/* valid id, but omitted shared_secret (1/2) */
+	fprintf(stderr, "- valid id, but omitted shared_secret (1/2)\n");
 	config->client_id = 12345;
 	config->secret_k_present = 0;
 	config->secret_opc_present = 1;
@@ -74,7 +74,7 @@ static void test_oap_api(void)
 
 	memset(state, 0, sizeof(*state));
 
-	/* valid id, but omitted shared_secret (2/2) */
+	fprintf(stderr, "- valid id, but omitted shared_secret (2/2)\n");
 	config->client_id = 12345;
 	config->secret_k_present = 1;
 	config->secret_opc_present = 0;
@@ -84,7 +84,7 @@ static void test_oap_api(void)
 	memset(state, 0, sizeof(*state));
 
 
-	/* mint configuration */
+	fprintf(stderr, "- mint configuration\n");
 	config->client_id = 12345;
 	config->secret_k_present = 1;
 	config->secret_opc_present = 1;
@@ -92,16 +92,13 @@ static void test_oap_api(void)
 	OSMO_ASSERT( oap_client_init(config, state) == 0 );
 	OSMO_ASSERT(state->state == OAP_INITIALIZED);
 
-	printf("  - AUTN failures\n");
-
 	struct osmo_oap_message oap_rx;
 	struct osmo_oap_message oap_tx;
 	struct msgb *msg_rx;
 	struct msgb *msg_tx;
 
+	fprintf(stderr, "- Missing challenge data\n");
 	memset(&oap_rx, 0, sizeof(oap_rx));
-
-	/* Missing challenge data */
 	oap_rx.message_type = OAP_MSGT_CHALLENGE_REQUEST;
 	oap_rx.rand_present = 0;
 	oap_rx.autn_present = 0;
@@ -110,7 +107,7 @@ static void test_oap_api(void)
 	msgb_free(msg_rx);
 	OSMO_ASSERT(!msg_tx);
 
-	/* AUTN missing */
+	fprintf(stderr, "- AUTN missing\n");
 	osmo_hexparse("0102030405060708090a0b0c0d0e0f10",
 		      oap_rx.rand, 16);
 	oap_rx.rand_present = 1;
@@ -119,7 +116,7 @@ static void test_oap_api(void)
 	msgb_free(msg_rx);
 	OSMO_ASSERT(!msg_tx);
 
-	/* RAND missing */
+	fprintf(stderr, "- RAND missing\n");
 	oap_rx.rand_present = 0;
 	osmo_hexparse("cec4e3848a33000086781158ca40f136",
 		      oap_rx.autn, 16);
@@ -129,7 +126,7 @@ static void test_oap_api(void)
 	msgb_free(msg_rx);
 	OSMO_ASSERT(!msg_tx);
 
-	/* wrong autn (by one bit) */
+	fprintf(stderr, "- wrong autn (by one bit)\n");
 	osmo_hexparse("0102030405060708090a0b0c0d0e0f10",
 		      oap_rx.rand, 16);
 	osmo_hexparse("dec4e3848a33000086781158ca40f136",
@@ -141,12 +138,12 @@ static void test_oap_api(void)
 	msgb_free(msg_rx);
 	OSMO_ASSERT(!msg_tx);
 
-	/* all data correct */
+	fprintf(stderr, "- all data correct\n");
 	osmo_hexparse("cec4e3848a33000086781158ca40f136",
 		      oap_rx.autn, 16);
 	msg_rx = oap_client_encoded(&oap_rx);
 
-	/* but refuse to evaluate in uninitialized state */
+	fprintf(stderr, "- but refuse to evaluate in uninitialized state\n");
 	OSMO_ASSERT(state->state == OAP_INITIALIZED);
 
 	state->state = OAP_UNINITIALIZED;
@@ -159,13 +156,12 @@ static void test_oap_api(void)
 
 	state->state = OAP_INITIALIZED;
 
-	/* now everything is correct */
-	printf("  - AUTN success\n");
+	fprintf(stderr, "- now everything is correct\n");
 	/* a successful return value here indicates correct autn */
 	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == 0);
 	msgb_free(msg_rx);
 
-	/* Expect the challenge response in msg_tx */
+	fprintf(stderr, "- Expect the challenge response in msg_tx\n");
 	OSMO_ASSERT(msg_tx);
 	OSMO_ASSERT(osmo_oap_decode(&oap_tx, msg_tx->data, msg_tx->len) == 0);
 	OSMO_ASSERT(oap_tx.message_type == OAP_MSGT_CHALLENGE_RESULT);
@@ -178,14 +174,13 @@ static void test_oap_api(void)
 
 	struct oap_client_state saved_state = _state;
 
-	printf("  - Registration failure\n");
+	fprintf(stderr, "- Receive registration error for the first time.\n");
 
 	memset(&oap_rx, 0, sizeof(oap_rx));
 	oap_rx.message_type = OAP_MSGT_REGISTER_ERROR;
 	oap_rx.cause = GMM_CAUSE_PROTO_ERR_UNSPEC;
 	msg_rx = oap_client_encoded(&oap_rx);
 
-	/* Receive registration error for the first time. */
 	OSMO_ASSERT(state->registration_failures == 0);
 	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == 0);
 	OSMO_ASSERT(state->registration_failures == 1);
@@ -196,7 +191,7 @@ static void test_oap_api(void)
 	msgb_free(msg_tx);
 	msg_tx = 0;
 
-	/* Receive registration error for the Nth time. */
+	fprintf(stderr, "- Receive registration error for the Nth time.\n");
 	state->registration_failures = 999;
 	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == -11);
 	OSMO_ASSERT(!msg_tx);
@@ -206,7 +201,7 @@ static void test_oap_api(void)
 
 	msgb_free(msg_rx);
 
-	printf("  - Registration success\n");
+	fprintf(stderr, "- Registration success\n");
 
 	_state = saved_state;
 	memset(&oap_rx, 0, sizeof(oap_rx));
@@ -235,6 +230,12 @@ int main(int argc, char **argv)
 {
 	msgb_talloc_ctx_init(NULL, 0);
 	osmo_init_logging(&info);
+
+	OSMO_ASSERT(osmo_stderr_target);
+	osmo_stderr_target->use_color = 0;
+	osmo_stderr_target->print_timestamp = 0;
+	osmo_stderr_target->print_filename = 0;
+	osmo_stderr_target->print_category = 1;
 
 	test_oap_api();
 	printf("Done\n");
