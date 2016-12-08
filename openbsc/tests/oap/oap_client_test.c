@@ -213,17 +213,12 @@ static void test_oap_api(void)
 	msgb_free(msg_rx);
 }
 
-static struct log_info_cat gprs_categories[] = {
-	[DGPRS] = {
-		.name = "DGPRS",
-		.description = "GPRS Packet Service",
-		.enabled = 1, .loglevel = LOGL_DEBUG,
-	},
+static struct log_info_cat oap_client_test_categories[] = {
 };
 
 static struct log_info info = {
-	.cat = gprs_categories,
-	.num_cat = ARRAY_SIZE(gprs_categories),
+	.cat = oap_client_test_categories,
+	.num_cat = ARRAY_SIZE(oap_client_test_categories),
 };
 
 int main(int argc, char **argv)
@@ -232,10 +227,11 @@ int main(int argc, char **argv)
 	osmo_init_logging(&info);
 
 	OSMO_ASSERT(osmo_stderr_target);
-	osmo_stderr_target->use_color = 0;
-	osmo_stderr_target->print_timestamp = 0;
-	osmo_stderr_target->print_filename = 0;
-	osmo_stderr_target->print_category = 1;
+	log_set_use_color(osmo_stderr_target, 0);
+	log_set_print_timestamp(osmo_stderr_target, 0);
+	log_set_print_filename(osmo_stderr_target, 0);
+	log_set_print_category(osmo_stderr_target, 1);
+	log_parse_category_mask(osmo_stderr_target, "DLOAP,1");
 
 	test_oap_api();
 	printf("Done\n");

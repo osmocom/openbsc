@@ -38,12 +38,12 @@ int oap_client_init(struct oap_client_config *config,
 		goto disable;
 
 	if (config->secret_k_present == 0) {
-		LOGP(DGPRS, LOGL_NOTICE, "OAP: client ID set, but secret K missing.\n");
+		LOGP(DLOAP, LOGL_NOTICE, "OAP: client ID set, but secret K missing.\n");
 		goto disable;
 	}
 
 	if (config->secret_opc_present == 0) {
-		LOGP(DGPRS, LOGL_NOTICE, "OAP: client ID set, but secret OPC missing.\n");
+		LOGP(DLOAP, LOGL_NOTICE, "OAP: client ID set, but secret OPC missing.\n");
 		goto disable;
 	}
 
@@ -101,16 +101,16 @@ static int oap_evaluate_challenge(const struct oap_client_state *state,
 	osmo_auth_gen_vec(&vec, &auth, rx_random);
 
 	if (vec.res_len != 8) {
-		LOGP(DGPRS, LOGL_ERROR, "OAP: Expected XRES to be 8 octets, got %d\n",
+		LOGP(DLOAP, LOGL_ERROR, "OAP: Expected XRES to be 8 octets, got %d\n",
 		     vec.res_len);
 		return -3;
 	}
 
 	if (osmo_constant_time_cmp(vec.autn, rx_autn, sizeof(vec.autn)) != 0) {
-		LOGP(DGPRS, LOGL_ERROR, "OAP: AUTN mismatch!\n");
-		LOGP(DGPRS, LOGL_INFO, "OAP: AUTN from server: %s\n",
+		LOGP(DLOAP, LOGL_ERROR, "OAP: AUTN mismatch!\n");
+		LOGP(DLOAP, LOGL_INFO, "OAP: AUTN from server: %s\n",
 		     osmo_hexdump_nospc(rx_autn, sizeof(vec.autn)));
-		LOGP(DGPRS, LOGL_INFO, "OAP: AUTN expected:    %s\n",
+		LOGP(DLOAP, LOGL_INFO, "OAP: AUTN expected:    %s\n",
 		     osmo_hexdump_nospc(vec.autn, sizeof(vec.autn)));
 		return -2;
 	}
@@ -135,7 +135,7 @@ static struct msgb* oap_msg_register(uint16_t client_id)
 	struct osmo_oap_message oap_msg = {0};
 
 	if (client_id < 1) {
-		LOGP(DGPRS, LOGL_ERROR, "OAP: Invalid client ID: %d\n", client_id);
+		LOGP(DLOAP, LOGL_ERROR, "OAP: Invalid client ID: %d\n", client_id);
 		return NULL;
 	}
 
@@ -175,7 +175,7 @@ static int handle_challenge(struct oap_client_state *state,
 	uint8_t xres[8];
 
 	if (!(oap_rx->rand_present && oap_rx->autn_present)) {
-		LOGP(DGPRS, LOGL_ERROR,
+		LOGP(DLOAP, LOGL_ERROR,
 		     "OAP challenge incomplete (rand_present: %d, autn_present: %d)\n",
 		     oap_rx->rand_present, oap_rx->autn_present);
 		rc = -2;
@@ -218,7 +218,7 @@ int oap_client_handle(struct oap_client_state *state,
 
 	rc = osmo_oap_decode(&oap_msg, data, data_len);
 	if (rc < 0) {
-		LOGP(DGPRS, LOGL_ERROR,
+		LOGP(DLOAP, LOGL_ERROR,
 		     "Decoding OAP message failed with error '%s' (%d)\n",
 		     get_value_string(gsm48_gmm_cause_names, -rc), -rc);
 		return -10;
@@ -234,7 +234,7 @@ int oap_client_handle(struct oap_client_state *state,
 		break;
 
 	case OAP_MSGT_REGISTER_ERROR:
-		LOGP(DGPRS, LOGL_ERROR,
+		LOGP(DLOAP, LOGL_ERROR,
 		     "OAP registration failed\n");
 		state->state = OAP_INITIALIZED;
 		if (state->registration_failures < 3) {
@@ -245,13 +245,13 @@ int oap_client_handle(struct oap_client_state *state,
 
 	case OAP_MSGT_REGISTER_REQUEST:
 	case OAP_MSGT_CHALLENGE_RESULT:
-		LOGP(DGPRS, LOGL_ERROR,
+		LOGP(DLOAP, LOGL_ERROR,
 		     "Received invalid OAP message type for OAP client side: %d\n",
 		     (int)oap_msg.message_type);
 		return -12;
 
 	default:
-		LOGP(DGPRS, LOGL_ERROR,
+		LOGP(DLOAP, LOGL_ERROR,
 		     "Unknown OAP message type: %d\n",
 		     (int)oap_msg.message_type);
 		return -13;
