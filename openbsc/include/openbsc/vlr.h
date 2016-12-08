@@ -133,7 +133,7 @@ struct vlr_subscriber {
 		uint8_t sac;
 		struct gprs_mm_ctx *mmctx;
 	} ps;
-	/* VLR specific parts */
+	/* CS (NITB/CSCN) specific parts */
 	struct {
 		/* pending requests */
 		int is_paging;
