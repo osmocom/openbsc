@@ -45,6 +45,29 @@ struct gsm_equipment {
 };
 
 struct gsm_subscriber {
+	/* VLR work in progress: the long term aim is to completely eliminate
+	 * gsm_subscriber; in libmsc, to replace it with vlr_subscriber, in
+	 * libbsc in the osmo-bsc case to not have any gsm_subscriber at all,
+	 * and in the osmo-nitb case to have a pointer to the vlr_subscriber
+	 * for logging and debugging that is left NULL in osmo-bsc. But to be
+	 * able to move there in small increments, I'm first keeping
+	 * gsm_subscriber and merely point at the "future real" vlr_subscriber
+	 * from here. To completely replace gsm_subscriber, these things need
+	 * to be resolved:
+	 * - provide id in vlr_subscriber for libmsc's VTY 'subscriber id N';
+	 * - refactor libmsc paging to remember the paging requests with cb in
+	 *   vlr_subscriber or an entirely separate list -- see 'requests'
+	 *   below, subscr_request_channel() and paging.c;
+	 * - in libbsc paging, don't reference the subscriber in a paging
+	 *   request, simply pass a MI (TMSI or IMSI) to the paging API;
+	 * - in libbsc, store IMSI, TMSI and LAC in the subscriber_conn (?);
+	 * - use vlr_sub_name() instead of subscr_name() in various logging;
+	 * - in libbsc, log the subscriber info only when available;
+	 * - move classmark info to subscriber_conn ('equipment' below);
+	 * - in the SGSN, <TODO: insert convincing plan here>
+	 */
+	struct vlr_subscriber *vsub;
+
 	struct gsm_subscriber_group *group;
 	long long unsigned int id;
 	char imsi[GSM23003_IMSI_MAX_DIGITS+1];
