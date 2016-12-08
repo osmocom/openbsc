@@ -56,47 +56,65 @@ struct gsm_subscriber {
 	 * to be resolved:
 	 * - provide id in vlr_subscriber for libmsc's VTY 'subscriber id N';
 	 * - refactor libmsc paging to remember the paging requests with cb in
-	 *   vlr_subscriber or an entirely separate list -- see 'requests'
-	 *   below, subscr_request_channel() and paging.c;
+	 *   vlr_subscriber -- see 'requests' below, subscr_request_channel()
+	 *   and paging.c;
 	 * - in libbsc paging, don't reference the subscriber in a paging
 	 *   request, simply pass a MI (TMSI or IMSI) to the paging API;
 	 * - in libbsc, store IMSI, TMSI and LAC in the subscriber_conn (?);
 	 * - use vlr_sub_name() instead of subscr_name() in various logging;
 	 * - in libbsc, log the subscriber info only when available;
 	 * - move classmark info to subscriber_conn ('equipment' below);
-	 * - in the SGSN, <TODO: insert convincing plan here>
+	 * - in the SGSN, use vsub->ps.* instead
 	 */
 	struct vlr_subscriber *vsub;
 
+	/* AFAICT we always keep only one global group and never use it for
+	 * anything. */
 	struct gsm_subscriber_group *group;
+
+	/* VTY: 'subscriber id N' */
 	long long unsigned int id;
+
+	/* use vsub->imsi instead, if at all this is a copy */
 	char imsi[GSM23003_IMSI_MAX_DIGITS+1];
+	/* use vsub->tmsi instead, if at all this is a copy */
 	uint32_t tmsi;
+	/* use vsub->lac instead, if at all this is a copy */
 	uint16_t lac;
+	/* use vsub->name instead, if at all this is a copy */
 	char name[GSM_NAME_LENGTH];
+	/* use vsub->msisdn instead, if at all this is a copy */
 	char extension[GSM_EXTENSION_LENGTH];
+	/* use vsub->authorized instead, if at all this is a copy */
 	int authorized;
+	/* use vsub->expire_lu instead, if at all this is a copy */
 	time_t expire_lu;
 
-	/* Don't delete subscribers even if group->keep_subscr is not set */
+	/* AFAICT this is only set to 1 by the SGSN VTY's 'update subscriber
+	 * <imsi> create' command and a unit test.  "Don't delete subscribers
+	 * even if group->keep_subscr is not set" */
 	int keep_in_ram;
 
-	/* Temporary field which is not stored in the DB/HLR */
+	/* Used in libmsc only for GSM_SUBSCRIBER_FIRST_CONTACT to send a
+	 * token, set by db.c; used extensively in osmo-sgsn, see
+	 * GPRS_SUBSCRIBER_* flags. TODO: set GSM_SUBSCRIBER_FIRST_CONTACT from
+	 * HLR via VLR? */
 	uint32_t flags;
 
 	/* Every user can only have one equipment in use at any given
 	 * point in time */
 	struct gsm_equipment equipment;
 
-	/* for internal management */
+	/* use vsub->use_count instead?? */
 	int use_count;
 	struct llist_head entry;
 
-	/* pending requests */
+	/* use vsub->cs.is_paging instead */
 	int is_paging;
+	/* use vsub->cs.requests instead */
 	struct llist_head requests;
 
-	/* GPRS/SGSN related fields */
+	/* use vsub->ps.* instead */
 	struct sgsn_subscriber_data *sgsn_data;
 };
 
