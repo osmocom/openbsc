@@ -1,4 +1,8 @@
 - make sure filling with zeros means uninitialized
+- reject messages in uninitialized state EXPECTING BUGS
+DLOAP OAP registration failed
+- reject messages in disabled state
+DLOAP OAP registration failed
 - invalid client_id and shared secret
 - reset state
 - only client_id is invalid

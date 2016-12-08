@@ -37,6 +37,12 @@ static void test_oap_api(void)
 	struct oap_client_state _state;
 	struct oap_client_state *state = &_state;
 
+	struct osmo_oap_message oap_rx;
+	struct msgb *msg_rx;
+
+	struct osmo_oap_message oap_tx;
+	struct msgb *msg_tx;
+
 	memset(config, 0, sizeof(*config));
 	memset(state, 0, sizeof(*state));
 
@@ -46,7 +52,38 @@ static void test_oap_api(void)
 	fprintf(stderr, "- make sure filling with zeros means uninitialized\n");
 	OSMO_ASSERT(state->state == OAP_UNINITIALIZED);
 
+	fprintf(stderr, "- reject messages in uninitialized state EXPECTING BUGS\n");
+	memset(&oap_rx, 0, sizeof(oap_rx));
+	state->client_id = 1;
+	oap_rx.message_type = OAP_MSGT_REGISTER_ERROR;
+	msg_rx = oap_client_encoded(&oap_rx);
+	/* ATTENTION: This shows a bug in OAP: the rc should be < 0, but OAP
+	 * happily accepts this message and breaks the uninitialized state. The
+	 * expected rc, state and msg_tx will be fixed along with the fix. */
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == 0 /* BUG, expecting < 0 */);
+	OSMO_ASSERT(state->state == OAP_REQUESTED_CHALLENGE /* BUG, expecting OAP_UNINITIALIZED */);
+	msgb_free(msg_rx);
+	OSMO_ASSERT(msg_tx /* BUG, expecting NULL */);
+	msgb_free(msg_tx);
+
+	fprintf(stderr, "- reject messages in disabled state\n");
+	memset(state, 0, sizeof(*state));
+	memset(&oap_rx, 0, sizeof(oap_rx));
+	state->state = OAP_DISABLED;
+	state->client_id = 1;
+	oap_rx.message_type = OAP_MSGT_REGISTER_ERROR;
+	msg_rx = oap_client_encoded(&oap_rx);
+	/* ATTENTION: This shows a bug in OAP: the rc should be < 0, but OAP
+	 * happily accepts this message and breaks the uninitialized state. The
+	 * expected rc, state and msg_tx will be fixed along with the fix. */
+	OSMO_ASSERT(oap_client_handle(state, msg_rx, &msg_tx) == 0 /* BUG, expecting < 0 */);
+	OSMO_ASSERT(state->state == OAP_REQUESTED_CHALLENGE /* BUG, expecting OAP_DISABLED */);
+	msgb_free(msg_rx);
+	OSMO_ASSERT(msg_tx /* BUG, expecting NULL */);
+	msgb_free(msg_tx);
+
 	fprintf(stderr, "- invalid client_id and shared secret\n");
+	memset(state, 0, sizeof(*state));
 	config->client_id = 0;
 	config->secret_k_present = 0;
 	config->secret_opc_present = 0;
@@ -92,10 +129,6 @@ static void test_oap_api(void)
 	OSMO_ASSERT( oap_client_init(config, state) == 0 );
 	OSMO_ASSERT(state->state == OAP_INITIALIZED);
 
-	struct osmo_oap_message oap_rx;
-	struct osmo_oap_message oap_tx;
-	struct msgb *msg_rx;
-	struct msgb *msg_tx;
 
 	fprintf(stderr, "- Missing challenge data\n");
 	memset(&oap_rx, 0, sizeof(oap_rx));
