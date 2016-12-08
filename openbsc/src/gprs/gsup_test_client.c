@@ -260,17 +260,12 @@ static void sig_cb(int sig)
 void *tall_bsc_ctx = NULL;
 
 /* default categories */
-static struct log_info_cat gprs_categories[] = {
-	[DGPRS] = {
-		.name = "DGPRS",
-		.description = "GPRS Packet Service",
-		.enabled = 1, .loglevel = LOGL_INFO,
-	},
+static struct log_info_cat default_categories[] = {
 };
 
-static const struct log_info gprs_log_info = {
-	.cat = gprs_categories,
-	.num_cat = ARRAY_SIZE(gprs_categories),
+static const struct log_info gsup_test_client_log_info = {
+	.cat = default_categories,
+	.num_cat = ARRAY_SIZE(default_categories),
 };
 
 int main(int argc, char **argv)
@@ -279,7 +274,7 @@ int main(int argc, char **argv)
 	char *server_host = "127.0.0.1";
 	uint16_t server_port = 2222;
 
-	osmo_init_logging(&gprs_log_info);
+	osmo_init_logging(&gsup_test_client_log_info);
 
 	g_gc = gsup_client_create(server_host, server_port, gsupc_read_cb,
 				       NULL);

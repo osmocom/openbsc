@@ -55,29 +55,29 @@ static int gsup_client_connect(struct gsup_client *gsupc)
 		return 0;
 
 	if (osmo_timer_pending(&gsupc->connect_timer)) {
-		LOGP(DLINP, LOGL_DEBUG,
+		LOGP(DLGSUP, LOGL_DEBUG,
 		     "GSUP connect: connect timer already running\n");
 		osmo_timer_del(&gsupc->connect_timer);
 	}
 
 	if (osmo_timer_pending(&gsupc->ping_timer)) {
-		LOGP(DLINP, LOGL_DEBUG,
+		LOGP(DLGSUP, LOGL_DEBUG,
 		     "GSUP connect: ping timer already running\n");
 		osmo_timer_del(&gsupc->ping_timer);
 	}
 
 	if (ipa_client_conn_clear_queue(gsupc->link) > 0)
-		LOGP(DLINP, LOGL_DEBUG, "GSUP connect: discarded stored messages\n");
+		LOGP(DLGSUP, LOGL_DEBUG, "GSUP connect: discarded stored messages\n");
 
 	rc = ipa_client_conn_open(gsupc->link);
 
 	if (rc >= 0) {
-		LOGP(DGPRS, LOGL_INFO, "GSUP connecting to %s:%d\n",
+		LOGP(DLGSUP, LOGL_INFO, "GSUP connecting to %s:%d\n",
 		     gsupc->link->addr, gsupc->link->port);
 		return 0;
 	}
 
-	LOGP(DGPRS, LOGL_INFO, "GSUP failed to connect to %s:%d: %s\n",
+	LOGP(DLGSUP, LOGL_INFO, "GSUP failed to connect to %s:%d: %s\n",
 	     gsupc->link->addr, gsupc->link->port, strerror(-rc));
 
 	if (rc == -EBADF || rc == -ENOTSOCK || rc == -EAFNOSUPPORT ||
@@ -87,7 +87,7 @@ static int gsup_client_connect(struct gsup_client *gsupc)
 	osmo_timer_schedule(&gsupc->connect_timer,
 			    GSUP_CLIENT_RECONNECT_INTERVAL, 0);
 
-	LOGP(DGPRS, LOGL_INFO, "Scheduled timer to retry GSUP connect to %s:%d\n",
+	LOGP(DLGSUP, LOGL_INFO, "Scheduled timer to retry GSUP connect to %s:%d\n",
 	     gsupc->link->addr, gsupc->link->port);
 
 	return 0;
@@ -119,7 +119,7 @@ static void gsup_client_oap_register(struct gsup_client *gsupc)
 	rc = oap_register(&gsupc->oap_state, &msg_tx);
 
 	if ((rc < 0) || (!msg_tx)) {
-		LOGP(DGPRS, LOGL_ERROR, "GSUP OAP set up, but cannot register.\n");
+		LOGP(DLGSUP, LOGL_ERROR, "GSUP OAP set up, but cannot register.\n");
 		return;
 	}
 
@@ -130,7 +130,7 @@ static void gsup_client_updown_cb(struct ipa_client_conn *link, int up)
 {
 	struct gsup_client *gsupc = link->data;
 
-	LOGP(DGPRS, LOGL_INFO, "GSUP link to %s:%d %s\n",
+	LOGP(DLGSUP, LOGL_INFO, "GSUP link to %s:%d %s\n",
 		     link->addr, link->port, up ? "UP" : "DOWN");
 
 	gsupc->is_connected = up;
@@ -181,7 +181,7 @@ static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	rc = ipaccess_bts_handle_ccm(link, &ipa_dev, msg);
 
 	if (rc < 0) {
-		LOGP(DGPRS, LOGL_NOTICE,
+		LOGP(DLGSUP, LOGL_NOTICE,
 		     "GSUP received an invalid IPA/CCM message from %s:%d\n",
 		     link->addr, link->port);
 		/* Link has been closed */
@@ -194,7 +194,7 @@ static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 		uint8_t msg_type = *(msg->l2h);
 		/* CCM message */
 		if (msg_type == IPAC_MSGT_PONG) {
-			LOGP(DGPRS, LOGL_DEBUG, "GSUP receiving PONG\n");
+			LOGP(DLGSUP, LOGL_DEBUG, "GSUP receiving PONG\n");
 			gsupc->got_ipa_pong = 1;
 		}
 
@@ -223,7 +223,7 @@ static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	return 0;
 
 invalid:
-	LOGP(DGPRS, LOGL_NOTICE,
+	LOGP(DLGSUP, LOGL_NOTICE,
 	     "GSUP received an invalid IPA message from %s:%d, size = %d\n",
 	     link->addr, link->port, msgb_length(msg));
 
@@ -235,7 +235,7 @@ static void ping_timer_cb(void *gsupc_)
 {
 	struct gsup_client *gsupc = gsupc_;
 
-	LOGP(DGPRS, LOGL_INFO, "GSUP ping callback (%s, %s PONG)\n",
+	LOGP(DLGSUP, LOGL_INFO, "GSUP ping callback (%s, %s PONG)\n",
 	     gsupc->is_connected ? "connected" : "not connected",
 	     gsupc->got_ipa_pong ? "got" : "didn't get");
 
@@ -244,7 +244,7 @@ static void ping_timer_cb(void *gsupc_)
 		return;
 	}
 
-	LOGP(DGPRS, LOGL_NOTICE, "GSUP ping timed out, reconnecting\n");
+	LOGP(DLGSUP, LOGL_NOTICE, "GSUP ping timed out, reconnecting\n");
 	ipa_client_conn_close(gsupc->link);
 	gsupc->is_connected = 0;
 
@@ -258,7 +258,7 @@ static void start_test_procedure(struct gsup_client *gsupc)
 
 	gsupc->got_ipa_pong = 0;
 	osmo_timer_schedule(&gsupc->ping_timer, GSUP_CLIENT_PING_INTERVAL, 0);
-	LOGP(DGPRS, LOGL_DEBUG, "GSUP sending PING\n");
+	LOGP(DLGSUP, LOGL_DEBUG, "GSUP sending PING\n");
 	gsup_client_send_ping(gsupc);
 }
 
