@@ -132,8 +132,6 @@ static int pcu_tx_info_ind(struct gsm_bts *bts)
 	struct gsm_bts_trx_ts *ts;
 	int i, j;
 
-	printf("======================= PCU UPDATE! =========================\n");
-
 	OSMO_ASSERT(bts);
 	OSMO_ASSERT(bts->network);
 
@@ -403,7 +401,6 @@ int pcu_tx_pch_data_cnf(struct gsm_bts *bts, uint32_t fn, uint8_t *data, uint8_t
 /* Confirm the sending of an immediate assignment to the pcu */
 int pcu_tx_imm_ass_sent(struct gsm_bts *bts, uint32_t tlli)
 {
-	printf("======================================> GOT TLLI! %x\n", tlli);
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
 	struct gsm_pcu_if_data_cnf_dt *data_cnf_dt;

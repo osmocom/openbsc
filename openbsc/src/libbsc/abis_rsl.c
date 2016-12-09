@@ -2000,7 +2000,6 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 			tlli |= msg->data[7] << 8;
 			tlli |= msg->data[6] << 16;
 			tlli |= msg->data[5] << 24;
-			printf("==================>%s\n",osmo_hexdump_nospc(msg->data,msg->len));
 			pcu_tx_imm_ass_sent(sign_link->trx->bts, tlli);
 		}
 		break;
