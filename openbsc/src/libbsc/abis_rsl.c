@@ -1992,9 +1992,13 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 			"type 0x%02x\n", rslh->c.msg_type);
 		break;
 	case 0x10: /* Ericsson specific: Immediate Assign Sent */
+		/* FIXME: Replace the messy message parsing below
+		 * with proper TV parser */
 		LOGP(DRSL, LOGL_INFO, "IMM.ass sent\n");
 		if(msg->len < 8)
 			LOGP(DRSL, LOGL_ERROR, "short IMM.ass sent message!\n");
+		else if(msg->data[4] != 0xf1)
+			LOGP(DRSL, LOGL_ERROR, "unsupported IMM.ass message format! (please fix)\n");
 		else {
 			tlli =  msg->data[8];
 			tlli |= msg->data[7] << 8;
