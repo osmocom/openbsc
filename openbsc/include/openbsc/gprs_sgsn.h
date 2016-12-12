@@ -369,6 +369,8 @@ void sgsn_inst_init(void);
  * ottherwise lost state (recovery procedure) */
 int drop_all_pdp_for_ggsn(struct sgsn_ggsn_ctx *ggsn);
 
+void drop_gmm_ctx_for_ms(const char *imsi);
+
 char *gprs_pdpaddr2str(uint8_t *pdpa, uint8_t len);
 
 /*
