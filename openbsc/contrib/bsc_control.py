@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- mode: python-mode; py-indent-tabs-mode: nil -*-
 
-import random
 from optparse import OptionParser
 from ipa import Ctrl
 import socket
@@ -44,8 +43,6 @@ def _leftovers(sck):
         return False
 
 if __name__ == '__main__':
-        random.seed()
-
         parser = OptionParser("Usage: %prog [options] var [value]")
         parser.add_option("-d", "--host", dest="host",
                           help="connect to HOST", metavar="HOST")
@@ -55,8 +52,6 @@ if __name__ == '__main__':
                           dest="cmd_get", help="perform GET operation")
         parser.add_option("-s", "--set", action="store_true",
                           dest="cmd_set", help="perform SET operation")
-        parser.add_option("-i", "--id", dest="op_id", default=random.randint(1, sys.maxint),
-                          help="set id manually", metavar="ID")
         parser.add_option("-v", "--verbose", action="store_true",
                           dest="verbose", help="be verbose", default=False)
         parser.add_option("-m", "--monitor", action="store_true",
