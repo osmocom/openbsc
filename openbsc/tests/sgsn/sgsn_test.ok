@@ -34,8 +34,4 @@ Testing routing area changes
   - RA Update Request (RA 2 -> RA 2)
 Testing APN matching
 Testing GGSN selection
-Testing pdp deactivation
-Testing Pdp deactivation for MS with pdp ctx
-Testing Pdp deactivation for MS without MM ctx
-Testing Pdp deactivation for MS with only MM ctx
 Done

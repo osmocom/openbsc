@@ -667,44 +667,6 @@ static void drop_one_pdp(struct sgsn_pdp_ctx *pdp)
 	}
 }
 
-/*
- * High-level function to be called for PDP deactivation initiated from SGSN VTY.
- * When there are PDP contexts present for a MM context, PDP context will be
- * deactivated along with GMM Detach(MM context deletion).
- * If there are no PDP present, MM context will be deleted to avoid further
- * PDP context activation for that MS.
- */
-void drop_gmm_ctx_for_ms(const char *imsi)
-{
-	OSMO_ASSERT(imsi != NULL);
-	struct sgsn_mm_ctx *mm;
-	struct sgsn_pdp_ctx *pdp;
-
-	/* Search the MM context subscriber */
-	mm = sgsn_mm_ctx_by_imsi(imsi);
-	LOGMMCTXP(LOGL_INFO, mm,
-		"SGSN intiated Deactivate PDP request for %s\n", imsi);
-	if (mm) {
-		/* Search the PDP for this subscriber */
-		if (llist_empty(&mm->pdp_list)) {
-			/*
-			 * Deleting mm context for the subscriber when no PDP
-			 * context is present.
-			 */
-			gsm0408_gprs_access_cancelled(mm, GMM_CAUSE_GPRS_NOTALLOWED);
-			LOGMMCTXP(LOGL_NOTICE, mm, "No PDP context to deactivate\n");
-		} else {
-			llist_for_each_entry(pdp, &mm->pdp_list, list) {
-				gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_DEACT_REGULAR);
-				LOGPDPCTXP(LOGL_INFO, pdp, "PDP Deactivation "
-					"Successful\n");
-			}
-		}
-	} else
-		LOGMMCTXP(LOGL_NOTICE, mm,
-			"No MM context to deactivate for %s\n", imsi);
-}
-
 /* High-level function to be called in case a GGSN has disappeared or
  * otherwise lost state (recovery procedure) */
 int drop_all_pdp_for_ggsn(struct sgsn_ggsn_ctx *ggsn)

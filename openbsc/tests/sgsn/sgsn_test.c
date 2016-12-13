@@ -38,17 +38,14 @@
 #include <osmocom/core/rate_ctr.h>
 
 #include <stdio.h>
-#include <gtp.h>
 
 void *tall_bsc_ctx;
-struct gsn_t gsn_ctx;
 static struct sgsn_instance sgsn_inst = {
 	.config_file = "osmo_sgsn.cfg",
 	.cfg = {
 		.gtp_statedir = "./",
 		.auth_policy = SGSN_AUTH_POLICY_CLOSED,
 	},
-	.gsn = &gsn_ctx,
 };
 struct sgsn_instance *sgsn = &sgsn_inst;
 unsigned sgsn_tx_counter = 0;
@@ -2366,138 +2363,6 @@ static void test_ggsn_selection(void)
 	cleanup_test();
 }
 
-static void test_pdp_deactivation_with_pdp_ctx(void)
-{
-	struct apn_ctx *actxs[4];
-	struct sgsn_ggsn_ctx *ggc, *ggcs[3];
-	struct gsm_subscriber *s1;
-	const char *imsi1 = "1234567890";
-	struct sgsn_mm_ctx *ctx;
-	struct gprs_ra_id raid = { 0, };
-	uint32_t local_tlli = 0xffeeddcc;
-	enum gsm48_gsm_cause gsm_cause;
-	struct tlv_parsed tp;
-	uint8_t apn_enc[GSM_APN_LENGTH + 10];
-	struct sgsn_subscriber_pdp_data *pdp_data;
-	char apn_str[GSM_APN_LENGTH];
-
-	printf("Testing Pdp deactivation for MS with pdp ctx\n");
-
-	gprs_gsup_client_send_cb = my_gprs_gsup_client_send_dummy;
-
-	/* Check for emptiness */
-	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
-
-	/* Create a context */
-	OSMO_ASSERT(count(gprs_llme_list()) == 0);
-	ctx = alloc_mm_ctx(local_tlli, &raid);
-	strncpy(ctx->imsi, imsi1, sizeof(ctx->imsi) - 1);
-
-	/* Allocate and attach a subscriber */
-	s1 = gprs_subscr_get_or_create_by_mmctx(ctx);
-	assert_subscr(s1, imsi1);
-
-	struct sgsn_pdp_ctx *pdp;
-
-	tp.lv[GSM48_IE_GSM_APN].len = 0;
-	tp.lv[GSM48_IE_GSM_APN].val = apn_enc;
-
-	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].len = 2;
-	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].val = apn_enc;
-
-	tp.lv[OSMO_IE_GSM_REQ_QOS].len = 14;
-	tp.lv[OSMO_IE_GSM_REQ_QOS].val = apn_enc;
-
-	ggcs[0] = sgsn_ggsn_ctx_find_alloc(0);
-
-	actxs[0] = sgsn_apn_ctx_find_alloc("test.apn", "123456");
-	actxs[0]->ggsn = ggcs[0];
-
-	pdp_data = sgsn_subscriber_pdp_data_alloc(s1->sgsn_data);
-	pdp_data->context_id = 1;
-	pdp_data->pdp_type = 0x0121;
-	strncpy(pdp_data->apn_str, "*", sizeof(pdp_data->apn_str)-1);
-
-	/* Resolve GGSNs */
-	tp.lv[GSM48_IE_GSM_APN].len =
-		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Test.Apn");
-
-	ggc = sgsn_mm_ctx_find_ggsn_ctx(ctx, &tp, &gsm_cause, apn_str);
-
-	OSMO_ASSERT(ggc != NULL);
-	OSMO_ASSERT(ggc->id == 0);
-
-	ggc = sgsn_ggsn_ctx_alloc(ggc->id);
-	/* Create a pdp context */
-	pdp = sgsn_create_pdp_ctx(ggc, ctx, 5, &tp);
-
-	/* Intiate PDP deactivation for imsi1 */
-	drop_gmm_ctx_for_ms(imsi1);
-	gsm48_tx_gsm_deact_pdp_acc(pdp);
-	gsm0408_gprs_access_cancelled(ctx, GMM_CAUSE_GPRS_NOTALLOWED);
-
-	/* Cleanup */
-
-	subscr_put(s1);
-
-	sgsn_apn_ctx_free(actxs[0]);
-	sgsn_ggsn_ctx_free(ggcs[0]);
-	sgsn_ggsn_ctx_free(ggc);
-	talloc_free(pdp);
-
-	cleanup_test();
-}
-
-static void test_pdp_deactivation_with_only_mm_ctx(void)
-{
-	struct gsm_subscriber *s1;
-	const char *imsi1 = "1234567890";
-	struct sgsn_mm_ctx *ctx;
-	struct gprs_ra_id raid = { 0, };
-	uint32_t local_tlli = 0xffeeddcc;
-
-	printf("Testing Pdp deactivation for MS with only MM ctx\n");
-
-	gprs_gsup_client_send_cb = my_gprs_gsup_client_send_dummy;
-
-	/* Check for emptiness */
-	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
-
-	/* Create a context */
-	OSMO_ASSERT(count(gprs_llme_list()) == 0);
-	ctx = alloc_mm_ctx(local_tlli, &raid);
-	strncpy(ctx->imsi, imsi1, sizeof(ctx->imsi) - 1);
-
-	/* Allocate and attach a subscriber */
-	s1 = gprs_subscr_get_or_create_by_mmctx(ctx);
-	assert_subscr(s1, imsi1);
-
-	/* Intiate PDP deactivation for imsi1 */
-	drop_gmm_ctx_for_ms(imsi1);
-
-	cleanup_test();
-}
-
-static void test_pdp_deactivation_without_mm_ctx(void)
-{
-	const char *imsi1 = "1234567890";
-
-	printf("Testing Pdp deactivation for MS without MM ctx\n");
-
-	/* Intiate PDP deactivation for imsi1 */
-	drop_gmm_ctx_for_ms(imsi1);
-
-	cleanup_test();
-}
-
-static void test_pdp_deactivation(void)
-{
-	printf("Testing pdp deactivation\n");
-
-	test_pdp_deactivation_with_pdp_ctx();
-	test_pdp_deactivation_without_mm_ctx();
-	test_pdp_deactivation_with_only_mm_ctx();
-}
 static struct log_info_cat gprs_categories[] = {
 	[DMM] = {
 		.name = "DMM",
@@ -2589,7 +2454,6 @@ int main(int argc, char **argv)
 	test_gmm_routing_areas();
 	test_apn_matching();
 	test_ggsn_selection();
-	test_pdp_deactivation();
 	printf("Done\n");
 
 	talloc_report_full(osmo_sgsn_ctx, stderr);
