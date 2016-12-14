@@ -27,6 +27,8 @@
 
 #include <osmocom/core/utils.h>
 
+#include <errno.h>
+
 static inline int greatest_power_of_2_lesser_or_equal_to(int index)
 {
 	int power_of_2 = 1;
@@ -109,6 +111,8 @@ int range_enc_arfcns(enum gsm48_range range,
 
 	/* Now do the processing */
 	split_at = range_enc_find_index(range, arfcns, size);
+	if (split_at < 0)
+		return -EINVAL;
 
 	/* we now know where to split */
 	out[index] = 1 + arfcns[split_at];

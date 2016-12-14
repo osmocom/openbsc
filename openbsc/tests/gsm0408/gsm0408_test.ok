@@ -62,6 +62,10 @@ testing RP-Reference wrap
 Allocated reference: 255
 Allocated reference: 0
 Allocated reference: 1
+Test SI2quater UARFCN (same scrambling code and diversity):
+generated valid SI2quater: [23] 59 06 07 c0 00 25 52 88 0a 7e 10 99 64 00 0b 2b 2b 2b 2b 2b 2b 2b 2b 
+failed to generate SI2quater: Invalid argument
+failed to generate SI2quater: Invalid argument
 Testing SYSINFO_TYPE_2quater EARFCN generation:
 generated invalid SI2quater: [23] 59 06 07 c0 00 04 86 59 0a 03 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1917 - generated valid SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be c8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 

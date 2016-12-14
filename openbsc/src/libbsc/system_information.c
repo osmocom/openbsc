@@ -316,6 +316,38 @@ static inline int enc_freq_lst_var_bitmap(uint8_t *chan_list,
 	return 0;
 }
 
+int range_encode(enum gsm48_range r, int *arfcns, int arfcns_used, int *w,
+		 int f0, uint8_t *chan_list)
+{
+	/*
+	 * Manipulate the ARFCN list according to the rules in J4 depending
+	 * on the selected range.
+	 */
+	int rc, f0_included;
+
+	range_enc_filter_arfcns(arfcns, arfcns_used, f0, &f0_included);
+
+	rc = range_enc_arfcns(r, arfcns, arfcns_used, w, 0);
+	if (rc < 0)
+		return rc;
+
+	/* Select the range and the amount of bits needed */
+	switch (r) {
+	case ARFCN_RANGE_128:
+		return range_enc_range128(chan_list, f0, w);
+	case ARFCN_RANGE_256:
+		return range_enc_range256(chan_list, f0, w);
+	case ARFCN_RANGE_512:
+		return range_enc_range512(chan_list, f0, w);
+	case ARFCN_RANGE_1024:
+		return range_enc_range1024(chan_list, f0, f0_included, w);
+	default:
+		return -ERANGE;
+	};
+
+	return f0_included;
+}
+
 /* generate a frequency list with the range 512 format */
 static inline int enc_freq_lst_range(uint8_t *chan_list,
 				struct bitvec *bv, const struct gsm_bts *bts,
@@ -323,9 +355,8 @@ static inline int enc_freq_lst_range(uint8_t *chan_list,
 {
 	int arfcns[RANGE_ENC_MAX_ARFCNS];
 	int w[RANGE_ENC_MAX_ARFCNS];
-	int f0_included = 0;
 	int arfcns_used = 0;
-	int i, rc, range, f0;
+	int i, range, f0;
 
 	/*
 	 * Select ARFCNs according to the rules in bitvec2freq_list
@@ -346,35 +377,8 @@ static inline int enc_freq_lst_range(uint8_t *chan_list,
 	if (range == ARFCN_RANGE_INVALID)
 		return -2;
 
-	/*
-	 * Manipulate the ARFCN list according to the rules in J4 depending
-	 * on the selected range.
-	 */
-	arfcns_used = range_enc_filter_arfcns(arfcns, arfcns_used,
-				f0, &f0_included);
-
 	memset(w, 0, sizeof(w));
-	rc = range_enc_arfcns(range, arfcns, arfcns_used, w, 0);
-	if (rc != 0)
-		return -3;
-
-	/* Select the range and the amount of bits needed */
-	switch (range) {
-	case ARFCN_RANGE_128:
-		return range_enc_range128(chan_list, f0, w);
-		break;
-	case ARFCN_RANGE_256:
-		return range_enc_range256(chan_list, f0, w);
-		break;
-	case ARFCN_RANGE_512:
-		return range_enc_range512(chan_list, f0, w);
-		break;
-	case ARFCN_RANGE_1024:
-		return range_enc_range1024(chan_list, f0, f0_included, w);
-		break;
-	default:
-		return -4;
-	};
+	return range_encode(range, arfcns, arfcns_used, w, f0, chan_list);
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
@@ -447,7 +451,7 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 
 	/* Attempt to do the range encoding */
 	rc = enc_freq_lst_range(chan_list, bv, bts, bis, ter, pgsm);
-	if (rc == 0)
+	if (rc >= 0)
 		return 0;
 
 	LOGP(DRR, LOGL_ERROR, "min_arfcn=%u, max_arfcn=%u, arfcns=%d "

@@ -120,6 +120,21 @@ static inline void _bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn,
 		gen(bts);
 }
 
+static inline void test_si2q_segfault(void)
+{
+	struct gsm_bts *bts;
+	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	printf("Test SI2quater UARFCN (same scrambling code and diversity):\n");
+
+	if (!network)
+		exit(1);
+	bts = gsm_bts_alloc(network);
+
+	_bts_uarfcn_add(bts, 10564, 319, 0);
+	_bts_uarfcn_add(bts, 10612, 319, 0);
+	gen(bts);
+}
+
 static inline void test_si2q_u(void)
 {
 	struct gsm_bts *bts;
@@ -590,6 +605,7 @@ int main(int argc, char **argv)
 	test_range_encoding();
 	test_gsm411_rp_ref_wrap();
 
+	test_si2q_segfault();
 	test_si2q_e();
 	test_si2q_u();
 	printf("Done.\n");

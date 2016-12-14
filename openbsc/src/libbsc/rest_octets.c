@@ -180,10 +180,10 @@ static inline void append_earfcn(struct bitvec *bv,
 	bitvec_set_bit(bv, L);
 }
 
-static inline void append_uarfcn(struct bitvec *bv, const uint16_t *u,
+static inline int append_uarfcn(struct bitvec *bv, const uint16_t *u,
 				 const uint16_t *sc, size_t length)
 {
-	int f0_inc, i, arfcns_used, w[RANGE_ENC_MAX_ARFCNS], a[length];
+	int f0_inc, i, w[RANGE_ENC_MAX_ARFCNS] = { 0 }, a[length];
 	uint8_t chan_list[16] = {0};
 
 	/* 3G Neighbour Cell Description */
@@ -211,9 +211,9 @@ static inline void append_uarfcn(struct bitvec *bv, const uint16_t *u,
 	/* Note: we do not support multiple UARFCN values ATM: */
 	bitvec_set_uint(bv, u[0], 14);
 
-	arfcns_used = range_enc_filter_arfcns(a, length, 0, &f0_inc);
-	range_enc_arfcns(ARFCN_RANGE_1024, a, arfcns_used, w, 0);
-	range_enc_range1024(chan_list, 0, f0_inc, w);
+	f0_inc = range_encode(ARFCN_RANGE_1024, a, length, w, 0, chan_list);
+	if (f0_inc < 0)
+		return f0_inc;
 
 	/* FDD_Indic0: parameter value '0000000000' is not a member of the set */
 	bitvec_set_bit(bv, f0_inc);
@@ -229,12 +229,15 @@ static inline void append_uarfcn(struct bitvec *bv, const uint16_t *u,
 
 	/* UTRAN TDD Description */
 	bitvec_set_bit(bv, 0);
+
+	return 0;
 }
 
 /* generate SI2quater rest octets: 3GPP TS 44.018 § 10.5.2.33b */
 int rest_octets_si2quater(uint8_t *data, const struct osmo_earfcn_si2q *e,
 			  const uint16_t *u, const uint16_t *sc, size_t u_len)
 {
+	int rc;
 	unsigned sz;
 	struct bitvec bv;
 	bv.data = data;
@@ -279,7 +282,13 @@ int rest_octets_si2quater(uint8_t *data, const struct osmo_earfcn_si2q *e,
 			     SI2Q_MAX_LEN);
 			return -ENOMEM;
 		}
-		append_uarfcn(&bv, u, sc, u_len);
+		rc = append_uarfcn(&bv, u, sc, u_len);
+		if (rc < 0) {
+			LOGP(DRR, LOGL_ERROR, "SI2quater: failed to append %zu "
+			     "UARFCNs due to range encoding failure: %s\n",
+			     u_len, strerror(-rc));
+			return rc;
+		}
 	} else { /* No 3G Neighbour Cell Description */
 		bitvec_set_bit(&bv, 0);
 	}
