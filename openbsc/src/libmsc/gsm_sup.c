@@ -290,6 +290,13 @@ int subscr_location_update(struct gsm_subscriber *subscr)
 	return subscr_tx_sup_message(subscr->group->net->hlr_sup_client, subscr, &gsup_msg);
 }
 
+int subscr_purge_ms(struct gsm_subscriber *subscr)
+{
+	struct gprs_gsup_message gsup_msg = {0};
+	gsup_msg.message_type = GPRS_GSUP_MSGT_PURGE_MS_REQUEST;
+	return subscr_tx_sup_message(subscr->group->net->hlr_sup_client, subscr, &gsup_msg);
+}
+
 static int subscr_tx_sup_error_reply(struct gprs_gsup_client *sup_client,
 									 struct gsm_subscriber *subscr,
 									 struct gprs_gsup_message *gsup_orig,
@@ -361,6 +368,13 @@ static int subscr_handle_sup_upd_loc_res(struct gsm_subscriber *subscr,
 		gsm0408_authorize(conn,NULL);
 	}
 
+	return 0;
+}
+
+static int subscr_handle_sup_purge_ms_res(struct gsm_subscriber *subscr,
+									struct gprs_gsup_message *gsup_msg)
+{
+	LOGP(DSUP, LOGL_INFO, "SUP PURGE MS result OK for IMSI:%s\n", subscr->imsi);
 	return 0;
 }
 
@@ -565,6 +579,9 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
 	case GPRS_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
 	case GPRS_GSUP_MSGT_PURGE_MS_ERROR:
 	case GPRS_GSUP_MSGT_PURGE_MS_RESULT:
+		rc = subscr_handle_sup_purge_ms_res(subscr, &gsup_msg);
+		break;
+
 	case GPRS_GSUP_MSGT_INSERT_DATA_REQUEST:
 	case GPRS_GSUP_MSGT_DELETE_DATA_REQUEST:
 		LOGGSUBSCRP(LOGL_ERROR, subscr,

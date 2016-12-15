@@ -136,6 +136,7 @@ void sms_alloc() {}
 void sms_free() {}
 void gsm_net_update_ctype(struct gsm_network *network) {}
 void gsm48_secure_channel() {}
+void gsm0408_purge_ms() {}
 void paging_request_stop() {}
 void vty_out() {}
 

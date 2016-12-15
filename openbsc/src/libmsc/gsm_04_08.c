@@ -1081,6 +1081,12 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 			_gsm48_rx_mm_serv_req_sec_cb, NULL);
 }
 
+void gsm0408_purge_ms(struct gsm_subscriber *subscr) {
+	if (subscr->group->net->auth_policy == GSM_AUTH_POLICY_REMOTE) {
+		subscr_purge_ms(subscr);
+	}
+}
+
 static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm_network *network = conn->network;
@@ -1119,6 +1125,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	}
 
 	if (subscr) {
+		gsm0408_purge_ms(subscr);
 		subscr_update(subscr, conn->bts,
 			      GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n", subscr_name(subscr));

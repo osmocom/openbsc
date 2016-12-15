@@ -47,6 +47,7 @@ extern struct llist_head *subscr_bsc_active_subscribers(void);
 int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
                          gsm_cbfn *cb, void *cb_data);
 
+void gsm0408_purge_ms(struct gsm_subscriber *subscr);
 
 /*
  * Struct for pending channel requests. This is managed in the
@@ -364,6 +365,7 @@ static void subscr_expire_callback(void *data, long long unsigned int id)
 
 	LOGP(DMM, LOGL_NOTICE, "Expiring inactive subscriber %s (ID %llu)\n",
 			subscr_name(s), id);
+	gsm0408_purge_ms(s);
 	s->lac = GSM_LAC_RESERVED_DETACHED;
 	db_sync_subscriber(s);
 
