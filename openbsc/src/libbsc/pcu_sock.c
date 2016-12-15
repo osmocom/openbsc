@@ -184,24 +184,26 @@ static int pcu_tx_info_ind(struct gsm_bts *bts)
 		info_ind->flags |= PCU_IF_FLAG_CS3;
 	if (rlcc->cs_mask & (1 << GPRS_CS4))
 		info_ind->flags |= PCU_IF_FLAG_CS4;
-	if (rlcc->cs_mask & (1 << GPRS_MCS1))
-		info_ind->flags |= PCU_IF_FLAG_MCS1;
-	if (rlcc->cs_mask & (1 << GPRS_MCS2))
-		info_ind->flags |= PCU_IF_FLAG_MCS2;
-	if (rlcc->cs_mask & (1 << GPRS_MCS3))
-		info_ind->flags |= PCU_IF_FLAG_MCS3;
-	if (rlcc->cs_mask & (1 << GPRS_MCS4))
-		info_ind->flags |= PCU_IF_FLAG_MCS4;
-	if (rlcc->cs_mask & (1 << GPRS_MCS5))
-		info_ind->flags |= PCU_IF_FLAG_MCS5;
-	if (rlcc->cs_mask & (1 << GPRS_MCS6))
-		info_ind->flags |= PCU_IF_FLAG_MCS6;
-	if (rlcc->cs_mask & (1 << GPRS_MCS7))
-		info_ind->flags |= PCU_IF_FLAG_MCS7;
-	if (rlcc->cs_mask & (1 << GPRS_MCS8))
-		info_ind->flags |= PCU_IF_FLAG_MCS8;
-	if (rlcc->cs_mask & (1 << GPRS_MCS9))
-		info_ind->flags |= PCU_IF_FLAG_MCS9;
+	if (bts->gprs.mode == BTS_GPRS_EGPRS) {
+		if (rlcc->cs_mask & (1 << GPRS_MCS1))
+			info_ind->flags |= PCU_IF_FLAG_MCS1;
+		if (rlcc->cs_mask & (1 << GPRS_MCS2))
+			info_ind->flags |= PCU_IF_FLAG_MCS2;
+		if (rlcc->cs_mask & (1 << GPRS_MCS3))
+			info_ind->flags |= PCU_IF_FLAG_MCS3;
+		if (rlcc->cs_mask & (1 << GPRS_MCS4))
+			info_ind->flags |= PCU_IF_FLAG_MCS4;
+		if (rlcc->cs_mask & (1 << GPRS_MCS5))
+			info_ind->flags |= PCU_IF_FLAG_MCS5;
+		if (rlcc->cs_mask & (1 << GPRS_MCS6))
+			info_ind->flags |= PCU_IF_FLAG_MCS6;
+		if (rlcc->cs_mask & (1 << GPRS_MCS7))
+			info_ind->flags |= PCU_IF_FLAG_MCS7;
+		if (rlcc->cs_mask & (1 << GPRS_MCS8))
+			info_ind->flags |= PCU_IF_FLAG_MCS8;
+		if (rlcc->cs_mask & (1 << GPRS_MCS9))
+			info_ind->flags |= PCU_IF_FLAG_MCS9;
+	}
 #warning	"isn't dl_tbf_ext wrong?: * 10 and no ntohs"
 	info_ind->dl_tbf_ext = rlcc->parameter[T_DL_TBF_EXT];
 #warning	"isn't ul_tbf_ext wrong?: * 10 and no ntohs"
