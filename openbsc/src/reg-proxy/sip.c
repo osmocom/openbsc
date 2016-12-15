@@ -78,7 +78,8 @@ int sip_send(struct sip_client *sip_client, osip_t *osip,
 
 }
 
-int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi)
+int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi,
+                    int expires_time)
 {
 	osip_message_t *reg_msg;
 
@@ -146,7 +147,7 @@ int tx_sip_register(struct sip_client *sip_client, osip_t *osip, char *imsi)
 	sprintf(tmp, "<sip:%s@%s:%s>", imsi, sip_client->src_ip, src_port);
 	osip_message_set_contact(reg_msg, tmp);
 
-	sprintf(tmp, "%i",  sip_client->expires_time);
+	sprintf(tmp, "%i",  expires_time);
 	osip_message_set_expires(reg_msg, tmp);
 
 	osip_message_set_content_length(reg_msg, "0");
@@ -264,17 +265,18 @@ void sip_cb_rcv2xx(int type, osip_transaction_t *tr, osip_message_t *sip_msg)
 	struct reg_proxy *reg = sip_client->data;
 	char imsi[16];
 	char msisdn[16];
-	osip_message_get_contact(sip_msg, 0, &contact);
-	memcpy(msisdn, contact->url->username, 16);
-	
+
 	to = osip_message_get_to(sip_msg);
 	memcpy(imsi, to->url->username, 16);
 	printf("OSIP_NICT_STATUS_2XX_RECEIVED imsi = %s \n", imsi);
-	printf("OSIP_NICT_STATUS_2XX_RECEIVED msisdn = %d \n", msisdn);
-	printf("OSIP_NICT_STATUS_2XX_RECEIVED msisdn = %s \n", msisdn);
 
-
-	handle_location_update_result(reg->sup_server, imsi, msisdn);
+	if (osip_message_get_contact(sip_msg, 0, &contact) < 0) {
+		handle_purge_ms_result(reg->sup_server, imsi);
+	} else {
+		memcpy(msisdn, contact->url->username, 16);
+		printf("OSIP_NICT_STATUS_2XX_RECEIVED msisdn = %s \n", msisdn);
+		handle_location_update_result(reg->sup_server, imsi, msisdn);
+	}
 }
 
 void sip_cb_rcv2xx_again(int type, osip_transaction_t *pott,osip_message_t *pomt)

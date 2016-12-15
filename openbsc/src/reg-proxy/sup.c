@@ -17,9 +17,24 @@ static int handle_sup_upd_loc_req(struct gsm_sup_server *sup_server,
 	osip_t *osip = reg->osip;
 	LOGGSUPP(LOGL_INFO, sup_msg,
 		"Try to send sip_register 0x%02x\n", sup_msg->message_type);
-	rc = tx_sip_register(sip_client, osip, sup_msg->imsi);
+	rc = tx_sip_register(sip_client, osip, sup_msg->imsi, sip_client->expires_time);
 	LOGGSUPP(LOGL_INFO, sup_msg,
 		"Sip_register was send 0x%02x\n", sup_msg->message_type);
+	return rc;
+}
+
+static int handle_sup_purge_ms_req(struct gsm_sup_server *sup_server,
+									struct gprs_gsup_message *sup_msg)
+{
+	int rc = 0;
+	struct reg_proxy *reg = sup_server->app;
+	struct sip_client *sip_client = reg->sip_client;
+	osip_t *osip = reg->osip;
+	LOGGSUPP(LOGL_INFO, sup_msg,
+		"Try to send sip_register (cancellation) 0x%02x\n", sup_msg->message_type);
+	rc = tx_sip_register(sip_client, osip, sup_msg->imsi, 0);
+	LOGGSUPP(LOGL_INFO, sup_msg,
+		"Sip_register (cancellation) was send 0x%02x\n", sup_msg->message_type);
 	return rc;
 }
 
@@ -284,6 +299,9 @@ int rx_sup_message(struct gsm_sup_server *sup_server, struct msgb *msg)
 	case GPRS_GSUP_MSGT_LOCATION_CANCEL_ERROR:
 	case GPRS_GSUP_MSGT_LOCATION_CANCEL_RESULT:
 	case GPRS_GSUP_MSGT_PURGE_MS_REQUEST:
+		rc = handle_sup_purge_ms_req(sup_server, &sup_msg);
+		break;
+
 	case GPRS_GSUP_MSGT_INSERT_DATA_ERROR:
 	case GPRS_GSUP_MSGT_INSERT_DATA_RESULT:
 		LOGGSUPP(LOGL_ERROR, &sup_msg,
@@ -304,10 +322,7 @@ int rx_sup_message(struct gsm_sup_server *sup_server, struct msgb *msg)
 
 	//subscr_put(subscr);
 
-	return
-	
-	
-	 rc;
+	return rc;
 }
 
 static int tx_sup_message(struct gsm_sup_server *sup_server,
@@ -351,6 +366,15 @@ int handle_location_update_result(struct gsm_sup_server *sup_server,
 		printf("handle_location_update_result %d %d\n", gsup_msg.msisdn_enc_len, gsup_msg.msisdn_enc);
 	}
 
+	return tx_sup_message(sup_server, &gsup_msg);
+}
+
+int handle_purge_ms_result(struct gsm_sup_server *sup_server,
+								 char *imsi)
+{
+	struct gprs_gsup_message gsup_msg = {0};
+	gsup_msg.message_type = GPRS_GSUP_MSGT_PURGE_MS_RESULT;
+	memcpy(gsup_msg.imsi, imsi, 17);
 	return tx_sup_message(sup_server, &gsup_msg);
 }
 
