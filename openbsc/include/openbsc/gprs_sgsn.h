@@ -295,12 +295,7 @@ struct sgsn_pdp_ctx {
 	//uint32_t		qos_profile_req;
 	//uint32_t		qos_profile_neg;
 	uint8_t			radio_prio;
-	uint32_t		tx_npdu_nr;
-	uint32_t		rx_npdu_nr;
-	uint32_t		tx_gtp_snd;
-	uint32_t		rx_gtp_snu;
 	//uint32_t		charging_id;
-	int			reordering_reqd;
 
 	struct osmo_timer_list	timer;
 	unsigned int		T;		/* Txxxx number */
