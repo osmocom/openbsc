@@ -95,6 +95,7 @@ const struct value_string iu_event_type_names[] = {
 	IU_EVT_STR(IU_EVENT_IU_RELEASE),
 	IU_EVT_STR(IU_EVENT_LINK_INVALIDATED),
 #undef IU_EVT_STR
+	{ 0, NULL }
 };
 
 struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sccp_link *link, uint32_t conn_id)

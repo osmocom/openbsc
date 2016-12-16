@@ -39,6 +39,7 @@ const struct value_string auth_action_names[] = {
 	AUTH_ACTION_STR(AUTH_DO_CIPH),
 	AUTH_ACTION_STR(AUTH_DO_AUTH),
 #undef AUTH_ACTION_STR
+	{ 0, NULL }
 };
 
 static int
