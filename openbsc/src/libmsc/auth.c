@@ -26,19 +26,18 @@
 #include <openbsc/gsm_data.h>
 
 #include <osmocom/gsm/comp128.h>
+#include <osmocom/core/utils.h>
 
 #include <openssl/rand.h>
 
 #include <stdlib.h>
 
 const struct value_string auth_action_names[] = {
-#define AUTH_ACTION_STR(X) { X, #X }
-	AUTH_ACTION_STR(AUTH_ERROR),
-	AUTH_ACTION_STR(AUTH_NOT_AVAIL),
-	AUTH_ACTION_STR(AUTH_DO_AUTH_THEN_CIPH),
-	AUTH_ACTION_STR(AUTH_DO_CIPH),
-	AUTH_ACTION_STR(AUTH_DO_AUTH),
-#undef AUTH_ACTION_STR
+	OSMO_VALUE_STRING(AUTH_ERROR),
+	OSMO_VALUE_STRING(AUTH_NOT_AVAIL),
+	OSMO_VALUE_STRING(AUTH_DO_AUTH_THEN_CIPH),
+	OSMO_VALUE_STRING(AUTH_DO_CIPH),
+	OSMO_VALUE_STRING(AUTH_DO_AUTH),
 	{ 0, NULL }
 };
 

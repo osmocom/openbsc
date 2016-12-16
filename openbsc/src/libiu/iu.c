@@ -30,6 +30,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/application.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/vty/logging.h>
 
 #include <osmocom/gsm/gsm48.h>
@@ -89,12 +90,10 @@ static LLIST_HEAD(ue_conn_ctx_list);
 static LLIST_HEAD(rnc_list);
 
 const struct value_string iu_event_type_names[] = {
-#define IU_EVT_STR(X) { X, #X }
-	IU_EVT_STR(IU_EVENT_RAB_ASSIGN),
-	IU_EVT_STR(IU_EVENT_SECURITY_MODE_COMPLETE),
-	IU_EVT_STR(IU_EVENT_IU_RELEASE),
-	IU_EVT_STR(IU_EVENT_LINK_INVALIDATED),
-#undef IU_EVT_STR
+	OSMO_VALUE_STRING(IU_EVENT_RAB_ASSIGN),
+	OSMO_VALUE_STRING(IU_EVENT_SECURITY_MODE_COMPLETE),
+	OSMO_VALUE_STRING(IU_EVENT_IU_RELEASE),
+	OSMO_VALUE_STRING(IU_EVENT_LINK_INVALIDATED),
 	{ 0, NULL }
 };
 
