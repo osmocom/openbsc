@@ -1039,6 +1039,9 @@ const char *gtphub_tunnel_str(struct gtphub_tunnel *tun)
 	int left = sizeof(buf);
 	int l;
 
+	if (!tun)
+		return "null-tunnel";
+
 	APPEND("TEI=%x: ", tun->tei_repl);
 	APPEND("%s", gtphub_tunnel_side_str(tun, GTPH_SIDE_SGSN));
 	APPEND(" <-> %s", gtphub_tunnel_side_str(tun, GTPH_SIDE_GGSN));
