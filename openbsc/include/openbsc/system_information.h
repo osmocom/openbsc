@@ -6,7 +6,6 @@
 struct gsm_bts;
 
 int gsm_generate_si(struct gsm_bts *bts, enum osmo_sysinfo_type type);
-uint16_t encode_fdd(uint16_t scramble, bool diversity);
 unsigned uarfcn_size(const uint16_t *u, const uint16_t *sc, size_t u_len);
 unsigned earfcn_size(const struct osmo_earfcn_si2q *e);
 unsigned range1024_p(unsigned n);

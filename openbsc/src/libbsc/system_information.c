@@ -149,7 +149,7 @@ bool si2q_size_check(const struct gsm_bts *bts)
 }
 
 /* 3GPP TS 44.018, Table 9.1.54.1 - prepend diversity bit to scrambling code */
-uint16_t encode_fdd(uint16_t scramble, bool diversity)
+static inline uint16_t encode_fdd(uint16_t scramble, bool diversity)
 {
 	if (diversity)
 		return scramble | (1 << 9);

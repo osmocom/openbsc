@@ -27,7 +27,7 @@
 
 #include <osmocom/core/utils.h>
 
-int greatest_power_of_2_lesser_or_equal_to(int index)
+static inline int greatest_power_of_2_lesser_or_equal_to(int index)
 {
 	int power_of_2 = 1;
 
@@ -52,7 +52,7 @@ static inline int mod(int data, int range)
  * equally size partition for the given range. Return -1 if
  * no such partition exists.
  */
-int range_enc_find_index(const int range, const int *freqs, const int size)
+int range_enc_find_index(enum gsm48_range range, const int *freqs, const int size)
 {
 	int i, j, n;
 
@@ -79,7 +79,7 @@ int range_enc_find_index(const int range, const int *freqs, const int size)
  * \param size The size of the list of ARFCNs
  * \param out Place to store the W(i) output.
  */
-int range_enc_arfcns(const int range,
+int range_enc_arfcns(enum gsm48_range range,
 		const int *arfcns, int size, int *out,
 		const int index)
 {
@@ -127,9 +127,11 @@ int range_enc_arfcns(const int range,
 	 * Now recurse and we need to make this iterative... but as the
 	 * tree is balanced the stack will not be too deep.
 	 */
-	range_enc_arfcns(range / 2, arfcns_left, l_size,
+	if (l_size)
+		range_enc_arfcns(range / 2, arfcns_left, l_size,
 			out, index + greatest_power_of_2_lesser_or_equal_to(index + 1));
-	range_enc_arfcns((range -1 ) / 2, arfcns_right, r_size,
+	if (r_size)
+		range_enc_arfcns((range - 1) / 2, arfcns_right, r_size,
 			 out, index + (2 * greatest_power_of_2_lesser_or_equal_to(index + 1)));
 	return 0;
 }
