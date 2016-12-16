@@ -549,26 +549,29 @@ static int gprs_sndcp_pack_fields(const struct llist_head *comp_fields,
 
 /* Transform a list with compression fields into an SNDCP-XID message (dst) */
 int gprs_sndcp_compile_xid(uint8_t *dst, unsigned int dst_maxlen,
-			   const struct llist_head *comp_fields)
+			   const struct llist_head *comp_fields, int version)
 {
 	int rc;
 	int byte_counter = 0;
 	uint8_t comp_bytes[512];
-	uint8_t xid_version_number[1] = { CURRENT_SNDCP_VERSION };
+	uint8_t xid_version_number[1];
 
 	OSMO_ASSERT(comp_fields);
 	OSMO_ASSERT(dst);
 	OSMO_ASSERT(dst_maxlen >= 2 + sizeof(xid_version_number));
 
-	/* Bail if there is no input */
-	if (llist_empty(comp_fields))
-		return -EINVAL;
+	/* Prepend header with version number */
+	if (version >= 0) {
+		xid_version_number[0] = (uint8_t) (version & 0xff);
+		dst =
+		    tlv_put(dst, SNDCP_XID_VERSION_NUMBER,
+			    sizeof(xid_version_number), xid_version_number);
+		byte_counter += (sizeof(xid_version_number) + 2);
+	}
 
-	/* Prepend header */
-	dst =
-	    tlv_put(dst, SNDCP_XID_VERSION_NUMBER,
-		    sizeof(xid_version_number), xid_version_number);
-	byte_counter += (sizeof(xid_version_number) + 2);
+	/* Stop if there is no compression fields supplied */
+	if (llist_empty(comp_fields))
+		return byte_counter;
 
 	/* Add data compression fields */
 	rc = gprs_sndcp_pack_fields(comp_fields, comp_bytes,
@@ -1283,11 +1286,10 @@ static int decode_xid_block(struct llist_head *comp_fields, uint8_t tag,
 }
 
 /* Transform an SNDCP-XID message (src) into a list of SNDCP-XID fields */
-static int gprs_sndcp_decode_xid(struct llist_head *comp_fields,
+static int gprs_sndcp_decode_xid(int *version, struct llist_head *comp_fields,
 				 const uint8_t *src, unsigned int src_len,
-				 const struct
-				 entity_algo_table
-				 *lt, unsigned int lt_len)
+				 const struct entity_algo_table *lt,
+				 unsigned int lt_len)
 {
 	int src_pos = 0;
 	uint8_t tag;
@@ -1296,6 +1298,10 @@ static int gprs_sndcp_decode_xid(struct llist_head *comp_fields,
 	int byte_counter = 0;
 	int rc;
 	int tlv_count = 0;
+
+	/* Preset version value as invalid */
+	if(version)
+		*version = -1;
 
 	/* Valid TLV-Tag and types */
 	static const struct tlv_definition sndcp_xid_def = {
@@ -1326,6 +1332,10 @@ static int gprs_sndcp_decode_xid(struct llist_head *comp_fields,
 			talloc_free(comp_fields);
 			return -EINVAL;
 		}
+
+		/* Decode sndcp xid version number */
+		if (version && tag == SNDCP_XID_VERSION_NUMBER)
+			*version = val[0];
 
 		/* Decode compression parameters */
 		if ((tag == SNDCP_XID_PROTOCOL_COMPRESSION)
@@ -1548,7 +1558,8 @@ static int gprs_sndcp_complete_comp_fields(struct llist_head
 }
 
 /* Transform an SNDCP-XID message (src) into a list of SNDCP-XID fields */
-struct llist_head *gprs_sndcp_parse_xid(const void *ctx,
+struct llist_head *gprs_sndcp_parse_xid(int *version,
+					const void *ctx,
 					const uint8_t *src,
 					unsigned int src_len,
 					const struct llist_head
@@ -1559,6 +1570,12 @@ struct llist_head *gprs_sndcp_parse_xid(const void *ctx,
 	struct llist_head *comp_fields;
 	struct entity_algo_table lt[MAX_ENTITIES * 2];
 
+	/* In case of a zero length field, just exit */
+	if(src_len == 0)
+		return NULL;
+
+	/* We should go any further if we have a field length greater
+	 * zero and a null pointer as buffer! */
 	OSMO_ASSERT(src);
 
 	comp_fields = talloc_zero(ctx, struct llist_head);
@@ -1575,8 +1592,8 @@ struct llist_head *gprs_sndcp_parse_xid(const void *ctx,
 		}
 
 		/* Parse SNDCP-CID XID-Field */
-		rc = gprs_sndcp_decode_xid(comp_fields, src, src_len, lt,
-					   lt_len);
+		rc = gprs_sndcp_decode_xid(version, comp_fields, src, src_len,
+					   lt, lt_len);
 		if (rc < 0) {
 			talloc_free(comp_fields);
 			return NULL;
@@ -1591,7 +1608,8 @@ struct llist_head *gprs_sndcp_parse_xid(const void *ctx,
 
 	} else {
 		/* Parse SNDCP-CID XID-Field */
-		rc = gprs_sndcp_decode_xid(comp_fields, src, src_len, NULL, 0);
+		rc = gprs_sndcp_decode_xid(version, comp_fields, src, src_len,
+					   NULL, 0);
 		if (rc < 0) {
 			talloc_free(comp_fields);
 			return NULL;

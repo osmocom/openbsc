@@ -960,8 +960,13 @@ static int gprs_llc_gen_sndcp_xid(uint8_t *bytes, int bytes_len, uint8_t nsapi)
 		llist_add(&v42bis_comp_field.list, &comp_fields);
 	}
 
+	/* Do not attempt to compile anything if there is no data in the list */
+	if(llist_empty(&comp_fields))
+		return 0;
+
 	/* Compile bytestream */
-	return gprs_sndcp_compile_xid(bytes, bytes_len, &comp_fields);
+	return gprs_sndcp_compile_xid(bytes, bytes_len, &comp_fields,
+				      DEFAULT_SNDCP_VERSION);
 }
 
 /* Set of SNDCP-XID bnegotiation (See also: TS 144 065,
@@ -1106,6 +1111,7 @@ int sndcp_sn_xid_ind(struct gprs_llc_xid_field *xid_field_indication,
 
 	int rc;
 	int compclass;
+	int version;
 
 	struct llist_head *comp_fields;
 	struct gprs_sndcp_comp_field *comp_field;
@@ -1115,21 +1121,12 @@ int sndcp_sn_xid_ind(struct gprs_llc_xid_field *xid_field_indication,
 	OSMO_ASSERT(lle);
 
 	/* Parse SNDCP-CID XID-Field */
-	comp_fields = gprs_sndcp_parse_xid(lle->llme,
+	comp_fields = gprs_sndcp_parse_xid(&version, lle->llme,
 					   xid_field_indication->data,
 					   xid_field_indication->data_len,
 					   NULL);
 	if (!comp_fields)
 		return -EINVAL;
-
-	/* Don't bother with empty indications */
-	if (llist_empty(comp_fields)) {
-		xid_field_response->data = NULL;
-		xid_field_response->data_len = 0;
-		DEBUGP(DSNDCP,
-		       "SNDCP-XID indication did not contain any parameters!\n");
-		return 0;
-	}
 
 	/* Handle compression entites */
 	DEBUGP(DSNDCP, "SNDCP-XID-IND (ms):\n");
@@ -1168,7 +1165,7 @@ int sndcp_sn_xid_ind(struct gprs_llc_xid_field *xid_field_indication,
 	/* Compile modified SNDCP-XID bytes */
 	rc = gprs_sndcp_compile_xid(xid_field_response->data,
 				    xid_field_indication->data_len,
-				    comp_fields);
+				    comp_fields, 0);
 
 	if (rc > 0)
 		xid_field_response->data_len = rc;
@@ -1210,7 +1207,7 @@ int sndcp_sn_xid_conf(struct gprs_llc_xid_field *xid_field_conf,
 	OSMO_ASSERT(xid_field_request);
 
 	/* Parse SNDCP-CID XID-Field */
-	comp_fields_req = gprs_sndcp_parse_xid(lle->llme,
+	comp_fields_req = gprs_sndcp_parse_xid(NULL, lle->llme,
 					       xid_field_request->data,
 					       xid_field_request->data_len,
 					       NULL);
@@ -1221,7 +1218,7 @@ int sndcp_sn_xid_conf(struct gprs_llc_xid_field *xid_field_conf,
 	gprs_sndcp_dump_comp_fields(comp_fields_req, LOGL_DEBUG);
 
 	/* Parse SNDCP-CID XID-Field */
-	comp_fields_conf = gprs_sndcp_parse_xid(lle->llme,
+	comp_fields_conf = gprs_sndcp_parse_xid(NULL, lle->llme,
 						xid_field_conf->data,
 						xid_field_conf->data_len,
 						comp_fields_req);

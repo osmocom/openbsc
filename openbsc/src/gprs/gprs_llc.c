@@ -136,7 +136,7 @@ static int gprs_llc_process_xid_conf(uint8_t *bytes, int bytes_len,
 				     struct gprs_llc_lle *lle)
 {
 	/* Note: This function handles the response of a network originated
-	 * XID-Request. There XID messages reflected by the phone are analyzed
+	 * XID-Request. There XID messages reflected by the modem are analyzed
 	 * and processed here. The caller is called by rx_llc_xid(). */
 
 	struct llist_head *xid_fields;
@@ -202,7 +202,7 @@ static int gprs_llc_process_xid_ind(uint8_t *bytes_request,
 				    struct gprs_llc_lle *lle)
 {
 	/* Note: This function computes the response that is sent back to the
-	 * phone when a phone originated XID is received. The function is
+	 * modem when a modem originated XID is received. The function is
 	 * called by rx_llc_xid() */
 
 	int rc = -EINVAL;
@@ -229,7 +229,7 @@ static int gprs_llc_process_xid_ind(uint8_t *bytes_request,
 				 * for validity. Currently we just blindly
 				 * accept all XID fields by just echoing them.
 				 * There is a remaining risk of malfunction
-				 * when a phone submits values which defer from
+				 * when a modem submits values which defer from
 				 * the default! */
 				LOGP(DLLC, LOGL_NOTICE,
 				     "Echoing XID-Field: XID: type=%d, data_len=%d, data=%s\n",
@@ -271,7 +271,7 @@ static int gprs_llc_process_xid_ind(uint8_t *bytes_request,
 	return rc;
 }
 
-/* Dispatch XID indications and responses comming from the Phone */
+/* Dispatch XID indications and responses comming from the modem */
 static void rx_llc_xid(struct gprs_llc_lle *lle,
 		       struct gprs_llc_hdr_parsed *gph)
 {
@@ -281,7 +281,7 @@ static void rx_llc_xid(struct gprs_llc_lle *lle,
 	/* FIXME: 8.5.3.3: check if XID is invalid */
 	if (gph->is_cmd) {
 		LOGP(DLLC, LOGL_NOTICE,
-		     "Received XID indication from phone.\n");
+		     "Received XID indication from modem.\n");
 
 		struct msgb *resp;
 		uint8_t *xid;
@@ -301,7 +301,7 @@ static void rx_llc_xid(struct gprs_llc_lle *lle,
 		gprs_llc_tx_xid(lle, resp, 0);
 	} else {
 		LOGP(DLLC, LOGL_NOTICE,
-		     "Received XID confirmation from phone.\n");
+		     "Received XID confirmation from modem.\n");
 		gprs_llc_process_xid_conf(gph->data, gph->data_len, lle);
 		/* FIXME: if we had sent a XID reset, send
 		 * LLGMM-RESET.conf to GMM */
@@ -331,7 +331,7 @@ int gprs_ll_xid_req(struct gprs_llc_lle *lle,
 		msg = msgb_alloc_headroom(4096, 1024, "LLC_XID");
 		xid = msgb_put(msg, xid_bytes_len);
 		memcpy(xid, xid_bytes, xid_bytes_len);
-		LOGP(DLLC, LOGL_NOTICE, "Sending XID request to phone...\n");
+		LOGP(DLLC, LOGL_NOTICE, "Sending XID request to modem...\n");
 		gprs_llc_tx_xid(lle, msg, 1);
 	} else {
 		LOGP(DLLC, LOGL_ERROR,
