@@ -911,6 +911,7 @@ static int sndcp_rx_llc_prim()
 	case LL_DATA_CONF:
 	case LL_UNITDATA_IND:
 	case LL_STATUS_IND:
+	}
 }
 #endif
 

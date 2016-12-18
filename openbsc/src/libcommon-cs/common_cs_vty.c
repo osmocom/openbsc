@@ -163,7 +163,7 @@ DEFUN(cfg_net_encryption,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
-	gsmnet->a5_encryption= atoi(argv[0]);
+	gsmnet->a5_encryption = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }

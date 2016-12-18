@@ -553,7 +553,7 @@ static void gtp_decode(const uint8_t *data, int data_len,
 	}
 
 #if 1
-	/* TODO if (<loglevel is debug>) { ...
+	/* TODO if (<loglevel is debug>)
 	   (waiting for a commit from jerlbeck) */
 	int i;
 
