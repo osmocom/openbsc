@@ -1,47 +1,137 @@
-This work was packaged for Debian by:
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: OpenBSC
+Source: http://openbsc.osmocom.org/
 
-    Harald Welte <laforge@gnumonks.org> on Tue, 24 Aug 2010 10:55:04 +0200
+Files: *
+Copyright: 2008-2015        Harald Welte <laforge@gnumonks.org>
+           2008-2015        Holger Hans Peter Freyther <zecke@selfish.org>
+           2009-2015        On-Waves
+           2008             Jan Luebbe <jluebbe@debian.org>
+           2008,2010-2011   Daniel Willmann <daniel@totalueberwachung.de>
+           2009,2011,2013   Andreas Eversberg <Andreas.Eversberg@versatel.de>
+           2009,2011        Dieter Spaar <spaar@mirider.augusta.de>
+           2009             Mike Haben <michael.haben@btinternet.com>
+           2010             Sylvain Munaut <246tnt@gmail.com>
+           2012-2013        Pablo Neira Ayuso <pablo@gnumonks.org>
+           2013-2015        Sysmocom s.f.m.c. GmbH  (Jacob Erlbeck)
+           2014             Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
+License: AGPL-3+
+Comment: Contributions by Stefan Schmidt <stefan@datenfreihafen.org> as well
 
-It was downloaded from:
+Files: wireshark/0001-abis_oml.patch
+       wireshark/0002-ericsson_rbs2409.patch
+       wireshark/0003-lucent-hnb.patch
+       wireshark/0005-rsl-hsl.patch
+Copyright: 1998         Gerald Combs <gerald@wireshark.org>
+           2007,2011    Anders Broman <anders.broman@ericsson.com>
+           2009         Holger Hans Peter Freyther <zecke@selfish.org>
+           2009-2011    Harald Welte <laforge@gnumonks.org>
+License: GPL-2+
 
-    git://bs11-abis.gnumonks.org/openbsc.git
+Files: openbsc/include/mISDNif.h
+Copyright: 2008         Karsten Keil <kkeil@novell.com>
+License: LGPL-2.1
 
-Upstream Authors:
+Files: openbsc/src/libmgcp/g711common.h
+Copyright: 2009         Abramo Bagnara <abramo@alsa-project.org>
+License: GPL-2+
 
-    Harald Welte <laforge@gnumonks.org>
-    Dieter Spaar <spaar@mirider.augusta.de>
-    Holger Hans Peter Freyther <zecke@selfish.org>
-    Sylvain Munaut <tnt@246tNt.com>
-    Daniel Willmann <daniel@totalueberwachung.de>
-    Jan Luebbe <jluebbe@debian.org>
-    Mike Haben <michael.haben@btinternet.com>
-    Andreas Eversberg <Andreas.Eversberg@versatel.de>
+Files: openbsc/git-version-gen
+Copyright: 2007-2010    Free Software Foundation
+License: GPL-3+
 
-Copyright:
+Files: openbsc/osmoappdesc.py
+       openbsc/tests/smpp_test_runner.py
+       openbsc/tests/ctrl_test_runner.py
+       openbsc/tests/vty_test_runner.py
+Copyright: 2013         Katerina Barone-Adesi <kat.obsc@gmail.com>
+           2013         Jacob Erlbeck <jerlbeck@sysmocom.de>
+           2013-2014    Holger Hans Peter Freyther <zecke@selfish.org>
+License: GPL-3+
 
-    Copyright (C) 2008-2010 Harald Welte <laforge@gnumonks.org>
-    Copyright (C) 2008-2009 Dieter Spaar <spaar@mirider.augusta.de>
-    Copyright (C) 2008-2010 Holger Hans Peter Freyther <zecke@selfish.org>
-    Copyright (C) 2009-2010 Sylvain Munaut <tnt@246tNt.com>
-    Copyright (C) 2009-2010 On-Waves
-    Copyright (C) 2008 Daniel Willmann <daniel@totalueberwachung.de>
-    Copyright (C) 2008 Jan Luebbe <jluebbe@debian.org>
-    Copyright (C) 2009 by Mike Haben <michael.haben@btinternet.com>
-    Copyright (C) 2009 Andreas Eversberg <Andreas.Eversberg@versatel.de>
+Files: openbsc/src/libbsc/bsc_ctrl_lookup.c
+Copyright: 2010-2011    Daniel Willmann <daniel@totalueberwachung.de>
+           2010-2011    On-Waves
+License: GPL-2+
 
-License:
+Files: openbsc/src/libmsc/mncc_sock.c
+       openbsc/src/libmsc/mncc_builtin.c
+Copyright: 2008-2010    Harald Welte <laforge@gnumonks.org>
+           2009         Andreas Eversberg <Andreas.Eversberg@versatel.de>
+           2012         Holger Hans Peter Freyther <zecke@selfish.org>
+License: GPL-2+
 
-    GNU General Public License, Version 2 or later
+Files: debian/*
+Copyright: 2012-2015    Holger Hans Peter Freyther <zecke@selfish.org>
+           2016         Ruben Undheim <ruben.undheim@gmail.com>
+License: GPL-2+
 
-The Debian packaging is:
 
-    Copyright (C) 2010 Harald Welte <laforge@gnumonks.org>
+License: AGPL-3+
+ This package is free software; you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU Affero General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Please chose a license for your packaging work. If the program you package
-# uses a mainstream license, using the same license is the safest choice.
-# Please avoid to pick license terms that are more restrictive than the
-# packaged work, as it may make Debian's contributions unacceptable upstream.
-# If you just want it to be GPL version 3, leave the following lines in.
 
-and is licensed under the GPL version 3,
-see "/usr/share/common-licenses/GPL-3".
+License: GPL-2+
+ This package is free software: you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 2 of the License, or (at
+ your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General Public
+ License version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
+
+License: GPL-3+
+ This package is free software: you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or (at
+ your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General Public
+ License version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+
+License: LGPL-2.1
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; version
+ 2.1 of the License.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU Lesser General
+ Public License version 2.1 can be found in
+ "/usr/share/common-licenses/LGPL-2.1".
