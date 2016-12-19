@@ -180,11 +180,40 @@ static inline void append_earfcn(struct bitvec *bv,
 	bitvec_set_bit(bv, L);
 }
 
-static inline int append_uarfcn(struct bitvec *bv, const uint16_t *u,
+/* Append single FDD UARFCN */
+static inline int append_utran_fdd(struct bitvec *bv, uint16_t u, int *sc,
+				   size_t length)
+{
+	int f0, w[RANGE_ENC_MAX_ARFCNS] = { 0 };
+	uint8_t chan_list[16] = {0};
+	/* Repeated UTRAN FDD Neighbour Cells */
+	bitvec_set_bit(bv, 1);
+
+	/* FDD-ARFCN */
+	bitvec_set_bit(bv, 0);
+	bitvec_set_uint(bv, u, 14);
+
+	f0 = range_encode(ARFCN_RANGE_1024, sc, length, w, 0, chan_list);
+	if (f0 < 0)
+		return f0;
+
+	/* FDD_Indic0: parameter value '0000000000' is a member of the set? */
+	bitvec_set_bit(bv, f0);
+	/* NR_OF_FDD_CELLS */
+	bitvec_set_uint(bv, length, 5);
+
+	f0 = bv->cur_bit;
+	bitvec_add_range1024(bv, (struct gsm48_range_1024 *)chan_list);
+	bv->cur_bit = f0 + range1024_p(length);
+	return 0;
+}
+
+/* Append multiple FDD UARFCNs */
+static inline int append_uarfcns(struct bitvec *bv, const uint16_t *u,
 				 const uint16_t *sc, size_t length)
 {
-	int f0_inc, i, w[RANGE_ENC_MAX_ARFCNS] = { 0 }, a[length];
-	uint8_t chan_list[16] = {0};
+	int i, j, k, rc, st = 0, a[length];
+	uint16_t cu = u[0]; /* caller ensures that length is positive */
 
 	/* 3G Neighbour Cell Description */
 	bitvec_set_bit(bv, 1);
@@ -198,31 +227,24 @@ static inline int append_uarfcn(struct bitvec *bv, const uint16_t *u,
 	/* No Bandwidth_FDD */
 	bitvec_set_bit(bv, 0);
 
-	memset(w, 0, sizeof(w));
-	for (i = 0; i < length; i++)
-		a[i] = sc[i];
+	for (i = 0; i < length; i++) {
+		for (j = st, k = 0; j < i; j++)
+			a[k++] = sc[j]; /* copy corresponding SCs */
+		if (u[i] != cu) { /* we've reached new UARFCN */
+			rc = append_utran_fdd(bv, cu, a, k);
+			if (rc < 0)
+				return rc;
+			cu = u[i];
+			st = i; /* update start position */
+		}
+	}
 
-	/* Note: we do not support repeating Neighbour Cells ATM */
-	/* Repeated UTRAN FDD Neighbour Cells */
-	bitvec_set_bit(bv, 1);
-
-	/* FDD-ARFCN */
-	bitvec_set_bit(bv, 0);
-	/* Note: we do not support multiple UARFCN values ATM: */
-	bitvec_set_uint(bv, u[0], 14);
-
-	f0_inc = range_encode(ARFCN_RANGE_1024, a, length, w, 0, chan_list);
-	if (f0_inc < 0)
-		return f0_inc;
-
-	/* FDD_Indic0: parameter value '0000000000' is not a member of the set */
-	bitvec_set_bit(bv, f0_inc);
-	/* NR_OF_FDD_CELLS */
-	bitvec_set_uint(bv, length, 5);
-
-	i = bv->cur_bit;
-	bitvec_add_range1024(bv, (struct gsm48_range_1024 *)chan_list);
-	bv->cur_bit = i + range1024_p(length);
+	/* add last UARFCN not covered by previous cycle */
+	for (i = st, k = 0; i < length; i++)
+		a[k++] = sc[i];
+	rc = append_utran_fdd(bv, cu, a, k);
+	if (rc < 0)
+		return rc;
 
 	/* stop bit - end of Repeated UTRAN FDD Neighbour Cells */
 	bitvec_set_bit(bv, 0);
@@ -282,7 +304,8 @@ int rest_octets_si2quater(uint8_t *data, const struct osmo_earfcn_si2q *e,
 			     SI2Q_MAX_LEN);
 			return -ENOMEM;
 		}
-		rc = append_uarfcn(&bv, u, sc, u_len);
+
+		rc = append_uarfcns(&bv, u, sc, u_len);
 		if (rc < 0) {
 			LOGP(DRR, LOGL_ERROR, "SI2quater: failed to append %zu "
 			     "UARFCNs due to range encoding failure: %s\n",

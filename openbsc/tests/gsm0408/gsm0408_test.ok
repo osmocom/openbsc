@@ -64,8 +64,8 @@ Allocated reference: 0
 Allocated reference: 1
 Test SI2quater UARFCN (same scrambling code and diversity):
 generated valid SI2quater: [23] 59 06 07 c0 00 25 52 88 0a 7e 10 99 64 00 0b 2b 2b 2b 2b 2b 2b 2b 2b 
-failed to generate SI2quater: Invalid argument
-failed to generate SI2quater: Invalid argument
+generated valid SI2quater: [23] 59 06 07 c0 00 25 52 e8 0a 7f 52 88 0a 7e 10 99 64 00 0b 2b 2b 2b 2b 
+generated valid SI2quater: [23] 59 06 07 c0 00 25 52 e8 0a 7f 52 88 0a 7e 10 99 64 00 0b 2b 2b 2b 2b 
 Testing SYSINFO_TYPE_2quater EARFCN generation:
 generated invalid SI2quater: [23] 59 06 07 c0 00 04 86 59 0a 03 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1917 - generated valid SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be c8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
@@ -89,4 +89,13 @@ generated valid SI2quater: [23] 59 06 07 c0 00 25 0f 7c 4c 7a 34 0e 64 77 85 43 
 failed to add UARFCN to SI2quater: No space left on device
 failed to add UARFCN to SI2quater: No space left on device
 generated valid SI2quater: [23] 59 06 07 c0 00 25 0f 7c 4c 7a 34 0e 64 77 85 43 55 c8 10 99 64 00 0b 
+Test SI2quater multiple UARFCNs:
+generated valid SI2quater: [23] 59 06 07 c0 00 25 52 88 0a 7c 10 99 64 00 0b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater: [23] 59 06 07 c0 00 25 52 e8 0a 7f 52 88 0a 7c 10 99 64 00 0b 2b 2b 2b 2b 
+generated valid SI2quater: [23] 59 06 07 c0 00 25 52 e8 12 7e e0 a9 44 05 3e 00 44 b2 00 03 2b 2b 2b 
+generated valid SI2quater: [23] 59 06 07 c0 00 25 52 e8 18 3f f4 90 54 a2 02 9f 04 86 59 00 03 2b 2b 
+failed to add UARFCN to SI2quater: No space left on device
+failed to add UARFCN to SI2quater: No space left on device
+failed to add UARFCN to SI2quater: No space left on device
+generated valid SI2quater: [23] 59 06 07 c0 00 25 52 e8 18 3f f4 90 54 a2 02 9f 04 86 59 00 03 2b 2b 
 Done.

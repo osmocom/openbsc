@@ -135,6 +135,26 @@ static inline void test_si2q_segfault(void)
 	gen(bts);
 }
 
+static inline void test_si2q_mu(void)
+{
+	struct gsm_bts *bts;
+	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	printf("Test SI2quater multiple UARFCNs:\n");
+
+	if (!network)
+		exit(1);
+	bts = gsm_bts_alloc(network);
+
+	_bts_uarfcn_add(bts, 10564, 318, 0);
+	_bts_uarfcn_add(bts, 10612, 319, 0);
+	_bts_uarfcn_add(bts, 10612, 31, 0);
+	_bts_uarfcn_add(bts, 10612, 19, 0);
+	_bts_uarfcn_add(bts, 10613, 64, 0);
+	_bts_uarfcn_add(bts, 10613, 164, 0);
+	_bts_uarfcn_add(bts, 10613, 14, 0);
+	gen(bts);
+}
+
 static inline void test_si2q_u(void)
 {
 	struct gsm_bts *bts;
@@ -608,6 +628,7 @@ int main(int argc, char **argv)
 	test_si2q_segfault();
 	test_si2q_e();
 	test_si2q_u();
+	test_si2q_mu();
 	printf("Done.\n");
 	return EXIT_SUCCESS;
 }

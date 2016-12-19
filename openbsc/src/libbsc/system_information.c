@@ -130,8 +130,23 @@ unsigned earfcn_size(const struct osmo_earfcn_si2q *e)
 
 unsigned uarfcn_size(const uint16_t *u, const uint16_t *sc, size_t u_len)
 {
-	/*account for all the constant bits in append_uarfcn() */
-	return 29 + range1024_p(u_len);
+	/*account for all the constant bits in append_uarfcns() */
+	unsigned s = 7, append = 22, r = 0, i, st = 0, j, k;
+	uint16_t cu = u[0];
+
+	for (i = 0; i < u_len; i++) {
+		for (j = st, k = 0; j < i; j++, k++);
+		if (u[i] != cu) { /* we've reached new UARFCN */
+			r += (append + range1024_p(k));
+			cu = u[i];
+			st = i; /* update start position */
+		}
+	}
+
+	/* add last UARFCN not covered by previous cycle */
+	for (i = st, k = 0; i < u_len; i++, k++);
+
+	return s + r + append + range1024_p(k);
 }
 
 bool si2q_size_check(const struct gsm_bts *bts)
@@ -184,7 +199,7 @@ int bts_uarfcn_del(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble)
 int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble,
 		   bool diversity)
 {
-	size_t len = bts->si_common.uarfcn_length, i, k;
+	size_t len = bts->si_common.uarfcn_length, i, k = 0;
 	uint16_t scr, chk,
 		*ual = bts->si_common.data.uarfcn_list,
 		*scl = bts->si_common.data.scramble_list,
@@ -197,7 +212,11 @@ int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble,
 	if (len == MAX_EARFCN_LIST)
 		return -ENOMEM;
 
-	for (i = 0, k = 0; i < len; i++) {
+	for (i = 0; i < len; i++) /* find the position of arfcn if any */
+		if (arfcn == ual[i])
+			break;
+
+	for (k = 0; i < len; i++) {
 		if (arfcn == ual[i] && (scr == scl[i] || chk == scl[i]))
 			return -EADDRINUSE;
 		if (scr > scl[i])
@@ -209,6 +228,7 @@ int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble,
 		memmove(ual + k + 1, ual + k, (len - k) * 2);
 		memmove(scl + k + 1, scl + k, (len - k) * 2);
 	}
+
 	ual[k] = arfcn;
 	scl[k] = scr;
 	bts->si_common.uarfcn_length++;
