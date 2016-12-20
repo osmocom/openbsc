@@ -688,7 +688,7 @@ DEFUN(cfg_msc_no_acc_lst_name,
 DEFUN(cfg_net_bsc_mid_call_text,
       cfg_net_bsc_mid_call_text_cmd,
       "mid-call-text .TEXT",
-      "Set the USSD notifcation to be send.\n" "Text to be sent\n")
+      "Set the USSD notification to be send.\n" "Text to be sent\n")
 {
 	struct osmo_bsc_data *data = osmo_bsc_data(vty);
 	char *txt = argv_concat(argv, argc, 0);

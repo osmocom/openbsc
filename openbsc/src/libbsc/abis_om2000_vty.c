@@ -394,7 +394,7 @@ DEFUN(cfg_om2k_con_path_conc, cfg_om2k_con_path_conc_cmd,
 
 DEFUN(cfg_bts_is_conn_list, cfg_bts_is_conn_list_cmd,
 	"is-connection-list (add|del) <0-2047> <0-2047> <0-255>",
-	"Interface Switch Connnection List\n"
+	"Interface Switch Connection List\n"
 	"Add to IS list\n" "Delete from IS list\n"
 	"ICP1\n" "ICP2\n" "Contiguity Index\n")
 {

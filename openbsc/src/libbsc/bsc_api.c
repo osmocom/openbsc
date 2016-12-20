@@ -136,7 +136,7 @@ static void assignment_t10_timeout(void *_conn)
 	struct gsm_subscriber_connection *conn =
 		(struct gsm_subscriber_connection *) _conn;
 
-	LOGP(DMSC, LOGL_ERROR, "Assigment T10 timeout on %p\n", conn);
+	LOGP(DMSC, LOGL_ERROR, "Assignment T10 timeout on %p\n", conn);
 
 	/*
 	 * normal release on the secondary channel but only if the
@@ -478,7 +478,7 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 
 	gh = msgb_l3(msg);
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
-		LOGP(DMSC, LOGL_ERROR, "assignemnt failure unhandled: %zu\n",
+		LOGP(DMSC, LOGL_ERROR, "assignment failure unhandled: %zu\n",
 		     msgb_l3len(msg) - sizeof(*gh));
 		rr_failure = NULL;
 	} else {

@@ -756,7 +756,7 @@ static int smpp_pdu_rx(struct osmo_esme *esme, struct msgb *msg __uses)
 	case QUERY_SM:
 	case REPLACE_SM:
 	case SUBMIT_MULTI:
-		LOGP(DSMPP, LOGL_NOTICE, "[%s] Unimplemented PDU Commmand "
+		LOGP(DSMPP, LOGL_NOTICE, "[%s] Unimplemented PDU Command "
 		     "0x%08x\n", esme->system_id, cmd_id);
 		break;
 	default:

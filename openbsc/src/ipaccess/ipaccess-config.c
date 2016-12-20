@@ -802,11 +802,11 @@ static void print_usage(void)
 static void print_help(void)
 {
 #if 0
-	printf("Commmands for reading from the BTS:\n");
+	printf("Commands for reading from the BTS:\n");
 	printf("  -D --dump\t\t\tDump the BTS configuration\n");
 	printf("\n");
 #endif
-	printf("Commmands for writing to the BTS:\n");
+	printf("Commands for writing to the BTS:\n");
 	printf("  -u --unit-id UNIT_ID\t\tSet the Unit ID of the BTS\n");
 	printf("  -o --oml-ip IP\t\tSet primary OML IP (IP of your BSC)\n");
 	printf("  -i --ip-address IP/MASK\tSet static IP address + netmask of BTS\n");

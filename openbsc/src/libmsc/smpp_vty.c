@@ -435,7 +435,7 @@ DEFUN(cfg_no_esme_defaultroute, cfg_esme_no_defaultroute_cmd,
 
 DEFUN(cfg_esme_del_src_imsi, cfg_esme_del_src_imsi_cmd,
 	"deliver-src-imsi",
-	"Enable the use of IMSI as source addres in DELIVER")
+	"Enable the use of IMSI as source address in DELIVER")
 {
 	struct osmo_smpp_acl *acl = vty->index;
 
@@ -446,7 +446,7 @@ DEFUN(cfg_esme_del_src_imsi, cfg_esme_del_src_imsi_cmd,
 
 DEFUN(cfg_esme_no_del_src_imsi, cfg_esme_no_del_src_imsi_cmd,
 	"no deliver-src-imsi", NO_STR
-	"Disable the use of IMSI as source addres in DELIVER")
+	"Disable the use of IMSI as source address in DELIVER")
 {
 	struct osmo_smpp_acl *acl = vty->index;
 
