@@ -534,6 +534,8 @@ static int append_gprs_mobile_alloc(struct bitvec *bv)
 
 static int encode_t3192(unsigned int t3192)
 {
+	/* See also 3GPP TS 44.060
+	   Table 12.24.2: GPRS Cell Options information element details */
 	if (t3192 == 0)
 		return 3;
 	else if (t3192 <= 80)
@@ -556,9 +558,6 @@ static int encode_t3192(unsigned int t3192)
 
 static int encode_drx_timer(unsigned int drx)
 {
-	/* See also 3GPP TS 44.060
-	   Table 12.24.2: GPRS Cell Options information element details */
-
 	if (drx == 0)
 		return 0;
 	else if (drx == 1)
