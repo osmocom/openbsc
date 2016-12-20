@@ -556,6 +556,9 @@ static int encode_t3192(unsigned int t3192)
 
 static int encode_drx_timer(unsigned int drx)
 {
+	/* See also 3GPP TS 44.060
+	   Table 12.24.2: GPRS Cell Options information element details */
+
 	if (drx == 0)
 		return 0;
 	else if (drx == 1)
@@ -613,7 +616,11 @@ static int append_gprs_cell_opt(struct bitvec *bv,
 		return drx_timer_max;
 
 	bitvec_set_uint(bv, gco->nmo, 2);
-	bitvec_set_uint(bv, gco->t3168 / 500, 3);
+
+	/* See also 3GPP TS 44.060
+	   Table 12.24.2: GPRS Cell Options information element details */
+	bitvec_set_uint(bv, gco->t3168 / 500 - 1, 3);
+
 	bitvec_set_uint(bv, t3192, 3);
 	bitvec_set_uint(bv, drx_timer_max, 3);
 	/* ACCESS_BURST_TYPE: Hard-code 8bit */
