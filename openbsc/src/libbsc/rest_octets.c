@@ -566,6 +566,8 @@ static int append_gprs_mobile_alloc(struct bitvec *bv)
 
 static int encode_t3192(unsigned int t3192)
 {
+	/* See also 3GPP TS 44.060
+	   Table 12.24.2: GPRS Cell Options information element details */
 	if (t3192 == 0)
 		return 3;
 	else if (t3192 <= 80)
@@ -645,7 +647,11 @@ static int append_gprs_cell_opt(struct bitvec *bv,
 		return drx_timer_max;
 
 	bitvec_set_uint(bv, gco->nmo, 2);
-	bitvec_set_uint(bv, gco->t3168 / 500, 3);
+
+	/* See also 3GPP TS 44.060
+	   Table 12.24.2: GPRS Cell Options information element details */
+	bitvec_set_uint(bv, gco->t3168 / 500 - 1, 3);
+
 	bitvec_set_uint(bv, t3192, 3);
 	bitvec_set_uint(bv, drx_timer_max, 3);
 	/* ACCESS_BURST_TYPE: Hard-code 8bit */
