@@ -51,7 +51,6 @@ ipaccess_config_LDADD = \
 	$(top_builddir)/src/libcommon-cs/libcommon-cs.a \
 	$(top_builddir)/src/libtrau/libtrau.a \
 	$(top_builddir)/src/libcommon/libcommon.a \
-	$(LIBCRYPT) \
 	$(OSMO_LIBS) \
 	$(NULL)
 
