@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <osmocom/core/linuxlist.h>
 
-#define CURRENT_SNDCP_VERSION 0	/* See 3GPP TS 44.065, clause 8 */
+#define DEFAULT_SNDCP_VERSION 0	/* See 3GPP TS 44.065, clause 8 */
 #define MAX_ENTITIES 32		/* 3GPP TS 44.065 reserves 5 bit
 				 * for compression enitity number */
 
@@ -197,13 +197,15 @@ enum gprs_sndcp_dcomp_v44_dcomp {
 
 /* Transform a list with compression fields into an SNDCP-XID message (dst) */
 int gprs_sndcp_compile_xid(uint8_t *dst, unsigned int dst_maxlen,
-			  	const struct llist_head *comp_fields);
+			   const struct llist_head *comp_fields, int version);
 
 /* Transform an SNDCP-XID message (src) into a list of SNDCP-XID fields */
-struct llist_head *gprs_sndcp_parse_xid(const void *ctx,
-				const uint8_t * src,
-				unsigned int src_len,
-				const struct llist_head *comp_fields_req);
+struct llist_head *gprs_sndcp_parse_xid(int *version,
+					const void *ctx,
+					const uint8_t *src,
+					unsigned int src_len,
+					const struct llist_head
+					*comp_fields_req);
 
 /* Find out to which compression class the specified comp-field belongs
  * (header compression or data compression?) */
