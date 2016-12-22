@@ -3605,6 +3605,11 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 		return -EINVAL;
 	}
 
+	if (!conn->subscr) {
+		LOGP(DCC, LOGL_ERROR, "Invalid conn, no subscriber\n");
+		return -EINVAL;
+	}
+
 	/* Find transaction */
 	trans = trans_find_by_id(conn, GSM48_PDISC_CC, transaction_id);
 
