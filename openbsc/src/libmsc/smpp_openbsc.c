@@ -263,11 +263,11 @@ static void alert_all_esme(struct smsc *smsc, struct gsm_subscriber *subscr,
 		if (esme->acl && esme->acl->deliver_src_imsi) {
 			smpp_tx_alert(esme, TON_Subscriber_Number,
 				      NPI_Land_Mobile_E212,
-				      subscr->imsi, 0);
+				      subscr->imsi, smpp_avail_status);
 		} else {
 			smpp_tx_alert(esme, TON_Network_Specific,
 				      NPI_ISDN_E163_E164,
-				      subscr->extension, 0);
+				      subscr->extension, smpp_avail_status);
 		}
 	}
 }
