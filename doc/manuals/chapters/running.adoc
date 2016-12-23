@@ -49,12 +49,56 @@ arguments:
 	Enable the RTP proxy code inside OsmoNITB.  This will force all
 	voice RTP data to pass through OsmoNITB, rather than going
 	directly from BTS to MGW, or BTS to BTS.
-*-m, --mncc-sock*::
+*-M, --mncc-sock-path*::
 	Enable the MNCC socket for an external MNCC handler. See
 	<<mncc>> for further information.
+*-m, --mncc-sock*::
+	Same as option -M (deprecated).
 *-C, --no-dbcounter*::
 	Disable the regular periodic synchronization of statistics
 	counters to the database.
 *-r, --rf-ctl 'RFCTL'*::
 	Offer a Unix domain socket for RF control at the path/filename
 	'RFCTL' in the file system.
+
+
+=== Multiple instances
+
+Running multiple instances of `osmo-nitb` is possible if all interfaces (VTY,
+OML) are separated using the appropriate configuration options. The IP based
+interfaces are binding to local host by default. In order to separate the
+processes, the user has to bind those services to specific but different
+IP addresses.
+
+The VTY and the control interface can be bound to IP addresses from the loopback
+address range.
+
+.Example: Binding VTY and control interface to a specific ip-address
+----
+line vty
+ bind 127.0.0.2
+ctrl
+ bind 127.0.0.2
+----
+
+The OML interface also needs to be separated by binding it to different IP
+addresses. Usually it is not possible to use addresses from the loopback
+address range here since the OML interface needs to be reachable by an external
+BTS. If only one ethernet interface is available, sub-devices with different IP
+addresses can be created.
+
+.Example: Binding OML to a specific IP address
+----
+e1_input
+ ipa bind 10.9.1.101
+----
+
+NOTE: Depending on the application, it is necessary to have different ARFCN,
+MCC, MNC and network name settings. It might also be necessary to point to
+different database and config files using command line options (see option
+-l and -c).
+
+NOTE: If an external MNCC handler is used, the user has to assign a different
+socket path to reach osmo-nitb instance using commandline option -M. If option
+-M is left out, the internal MNCC handler is used and no further configuration
+is required
