@@ -9,10 +9,10 @@ struct gsm_subscriber_connection;
 
 int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 			       const struct msgb *in_msg, const char* response_text, 
-			       const struct ss_request *req);
+			       const struct ussd_request *req);
 int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 			     const struct msgb *msg, 
-			     const struct ss_request *request);
+			     const struct ussd_request *request);
 
 int msc_send_ussd_notify(struct gsm_subscriber_connection *conn, int level,
 			 const char *text);

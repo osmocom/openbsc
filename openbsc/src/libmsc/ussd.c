@@ -38,19 +38,19 @@
 const char USSD_TEXT_OWN_NUMBER[] = "*#100#";
 
 /* Forward declarations of network-specific handler functions */
-static int send_own_number(struct gsm_subscriber_connection *conn, const struct msgb *msg, const struct ss_request *req);
+static int send_own_number(struct gsm_subscriber_connection *conn, const struct msgb *msg, const struct ussd_request *req);
 
 
 /* Entrypoint - handler function common to all mobile-originated USSDs */
 int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	int rc;
-	struct ss_request req;
+	struct ussd_request req;
 	struct gsm48_hdr *gh;
 
 	memset(&req, 0, sizeof(req));
 	gh = msgb_l3(msg);
-	rc = gsm0480_decode_ss_request(gh, msgb_l3len(msg), &req);
+	rc = gsm0480_decode_ussd_request(gh, msgb_l3len(msg), &req);
 	if (!rc) {
 		DEBUGP(DMM, "Unhandled SS\n");
 		rc = gsm0480_send_ussd_reject(conn, msg, &req);
@@ -58,23 +58,15 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		return rc;
 	}
 
-	/* Interrogation or releaseComplete? */
-	if (req.ussd_text[0] == '\0' || req.ussd_text[0] == 0xFF) {
-		if (req.ss_code > 0) {
-			/* Assume interrogateSS or modification of it and reject */
-			rc = gsm0480_send_ussd_reject(conn, msg, &req);
-			msc_release_connection(conn);
-			return rc;
-		}
-		/* Still assuming a Release-Complete and returning */
+	/* Release-Complete */
+	if (req.text[0] == '\0')
 		return 0;
-	}
 
-	if (!strcmp(USSD_TEXT_OWN_NUMBER, (const char *)req.ussd_text)) {
+	if (!strcmp(USSD_TEXT_OWN_NUMBER, (const char *)req.text)) {
 		DEBUGP(DMM, "USSD: Own number requested\n");
 		rc = send_own_number(conn, msg, &req);
 	} else {
-		DEBUGP(DMM, "Unhandled USSD %s\n", req.ussd_text);
+		DEBUGP(DMM, "Unhandled USSD %s\n", req.text);
 		rc = gsm0480_send_ussd_reject(conn, msg, &req);
 	}
 
@@ -84,7 +76,7 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 }
 
 /* A network-specific handler function */
-static int send_own_number(struct gsm_subscriber_connection *conn, const struct msgb *msg, const struct ss_request *req)
+static int send_own_number(struct gsm_subscriber_connection *conn, const struct msgb *msg, const struct ussd_request *req)
 {
 	char *own_number = conn->subscr->extension;
 	char response_string[GSM_EXTENSION_LENGTH + 20];
