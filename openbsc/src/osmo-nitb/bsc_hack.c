@@ -269,6 +269,7 @@ int main(int argc, char **argv)
 	osmo_init_logging(&log_info);
 	osmo_stats_init(tall_bsc_ctx);
 	bts_init();
+	vty_init(&vty_info);
 
 	/* Parse options */
 	handle_options(argc, argv);
@@ -282,7 +283,6 @@ int main(int argc, char **argv)
 	}
 
 	/* Initialize VTY */
-	vty_init(&vty_info);
 	bsc_vty_init(&log_info, bsc_gsmnet);
 	ctrl_vty_init(tall_bsc_ctx);
 
