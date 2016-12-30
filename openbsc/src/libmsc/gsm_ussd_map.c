@@ -25,9 +25,9 @@
 #include <openbsc/debug.h>
 #include <openbsc/db.h>
 #include <openbsc/chan_alloc.h>
-#include <openbsc/gsm_04_08_gprs.h>
-#include <openbsc/gprs_gsup_messages.h>
-#include <openbsc/gprs_gsup_client.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
+#include <osmocom/gsm/gsup.h>
+#include <openbsc/gsup_client.h>
 #include <openbsc/osmo_msc.h>
 #include <openbsc/gprs_utils.h>
 #include <openbsc/ussd.h>
@@ -39,13 +39,13 @@ int ussd_map_tx_message(struct gsm_network* net,
 			uint32_t ref,
 			const uint8_t* component_data)
 {
-	struct msgb *msg = gprs_gsup_msgb_alloc();
+	struct msgb *msg = gsup_client_msgb_alloc();
 	if (!msg)
 		return -ENOMEM;
 
 	subscr_uss_message(msg, req, extension, ref, component_data);
 
-	return gprs_gsup_client_send(net->ussd_sup_client, msg);
+	return gsup_client_send(net->ussd_sup_client, msg);
 }
 
 
@@ -67,20 +67,20 @@ static int ussd_map_rx_message_int(struct gsm_network *net, const uint8_t* data,
 	return on_ussd_response(net, ref, &ss, data + ss.component_offset, extension);
 }
 
-static int ussd_map_rx_message(struct gprs_gsup_client *sup_client, struct msgb *msg)
+static int ussd_map_rx_message(struct gsup_client *sup_client, struct msgb *msg)
 {
 	uint8_t *data = msgb_l2(msg);
 	size_t data_len = msgb_l2len(msg);
 	struct gsm_network *gsmnet = (struct gsm_network *)sup_client->data;
 
-	if (*data != GPRS_GSUP_MSGT_USSD_MAP) {
+	if (*data != OSMO_GSUP_MSGT_USSD_MAP) {
 		return -1;
 	}
 
 	return ussd_map_rx_message_int(gsmnet, data, data_len);
 }
 
-int ussd_map_read_cb(struct gprs_gsup_client *sup_client, struct msgb *msg)
+int ussd_map_read_cb(struct gsup_client *sup_client, struct msgb *msg)
 {
 	int rc;
 

@@ -20,14 +20,15 @@
  */
 
 #include <openbsc/gsm_sup.h>
+#include <osmocom/gsm/tlv.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/debug.h>
 #include <openbsc/db.h>
 #include <openbsc/chan_alloc.h>
-#include <openbsc/gsm_04_08_gprs.h>
-#include <openbsc/gprs_gsup_messages.h>
-#include <openbsc/gprs_gsup_client.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
+#include <osmocom/gsm/gsup.h>
+#include <openbsc/gsup_client.h>
 #include <openbsc/osmo_msc.h>
 #include <openbsc/gprs_utils.h>
 #include <openbsc/ussd.h>
@@ -49,8 +50,8 @@ static int subscr_uss_message(struct msgb *msg,
 
 	gsup_indicator = msgb_put(msg, 4);
 
-	/* First byte should always be GPRS_GSUP_MSGT_MAP */
-	gsup_indicator[0] = GPRS_GSUP_MSGT_MAP;
+	/* First byte should always be OSMO_GSUP_MSGT_MAP */
+	gsup_indicator[0] = OSMO_GSUP_MSGT_MAP;
 	gsup_indicator[1] = req->message_type;
 	/* TODO ADD tid */
 	gsup_indicator[2] = req->component_type;
@@ -78,7 +79,7 @@ static int subscr_uss_message(struct msgb *msg,
 	/* wrap with GSM0480_CTYPE_INVOKE */
 	// gsm0480_wrap_invoke(msg, req->opcode, invoke_id);
 	// gsup_indicator = msgb_push(msgb, 1);
-	// gsup_indicator[0] = GPRS_GSUP_MSGT_MAP;
+	// gsup_indicator[0] = OSMO_GSUP_MSGT_MAP;
 	return 0;
 }
 
@@ -86,14 +87,14 @@ static int subscr_uss_message(struct msgb *msg,
 int subscr_tx_uss_message(struct ss_request *req,
 			  struct gsm_subscriber *subscr)
 {
-	struct msgb *msg = gprs_gsup_msgb_alloc();
+	struct msgb *msg = gsup_client_msgb_alloc();
 	if (!msg)
 		return -ENOMEM;
 
 	//GSM0480_OP_CODE_PROCESS_USS_REQ
 	subscr_uss_message(msg, req, subscr->extension);
 
-	return gprs_gsup_client_send(subscr->group->net->ussd_sup_client, msg);
+	return gsup_client_send(subscr->group->net->ussd_sup_client, msg);
 }
 
 
@@ -108,7 +109,7 @@ static int rx_uss_message_parse(struct ss_request *ss,
 	if (len < 1 + 2 + 3 + 3)
 		return -1;
 
-	/* skip GPRS_GSUP_MSGT_MAP */
+	/* skip OSMO_GSUP_MSGT_MAP */
 	ss->message_type = *(++const_data);
 	ss->component_type = *(++const_data);
 	const_data += 2;
@@ -181,11 +182,11 @@ int subscr_tx_sms_message(struct gsm_subscriber *subscr,
                           struct gsm411_rp_hdr *rph)
 {
 	uint8_t *data;
-	struct msgb *msg = gprs_gsup_msgb_alloc();
+	struct msgb *msg = gsup_client_msgb_alloc();
 	if (!msg)
 		return -ENOMEM;
 
-	msgb_put_u8(msg, GPRS_GSUP_MSGT_SMS);
+	msgb_put_u8(msg, OSMO_GSUP_MSGT_SMS);
 
 	if (subscr->extension) {
 		uint8_t bcd_buf[32];
@@ -199,10 +200,10 @@ int subscr_tx_sms_message(struct gsm_subscriber *subscr,
 	data = msgb_put(msg, rph->len - 2);
 	memcpy(data, rph->data, rph->len - 2);
 
-	return gprs_gsup_client_send(subscr->group->net->sms_client, msg);
+	return gsup_client_send(subscr->group->net->sms_client, msg);
 }
 
-static int rx_sms_message(struct gprs_gsup_client *sup_client,
+static int rx_sms_message(struct gsup_client *sup_client,
                           const uint8_t* data, size_t data_len)
 {
 
@@ -214,7 +215,7 @@ static int rx_sms_message(struct gprs_gsup_client *sup_client,
 	uint8_t *rp_hdr = (uint8_t*)data + offset;
 	data_len -= 1;
 
-	rc = gprs_match_tlv(&rp_hdr, &data_len, 0x82, &value, &value_len);
+	rc =  osmo_match_shift_tlv(&rp_hdr, &data_len, 0x82, &value, &value_len);
 
 	if (rc <= 0)
 		return -GMM_CAUSE_INV_MAND_INFO;
@@ -246,16 +247,16 @@ static int rx_sms_message(struct gprs_gsup_client *sup_client,
 	return gsm411_send_rp_msg_subscr(subscr, msg);
 }
 
-static int subscr_tx_sup_message(struct gprs_gsup_client *sup_client,
+static int subscr_tx_sup_message(struct gsup_client *sup_client,
 								 struct gsm_subscriber *subscr,
-								 struct gprs_gsup_message *gsup_msg)
+								 struct osmo_gsup_message *gsup_msg)
 {
-	struct msgb *msg = gprs_gsup_msgb_alloc();
+	struct msgb *msg = gsup_client_msgb_alloc();
 
 	if (strlen(gsup_msg->imsi) == 0 && subscr)
 		strncpy(gsup_msg->imsi, subscr->imsi, sizeof(gsup_msg->imsi) - 1);
 
-	gprs_gsup_encode(msg, gsup_msg);
+	osmo_gsup_encode(msg, gsup_msg);
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		    "Sending SUP, will send: %s\n", msgb_hexdump(msg));
@@ -265,77 +266,80 @@ static int subscr_tx_sup_message(struct gprs_gsup_client *sup_client,
 		return -ENOTSUP;
 	}
 
-	return gprs_gsup_client_send(sup_client, msg);
+	return gsup_client_send(sup_client, msg);
 }
 
+/*
 int subscr_query_auth_info(struct gsm_subscriber *subscr)
 {
-	struct gprs_gsup_message gsup_msg = {0};
+	struct osmo_gsup_message gsup_msg = {0};
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		"subscriber auth info is not available\n");
 
-	gsup_msg.message_type = GPRS_GSUP_MSGT_SEND_AUTH_INFO_REQUEST;
+	gsup_msg.message_type = OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST;
 	return subscr_tx_sup_message(subscr->group->net->hlr_sup_client, subscr, &gsup_msg);
 }
-
+*/
 int subscr_location_update(struct gsm_subscriber *subscr)
 {
-	struct gprs_gsup_message gsup_msg = {0};
+	struct osmo_gsup_message gsup_msg = {0};
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
 		"subscriber data is not available\n");
 
-	gsup_msg.message_type = GPRS_GSUP_MSGT_UPDATE_LOCATION_REQUEST;
+	gsup_msg.message_type = OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST;
 	return subscr_tx_sup_message(subscr->group->net->hlr_sup_client, subscr, &gsup_msg);
 }
 
 int subscr_purge_ms(struct gsm_subscriber *subscr)
 {
-	struct gprs_gsup_message gsup_msg = {0};
-	gsup_msg.message_type = GPRS_GSUP_MSGT_PURGE_MS_REQUEST;
+	struct osmo_gsup_message gsup_msg = {0};
+	gsup_msg.message_type = OSMO_GSUP_MSGT_PURGE_MS_REQUEST;
 	return subscr_tx_sup_message(subscr->group->net->hlr_sup_client, subscr, &gsup_msg);
 }
 
-static int subscr_tx_sup_error_reply(struct gprs_gsup_client *sup_client,
+static int subscr_tx_sup_error_reply(struct gsup_client *sup_client,
 									 struct gsm_subscriber *subscr,
-									 struct gprs_gsup_message *gsup_orig,
+									 struct osmo_gsup_message *gsup_orig,
 									 enum gsm48_gmm_cause cause)
 {
-	struct gprs_gsup_message gsup_reply = {0};
+	struct osmo_gsup_message gsup_reply = {0};
 
 	strncpy(gsup_reply.imsi, gsup_orig->imsi, sizeof(gsup_reply.imsi) - 1);
 	gsup_reply.cause = cause;
 	gsup_reply.message_type =
-		GPRS_GSUP_TO_MSGT_ERROR(gsup_orig->message_type);
+		OSMO_GSUP_TO_MSGT_ERROR(gsup_orig->message_type);
 
 	return subscr_tx_sup_message(sup_client, subscr, &gsup_reply);
 }
 
-static int subscr_handle_sup_auth_res(struct gprs_gsup_client *sup_client,
+/*
+static int subscr_handle_sup_auth_res(struct gsup_client *sup_client,
 									   struct gsm_subscriber *subscr,
-									   struct gprs_gsup_message *gsup_msg)
+									   struct osmo_gsup_message *gsup_msg)
 {
 	struct gsm_subscriber_connection *conn = connection_for_subscr(subscr);
 	struct gsm_security_operation *op;
 
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
-		"Got SendAuthenticationInfoResult, num_auth_tuples = %zu\n",
-		gsup_msg->num_auth_tuples);
+		"Got SendAuthenticationInfoResult, num_auth_vectors = %zu\n",
+		gsup_msg->num_auth_vectors);
 
-	if (gsup_msg->num_auth_tuples > 0) {
+	if (gsup_msg->num_auth_vectors > 0) {
 		op = conn->sec_operation;
-		memcpy(&op->atuple, gsup_msg->auth_tuples, sizeof(struct gsm_auth_tuple));
+		memcpy(&op->atuple, gsup_msg->auth_vectors, sizeof(struct gsm_auth_vectors));
 		db_sync_lastauthtuple_for_subscr(&op->atuple, subscr);
 		gsm48_tx_mm_auth_req(conn, op->atuple.rand, op->atuple.key_seq);
 	}
 
 	return 0;
 }
+*/
 
 static int subscr_handle_sup_upd_loc_res(struct gsm_subscriber *subscr,
-									struct gprs_gsup_message *gsup_msg)
+									struct osmo_gsup_message *gsup_msg)
 {
 	uint8_t msisdn_lv[10];
 
@@ -372,7 +376,7 @@ static int subscr_handle_sup_upd_loc_res(struct gsm_subscriber *subscr,
 }
 
 static int subscr_handle_sup_purge_ms_res(struct gsm_subscriber *subscr,
-									struct gprs_gsup_message *gsup_msg)
+									struct osmo_gsup_message *gsup_msg)
 {
 	LOGP(DSUP, LOGL_INFO, "SUP PURGE MS result OK for IMSI:%s\n", subscr->imsi);
 	return 0;
@@ -395,7 +399,7 @@ static int check_cause(int cause)
 }
 
 static int subscr_handle_sup_upd_loc_err(struct gsm_subscriber *subscr,
-									struct gprs_gsup_message *gsup_msg)
+									struct osmo_gsup_message *gsup_msg)
 {
 	int cause_err;
 	struct gsm_subscriber_connection *conn = connection_for_subscr(subscr);
@@ -439,8 +443,9 @@ static int subscr_handle_sup_upd_loc_err(struct gsm_subscriber *subscr,
 	return -gsup_msg->cause;
 }
 
+/*
 static int subscr_handle_sup_auth_err(struct gsm_subscriber *subscr,
-					    struct gprs_gsup_message *gsup_msg)
+					    struct osmo_gsup_message *gsup_msg)
 {
 	int cause_err;
 	struct gsm_subscriber_connection *conn = connection_for_subscr(subscr);
@@ -489,18 +494,18 @@ static int subscr_handle_sup_auth_err(struct gsm_subscriber *subscr,
 
 	return -gsup_msg->cause;
 }
-
-static int subscr_handle_unknown_imsi(struct gprs_gsup_client *sup_client,
-									  struct gprs_gsup_message *gsup_msg)
+*/
+static int subscr_handle_unknown_imsi(struct gsup_client *sup_client,
+									  struct osmo_gsup_message *gsup_msg)
 {
-	if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg->message_type)) {
+	if (OSMO_GSUP_IS_MSGT_REQUEST(gsup_msg->message_type)) {
 		subscr_tx_sup_error_reply(sup_client, NULL, gsup_msg,
 						GMM_CAUSE_IMSI_UNKNOWN);
 		LOGP(DSUP, LOGL_NOTICE,
 		     "Unknown IMSI %s, discarding SUP request "
 		     "of type 0x%02x\n",
 		     gsup_msg->imsi, gsup_msg->message_type);
-	} else if (GPRS_GSUP_IS_MSGT_ERROR(gsup_msg->message_type)) {
+	} else if (OSMO_GSUP_IS_MSGT_ERROR(gsup_msg->message_type)) {
 		LOGP(DSUP, LOGL_NOTICE,
 		     "Unknown IMSI %s, discarding SUP error "
 		     "of type 0x%02x, cause '%s' (%d)\n",
@@ -517,19 +522,19 @@ static int subscr_handle_unknown_imsi(struct gprs_gsup_client *sup_client,
 	return -GMM_CAUSE_IMSI_UNKNOWN;
 }
 
-static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msgb *msg)
+static int subscr_rx_sup_message(struct gsup_client *sup_client, struct msgb *msg)
 {
 	uint8_t *data = msgb_l2(msg);
 	size_t data_len = msgb_l2len(msg);
 	int rc = 0;
 
-	struct gprs_gsup_message gsup_msg = {0};
+	struct osmo_gsup_message gsup_msg = {0};
 	struct gsm_subscriber *subscr;
 
-	if (*data == GPRS_GSUP_MSGT_SMS) {
+	if (*data == OSMO_GSUP_MSGT_SMS) {
 		return rx_sms_message(sup_client, data, data_len);
 	}
-	rc = gprs_gsup_decode(data, data_len, &gsup_msg);
+	rc = osmo_gsup_decode(data, data_len, &gsup_msg);
 	if (rc < 0) {
 		LOGP(DSUP, LOGL_ERROR,
 		     "decoding SUP message fails with error '%s' (%d)\n",
@@ -540,13 +545,13 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
 	if (!gsup_msg.imsi[0]) {
 		LOGP(DSUP, LOGL_ERROR, "Missing IMSI in SUP message\n");
 
-		if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
+		if (OSMO_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
 			subscr_tx_sup_error_reply(sup_client, NULL, &gsup_msg,
 							GMM_CAUSE_INV_MAND_INFO);
 		return -GMM_CAUSE_INV_MAND_INFO;
 	}
 
-	if (!gsup_msg.cause && GPRS_GSUP_IS_MSGT_ERROR(gsup_msg.message_type))
+	if (!gsup_msg.cause && OSMO_GSUP_IS_MSGT_ERROR(gsup_msg.message_type))
 		gsup_msg.cause = GMM_CAUSE_NET_FAIL;
 
 	subscr = subscr_get_by_imsi(NULL, gsup_msg.imsi);
@@ -559,31 +564,33 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
 		"Received SUP message of type 0x%02x\n", gsup_msg.message_type);
 
 	switch (gsup_msg.message_type) {
-
-	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_RESULT:
+/*
+	case OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT:
 		rc = subscr_handle_sup_auth_res(sup_client, subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_SEND_AUTH_INFO_ERROR:
+	case OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR:
 		rc = subscr_handle_sup_auth_err(subscr, &gsup_msg);
 		break;
-
-	case GPRS_GSUP_MSGT_UPDATE_LOCATION_RESULT:
+*/
+	case OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT:
 		rc = subscr_handle_sup_upd_loc_res(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_UPDATE_LOCATION_ERROR:
+	case OSMO_GSUP_MSGT_UPDATE_LOCATION_ERROR:
 		rc = subscr_handle_sup_upd_loc_err(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
-	case GPRS_GSUP_MSGT_PURGE_MS_ERROR:
-	case GPRS_GSUP_MSGT_PURGE_MS_RESULT:
+	case OSMO_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
+	case OSMO_GSUP_MSGT_PURGE_MS_ERROR:
+	case OSMO_GSUP_MSGT_PURGE_MS_RESULT:
 		rc = subscr_handle_sup_purge_ms_res(subscr, &gsup_msg);
 		break;
 
-	case GPRS_GSUP_MSGT_INSERT_DATA_REQUEST:
-	case GPRS_GSUP_MSGT_DELETE_DATA_REQUEST:
+	case OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT:
+	case OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR:
+	case OSMO_GSUP_MSGT_INSERT_DATA_REQUEST:
+	case OSMO_GSUP_MSGT_DELETE_DATA_REQUEST:
 		LOGGSUBSCRP(LOGL_ERROR, subscr,
 			"Rx SUP message type %d not yet implemented\n",
 			gsup_msg.message_type);
@@ -596,7 +603,7 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
 		LOGGSUBSCRP(LOGL_ERROR, subscr,
 			"Rx SUP message type %d not valid at SGSN\n",
 			gsup_msg.message_type);
-		if (GPRS_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
+		if (OSMO_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
 			subscr_tx_sup_error_reply(sup_client, subscr, &gsup_msg,
 							GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		rc = -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
@@ -608,7 +615,7 @@ static int subscr_rx_sup_message(struct gprs_gsup_client *sup_client, struct msg
 	return rc;
 }
 
-int sup_read_cb(struct gprs_gsup_client *sup_client, struct msgb *msg)
+int sup_read_cb(struct gsup_client *sup_client, struct msgb *msg)
 {
 	int rc;
 

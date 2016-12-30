@@ -23,12 +23,12 @@
 
 //extern void *tall_reg_ctx;
 
-//static void start_test_procedure(struct gprs_gsup_client *gsupc);
+//static void start_test_procedure(struct gsup_client *gsupc);
 
 /*
-static void gsup_client_send_ping(struct gprs_gsup_client *gsupc)
+static void gsup_client_send_ping(struct gsup_client *gsupc)
 {
-	struct msgb *msg = gprs_gsup_msgb_alloc();
+	struct msgb *msg = gsup_client_msgb_alloc();
 
 	msg->l2h = msgb_put(msg, 1);
 	msg->l2h[0] = IPAC_MSGT_PING;
@@ -123,7 +123,7 @@ static int sip_client_read_cb(struct tcp_client_conn *link, struct msgb *msg)
 /*
 static void ping_timer_cb(void *gsupc_)
 {
-	struct gprs_gsup_client *gsupc = gsupc_;
+	struct gsup_client *gsupc = gsupc_;
 
 	LOGP(DGPRS, LOGL_INFO, "GSUP ping callback (%s, %s PONG)\n",
 	     gsupc->is_connected ? "connected" : "not connected",
@@ -142,13 +142,13 @@ static void ping_timer_cb(void *gsupc_)
 }
 */
 /*
-static void start_test_procedure(struct gprs_gsup_client *gsupc)
+static void start_test_procedure(struct gsup_client *gsupc)
 {
 	gsupc->ping_timer.data = gsupc;
 	gsupc->ping_timer.cb = &ping_timer_cb;
 
 	gsupc->got_ipa_pong = 0;
-	osmo_timer_schedule(&gsupc->ping_timer, GPRS_GSUP_PING_INTERVAL, 0);
+	osmo_timer_schedule(&gsupc->ping_timer, OSMO_GSUP_PING_INTERVAL, 0);
 	LOGP(DGPRS, LOGL_DEBUG, "GSUP sending PING\n");
 	gsup_client_send_ping(gsupc);
 }

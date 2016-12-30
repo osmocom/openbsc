@@ -7,9 +7,7 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 bin_PROGRAMS = reg-proxy
 
 reg_proxy_SOURCES = \
-		../gprs/gsm_04_08_gprs.c \
 		../gprs/gprs_utils.c \
-		../gprs/gprs_gsup_messages.c ../gprs/gprs_gsup_client.c \
 		tcp_client.c sup_server.c sup.c sip.c sip_client.c reg_proxy.c
 
 reg_proxy_LDADD = \

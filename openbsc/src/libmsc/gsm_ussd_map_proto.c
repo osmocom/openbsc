@@ -26,15 +26,14 @@
 #include <openbsc/debug.h>
 #include <openbsc/db.h>
 #include <openbsc/chan_alloc.h>
-#include <openbsc/gsm_04_08_gprs.h>
-#include <openbsc/gprs_gsup_messages.h>
-#include <openbsc/gprs_gsup_client.h>
+#include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
+#include <osmocom/gsm/gsup.h>
 #include <openbsc/osmo_msc.h>
 #include <openbsc/gprs_utils.h>
 #include <openbsc/ussd.h>
 
 /*
-* 0 - GPRS_GSUP_MSGT_USSD_MAP constant
+* 0 - OSMO_GSUP_MSGT_USSD_MAP constant
 * 1 - LEN
 * 2 - message_type [ REGISTER / FACILITY / RELEASE COMPLETE ]
 * 3,4,5,6 - tid          ID associated with the session
@@ -56,8 +55,8 @@ int subscr_uss_message(struct msgb *msg,
 
 	gsup_indicator = msgb_put(msg, 7);
 
-	/* First byte should always be GPRS_GSUP_MSGT_USSD_MAP */
-	gsup_indicator[offset++] = GPRS_GSUP_MSGT_USSD_MAP;
+	/* First byte should always be OSMO_GSUP_MSGT_USSD_MAP */
+	gsup_indicator[offset++] = OSMO_GSUP_MSGT_USSD_MAP;
 	gsup_indicator[offset++] = 0; // Total length
 	gsup_indicator[offset++] = req->message_type;
 
@@ -80,7 +79,7 @@ int subscr_uss_message(struct msgb *msg,
 		memcpy(gsup_indicator + offset, component_data, req->component_length);
 	}
 
-	gsup_indicator[1] = offset + req->component_length - 2; //except GPRS_GSUP_MSGT_USSD_MAP and length field
+	gsup_indicator[1] = offset + req->component_length - 2; //except OSMO_GSUP_MSGT_USSD_MAP and length field
 	return 0;
 #if 0
 	gsup_indicator[6] = req->component_type;
@@ -108,7 +107,7 @@ int subscr_uss_message(struct msgb *msg,
 	/* wrap with GSM0480_CTYPE_INVOKE */
 	// gsm0480_wrap_invoke(msg, req->opcode, invoke_id);
 	// gsup_indicator = msgb_push(msgb, 1);
-	// gsup_indicator[0] = GPRS_GSUP_MSGT_MAP;
+	// gsup_indicator[0] = OSMO_GSUP_MSGT_MAP;
 	return 0;
 #endif
 }
@@ -130,7 +129,7 @@ int rx_uss_message_parse(const uint8_t* data,
 	if (len < 7)
 		return -1;
 
-	/* skip GPRS_GSUP_MSGT_MAP */
+	/* skip OSMO_GSUP_MSGT_MAP */
 	total_len        = *(const_data++);
 	ss->message_type = *(const_data++);
 

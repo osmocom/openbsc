@@ -56,6 +56,7 @@
 #include <openbsc/bsc_rll.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_api.h>
+#include <openbsc/gsm_sup.h>
 
 #ifdef BUILD_SMPP
 #include "smpp_smsc.h"
@@ -596,7 +597,7 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 	}
 
 	if ((trans->net->sms_client) && (trans->sms_local == 0)) {
-		osmo_counter_inc(trans->conn->bts->network->stats.sms.submitted);
+		rate_ctr_inc(&trans->conn->bts->network->msc_ctrs->ctr[MSC_CTR_SMS_SUBMITTED]);
 		trans->msg_ref = rph->msg_ref;
 		return subscr_tx_sms_message(trans->subscr, rph);
 	}
@@ -685,9 +686,9 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 
 	if ((trans->net->sms_client) && (trans->sms_local == 0)) {
 		if (cause == GSM411_RP_CAUSE_MT_MEM_EXCEEDED) {
-			osmo_counter_inc(net->stats.sms.rp_err_mem);
+			rate_ctr_inc(&net->msc_ctrs->ctr[MSC_CTR_SMS_RP_ERR_MEM]);
 		} else {
-			osmo_counter_inc(net->stats.sms.rp_err_other);
+			rate_ctr_inc(&net->msc_ctrs->ctr[MSC_CTR_SMS_RP_ERR_OTHER]);
 		}
 		return subscr_tx_sms_message(trans->subscr, rph);
 	}
@@ -1160,7 +1161,7 @@ static int gsm411_send_rp_data(struct gsm_subscriber_connection *conn,
 	trans->msg_ref = rp->msg_ref;
 	trans->conn = conn;
 
-	osmo_counter_inc(conn->bts->network->stats.sms.delivered);
+	rate_ctr_inc(&conn->bts->network->msc_ctrs->ctr[MSC_CTR_SMS_DELIVERED]);
 	return gsm411_smr_send(&trans->sms.smr_inst, GSM411_SM_RL_DATA_REQ, msg);
 }
 

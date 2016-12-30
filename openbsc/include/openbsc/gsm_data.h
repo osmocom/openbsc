@@ -15,7 +15,7 @@
 
 #include <openbsc/rest_octets.h>
 #include <openbsc/common_cs.h>
-#include <openbsc/gprs_gsup_client.h>
+#include <openbsc/gsup_client.h>
 
 /** annotations for msgb ownership */
 #define __uses
@@ -324,9 +324,9 @@ struct gsm_network {
 	struct llist_head upqueue;
 	struct llist_head trans_list;
 	struct bsc_api *bsc_api;
-	struct gprs_gsup_client *hlr_sup_client;
-	struct gprs_gsup_client *ussd_sup_client;
-	struct gprs_gsup_client *sms_client;
+	struct gsup_client *hlr_sup_client;
+	struct gsup_client *ussd_sup_client;
+	struct gsup_client *sms_client;
 
 	unsigned int num_bts;
 	struct llist_head bts_list;

@@ -211,7 +211,7 @@ int on_ussd_response(struct gsm_network *net,
 		rc = gsm0480_send_ussd_reject(trans->conn, req);
 	}
 #endif
-	msg = gsm48_msgb_alloc();
+	msg = gsm48_msgb_alloc_name("");
 	ptr8 = msgb_put(msg, 0);
 
 	memcpy(ptr8, component, reqhdr->component_length);

@@ -114,7 +114,7 @@ int auth_get_tuple_for_subscr_verbose(struct gsm_auth_tuple *atuple,
 				      int key_seq)
 {
 	int auth_action;
-	auth_action = auth_get_tuple_for_subscr(atuple, subscr, key_seq);
+	auth_action = auth_get_tuple_for_subscr(GSM_AUTH_POLICY_ACCEPT_ALL, atuple, subscr, key_seq);
 	printf("auth_get_tuple_for_subscr(key_seq=%d) --> auth_action == %s\n",
 	       key_seq, auth_action_str(auth_action));
 	return auth_action;

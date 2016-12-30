@@ -50,7 +50,7 @@
 #include <openbsc/sms_queue.h>
 #include <openbsc/mncc_int.h>
 #include <openbsc/handover.h>
-#include <openbsc/gprs_gsup_client.h>
+#include <openbsc/gsup_client.h>
 #include <openbsc/gsm_ussd_map.h>
 
 #include <osmocom/vty/logging.h>
@@ -1042,8 +1042,8 @@ DEFUN(sup_ussd_destination, sup_ussd_destination_cmd,
 		return CMD_WARNING;
 	}
 
-	gsmnet->ussd_sup_client = gprs_gsup_client_create(
-		argv[0], atoi(argv[1]), &ussd_map_read_cb);
+	gsmnet->ussd_sup_client = gsup_client_create(
+		argv[0], atoi(argv[1]), &ussd_map_read_cb, NULL);
 	if (!gsmnet->ussd_sup_client) {
 		LOGP(DSS, LOGL_FATAL, "Cannot set up USSD SUP socket\n");
 		vty_out(vty, "%%Cannot set up USSD SUP socket%s", VTY_NEWLINE);
@@ -1066,8 +1066,8 @@ DEFUN(sms_destination, sms_destination_cmd,
 		return CMD_WARNING;
 	}
 
-	gsmnet->sms_client = gprs_gsup_client_create(
-		argv[0], atoi(argv[1]), &sup_read_cb);
+	gsmnet->sms_client = gsup_client_create(
+		argv[0], atoi(argv[1]), &sup_read_cb, NULL);
 	if (!gsmnet->sms_client) {
 		LOGP(DSUP, LOGL_FATAL, "Cannot set up SMS socket\n");
 		vty_out(vty, "%%Cannot set up SMS socket%s", VTY_NEWLINE);

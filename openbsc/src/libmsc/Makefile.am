@@ -28,10 +28,6 @@ libmsc_a_SOURCES = \
 	gsm_04_08.c \
 	gsm_04_11.c \
 	gsm_04_80.c \
-	../gprs/gsm_04_08_gprs.c \
-	../gprs/gprs_utils.c \
-	../gprs/gprs_gsup_messages.c \
-	../gprs/gprs_gsup_client.c \
 	gsm_sup.c \
 	gsm_subscriber.c \
 	mncc.c \

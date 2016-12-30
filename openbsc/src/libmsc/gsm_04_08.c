@@ -214,6 +214,7 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	/* If not done yet, try to get info for this user */
 	if (status < 0) {
 		rc = auth_get_tuple_for_subscr(net->auth_policy, &atuple, subscr, key_seq);
+/*
 		if ((rc == 0) && (net->auth_policy == GSM_AUTH_POLICY_REMOTE ||
 		                  net->auth_policy == GSM_AUTH_POLICY_REMOTE_CLOSED)) {
 			allocate_security_operation(conn);
@@ -223,6 +224,9 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 		} else if (rc <= 0) {
 			status = GSM_SECURITY_NOAVAIL;
 		}
+*/
+		if (rc <= 0)
+			status = GSM_SECURITY_NOAVAIL;
 	}
 
 	/* Are we done yet ? */

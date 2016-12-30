@@ -38,7 +38,7 @@ typedef struct operation operation_t;
 #include <osmocom/gsm/gsm0480.h>
 #include <osmocom/core/linuxlist.h>
 
-#include <openbsc/gprs_gsup_messages.h>
+#include <osmocom/gsm/gsup.h>
 #include <openbsc/gsm_ussd_map_proto.h>
 #include <openbsc/gsm_04_80.h>
 
@@ -1239,7 +1239,7 @@ static int isup_handle_connection(context_t *cli, su_wait_t *w, void *p)
 			goto err;
 		case IPAC_PROTO_OSMO:
 			// TODO callback
-			if (msg->l2h[1] == GPRS_GSUP_MSGT_USSD_MAP) {
+			if (msg->l2h[1] == OSMO_GSUP_MSGT_USSD_MAP) {
 				LOGP(DLCTRL, LOGL_ERROR,
 					   "Receive USS: %s\n", msgb_hexdump(msg));
 
@@ -1256,7 +1256,7 @@ static int isup_handle_connection(context_t *cli, su_wait_t *w, void *p)
 
 			/* TODO: handle gprs_gsup_decode() for other types */
 
-			LOGP(DLCTRL, LOGL_ERROR, "Unknown IPAC_PROTO_OSMO GPRS_GSUP_MSGT_* 0x%x\n", msg->l2h[1]);
+			LOGP(DLCTRL, LOGL_ERROR, "Unknown IPAC_PROTO_OSMO OSMO_GSUP_MSGT_* 0x%x\n", msg->l2h[1]);
 			msgb_free(msg);
 			conn->pending_msg = NULL;
 			goto err;
