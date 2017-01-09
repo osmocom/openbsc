@@ -26,6 +26,8 @@ struct gsm_subscriber_group;
 
 #define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
 
+#define tmsi_from_string(str) strtoul(str, NULL, 10)
+
 enum gsm_security_event {
 	GSM_SECURITY_NOAVAIL,
 	GSM_SECURITY_AUTH_FAILED,

@@ -657,40 +657,37 @@ DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
 }
 
 /* Subscriber */
-#include <openbsc/gsm_subscriber.h>
+#include <openbsc/gprs_subscriber.h>
 
-static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr, int pending)
+static void subscr_dump_full_vty(struct vty *vty, struct gprs_subscr *gsub, int pending)
 {
+#if 0
 	char expire_time[200];
+#endif
 	struct gsm_auth_tuple *at;
 	int at_idx;
 	struct sgsn_subscriber_pdp_data *pdp;
 
-	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
-		subscr->authorized, VTY_NEWLINE);
-	if (strlen(subscr->name))
-		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
-	if (strlen(subscr->extension))
-		vty_out(vty, "    Extension: %s%s", subscr->extension,
-			VTY_NEWLINE);
+	vty_out(vty, "    Authorized: %d%s",
+		gsub->authorized, VTY_NEWLINE);
 	vty_out(vty, "    LAC: %d/0x%x%s",
-		subscr->lac, subscr->lac, VTY_NEWLINE);
-	vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
-	if (subscr->tmsi != GSM_RESERVED_TMSI)
-		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
+		gsub->lac, gsub->lac, VTY_NEWLINE);
+	vty_out(vty, "    IMSI: %s%s", gsub->imsi, VTY_NEWLINE);
+	if (gsub->tmsi != GSM_RESERVED_TMSI)
+		vty_out(vty, "    TMSI: %08X%s", gsub->tmsi,
 			VTY_NEWLINE);
-	if (subscr->sgsn_data->msisdn_len > 0)
+	if (gsub->sgsn_data->msisdn_len > 0)
 		vty_out(vty, "    MSISDN (BCD): %s%s",
-			osmo_hexdump(subscr->sgsn_data->msisdn,
-					subscr->sgsn_data->msisdn_len),
+			osmo_hexdump(gsub->sgsn_data->msisdn,
+				     gsub->sgsn_data->msisdn_len),
 			VTY_NEWLINE);
 
-	if (strlen(subscr->equipment.imei) > 0)
-		vty_out(vty, "    IMEI: %s%s", subscr->equipment.imei, VTY_NEWLINE);
+	if (strlen(gsub->imei) > 0)
+		vty_out(vty, "    IMEI: %s%s", gsub->imei, VTY_NEWLINE);
 
-	for (at_idx = 0; at_idx < ARRAY_SIZE(subscr->sgsn_data->auth_triplets);
+	for (at_idx = 0; at_idx < ARRAY_SIZE(gsub->sgsn_data->auth_triplets);
 	     at_idx++) {
-		at = &subscr->sgsn_data->auth_triplets[at_idx];
+		at = &gsub->sgsn_data->auth_triplets[at_idx];
 		if (at->key_seq == GSM_KEY_SEQ_INVAL)
 			continue;
 
@@ -722,36 +719,38 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 		}
 	}
 
-	llist_for_each_entry(pdp, &subscr->sgsn_data->pdp_list, list) {
+	llist_for_each_entry(pdp, &gsub->sgsn_data->pdp_list, list) {
 		vty_out(vty, "    PDP info: Id: %d, Type: 0x%04x, APN: '%s' QoS: %s%s",
 			pdp->context_id, pdp->pdp_type, pdp->apn_str,
 			osmo_hexdump(pdp->qos_subscribed, pdp->qos_subscribed_len),
 			VTY_NEWLINE);
 	}
 
+#if 0
 	/* print the expiration time of a subscriber */
-	if (subscr->expire_lu) {
+	if (gsub->expire_lu) {
 		strftime(expire_time, sizeof(expire_time),
-			 "%a, %d %b %Y %T %z", localtime(&subscr->expire_lu));
+			 "%a, %d %b %Y %T %z", localtime(&gsub->expire_lu));
 		expire_time[sizeof(expire_time) - 1] = '\0';
 		vty_out(vty, "    Expiration Time: %s%s", expire_time, VTY_NEWLINE);
 	}
+#endif
 
-	if (subscr->flags)
+	if (gsub->flags)
 		vty_out(vty, "    Flags: %s%s%s%s%s%s",
-			subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT ?
+			gsub->flags & GPRS_SUBSCRIBER_FIRST_CONTACT ?
 			"FIRST_CONTACT " : "",
-			subscr->flags & GPRS_SUBSCRIBER_CANCELLED ?
+			gsub->flags & GPRS_SUBSCRIBER_CANCELLED ?
 			"CANCELLED " : "",
-			subscr->flags & GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING ?
+			gsub->flags & GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING ?
 			"UPDATE_LOCATION_PENDING " : "",
-			subscr->flags & GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING ?
+			gsub->flags & GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING ?
 			"AUTH_INFO_PENDING " : "",
-			subscr->flags & GPRS_SUBSCRIBER_ENABLE_PURGE ?
+			gsub->flags & GPRS_SUBSCRIBER_ENABLE_PURGE ?
 			"ENABLE_PURGE " : "",
 			VTY_NEWLINE);
 
-	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
+	vty_out(vty, "    Use count: %u%s", gsub->use_count, VTY_NEWLINE);
 }
 
 DEFUN(show_subscr_cache,
@@ -760,9 +759,9 @@ DEFUN(show_subscr_cache,
 	SHOW_STR "Show information about subscribers\n"
 	"Display contents of subscriber cache\n")
 {
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
-	llist_for_each_entry(subscr, &active_subscribers, entry) {
+	llist_for_each_entry(subscr, gprs_subscribers, entry) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
 		subscr_dump_full_vty(vty, subscr, 0);
 	}
@@ -794,7 +793,7 @@ DEFUN(update_subscr_insert_auth_triplet, update_subscr_insert_auth_triplet_cmd,
 	const char *kc_str = argv[4];
 	struct gsm_auth_tuple at = {0,};
 
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (!subscr) {
@@ -825,12 +824,12 @@ DEFUN(update_subscr_insert_auth_triplet, update_subscr_insert_auth_triplet_cmd,
 	subscr->sgsn_data->auth_triplets[cksn] = at;
 	subscr->sgsn_data->auth_triplets_updated = 1;
 
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 
 	return CMD_SUCCESS;
 
 failed:
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 	return CMD_SUCCESS;
 }
 
@@ -844,7 +843,7 @@ DEFUN(update_subscr_cancel, update_subscr_cancel_cmd,
 	const char *imsi = argv[0];
 	const char *cancel_type = argv[1];
 
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (!subscr) {
@@ -859,7 +858,7 @@ DEFUN(update_subscr_cancel, update_subscr_cancel_cmd,
 		subscr->sgsn_data->error_cause = GMM_CAUSE_IMPL_DETACHED;
 
 	gprs_subscr_cancel(subscr);
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 
 	return CMD_SUCCESS;
 }
@@ -871,7 +870,7 @@ DEFUN(update_subscr_create, update_subscr_create_cmd,
 {
 	const char *imsi = argv[0];
 
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (subscr) {
@@ -882,7 +881,7 @@ DEFUN(update_subscr_create, update_subscr_create_cmd,
 
 	subscr = gprs_subscr_get_or_create(imsi);
 	subscr->keep_in_ram = 1;
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 
 	return CMD_SUCCESS;
 }
@@ -894,7 +893,7 @@ DEFUN(update_subscr_destroy, update_subscr_destroy_cmd,
 {
 	const char *imsi = argv[0];
 
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (!subscr) {
@@ -909,7 +908,7 @@ DEFUN(update_subscr_destroy, update_subscr_destroy_cmd,
 	if (subscr->use_count > 1)
 		vty_out(vty, "%% subscriber is still in use%s",
 			VTY_NEWLINE);
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 
 	return CMD_SUCCESS;
 }
@@ -934,7 +933,7 @@ DEFUN(update_subscr_update_location_result, update_subscr_update_location_result
 	const char *imsi = argv[0];
 	const char *ret_code_str = argv[1];
 
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	const struct value_string cause_mapping[] = {
 		{ GMM_CAUSE_NET_FAIL,		"system-failure" },
@@ -963,7 +962,7 @@ DEFUN(update_subscr_update_location_result, update_subscr_update_location_result
 
 	gprs_subscr_update(subscr);
 
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 
 	return CMD_SUCCESS;
 }
@@ -975,7 +974,7 @@ DEFUN(update_subscr_update_auth_info, update_subscr_update_auth_info_cmd,
 {
 	const char *imsi = argv[0];
 
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	subscr = gprs_subscr_get_by_imsi(imsi);
 	if (!subscr) {
@@ -986,7 +985,7 @@ DEFUN(update_subscr_update_auth_info, update_subscr_update_auth_info_cmd,
 
 	gprs_subscr_update_auth_info(subscr);
 
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 
 	return CMD_SUCCESS;
 }

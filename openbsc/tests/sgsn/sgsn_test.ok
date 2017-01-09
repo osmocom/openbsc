@@ -1,5 +1,13 @@
 Testing LLME allocations
 Testing core subscriber data API
+llist_count(gprs_subscribers) == 0
+llist_count(gprs_subscribers) == 1
+llist_count(gprs_subscribers) == 1
+llist_count(gprs_subscribers) == 2
+llist_count(gprs_subscribers) == 3
+llist_count(gprs_subscribers) == 2
+llist_count(gprs_subscribers) == 1
+llist_count(gprs_subscribers) == 0
 Testing authentication triplet handling
 Testing subscriber GSUP handling
 Testing GMM detach

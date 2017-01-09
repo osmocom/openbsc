@@ -48,7 +48,7 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
-#include <openbsc/gsm_subscriber.h>
+#include <openbsc/gprs_subscriber.h>
 #include <openbsc/gprs_sndcp.h>
 
 #ifdef BUILD_IU

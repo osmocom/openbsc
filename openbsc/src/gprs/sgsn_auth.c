@@ -24,7 +24,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
-#include <openbsc/gsm_subscriber.h>
+#include <openbsc/gprs_subscriber.h>
 #include <openbsc/debug.h>
 
 const struct value_string auth_state_names[] = {
@@ -151,7 +151,7 @@ enum sgsn_auth_state sgsn_auth_state(struct sgsn_mm_ctx *mmctx)
  */
 int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 {
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 	struct gsm_auth_tuple *at;
 	int need_update_location;
 	int rc;
@@ -169,7 +169,7 @@ int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 
 	/* This has the side effect of registering the subscr with the mmctx */
 	subscr = gprs_subscr_get_or_create_by_mmctx(mmctx);
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 
 	OSMO_ASSERT(mmctx->subscr != NULL);
 
@@ -207,7 +207,7 @@ int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 void sgsn_auth_update(struct sgsn_mm_ctx *mmctx)
 {
 	enum sgsn_auth_state auth_state;
-	struct gsm_subscriber *subscr = mmctx->subscr;
+	struct gprs_subscr *subscr = mmctx->subscr;
 	struct gsm_auth_tuple *at;
 	int gmm_cause;
 

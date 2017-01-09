@@ -64,6 +64,7 @@
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/gprs_utils.h>
+#include <openbsc/gprs_subscriber.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/signal.h>
 #include <openbsc/iu.h>

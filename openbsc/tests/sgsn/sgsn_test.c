@@ -23,7 +23,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_gmm.h>
 #include <openbsc/debug.h>
-#include <openbsc/gsm_subscriber.h>
+#include <openbsc/gprs_subscriber.h>
 #include <osmocom/gsm/gsup.h>
 #include <openbsc/gsup_client.h>
 #include <openbsc/gprs_utils.h>
@@ -248,7 +248,7 @@ static void test_llme(void)
 	cleanup_test();
 }
 
-struct gsm_subscriber *last_updated_subscr = NULL;
+struct gprs_subscr *last_updated_subscr = NULL;
 void my_dummy_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)
 {
 	OSMO_ASSERT(mmctx);
@@ -257,23 +257,23 @@ void my_dummy_sgsn_update_subscriber_data(struct sgsn_mm_ctx *mmctx)
 	last_updated_subscr = mmctx->subscr;
 }
 
-static void assert_subscr(const struct gsm_subscriber *subscr, const char *imsi)
+static void assert_subscr(const struct gprs_subscr *subscr, const char *imsi)
 {
-	struct gsm_subscriber *sfound;
+	struct gprs_subscr *sfound;
 	OSMO_ASSERT(subscr);
 	OSMO_ASSERT(strcmp(subscr->imsi, imsi) == 0);
 
 	sfound = gprs_subscr_get_by_imsi(imsi);
 	OSMO_ASSERT(sfound == subscr);
 
-	subscr_put(sfound);
+	gprs_subscr_put(sfound);
 }
 
 static void show_subscrs(FILE *out)
 {
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
-	llist_for_each_entry(subscr, &active_subscribers, entry) {
+	llist_for_each_entry(subscr, gprs_subscribers, entry) {
 		fprintf(out, "  Subscriber: %s, "
 			"use count: %d\n",
 			subscr->imsi, subscr->use_count);
@@ -284,12 +284,18 @@ static void assert_no_subscrs()
 {
 	show_subscrs(stdout);
 	fflush(stdout);
-	OSMO_ASSERT(llist_empty(&active_subscribers));
+	OSMO_ASSERT(llist_empty(gprs_subscribers));
 }
+
+#define VERBOSE_ASSERT(val, expect_op, fmt) \
+	do { \
+		printf(#val " == " fmt "\n", (val)); \
+		OSMO_ASSERT((val) expect_op); \
+	} while (0);
 
 static void test_subscriber(void)
 {
-	struct gsm_subscriber *s1, *s2, *s3, *sfound;
+	struct gprs_subscr *s1, *s2, *s3;
 	const char *imsi1 = "1234567890";
 	const char *imsi2 = "9876543210";
 	const char *imsi3 = "5656565656";
@@ -302,19 +308,24 @@ static void test_subscriber(void)
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi3) == NULL);
+	VERBOSE_ASSERT(llist_count(gprs_subscribers), == 0, "%d");
 
 	/* Allocate entry 1 */
 	s1 = gprs_subscr_get_or_create(imsi1);
-	s1->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+	VERBOSE_ASSERT(llist_count(gprs_subscribers), == 1, "%d");
+	s1->flags |= GPRS_SUBSCRIBER_FIRST_CONTACT;
 	assert_subscr(s1, imsi1);
+	VERBOSE_ASSERT(llist_count(gprs_subscribers), == 1, "%d");
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
 
 	/* Allocate entry 2 */
 	s2 = gprs_subscr_get_or_create(imsi2);
-	s2->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+	VERBOSE_ASSERT(llist_count(gprs_subscribers), == 2, "%d");
+	s2->flags |= GPRS_SUBSCRIBER_FIRST_CONTACT;
 
 	/* Allocate entry 3 */
 	s3 = gprs_subscr_get_or_create(imsi3);
+	VERBOSE_ASSERT(llist_count(gprs_subscribers), == 3, "%d");
 
 	/* Check entries */
 	assert_subscr(s1, imsi1);
@@ -326,33 +337,35 @@ static void test_subscriber(void)
 	gprs_subscr_update(s1);
 	OSMO_ASSERT(last_updated_subscr == NULL);
 	OSMO_ASSERT(s1->sgsn_data->mm == NULL);
-	OSMO_ASSERT((s1->flags & GSM_SUBSCRIBER_FIRST_CONTACT) == 0);
+	OSMO_ASSERT((s1->flags & GPRS_SUBSCRIBER_FIRST_CONTACT) == 0);
 
 	/* There is no subscriber cache. Verify it */
 	gprs_subscr_cleanup(s1);
-	subscr_put(s1);
+	gprs_subscr_put(s1);
 	s1 = NULL;
-	sfound = gprs_subscr_get_by_imsi(imsi1);
-	OSMO_ASSERT(sfound == NULL);
+	VERBOSE_ASSERT(llist_count(gprs_subscribers), == 2, "%d");
+	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
 
 	assert_subscr(s2, imsi2);
 	assert_subscr(s3, imsi3);
 
-	/* Free entry 2 (GSM_SUBSCRIBER_FIRST_CONTACT is set) */
+	/* Free entry 2 (GPRS_SUBSCRIBER_FIRST_CONTACT is set) */
 	gprs_subscr_cleanup(s2);
-	subscr_put(s2);
+	gprs_subscr_put(s2);
 	s2 = NULL;
+	VERBOSE_ASSERT(llist_count(gprs_subscribers), == 1, "%d");
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi1) == NULL);
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi2) == NULL);
 	assert_subscr(s3, imsi3);
 
 	/* Try to delete entry 3 */
 	gprs_subscr_cleanup(s3);
-	subscr_put(s3);
+	gprs_subscr_put(s3);
 	s3 = NULL;
+	VERBOSE_ASSERT(llist_count(gprs_subscribers), == 0, "%d");
 	OSMO_ASSERT(gprs_subscr_get_by_imsi(imsi3) == NULL);
 
-	OSMO_ASSERT(llist_empty(&active_subscribers));
+	OSMO_ASSERT(llist_empty(gprs_subscribers));
 
 	update_subscriber_data_cb = __real_sgsn_update_subscriber_data;
 
@@ -361,7 +374,7 @@ static void test_subscriber(void)
 
 static void test_auth_triplets(void)
 {
-	struct gsm_subscriber *s1, *s1found;
+	struct gprs_subscr *s1, *s1found;
 	const char *imsi1 = "1234567890";
 	struct gsm_auth_tuple *at;
 	struct sgsn_mm_ctx *ctx;
@@ -375,17 +388,17 @@ static void test_auth_triplets(void)
 
 	/* Allocate entry 1 */
 	s1 = gprs_subscr_get_or_create(imsi1);
-	s1->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+	s1->flags |= GPRS_SUBSCRIBER_FIRST_CONTACT;
 	s1found = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(s1found == s1);
-	subscr_put(s1found);
+	gprs_subscr_put(s1found);
 
 	/* Create a context */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ctx = alloc_mm_ctx(local_tlli, &raid);
 
 	/* Attach s1 to ctx */
-	ctx->subscr = subscr_get(s1);
+	ctx->subscr = gprs_subscr_get(s1);
 	ctx->subscr->sgsn_data->mm = ctx;
 
 	/* Try to get auth tuple */
@@ -414,7 +427,7 @@ static void test_auth_triplets(void)
 	OSMO_ASSERT(at == NULL);
 
 	/* Free MM context and subscriber */
-	subscr_put(s1);
+	gprs_subscr_put(s1);
 	sgsn_mm_ctx_cleanup_free(ctx);
 	s1found = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(s1found == NULL);
@@ -441,7 +454,7 @@ static int rx_gsup_message(const uint8_t *data, size_t data_len)
 
 static void test_subscriber_gsup(void)
 {
-	struct gsm_subscriber *s1, *s1found;
+	struct gprs_subscr *s1, *s1found;
 	const char *imsi1 = "1234567890";
 	struct sgsn_mm_ctx *ctx;
 	struct gprs_ra_id raid = { 0, };
@@ -563,17 +576,17 @@ static void test_subscriber_gsup(void)
 
 	/* Allocate entry 1 */
 	s1 = gprs_subscr_get_or_create(imsi1);
-	s1->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+	s1->flags |= GPRS_SUBSCRIBER_FIRST_CONTACT;
 	s1found = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(s1found == s1);
-	subscr_put(s1found);
+	gprs_subscr_put(s1found);
 
 	/* Create a context */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ctx = alloc_mm_ctx(local_tlli, &raid);
 
 	/* Attach s1 to ctx */
-	ctx->subscr = subscr_get(s1);
+	ctx->subscr = gprs_subscr_get(s1);
 	ctx->subscr->sgsn_data->mm = ctx;
 
 	/* Inject SendAuthInfoReq GSUP message */
@@ -675,7 +688,7 @@ static void test_subscriber_gsup(void)
 	/* Free MM context and subscriber */
 	OSMO_ASSERT(ctx->subscr == NULL);
 	sgsn_mm_ctx_cleanup_free(ctx);
-	subscr_put(s1);
+	gprs_subscr_put(s1);
 	s1found = gprs_subscr_get_by_imsi(imsi1);
 	OSMO_ASSERT(s1found == NULL);
 
@@ -1090,7 +1103,7 @@ int my_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx) {
 static void test_gmm_attach_subscr(void)
 {
 	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
 	subscr_request_update_location_cb = my_subscr_request_update_location;
@@ -1101,7 +1114,7 @@ static void test_gmm_attach_subscr(void)
 
 	printf("Auth policy 'remote': ");
 	test_gmm_attach(0);
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 	assert_no_subscrs();
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
@@ -1124,7 +1137,7 @@ int my_subscr_request_auth_info_fake_auth(struct sgsn_mm_ctx *mmctx)
 static void test_gmm_attach_subscr_fake_auth(void)
 {
 	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
 	subscr_request_update_location_cb = my_subscr_request_update_location;
@@ -1137,7 +1150,7 @@ static void test_gmm_attach_subscr_fake_auth(void)
 
 	printf("Auth policy 'remote', auth faked: ");
 	test_gmm_attach(0);
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 	assert_no_subscrs();
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
@@ -1166,7 +1179,7 @@ int my_subscr_request_auth_info_real_auth(struct sgsn_mm_ctx *mmctx)
 static void test_gmm_attach_subscr_real_auth(void)
 {
 	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
 	subscr_request_update_location_cb = my_subscr_request_update_location;
@@ -1180,7 +1193,7 @@ static void test_gmm_attach_subscr_real_auth(void)
 	printf("Auth policy 'remote', triplet based auth: ");
 
 	test_gmm_attach(0);
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 	assert_no_subscrs();
 
 	sgsn->cfg.auth_policy = saved_auth_policy;
@@ -1254,7 +1267,7 @@ int my_subscr_request_update_gsup_auth(struct sgsn_mm_ctx *mmctx) {
 static void test_gmm_attach_subscr_gsup_auth(int retry)
 {
 	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
 	subscr_request_update_location_cb = my_subscr_request_update_gsup_auth;
@@ -1268,7 +1281,7 @@ static void test_gmm_attach_subscr_gsup_auth(int retry)
 	subscr->authorized = 1;
 	sgsn->cfg.require_authentication = 1;
 	sgsn->cfg.require_update_location = 1;
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 
 	printf("Auth policy 'remote', GSUP based auth: ");
 	test_gmm_attach(retry);
@@ -1337,7 +1350,7 @@ int my_gsup_client_send(struct gsup_client *gsupc, struct msgb *msg)
 static void test_gmm_attach_subscr_real_gsup_auth(int retry)
 {
 	const enum sgsn_auth_policy saved_auth_policy = sgsn->cfg.auth_policy;
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	sgsn_inst.cfg.auth_policy = SGSN_AUTH_POLICY_REMOTE;
 	gsup_client_send_cb = my_gsup_client_send;
@@ -2228,7 +2241,7 @@ static void test_ggsn_selection(void)
 {
 	struct apn_ctx *actxs[4];
 	struct sgsn_ggsn_ctx *ggc, *ggcs[3];
-	struct gsm_subscriber *s1;
+	struct gprs_subscr *s1;
 	const char *imsi1 = "1234567890";
 	struct sgsn_mm_ctx *ctx;
 	struct gprs_ra_id raid = { 0, };
@@ -2347,7 +2360,7 @@ static void test_ggsn_selection(void)
 
 	/* Cleanup */
 
-	subscr_put(s1);
+	gprs_subscr_put(s1);
 	sgsn_mm_ctx_cleanup_free(ctx);
 
 	assert_no_subscrs();

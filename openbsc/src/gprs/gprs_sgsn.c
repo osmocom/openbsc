@@ -31,7 +31,7 @@
 #include <osmocom/gprs/gprs_bssgp.h>
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 
-#include <openbsc/gsm_subscriber.h>
+#include <openbsc/gprs_subscriber.h>
 #include <openbsc/debug.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/sgsn.h>
@@ -321,9 +321,9 @@ void sgsn_mm_ctx_cleanup_free(struct sgsn_mm_ctx *mm)
 
 	/* Detach from subscriber which is possibly freed then */
 	if (mm->subscr) {
-		struct gsm_subscriber *subscr = subscr_get(mm->subscr);
+		struct gprs_subscr *subscr = gprs_subscr_get(mm->subscr);
 		gprs_subscr_cleanup(subscr);
-		subscr_put(subscr);
+		gprs_subscr_put(subscr);
 	}
 
 	sgsn_mm_ctx_free(mm);

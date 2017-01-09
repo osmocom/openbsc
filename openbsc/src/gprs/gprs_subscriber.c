@@ -23,7 +23,8 @@
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <osmocom/gsm/gsup.h>
 #include <osmocom/core/utils.h>
-#include <openbsc/gsm_subscriber.h>
+#include <osmocom/core/logging.h>
+#include <openbsc/gprs_subscriber.h>
 #include <openbsc/gsup_client.h>
 
 #include <openbsc/sgsn.h>
@@ -35,6 +36,7 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <limits.h>
 
 #define SGSN_SUBSCR_MAX_RETRIES 3
 #define SGSN_SUBSCR_RETRY_INTERVAL 10
@@ -45,6 +47,9 @@
 	     ## args)
 
 extern void *tall_bsc_ctx;
+
+LLIST_HEAD(_gprs_subscribers);
+struct llist_head * const gprs_subscribers = &_gprs_subscribers;
 
 static int gsup_read_cb(struct gsup_client *gsupc, struct msgb *msg);
 
@@ -86,7 +91,7 @@ static int gsup_read_cb(struct gsup_client *gsupc, struct msgb *msg)
 	return rc;
 }
 
-int gprs_subscr_purge(struct gsm_subscriber *subscr);
+int gprs_subscr_purge(struct gprs_subscr *subscr);
 
 static struct sgsn_subscriber_data *sgsn_subscriber_data_alloc(void *ctx)
 {
@@ -117,28 +122,53 @@ struct sgsn_subscriber_pdp_data* sgsn_subscriber_pdp_data_alloc(
 	return pdata;
 }
 
-struct gsm_subscriber *gprs_subscr_get_or_create(const char *imsi)
+struct gprs_subscr *gprs_subscr_get_by_imsi(const char *imsi)
 {
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *gsub;
 
-	subscr = subscr_get_or_create(NULL, imsi);
-	if (!subscr)
+	if (!imsi || !*imsi)
 		return NULL;
 
-	if (!subscr->sgsn_data)
-		subscr->sgsn_data = sgsn_subscriber_data_alloc(subscr);
-	return subscr;
+	llist_for_each_entry(gsub, gprs_subscribers, entry) {
+		if (!strcmp(gsub->imsi, imsi))
+			return gprs_subscr_get(gsub);
+	}
+	return NULL;
 }
 
-struct gsm_subscriber *gprs_subscr_get_by_imsi(const char *imsi)
+static struct gprs_subscr *gprs_subscr_alloc(void)
 {
-	return subscr_active_by_imsi(NULL, imsi);
+	struct gprs_subscr *gsub;
+	gsub = talloc_zero(tall_bsc_ctx, struct gprs_subscr);
+	if (!gsub)
+		return NULL;
+	llist_add_tail(&gsub->entry, gprs_subscribers);
+	gsub->use_count = 1;
+	gsub->tmsi = GSM_RESERVED_TMSI;
+	return gsub;
 }
 
-void gprs_subscr_cleanup(struct gsm_subscriber *subscr)
+struct gprs_subscr *gprs_subscr_get_or_create(const char *imsi)
+{
+	struct gprs_subscr *gsub;
+
+	gsub = gprs_subscr_get_by_imsi(imsi);
+	if (!gsub) {
+		gsub = gprs_subscr_alloc();
+		if (!gsub)
+			return NULL;
+		strncpy(gsub->imsi, imsi, sizeof(gsub->imsi));
+	}
+
+	if (!gsub->sgsn_data)
+		gsub->sgsn_data = sgsn_subscriber_data_alloc(gsub);
+	return gsub;
+}
+
+void gprs_subscr_cleanup(struct gprs_subscr *subscr)
 {
 	if (subscr->sgsn_data->mm) {
-		subscr_put(subscr->sgsn_data->mm->subscr);
+		gprs_subscr_put(subscr->sgsn_data->mm->subscr);
 		subscr->sgsn_data->mm->subscr = NULL;
 		subscr->sgsn_data->mm = NULL;
 	}
@@ -149,7 +179,7 @@ void gprs_subscr_cleanup(struct gsm_subscriber *subscr)
 	}
 }
 
-void gprs_subscr_cancel(struct gsm_subscriber *subscr)
+void gprs_subscr_cancel(struct gprs_subscr *subscr)
 {
 	subscr->authorized = 0;
 	subscr->flags |= GPRS_SUBSCRIBER_CANCELLED;
@@ -159,7 +189,7 @@ void gprs_subscr_cancel(struct gsm_subscriber *subscr)
 	gprs_subscr_cleanup(subscr);
 }
 
-static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
+static int gprs_subscr_tx_gsup_message(struct gprs_subscr *subscr,
 				       struct osmo_gsup_message *gsup_msg)
 {
 	struct msgb *msg = gsup_client_msgb_alloc();
@@ -181,7 +211,7 @@ static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 	return gsup_client_send(sgsn->gsup_client, msg);
 }
 
-static int gprs_subscr_tx_gsup_error_reply(struct gsm_subscriber *subscr,
+static int gprs_subscr_tx_gsup_error_reply(struct gprs_subscr *subscr,
 					   struct osmo_gsup_message *gsup_orig,
 					   enum gsm48_gmm_cause cause)
 {
@@ -196,7 +226,7 @@ static int gprs_subscr_tx_gsup_error_reply(struct gsm_subscriber *subscr,
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
 }
 
-static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
+static int gprs_subscr_handle_gsup_auth_res(struct gprs_subscr *subscr,
 					    struct osmo_gsup_message *gsup_msg)
 {
 	unsigned idx;
@@ -235,7 +265,7 @@ static int gprs_subscr_handle_gsup_auth_res(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-static int gprs_subscr_pdp_data_clear(struct gsm_subscriber *subscr)
+static int gprs_subscr_pdp_data_clear(struct gprs_subscr *subscr)
 {
 	struct sgsn_subscriber_pdp_data *pdp, *pdp2;
 	int count = 0;
@@ -250,7 +280,7 @@ static int gprs_subscr_pdp_data_clear(struct gsm_subscriber *subscr)
 }
 
 static struct sgsn_subscriber_pdp_data *gprs_subscr_pdp_data_get_by_id(
-	struct gsm_subscriber *subscr, unsigned context_id)
+	struct gprs_subscr *subscr, unsigned context_id)
 {
 	struct sgsn_subscriber_pdp_data *pdp;
 
@@ -263,7 +293,7 @@ static struct sgsn_subscriber_pdp_data *gprs_subscr_pdp_data_get_by_id(
 }
 
 
-static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
+static void gprs_subscr_gsup_insert_data(struct gprs_subscr *subscr,
 					 struct osmo_gsup_message *gsup_msg)
 {
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
@@ -340,7 +370,7 @@ static void gprs_subscr_gsup_insert_data(struct gsm_subscriber *subscr,
 	}
 }
 
-static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
+static int gprs_subscr_handle_gsup_upd_loc_res(struct gprs_subscr *subscr,
 					       struct osmo_gsup_message *gsup_msg)
 {
 	/* contrary to MAP, we allow piggy-backing subscriber data onto
@@ -357,7 +387,7 @@ static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-static int gprs_subscr_handle_gsup_dsd_req(struct gsm_subscriber *subscr,
+static int gprs_subscr_handle_gsup_dsd_req(struct gprs_subscr *subscr,
 					   struct osmo_gsup_message *gsup_msg)
 {
 	struct osmo_gsup_message gsup_reply = {0};
@@ -377,7 +407,7 @@ static int gprs_subscr_handle_gsup_dsd_req(struct gsm_subscriber *subscr,
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
 }
 
-static int gprs_subscr_handle_gsup_isd_req(struct gsm_subscriber *subscr,
+static int gprs_subscr_handle_gsup_isd_req(struct gprs_subscr *subscr,
 					   struct osmo_gsup_message *gsup_msg)
 {
 	struct osmo_gsup_message gsup_reply = {0};
@@ -409,7 +439,7 @@ static int check_cause(int cause)
 	}
 }
 
-static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
+static int gprs_subscr_handle_gsup_auth_err(struct gprs_subscr *subscr,
 					    struct osmo_gsup_message *gsup_msg)
 {
 	unsigned idx;
@@ -462,7 +492,7 @@ static int gprs_subscr_handle_gsup_auth_err(struct gsm_subscriber *subscr,
 	return -gsup_msg->cause;
 }
 
-static int gprs_subscr_handle_gsup_upd_loc_err(struct gsm_subscriber *subscr,
+static int gprs_subscr_handle_gsup_upd_loc_err(struct gprs_subscr *subscr,
 					       struct osmo_gsup_message *gsup_msg)
 {
 	int cause_err;
@@ -523,7 +553,7 @@ static int gprs_subscr_handle_gsup_purge_no_subscr(
 	return 0;
 }
 
-static int gprs_subscr_handle_gsup_purge_res(struct gsm_subscriber *subscr,
+static int gprs_subscr_handle_gsup_purge_res(struct gprs_subscr *subscr,
 					     struct osmo_gsup_message *gsup_msg)
 {
 	LOGGSUBSCRP(LOGL_INFO, subscr, "Completing purge MS\n");
@@ -535,7 +565,7 @@ static int gprs_subscr_handle_gsup_purge_res(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-static int gprs_subscr_handle_gsup_purge_err(struct gsm_subscriber *subscr,
+static int gprs_subscr_handle_gsup_purge_err(struct gprs_subscr *subscr,
 					     struct osmo_gsup_message *gsup_msg)
 {
 	LOGGSUBSCRP(LOGL_NOTICE, subscr,
@@ -568,7 +598,7 @@ static int gprs_subscr_handle_gsup_purge_err(struct gsm_subscriber *subscr,
 	return -gsup_msg->cause;
 }
 
-static int gprs_subscr_handle_loc_cancel_req(struct gsm_subscriber *subscr,
+static int gprs_subscr_handle_loc_cancel_req(struct gprs_subscr *subscr,
 					     struct osmo_gsup_message *gsup_msg)
 {
 	struct osmo_gsup_message gsup_reply = {0};
@@ -629,7 +659,7 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 	int rc = 0;
 
 	struct osmo_gsup_message gsup_msg = {0};
-	struct gsm_subscriber *subscr;
+	struct gprs_subscr *subscr;
 
 	rc = osmo_gsup_decode(data, data_len, &gsup_msg);
 	if (rc < 0) {
@@ -715,12 +745,12 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		break;
 	};
 
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 
 	return rc;
 }
 
-int gprs_subscr_purge(struct gsm_subscriber *subscr)
+int gprs_subscr_purge(struct gprs_subscr *subscr)
 {
 	struct sgsn_subscriber_data *sdata = subscr->sgsn_data;
 	struct osmo_gsup_message gsup_msg = {0};
@@ -736,7 +766,7 @@ int gprs_subscr_purge(struct gsm_subscriber *subscr)
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 
-int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
+int gprs_subscr_query_auth_info(struct gprs_subscr *subscr)
 {
 	struct osmo_gsup_message gsup_msg = {0};
 
@@ -747,7 +777,7 @@ int gprs_subscr_query_auth_info(struct gsm_subscriber *subscr)
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 
-int gprs_subscr_location_update(struct gsm_subscriber *subscr)
+int gprs_subscr_location_update(struct gprs_subscr *subscr)
 {
 	struct osmo_gsup_message gsup_msg = {0};
 
@@ -758,60 +788,59 @@ int gprs_subscr_location_update(struct gsm_subscriber *subscr)
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 
-void gprs_subscr_update(struct gsm_subscriber *subscr)
+void gprs_subscr_update(struct gprs_subscr *subscr)
 {
 	LOGGSUBSCRP(LOGL_DEBUG, subscr, "Updating subscriber data\n");
 
 	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING;
-	subscr->flags &= ~GSM_SUBSCRIBER_FIRST_CONTACT;
+	subscr->flags &= ~GPRS_SUBSCRIBER_FIRST_CONTACT;
 
 	if (subscr->sgsn_data->mm)
 		sgsn_update_subscriber_data(subscr->sgsn_data->mm);
 }
 
-void gprs_subscr_update_auth_info(struct gsm_subscriber *subscr)
+void gprs_subscr_update_auth_info(struct gprs_subscr *subscr)
 {
 	LOGGSUBSCRP(LOGL_DEBUG, subscr,
 		"Updating subscriber authentication info\n");
 
 	subscr->flags &= ~GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING;
-	subscr->flags &= ~GSM_SUBSCRIBER_FIRST_CONTACT;
+	subscr->flags &= ~GPRS_SUBSCRIBER_FIRST_CONTACT;
 
 	if (subscr->sgsn_data->mm)
 		sgsn_update_subscriber_data(subscr->sgsn_data->mm);
 }
 
-struct gsm_subscriber *gprs_subscr_get_or_create_by_mmctx(struct sgsn_mm_ctx *mmctx)
+struct gprs_subscr *gprs_subscr_get_or_create_by_mmctx(struct sgsn_mm_ctx *mmctx)
 {
-	struct gsm_subscriber *subscr = NULL;
+	struct gprs_subscr *subscr = NULL;
 
 	if (mmctx->subscr)
-		return subscr_get(mmctx->subscr);
+		return gprs_subscr_get(mmctx->subscr);
 
 	if (mmctx->imsi[0])
 		subscr = gprs_subscr_get_by_imsi(mmctx->imsi);
 
 	if (!subscr) {
 		subscr = gprs_subscr_get_or_create(mmctx->imsi);
-		subscr->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
+		subscr->flags |= GPRS_SUBSCRIBER_FIRST_CONTACT;
 		subscr->flags &= ~GPRS_SUBSCRIBER_ENABLE_PURGE;
 	}
 
-	osmo_strlcpy(subscr->equipment.imei, mmctx->imei,
-		     sizeof(subscr->equipment.imei));
+	osmo_strlcpy(subscr->imei, mmctx->imei, sizeof(subscr->imei));
 
 	if (subscr->lac != mmctx->ra.lac)
 		subscr->lac = mmctx->ra.lac;
 
 	subscr->sgsn_data->mm = mmctx;
-	mmctx->subscr = subscr_get(subscr);
+	mmctx->subscr = gprs_subscr_get(subscr);
 
 	return subscr;
 }
 
 int gprs_subscr_request_update_location(struct sgsn_mm_ctx *mmctx)
 {
-	struct gsm_subscriber *subscr = NULL;
+	struct gprs_subscr *subscr = NULL;
 	int rc;
 
 	LOGMMCTXP(LOGL_DEBUG, mmctx, "Requesting subscriber data update\n");
@@ -821,13 +850,13 @@ int gprs_subscr_request_update_location(struct sgsn_mm_ctx *mmctx)
 	subscr->flags |= GPRS_SUBSCRIBER_UPDATE_LOCATION_PENDING;
 
 	rc = gprs_subscr_location_update(subscr);
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 	return rc;
 }
 
 int gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx)
 {
-	struct gsm_subscriber *subscr = NULL;
+	struct gprs_subscr *subscr = NULL;
 	int rc;
 
 	LOGMMCTXP(LOGL_DEBUG, mmctx, "Requesting subscriber authentication info\n");
@@ -837,6 +866,40 @@ int gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx)
 	subscr->flags |= GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING;
 
 	rc = gprs_subscr_query_auth_info(subscr);
-	subscr_put(subscr);
+	gprs_subscr_put(subscr);
 	return rc;
+}
+
+static void gprs_subscr_free(struct gprs_subscr *gsub)
+{
+	llist_del(&gsub->entry);
+	talloc_free(gsub);
+}
+
+struct gprs_subscr *_gprs_subscr_get(struct gprs_subscr *gsub,
+				     const char *file, int line)
+{
+	OSMO_ASSERT(gsub->use_count < INT_MAX);
+	gsub->use_count++;
+	LOGPSRC(DREF, LOGL_DEBUG, file, line,
+		"subscr %s usage increases to: %d\n",
+		gsub->imsi, gsub->use_count);
+	return gsub;
+}
+
+struct gprs_subscr *_gprs_subscr_put(struct gprs_subscr *gsub,
+				     const char *file, int line)
+{
+	gsub->use_count--;
+	LOGPSRC(DREF, gsub->use_count >= 0? LOGL_DEBUG : LOGL_ERROR,
+		file, line,
+		"subscr %s usage decreases to: %d%s\n",
+		gsub->imsi, gsub->use_count,
+		gsub->keep_in_ram? ", keep-in-ram flag is set" : "");
+	if (gsub->use_count > 0)
+		return gsub;
+	if (gsub->keep_in_ram)
+		return gsub;
+	gprs_subscr_free(gsub);
+	return NULL;
 }

@@ -31,6 +31,7 @@ noinst_HEADERS = \
 	gprs_sndcp_dcomp.h \
 	gprs_sndcp_pcomp.h \
 	gprs_sndcp_xid.h \
+	gprs_subscriber.h \
 	gprs_utils.h \
 	gsm_04_08.h \
 	gsm_04_11.h \
