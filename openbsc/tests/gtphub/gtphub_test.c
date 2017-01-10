@@ -56,18 +56,6 @@ void gtphub_free(struct gtphub *hub);
 
 void *osmo_gtphub_ctx;
 
-/* TODO copied from libosmo-abis/src/subchan_demux.c, remove dup */
-static int llist_len(struct llist_head *head)
-{
-	struct llist_head *entry;
-	int i = 0;
-
-	llist_for_each(entry, head)
-		i++;
-
-	return i;
-}
-
 static void nr_mapping_free(struct expiring_item *e)
 {
 	struct nr_mapping *m = container_of(e, struct nr_mapping,
@@ -174,11 +162,11 @@ static void test_nr_map_basic(void)
 		mapping = nr_map_have(map, origin1, orig, 0);
 		m[i] = mapping->repl;
 		OSMO_ASSERT(m[i] != 0);
-		OSMO_ASSERT(llist_len(&map->mappings) == (i+1));
+		OSMO_ASSERT(llist_count(&map->mappings) == (i+1));
 		for (check_i = 0; check_i < i; check_i++)
 			OSMO_ASSERT(m[check_i] != m[i]);
 	}
-	OSMO_ASSERT(llist_len(&map->mappings) == TEST_N_HALF);
+	OSMO_ASSERT(llist_count(&map->mappings) == TEST_N_HALF);
 
 	/* create another TEST_N mappings with the same original numbers, but
 	 * from a different origin */
@@ -189,11 +177,11 @@ static void test_nr_map_basic(void)
 		mapping = nr_map_have(map, origin2, orig, 0);
 		m[i2] = mapping->repl;
 		OSMO_ASSERT(m[i2] != 0);
-		OSMO_ASSERT(llist_len(&map->mappings) == (i2+1));
+		OSMO_ASSERT(llist_count(&map->mappings) == (i2+1));
 		for (check_i = 0; check_i < i2; check_i++)
 			OSMO_ASSERT(m[check_i] != m[i2]);
 	}
-	OSMO_ASSERT(llist_len(&map->mappings) == TEST_N);
+	OSMO_ASSERT(llist_count(&map->mappings) == TEST_N);
 
 	/* verify mappings */
 	for (i = 0; i < TEST_N_HALF; i++) {
@@ -213,7 +201,7 @@ static void test_nr_map_basic(void)
 
 	/* remove all mappings */
 	for (i = 0; i < TEST_N_HALF; i++) {
-		OSMO_ASSERT(llist_len(&map->mappings) == (TEST_N - 2*i));
+		OSMO_ASSERT(llist_count(&map->mappings) == (TEST_N - 2*i));
 
 		nr_t orig = TEST_I + i;
 		nr_mapping_del(nr_map_get(map, origin1, orig));
