@@ -37,6 +37,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/talloc.h>
@@ -281,25 +282,32 @@ static int rx_fail_evt_rep(struct msgb *mb)
 	const uint8_t *p_val;
 	char *p_text;
 
-	LOGPC(DNM, LOGL_ERROR, "Failure Event Report ");
-	
+	LOGPC(DNM, LOGL_ERROR, "Failure Event Report: ");
+
 	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
 
 	if (TLVP_PRESENT(&tp, NM_ATT_EVENT_TYPE))
-		LOGPC(DNM, LOGL_ERROR, "Type=%s ",
+		LOGPC(DNM, LOGL_ERROR, "Type=%s, ",
 		      abis_nm_event_type_name(*TLVP_VAL(&tp, NM_ATT_EVENT_TYPE)));
 	if (TLVP_PRESENT(&tp, NM_ATT_SEVERITY))
-		LOGPC(DNM, LOGL_ERROR, "Severity=%s ",
+		LOGPC(DNM, LOGL_ERROR, "Severity=%s, ",
 		      abis_nm_severity_name(*TLVP_VAL(&tp, NM_ATT_SEVERITY)));
 	if (TLVP_PRESENT(&tp, NM_ATT_PROB_CAUSE)) {
 		p_val = TLVP_VAL(&tp, NM_ATT_PROB_CAUSE);
-		LOGPC(DNM, LOGL_ERROR, "Probable cause= %02X %02X %02X ", p_val[0], p_val[1], p_val[2]);
+		LOGPC(DNM, LOGL_ERROR, "Probable cause=%s: ",
+		      get_value_string(abis_nm_pcause_type_names, p_val[0]));
+		if (p_val[0] == NM_PCAUSE_T_MANUF)
+			LOGPC(DNM, LOGL_ERROR, "%s, ",
+			      get_value_string(abis_mm_event_cause_names,
+					       osmo_load16be(p_val + 1)));
+		else
+			LOGPC(DNM, LOGL_ERROR, "%02X %02X ", p_val[1], p_val[2]);
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_ADD_TEXT)) {
 		p_val = TLVP_VAL(&tp, NM_ATT_ADD_TEXT);
 		p_text = talloc_strndup(tall_bsc_ctx, (const char *) p_val, TLVP_LEN(&tp, NM_ATT_ADD_TEXT));
 		if (p_text) {
-			LOGPC(DNM, LOGL_ERROR, "Additional Text=%s ", p_text);
+			LOGPC(DNM, LOGL_ERROR, "Additional Text=%s. ", p_text);
 			talloc_free(p_text);
 		}
 	}
