@@ -30,8 +30,14 @@ def get_var(sck, var):
         (_, _, v) = do_set_get(sck, var)
         return v
 
-def _leftovers(sck):
-        data = sck.recv(1024)
+def _leftovers(sck, fl):
+        """
+        Read outstanding data if any according to flags
+        """
+        try:
+                data = sck.recv(1024, fl)
+        except socket.error as (s_errno, strerror):
+                return False
         if len(data) != 0:
                 tail = data
                 while True:
@@ -75,19 +81,19 @@ if __name__ == '__main__':
         if options.cmd_set:
                 if len(args) < 2:
                         parser.error("Set requires var and value arguments")
-                _leftovers(sock)
+                _leftovers(sock, socket.MSG_DONTWAIT)
                 print "Got message:", set_var(sock, args[0], ' '.join(args[1:]))
 
         if options.cmd_get:
                 if len(args) != 1:
                         parser.error("Get requires the var argument")
-                _leftovers(sock)
+                _leftovers(sock, socket.MSG_DONTWAIT)
                 (a, _, _) = do_set_get(sock, args[0])
                 print "Got message:", a
 
         if options.monitor:
                 while True:
-                        if not _leftovers(sock):
+                        if not _leftovers(sock, 0):
                                 print "Connection is gone."
                                 break
         sock.close()
