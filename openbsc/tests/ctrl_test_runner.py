@@ -219,7 +219,7 @@ class TestCtrlBSC(TestCtrlBase):
     def testBtsGenerateSystemInformation(self):
         r = self.do_get('bts.0.send-new-system-informations')
         self.assertEquals(r['mtype'], 'ERROR')
-        self.assertEquals(r['error'], 'Write only attribute')
+        self.assertEquals(r['error'], 'Write Only attribute')
 
         # No RSL links so it will fail
         r = self.do_set('bts.0.send-new-system-informations', '1')
@@ -229,7 +229,7 @@ class TestCtrlBSC(TestCtrlBase):
     def testBtsChannelLoad(self):
         r = self.do_set('bts.0.channel-load', '1')
         self.assertEquals(r['mtype'], 'ERROR')
-        self.assertEquals(r['error'], 'Read only attribute')
+        self.assertEquals(r['error'], 'Read Only attribute')
 
         # No RSL link so everything is 0
         r = self.do_get('bts.0.channel-load')
@@ -243,7 +243,7 @@ class TestCtrlBSC(TestCtrlBase):
         """Check OML state. It will not be connected"""
         r = self.do_set('bts.0.oml-connection-state', '1')
         self.assertEquals(r['mtype'], 'ERROR')
-        self.assertEquals(r['error'], 'Read only attribute')
+        self.assertEquals(r['error'], 'Read Only attribute')
 
         # No RSL link so everything is 0
         r = self.do_get('bts.0.oml-connection-state')
@@ -531,7 +531,7 @@ class TestCtrlNITB(TestCtrlBase):
     def testApplyConfiguration(self):
         r = self.do_get('bts.0.apply-configuration')
         self.assertEquals(r['mtype'], 'ERROR')
-        self.assertEquals(r['error'], 'Write only attribute')
+        self.assertEquals(r['error'], 'Write Only attribute')
 
         r = self.do_set('bts.0.apply-configuration', '1')
         self.assertEquals(r['mtype'], 'SET_REPLY')

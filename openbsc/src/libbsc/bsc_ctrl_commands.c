@@ -70,17 +70,6 @@ CTRL_CMD_DEFINE_RANGE(net_mcc, "mcc", struct gsm_network, country_code, 1, 999);
 CTRL_CMD_VTY_STRING(net_short_name, "short-name", struct gsm_network, name_short);
 CTRL_CMD_VTY_STRING(net_long_name, "long-name", struct gsm_network, name_long);
 
-static int verify_net_apply_config(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
-
-static int get_net_apply_config(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Write only attribute";
-	return CTRL_CMD_ERROR;
-}
-
 static int set_net_apply_config(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net = cmd->node;
@@ -107,7 +96,7 @@ static int set_net_apply_config(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-CTRL_CMD_DEFINE(net_apply_config, "apply-configuration");
+CTRL_CMD_DEFINE_WO_NOVRF(net_apply_config, "apply-configuration");
 
 static int verify_net_mcc_mnc_apply(struct ctrl_cmd *cmd, const char *value, void *d)
 {
@@ -124,12 +113,6 @@ static int verify_net_mcc_mnc_apply(struct ctrl_cmd *cmd, const char *value, voi
 	if (!mcc || !mnc)
 		return 1;
 	return 0;
-}
-
-static int get_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Write only attribute";
-	return CTRL_CMD_ERROR;
 }
 
 static int set_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
@@ -165,22 +148,11 @@ oom:
 	cmd->reply = "OOM";
 	return CTRL_CMD_ERROR;
 }
-CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
+CTRL_CMD_DEFINE_WO(net_mcc_mnc_apply, "mcc-mnc-apply");
 
 /* BTS related commands below */
 CTRL_CMD_DEFINE_RANGE(bts_lac, "location-area-code", struct gsm_bts, location_area_code, 0, 65535);
 CTRL_CMD_DEFINE_RANGE(bts_ci, "cell-identity", struct gsm_bts, cell_identity, 0, 65535);
-
-static int verify_bts_apply_config(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
-
-static int get_bts_apply_config(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Write only attribute";
-	return CTRL_CMD_ERROR;
-}
 
 static int set_bts_apply_config(struct ctrl_cmd *cmd, void *data)
 {
@@ -196,18 +168,7 @@ static int set_bts_apply_config(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-CTRL_CMD_DEFINE(bts_apply_config, "apply-configuration");
-
-static int verify_bts_si(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-    return 0;
-}
-
-static int get_bts_si(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Write only attribute";
-	return CTRL_CMD_ERROR;
-}
+CTRL_CMD_DEFINE_WO_NOVRF(bts_apply_config, "apply-configuration");
 
 static int set_bts_si(struct ctrl_cmd *cmd, void *data)
 {
@@ -223,12 +184,7 @@ static int set_bts_si(struct ctrl_cmd *cmd, void *data)
 	cmd->reply = "Generated new System Information";
 	return CTRL_CMD_REPLY;
 }
-CTRL_CMD_DEFINE(bts_si, "send-new-system-informations");
-
-static int verify_bts_chan_load(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
+CTRL_CMD_DEFINE_WO_NOVRF(bts_si, "send-new-system-informations");
 
 static int get_bts_chan_load(struct ctrl_cmd *cmd, void *data)
 {
@@ -271,23 +227,7 @@ error:
 	return CTRL_CMD_ERROR;
 }
 
-static int set_bts_chan_load(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Read only attribute";
-	return CTRL_CMD_ERROR;
-}
-CTRL_CMD_DEFINE(bts_chan_load, "channel-load");
-
-static int verify_bts_oml_conn(struct ctrl_cmd *cmd, const char *value, void *_data)
-{
-	struct gsm_bts *bts = cmd->node;
-
-	if (!is_ipaccess_bts(bts)) {
-		cmd->reply = "";
-		return -1;
-	}
-	return 0;
-}
+CTRL_CMD_DEFINE_RO(bts_chan_load, "channel-load");
 
 static int get_bts_oml_conn(struct ctrl_cmd *cmd, void *data)
 {
@@ -297,12 +237,7 @@ static int get_bts_oml_conn(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-static int set_bts_oml_conn(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Read only attribute";
-	return CTRL_CMD_ERROR;
-}
-CTRL_CMD_DEFINE(bts_oml_conn, "oml-connection-state");
+CTRL_CMD_DEFINE_RO(bts_oml_conn, "oml-connection-state");
 
 static int verify_bts_gprs_mode(struct ctrl_cmd *cmd, const char *value, void *_data)
 {

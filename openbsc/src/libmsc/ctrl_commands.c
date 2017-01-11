@@ -75,12 +75,6 @@ static int verify_subscriber_modify(struct ctrl_cmd *cmd, const char *value, voi
 	return rc;
 }
 
-static int get_subscriber_modify(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Set only attribute";
-	return CTRL_CMD_ERROR;
-}
-
 static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net = cmd->node;
@@ -157,18 +151,7 @@ fail:
 	return CTRL_CMD_ERROR;
 }
 
-CTRL_CMD_DEFINE(subscriber_modify, "subscriber-modify-v1");
-
-static int verify_subscriber_delete(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
-
-static int get_subscriber_delete(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Set only attribute";
-	return CTRL_CMD_ERROR;
-}
+CTRL_CMD_DEFINE_WO(subscriber_modify, "subscriber-modify-v1");
 
 static int set_subscriber_delete(struct ctrl_cmd *cmd, void *data)
 {
@@ -199,7 +182,7 @@ static int set_subscriber_delete(struct ctrl_cmd *cmd, void *data)
 	cmd->reply = was_used ? "Removed active subscriber" : "Removed";
 	return CTRL_CMD_REPLY;
 }
-CTRL_CMD_DEFINE(subscriber_delete, "subscriber-delete-v1");
+CTRL_CMD_DEFINE_WO_NOVRF(subscriber_delete, "subscriber-delete-v1");
 
 static int verify_subscriber_list(struct ctrl_cmd *cmd, const char *value, void *d)
 {

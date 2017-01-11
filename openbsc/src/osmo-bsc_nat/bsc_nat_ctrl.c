@@ -446,11 +446,7 @@ static int verify_net_cfg_acc_cmd(struct ctrl_cmd *cmd, const char *value, void 
 	return 0;
 }
 
-CTRL_CMD_DEFINE(net_save_cmd, "net 0 save-configuration");
-static int verify_net_save_cmd(struct ctrl_cmd *cmd, const char *v, void *d)
-{
-	return 0;
-}
+CTRL_CMD_DEFINE_WO_NOVRF(net_save_cmd, "net 0 save-configuration");
 
 static int set_net_save_cmd(struct ctrl_cmd *cmd, void *data)
 {
@@ -462,12 +458,6 @@ static int set_net_save_cmd(struct ctrl_cmd *cmd, void *data)
 	}
 
 	return CTRL_CMD_REPLY;
-}
-
-static int get_net_save_cmd(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "Write only attribute";
-	return CTRL_CMD_ERROR;
 }
 
 struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat,
