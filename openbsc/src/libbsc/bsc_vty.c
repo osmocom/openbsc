@@ -3851,7 +3851,7 @@ DEFUN(pdch_act, pdch_act_cmd,
 
 extern int bsc_vty_init_extra(void);
 
-int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
+int bsc_vty_init(struct gsm_network *network)
 {
 	cfg_ts_pchan_cmd.string =
 		vty_cmd_string_from_valstr(tall_bsc_ctx,
@@ -3887,7 +3887,7 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	install_element_ve(&show_paging_cmd);
 	install_element_ve(&show_paging_group_cmd);
 
-	logging_vty_add_cmds(cat);
+	logging_vty_add_cmds(NULL);
 	osmo_stats_vty_add_cmds();
 
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);

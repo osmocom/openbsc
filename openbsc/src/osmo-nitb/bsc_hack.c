@@ -283,7 +283,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Initialize VTY */
-	bsc_vty_init(&log_info, bsc_gsmnet);
+	bsc_vty_init(bsc_gsmnet);
 	ctrl_vty_init(tall_bsc_ctx);
 
 #ifdef BUILD_SMPP

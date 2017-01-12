@@ -241,7 +241,7 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds(&gprs_log_info);
+	logging_vty_add_cmds(NULL);
 	osmo_stats_vty_add_cmds(&gprs_log_info);
 	gbproxy_vty_init();
 

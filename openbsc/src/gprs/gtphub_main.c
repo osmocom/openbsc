@@ -311,7 +311,7 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = gtphub_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds(&gtphub_log_info);
+	logging_vty_add_cmds(NULL);
         gtphub_vty_init(hub, cfg);
 
 	rate_ctr_init(osmo_gtphub_ctx);

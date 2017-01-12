@@ -1329,8 +1329,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 
 /* called by the telnet interface... we have our own init above */
-int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
+int bsc_vty_init(struct gsm_network *network)
 {
-	logging_vty_add_cmds(cat);
+	logging_vty_add_cmds(NULL);
 	return 0;
 }
