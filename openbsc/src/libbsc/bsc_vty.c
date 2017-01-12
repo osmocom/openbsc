@@ -274,6 +274,9 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->si_common.chan_desc.bs_ag_blks_res, VTY_NEWLINE);
 	vty_out(vty, "System Information present: 0x%08x, static: 0x%08x%s",
 		bts->si_valid, bts->si_mode_static, VTY_NEWLINE);
+	vty_out(vty, "Early Classmark Sending: %s%s",
+		bts->early_classmark_allowed ? "allowed" : "forbidden",
+		VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  Unit ID: %u/%u/0, OML Stream ID 0x%02x%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
@@ -641,6 +644,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 				VTY_NEWLINE);
 		}
 	}
+	vty_out(vty, "  early-classmark-sending %s%s",
+		bts->early_classmark_allowed ? "allowed" : "forbidden", VTY_NEWLINE);
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMO_SYSMO:
@@ -2674,6 +2679,23 @@ DEFUN(cfg_bts_si_static, cfg_bts_si_static_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_early_cm, cfg_bts_early_cm_cmd,
+	"early-classmark-sending (allowed|forbidden)",
+	"Early Classmark Sending\n"
+	"Early Classmark Sending is allowed\n"
+	"Early Classmark Sending is forbidden\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int rc, type;
+
+	if (!strcmp(argv[0], "allowed"))
+		bts->early_classmark_allowed = true;
+	else
+		bts->early_classmark_allowed = false;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_neigh_mode, cfg_bts_neigh_mode_cmd,
 	"neighbor-list mode (automatic|manual|manual-si5)",
 	"Neighbor List\n" "Mode of Neighbor List generation\n"
@@ -3955,6 +3977,7 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	install_element(BTS_NODE, &cfg_bts_pag_free_cmd);
 	install_element(BTS_NODE, &cfg_bts_si_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_si_static_cmd);
+	install_element(BTS_NODE, &cfg_bts_early_cm_cmd);
 	install_element(BTS_NODE, &cfg_bts_neigh_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
@@ -4029,6 +4052,7 @@ int bsc_vty_init(const struct log_info *cat, struct gsm_network *network)
 	abis_nm_vty_init();
 	abis_om2k_vty_init();
 	e1inp_vty_init();
+	osmo_fsm_vty_add_cmds();
 
 	bsc_vty_init_extra();
 

@@ -803,6 +803,7 @@ struct gsm_bts {
 			uint16_t scramble_list[MAX_EARFCN_LIST];
 		} data;
 	} si_common;
+	bool early_classmark_allowed;
 
 	/* do we use static (user-defined) system information messages? (bitmask) */
 	uint32_t si_mode_static;

@@ -764,6 +764,8 @@ static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 	} else {
 		si_info.si2quater_indicator = 0;
 	}
+	si_info.early_cm_ctrl = bts->early_classmark_allowed;
+
 	/* SI3 Rest Octets (10.5.2.34), containing
 		CBQ, CELL_RESELECT_OFFSET, TEMPORARY_OFFSET, PENALTY_TIME
 		Power Offset, 2ter Indicator, Early Classmark Sending,
