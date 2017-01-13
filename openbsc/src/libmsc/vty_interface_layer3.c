@@ -601,7 +601,7 @@ DEFUN(ena_subscr_extension,
 		return CMD_WARNING;
 	}
 
-	strncpy(subscr->extension, ext, sizeof(subscr->extension));
+	osmo_strlcpy(subscr->extension, ext, sizeof(subscr->extension));
 	db_sync_subscriber(subscr);
 
 	subscr_put(subscr);

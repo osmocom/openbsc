@@ -25,6 +25,7 @@
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 #include <string.h>
 #include <limits.h>
 #include <dlfcn.h>
@@ -54,7 +55,7 @@ static void test_strline(void)
 	char buf[2048];
 	int counter = 0;
 
-	strncpy(buf, strline_test_data, sizeof(buf));
+	osmo_strlcpy(buf, strline_test_data, sizeof(buf));
 
 	for (line = strline_r(buf, &save); line;
 	     line = strline_r(NULL, &save)) {

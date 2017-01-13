@@ -7,6 +7,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/application.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/gsm/gsup.h>
 
 #include <openbsc/gsup_client.h>
@@ -108,7 +109,7 @@ int req_auth_info(const char *imsi)
 	struct osmo_gsup_message gsup = {0};
 	struct msgb *msg = msgb_alloc_headroom(1200, 200, __func__);
 
-	strncpy(gsup.imsi, io->imsi, sizeof(gsup.imsi));
+	osmo_strlcpy(gsup.imsi, io->imsi, sizeof(gsup.imsi));
 	gsup.message_type = OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST;
 
 	osmo_gsup_encode(msg, &gsup);
@@ -123,7 +124,7 @@ int req_loc_upd(const char *imsi)
 	struct osmo_gsup_message gsup = {0};
 	struct msgb *msg = msgb_alloc_headroom(1200, 200, __func__);
 
-	strncpy(gsup.imsi, io->imsi, sizeof(gsup.imsi));
+	osmo_strlcpy(gsup.imsi, io->imsi, sizeof(gsup.imsi));
 	gsup.message_type = OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST;
 
 	osmo_gsup_encode(msg, &gsup);
@@ -136,7 +137,7 @@ int resp_isd(struct imsi_op *io)
 	struct osmo_gsup_message gsup = {0};
 	struct msgb *msg = msgb_alloc_headroom(1200, 200, __func__);
 
-	strncpy(gsup.imsi, io->imsi, sizeof(gsup.imsi));
+	osmo_strlcpy(gsup.imsi, io->imsi, sizeof(gsup.imsi));
 	gsup.message_type = OSMO_GSUP_MSGT_INSERT_DATA_RESULT;
 
 	osmo_gsup_encode(msg, &gsup);

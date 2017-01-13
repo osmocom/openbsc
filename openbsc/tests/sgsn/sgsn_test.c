@@ -36,6 +36,7 @@
 #include <osmocom/core/application.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/utils.h>
 
 #include <stdio.h>
 
@@ -1292,7 +1293,7 @@ int my_gsup_client_send(struct gsup_client *gsupc, struct msgb *msg)
 	rc = osmo_gsup_decode(msgb_data(msg), msgb_length(msg), &to_peer);
 	OSMO_ASSERT(rc >= 0);
 	OSMO_ASSERT(to_peer.imsi[0] != 0);
-	strncpy(from_peer.imsi, to_peer.imsi, sizeof(from_peer.imsi));
+	osmo_strlcpy(from_peer.imsi, to_peer.imsi, sizeof(from_peer.imsi));
 
 	/* This invalidates the pointers in to_peer */
 	msgb_free(msg);
