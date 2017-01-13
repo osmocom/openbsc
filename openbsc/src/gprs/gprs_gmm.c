@@ -640,7 +640,9 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	    memcmp(TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES), at->vec.sres,
 		   sizeof(at->vec.sres)) != 0) {
 
-		LOGMMCTXP(LOGL_NOTICE, ctx, "Received SRES doesn't match\n");
+		LOGMMCTXP(LOGL_NOTICE, ctx, "Received SRES doesn't match "
+			  "expected RES %s\n", osmo_hexdump(at->vec.sres,
+							    sizeof(at->vec.sres)));
 		rc = gsm48_tx_gmm_auth_ciph_rej(ctx);
 		mm_ctx_cleanup_free(ctx, "GPRS AUTH AND CIPH REJECT");
 		return rc;
