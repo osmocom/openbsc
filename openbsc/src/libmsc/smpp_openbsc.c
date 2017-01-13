@@ -133,12 +133,13 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	sms->receiver = dest;
 	sms->dst.ton = submit->dest_addr_ton;
 	sms->dst.npi = submit->dest_addr_npi;
-	strncpy(sms->dst.addr, dest->extension, sizeof(sms->dst.addr)-1);
+	osmo_strlcpy(sms->dst.addr, dest->extension, sizeof(sms->dst.addr));
 
 	/* fill in the source address */
 	sms->src.ton = submit->source_addr_ton;
 	sms->src.npi = submit->source_addr_npi;
-	strncpy(sms->src.addr, (char *)submit->source_addr, sizeof(sms->src.addr)-1);
+	osmo_strlcpy(sms->src.addr, (char *)submit->source_addr,
+		     sizeof(sms->src.addr));
 
 	if (submit->esm_class & 0x40)
 		sms->ud_hdr_ind = 1;

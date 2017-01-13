@@ -20,6 +20,7 @@
  */
 
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
+#include <osmocom/core/utils.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
@@ -62,7 +63,7 @@ int sgsn_acl_add(const char *imsi, struct sgsn_config *cfg)
 	acl = talloc_zero(NULL, struct imsi_acl_entry);
 	if (!acl)
 		return -ENOMEM;
-	strncpy(acl->imsi, imsi, sizeof(acl->imsi) - 1);
+	osmo_strlcpy(acl->imsi, imsi, sizeof(acl->imsi));
 
 	llist_add(&acl->list, &cfg->imsi_acl);
 

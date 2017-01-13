@@ -121,8 +121,8 @@ static void make_addr_str(struct ggsn_lookup *lookup)
 	apn_oi_str = osmo_apn_qualify_from_imsi(lookup->imsi_str,
 						lookup->apn_ni_str,
 						lookup->have_3dig_mnc);
-	strncpy(lookup->apn_oi_str, apn_oi_str, sizeof(lookup->apn_oi_str));
-	lookup->apn_oi_str[sizeof(lookup->apn_oi_str)-1] = '\0';
+	osmo_strlcpy(lookup->apn_oi_str, apn_oi_str,
+		     sizeof(lookup->apn_oi_str));
 }
 
 static int start_ares_query(struct ggsn_lookup *lookup)
@@ -170,11 +170,9 @@ struct gtphub_peer_port *gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	expiring_item_init(&lookup->expiry_entry);
 	lookup->hub = hub;
 
-	strncpy(lookup->imsi_str, imsi_str, sizeof(lookup->imsi_str));
-	lookup->imsi_str[sizeof(lookup->imsi_str)-1] = '\0';
-
-	strncpy(lookup->apn_ni_str, apn_ni_str, sizeof(lookup->apn_ni_str));
-	lookup->apn_ni_str[sizeof(lookup->apn_ni_str)-1] = '\0';
+	osmo_strlcpy(lookup->imsi_str, imsi_str, sizeof(lookup->imsi_str));
+	osmo_strlcpy(lookup->apn_ni_str, apn_ni_str,
+		     sizeof(lookup->apn_ni_str));
 
 	make_addr_str(lookup);
 

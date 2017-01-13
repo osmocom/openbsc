@@ -29,6 +29,7 @@
 #include <sys/utsname.h> /* uname() */
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 #include <openbsc/gsm_data.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
@@ -368,9 +369,9 @@ static int rtcp_mangle(struct msgb *msg, struct rtp_socket *rs)
 		}
 		if (rtph->type == RTCP_TYPE_SDES) {
 			char new_cname[255];
-			strncpy(new_cname, inet_ntoa(rss->sin_local.sin_addr),
-				sizeof(new_cname));
-			new_cname[sizeof(new_cname)-1] = '\0';
+			osmo_strlcpy(new_cname,
+				     inet_ntoa(rss->sin_local.sin_addr),
+				     sizeof(new_cname));
 			rc = rtcp_sdes_cname_mangle(msg, rtph, &old_len,
 						    new_cname);
 			if (rc < 0)

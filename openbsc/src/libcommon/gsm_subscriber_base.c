@@ -28,6 +28,7 @@
 #include <assert.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
 
@@ -115,7 +116,7 @@ struct gsm_subscriber *subscr_get_or_create(struct gsm_subscriber_group *sgrp,
 	if (!subscr)
 		return NULL;
 
-	strncpy(subscr->imsi, imsi, sizeof(subscr->imsi)-1);
+	osmo_strlcpy(subscr->imsi, imsi, sizeof(subscr->imsi));
 	subscr->group = sgrp;
 	return subscr;
 }

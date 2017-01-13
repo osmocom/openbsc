@@ -567,8 +567,7 @@ DEFUN(ena_subscr_name,
 		return CMD_WARNING;
 	}
 
-	strncpy(subscr->name, name, sizeof(subscr->name));
-	subscr->name[sizeof(subscr->name)-1] = '\0';
+	osmo_strlcpy(subscr->name, name, sizeof(subscr->name));
 	talloc_free(name);
 	db_sync_subscriber(subscr);
 

@@ -37,6 +37,7 @@
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/gsm0411_utils.h>
@@ -92,15 +93,15 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver,
 		return NULL;
 
 	sms->receiver = subscr_get(receiver);
-	strncpy(sms->text, text, sizeof(sms->text)-1);
+	osmo_strlcpy(sms->text, text, sizeof(sms->text));
 
-	strncpy(sms->src.addr, sender->extension, sizeof(sms->src.addr)-1);
+	osmo_strlcpy(sms->src.addr, sender->extension, sizeof(sms->src.addr));
 	sms->reply_path_req = 0;
 	sms->status_rep_req = 0;
 	sms->ud_hdr_ind = 0;
 	sms->protocol_id = 0; /* implicit */
 	sms->data_coding_scheme = dcs;
-	strncpy(sms->dst.addr, receiver->extension, sizeof(sms->dst.addr)-1);
+	osmo_strlcpy(sms->dst.addr, receiver->extension, sizeof(sms->dst.addr));
 	/* Generate user_data */
 	sms->user_data_len = gsm_7bit_encode_n(sms->user_data, sizeof(sms->user_data),
 						sms->text, NULL);
@@ -464,7 +465,8 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 		}
 	}
 
-	strncpy(gsms->src.addr, conn->subscr->extension, sizeof(gsms->src.addr)-1);
+	osmo_strlcpy(gsms->src.addr, conn->subscr->extension,
+		     sizeof(gsms->src.addr));
 
 	LOGP(DLSMS, LOGL_INFO, "RX SMS: Sender: %s, MTI: 0x%02x, VPF: 0x%02x, "
 	     "MR: 0x%02x PID: 0x%02x, DCS: 0x%02x, DA: %s, "

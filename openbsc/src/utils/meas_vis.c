@@ -73,7 +73,7 @@ static struct ms_state *find_alloc_ms(const char *imsi)
 	ms = find_ms(imsi);
 	if (!ms) {
 		ms = talloc_zero(NULL, struct ms_state);
-		strncpy(ms->imsi, imsi, sizeof(ms->imsi)-1);
+		osmo_strlcpy(ms->imsi, imsi, sizeof(ms->imsi));
 		ms->ul._lbl[0] = ms->ul.label;
 		ms->dl._lbl[0] = ms->dl.label;
 		llist_add_tail(&ms->list, &g_st.ms_list);
@@ -88,7 +88,7 @@ static int handle_meas(struct msgb *msg)
 	struct ms_state *ms = find_alloc_ms(mfm->imsi);
 	time_t now = time(NULL);
 
-	strncpy(ms->name, mfm->name, sizeof(ms->imsi)-1);
+	osmo_strlcpy(ms->name, mfm->name, sizeof(ms->name));
 	memcpy(&ms->mr, &mfm->mr, sizeof(ms->mr));
 	ms->ul.last_update = now;
 	if (ms->mr.flags & MEAS_REP_F_DL_VALID)

@@ -65,6 +65,7 @@
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/gsm/tlv.h>
 
 #include <assert.h>
@@ -1973,10 +1974,9 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 
 	/* use subscriber as calling party number */
 	setup.fields |= MNCC_F_CALLING;
-	strncpy(setup.calling.number, trans->subscr->extension,
-		sizeof(setup.calling.number)-1);
-	strncpy(setup.imsi, trans->subscr->imsi,
-		sizeof(setup.imsi)-1);
+	osmo_strlcpy(setup.calling.number, trans->subscr->extension,
+		     sizeof(setup.calling.number));
+	osmo_strlcpy(setup.imsi, trans->subscr->imsi, sizeof(setup.imsi));
 
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
@@ -2153,8 +2153,8 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 	}
 
 	/* IMSI of called subscriber */
-	strncpy(call_conf.imsi, trans->subscr->imsi,
-		sizeof(call_conf.imsi)-1);
+	osmo_strlcpy(call_conf.imsi, trans->subscr->imsi,
+		     sizeof(call_conf.imsi));
 
 	new_cc_state(trans, GSM_CSTATE_MO_TERM_CALL_CONF);
 
@@ -2307,10 +2307,9 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* use subscriber as connected party number */
 	connect.fields |= MNCC_F_CONNECTED;
-	strncpy(connect.connected.number, trans->subscr->extension,
-		sizeof(connect.connected.number)-1);
-	strncpy(connect.imsi, trans->subscr->imsi,
-		sizeof(connect.imsi)-1);
+	osmo_strlcpy(connect.connected.number, trans->subscr->extension,
+		     sizeof(connect.connected.number));
+	osmo_strlcpy(connect.imsi, trans->subscr->imsi, sizeof(connect.imsi));
 
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {

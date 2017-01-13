@@ -2360,8 +2360,7 @@ void gtphub_resolved_ggsn(struct gtphub *hub, const char *apn_oi_str,
 	ggsn->peer = pp;
 	gtphub_port_ref_count_inc(pp);
 
-	strncpy(ggsn->apn_oi_str, apn_oi_str, sizeof(ggsn->apn_oi_str));
-	ggsn->apn_oi_str[sizeof(ggsn->apn_oi_str) - 1] = '\0';
+	osmo_strlcpy(ggsn->apn_oi_str, apn_oi_str, sizeof(ggsn->apn_oi_str));
 
 	ggsn->expiry_entry.del_cb = resolved_gssn_del_cb;
 	expiry_add(&hub->expire_slowly, &ggsn->expiry_entry, now);

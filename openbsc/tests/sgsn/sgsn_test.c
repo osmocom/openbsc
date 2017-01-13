@@ -2248,7 +2248,7 @@ static void test_ggsn_selection(void)
 	/* Create a context */
 	OSMO_ASSERT(count(gprs_llme_list()) == 0);
 	ctx = alloc_mm_ctx(local_tlli, &raid);
-	strncpy(ctx->imsi, imsi1, sizeof(ctx->imsi) - 1);
+	osmo_strlcpy(ctx->imsi, imsi1, sizeof(ctx->imsi));
 
 	/* Allocate and attach a subscriber */
 	s1 = gprs_subscr_get_or_create_by_mmctx(ctx);
@@ -2273,7 +2273,7 @@ static void test_ggsn_selection(void)
 	pdp_data = sgsn_subscriber_pdp_data_alloc(s1->sgsn_data);
 	pdp_data->context_id = 1;
 	pdp_data->pdp_type = 0x0121;
-	strncpy(pdp_data->apn_str, "*", sizeof(pdp_data->apn_str)-1);
+	osmo_strlcpy(pdp_data->apn_str, "*", sizeof(pdp_data->apn_str));
 
 	/* Resolve GGSNs */
 
@@ -2326,7 +2326,7 @@ static void test_ggsn_selection(void)
 
 	/* Add PDP data entry to subscriber */
 
-	strncpy(pdp_data->apn_str, "Test.Apn", sizeof(pdp_data->apn_str)-1);
+	osmo_strlcpy(pdp_data->apn_str, "Test.Apn", sizeof(pdp_data->apn_str));
 
 	tp.lv[GSM48_IE_GSM_APN].len =
 		gprs_str_to_apn(apn_enc, sizeof(apn_enc), "Test.Apn");

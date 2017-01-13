@@ -437,21 +437,15 @@ struct gtphub_peer_port *__wrap_gtphub_resolve_ggsn_addr(struct gtphub *hub,
 	       "  returning GGSN addr from imsi %s ni %s: %s\n",
 	       imsi_str, apn_ni_str, gtphub_port_str(pp));
 
-	if (imsi_str) {
-		strncpy(resolve_ggsn_got_imsi, imsi_str,
-			sizeof(resolve_ggsn_got_imsi));
-		resolve_ggsn_got_imsi[sizeof(resolve_ggsn_got_imsi) - 1] = '\0';
-	}
-	else
-		strcpy(resolve_ggsn_got_imsi, "(null)");
+	if (!imsi_str)
+		imsi_str = "(null)";
+	osmo_strlcpy(resolve_ggsn_got_imsi, imsi_str,
+		     sizeof(resolve_ggsn_got_imsi));
 
-	if (apn_ni_str) {
-		strncpy(resolve_ggsn_got_ni, apn_ni_str,
-			sizeof(resolve_ggsn_got_ni));
-		resolve_ggsn_got_ni[sizeof(resolve_ggsn_got_ni) - 1] = '\0';
-	}
-	else
-		strcpy(resolve_ggsn_got_ni, "(null)");
+	if (!apn_ni_str)
+		apn_ni_str = "(null)";
+	osmo_strlcpy(resolve_ggsn_got_ni, apn_ni_str,
+		     sizeof(resolve_ggsn_got_ni));
 
 	return pp;
 }

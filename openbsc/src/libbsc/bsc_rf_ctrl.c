@@ -451,8 +451,7 @@ static int rf_create_socket(struct osmo_bsc_rf *rf, const char *path)
 	}
 
 	local.sun_family = AF_UNIX;
-	strncpy(local.sun_path, path, sizeof(local.sun_path));
-	local.sun_path[sizeof(local.sun_path) - 1] = '\0';
+	osmo_strlcpy(local.sun_path, path, sizeof(local.sun_path));
 	unlink(local.sun_path);
 
 	/* we use the same magic that X11 uses in Xtranssock.c for

@@ -39,6 +39,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/statistics.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/utils.h>
 
 #include <openssl/rand.h>
 
@@ -240,7 +241,7 @@ static struct gsm_sms *sms_from_result_v3(dbi_result result)
 	snprintf(buf, sizeof(buf), "%llu", sender_id);
 	sender = db_get_subscriber(GSM_SUBSCRIBER_ID, buf);
 	OSMO_ASSERT(sender);
-	strncpy(sms->src.addr, sender->extension, sizeof(sms->src.addr)-1);
+	osmo_strlcpy(sms->src.addr, sender->extension, sizeof(sms->src.addr));
 	subscr_direct_free(sender);
 	sender = NULL;
 
@@ -252,10 +253,8 @@ static struct gsm_sms *sms_from_result_v3(dbi_result result)
 						  "data_coding_scheme");
 
 	daddr = dbi_result_get_string(result, "dest_addr");
-	if (daddr) {
-		strncpy(sms->dst.addr, daddr, sizeof(sms->dst.addr));
-		sms->dst.addr[sizeof(sms->dst.addr)-1] = '\0';
-	}
+	if (daddr)
+		osmo_strlcpy(sms->dst.addr, daddr, sizeof(sms->dst.addr));
 
 	sms->user_data_len = dbi_result_get_field_length(result, "user_data");
 	user_data = dbi_result_get_binary(result, "user_data");
@@ -264,10 +263,8 @@ static struct gsm_sms *sms_from_result_v3(dbi_result result)
 	memcpy(sms->user_data, user_data, sms->user_data_len);
 
 	text = dbi_result_get_string(result, "text");
-	if (text) {
-		strncpy(sms->text, text, sizeof(sms->text));
-		sms->text[sizeof(sms->text)-1] = '\0';
-	}
+	if (text)
+		osmo_strlcpy(sms->text, text, sizeof(sms->text));
 	return sms;
 }
 
@@ -549,7 +546,7 @@ struct gsm_subscriber *db_create_subscriber(const char *imsi, uint64_t smin,
 		return NULL;
 	}
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
-	strncpy(subscr->imsi, imsi, sizeof(subscr->imsi)-1);
+	osmo_strlcpy(subscr->imsi, imsi, sizeof(subscr->imsi));
 	dbi_result_free(result);
 	LOGP(DDB, LOGL_INFO, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
 	if (alloc_exten)
@@ -585,7 +582,7 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 
 	string = dbi_result_get_string(result, "imei");
 	if (string)
-		strncpy(equip->imei, string, sizeof(equip->imei)-1);
+		osmo_strlcpy(equip->imei, string, sizeof(equip->imei));
 
 	string = dbi_result_get_string(result, "classmark1");
 	if (string) {
@@ -824,21 +821,19 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 	const char *string;
 	string = dbi_result_get_string(result, "imsi");
 	if (string)
-		strncpy(subscr->imsi, string, sizeof(subscr->imsi)-1);
+		osmo_strlcpy(subscr->imsi, string, sizeof(subscr->imsi));
 
 	string = dbi_result_get_string(result, "tmsi");
 	if (string)
 		subscr->tmsi = tmsi_from_string(string);
 
 	string = dbi_result_get_string(result, "name");
-	if (string) {
-		strncpy(subscr->name, string, GSM_NAME_LENGTH);
-		subscr->name[sizeof(subscr->name)-1] = '\0';
-	}
+	if (string)
+		osmo_strlcpy(subscr->name, string, sizeof(subscr->name));
 
 	string = dbi_result_get_string(result, "extension");
 	if (string)
-		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
+		osmo_strlcpy(subscr->extension, string, sizeof(subscr->extension));
 
 	subscr->lac = dbi_result_get_ulonglong(result, "lac");
 
@@ -1351,8 +1346,7 @@ int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM230
 	unsigned long long equipment_id, watch_id;
 	dbi_result result;
 
-	strncpy(subscriber->equipment.imei, imei,
-		sizeof(subscriber->equipment.imei)-1);
+	osmo_strlcpy(subscriber->equipment.imei, imei, sizeof(subscriber->equipment.imei));
 
 	result = dbi_conn_queryf(conn,
 		"INSERT OR IGNORE INTO Equipment "
@@ -1502,19 +1496,15 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 	sms->dst.npi = dbi_result_get_ulonglong(result, "dest_npi");
 	sms->dst.ton = dbi_result_get_ulonglong(result, "dest_ton");
 	daddr = dbi_result_get_string(result, "dest_addr");
-	if (daddr) {
-		strncpy(sms->dst.addr, daddr, sizeof(sms->dst.addr));
-		sms->dst.addr[sizeof(sms->dst.addr)-1] = '\0';
-	}
+	if (daddr)
+		osmo_strlcpy(sms->dst.addr, daddr, sizeof(sms->dst.addr));
 	sms->receiver = subscr_get_by_extension(net->subscr_group, sms->dst.addr);
 
 	sms->src.npi = dbi_result_get_ulonglong(result, "src_npi");
 	sms->src.ton = dbi_result_get_ulonglong(result, "src_ton");
 	saddr = dbi_result_get_string(result, "src_addr");
-	if (saddr) {
-		strncpy(sms->src.addr, saddr, sizeof(sms->src.addr));
-		sms->src.addr[sizeof(sms->src.addr)-1] = '\0';
-	}
+	if (saddr)
+		osmo_strlcpy(sms->src.addr, saddr, sizeof(sms->src.addr));
 
 	sms->user_data_len = dbi_result_get_field_length(result, "user_data");
 	user_data = dbi_result_get_binary(result, "user_data");
@@ -1523,10 +1513,8 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 	memcpy(sms->user_data, user_data, sms->user_data_len);
 
 	text = dbi_result_get_string(result, "text");
-	if (text) {
-		strncpy(sms->text, text, sizeof(sms->text));
-		sms->text[sizeof(sms->text)-1] = '\0';
-	}
+	if (text)
+		osmo_strlcpy(sms->text, text, sizeof(sms->text));
 	return sms;
 }
 

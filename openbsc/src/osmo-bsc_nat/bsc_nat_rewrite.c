@@ -31,6 +31,7 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/ipa.h>
 
@@ -129,15 +130,15 @@ static void update_called_number(struct gsm_mncc_number *called,
 {
 	if (strncmp(chosen_number, "00", 2) == 0) {
 		called->type = 1;
-		strncpy(called->number, chosen_number + 2, sizeof(called->number));
+		osmo_strlcpy(called->number, chosen_number + 2,
+			     sizeof(called->number));
 	} else {
 		/* rewrite international to unknown */
 		if (called->type == 1)
 			called->type = 0;
-		strncpy(called->number, chosen_number, sizeof(called->number));
+		osmo_strlcpy(called->number, chosen_number,
+			     sizeof(called->number));
 	}
-
-	called->number[sizeof(called->number) - 1] = '\0';
 }
 
 /**

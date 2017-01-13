@@ -20,6 +20,7 @@
  */
 
 #include <osmocom/ctrl/control_cmd.h>
+#include <osmocom/core/utils.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/db.h>
@@ -103,8 +104,7 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 		goto fail;
 
 	subscr->authorized = 1;
-	strncpy(subscr->extension, msisdn, GSM_EXTENSION_LENGTH - 1);
-	subscr->extension[GSM_EXTENSION_LENGTH-1] = '\0';
+	osmo_strlcpy(subscr->extension, msisdn, sizeof(subscr->extension));
 
 	/* put it back to the db */
 	rc = db_sync_subscriber(subscr);

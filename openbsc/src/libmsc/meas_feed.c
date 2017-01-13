@@ -8,6 +8,7 @@
 #include <osmocom/core/socket.h>
 #include <osmocom/core/write_queue.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/vty.h>
@@ -52,12 +53,9 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 	mfm->hdr.version = MEAS_FEED_VERSION;
 
 	/* fill in MEAS_FEED_MEAS specific header */
-	strncpy(mfm->imsi, subscr->imsi, sizeof(mfm->imsi)-1);
-	mfm->imsi[sizeof(mfm->imsi)-1] = '\0';
-	strncpy(mfm->name, subscr->name, sizeof(mfm->name)-1);
-	mfm->name[sizeof(mfm->name)-1] = '\0';
-	strncpy(mfm->scenario, g_mfs.scenario, sizeof(mfm->scenario));
-	mfm->scenario[sizeof(mfm->scenario)-1] = '\0';
+	osmo_strlcpy(mfm->imsi, subscr->imsi, sizeof(mfm->imsi));
+	osmo_strlcpy(mfm->name, subscr->name, sizeof(mfm->name));
+	osmo_strlcpy(mfm->scenario, g_mfs.scenario, sizeof(mfm->scenario));
 
 	/* copy the entire measurement report */
 	memcpy(&mfm->mr, mr, sizeof(mfm->mr));
@@ -160,8 +158,7 @@ void meas_feed_cfg_get(char **host, uint16_t *port)
 
 void meas_feed_scenario_set(const char *name)
 {
-	strncpy(g_mfs.scenario, name, sizeof(g_mfs.scenario)-1);
-	g_mfs.scenario[sizeof(g_mfs.scenario)-1] = '\0';
+	osmo_strlcpy(g_mfs.scenario, name, sizeof(g_mfs.scenario));
 }
 
 const char *meas_feed_scenario_get(void)

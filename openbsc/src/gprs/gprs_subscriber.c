@@ -22,6 +22,7 @@
 
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <osmocom/gsm/gsup.h>
+#include <osmocom/core/utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsup_client.h>
 
@@ -164,7 +165,8 @@ static int gprs_subscr_tx_gsup_message(struct gsm_subscriber *subscr,
 	struct msgb *msg = gsup_client_msgb_alloc();
 
 	if (strlen(gsup_msg->imsi) == 0 && subscr)
-		strncpy(gsup_msg->imsi, subscr->imsi, sizeof(gsup_msg->imsi) - 1);
+		osmo_strlcpy(gsup_msg->imsi, subscr->imsi,
+			     sizeof(gsup_msg->imsi));
 	gsup_msg->cn_domain = OSMO_GSUP_CN_DOMAIN_PS;
 	osmo_gsup_encode(msg, gsup_msg);
 
@@ -185,7 +187,8 @@ static int gprs_subscr_tx_gsup_error_reply(struct gsm_subscriber *subscr,
 {
 	struct osmo_gsup_message gsup_reply = {0};
 
-	strncpy(gsup_reply.imsi, gsup_orig->imsi, sizeof(gsup_reply.imsi) - 1);
+	osmo_strlcpy(gsup_reply.imsi, gsup_orig->imsi,
+		     sizeof(gsup_reply.imsi));
 	gsup_reply.cause = cause;
 	gsup_reply.message_type =
 		OSMO_GSUP_TO_MSGT_ERROR(gsup_orig->message_type);
@@ -778,9 +781,8 @@ struct gsm_subscriber *gprs_subscr_get_or_create_by_mmctx(struct sgsn_mm_ctx *mm
 		subscr->flags &= ~GPRS_SUBSCRIBER_ENABLE_PURGE;
 	}
 
-	strncpy(subscr->equipment.imei, mmctx->imei,
-		sizeof(subscr->equipment.imei)-1);
-	subscr->equipment.imei[sizeof(subscr->equipment.imei)-1] = 0;
+	osmo_strlcpy(subscr->equipment.imei, mmctx->imei,
+		     sizeof(subscr->equipment.imei));
 
 	if (subscr->lac != mmctx->ra.lac)
 		subscr->lac = mmctx->ra.lac;

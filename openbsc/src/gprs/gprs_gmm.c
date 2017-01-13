@@ -42,6 +42,7 @@
 #include <osmocom/core/signal.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/crypt/auth.h>
 #include <osmocom/gsm/apn.h>
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
@@ -683,11 +684,10 @@ static void extract_subscr_msisdn(struct sgsn_mm_ctx *ctx)
 	/* Prepend a '+' for international numbers */
 	if (called.plan == 1 && called.type == 1) {
 		ctx->msisdn[0] = '+';
-		strncpy(&ctx->msisdn[1], called.number,
-			sizeof(ctx->msisdn) - 1);
+		osmo_strlcpy(&ctx->msisdn[1], called.number,
+			     sizeof(ctx->msisdn));
 	} else {
-		strncpy(&ctx->msisdn[0], called.number,
-			sizeof(ctx->msisdn) - 1);
+		osmo_strlcpy(ctx->msisdn, called.number, sizeof(ctx->msisdn));
 	}
 }
 
@@ -725,7 +725,7 @@ static void extract_subscr_hlr(struct sgsn_mm_ctx *ctx)
 		return;
 	}
 
-	strncpy(&ctx->hlr[0], called.number, sizeof(ctx->hlr) - 1);
+	osmo_strlcpy(ctx->hlr, called.number, sizeof(ctx->hlr));
 }
 
 #ifdef BUILD_IU
@@ -1034,10 +1034,10 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 				mm_ctx_cleanup_free(ictx, "GPRS IMSI re-use");
 			}
 		}
-		strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi) - 1);
+		osmo_strlcpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
 		break;
 	case GSM_MI_TYPE_IMEI:
-		strncpy(ctx->imei, mi_string, sizeof(ctx->imei) - 1);
+		osmo_strlcpy(ctx->imei, mi_string, sizeof(ctx->imei));
 		break;
 	case GSM_MI_TYPE_IMEISV:
 		break;
@@ -1138,7 +1138,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 				reject_cause = GMM_CAUSE_NET_FAIL;
 				goto rejected;
 			}
-			strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi) - 1);
+			osmo_strlcpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
 #endif
 		}
 		if (ctx->ran_type == MM_CTX_T_GERAN_Gb) {

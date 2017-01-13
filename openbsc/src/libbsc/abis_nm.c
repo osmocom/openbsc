@@ -40,6 +40,7 @@
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
@@ -2235,8 +2236,7 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 		}
 
 		/* construct new filename */
-		strncpy(dir, bs11_sw->swl_fname, sizeof(dir));
-		dir[sizeof(dir)-1] = '\0';
+		osmo_strlcpy(dir, bs11_sw->swl_fname, sizeof(dir));
 		strncat(fle->fname, dirname(dir), sizeof(fle->fname) - 1);
 		strcat(fle->fname, "/");
 		strncat(fle->fname, file_id, sizeof(fle->fname) - 1 -strlen(fle->fname));
@@ -2307,8 +2307,7 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 	bs11_sw->user_cb = cbfn;
 	bs11_sw->forced = forced;
 
-	strncpy(bs11_sw->swl_fname, fname, sizeof(bs11_sw->swl_fname));
-	bs11_sw->swl_fname[sizeof(bs11_sw->swl_fname)-1] = '\0';
+	osmo_strlcpy(bs11_sw->swl_fname, fname, sizeof(bs11_sw->swl_fname));
 	rc = bs11_read_swl_file(bs11_sw);
 	if (rc < 0)
 		return rc;
