@@ -4,7 +4,6 @@ Section: net
 Priority: optional
 Build-Depends: debhelper (>= 9),
                autotools-dev,
-               autoconf-archive,
                pkg-config,
                libgtp0-dev,
                libosmocore-dev,
