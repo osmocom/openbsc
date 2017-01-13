@@ -778,11 +778,9 @@ struct gsm_subscriber *gprs_subscr_get_or_create_by_mmctx(struct sgsn_mm_ctx *mm
 		subscr->flags &= ~GPRS_SUBSCRIBER_ENABLE_PURGE;
 	}
 
-	if (strcpy(subscr->equipment.imei, mmctx->imei) != 0) {
-		strncpy(subscr->equipment.imei, mmctx->imei,
-			sizeof(subscr->equipment.imei)-1);
-		subscr->equipment.imei[sizeof(subscr->equipment.imei)-1] = 0;
-	}
+	strncpy(subscr->equipment.imei, mmctx->imei,
+		sizeof(subscr->equipment.imei)-1);
+	subscr->equipment.imei[sizeof(subscr->equipment.imei)-1] = 0;
 
 	if (subscr->lac != mmctx->ra.lac)
 		subscr->lac = mmctx->ra.lac;
