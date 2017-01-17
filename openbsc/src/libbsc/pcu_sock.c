@@ -313,26 +313,39 @@ int pcu_tx_imm_ass_sent(struct gsm_bts *bts, uint32_t tlli)
 static int pcu_rx_rr_paging(struct gsm_bts *bts, uint8_t paging_group,
 			    const uint8_t *raw_rr_msg)
 {
-	struct gsm48_hdr *gsmh = (struct gsm48_hdr *) raw_rr_msg;
-	struct gsm48_paging1 *p1 = (struct gsm48_paging1 *) gsmh;
-	uint8_t chan_needed;
+	struct gsm48_paging1 *p1 = (struct gsm48_paging1 *) raw_rr_msg;
+	uint8_t chan_needed?;
 	unsigned int mi_len;
 	uint8_t *mi;
 	int rc;
 
-	switch (gsmh->msg_type) {
+	switch (p1->msg_type) {
 	case GSM48_MT_RR_PAG_REQ_1:
 		chan_needed = (p1->cneed2 << 2) | p1->cneed1;
 		mi_len = p1->data[0];
 		mi = p1->data+1;
-		/* FIXME: why does rsl_paging_cmd add 2 to mi? */
-		rc = rsl_paging_cmd(bts, paging_group, mi_len, mi,
+		LOGP(DPCU, LOGL_ERROR, "PCU Sends paging "
+		     "request type %02x (chan_needed=%02x, mi_len=%u, mi=%s)\n",
+		     p1->msg_type, chan_needed, mi_len,
+		     osmo_hexdump_nospc(mi,mi_len));
+		/* NOTE: We will have to add 2 to mi_len and subtract 2 from
+		 * the mi pointer because rsl_paging_cmd() will perform the
+		 * reverse operations. This is because rsl_paging_cmd() is
+		 * normally expected to chop off the element identifier (0xC0)
+		 * and the length field. In our parameter, we do not have
+		 * those fields included. */
+		rc = rsl_paging_cmd(bts, paging_group, mi_len+2, mi-2,
 				    chan_needed, true);
 		break;
 	case GSM48_MT_RR_PAG_REQ_2:
 	case GSM48_MT_RR_PAG_REQ_3:
 		LOGP(DPCU, LOGL_ERROR, "PCU Sends unsupported paging "
-			"request type\n");
+			"request type %02x\n", p1->msg_type);
+		rc = -EINVAL;
+		break;
+	default:
+		LOGP(DPCU, LOGL_ERROR, "PCU Sends unknown paging "
+			"request type %02x\n", p1->msg_type);
 		rc = -EINVAL;
 		break;
 	}
@@ -365,7 +378,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		imsi_digit_buf[1] = data_req->data[1];
 		imsi_digit_buf[2] = data_req->data[2];
 		imsi_digit_buf[3] = '\0';
-		LOGP(DPCU, LOGL_DEBUG, "SAPI PCH imsi %s", imsi_digit_buf);
+		LOGP(DPCU, LOGL_DEBUG, "SAPI PCH imsi %s\n", imsi_digit_buf);
 		pag_grp = gsm0502_calc_paging_group(&bts->si_common.chan_desc,
 						str_to_imsi(imsi_digit_buf));
 		pcu_rx_rr_paging(bts, pag_grp, data_req->data+3);
