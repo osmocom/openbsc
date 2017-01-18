@@ -350,6 +350,8 @@ struct gsm_lchan {
 		uint8_t current;
 		uint8_t fixed;
 	} ms_power_ctrl;
+
+	struct msgb *pending_rel_ind_msg;
 #endif
 };
 
