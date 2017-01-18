@@ -1,0 +1,2 @@
+openbsc/include/openbsc/gsm_data_shared.h usr/include/osmocom/openbsc/
+openbsc/src/libcommon/gsm_data_shared.c usr/src/osmocom/openbsc/libcommon/

@@ -98,6 +98,17 @@ Description: Osmocom Base Station Controller Network Address Translation
  .
  This package is part of OpenBSC and closely related to osmocom-bsc.
 
+Package: openbsc-dev
+Architecture: all
+Depends: ${misc:Depends}
+Description: Header file needed by tools tightly integrated
+ Some other programs depend on gsm_data_shared.h and gsm_data_shared.c
+ from OpenBSC. This package installs these files to your file system so
+ that the other packages can build-depend on this package.
+ .
+ The header file is installed to /usr/include/osmocom/openbsc, while
+ the .c file is installed to /usr/src/osmocom/openbsc.
+
 Package: osmo-gtphub
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
