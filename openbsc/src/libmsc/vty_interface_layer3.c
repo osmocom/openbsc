@@ -512,6 +512,29 @@ DEFUN(ena_subscr_delete,
 	return CMD_SUCCESS;
 }
 
+DEFUN(ena_subscr_expire,
+      ena_subscr_expire_cmd,
+      "subscriber " SUBSCR_TYPES " ID expire",
+	SUBSCR_HELP "Expire the subscriber Now\n")
+{
+	int rc;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	subscr->expire_lu = time(0);
+	db_sync_subscriber(subscr);
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(ena_subscr_authorized,
       ena_subscr_authorized_cmd,
       "subscriber " SUBSCR_TYPES " ID authorized (0|1)",
@@ -1143,6 +1166,7 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&logging_fltr_imsi_cmd);
 
 	install_element(ENABLE_NODE, &ena_subscr_delete_cmd);
+	install_element(ENABLE_NODE, &ena_subscr_expire_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_name_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_extension_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_authorized_cmd);
