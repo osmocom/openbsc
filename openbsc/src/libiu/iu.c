@@ -470,6 +470,7 @@ static int ranap_handle_co_rab_ass_resp(struct ue_conn_ctx *ctx, RANAP_RAB_Assig
 
 		ranap_free_rab_setupormodifieditemies(&setup_ies);
 	}
+	/* FIXME: handle RAB Ass failure? */
 
 	return rc;
 }
