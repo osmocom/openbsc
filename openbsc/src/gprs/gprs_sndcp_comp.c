@@ -107,13 +107,14 @@ static struct gprs_sndcp_comp *gprs_sndcp_comp_create(const void *ctx,
 		}
 	}
 
-	/* Display info message */
+	/* Bail on failure */
 	if (comp_entity == NULL) {
 		LOGP(DSNDCP, LOGL_ERROR,
-		     "Compression entity (%d) creation failed!\n",
-		     comp_entity->entity);
+		     "Compression entity creation failed!\n");
 		return NULL;
 	}
+
+	/* Display info message */
 	if (comp_entity->compclass == SNDCP_XID_PROTOCOL_COMPRESSION) {
 		LOGP(DSNDCP, LOGL_INFO,
 		     "New header compression entity (%d) created.\n",
