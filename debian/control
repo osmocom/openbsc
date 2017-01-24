@@ -107,8 +107,8 @@ Description: Header file needed by tools tightly integrated
  from OpenBSC. This package installs these files to your file system so
  that the other packages can build-depend on this package.
  .
- The header file is installed to /usr/include/osmocom/openbsc, while
- the .c file is installed to /usr/src/osmocom/openbsc.
+ The directory structure is copied after the structure in the repository
+ and the header and .c file are installed into /usr/src/osmocom/openbsc/.
 
 Package: osmo-gtphub
 Architecture: any
