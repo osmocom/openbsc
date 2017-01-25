@@ -24,9 +24,10 @@
 #include <string.h>
 
 #include <osmocom/core/linuxlist.h>
-#include "gsm_data.h"
-#include "gsm_subscriber.h"
 #include <osmocom/core/timer.h>
+
+#include <openbsc/gsm_data.h>
+#include <openbsc/gsm_subscriber.h>
 
 /**
  * A pending paging request
