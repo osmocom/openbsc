@@ -218,8 +218,6 @@ static bool is_umts_auth(struct auth_fsm_priv *afp,
 		return false;
 	if (!(auth_types & OSMO_AUTH_TYPE_UMTS))
 		return false;
-	if (!afp->is_utran)
-		return false;
 	return true;
 }
 
@@ -334,6 +332,7 @@ static void auth_fsm_wait_ai(struct osmo_fsm_inst *fi, uint32_t event,
 		auth_fsm_term(fi, VLR_AUTH_RES_PROC_ERR);
 		return;
 	}
+
 	switch (event) {
 	case VLR_AUTH_E_HLR_SAI_ACK:
 		vlr_subscr_update_tuples(vsub, gsup);
