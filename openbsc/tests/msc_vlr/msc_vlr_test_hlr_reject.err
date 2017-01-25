@@ -1,0 +1,1117 @@
+===== test_hlr_rej_auth_info_unknown_imsi
+- Location Update request causes a GSUP Send Auth Info request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr unknown usage increases to: 1
+DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
+DVLR New subscr, IMSI: 901700000004620
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
+DVLR GSUP tx: 08010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DMM compl_l3: Keeping conn
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends _SEND_AUTH_INFO_ERROR = unknown IMSI
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020102
+DVLR GSUP rx 14: 09010809710000004026f0020102
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_NACK
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: GSUP: rx Auth Info Error cause: 2: IMSI unknown in HLR
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Authentication terminating with result VLR_AUTH_RES_UNKNOWN_SUBSCR
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_AUTH_FAILED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Freeing instance
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
+- sending LU Reject for IMSI:901700000004620, cause 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_CN_CLOSE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
+DRLL subscr IMSI:901700000004620: Freeing subscriber connection
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 0
+DREF freeing VLR subscr IMSI:901700000004620
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: vlr_gsupc_read_cb() returns 0
+  auth_request_sent == 0
+  lu_result_sent == 2
+  llist_count(&net->subscr_conns) == 0
+===== test_hlr_rej_auth_info_unknown_imsi: SUCCESS
+
+full talloc report on 'msgb' (total      0 bytes in   1 blocks)
+talloc_total_blocks(tall_bsc_ctx) == 75
+
+===== test_hlr_rej_auth_info_net_fail
+- Location Update request causes a GSUP Send Auth Info request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr unknown usage increases to: 1
+DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
+DVLR New subscr, IMSI: 901700000004620
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
+DVLR GSUP tx: 08010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DMM compl_l3: Keeping conn
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends _SEND_AUTH_INFO_ERROR = net fail
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020111
+DVLR GSUP rx 14: 09010809710000004026f0020111
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_NACK
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: GSUP: rx Auth Info Error cause: 17: Network failure
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Authentication terminating with result VLR_AUTH_RES_PROC_ERR
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_AUTH_FAILED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Freeing instance
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
+- sending LU Reject for IMSI:901700000004620, cause 17
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_CN_CLOSE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
+DRLL subscr IMSI:901700000004620: Freeing subscriber connection
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 0
+DREF freeing VLR subscr IMSI:901700000004620
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: vlr_gsupc_read_cb() returns 0
+  auth_request_sent == 0
+  lu_result_sent == 2
+  llist_count(&net->subscr_conns) == 0
+===== test_hlr_rej_auth_info_net_fail: SUCCESS
+
+full talloc report on 'msgb' (total      0 bytes in   1 blocks)
+talloc_total_blocks(tall_bsc_ctx) == 75
+
+===== test_hlr_rej_auth_info_net_fail_reuse_tuples
+---
+- Submit a used auth tuple in the VLR
+- Location Update request causes a GSUP Send Auth Info request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr unknown usage increases to: 1
+DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
+DVLR New subscr, IMSI: 901700000004620
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
+DVLR GSUP tx: 08010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DMM compl_l3: Keeping conn
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a800
+DVLR GSUP rx 47: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a800
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_ACK
+DVLR SUBSCR(IMSI:901700000004620) Received 1 auth tuples
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_WAIT_RESP
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count=1 key_seq=0
+- sending GSM Auth Request for IMSI:901700000004620: tuple use_count=1 key_seq=0 auth_types=0x1 and...
+- ...rand=585df1ae287f6e273dce07090d61320b
+- ...expecting sres=2d8b2c3e
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: vlr_gsupc_read_cb() returns 0
+  auth_request_sent == 1
+  lu_result_sent == 0
+- MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
+  rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
+DRLL Dispatching 04.08 message, pdisc=5
+DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
+DVLR SUBSCR(IMSI:901700000004620) received res: 2d 8b 2c 3e 
+DVLR SUBSCR(IMSI:901700000004620) AUTH established GSM security context
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Authentication terminating with result VLR_AUTH_RES_PASSED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: state_chg to VLR_SUB_AS_AUTHENTICATED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Freeing instance
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_ciph()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_node_4()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Allocated
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E_START
+DVLR GSUP tx: 04010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
+<-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
+DVLR GSUP rx 17: 10010809710000004026f00804036470f1
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR IMSI:901700000004620 has MSISDN:46071
+DVLR GSUP tx: 12010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_INSERT_DATA_RESULT: 12010809710000004026f0
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: vlr_gsupc_read_cb() returns 0
+  lu_result_sent == 0
+- HLR also sends GSUP _UPDATE_LOCATION_RESULT
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
+DVLR GSUP rx 11: 06010809710000004026f0
+DREF VLR subscr MSISDN:46071 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_HLR_LU_RES
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: Received Event UPD_HLR_VLR_E_UPD_LOC_ACK
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: state_chg to UPD_HLR_VLR_S_DONE
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Freeing instance
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_UPD_HLR_COMPL
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: state_chg to VLR_ULA_S_WAIT_LU_COMPL
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Allocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Received Event LU_COMPL_VLR_E_START
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: state_chg to LU_COMPL_VLR_S_WAIT_SUB_PRES
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Allocated
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: is child of lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Received Event SUB_PRES_VLR_E_START
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: state_chg to SUB_PRES_VLR_S_DONE
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Removing from parent lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Freeing instance
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Deallocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
+- sending LU Accept for MSISDN:46071
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_DONE
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_LU_COMPL_SUCCESS
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Freeing instance
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
+- LU was successful, and the conn has already been closed
+  lu_result_sent == 1
+  llist_count(&net->subscr_conns) == 0
+---
+- Now one auth tuple is available, but used.
+DREF VLR subscr MSISDN:46071 usage increases to: 2
+  vsub->last_tuple->use_count == 1
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+---
+- Another LU wants to get new tuples; even though HLR sends Network Failure, we are reusing the old tuples.
+- Location Update request causes a GSUP Send Auth Info request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr MSISDN:46071 usage increases to: 2
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
+DVLR GSUP tx: 08010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DMM compl_l3: Keeping conn
+DREF MSISDN:46071: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends _SEND_AUTH_INFO_ERROR = net fail
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020111
+DVLR GSUP rx 14: 09010809710000004026f0020111
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_NACK
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: GSUP: rx Auth Info Error cause: 17: Network failure
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_WAIT_RESP
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count=2 key_seq=0
+- sending GSM Auth Request for MSISDN:46071: tuple use_count=2 key_seq=0 auth_types=0x1 and...
+- ...rand=585df1ae287f6e273dce07090d61320b
+- ...expecting sres=2d8b2c3e
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: vlr_gsupc_read_cb() returns 0
+  auth_request_sent == 1
+  lu_result_sent == 0
+- MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
+  rx from MS: pdisc=0x05 msg_type=0x54
+DREF MSISDN:46071: MSC conn use + 1 == 2
+DRLL Dispatching 04.08 message, pdisc=5
+DMM MSISDN:46071: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
+DVLR SUBSCR(MSISDN:46071) received res: 2d 8b 2c 3e 
+DVLR SUBSCR(MSISDN:46071) AUTH established GSM security context
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Authentication terminating with result VLR_AUTH_RES_PASSED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: state_chg to VLR_SUB_AS_AUTHENTICATED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Freeing instance
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_ciph()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_node_4()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Allocated
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E_START
+DVLR GSUP tx: 04010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF MSISDN:46071: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
+<-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
+DVLR GSUP rx 17: 10010809710000004026f00804036470f1
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR IMSI:901700000004620 has MSISDN:46071
+DVLR GSUP tx: 12010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_INSERT_DATA_RESULT: 12010809710000004026f0
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+<-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: vlr_gsupc_read_cb() returns 0
+  lu_result_sent == 0
+- HLR also sends GSUP _UPDATE_LOCATION_RESULT
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
+DVLR GSUP rx 11: 06010809710000004026f0
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_HLR_LU_RES
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: Received Event UPD_HLR_VLR_E_UPD_LOC_ACK
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: state_chg to UPD_HLR_VLR_S_DONE
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Freeing instance
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_UPD_HLR_COMPL
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: state_chg to VLR_ULA_S_WAIT_LU_COMPL
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Allocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Received Event LU_COMPL_VLR_E_START
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: state_chg to LU_COMPL_VLR_S_WAIT_SUB_PRES
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Allocated
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: is child of lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Received Event SUB_PRES_VLR_E_START
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: state_chg to SUB_PRES_VLR_S_DONE
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Removing from parent lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Freeing instance
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Deallocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
+- sending LU Accept for MSISDN:46071
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_DONE
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_LU_COMPL_SUCCESS
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Freeing instance
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
+- LU was successful, and the conn has already been closed
+  lu_result_sent == 1
+  llist_count(&net->subscr_conns) == 0
+DREF freeing VLR subscr MSISDN:46071
+===== test_hlr_rej_auth_info_net_fail_reuse_tuples: SUCCESS
+
+full talloc report on 'msgb' (total      0 bytes in   1 blocks)
+talloc_total_blocks(tall_bsc_ctx) == 75
+
+===== test_hlr_rej_auth_info_net_fail_no_reuse_tuples
+---
+- Submit a used auth tuple in the VLR
+- Location Update request causes a GSUP Send Auth Info request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr unknown usage increases to: 1
+DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
+DVLR New subscr, IMSI: 901700000004620
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
+DVLR GSUP tx: 08010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DMM compl_l3: Keeping conn
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a800
+DVLR GSUP rx 47: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a800
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_ACK
+DVLR SUBSCR(IMSI:901700000004620) Received 1 auth tuples
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_WAIT_RESP
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count=1 key_seq=0
+- sending GSM Auth Request for IMSI:901700000004620: tuple use_count=1 key_seq=0 auth_types=0x1 and...
+- ...rand=585df1ae287f6e273dce07090d61320b
+- ...expecting sres=2d8b2c3e
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: vlr_gsupc_read_cb() returns 0
+  auth_request_sent == 1
+  lu_result_sent == 0
+- MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
+  rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
+DRLL Dispatching 04.08 message, pdisc=5
+DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
+DVLR SUBSCR(IMSI:901700000004620) received res: 2d 8b 2c 3e 
+DVLR SUBSCR(IMSI:901700000004620) AUTH established GSM security context
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Authentication terminating with result VLR_AUTH_RES_PASSED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: state_chg to VLR_SUB_AS_AUTHENTICATED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Freeing instance
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_ciph()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_node_4()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Allocated
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E_START
+DVLR GSUP tx: 04010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
+<-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
+DVLR GSUP rx 17: 10010809710000004026f00804036470f1
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR IMSI:901700000004620 has MSISDN:46071
+DVLR GSUP tx: 12010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_INSERT_DATA_RESULT: 12010809710000004026f0
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: vlr_gsupc_read_cb() returns 0
+  lu_result_sent == 0
+- HLR also sends GSUP _UPDATE_LOCATION_RESULT
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
+DVLR GSUP rx 11: 06010809710000004026f0
+DREF VLR subscr MSISDN:46071 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_HLR_LU_RES
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: Received Event UPD_HLR_VLR_E_UPD_LOC_ACK
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: state_chg to UPD_HLR_VLR_S_DONE
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Freeing instance
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_UPD_HLR_COMPL
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: state_chg to VLR_ULA_S_WAIT_LU_COMPL
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Allocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Received Event LU_COMPL_VLR_E_START
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: state_chg to LU_COMPL_VLR_S_WAIT_SUB_PRES
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Allocated
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: is child of lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Received Event SUB_PRES_VLR_E_START
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: state_chg to SUB_PRES_VLR_S_DONE
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Removing from parent lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Freeing instance
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Deallocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
+- sending LU Accept for MSISDN:46071
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_DONE
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_LU_COMPL_SUCCESS
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Freeing instance
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
+- LU was successful, and the conn has already been closed
+  lu_result_sent == 1
+  llist_count(&net->subscr_conns) == 0
+---
+- Now one auth tuple is available, but used.
+DREF VLR subscr MSISDN:46071 usage increases to: 2
+  vsub->last_tuple->use_count == 1
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+---
+- Another LU wants to get new tuples; HLR sends Network Failure, we reject.
+- Location Update request causes a GSUP Send Auth Info request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr MSISDN:46071 usage increases to: 2
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
+DVLR GSUP tx: 08010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DMM compl_l3: Keeping conn
+DREF MSISDN:46071: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends _SEND_AUTH_INFO_ERROR = net fail
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020111
+DVLR GSUP rx 14: 09010809710000004026f0020111
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_NACK
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: GSUP: rx Auth Info Error cause: 17: Network failure
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Authentication terminating with result VLR_AUTH_RES_PROC_ERR
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_AUTH_FAILED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Freeing instance
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
+- sending LU Reject for MSISDN:46071, cause 17
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_CN_CLOSE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: vlr_gsupc_read_cb() returns 0
+  auth_request_sent == 0
+  lu_result_sent == 2
+  llist_count(&net->subscr_conns) == 0
+DREF freeing VLR subscr MSISDN:46071
+===== test_hlr_rej_auth_info_net_fail_no_reuse_tuples: SUCCESS
+
+full talloc report on 'msgb' (total      0 bytes in   1 blocks)
+talloc_total_blocks(tall_bsc_ctx) == 75
+
+===== test_hlr_rej_auth_info_unkown_imsi_no_reuse_tuples
+---
+- Submit a used auth tuple in the VLR
+- Location Update request causes a GSUP Send Auth Info request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr unknown usage increases to: 1
+DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
+DVLR New subscr, IMSI: 901700000004620
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
+DVLR GSUP tx: 08010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DMM compl_l3: Keeping conn
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a800
+DVLR GSUP rx 47: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a800
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_ACK
+DVLR SUBSCR(IMSI:901700000004620) Received 1 auth tuples
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_WAIT_RESP
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count=1 key_seq=0
+- sending GSM Auth Request for IMSI:901700000004620: tuple use_count=1 key_seq=0 auth_types=0x1 and...
+- ...rand=585df1ae287f6e273dce07090d61320b
+- ...expecting sres=2d8b2c3e
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: vlr_gsupc_read_cb() returns 0
+  auth_request_sent == 1
+  lu_result_sent == 0
+- MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
+  rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
+DRLL Dispatching 04.08 message, pdisc=5
+DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
+DVLR SUBSCR(IMSI:901700000004620) received res: 2d 8b 2c 3e 
+DVLR SUBSCR(IMSI:901700000004620) AUTH established GSM security context
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Authentication terminating with result VLR_AUTH_RES_PASSED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: state_chg to VLR_SUB_AS_AUTHENTICATED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Freeing instance
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_ciph()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_node_4()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Allocated
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E_START
+DVLR GSUP tx: 04010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
+<-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
+DVLR GSUP rx 17: 10010809710000004026f00804036470f1
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR IMSI:901700000004620 has MSISDN:46071
+DVLR GSUP tx: 12010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_INSERT_DATA_RESULT: 12010809710000004026f0
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: vlr_gsupc_read_cb() returns 0
+  lu_result_sent == 0
+- HLR also sends GSUP _UPDATE_LOCATION_RESULT
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
+DVLR GSUP rx 11: 06010809710000004026f0
+DREF VLR subscr MSISDN:46071 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_HLR_LU_RES
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: Received Event UPD_HLR_VLR_E_UPD_LOC_ACK
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: state_chg to UPD_HLR_VLR_S_DONE
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Freeing instance
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_UPD_HLR_COMPL
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: state_chg to VLR_ULA_S_WAIT_LU_COMPL
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Allocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Received Event LU_COMPL_VLR_E_START
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: state_chg to LU_COMPL_VLR_S_WAIT_SUB_PRES
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Allocated
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: is child of lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Received Event SUB_PRES_VLR_E_START
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: state_chg to SUB_PRES_VLR_S_DONE
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Removing from parent lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Freeing instance
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Deallocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
+- sending LU Accept for MSISDN:46071
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_DONE
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_LU_COMPL_SUCCESS
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Freeing instance
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
+- LU was successful, and the conn has already been closed
+  lu_result_sent == 1
+  llist_count(&net->subscr_conns) == 0
+---
+- Now one auth tuple is available, but used.
+DREF VLR subscr MSISDN:46071 usage increases to: 2
+  vsub->last_tuple->use_count == 1
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+---
+- Another LU wants to get new tuples; HLR sends IMSI Unknown. Even though we would re-use an old tuple, reject the unknown IMSI.
+  net->vlr->cfg.auth_reuse_old_sets_on_error == 1
+- Location Update request causes a GSUP Send Auth Info request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr MSISDN:46071 usage increases to: 2
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
+DVLR GSUP tx: 08010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DMM compl_l3: Keeping conn
+DREF MSISDN:46071: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends _SEND_AUTH_INFO_ERROR = unknown IMSI
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020102
+DVLR GSUP rx 14: 09010809710000004026f0020102
+DREF VLR subscr MSISDN:46071 usage increases to: 3
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_NACK
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: GSUP: rx Auth Info Error cause: 2: IMSI unknown in HLR
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Authentication terminating with result VLR_AUTH_RES_UNKNOWN_SUBSCR
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_AUTH_FAILED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Freeing instance
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
+- sending LU Reject for MSISDN:46071, cause 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_CN_CLOSE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: vlr_gsupc_read_cb() returns 0
+  auth_request_sent == 0
+  lu_result_sent == 2
+  llist_count(&net->subscr_conns) == 0
+DREF freeing VLR subscr MSISDN:46071
+===== test_hlr_rej_auth_info_unkown_imsi_no_reuse_tuples: SUCCESS
+
+full talloc report on 'msgb' (total      0 bytes in   1 blocks)
+talloc_total_blocks(tall_bsc_ctx) == 75
+
+===== test_hlr_acc_but_no_auth_tuples
+- Location Update request causes a GSUP Send Auth Info request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr unknown usage increases to: 1
+DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
+DVLR New subscr, IMSI: 901700000004620
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
+DVLR GSUP tx: 08010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DMM compl_l3: Keeping conn
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- from HLR, rx _SEND_AUTH_INFO_RESULT but it lacks auth tuples
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f0
+DVLR GSUP rx 11: 0a010809710000004026f0
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_ACK
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Authentication terminating with result VLR_AUTH_RES_PROC_ERR
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_AUTH_FAILED
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Freeing instance
+DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTH_FAILED}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
+- sending LU Reject for IMSI:901700000004620, cause 17
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_CN_CLOSE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
+DRLL subscr IMSI:901700000004620: Freeing subscriber connection
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 0
+DREF freeing VLR subscr IMSI:901700000004620
+<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: vlr_gsupc_read_cb() returns 0
+  auth_request_sent == 0
+  lu_result_sent == 2
+  llist_count(&net->subscr_conns) == 0
+===== test_hlr_acc_but_no_auth_tuples: SUCCESS
+
+full talloc report on 'msgb' (total      0 bytes in   1 blocks)
+talloc_total_blocks(tall_bsc_ctx) == 75
+
+===== test_hlr_rej_lu
+- Location Update request causes a GSUP LU request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN (no Auth)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr unknown usage increases to: 1
+DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
+DVLR New subscr, IMSI: 901700000004620
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_post_auth()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_post_ciph()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node_4()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Allocated
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E_START
+DVLR GSUP tx: 04010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DMM compl_l3: Keeping conn
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends UPDATE_LOCATION_ERROR
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_ERROR: 05010809710000004026f0020102
+DVLR GSUP rx 14: 05010809710000004026f0020102
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR SUBSCR(IMSI:901700000004620) UpdateLocation failed; gmm_cause: IMSI unknown in HLR
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_HLR_LU_RES
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: Received Event UPD_HLR_VLR_E_UPD_LOC_NACK
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: state_chg to UPD_HLR_VLR_S_DONE
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Freeing instance
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_UPD_HLR_COMPL
+- sending LU Reject for IMSI:901700000004620, cause 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_CN_CLOSE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
+DRLL subscr IMSI:901700000004620: Freeing subscriber connection
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 0
+DREF freeing VLR subscr IMSI:901700000004620
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_ERROR: vlr_gsupc_read_cb() returns 0
+  lu_result_sent == 2
+  llist_count(&net->subscr_conns) == 0
+===== test_hlr_rej_lu: SUCCESS
+
+full talloc report on 'msgb' (total      0 bytes in   1 blocks)
+talloc_total_blocks(tall_bsc_ctx) == 75
+
+===== test_hlr_no_insert_data
+- Location Update request causes a GSUP LU request to HLR
+  rx from MS: pdisc=0x05 msg_type=0x08
+  new conn
+DREF unknown: MSC conn use + 1 == 1
+DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
+DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
+DMM LU/new-LAC: 1/0
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN (no Auth)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
+DREF VLR subscr unknown usage increases to: 1
+DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
+DVLR New subscr, IMSI: 901700000004620
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_post_auth()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_post_ciph()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node_4()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Allocated
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E_START
+DVLR GSUP tx: 04010809710000004026f0
+GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DMM compl_l3: Keeping conn
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
+  lu_result_sent == 0
+- HLR sends only _UPDATE_LOCATION_RESULT, no INSERT DATA
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
+DVLR GSUP rx 11: 06010809710000004026f0
+DREF VLR subscr IMSI:901700000004620 usage increases to: 2
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_HLR_LU_RES
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: Received Event UPD_HLR_VLR_E_UPD_LOC_ACK
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_WAIT_FOR_DATA}: state_chg to UPD_HLR_VLR_S_DONE
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Freeing instance
+DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_UPD_HLR_COMPL
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: state_chg to VLR_ULA_S_WAIT_LU_COMPL
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Allocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: Received Event LU_COMPL_VLR_E_START
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_INIT}: state_chg to LU_COMPL_VLR_S_WAIT_SUB_PRES
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Allocated
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: is child of lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: Received Event SUB_PRES_VLR_E_START
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_INIT}: state_chg to SUB_PRES_VLR_S_DONE
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Removing from parent lu_compl_vlr_fsm(901700000004620)
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Freeing instance
+DVLR sub_pres_vlr_fsm(901700000004620){SUB_PRES_VLR_S_DONE}: Deallocated
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
+- sending LU Accept for IMSI:901700000004620
+DREF VLR subscr IMSI:901700000004620 usage increases to: 3
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_DONE
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_LU_COMPL_SUCCESS
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000004620)
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Freeing instance
+DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_DONE}: Deallocated
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: state_chg to VLR_ULA_S_DONE
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_LU
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
+DRLL subscr IMSI:901700000004620: Freeing subscriber connection
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 2
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
+DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
+- LU was successful, and the conn has already been closed
+  lu_result_sent == 1
+  llist_count(&net->subscr_conns) == 0
+DREF freeing VLR subscr IMSI:901700000004620
+===== test_hlr_no_insert_data: SUCCESS
+
+full talloc report on 'msgb' (total      0 bytes in   1 blocks)
+talloc_total_blocks(tall_bsc_ctx) == 75
+
+full talloc report on 'msgb' (total      0 bytes in   1 blocks)
+talloc_total_blocks(tall_bsc_ctx) == 9
+
