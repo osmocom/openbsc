@@ -4,6 +4,8 @@
 #include <osmocom/gsm/protocol/gsm_04_11.h>
 
 struct vlr_subscr;
+struct gsm_subscriber_connection;
+struct gsm_trans;
 
 #define UM_SAPI_SMS 3	/* See GSM 04.05/04.06 */
 
