@@ -1415,7 +1415,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	struct gprs_ra_id old_ra_id;
 	struct tlv_parsed tp;
 	uint8_t upd_type;
-	enum gsm48_gmm_cause reject_cause;
+	enum gsm48_gmm_cause reject_cause = GMM_CAUSE_PROTO_ERR_UNSPEC;
 	int rc;
 
 	/* TODO: In iu mode - handle follow-on request */
