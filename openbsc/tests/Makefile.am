@@ -10,8 +10,8 @@ SUBDIRS = \
 	mm_auth \
 	nanobts_omlattr \
 	vlr \
-	subscr_conn \
 	sms_queue \
+	msc_vlr \
 	$(NULL)
 
 if BUILD_NAT
