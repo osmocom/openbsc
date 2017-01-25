@@ -88,6 +88,15 @@ tests/sndcp_xid/sndcp_xid_test
 tests/slhc/slhc_test
 tests/v42bis/v42bis_test
 tests/nanobts_omlattr/nanobts_omlattr_test
+tests/msc_vlr/msc_vlr_test_no_authen
+tests/msc_vlr/msc_vlr_test_gsm_authen
+tests/msc_vlr/msc_vlr_test_gsm_ciph
+tests/msc_vlr/msc_vlr_test_umts_authen
+tests/msc_vlr/msc_vlr_test_hlr_reject
+tests/msc_vlr/msc_vlr_test_hlr_timeout
+tests/msc_vlr/msc_vlr_test_ms_timeout
+tests/msc_vlr/msc_vlr_test_reject_concurrency
+tests/msc_vlr/msc_vlr_test_rest
 
 tests/atconfig
 tests/atlocal
