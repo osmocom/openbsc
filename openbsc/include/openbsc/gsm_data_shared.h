@@ -327,6 +327,12 @@ struct gsm_lchan {
 		uint8_t last_cmr;
 		uint32_t last_fn;
 	} tch;
+
+	/* 3GPP TS 48.058 § 9.3.37: [0; 255] ok, -1 means invalid*/
+	int16_t ms_t_offs;
+	/* 3GPP TS 45.010 § 1.2 round trip propagation delay (in symbols) or -1 */
+	int16_t p_offs;
+
 	/* BTS-side ciphering state (rx only, bi-directional, ...) */
 	uint8_t ciph_state;
 	uint8_t ciph_ns;
