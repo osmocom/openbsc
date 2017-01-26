@@ -106,7 +106,7 @@ unauth:
 			if (conn) {
 				uint8_t auth_rand[16];
 				/* kick the subscriber off the network */
-				gsm48_tx_mm_auth_req(conn, auth_rand, 0);
+				gsm48_tx_mm_auth_req(conn, auth_rand, NULL, 0);
 				gsm48_tx_mm_auth_rej(conn);
 				/* FIXME: close the channel early ?*/
 				//gsm48_send_rr_Release(lchan);
@@ -143,7 +143,7 @@ static int token_sms_cb(unsigned int subsys, unsigned int signal,
 	conn = connection_for_subscr(sms->receiver);
 	if (conn) {
 		/* kick the subscriber off the network */
-		gsm48_tx_mm_auth_req(conn, auth_rand, 0);
+		gsm48_tx_mm_auth_req(conn, auth_rand, NULL, 0);
 		gsm48_tx_mm_auth_rej(conn);
 		/* FIXME: close the channel early ?*/
 		//gsm48_send_rr_Release(lchan);

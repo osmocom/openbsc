@@ -238,7 +238,8 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	/* Then do whatever is needed ... */
 	if (rc == AUTH_DO_AUTH_THEN_CIPH) {
 		/* Start authentication */
-		return gsm48_tx_mm_auth_req(conn, op->atuple.vec.rand, op->atuple.key_seq);
+		return gsm48_tx_mm_auth_req(conn, op->atuple.vec.rand, NULL,
+					    op->atuple.key_seq);
 	} else if (rc == AUTH_DO_CIPH) {
 		/* Start ciphering directly */
 		return gsm0808_cipher_mode(conn, net->a5_encryption,
@@ -875,14 +876,24 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
-/* Section 9.2.2 */
-int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, uint8_t *rand, int key_seq)
+/*! Send an Authentication Request to MS on the given subscriber connection
+ * according to 3GPP/ETSI TS 24.008, Section 9.2.2.
+ * \param[in] conn  Subscriber connection to send on.
+ * \param[in] rand  Random challenge token to send, must be 16 bytes long.
+ * \param[in] autn  r99: In case of UMTS mutual authentication, AUTN token to
+ * 	send; must be 16 bytes long, or pass NULL for plain GSM auth.
+ * \param[in] key_seq  auth tuple's sequence number.
+ */
+int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, uint8_t *rand,
+			 uint8_t *autn, int key_seq)
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 AUTH REQ");
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_auth_req *ar = (struct gsm48_auth_req *) msgb_put(msg, sizeof(*ar));
 
 	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", osmo_hexdump(rand, 16));
+	if (autn)
+		DEBUGP(DMM, "   AUTH REQ (autn = %s)\n", osmo_hexdump(autn, 16));
 
 	msg->lchan = conn->lchan;
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -891,8 +902,14 @@ int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, uint8_t *rand, 
 	ar->key_seq = key_seq;
 
 	/* 16 bytes RAND parameters */
+	osmo_static_assert(sizeof(ar->rand) == 16, sizeof_auth_req_r99_rand);
 	if (rand)
 		memcpy(ar->rand, rand, 16);
+
+
+	/* 16 bytes AUTN */
+	if (autn)
+		msgb_tlv_put(msg, GSM48_IE_AUTN, 16, autn);
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
