@@ -2169,6 +2169,7 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 
 	/* The context is gone while we made a request */
 	if (!lookup->mmctx) {
+		talloc_free(lookup->orig_msg);
 		talloc_free(lookup);
 		return;
 	}
@@ -2230,6 +2231,7 @@ static void ggsn_lookup_cb(void *arg, int status, int timeouts, struct hostent *
 			lookup->sapi, &lookup->tp, 1);
 
 	/* Now free it */
+	talloc_free(lookup->orig_msg);
 	talloc_free(lookup);
 	return;
 
@@ -2237,10 +2239,11 @@ reject_due_failure:
 	gsm48_tx_gsm_act_pdp_rej(lookup->mmctx, lookup->ti,
 				GMM_CAUSE_NET_FAIL, 0, NULL);
 	lookup->mmctx->ggsn_lookup = NULL;
+	talloc_free(lookup->orig_msg);
 	talloc_free(lookup);
 }
 
-static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
+static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg, bool *delete)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct gsm48_act_pdp_ctx_req *act_req = (struct gsm48_act_pdp_ctx_req *) gh->data;
@@ -2389,6 +2392,7 @@ static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 		LOGMMCTXP(LOGL_ERROR, mmctx, "Failed to start ares query.\n");
 		goto no_context;
 	}
+	*delete = 0;
 
 	return 0;
 
@@ -2402,6 +2406,7 @@ no_context:
 static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 				    struct msgb *_msg)
 {
+	bool delete = 1;
 	struct msgb *msg;
 	int rc;
 
@@ -2428,8 +2433,9 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 						0, NULL);
 	}
 
-	rc = do_act_pdp_req(mmctx, _msg);
-	msgb_free(msg);
+	rc = do_act_pdp_req(mmctx, msg, &delete);
+	if (delete)
+		msgb_free(msg);
 	return rc;
 }
 
