@@ -1257,7 +1257,21 @@ def ipa_handle_small(x, verbose = False):
 def ipa_handle_resp(x, tk, verbose = False):
     s = data2str(x.recv(38))
     if "0023fe040108010701020103010401050101010011" in s:
-        x.send(IPA().id_resp(IPA().identity(name = tk.encode('utf-8'))))
+        retries = 3
+        while True:
+            print "\tsending IPA identity(%s) at %s" % (tk, time.strftime("%T"))
+            try:
+                x.send(IPA().id_resp(IPA().identity(name = tk.encode('utf-8'))))
+                print "\tdone sending IPA identity(%s) at %s" % (tk,
+                                                            time.strftime("%T"))
+                break
+            except:
+                print "\tfailed sending IPA identity at", time.strftime("%T")
+                if retries < 1:
+                    print "\tgiving up"
+                    raise
+                print "\tretrying (%d attempts left)" % retries
+                retries -= 1
     else:
         if (verbose):
             print "\tBSC <- NAT: ", s
