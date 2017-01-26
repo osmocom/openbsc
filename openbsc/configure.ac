@@ -9,6 +9,9 @@ AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE([dist-bzip2])
 AC_CONFIG_TESTDIR(tests)
 
+dnl FIXME: Remove this once we do not need local macro copies anymore (after upgrade to newer OE?)
+AC_CONFIG_MACRO_DIRS([m4])
+
 dnl kernel style compile messages
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
