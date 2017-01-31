@@ -119,8 +119,20 @@ static void mmctx_change_gtpu_endpoints_to_sgsn(struct sgsn_mm_ctx *mm_ctx)
 	}
 }
 
-void mmctx_set_pmm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
+void mmctx_set_pmm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state iu, enum gprs_pmm_state gb)
 {
+	enum gprs_pmm_state state;
+
+	switch (ctx->ran_type) {
+		case MM_CTX_T_GERAN_Gb:
+			state = gb;
+			break;
+		case MM_CTX_T_GERAN_Iu:
+		case MM_CTX_T_UTRAN_Iu:
+			state = iu;
+			break;
+	}
+
 	if (ctx->pmm_state == state)
 		return;
 
@@ -277,8 +289,7 @@ static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
 
 	/* Mark MM state as deregistered */
 	ctx->gmm_state = GMM_DEREGISTERED;
-
-	mmctx_set_pmm_state(ctx, PMM_DETACHED);
+	mmctx_set_pmm_state(ctx, PMM_DETACHED, MM_IDLE);
 
 	sgsn_mm_ctx_cleanup_free(ctx);
 }
@@ -1832,7 +1843,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 					  mmctx->gb.tlli_new);
 		}
 		mmctx->gmm_state = GMM_REGISTERED_NORMAL;
-		mmctx_set_pmm_state(mmctx, PMM_CONNECTED);
+		mmctx_set_pmm_state(mmctx, PMM_CONNECTED, MM_READY);
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
@@ -1855,7 +1866,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 					  mmctx->gb.tlli_new);
 		}
 		mmctx->gmm_state = GMM_REGISTERED_NORMAL;
-		mmctx_set_pmm_state(mmctx, PMM_CONNECTED);
+		mmctx_set_pmm_state(mmctx, PMM_CONNECTED, MM_READY);
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
