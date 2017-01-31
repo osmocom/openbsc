@@ -428,7 +428,7 @@ static int pcu_rx_rr_paging(struct gsm_bts *bts, uint8_t paging_group,
 			    const uint8_t *raw_rr_msg)
 {
 	struct gsm48_paging1 *p1 = (struct gsm48_paging1 *) raw_rr_msg;
-	uint8_t chan_needed?;
+	uint8_t chan_needed;
 	unsigned int mi_len;
 	uint8_t *mi;
 	int rc;
