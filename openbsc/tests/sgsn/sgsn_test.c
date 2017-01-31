@@ -190,7 +190,7 @@ static struct sgsn_mm_ctx *alloc_mm_ctx(uint32_t tlli, struct gprs_ra_id *raid)
 
 	lle = gprs_lle_get_or_create(tlli, 3);
 	ctx = sgsn_mm_ctx_alloc(tlli, raid);
-	ctx->mm_state = GMM_REGISTERED_NORMAL;
+	ctx->gmm_state = GMM_REGISTERED_NORMAL;
 	ctx->gb.llme = lle->llme;
 
 	ictx = sgsn_mm_ctx_by_tlli(tlli, raid);
@@ -978,7 +978,7 @@ static void test_gmm_attach(int retry)
 
 	ctx = sgsn_mm_ctx_by_tlli(foreign_tlli, &raid);
 	OSMO_ASSERT(ctx != NULL);
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 
 	/* we expect an identity request (IMEI) */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
@@ -998,7 +998,7 @@ static void test_gmm_attach(int retry)
 	 * authorization */
 	OSMO_ASSERT(ctx == sgsn_mm_ctx_by_tlli(foreign_tlli, &raid));
 
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 
 retry_attach_req:
 
@@ -1038,7 +1038,7 @@ retry_attach_req:
 	send_0408_message(ctx->gb.llme, local_tlli, &raid,
 			  attach_compl, ARRAY_SIZE(attach_compl));
 
-	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->gmm_state == GMM_REGISTERED_NORMAL);
 
 	/* we don't expect a response */
 	OSMO_ASSERT(sgsn_tx_counter == 0);
@@ -1566,7 +1566,7 @@ static void test_gmm_cancel(void)
 
 	ctx = sgsn_mm_ctx_by_tlli(foreign_tlli, &raid);
 	OSMO_ASSERT(ctx != NULL);
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 
 	/* we expect an identity request (IMEI) */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
@@ -1586,7 +1586,7 @@ static void test_gmm_cancel(void)
 	 * authorization */
 	OSMO_ASSERT(ctx == sgsn_mm_ctx_by_tlli(foreign_tlli, &raid));
 
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 
 	/* we expect an attach accept/reject */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
@@ -1600,7 +1600,7 @@ static void test_gmm_cancel(void)
 	send_0408_message(ctx->gb.llme, foreign_tlli, &raid,
 			  attach_compl, ARRAY_SIZE(attach_compl));
 
-	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->gmm_state == GMM_REGISTERED_NORMAL);
 
 	/* we don't expect a response */
 	OSMO_ASSERT(sgsn_tx_counter == 0);
@@ -1714,7 +1714,7 @@ static void test_gmm_ptmsi_allocation(void)
 
 	ctx = sgsn_mm_ctx_by_tlli(foreign_tlli, &raid);
 	OSMO_ASSERT(ctx != NULL);
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi != GSM_RESERVED_TMSI);
 	ptmsi1 = ctx->p_tmsi;
 
@@ -1731,7 +1731,7 @@ static void test_gmm_ptmsi_allocation(void)
 	 * authorization */
 	OSMO_ASSERT(ctx == sgsn_mm_ctx_by_tlli(foreign_tlli, &raid));
 
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
 
 	/* we expect an attach accept */
@@ -1746,7 +1746,7 @@ static void test_gmm_ptmsi_allocation(void)
 	/* the allocated P-TMSI should be the same */
 	ctx = sgsn_mm_ctx_by_tlli(foreign_tlli, &raid);
 	OSMO_ASSERT(ctx != NULL);
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi_old == old_ptmsi);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
 
@@ -1763,7 +1763,7 @@ static void test_gmm_ptmsi_allocation(void)
 	/* we don't expect a response */
 	OSMO_ASSERT(sgsn_tx_counter == 0);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->gmm_state == GMM_REGISTERED_NORMAL);
 	OSMO_ASSERT(ctx->p_tmsi_old == 0);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
 
@@ -1776,7 +1776,7 @@ static void test_gmm_ptmsi_allocation(void)
 	/* we expect an RA update accept */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi_old == ptmsi1);
 	OSMO_ASSERT(ctx->p_tmsi != GSM_RESERVED_TMSI);
 	OSMO_ASSERT(ctx->p_tmsi != ptmsi1);
@@ -1791,7 +1791,7 @@ static void test_gmm_ptmsi_allocation(void)
 	received_ptmsi = get_new_ptmsi(&last_dl_parse_ctx);
 	OSMO_ASSERT(received_ptmsi == ptmsi2);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi_old == ptmsi1);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi2);
 
@@ -1803,7 +1803,7 @@ static void test_gmm_ptmsi_allocation(void)
 	/* we don't expect a response */
 	OSMO_ASSERT(sgsn_tx_counter == 0);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->gmm_state == GMM_REGISTERED_NORMAL);
 	OSMO_ASSERT(ctx->p_tmsi_old == 0);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi2);
 
@@ -1939,7 +1939,7 @@ static void test_gmm_routing_areas(void)
 
 	ctx = sgsn_mm_ctx_by_tlli(ms_tlli, &raid1);
 	OSMO_ASSERT(ctx != NULL);
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi != GSM_RESERVED_TMSI);
 
 	/* we expect an identity request (IMEI) */
@@ -1955,7 +1955,7 @@ static void test_gmm_routing_areas(void)
 	 * authorization */
 	OSMO_ASSERT(ctx == sgsn_mm_ctx_by_tlli(ms_tlli, &raid1));
 
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 
 	/* we expect an attach accept */
 	OSMO_ASSERT(sgsn_tx_counter == 1);
@@ -1974,7 +1974,7 @@ static void test_gmm_routing_areas(void)
 	/* we don't expect a response */
 	OSMO_ASSERT(sgsn_tx_counter == 0);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->gmm_state == GMM_REGISTERED_NORMAL);
 	OSMO_ASSERT(ctx->p_tmsi_old == 0);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
 
@@ -1989,7 +1989,7 @@ static void test_gmm_routing_areas(void)
 	OSMO_ASSERT(last_dl_parse_ctx.g48_hdr->msg_type == GSM48_MT_GMM_RA_UPD_ACK);
 	// OSMO_ASSERT(last_dl_parse_ctx.tlli == ms_tlli);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi_old == ptmsi1);
 	OSMO_ASSERT(ctx->p_tmsi != GSM_RESERVED_TMSI);
 	OSMO_ASSERT(ctx->p_tmsi != ptmsi1);
@@ -2006,7 +2006,7 @@ static void test_gmm_routing_areas(void)
 	/* we don't expect a response */
 	OSMO_ASSERT(sgsn_tx_counter == 0);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->gmm_state == GMM_REGISTERED_NORMAL);
 	OSMO_ASSERT(ctx->p_tmsi_old == 0);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
 	OSMO_ASSERT(ctx->gb.tlli == ms_tlli);
@@ -2051,7 +2051,7 @@ static void test_gmm_routing_areas(void)
 
 	ctx = sgsn_mm_ctx_by_tlli(ms_tlli, &raid2);
 	OSMO_ASSERT(ctx != NULL);
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi != GSM_RESERVED_TMSI);
 
 	/* we expect an attach accept */
@@ -2074,7 +2074,7 @@ static void test_gmm_routing_areas(void)
 	/* we don't expect a response */
 	OSMO_ASSERT(sgsn_tx_counter == 0);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->gmm_state == GMM_REGISTERED_NORMAL);
 	OSMO_ASSERT(ctx->p_tmsi_old == 0);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
 
@@ -2088,7 +2088,7 @@ static void test_gmm_routing_areas(void)
 	OSMO_ASSERT(sgsn_tx_counter == 1);
 	OSMO_ASSERT(last_dl_parse_ctx.g48_hdr->msg_type == GSM48_MT_GMM_RA_UPD_ACK);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_COMMON_PROC_INIT);
+	OSMO_ASSERT(ctx->gmm_state == GMM_COMMON_PROC_INIT);
 	OSMO_ASSERT(ctx->p_tmsi_old == ptmsi1);
 	OSMO_ASSERT(ctx->p_tmsi != GSM_RESERVED_TMSI);
 	OSMO_ASSERT(ctx->p_tmsi != ptmsi1);
@@ -2105,7 +2105,7 @@ static void test_gmm_routing_areas(void)
 	/* we don't expect a response */
 	OSMO_ASSERT(sgsn_tx_counter == 0);
 
-	OSMO_ASSERT(ctx->mm_state == GMM_REGISTERED_NORMAL);
+	OSMO_ASSERT(ctx->gmm_state == GMM_REGISTERED_NORMAL);
 	OSMO_ASSERT(ctx->p_tmsi_old == 0);
 	OSMO_ASSERT(ctx->p_tmsi == ptmsi1);
 	OSMO_ASSERT(ctx->gb.tlli == ms_tlli);

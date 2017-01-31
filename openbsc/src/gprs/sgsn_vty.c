@@ -466,7 +466,7 @@ static void vty_dump_mmctx(struct vty *vty, const char *pfx,
 		pfx, mm->msisdn, mm->gb.tlli, mm->hlr, VTY_NEWLINE);
 	vty_out(vty, "%s  MM State: %s, Routeing Area: %u-%u-%u-%u, "
 		"Cell ID: %u%s", pfx,
-		get_value_string(gprs_mm_st_strs, mm->mm_state),
+		get_value_string(gprs_mm_st_strs, mm->gmm_state),
 		mm->ra.mcc, mm->ra.mnc, mm->ra.lac, mm->ra.rac,
 		mm->gb.cell_id, VTY_NEWLINE);
 

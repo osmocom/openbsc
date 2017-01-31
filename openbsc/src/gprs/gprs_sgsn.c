@@ -222,7 +222,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 	memcpy(&ctx->ra, raid, sizeof(ctx->ra));
 	ctx->ran_type = MM_CTX_T_GERAN_Gb;
 	ctx->gb.tlli = tlli;
-	ctx->mm_state = GMM_DEREGISTERED;
+	ctx->gmm_state = GMM_DEREGISTERED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 	ctx->ciph_algo = sgsn->cfg.cipher;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, tlli);
@@ -245,7 +245,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx)
 	ctx->ran_type = MM_CTX_T_UTRAN_Iu;
 	ctx->iu.ue_ctx = uectx;
 	ctx->iu.new_key = 1;
-	ctx->mm_state = GMM_DEREGISTERED;
+	ctx->gmm_state = GMM_DEREGISTERED;
 	ctx->pmm_state = PMM_DETACHED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, 0);
@@ -656,7 +656,7 @@ failed:
 
 static void drop_one_pdp(struct sgsn_pdp_ctx *pdp)
 {
-	if (pdp->mm->mm_state == GMM_REGISTERED_NORMAL)
+	if (pdp->mm->gmm_state == GMM_REGISTERED_NORMAL)
 		gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_NET_FAIL);
 	else  {
 		/* FIXME: GPRS paging in case MS is SUSPENDED */
