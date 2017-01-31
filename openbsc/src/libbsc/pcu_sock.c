@@ -414,9 +414,9 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 					"invalid/small length %d\n", data_req->len);
 			break;
 		}
-		tlli = *((uint32_t *)data_req->data);
 
-		pag_grp = extract_paging_group(bts,data_req->data);
+		memcpy(&tlli,data_req->data,sizeof(tlli));
+		pag_grp = extract_paging_group(bts,data_req->data+4);
 
 		msg = msgb_alloc(data_req->len - 7, "pcu_pch");
 		if (!msg) {
