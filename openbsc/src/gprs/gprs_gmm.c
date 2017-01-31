@@ -107,6 +107,10 @@ static const struct tlv_definition gsm48_sm_att_tlvdef = {
 
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx);
 
+static void mmctx_timer_cb(void *_mm);
+static void mmctx_timer_stop(struct sgsn_mm_ctx *mm, unsigned int T);
+static void mmctx_timer_start(struct sgsn_mm_ctx *mm, unsigned int T, unsigned int seconds);
+
 static void mmctx_change_gtpu_endpoints_to_sgsn(struct sgsn_mm_ctx *mm_ctx)
 {
 	struct sgsn_pdp_ctx *pdp;
@@ -117,37 +121,49 @@ static void mmctx_change_gtpu_endpoints_to_sgsn(struct sgsn_mm_ctx *mm_ctx)
 	}
 }
 
-void mmctx_set_pmm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state iu, enum gprs_pmm_state gb)
+void mmctx_set_pmm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
 {
-	enum gprs_pmm_state state;
-
-	switch (ctx->ran_type) {
-		case MM_CTX_T_GERAN_Gb:
-			state = gb;
-			break;
-		case MM_CTX_T_GERAN_Iu:
-		case MM_CTX_T_UTRAN_Iu:
-			state = iu;
-			break;
-	}
+	if (ctx->ran_type != MM_CTX_T_GERAN_Iu)
+		return;
 
 	if (ctx->pmm_state == state)
 		return;
 
 	LOGMMCTXP(LOGL_INFO, ctx, "Changing PMM state from %i to %i\n", ctx->pmm_state, state);
 
-	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
-	{
-		switch (state) {
-		case PMM_IDLE:
-			/* TODO: start RA Upd timer */
-			mmctx_change_gtpu_endpoints_to_sgsn(ctx);
-			break;
-		case PMM_CONNECTED:
-			break;
-		default:
-			break;
-		}
+	switch (state) {
+	case PMM_IDLE:
+		/* TODO: start RA Upd timer */
+		mmctx_change_gtpu_endpoints_to_sgsn(ctx);
+		break;
+	case PMM_CONNECTED:
+		break;
+	default:
+		break;
+	}
+
+	ctx->pmm_state = state;
+}
+
+void mmctx_set_mm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
+{
+	if (ctx->ran_type != MM_CTX_T_GERAN_Gb)
+		return;
+
+	if (ctx->pmm_state == state)
+		return;
+
+	LOGMMCTXP(LOGL_INFO, ctx, "Changing MM state from %i to %i\n", ctx->pmm_state, state);
+
+	switch (state) {
+	case MM_READY:
+		mmctx_timer_start(ctx, 3314, sgsn->cfg.timers.T3314);
+		break;
+	default:
+		/* when changing to state != MM_READY */
+		if (ctx->T == 3314)
+			mmctx_timer_stop(ctx, 3314);
+		break;
 	}
 
 	ctx->pmm_state = state;
@@ -195,8 +211,6 @@ int sgsn_ranap_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type, void *
 
 
 /* Our implementation, should be kept in SGSN */
-
-static void mmctx_timer_cb(void *_mm);
 
 static void mmctx_timer_start(struct sgsn_mm_ctx *mm, unsigned int T,
 				unsigned int seconds)
@@ -287,7 +301,8 @@ static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
 
 	/* Mark MM state as deregistered */
 	ctx->gmm_state = GMM_DEREGISTERED;
-	mmctx_set_pmm_state(ctx, PMM_DETACHED, MM_IDLE);
+	mmctx_set_pmm_state(ctx, PMM_DETACHED);
+	mmctx_set_pmm_state(ctx, MM_IDLE);
 
 	sgsn_mm_ctx_cleanup_free(ctx);
 }
@@ -1843,7 +1858,8 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 					  mmctx->gb.tlli_new);
 		}
 		mmctx->gmm_state = GMM_REGISTERED_NORMAL;
-		mmctx_set_pmm_state(mmctx, PMM_CONNECTED, MM_READY);
+		mmctx_set_pmm_state(mmctx, PMM_CONNECTED);
+		mmctx_set_mm_state(mmctx, MM_READY);
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
@@ -1866,7 +1882,8 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 					  mmctx->gb.tlli_new);
 		}
 		mmctx->gmm_state = GMM_REGISTERED_NORMAL;
-		mmctx_set_pmm_state(mmctx, PMM_CONNECTED, MM_READY);
+		mmctx_set_pmm_state(mmctx, PMM_CONNECTED);
+		mmctx_set_mm_state(mmctx, MM_READY);
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
@@ -1923,7 +1940,7 @@ static void mmctx_timer_cb(void *_mm)
 	switch (mm->T) {
 	case 3314:	/* MM ready -> idle timeout */
 		LOGMMCTXP(LOGL_INFO, mm, "T3314 timeed out, falling back to MM_STANDBY");
-		mmctx_set_pmm_state(mm, PMM_IDLE, MM_STANDBY);
+		mmctx_set_mm_state(mm, MM_STANDBY);
 		break;
 	case 3350:	/* waiting for ATTACH COMPLETE */
 		if (mm->num_T_exp >= 5) {
