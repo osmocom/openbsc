@@ -126,7 +126,7 @@ struct sgsn_mm_ctx {
 	enum sgsn_ran_type	ran_type;
 
 	char 			imsi[GSM23003_IMSI_MAX_DIGITS+1];
-	enum gprs_gmm_state	mm_state;
+	enum gprs_gmm_state	gmm_state;
 	enum gprs_pmm_state	pmm_state;	/* Iu: page when in PMM-IDLE mode */
 	uint32_t 		p_tmsi;
 	uint32_t 		p_tmsi_old;	/* old P-TMSI before new is confirmed */
