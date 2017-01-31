@@ -105,6 +105,15 @@ static const struct tlv_definition gsm48_sm_att_tlvdef = {
 	},
 };
 
+static const struct value_string gprs_pmm_state_names[] = {
+	{ PMM_DETACHED,		"PMM DETACH" },
+	{ PMM_CONNECTED,	"PMM CONNECTED" },
+	{ PMM_IDLE,		"PMM IDLE" },
+	{ MM_IDLE,		"MM IDLE" },
+	{ MM_READY,		"MM READY" },
+	{ MM_STANDBY,		"MM STANDBY" },
+};
+
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx);
 
 static void mmctx_change_gtpu_endpoints_to_sgsn(struct sgsn_mm_ctx *mm_ctx)
@@ -125,7 +134,9 @@ void mmctx_set_pmm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
 	if (ctx->pmm_state == state)
 		return;
 
-	LOGMMCTXP(LOGL_INFO, ctx, "Changing PMM state from %i to %i\n", ctx->pmm_state, state);
+	LOGMMCTXP(LOGL_INFO, ctx, "Changing PMM state from %s to %s\n",
+		  get_value_string(gprs_pmm_state_names, ctx->pmm_state),
+		  get_value_string(gprs_pmm_state_names, state));
 
 	switch (state) {
 	case PMM_IDLE:
@@ -149,7 +160,9 @@ void mmctx_set_mm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
 	if (ctx->pmm_state == state)
 		return;
 
-	LOGMMCTXP(LOGL_INFO, ctx, "Changing MM state from %i to %i\n", ctx->pmm_state, state);
+	LOGMMCTXP(LOGL_INFO, ctx, "Changing MM state from %s to %s\n",
+		  get_value_string(gprs_pmm_state_names, ctx->pmm_state),
+		  get_value_string(gprs_pmm_state_names, state));
 
 	ctx->pmm_state = state;
 }
