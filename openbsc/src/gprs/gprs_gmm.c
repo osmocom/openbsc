@@ -119,24 +119,37 @@ static void mmctx_change_gtpu_endpoints_to_sgsn(struct sgsn_mm_ctx *mm_ctx)
 
 void mmctx_set_pmm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
 {
+	if (ctx->ran_type != MM_CTX_T_UTRAN_Iu)
+		return;
+
 	if (ctx->pmm_state == state)
 		return;
 
 	LOGMMCTXP(LOGL_INFO, ctx, "Changing PMM state from %i to %i\n", ctx->pmm_state, state);
 
-	if (ctx->ran_type == MM_CTX_T_UTRAN_Iu)
-	{
-		switch (state) {
-		case PMM_IDLE:
-			/* TODO: start RA Upd timer */
-			mmctx_change_gtpu_endpoints_to_sgsn(ctx);
-			break;
-		case PMM_CONNECTED:
-			break;
-		default:
-			break;
-		}
+	switch (state) {
+	case PMM_IDLE:
+		/* TODO: start RA Upd timer */
+		mmctx_change_gtpu_endpoints_to_sgsn(ctx);
+		break;
+	case PMM_CONNECTED:
+		break;
+	default:
+		break;
 	}
+
+	ctx->pmm_state = state;
+}
+
+void mmctx_set_mm_state(struct sgsn_mm_ctx *ctx, enum gprs_pmm_state state)
+{
+	if (ctx->ran_type != MM_CTX_T_GERAN_Gb)
+		return;
+
+	if (ctx->pmm_state == state)
+		return;
+
+	LOGMMCTXP(LOGL_INFO, ctx, "Changing MM state from %i to %i\n", ctx->pmm_state, state);
 
 	ctx->pmm_state = state;
 }
@@ -274,9 +287,9 @@ static void mm_ctx_cleanup_free(struct sgsn_mm_ctx *ctx, const char *log_text)
 	LOGMMCTXP(LOGL_INFO, ctx, "Cleaning MM context due to %s\n", log_text);
 
 	/* Mark MM state as deregistered */
-	ctx->mm_state = GMM_DEREGISTERED;
-
+	ctx->gmm_state = GMM_DEREGISTERED;
 	mmctx_set_pmm_state(ctx, PMM_DETACHED);
+	mmctx_set_pmm_state(ctx, MM_IDLE);
 
 	sgsn_mm_ctx_cleanup_free(ctx);
 }
@@ -882,7 +895,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		memset(&sig_data, 0, sizeof(sig_data));
 		sig_data.mm = mmctx;
 		osmo_signal_dispatch(SS_SGSN, S_SGSN_ATTACH, &sig_data);
-		ctx->mm_state = GMM_REGISTERED_NORMAL;
+		ctx->gmm_state = GMM_REGISTERED_NORMAL;
 #endif
 
 		return gsm48_tx_gmm_att_ack(ctx);
@@ -921,7 +934,7 @@ void gsm0408_gprs_authenticate(struct sgsn_mm_ctx *ctx)
 
 void gsm0408_gprs_access_granted(struct sgsn_mm_ctx *ctx)
 {
-	switch (ctx->mm_state) {
+	switch (ctx->gmm_state) {
 	case GMM_COMMON_PROC_INIT:
 		LOGMMCTXP(LOGL_NOTICE, ctx,
 		     "Authorized, continuing procedure, IMSI=%s\n",
@@ -941,7 +954,7 @@ void gsm0408_gprs_access_denied(struct sgsn_mm_ctx *ctx, int gmm_cause)
 	if (gmm_cause == SGSN_ERROR_CAUSE_NONE)
 		gmm_cause = GMM_CAUSE_GPRS_NOTALLOWED;
 
-	switch (ctx->mm_state) {
+	switch (ctx->gmm_state) {
 	case GMM_COMMON_PROC_INIT:
 		LOGMMCTXP(LOGL_NOTICE, ctx,
 			  "Not authorized, rejecting ATTACH REQUEST "
@@ -1225,11 +1238,11 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 #ifdef PTMSI_ALLOC
 	/* Allocate a new P-TMSI (+ P-TMSI signature) and update TLLI */
 	/* Don't change the P-TMSI if a P-TMSI re-assignment is under way */
-	if (ctx->mm_state != GMM_COMMON_PROC_INIT) {
+	if (ctx->gmm_state != GMM_COMMON_PROC_INIT) {
 		ctx->p_tmsi_old = ctx->p_tmsi;
 		ctx->p_tmsi = sgsn_alloc_ptmsi();
 	}
-	ctx->mm_state = GMM_COMMON_PROC_INIT;
+	ctx->gmm_state = GMM_COMMON_PROC_INIT;
 #endif
 
 	if (ctx->ran_type == MM_CTX_T_GERAN_Gb) {
@@ -1500,10 +1513,10 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 				mmctx->ra.mcc, mmctx->ra.mnc,
 				mmctx->ra.lac, mmctx->ra.rac);
 
-			mmctx->mm_state = GMM_COMMON_PROC_INIT;
+			mmctx->gmm_state = GMM_COMMON_PROC_INIT;
 		}
 	} else if (!gprs_ra_id_equals(&mmctx->ra, &old_ra_id) ||
-		mmctx->mm_state == GMM_DEREGISTERED)
+		mmctx->gmm_state == GMM_DEREGISTERED)
 	{
 		/* We cannot use the mmctx */
 		LOGMMCTXP(LOGL_INFO, mmctx,
@@ -1545,7 +1558,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 #ifdef PTMSI_ALLOC
 	/* Don't change the P-TMSI if a P-TMSI re-assignment is under way */
-	if (mmctx->mm_state != GMM_COMMON_PROC_INIT) {
+	if (mmctx->gmm_state != GMM_COMMON_PROC_INIT) {
 		mmctx->p_tmsi_old = mmctx->p_tmsi;
 		mmctx->p_tmsi = sgsn_alloc_ptmsi();
 	}
@@ -1553,10 +1566,10 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	mmctx->t3350_mode = GMM_T3350_MODE_RAU;
 	mmctx_timer_start(mmctx, 3350, sgsn->cfg.timers.T3350);
 
-	mmctx->mm_state = GMM_COMMON_PROC_INIT;
+	mmctx->gmm_state = GMM_COMMON_PROC_INIT;
 #else
 	/* Make sure we are NORMAL (i.e. not SUSPENDED anymore) */
-	mmctx->mm_state = GMM_REGISTERED_NORMAL;
+	mmctx->gmm_state = GMM_REGISTERED_NORMAL;
 
 	memset(&sig_data, 0, sizeof(sig_data));
 	sig_data.mm = mmctx;
@@ -1679,7 +1692,7 @@ static int gsm48_rx_gmm_service_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		goto rejected;
 	}
 
-	ctx->mm_state = GMM_COMMON_PROC_INIT;
+	ctx->gmm_state = GMM_COMMON_PROC_INIT;
 
 	ctx->iu.service.type = service_type;
 
@@ -1831,8 +1844,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 			gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff,
 					  mmctx->gb.tlli_new);
 		}
-		mmctx->mm_state = GMM_REGISTERED_NORMAL;
+		mmctx->gmm_state = GMM_REGISTERED_NORMAL;
 		mmctx_set_pmm_state(mmctx, PMM_CONNECTED);
+		mmctx_set_mm_state(mmctx, MM_READY);
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
@@ -1854,8 +1868,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 			gprs_llgmm_assign(mmctx->gb.llme, 0xffffffff,
 					  mmctx->gb.tlli_new);
 		}
-		mmctx->mm_state = GMM_REGISTERED_NORMAL;
+		mmctx->gmm_state = GMM_REGISTERED_NORMAL;
 		mmctx_set_pmm_state(mmctx, PMM_CONNECTED);
+		mmctx_set_mm_state(mmctx, MM_READY);
 		rc = 0;
 
 		memset(&sig_data, 0, sizeof(sig_data));
@@ -2682,15 +2697,15 @@ int gprs_gmm_rx_suspend(struct gprs_ra_id *raid, uint32_t tlli)
 		return -EINVAL;
 	}
 
-	if (mmctx->mm_state != GMM_REGISTERED_NORMAL &&
-	    mmctx->mm_state != GMM_REGISTERED_SUSPENDED) {
+	if (mmctx->gmm_state != GMM_REGISTERED_NORMAL &&
+	    mmctx->gmm_state != GMM_REGISTERED_SUSPENDED) {
 		LOGMMCTXP(LOGL_NOTICE, mmctx, "SUSPEND request while state "
 			"!= REGISTERED (TLLI=%08x)\n", tlli);
 		return -EINVAL;
 	}
 
 	/* Transition from REGISTERED_NORMAL to REGISTERED_SUSPENDED */
-	mmctx->mm_state = GMM_REGISTERED_SUSPENDED;
+	mmctx->gmm_state = GMM_REGISTERED_SUSPENDED;
 	return 0;
 }
 
@@ -2708,8 +2723,8 @@ int gprs_gmm_rx_resume(struct gprs_ra_id *raid, uint32_t tlli,
 		return -EINVAL;
 	}
 
-	if (mmctx->mm_state != GMM_REGISTERED_NORMAL &&
-	    mmctx->mm_state != GMM_REGISTERED_SUSPENDED) {
+	if (mmctx->gmm_state != GMM_REGISTERED_NORMAL &&
+	    mmctx->gmm_state != GMM_REGISTERED_SUSPENDED) {
 		LOGMMCTXP(LOGL_NOTICE, mmctx, "RESUME request while state "
 			"!= SUSPENDED (TLLI=%08x)\n", tlli);
 		/* FIXME: should we not simply ignore it? */
@@ -2717,7 +2732,7 @@ int gprs_gmm_rx_resume(struct gprs_ra_id *raid, uint32_t tlli,
 	}
 
 	/* Transition from SUSPENDED to NORMAL */
-	mmctx->mm_state = GMM_REGISTERED_NORMAL;
+	mmctx->gmm_state = GMM_REGISTERED_NORMAL;
 	return 0;
 }
 

@@ -676,7 +676,7 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 	msgb_bvci(msg) = mm->gb.bvci;
 	msgb_nsei(msg) = mm->gb.nsei;
 
-	switch (mm->mm_state) {
+	switch (mm->gmm_state) {
 	case GMM_REGISTERED_SUSPENDED:
 		/* initiate PS PAGING procedure */
 		memset(&pinfo, 0, sizeof(pinfo));
@@ -695,7 +695,7 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 		break;
 	default:
 		LOGP(DGPRS, LOGL_ERROR, "GTP DATA IND for TLLI %08X in state "
-			"%u\n", mm->gb.tlli, mm->mm_state);
+			"%u\n", mm->gb.tlli, mm->gmm_state);
 		msgb_free(msg);
 		return -1;
 	}
