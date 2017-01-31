@@ -36,9 +36,9 @@ enum gprs_pmm_state {
 	PMM_DETACHED,
 	PMM_CONNECTED,
 	PMM_IDLE,
-	MM_IDLE = PMM_DETACHED,
-	MM_READY = PMM_CONNECTED,
-	MM_STANDBY = PMM_IDLE,
+	MM_IDLE,
+	MM_READY,
+	MM_STANDBY,
 };
 
 enum gprs_mm_ctr {
