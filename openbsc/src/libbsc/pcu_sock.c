@@ -369,6 +369,8 @@ static uint8_t extract_paging_group(struct gsm_bts *bts, uint8_t *data)
 	pag_grp = gsm0502_calc_paging_group(&bts->si_common.chan_desc,
 					    str_to_imsi(imsi_digit_buf));
 
+	LOGP(DPCU, LOGL_DEBUG, "Calculating paging group: imsi_digit_buf=%s ==> pag_grp=0x%02x\n", imsi_digit_buf, pag_grp);
+
 	return pag_grp;
 }
 
@@ -414,9 +416,9 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 					"invalid/small length %d\n", data_req->len);
 			break;
 		}
-		tlli = *((uint32_t *)data_req->data);
 
-		pag_grp = extract_paging_group(bts,data_req->data);
+		memcpy(&tlli,data_req->data,sizeof(tlli));
+		pag_grp = extract_paging_group(bts,data_req->data+4);
 
 		msg = msgb_alloc(data_req->len - 7, "pcu_pch");
 		if (!msg) {
