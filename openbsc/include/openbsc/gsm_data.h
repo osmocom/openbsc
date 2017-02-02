@@ -106,6 +106,12 @@ struct neigh_meas_proc {
 	uint8_t last_seen_nr;
 };
 
+enum ran_type {
+       RAN_UNKNOWN,
+       RAN_GERAN_A,	/* 2G / A-interface */
+       RAN_UTRAN_IU,	/* 3G / Iu-interface (IuCS or IuPS) */
+};
+
 /* active radio connection of a mobile subscriber */
 struct gsm_subscriber_connection {
 	struct llist_head entry;
@@ -148,6 +154,8 @@ struct gsm_subscriber_connection {
 	struct osmo_timer_list T10; /* BSC */
 	struct gsm_lchan *secondary_lchan; /* BSC */
 
+	/* connected via 2G or 3G? */
+	enum ran_type via_ran;
 };
 
 

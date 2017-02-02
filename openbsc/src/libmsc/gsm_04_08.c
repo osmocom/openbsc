@@ -1235,7 +1235,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	       osmo_hexdump_nospc(res, res_len));
 
 	/* Future: vlr_sub_rx_auth_resp(conn->vsub, is_r99,
-	 *				conn->via_iface == IFACE_IU,
+	 *				conn->via_ran == RAN_UTRAN_IU,
 	 *				res, res_len);
 	 */
 
