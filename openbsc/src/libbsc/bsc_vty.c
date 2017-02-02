@@ -2686,7 +2686,6 @@ DEFUN(cfg_bts_early_cm, cfg_bts_early_cm_cmd,
 	"Early Classmark Sending is forbidden\n")
 {
 	struct gsm_bts *bts = vty->index;
-	int rc, type;
 
 	if (!strcmp(argv[0], "allowed"))
 		bts->early_classmark_allowed = true;
