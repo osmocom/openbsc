@@ -611,7 +611,7 @@ struct apn_ctx *sgsn_apn_ctx_find_alloc(const char *name, const char *imsi_prefi
 uint32_t sgsn_alloc_ptmsi(void)
 {
 	struct sgsn_mm_ctx *mm;
-	uint32_t ptmsi;
+	uint32_t ptmsi = 0xdeadbeef;
 	int max_retries = 100;
 
 restart:
