@@ -1,6 +1,5 @@
 SUBDIRS = \
 	gsm0408 \
-	db \
 	channel \
 	mgcp \
 	gprs \
@@ -10,6 +9,8 @@ SUBDIRS = \
 	subscr \
 	mm_auth \
 	nanobts_omlattr \
+	vlr \
+	subscr_conn \
 	$(NULL)
 
 if BUILD_NAT

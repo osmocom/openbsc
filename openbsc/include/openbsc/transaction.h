@@ -24,7 +24,7 @@ struct gsm_trans {
 	uint8_t transaction_id;
 
 	/* To whom we belong, unique identifier of remote MM entity */
-	struct gsm_subscriber *subscr;
+	struct vlr_subscr *vsub;
 
 	/* The associated connection we are using to transmit messages */
 	struct gsm_subscriber_connection *conn;
@@ -67,13 +67,14 @@ struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 					uint32_t callref);
 
 struct gsm_trans *trans_alloc(struct gsm_network *net,
-			      struct gsm_subscriber *subscr,
+			      struct vlr_subscr *vsub,
 			      uint8_t protocol, uint8_t trans_id,
 			      uint32_t callref);
 void trans_free(struct gsm_trans *trans);
 
-int trans_assign_trans_id(struct gsm_network *net, struct gsm_subscriber *subscr,
+int trans_assign_trans_id(struct gsm_network *net, struct vlr_subscr *vsub,
 			  uint8_t protocol, uint8_t ti_flag);
 int trans_has_conn(const struct gsm_subscriber_connection *conn);
+void trans_conn_closed(struct gsm_subscriber_connection *conn);
 
 #endif
