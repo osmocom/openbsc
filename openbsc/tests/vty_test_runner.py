@@ -1239,6 +1239,8 @@ def nat_msc_test(x, ip, port, verbose = False):
 
 def ipa_handle_small(x, verbose = False):
     s = data2str(x.recv(4))
+    if len(s) != 4*2:
+      raise Exception("expected to receive 4 bytes, but got %d (%r)" % (len(s)/2, s))
     if "0001fe00" == s:
         if (verbose):
             print "\tBSC <- NAT: PING?"
