@@ -1269,12 +1269,10 @@ def ipa_handle_resp(x, tk, verbose = False):
                 break
             except:
                 print "\tfailed sending IPA identity at", time.strftime("%T")
-                print "\tself.proc.poll(): ", repr(self.proc.poll())
                 if retries < 1:
                     print "\tgiving up"
                     raise
-                print "\tretrying in a second (%d attempts left)" % retries
-                time.sleep(1)
+                print "\tretrying (%d attempts left)" % retries
                 retries -= 1
     else:
         if (verbose):
