@@ -342,6 +342,31 @@ DEFUN(cfg_om2k_con_group, cfg_om2k_con_group_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(del_om2k_con_group, del_om2k_con_group_cmd,
+	"del-connection-group <1-31>",
+	"Delete a CON (Concentrator) Connection Group\n"
+	"CON Connection Group Number\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int rc;
+	uint8_t cgid = atoi(argv[0]);
+
+	if (bts->type != GSM_BTS_TYPE_RBS2000) {
+		vty_out(vty, "%% CON MO only exists in RBS2000%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	rc = con_group_del(bts, cgid);
+	if (rc != 0) {
+		vty_out(vty, "%% Cannot delete CON Group%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 #define CON_PATH_HELP	"CON Path (In/Out)\n"				\
 			"Add CON Path to Concentration Group\n"		\
 			"Delete CON Path from Concentration Group\n"	\
@@ -551,6 +576,7 @@ int abis_om2k_vty_init(void)
 
 	install_element(BTS_NODE, &cfg_bts_is_conn_list_cmd);
 	install_element(BTS_NODE, &cfg_om2k_con_group_cmd);
+	install_element(BTS_NODE, &del_om2k_con_group_cmd);
 
 	return 0;
 }
