@@ -314,7 +314,7 @@ static int pcu_rx_rr_paging(struct gsm_bts *bts, uint8_t paging_group,
 			    const uint8_t *raw_rr_msg)
 {
 	struct gsm48_paging1 *p1 = (struct gsm48_paging1 *) raw_rr_msg;
-	uint8_t chan_needed?;
+	uint8_t chan_needed;
 	unsigned int mi_len;
 	uint8_t *mi;
 	int rc;
@@ -325,9 +325,9 @@ static int pcu_rx_rr_paging(struct gsm_bts *bts, uint8_t paging_group,
 		mi_len = p1->data[0];
 		mi = p1->data+1;
 		LOGP(DPCU, LOGL_ERROR, "PCU Sends paging "
-		     "request type %02x (chan_needed=%02x, mi_len=%u, mi=%s)\n",
+		     "request type %02x (chan_needed=0x%02x, mi_len=%u, mi=%s, paging_group=0x%02x)\n",
 		     p1->msg_type, chan_needed, mi_len,
-		     osmo_hexdump_nospc(mi,mi_len));
+		     osmo_hexdump_nospc(mi,mi_len), paging_group);
 		/* NOTE: We will have to add 2 to mi_len and subtract 2 from
 		 * the mi pointer because rsl_paging_cmd() will perform the
 		 * reverse operations. This is because rsl_paging_cmd() is
@@ -392,6 +392,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		msg->l3h = msgb_put(msg, data_req->len);
 		memcpy(msg->l3h, data_req->data, data_req->len);
 
+		LOGP(DPCU, LOGL_DEBUG, "PCU Sends immediate assignment via AGCH\n");
 		if (rsl_imm_assign_cmd(bts, msg->len, msg->data)) {
 			msgb_free(msg);
 			rc = -EIO;
@@ -407,18 +408,29 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		}
 		tlli = *((uint32_t *)data_req->data);
 
-		msg = msgb_alloc(data_req->len - 4, "pcu_agch");
+		/* the first three bytes are the last three digits of
+		 * the IMSI, which we need to compute the paging group */
+		imsi_digit_buf[0] = data_req->data[4];
+		imsi_digit_buf[1] = data_req->data[5];
+		imsi_digit_buf[2] = data_req->data[6];
+		imsi_digit_buf[3] = '\0';
+		pag_grp = gsm0502_calc_paging_group(&bts->si_common.chan_desc,
+						str_to_imsi(imsi_digit_buf));
+
+		msg = msgb_alloc(data_req->len - 7, "pcu_pch");
 		if (!msg) {
 			rc = -ENOMEM;
 			break;
 		}
-		msg->l3h = msgb_put(msg, data_req->len - 4);
-		memcpy(msg->l3h, data_req->data + 4, data_req->len - 4);
+		msg->l3h = msgb_put(msg, data_req->len - 7);
+		memcpy(msg->l3h, data_req->data + 7, data_req->len - 7);
 
-		if (bts->type == GSM_BTS_TYPE_RBS2000)
-			rc = rsl_ericsson_imm_assign_cmd(bts, tlli, msg->len, msg->data);
-		else
-			rc = rsl_imm_assign_cmd(bts, msg->len, msg->data);
+		if (bts->type == GSM_BTS_TYPE_RBS2000) {
+			LOGP(DPCU, LOGL_DEBUG, "PCU Sends immediate assignment via PCH (tlli=0x%08x, pag_grp=0x%02x, imsi_digit_buf=%s)\n",
+			     tlli, pag_grp, imsi_digit_buf);
+			rc = rsl_ericsson_imm_assign_via_pch_cmd(bts, msg->len, msg->data, tlli, pag_grp);
+		} else 
+			LOGP(DPCU, LOGL_ERROR, "This BTS does not support immediate via PCH, dropping message!\n");
 
 		if (rc) {
 			msgb_free(msg);
@@ -426,8 +438,8 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		}
 		break;
 	default:
-		LOGP(DPCU, LOGL_ERROR, "Received PCU data request with "
-			"unsupported sapi %d\n", data_req->sapi);
+		LOGP(DPCU, LOGL_ERROR, "Received PCU data request for "
+		     "unsupported channel (sapi=%d)\n", data_req->sapi);
 		rc = -EINVAL;
 	}
 
