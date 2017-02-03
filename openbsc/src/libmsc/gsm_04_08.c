@@ -1125,15 +1125,126 @@ static int gsm48_rx_mm_status(struct msgb *msg)
 	return 0;
 }
 
-/* Chapter 9.2.3: Authentication Response */
-static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
+static int parse_gsm_auth_resp(uint8_t *res, uint8_t *res_len,
+			       struct gsm_subscriber_connection *conn,
+			       struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_auth_resp *ar = (struct gsm48_auth_resp*) gh->data;
-	struct gsm_network *net = conn->network;
 
-	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s): ",
-		osmo_hexdump(ar->sres, 4));
+	if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*ar)) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: MM AUTHENTICATION RESPONSE:"
+		     " l3 length invalid: %u\n",
+		     subscr_name(conn->subscr), msgb_l3len(msg));
+		return -EINVAL;
+	}
+
+	*res_len = sizeof(ar->sres);
+	memcpy(res, ar->sres, sizeof(ar->sres));
+	return 0;
+}
+
+static int parse_umts_auth_resp(uint8_t *res, uint8_t *res_len,
+				struct gsm_subscriber_connection *conn,
+				struct msgb *msg)
+{
+	struct gsm48_hdr *gh;
+	uint8_t *data;
+	uint8_t iei;
+	uint8_t ie_len;
+	unsigned int data_len;
+
+	/* First parse the GSM part */
+	if (parse_gsm_auth_resp(res, res_len, conn, msg))
+		return -EINVAL;
+	OSMO_ASSERT(*res_len == 4);
+
+	/* Then add the extended res part */
+	gh = msgb_l3(msg);
+	data = gh->data + sizeof(struct gsm48_auth_resp);
+	data_len = msgb_l3len(msg) - (data - (uint8_t*)msgb_l3(msg));
+
+	if (data_len < 3) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: MM AUTHENTICATION RESPONSE:"
+		     " l3 length invalid: %u\n",
+		     subscr_name(conn->subscr), msgb_l3len(msg));
+		return -EINVAL;
+	}
+
+	iei = data[0];
+	ie_len = data[1];
+	if (iei != GSM48_IE_AUTH_RES_EXT) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: MM R99 AUTHENTICATION RESPONSE:"
+		     " expected IEI 0x%02x, got 0x%02x\n",
+		     subscr_name(conn->subscr),
+		     GSM48_IE_AUTH_RES_EXT, iei);
+		return -EINVAL;
+	}
+
+	if (ie_len > 12) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: MM R99 AUTHENTICATION RESPONSE:"
+		     " extended Auth Resp IE 0x%02x is too large: %u bytes\n",
+		     subscr_name(conn->subscr), GSM48_IE_AUTH_RES_EXT, ie_len);
+		return -EINVAL;
+	}
+
+	*res_len += ie_len;
+	memcpy(res + 4, &data[2], ie_len);
+	return 0;
+}
+
+/* Chapter 9.2.3: Authentication Response */
+static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+	struct gsm_network *net = conn->network;
+	uint8_t res[16];
+	uint8_t res_len;
+	int rc;
+	bool is_r99;
+
+	if (!conn->subscr) {
+		LOGP(DMM, LOGL_ERROR,
+		     "MM AUTHENTICATION RESPONSE: invalid: no subscriber\n");
+		gsm48_tx_mm_auth_rej(conn);
+		release_security_operation(conn);
+		return -EINVAL;
+	}
+
+	if (msgb_l3len(msg) >
+	    sizeof(struct gsm48_hdr) + sizeof(struct gsm48_auth_resp)) {
+		rc = parse_umts_auth_resp(res, &res_len, conn, msg);
+		is_r99 = true;
+	} else {
+		rc = parse_gsm_auth_resp(res, &res_len, conn, msg);
+		is_r99 = false;
+	}
+
+	if (rc) {
+		gsm48_tx_mm_auth_rej(conn);
+		release_security_operation(conn);
+		return -EINVAL;
+	}
+
+	DEBUGP(DMM, "%s: MM %s AUTHENTICATION RESPONSE (%s = %s)\n",
+	       subscr_name(conn->subscr),
+	       is_r99 ? "R99" : "GSM", is_r99 ? "res" : "sres",
+	       osmo_hexdump_nospc(res, res_len));
+
+	/* Future: vlr_sub_rx_auth_resp(conn->vsub, is_r99,
+	 *				conn->via_iface == IFACE_IU,
+	 *				res, res_len);
+	 */
+
+	if (res_len != 4) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: MM AUTHENTICATION RESPONSE:"
+		     " UMTS authentication not supported\n",
+		     subscr_name(conn->subscr));
+	}
 
 	/* Safety check */
 	if (!conn->sec_operation) {
@@ -1142,7 +1253,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	}
 
 	/* Validate SRES */
-	if (memcmp(conn->sec_operation->atuple.vec.sres, ar->sres,4)) {
+	if (memcmp(conn->sec_operation->atuple.vec.sres, res, 4)) {
 		int rc;
 		gsm_cbfn *cb = conn->sec_operation->cb;
 
@@ -1163,6 +1274,108 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	/* Start ciphering */
 	return gsm0808_cipher_mode(conn, net->a5_encryption,
 	                           conn->sec_operation->atuple.vec.kc, 8, 0);
+}
+
+static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	uint8_t cause;
+	uint8_t auts_tag;
+	uint8_t auts_len;
+	uint8_t *auts;
+	int rc;
+
+	if (!conn->sec_operation) {
+		DEBUGP(DMM, "%s: MM R99 AUTHENTICATION FAILURE:"
+		       " No authentication/cipher operation in progress\n",
+		       subscr_name(conn->subscr));
+		return -EINVAL;
+	}
+
+	if (!conn->subscr) {
+		LOGP(DMM, LOGL_ERROR,
+		     "MM R99 AUTHENTICATION FAILURE: invalid: no subscriber\n");
+		gsm48_tx_mm_auth_rej(conn);
+		release_security_operation(conn);
+		return -EINVAL;
+	}
+
+	if (msgb_l3len(msg) < sizeof(*gh) + 1) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: MM R99 AUTHENTICATION FAILURE:"
+		     " l3 length invalid: %u\n",
+		     subscr_name(conn->subscr), msgb_l3len(msg));
+		gsm48_tx_mm_auth_rej(conn);
+		release_security_operation(conn);
+		return -EINVAL;
+	}
+
+	cause = gh->data[0];
+
+	if (cause != GSM48_REJECT_SYNCH_FAILURE) {
+		LOGP(DMM, LOGL_INFO,
+		     "%s: MM R99 AUTHENTICATION FAILURE: cause 0x%0x\n",
+		     subscr_name(conn->subscr), cause);
+		rc = gsm48_tx_mm_auth_rej(conn);
+		release_security_operation(conn);
+		return rc;
+	}
+
+	/* This is a Synch Failure procedure, which should pass an AUTS to
+	 * resynchronize the sequence nr with the HLR. Expecting exactly one
+	 * TLV with 14 bytes of AUTS. */
+
+	if (msgb_l3len(msg) < sizeof(*gh) + 1 + 2) {
+		LOGP(DMM, LOGL_INFO,
+		     "%s: MM R99 AUTHENTICATION FAILURE:"
+		     " invalid Synch Failure: missing AUTS IE\n",
+		     subscr_name(conn->subscr));
+		gsm48_tx_mm_auth_rej(conn);
+		release_security_operation(conn);
+		return -EINVAL;
+	}
+
+	auts_tag = gh->data[1];
+	auts_len = gh->data[2];
+	auts = &gh->data[3];
+
+	if (auts_tag != GSM48_IE_AUTS
+	    || auts_len != 14) {
+		LOGP(DMM, LOGL_INFO,
+		     "%s: MM R99 AUTHENTICATION FAILURE:"
+		     " invalid Synch Failure:"
+		     " expected AUTS IE 0x%02x of 14 bytes,"
+		     " got IE 0x%02x of %u bytes\n",
+		     subscr_name(conn->subscr),
+		     GSM48_IE_AUTS, auts_tag, auts_len);
+		gsm48_tx_mm_auth_rej(conn);
+		release_security_operation(conn);
+		return -EINVAL;
+	}
+
+	if (msgb_l3len(msg) < sizeof(*gh) + 1 + 2 + auts_len) {
+		LOGP(DMM, LOGL_INFO,
+		     "%s: MM R99 AUTHENTICATION FAILURE:"
+		     " invalid Synch Failure msg: message truncated (%u)\n",
+		     subscr_name(conn->subscr), msgb_l3len(msg));
+		gsm48_tx_mm_auth_rej(conn);
+		release_security_operation(conn);
+		return -EINVAL;
+	}
+
+	/* We have an AUTS IE with exactly 14 bytes of AUTS and the msgb is
+	 * large enough. */
+
+	DEBUGP(DMM, "%s: MM R99 AUTHENTICATION SYNCH (AUTS = %s)\n",
+	       subscr_name(conn->subscr), osmo_hexdump_nospc(auts, 14));
+
+	/* Future: vlr_sub_rx_auth_fail(conn->vsub, auts); */
+
+	LOGP(DMM, LOGL_ERROR, "%s: MM R99 AUTHENTICATION not supported\n",
+	     subscr_name(conn->subscr));
+	rc = gsm48_tx_mm_auth_rej(conn);
+	release_security_operation(conn);
+	return rc;
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
@@ -1198,6 +1411,9 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 		break;
 	case GSM48_MT_MM_AUTH_RESP:
 		rc = gsm48_rx_mm_auth_resp(conn, msg);
+		break;
+	case GSM48_MT_MM_AUTH_FAIL:
+		rc = gsm48_rx_mm_auth_fail(conn, msg);
 		break;
 	default:
 		LOGP(DMM, LOGL_NOTICE, "Unknown GSM 04.08 MM msg type 0x%02x\n",
