@@ -346,6 +346,8 @@ static int update_db_revision_3(void)
 		LOGP(DDB, LOGL_ERROR,
 			"Failed to commit the transaction (upgrade from rev 3)\n");
 		return -EINVAL;
+	} else {
+		dbi_result_free(result);
 	}
 
 	/* Shrink DB file size by actually wiping out SMS_3 table data */
