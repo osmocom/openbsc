@@ -23,7 +23,7 @@
 #define PCU_IF_SAPI_PDTCH	0x05	/* packet data/control/ccch block */
 #define PCU_IF_SAPI_PRACH	0x06	/* packet random access channel */
 #define PCU_IF_SAPI_PTCCH	0x07	/* packet TA control channel */
-#define PCU_IF_SAPI_AGCH_DT	0x08	/* assignment on AGCH but with additional TLLI */
+#define PCU_IF_SAPI_AGCH_DT	0x08	/* assignment on PCH or AGCH but with additional TLLI */
 
 /* flags */
 #define PCU_IF_FLAG_ACTIVE	(1 << 0)/* BTS is active */
@@ -61,6 +61,7 @@ struct gsm_pcu_if_data {
 struct gsm_pcu_if_data_cnf_dt {
 	uint8_t		sapi;
 	uint32_t	tlli;
+	uint8_t		imsi[3];
 	uint32_t	fn;
 	uint16_t	arfcn;
 	uint8_t		trx_nr;

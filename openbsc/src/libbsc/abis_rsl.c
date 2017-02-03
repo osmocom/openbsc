@@ -1085,15 +1085,41 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val)
 	return abis_rsl_sendmsg(msg);
 }
 
-/* Chapter 8.5.6 */
-int rsl_ericsson_imm_assign_cmd(struct gsm_bts *bts, uint32_t tlli, uint8_t len, uint8_t *val)
-{
-	struct msgb *msg = rsl_imm_assign_cmd_common(bts, len, val);
 
-	/* ericsson can handle a reference at the end of the message which is used in
+/* Append mobile idenitiy (tlli) to message buffer */
+static void rsl_ericsson_put_mi(struct msgb *msg, uint32_t tlli)
+{
+	/* NOTE: ericsson can handle a reference at the end of the message which is used in
 	 * the confirm message. The confirm message is only sent if the trailer is present */
 	msgb_put_u8(msg, 0xf1);
 	msgb_put_u32(msg, tlli);
+}
+
+/* Chapter 8.5.6 (Ericcson vendor specific RSL extension) */
+int rsl_ericsson_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val,
+				uint32_t tlli)
+{
+	struct msgb *msg = rsl_imm_assign_cmd_common(bts, len, val);
+
+	/* Append ericsson propritary mobile identity field */
+	rsl_ericsson_put_mi(msg, tlli);
+
+	return abis_rsl_sendmsg(msg);
+}
+
+/* Chapter 8.5.6 (Ericcson vendor specific RSL extension) */
+int rsl_ericsson_imm_assign_via_pch_cmd(struct gsm_bts *bts, uint8_t len,
+					uint8_t *val, uint32_t tlli,
+					uint8_t pag_grp)
+{
+	struct msgb *msg = rsl_imm_assign_cmd_common(bts, len, val);
+	
+	/* Append ericsson propritary paging group field */
+	msgb_put_u8(msg, 0x0e);
+	msgb_put_u8(msg, pag_grp);
+
+	/* Append ericsson propritary mobile identity field */
+	rsl_ericsson_put_mi(msg, tlli);
 
 	return abis_rsl_sendmsg(msg);
 }
