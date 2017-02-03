@@ -19,6 +19,7 @@ import os, sys
 import time
 import unittest
 import socket
+import subprocess
 
 import osmopy.obscvty as obscvty
 import osmopy.osmoutil as osmoutil
@@ -781,10 +782,10 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.vty.command("end")
 
         nat_msc_ip(self, ip, port)
-        msc = nat_msc_test(self, ip, port)
-        b0 = nat_bsc_sock_test(0, "lol")
-        b1 = nat_bsc_sock_test(1, "xyu")
-        b2 = nat_bsc_sock_test(5, "key")
+        msc = nat_msc_test(self, ip, port, verbose=True)
+        b0 = nat_bsc_sock_test(0, "lol", verbose=True, proc=self.proc)
+        b1 = nat_bsc_sock_test(1, "xyu", verbose=True, proc=self.proc)
+        b2 = nat_bsc_sock_test(5, "key", verbose=True, proc=self.proc)
 
         self.assertEquals("3 BSCs configured", self.vty.command("show nat num-bscs-configured"))
         self.assertTrue(3 == nat_bsc_num_con(self))
@@ -1237,6 +1238,19 @@ def nat_msc_test(x, ip, port, verbose = False):
                         " connected yet: %r %r" % (ip, port))
     return conn
 
+def cmd(what):
+    print '\n> %s' % what
+    sys.stdout.flush()
+    subprocess.call(what, shell=True)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    print ''
+    sys.stdout.flush()
+
+def checkxxx():
+    cmd('cat /proc/net/tcp');
+    cmd('ps xua | grep osmo');
+
 def ipa_handle_small(x, verbose = False):
     s = data2str(x.recv(4))
     if len(s) != 4*2:
@@ -1256,11 +1270,15 @@ def ipa_handle_small(x, verbose = False):
         if (verbose):
             print "\tBSC <- NAT: ", s
 
-def ipa_handle_resp(x, tk, verbose = False):
+def ipa_handle_resp(x, tk, verbose = False, proc=None):
     s = data2str(x.recv(38))
     if "0023fe040108010701020103010401050101010011" in s:
         retries = 3
         while True:
+            if proc:
+              print "\tproc.poll() = %r" % proc.poll()
+              print "\tproc.pid = %r" % proc.pid
+            checkxxx()
             print "\tsending IPA identity(%s) at %s" % (tk, time.strftime("%T"))
             try:
                 x.send(IPA().id_resp(IPA().identity(name = tk.encode('utf-8'))))
@@ -1269,6 +1287,8 @@ def ipa_handle_resp(x, tk, verbose = False):
                 break
             except:
                 print "\tfailed sending IPA identity at", time.strftime("%T")
+                if proc:
+                  print "\tproc.poll() = %r" % proc.poll()
                 if retries < 1:
                     print "\tgiving up"
                     raise
@@ -1281,17 +1301,29 @@ def ipa_handle_resp(x, tk, verbose = False):
 def nat_bsc_num_con(x):
     return len(x.vty.command("show bsc connections").split('\n'))
 
-def nat_bsc_sock_test(nr, tk, verbose = False):
+def nat_bsc_sock_test(nr, tk, verbose = False, proc=None):
     bsc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     bsc.bind(('127.0.0.1', 0))
     bsc.connect(('127.0.0.1', 5000))
     if (verbose):
         print "BSC%d " %nr
         print "\tconnected to %s:%d" % bsc.getpeername()
+    if proc:
+      print "\tproc.poll() = %r" % proc.poll()
+      print "\tproc.pid = %r" % proc.pid
+    checkxxx()
     ipa_handle_small(bsc, verbose)
-    ipa_handle_resp(bsc, tk, verbose)
+    checkxxx()
+    ipa_handle_resp(bsc, tk, verbose, proc=proc)
+    if proc:
+      print "\tproc.poll() = %r" % proc.poll()
+    checkxxx()
     bsc.recv(27) # MGCP msg
+    if proc:
+      print "\tproc.poll() = %r" % proc.poll()
+    checkxxx()
     ipa_handle_small(bsc, verbose)
+    checkxxx()
     return bsc
 
 def add_bsc_test(suite, workdir):
