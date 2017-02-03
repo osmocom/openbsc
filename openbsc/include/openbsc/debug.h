@@ -37,12 +37,8 @@ enum {
 	DRANAP,
 	DSUA,
 	DV42BIS,
+	DVLR,
 	Debug_LastEntry,
 };
-
-struct gsm_subscriber;
-
-void log_set_filter_vlr_subscr(struct log_target *target,
-			       struct gsm_subscriber *vlr_subscr);
 
 extern const struct log_info log_info;

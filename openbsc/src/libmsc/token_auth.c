@@ -19,6 +19,9 @@
  *
  */
 
+#if 0
+VLR: what do do with this?
+
 #include <stdio.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
@@ -28,6 +31,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/db.h>
+#include <openbsc/vlr.h>
 
 #define TOKEN_SMS_TEXT "HAR 2009 GSM.  Register at http://har2009.gnumonks.org/ " \
 			"Your IMSI is %s, auth token is %08X, phone no is %s."
@@ -37,13 +41,15 @@ static char *build_sms_string(struct gsm_subscriber *subscr, uint32_t token)
 	char *sms_str;
 	unsigned int len;
 
-	len = strlen(subscr->imsi) + 8 + strlen(TOKEN_SMS_TEXT);
+	OSMO_ASSERT(subscr->vsub);
+
+	len = strlen(subscr->vsub->imsi) + 8 + strlen(TOKEN_SMS_TEXT);
 	sms_str = talloc_size(tall_bsc_ctx, len);
 	if (!sms_str)
 		return NULL;
 
-	snprintf(sms_str, len, TOKEN_SMS_TEXT, subscr->imsi, token,
-		 subscr->extension);
+	snprintf(sms_str, len, TOKEN_SMS_TEXT, subscr->vsub->imsi, token,
+		 subscr->vsub->msisdn);
 	sms_str[len-1] = '\0';
 
 	return sms_str;
@@ -99,7 +105,7 @@ static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 unauth:
 
 		/* make sure we don't allow him in again unless he clicks the web UI */
-		subscr->authorized = 0;
+		subscr->vsub->authorized = 0;
 		db_sync_subscriber(subscr);
 		if (rc) {
 			struct gsm_subscriber_connection *conn = connection_for_subscr(subscr);
@@ -158,3 +164,4 @@ void on_dso_load_token(void)
 	osmo_signal_register_handler(SS_SUBSCR, token_subscr_cb, NULL);
 	osmo_signal_register_handler(SS_SMS, token_sms_cb, NULL);
 }
+#endif

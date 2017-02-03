@@ -24,6 +24,8 @@
 struct mncc_sock_state;
 struct gsm_subscriber_group;
 struct bsc_subscr;
+struct vlr_instance;
+struct vlr_subscr;
 
 #define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
 
@@ -63,20 +65,6 @@ struct gsm_auth_tuple {
 #define GSM_KEY_SEQ_INVAL	7	/* GSM 04.08 - 10.5.1.2 */
 
 /*
- * LOCATION UPDATING REQUEST state
- *
- * Our current operation is:
- *	- Get imei/tmsi
- *	- Accept/Reject according to global policy
- */
-struct gsm_loc_updating_operation {
-        struct osmo_timer_list updating_timer;
-	unsigned int waiting_for_imsi : 1;
-	unsigned int waiting_for_imei : 1;
-	unsigned int key_seq : 4;
-};
-
-/*
  * AUTHENTICATION/CIPHERING state
  */
 struct gsm_security_operation {
@@ -113,6 +101,15 @@ enum ran_type {
        RAN_UTRAN_IU,	/* 3G / Iu-interface (IuCS or IuPS) */
 };
 
+struct gsm_classmark {
+	bool classmark1_set;
+	struct gsm48_classmark1 classmark1;
+	uint8_t classmark2_len;
+	uint8_t classmark2[3];
+	uint8_t classmark3_len;
+	uint8_t classmark3[14];
+};
+
 /* active radio connection of a mobile subscriber */
 struct gsm_subscriber_connection {
 	/* global linked list of subscriber_connections */
@@ -122,11 +119,32 @@ struct gsm_subscriber_connection {
 	 * towards A/Iu */
 	uint32_t use_count;
 
-	/* To whom we are allocated at the moment */
-	struct gsm_subscriber *subscr;
+	/* temporary hack: while the same gsm_subscriber_connection is in use
+	 * between libbsc and libmsc, we need to prevent a second free from
+	 * within libbsc after bsc_api->compl_l3() returns. In
+	 * gsm0408_rcvmsg(), compl_l3() is called, and if it returns
+	 * BSC_API_CONN_POL_REJECT, the conn is discarded right away. This is
+	 * the only instance where libbsc discards a gsm_subscriber_connection.
+	 * If compl_l3() returns BSC_API_CONN_POL_ACCEPT and in all other API
+	 * calls, ownership of the conn is in libmsc (in the osmo-nitb case) or
+	 * in the osmo-bsc code (in the OsmoBSC standalone case). Our VLR
+	 * however assumes full ownership of the conn and will discard it when
+	 * nothing is pending. So in case we're still in compl_l3() and going
+	 * to reject the conn, we must tell libmsc to not free it yet, since
+	 * bsc_api.c will do so again/anyway. When the
+	 * gsm_subscriber_connection structs are properly separated, this will
+	 * go away magically. */
+	bool owned_by_msc;
 
-	/* libbsc subscriber information */
+	/* The MS has opened the conn with a CM Service Request, and we shall
+	 * keep it open for an actual request (or until timeout). */
+	bool received_cm_service_request;
+
+	/* libbsc subscriber information (if available) */
 	struct bsc_subscr *bsub;
+
+	/* libmsc/libvlr subscriber information (if available) */
+	struct vlr_subscr *vsub;
 
 	/* LU expiration handling */
 	uint8_t expire_timer_stopped;
@@ -136,9 +154,10 @@ struct gsm_subscriber_connection {
 	/*
 	 * Operations that have a state and might be pending
 	 */
-	struct gsm_loc_updating_operation *loc_operation;
 	struct gsm_security_operation *sec_operation;
 	struct gsm_anchor_operation *anch_operation;
+
+	struct osmo_fsm_inst *conn_fsm;
 
 	/* Are we part of a special "silent" call */
 	int silent_call;
@@ -154,7 +173,7 @@ struct gsm_subscriber_connection {
 	/* back pointers */
 	struct gsm_network *network;
 
-	int in_release;
+	bool in_release;
 	struct gsm_lchan *lchan; /* BSC */
 	struct gsm_lchan *ho_lchan; /* BSC */
 	struct gsm_bts *bts; /* BSC */
@@ -165,6 +184,8 @@ struct gsm_subscriber_connection {
 
 	/* connected via 2G or 3G? */
 	enum ran_type via_ran;
+
+	struct gsm_classmark classmark;
 };
 
 
@@ -310,6 +331,7 @@ struct gsm_network {
 	char *authorized_reg_str;
 	enum gsm48_reject_value reject_cause;
 	int a5_encryption;
+	bool authentication_required;
 	int neci;
 	int send_mm_info;
 	struct {
@@ -378,11 +400,7 @@ struct gsm_network {
 	bool auto_assign_exten;
 	uint64_t ext_min;
 	uint64_t ext_max;
-	struct gsm_subscriber_group *subscr_group;
 	struct gsm_sms_queue *sms_queue;
-
-	/* nitb related control */
-	int avoid_tmsi;
 
 	/* control interface */
 	struct ctrl_handle *ctrl;
@@ -408,6 +426,12 @@ struct gsm_network {
 	 * not require gsm_data.h). In an MSC-without-BSC environment, this
 	 * pointer is NULL to indicate absence of a bsc_subscribers list. */
 	struct llist_head *bsc_subscribers;
+
+	/* MSC: GSUP server address of the HLR */
+	const char *gsup_server_addr_str;
+	uint16_t gsup_server_port;
+
+	struct vlr_instance *vlr;
 };
 
 struct osmo_esme;
@@ -430,7 +454,7 @@ struct gsm_sms_addr {
 
 struct gsm_sms {
 	unsigned long long id;
-	struct gsm_subscriber *receiver;
+	struct vlr_subscr *receiver;
 	struct gsm_sms_addr src, dst;
 	enum gsm_sms_source_id source;
 
@@ -576,12 +600,14 @@ extern const struct value_string bts_type_descs[_NUM_GSM_BTS_TYPE+1];
 
 /* control interface handling */
 int bsc_base_ctrl_cmds_install(void);
-int msc_ctrl_cmds_install(void);
+int msc_ctrl_cmds_install(struct gsm_network *net);
 
 /* dependency handling */
 void bts_depend_mark(struct gsm_bts *bts, int dep);
 void bts_depend_clear(struct gsm_bts *bts, int dep);
 int bts_depend_check(struct gsm_bts *bts);
 int bts_depend_is_depedency(struct gsm_bts *base, struct gsm_bts *other);
+
+bool classmark_is_r99(struct gsm_classmark *cm);
 
 #endif /* _GSM_DATA_H */

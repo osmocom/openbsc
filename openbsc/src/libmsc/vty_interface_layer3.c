@@ -51,74 +51,78 @@
 #include <openbsc/sms_queue.h>
 #include <openbsc/mncc_int.h>
 #include <openbsc/handover.h>
+#include <openbsc/vlr.h>
 
 #include <osmocom/vty/logging.h>
+
+#include <openbsc/osmo_msc.h>
 
 #include "meas_feed.h"
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 
-static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
+static void subscr_dump_full_vty(struct vty *vty, struct vlr_subscr *vsub)
 {
-	int rc;
 	int reqs;
-	struct gsm_auth_info ainfo;
-	struct gsm_auth_tuple atuple;
 	struct llist_head *entry;
 	char expire_time[200];
 
-	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
-		subscr->authorized, VTY_NEWLINE);
-	if (strlen(subscr->name))
-		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
-	if (strlen(subscr->extension))
-		vty_out(vty, "    Extension: %s%s", subscr->extension,
+	if (strlen(vsub->name))
+		vty_out(vty, "    Name: '%s'%s", vsub->name, VTY_NEWLINE);
+	if (strlen(vsub->msisdn))
+		vty_out(vty, "    Extension: %s%s", vsub->msisdn,
 			VTY_NEWLINE);
 	vty_out(vty, "    LAC: %d/0x%x%s",
-		subscr->lac, subscr->lac, VTY_NEWLINE);
-	vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
-	if (subscr->tmsi != GSM_RESERVED_TMSI)
-		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
+		vsub->lac, vsub->lac, VTY_NEWLINE);
+	vty_out(vty, "    IMSI: %s%s", vsub->imsi, VTY_NEWLINE);
+	if (vsub->tmsi != GSM_RESERVED_TMSI)
+		vty_out(vty, "    TMSI: %08X%s", vsub->tmsi,
+			VTY_NEWLINE);
+	if (vsub->tmsi_new != GSM_RESERVED_TMSI)
+		vty_out(vty, "    new TMSI: %08X%s", vsub->tmsi_new,
 			VTY_NEWLINE);
 
-	rc = db_get_authinfo_for_subscr(&ainfo, subscr);
-	if (!rc) {
+#if 0
+	/* TODO: add this to vlr_subscr? */
+	if (vsub->auth_info.auth_algo != AUTH_ALGO_NONE) {
+		struct gsm_auth_info *i = &vsub->auth_info;
 		vty_out(vty, "    A3A8 algorithm id: %d%s",
-			ainfo.auth_algo, VTY_NEWLINE);
+			i->auth_algo, VTY_NEWLINE);
 		vty_out(vty, "    A3A8 Ki: %s%s",
-			osmo_hexdump(ainfo.a3a8_ki, ainfo.a3a8_ki_len),
+			osmo_hexdump(i->a3a8_ki, i->a3a8_ki_len),
 			VTY_NEWLINE);
 	}
+#endif
 
-	rc = db_get_lastauthtuple_for_subscr(&atuple, subscr);
-	if (!rc) {
+	if (vsub->last_tuple) {
+		struct gsm_auth_tuple *t = vsub->last_tuple;
 		vty_out(vty, "    A3A8 last tuple (used %d times):%s",
-			atuple.use_count, VTY_NEWLINE);
+			t->use_count, VTY_NEWLINE);
 		vty_out(vty, "     seq # : %d%s",
-			atuple.key_seq, VTY_NEWLINE);
+			t->key_seq, VTY_NEWLINE);
 		vty_out(vty, "     RAND  : %s%s",
-			osmo_hexdump(atuple.vec.rand, sizeof(atuple.vec.rand)),
+			osmo_hexdump(t->vec.rand, sizeof(t->vec.rand)),
 			VTY_NEWLINE);
 		vty_out(vty, "     SRES  : %s%s",
-			osmo_hexdump(atuple.vec.sres, sizeof(atuple.vec.sres)),
+			osmo_hexdump(t->vec.sres, sizeof(t->vec.sres)),
 			VTY_NEWLINE);
 		vty_out(vty, "     Kc    : %s%s",
-			osmo_hexdump(atuple.vec.kc, sizeof(atuple.vec.kc)),
+			osmo_hexdump(t->vec.kc, sizeof(t->vec.kc)),
 			VTY_NEWLINE);
 	}
 
 	/* print the expiration time of a subscriber */
 	strftime(expire_time, sizeof(expire_time),
-			"%a, %d %b %Y %T %z", localtime(&subscr->expire_lu));
+			"%a, %d %b %Y %T %z", localtime(&vsub->expire_lu));
 	expire_time[sizeof(expire_time) - 1] = '\0';
 	vty_out(vty, "    Expiration Time: %s%s", expire_time, VTY_NEWLINE);
 
 	reqs = 0;
-	llist_for_each(entry, &subscr->requests)
+	llist_for_each(entry, &vsub->cs.requests)
 		reqs += 1;
-	vty_out(vty, "    Paging: %s paging Requests: %d%s",
-		subscr->is_paging ? "is" : "not", reqs, VTY_NEWLINE);
-	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
+	vty_out(vty, "    Paging: %s paging for %d requests%s",
+		vsub->cs.is_paging ? "is" : "not", reqs, VTY_NEWLINE);
+	vty_out(vty, "    Use count: %u%s", vsub->use_count, VTY_NEWLINE);
 }
 
 
@@ -129,11 +133,18 @@ DEFUN(show_subscr_cache,
 	SHOW_STR "Show information about subscribers\n"
 	"Display contents of subscriber cache\n")
 {
-	struct gsm_subscriber *subscr;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct vlr_subscr *vsub;
+	int count = 0;
 
-	llist_for_each_entry(subscr, &active_subscribers, entry) {
+	llist_for_each_entry(vsub, &gsmnet->vlr->subscribers, list) {
+		if (++count > 100) {
+			vty_out(vty, "%% More than %d subscribers in cache,"
+				" stopping here.%s", count-1, VTY_NEWLINE);
+			break;
+		}
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_full_vty(vty, subscr);
+		subscr_dump_full_vty(vty, vsub);
 	}
 
 	return CMD_SUCCESS;
@@ -162,10 +173,11 @@ DEFUN(sms_send_pend,
 	return CMD_SUCCESS;
 }
 
-static int _send_sms_str(struct gsm_subscriber *receiver,
-                         struct gsm_subscriber *sender,
-                         char *str, uint8_t tp_pid)
+static int _send_sms_str(struct vlr_subscr *receiver,
+			 struct vlr_subscr *sender,
+			 char *str, uint8_t tp_pid)
 {
+	struct gsm_network *net = receiver->vlr->user_ctx;
 	struct gsm_sms *sms;
 
 	sms = sms_from_text(receiver, sender, 0, str);
@@ -180,22 +192,20 @@ static int _send_sms_str(struct gsm_subscriber *receiver,
 	LOGP(DLSMS, LOGL_DEBUG, "SMS stored in DB\n");
 
 	sms_free(sms);
-	sms_queue_trigger(receiver->group->net->sms_queue);
+	sms_queue_trigger(net->sms_queue);
 	return CMD_SUCCESS;
 }
 
-static struct gsm_subscriber *get_subscr_by_argv(struct gsm_network *gsmnet,
-						 const char *type,
-						 const char *id)
+static struct vlr_subscr *get_vsub_by_argv(struct gsm_network *gsmnet,
+					       const char *type,
+					       const char *id)
 {
-	if (!strcmp(type, "extension"))
-		return subscr_get_by_extension(gsmnet->subscr_group, id);
-	else if (!strcmp(type, "imsi"))
-		return subscr_get_by_imsi(gsmnet->subscr_group, id);
+	if (!strcmp(type, "extension") || !strcmp(type, "msisdn"))
+		return vlr_subscr_find_by_msisdn(gsmnet->vlr, id);
+	else if (!strcmp(type, "imsi") || !strcmp(type, "id"))
+		return vlr_subscr_find_by_imsi(gsmnet->vlr, id);
 	else if (!strcmp(type, "tmsi"))
-		return subscr_get_by_tmsi(gsmnet->subscr_group, atoi(id));
-	else if (!strcmp(type, "id"))
-		return subscr_get_by_id(gsmnet->subscr_group, atoi(id));
+		return vlr_subscr_find_by_tmsi(gsmnet->vlr, atoi(id));
 
 	return NULL;
 }
@@ -213,18 +223,18 @@ DEFUN(show_subscr,
 	SHOW_STR SUBSCR_HELP)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-				get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct vlr_subscr *vsub = get_vsub_by_argv(gsmnet, argv[0],
+						       argv[1]);
 
-	if (!subscr) {
+	if (!vsub) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	subscr_dump_full_vty(vty, subscr);
+	subscr_dump_full_vty(vty, vsub);
 
-	subscr_put(subscr);
+	vlr_subscr_put(vsub);
 
 	return CMD_SUCCESS;
 }
@@ -237,28 +247,9 @@ DEFUN(subscriber_create,
 	"Identify the subscriber by his IMSI\n" \
 	"Identifier for the subscriber\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr;
-
-	subscr = subscr_get_by_imsi(gsmnet->subscr_group, argv[0]);
-	if (subscr)
-		db_sync_subscriber(subscr);
-	else {
-		subscr = subscr_create_subscriber(gsmnet->subscr_group, argv[0]);
-
-		if (!subscr) {
-			vty_out(vty, "%% No subscriber created for IMSI %s%s",
-				argv[0], VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-	}
-
-	/* Show info about the created subscriber. */
-	subscr_dump_full_vty(vty, subscr);
-
-	subscr_put(subscr);
-
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber create' now needs to be done at osmo-hlr%s",
+		VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(subscriber_send_pending_sms,
@@ -267,21 +258,21 @@ DEFUN(subscriber_send_pending_sms,
 	SUBSCR_HELP "SMS Operations\n" "Send pending SMS\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr;
+	struct vlr_subscr *vsub;
 	struct gsm_sms *sms;
 
-	subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	if (!subscr) {
+	vsub = get_vsub_by_argv(gsmnet, argv[0], argv[1]);
+	if (!vsub) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	sms = db_sms_get_unsent_by_subscr(gsmnet, subscr->id, UINT_MAX);
+	sms = db_sms_get_unsent_by_subscr(gsmnet, vsub->id, UINT_MAX);
 	if (sms)
 		gsm411_send_sms_subscr(sms->receiver, sms);
 
-	subscr_put(subscr);
+	vlr_subscr_put(vsub);
 
 	return CMD_SUCCESS;
 }
@@ -292,12 +283,12 @@ DEFUN(subscriber_send_sms,
 	SUBSCR_HELP "SMS Operations\n" SUBSCR_HELP "Send SMS\n" "Actual SMS Text\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	struct gsm_subscriber *sender = get_subscr_by_argv(gsmnet, argv[2], argv[3]);
+	struct vlr_subscr *vsub = get_vsub_by_argv(gsmnet, argv[0], argv[1]);
+	struct vlr_subscr *sender = get_vsub_by_argv(gsmnet, argv[2], argv[3]);
 	char *str;
 	int rc;
 
-	if (!subscr) {
+	if (!vsub) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		rc = CMD_WARNING;
@@ -312,15 +303,15 @@ DEFUN(subscriber_send_sms,
 	}
 
 	str = argv_concat(argv, argc, 4);
-	rc = _send_sms_str(subscr, sender, str, 0);
+	rc = _send_sms_str(vsub, sender, str, 0);
 	talloc_free(str);
 
 err:
 	if (sender)
-		subscr_put(sender);
+		vlr_subscr_put(sender);
 
-	if (subscr)
-		subscr_put(subscr);
+	if (vsub)
+		vlr_subscr_put(vsub);
 
 	return rc;
 }
@@ -332,12 +323,12 @@ DEFUN(subscriber_silent_sms,
 	SUBSCR_HELP "Silent SMS Operations\n" SUBSCR_HELP "Send SMS\n" "Actual SMS Text\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	struct gsm_subscriber *sender = get_subscr_by_argv(gsmnet, argv[2], argv[3]);
+	struct vlr_subscr *vsub = get_vsub_by_argv(gsmnet, argv[0], argv[1]);
+	struct vlr_subscr *sender = get_vsub_by_argv(gsmnet, argv[2], argv[3]);
 	char *str;
 	int rc;
 
-	if (!subscr) {
+	if (!vsub) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		rc = CMD_WARNING;
@@ -352,15 +343,15 @@ DEFUN(subscriber_silent_sms,
 	}
 
 	str = argv_concat(argv, argc, 4);
-	rc = _send_sms_str(subscr, sender, str, 64);
+	rc = _send_sms_str(vsub, sender, str, 64);
 	talloc_free(str);
 
 err:
 	if (sender)
-		subscr_put(sender);
+		vlr_subscr_put(sender);
 
-	if (subscr)
-		subscr_put(subscr);
+	if (vsub)
+		vlr_subscr_put(vsub);
 
 	return rc;
 }
@@ -379,10 +370,10 @@ DEFUN(subscriber_silent_call_start,
 	CHAN_TYPE_HELP)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct vlr_subscr *vsub = get_vsub_by_argv(gsmnet, argv[0], argv[1]);
 	int rc, type;
 
-	if (!subscr) {
+	if (!vsub) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
@@ -397,15 +388,15 @@ DEFUN(subscriber_silent_call_start,
 	else
 		type = RSL_CHANNEED_ANY;	/* Defaults to ANY */
 
-	rc = gsm_silent_call_start(subscr, vty, type);
+	rc = gsm_silent_call_start(vsub, vty, type);
 	if (rc <= 0) {
 		vty_out(vty, "%% Subscriber not attached%s",
 			VTY_NEWLINE);
-		subscr_put(subscr);
+		vlr_subscr_put(vsub);
 		return CMD_WARNING;
 	}
 
-	subscr_put(subscr);
+	vlr_subscr_put(vsub);
 
 	return CMD_SUCCESS;
 }
@@ -417,22 +408,22 @@ DEFUN(subscriber_silent_call_stop,
 	CHAN_TYPE_HELP)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct vlr_subscr *vsub = get_vsub_by_argv(gsmnet, argv[0], argv[1]);
 	int rc;
 
-	if (!subscr) {
+	if (!vsub) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	rc = gsm_silent_call_stop(subscr);
+	rc = gsm_silent_call_stop(vsub);
 	if (rc < 0) {
-		subscr_put(subscr);
+		vlr_subscr_put(vsub);
 		return CMD_WARNING;
 	}
 
-	subscr_put(subscr);
+	vlr_subscr_put(vsub);
 
 	return CMD_SUCCESS;
 }
@@ -449,10 +440,10 @@ DEFUN(subscriber_ussd_notify,
 	char *text;
 	struct gsm_subscriber_connection *conn;
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct vlr_subscr *vsub = get_vsub_by_argv(gsmnet, argv[0], argv[1]);
 	int level;
 
-	if (!subscr) {
+	if (!vsub) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
@@ -461,15 +452,15 @@ DEFUN(subscriber_ussd_notify,
 	level = atoi(argv[2]);
 	text = argv_concat(argv, argc, 3);
 	if (!text) {
-		subscr_put(subscr);
+		vlr_subscr_put(vsub);
 		return CMD_WARNING;
 	}
 
-	conn = connection_for_subscr(subscr);
+	conn = connection_for_subscr(vsub);
 	if (!conn) {
 		vty_out(vty, "%% An active connection is required for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
-		subscr_put(subscr);
+		vlr_subscr_put(vsub);
 		talloc_free(text);
 		return CMD_WARNING;
 	}
@@ -477,7 +468,7 @@ DEFUN(subscriber_ussd_notify,
 	msc_send_ussd_notify(conn, level, text);
 	msc_send_ussd_release_complete(conn);
 
-	subscr_put(subscr);
+	vlr_subscr_put(vsub);
 	talloc_free(text);
 	return CMD_SUCCESS;
 }
@@ -485,32 +476,12 @@ DEFUN(subscriber_ussd_notify,
 DEFUN(ena_subscr_delete,
       ena_subscr_delete_cmd,
       "subscriber " SUBSCR_TYPES " ID delete",
-	SUBSCR_HELP "Delete subscriber in HLR\n")
+	SUBSCR_HELP "Delete subscriber in VLR\n")
 {
-	int rc;
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	if (subscr->use_count != 1) {
-		vty_out(vty, "Removing active subscriber%s", VTY_NEWLINE);
-	}
-
-	rc = db_subscriber_delete(subscr);
-	subscr_put(subscr);
-
-	if (rc != 0) {
-		vty_out(vty, "Failed to remove subscriber%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber delete' is no longer supported.%s"
+		"%% This is now up to osmo-hlr.%s",
+		VTY_NEWLINE, VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(ena_subscr_expire,
@@ -519,19 +490,28 @@ DEFUN(ena_subscr_expire,
 	SUBSCR_HELP "Expire the subscriber Now\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct vlr_subscr *vsub = get_vsub_by_argv(gsmnet, argv[0],
+						       argv[1]);
 
-	if (!subscr) {
+	if (!vsub) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	subscr->expire_lu = time(0);
-	db_sync_subscriber(subscr);
-	subscr_put(subscr);
+	if (vsub->lu_complete) {
+		vsub->lu_complete = false;
+		vlr_subscr_put(vsub);
+		vty_out(vty, "%% VLR released subscriber %s%s",
+			vlr_subscr_name(vsub), VTY_NEWLINE);
+	}
 
+	if (vsub->use_count > 1)
+		vty_out(vty, "%% Subscriber %s is still in use,"
+			" should be released soon%s",
+			vlr_subscr_name(vsub), VTY_NEWLINE);
+
+	vlr_subscr_put(vsub);
 	return CMD_SUCCESS;
 }
 
@@ -542,22 +522,10 @@ DEFUN(ena_subscr_authorized,
 	"Subscriber should NOT be authorized\n"
 	"Subscriber should be authorized\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	subscr->authorized = atoi(argv[2]);
-	db_sync_subscriber(subscr);
-
-	subscr_put(subscr);
-
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber authorized' is no longer supported.%s"
+		"%% Authorization is now up to osmo-hlr.%s",
+		VTY_NEWLINE, VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(ena_subscr_name,
@@ -566,38 +534,10 @@ DEFUN(ena_subscr_name,
 	SUBSCR_HELP "Set the name of the subscriber\n"
 	"Name of the Subscriber\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	char *name;
-
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	name = argv_concat(argv, argc, 2);
-	if (!name) {
-		subscr_put(subscr);
-		return CMD_WARNING;
-	}
-
-	if (strlen(name) > sizeof(subscr->name)-1) {
-		vty_out(vty,
-			"%% NAME is too long, max. %zu characters are allowed%s",
-			sizeof(subscr->name)-1, VTY_NEWLINE);
-		subscr_put(subscr);
-		return CMD_WARNING;
-	}
-
-	osmo_strlcpy(subscr->name, name, sizeof(subscr->name));
-	talloc_free(name);
-	db_sync_subscriber(subscr);
-
-	subscr_put(subscr);
-
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber name' is no longer supported.%s"
+		"%% This is now up to osmo-hlr.%s",
+		VTY_NEWLINE, VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(ena_subscr_extension,
@@ -606,30 +546,10 @@ DEFUN(ena_subscr_extension,
 	SUBSCR_HELP "Set the extension (phone number) of the subscriber\n"
 	"Extension (phone number)\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	const char *ext = argv[2];
-
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	if (strlen(ext) > sizeof(subscr->extension)-1) {
-		vty_out(vty,
-			"%% EXTENSION is too long, max. %zu characters are allowed%s",
-			sizeof(subscr->extension)-1, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	osmo_strlcpy(subscr->extension, ext, sizeof(subscr->extension));
-	db_sync_subscriber(subscr);
-
-	subscr_put(subscr);
-
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber extension' is no longer supported.%s"
+		"%% This is now up to osmo-hlr.%s",
+		VTY_NEWLINE, VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(ena_subscr_handover,
@@ -642,20 +562,20 @@ DEFUN(ena_subscr_handover,
 	struct gsm_subscriber_connection *conn;
 	struct gsm_bts *bts;
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct vlr_subscr *vsub =
+			get_vsub_by_argv(gsmnet, argv[0], argv[1]);
 
-	if (!subscr) {
+	if (!vsub) {
 		vty_out(vty, "%% No subscriber found for %s %s.%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	conn = connection_for_subscr(subscr);
+	conn = connection_for_subscr(vsub);
 	if (!conn) {
 		vty_out(vty, "%% No active connection for subscriber %s %s.%s",
 			argv[0], argv[1], VTY_NEWLINE);
-		subscr_put(subscr);
+		vlr_subscr_put(vsub);
 		return CMD_WARNING;
 	}
 
@@ -663,7 +583,7 @@ DEFUN(ena_subscr_handover,
 	if (!bts) {
 		vty_out(vty, "%% BTS with number(%d) could not be found.%s",
 			atoi(argv[2]), VTY_NEWLINE);
-		subscr_put(subscr);
+		vlr_subscr_put(vsub);
 		return CMD_WARNING;
 	}
 
@@ -679,7 +599,7 @@ DEFUN(ena_subscr_handover,
 			VTY_NEWLINE);
 	}
 
-	subscr_put(subscr);
+	vlr_subscr_put(vsub);
 	return CMD_SUCCESS;
 }
 
@@ -695,69 +615,10 @@ DEFUN(ena_subscr_a3a8,
       SUBSCR_HELP "Set a3a8 parameters for the subscriber\n"
       A3A8_ALG_HELP "Encryption Key Ki\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr =
-			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	const char *alg_str = argv[2];
-	const char *ki_str = argc == 4 ? argv[3] : NULL;
-	struct gsm_auth_info ainfo;
-	int rc, minlen, maxlen;
-
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	if (!strcasecmp(alg_str, "none")) {
-		ainfo.auth_algo = AUTH_ALGO_NONE;
-		minlen = maxlen = 0;
-	} else if (!strcasecmp(alg_str, "xor")) {
-		ainfo.auth_algo = AUTH_ALGO_XOR;
-		minlen = A38_XOR_MIN_KEY_LEN;
-		maxlen = A38_XOR_MAX_KEY_LEN;
-	} else if (!strcasecmp(alg_str, "comp128v1")) {
-		ainfo.auth_algo = AUTH_ALGO_COMP128v1;
-		minlen = maxlen = A38_COMP128_KEY_LEN;
-	} else {
-		/* Unknown method */
-		subscr_put(subscr);
-		vty_out(vty, "%% Unknown auth method %s%s",
-				alg_str, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	if (ki_str) {
-		rc = osmo_hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
-		if ((rc > maxlen) || (rc < minlen)) {
-			subscr_put(subscr);
-			vty_out(vty, "%% Wrong Ki `%s'%s",
-				ki_str, VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-		ainfo.a3a8_ki_len = rc;
-	} else {
-		ainfo.a3a8_ki_len = 0;
-		if (minlen) {
-			subscr_put(subscr);
-			vty_out(vty, "%% Missing Ki argument%s", VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-	}
-
-	rc = db_sync_authinfo_for_subscr(
-		ainfo.auth_algo == AUTH_ALGO_NONE ? NULL : &ainfo,
-		subscr);
-
-	/* the last tuple probably invalid with the new auth settings */
-	db_sync_lastauthtuple_for_subscr(NULL, subscr);
-	subscr_put(subscr);
-
-	if (rc) {
-		vty_out(vty, "%% Operation has failed%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber a3a8' is no longer supported.%s"
+		"%% This is now up to osmo-hlr.%s",
+		VTY_NEWLINE, VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(subscriber_purge,
@@ -765,12 +626,11 @@ DEFUN(subscriber_purge,
       "subscriber purge-inactive",
       "Operations on a Subscriber\n" "Purge subscribers with a zero use count.\n")
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
-	int purged;
-
-	purged = subscr_purge_inactive(net->subscr_group);
-	vty_out(vty, "%d subscriber(s) were purged.%s", purged, VTY_NEWLINE);
-	return CMD_SUCCESS;
+	/* TODO: does this still have a use with the VLR? */
+	vty_out(vty, "%% 'subscriber purge-inactive' is no longer supported.%s"
+		"%% This is now up to osmo-hlr.%s",
+		VTY_NEWLINE, VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(subscriber_update,
@@ -778,18 +638,9 @@ DEFUN(subscriber_update,
       "subscriber " SUBSCR_TYPES " ID update",
       SUBSCR_HELP "Update the subscriber data from the dabase.\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	subscr_update_from_db(subscr);
-	subscr_put(subscr);
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber update' is no longer supported.%s",
+		VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 static int scall_cbfn(unsigned int subsys, unsigned int signal,
@@ -1035,7 +886,7 @@ DEFUN(logging_fltr_imsi,
 	LOGGING_STR FILTER_STR
       "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
 {
-	struct gsm_subscriber *vlr_subscr;
+	struct vlr_subscr *vlr_subscr;
 	struct bsc_subscr *bsc_subscr;
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct log_target *tgt = osmo_log_vty2tgt(vty);
@@ -1044,7 +895,7 @@ DEFUN(logging_fltr_imsi,
 	if (!tgt)
 		return CMD_WARNING;
 
-	vlr_subscr = subscr_get_by_imsi(gsmnet->subscr_group, imsi);
+	vlr_subscr = vlr_subscr_find_by_imsi(gsmnet->vlr, imsi);
 	bsc_subscr = bsc_subscr_find_by_imsi(gsmnet->bsc_subscribers, imsi);
 
 	if (!vlr_subscr && !bsc_subscr) {
@@ -1055,6 +906,50 @@ DEFUN(logging_fltr_imsi,
 
 	log_set_filter_vlr_subscr(tgt, vlr_subscr);
 	log_set_filter_bsc_subscr(tgt, bsc_subscr);
+	return CMD_SUCCESS;
+}
+
+static struct cmd_node hlr_node = {
+	HLR_NODE,
+	"%s(config-hlr)# ",
+	1,
+};
+
+DEFUN(cfg_hlr, cfg_hlr_cmd,
+      "hlr", "Configure connection to the HLR")
+{
+	vty->node = HLR_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_hlr_remote_ip, cfg_hlr_remote_ip_cmd, "remote-ip A.B.C.D",
+      "Remote GSUP address of the HLR\n"
+      "Remote GSUP address (default: " MSC_HLR_REMOTE_IP_DEFAULT ")")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	talloc_free((void*)gsmnet->gsup_server_addr_str);
+	gsmnet->gsup_server_addr_str = talloc_strdup(gsmnet, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_hlr_remote_port, cfg_hlr_remote_port_cmd, "remote-port <1-65535>",
+      "Remote GSUP port of the HLR\n"
+      "Remote GSUP port (default: " OSMO_STRINGIFY(MSC_HLR_REMOTE_PORT_DEFAULT) ")")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->gsup_server_port = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+static int config_write_hlr(struct vty *vty)
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
+	vty_out(vty, "hlr%s", VTY_NEWLINE);
+	vty_out(vty, " remote-ip %s%s",
+		gsmnet->gsup_server_addr_str, VTY_NEWLINE);
+	vty_out(vty, " remote-port %u%s",
+		gsmnet->gsup_server_port, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -1078,18 +973,10 @@ DEFUN(cfg_nitb_subscr_random, cfg_nitb_subscr_random_cmd,
       "Set random parameters for a new record when a subscriber is first seen.\n"
       "Minimum for subscriber extension\n""Maximum for subscriber extension\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	uint64_t mi = atoi(argv[0]), ma = atoi(argv[1]);
-	gsmnet->auto_create_subscr = true;
-	gsmnet->auto_assign_exten = true;
-	if (mi >= ma) {
-		vty_out(vty, "Incorrect range: %s >= %s, expected MIN < MAX%s",
-			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-	gsmnet->ext_min = mi;
-	gsmnet->ext_max = ma;
-        return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber-create-on-demand' is no longer supported.%s"
+		"%% This is now up to osmo-hlr.%s",
+		VTY_NEWLINE, VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
@@ -1097,19 +984,20 @@ DEFUN(cfg_nitb_subscr_create, cfg_nitb_subscr_create_cmd,
       "Make a new record when a subscriber is first seen.\n"
       "Do not automatically assign extension to created subscribers\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->auto_create_subscr = true;
-	gsmnet->auto_assign_exten = argc ? false : true;
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber-create-on-demand' is no longer supported.%s"
+		"%% This is now up to osmo-hlr.%s",
+		VTY_NEWLINE, VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(cfg_nitb_no_subscr_create, cfg_nitb_no_subscr_create_cmd,
       "no subscriber-create-on-demand",
       NO_STR "Make a new record when a subscriber is first seen.\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->auto_create_subscr = false;
-	return CMD_SUCCESS;
+	vty_out(vty, "%% 'subscriber-create-on-demand' is no longer supported.%s"
+		"%% This is now up to osmo-hlr.%s",
+		VTY_NEWLINE, VTY_NEWLINE);
+	return CMD_WARNING;
 }
 
 DEFUN(cfg_nitb_assign_tmsi, cfg_nitb_assign_tmsi_cmd,
@@ -1117,7 +1005,7 @@ DEFUN(cfg_nitb_assign_tmsi, cfg_nitb_assign_tmsi_cmd,
       "Assign TMSI during Location Updating.\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->avoid_tmsi = 0;
+	gsmnet->vlr->cfg.assign_tmsi = true;
 	return CMD_SUCCESS;
 }
 
@@ -1126,7 +1014,7 @@ DEFUN(cfg_nitb_no_assign_tmsi, cfg_nitb_no_assign_tmsi_cmd,
       NO_STR "Assign TMSI during Location Updating.\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	gsmnet->avoid_tmsi = 1;
+	gsmnet->vlr->cfg.assign_tmsi = false;
 	return CMD_SUCCESS;
 }
 
@@ -1147,7 +1035,7 @@ static int config_write_nitb(struct vty *vty)
 			PRIu64"%s", gsmnet->ext_min, gsmnet->ext_max,
 			VTY_NEWLINE);
 	vty_out(vty, " %sassign-tmsi%s",
-		gsmnet->avoid_tmsi ? "no " : "", VTY_NEWLINE);
+		gsmnet->vlr->cfg.assign_tmsi? "" : "no ", VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -1197,6 +1085,10 @@ int bsc_vty_init_extra(void)
 	install_element(CFG_LOG_NODE, &log_level_sms_cmd);
 	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);
 
+	install_element(CONFIG_NODE, &cfg_hlr_cmd);
+	install_node(&hlr_node, config_write_hlr);
+	install_element(HLR_NODE, &cfg_hlr_remote_ip_cmd);
+	install_element(HLR_NODE, &cfg_hlr_remote_port_cmd);
 
 	install_element(CONFIG_NODE, &cfg_nitb_cmd);
 	install_node(&nitb_node, config_write_nitb);
