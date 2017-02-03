@@ -29,6 +29,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/vlr.h>
 
 static int s_end = 0;
 static struct gsm_subscriber_connection s_conn;
@@ -70,23 +71,25 @@ void test_request_chan(void)
 	network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
 	if (!network)
 		exit(1);
+	network->vlr = talloc_zero(network, struct vlr_instance);
+	network->vlr->user_ctx = network;
+	INIT_LLIST_HEAD(&network->vlr->subscribers);
+	INIT_LLIST_HEAD(&network->vlr->operations);
+
 	bts = gsm_bts_alloc(network);
 	bts->location_area_code = 23;
 	s_conn.network = network;
 
 	/* Create a dummy subscriber */
-	struct gsm_subscriber *subscr = subscr_alloc();
-	subscr->lac = 23;
-	subscr->group = network->subscr_group;
-
-	OSMO_ASSERT(subscr->group);
-	OSMO_ASSERT(subscr->group->net == network);
+	struct vlr_subscr *vsub = vlr_subscr_alloc(network->vlr);
+	vsub->lac = 23;
 
 	/* Ask for a channel... */
 	struct subscr_request *sr;
-	sr = subscr_request_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
+	sr = subscr_request_channel(vsub, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
 	OSMO_ASSERT(sr);
 	OSMO_ASSERT(s_cbfn);
+	s_conn.network = network;
 	s_cbfn(101, 200, (void*)0x1323L, &s_conn, s_data);
 
 	OSMO_ASSERT(s_end);
@@ -140,5 +143,13 @@ void gsm48_secure_channel() {}
 void paging_request_stop() {}
 void vty_out() {}
 
-struct tlv_definition nm_att_tlvdef;
+void ipa_client_conn_clear_queue() {}
+void ipa_client_conn_close() {}
+void ipa_client_conn_create() {}
+void ipa_client_conn_destroy() {}
+void ipa_client_conn_open() {}
+void ipa_client_conn_send() {}
+void ipa_msg_push_header() {}
+void ipaccess_bts_handle_ccm() {}
 
+struct tlv_definition nm_att_tlvdef;

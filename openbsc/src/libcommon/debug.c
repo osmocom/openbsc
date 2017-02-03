@@ -32,7 +32,6 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/gprs/gprs_msgb.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
 
 /* default categories */
@@ -175,17 +174,22 @@ static const struct log_info_cat default_categories[] = {
 		.description = "SCCP User Adaptation Protocol",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DVLR] = {
+		.name = "DVLR",
+		.description = "Visitor Location Register",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 static int filter_fn(const struct log_context *ctx, struct log_target *tar)
 {
-	const struct gsm_subscriber *subscr = ctx->ctx[LOG_CTX_VLR_SUBSCR];
+	const struct vlr_subscr *vsub = ctx->ctx[LOG_CTX_VLR_SUBSCR];
 	const struct bsc_subscr *bsub = ctx->ctx[LOG_CTX_BSC_SUBSCR];
 	const struct gprs_nsvc *nsvc = ctx->ctx[LOG_CTX_GB_NSVC];
 	const struct gprs_nsvc *bvc = ctx->ctx[LOG_CTX_GB_BVC];
 
 	if ((tar->filter_map & (1 << LOG_FLT_VLR_SUBSCR)) != 0
-	    && subscr && subscr == tar->filter_data[LOG_FLT_VLR_SUBSCR])
+	    && vsub && vsub == tar->filter_data[LOG_FLT_VLR_SUBSCR])
 		return 1;
 
 	if ((tar->filter_map & (1 << LOG_FLT_BSC_SUBSCR)) != 0
@@ -210,21 +214,3 @@ const struct log_info log_info = {
 	.cat = default_categories,
 	.num_cat = ARRAY_SIZE(default_categories),
 };
-
-void log_set_filter_vlr_subscr(struct log_target *target,
-			       struct gsm_subscriber *vlr_subscr)
-{
-	struct gsm_subscriber **fsub = (void*)&target->filter_data[LOG_FLT_VLR_SUBSCR];
-
-	/* free the old data */
-	if (*fsub) {
-		subscr_put(*fsub);
-		*fsub = NULL;
-	}
-
-	if (vlr_subscr) {
-		target->filter_map |= (1 << LOG_FLT_VLR_SUBSCR);
-		*fsub = subscr_get(vlr_subscr);
-	} else
-		target->filter_map &= ~(1 << LOG_FLT_VLR_SUBSCR);
-}

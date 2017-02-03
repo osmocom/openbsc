@@ -9,7 +9,6 @@
 
 struct msgb;
 struct gsm_bts;
-struct gsm_subscriber;
 struct gsm_network;
 struct gsm_trans;
 struct gsm_subscriber_connection;

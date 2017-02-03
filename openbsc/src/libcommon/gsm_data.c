@@ -453,3 +453,13 @@ int bts_depend_check(struct gsm_bts *bts)
 	}
 	return 1;
 }
+
+bool classmark_is_r99(struct gsm_classmark *cm)
+{
+	int rev_lev = 0;
+	if (cm->classmark1_set)
+		rev_lev = cm->classmark1.rev_lev;
+	else if (cm->classmark2_len > 0)
+		rev_lev = (cm->classmark2[0] >> 5) & 0x3;
+	return rev_lev >= 2;
+}

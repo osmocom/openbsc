@@ -49,17 +49,10 @@ struct gsm_network *gsm_network_init(void *ctx,
 	if (!net)
 		return NULL;
 
-	net->subscr_group = talloc_zero(net, struct gsm_subscriber_group);
-	if (!net->subscr_group) {
-		talloc_free(net);
-		return NULL;
-	}
-
 	if (gsm_parse_reg(net, &net->authorized_regexp, &net->authorized_reg_str, 1,
 			  &default_regexp) != 0)
 		return NULL;
 
-	net->subscr_group->net = net;
 	net->auto_create_subscr = true;
 	net->auto_assign_exten = true;
 

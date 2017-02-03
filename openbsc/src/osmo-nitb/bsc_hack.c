@@ -240,7 +240,7 @@ static void db_sync_timer_cb(void *data)
 
 static void subscr_expire_cb(void *data)
 {
-	subscr_expire(bsc_gsmnet->subscr_group);
+	/* TODO expire vlr_subscrs? */
 	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
 }
 
@@ -261,7 +261,9 @@ int main(int argc, char **argv)
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init(tall_bsc_ctx);
+#if 0
 	on_dso_load_token();
+#endif
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
 
@@ -285,6 +287,10 @@ int main(int argc, char **argv)
 	/* Initialize VTY */
 	bsc_vty_init(bsc_gsmnet);
 	ctrl_vty_init(tall_bsc_ctx);
+	if (msc_vlr_alloc(bsc_gsmnet)) {
+		fprintf(stderr, "Failed to allocate VLR\n");
+		exit(1);
+	}
 
 #ifdef BUILD_SMPP
 	if (smpp_openbsc_alloc_init(tall_bsc_ctx) < 0)
@@ -341,7 +347,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	if (msc_ctrl_cmds_install() != 0) {
+	if (msc_ctrl_cmds_install(bsc_gsmnet) != 0) {
 		printf("Failed to initialize the MSC control commands.\n");
 		return -1;
 	}
@@ -354,6 +360,14 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to create the RF service.\n");
 		exit(1);
 	}
+
+	osmo_fsm_log_addr(true);
+	if (msc_vlr_start(bsc_gsmnet)) {
+		fprintf(stderr, "Failed to start VLR\n");
+		exit(1);
+	}
+
+	msc_subscr_conn_init();
 
 	if (db_init(database_name)) {
 		printf("DB: Failed to init database. Please check the option settings.\n");

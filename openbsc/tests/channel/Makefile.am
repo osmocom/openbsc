@@ -26,6 +26,7 @@ channel_test_SOURCES = \
 channel_test_LDADD = \
 	$(top_builddir)/src/libmsc/libmsc.a \
 	$(top_builddir)/src/libbsc/libbsc.a \
+	$(top_builddir)/src/libvlr/libvlr.a \
 	$(top_builddir)/src/libcommon-cs/libcommon-cs.a \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOCORE_LIBS) \
