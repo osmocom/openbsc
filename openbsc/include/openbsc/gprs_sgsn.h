@@ -244,7 +244,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli_and_ptmsi(uint32_t tlli,
 					const struct gprs_ra_id *raid);
 
 /* Allocate a new SGSN MM context */
-struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
+struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_gb(uint32_t tlli,
 					const struct gprs_ra_id *raid);
 struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx);
 

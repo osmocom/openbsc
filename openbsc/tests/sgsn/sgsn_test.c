@@ -190,7 +190,7 @@ static struct sgsn_mm_ctx *alloc_mm_ctx(uint32_t tlli, struct gprs_ra_id *raid)
 	int old_count = count(gprs_llme_list());
 
 	lle = gprs_lle_get_or_create(tlli, 3);
-	ctx = sgsn_mm_ctx_alloc(tlli, raid);
+	ctx = sgsn_mm_ctx_alloc_gb(tlli, raid);
 	ctx->gmm_state = GMM_REGISTERED_NORMAL;
 	ctx->gb.llme = lle->llme;
 

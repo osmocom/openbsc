@@ -209,8 +209,8 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_imsi(const char *imsi)
 
 }
 
-/* Allocate a new SGSN MM context */
-struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
+/* Allocate a new SGSN MM context for GERAN_Gb */
+struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_gb(uint32_t tlli,
 					const struct gprs_ra_id *raid)
 {
 	struct sgsn_mm_ctx *ctx;

@@ -1146,7 +1146,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			if (msg->dst)
 				ctx = sgsn_mm_ctx_alloc_iu(msg->dst);
 			else
-				ctx = sgsn_mm_ctx_alloc(0, &ra_id);
+				ctx = sgsn_mm_ctx_alloc_gb(0, &ra_id);
 			if (!ctx) {
 				reject_cause = GMM_CAUSE_NET_FAIL;
 				goto rejected;
@@ -1172,7 +1172,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			if (msg->dst)
 				ctx = sgsn_mm_ctx_alloc_iu(msg->dst);
 			else
-				ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
+				ctx = sgsn_mm_ctx_alloc_gb(msgb_tlli(msg), &ra_id);
 			ctx->p_tmsi = tmsi;
 		}
 		if (ctx->ran_type == MM_CTX_T_GERAN_Gb) {
