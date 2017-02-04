@@ -223,6 +223,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_gb(uint32_t tlli,
 	ctx->ran_type = MM_CTX_T_GERAN_Gb;
 	ctx->gb.tlli = tlli;
 	ctx->gmm_state = GMM_DEREGISTERED;
+	ctx->pmm_state = MM_IDLE;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 	ctx->ciph_algo = sgsn->cfg.cipher;
 	LOGMMCTXP(LOGL_DEBUG, ctx, "Allocated with %s cipher.\n",
