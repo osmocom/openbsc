@@ -181,13 +181,12 @@ static struct msgb *rsl_msgb_alloc(void)
 				   "RSL");
 }
 
-#define MACBLOCK_SIZE	23
 static void pad_macblock(uint8_t *out, const uint8_t *in, int len)
 {
 	memcpy(out, in, len);
 
-	if (len < MACBLOCK_SIZE)
-		memset(out+len, 0x2b, MACBLOCK_SIZE-len);
+	if (len < GSM_MACBLOCK_LEN)
+		memset(out+len, 0x2b, GSM_MACBLOCK_LEN - len);
 }
 
 /* Chapter 9.3.7: Encryption Information */
@@ -1042,7 +1041,7 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
-	uint8_t buf[MACBLOCK_SIZE];
+	uint8_t buf[GSM_MACBLOCK_LEN];
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IMMEDIATE_ASSIGN_CMD);
@@ -1055,7 +1054,8 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val)
 	default:
 		/* If phase 2, construct a FULL_IMM_ASS_INFO */
 		pad_macblock(buf, val, len);
-		msgb_tlv_put(msg, RSL_IE_FULL_IMM_ASS_INFO, MACBLOCK_SIZE, buf);
+		msgb_tlv_put(msg, RSL_IE_FULL_IMM_ASS_INFO, GSM_MACBLOCK_LEN,
+			     buf);
 		break;
 	}
 
