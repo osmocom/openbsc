@@ -79,8 +79,9 @@ static void page_ms(struct gsm_paging_request *request)
 
 	log_set_context(BSC_CTX_SUBSCR, request->subscr);
 
-	LOGP(DPAG, LOGL_INFO, "Going to send paging commands: imsi: '%s' tmsi: '0x%x'\n",
-		request->subscr->imsi, request->subscr->tmsi);
+	LOGP(DPAG, LOGL_INFO, "Going to send paging commands: imsi: %s tmsi: "
+	     "0x%x for ch. type %d (attempt %d)\n", request->subscr->imsi,
+	     request->subscr->tmsi, request->chan_type, request->attempts);
 
 	if (request->subscr->tmsi == GSM_RESERVED_TMSI)
 		mi_len = gsm48_generate_mid_from_imsi(mi, request->subscr->imsi);
@@ -376,11 +377,11 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 			req = NULL;
 
 			if (conn && cbfn) {
-				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d, calling cbfn.\n", bts->nr);
+				LOGP(DPAG, LOGL_DEBUG, "Stop paging %s on bts %d, calling cbfn.\n", subscr->imsi, bts->nr);
 				cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
 					  msg, conn, param);
 			} else
-				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d silently.\n", bts->nr);
+				LOGP(DPAG, LOGL_DEBUG, "Stop paging %s on bts %d silently.\n", subscr->imsi, bts->nr);
 			break;
 		}
 	}

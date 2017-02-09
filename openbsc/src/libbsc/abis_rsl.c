@@ -1659,7 +1659,9 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 static void t3101_expired(void *data)
 {
 	struct gsm_lchan *lchan = data;
-
+	LOGP(DRSL, LOGL_NOTICE,
+	     "%s T3101 expired: no response to IMMEDIATE ASSIGN\n",
+	     gsm_lchan_name(lchan));
 	rsl_rf_chan_release(lchan, 1, SACCH_DEACTIVATE);
 }
 
@@ -1667,7 +1669,9 @@ static void t3101_expired(void *data)
 static void t3111_expired(void *data)
 {
 	struct gsm_lchan *lchan = data;
-
+	LOGP(DRSL, LOGL_NOTICE,
+	     "%s T3111 expired: releasing RF Channel\n",
+	     gsm_lchan_name(lchan));
 	rsl_rf_chan_release(lchan, 0, SACCH_NONE);
 }
 
