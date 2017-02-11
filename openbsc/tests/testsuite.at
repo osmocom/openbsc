@@ -201,6 +201,13 @@ cat $abs_srcdir/msc_vlr/msc_vlr_test_ms_timeout.err > experr
 AT_CHECK([$abs_top_builddir/tests/msc_vlr/msc_vlr_test_ms_timeout], [], [expout], [experr])
 AT_CLEANUP
 
+AT_SETUP([msc_vlr_test_reject_concurrency])
+AT_KEYWORDS([msc_vlr_test_reject_concurrency])
+cat $abs_srcdir/msc_vlr/msc_vlr_test_reject_concurrency.ok > expout
+cat $abs_srcdir/msc_vlr/msc_vlr_test_reject_concurrency.err > experr
+AT_CHECK([$abs_top_builddir/tests/msc_vlr/msc_vlr_test_reject_concurrency], [], [expout], [experr])
+AT_CLEANUP
+
 AT_SETUP([msc_vlr_test_rest])
 AT_KEYWORDS([msc_vlr_test_rest])
 cat $abs_srcdir/msc_vlr/msc_vlr_test_rest.ok > expout

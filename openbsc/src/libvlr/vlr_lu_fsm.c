@@ -865,11 +865,9 @@ static int assoc_lfp_with_sub(struct osmo_fsm_inst *fi, struct vlr_subscr *vsub)
 		LOGPFSML(fi, LOGL_ERROR,
 			 "A Location Updating process is already pending for"
 			 " this subscriber. Aborting.\n");
-		/* Free this second LU attempt */
-		osmo_fsm_inst_term(fi, OSMO_FSM_TERM_ERROR, NULL);
-		/* Also get rid of the pending LU attempt. It's all wrong. */
-		osmo_fsm_inst_term(vsub->lu_fsm, OSMO_FSM_TERM_ERROR, NULL);
-		/* TODO anything else? terminate the conn? */
+		/* Also get rid of the other pending LU attempt? */
+		/*lu_fsm_failure(vsub->lu_fsm, GSM48_REJECT_CONGESTION);*/
+		lu_fsm_failure(fi, GSM48_REJECT_CONGESTION);
 		return -EINVAL;
 	}
 	vsub->lu_fsm = fi;

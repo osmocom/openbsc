@@ -95,6 +95,7 @@ tests/msc_vlr/msc_vlr_test_umts_authen
 tests/msc_vlr/msc_vlr_test_hlr_reject
 tests/msc_vlr/msc_vlr_test_hlr_timeout
 tests/msc_vlr/msc_vlr_test_ms_timeout
+tests/msc_vlr/msc_vlr_test_reject_concurrency
 tests/msc_vlr/msc_vlr_test_rest
 
 tests/atconfig
