@@ -78,7 +78,7 @@ talloc_total_blocks(tall_bsc_ctx) == 75
 
 ===== test_hlr_timeout_lu_upd_loc_result
 - Total time passed: 0.000000 s
-- Location Update request causes a GSUP Send Auth Info request to HLR
+- Location Update request causes a GSUP LU request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
 DRLL Dispatching 04.08 message, pdisc=5
@@ -89,82 +89,26 @@ DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000004620 type=IMSI ATTACH
 DMM LU/new-LAC: 1/0
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Allocated
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000004620)
-DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: rev=GSM net=GERAN (no Auth)
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
 DREF VLR subscr unknown usage increases to: 1
 DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
 DVLR New subscr, IMSI: 901700000004620
 DREF VLR subscr IMSI:901700000004620 usage increases to: 2
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node1()
-DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_AUTH
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Allocated
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: is child of vlr_lu_fsm(901700000004620)
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: Received Event VLR_AUTH_E_START
-DVLR GSUP tx: 08010809710000004026f0
-GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
-DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
-DMM compl_l3: Keeping conn
-DMM IMSI:901700000004620 owned_by_msc = true
-  lu_result_sent == 0
-- from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
-<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a8000322201012aca96fb4ffdea5c985cbafa9b6e18b210420bde240220807fa7502e07e1c0003222010e7c03ba7cf0e2fde82b2dc4d63077d422104a29514ae2208e2b234f80788640003222010fa8f20b781b5881329d4fea26b1a3c5121045afc8d7222082392f14f709ae000032220100fd4cc8dbe8715d1f439e304edfd68dc2104bc8d1c5b2208da7cdd6bfe2d7000
-DVLR GSUP rx 191: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a8000322201012aca96fb4ffdea5c985cbafa9b6e18b210420bde240220807fa7502e07e1c0003222010e7c03ba7cf0e2fde82b2dc4d63077d422104a29514ae2208e2b234f80788640003222010fa8f20b781b5881329d4fea26b1a3c5121045afc8d7222082392f14f709ae000032220100fd4cc8dbe8715d1f439e304edfd68dc2104bc8d1c5b2208da7cdd6bfe2d7000
-DREF VLR subscr IMSI:901700000004620 usage increases to: 2
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: Received Event VLR_AUTH_E_HLR_SAI_ACK
-DVLR SUBSCR(IMSI:901700000004620) Received 5 auth tuples
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH_WAIT_AI}: state_chg to VLR_SUB_AS_WAIT_RESP
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count=1 key_seq=0
-- sending GSM Auth Request for IMSI:901700000004620: tuple use_count=1 key_seq=0 auth_types=0x1 and...
-- ...rand=585df1ae287f6e273dce07090d61320b
-- ...expecting sres=2d8b2c3e
-DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
-<-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: vlr_gsupc_read_cb() returns 0
-  auth_request_sent == 1
-  lu_result_sent == 0
-- If the HLR were to send a GSUP _UPDATE_LOCATION_RESULT we'd still reject
-<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
-DVLR GSUP rx 11: 06010809710000004026f0
-DREF VLR subscr IMSI:901700000004620 usage increases to: 2
-DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_HLR_LU_RES
-DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Event VLR_ULA_E_HLR_LU_RES not permitted
-DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
-<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
-msc_subscr_conn_is_accepted() == false
-  requests shall be thwarted
-DRLL Dispatching 04.08 message, pdisc=3
-DRLL subscr IMSI:901700000004620: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
-DRLL Dispatching 04.08 message, pdisc=5
-DRLL subscr IMSI:901700000004620: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
-DRLL Dispatching 04.08 message, pdisc=6
-DRLL subscr IMSI:901700000004620: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
-DRLL Dispatching 04.08 message, pdisc=9
-DRLL subscr IMSI:901700000004620: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
-  lu_result_sent == 0
-- MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
-  rx from MS: pdisc=0x05 msg_type=0x54
-DRLL Dispatching 04.08 message, pdisc=5
-DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
-DVLR SUBSCR(IMSI:901700000004620) received res: 2d 8b 2c 3e 
-DVLR SUBSCR(IMSI:901700000004620) AUTH established GSM security context
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Authentication terminating with result VLR_AUTH_RES_PASSED
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: state_chg to VLR_SUB_AS_AUTHENTICATED
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Removing from parent vlr_lu_fsm(901700000004620)
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Freeing instance
-DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_AUTHENTICATED}: Deallocated
-DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
-DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
-DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_ciph()
-DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_node_4()
-DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_post_auth()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_post_ciph()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: vlr_loc_upd_node_4()
+DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Allocated
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: is child of vlr_lu_fsm(901700000004620)
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E_START
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DMM compl_l3: Keeping conn
+DMM IMSI:901700000004620 owned_by_msc = true
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1

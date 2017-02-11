@@ -33,6 +33,8 @@ EXTRA_DIST = \
 	msc_vlr_test_hlr_timeout.err \
 	msc_vlr_test_ms_timeout.ok \
 	msc_vlr_test_ms_timeout.err \
+	msc_vlr_test_reject_concurrency.ok \
+	msc_vlr_test_reject_concurrency.err \
 	msc_vlr_test_rest.ok \
 	msc_vlr_test_rest.err \
 	$(NULL)
@@ -72,6 +74,7 @@ noinst_PROGRAMS = \
 	msc_vlr_test_hlr_reject \
 	msc_vlr_test_hlr_timeout \
 	msc_vlr_test_ms_timeout \
+	msc_vlr_test_reject_concurrency \
 	msc_vlr_test_rest \
 	$(NULL)
 
@@ -124,6 +127,13 @@ msc_vlr_test_ms_timeout_SOURCES = \
 msc_vlr_test_ms_timeout_LDADD = $(LDADD)
 msc_vlr_test_ms_timeout_LDFLAGS = $(LDFLAGS)
 
+msc_vlr_test_reject_concurrency_SOURCES = \
+	msc_vlr_test_reject_concurrency.c \
+	msc_vlr_tests.c \
+	$(NULL)
+msc_vlr_test_reject_concurrency_LDADD = $(LDADD)
+msc_vlr_test_reject_concurrency_LDFLAGS = $(LDFLAGS)
+
 msc_vlr_test_rest_SOURCES = \
 	msc_vlr_test_rest.c \
 	msc_vlr_tests.c \
@@ -140,4 +150,5 @@ update_exp:
 	$(builddir)/msc_vlr_test_hlr_reject >$(srcdir)/msc_vlr_test_hlr_reject.ok 2>$(srcdir)/msc_vlr_test_hlr_reject.err
 	$(builddir)/msc_vlr_test_hlr_timeout >$(srcdir)/msc_vlr_test_hlr_timeout.ok 2>$(srcdir)/msc_vlr_test_hlr_timeout.err
 	$(builddir)/msc_vlr_test_ms_timeout >$(srcdir)/msc_vlr_test_ms_timeout.ok 2>$(srcdir)/msc_vlr_test_ms_timeout.err
+	$(builddir)/msc_vlr_test_reject_concurrency >$(srcdir)/msc_vlr_test_reject_concurrency.ok 2>$(srcdir)/msc_vlr_test_reject_concurrency.err
 	$(builddir)/msc_vlr_test_rest >$(srcdir)/msc_vlr_test_rest.ok 2>$(srcdir)/msc_vlr_test_rest.err
