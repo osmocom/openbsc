@@ -176,6 +176,8 @@ static int vlr_tx_gsup_error_reply(struct vlr_instance *vlr,
 
 struct vlr_subscr *_vlr_subscr_get(struct vlr_subscr *sub, const char *file, int line)
 {
+	if (!sub)
+		return NULL;
 	OSMO_ASSERT(sub->use_count < INT_MAX);
 	sub->use_count++;
 	LOGPSRC(DREF, LOGL_DEBUG, file, line,
@@ -186,6 +188,8 @@ struct vlr_subscr *_vlr_subscr_get(struct vlr_subscr *sub, const char *file, int
 
 struct vlr_subscr *_vlr_subscr_put(struct vlr_subscr *sub, const char *file, int line)
 {
+	if (!sub)
+		return NULL;
 	sub->use_count--;
 	LOGPSRC(DREF, sub->use_count >= 0? LOGL_DEBUG : LOGL_ERROR,
 		file, line,

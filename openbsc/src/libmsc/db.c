@@ -643,50 +643,21 @@ struct gsm_sms *db_sms_get(struct gsm_network *net, unsigned long long id)
 	return sms;
 }
 
-/* retrieve the next unsent SMS with ID >= min_id */
-struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long min_id)
+struct gsm_sms *db_sms_get_next_unsent(struct gsm_network *net,
+				       unsigned long long min_sms_id,
+				       unsigned int max_failed)
 {
 	dbi_result result;
 	struct gsm_sms *sms;
 
 	result = dbi_conn_queryf(conn,
-		"SELECT SMS.* "
-			"FROM SMS JOIN Subscriber ON "
-				"SMS.dest_addr = Subscriber.extension "
-			"WHERE SMS.id >= %llu AND SMS.sent IS NULL "
-				"AND Subscriber.lac > 0 "
-			"ORDER BY SMS.id LIMIT 1",
-		min_id);
-	if (!result)
-		return NULL;
+		"SELECT * FROM SMS"
+		" WHERE sent IS NULL"
+		" AND id >= %llu"
+		" AND deliver_attempts <= %u"
+		" ORDER BY id LIMIT 1",
+		min_sms_id, max_failed);
 
-	if (!dbi_result_next_row(result)) {
-		dbi_result_free(result);
-		return NULL;
-	}
-
-	sms = sms_from_result(net, result);
-
-	dbi_result_free(result);
-
-	return sms;
-}
-
-struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net,
-					    unsigned long long min_subscr_id,
-					    unsigned int failed)
-{
-	dbi_result result;
-	struct gsm_sms *sms;
-
-	result = dbi_conn_queryf(conn,
-		"SELECT SMS.* "
-			"FROM SMS JOIN Subscriber ON "
-				"SMS.dest_addr = Subscriber.extension "
-			"WHERE Subscriber.id >= %llu AND SMS.sent IS NULL "
-				"AND Subscriber.lac > 0 AND SMS.deliver_attempts < %u "
-			"ORDER BY Subscriber.id, SMS.id LIMIT 1",
-		min_subscr_id, failed);
 	if (!result)
 		return NULL;
 
@@ -703,20 +674,52 @@ struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net,
 }
 
 /* retrieve the next unsent SMS for a given subscriber */
-struct gsm_sms *db_sms_get_unsent_for_subscr(struct vlr_subscr *vsub)
+struct gsm_sms *db_sms_get_unsent_for_subscr(struct vlr_subscr *vsub,
+					     unsigned int max_failed)
 {
 	struct gsm_network *net = vsub->vlr->user_ctx;
 	dbi_result result;
 	struct gsm_sms *sms;
 
+	if (!vsub->lu_complete)
+		return NULL;
+
 	result = dbi_conn_queryf(conn,
-		"SELECT SMS.* "
-			"FROM SMS JOIN Subscriber ON "
-				"SMS.dest_addr = Subscriber.extension "
-			"WHERE Subscriber.id = %llu AND SMS.sent IS NULL "
-				"AND Subscriber.lac > 0 "
-			"ORDER BY SMS.id LIMIT 1",
-		vsub->id);
+		"SELECT * FROM SMS"
+		" WHERE sent IS NULL"
+		" AND dest_addr=%s"
+		" AND deliver_attempts <= %u"
+		" ORDER BY id LIMIT 1",
+		vsub->msisdn, max_failed);
+	if (!result)
+		return NULL;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return NULL;
+	}
+
+	sms = sms_from_result(net, result);
+
+	dbi_result_free(result);
+
+	return sms;
+}
+
+struct gsm_sms *db_sms_get_next_unsent_rr_msisdn(struct gsm_network *net,
+						 const char *last_msisdn,
+						 unsigned int max_failed)
+{
+	dbi_result result;
+	struct gsm_sms *sms;
+
+	result = dbi_conn_queryf(conn,
+		"SELECT * FROM SMS"
+		" WHERE sent IS NULL"
+		" AND dest_addr > '%s'"
+		" AND deliver_attempts <= %u"
+		" ORDER BY dest_addr, id LIMIT 1",
+		last_msisdn, max_failed);
 	if (!result)
 		return NULL;
 
