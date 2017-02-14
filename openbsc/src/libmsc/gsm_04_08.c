@@ -909,9 +909,9 @@ int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, uint8_t *rand,
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_auth_req *ar = (struct gsm48_auth_req *) msgb_put(msg, sizeof(*ar));
 
-	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", osmo_hexdump(rand, 16));
+	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", osmo_hexdump_nospc(rand, 16));
 	if (autn)
-		DEBUGP(DMM, "   AUTH REQ (autn = %s)\n", osmo_hexdump(autn, 16));
+		DEBUGP(DMM, "   AUTH REQ (autn = %s)\n", osmo_hexdump_nospc(autn, 16));
 
 	msg->lchan = conn->lchan;
 	gh->proto_discr = GSM48_PDISC_MM;
