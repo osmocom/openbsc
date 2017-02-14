@@ -38,9 +38,14 @@ int db_fini(void);
 /* SMS store-and-forward */
 int db_sms_store(struct gsm_sms *sms);
 struct gsm_sms *db_sms_get(struct gsm_network *net, unsigned long long id);
-struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long min_id);
-struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, unsigned long long min_subscr_id, unsigned int failed);
-struct gsm_sms *db_sms_get_unsent_for_subscr(struct vlr_subscr *vsub);
+struct gsm_sms *db_sms_get_next_unsent(struct gsm_network *net,
+				       unsigned long long min_sms_id,
+				       unsigned int max_failed);
+struct gsm_sms *db_sms_get_next_unsent_rr_msisdn(struct gsm_network *net,
+						 const char *last_msisdn,
+						 unsigned int max_failed);
+struct gsm_sms *db_sms_get_unsent_for_subscr(struct vlr_subscr *vsub,
+					     unsigned int max_failed);
 int db_sms_mark_delivered(struct gsm_sms *sms);
 int db_sms_inc_deliver_attempts(struct gsm_sms *sms);
 int db_sms_delete_by_msisdn(const char *msisdn);

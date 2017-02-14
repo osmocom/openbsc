@@ -260,6 +260,7 @@ AC_OUTPUT(
     tests/nanobts_omlattr/Makefile
     tests/vlr/Makefile
     tests/msc_vlr/Makefile
+    tests/sms_queue/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)
