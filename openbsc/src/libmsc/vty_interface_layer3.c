@@ -158,16 +158,17 @@ DEFUN(sms_send_pend,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_sms *sms;
-	int id = 0;
+	unsigned long long sms_id = 0;
 
 	while (1) {
-		sms = db_sms_get_unsent_by_subscr(gsmnet, id, UINT_MAX);
+		sms = db_sms_get_next_unsent(gsmnet, sms_id, UINT_MAX);
 		if (!sms)
 			break;
 
-		gsm411_send_sms_subscr(sms->receiver, sms);
+		if (sms->receiver)
+			gsm411_send_sms_subscr(sms->receiver, sms);
 
-		id = sms->receiver->id + 1;
+		sms_id = sms->id + 1;
 	}
 
 	return CMD_SUCCESS;
@@ -268,7 +269,7 @@ DEFUN(subscriber_send_pending_sms,
 		return CMD_WARNING;
 	}
 
-	sms = db_sms_get_unsent_by_subscr(gsmnet, vsub->id, UINT_MAX);
+	sms = db_sms_get_unsent_for_subscr(vsub, UINT_MAX);
 	if (sms)
 		gsm411_send_sms_subscr(sms->receiver, sms);
 

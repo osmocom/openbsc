@@ -1,0 +1,98 @@
+Testing smsq_take_next_sms()
+
+- vsub 2, 3 and 5 each have 2 SMS pending, but 5 is not attached
+  1111 has 0 SMS pending, 0 failed attempts
+  2222 has 2 SMS pending, 2 failed attempts
+  3333 has 2 SMS pending, 3 failed attempts
+  4444 has 0 SMS pending, 0 failed attempts
+  5555 (NOT attached) has 2 SMS pending, 5 failed attempts
+-->
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#0: sending SMS to 2222 (last_msisdn='2222')
+     hitting database: looking for MSISDN > '2222', failed_attempts <= 9
+#1: sending SMS to 3333 (last_msisdn='3333')
+     hitting database: looking for MSISDN > '3333', failed_attempts <= 9
+     hitting database: looking for MSISDN > '5555', failed_attempts <= 9
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#2: sending SMS to 2222 (last_msisdn='2222')
+     hitting database: looking for MSISDN > '2222', failed_attempts <= 9
+#3: sending SMS to 3333 (last_msisdn='3333')
+     hitting database: looking for MSISDN > '3333', failed_attempts <= 9
+     hitting database: looking for MSISDN > '5555', failed_attempts <= 9
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#4: no SMS to send (last_msisdn='5555')
+     hitting database: looking for MSISDN > '5555', failed_attempts <= 9
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#5: no SMS to send (last_msisdn='5555')
+     hitting database: looking for MSISDN > '5555', failed_attempts <= 9
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#6: no SMS to send (last_msisdn='5555')
+
+- SMS are pending at various nr failed attempts (cutoff at >= 10)
+  1111 has 1 SMS pending, 0 failed attempts
+  2222 has 2 SMS pending, 5 failed attempts
+  3333 has 3 SMS pending, 10 failed attempts
+  4444 has 4 SMS pending, 15 failed attempts
+  5555 has 5 SMS pending, 20 failed attempts
+-->
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#0: sending SMS to 1111 (last_msisdn='1111')
+     hitting database: looking for MSISDN > '1111', failed_attempts <= 9
+#1: sending SMS to 2222 (last_msisdn='2222')
+     hitting database: looking for MSISDN > '2222', failed_attempts <= 9
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#2: sending SMS to 2222 (last_msisdn='2222')
+     hitting database: looking for MSISDN > '2222', failed_attempts <= 9
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#3: no SMS to send (last_msisdn='')
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#4: no SMS to send (last_msisdn='')
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#5: no SMS to send (last_msisdn='')
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#6: no SMS to send (last_msisdn='')
+
+- iterate the SMS DB at most once
+  1111 (NOT attached) has 1 SMS pending, 0 failed attempts
+  2222 (NOT attached) has 1 SMS pending, 0 failed attempts
+  3333 (NOT attached) has 1 SMS pending, 0 failed attempts
+  4444 (NOT attached) has 1 SMS pending, 0 failed attempts
+  5555 (NOT attached) has 1 SMS pending, 0 failed attempts
+-->
+     hitting database: looking for MSISDN > '2345', failed_attempts <= 9
+     hitting database: looking for MSISDN > '3333', failed_attempts <= 9
+     hitting database: looking for MSISDN > '4444', failed_attempts <= 9
+     hitting database: looking for MSISDN > '5555', failed_attempts <= 9
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+     hitting database: looking for MSISDN > '1111', failed_attempts <= 9
+     hitting database: looking for MSISDN > '2222', failed_attempts <= 9
+#0: no SMS to send (last_msisdn='3333')
+     hitting database: looking for MSISDN > '3333', failed_attempts <= 9
+     hitting database: looking for MSISDN > '4444', failed_attempts <= 9
+     hitting database: looking for MSISDN > '5555', failed_attempts <= 9
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+     hitting database: looking for MSISDN > '1111', failed_attempts <= 9
+     hitting database: looking for MSISDN > '2222', failed_attempts <= 9
+#1: no SMS to send (last_msisdn='3333')
+     hitting database: looking for MSISDN > '3333', failed_attempts <= 9
+     hitting database: looking for MSISDN > '4444', failed_attempts <= 9
+     hitting database: looking for MSISDN > '5555', failed_attempts <= 9
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+     hitting database: looking for MSISDN > '1111', failed_attempts <= 9
+     hitting database: looking for MSISDN > '2222', failed_attempts <= 9
+#2: no SMS to send (last_msisdn='3333')
+
+- there are no SMS in the DB
+  1111 has 0 SMS pending, 0 failed attempts
+  2222 has 0 SMS pending, 0 failed attempts
+  3333 has 0 SMS pending, 0 failed attempts
+  4444 has 0 SMS pending, 0 failed attempts
+  5555 has 0 SMS pending, 0 failed attempts
+-->
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#0: no SMS to send (last_msisdn='')
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#1: no SMS to send (last_msisdn='')
+     hitting database: looking for MSISDN > '', failed_attempts <= 9
+#2: no SMS to send (last_msisdn='')
+Done

@@ -214,3 +214,10 @@ cat $abs_srcdir/msc_vlr/msc_vlr_test_rest.ok > expout
 cat $abs_srcdir/msc_vlr/msc_vlr_test_rest.err > experr
 AT_CHECK([$abs_top_builddir/tests/msc_vlr/msc_vlr_test_rest], [], [expout], [experr])
 AT_CLEANUP
+
+AT_SETUP([sms_queue_test])
+AT_KEYWORDS([sms_queue_test])
+cat $abs_srcdir/sms_queue/sms_queue_test.ok > expout
+cat $abs_srcdir/sms_queue/sms_queue_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/sms_queue/sms_queue_test], [], [expout], [experr])
+AT_CLEANUP

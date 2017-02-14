@@ -28,6 +28,8 @@
  * things up by collecting data from other parts of the system.
  */
 
+#include <limits.h>
+
 #include <openbsc/sms_queue.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/db.h>
@@ -63,7 +65,8 @@ struct gsm_sms_queue {
 	int pending;
 
 	struct llist_head pending_sms;
-	unsigned long long last_subscr_id;
+
+	char last_msisdn[GSM_EXTENSION_LENGTH+1];
 };
 
 static int sms_subscr_cb(unsigned int, unsigned int, void *, void *);
@@ -189,29 +192,49 @@ static void sms_resend_pending(void *_data)
 	}
 }
 
-static struct gsm_sms *take_next_sms(struct gsm_sms_queue *smsq)
+/* Find the next pending SMS by cycling through the recipients. We could also
+ * cycle through the pending SMS, but that might cause us to keep trying to
+ * send SMS to the same few subscribers repeatedly while not servicing other
+ * subscribers for a long time. By walking the list of recipient MSISDNs, we
+ * ensure that all subscribers get their fair time to receive SMS. */
+struct gsm_sms *smsq_take_next_sms(struct gsm_network *net,
+				   char *last_msisdn,
+				   size_t last_msisdn_buflen)
 {
 	struct gsm_sms *sms;
+	int wrapped = 0;
+	int sanity = 100;
+	char started_with_msisdn[last_msisdn_buflen];
 
-	sms = db_sms_get_unsent_by_subscr(smsq->network, smsq->last_subscr_id, 10);
-	DEBUGP(DLSMS, "db_sms_get_unsent_by_subscr(id = %llu) returned %p\n",
-	       smsq->last_subscr_id, sms);
-	if (sms) {
-		smsq->last_subscr_id = sms->receiver->id + 1;
-		DEBUGP(DLSMS, "take_next_sms() returns %p\n", sms);
+	osmo_strlcpy(started_with_msisdn, last_msisdn,
+		     sizeof(started_with_msisdn));
+
+	while (wrapped < 2 && (--sanity)) {
+		/* If we wrapped around and passed the first msisdn, we're
+		 * through the entire SMS DB; end it. */
+		if (wrapped && strcmp(last_msisdn, started_with_msisdn) >= 0)
+			break;
+
+		sms = db_sms_get_next_unsent_rr_msisdn(net, last_msisdn, 9);
+		if (!sms) {
+			last_msisdn[0] = '\0';
+			wrapped ++;
+			continue;
+		}
+
+		/* Whatever happens, next time around service another recipient
+		 */
+		osmo_strlcpy(last_msisdn, sms->dst.addr, last_msisdn_buflen);
+
+		/* Is the subscriber attached? If not, go to next SMS */
+		if (!sms->receiver || !sms->receiver->lu_complete)
+			continue;
+
 		return sms;
 	}
 
-	/* need to wrap around */
-	smsq->last_subscr_id = 0;
-	sms = db_sms_get_unsent_by_subscr(smsq->network,
-					  smsq->last_subscr_id, 10);
-	DEBUGP(DLSMS, "db_sms_get_unsent_by_subscr(id = %llu) returned %p\n",
-	       smsq->last_subscr_id, sms);
-	if (sms)
-		smsq->last_subscr_id = sms->receiver->id + 1;
-	DEBUGP(DLSMS, "take_next_sms() returns %p\n", sms);
-	return sms;
+	DEBUGP(DLSMS, "SMS queue: no SMS to be sent\n");
+	return NULL;
 }
 
 /**
@@ -233,7 +256,8 @@ static void sms_submit_pending(void *_data)
 		struct gsm_sms *sms;
 
 
-		sms = take_next_sms(smsq);
+		sms = smsq_take_next_sms(smsq->network, smsq->last_msisdn,
+					 sizeof(smsq->last_msisdn));
 		if (!sms) {
 			LOGP(DLSMS, LOGL_DEBUG, "Sending SMS done (%d attempted)\n",
 			     attempted);
@@ -309,11 +333,11 @@ static void sms_send_next(struct vlr_subscr *vsub)
 	OSMO_ASSERT(!sms_subscriber_is_pending(smsq, vsub));
 
 	/* check for more messages for this subscriber */
-	sms = db_sms_get_unsent_for_subscr(vsub);
+	sms = db_sms_get_unsent_for_subscr(vsub, UINT_MAX);
 	if (!sms)
 		goto no_pending_sms;
 
-	/* No sms should be scheduled right now */
+	/* The sms should not be scheduled right now */
 	OSMO_ASSERT(!sms_is_in_pending(smsq, sms));
 
 	/* Remember that we deliver this SMS and send it */
@@ -408,7 +432,7 @@ static int sub_ready_for_sm(struct gsm_network *net, struct vlr_subscr *vsub)
 		return -1;
 
 	/* Now try to deliver any pending SMS to this sub */
-	sms = db_sms_get_unsent_for_subscr(vsub);
+	sms = db_sms_get_unsent_for_subscr(vsub, UINT_MAX);
 	if (!sms)
 		return -1;
 	gsm411_send_sms(conn, sms);
