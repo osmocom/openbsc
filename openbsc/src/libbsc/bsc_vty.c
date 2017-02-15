@@ -541,6 +541,7 @@ static void config_write_bts_amr(struct vty *vty, struct gsm_bts *bts,
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	int i;
+	uint8_t tmp;
 
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
@@ -694,15 +695,23 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	}
 
 	for (i = 0; i < MAX_EARFCN_LIST; i++) {
-		if (bts->si_common.si2quater_neigh_list.arfcn[i] !=
-		    OSMO_EARFCN_INVALID) {
-			vty_out(vty, "  si2quater neighbor-list add earfcn %u threshold %u",
-				bts->si_common.si2quater_neigh_list.arfcn[i],
-				bts->si_common.si2quater_neigh_list.thresh_hi);
-			if (bts->si_common.si2quater_neigh_list.meas_bw[i] !=
-			    OSMO_EARFCN_MEAS_INVALID)
-				vty_out(vty, " %u",
-					bts->si_common.si2quater_neigh_list.meas_bw[i]);
+		struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+		if (e->arfcn[i] != OSMO_EARFCN_INVALID) {
+			vty_out(vty, "  si2quater neighbor-list add earfcn %u "
+				"thresh-hi %u", e->arfcn[i], e->thresh_hi);
+
+			vty_out(vty, " thresh-lo %u",
+				e->thresh_lo_valid ? e->thresh_lo : 32);
+
+			vty_out(vty, " prio %u",
+				e->prio_valid ? e->prio : 8);
+
+			vty_out(vty, " qrxlv %u",
+				e->qrxlm_valid ? e->qrxlm : 32);
+
+			tmp = e->meas_bw[i];
+			vty_out(vty, " meas %u",
+				(tmp != OSMO_EARFCN_MEAS_INVALID) ? tmp : 8);
 
 			vty_out(vty, "%s", VTY_NEWLINE);
 		}
@@ -2746,42 +2755,73 @@ DEFUN(cfg_bts_neigh, cfg_bts_neigh_cmd,
 	return CMD_SUCCESS;
 }
 
-
 DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
-      "si2quater neighbor-list add earfcn <0-65535> threshold <0-31> "
-      "[<0-7>]", "SI2quater Neighbor List\n"
-      "SI2quater Neighbor List\n" "Add to manual SI2quater neighbor list\n"
-      "EARFCN of neighbor\n" "EARFCN of neighbor\n" "threshold high bits\n"
-      "threshold high bits\n" "measurement bandwidth\n")
+      "si2quater neighbor-list add earfcn <0-65535> thresh-hi <0-31> "
+      "thresh-lo <0-32> prio <0-8> qrxlv <0-32> meas <0-8>",
+      "SI2quater Neighbor List\n" "SI2quater Neighbor List\n"
+      "Add to manual SI2quater neighbor list\n"
+      "EARFCN of neighbor\n" "EARFCN of neighbor\n"
+      "threshold high bits\n" "threshold high bits\n"
+      "threshold low bits\n" "threshold low bits (32 means NA)\n"
+      "priority\n" "priority (8 means NA)\n"
+      "QRXLEVMIN\n" "QRXLEVMIN (32 means NA)\n"
+      "measurement bandwidth\n" "measurement bandwidth (8 means NA)\n")
 {
 	struct gsm_bts *bts = vty->index;
 	struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
 	uint16_t arfcn = atoi(argv[0]);
-	uint8_t meas = OSMO_EARFCN_MEAS_INVALID, thresh = atoi(argv[1]);
-	int r;
-
-	if (3 == argc)
-		meas = atoi(argv[2]);
-
-	r = osmo_earfcn_add(e, arfcn, meas);
+	uint8_t thresh_hi = atoi(argv[1]), thresh_lo = atoi(argv[2]),
+		prio = atoi(argv[3]), qrx = atoi(argv[4]), meas = atoi(argv[5]);
+	int r = osmo_earfcn_add(e, arfcn,
+				(meas < 8) ? meas : OSMO_EARFCN_MEAS_INVALID);
 
 	if (r < 0) {
-		vty_out(vty, "Unable to add arfcn %u: %s%s", arfcn, strerror(-r),
+		vty_out(vty, "Unable to add ARFCN %u: %s%s", arfcn, strerror(-r),
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	if (si2q_size_check(bts)) {
-		if (e->thresh_hi && thresh != e->thresh_hi)
-			vty_out(vty, "Warning: multiple thresholds are not "
-				"supported, overriding previous threshold %u%s",
-				e->thresh_hi, VTY_NEWLINE);
 
-		e->thresh_hi = thresh;
-		return CMD_SUCCESS;
+	if (e->thresh_hi && thresh_hi != e->thresh_hi)
+		vty_out(vty, "Warning: multiple threshold-high are not "
+			"supported, overriding previous threshold %u%s",
+			e->thresh_hi, VTY_NEWLINE);
+
+	e->thresh_hi = thresh_hi;
+
+	if (thresh_lo != 32) {
+		if (e->thresh_lo_valid && e->thresh_lo != thresh_lo)
+			vty_out(vty, "Warning: multiple threshold-low are not "
+				"supported, overriding previous threshold %u%s",
+				e->thresh_lo, VTY_NEWLINE);
+		e->thresh_lo = thresh_lo;
+		e->thresh_lo_valid = true;
 	}
-	vty_out(vty, "Warning: not enough space in si2quater for a given arfcn%s"
-		, VTY_NEWLINE);
+
+	if (qrx != 32) {
+		if (e->qrxlm_valid && e->qrxlm != qrx)
+			vty_out(vty, "Warning: multiple QRXLEVMIN are not "
+				"supported, overriding previous value %u%s",
+				e->qrxlm, VTY_NEWLINE);
+		e->qrxlm = qrx;
+		e->qrxlm_valid = true;
+	}
+
+	if (prio != 8) {
+		if (e->prio_valid && e->prio != prio)
+			vty_out(vty, "Warning: multiple priorities are not "
+				"supported, overriding previous value %u%s",
+				e->prio, VTY_NEWLINE);
+		e->prio = prio;
+		e->prio_valid = true;
+	}
+
+	if (si2q_size_check(bts))
+		return CMD_SUCCESS;
+
+	vty_out(vty, "Warning: not enough space in SI2quater for a given EARFCN "
+		"%u%s", arfcn, VTY_NEWLINE);
 	osmo_earfcn_del(e, arfcn);
+
 	return CMD_WARNING;
 }
 
