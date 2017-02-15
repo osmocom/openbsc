@@ -634,7 +634,8 @@ static void test_subscriber_gsup(void)
 	/* Inject DeleteSubscrData GSUP message */
 	last_updated_subscr = NULL;
 	rc = rx_gsup_message(delete_data_req, sizeof(delete_data_req));
-	OSMO_ASSERT(rc == -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
+	if (rc != -GMM_CAUSE_SEM_INCORR_MSG)
+		printf("Unexpected response to DSD: %d\n", rc);
 	OSMO_ASSERT(last_updated_subscr == NULL);
 
 	/* Inject wrong LocCancelReq GSUP message */

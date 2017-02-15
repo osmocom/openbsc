@@ -357,6 +357,26 @@ static int gprs_subscr_handle_gsup_upd_loc_res(struct gsm_subscriber *subscr,
 	return 0;
 }
 
+static int gprs_subscr_handle_gsup_dsd_req(struct gsm_subscriber *subscr,
+					   struct osmo_gsup_message *gsup_msg)
+{
+	struct osmo_gsup_message gsup_reply = {0};
+
+	if (gsup_msg->cn_domain != OSMO_GSUP_CN_DOMAIN_PS) {
+		LOGGSUBSCRP(LOGL_ERROR, subscr,
+			    "Rx GSUP message %s not supported for CS\n",
+			    osmo_gsup_message_type_name(gsup_msg->message_type));
+		gsup_reply.cause = GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
+		gsup_reply.message_type = OSMO_GSUP_MSGT_DELETE_DATA_ERROR;
+	} else {
+		gsm0408_gprs_access_cancelled(subscr->sgsn_data->mm,
+					      GMM_CAUSE_GPRS_NOTALLOWED);
+		gsup_reply.message_type = OSMO_GSUP_MSGT_DELETE_DATA_RESULT;
+	}
+
+	return gprs_subscr_tx_gsup_message(subscr, &gsup_reply);
+}
+
 static int gprs_subscr_handle_gsup_isd_req(struct gsm_subscriber *subscr,
 					   struct osmo_gsup_message *gsup_msg)
 {
@@ -644,7 +664,8 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 	}
 
 	LOGGSUBSCRP(LOGL_INFO, subscr,
-		"Received GSUP message of type 0x%02x\n", gsup_msg.message_type);
+		    "Received GSUP message %s\n",
+		    osmo_gsup_message_type_name(gsup_msg.message_type));
 
 	switch (gsup_msg.message_type) {
 	case OSMO_GSUP_MSGT_LOCATION_CANCEL_REQUEST:
@@ -680,18 +701,13 @@ int gprs_subscr_rx_gsup_message(struct msgb *msg)
 		break;
 
 	case OSMO_GSUP_MSGT_DELETE_DATA_REQUEST:
-		LOGGSUBSCRP(LOGL_ERROR, subscr,
-			"Rx GSUP message type %d not yet implemented\n",
-			gsup_msg.message_type);
-		gprs_subscr_tx_gsup_error_reply(subscr, &gsup_msg,
-						GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
-		rc = -GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL;
+		rc = gprs_subscr_handle_gsup_dsd_req(subscr, &gsup_msg);
 		break;
 
 	default:
 		LOGGSUBSCRP(LOGL_ERROR, subscr,
-			"Rx GSUP message type %d not valid at SGSN\n",
-			gsup_msg.message_type);
+			    "Rx GSUP message %s not valid at SGSN\n",
+			    osmo_gsup_message_type_name(gsup_msg.message_type));
 		if (OSMO_GSUP_IS_MSGT_REQUEST(gsup_msg.message_type))
 			gprs_subscr_tx_gsup_error_reply(
 				subscr, &gsup_msg, GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
