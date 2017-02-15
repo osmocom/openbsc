@@ -1,4 +1,5 @@
 #include <openbsc/sup_server.h>
+#include <openbsc/gsup_client.h>
 #include <openbsc/reg_proxy.h>
 #include <openbsc/debug.h>
 #include <osmocom/gsm/gsup.h>

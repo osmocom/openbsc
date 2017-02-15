@@ -39,6 +39,7 @@ typedef struct operation operation_t;
 #include <osmocom/core/linuxlist.h>
 
 #include <osmocom/gsm/gsup.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <openbsc/gsm_ussd_map_proto.h>
 #include <openbsc/gsm_04_80.h>
 
