@@ -1,3 +1,9 @@
+openbsc (0.15.1-fw.1) UNRELEASED; urgency=medium
+
+  * New release of openbsc for fairwaves build.
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Tue, 14 Feb 2017 15:12:30 +0200
+
 openbsc (0.15.1) UNRELEASED; urgency=medium
 
   * Move forward toward a new release.
