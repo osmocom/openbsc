@@ -17,6 +17,8 @@ Build-Depends: debhelper (>= 9),
                libssl-dev,
                libc-ares-dev,
                libsmpp34-dev,
+               libcdk5-dev,
+               libsqlite3-dev,
                libosip2-dev,
                libsofia-sip-ua-dev
 Standards-Version: 3.9.8
