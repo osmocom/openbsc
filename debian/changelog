@@ -1,3 +1,10 @@
+openbsc (0.15.1-fw.3) UNRELEASED; urgency=medium
+
+  * Added openbsc-dev package.
+  * New release of openbsc for fairwaves build.
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Wed, 15 Feb 2017 21:11:04 +0200
+
 openbsc (0.15.1-fw.2) UNRELEASED; urgency=medium
 
   * Fixed rebase issues.
