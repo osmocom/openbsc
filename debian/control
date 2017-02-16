@@ -36,6 +36,17 @@ Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
  components bundled together. When using osmocom-nitb, there is no need for a
  Mobile Switching Center (MSC) which is needed when using osmocom-bsc.
 
+Package: openbsc-dev
+Architecture: all
+Depends: ${misc:Depends}
+Description: Header file needed by tools tightly integrated
+ Some other programs depend on gsm_data_shared.h and gsm_data_shared.c
+ from OpenBSC. This package installs these files to your file system so
+ that the other packages can build-depend on this package.
+ .
+ The directory structure is copied after the structure in the repository
+ and the header and .c file are installed into /usr/src/osmocom/openbsc/.
+
 Package: osmocom-meas-utils
 Architecture: any
 Depends: ${shlibs:Depends},
