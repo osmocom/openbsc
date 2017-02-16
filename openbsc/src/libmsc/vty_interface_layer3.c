@@ -517,7 +517,6 @@ DEFUN(ena_subscr_expire,
       "subscriber " SUBSCR_TYPES " ID expire",
 	SUBSCR_HELP "Expire the subscriber Now\n")
 {
-	int rc;
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr =
 			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
