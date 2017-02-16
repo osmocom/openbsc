@@ -1,3 +1,10 @@
+openbsc (0.15.1-fw.2) UNRELEASED; urgency=medium
+
+  * Fixed rebase issues.
+  * New release of openbsc for fairwaves build.
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Wed, 15 Feb 2017 17:03:24 +0200
+
 openbsc (0.15.1-fw.1) UNRELEASED; urgency=medium
 
   * New release of openbsc for fairwaves build.
