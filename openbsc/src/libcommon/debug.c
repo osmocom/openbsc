@@ -177,8 +177,7 @@ static const struct log_info_cat default_categories[] = {
 	},
 };
 
-static int filter_fn(const struct log_context *ctx,
-		     struct log_target *tar)
+static int filter_fn(const struct log_context *ctx, struct log_target *tar)
 {
 	const struct gsm_subscriber *subscr = ctx->ctx[LOGGING_CTX_VLR_SUBSCR];
 	const struct gprs_nsvc *nsvc = ctx->ctx[LOGGING_CTX_GB_NSVC];
