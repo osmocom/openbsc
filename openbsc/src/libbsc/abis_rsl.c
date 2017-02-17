@@ -158,9 +158,8 @@ static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		LOGP(DRSL, LOGL_ERROR, "%s %smismatching chan_nr=0x%02x\n",
 		     gsm_ts_and_pchan_name(lchan->ts), log_name, chan_nr);
 
-	log_set_context(BSC_CTX_LCHAN, lchan);
 	if (lchan->conn)
-		log_set_context(BSC_CTX_SUBSCR, lchan->conn->subscr);
+		log_set_context(LOGGING_CTX_VLR_SUBSCR, lchan->conn->subscr);
 
 	return lchan;
 }

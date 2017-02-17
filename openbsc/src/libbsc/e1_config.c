@@ -134,7 +134,6 @@ static int bts_isdn_sign_link(struct msgb *msg)
 	struct e1inp_sign_link *link = msg->dst;
 	struct gsm_bts *bts;
 
-	log_set_context(BSC_CTX_BTS, link->trx->bts);
 	switch (link->type) {
 	case E1INP_SIGN_OML:
 		bts = link->trx->bts;

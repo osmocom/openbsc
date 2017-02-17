@@ -41,21 +41,6 @@ enum {
 	Debug_LastEntry,
 };
 
-/* context */
-#define BSC_CTX_LCHAN	0
-#define BSC_CTX_SUBSCR	1
-#define BSC_CTX_BTS	2
-#define BSC_CTX_SCCP	3
-
-/* target */
-
-enum {
-	//DEBUG_FILTER_ALL = 1 << 0,
-	LOG_FILTER_IMSI = 1 << 1,
-	LOG_FILTER_NSVC = 1 << 2,
-	LOG_FILTER_BVC  = 1 << 3,
-};
-
 /* we don't need a header dependency for this... */
 struct gprs_nsvc;
 struct bssgp_bvc_ctx;

@@ -177,32 +177,25 @@ static const struct log_info_cat default_categories[] = {
 	},
 };
 
-enum log_filter {
-	_FLT_ALL = LOG_FILTER_ALL,	/* libosmocore */
-	FLT_IMSI = 1,
-	FLT_NSVC = 2,
-	FLT_BVC  = 3,
-};
-
 static int filter_fn(const struct log_context *ctx,
 		     struct log_target *tar)
 {
-	struct gsm_subscriber *subscr = ctx->ctx[BSC_CTX_SUBSCR];
-	const struct gprs_nsvc *nsvc = ctx->ctx[GPRS_CTX_NSVC];
-	const struct gprs_nsvc *bvc = ctx->ctx[GPRS_CTX_BVC];
+	const struct gsm_subscriber *subscr = ctx->ctx[LOGGING_CTX_VLR_SUBSCR];
+	const struct gprs_nsvc *nsvc = ctx->ctx[LOGGING_CTX_GB_NSVC];
+	const struct gprs_nsvc *bvc = ctx->ctx[LOGGING_CTX_GB_BVC];
 
-	if ((tar->filter_map & (1 << FLT_IMSI)) != 0
-	    && subscr && subscr == tar->filter_data[FLT_IMSI])
+	if ((tar->filter_map & (1 << LOGGING_FILTER_VLR_SUBSCR)) != 0
+	    && subscr && subscr == tar->filter_data[LOGGING_FILTER_VLR_SUBSCR])
 		return 1;
 
 	/* Filter on the NS Virtual Connection */
-	if ((tar->filter_map & (1 << FLT_NSVC)) != 0
-	    && nsvc && (nsvc == tar->filter_data[FLT_NSVC]))
+	if ((tar->filter_map & (1 << LOGGING_FILTER_GB_NSVC)) != 0
+	    && nsvc && (nsvc == tar->filter_data[LOGGING_FILTER_GB_NSVC]))
 		return 1;
 
 	/* Filter on the NS Virtual Connection */
-	if ((tar->filter_map & (1 << FLT_BVC)) != 0
-	    && bvc && (bvc == tar->filter_data[FLT_BVC]))
+	if ((tar->filter_map & (1 << LOGGING_FILTER_GB_BVC)) != 0
+	    && bvc && (bvc == tar->filter_data[LOGGING_FILTER_GB_BVC]))
 		return 1;
 
 	return 0;
@@ -216,16 +209,17 @@ const struct log_info log_info = {
 
 void log_set_imsi_filter(struct log_target *target, struct gsm_subscriber *subscr)
 {
+	struct gsm_subscriber **fsub = (void*)&target->filter_data[LOGGING_FILTER_VLR_SUBSCR];
+
 	/* free the old data */
-	if (target->filter_data[FLT_IMSI]) {
-		subscr_put(target->filter_data[FLT_IMSI]);
-		target->filter_data[FLT_IMSI] = NULL;
+	if (*fsub) {
+		subscr_put(*fsub);
+		*fsub = NULL;
 	}
 
 	if (subscr) {
-		target->filter_map |= (1 << FLT_IMSI);
-		target->filter_data[FLT_IMSI] = subscr_get(subscr);
-	} else {
-		target->filter_map &= ~(1 << FLT_IMSI);
-	}
+		target->filter_map |= (1 << LOGGING_FILTER_VLR_SUBSCR);
+		*fsub = subscr_get(subscr);
+	} else
+		target->filter_map &= ~(1 << LOGGING_FILTER_VLR_SUBSCR);
 }
