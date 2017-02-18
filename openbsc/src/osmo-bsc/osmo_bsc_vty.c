@@ -22,7 +22,7 @@
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/bsc_msc_data.h>
 #include <openbsc/vty.h>
-#include <openbsc/gsm_subscriber.h>
+#include <openbsc/bsc_subscriber.h>
 #include <openbsc/debug.h>
 #include <openbsc/bsc_msg_filter.h>
 
@@ -861,20 +861,19 @@ DEFUN(logging_fltr_imsi,
 	LOGGING_STR FILTER_STR
       "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
 {
-	struct gsm_subscriber *subscr;
+	struct bsc_subscr *bsc_subscr;
 	struct log_target *tgt = osmo_log_vty2tgt(vty);
+	const char *imsi = argv[0];
 
-	if (!tgt)
-		return CMD_WARNING;
+	bsc_subscr = bsc_subscr_find_by_imsi(bsc_gsmnet->bsc_subscribers, imsi);
 
-	subscr = subscr_get_or_create(bsc_gsmnet->subscr_group, argv[0]);
-	if (!subscr) {
+	if (!bsc_subscr) {
 		vty_out(vty, "%%no subscriber with IMSI(%s)%s",
-			argv[0], VTY_NEWLINE);
+			imsi, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	log_set_imsi_filter(tgt, subscr);
+	log_set_filter_bsc_subscr(tgt, bsc_subscr);
 	return CMD_SUCCESS;
 }
 

@@ -82,8 +82,11 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber_connection *conn = data;
 	struct gsm_subscriber *subscr = param;
 	struct paging_signal_data sig_data;
+	struct bsc_subscr *bsub;
+	struct gsm_network *net;
 
-	OSMO_ASSERT(subscr->is_paging);
+	OSMO_ASSERT(subscr && subscr->is_paging);
+	net = subscr->group->net;
 
 	/*
 	 * Stop paging on all other BTS. E.g. if this is
@@ -91,7 +94,16 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	 * timeout soon as well. Let's just stop everything
 	 * and forget we wanted to page.
 	 */
-	paging_request_stop(NULL, subscr, NULL, NULL);
+
+	/* TODO MSC split -- creating a BSC subscriber directly from MSC data
+	 * structures in RAM. At some point the MSC will send a message to the
+	 * BSC instead. */
+	bsub = bsc_subscr_find_or_create_by_imsi(net->bsc_subscribers,
+						 subscr->imsi);
+	bsub->tmsi = subscr->tmsi;
+	bsub->lac = subscr->lac;
+	paging_request_stop(&net->bts_list, NULL, bsub, NULL, NULL);
+	bsc_subscr_put(bsub);
 
 	/* Inform parts of the system we don't know */
 	sig_data.subscr = subscr;
@@ -169,13 +181,23 @@ struct subscr_request *subscr_request_channel(struct gsm_subscriber *subscr,
 {
 	int rc;
 	struct subscr_request *request;
+	struct bsc_subscr *bsub;
+	struct gsm_network *net = subscr->group->net;
 
 	/* Start paging.. we know it is async so we can do it before */
 	if (!subscr->is_paging) {
 		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet.\n",
 			subscr_name(subscr));
-		rc = paging_request(subscr->group->net, subscr, channel_type,
-				    subscr_paging_cb, subscr);
+		/* TODO MSC split -- creating a BSC subscriber directly from
+		 * MSC data structures in RAM. At some point the MSC will send
+		 * a message to the BSC instead. */
+		bsub = bsc_subscr_find_or_create_by_imsi(net->bsc_subscribers,
+							 subscr->imsi);
+		bsub->tmsi = subscr->tmsi;
+		bsub->lac = subscr->lac;
+		rc = paging_request(net, bsub, channel_type, subscr_paging_cb,
+				    subscr);
+		bsc_subscr_put(bsub);
 		if (rc <= 0) {
 			LOGP(DMM, LOGL_ERROR, "Subscriber %s paging failed: %d\n",
 				subscr_name(subscr), rc);

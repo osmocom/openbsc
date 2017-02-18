@@ -34,6 +34,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/bsc_subscriber.h>
 #include <openbsc/silent_call.h>
 #include <openbsc/gsm_04_11.h>
 #include <osmocom/abis/e1_input.h>
@@ -1034,21 +1035,26 @@ DEFUN(logging_fltr_imsi,
 	LOGGING_STR FILTER_STR
       "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
 {
-	struct gsm_subscriber *subscr;
+	struct gsm_subscriber *vlr_subscr;
+	struct bsc_subscr *bsc_subscr;
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct log_target *tgt = osmo_log_vty2tgt(vty);
+	const char *imsi = argv[0];
 
 	if (!tgt)
 		return CMD_WARNING;
 
-	subscr = subscr_get_by_imsi(gsmnet->subscr_group, argv[0]);
-	if (!subscr) {
+	vlr_subscr = subscr_get_by_imsi(gsmnet->subscr_group, imsi);
+	bsc_subscr = bsc_subscr_find_by_imsi(gsmnet->bsc_subscribers, imsi);
+
+	if (!vlr_subscr && !bsc_subscr) {
 		vty_out(vty, "%%no subscriber with IMSI(%s)%s",
 			argv[0], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	log_set_imsi_filter(tgt, subscr);
+	log_set_filter_vlr_subscr(tgt, vlr_subscr);
+	log_set_filter_bsc_subscr(tgt, bsc_subscr);
 	return CMD_SUCCESS;
 }
 

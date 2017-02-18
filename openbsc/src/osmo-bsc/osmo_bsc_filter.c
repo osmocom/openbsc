@@ -21,6 +21,7 @@
 #include <openbsc/bsc_msc_data.h>
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/bsc_subscriber.h>
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>
 
@@ -54,14 +55,14 @@ static void handle_lu_request(struct gsm_subscriber_connection *conn,
 }
 
 /* extract a subscriber from the paging response */
-static struct gsm_subscriber *extract_sub(struct gsm_subscriber_connection *conn,
-					  struct msgb *msg)
+static struct bsc_subscr *extract_sub(struct gsm_subscriber_connection *conn,
+				   struct msgb *msg)
 {
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	struct gsm48_hdr *gh;
 	struct gsm48_pag_resp *resp;
-	struct gsm_subscriber *subscr;
+	struct bsc_subscr *subscr;
 
 	if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*resp)) {
 		LOGP(DMSC, LOGL_ERROR, "PagingResponse too small: %u\n", msgb_l3len(msg));
@@ -78,12 +79,12 @@ static struct gsm_subscriber *extract_sub(struct gsm_subscriber_connection *conn
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_active_by_tmsi(conn->bts->network->subscr_group,
-					       tmsi_from_string(mi_string));
+		subscr = bsc_subscr_find_by_tmsi(conn->network->bsc_subscribers,
+					      tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
-		subscr = subscr_active_by_imsi(conn->bts->network->subscr_group,
-					       mi_string);
+		subscr = bsc_subscr_find_by_imsi(conn->network->bsc_subscribers,
+					      mi_string);
 		break;
 	default:
 		subscr = NULL;
@@ -96,15 +97,16 @@ static struct gsm_subscriber *extract_sub(struct gsm_subscriber_connection *conn
 /* we will need to stop the paging request */
 static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_subscriber *subscr = extract_sub(conn, msg);
+	struct bsc_subscr *subscr = extract_sub(conn, msg);
 
 	if (!subscr) {
 		LOGP(DMSC, LOGL_ERROR, "Non active subscriber got paged.\n");
 		return -1;
 	}
 
-	paging_request_stop(conn->bts, subscr, conn, msg);
-	subscr_put(subscr);
+	paging_request_stop(&conn->network->bts_list, conn->bts, subscr, conn,
+			    msg);
+	bsc_subscr_put(subscr);
 	return 0;
 }
 
@@ -130,7 +132,7 @@ struct bsc_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
 	uint8_t mtype;
 	struct osmo_bsc_data *bsc;
 	struct bsc_msc_data *msc, *pag_msc;
-	struct gsm_subscriber *subscr;
+	struct bsc_subscr *subscr;
 	int is_emerg = 0;
 
 	bsc = conn->bts->network->bsc_data;
@@ -183,7 +185,7 @@ paging:
 	}
 
 	pag_msc = paging_get_data(conn->bts, subscr);
-	subscr_put(subscr);
+	bsc_subscr_put(subscr);
 
 	llist_for_each_entry(msc, &bsc->mscs, entry) {
 		if (msc != pag_msc)

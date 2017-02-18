@@ -283,7 +283,7 @@ int gsm48_paging_extract_mi(struct gsm48_pag_resp *resp, int length,
 }
 
 int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
-			     struct msgb *msg, struct gsm_subscriber *subscr)
+			     struct msgb *msg, struct bsc_subscr *bsub)
 {
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -292,22 +292,24 @@ int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2_lv);
 
-	if (!conn->subscr) {
-		conn->subscr = subscr;
-	} else if (conn->subscr != subscr) {
-		LOGP(DRR, LOGL_ERROR, "<- Channel already owned by someone else?\n");
-		subscr_put(subscr);
+	if (!conn->bsub) {
+		conn->bsub = bsub;
+	} else if (conn->bsub != bsub) {
+		LOGP(DRR, LOGL_ERROR,
+		     "<- Channel already owned by someone else?\n");
+		bsc_subscr_put(bsub);
 		return -EINVAL;
 	} else {
 		DEBUGP(DRR, "<- Channel already owned by us\n");
-		subscr_put(subscr);
-		subscr = conn->subscr;
+		bsc_subscr_put(bsub);
+		bsub = conn->bsub;
 	}
 
 	rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_PAGING_COMPLETED]);
 
 	/* Stop paging on the bts we received the paging response */
-	paging_request_stop(conn->bts, subscr, conn, msg);
+	paging_request_stop(&bts->network->bts_list, conn->bts, bsub, conn,
+			    msg);
 	return 0;
 }
 

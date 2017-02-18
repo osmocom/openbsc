@@ -42,6 +42,7 @@
 #include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/gsm0502.h>
 
+#include <openbsc/bsc_subscriber.h>
 #include <openbsc/paging.h>
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
@@ -58,11 +59,11 @@ void *tall_paging_ctx;
  * Kill one paging request update the internal list...
  */
 static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
-				struct gsm_paging_request *to_be_deleted)
+				  struct gsm_paging_request *to_be_deleted)
 {
 	osmo_timer_del(&to_be_deleted->T3113);
 	llist_del(&to_be_deleted->entry);
-	subscr_put(to_be_deleted->subscr);
+	bsc_subscr_put(to_be_deleted->bsub);
 	talloc_free(to_be_deleted);
 }
 
@@ -77,21 +78,21 @@ static void page_ms(struct gsm_paging_request *request)
 	if (!bts->oml_link)
 		return;
 
-	log_set_context(LOG_CTX_VLR_SUBSCR, request->subscr);
+	log_set_context(LOG_CTX_BSC_SUBSCR, request->bsub);
 
 	LOGP(DPAG, LOGL_INFO, "Going to send paging commands: imsi: %s tmsi: "
-	     "0x%x for ch. type %d (attempt %d)\n", request->subscr->imsi,
-	     request->subscr->tmsi, request->chan_type, request->attempts);
+	     "0x%08x for ch. type %d (attempt %d)\n", request->bsub->imsi,
+	     request->bsub->tmsi, request->chan_type, request->attempts);
 
-	if (request->subscr->tmsi == GSM_RESERVED_TMSI)
-		mi_len = gsm48_generate_mid_from_imsi(mi, request->subscr->imsi);
+	if (request->bsub->tmsi == GSM_RESERVED_TMSI)
+		mi_len = gsm48_generate_mid_from_imsi(mi, request->bsub->imsi);
 	else
-		mi_len = gsm48_generate_mid_from_tmsi(mi, request->subscr->tmsi);
+		mi_len = gsm48_generate_mid_from_tmsi(mi, request->bsub->tmsi);
 
 	page_group = gsm0502_calc_paging_group(&bts->si_common.chan_desc,
-						str_to_imsi(request->subscr->imsi));
+					       str_to_imsi(request->bsub->imsi));
 	gsm0808_page(bts, page_group, mi_len, mi, request->chan_type);
-	log_set_context(LOG_CTX_VLR_SUBSCR, NULL);
+	log_set_context(LOG_CTX_BSC_SUBSCR, NULL);
 }
 
 static void paging_schedule_if_needed(struct gsm_bts_paging_state *paging_bts)
@@ -237,11 +238,12 @@ static void paging_init_if_needed(struct gsm_bts *bts)
 }
 
 static int paging_pending_request(struct gsm_bts_paging_state *bts,
-				struct gsm_subscriber *subscr) {
+				  struct bsc_subscr *bsub)
+{
 	struct gsm_paging_request *req;
 
 	llist_for_each_entry(req, &bts->pending_requests, entry) {
-		if (subscr == req->subscr)
+		if (bsub == req->bsub)
 			return 1;
 	}
 
@@ -255,10 +257,10 @@ static void paging_T3113_expired(void *data)
 	gsm_cbfn *cbfn;
 	int msg;
 
-	log_set_context(LOG_CTX_VLR_SUBSCR, req->subscr);
+	log_set_context(LOG_CTX_BSC_SUBSCR, req->bsub);
 
 	LOGP(DPAG, LOGL_INFO, "T3113 expired for request %p (%s)\n",
-		req, req->subscr->imsi);
+	     req, bsc_subscr_name(req->bsub));
 
 	/* must be destroyed before calling cbfn, to prevent double free */
 	rate_ctr_inc(&req->bts->network->bsc_ctrs->ctr[BSC_CTR_PAGING_EXPIRED]);
@@ -277,21 +279,22 @@ static void paging_T3113_expired(void *data)
 
 }
 
-static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
-			    int type, gsm_cbfn *cbfn, void *data)
+static int _paging_request(struct gsm_bts *bts, struct bsc_subscr *bsub,
+			   int type, gsm_cbfn *cbfn, void *data)
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req;
 
-	if (paging_pending_request(bts_entry, subscr)) {
-		LOGP(DPAG, LOGL_INFO, "Paging request already pending for %s\n", subscr->imsi);
+	if (paging_pending_request(bts_entry, bsub)) {
+		LOGP(DPAG, LOGL_INFO, "Paging request already pending for %s\n",
+		     bsc_subscr_name(bsub));
 		return -EEXIST;
 	}
 
-	LOGP(DPAG, LOGL_DEBUG, "Start paging of subscriber %llu on bts %d.\n",
-		subscr->id, bts->nr);
+	LOGP(DPAG, LOGL_DEBUG, "Start paging of subscriber %s on bts %d.\n",
+	     bsc_subscr_name(bsub), bts->nr);
 	req = talloc_zero(tall_paging_ctx, struct gsm_paging_request);
-	req->subscr = subscr_get(subscr);
+	req->bsub = bsc_subscr_get(bsub);
 	req->bts = bts;
 	req->chan_type = type;
 	req->cbfn = cbfn;
@@ -305,8 +308,8 @@ static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	return 0;
 }
 
-int paging_request_bts(struct gsm_bts *bts, struct gsm_subscriber *subscr,
-		int type, gsm_cbfn *cbfn, void *data)
+int paging_request_bts(struct gsm_bts *bts, struct bsc_subscr *bsub,
+		       int type, gsm_cbfn *cbfn, void *data)
 {
 	int rc;
 
@@ -317,15 +320,14 @@ int paging_request_bts(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	/* maybe it is the first time we use it */
 	paging_init_if_needed(bts);
 
-
 	/* Trigger paging, pass any error to the caller */
-	rc = _paging_request(bts, subscr, type, cbfn, data);
+	rc = _paging_request(bts, bsub, type, cbfn, data);
 	if (rc < 0)
 		return rc;
 	return 1;
 }
 
-int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
+int paging_request(struct gsm_network *network, struct bsc_subscr *bsub,
 		   int type, gsm_cbfn *cbfn, void *data)
 {
 	struct gsm_bts *bts = NULL;
@@ -337,13 +339,14 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	do {
 		int rc;
 
-		bts = gsm_bts_by_lac(network, subscr->lac, bts);
+		bts = gsm_bts_by_lac(network, bsub->lac, bts);
 		if (!bts)
 			break;
 
-		rc = paging_request_bts(bts, subscr, type, cbfn, data);
+		rc = paging_request_bts(bts, bsub, type, cbfn, data);
 		if (rc < 0) {
-			paging_request_stop(NULL, subscr, NULL, NULL);
+			paging_request_stop(&network->bts_list, NULL, bsub,
+					    NULL, NULL);
 			return rc;
 		}
 		num_pages += rc;
@@ -357,7 +360,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 
 
 /* we consciously ignore the type of the request here */
-static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+static void _paging_request_stop(struct gsm_bts *bts, struct bsc_subscr *bsub,
 				 struct gsm_subscriber_connection *conn,
 				 struct msgb *msg)
 {
@@ -367,8 +370,8 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 	paging_init_if_needed(bts);
 
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
-				 entry) {
-		if (req->subscr == subscr) {
+				  entry) {
+		if (req->bsub == bsub) {
 			gsm_cbfn *cbfn = req->cbfn;
 			void *param = req->cbfn_param;
 
@@ -377,35 +380,36 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 			req = NULL;
 
 			if (conn && cbfn) {
-				LOGP(DPAG, LOGL_DEBUG, "Stop paging %s on bts %d, calling cbfn.\n", subscr->imsi, bts->nr);
+				LOGP(DPAG, LOGL_DEBUG, "Stop paging %s on bts %d, calling cbfn.\n", bsub->imsi, bts->nr);
 				cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
-					  msg, conn, param);
+				     msg, conn, param);
 			} else
-				LOGP(DPAG, LOGL_DEBUG, "Stop paging %s on bts %d silently.\n", subscr->imsi, bts->nr);
+				LOGP(DPAG, LOGL_DEBUG, "Stop paging %s on bts %d silently.\n", bsub->imsi, bts->nr);
 			break;
 		}
 	}
 }
 
 /* Stop paging on all other bts' */
-void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
+void paging_request_stop(struct llist_head *bts_list,
+			 struct gsm_bts *_bts, struct bsc_subscr *bsub,
 			 struct gsm_subscriber_connection *conn,
 			 struct msgb *msg)
 {
 	struct gsm_bts *bts;
 
-	log_set_context(LOG_CTX_VLR_SUBSCR, subscr);
+	log_set_context(LOG_CTX_BSC_SUBSCR, bsub);
 
 	/* Stop this first and dispatch the request */
 	if (_bts)
-		_paging_request_stop(_bts, subscr, conn, msg);
+		_paging_request_stop(_bts, bsub, conn, msg);
 
 	/* Make sure to cancel this everywhere else */
-	llist_for_each_entry(bts, &subscr->group->net->bts_list, list) {
+	llist_for_each_entry(bts, bts_list, list) {
 		/* Sort of an optimization. */
 		if (bts == _bts)
 			continue;
-		_paging_request_stop(bts, subscr, NULL, NULL);
+		_paging_request_stop(bts, bsub, NULL, NULL);
 	}
 }
 
@@ -434,12 +438,12 @@ unsigned int paging_pending_requests_nr(struct gsm_bts *bts)
 /**
  * Find any paging data for the given subscriber at the given BTS.
  */
-void *paging_get_data(struct gsm_bts *bts, struct gsm_subscriber *subscr)
+void *paging_get_data(struct gsm_bts *bts, struct bsc_subscr *bsub)
 {
 	struct gsm_paging_request *req;
 
 	llist_for_each_entry(req, &bts->paging.pending_requests, entry)
-		if (req->subscr == subscr)
+		if (req->bsub == bsub)
 			return req->cbfn_param;
 
 	return NULL;

@@ -1,0 +1,17 @@
+DREF BSC subscr IMSI:1234567890 usage increases to: 2
+DREF BSC subscr IMSI:1234567890 usage decreases to: 1
+DREF BSC subscr IMSI:1234567890 usage increases to: 2
+DREF BSC subscr IMSI:1234567890 usage decreases to: 1
+DREF BSC subscr IMSI:9876543210 usage increases to: 2
+DREF BSC subscr IMSI:9876543210 usage decreases to: 1
+DREF BSC subscr IMSI:5656565656 usage increases to: 2
+DREF BSC subscr IMSI:5656565656 usage decreases to: 1
+DREF BSC subscr IMSI:1234567890 usage decreases to: 0
+DREF BSC subscr IMSI:9876543210 usage increases to: 2
+DREF BSC subscr IMSI:9876543210 usage decreases to: 1
+DREF BSC subscr IMSI:5656565656 usage increases to: 2
+DREF BSC subscr IMSI:5656565656 usage decreases to: 1
+DREF BSC subscr IMSI:9876543210 usage decreases to: 0
+DREF BSC subscr IMSI:5656565656 usage increases to: 2
+DREF BSC subscr IMSI:5656565656 usage decreases to: 1
+DREF BSC subscr IMSI:5656565656 usage decreases to: 0

@@ -13,6 +13,13 @@ cat $abs_srcdir/subscr/subscr_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/subscr/subscr_test], [], [expout], [ignore])
 AT_CLEANUP
 
+AT_SETUP([bsc_subscr])
+AT_KEYWORDS([bsc_subscr])
+cat $abs_srcdir/subscr/bsc_subscr_test.ok > expout
+cat $abs_srcdir/subscr/bsc_subscr_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/subscr/bsc_subscr_test], [], [expout], [experr])
+AT_CLEANUP
+
 AT_SETUP([db])
 AT_KEYWORDS([db])
 cat $abs_srcdir/db/db_test.ok > expout

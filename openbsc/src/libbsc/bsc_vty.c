@@ -1023,6 +1023,16 @@ static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
 
+static void bsc_subscr_dump_vty(struct vty *vty, struct bsc_subscr *bsub)
+{
+	if (strlen(bsub->imsi))
+		vty_out(vty, "    IMSI: %s%s", bsub->imsi, VTY_NEWLINE);
+	if (bsub->tmsi != GSM_RESERVED_TMSI)
+		vty_out(vty, "    TMSI: 0x%08x%s", bsub->tmsi,
+			VTY_NEWLINE);
+	vty_out(vty, "    Use count: %d%s", bsub->use_count, VTY_NEWLINE);
+}
+
 static void meas_rep_dump_uni_vty(struct vty *vty,
 				  struct gsm_meas_rep_unidir *mru,
 				  const char *prefix,
@@ -1318,7 +1328,7 @@ DEFUN(show_lchan_summary,
 static void paging_dump_vty(struct vty *vty, struct gsm_paging_request *pag)
 {
 	vty_out(vty, "Paging on BTS %u%s", pag->bts->nr, VTY_NEWLINE);
-	subscr_dump_vty(vty, pag->subscr);
+	bsc_subscr_dump_vty(vty, pag->bsub);
 }
 
 static void bts_paging_dump_vty(struct vty *vty, struct gsm_bts *bts)

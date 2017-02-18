@@ -79,6 +79,7 @@ tests/trau/trau_test
 tests/mgcp/mgcp_transcoding_test
 tests/sgsn/sgsn_test
 tests/subscr/subscr_test
+tests/subscr/bsc_subscr_test
 tests/oap/oap_test
 tests/gtphub/gtphub_test
 tests/mm_auth/mm_auth_test

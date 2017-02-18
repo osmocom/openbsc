@@ -24,6 +24,7 @@ libbsc_a_SOURCES = \
 	abis_om2000_vty.c \
 	abis_rsl.c \
 	bsc_rll.c \
+	bsc_subscriber.c \
 	paging.c \
 	bts_ericsson_rbs2000.c \
 	bts_ipaccess_nanobts.c \

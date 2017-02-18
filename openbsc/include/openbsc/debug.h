@@ -42,6 +42,7 @@ enum {
 
 struct gsm_subscriber;
 
-void log_set_imsi_filter(struct log_target *target, struct gsm_subscriber *subscr);
+void log_set_filter_vlr_subscr(struct log_target *target,
+			       struct gsm_subscriber *vlr_subscr);
 
 extern const struct log_info log_info;

@@ -20,9 +20,10 @@
 
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/osmo_bsc_grace.h>
+#include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/bsc_msc_data.h>
 #include <openbsc/debug.h>
-#include <openbsc/gsm_subscriber.h>
+#include <openbsc/bsc_subscriber.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/paging.h>
 
@@ -99,7 +100,7 @@ static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 static int bssmap_handle_paging(struct bsc_msc_data *msc,
 				struct msgb *msg, unsigned int payload_length)
 {
-	struct gsm_subscriber *subscr;
+	struct bsc_subscr *subscr;
 	struct tlv_parsed tp;
 	char mi_string[GSM48_MI_SIZE];
 	uint32_t tmsi = GSM_RESERVED_TMSI;
@@ -157,7 +158,8 @@ static int bssmap_handle_paging(struct bsc_msc_data *msc,
 		LOGP(DMSC, LOGL_ERROR, "eMLPP is not handled\n");
 	}
 
-	subscr = subscr_get_or_create(msc->network->subscr_group, mi_string);
+	subscr = bsc_subscr_find_or_create_by_imsi(msc->network->bsc_subscribers,
+						   mi_string);
 	if (!subscr) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to allocate a subscriber for %s\n", mi_string);
 		return -1;
@@ -167,7 +169,8 @@ static int bssmap_handle_paging(struct bsc_msc_data *msc,
 	subscr->tmsi = tmsi;
 
 	LOGP(DMSC, LOGL_INFO, "Paging request from MSC IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n", mi_string, tmsi, tmsi, lac);
-	bsc_grace_paging_request(subscr, chan_needed, msc);
+	bsc_grace_paging_request(msc->network->bsc_data->rf_ctrl->policy,
+				 subscr, chan_needed, msc);
 	return 0;
 }
 

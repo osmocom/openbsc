@@ -22,7 +22,7 @@
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/bsc_msc_data.h>
 #include <openbsc/gsm_04_80.h>
-#include <openbsc/gsm_subscriber.h>
+#include <openbsc/bsc_subscriber.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 
@@ -34,8 +34,8 @@ int bsc_grace_allow_new_connection(struct gsm_network *network, struct gsm_bts *
 }
 
 
-static int normal_paging(struct gsm_subscriber *subscr, int chan_needed,
-			struct bsc_msc_data *msc)
+static int normal_paging(struct bsc_subscr *subscr, int chan_needed,
+			 struct bsc_msc_data *msc)
 {
 	/* we can't page by lac.. we need to page everything */
 	if (msc->core_lac != -1) {
@@ -47,12 +47,11 @@ static int normal_paging(struct gsm_subscriber *subscr, int chan_needed,
 		return 0;
 	}
 
-	return paging_request(subscr->group->net, subscr, chan_needed, NULL,
-			      msc);
+	return paging_request(msc->network, subscr, chan_needed, NULL, msc);
 }
 
-static int locked_paging(struct gsm_subscriber *subscr, int chan_needed,
-			struct bsc_msc_data *msc)
+static int locked_paging(struct bsc_subscr *subscr, int chan_needed,
+			 struct bsc_msc_data *msc)
 {
 	struct gsm_bts *bts = NULL;
 
@@ -84,10 +83,12 @@ static int locked_paging(struct gsm_subscriber *subscr, int chan_needed,
 /**
  * Try to not page if everything the cell is not on.
  */
-int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
-				struct bsc_msc_data *msc)
+int bsc_grace_paging_request(enum signal_rf rf_policy,
+			     struct bsc_subscr *subscr,
+			     int chan_needed,
+			     struct bsc_msc_data *msc)
 {
-	if (subscr->group->net->bsc_data->rf_ctrl->policy == S_RF_ON)
+	if (rf_policy == S_RF_ON)
 		return normal_paging(subscr, chan_needed, msc);
 	return locked_paging(subscr, chan_needed, msc);
 }

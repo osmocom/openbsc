@@ -49,7 +49,7 @@ static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, vo
 }
 
 /* mock object for testing, directly invoke the cb... maybe later through the timer */
-int paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscriber, int type, gsm_cbfn *cbfn, void *data)
+int paging_request(struct gsm_bts *bts, struct bsc_subscr *bsub, int type, gsm_cbfn *cbfn, void *data)
 {
 	s_data = data;
 	s_cbfn = cbfn;
@@ -72,6 +72,7 @@ void test_request_chan(void)
 		exit(1);
 	bts = gsm_bts_alloc(network);
 	bts->location_area_code = 23;
+	s_conn.network = network;
 
 	/* Create a dummy subscriber */
 	struct gsm_subscriber *subscr = subscr_alloc();

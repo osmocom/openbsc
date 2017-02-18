@@ -23,6 +23,7 @@
 
 struct mncc_sock_state;
 struct gsm_subscriber_group;
+struct bsc_subscr;
 
 #define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
 
@@ -118,6 +119,9 @@ struct gsm_subscriber_connection {
 
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
+
+	/* libbsc subscriber information */
+	struct bsc_subscr *bsub;
 
 	/* LU expiration handling */
 	uint8_t expire_timer_stopped;
@@ -391,6 +395,14 @@ struct gsm_network {
 	 * BTS|RNC specific timezone overrides for multi-tz networks in
 	 * OsmoMSC, this should be tied to the location area code (LAC). */
 	struct gsm_tz tz;
+
+	/* List of all struct bsc_subscr used in libbsc. This llist_head is
+	 * allocated so that the llist_head pointer itself can serve as a
+	 * talloc context (useful to not have to pass the entire gsm_network
+	 * struct to the bsc_subscr_* API, and for bsc_susbscr unit tests to
+	 * not require gsm_data.h). In an MSC-without-BSC environment, this
+	 * pointer is NULL to indicate absence of a bsc_subscribers list. */
+	struct llist_head *bsc_subscribers;
 };
 
 struct osmo_esme;

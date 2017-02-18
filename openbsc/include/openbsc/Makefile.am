@@ -10,6 +10,7 @@ noinst_HEADERS = \
 	bsc_nat_callstats.h \
 	bsc_nat_sccp.h \
 	bsc_rll.h \
+	bsc_subscriber.h \
 	bss.h \
 	bts_ipaccess_nanobts_omlattr.h \
 	chan_alloc.h \

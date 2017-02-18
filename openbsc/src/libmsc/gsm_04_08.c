@@ -1433,6 +1433,8 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	struct gsm_subscriber *subscr = NULL;
+	struct bsc_subscr *bsub;
+	uint32_t tmsi;
 	int rc = 0;
 
 	resp = (struct gsm48_pag_resp *) &gh->data[0];
@@ -1443,8 +1445,8 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(conn->network->subscr_group,
-					    tmsi_from_string(mi_string));
+		tmsi = tmsi_from_string(mi_string);
+		subscr = subscr_get_by_tmsi(conn->network->subscr_group, tmsi);
 		break;
 	case GSM_MI_TYPE_IMSI:
 		subscr = subscr_get_by_imsi(conn->network->subscr_group,
@@ -1457,6 +1459,19 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 		/* FIXME: request id? close channel? */
 		return -EINVAL;
 	}
+
+	if (!conn->subscr) {
+		conn->subscr = subscr;
+	} else if (conn->subscr != subscr) {
+		LOGP(DRR, LOGL_ERROR, "<- Channel already owned by someone else?\n");
+		subscr_put(subscr);
+		return -EINVAL;
+	} else {
+		DEBUGP(DRR, "<- Channel already owned by us\n");
+		subscr_put(subscr);
+		subscr = conn->subscr;
+	}
+
 	log_set_context(LOG_CTX_VLR_SUBSCR, subscr);
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
 		subscr->name && strlen(subscr->name) ? subscr->name : subscr->imsi);
@@ -1465,10 +1480,18 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	memcpy(subscr->equipment.classmark2, classmark2_lv+1, *classmark2_lv);
 	db_sync_equipment(&subscr->equipment);
 
+	/* TODO MSC split -- creating a BSC subscriber directly from MSC data
+	 * structures in RAM. At some point the MSC will send a message to the
+	 * BSC instead. */
+	bsub = bsc_subscr_find_or_create_by_imsi(conn->network->bsc_subscribers,
+						 subscr->imsi);
+	bsub->tmsi = subscr->tmsi;
+	bsub->lac = subscr->lac;
+
 	/* We received a paging */
 	conn->expire_timer_stopped = 1;
 
-	rc = gsm48_handle_paging_resp(conn, msg, subscr);
+	rc = gsm48_handle_paging_resp(conn, msg, bsub);
 	return rc;
 }
 
