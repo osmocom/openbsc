@@ -276,6 +276,16 @@ int subscr_update_expire_lu(struct gsm_subscriber *s, struct gsm_bts *bts)
 {
 	int rc;
 
+	if (!s) {
+		LOGP(DMM, LOGL_ERROR, "LU Expiration but NULL subscriber\n");
+		return -1;
+	}
+	if (!bts) {
+		LOGP(DMM, LOGL_ERROR, "%s: LU Expiration but NULL bts\n",
+		     subscr_name(s));
+		return -1;
+	}
+
 	/* Table 10.5.33: The T3212 timeout value field is coded as the
 	 * binary representation of the timeout value for
 	 * periodic updating in decihours. Mark the subscriber as
