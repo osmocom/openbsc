@@ -151,7 +151,6 @@ struct paging_signal_data {
 };
 
 struct scall_signal_data {
-	struct gsm_subscriber *subscr;
 	struct gsm_subscriber_connection *conn;
 	void *data;
 };
