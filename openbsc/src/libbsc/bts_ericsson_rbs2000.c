@@ -149,6 +149,10 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		 && strcasecmp(isd->line->driver->name, "UNIXSOCKET"))
 			break;
 		start_sabm_in_line(isd->line, 1);
+		if (isd->trx->bts->rbs2000.use_superchannel) {
+			/* disable superchannel after disconnect */
+			e1inp_ericsson_set_altc(isd->line, 0);
+		}
 		break;
 	case S_L_INP_LINE_ALARM:
 		LOGP(DNM, LOGL_DEBUG, "inp_sig_cb() signal: S_L_INP_LINE_ALARM\n");
