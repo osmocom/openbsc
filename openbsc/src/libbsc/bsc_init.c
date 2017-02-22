@@ -462,6 +462,9 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	for (n=0, i=0; i<8; i++)
 		n += bts->c0->ts[i].pchan == GSM_PCHAN_CCCH ? 1 : 0;
 
+	/* Indicate R99 MSC in SI3 */
+	bts->si_common.chan_desc.mscr = 1;
+
 	switch (n) {
 	case 0:
 		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
