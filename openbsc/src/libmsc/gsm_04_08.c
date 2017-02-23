@@ -1457,7 +1457,7 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 		/* FIXME: request id? close channel? */
 		return -EINVAL;
 	}
-	log_set_context(LOGGING_CTX_VLR_SUBSCR, subscr);
+	log_set_context(LOG_CTX_VLR_SUBSCR, subscr);
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
 		subscr->name && strlen(subscr->name) ? subscr->name : subscr->imsi);
 
@@ -1982,7 +1982,7 @@ static int tch_bridge(struct gsm_network *net, struct gsm_mncc_bridge *bridge)
 		return -EIO;
 
 	/* Which subscriber do we want to track trans1 or trans2? */
-	log_set_context(LOGGING_CTX_VLR_SUBSCR, trans1->subscr);
+	log_set_context(LOG_CTX_VLR_SUBSCR, trans1->subscr);
 
 	/* through-connect channel */
 	return tch_map(trans1->conn->lchan, trans2->conn->lchan);
@@ -2003,7 +2003,7 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 	if (!trans->conn)
 		return 0;
 
-	log_set_context(LOGGING_CTX_VLR_SUBSCR, trans->subscr);
+	log_set_context(LOG_CTX_VLR_SUBSCR, trans->subscr);
 	lchan = trans->conn->lchan;
 	bts = lchan->ts->trx->bts;
 
@@ -3339,7 +3339,7 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 		mncc_recv_rtp_err(net, callref, MNCC_RTP_CREATE);
 		return -EIO;
 	}
-	log_set_context(LOGGING_CTX_VLR_SUBSCR, trans->subscr);
+	log_set_context(LOG_CTX_VLR_SUBSCR, trans->subscr);
 	if (!trans->conn) {
 		LOGP(DMNCC, LOGL_NOTICE, "RTP create for trans without conn\n");
 		mncc_recv_rtp_err(net, callref, MNCC_RTP_CREATE);
@@ -3395,7 +3395,7 @@ static int tch_rtp_connect(struct gsm_network *net, void *arg)
 		mncc_recv_rtp_err(net, rtp->callref, MNCC_RTP_CONNECT);
 		return -EIO;
 	}
-	log_set_context(LOGGING_CTX_VLR_SUBSCR, trans->subscr);
+	log_set_context(LOG_CTX_VLR_SUBSCR, trans->subscr);
 	if (!trans->conn) {
 		LOGP(DMNCC, LOGL_ERROR, "RTP connect for trans without conn\n");
 		mncc_recv_rtp_err(net, rtp->callref, MNCC_RTP_CONNECT);
@@ -3572,7 +3572,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			LOGP(DMNCC, LOGL_ERROR, "TCH frame for non-existing trans\n");
 			return -EIO;
 		}
-		log_set_context(LOGGING_CTX_VLR_SUBSCR, trans->subscr);
+		log_set_context(LOG_CTX_VLR_SUBSCR, trans->subscr);
 		if (!trans->conn) {
 			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
 			return 0;
@@ -3646,7 +3646,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 						    data->imsi);
 
 		/* update the subscriber we deal with */
-		log_set_context(LOGGING_CTX_VLR_SUBSCR, subscr);
+		log_set_context(LOG_CTX_VLR_SUBSCR, subscr);
 
 		/* If subscriber is not found */
 		if (!subscr) {
@@ -3724,7 +3724,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		subscr_put(subscr);
 	} else {
 		/* update the subscriber we deal with */
-		log_set_context(LOGGING_CTX_VLR_SUBSCR, trans->subscr);
+		log_set_context(LOG_CTX_VLR_SUBSCR, trans->subscr);
 	}
 
 	if (trans->conn)

@@ -179,22 +179,22 @@ static const struct log_info_cat default_categories[] = {
 
 static int filter_fn(const struct log_context *ctx, struct log_target *tar)
 {
-	const struct gsm_subscriber *subscr = ctx->ctx[LOGGING_CTX_VLR_SUBSCR];
-	const struct gprs_nsvc *nsvc = ctx->ctx[LOGGING_CTX_GB_NSVC];
-	const struct gprs_nsvc *bvc = ctx->ctx[LOGGING_CTX_GB_BVC];
+	const struct gsm_subscriber *subscr = ctx->ctx[LOG_CTX_VLR_SUBSCR];
+	const struct gprs_nsvc *nsvc = ctx->ctx[LOG_CTX_GB_NSVC];
+	const struct gprs_nsvc *bvc = ctx->ctx[LOG_CTX_GB_BVC];
 
-	if ((tar->filter_map & (1 << LOGGING_FILTER_VLR_SUBSCR)) != 0
-	    && subscr && subscr == tar->filter_data[LOGGING_FILTER_VLR_SUBSCR])
+	if ((tar->filter_map & (1 << LOG_FLT_VLR_SUBSCR)) != 0
+	    && subscr && subscr == tar->filter_data[LOG_FLT_VLR_SUBSCR])
 		return 1;
 
 	/* Filter on the NS Virtual Connection */
-	if ((tar->filter_map & (1 << LOGGING_FILTER_GB_NSVC)) != 0
-	    && nsvc && (nsvc == tar->filter_data[LOGGING_FILTER_GB_NSVC]))
+	if ((tar->filter_map & (1 << LOG_FLT_GB_NSVC)) != 0
+	    && nsvc && (nsvc == tar->filter_data[LOG_FLT_GB_NSVC]))
 		return 1;
 
 	/* Filter on the NS Virtual Connection */
-	if ((tar->filter_map & (1 << LOGGING_FILTER_GB_BVC)) != 0
-	    && bvc && (bvc == tar->filter_data[LOGGING_FILTER_GB_BVC]))
+	if ((tar->filter_map & (1 << LOG_FLT_GB_BVC)) != 0
+	    && bvc && (bvc == tar->filter_data[LOG_FLT_GB_BVC]))
 		return 1;
 
 	return 0;
@@ -208,7 +208,7 @@ const struct log_info log_info = {
 
 void log_set_imsi_filter(struct log_target *target, struct gsm_subscriber *subscr)
 {
-	struct gsm_subscriber **fsub = (void*)&target->filter_data[LOGGING_FILTER_VLR_SUBSCR];
+	struct gsm_subscriber **fsub = (void*)&target->filter_data[LOG_FLT_VLR_SUBSCR];
 
 	/* free the old data */
 	if (*fsub) {
@@ -217,8 +217,8 @@ void log_set_imsi_filter(struct log_target *target, struct gsm_subscriber *subsc
 	}
 
 	if (subscr) {
-		target->filter_map |= (1 << LOGGING_FILTER_VLR_SUBSCR);
+		target->filter_map |= (1 << LOG_FLT_VLR_SUBSCR);
 		*fsub = subscr_get(subscr);
 	} else
-		target->filter_map &= ~(1 << LOGGING_FILTER_VLR_SUBSCR);
+		target->filter_map &= ~(1 << LOG_FLT_VLR_SUBSCR);
 }
