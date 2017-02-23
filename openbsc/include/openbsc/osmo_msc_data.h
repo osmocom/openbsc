@@ -20,6 +20,10 @@
  *
  */
 
+/*
+ * NOTE: This is about a *remote* MSC for OsmoBSC and is not part of libmsc.
+ */
+
 #ifndef _OSMO_MSC_DATA_H
 #define _OSMO_MSC_DATA_H
 
@@ -43,6 +47,8 @@ enum {
 	MSC_CON_TYPE_LOCAL,
 };
 
+/*! /brief Information on a remote MSC for libbsc.
+ */
 struct osmo_msc_data {
 	struct llist_head entry;
 
