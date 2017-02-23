@@ -379,7 +379,7 @@ struct gsm_network {
 	 * contexts. */
 	/* TODO: in OsmoNITB, tz-override used to be BTS-specific. To enable
 	 * BTS|RNC specific timezone overrides for multi-tz networks in
-	 * OsmoCSCN, this should be tied to the location area code (LAC). */
+	 * OsmoMSC, this should be tied to the location area code (LAC). */
 	struct gsm_tz tz;
 };
 
