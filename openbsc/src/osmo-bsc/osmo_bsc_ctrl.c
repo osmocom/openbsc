@@ -40,9 +40,9 @@ void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con
 {
 	struct ctrl_cmd *trap;
 	struct ctrl_handle *ctrl;
-	struct osmo_msc_data *msc_data;
+	struct bsc_msc_data *msc_data;
 
-	msc_data = (struct osmo_msc_data *) msc_con->write_queue.bfd.data;
+	msc_data = (struct bsc_msc_data *) msc_con->write_queue.bfd.data;
 	ctrl = msc_data->network->ctrl;
 
 	trap = ctrl_cmd_trap(cmd);
@@ -197,7 +197,7 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 
 void bsc_gen_location_state_trap(struct gsm_bts *bts)
 {
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 
 	llist_for_each_entry(msc, &bts->network->bsc_data->mscs, entry)
 		generate_location_state_trap(bts, msc->msc_con);
@@ -517,7 +517,7 @@ static int get_net_inform_msc(struct ctrl_cmd *cmd, void *data)
 static int set_net_inform_msc(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net;
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 
 	net = cmd->node;
 	llist_for_each_entry(msc, &net->bsc_data->mscs, entry) {

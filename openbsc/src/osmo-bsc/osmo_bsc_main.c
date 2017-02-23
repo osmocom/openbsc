@@ -156,7 +156,7 @@ static struct vty_app_info vty_info = {
 extern int bsc_shutdown_net(struct gsm_network *net);
 static void signal_handler(int signal)
 {
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 
 	fprintf(stdout, "signal %u received\n", signal);
 
@@ -187,7 +187,7 @@ static void signal_handler(int signal)
 
 int main(int argc, char **argv)
 {
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 	struct osmo_bsc_data *data;
 	int rc;
 

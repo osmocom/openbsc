@@ -49,30 +49,30 @@
 
 static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause);
 static int complete_layer3(struct gsm_subscriber_connection *conn,
-			   struct msgb *msg, struct osmo_msc_data *msc);
+			   struct msgb *msg, struct bsc_msc_data *msc);
 
-static uint16_t get_network_code_for_msc(struct osmo_msc_data *msc)
+static uint16_t get_network_code_for_msc(struct bsc_msc_data *msc)
 {
 	if (msc->core_mnc != -1)
 		return msc->core_mnc;
 	return msc->network->network_code;
 }
 
-static uint16_t get_country_code_for_msc(struct osmo_msc_data *msc)
+static uint16_t get_country_code_for_msc(struct bsc_msc_data *msc)
 {
 	if (msc->core_mcc != -1)
 		return msc->core_mcc;
 	return msc->network->country_code;
 }
 
-static uint16_t get_lac_for_msc(struct osmo_msc_data *msc, struct gsm_bts *bts)
+static uint16_t get_lac_for_msc(struct bsc_msc_data *msc, struct gsm_bts *bts)
 {
 	if (msc->core_lac != -1)
 		return msc->core_lac;
 	return bts->location_area_code;
 }
 
-static uint16_t get_ci_for_msc(struct osmo_msc_data *msc, struct gsm_bts *bts)
+static uint16_t get_ci_for_msc(struct bsc_msc_data *msc, struct gsm_bts *bts)
 {
 	if (msc->core_ci != -1)
 		return msc->core_ci;
@@ -98,7 +98,7 @@ static void bsc_maybe_lu_reject(struct gsm_subscriber_connection *conn, int con_
 }
 
 static int bsc_filter_initial(struct osmo_bsc_data *bsc,
-				struct osmo_msc_data *msc,
+				struct bsc_msc_data *msc,
 				struct gsm_subscriber_connection *conn,
 				struct msgb *msg, char **imsi, int *con_type,
 				int *lu_cause)
@@ -216,7 +216,7 @@ static void bsc_send_ussd_no_srv(struct gsm_subscriber_connection *conn,
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			uint16_t chosen_channel)
 {
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 
 	LOGP(DMSC, LOGL_INFO, "Tx MSC COMPL L3\n");
 
@@ -233,7 +233,7 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 }
 
 static int complete_layer3(struct gsm_subscriber_connection *conn,
-			   struct msgb *msg, struct osmo_msc_data *msc)
+			   struct msgb *msg, struct bsc_msc_data *msc)
 {
 	int con_type, rc, lu_cause;
 	char *imsi = NULL;
@@ -310,7 +310,7 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
  * Plastic surgery... we want to give up the current connection
  */
 static int move_to_msc(struct gsm_subscriber_connection *_conn,
-		       struct msgb *msg, struct osmo_msc_data *msc)
+		       struct msgb *msg, struct bsc_msc_data *msc)
 {
 	struct osmo_bsc_sccp_con *old_con = _conn->sccp_con;
 
@@ -344,7 +344,7 @@ static int handle_cc_setup(struct gsm_subscriber_connection *conn,
 	uint8_t pdisc = gsm48_hdr_pdisc(gh);
 	uint8_t mtype = gsm48_hdr_msg_type(gh);
 
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 	struct gsm_mncc_number called;
 	struct tlv_parsed tp;
 	unsigned payload_len;
@@ -493,7 +493,7 @@ static void bsc_cm_update(struct gsm_subscriber_connection *conn,
 static void bsc_mr_config(struct gsm_subscriber_connection *conn,
 				struct gsm_lchan *lchan, int full_rate)
 {
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 	struct gsm48_multi_rate_conf *ms_conf, *bts_conf;
 
 	if (!conn->sccp_con) {

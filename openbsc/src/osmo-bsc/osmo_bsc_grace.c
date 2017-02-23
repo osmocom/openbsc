@@ -35,7 +35,7 @@ int bsc_grace_allow_new_connection(struct gsm_network *network, struct gsm_bts *
 
 
 static int normal_paging(struct gsm_subscriber *subscr, int chan_needed,
-			struct osmo_msc_data *msc)
+			struct bsc_msc_data *msc)
 {
 	/* we can't page by lac.. we need to page everything */
 	if (msc->core_lac != -1) {
@@ -52,7 +52,7 @@ static int normal_paging(struct gsm_subscriber *subscr, int chan_needed,
 }
 
 static int locked_paging(struct gsm_subscriber *subscr, int chan_needed,
-			struct osmo_msc_data *msc)
+			struct bsc_msc_data *msc)
 {
 	struct gsm_bts *bts = NULL;
 
@@ -85,7 +85,7 @@ static int locked_paging(struct gsm_subscriber *subscr, int chan_needed,
  * Try to not page if everything the cell is not on.
  */
 int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
-				struct osmo_msc_data *msc)
+				struct bsc_msc_data *msc)
 {
 	if (subscr->group->net->bsc_data->rf_ctrl->policy == S_RF_ON)
 		return normal_paging(subscr, chan_needed, msc);

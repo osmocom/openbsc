@@ -23,9 +23,9 @@
 
 #include <openbsc/gsm_data.h>
 
-struct osmo_msc_data;
+struct bsc_msc_data;
 
 int bsc_grace_allow_new_connection(struct gsm_network *net, struct gsm_bts *bts);
-int bsc_grace_paging_request(struct gsm_subscriber *sub, int type, struct osmo_msc_data *msc);
+int bsc_grace_paging_request(struct gsm_subscriber *sub, int type, struct bsc_msc_data *msc);
 
 #endif

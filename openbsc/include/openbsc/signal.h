@@ -223,9 +223,9 @@ enum signal_msc {
 	S_MSC_AUTHENTICATED,
 };
 
-struct osmo_msc_data;
+struct bsc_msc_data;
 struct msc_signal_data {
-	struct osmo_msc_data *data;
+	struct bsc_msc_data *data;
 };
 
 /* SS_CCCH signals */

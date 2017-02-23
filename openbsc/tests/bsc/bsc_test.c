@@ -125,13 +125,13 @@ static void test_scan(void)
 	struct gsm_network *net;
 	struct gsm_bts *bts;
 	struct osmo_bsc_sccp_con *sccp_con;
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 	struct gsm_subscriber_connection *conn;
 
 	net = talloc_zero(NULL, struct gsm_network);
 	bts = talloc_zero(net, struct gsm_bts);
 	sccp_con = talloc_zero(net, struct osmo_bsc_sccp_con);
-	msc = talloc_zero(net, struct osmo_msc_data);
+	msc = talloc_zero(net, struct bsc_msc_data);
 	conn = talloc_zero(net, struct gsm_subscriber_connection);
 
 	bts->network = net;
