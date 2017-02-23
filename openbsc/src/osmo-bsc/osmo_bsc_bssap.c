@@ -88,7 +88,7 @@ enum gsm48_chan_mode gsm88_to_chan_mode(enum gsm0808_permitted_speech speech)
 	return GSM48_CMODE_SPEECH_AMR;
 }
 
-static int bssmap_handle_reset_ack(struct osmo_msc_data *msc,
+static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 				   struct msgb *msg, unsigned int length)
 {
 	LOGP(DMSC, LOGL_NOTICE, "Reset ACK from MSC\n");
@@ -96,7 +96,7 @@ static int bssmap_handle_reset_ack(struct osmo_msc_data *msc,
 }
 
 /* GSM 08.08 § 3.2.1.19 */
-static int bssmap_handle_paging(struct osmo_msc_data *msc,
+static int bssmap_handle_paging(struct bsc_msc_data *msc,
 				struct msgb *msg, unsigned int payload_length)
 {
 	struct gsm_subscriber *subscr;
@@ -286,7 +286,7 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 				     struct msgb *msg, unsigned int length)
 {
 	struct msgb *resp;
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 	struct tlv_parsed tp;
 	uint8_t *data;
 	uint8_t timeslot;
@@ -384,7 +384,7 @@ reject:
 	return -1;
 }
 
-static int bssmap_rcvmsg_udt(struct osmo_msc_data *msc,
+static int bssmap_rcvmsg_udt(struct bsc_msc_data *msc,
 			     struct msgb *msg, unsigned int length)
 {
 	int ret = 0;
@@ -491,7 +491,7 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 	return dtap_rc;
 }
 
-int bsc_handle_udt(struct osmo_msc_data *msc,
+int bsc_handle_udt(struct bsc_msc_data *msc,
 		   struct msgb *msgb, unsigned int length)
 {
 	struct bssmap_header *bs;

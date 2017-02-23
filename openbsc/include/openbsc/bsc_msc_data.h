@@ -49,7 +49,7 @@ enum {
 
 /*! /brief Information on a remote MSC for libbsc.
  */
-struct osmo_msc_data {
+struct bsc_msc_data {
 	struct llist_head entry;
 
 	/* Back pointer */
@@ -128,15 +128,15 @@ struct osmo_bsc_data {
 };
 
 
-int osmo_bsc_msc_init(struct osmo_msc_data *msc);
+int osmo_bsc_msc_init(struct bsc_msc_data *msc);
 int osmo_bsc_sccp_init(struct gsm_network *gsmnet);
 int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto);
 int msc_queue_write_with_ping(struct bsc_msc_connection *, struct msgb *msg, int proto);
 
 int osmo_bsc_audio_init(struct gsm_network *network);
 
-struct osmo_msc_data *osmo_msc_data_find(struct gsm_network *, int);
-struct osmo_msc_data *osmo_msc_data_alloc(struct gsm_network *, int);
+struct bsc_msc_data *osmo_msc_data_find(struct gsm_network *, int);
+struct bsc_msc_data *osmo_msc_data_alloc(struct gsm_network *, int);
 
 
 #endif

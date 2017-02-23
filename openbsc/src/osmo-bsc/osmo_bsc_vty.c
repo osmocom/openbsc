@@ -41,7 +41,7 @@ static struct osmo_bsc_data *osmo_bsc_data(struct vty *vty)
 	return bsc_gsmnet->bsc_data;
 }
 
-static struct osmo_msc_data *osmo_msc_data(struct vty *vty)
+static struct bsc_msc_data *bsc_msc_data(struct vty *vty)
 {
 	return vty->index;
 }
@@ -62,7 +62,7 @@ DEFUN(cfg_net_msc, cfg_net_msc_cmd,
       "msc [<0-1000>]", "Configure MSC details\n" "MSC connection to configure\n")
 {
 	int index = argc == 1 ? atoi(argv[0]) : 0;
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 
 	msc = osmo_msc_data_alloc(bsc_gsmnet, index);
 	if (!msc) {
@@ -82,7 +82,7 @@ DEFUN(cfg_net_bsc, cfg_net_bsc_cmd,
 	return CMD_SUCCESS;
 }
 
-static void write_msc_amr_options(struct vty *vty, struct osmo_msc_data *msc)
+static void write_msc_amr_options(struct vty *vty, struct bsc_msc_data *msc)
 {
 #define WRITE_AMR(vty, msc, name, var) \
 	vty_out(vty, " amr-config %s %s%s", \
@@ -100,7 +100,7 @@ static void write_msc_amr_options(struct vty *vty, struct osmo_msc_data *msc)
 #undef WRITE_AMR
 }
 
-static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
+static void write_msc(struct vty *vty, struct bsc_msc_data *msc)
 {
 	struct bsc_msc_dest *dest;
 
@@ -188,7 +188,7 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 
 static int config_write_msc(struct vty *vty)
 {
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 	struct osmo_bsc_data *bsc = osmo_bsc_data(vty);
 
 	llist_for_each_entry(msc, &bsc->mscs, entry)
@@ -228,7 +228,7 @@ DEFUN(cfg_net_bsc_token,
       "token TOKEN",
       "A token for the BSC to be sent to the MSC\n" "A token\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	bsc_replace_string(osmo_bsc_data(vty), &data->bsc_token, argv[0]);
 	return CMD_SUCCESS;
@@ -240,7 +240,7 @@ DEFUN(cfg_net_bsc_key,
       "Authentication (secret) key configuration\n"
       "Security key\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	osmo_hexparse(argv[0], data->bsc_key, sizeof(data->bsc_key));
 	data->bsc_key_present = 1;
@@ -251,7 +251,7 @@ DEFUN(cfg_net_no_bsc_key, cfg_net_bsc_no_key_cmd,
       "no auth-key",
       NO_STR "Authentication (secret) key configuration\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	memset(data->bsc_key, 0, sizeof(data->bsc_key));
 	data->bsc_key_present = 0;
@@ -263,7 +263,7 @@ DEFUN(cfg_net_bsc_ncc,
       "core-mobile-network-code <1-999>",
       "Use this network code for the core network\n" "MNC value\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->core_mnc = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -273,7 +273,7 @@ DEFUN(cfg_net_bsc_mcc,
       "core-mobile-country-code <1-999>",
       "Use this country code for the core network\n" "MCC value\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->core_mcc = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -283,7 +283,7 @@ DEFUN(cfg_net_bsc_lac,
       "core-location-area-code <0-65535>",
       "Use this location area code for the core network\n" "LAC value\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->core_lac = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -293,7 +293,7 @@ DEFUN(cfg_net_bsc_ci,
       "core-cell-identity <0-65535>",
       "Use this cell identity for the core network\n" "CI value\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->core_ci = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -305,7 +305,7 @@ DEFUN(cfg_net_bsc_rtp_base,
       "Set the rtp-base port for the RTP stream\n"
       "Port number\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->rtp_base = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -316,7 +316,7 @@ DEFUN(cfg_net_bsc_codec_list,
       "Set the allowed audio codecs\n"
       "List of audio codecs, e.g. fr3 fr1 hr3\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	int saw_fr, saw_hr;
 	int i;
 
@@ -377,7 +377,7 @@ DEFUN(cfg_net_msc_dest,
       "IP Address\n" "Port\n" "DSCP\n")
 {
 	struct bsc_msc_dest *dest;
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	dest = talloc_zero(osmo_bsc_data(vty), struct bsc_msc_dest);
 	if (!dest) {
@@ -405,7 +405,7 @@ DEFUN(cfg_net_msc_no_dest,
       "IP Address\n" "Port\n" "DSCP\n")
 {
 	struct bsc_msc_dest *dest, *tmp;
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	int port = atoi(argv[1]);
 	int dscp = atoi(argv[2]);
@@ -427,7 +427,7 @@ DEFUN(cfg_net_msc_no_ping_time,
       "no timeout-ping",
       NO_STR "Disable the ping/pong handling on A-link\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->ping_timeout = -1;
 	return CMD_SUCCESS;
 }
@@ -438,7 +438,7 @@ DEFUN(cfg_net_msc_ping_time,
       "Set the PING interval, negative for not sending PING\n"
       "Timeout in seconds\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->ping_timeout = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -448,7 +448,7 @@ DEFUN(cfg_net_msc_pong_time,
       "timeout-pong <1-2147483647>",
       "Set the time to wait for a PONG\n" "Timeout in seconds\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->pong_timeout = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -458,7 +458,7 @@ DEFUN(cfg_net_msc_advanced_ping,
       "timeout-ping advanced",
       "Ping timeout handling\nEnable advanced mode during SCCP\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	if (data->ping_timeout == -1) {
 		vty_out(vty, "%%ping handling is disabled. Enable it first.%s",
@@ -475,7 +475,7 @@ DEFUN(cfg_no_net_msc_advanced_ping,
       "no timeout-ping advanced",
       NO_STR "Ping timeout handling\nEnable advanced mode during SCCP\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->advanced_ping = 0;
 	return CMD_SUCCESS;
 }
@@ -485,7 +485,7 @@ DEFUN(cfg_net_msc_welcome_ussd,
       "bsc-welcome-text .TEXT",
       "Set the USSD notification to be sent\n" "Text to be sent\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	char *str = argv_concat(argv, argc, 0);
 	if (!str)
 		return CMD_WARNING;
@@ -500,7 +500,7 @@ DEFUN(cfg_net_msc_no_welcome_ussd,
       "no bsc-welcome-text",
       NO_STR "Clear the USSD notification to be sent\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	talloc_free(data->ussd_welcome_txt);
 	data->ussd_welcome_txt = NULL;
@@ -513,7 +513,7 @@ DEFUN(cfg_net_msc_lost_ussd,
       "bsc-msc-lost-text .TEXT",
       "Set the USSD notification to be sent on MSC connection loss\n" "Text to be sent\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	char *str = argv_concat(argv, argc, 0);
 	if (!str)
 		return CMD_WARNING;
@@ -528,7 +528,7 @@ DEFUN(cfg_net_msc_no_lost_ussd,
       "no bsc-msc-lost-text",
       NO_STR "Clear the USSD notification to be sent on MSC connection loss\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	talloc_free(data->ussd_msc_lost_txt);
 	data->ussd_msc_lost_txt = 0;
@@ -541,7 +541,7 @@ DEFUN(cfg_net_msc_grace_ussd,
       "bsc-grace-text .TEXT",
       "Set the USSD notification to be sent when the MSC has entered the grace period\n" "Text to be sent\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	char *str = argv_concat(argv, argc, 0);
 	if (!str)
 		return CMD_WARNING;
@@ -556,7 +556,7 @@ DEFUN(cfg_net_msc_no_grace_ussd,
       "no bsc-grace-text",
       NO_STR "Clear the USSD notification to be sent when the MSC has entered the grace period\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	talloc_free(data->ussd_grace_txt);
 	data->ussd_grace_txt = NULL;
@@ -599,7 +599,7 @@ DEFUN(cfg_net_msc_type,
       "Select the MSC type\n"
       "Plain GSM MSC\n" "Special MSC for local call routing\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 
 	if (strcmp(argv[0], "normal") == 0)
 		data->type = MSC_CON_TYPE_NORMAL;
@@ -615,7 +615,7 @@ DEFUN(cfg_net_msc_emerg,
       "Allow CM ServiceRequests with type emergency\n"
       "Allow\n" "Deny\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct bsc_msc_data *data = bsc_msc_data(vty);
 	data->allow_emerg = strcmp("allow", argv[0]) == 0;
 	return CMD_SUCCESS;
 }
@@ -625,7 +625,7 @@ DEFUN(cfg_net_msc_local_prefix,
       "local-prefix REGEXP",
       "Prefix for local numbers\n" "REGEXP used\n")
 {
-	struct osmo_msc_data *msc = osmo_msc_data(vty);
+	struct bsc_msc_data *msc = bsc_msc_data(vty);
 
 	if (gsm_parse_reg(msc, &msc->local_pref_reg, &msc->local_pref, argc, argv) != 0) {
 		vty_out(vty, "%%Failed to parse the regexp: '%s'%s",
@@ -643,7 +643,7 @@ DEFUN(cfg_net_msc_local_prefix,
 	  "amr-config " #name "k (allowed|forbidden)",			\
 	  AMR_CONF_STR "Bitrate\n" "Allowed\n" "Forbidden\n")		\
 {									\
-	struct osmo_msc_data *msc = osmo_msc_data(vty);			\
+	struct bsc_msc_data *msc = bsc_msc_data(vty);			\
 									\
 	msc->amr_conf.m##name = strcmp(argv[0], "allowed") == 0; 	\
 	return CMD_SUCCESS;						\
@@ -664,7 +664,7 @@ DEFUN(cfg_msc_acc_lst_name,
       "Set the name of the access list to use.\n"
       "The name of the to be used access list.")
 {
-	struct osmo_msc_data *msc = osmo_msc_data(vty);
+	struct bsc_msc_data *msc = bsc_msc_data(vty);
 
 	bsc_replace_string(msc, &msc->acc_lst_name, argv[0]);
 	return CMD_SUCCESS;
@@ -675,7 +675,7 @@ DEFUN(cfg_msc_no_acc_lst_name,
       "no access-list-name",
       NO_STR "Remove the access list from the NAT.\n")
 {
-	struct osmo_msc_data *msc = osmo_msc_data(vty);
+	struct bsc_msc_data *msc = bsc_msc_data(vty);
 
 	if (msc->acc_lst_name) {
 		talloc_free(msc->acc_lst_name);
@@ -782,7 +782,7 @@ DEFUN(show_mscs,
       "show mscs",
       SHOW_STR "MSC Connections and State\n")
 {
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 	llist_for_each_entry(msc, &bsc_gsmnet->bsc_data->mscs, entry) {
 		vty_out(vty, "MSC Nr: %d is connected: %d auth: %d.%s",
 			msc->nr,

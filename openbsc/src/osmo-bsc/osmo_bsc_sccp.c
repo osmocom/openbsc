@@ -166,7 +166,7 @@ static int msc_sccp_accept(struct sccp_connection *connection, void *data)
 
 static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 {
-	struct osmo_msc_data *msc = (struct osmo_msc_data *) msgb->cb[0];
+	struct bsc_msc_data *msc = (struct bsc_msc_data *) msgb->cb[0];
 	return bsc_handle_udt(msc, msgb, length);
 }
 
@@ -194,7 +194,7 @@ int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 }
 
 enum bsc_con bsc_create_new_connection(struct gsm_subscriber_connection *conn,
-			      struct osmo_msc_data *msc, int send_ping)
+			      struct bsc_msc_data *msc, int send_ping)
 {
 	struct osmo_bsc_sccp_con *bsc_con;
 	struct sccp_connection *sccp;

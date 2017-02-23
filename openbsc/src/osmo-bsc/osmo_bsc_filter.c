@@ -122,14 +122,14 @@ static int is_cm_service_for_emerg(struct msgb *msg)
 	return cm->cm_service_type == GSM48_CMSERV_EMERGENCY;
 }
 
-struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
+struct bsc_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
 				   struct msgb *msg)
 {
 	struct gsm48_hdr *gh;
 	int8_t pdisc;
 	uint8_t mtype;
 	struct osmo_bsc_data *bsc;
-	struct osmo_msc_data *msc, *pag_msc;
+	struct bsc_msc_data *msc, *pag_msc;
 	struct gsm_subscriber *subscr;
 	int is_emerg = 0;
 
@@ -315,7 +315,7 @@ static int bsc_patch_mm_info(struct gsm_subscriber_connection *conn,
 	return 0;
 }
 
-static int has_core_identity(struct osmo_msc_data *msc)
+static int has_core_identity(struct bsc_msc_data *msc)
 {
 	if (msc->core_mnc != -1)
 		return 1;
@@ -333,7 +333,7 @@ static int has_core_identity(struct osmo_msc_data *msc)
  */
 int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct osmo_msc_data *msc;
+	struct bsc_msc_data *msc;
 	struct gsm_network *net;
 	struct gsm48_loc_area_id *lai;
 	struct gsm48_hdr *gh;

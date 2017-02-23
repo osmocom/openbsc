@@ -45,16 +45,16 @@
 
 static void initialize_if_needed(struct bsc_msc_connection *conn);
 static void send_lacs(struct gsm_network *net, struct bsc_msc_connection *conn);
-static void send_id_get_response(struct osmo_msc_data *data, int fd, struct msgb *inp);
-static void send_ping(struct osmo_msc_data *data);
-static void schedule_ping_pong(struct osmo_msc_data *data);
+static void send_id_get_response(struct bsc_msc_data *data, int fd, struct msgb *inp);
+static void send_ping(struct bsc_msc_data *data);
+static void schedule_ping_pong(struct bsc_msc_data *data);
 
 /*
  * MGCP forwarding code
  */
 static int mgcp_do_read(struct osmo_fd *fd)
 {
-	struct osmo_msc_data *data = (struct osmo_msc_data *) fd->data;
+	struct bsc_msc_data *data = (struct bsc_msc_data *) fd->data;
 	struct msgb *mgcp;
 	int ret;
 
@@ -93,7 +93,7 @@ static int mgcp_do_write(struct osmo_fd *fd, struct msgb *msg)
 	return ret;
 }
 
-static void mgcp_forward(struct osmo_msc_data *data, struct msgb *msg)
+static void mgcp_forward(struct bsc_msc_data *data, struct msgb *msg)
 {
 	struct msgb *mgcp;
 
@@ -116,7 +116,7 @@ static void mgcp_forward(struct osmo_msc_data *data, struct msgb *msg)
 	}
 }
 
-static int mgcp_create_port(struct osmo_msc_data *data)
+static int mgcp_create_port(struct bsc_msc_data *data)
 {
 	int on;
 	struct sockaddr_in addr;
@@ -186,7 +186,7 @@ int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto
 int msc_queue_write_with_ping(struct bsc_msc_connection *conn,
 			struct msgb *msg, int proto)
 {
-	struct osmo_msc_data *data;
+	struct bsc_msc_data *data;
 	uint8_t val;
 
 	/* prepend the header */
@@ -201,7 +201,7 @@ int msc_queue_write_with_ping(struct bsc_msc_connection *conn,
 	val = IPAC_MSGT_PING;
 	msgb_l16tv_put(msg, 1, IPAC_PROTO_IPACCESS, &val);
 
-	data = (struct osmo_msc_data *) conn->write_queue.bfd.data;
+	data = (struct bsc_msc_data *) conn->write_queue.bfd.data;
 	schedule_ping_pong(data);
 	return 0;
 }
@@ -220,7 +220,7 @@ static int msc_alink_do_write(struct osmo_fd *fd, struct msgb *msg)
 	return ret;
 }
 
-static void handle_ctrl(struct osmo_msc_data *msc, struct msgb *msg)
+static void handle_ctrl(struct bsc_msc_data *msc, struct msgb *msg)
 {
 	int ret;
 	struct ctrl_cmd *cmd;
@@ -249,7 +249,7 @@ static void handle_ctrl(struct osmo_msc_data *msc, struct msgb *msg)
 	talloc_free(cmd);
 }
 
-static void osmo_ext_handle(struct osmo_msc_data *msc, struct msgb *msg)
+static void osmo_ext_handle(struct bsc_msc_data *msc, struct msgb *msg)
 {
 	struct ipaccess_head *hh;
 	struct ipaccess_head_ext *hh_ext;
@@ -274,7 +274,7 @@ static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 {
 	struct msgb *msg = NULL;
 	struct ipaccess_head *hh;
-	struct osmo_msc_data *data = (struct osmo_msc_data *) bfd->data;
+	struct bsc_msc_data *data = (struct bsc_msc_data *) bfd->data;
 	int ret;
 
 	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &data->msc_con->pending_msg);
@@ -319,7 +319,7 @@ static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 	return 0;
 }
 
-static void send_ping(struct osmo_msc_data *data)
+static void send_ping(struct bsc_msc_data *data)
 {
 	struct msgb *msg;
 
@@ -335,7 +335,7 @@ static void send_ping(struct osmo_msc_data *data)
 	msc_queue_write(data->msc_con, msg, IPAC_PROTO_IPACCESS);
 }
 
-static void schedule_ping_pong(struct osmo_msc_data *data)
+static void schedule_ping_pong(struct bsc_msc_data *data)
 {
 	/* send another ping in 20 seconds */
 	osmo_timer_schedule(&data->ping_timer, data->ping_timeout, 0);
@@ -346,7 +346,7 @@ static void schedule_ping_pong(struct osmo_msc_data *data)
 
 static void msc_ping_timeout_cb(void *_data)
 {
-	struct osmo_msc_data *data = (struct osmo_msc_data *) _data;
+	struct bsc_msc_data *data = (struct bsc_msc_data *) _data;
 	if (data->ping_timeout <= 0)
 		return;
 
@@ -356,7 +356,7 @@ static void msc_ping_timeout_cb(void *_data)
 
 static void msc_pong_timeout_cb(void *_data)
 {
-	struct osmo_msc_data *data = (struct osmo_msc_data *) _data;
+	struct bsc_msc_data *data = (struct bsc_msc_data *) _data;
 
 	LOGP(DMSC, LOGL_ERROR, "MSC didn't answer PING. Closing connection.\n");
 	bsc_msc_lost(data->msc_con);
@@ -365,14 +365,14 @@ static void msc_pong_timeout_cb(void *_data)
 static void msc_connection_connected(struct bsc_msc_connection *con)
 {
 	struct msc_signal_data sig;
-	struct osmo_msc_data *data;
+	struct bsc_msc_data *data;
 	int ret, on;
 	on = 1;
 	ret = setsockopt(con->write_queue.bfd.fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 	if (ret != 0)
                 LOGP(DMSC, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 
-	data = (struct osmo_msc_data *) con->write_queue.bfd.data;
+	data = (struct bsc_msc_data *) con->write_queue.bfd.data;
 	msc_ping_timeout_cb(data);
 
 	sig.data = data;
@@ -386,11 +386,11 @@ static void msc_connection_connected(struct bsc_msc_connection *con)
 static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 {
 	struct msc_signal_data sig;
-	struct osmo_msc_data *data;
+	struct bsc_msc_data *data;
 
 	LOGP(DMSC, LOGL_ERROR, "Lost MSC connection. Freing stuff.\n");
 
-	data = (struct osmo_msc_data *) msc->write_queue.bfd.data;
+	data = (struct bsc_msc_data *) msc->write_queue.bfd.data;
 	osmo_timer_del(&data->ping_timer);
 	osmo_timer_del(&data->pong_timer);
 
@@ -452,7 +452,7 @@ static void initialize_if_needed(struct bsc_msc_connection *conn)
 	}
 }
 
-static int answer_challenge(struct osmo_msc_data *data, struct msgb *inp, struct osmo_auth_vector *vec)
+static int answer_challenge(struct bsc_msc_data *data, struct msgb *inp, struct osmo_auth_vector *vec)
 {
 	int ret;
 	struct tlv_parsed tvp;
@@ -495,7 +495,7 @@ static int answer_challenge(struct osmo_msc_data *data, struct msgb *inp, struct
 }
 
 
-static void send_id_get_response(struct osmo_msc_data *data, int fd, struct msgb *inp)
+static void send_id_get_response(struct bsc_msc_data *data, int fd, struct msgb *inp)
 {
 	struct msc_signal_data sig;
 	struct msgb *msg;
@@ -515,7 +515,7 @@ static void send_id_get_response(struct osmo_msc_data *data, int fd, struct msgb
 	osmo_signal_dispatch(SS_MSC, S_MSC_AUTHENTICATED, &sig);
 }
 
-int osmo_bsc_msc_init(struct osmo_msc_data *data)
+int osmo_bsc_msc_init(struct bsc_msc_data *data)
 {
 	if (mgcp_create_port(data) != 0)
 		return -1;
@@ -541,9 +541,9 @@ int osmo_bsc_msc_init(struct osmo_msc_data *data)
 	return 0;
 }
 
-struct osmo_msc_data *osmo_msc_data_find(struct gsm_network *net, int nr)
+struct bsc_msc_data *osmo_msc_data_find(struct gsm_network *net, int nr)
 {
-	struct osmo_msc_data *msc_data;
+	struct bsc_msc_data *msc_data;
 
 	llist_for_each_entry(msc_data, &net->bsc_data->mscs, entry)
 		if (msc_data->nr == nr)
@@ -551,16 +551,16 @@ struct osmo_msc_data *osmo_msc_data_find(struct gsm_network *net, int nr)
 	return NULL;
 }
 
-struct osmo_msc_data *osmo_msc_data_alloc(struct gsm_network *net, int nr)
+struct bsc_msc_data *osmo_msc_data_alloc(struct gsm_network *net, int nr)
 {
-	struct osmo_msc_data *msc_data;
+	struct bsc_msc_data *msc_data;
 
 	/* check if there is already one */
 	msc_data = osmo_msc_data_find(net, nr);
 	if (msc_data)
 		return msc_data;
 
-	msc_data = talloc_zero(net, struct osmo_msc_data);
+	msc_data = talloc_zero(net, struct bsc_msc_data);
 	if (!msc_data)
 		return NULL;
 
