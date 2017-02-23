@@ -586,6 +586,7 @@ DEFUN(ena_subscr_name,
 		vty_out(vty,
 			"%% NAME is too long, max. %zu characters are allowed%s",
 			sizeof(subscr->name)-1, VTY_NEWLINE);
+		subscr_put(subscr);
 		return CMD_WARNING;
 	}
 
