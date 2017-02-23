@@ -18,7 +18,7 @@
  */
 
 #include <openbsc/osmo_bsc.h>
-#include <openbsc/osmo_msc_data.h>
+#include <openbsc/bsc_msc_data.h>
 #include <openbsc/debug.h>
 
 #include <openbsc/gsm_04_80.h>

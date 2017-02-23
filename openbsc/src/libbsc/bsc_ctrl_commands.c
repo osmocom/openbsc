@@ -28,7 +28,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/osmo_bsc_rf.h>
-#include <openbsc/osmo_msc_data.h>
+#include <openbsc/bsc_msc_data.h>
 
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
 	CTRL_HELPER_GET_STRING(cmdname, dtype, element) \

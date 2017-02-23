@@ -51,7 +51,7 @@
 #include <openbsc/paging.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_rsl.h>
-#include <openbsc/osmo_msc_data.h>
+#include <openbsc/bsc_msc_data.h>
 #include <openbsc/osmo_bsc_rf.h>
 
 #include <openbsc/common_cs.h>
