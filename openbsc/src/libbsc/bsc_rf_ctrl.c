@@ -24,7 +24,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
-#include <openbsc/osmo_msc_data.h>
+#include <openbsc/bsc_msc_data.h>
 #include <openbsc/ipaccess.h>
 
 #include <osmocom/core/talloc.h>

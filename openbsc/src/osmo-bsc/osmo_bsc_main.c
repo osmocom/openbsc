@@ -23,7 +23,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/osmo_bsc_rf.h>
-#include <openbsc/osmo_msc_data.h>
+#include <openbsc/bsc_msc_data.h>
 #include <openbsc/signal.h>
 #include <openbsc/vty.h>
 #include <openbsc/ipaccess.h>

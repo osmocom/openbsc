@@ -20,7 +20,7 @@
 
 #include <openbsc/osmo_bsc_grace.h>
 #include <openbsc/osmo_bsc_rf.h>
-#include <openbsc/osmo_msc_data.h>
+#include <openbsc/bsc_msc_data.h>
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/paging.h>

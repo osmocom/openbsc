@@ -20,7 +20,7 @@
  *
  */
 
-#include <openbsc/osmo_msc_data.h>
+#include <openbsc/bsc_msc_data.h>
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_data.h>

@@ -19,7 +19,7 @@
 
 #include <openbsc/common_cs.h>
 #include <openbsc/osmo_bsc.h>
-#include <openbsc/osmo_msc_data.h>
+#include <openbsc/bsc_msc_data.h>
 
 struct gsm_network *bsc_network_init(void *ctx,
 				     uint16_t country_code,

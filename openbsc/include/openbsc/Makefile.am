@@ -60,7 +60,7 @@ noinst_HEADERS = \
 	osmo_bsc_grace.h \
 	osmo_bsc_rf.h \
 	osmo_msc.h \
-	osmo_msc_data.h \
+	bsc_msc_data.h \
 	osmux.h \
 	paging.h \
 	rest_octets.h \

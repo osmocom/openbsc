@@ -39,7 +39,7 @@
 #include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/osmo_msc.h>
-#include <openbsc/osmo_msc_data.h>
+#include <openbsc/bsc_msc_data.h>
 #include <openbsc/sms_queue.h>
 #include <openbsc/vty.h>
 #include <openbsc/bss.h>
