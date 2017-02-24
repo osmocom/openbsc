@@ -1240,19 +1240,6 @@ def nat_msc_test(x, ip, port, verbose = False):
                         " connected yet: %r %r" % (ip, port))
     return conn
 
-def cmd(what):
-    print '\n> %s' % what
-    sys.stdout.flush()
-    subprocess.call(what, shell=True)
-    sys.stdout.flush()
-    sys.stderr.flush()
-    print ''
-    sys.stdout.flush()
-
-def checkxxx():
-    cmd('cat /proc/net/tcp');
-    cmd('ps xua | grep osmo');
-
 def ipa_handle_small(x, verbose = False):
     s = data2str(x.recv(4))
     if len(s) != 4*2:
@@ -1277,10 +1264,6 @@ def ipa_handle_resp(x, tk, verbose = False, proc=None):
     if "0023fe040108010701020103010401050101010011" in s:
         retries = 3
         while True:
-            if proc:
-              print "\tproc.poll() = %r" % proc.poll()
-              print "\tproc.pid = %r" % proc.pid
-            checkxxx()
             print "\tsending IPA identity(%s) at %s" % (tk, time.strftime("%T"))
             try:
                 x.send(IPA().id_resp(IPA().identity(name = tk.encode('utf-8'))))
@@ -1313,19 +1296,14 @@ def nat_bsc_sock_test(nr, tk, verbose = False, proc=None):
     if proc:
       print "\tproc.poll() = %r" % proc.poll()
       print "\tproc.pid = %r" % proc.pid
-    checkxxx()
     ipa_handle_small(bsc, verbose)
-    checkxxx()
     ipa_handle_resp(bsc, tk, verbose, proc=proc)
     if proc:
       print "\tproc.poll() = %r" % proc.poll()
-    checkxxx()
     bsc.recv(27) # MGCP msg
     if proc:
       print "\tproc.poll() = %r" % proc.poll()
-    checkxxx()
     ipa_handle_small(bsc, verbose)
-    checkxxx()
     return bsc
 
 def add_bsc_test(suite, workdir):
