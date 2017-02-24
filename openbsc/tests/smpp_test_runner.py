@@ -43,7 +43,6 @@ class TestVTYBase(unittest.TestCase):
             osmo_vty_cmd[cfi] = os.path.join(confpath, osmo_vty_cmd[cfi])
 
         try:
-            print "Launch: %s from %s" % (' '.join(osmo_vty_cmd), os.getcwd())
             self.proc = osmoutil.popen_devnull(osmo_vty_cmd)
         except OSError:
             print >> sys.stderr, "Current directory: %s" % os.getcwd()

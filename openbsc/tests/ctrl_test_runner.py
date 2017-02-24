@@ -49,7 +49,6 @@ class TestCtrlBase(unittest.TestCase):
             osmo_ctrl_cmd[cfi] = os.path.join(confpath, osmo_ctrl_cmd[cfi])
 
         try:
-            print "Launch: %s from %s" % (' '.join(osmo_ctrl_cmd), os.getcwd())
             self.proc = osmoutil.popen_devnull(osmo_ctrl_cmd)
         except OSError:
             print >> sys.stderr, "Current directory: %s" % os.getcwd()
