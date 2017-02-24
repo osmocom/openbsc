@@ -24,10 +24,13 @@ import subprocess
 import osmopy.obscvty as obscvty
 import osmopy.osmoutil as osmoutil
 
-sys.path.append("../contrib")
+# add $top_srcdir/contrib to find ipa.py
+sys.path.append(os.path.join(sys.path[0], '..', 'contrib'))
+
 from ipa import IPA
 
-confpath = '.'
+# to be able to find $top_srcdir/doc/...
+confpath = os.path.join(sys.path[0], '..')
 
 class TestVTYBase(unittest.TestCase):
 

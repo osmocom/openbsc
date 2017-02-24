@@ -30,7 +30,8 @@ import struct
 import osmopy.obscvty as obscvty
 import osmopy.osmoutil as osmoutil
 
-confpath = '.'
+# to be able to find $top_srcdir/doc/...
+confpath = os.path.join(sys.path[0], '..')
 verbose = False
 
 class TestCtrlBase(unittest.TestCase):
