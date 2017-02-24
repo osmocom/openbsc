@@ -1862,7 +1862,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	chreq_reason = get_reason_by_chreq(rqd_ref->ra, bts->network->neci);
 
 	/* Hanle PBCH related rach requests (in case of BSC-co-located-PCU */
-	if (chreq_reason == GSM_CHREQ_REASON_PBCH)
+	if (chreq_reason == GSM_CHREQ_REASON_PDCH)
 		return rsl_rx_pchan_rqd(msg, bts);
 
 	/* determine channel type (SDCCH/TCH_F/TCH_H) based on
