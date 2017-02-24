@@ -638,17 +638,6 @@ DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
 {
 	int val = get_string_value(sgsn_auth_pol_strs, argv[0]);
 	OSMO_ASSERT(val >= SGSN_AUTH_POLICY_OPEN && val <= SGSN_AUTH_POLICY_REMOTE);
-	if (val == SGSN_AUTH_POLICY_REMOTE) {
-		const char *err = "%% auth-policy remote requires";
-		if (!g_cfg->gsup_server_addr.sin_addr.s_addr) {
-			vty_out(vty, "%s 'gsup remote-ip'%s", err, VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-		if (!g_cfg->gsup_server_port) {
-			vty_out(vty, "%s 'gsup remote-port'%s", err, VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-	}
 	g_cfg->auth_policy = val;
 	g_cfg->require_authentication = (val == SGSN_AUTH_POLICY_REMOTE);
 	g_cfg->require_update_location = (val == SGSN_AUTH_POLICY_REMOTE);
@@ -1309,6 +1298,15 @@ int sgsn_parse_config(const char *config_file, struct sgsn_config *cfg)
 	if (rc < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return rc;
+	}
+
+	if (g_cfg->auth_policy == SGSN_AUTH_POLICY_REMOTE
+	    && !(g_cfg->gsup_server_addr.sin_addr.s_addr
+		 && g_cfg->gsup_server_port)) {
+		fprintf(stderr, "Configuration error:"
+			" 'auth-policy remote' requires both"
+			" 'gsup remote-ip' and 'gsup remote-port'\n");
+		return -EINVAL;
 	}
 
 	return 0;

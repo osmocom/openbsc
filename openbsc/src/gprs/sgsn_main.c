@@ -376,7 +376,7 @@ int main(int argc, char **argv)
 
 	rc = sgsn_parse_config(sgsn_inst.config_file, &sgsn_inst.cfg);
 	if (rc < 0) {
-		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
+		LOGP(DGPRS, LOGL_FATAL, "Error in config file\n");
 		exit(2);
 	}
 
