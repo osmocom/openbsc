@@ -106,6 +106,16 @@ const char *btstype2str(enum gsm_bts_type type)
 	return get_value_string(bts_type_names, type);
 }
 
+const struct value_string gsm_chreq_descs[] = {
+	{ GSM_CHREQ_REASON_EMERG,	"emergency call" },
+	{ GSM_CHREQ_REASON_PAG,		"answer to paging" },
+	{ GSM_CHREQ_REASON_CALL,	"call re-establishment" },
+	{ GSM_CHREQ_REASON_LOCATION_UPD,"Location updating" },
+	{ GSM_CHREQ_REASON_PDCH,	"one phase packet access" },
+	{ GSM_CHREQ_REASON_OTHER,	"other" },
+	{ 0,				NULL }
+};
+
 const struct value_string gsm_pchant_names[13] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
 	{ GSM_PCHAN_CCCH,	"CCCH" },

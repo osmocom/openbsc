@@ -889,6 +889,7 @@ const char *btsatttr2str(enum bts_attribute v);
 enum gsm_bts_type_variant str2btsvariant(const char *arg);
 const char *btsvariant2str(enum gsm_bts_type_variant v);
 
+extern const struct value_string gsm_chreq_descs[];
 const struct value_string gsm_pchant_names[13];
 const struct value_string gsm_pchant_descs[13];
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
