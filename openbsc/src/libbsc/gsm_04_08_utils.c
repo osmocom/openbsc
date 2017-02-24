@@ -78,8 +78,8 @@ static const struct chreq chreq_type_neci1[] = {
 	{ 0x63, 0xff, CHREQ_T_RESERVED_SDCCH },
 	{ 0x70, 0xf8, CHREQ_T_PDCH_TWO_PHASE },
 	{ 0x78, 0xfc, CHREQ_T_PDCH_ONE_PHASE },
-	{ 0x79, 0xfa, CHREQ_T_PDCH_ONE_PHASE },
-	{ 0x7a, 0xf9, CHREQ_T_PDCH_ONE_PHASE },
+	{ 0x78, 0xfa, CHREQ_T_PDCH_ONE_PHASE },
+	{ 0x78, 0xf9, CHREQ_T_PDCH_ONE_PHASE },
 	{ 0x7f, 0xff, CHREQ_T_RESERVED_IGNORE },
 };
 
@@ -99,8 +99,8 @@ static const struct chreq chreq_type_neci0[] = {
 	{ 0x63, 0xff, CHREQ_T_RESERVED_SDCCH },
 	{ 0x70, 0xf8, CHREQ_T_PDCH_TWO_PHASE },
 	{ 0x78, 0xfc, CHREQ_T_PDCH_ONE_PHASE },
-	{ 0x79, 0xfa, CHREQ_T_PDCH_ONE_PHASE },
-	{ 0x7a, 0xf9, CHREQ_T_PDCH_ONE_PHASE },
+	{ 0x78, 0xfa, CHREQ_T_PDCH_ONE_PHASE },
+	{ 0x78, 0xf9, CHREQ_T_PDCH_ONE_PHASE },
 	{ 0x7f, 0xff, CHREQ_T_RESERVED_IGNORE },
 };
 

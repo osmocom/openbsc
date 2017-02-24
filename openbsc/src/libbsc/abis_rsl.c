@@ -1860,6 +1860,10 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	/* Determine channel request cause code */
 	chreq_reason = get_reason_by_chreq(rqd_ref->ra, bts->network->neci);
+	LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: reason: %s (ra=0x%02x, neci=0x%02x, chreq_reason=0x%02x)\n",
+	     msg->lchan->ts->trx->bts->nr,
+	     get_value_string(gsm_chreq_descs, chreq_reason),
+	     rqd_ref->ra, bts->network->neci, chreq_reason);
 
 	/* Hanle PBCH related rach requests (in case of BSC-co-located-PCU */
 	if (chreq_reason == GSM_CHREQ_REASON_PDCH)
@@ -1892,7 +1896,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	/*
 	 * Expecting lchan state to be NONE, except for dyn TS in PDCH mode.
 	 * Those are expected to be ACTIVE: the PDCH release will be sent from
-	 * rsl_chan_activate_lchan() below.
+	 * rsl_chan_activate_lchan() below../include/openbsc/gsm_data_shared.h
 	 */
 	if (lchan->state != LCHAN_S_NONE
 	    && !(lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
