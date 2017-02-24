@@ -83,6 +83,8 @@ static const struct tlv_definition gsm48_gmm_att_tlvdef = {
 		[GSM48_IE_GMM_PTMSI_SIG]	= { TLV_TYPE_FIXED, 3 },
 		[GSM48_IE_GMM_AUTH_RAND]	= { TLV_TYPE_FIXED, 16 },
 		[GSM48_IE_GMM_AUTH_SRES]	= { TLV_TYPE_FIXED, 4 },
+		[GSM48_IE_GMM_AUTH_RES_EXT]	= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GMM_AUTH_FAIL_PAR]	= { TLV_TYPE_TLV, 0 },
 		[GSM48_IE_GMM_IMEISV]		= { TLV_TYPE_TLV, 0 },
 		[GSM48_IE_GMM_DRX_PARAM]	= { TLV_TYPE_FIXED, 2 },
 		[GSM48_IE_GMM_MS_NET_CAPA]	= { TLV_TYPE_TLV, 0 },
@@ -554,8 +556,19 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	return gsm48_gmm_sendmsg(msg, 1, mm, false);
 }
 
+/* determine if the MS/UE supports R99 or later */
+static bool mmctx_is_r99(const struct sgsn_mm_ctx *mm)
+{
+	if (mm->ms_network_capa.len < 1)
+		return false;
+	if (mm->ms_network_capa.buf[0] & 0x01)
+		return true;
+	return false;
+}
+
 /* 3GPP TS 24.008 Section 9.4.9: Authentication and Ciphering Request */
-static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
+static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm,
+				      const struct osmo_auth_vector *vec,
 				      uint8_t key_seq, bool force_standby)
 {
 	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 AUTH CIPH REQ");
@@ -563,8 +576,14 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
 	struct gsm48_auth_ciph_req *acreq;
 	uint8_t *m_rand, *m_cksn, rbyte;
 
-	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS AUTH AND CIPHERING REQ (rand = %s)\n",
-		osmo_hexdump(rnd, 16));
+	LOGMMCTXP(LOGL_INFO, mm, "<- GPRS AUTH AND CIPHERING REQ (rand = %s",
+		  osmo_hexdump(vec->rand, sizeof(vec->rand)));
+	if (mmctx_is_r99(mm) && vec
+	    && (vec->auth_types & OSMO_AUTH_TYPE_UMTS)) {
+		LOGPC(DMM, LOGL_INFO, ", autn = %s)\n",
+		      osmo_hexdump(vec->autn, sizeof(vec->autn)));
+	} else
+		LOGPC(DMM, LOGL_INFO, ")\n");
 
 	mmctx2msgid(msg, mm);
 
@@ -588,16 +607,25 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rnd,
 	mm->ac_ref_nr_used = acreq->ac_ref_nr;
 
 	/* Only if authentication is requested we need to set RAND + CKSN */
-	if (rnd) {
-		m_rand = msgb_put(msg, 16+1);
+	if (vec) {
+		m_rand = msgb_put(msg, sizeof(vec->rand) + 1);
 		m_rand[0] = GSM48_IE_GMM_AUTH_RAND;
-		memcpy(m_rand + 1, rnd, 16);
+		memcpy(m_rand + 1, vec->rand, sizeof(vec->rand));
+
 		/* § 10.5.1.2: */
 		m_cksn = msgb_put(msg, 1);
 		m_cksn[0] = (GSM48_IE_GMM_CIPH_CKSN << 4) | (key_seq & 0x07);
+
+		/* A Release99 or higher MS/UE must be able to handle
+		 * the optional AUTN IE.  If a classic GSM SIM is
+		 * inserted, it will simply ignore AUTN and just use
+		 * RAND */
+		if (mmctx_is_r99(mm) &&
+		    (vec->auth_types & OSMO_AUTH_TYPE_UMTS)) {
+			msgb_tlv_put(msg, GSM48_IE_GMM_AUTN,
+				     sizeof(vec->autn), vec->autn);
+		}
 	}
-	/* FIXME: add AUTN for 3g auth according to 3GPP TS 24.008 § 10.5.3.1.1 */
-	/* FIXME: make sure we don't send any other messages to the MS */
 
 	return gsm48_gmm_sendmsg(msg, 1, mm, false);
 }
@@ -619,6 +647,62 @@ static int gsm48_tx_gmm_auth_ciph_rej(struct sgsn_mm_ctx *mm)
 	return gsm48_gmm_sendmsg(msg, 0, mm, false);
 }
 
+/* check if the received authentication response matches */
+static bool check_auth_resp(struct sgsn_mm_ctx *ctx,
+			    bool is_utran,
+			    const struct osmo_auth_vector *vec,
+			    const uint8_t *res, uint8_t res_len)
+{
+	const uint8_t *expect_res;
+	uint8_t expect_res_len;
+	enum osmo_sub_auth_type expect_type;
+	const char *expect_str;
+
+	if (!vec)
+		return true; /* really!? */
+
+	/* On UTRAN (3G) we always expect UMTS AKA. On GERAN (2G) we sent AUTN
+	 * and expect UMTS AKA if there is R99 capability and our vector
+	 * supports UMTS AKA, otherwise we expect GSM AKA. */
+	if (is_utran
+	    || (mmctx_is_r99(ctx) && (vec->auth_types & OSMO_AUTH_TYPE_UMTS))) {
+		expect_type = OSMO_AUTH_TYPE_UMTS;
+		expect_str = "UMTS RES";
+		expect_res = vec->res;
+		expect_res_len = vec->res_len;
+	} else {
+		expect_type = OSMO_AUTH_TYPE_GSM;
+		expect_str = "GSM SRES";
+		expect_res = vec->sres;
+		expect_res_len = sizeof(vec->sres);
+	}
+	
+	if (!(vec->auth_types & expect_type)) {
+		LOGMMCTXP(LOGL_ERROR, ctx, "Auth error: auth vector does"
+			  " not provide the expected auth type:"
+			  " expected %s = 0x%x, auth_types are 0x%x\n",
+			  expect_str, expect_type, vec->auth_types);
+		return false;
+	}
+
+	if (!res)
+		goto auth_mismatch;
+
+	if (res_len != expect_res_len)
+		goto auth_mismatch;
+
+	if (memcmp(res, expect_res, res_len) != 0)
+		goto auth_mismatch;
+
+	/* Authorized! */
+	return true;
+
+auth_mismatch:
+	LOGMMCTXP(LOGL_ERROR, ctx, "Auth mismatch: expected %s = %s\n",
+		  expect_str, osmo_hexdump_nospc(expect_res, expect_res_len));
+	return false;
+}
+
 /* Section 9.4.10: Authentication and Ciphering Response */
 static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 					struct msgb *msg)
@@ -627,6 +711,9 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 	struct gsm48_auth_ciph_resp *acr = (struct gsm48_auth_ciph_resp *)gh->data;
 	struct tlv_parsed tp;
 	struct gsm_auth_tuple *at;
+	const char *res_name = "(no response)";
+	uint8_t res[16];
+	uint8_t res_len;
 	int rc;
 
 	LOGMMCTXP(LOGL_INFO, ctx, "-> GPRS AUTH AND CIPH RESPONSE\n");
@@ -651,26 +738,34 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 			(msg->data + msg->len) - acr->data, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM48_IE_GMM_AUTH_SRES) ||
-	    !TLVP_PRESENT(&tp, GSM48_IE_GMM_IMEISV)) {
+	    !TLVP_PRESENT(&tp, GSM48_IE_GMM_IMEISV) ||
+	    TLVP_LEN(&tp,GSM48_IE_GMM_AUTH_SRES) != 4) {
 		/* TODO: missing mandatory IE, return STATUS or REJ? */
 		LOGMMCTXP(LOGL_ERROR, ctx, "Missing mandantory IE\n");
 		return -EINVAL;
 	}
 
-	/* Compare SRES with what we expected */
-	LOGMMCTXP(LOGL_DEBUG, ctx, "checking received auth info, SRES = %s\n",
-		  osmo_hexdump(TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES),
-			       TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_SRES)));
+	/* Start with the good old 4-byte SRES */
+	memcpy(res, TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES), 4);
+	res_len = 4;
+	res_name = "GSM SRES";
+
+	/* Append extended RES as part of UMTS AKA, if any */
+	if (TLVP_PRESENT(&tp, GSM48_IE_GMM_AUTH_RES_EXT)) {
+		unsigned int l = TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_RES_EXT);
+		if (l > sizeof(res)-4)
+			l = sizeof(res)-4;
+		memcpy(res+4, TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_RES_EXT), l);
+		res_len += l;
+		res_name = "UMTS RES";
+	}
 
 	at = &ctx->auth_triplet;
 
-	if (TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_SRES) != sizeof(at->vec.sres) ||
-	    memcmp(TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_SRES), at->vec.sres,
-		   sizeof(at->vec.sres)) != 0) {
-
-		LOGMMCTXP(LOGL_NOTICE, ctx, "Received SRES doesn't match "
-			  "expected RES %s\n", osmo_hexdump(at->vec.sres,
-							    sizeof(at->vec.sres)));
+	LOGMMCTXP(LOGL_DEBUG, ctx, "checking auth: received %s = %s\n",
+		  res_name, osmo_hexdump(res, res_len));
+	rc = check_auth_resp(ctx, false, &at->vec, res, res_len);
+	if (!rc) {
 		rc = gsm48_tx_gmm_auth_ciph_rej(ctx);
 		mm_ctx_cleanup_free(ctx, "GPRS AUTH AND CIPH REJECT");
 		return rc;
@@ -685,6 +780,60 @@ static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
 
 	/* Check if we can let the mobile station enter */
 	return gsm48_gmm_authorize(ctx);
+}
+
+/* Section 9.4.10: Authentication and Ciphering Failure */
+static int gsm48_rx_gmm_auth_ciph_fail(struct sgsn_mm_ctx *ctx,
+					struct msgb *msg)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	struct tlv_parsed tp;
+	const uint8_t gmm_cause = gh->data[0];
+	const uint8_t *auts;
+	int rc;
+
+	LOGMMCTXP(LOGL_INFO, ctx, "-> GPRS AUTH AND CIPH FAILURE (cause = %s)\n",
+		  get_value_string(gsm48_gmm_cause_names, gmm_cause));
+
+	tlv_parse(&tp, &gsm48_gmm_att_tlvdef, gh->data+1, msg->len - 1, 0, 0);
+
+	/* Only if GMM cause is present and the AUTS is provided, we can
+	 * start re-sync procedure */
+	if (gmm_cause == GMM_CAUSE_SYNC_FAIL &&
+	    TLVP_PRESENT(&tp, GSM48_IE_GMM_AUTH_FAIL_PAR)) {
+		if (TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_FAIL_PAR) != 14) {
+			LOGMMCTXP(LOGL_ERROR, ctx, "AUTS IE has wrong size:"
+				  " expected %d, got %u\n", 14,
+				  TLVP_LEN(&tp, GSM48_IE_GMM_AUTH_FAIL_PAR));
+			return -EINVAL;
+		}
+		auts = TLVP_VAL(&tp, GSM48_IE_GMM_AUTH_FAIL_PAR);
+
+		LOGMMCTXP(LOGL_INFO, ctx,
+			  "R99 AUTHENTICATION SYNCH (AUTS = %s)\n",
+			  osmo_hexdump_nospc(auts, 14));
+
+		/* make sure we'll refresh the auth_triplet in
+		 * sgsn_auth_update() */
+		ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
+
+		/* make sure we'll retry authentication after the resync */
+		ctx->auth_state = SGSN_AUTH_UMTS_RESYNC;
+
+		/* Send AUTS to HLR and wait for new Auth Info Result */
+		rc = gprs_subscr_request_auth_info(ctx, auts,
+						   ctx->auth_triplet.vec.rand);
+		if (!rc)
+			return 0;
+		/* on error, fall through to send a reject */
+		LOGMMCTXP(LOGL_ERROR, ctx,
+			  "Sending AUTS to HLR failed (rc = %d)\n", rc);
+	}
+
+	LOGMMCTXP(LOGL_NOTICE, ctx, "Authentication failed\n");
+	rc = gsm48_tx_gmm_auth_ciph_rej(ctx);
+	mm_ctx_cleanup_free(ctx, "GPRS AUTH FAILURE");
+	return rc;
 }
 
 static void extract_subscr_msisdn(struct sgsn_mm_ctx *ctx)
@@ -865,8 +1014,8 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 		struct gsm_auth_tuple *at = &ctx->auth_triplet;
 
 		mmctx_timer_start(ctx, 3360, sgsn->cfg.timers.T3360);
-		return gsm48_tx_gmm_auth_ciph_req(ctx, at->vec.rand,
-						  at->key_seq, false);
+		return gsm48_tx_gmm_auth_ciph_req(ctx, &at->vec, at->key_seq,
+						  false);
 	}
 
 	if (ctx->auth_state == SGSN_AUTH_AUTHENTICATE && ctx->is_authenticated &&
@@ -1911,6 +2060,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 			goto null_mmctx;
 		rc = gsm48_rx_gmm_auth_ciph_resp(mmctx, msg);
 		break;
+	case GSM48_MT_GMM_AUTH_CIPH_FAIL:
+		rc = gsm48_rx_gmm_auth_ciph_fail(mmctx, msg);
+		break;
 	default:
 		LOGMMCTXP(LOGL_NOTICE, mmctx, "Unknown GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
@@ -1979,7 +2131,7 @@ static void mmctx_timer_cb(void *_mm)
 		}
 		at = &mm->auth_triplet;
 
-		gsm48_tx_gmm_auth_ciph_req(mm, at->vec.rand, at->key_seq, false);
+		gsm48_tx_gmm_auth_ciph_req(mm, &at->vec, at->key_seq, false);
 		osmo_timer_schedule(&mm->timer, sgsn->cfg.timers.T3360, 0);
 		break;
 	case 3370:	/* waiting for IDENTITY RESPONSE */

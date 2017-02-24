@@ -32,6 +32,7 @@ const struct value_string auth_state_names[] = {
 	{ SGSN_AUTH_REJECTED,	"rejected"},
 	{ SGSN_AUTH_UNKNOWN,	"unknown"},
 	{ SGSN_AUTH_AUTHENTICATE, "authenticate" },
+	{ SGSN_AUTH_UMTS_RESYNC, "UMTS-resync" },
 	{ 0, NULL }
 };
 
@@ -182,7 +183,7 @@ int sgsn_auth_request(struct sgsn_mm_ctx *mmctx)
 			mmctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 			LOGMMCTXP(LOGL_INFO, mmctx,
 				  "Requesting authentication tuples\n");
-			rc = gprs_subscr_request_auth_info(mmctx);
+			rc = gprs_subscr_request_auth_info(mmctx, NULL, NULL);
 			if (rc >= 0)
 				return 0;
 

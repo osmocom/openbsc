@@ -766,14 +766,21 @@ int gprs_subscr_purge(struct gprs_subscr *subscr)
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 
-int gprs_subscr_query_auth_info(struct gprs_subscr *subscr)
+static int gprs_subscr_query_auth_info(struct gprs_subscr *subscr,
+				       const uint8_t *auts,
+				       const uint8_t *auts_rand)
 {
 	struct osmo_gsup_message gsup_msg = {0};
 
-	LOGGSUBSCRP(LOGL_INFO, subscr,
-		"subscriber auth info is not available\n");
+	/* Make sure we have a complete resync or clearly no resync. */
+	OSMO_ASSERT((auts != NULL) == (auts_rand != NULL));
+
+	LOGGSUBSCRP(LOGL_INFO, subscr, "requesting auth info%s\n",
+		    auts ? " with AUTS (UMTS Resynch)" : "");
 
 	gsup_msg.message_type = OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST;
+	gsup_msg.auts = auts;
+	gsup_msg.rand = auts_rand;
 	return gprs_subscr_tx_gsup_message(subscr, &gsup_msg);
 }
 
@@ -854,7 +861,16 @@ int gprs_subscr_request_update_location(struct sgsn_mm_ctx *mmctx)
 	return rc;
 }
 
-int gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx)
+/*! \brief Send Update Auth Info request via GSUP, with or without resync.
+ *  \param[in] mmctx  MM context to request authentication tuples for.
+ *  \param[in] auts  14 octet AUTS token for UMTS resync, or NULL.
+ *  \param[in] auts_rand  16 octet Random token for UMTS resync, or NULL.
+ * In case of normal Authentication Info request, both \a auts and \a auts_rand
+ * must be NULL. For resync, both must be non-NULL.
+ */
+int gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx,
+				  const uint8_t *auts,
+				  const uint8_t *auts_rand)
 {
 	struct gprs_subscr *subscr = NULL;
 	int rc;
@@ -865,7 +881,7 @@ int gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx)
 
 	subscr->flags |= GPRS_SUBSCRIBER_UPDATE_AUTH_INFO_PENDING;
 
-	rc = gprs_subscr_query_auth_info(subscr);
+	rc = gprs_subscr_query_auth_info(subscr, auts, auts_rand);
 	gprs_subscr_put(subscr);
 	return rc;
 }

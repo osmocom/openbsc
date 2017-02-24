@@ -1164,6 +1164,7 @@ int my_subscr_request_auth_info_real_auth(struct sgsn_mm_ctx *mmctx)
 {
 	struct gsm_auth_tuple at = {
 		.vec.sres = {0x51, 0xe5, 0x51, 0xe5},
+		.vec.auth_types = OSMO_AUTH_TYPE_GSM,
 		.key_seq = 0
 	};
 

@@ -73,6 +73,7 @@ enum gprs_t3350_mode {
 enum sgsn_auth_state {
 	SGSN_AUTH_UNKNOWN,
 	SGSN_AUTH_AUTHENTICATE,
+	SGSN_AUTH_UMTS_RESYNC,
 	SGSN_AUTH_ACCEPTED,
 	SGSN_AUTH_REJECTED
 };
@@ -446,7 +447,11 @@ struct gsm_auth_tuple *sgsn_auth_get_tuple(struct sgsn_mm_ctx *mmctx,
 
 int gprs_subscr_init(struct sgsn_instance *sgi);
 int gprs_subscr_request_update_location(struct sgsn_mm_ctx *mmctx);
-int gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx);
+int gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx,
+				  const uint8_t *auts,
+				  const uint8_t *auts_rand);
+int gprs_subscr_auth_sync(struct gprs_subscr *subscr,
+			  const uint8_t *auts, const uint8_t *auts_rand);
 void gprs_subscr_cleanup(struct gprs_subscr *subscr);
 struct gprs_subscr *gprs_subscr_get_or_create(const char *imsi);
 struct gprs_subscr *gprs_subscr_get_or_create_by_mmctx( struct sgsn_mm_ctx *mmctx);
