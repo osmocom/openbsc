@@ -57,6 +57,8 @@ class TestVTYBase(unittest.TestCase):
         self.vty = obscvty.VTYInteract(appstring, "127.0.0.1", appport)
 
     def tearDown(self):
+        if self.vty:
+            self.vty._close_socket()
         self.vty = None
         osmoutil.end_proc(self.proc)
 
