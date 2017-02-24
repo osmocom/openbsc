@@ -841,7 +841,7 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
 
-
+const struct value_string gsm_chreq_descs[7];
 const struct value_string gsm_pchant_names[13];
 const struct value_string gsm_pchant_descs[13];
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
