@@ -89,7 +89,7 @@ static void print_meas_rep_json(struct gsm_meas_rep *mr)
 	for (i = 0; i < mr->num_cell; i++) {
 		struct gsm_meas_rep_cell *mrc = &mr->cell[i];
 		if (i!=0) printf(", ");
-		printf("\"IDX\":%u, \"ARFCN\":%u, \"BSIC\":%u, \"POWER\":%d",
+		printf("{\"IDX\":%u, \"ARFCN\":%u, \"BSIC\":%u, \"POWER\":%d}",
 			mrc->neigh_idx, mrc->arfcn, mrc->bsic, rxlev2dbm(mrc->rxlev));
 	}
 	printf("]");
@@ -151,6 +151,7 @@ static int handle_msg(struct msgb *msg)
 	default:
 		break;
 	}
+	return 0;
 }
 
 static int udp_fd_cb(struct osmo_fd *ofd, unsigned int what)
