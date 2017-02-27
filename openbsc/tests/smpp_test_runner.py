@@ -47,7 +47,6 @@ class TestVTYBase(unittest.TestCase):
         except OSError:
             print >> sys.stderr, "Current directory: %s" % os.getcwd()
             print >> sys.stderr, "Consider setting -b"
-        time.sleep(1)
 
         appstring = self.vty_app()[2]
         appport = self.vty_app()[0]
