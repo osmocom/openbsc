@@ -86,9 +86,19 @@ class TestCtrlBase(unittest.TestCase):
         if verbose:
             print "Connecting to host %s:%i" % (host, port)
 
-        sck = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sck.setblocking(1)
-        sck.connect((host, port))
+        retries = 30
+        while True:
+            try:
+                sck = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sck.setblocking(1)
+                sck.connect((host, port))
+            except IOError:
+                retries -= 1
+                if retries <= 0:
+                    raise
+                time.sleep(.1)
+                continue
+            break
         self.sock = sck
         return sck
 
