@@ -3958,8 +3958,10 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	OSMO_ASSERT(msg);
 
 	LOGP(DRLL, LOGL_DEBUG, "Dispatching 04.08 message, pdisc=%d\n", pdisc);
+#if 0
 	if (silent_call_reroute(conn, msg))
 		return silent_call_rx(conn, msg);
+#endif
 
 	switch (pdisc) {
 	case GSM48_PDISC_CC:
