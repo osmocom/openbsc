@@ -68,6 +68,7 @@
 #include <openbsc/sgsn.h>
 #include <openbsc/signal.h>
 #include <openbsc/iu.h>
+#include <openbsc/gprs_sndcp.h>
 
 #include <pdp.h>
 
@@ -2438,6 +2439,7 @@ static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg, bool *del
 	char apn_str[GSM_APN_LENGTH] = { 0, };
 	char *hostname;
 	int rc;
+	struct gprs_llc_lle *lle;
 
 	LOGMMCTXP(LOGL_INFO, mmctx, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
 		act_req->req_llc_sapi, act_req->req_nsapi);
@@ -2513,7 +2515,19 @@ static int do_act_pdp_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg, bool *del
 		    pdp->ti == transaction_id) {
 			/* This apparently is a re-transmission of a PDP CTX
 			 * ACT REQ (our ACT ACK must have got dropped) */
-			return gsm48_tx_gsm_act_pdp_acc(pdp);
+			rc = gsm48_tx_gsm_act_pdp_acc(pdp);
+			if (rc < 0)
+				return rc;
+
+			if (pdp->mm->ran_type == MM_CTX_T_GERAN_Gb) {
+				/* Also re-transmit the SNDCP XID message */
+				lle = &pdp->mm->gb.llme->lle[pdp->sapi];
+				rc = sndcp_sn_xid_req(lle,pdp->nsapi);
+				if (rc < 0)
+					return rc;
+			}
+
+			return 0;
 		}
 
 		/* Send reject with GSM_CAUSE_NSAPI_IN_USE */
