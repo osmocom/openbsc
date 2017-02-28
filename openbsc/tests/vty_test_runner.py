@@ -783,28 +783,32 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.vty.command("end")
 
         nat_msc_ip(self, ip, port)
-        msc = nat_msc_test(self, ip, port, verbose=True)
-        b0 = nat_bsc_sock_test(0, "lol", verbose=True, proc=self.proc)
-        b1 = nat_bsc_sock_test(1, "xyu", verbose=True, proc=self.proc)
-        b2 = nat_bsc_sock_test(5, "key", verbose=True, proc=self.proc)
+        msc_socket, msc = nat_msc_test(self, ip, port, verbose=True)
+        try:
+            b0 = nat_bsc_sock_test(0, "lol", verbose=True, proc=self.proc)
+            b1 = nat_bsc_sock_test(1, "xyu", verbose=True, proc=self.proc)
+            b2 = nat_bsc_sock_test(5, "key", verbose=True, proc=self.proc)
 
-        self.assertEquals("3 BSCs configured", self.vty.command("show nat num-bscs-configured"))
-        self.assertTrue(3 == nat_bsc_num_con(self))
-        self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
+            self.assertEquals("3 BSCs configured", self.vty.command("show nat num-bscs-configured"))
+            self.assertTrue(3 == nat_bsc_num_con(self))
+            self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
 
-        nat_bsc_reload(self)
-        bscs2 = self.vty.command("show bscs-config")
-        # check that the reset to initial config succeeded
-        self.assertEquals(bscs1, bscs2)
+            nat_bsc_reload(self)
+            bscs2 = self.vty.command("show bscs-config")
+            # check that the reset to initial config succeeded
+            self.assertEquals(bscs1, bscs2)
 
-        self.assertEquals("2 BSCs configured", self.vty.command("show nat num-bscs-configured"))
-        self.assertTrue(1 == nat_bsc_num_con(self))
-        rem = self.vty.command("show bsc connections").split(' ')
-        # remaining connection is for BSC0
-        self.assertEquals('0', rem[2])
-        # remaining connection is authorized
-        self.assertEquals('1', rem[4])
-        self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
+            self.assertEquals("2 BSCs configured", self.vty.command("show nat num-bscs-configured"))
+            self.assertTrue(1 == nat_bsc_num_con(self))
+            rem = self.vty.command("show bsc connections").split(' ')
+            # remaining connection is for BSC0
+            self.assertEquals('0', rem[2])
+            # remaining connection is authorized
+            self.assertEquals('1', rem[4])
+            self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
+        finally:
+            msc.close()
+            msc_socket.close()
 
     def testVtyTree(self):
         self.vty.enable()
@@ -1238,7 +1242,7 @@ def nat_msc_test(x, ip, port, verbose = False):
     if not conn:
         raise Exception("VTY reports MSC is connected, but I haven't"
                         " connected yet: %r %r" % (ip, port))
-    return conn
+    return msc, conn
 
 def ipa_handle_small(x, verbose = False):
     s = data2str(x.recv(4))
