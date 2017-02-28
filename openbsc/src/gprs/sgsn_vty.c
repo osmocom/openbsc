@@ -586,9 +586,19 @@ DEFUN(imsi_acl, cfg_imsi_acl_cmd,
 	"Remove IMSI from ACL\n"
 	"IMSI of subscriber\n")
 {
+	char imsi_sanitized[GSM23003_IMSI_MAX_DIGITS+1];
 	const char *op = argv[0];
-	const char *imsi = argv[1];
+	const char *imsi = imsi_sanitized;
 	int rc;
+
+	/* Sanitize IMSI */
+	if (strlen(argv[1]) > GSM23003_IMSI_MAX_DIGITS) {
+		vty_out(vty, "%% IMSI (%s) too long -- ignored!%s",
+			argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	memset(imsi_sanitized, '0', sizeof(imsi_sanitized));
+	strcpy(imsi_sanitized+GSM23003_IMSI_MAX_DIGITS-strlen(argv[1]),argv[1]);
 
 	if (!strcmp(op, "add"))
 		rc = sgsn_acl_add(imsi, g_cfg);
@@ -597,7 +607,6 @@ DEFUN(imsi_acl, cfg_imsi_acl_cmd,
 
 	if (rc < 0) {
 		vty_out(vty, "%% unable to %s ACL%s", op, VTY_NEWLINE);
-
 		return CMD_WARNING;
 	}
 
