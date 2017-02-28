@@ -1648,13 +1648,6 @@ int main(int argc, char **argv)
 	if (bsc_mgcp_nat_init(nat) != 0)
 		return -4;
 
-	/* connect to the MSC */
-	nat->msc_con = bsc_msc_create(nat, &nat->dests);
-	if (!nat->msc_con) {
-		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
-		exit(1);
-	}
-
 	/* start control interface after reading config for
 	 * ctrl_vty_get_bind_addr() */
 	nat->ctrl = bsc_nat_controlif_setup(nat, ctrl_vty_get_bind_addr(),
@@ -1664,13 +1657,28 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	nat->msc_con->name = "main MSC";
-	nat->msc_con->connection_loss = msc_connection_was_lost;
-	nat->msc_con->connected = msc_connection_connected;
-	nat->msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
-	nat->msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
-	nat->msc_con->write_queue.bfd.data = nat->msc_con;
-	bsc_msc_connect(nat->msc_con);
+	/* connect to the MSCs */
+	struct msc_config *conf;
+	struct bsc_msc_connection *msc_con;
+
+	llist_for_each_entry(conf, &nat->msc_configs, entry) {
+		msc_con = bsc_msc_create(nat, &conf->dests);
+		if (!msc_con) {
+			fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
+			exit(1);
+		}
+
+		msc_con->name = "main MSC";
+		msc_con->connection_loss = msc_connection_was_lost;
+		msc_con->connected = msc_connection_connected;
+		msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
+		msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
+		msc_con->write_queue.bfd.data = msc_con;
+
+		conf->msc_con = msc_con;
+
+		bsc_msc_connect(msc_con);
+	}
 
 	/* wait for the BSC */
 	rc = make_sock(&bsc_listen, IPPROTO_TCP, ntohl(local_addr.s_addr),
