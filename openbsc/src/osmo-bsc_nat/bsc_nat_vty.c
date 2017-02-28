@@ -1045,6 +1045,33 @@ DEFUN(cfg_msc_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_msc_acc_lst_name,
+      cfg_msc_acc_lst_name_cmd,
+      "access-list-name NAME",
+      "Set the name of the access list to use.\n"
+      "The name of the to be used access list.")
+{
+	struct msc_config *conf = vty->index;
+
+	bsc_replace_string(conf, &conf->acc_lst_name, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_msc_no_acc_lst_name,
+      cfg_msc_no_acc_lst_name_cmd,
+      "no access-list-name",
+      NO_STR "Do not use an access-list for the MSC.\n")
+{
+	struct msc_config *conf = vty->index;
+
+	if (conf->acc_lst_name) {
+		talloc_free(conf->acc_lst_name);
+		conf->acc_lst_name = NULL;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(test_regex, test_regex_cmd,
       "test regex PATTERN STRING",
       "Test utilities\n"
@@ -1305,6 +1332,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_MSC_NODE, &cfg_msc_token_cmd);
 	install_element(NAT_MSC_NODE, &cfg_msc_ip_cmd);
 	install_element(NAT_MSC_NODE, &cfg_msc_port_cmd);
+	install_element(NAT_MSC_NODE, &cfg_msc_acc_lst_name_cmd);
+	install_element(NAT_MSC_NODE, &cfg_msc_no_acc_lst_name_cmd);
 
 	mgcp_vty_init();
 

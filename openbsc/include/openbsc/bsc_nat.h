@@ -229,6 +229,10 @@ struct msc_config {
 	struct llist_head dests;
 	struct bsc_msc_dest *main_dest;
 	struct bsc_msc_connection *msc_con;
+
+	/* imsi white and blacklist */
+	char *acc_lst_name;
+
 	char *token;
 	int nr;
 	struct bsc_nat *nat;
@@ -346,6 +350,7 @@ int bsc_config_handles_lac(struct bsc_config *cfg, int lac);
 struct msc_config *msc_config_alloc(struct bsc_nat *nat);
 struct msc_config *msc_config_num(struct bsc_nat *nat, int num);
 struct msc_config *msc_config_by_con(struct bsc_nat *nat, struct bsc_msc_connection *msc_con);
+struct bsc_msc_connection *msc_conn_by_imsi(struct bsc_nat *nat, const char *imsi);
 void msc_config_free(struct msc_config *);
 
 struct bsc_nat *bsc_nat_alloc(void);
