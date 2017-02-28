@@ -491,7 +491,12 @@ const char *bsc_con_type_to_string(int type)
 
 int bsc_nat_msc_is_connected(struct bsc_nat *nat)
 {
-	return nat->msc_con->is_connected;
+	struct msc_config *msc_conf;
+	llist_for_each_entry(msc_conf, &nat->msc_configs, entry) {
+		if (msc_conf->msc_con->is_connected)
+			return 1;
+	}
+	return 0;
 }
 
 static const int con_to_ctr[] = {

@@ -390,7 +390,11 @@ static void initialize_msc_if_needed(struct bsc_msc_connection *msc_con)
 
 static void send_id_get_response(struct bsc_msc_connection *msc_con)
 {
-	struct msgb *msg = bsc_msc_id_get_resp(0, nat->token, NULL, 0);
+	struct msc_config *conf;
+	struct msgb *msg;
+
+	conf = msc_config_by_con(nat, msc_con);
+	msg = bsc_msc_id_get_resp(0, conf->token, NULL, 0);
 	if (!msg)
 		return;
 
