@@ -75,18 +75,12 @@ struct bsc_nat *bsc_nat_alloc(void)
 	if (!nat)
 		return NULL;
 
-	nat->main_dest = talloc_zero(nat, struct bsc_msc_dest);
-	if (!nat->main_dest) {
-		talloc_free(nat);
-		return NULL;
-	}
-
+	INIT_LLIST_HEAD(&nat->msc_configs);
 	INIT_LLIST_HEAD(&nat->sccp_connections);
 	INIT_LLIST_HEAD(&nat->bsc_connections);
 	INIT_LLIST_HEAD(&nat->paging_groups);
 	INIT_LLIST_HEAD(&nat->bsc_configs);
 	INIT_LLIST_HEAD(&nat->access_lists);
-	INIT_LLIST_HEAD(&nat->dests);
 	INIT_LLIST_HEAD(&nat->num_rewr);
 	INIT_LLIST_HEAD(&nat->num_rewr_post);
 	INIT_LLIST_HEAD(&nat->smsc_rewr);
@@ -104,20 +98,19 @@ struct bsc_nat *bsc_nat_alloc(void)
 	nat->ping_timeout = 20;
 	nat->pong_timeout = 5;
 
-	llist_add(&nat->main_dest->list, &nat->dests);
-	nat->main_dest->ip = talloc_strdup(nat, "127.0.0.1");
-	nat->main_dest->port = 5000;
-
 	return nat;
 }
 
 void bsc_nat_free(struct bsc_nat *nat)
 {
-	struct bsc_config *cfg, *tmp;
+	struct bsc_config *bcfg, *btmp;
+	struct msc_config *mcfg, *mtmp;
 	struct bsc_msg_acc_lst *lst, *tmp_lst;
 
-	llist_for_each_entry_safe(cfg, tmp, &nat->bsc_configs, entry)
-		bsc_config_free(cfg);
+	llist_for_each_entry_safe(mcfg, mtmp, &nat->msc_configs, entry)
+		msc_config_free(mcfg);
+	llist_for_each_entry_safe(bcfg, btmp, &nat->bsc_configs, entry)
+		bsc_config_free(bcfg);
 	llist_for_each_entry_safe(lst, tmp_lst, &nat->access_lists, list)
 		bsc_msg_acc_lst_delete(lst);
 
@@ -137,9 +130,9 @@ void bsc_nat_free(struct bsc_nat *nat)
 	talloc_free(nat);
 }
 
-void bsc_nat_set_msc_ip(struct bsc_nat *nat, const char *ip)
+void bsc_nat_set_msc_ip(struct msc_config *cfg, const char *ip)
 {
-	bsc_replace_string(nat, &nat->main_dest->ip, ip);
+	bsc_replace_string(cfg, &cfg->main_dest->ip, ip);
 }
 
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)

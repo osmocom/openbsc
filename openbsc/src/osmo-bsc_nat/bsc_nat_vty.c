@@ -97,13 +97,9 @@ static int config_write_nat(struct vty *vty)
 	struct bsc_nat_paging_group *pgroup;
 
 	vty_out(vty, "nat%s", VTY_NEWLINE);
-	vty_out(vty, " msc ip %s%s", _nat->main_dest->ip, VTY_NEWLINE);
-	vty_out(vty, " msc port %d%s", _nat->main_dest->port, VTY_NEWLINE);
 	vty_out(vty, " timeout auth %d%s", _nat->auth_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout ping %d%s", _nat->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout pong %d%s", _nat->pong_timeout, VTY_NEWLINE);
-	if (_nat->token)
-		vty_out(vty, " token %s%s", _nat->token, VTY_NEWLINE);
 	vty_out(vty, " ip-dscp %d%s", _nat->bsc_ip_dscp, VTY_NEWLINE);
 	if (_nat->acc_lst_name)
 		vty_out(vty, " access-list-name %s%s", _nat->acc_lst_name, VTY_NEWLINE);
@@ -150,6 +146,24 @@ static int config_write_nat(struct vty *vty)
 	vty_out(vty, " %ssdp-ensure-amr-mode-set%s",
 		_nat->sdp_ensure_amr_mode_set ? "" : "no ", VTY_NEWLINE);
 
+	return CMD_SUCCESS;
+}
+
+static void config_write_msc_single(struct vty *vty, struct msc_config *msc)
+{
+	vty_out(vty, " msc %u%s", msc->nr, VTY_NEWLINE);
+	vty_out(vty, "  ip %s%s", msc->main_dest->ip, VTY_NEWLINE);
+	vty_out(vty, "  port %d%s", msc->main_dest->port, VTY_NEWLINE);
+	if (msc->token)
+		vty_out(vty, "  token %s%s", msc->token, VTY_NEWLINE);
+}
+
+static int config_write_msc(struct vty *vty)
+{
+	struct msc_config *msc;
+
+	llist_for_each_entry(msc, &_nat->msc_configs, entry)
+		config_write_msc_single(vty, msc);
 	return CMD_SUCCESS;
 }
 
@@ -407,27 +421,6 @@ DEFUN(cfg_nat, cfg_nat_cmd, "nat", "Configure the NAT")
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_nat_msc_ip,
-      cfg_nat_msc_ip_cmd,
-      "msc ip A.B.C.D",
-      "MSC related configuration\n"
-      "Configure the IP address\n" IP_STR)
-{
-	bsc_nat_set_msc_ip(_nat, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nat_msc_port,
-      cfg_nat_msc_port_cmd,
-      "msc port <1-65500>",
-      "MSC related configuration\n"
-      "Configure the port\n"
-      "Port number\n")
-{
-	_nat->main_dest->port = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_nat_auth_time,
       cfg_nat_auth_time_cmd,
       "timeout auth <1-256>",
@@ -458,15 +451,6 @@ DEFUN(cfg_nat_pong_time,
       "Timeout in seconds\n")
 {
 	_nat->pong_timeout = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nat_token, cfg_nat_token_cmd,
-      "token TOKEN",
-      "Authentication token configuration\n"
-      "Token of the BSC, currently transferred in cleartext\n")
-{
-	bsc_replace_string(_nat, &_nat->token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -1000,6 +984,67 @@ DEFUN(cfg_bsc_no_paging_grp,
 	return CMD_SUCCESS;
 }
 
+/* per MSC configuration */
+DEFUN(cfg_msc, cfg_msc_cmd, "msc MSC_NR",
+      "MSC configuration\n" "Identifier of the MSC\n")
+{
+	int msc_nr = atoi(argv[0]);
+	struct msc_config *msc;
+
+	if (msc_nr > _nat->num_msc) {
+		vty_out(vty, "%% The next unused MSC number is %u%s",
+			_nat->num_msc, VTY_NEWLINE);
+		return CMD_WARNING;
+	} else if (msc_nr == _nat->num_msc) {
+		/* allocate a new one */
+		msc = msc_config_alloc(_nat);
+	} else
+		msc = msc_config_num(_nat, msc_nr);
+
+	if (!msc)
+		return CMD_WARNING;
+
+	vty->index = msc;
+	vty->node = NAT_MSC_NODE;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_msc_token, cfg_msc_token_cmd, "token TOKEN",
+      "Authentication token configuration\n"
+      "Token of the BSC, currently transferred in cleartext\n")
+{
+	struct msc_config *conf = vty->index;
+
+	bsc_replace_string(conf, &conf->token, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_msc_ip,
+      cfg_msc_ip_cmd,
+      "ip A.B.C.D",
+      "MSC related configuration\n"
+      "Configure the IP address\n" IP_STR)
+{
+	struct msc_config *conf = vty->index;
+
+	bsc_nat_set_msc_ip(conf, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_msc_port,
+      cfg_msc_port_cmd,
+      "port <1-65500>",
+      "MSC related configuration\n"
+      "Configure the port\n"
+      "Port number\n")
+{
+	struct msc_config *conf = vty->index;
+
+	conf->main_dest->port = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(test_regex, test_regex_cmd,
       "test regex PATTERN STRING",
       "Test utilities\n"
@@ -1193,12 +1238,9 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
 	install_node(&nat_node, config_write_nat);
 	vty_install_default(NAT_NODE);
-	install_element(NAT_NODE, &cfg_nat_msc_ip_cmd);
-	install_element(NAT_NODE, &cfg_nat_msc_port_cmd);
 	install_element(NAT_NODE, &cfg_nat_auth_time_cmd);
 	install_element(NAT_NODE, &cfg_nat_ping_time_cmd);
 	install_element(NAT_NODE, &cfg_nat_pong_time_cmd);
-	install_element(NAT_NODE, &cfg_nat_token_cmd);
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_dscp_cmd);
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_tos_cmd);
 	install_element(NAT_NODE, &cfg_nat_acc_lst_name_cmd);
@@ -1255,6 +1297,14 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_grp_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_no_paging_grp_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_osmux_cmd);
+
+	/* MSC subgroups */
+	install_element(NAT_NODE, &cfg_msc_cmd);
+	install_node(&msc_node, config_write_msc);
+	vty_install_default(NAT_MSC_NODE);
+	install_element(NAT_MSC_NODE, &cfg_msc_token_cmd);
+	install_element(NAT_MSC_NODE, &cfg_msc_ip_cmd);
+	install_element(NAT_MSC_NODE, &cfg_msc_port_cmd);
 
 	mgcp_vty_init();
 
