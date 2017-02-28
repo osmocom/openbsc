@@ -210,6 +210,65 @@ void bsc_config_free(struct bsc_config *cfg)
 	talloc_free(cfg);
 }
 
+struct msc_config *msc_config_alloc(struct bsc_nat *nat)
+{
+	struct msc_config *conf = talloc_zero(nat, struct msc_config);
+	if (!conf)
+		return NULL;
+
+	conf->main_dest = talloc_zero(conf, struct bsc_msc_dest);
+	if (!conf->main_dest) {
+		talloc_free(conf);
+		return NULL;
+	}
+
+	conf->nr = nat->num_msc;
+	conf->nat = nat;
+
+	INIT_LLIST_HEAD(&conf->dests);
+
+	llist_add(&conf->main_dest->list, &conf->dests);
+	conf->main_dest->ip = talloc_strdup(conf, "127.0.0.1");
+	conf->main_dest->port = 5000;
+
+	llist_add_tail(&conf->entry, &nat->msc_configs);
+	++nat->num_msc;
+
+
+	return conf;
+}
+
+struct msc_config *msc_config_by_num(struct bsc_nat *nat, unsigned num)
+{
+	struct msc_config *conf;
+
+	llist_for_each_entry(conf, &nat->msc_configs, entry)
+		if (conf->nr == num)
+			return conf;
+
+	return NULL;
+}
+
+struct msc_config *msc_config_by_con(struct bsc_nat *nat, const struct bsc_msc_connection *msc_con)
+{
+	struct msc_config *conf;
+
+	llist_for_each_entry(conf, &nat->msc_configs, entry)
+		if (conf->msc_con == msc_con)
+			return conf;
+
+	return NULL;
+}
+
+void msc_config_free(struct msc_config *cfg)
+{
+	llist_del(&cfg->entry);
+
+	/* Shutdown any connections to the MSC? */
+
+	talloc_free(cfg);
+}
+
 static void _add_lac(void *ctx, struct llist_head *list, int _lac)
 {
 	struct bsc_lac_entry *lac;

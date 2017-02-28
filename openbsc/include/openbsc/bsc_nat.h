@@ -354,6 +354,11 @@ void bsc_config_add_lac(struct bsc_config *cfg, int lac);
 void bsc_config_del_lac(struct bsc_config *cfg, int lac);
 int bsc_config_handles_lac(struct bsc_config *cfg, int lac);
 
+struct msc_config *msc_config_alloc(struct bsc_nat *nat);
+struct msc_config *msc_config_by_num(struct bsc_nat *nat, unsigned num);
+struct msc_config *msc_config_by_con(struct bsc_nat *nat, const struct bsc_msc_connection *msc_con);
+void msc_config_free(struct msc_config *);
+
 struct bsc_nat *bsc_nat_alloc(void);
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat);
 void bsc_nat_set_msc_ip(struct bsc_nat *bsc, const char *ip);
