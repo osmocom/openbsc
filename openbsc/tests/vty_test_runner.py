@@ -1207,6 +1207,7 @@ def data2str(d):
 
 def nat_msc_test(x, ip, port, verbose = False):
     msc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    msc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     msc.settimeout(5)
     msc.bind((ip, port))
     msc.listen(5)
