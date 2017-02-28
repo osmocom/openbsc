@@ -84,7 +84,6 @@
 static const char *config_file = "bsc-nat.cfg";
 static struct in_addr local_addr;
 static struct osmo_fd bsc_listen;
-static const char *msc_ip = NULL;
 static struct osmo_timer_list sccp_close;
 static int daemonize = 0;
 
@@ -1507,9 +1506,6 @@ static void handle_options(int argc, char **argv)
 		case 'T':
 			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
-		case 'm':
-			msc_ip = optarg;
-			break;
 		case 'l':
 			inet_aton(optarg, &local_addr);
 			break;
@@ -1640,10 +1636,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Creating VTY telnet line failed\n");
 		return -5;
 	}
-
-	/* over rule the VTY config for MSC IP */
-	if (msc_ip)
-		bsc_nat_set_msc_ip(nat, msc_ip);
 
 	/* seed the PRNG */
 	srand(time(NULL));
