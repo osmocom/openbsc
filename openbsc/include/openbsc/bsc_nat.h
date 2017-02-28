@@ -268,6 +268,10 @@ struct bsc_nat {
 	struct bsc_msc_connection *msc_con;
 	char *token;
 
+	/* MSC connections */
+	struct llist_head msc_configs;
+	int num_msc;
+
 	/* timeouts */
 	int auth_timeout;
 	int ping_timeout;
