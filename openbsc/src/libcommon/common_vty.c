@@ -98,6 +98,13 @@ int bsc_vty_go_parent(struct vty *vty)
 		vty->node = SMPP_NODE;
 		vty->index = NULL;
 		break;
+	case NAT_MSC_NODE:
+		vty->node = NAT_NODE;
+		{
+			struct msc_config *msc_config = vty->index;
+			vty->index = msc_config->nat;
+		}
+		break;
 	case SMPP_NODE:
 	case MGCP_NODE:
 	case GBPROXY_NODE:
