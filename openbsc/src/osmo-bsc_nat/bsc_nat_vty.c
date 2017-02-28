@@ -55,6 +55,12 @@ static struct cmd_node nat_node = {
 	1,
 };
 
+static struct cmd_node msc_node = {
+	NAT_MSC_NODE,
+	"%s(config-nat-msc)# ",
+	1,
+};
+
 static struct cmd_node bsc_node = {
 	NAT_BSC_NODE,
 	"%s(config-nat-bsc)# ",

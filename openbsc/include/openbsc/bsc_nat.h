@@ -23,6 +23,7 @@
 
 #include "mgcp.h"
 #include "bsc_msg_filter.h"
+#include "bsc_msc.h"
 
 
 #include <osmocom/core/select.h>
@@ -226,6 +227,16 @@ struct bsc_nat_statistics {
 	struct {
 		struct osmo_counter *reconn;
 	} ussd;
+};
+
+struct msc_config {
+	struct llist_head entry;
+	struct llist_head dests;
+	struct bsc_msc_dest *main_dest;
+	struct bsc_msc_connection *msc_con;
+	char *token;
+	int nr;
+	struct bsc_nat *nat;
 };
 
 /**
