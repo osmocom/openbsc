@@ -1340,6 +1340,7 @@ if __name__ == '__main__':
                         help="searchpath for config")
     parser.add_argument("-w", "--workdir", dest="w",
                         help="Working directory")
+    parser.add_argument("test_name", nargs="*", help="(parts of) test names to run, case-insensitive")
     args = parser.parse_args()
 
     verbose_level = 1
@@ -1362,6 +1363,10 @@ if __name__ == '__main__':
     add_nat_test(suite, workdir)
     add_gbproxy_test(suite, workdir)
     add_sgsn_test(suite, workdir)
+
+    if args.test_name:
+        osmoutil.pick_tests(suite, *args.test_name)
+
     res = unittest.TextTestRunner(verbosity=verbose_level, stream=sys.stdout).run(suite)
     sys.exit(len(res.errors) + len(res.failures))
 
