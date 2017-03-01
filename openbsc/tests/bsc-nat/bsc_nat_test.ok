@@ -36,4 +36,5 @@ IMSI: 12123127 CM: 3 LU: 5
 IMSI: 12123128 CM: 3 LU: 6
 IMSI: 12123124 CM: 3 LU: 2
 Testing LAC extraction from SCCP CR
+Test routing IMSIs to different MSCs
 Testing execution completed.

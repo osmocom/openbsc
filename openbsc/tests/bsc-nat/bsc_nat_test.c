@@ -1549,6 +1549,54 @@ static void test_nat_extract_lac()
 	bsc_nat_free(nat);
 }
 
+static void test_multiple_msc_fwd()
+{
+	int res;
+	struct bsc_nat *nat;
+	struct msc_config *msc;
+	struct bsc_msg_acc_lst *acc;
+	struct bsc_msg_acc_lst_entry *entry;
+	char *re1 = "^1[0-9]*$";
+	char *re2 = "^2[0-9]*$";
+
+	printf("Test routing IMSIs to different MSCs\n");
+
+	/* Initialize the test case */
+	nat = bsc_nat_alloc();
+
+	/* Create MSC configs */
+	msc = msc_config_alloc(nat);
+	msc->msc_con = 0x23;
+	msc->acc_lst_name = "msc1";
+
+	msc = msc_config_alloc(nat);
+	msc->msc_con = 0x42;
+	msc->acc_lst_name = "msc2";
+
+	/* Create the ACLs */
+	acc = bsc_msg_acc_lst_get(nat, &nat->access_lists, "msc1");
+	OSMO_ASSERT(acc);
+	entry = bsc_msg_acc_lst_entry_create(acc);
+	OSMO_ASSERT(entry);
+	res = gsm_parse_reg(acc, &entry->imsi_allow_re, &entry->imsi_allow, 1, &re1);
+	OSMO_ASSERT(!res);
+
+	acc = bsc_msg_acc_lst_get(nat, &nat->access_lists, "msc2");
+	OSMO_ASSERT(acc);
+	entry = bsc_msg_acc_lst_entry_create(acc);
+	OSMO_ASSERT(entry);
+	res = gsm_parse_reg(acc, &entry->imsi_allow_re, &entry->imsi_allow, 1, &re2);
+	OSMO_ASSERT(!res);
+
+	/* Check that IMSIs are routed to the correct MSCs */
+	OSMO_ASSERT(msc_conn_by_imsi(nat, "100") == 0x23);
+	OSMO_ASSERT(msc_conn_by_imsi(nat, "101") == 0x23);
+	OSMO_ASSERT(msc_conn_by_imsi(nat, "200") == 0x42);
+	OSMO_ASSERT(msc_conn_by_imsi(nat, "201") == 0x42);
+
+	bsc_nat_free(nat);
+}
+
 int main(int argc, char **argv)
 {
 	msgb_talloc_ctx_init(NULL, 0);
@@ -1572,6 +1620,7 @@ int main(int argc, char **argv)
 	test_mgcp_allocations();
 	test_barr_list_parsing();
 	test_nat_extract_lac();
+	test_multiple_msc_fwd();
 
 	printf("Testing execution completed.\n");
 	return 0;
