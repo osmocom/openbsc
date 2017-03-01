@@ -12,6 +12,8 @@ rm -rf "$inst"
 
 osmo-build-dep.sh libosmocore "" ac_cv_path_DOXYGEN=false
 
+"$deps"/libosmocore/contrib/verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
+
 export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LD_LIBRARY_PATH="$inst/lib"
 
