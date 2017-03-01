@@ -116,6 +116,7 @@ static const struct value_string gprs_pmm_state_names[] = {
 	{ MM_IDLE,		"MM IDLE" },
 	{ MM_READY,		"MM READY" },
 	{ MM_STANDBY,		"MM STANDBY" },
+	{ 0, NULL }
 };
 
 static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx);

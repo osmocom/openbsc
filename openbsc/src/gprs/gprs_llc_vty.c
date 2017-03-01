@@ -48,6 +48,7 @@ struct value_string gprs_llc_state_strs[] = {
 	{ GPRS_LLES_ABM,		"Asynchronous Balanced Mode" },
 	{ GPRS_LLES_LOCAL_REL,		"Local Release" },
 	{ GPRS_LLES_TIMER_REC,		"Timer Recovery" },
+	{ 0, NULL }
 };
 
 static void vty_dump_lle(struct vty *vty, struct gprs_llc_lle *lle)
