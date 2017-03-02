@@ -99,6 +99,9 @@ void subscr_conn_fsm_new(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 		paging_resp(conn, pe);
 	}
 
+	/* FIXME rate counters */
+	/*rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_COMPLETED]);*/
+
 	/* On failure, discard the conn */
 	if (fi->state != SUBSCR_CONN_S_ACCEPTED) {
 		/* TODO: on MO_CLOSE or CN_CLOSE, first go to RELEASING and
