@@ -371,7 +371,8 @@ static void send_mgcp_reset(struct bsc_connection *bsc)
 void bsc_nat_send_mgcp_to_msc(struct bsc_nat *nat, struct msgb *msg)
 {
 	ipa_prepend_header(msg, IPAC_PROTO_MGCP_OLD);
-	queue_for_msc(nat->msc_con, msg);
+#warning Disabled for now
+//	queue_for_msc(nat->msc_con, msg);
 }
 
 /*
