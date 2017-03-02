@@ -322,14 +322,17 @@ DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "show bsc config",
 
 static void dump_stat_total(struct vty *vty, struct bsc_nat *nat)
 {
+	struct msc_config *conf;
 	vty_out(vty, "NAT statistics%s", VTY_NEWLINE);
 	vty_out(vty, " SCCP Connections %lu total, %lu calls%s",
 		osmo_counter_get(nat->stats.sccp.conn),
 		osmo_counter_get(nat->stats.sccp.calls), VTY_NEWLINE);
 	vty_out(vty, " MSC Connections %lu%s",
 		osmo_counter_get(nat->stats.msc.reconn), VTY_NEWLINE);
-	vty_out(vty, " MSC Connected: %d%s",
-		bsc_nat_msc_is_connected(nat), VTY_NEWLINE);
+	llist_for_each_entry(conf, &_nat->msc_configs, entry) {
+		vty_out(vty, "MSC %i Connected: %d%s", conf->nr,
+			bsc_nat_msc_is_connected(conf), VTY_NEWLINE);
+	}
 	vty_out(vty, " BSC Connections %lu total, %lu auth failed.%s",
 		osmo_counter_get(nat->stats.bsc.reconn),
 		osmo_counter_get(nat->stats.bsc.auth_fail), VTY_NEWLINE);
@@ -404,13 +407,17 @@ DEFUN(show_msc,
       SHOW_STR "MSC related information\n"
       "Status of the A-link connection\n")
 {
-	if (!_nat->msc_con) {
+	struct msc_config *conf;
+
+	if (llist_empty(&_nat->msc_configs)) {
 		vty_out(vty, "The MSC is not yet configured.%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	vty_out(vty, "MSC is connected: %d%s",
-		bsc_nat_msc_is_connected(_nat), VTY_NEWLINE);
+	llist_for_each_entry(conf, &_nat->msc_configs, entry) {
+		vty_out(vty, "MSC %i is connected: %d%s", conf->nr,
+			bsc_nat_msc_is_connected(conf), VTY_NEWLINE);
+	}
 	return CMD_SUCCESS;
 }
 

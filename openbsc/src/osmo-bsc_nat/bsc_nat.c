@@ -1376,6 +1376,7 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct bsc_connection *bsc;
+	struct msc_config *msc_conf;
 	int fd, rc, on;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
@@ -1395,7 +1396,8 @@ static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 	/*
 	 * if we are not connected to a msc... just close the socket
 	 */
-	if (!bsc_nat_msc_is_connected(nat)) {
+	msc_conf = msc_config_num(nat, nat->default_msc);
+	if (!msc_conf || !bsc_nat_msc_is_connected(msc_conf)) {
 		LOGP(DNAT, LOGL_NOTICE, "Disconnecting BSC due lack of MSC connection.\n");
 		close(fd);
 		return 0;
