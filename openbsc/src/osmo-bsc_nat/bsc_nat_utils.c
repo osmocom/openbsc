@@ -524,13 +524,10 @@ const char *bsc_con_type_to_string(int type)
 	return con_types[type];
 }
 
-int bsc_nat_msc_is_connected(struct bsc_nat *nat)
+int bsc_nat_msc_is_connected(struct msc_config *msc_conf)
 {
-	struct msc_config *msc_conf;
-	llist_for_each_entry(msc_conf, &nat->msc_configs, entry) {
-		if (msc_conf->msc_con->is_connected)
-			return 1;
-	}
+	if (msc_conf->msc_con->is_connected)
+		return 1;
 	return 0;
 }
 
