@@ -412,7 +412,7 @@ int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int id);
 int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg);
 int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg);
 
-int bsc_nat_msc_is_connected(struct bsc_nat *nat);
+int bsc_nat_msc_is_connected(struct msc_config *msc_conf);
 
 int bsc_conn_type_to_ctr(struct nat_sccp_connection *conn);
 
