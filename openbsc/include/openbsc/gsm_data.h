@@ -104,6 +104,10 @@ enum ran_type {
        RAN_UTRAN_IU,	/* 3G / Iu-interface (IuCS or IuPS) */
 };
 
+extern const struct value_string ran_type_names[];
+static inline const char *ran_type_name(enum ran_type val)
+{	return get_value_string(ran_type_names, val);	}
+
 struct gsm_classmark {
 	bool classmark1_set;
 	struct gsm48_classmark1 classmark1;
@@ -127,23 +131,6 @@ struct gsm_subscriber_connection {
 	/* usage count. If this drops to zero, we start the release
 	 * towards A/Iu */
 	uint32_t use_count;
-
-	/* temporary hack: while the same gsm_subscriber_connection is in use
-	 * between libbsc and libmsc, we need to prevent a second free from
-	 * within libbsc after bsc_api->compl_l3() returns. In
-	 * gsm0408_rcvmsg(), compl_l3() is called, and if it returns
-	 * BSC_API_CONN_POL_REJECT, the conn is discarded right away. This is
-	 * the only instance where libbsc discards a gsm_subscriber_connection.
-	 * If compl_l3() returns BSC_API_CONN_POL_ACCEPT and in all other API
-	 * calls, ownership of the conn is in libmsc (in the osmo-nitb case) or
-	 * in the osmo-bsc code (in the OsmoBSC standalone case). Our VLR
-	 * however assumes full ownership of the conn and will discard it when
-	 * nothing is pending. So in case we're still in compl_l3() and going
-	 * to reject the conn, we must tell libmsc to not free it yet, since
-	 * bsc_api.c will do so again/anyway. When the
-	 * gsm_subscriber_connection structs are properly separated, this will
-	 * go away magically. */
-	bool owned_by_msc;
 
 	/* The MS has opened the conn with a CM Service Request, and we shall
 	 * keep it open for an actual request (or until timeout). */
@@ -387,6 +374,11 @@ struct gsm_network {
 	struct mncc_sock_state *mncc_state;
 	mncc_recv_cb_t mncc_recv;
 	struct llist_head upqueue;
+	/*
+	 * TODO: Move the trans_list into the subscriber connection and
+	 * create a pending list for MT transactions. These exist before
+	 * we have a subscriber connection.
+	 */
 	struct llist_head trans_list;
 	struct bsc_api *bsc_api;
 

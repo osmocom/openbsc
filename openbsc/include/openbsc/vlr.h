@@ -156,6 +156,8 @@ struct vlr_subscr {
 		/* pending requests */
 		bool is_paging;
 		struct llist_head requests;
+		uint8_t lac;
+		enum ran_type attached_via_ran;
 	} cs;
 };
 

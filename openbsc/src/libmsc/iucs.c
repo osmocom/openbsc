@@ -185,13 +185,8 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg,
 		if (!conn)
 			abort();
 
+		/* ownership of conn hereby goes to the MSC: */
 		rc = msc_compl_l3(conn, msg, 0);
-		if (rc != MSC_CONN_ACCEPT) {
-			gsm0408_clear_request(conn, 0);
-			rc = -1;
-		}
-		else
-			rc = 0;
 	}
 
 	return rc;

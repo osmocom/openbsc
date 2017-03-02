@@ -72,13 +72,15 @@ int msc_create_conn_fsm(struct gsm_subscriber_connection *conn, const char *id);
 int msc_vlr_alloc(struct gsm_network *net);
 int msc_vlr_start(struct gsm_network *net);
 
-enum msc_compl_l3_rc msc_compl_l3(struct gsm_subscriber_connection *conn,
-				  struct msgb *msg, uint16_t chosen_channel);
+int msc_compl_l3(struct gsm_subscriber_connection *conn,
+		 struct msgb *msg, uint16_t chosen_channel);
 void msc_close_connection(struct gsm_subscriber_connection *conn);
 
 bool msc_subscr_conn_is_accepted(struct gsm_subscriber_connection *conn);
 void msc_subscr_conn_communicating(struct gsm_subscriber_connection *conn);
 
 void msc_release_anchor(struct gsm_subscriber_connection *conn);
+
+void msc_stop_paging(struct vlr_subscr *vsub);
 
 #endif

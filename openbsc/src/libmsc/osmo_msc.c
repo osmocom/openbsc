@@ -48,61 +48,17 @@ static int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 	return 1;
 }
 
-static bool keep_conn(struct gsm_subscriber_connection *conn)
-{
-	/* TODO: what about a silent call? */
-
-	if (!conn->conn_fsm) {
-		DEBUGP(DMM, "No conn_fsm, release conn\n");
-		return false;
-	}
-
-	switch (conn->conn_fsm->state) {
-	case SUBSCR_CONN_S_NEW:
-	case SUBSCR_CONN_S_ACCEPTED:
-		return true;
-	default:
-		return false;
-	}
-}
-
 /* receive a Level 3 Complete message and return MSC_CONN_ACCEPT or
  * MSC_CONN_REJECT */
-enum msc_compl_l3_rc msc_compl_l3(struct gsm_subscriber_connection *conn,
-				  struct msgb *msg, uint16_t chosen_channel)
+int msc_compl_l3(struct gsm_subscriber_connection *conn,
+		 struct msgb *msg, uint16_t chosen_channel)
 {
-	gsm0408_new_conn(conn);
 	gsm0408_dispatch(conn, msg);
 
-	/* NOTE: after the MSC split, returning BSC_API_CONN_POL_REJECT shall
-	 * be replaced with a call to msc_subscr_con_free() */
-
-	if (!keep_conn(conn)) {
-		DEBUGP(DMM, "compl_l3: Discarding conn\n");
-		return MSC_CONN_REJECT;
-	}
-	DEBUGP(DMM, "compl_l3: Keeping conn\n");
-	conn->owned_by_msc = true;
-	DEBUGP(DMM, "%s owned_by_msc = true\n",
-	       vlr_subscr_name(conn->vsub));
+	/* Always return acceptance, because even if the conn was not accepted,
+	 * we assumed ownership of it and the caller shall not interfere with
+	 * that. We may even already have discarded the conn. */
 	return MSC_CONN_ACCEPT;
-
-#if 0
-	/*
-	 * If this is a silent call we want the channel to remain open as long as
-	 * possible and this is why we accept this connection regardless of any
-	 * pending transaction or ongoing operation.
-	 */
-	if (conn->silent_call)
-		return MSC_CONN_ACCEPT;
-	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
-		return MSC_CONN_ACCEPT;
-	if (trans_has_conn(conn))
-		return MSC_CONN_ACCEPT;
-
-	LOGP(DRR, LOGL_INFO, "MSC Complete L3: Rejecting connection.\n");
-	return MSC_CONN_REJECT;
-#endif
 }
 
 static void subscr_conn_bump(struct gsm_subscriber_connection *conn)
@@ -333,4 +289,10 @@ void _subscr_con_put(struct gsm_subscriber_connection *conn,
 	if (conn->use_count == 0 && conn->conn_fsm)
 		osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_MO_CLOSE, NULL);
 #endif
+}
+
+void msc_stop_paging(struct vlr_subscr *vsub)
+{
+	DEBUGP(DPAG, "Paging can stop for %s\n", vlr_subscr_name(vsub));
+	/* tell BSCs and RNCs to stop paging? How? */
 }

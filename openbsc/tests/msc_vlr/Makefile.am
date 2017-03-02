@@ -45,6 +45,8 @@ LDADD = \
 	$(top_builddir)/src/libvlr/libvlr.a \
 	$(top_builddir)/src/libbsc/libbsc.a \
 	$(top_builddir)/src/libtrau/libtrau.a \
+	$(top_builddir)/src/libmgcp/libmgcp.a \
+	$(top_builddir)/tests/libiudummy/libiudummy.a \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBSMPP34_LIBS) \
 	$(LIBOSMOCORE_LIBS) \
@@ -59,9 +61,11 @@ LDADD = \
 LDFLAGS = \
 	-Wl,--wrap=gsup_client_create \
 	-Wl,--wrap=gsup_client_send \
-	-Wl,--wrap=gsm0808_submit_dtap \
-	-Wl,--wrap=paging_request \
-	-Wl,--wrap=paging_request_stop \
+	-Wl,--wrap=a_tx \
+	-Wl,--wrap=a_page \
+	-Wl,--wrap=iu_tx \
+	-Wl,--wrap=iu_page_cs \
+	-Wl,--wrap=msc_stop_paging \
 	-Wl,--wrap=gsm340_gen_scts \
 	-Wl,--wrap=RAND_bytes \
 	$(NULL)

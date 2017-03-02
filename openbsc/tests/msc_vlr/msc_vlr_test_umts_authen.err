@@ -25,8 +25,6 @@ DVLR GSUP tx: 08010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000000156f0
 DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000010650 usage decreases to: 1
-DMM compl_l3: Keeping conn
-DMM IMSI:901700000010650 owned_by_msc = true
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000000156f00362201039fa2f4e3d523d8619a73b4f65c3e14d21049b36efdf2208059a4f668f6fbe39231027497388b6cb044648f396aa155b95ef2410f64735036e5871319c679f4742a75ea125108704f5ba55f30000d2ee44b22c8ea9192708e229c19e791f2e4103622010c187a53a5e6b9d573cac7c74451fd46d210485aa31302208d3d50a000bf04f6e23101159ec926a50e98c034a6b7d7c9f418d2410df3a03d9ca5335641efc8e36d76cd20b25101843a645b98d00005b2d666af46c45d927087db47cf7f81e4dc703622010efa9c29a9742148d5c9070348716e1bb210469d5f9fb22083df176f0c29f1a3d2310eb50e770ddcc3060101d2f43b6c2b884241076542abce5ff9345b0e8947f4c6e019c2510f9375e6d41e1000096e7fe4ff1c27e392708706f996719ba609c03622010f023d5a3b24726e0631b64b3840f82532104d570c03f2208ec011be8919883d62310c4e58af4ba43f3bcd904e16984f086d724100593f65e752e5cb7f473862bda05aa0a2510541ff1f077270000c5ea00d658bc7e9a27083fd26072eaa2a04d036220102f8f90c780d6a9c0c53da7ac57b6707e2104b072446f220823f39f9f425ad6e6231065af0527fda95b0dc5ae4aa515cdf32f2410537c3b35a3b13b08d08eeb28098f45cc25104bf4e564f75300009bc796706bc6574427080edb0eadbea94ac2
@@ -125,7 +123,6 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
-DMM MSISDN:42342 calling bsc_subscr_con_free(), owned_by_msc = true
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -162,8 +159,6 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...autn=1843a645b98d00005b2d666af46c45d9
 - ...expecting res=7db47cf7f81e4dc7
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
-DMM compl_l3: Keeping conn
-DMM MSISDN:42342 owned_by_msc = true
   cm_service_result_sent == 0
   auth_request_sent == 1
 - needs auth, not yet accepted
@@ -219,7 +214,8 @@ DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DMM USSD: Own number requested
 DMM MSISDN:42342: MSISDN = 42342
-- DTAP --> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d273104d36a3c91a0d
+DMSC msc_tx 43 bytes to MSISDN:42342 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d273104d36a3c91a0d
 - DTAP matches expected message
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
@@ -228,7 +224,6 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
-DMM MSISDN:42342 calling bsc_subscr_con_free(), owned_by_msc = true
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -240,10 +235,9 @@ DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:42342 usage increases to: 2
   llist_count(&vsub->cs.requests) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 3
-DMM Subscriber MSISDN:42342 not paged yet.
-  BTS/BSC sends out paging request to IMSI:901700000010650 for channel type 1
-  strcmp(paging_expecting_imsi, sub->imsi) == 0
-DREF BSC subscr IMSI:901700000010650 usage decreases to: 0
+DMM Subscriber MSISDN:42342 not paged yet, start paging.
+  RAN_GERAN_A sends out paging request to IMSI 901700000010650, TMSI 0xffffffff, LAC 0
+  strcmp(paging_expecting_imsi, imsi) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 4
   llist_count(&vsub->cs.requests) == 1
 DREF VLR subscr MSISDN:42342 usage decreases to: 3
@@ -279,8 +273,6 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...autn=f9375e6d41e1000096e7fe4ff1c27e39
 - ...expecting res=706f996719ba609c
 DREF VLR subscr MSISDN:42342 usage decreases to: 4
-DMM compl_l3: Keeping conn
-DMM MSISDN:42342 owned_by_msc = true
   auth_request_sent == 1
 - needs auth, not yet accepted
 msc_subscr_conn_is_accepted() == false
@@ -320,10 +312,12 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Process Access 
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_PAGING_RESP
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DREF BSC subscr IMSI:901700000010650 usage decreases to: 0
+DPAG Paging success for MSISDN:42342 (event=0)
+DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:42342 usage increases to: 5
 DMSC subscr MSISDN:42342: increased subscr_con use_count to 1
-- DTAP --> MS: 09015801000791447758100650004c0005802443f2000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
+DMSC msc_tx 91 bytes to MSISDN:42342 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 09015801000791447758100650004c0005802443f2000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
 DREF VLR subscr MSISDN:42342 usage decreases to: 4
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
@@ -347,7 +341,8 @@ DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event S
   rx from MS: pdisc=0x89 msg_type=0x01
 DRLL Dispatching 04.08 message, pdisc=9
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
-- DTAP --> MS: 0904
+DMSC msc_tx 2 bytes to MSISDN:42342 via RAN_GERAN_A
+- DTAP --RAN_GERAN_A--> MS: 0904
 - DTAP matches expected message
 DREF VLR subscr MSISDN:42342 usage decreases to: 3
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
@@ -359,7 +354,6 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
-DMM MSISDN:42342 calling bsc_subscr_con_free(), owned_by_msc = true
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -378,8 +372,6 @@ DMM Subscriber MSISDN:42342 DETACHED
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DREF VLR subscr MSISDN:42342 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:42342
-DMM No conn_fsm, release conn
-DMM compl_l3: Discarding conn
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_umts_authen_geran: SUCCESS
@@ -414,8 +406,6 @@ DVLR GSUP tx: 08010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000000156f0
 DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000010650 usage decreases to: 1
-DMM compl_l3: Keeping conn
-DMM IMSI:901700000010650 owned_by_msc = true
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000000156f00362201039fa2f4e3d523d8619a73b4f65c3e14d21049b36efdf2208059a4f668f6fbe39231027497388b6cb044648f396aa155b95ef2410f64735036e5871319c679f4742a75ea125108704f5ba55f30000d2ee44b22c8ea9192708e229c19e791f2e4103622010c187a53a5e6b9d573cac7c74451fd46d210485aa31302208d3d50a000bf04f6e23101159ec926a50e98c034a6b7d7c9f418d2410df3a03d9ca5335641efc8e36d76cd20b25101843a645b98d00005b2d666af46c45d927087db47cf7f81e4dc703622010efa9c29a9742148d5c9070348716e1bb210469d5f9fb22083df176f0c29f1a3d2310eb50e770ddcc3060101d2f43b6c2b884241076542abce5ff9345b0e8947f4c6e019c2510f9375e6d41e1000096e7fe4ff1c27e392708706f996719ba609c03622010f023d5a3b24726e0631b64b3840f82532104d570c03f2208ec011be8919883d62310c4e58af4ba43f3bcd904e16984f086d724100593f65e752e5cb7f473862bda05aa0a2510541ff1f077270000c5ea00d658bc7e9a27083fd26072eaa2a04d036220102f8f90c780d6a9c0c53da7ac57b6707e2104b072446f220823f39f9f425ad6e6231065af0527fda95b0dc5ae4aa515cdf32f2410537c3b35a3b13b08d08eeb28098f45cc25104bf4e564f75300009bc796706bc6574427080edb0eadbea94ac2
@@ -514,7 +504,6 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
-DMM MSISDN:42342 calling bsc_subscr_con_free(), owned_by_msc = true
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -551,8 +540,6 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...autn=1843a645b98d00005b2d666af46c45d9
 - ...expecting res=7db47cf7f81e4dc7
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
-DMM compl_l3: Keeping conn
-DMM MSISDN:42342 owned_by_msc = true
   cm_service_result_sent == 0
   auth_request_sent == 1
 - needs auth, not yet accepted
@@ -608,7 +595,8 @@ DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DMM USSD: Own number requested
 DMM MSISDN:42342: MSISDN = 42342
-- DTAP --> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d273104d36a3c91a0d
+DMSC msc_tx 43 bytes to MSISDN:42342 via RAN_UTRAN_IU
+- DTAP --RAN_UTRAN_IU--> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d273104d36a3c91a0d
 - DTAP matches expected message
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
@@ -617,7 +605,6 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
-DMM MSISDN:42342 calling bsc_subscr_con_free(), owned_by_msc = true
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -629,10 +616,9 @@ DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:42342 usage increases to: 2
   llist_count(&vsub->cs.requests) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 3
-DMM Subscriber MSISDN:42342 not paged yet.
-  BTS/BSC sends out paging request to IMSI:901700000010650 for channel type 1
-  strcmp(paging_expecting_imsi, sub->imsi) == 0
-DREF BSC subscr IMSI:901700000010650 usage decreases to: 0
+DMM Subscriber MSISDN:42342 not paged yet, start paging.
+  RAN_UTRAN_IU sends out paging request to IMSI 901700000010650, TMSI 0xffffffff, LAC 0
+  strcmp(paging_expecting_imsi, imsi) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 4
   llist_count(&vsub->cs.requests) == 1
 DREF VLR subscr MSISDN:42342 usage decreases to: 3
@@ -668,8 +654,6 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...autn=f9375e6d41e1000096e7fe4ff1c27e39
 - ...expecting res=706f996719ba609c
 DREF VLR subscr MSISDN:42342 usage decreases to: 4
-DMM compl_l3: Keeping conn
-DMM MSISDN:42342 owned_by_msc = true
   auth_request_sent == 1
 - needs auth, not yet accepted
 msc_subscr_conn_is_accepted() == false
@@ -709,10 +693,12 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Process Access 
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_PAGING_RESP
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
-DREF BSC subscr IMSI:901700000010650 usage decreases to: 0
+DPAG Paging success for MSISDN:42342 (event=0)
+DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:42342 usage increases to: 5
 DMSC subscr MSISDN:42342: increased subscr_con use_count to 1
-- DTAP --> MS: 09015801000791447758100650004c0005802443f2000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
+DMSC msc_tx 91 bytes to MSISDN:42342 via RAN_UTRAN_IU
+- DTAP --RAN_UTRAN_IU--> MS: 09015801000791447758100650004c0005802443f2000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
 DREF VLR subscr MSISDN:42342 usage decreases to: 4
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
@@ -736,7 +722,8 @@ DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event S
   rx from MS: pdisc=0x89 msg_type=0x01
 DRLL Dispatching 04.08 message, pdisc=9
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
-- DTAP --> MS: 0904
+DMSC msc_tx 2 bytes to MSISDN:42342 via RAN_UTRAN_IU
+- DTAP --RAN_UTRAN_IU--> MS: 0904
 - DTAP matches expected message
 DREF VLR subscr MSISDN:42342 usage decreases to: 3
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
@@ -748,7 +735,6 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
-DMM MSISDN:42342 calling bsc_subscr_con_free(), owned_by_msc = true
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -767,8 +753,6 @@ DMM Subscriber MSISDN:42342 DETACHED
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DREF VLR subscr MSISDN:42342 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:42342
-DMM No conn_fsm, release conn
-DMM compl_l3: Discarding conn
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_umts_authen_utran: SUCCESS
@@ -803,8 +787,6 @@ DVLR GSUP tx: 08010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000000156f0
 DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000010650 usage decreases to: 1
-DMM compl_l3: Keeping conn
-DMM IMSI:901700000010650 owned_by_msc = true
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000000156f00362201039fa2f4e3d523d8619a73b4f65c3e14d21049b36efdf2208059a4f668f6fbe39231027497388b6cb044648f396aa155b95ef2410f64735036e5871319c679f4742a75ea125108704f5ba55f30000d2ee44b22c8ea9192708e229c19e791f2e41
@@ -930,7 +912,6 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
-DMM MSISDN:42342 calling bsc_subscr_con_free(), owned_by_msc = true
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -973,8 +954,6 @@ DVLR GSUP tx: 08010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000000156f0
 DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000010650 usage decreases to: 1
-DMM compl_l3: Keeping conn
-DMM IMSI:901700000010650 owned_by_msc = true
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000000156f00362201039fa2f4e3d523d8619a73b4f65c3e14d21049b36efdf2208059a4f668f6fbe39231027497388b6cb044648f396aa155b95ef2410f64735036e5871319c679f4742a75ea125108704f5ba55f30000d2ee44b22c8ea9192708e229c19e791f2e41
@@ -1100,7 +1079,6 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
-DMM MSISDN:42342 calling bsc_subscr_con_free(), owned_by_msc = true
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 2
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
