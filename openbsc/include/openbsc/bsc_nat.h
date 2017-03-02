@@ -271,12 +271,6 @@ struct bsc_nat {
 	int mgcp_ipa;
 	int sdp_ensure_amr_mode_set;
 
-	/* msc things */
-	struct llist_head dests;
-	struct bsc_msc_dest *main_dest;
-	struct bsc_msc_connection *msc_con;
-	char *token;
-
 	/* MSC connections */
 	struct llist_head msc_configs;
 	unsigned num_msc;
