@@ -758,6 +758,14 @@ DEFUN(cfg_nat_use_ipa_for_mgcp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_default_msc,
+      cfg_nat_default_msc_cmd,
+      "default msc NR",
+      "The MSC to route messages to by default\n" "MSC number\n")
+{
+	_nat->default_msc = atoi(argv[0]);
+}
+
 DEFUN(cfg_nat_sdp_amr_mode_set,
       cfg_nat_sdp_amr_mode_set_cmd,
       "sdp-ensure-amr-mode-set",
@@ -1279,6 +1287,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_ussd_token_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_local_cmd);
 	install_element(NAT_NODE, &cfg_nat_use_ipa_for_mgcp_cmd);
+	install_element(NAT_NODE, &cfg_nat_default_msc_cmd);
 
 	bsc_msg_lst_vty_init(nat, &nat->access_lists, NAT_NODE);
 
