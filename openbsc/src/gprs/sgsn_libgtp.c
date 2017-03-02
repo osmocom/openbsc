@@ -641,8 +641,6 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 	struct msgb *msg;
 	uint8_t *ud;
 
-	DEBUGP(DGPRS, "GTP DATA IND from GGSN, length=%u\n", len);
-
 	pdp = lib->priv;
 	if (!pdp) {
 		LOGP(DGPRS, LOGL_NOTICE,
@@ -652,9 +650,13 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 	mm = pdp->mm;
 	if (!mm) {
 		LOGP(DGPRS, LOGL_ERROR,
-		     "PDP context (imsi=%s) without MM context!\n", mm->imsi);
+		     "PDP context (address=%u) without MM context!\n",
+		     pdp->address);
 		return -EIO;
 	}
+
+	DEBUGP(DGPRS, "GTP DATA IND from GGSN for %s, length=%u\n", mm->imsi,
+	       len);
 
 	if (mm->ran_type == MM_CTX_T_UTRAN_Iu) {
 #ifdef BUILD_IU
