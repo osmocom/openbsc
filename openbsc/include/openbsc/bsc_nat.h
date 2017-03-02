@@ -280,6 +280,7 @@ struct bsc_nat {
 	/* MSC connections */
 	struct llist_head msc_configs;
 	int num_msc;
+	int default_msc;
 
 	/* timeouts */
 	int auth_timeout;
@@ -361,6 +362,7 @@ int bsc_config_handles_lac(struct bsc_config *cfg, int lac);
 struct msc_config *msc_config_alloc(struct bsc_nat *nat);
 struct msc_config *msc_config_num(struct bsc_nat *nat, int num);
 struct msc_config *msc_config_by_con(struct bsc_nat *nat, struct bsc_msc_connection *msc_con);
+struct bsc_msc_connection *msc_conn_by_num(struct bsc_nat *nat, int num);
 struct bsc_msc_connection *msc_conn_by_imsi(struct bsc_nat *nat, const char *imsi);
 void msc_config_free(struct msc_config *);
 

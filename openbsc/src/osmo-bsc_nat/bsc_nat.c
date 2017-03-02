@@ -1156,11 +1156,13 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 #warning Don't assert, fail gracefully!
 			OSMO_ASSERT(con);
 
-#warning Implement routing by IMSI
-			if (!imsi)
-				LOGP(DNAT, LOGL_ERROR, "No IMSI for CR\n");
 
 			con->msc_con = msc_conn_by_imsi(bsc->nat, imsi);
+			if (!con->msc_con) {
+				/* Fall back to default MSC */
+				LOGP(DNAT, LOGL_NOTICE, "Falling back to default MSC\n");
+				con->msc_con = msc_conn_by_num(bsc->nat, bsc->nat->default_msc);
+			}
 			con_msc = con->msc_con;
 			con->filter_state.con_type = con_type;
 			con->filter_state.imsi_checked = filter;

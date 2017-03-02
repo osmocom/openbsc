@@ -253,6 +253,18 @@ struct msc_config *msc_config_by_con(struct bsc_nat *nat, struct bsc_msc_connect
 	return NULL;
 }
 
+struct bsc_msc_connection *msc_conn_by_num(struct bsc_nat *nat, int num)
+{
+	struct msc_config *conf;
+
+	conf = msc_config_num(nat, num);
+
+	if (!conf)
+		return NULL;
+
+	return conf->msc_con;
+}
+
 struct bsc_msc_connection *msc_conn_by_imsi(struct bsc_nat *nat, const char *imsi)
 {
 	struct msc_config *conf;
