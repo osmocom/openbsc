@@ -69,6 +69,7 @@ struct msgb *msgb_from_hex(const char *label, uint16_t size, const char *hex)
 
 void dtap_expect_tx(const char *hex)
 {
+	/* Has the previously expected dtap been received? */
 	OSMO_ASSERT(!dtap_tx_expected);
 	if (!hex)
 		return;
@@ -251,33 +252,38 @@ void paging_expect_tmsi(uint32_t tmsi)
 	paging_expecting_imsi = NULL;
 }
 
-/* override, requires '-Wl,--wrap=paging_request' */
-int __real_paging_request(struct gsm_network *network, struct bsc_subscr *sub,
-			  int type, gsm_cbfn *cbfn, void *data);
-int __wrap_paging_request(struct gsm_network *network, struct bsc_subscr *sub,
-			  int type, gsm_cbfn *cbfn, void *data)
+int _paging_sent(enum ran_type via_ran, const char *imsi, uint32_t tmsi, uint32_t lac)
 {
-	log("BTS/BSC sends out paging request to %s for channel type %d",
-	    bsc_subscr_name(sub), type);
+	log("%s sends out paging request to IMSI %s, TMSI 0x%08x, LAC %u",
+	    ran_type_name(via_ran), imsi, tmsi, lac);
 	OSMO_ASSERT(paging_expecting_imsi || (paging_expecting_tmsi != GSM_RESERVED_TMSI));
 	if (paging_expecting_imsi)
-		VERBOSE_ASSERT(strcmp(paging_expecting_imsi, sub->imsi), == 0, "%d");
-	if (paging_expecting_tmsi != GSM_RESERVED_TMSI)
-		VERBOSE_ASSERT(paging_expecting_tmsi, == sub->tmsi, "0x%08x");
+		VERBOSE_ASSERT(strcmp(paging_expecting_imsi, imsi), == 0, "%d");
+	if (paging_expecting_tmsi != GSM_RESERVED_TMSI) {
+		VERBOSE_ASSERT(paging_expecting_tmsi, == tmsi, "0x%08x");
+	}
 	paging_sent = true;
 	paging_stopped = false;
 	return 1;
 }
 
-/* override, requires '-Wl,--wrap=paging_request_stop' */
-void __real_paging_request_stop(struct gsm_bts *_bts,
-				struct vlr_subscr *vsub,
-				struct gsm_subscriber_connection *conn,
-				struct msgb *msg);
-void __wrap_paging_request_stop(struct gsm_bts *_bts,
-				struct vlr_subscr *vsub,
-				struct gsm_subscriber_connection *conn,
-				struct msgb *msg)
+/* override, requires '-Wl,--wrap=iu_page_cs' */
+int __real_iu_page_cs(const char *imsi, const uint32_t *tmsi, uint16_t lac);
+int __wrap_iu_page_cs(const char *imsi, const uint32_t *tmsi, uint16_t lac)
+{
+	return _paging_sent(RAN_UTRAN_IU, imsi, tmsi ? *tmsi : GSM_RESERVED_TMSI, lac);
+}
+
+/* override, requires '-Wl,--wrap=a_page' */
+int __real_a_page(const char *imsi, uint32_t tmsi, uint16_t lac);
+int __wrap_a_page(const char *imsi, uint32_t tmsi, uint16_t lac)
+{
+	return _paging_sent(RAN_GERAN_A, imsi, tmsi, lac);
+}
+
+/* override, requires '-Wl,--wrap=msc_stop_paging' */
+void __real_msc_stop_paging(struct vlr_subscr *vsub);
+void __wrap_msc_stop_paging(struct vlr_subscr *vsub)
 {
 	paging_stopped = true;
 }
@@ -346,6 +352,11 @@ static struct log_info_cat test_categories[] = {
 		.description = "Reference Counting",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DPAG]	= {
+		.name = "DPAG",
+		.description = "Paging Subsystem",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 static struct log_info info = {
@@ -397,13 +408,11 @@ int __wrap_gsup_client_send(struct gsup_client *gsupc, struct msgb *msg)
 	return 0;
 }
 
-/* override, requires '-Wl,--wrap=gsm0808_submit_dtap' */
-int __real_gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
-			       struct msgb *msg, int link_id, int allow_sacch);
-int __wrap_gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
-			       struct msgb *msg, int link_id, int allow_sacch)
+int _validate_dtap(struct msgb *msg, enum ran_type to_ran)
 {
-	btw("DTAP --> MS: %s", osmo_hexdump_nospc(msg->data, msg->len));
+	btw("DTAP --%s--> MS: %s",
+	    ran_type_name(to_ran),
+	    osmo_hexdump_nospc(msg->data, msg->len));
 
 	OSMO_ASSERT(dtap_tx_expected);
 	if (msg->len != dtap_tx_expected->len
@@ -421,6 +430,20 @@ int __wrap_gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 	talloc_free(dtap_tx_expected);
 	dtap_tx_expected = NULL;
 	return 0;
+}
+
+/* override, requires '-Wl,--wrap=iu_tx' */
+int __real_iu_tx(struct msgb *msg, uint8_t sapi);
+int __wrap_iu_tx(struct msgb *msg, uint8_t sapi)
+{
+	return _validate_dtap(msg, RAN_UTRAN_IU);
+}
+
+/* override, requires '-Wl,--wrap=a_tx' */
+int __real_a_tx(struct msgb *msg, uint8_t sapi);
+int __wrap_a_tx(struct msgb *msg, uint8_t sapi)
+{
+	return _validate_dtap(msg, RAN_GERAN_A);
 }
 
 static int fake_vlr_tx_lu_acc(void *msc_conn_ref, uint32_t send_tmsi)
@@ -661,6 +684,8 @@ int main(int argc, char **argv)
 	net->vlr->ops.tx_auth_req = fake_vlr_tx_auth_req;
 	net->vlr->ops.tx_auth_rej = fake_vlr_tx_auth_rej;
 	net->vlr->ops.set_ciph_mode = fake_vlr_tx_ciph_mode_cmd;
+
+	clear_vlr();
 
 	if (optind >= argc)
 		run_tests(-1);

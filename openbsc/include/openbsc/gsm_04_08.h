@@ -46,7 +46,6 @@ void gsm0408_clear_all_trans(struct gsm_network *net, int protocol);
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id);
-int gsm0408_new_conn(struct gsm_subscriber_connection *conn);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *bts, uint8_t ra);
 /* don't use "enum gsm_chreq_reason_t" to avoid circular dependency */
 int get_reason_by_chreq(uint8_t ra, int neci);

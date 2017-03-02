@@ -260,10 +260,6 @@ void msc_network_shutdown(struct gsm_network *net)
 
 static struct gsm_network *msc_network = NULL;
 
-/* TODO this is here to satisfy linking during intermediate development. Once
- * libbsc is not linked to osmo-msc, this should go away. */
-struct gsm_network *bsc_gsmnet = NULL;
-
 extern void *tall_vty_ctx;
 static void signal_handler(int signal)
 {
@@ -303,12 +299,6 @@ static void db_sync_timer_cb(void *data)
 	/* store counters to database and re-schedule */
 	osmo_counters_for_each(_db_store_counter, NULL);
 	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
-}
-
-static void subscr_expire_cb(void *data)
-{
-	/* TODO expire vlr_subscrs? */
-	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
 }
 
 extern int bsc_vty_go_parent(struct vty *vty);
@@ -370,6 +360,11 @@ int main(int argc, char **argv)
 	if (!msc_network)
 		return -ENOMEM;
 
+	if (msc_vlr_alloc(msc_network)) {
+		fprintf(stderr, "Failed to allocate VLR\n");
+		exit(1);
+	}
+
 	ctrl_vty_init(tall_msc_ctx);
 	logging_vty_add_cmds(&log_info);
 	msc_vty_init(msc_network);
@@ -426,7 +421,7 @@ int main(int argc, char **argv)
 	 * A third-party MSC may well be able to handle a TCH/H TCH/F
 	 * mismatch.
 	 */
-	bsc_gsmnet->dyn_ts_allow_tch_f = false;
+	msc_network->dyn_ts_allow_tch_f = false;
 
 	/* start control interface after reading config for
 	 * ctrl_vty_get_bind_addr() */
@@ -448,7 +443,7 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 #endif
 
 #if 0
-	if (msc_ctrl_cmds_install(bsc_gsmnet) != 0) {
+	if (msc_ctrl_cmds_install(msc_network) != 0) {
 		printf("Failed to initialize the MSC control commands.\n");
 		return -1;
 	}
@@ -466,18 +461,12 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	}
 
 	osmo_fsm_log_addr(true);
-	if (msc_vlr_start(bsc_gsmnet)) {
+	if (msc_vlr_start(msc_network)) {
 		fprintf(stderr, "Failed to start VLR\n");
 		exit(1);
 	}
 
 	msc_subscr_conn_init();
-
-	if (db_init(database_name)) {
-		printf("DB: Failed to init database. Please check the option settings.\n");
-		return -1;
-	}
-	printf("DB: Database initialized.\n");
 
 	if (db_prepare()) {
 		printf("DB: Failed to prepare database.\n");
@@ -488,10 +477,6 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	db_sync_timer.data = NULL;
 	if (msc_cmdline_config.use_db_counter)
 		osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
-
-	msc_network->subscr_expire_timer.cb = subscr_expire_cb;
-	msc_network->subscr_expire_timer.data = NULL;
-	osmo_timer_schedule(&msc_network->subscr_expire_timer, EXPIRE_INTERVAL);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);

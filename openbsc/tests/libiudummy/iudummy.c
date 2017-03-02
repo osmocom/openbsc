@@ -8,6 +8,7 @@
 struct msgb;
 struct ue_conn_ctx;
 struct gsm_auth_tuple;
+struct RANAP_Cause;
 
 int iu_tx(struct msgb *msg, uint8_t sapi)
 {
@@ -26,7 +27,7 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 int iu_page_cs(const char *imsi, const uint32_t *tmsi, uint16_t lac)
 {
 	LOGP(DLGLOBAL, LOGL_INFO, "iu_page_cs() dummy called, NOT paging\n");
-	return 0;
+	return 23;
 }
 
 int iu_page_ps(const char *imsi, const uint32_t *ptmsi, uint16_t lac, uint8_t rac)
@@ -52,5 +53,11 @@ int iu_rab_act(struct ue_conn_ctx *ue_ctx, struct msgb *msg)
 int iu_tx_common_id(struct ue_conn_ctx *uectx, const char *imsi)
 {
 	LOGP(DLGLOBAL, LOGL_INFO, "iu_tx_common_id() dummy called, NOT sending CommonID\n");
+	return 0;
+}
+
+int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause)
+{
+	LOGP(DLGLOBAL, LOGL_INFO, "iu_tx_release() dummy called, NOT sending Release\n");
 	return 0;
 }

@@ -35,6 +35,14 @@ int a_tx(struct msgb *msg)
 	return -1;
 }
 
+int a_page(const char *imsi, uint32_t tmsi, uint16_t lac)
+{
+	LOGP(DMSC, LOGL_ERROR, "Paging to be sent to BSC, but A-interface"
+	     " not implemented: IMSI %s TMSI 0x%08x LAC %u\n",
+	     imsi, tmsi, lac);
+	return -1;
+}
+
 int msc_gsm0808_tx_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 			       const uint8_t *key, int len, int include_imeisv)
 {

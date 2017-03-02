@@ -52,7 +52,6 @@ int subscr_update(struct vlr_subscr *vsub, int reason);
  * Paging handling with authentication
  */
 struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
-					   int channel_type,
 					   gsm_cbfn *cbfn, void *param);
 
 void subscr_remove_request(struct subscr_request *req);
