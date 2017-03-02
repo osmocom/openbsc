@@ -28,6 +28,7 @@
 #include <openbsc/transaction.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcpgw_client.h>
+#include <openbsc/vlr.h>
 
 #include "../../bscconfig.h"
 
@@ -38,6 +39,9 @@ extern struct msgb *ranap_new_msg_rab_assign_voice(uint8_t rab_id,
 
 static int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
+	DEBUGP(DMSC, "msc_tx %u bytes to %s via %s\n",
+	       msg->len, vlr_subscr_name(conn->vsub),
+	       ran_type_name(conn->via_ran));
 	switch (conn->via_ran) {
 	case RAN_GERAN_A:
 		msg->dst = conn;
@@ -101,7 +105,7 @@ int msc_tx_common_id(struct gsm_subscriber_connection *conn)
 		return 0;
 
 #ifdef BUILD_IU
-	return iu_tx_common_id(conn->iu.ue_ctx, conn->subscr->imsi);
+	return iu_tx_common_id(conn->iu.ue_ctx, conn->vsub->imsi);
 #else
 	LOGP(DMM, LOGL_ERROR,
 	     "Cannot send CommonID: RAN_UTRAN_IU but IuCS support not built\n");
@@ -152,7 +156,7 @@ static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 	if (rc) {
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Cannot parse MGCP response, for %s\n",
-		     subscr_name(trans->subscr));
+		     vlr_subscr_name(trans->vsub));
 		goto rab_act_cs_error;
 	}
 
@@ -250,7 +254,7 @@ static void mgcp_bridge(struct gsm_trans *from, struct gsm_trans *to,
 	if (mgcpgw_client_tx(mgcp, msg, mgcp_response_bridge_mdcx, from))
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Failed to send MDCX message for %s\n",
-		     subscr_name(from->subscr));
+		     vlr_subscr_name(from->vsub));
 }
 
 static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
@@ -277,7 +281,7 @@ static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
 		default:
 			LOGP(DMGCP, LOGL_ERROR,
 			     "Unexpected bridge state: %d for %s\n",
-			     trans->bridge.state, subscr_name(trans->subscr));
+			     trans->bridge.state, vlr_subscr_name(trans->vsub));
 			break;
 		}
 		break;
@@ -289,7 +293,7 @@ static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
 	default:
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Unexpected bridge state: %d for %s\n",
-		     trans->bridge.state, subscr_name(trans->subscr));
+		     trans->bridge.state, vlr_subscr_name(trans->vsub));
 		break;
 	}
 }

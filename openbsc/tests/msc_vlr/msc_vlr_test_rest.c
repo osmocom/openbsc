@@ -48,7 +48,6 @@ void test_early_stage()
 	OSMO_ASSERT(g_conn->vsub);
 	/* mark as silent call so it sticks around */
 	g_conn->silent_call = 1;
-	g_conn->owned_by_msc = true;
 	osmo_fsm_inst_state_chg(g_conn->conn_fsm, SUBSCR_CONN_S_ACCEPTED, 0, 0);
 	EXPECT_CONN_COUNT(1);
 	EXPECT_ACCEPTED(true);

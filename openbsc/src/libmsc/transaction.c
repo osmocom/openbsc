@@ -192,12 +192,24 @@ int trans_has_conn(const struct gsm_subscriber_connection *conn)
 	return 0;
 }
 
+/*
+ * Free all transactions that are associated with the released
+ * connection. The transaction code will inform the CC or SMS
+ * facilities that will send the release indications.
+ */
 void trans_conn_closed(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_trans *trans, *t2;
+	struct gsm_trans *trans;
 
-	llist_for_each_entry_safe(trans, t2, &conn->network->trans_list, entry) {
-		if (trans->conn == conn)
+	/* As part of the CC REL_IND the remote leg might be released and this
+	 * will trigger the call to trans_free. This is something the llist
+	 * macro can not handle and we will need to re-iterate the list.
+	 */
+restart:
+	llist_for_each_entry(trans, &conn->network->trans_list, entry) {
+		if (trans->conn == conn) {
 			trans_free(trans);
+			goto restart;
+		}
 	}
 }

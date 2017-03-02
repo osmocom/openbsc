@@ -31,10 +31,12 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/vlr.h>
 
-static int s_end = 0;
 static struct gsm_subscriber_connection s_conn;
 static void *s_data;
 static gsm_cbfn *s_cbfn = NULL;
+
+#if 0
+static int s_end = 0;
 
 /* our handler */
 static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, void *data, void *param)
@@ -48,6 +50,7 @@ static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, vo
 	s_end = true;
 	return 0;
 }
+#endif
 
 /* mock object for testing, directly invoke the cb... maybe later through the timer */
 int paging_request(struct gsm_bts *bts, struct bsc_subscr *bsub, int type, gsm_cbfn *cbfn, void *data)
@@ -84,10 +87,10 @@ void test_request_chan(void)
 	struct vlr_subscr *vsub = vlr_subscr_alloc(network->vlr);
 	vsub->lac = 23;
 
-	/* Ask for a channel... */
-	struct subscr_request *sr;
 #warning _______________SKIPPING SOME TESTS____________________
 #if 0
+	/* Ask for a channel... */
+	struct subscr_request *sr;
 	sr = subscr_request_channel(vsub, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
 	OSMO_ASSERT(sr);
 	OSMO_ASSERT(s_cbfn);

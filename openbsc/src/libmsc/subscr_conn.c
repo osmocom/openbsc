@@ -30,6 +30,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/transaction.h>
 #include <openbsc/signal.h>
+#include <openbsc/iu.h>
 
 #define SUBSCR_CONN_TIMEOUT 5 /* seconds */
 
@@ -52,8 +53,8 @@ const struct value_string subscr_conn_from_names[] = {
 	{ 0, NULL }
 };
 
-static void paging_resp(struct gsm_subscriber_connection *conn,
-			       enum gsm_paging_event pe)
+static void paging_event(struct gsm_subscriber_connection *conn,
+			 enum gsm_paging_event pe)
 {
 	subscr_paging_dispatch(GSM_HOOK_RR_PAGING, pe, NULL, conn, conn->vsub);
 }
@@ -84,11 +85,17 @@ void subscr_conn_fsm_new(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 
 	case SUBSCR_CONN_E_MO_CLOSE:
 	case SUBSCR_CONN_E_CN_CLOSE:
+		if (data)
+			LOGPFSM(fi, "Close event, cause %u\n",
+				*(uint32_t*)data);
+		/* will release further below, see
+		 * 'if (fi->state != SUBSCR_CONN_S_ACCEPTED)' */
 		break;
 
 	default:
-		LOGPFSM(fi, "Unexpected event: %d %s\n",
-			event, osmo_fsm_event_name(fi->fsm, event));
+		LOGPFSML(fi, LOGL_ERROR,
+			 "Unexpected event: %d %s\n", event,
+			 osmo_fsm_event_name(fi->fsm, event));
 		break;
 	}
 
@@ -96,7 +103,7 @@ void subscr_conn_fsm_new(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	if (from == SUBSCR_CONN_FROM_PAGING_RESP) {
 		pe = (fi->state == SUBSCR_CONN_S_ACCEPTED)?
 			GSM_PAGING_SUCCEEDED : GSM_PAGING_EXPIRED;
-		paging_resp(conn, pe);
+		paging_event(conn, pe);
 	}
 
 	/* FIXME rate counters */
@@ -105,12 +112,10 @@ void subscr_conn_fsm_new(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	/* On failure, discard the conn */
 	if (fi->state != SUBSCR_CONN_S_ACCEPTED) {
 		/* TODO: on MO_CLOSE or CN_CLOSE, first go to RELEASING and
-		 * await BSC confirmation? */
+		 * await BSC/RNC confirmation? */
 		osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_S_RELEASED, 0, 0);
 		return;
 	}
-
-	/* On success, handle pending requests and/or close conn */
 
 	if (from == SUBSCR_CONN_FROM_CM_SERVICE_REQ) {
 		conn->received_cm_service_request = true;
@@ -236,23 +241,13 @@ static void subscr_conn_fsm_cleanup(struct osmo_fsm_inst *fi,
 		LOGP(DMM, LOGL_ERROR, "%s: closing conn but still in use (%u)\n",
 		     vlr_subscr_name(conn->vsub), conn->use_count);
 
-	/* temporary hack, see owned_by_msc */
-	if (!conn->owned_by_msc) {
-		DEBUGP(DMM, "%s leaving bsc_subscr_con_free() to bsc_api.c, owned_by_msc = false\n",
-		       vlr_subscr_name(conn->vsub));
-		return;
-	}
-
-	if (conn->via_iface == IFACE_IU)
+	if (conn->via_ran == RAN_UTRAN_IU)
 		iu_tx_release(conn->iu.ue_ctx, NULL);
 		/* FIXME: keep the conn until the Iu Release Outcome is
 		 * received from the UE, or a timeout expires. For now, the log
 		 * says "unknown UE" for each release outcome. */
 
-	DEBUGP(DMM, "%s calling bsc_subscr_con_free(), owned_by_msc = true\n",
-	       vlr_subscr_name(conn->vsub));
-	gsm0808_clear(conn);
-	bsc_subscr_con_free(conn);
+	msc_subscr_con_free(conn);
 }
 
 int subscr_conn_fsm_timeout(struct osmo_fsm_inst *fi)

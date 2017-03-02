@@ -188,47 +188,23 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 /* Clear Request was received from MSC, release all transactions */
 void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
-	struct gsm_trans *trans, *temp;
-
-	/* avoid someone issuing a clear */
-	conn->in_release = 1;
-
-	/*
-	 * Cancel any outstanding location updating request
-	 * operation taking place on the subscriber connection.
-	 */
-	loc_updating_failure(conn, 0);
-
-	/* We might need to cancel the paging response or such. */
-	if (conn->sec_operation && conn->sec_operation->cb) {
-		conn->sec_operation->cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
-					NULL, conn, conn->sec_operation->cb_data);
+	if (!conn) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: Conn clear request on NULL conn\n",
+		     vlr_subscr_name(conn->vsub));
+		return;
 	}
 
-	release_security_operation(conn);
-	msc_release_anchor(conn);
-
-	/*
-	 * Free all transactions that are associated with the released
-	 * connection. The transaction code will inform the CC or SMS
-	 * facilities that will send the release indications. As part of
-	 * the CC REL_IND the remote leg might be released and this will
-	 * trigger the call to trans_free. This is something the llist
-	 * macro can not handle and we will need to re-iterate the list.
-	 *
-	 * TODO: Move the trans_list into the subscriber connection and
-	 * create a pending list for MT transactions. These exist before
-	 * we have a subscriber connection.
-	 */
-restart:
-	llist_for_each_entry_safe(trans, temp, &conn->network->trans_list, entry) {
-		if (trans->conn == conn) {
-			trans_free(trans);
-			goto restart;
-		}
+	if (!conn->conn_fsm) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: Conn clear request on uninitialized conn\n",
+		     vlr_subscr_name(conn->vsub));
+		msc_subscr_con_free(conn);
+		return;
 	}
 
-	msc_subscr_con_free(conn);
+	/* TODO add cause item to msc_close_connection() */
+	osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_CN_CLOSE, &cause);
 }
 
 /* clear all transactions globally; used in case of MNCC socket disconnect */
@@ -913,7 +889,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	if (!conn->vsub) {
 		LOGP(DMM, LOGL_ERROR,
 		     "MM AUTHENTICATION RESPONSE: invalid: no subscriber\n");
-		msc_close_connection(conn);
+		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -927,7 +903,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	}
 
 	if (rc) {
-		msc_close_connection(conn);
+		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -952,7 +928,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 	if (!conn->vsub) {
 		LOGP(DMM, LOGL_ERROR,
 		     "MM R99 AUTHENTICATION FAILURE: invalid: no subscriber\n");
-		msc_close_connection(conn);
+		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -961,7 +937,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 		     "%s: MM R99 AUTHENTICATION FAILURE:"
 		     " l3 length invalid: %u\n",
 		     vlr_subscr_name(conn->vsub), msgb_l3len(msg));
-		msc_close_connection(conn);
+		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -984,7 +960,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 		     "%s: MM R99 AUTHENTICATION FAILURE:"
 		     " invalid Synch Failure: missing AUTS IE\n",
 		     vlr_subscr_name(conn->vsub));
-		msc_close_connection(conn);
+		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -1001,7 +977,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 		     " got IE 0x%02x of %u bytes\n",
 		     vlr_subscr_name(conn->vsub),
 		     GSM48_IE_AUTS, auts_tag, auts_len);
-		msc_close_connection(conn);
+		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -1010,7 +986,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 		     "%s: MM R99 AUTHENTICATION FAILURE:"
 		     " invalid Synch Failure msg: message truncated (%u)\n",
 		     vlr_subscr_name(conn->vsub), msgb_l3len(msg));
-		msc_close_connection(conn);
+		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -3358,7 +3334,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
 			/* Request a channel */
-			trans->paging_request = subscr_request_conn(subscr,
+			trans->paging_request = subscr_request_conn(
+							vsub,
 							setup_trig_pag_evt,
 							trans);
 			if (!trans->paging_request) {
@@ -3555,11 +3532,6 @@ void msc_release_anchor(struct gsm_subscriber_connection *conn)
 	subscr_con_put(conn);
 }
 
-int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
-{
-	return 0;
-}
-
 static bool msg_is_initially_permitted(const struct gsm48_hdr *hdr)
 {
 	uint8_t pdisc = gsm48_hdr_pdisc(hdr);
@@ -3638,6 +3610,16 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		     "subscr %s: Message not permitted for initial conn:"
 		     " pdisc=0x%02x msg_type=0x%02x\n",
 		     vlr_subscr_name(conn->vsub), gh->proto_discr, gh->msg_type);
+		return -EACCES;
+	}
+
+	if (conn->vsub && conn->vsub->cs.attached_via_ran != conn->via_ran) {
+		LOGP(DMM, LOGL_ERROR,
+		     "%s: Illegal situation: RAN type mismatch:"
+		     " attached via %s, received message via %s\n",
+		     vlr_subscr_name(conn->vsub),
+		     ran_type_name(conn->vsub->cs.attached_via_ran),
+		     ran_type_name(conn->via_ran));
 		return -EACCES;
 	}
 
@@ -3736,7 +3718,7 @@ static int msc_vlr_tx_lu_rej(void *msc_conn_ref, uint8_t cause)
 static int msc_vlr_tx_cm_serv_acc(void *msc_conn_ref)
 {
 	struct gsm_subscriber_connection *conn = msc_conn_ref;
-	return gsm48_tx_mm_serv_ack(conn);
+	return msc_gsm48_tx_mm_serv_ack(conn);
 }
 
 /* VLR asks us to transmit a CM Service Reject */
@@ -3769,7 +3751,7 @@ static int msc_vlr_tx_cm_serv_rej(void *msc_conn_ref, enum vlr_proc_arq_result r
 		break;
 	};
 
-	return gsm48_tx_mm_serv_rej(conn, cause);
+	return msc_gsm48_tx_mm_serv_rej(conn, cause);
 }
 
 /* VLR asks us to start using ciphering */
@@ -3797,9 +3779,8 @@ static int msc_vlr_set_ciph_mode(void *msc_conn_ref,
 		return -EINVAL;
 	}
 
-	/* TODO: MSCSPLIT: don't directly push BSC buttons */
-	return gsm0808_cipher_mode(conn, ciph, tuple->vec.kc, 8,
-				   retrieve_imeisv);
+	return msc_gsm0808_tx_cipher_mode(conn, ciph, tuple->vec.kc, 8,
+					  retrieve_imeisv);
 }
 
 /* VLR informs us that the subscriber data has somehow been modified */
@@ -3815,6 +3796,7 @@ static void msc_vlr_subscr_assoc(void *msc_conn_ref,
 	struct gsm_subscriber_connection *conn = msc_conn_ref;
 	OSMO_ASSERT(!conn->vsub);
 	conn->vsub = vlr_subscr_get(vsub);
+	conn->vsub->cs.attached_via_ran = conn->via_ran;
 }
 
 /* operations that we need to implement for libvlr */

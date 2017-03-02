@@ -41,24 +41,13 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/vlr.h>
 #include <openbsc/iu.h>
+#include <openbsc/osmo_msc.h>
+#include <openbsc/msc_ifaces.h>
 
 void *tall_sub_req_ctx;
 
 int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
                          gsm_cbfn *cb, void *cb_data);
-
-static struct bsc_subscr *vlr_subscr_to_bsc_sub(struct llist_head *bsc_subscribers,
-						struct vlr_subscr *vsub)
-{
-	struct bsc_subscr *sub;
-	/* TODO MSC split -- creating a BSC subscriber directly from MSC data
-	 * structures in RAM. At some point the MSC will send a message to the
-	 * BSC instead. */
-	sub = bsc_subscr_find_or_create_by_imsi(bsc_subscribers, vsub->imsi);
-	sub->tmsi = vsub->tmsi;
-	sub->lac = vsub->lac;
-	return sub;
-}
 
 /* A connection is established and the paging callbacks may run now. */
 int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
@@ -68,36 +57,34 @@ int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber_connection *conn = data;
 	struct vlr_subscr *vsub = param;
 	struct paging_signal_data sig_data;
-	struct bsc_subscr *bsub;
-	struct gsm_network *net;
 
 	OSMO_ASSERT(vsub);
-	net = vsub->vlr->user_ctx;
 	OSMO_ASSERT(hooknum == GSM_HOOK_RR_PAGING);
 	OSMO_ASSERT(!(conn && (conn->vsub != vsub)));
 	OSMO_ASSERT(!((event == GSM_PAGING_SUCCEEDED) && !conn));
 
 	LOGP(DPAG, LOGL_DEBUG, "Paging %s for %s (event=%d)\n",
 	     event == GSM_PAGING_SUCCEEDED ? "success" : "failure",
-	     subscr_name(subscr), event);
+	     vlr_subscr_name(vsub), event);
 
-	if (!subscr->is_paging) {
+	if (!vsub->cs.is_paging) {
 		LOGP(DPAG, LOGL_ERROR,
 		     "Paging Response received for subscriber"
 		     " that is not paging.\n");
 		return -EINVAL;
 	}
 
+	if (event == GSM_PAGING_SUCCEEDED)
+		msc_stop_paging(vsub);
+
 	/* Inform parts of the system we don't know */
-	sig_data.vsub	= vsub;
-	sig_data.conn	= conn;
+	sig_data.vsub = vsub;
+	sig_data.conn = conn;
 	sig_data.paging_result = event;
-	osmo_signal_dispatch(
-		SS_PAGING,
-		event == GSM_PAGING_SUCCEEDED ?
-			S_PAGING_SUCCEEDED : S_PAGING_EXPIRED,
-		&sig_data
-	);
+	osmo_signal_dispatch(SS_PAGING,
+			     event == GSM_PAGING_SUCCEEDED ?
+				S_PAGING_SUCCEEDED : S_PAGING_EXPIRED,
+			     &sig_data);
 
 	llist_for_each_entry_safe(request, tmp, &vsub->cs.requests, entry) {
 		llist_del(&request->entry);
@@ -115,99 +102,28 @@ int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	return 0;
 }
 
-static void paging_timeout_release(struct gsm_subscriber *subscr)
-{
-	DEBUGP(DPAG, "Paging timeout released for %s\n", subscr_name(subscr));
-	osmo_timer_del(&subscr->paging_timeout);
-}
-
-static void paging_timeout(void *data)
-{
-	struct gsm_subscriber *subscr = data;
-	DEBUGP(DPAG, "Paging timeout reached for %s\n", subscr_name(subscr));
-	paging_timeout_release(subscr);
-	subscr_paging_dispatch(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
-			       NULL, NULL, subscr);
-}
-
-static void paging_timeout_start(struct gsm_subscriber *subscr)
-{
-	DEBUGP(DPAG, "Starting paging timeout for %s\n", subscr_name(subscr));
-	subscr->paging_timeout.data = subscr;
-	subscr->paging_timeout.cb = paging_timeout;
-	osmo_timer_schedule(&subscr->paging_timeout, 10, 0);
-	/* TODO: configurable timeout duration? */
-}
-
-
-static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
-                                struct msgb *msg, void *data, void *param)
-{
-	int rc;
-	struct gsm_subscriber_connection *conn = data;
-	OSMO_ASSERT(conn);
-
-	switch (event) {
-		case GSM_SECURITY_AUTH_FAILED:
-			LOGP(DPAG, LOGL_ERROR,
-			     "Dropping Paging Response:"
-			     " authorization failed for subscriber %s\n",
-			     subscr_name(conn->subscr));
-			rc = subscr_paging_dispatch(
-				GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
-				msg, conn, conn->subscr);
-			break;
-
-		case GSM_SECURITY_NOAVAIL:
-		case GSM_SECURITY_SUCCEEDED:
-			rc = subscr_paging_dispatch(
-				GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
-				msg, conn, conn->subscr);
-			break;
-
-		default:
-			LOGP(DPAG, LOGL_FATAL,
-			     "Invalid authorization event: %d\n", event);
-			rc = -EINVAL;
-	}
-
-	return rc;
-}
-
-int subscr_rx_paging_response(struct msgb *msg,
-			      struct gsm_subscriber_connection *conn)
-{
-	struct gsm48_hdr *gh;
-	struct gsm48_pag_resp *pr;
-
-	/* Get key_seq from Paging Response headers */
-	gh = msgb_l3(msg);
-	pr = (struct gsm48_pag_resp *)gh->data;
-
-	paging_timeout_release(conn->subscr);
-
-	/* Secure the connection */
-	if (subscr_authorized(conn->subscr))
-		return gsm48_secure_channel(conn, pr->key_seq,
-					    subscr_paging_sec_cb, NULL);
-
-	/* Not authorized. Failure. */
-	subscr_paging_sec_cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
-			     msg, conn, NULL);
-	return -1;
-}
-
-static int msc_paging_request(struct gsm_subscriber *subscr)
+int msc_paging_request(struct vlr_subscr *vsub)
 {
 	/* The subscriber was last seen in subscr->lac. Find out which
 	 * BSCs/RNCs are responsible and send them a paging request via open
 	 * SCCP connections (if any). */
 	/* TODO Implementing only RNC paging, since this is code on the iu branch.
 	 * Need to add BSC paging at some point. */
-	return iu_page_cs(subscr->imsi,
-			  subscr->tmsi == GSM_RESERVED_TMSI?
-				NULL : &subscr->tmsi,
-			  subscr->lac);
+	switch (vsub->cs.attached_via_ran) {
+	case RAN_GERAN_A:
+		return a_page(vsub->imsi, vsub->tmsi, vsub->lac);
+	case RAN_UTRAN_IU:
+		return iu_page_cs(vsub->imsi,
+				  vsub->tmsi == GSM_RESERVED_TMSI?
+				  NULL : &vsub->tmsi,
+				  vsub->lac);
+	default:
+		break;
+	}
+
+	LOGP(DPAG, LOGL_ERROR, "%s: Cannot page, subscriber not attached\n",
+	     vlr_subscr_name(vsub));
+	return -EINVAL;
 }
 
 struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
@@ -215,11 +131,9 @@ struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
 {
 	int rc;
 	struct subscr_request *request;
-	struct bsc_subscr *bsub;
-	struct gsm_network *net = vsub->vlr->user_ctx;
 
 	/* Start paging.. we know it is async so we can do it before */
-	if (!subscr->is_paging) {
+	if (!vsub->cs.is_paging) {
 		LOGP(DMM, LOGL_DEBUG, "Subscriber %s not paged yet, start paging.\n",
 		     vlr_subscr_name(vsub));
 		rc = msc_paging_request(vsub);
@@ -233,7 +147,7 @@ struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
 		vsub->cs.is_paging = true;
 	} else {
 		LOGP(DMM, LOGL_DEBUG, "Subscriber %s already paged.\n",
-			subscr_name(subscr));
+			vlr_subscr_name(vsub));
 	}
 
 	/* TODO: Stop paging in case of memory allocation failure */

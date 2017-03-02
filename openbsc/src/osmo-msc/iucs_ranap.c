@@ -30,6 +30,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/iu.h>
 #include <openbsc/iucs.h>
+#include <openbsc/vlr.h>
 
 #include "iucs_ranap.h"
 
@@ -44,9 +45,9 @@ static int iucs_rx_rab_assign(struct gsm_subscriber_connection *conn,
 
 	rab_id = item->rAB_ID.buf[0];
 
-	LOGP(DIUCS, LOGL_NOTICE, "Received RAB assignment event for %s"
-	     " rab_id=%hhd\n", subscr_name(conn->subscr), rab_id);
-	/* TODO do stuff like in sgsn_ranap_rab_ass_resp() */
+	LOGP(DIUCS, LOGL_NOTICE,
+	     "Received RAB assignment event for %s rab_id=%hhd\n",
+	     vlr_subscr_name(conn->vsub), rab_id);
 
 	return 0;
 }
@@ -56,13 +57,13 @@ int iucs_rx_sec_mode_compl(struct gsm_subscriber_connection *conn,
 {
 	gsm_cbfn *cb;
 
-	OSMO_ASSERT(conn->via_iface == IFACE_IU);
+	OSMO_ASSERT(conn->via_ran == RAN_UTRAN_IU);
 
 	if (!conn->sec_operation) {
 		LOGP(DIUCS, LOGL_ERROR,
 		     "Received Security Mode Complete message, but no"
 		     " authentication/cipher operation in progress"
-		     " for subscr %s\n", subscr_name(conn->subscr));
+		     " for subscr %s\n", vlr_subscr_name(conn->vsub));
 		return -EINVAL;
 	}
 
@@ -71,7 +72,7 @@ int iucs_rx_sec_mode_compl(struct gsm_subscriber_connection *conn,
 	if (conn->iu.integrity_protection)
 		LOGP(DIUCS, LOGL_NOTICE, "Integrity Protection"
 		     " was already enabled for %s\n",
-		     subscr_name(conn->subscr));
+		     vlr_subscr_name(conn->vsub));
 
 	conn->iu.integrity_protection = INTEGRITY_PROTECTION_IK;
 
@@ -99,13 +100,13 @@ int iucs_rx_ranap_event(struct gsm_network *network,
 	case IU_EVENT_IU_RELEASE:
 	case IU_EVENT_LINK_INVALIDATED:
 		LOGP(DIUCS, LOGL_INFO, "IuCS release for %s\n",
-		     subscr_name(conn->subscr));
+		     vlr_subscr_name(conn->vsub));
 		gsm0408_clear_request(conn, 0);
 		return 0;
 
 	case IU_EVENT_SECURITY_MODE_COMPLETE:
 		LOGP(DIUCS, LOGL_INFO, "IuCS security mode complete for %s\n",
-		     subscr_name(conn->subscr));
+		     vlr_subscr_name(conn->vsub));
 		return iucs_rx_sec_mode_compl(conn,
 					      (RANAP_SecurityModeCompleteIEs_t*)data);
 	case IU_EVENT_RAB_ASSIGN:

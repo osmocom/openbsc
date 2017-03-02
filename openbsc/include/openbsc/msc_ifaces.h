@@ -22,7 +22,7 @@
  * the compiler complains about an undefined reference to iu_tx(). If you,
  * however, link against libiu as well as the osmo-iuh libs (etc.), iu_tx() is
  * available. A unit test may instead simply implement a dummy iu_tx() function
- * and not link against osmo-iuh.
+ * and not link against osmo-iuh, see tests/libiudummy/.
  */
 
 /* Each main linkage must implement this function (see comment above). */
@@ -34,6 +34,13 @@ extern int iu_tx(struct msgb *msg, uint8_t sapi);
  * Each main linkage must implement this function (see comment above).
  * " */
 extern int a_tx(struct msgb *msg);
+
+/* So far this is a dummy implemented in libmsc/a_iface.c. When A-interface
+ * gets implemented, it should be in a separate lib (like libiu), this function
+ * should move there, and the following comment should remain here: "
+ * Each main linkage must implement this function (see comment above).
+ * " */
+extern int a_page(const char *imsi, uint32_t tmsi, uint16_t lac);
 
 int msc_tx_dtap(struct gsm_subscriber_connection *conn,
 		struct msgb *msg);
