@@ -776,6 +776,14 @@ static void vlr_loc_upd_post_ciph(struct osmo_fsm_inst *fi)
 
 	OSMO_ASSERT(vsub);
 
+	if (lfp->is_utran) {
+		int rc;
+		rc = lfp->vlr->ops.tx_common_id(lfp->msc_conn_ref);
+		if (rc)
+			LOGPFSML(fi, LOGL_ERROR,
+				 "Error while sending Common ID (%d)\n", rc);
+	}
+
 	vsub->conf_by_radio_contact_ind = true;
 	/* Update LAI */
 	vsub->cgi.lai = lfp->new_lai;
