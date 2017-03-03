@@ -339,11 +339,11 @@ int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	enum vlr_lu_type vlr_lu_type = VLR_LU_TYPE_REGULAR;
-
 	uint32_t tmsi;
 	char *imsi;
 	struct osmo_location_area_id old_lai, new_lai;
 	struct osmo_fsm_inst *lu_fsm;
+	bool is_utran;
 	int rc;
 
  	lu = (struct gsm48_loc_upd_req *) gh->data;
@@ -409,16 +409,17 @@ int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	new_lai.lac = conn->lac;
 	DEBUGP(DMM, "LU/new-LAC: %u/%u\n", old_lai.lac, new_lai.lac);
 
+	is_utran = (conn->via_ran == RAN_UTRAN_IU);
 	lu_fsm = vlr_loc_update(conn->conn_fsm,
 				SUBSCR_CONN_E_ACCEPTED,
 				SUBSCR_CONN_E_CN_CLOSE,
 				(void*)&conn_from_lu,
 				net->vlr, conn, vlr_lu_type, tmsi, imsi,
 				&old_lai, &new_lai,
-				conn->network->authentication_required,
+				is_utran || conn->network->authentication_required,
 				conn->network->a5_encryption,
 				classmark_is_r99(&conn->classmark),
-				conn->via_ran == RAN_UTRAN_IU);
+				is_utran);
 	if (!lu_fsm) {
 		DEBUGP(DRR, "%s: Can't start LU FSM\n", mi_string);
 		return 0;
@@ -668,6 +669,7 @@ int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *ms
 	uint8_t mi_len = *(classmark2 + classmark2_len);
 	uint8_t *mi = (classmark2 + classmark2_len + 1);
 	struct osmo_location_area_id lai;
+	bool is_utran;
 	int rc;
 
 	lai.plmn.mcc = conn->network->country_code;
@@ -721,16 +723,17 @@ int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *ms
 		send_siemens_mrpci(msg->lchan, classmark2-1);
 #endif
 
+	is_utran = (conn->via_ran == RAN_UTRAN_IU);
 	vlr_proc_acc_req(conn->conn_fsm,
 			 SUBSCR_CONN_E_ACCEPTED,
 			 SUBSCR_CONN_E_CN_CLOSE,
 			 (void*)&conn_from_cm_service_req,
 			 net->vlr, conn,
 			 VLR_PR_ARQ_T_CM_SERV_REQ, mi-1, &lai,
-			 conn->network->authentication_required,
+			 is_utran || conn->network->authentication_required,
 			 conn->network->a5_encryption,
 			 classmark_is_r99(&conn->classmark),
-			 conn->via_ran == RAN_UTRAN_IU);
+			 is_utran);
 
 	return 0;
 }
