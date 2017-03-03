@@ -1401,6 +1401,10 @@ vlr_loc_update(struct osmo_fsm_inst *parent,
 			(ciphering_required? "+Ciph" : " (no Ciph)")
 			: "");
 
+	if (is_utran && !authentication_required)
+		LOGPFSML(fi, LOGL_ERROR,
+			 "Authentication off on UTRAN network. Good luck.\n");
+
 	osmo_fsm_inst_dispatch(fi, VLR_ULA_E_UPDATE_LA, NULL);
 
 	return fi;
