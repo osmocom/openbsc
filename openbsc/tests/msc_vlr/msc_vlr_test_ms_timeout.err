@@ -92,7 +92,7 @@ DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Event SUBSCR_CONN_E_C
 ===== test_ms_timeout_lu_auth_resp: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_ms_timeout_cm_auth_resp
 - Total time passed: 0.000000 s
@@ -307,7 +307,7 @@ DREF freeing VLR subscr MSISDN:46071
 ===== test_ms_timeout_cm_auth_resp: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
 talloc_total_blocks(tall_bsc_ctx) == 9

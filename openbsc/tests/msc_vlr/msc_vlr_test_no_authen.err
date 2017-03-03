@@ -276,7 +276,7 @@ DRLL Freeing subscriber connection with NULL subscriber
 ===== test_no_authen: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_no_authen_tmsi
 - Location Update request causes a GSUP LU request to HLR
@@ -729,7 +729,7 @@ DRLL Freeing subscriber connection with NULL subscriber
 ===== test_no_authen_tmsi: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_no_authen_imei
 - Location Update request causes a GSUP LU request to HLR
@@ -885,7 +885,7 @@ DRLL Freeing subscriber connection with NULL subscriber
 ===== test_no_authen_imei: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_no_authen_tmsi_imei
 - Location Update request causes a GSUP LU request to HLR
@@ -1063,7 +1063,7 @@ DRLL Freeing subscriber connection with NULL subscriber
 ===== test_no_authen_tmsi_imei: SUCCESS
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
-talloc_total_blocks(tall_bsc_ctx) == 75
+talloc_total_blocks(tall_bsc_ctx) == 9
 
 full talloc report on 'msgb' (total      0 bytes in   1 blocks)
 talloc_total_blocks(tall_bsc_ctx) == 9

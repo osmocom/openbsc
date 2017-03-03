@@ -152,7 +152,7 @@ void rx_from_ms(struct msgb *msg)
 	if (!g_conn) {
 		log("new conn");
 		g_conn = conn_new();
-		rc = net->bsc_api->compl_l3(g_conn, msg, 23);
+		rc = msc_compl_l3(g_conn, msg, 23);
 		if (rc == BSC_API_CONN_POL_REJECT) {
 			msc_subscr_con_free(g_conn);
 			g_conn = NULL;
@@ -160,9 +160,9 @@ void rx_from_ms(struct msgb *msg)
 	} else {
 		if ((gsm48_hdr_pdisc(gh) == GSM48_PDISC_RR)
 		    && (gsm48_hdr_msg_type(gh) == GSM48_MT_RR_CIPH_M_COMPL))
-			net->bsc_api->cipher_mode_compl(g_conn, msg, 0);
+			msc_cipher_mode_compl(g_conn, msg, 0);
 		else
-			net->bsc_api->dtap(g_conn, 23, msg);
+			msc_dtap(g_conn, 23, msg);
 	}
 
 	if (g_conn && !conn_exists(g_conn))
@@ -644,7 +644,7 @@ void run_tests(int nr)
 		if (cmdline_opts.verbose)
 			fprintf(stderr, "(test nr %d)\n", test_nr + 1);
 
-		check_talloc(msgb_ctx, tall_bsc_ctx, 75);
+		check_talloc(msgb_ctx, tall_bsc_ctx, 9);
 	} while(0);
 }
 
@@ -665,8 +665,6 @@ int main(int argc, char **argv)
 	log_set_print_category(osmo_stderr_target, 1);
 
 	net = gsm_network_init(tall_bsc_ctx, 1, 1, fake_mncc_recv);
-	bsc_api_init(net, msc_bsc_api());
-	the_bts = gsm_bts_alloc(net);
 	net->gsup_server_addr_str = talloc_strdup(net, "no_gsup_server");
 	net->gsup_server_port = 0;
 
