@@ -74,7 +74,7 @@ static void subscr_conn_bump(struct gsm_subscriber_connection *conn)
 }
 
 /* Receive a DTAP message from BSC */
-static void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
+void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
 {
 	gsm0408_dispatch(conn, msg);
 
@@ -111,8 +111,8 @@ static void msc_classmark_chg(struct gsm_subscriber_connection *conn,
 }
 
 /* Receive a CIPHERING MODE COMPLETE from BSC */
-static void msc_ciph_m_compl(struct gsm_subscriber_connection *conn,
-			     struct msgb *msg, uint8_t alg_id)
+void msc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
+			   struct msgb *msg, uint8_t alg_id)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
@@ -227,7 +227,7 @@ static struct bsc_api msc_handler = {
 	.assign_compl = msc_assign_compl,
 	.assign_fail = msc_assign_fail,
 	.classmark_chg = msc_classmark_chg,
-	.cipher_mode_compl = msc_ciph_m_compl,
+	.cipher_mode_compl = msc_cipher_mode_compl,
 	.conn_cleanup = msc_subscr_con_cleanup,
 };
 

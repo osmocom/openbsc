@@ -406,7 +406,7 @@ int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 			 &old_lai.plmn.mnc, &old_lai.lac);
 	new_lai.plmn.mcc = conn->network->country_code;
 	new_lai.plmn.mnc = conn->network->network_code;
-	new_lai.lac = conn->bts->location_area_code;
+	new_lai.lac = conn->lac;
 	DEBUGP(DMM, "LU/new-LAC: %u/%u\n", old_lai.lac, new_lai.lac);
 
 	lu_fsm = vlr_loc_update(conn->conn_fsm,
@@ -672,7 +672,7 @@ int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *ms
 
 	lai.plmn.mcc = conn->network->country_code;
 	lai.plmn.mnc = conn->network->network_code;
-	lai.lac = conn->bts->location_area_code;
+	lai.lac = conn->lac;
 
 	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {

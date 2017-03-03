@@ -74,6 +74,9 @@ int msc_vlr_start(struct gsm_network *net);
 
 int msc_compl_l3(struct gsm_subscriber_connection *conn,
 		 struct msgb *msg, uint16_t chosen_channel);
+void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg);
+void msc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
+			   struct msgb *msg, uint8_t alg_id);
 void msc_close_connection(struct gsm_subscriber_connection *conn);
 
 bool msc_subscr_conn_is_accepted(struct gsm_subscriber_connection *conn);
