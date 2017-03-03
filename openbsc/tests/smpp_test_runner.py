@@ -60,14 +60,14 @@ class TestVTYBase(unittest.TestCase):
         osmoutil.end_proc(self.proc)
 
 
-class TestSMPPNITB(TestVTYBase):
+class TestSMPPMSC(TestVTYBase):
 
     def vty_command(self):
-        return ["./src/osmo-nitb/osmo-nitb", "-c",
-                "doc/examples/osmo-nitb/nanobts/openbsc.cfg"]
+        return ["./src/osmo-msc/osmo-msc", "-c",
+                "doc/examples/osmo-msc/osmo-msc.cfg"]
 
     def vty_app(self):
-        return (4242, "./src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb")
+        return (4254, "./src/osmo-msc/osmo-msc", "OsmoMSC", "msc")
 
     def testSMPPCrashes(self):
         # Enable the configuration
@@ -84,7 +84,7 @@ class TestSMPPNITB(TestVTYBase):
         self.assertTrue(self.vty.verify('default-route', ['']))
         self.assertTrue(self.vty.verify('end', ['']))
 
-        # NITB should listen to 2775 now!
+        # MSC should listen to 2775 now!
         sck = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sck.setblocking(1)
         sck.connect(('0.0.0.0', 2775))
@@ -132,6 +132,6 @@ if __name__ == '__main__':
     os.chdir(workdir)
     print "Running tests for specific SMPP"
     suite = unittest.TestSuite()
-    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestSMPPNITB))
+    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestSMPPMSC))
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
     sys.exit(len(res.errors) + len(res.failures))

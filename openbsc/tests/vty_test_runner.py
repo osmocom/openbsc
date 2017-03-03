@@ -31,6 +31,14 @@ confpath = '.'
 
 class TestVTYBase(unittest.TestCase):
 
+    def checkForEndAndExit(self):
+        res = self.vty.command("list")
+        #print ('looking for "exit"\n')
+        self.assert_(res.find('  exit\r') > 0)
+        #print 'found "exit"\nlooking for "end"\n'
+        self.assert_(res.find('  end\r') > 0)
+        #print 'found "end"\n'
+
     def vty_command(self):
         raise Exception("Needs to be implemented by a subclass")
 
@@ -122,15 +130,7 @@ class TestVTYMGCP(TestVTYBase):
 
 class TestVTYGenericBSC(TestVTYBase):
 
-    def checkForEndAndExit(self):
-        res = self.vty.command("list")
-        #print ('looking for "exit"\n')
-        self.assert_(res.find('  exit\r') > 0)
-        #print 'found "exit"\nlooking for "end"\n'
-        self.assert_(res.find('  end\r') > 0)
-        #print 'found "end"\n'
-
-    def _testConfigNetworkTree(self):
+    def _testConfigNetworkTree(self, include_bsc_items=True):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal",['']))
         self.assertEquals(self.vty.node(), 'config')
@@ -164,17 +164,28 @@ class TestVTYGenericBSC(TestVTYBase):
         self.assertTrue(self.vty.verify("exit",['']))
         self.assertTrue(self.vty.node() is None)
 
-class TestVTYNITB(TestVTYGenericBSC):
+class TestVTYMSC(TestVTYBase):
 
     def vty_command(self):
-        return ["./src/osmo-nitb/osmo-nitb", "-c",
-                "doc/examples/osmo-nitb/nanobts/openbsc.cfg"]
+        return ["./src/osmo-msc/osmo-msc", "-c",
+                "doc/examples/osmo-msc/osmo-msc.cfg"]
 
     def vty_app(self):
-        return (4242, "./src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb")
+        return (4254, "./src/osmo-msc/osmo-msc", "OsmoMSC", "msc")
 
-    def testConfigNetworkTree(self):
-        self._testConfigNetworkTree()
+    def testConfigNetworkTree(self, include_bsc_items=True):
+        self.vty.enable()
+        self.assertTrue(self.vty.verify("configure terminal",['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.checkForEndAndExit()
+        self.assertTrue(self.vty.verify("network",['']))
+        self.assertEquals(self.vty.node(), 'config-net')
+        self.checkForEndAndExit()
+        self.vty.command("write terminal")
+        self.assertTrue(self.vty.verify("exit",['']))
+        self.assertEquals(self.vty.node(), 'config')
+        self.assertTrue(self.vty.verify("exit",['']))
+        self.assertTrue(self.vty.node() is None)
 
     def checkForSmpp(self):
         """SMPP is not always enabled, check if it is"""
@@ -246,13 +257,6 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assertTrue(self.vty.verify("authorized-regexp 02$", ['']))
         self.assertTrue(self.vty.verify("authorized-regexp *123.*", ['']))
         self.vty.command("end")
-        self.vty.command("configure terminal")
-        self.vty.command("nitb")
-        self.assertTrue(self.vty.verify('subscriber-create-on-demand',
-                ["% 'subscriber-create-on-demand' is no longer supported.", '% This is now up to osmo-hlr.']))
-        self.assertTrue(self.vty.verify("subscriber-create-on-demand no-extension",
-                ["% 'subscriber-create-on-demand' is no longer supported.", '% This is now up to osmo-hlr.']))
-        self.vty.command("end")
 
     def testSi2Q(self):
         self.vty.enable()
@@ -313,93 +317,6 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command("write terminal")
         self.assertEquals(res.find('periodic location update 60'), -1)
         self.assert_(res.find('no periodic location update') > 0)
-
-    def testEnableDisableSiHacks(self):
-        self.vty.enable()
-        self.vty.command("configure terminal")
-        self.vty.command("network")
-        self.vty.command("bts 0")
-
-        # Enable periodic lu..
-        self.vty.verify("force-combined-si", [''])
-        res = self.vty.command("write terminal")
-        self.assert_(res.find('  force-combined-si') > 0)
-        self.assertEquals(res.find('no force-combined-si'), -1)
-
-        # Now disable it..
-        self.vty.verify("no force-combined-si", [''])
-        res = self.vty.command("write terminal")
-        self.assertEquals(res.find('  force-combined-si'), -1)
-        self.assert_(res.find('no force-combined-si') > 0)
-
-    def testRachAccessControlClass(self):
-        self.vty.enable()
-        self.vty.command("configure terminal")
-        self.vty.command("network")
-        self.vty.command("bts 0")
-
-        # Test invalid input
-        self.vty.verify("rach access-control-class", ['% Command incomplete.'])
-        self.vty.verify("rach access-control-class 1", ['% Command incomplete.'])
-        self.vty.verify("rach access-control-class -1", ['% Unknown command.'])
-        self.vty.verify("rach access-control-class 10", ['% Unknown command.'])
-        self.vty.verify("rach access-control-class 16", ['% Unknown command.'])
-
-        # Barred rach access control classes
-        for classNum in range(16):
-            if classNum != 10:
-                self.vty.verify("rach access-control-class " + str(classNum) + " barred", [''])
-
-        # Verify settings
-        res = self.vty.command("write terminal")
-        for classNum in range(16):
-            if classNum != 10:
-                self.assert_(res.find("rach access-control-class " + str(classNum) + " barred") > 0)
-
-        # Allowed rach access control classes
-        for classNum in range(16):
-            if classNum != 10:
-                self.vty.verify("rach access-control-class " + str(classNum) + " allowed", [''])
-
-        # Verify settings
-        res = self.vty.command("write terminal")
-        for classNum in range(16):
-            if classNum != 10:
-                self.assertEquals(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
-
-    def testSubscriberCreateDelete(self):
-        self.vty.enable()
-
-        imsi = "204300854013739"
-        imsi2 = "222301824913762"
-        imsi3 = "333500854113763"
-        imsi4 = "444583744053764"
-
-        # Initially we don't have this subscriber
-        self.assertTrue(self.vty.verify('show subscriber imsi '+imsi, ['% No subscriber found for imsi '+imsi]))
-
-        # deprecated
-        self.assertTrue(self.vty.verify('subscriber create imsi '+imsi, ["% 'subscriber create' now needs to be done at osmo-hlr"]))
-
-    def testSubscriberSettings(self):
-        self.vty.enable()
-
-        imsi = "204300854013739"
-
-        self.assertTrue(self.vty.verify('subscriber imsi '+imsi+' name foo', ["% 'subscriber name' is no longer supported.", '% This is now up to osmo-hlr.']))
-        self.assertTrue(self.vty.verify('subscriber imsi '+imsi+' extension 1234', ["% 'subscriber extension' is no longer supported.", '% This is now up to osmo-hlr.']))
-        self.assertTrue(self.vty.verify('subscriber imsi '+imsi+' delete', ["% 'subscriber delete' is no longer supported.", '% This is now up to osmo-hlr.']))
-
-        # With narrow random interval
-        self.vty.command("configure terminal")
-        self.vty.command("nitb")
-        self.assertTrue(self.vty.verify('subscriber-create-on-demand', ["% 'subscriber-create-on-demand' is no longer supported.", '% This is now up to osmo-hlr.']))
-
-    def testShowPagingGroup(self):
-        res = self.vty.command("show paging-group 255 1234567")
-        self.assertEqual(res, "% can't find BTS 255")
-        res = self.vty.command("show paging-group 0 1234567")
-        self.assertEquals(res, "%Paging group for IMSI 1234567 on BTS #0 is 7")
 
     def testShowNetwork(self):
         res = self.vty.command("show network")
@@ -1234,7 +1151,7 @@ if __name__ == '__main__':
     print "Running tests for specific VTY commands"
     suite = unittest.TestSuite()
     suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYMGCP))
-    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYNITB))
+    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYMSC))
     add_bsc_test(suite, workdir)
     add_nat_test(suite, workdir)
     add_gbproxy_test(suite, workdir)
