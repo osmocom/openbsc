@@ -188,11 +188,12 @@ struct vlr_ops {
 	int (*tx_cm_serv_acc)(void *msc_conn_ref);
 	int (*tx_cm_serv_rej)(void *msc_conn_ref, enum vlr_proc_arq_result result);
 
-	/* FIXME: add tx_common_id() for when auth is complete on UTRAN, see
-	 * msc_tx_common_id(conn) */
-
 	int (*set_ciph_mode)(void *msc_conn_ref, enum vlr_ciph ciph_mode,
 			     bool retrieve_imeisv);
+
+	/* Common Id is transmitted when auth+ciph is complete on UTRAN */
+	int (*tx_common_id)(void *msc_conn_ref);
+
 
 	/* notify MSC/SGSN that the subscriber data in VLR has been updated */
 	void (*subscr_update)(struct vlr_subscr *vsub);

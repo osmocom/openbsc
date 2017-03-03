@@ -250,6 +250,14 @@ static void _proc_arq_vlr_node2_post_ciph(struct osmo_fsm_inst *fi)
 
 	LOGPFSM(fi, "%s()\n", __func__);
 
+	if (par->is_utran) {
+		int rc;
+		rc = par->vlr->ops.tx_common_id(par->msc_conn_ref);
+		if (rc)
+			LOGPFSML(fi, LOGL_ERROR,
+				 "Error while sending Common ID (%d)\n", rc);
+	}
+
 	vsub->conf_by_radio_contact_ind = true;
 	if (vsub->loc_conf_in_hlr_ind == false) {
 		/* start Update_Location_Child_VLR.  WE use
