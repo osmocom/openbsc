@@ -945,6 +945,7 @@ struct vlr_instance *vlr_alloc(void *ctx, const struct vlr_ops *ops)
 	OSMO_ASSERT(ops->tx_cm_serv_acc);
 	OSMO_ASSERT(ops->tx_cm_serv_rej);
 	OSMO_ASSERT(ops->set_ciph_mode);
+	OSMO_ASSERT(ops->tx_common_id);
 	OSMO_ASSERT(ops->subscr_update);
 	OSMO_ASSERT(ops->subscr_assoc);
 

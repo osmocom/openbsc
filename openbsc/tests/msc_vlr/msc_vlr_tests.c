@@ -357,6 +357,11 @@ static struct log_info_cat test_categories[] = {
 		.description = "Paging Subsystem",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DIUCS] = {
+		.name = "DIUCS",
+		.description = "Iu-CS Protocol",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 static struct log_info info = {

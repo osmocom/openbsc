@@ -101,10 +101,17 @@ int msc_gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 int msc_tx_common_id(struct gsm_subscriber_connection *conn)
 {
 	/* Common ID is only sent over IuCS */
-	if (conn->via_ran != RAN_UTRAN_IU)
+	if (conn->via_ran != RAN_UTRAN_IU) {
+		LOGP(DMM, LOGL_INFO,
+		     "%s: Asked to transmit Common ID, but skipping"
+		     " because this is not on UTRAN\n",
+		     vlr_subscr_name(conn->vsub));
 		return 0;
+	}
 
 #ifdef BUILD_IU
+	DEBUGP(DIUCS, "%s: tx CommonID %s\n",
+	       vlr_subscr_name(conn->vsub), conn->vsub->imsi);
 	return iu_tx_common_id(conn->iu.ue_ctx, conn->vsub->imsi);
 #else
 	LOGP(DMM, LOGL_ERROR,

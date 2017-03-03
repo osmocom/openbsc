@@ -439,6 +439,7 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_AUTHENTICATED}: Deallocated
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_ciph()
+DIUCS IMSI:901700000010650: tx CommonID 901700000010650
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_node_4()
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: Allocated
@@ -570,6 +571,7 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: Received E
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: got VLR_AUTH_RES_PASSED
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2()
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2_post_ciph()
+DIUCS MSISDN:42342: tx CommonID 901700000010650
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2_post_vlr()
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_pres()
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_trace()
@@ -683,6 +685,7 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: Received E
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: got VLR_AUTH_RES_PASSED
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2()
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2_post_ciph()
+DIUCS MSISDN:42342: tx CommonID 901700000010650
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2_post_vlr()
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_pres()
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_trace()
@@ -1014,6 +1017,7 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_AUTHENTICATED}: Deallocated
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_ciph()
+DIUCS IMSI:901700000010650: tx CommonID 901700000010650
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_node_4()
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: Allocated

@@ -3721,6 +3721,12 @@ static int msc_vlr_tx_cm_serv_acc(void *msc_conn_ref)
 	return msc_gsm48_tx_mm_serv_ack(conn);
 }
 
+static int msc_vlr_tx_common_id(void *msc_conn_ref)
+{
+	struct gsm_subscriber_connection *conn = msc_conn_ref;
+	return msc_tx_common_id(conn);
+}
+
 /* VLR asks us to transmit a CM Service Reject */
 static int msc_vlr_tx_cm_serv_rej(void *msc_conn_ref, enum vlr_proc_arq_result result)
 {
@@ -3809,6 +3815,7 @@ static const struct vlr_ops msc_vlr_ops = {
 	.tx_cm_serv_acc = msc_vlr_tx_cm_serv_acc,
 	.tx_cm_serv_rej = msc_vlr_tx_cm_serv_rej,
 	.set_ciph_mode = msc_vlr_set_ciph_mode,
+	.tx_common_id = msc_vlr_tx_common_id,
 	.subscr_update = msc_vlr_subscr_update,
 	.subscr_assoc = msc_vlr_subscr_assoc,
 };
