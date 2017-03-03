@@ -248,6 +248,10 @@ struct gsm_network *msc_network_alloc(void *ctx,
 	net->name_long = talloc_strdup(net, "OsmoMSC");
 	net->name_short = talloc_strdup(net, "OsmoMSC");
 
+	net->gsup_server_addr_str = talloc_strdup(net,
+						  MSC_HLR_REMOTE_IP_DEFAULT);
+	net->gsup_server_port = MSC_HLR_REMOTE_PORT_DEFAULT;
+
 	mgcpgw_client_conf_init(&net->mgcpgw.conf);
 
 	return net;
