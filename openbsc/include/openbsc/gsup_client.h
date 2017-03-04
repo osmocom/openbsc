@@ -37,6 +37,8 @@ typedef int (*gsup_client_read_cb_t)(struct gsup_client *gsupc,
 				     struct msgb *msg);
 
 struct gsup_client {
+	const char *unit_name;
+
 	struct ipa_client_conn *link;
 	gsup_client_read_cb_t read_cb;
 	void *data;
@@ -49,10 +51,11 @@ struct gsup_client {
 	int got_ipa_pong;
 };
 
-struct gsup_client *gsup_client_create(const char *ip_addr,
+struct gsup_client *gsup_client_create(const char *unit_name,
+				       const char *ip_addr,
 				       unsigned int tcp_port,
 				       gsup_client_read_cb_t read_cb,
-				       struct oap_client_config *oap_config);
+				       struct oap_client_config *oapc_config);
 
 void gsup_client_destroy(struct gsup_client *gsupc);
 int gsup_client_send(struct gsup_client *gsupc, struct msgb *msg);

@@ -959,12 +959,13 @@ struct vlr_instance *vlr_alloc(void *ctx, const struct vlr_ops *ops)
 	return vlr;
 }
 
-int vlr_start(struct vlr_instance *vlr, const char *gsup_server_addr_str,
-	      uint16_t gsup_server_port)
+int vlr_start(const char *gsup_unit_name, struct vlr_instance *vlr,
+	      const char *gsup_server_addr_str, uint16_t gsup_server_port)
 {
 	OSMO_ASSERT(vlr);
 
-	vlr->gsup_client = gsup_client_create(gsup_server_addr_str,
+	vlr->gsup_client = gsup_client_create(gsup_unit_name,
+					      gsup_server_addr_str,
 					      gsup_server_port,
 					      &vlr_gsupc_read_cb, NULL);
 	if (!vlr->gsup_client)

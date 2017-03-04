@@ -259,9 +259,8 @@ int vlr_subscr_rx_imsi_detach(struct vlr_subscr *vsub);
 void vlr_subscr_conn_timeout(struct vlr_subscr *vsub);
 
 struct vlr_instance *vlr_alloc(void *ctx, const struct vlr_ops *ops);
-int vlr_start(struct vlr_instance *vlr, const char *gsup_server_addr_str,
-	      uint16_t gsup_server_port);
-
+int vlr_start(const char *gsup_unit_name, struct vlr_instance *vlr,
+	      const char *gsup_server_addr_str, uint16_t gsup_server_port);
 
 /* internal use only */
 

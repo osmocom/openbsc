@@ -69,6 +69,7 @@ int gprs_subscr_init(struct sgsn_instance *sgi)
 	addr_str = inet_ntoa(sgi->cfg.gsup_server_addr.sin_addr);
 
 	sgi->gsup_client = gsup_client_create(
+		"SGSN",
 		addr_str, sgi->cfg.gsup_server_port,
 		&gsup_read_cb,
 		&sgi->cfg.oap);
