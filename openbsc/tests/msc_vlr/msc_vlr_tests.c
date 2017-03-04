@@ -34,6 +34,8 @@
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/bsc_subscriber.h>
 #include <openbsc/debug.h>
+#include <openbsc/iu.h>
+#include <openbsc/iucs_ranap.h>
 
 #include "msc_vlr_tests.h"
 
@@ -133,6 +135,14 @@ struct gsm_subscriber_connection *conn_new(void)
 	conn = msc_subscr_con_allocate(net);
 	conn->bts = the_bts;
 	conn->via_ran = rx_from_ran;
+	if (conn->via_ran == RAN_UTRAN_IU) {
+		struct ue_conn_ctx *ue_ctx = talloc_zero(conn, struct ue_conn_ctx);
+		*ue_ctx = (struct ue_conn_ctx){
+			.link = (void*)0x23,
+			.conn_id = 42,
+		};
+		conn->iu.ue_ctx = ue_ctx;
+	}
 	return conn;
 }
 
@@ -550,15 +560,38 @@ static int fake_vlr_tx_ciph_mode_cmd(void *msc_conn_ref, enum vlr_ciph ciph,
 	 * gsm0808_cipher_mode() directly. When the MSCSPLIT is ready, check
 	 * the tx bytes in the sense of dtap_expect_tx() above. */
 	struct gsm_subscriber_connection *conn = msc_conn_ref;
-	btw("sending Ciphering Mode Command for %s: cipher=%s kc=%s"
-	    " retrieve_imeisv=%d",
-	    vlr_subscr_name(conn->vsub),
-	    vlr_ciph_name(conn->network->a5_encryption),
-	    osmo_hexdump_nospc(conn->vsub->last_tuple->vec.kc, 8),
-	    retrieve_imeisv);
+	switch (conn->via_ran) {
+	case RAN_GERAN_A:
+		btw("sending Ciphering Mode Command for %s: cipher=%s kc=%s"
+		    " retrieve_imeisv=%d",
+		    vlr_subscr_name(conn->vsub),
+		    vlr_ciph_name(conn->network->a5_encryption),
+		    osmo_hexdump_nospc(conn->vsub->last_tuple->vec.kc, 8),
+		    retrieve_imeisv);
+		break;
+	case RAN_UTRAN_IU:
+		btw("sending SecurityModeControl for %s",
+		    vlr_subscr_name(conn->vsub));
+		break;
+	default:
+		btw("UNKNOWN RAN TYPE %d", conn->via_ran);
+		OSMO_ASSERT(false);
+		return -1;
+	}
 	cipher_mode_cmd_sent = true;
 	cipher_mode_cmd_sent_with_imeisv = retrieve_imeisv;
 	return 0;
+}
+
+void ms_sends_security_mode_complete()
+{
+	OSMO_ASSERT(g_conn);
+	OSMO_ASSERT(g_conn->via_ran == RAN_UTRAN_IU);
+	OSMO_ASSERT(g_conn->iu.ue_ctx);
+	/* TODO mock IEs or call vlr callback directly */
+	iucs_rx_ranap_event(g_conn->network, g_conn->iu.ue_ctx,
+			    IU_EVENT_SECURITY_MODE_COMPLETE,
+			    NULL);
 }
 
 const struct timeval fake_time_start_time = { 123, 456 };

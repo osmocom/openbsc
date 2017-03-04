@@ -66,6 +66,7 @@ DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000000156f0
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+  gsup_tx_confirmed == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000000156f00804032443f2
@@ -418,7 +419,7 @@ DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000010650 type=NORMAL
 DMM LU/new-LAC: 0/0
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: Allocated
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000010650)
-DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: rev=R99 net=UTRAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: rev=R99 net=UTRAN Auth+Ciph
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
 DREF VLR subscr unknown usage increases to: 1
 DVLR set IMSI on subscriber; IMSI=901700000010650 id=901700000010650
@@ -450,7 +451,7 @@ DREF VLR subscr IMSI:901700000010650 usage decreases to: 1
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: vlr_gsupc_read_cb() returns 0
   auth_request_sent == 1
   lu_result_sent == 0
-- MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
+- MS sends Authen Response, VLR accepts and sends SecurityModeControl
   rx from MS: pdisc=0x05 msg_type=0x54
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000010650: MM R99 AUTHENTICATION RESPONSE (res = e229c19e791f2e41)
@@ -465,16 +466,28 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_AUTHENTICATED}: Freeing instan
 DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_AUTHENTICATED}: Deallocated
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
-DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_ciph()
+- sending SecurityModeControl for IMSI:901700000010650
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_CIPH
+  cipher_mode_cmd_sent == 1
+  lu_result_sent == 0
+- MS sends SecurityModeControl acceptance, VLR accepts and sends GSUP LU Req to HLR
+DIUCS Looking for IuCS subscriber: link_id 0x23, conn_id 2a
+DIUCS   0: IMSI:901700000010650 Iu link 0x23, conn_id 42
+DIUCS subscribers registered: 1
+DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
+DIUCS IuCS security mode complete for IMSI:901700000010650
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: Received Event VLR_ULA_E_CIPH_RES
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: vlr_loc_upd_post_ciph()
 DIUCS IMSI:901700000010650: tx CommonID 901700000010650
-DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_node_4()
-DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: vlr_loc_upd_node_4()
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: Allocated
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: is child of vlr_lu_fsm(901700000010650)
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E_START
 DVLR GSUP tx: 04010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000000156f0
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+  gsup_tx_confirmed == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000000156f00804032443f2
@@ -579,7 +592,7 @@ DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CON
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: Allocated
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: is child of Subscr_Conn(901700000010650)
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: rev=R99 net=UTRAN Auth (no Ciph)
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: rev=R99 net=UTRAN Auth+Ciph
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: Received Event PR_ARQ_E_START
 DREF VLR subscr MSISDN:42342 usage increases to: 2
 DREF VLR subscr MSISDN:42342 usage increases to: 3
@@ -608,7 +621,7 @@ DRLL Dispatching 04.08 message, pdisc=6
 DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
 DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
-- MS sends Authen Response, VLR accepts with a CM Service Accept
+- MS sends Authen Response, VLR accepts and sends SecurityModeControl
   rx from MS: pdisc=0x05 msg_type=0x54
 DRLL Dispatching 04.08 message, pdisc=5
 DMM MSISDN:42342: MM R99 AUTHENTICATION RESPONSE (res = 7db47cf7f81e4dc7)
@@ -624,21 +637,31 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_AUTHENTICATED}: Deallocated
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: Received Event PR_ARQ_E_AUTH_RES
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: got VLR_AUTH_RES_PASSED
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2_post_ciph()
+- sending SecurityModeControl for MSISDN:42342
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_WAIT_CIPH
+  cipher_mode_cmd_sent == 1
+  cm_service_result_sent == 0
+- MS sends SecurityModeControl acceptance, VLR accepts and sends CM Service Accept
+DIUCS Looking for IuCS subscriber: link_id 0x23, conn_id 2a
+DIUCS   0: MSISDN:42342 Iu link 0x23, conn_id 42
+DIUCS subscribers registered: 1
+DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
+DIUCS IuCS security mode complete for MSISDN:42342
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: Received Event PR_ARQ_E_CIPH_RES
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_node2_post_ciph()
 DIUCS MSISDN:42342: tx CommonID 901700000010650
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2_post_vlr()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_pres()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_trace()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_imei()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: proc_arq_fsm_done(VLR_PR_ARQ_RES_PASSED)
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_DONE
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_node2_post_vlr()
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_post_pres()
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_post_trace()
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_post_imei()
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: proc_arq_fsm_done(VLR_PR_ARQ_RES_PASSED)
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
 - sending CM Service Accept for MSISDN:42342
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_CM_SERVICE_REQ
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: received_cm_service_request = true
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
   cm_service_result_sent == 1
 - a USSD request is serviced
@@ -694,7 +717,7 @@ DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CON
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: Allocated
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: is child of Subscr_Conn(901700000010650)
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: rev=R99 net=UTRAN Auth (no Ciph)
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: rev=R99 net=UTRAN Auth+Ciph
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_INIT}: Received Event PR_ARQ_E_START
 DREF VLR subscr MSISDN:42342 usage increases to: 4
 DREF VLR subscr MSISDN:42342 usage increases to: 5
@@ -722,7 +745,7 @@ DRLL Dispatching 04.08 message, pdisc=6
 DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
 DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
-- MS sends Authen Response, VLR accepts and sends pending SMS
+- MS sends Authen Response, VLR accepts and sends SecurityModeControl
   rx from MS: pdisc=0x05 msg_type=0x54
 DRLL Dispatching 04.08 message, pdisc=5
 DMM MSISDN:42342: MM R99 AUTHENTICATION RESPONSE (res = 706f996719ba609c)
@@ -738,14 +761,25 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_AUTHENTICATED}: Deallocated
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: Received Event PR_ARQ_E_AUTH_RES
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: got VLR_AUTH_RES_PASSED
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2_post_ciph()
+- sending SecurityModeControl for MSISDN:42342
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_WAIT_CIPH
+  cipher_mode_cmd_sent == 1
+  paging_stopped == 0
+- MS sends SecurityModeControl acceptance, VLR accepts and sends SMS
+DIUCS Looking for IuCS subscriber: link_id 0x23, conn_id 2a
+DIUCS   0: MSISDN:42342 Iu link 0x23, conn_id 42
+DIUCS subscribers registered: 1
+DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
+DIUCS IuCS security mode complete for MSISDN:42342
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: Received Event PR_ARQ_E_CIPH_RES
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_node2_post_ciph()
 DIUCS MSISDN:42342: tx CommonID 901700000010650
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2_post_vlr()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_pres()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_trace()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_post_imei()
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: proc_arq_fsm_done(VLR_PR_ARQ_RES_PASSED)
-DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_DONE
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_node2_post_vlr()
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_post_pres()
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_post_trace()
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_post_imei()
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: proc_arq_fsm_done(VLR_PR_ARQ_RES_PASSED)
+DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_PAGING_RESP
@@ -759,8 +793,6 @@ DMSC msc_tx 91 bytes to MSISDN:42342 via RAN_UTRAN_IU
 - DTAP matches expected message
 DREF VLR subscr MSISDN:42342 usage decreases to: 4
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-  dtap_tx_confirmed == 1
   paging_stopped == 1
 - SMS was delivered, no requests pending for subscr
 DREF VLR subscr MSISDN:42342 usage increases to: 5
@@ -912,6 +944,7 @@ DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000000156f0
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+  gsup_tx_confirmed == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000000156f00804032443f2
@@ -1023,7 +1056,7 @@ DMM LOCATION UPDATING REQUEST: MI(IMSI)=901700000010650 type=NORMAL
 DMM LU/new-LAC: 0/0
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: Allocated
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: is child of Subscr_Conn(901700000010650)
-DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: rev=R99 net=UTRAN Auth (no Ciph)
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: rev=R99 net=UTRAN Auth+Ciph
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_IDLE}: Received Event VLR_ULA_E_UPDATE_LA
 DREF VLR subscr unknown usage increases to: 1
 DVLR set IMSI on subscriber; IMSI=901700000010650 id=901700000010650
@@ -1082,7 +1115,7 @@ DREF VLR subscr IMSI:901700000010650 usage decreases to: 1
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: vlr_gsupc_read_cb() returns 0
   auth_request_sent == 1
   lu_result_sent == 0
-- MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
+- MS sends Authen Response, VLR accepts and sends SecurityModeControl
   rx from MS: pdisc=0x05 msg_type=0x54
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000010650: MM R99 AUTHENTICATION RESPONSE (res = 1df5f0b4f22b696e)
@@ -1097,16 +1130,28 @@ DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_AUTHENTICATED}: Freeing instan
 DVLR VLR_Authenticate(901700000010650){VLR_SUB_AS_AUTHENTICATED}: Deallocated
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_AUTH_RES
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
-DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_ciph()
+- sending SecurityModeControl for IMSI:901700000010650
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_CIPH
+  cipher_mode_cmd_sent == 1
+  lu_result_sent == 0
+- MS sends SecurityModeControl acceptance, VLR accepts and sends GSUP LU Req to HLR
+DIUCS Looking for IuCS subscriber: link_id 0x23, conn_id 2a
+DIUCS   0: IMSI:901700000010650 Iu link 0x23, conn_id 42
+DIUCS subscribers registered: 1
+DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
+DIUCS IuCS security mode complete for IMSI:901700000010650
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: Received Event VLR_ULA_E_CIPH_RES
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: vlr_loc_upd_post_ciph()
 DIUCS IMSI:901700000010650: tx CommonID 901700000010650
-DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_node_4()
-DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: vlr_loc_upd_node_4()
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: state_chg to VLR_ULA_S_WAIT_HLR_UPD
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: Allocated
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: is child of vlr_lu_fsm(901700000010650)
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_E_START
 DVLR GSUP tx: 04010809710000000156f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000000156f0
 DVLR upd_hlr_vlr_fsm(901700000010650){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+  gsup_tx_confirmed == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000000156f00804032443f2
