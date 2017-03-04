@@ -173,9 +173,12 @@ static int gsup_client_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	struct ipaccess_head_ext *he = (struct ipaccess_head_ext *) msgb_l2(msg);
 	struct gsup_client *gsupc = (struct gsup_client *)link->data;
 	int rc;
-	static struct ipaccess_unit ipa_dev = {
-		.unit_name = "SGSN"
+	struct ipaccess_unit ipa_dev = {
+		/* see gsup_client_create() on const vs non-const */
+		.unit_name = (char*)gsupc->unit_name,
 	};
+
+	OSMO_ASSERT(ipa_dev.unit_name);
 
 	msg->l2h = &hh->data[0];
 
@@ -262,7 +265,8 @@ static void start_test_procedure(struct gsup_client *gsupc)
 	gsup_client_send_ping(gsupc);
 }
 
-struct gsup_client *gsup_client_create(const char *ip_addr,
+struct gsup_client *gsup_client_create(const char *unit_name,
+				       const char *ip_addr,
 				       unsigned int tcp_port,
 				       gsup_client_read_cb_t read_cb,
 				       struct oap_client_config *oapc_config)
@@ -272,6 +276,12 @@ struct gsup_client *gsup_client_create(const char *ip_addr,
 
 	gsupc = talloc_zero(tall_bsc_ctx, struct gsup_client);
 	OSMO_ASSERT(gsupc);
+
+	/* struct ipaccess_unit has a non-const unit_name, so let's copy to be
+	 * able to have a non-const unit_name here as well. To not taint the
+	 * public gsup_client API, let's store it in a const char* anyway. */
+	gsupc->unit_name = talloc_strdup(gsupc, unit_name);
+	OSMO_ASSERT(gsupc->unit_name);
 
 	/* a NULL oapc_config will mark oap_state disabled. */
 	rc = oap_client_init(oapc_config, &gsupc->oap_state);

@@ -275,8 +275,8 @@ int main(int argc, char **argv)
 
 	osmo_init_logging(&gsup_test_client_log_info);
 
-	g_gc = gsup_client_create(server_host, server_port, gsupc_read_cb,
-				       NULL);
+	g_gc = gsup_client_create("GSUPTEST", server_host, server_port,
+				  gsupc_read_cb, NULL);
 
 
 	signal(SIGINT, sig_cb);
