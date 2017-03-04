@@ -27,13 +27,8 @@ bin_PROGRAMS = \
 	osmo-msc \
 	$(NULL)
 
-noinst_HEADERS = \
-	iucs_ranap.h \
-	$(NULL)
-
 osmo_msc_SOURCES = \
 	msc_main.c \
-	iucs_ranap.c \
 	$(NULL)
 
 osmo_msc_LDADD = \

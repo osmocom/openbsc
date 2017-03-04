@@ -1,5 +1,6 @@
 #pragma once
 
+struct gsm_network;
 struct ue_conn_ctx;
 
 int iucs_rx_ranap_event(struct gsm_network *network,
