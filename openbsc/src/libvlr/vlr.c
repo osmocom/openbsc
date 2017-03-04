@@ -568,6 +568,9 @@ void vlr_subscr_update_tuples(struct vlr_subscr *vsub,
 		/* FIXME what now? */
 		// vlr_subscr_cancel(vsub, GMM_CAUSE_GSM_AUTH_UNACCEPT); ?
 	}
+
+	/* New tuples means last_tuple becomes invalid */
+	vsub->last_tuple = NULL;
 }
 
 /* Handle SendAuthInfo Result/Error from HLR */
