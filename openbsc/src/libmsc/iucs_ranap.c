@@ -54,17 +54,9 @@ static int iucs_rx_rab_assign(struct gsm_subscriber_connection *conn,
 int iucs_rx_sec_mode_compl(struct gsm_subscriber_connection *conn,
 			   RANAP_SecurityModeCompleteIEs_t *ies)
 {
-	gsm_cbfn *cb;
+	struct vlr_ciph_result vlr_res = {};
 
 	OSMO_ASSERT(conn->via_ran == RAN_UTRAN_IU);
-
-	if (!conn->sec_operation) {
-		LOGP(DIUCS, LOGL_ERROR,
-		     "Received Security Mode Complete message, but no"
-		     " authentication/cipher operation in progress"
-		     " for subscr %s\n", vlr_subscr_name(conn->vsub));
-		return -EINVAL;
-	}
 
 	/* TODO evalute ies */
 
@@ -75,11 +67,8 @@ int iucs_rx_sec_mode_compl(struct gsm_subscriber_connection *conn,
 
 	conn->iu.integrity_protection = INTEGRITY_PROTECTION_IK;
 
-	cb = conn->sec_operation->cb;
-	if (cb)
-		cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED, NULL,
-		   conn, conn->sec_operation->cb_data);
-	release_security_operation(conn);
+	vlr_res.cause = VLR_CIPH_COMPL;
+	vlr_subscr_rx_ciph_res(conn->vsub, &vlr_res);
 	return 0;
 }
 
