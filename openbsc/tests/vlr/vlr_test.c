@@ -671,7 +671,7 @@ int main(int argc, char **argv)
 	osmo_init_logging(&log_info);
 
 	g_vlr = vlr_alloc(NULL, &test_vlr_ops);
-	vlr_start(g_vlr, "localhost", 2222);
+	vlr_start("VLRTEST", g_vlr, "localhost", 2222);
 	OSMO_ASSERT(g_vlr);
 	osmo_fsm_register(&vlr_test_fsm);
 	osmo_fsm_register(&test_sub_pres_vlr_fsm);

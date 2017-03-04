@@ -3880,7 +3880,7 @@ int msc_vlr_alloc(struct gsm_network *net)
 int msc_vlr_start(struct gsm_network *net)
 {
 	OSMO_ASSERT(net->vlr);
-	return vlr_start(net->vlr, net->gsup_server_addr_str,
+	return vlr_start("MSC", net->vlr, net->gsup_server_addr_str,
 			 net->gsup_server_port);
 }
 
