@@ -203,9 +203,9 @@ void _test_umts_authen(enum ran_type via_ran)
 		VERBOSE_ASSERT(cipher_mode_cmd_sent, == true, "%d");
 		VERBOSE_ASSERT(cm_service_result_sent, == RES_NONE, "%d");
 
-		btw("MS sends SecurityModeControl acceptance, VLR accepts and sends CM Service Accept");
+		btw("MS sends SecurityModeControl acceptance, VLR accepts; above Ciphering is an implicit CM Service Accept");
 		ms_sends_security_mode_complete();
-		VERBOSE_ASSERT(cm_service_result_sent, == RES_ACCEPT, "%d");
+		VERBOSE_ASSERT(cm_service_result_sent, == RES_NONE, "%d");
 	}
 
 	btw("a USSD request is serviced");
