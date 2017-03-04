@@ -81,6 +81,7 @@ struct proc_arq_priv {
 	enum vlr_ciph ciphering_required;
 	bool is_r99;
 	bool is_utran;
+	bool implicitly_accepted_parq_by_ciphering_cmd;
 };
 
 static void assoc_par_with_subscr(struct osmo_fsm_inst *fi, struct vlr_subscr *vsub)
@@ -125,7 +126,8 @@ static void proc_arq_vlr_dispatch_result(struct osmo_fsm_inst *fi,
 	 * will be processed before we handle new incoming data from the MS. */
 
 	if (par->type == VLR_PR_ARQ_T_CM_SERV_REQ) {
-		if (success) {
+		if (success
+		    && !par->implicitly_accepted_parq_by_ciphering_cmd) {
 			rc = par->vlr->ops.tx_cm_serv_acc(par->msc_conn_ref);
 			if (rc) {
 				LOGPFSML(fi, LOGL_ERROR,
@@ -287,6 +289,7 @@ static void _proc_arq_vlr_node2(struct osmo_fsm_inst *fi)
 		return;
 	}
 
+	par->implicitly_accepted_parq_by_ciphering_cmd = true;
 	osmo_fsm_inst_state_chg(fi, PR_ARQ_S_WAIT_CIPH, 0, 0);
 }
 
