@@ -27,6 +27,28 @@ void _test_umts_authen(enum ran_type via_ran)
 {
 	struct vlr_subscr *vsub;
 	const char *imsi = "901700000010650";
+	const char *sms =
+		"09" /* SMS messages */
+		"01" /* CP-DATA */
+		"58" /* length */
+		"01" /* Network to MS */
+		"00" /* reference */
+		/* originator (gsm411_send_sms() hardcodes this weird nr) */
+		"0791" "447758100650" /* 447785016005 */
+		"00" /* dest */
+		/* SMS TPDU */
+		"4c" /* len */
+		"00" /* SMS deliver */
+		"05802443f2" /* originating address 42342 */
+		"00" /* TP-PID */
+		"00" /* GSM default alphabet */
+		"071010" /* Y-M-D (from wrapped gsm340_gen_scts())*/
+		"000000" /* H-M-S */
+		"00" /* GMT+0 */
+		"44" /* data length */
+		"5079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0e"
+		"d3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb"
+		"0c7ac3e9e9b7db05";
 
 	net->authentication_required = true;
 	net->vlr->cfg.assign_tmsi = true;
@@ -100,10 +122,26 @@ void _test_umts_authen(enum ran_type via_ran)
 	VERBOSE_ASSERT(auth_request_sent, == true, "%d");
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
-	btw("MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR");
-	gsup_expect_tx("04010809710000000156f0");
-	ms_sends_msg("0554" "e229c19e" "2104" "791f2e41");
-	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+	if (via_ran == RAN_GERAN_A) {
+		btw("MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR");
+		gsup_expect_tx("04010809710000000156f0");
+		ms_sends_msg("0554" "e229c19e" "2104" "791f2e41");
+		VERBOSE_ASSERT(gsup_tx_confirmed, == true, "%d");
+		VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+	} else {
+		/* On UTRAN */
+		btw("MS sends Authen Response, VLR accepts and sends SecurityModeControl");
+		cipher_mode_cmd_sent = false;
+		ms_sends_msg("0554" "e229c19e" "2104" "791f2e41");
+		VERBOSE_ASSERT(cipher_mode_cmd_sent, == true, "%d");
+		VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+
+		btw("MS sends SecurityModeControl acceptance, VLR accepts and sends GSUP LU Req to HLR");
+		gsup_expect_tx("04010809710000000156f0");
+		ms_sends_security_mode_complete();
+		VERBOSE_ASSERT(gsup_tx_confirmed, == true, "%d");
+		VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+	}
 
 	btw("HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT");
 	gsup_rx("10010809710000000156f00804032443f2",
@@ -152,10 +190,23 @@ void _test_umts_authen(enum ran_type via_ran)
 	EXPECT_ACCEPTED(false);
 	thwart_rx_non_initial_requests();
 
-	btw("MS sends Authen Response, VLR accepts with a CM Service Accept");
-	gsup_expect_tx(NULL);
-	ms_sends_msg("0554" "7db47cf7" "2104" "f81e4dc7"); /* 2nd vector's res, s.a. */
-	VERBOSE_ASSERT(cm_service_result_sent, == RES_ACCEPT, "%d");
+	if (via_ran == RAN_GERAN_A) {
+		btw("MS sends Authen Response, VLR accepts with a CM Service Accept");
+		gsup_expect_tx(NULL);
+		ms_sends_msg("0554" "7db47cf7" "2104" "f81e4dc7"); /* 2nd vector's res, s.a. */
+		VERBOSE_ASSERT(cm_service_result_sent, == RES_ACCEPT, "%d");
+	} else {
+		/* On UTRAN */
+		btw("MS sends Authen Response, VLR accepts and sends SecurityModeControl");
+		cipher_mode_cmd_sent = false;
+		ms_sends_msg("0554" "7db47cf7" "2104" "f81e4dc7"); /* 2nd vector's res, s.a. */
+		VERBOSE_ASSERT(cipher_mode_cmd_sent, == true, "%d");
+		VERBOSE_ASSERT(cm_service_result_sent, == RES_NONE, "%d");
+
+		btw("MS sends SecurityModeControl acceptance, VLR accepts and sends CM Service Accept");
+		ms_sends_security_mode_complete();
+		VERBOSE_ASSERT(cm_service_result_sent, == RES_ACCEPT, "%d");
+	}
 
 	btw("a USSD request is serviced");
 	dtap_expect_tx_ussd("Your extension is 42342\r");
@@ -201,31 +252,25 @@ void _test_umts_authen(enum ran_type via_ran)
 	EXPECT_ACCEPTED(false);
 	thwart_rx_non_initial_requests();
 
-	btw("MS sends Authen Response, VLR accepts and sends pending SMS");
-	dtap_expect_tx("09" /* SMS messages */
-		       "01" /* CP-DATA */
-		       "58" /* length */
-		       "01" /* Network to MS */
-		       "00" /* reference */
-		       /* originator (gsm411_send_sms() hardcodes this weird nr) */
-		       "0791" "447758100650" /* 447785016005 */
-		       "00" /* dest */
-		       /* SMS TPDU */
-		       "4c" /* len */
-		       "00" /* SMS deliver */
-		       "05802443f2" /* originating address 42342 */
-		       "00" /* TP-PID */
-		       "00" /* GSM default alphabet */
-		       "071010" /* Y-M-D (from wrapped gsm340_gen_scts())*/
-		       "000000" /* H-M-S */
-		       "00" /* GMT+0 */
-		       "44" /* data length */
-		       "5079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0e"
-		       "d3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb"
-		       "0c7ac3e9e9b7db05");
-	ms_sends_msg("0554" "706f9967" "2104" "19ba609c"); /* 3nd vector's res, s.a. */
-	VERBOSE_ASSERT(dtap_tx_confirmed, == true, "%d");
-	VERBOSE_ASSERT(paging_stopped, == true, "%d");
+	if (via_ran == RAN_GERAN_A) {
+		btw("MS sends Authen Response, VLR accepts and sends pending SMS");
+		dtap_expect_tx(sms);
+		ms_sends_msg("0554" "706f9967" "2104" "19ba609c"); /* 3nd vector's res, s.a. */
+		VERBOSE_ASSERT(dtap_tx_confirmed, == true, "%d");
+		VERBOSE_ASSERT(paging_stopped, == true, "%d");
+	} else {
+		/* On UTRAN */
+		btw("MS sends Authen Response, VLR accepts and sends SecurityModeControl");
+		cipher_mode_cmd_sent = false;
+		ms_sends_msg("0554" "706f9967" "2104" "19ba609c"); /* 3nd vector's res, s.a. */
+		VERBOSE_ASSERT(cipher_mode_cmd_sent, == true, "%d");
+		VERBOSE_ASSERT(paging_stopped, == false, "%d");
+
+		btw("MS sends SecurityModeControl acceptance, VLR accepts and sends SMS");
+		dtap_expect_tx(sms);
+		ms_sends_security_mode_complete();
+		VERBOSE_ASSERT(paging_stopped, == true, "%d");
+	}
 
 	btw("SMS was delivered, no requests pending for subscr");
 	vsub = vlr_subscr_find_by_imsi(net->vlr, imsi);
@@ -437,10 +482,26 @@ void _test_umts_authen_resync(enum ran_type via_ran)
 	VERBOSE_ASSERT(auth_request_sent, == true, "%d");
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
-	btw("MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR");
-	gsup_expect_tx("04010809710000000156f0");
-	ms_sends_msg("0554" "1df5f0b4" "2104" "f22b696e");
-	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+	if (via_ran == RAN_GERAN_A) {
+		btw("MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR");
+		gsup_expect_tx("04010809710000000156f0");
+		ms_sends_msg("0554" "1df5f0b4" "2104" "f22b696e");
+		VERBOSE_ASSERT(gsup_tx_confirmed, == true, "%d");
+		VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+	} else {
+		/* On UTRAN */
+		btw("MS sends Authen Response, VLR accepts and sends SecurityModeControl");
+		cipher_mode_cmd_sent = false;
+		ms_sends_msg("0554" "1df5f0b4" "2104" "f22b696e");
+		VERBOSE_ASSERT(cipher_mode_cmd_sent, == true, "%d");
+		VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+
+		btw("MS sends SecurityModeControl acceptance, VLR accepts and sends GSUP LU Req to HLR");
+		gsup_expect_tx("04010809710000000156f0");
+		ms_sends_security_mode_complete();
+		VERBOSE_ASSERT(gsup_tx_confirmed, == true, "%d");
+		VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+	}
 
 	btw("HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT");
 	gsup_rx("10010809710000000156f00804032443f2",

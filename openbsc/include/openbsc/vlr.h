@@ -191,7 +191,7 @@ struct vlr_ops {
 	int (*set_ciph_mode)(void *msc_conn_ref, enum vlr_ciph ciph_mode,
 			     bool retrieve_imeisv);
 
-	/* Common Id is transmitted when auth+ciph is complete on UTRAN */
+	/* UTRAN: send Common Id (when auth+ciph are complete) */
 	int (*tx_common_id)(void *msc_conn_ref);
 
 

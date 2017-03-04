@@ -266,12 +266,17 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn,
 		len = gsm48_generate_mid_from_imsi(mi, conn->vsub->imsi);
 		mid = msgb_put(msg, len);
 		memcpy(mid, mi, len);
+		DEBUGP(DMM, "-> %s LOCATION UPDATE ACCEPT\n",
+		       vlr_subscr_name(conn->vsub));
 	} else {
 		/* Include the TMSI, which means that the MS will send a
 		 * TMSI REALLOCATION COMPLETE, and we should wait for
 		 * that until T3250 expiration */
 		mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
 		gsm48_generate_mid_from_tmsi(mid, send_tmsi);
+		DEBUGP(DMM, "-> %s LOCATION UPDATE ACCEPT (TMSI = 0x%08x)\n",
+		       vlr_subscr_name(conn->vsub),
+		       send_tmsi);
 	}
 	/* TODO: Follow-on proceed */
 	/* TODO: CTS permission */
@@ -279,7 +284,6 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn,
 	/* TODO: Emergency Number List */
 	/* TODO: Per-MS T3312 */
 
-	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
@@ -417,7 +421,8 @@ int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 				net->vlr, conn, vlr_lu_type, tmsi, imsi,
 				&old_lai, &new_lai,
 				is_utran || conn->network->authentication_required,
-				conn->network->a5_encryption,
+				is_utran? VLR_CIPH_A5_3
+					: conn->network->a5_encryption,
 				classmark_is_r99(&conn->classmark),
 				is_utran,
 				net->vlr->cfg.assign_tmsi);
@@ -732,7 +737,8 @@ int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *ms
 			 net->vlr, conn,
 			 VLR_PR_ARQ_T_CM_SERV_REQ, mi-1, &lai,
 			 is_utran || conn->network->authentication_required,
-			 conn->network->a5_encryption,
+			 is_utran? VLR_CIPH_A5_3
+				 : conn->network->a5_encryption,
 			 classmark_is_r99(&conn->classmark),
 			 is_utran);
 
@@ -1085,6 +1091,7 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	char mi_string[GSM48_MI_SIZE];
 	int rc = 0;
 	struct osmo_location_area_id lai;
+	bool is_utran;
 
 	lai.plmn.mcc = conn->network->country_code;
 	lai.plmn.mnc = conn->network->network_code;
@@ -1110,16 +1117,18 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	memcpy(conn->classmark.classmark2, classmark2_lv+1, *classmark2_lv);
 	conn->classmark.classmark2_len = *classmark2_lv;
 
+	is_utran = (conn->via_ran == RAN_UTRAN_IU);
 	vlr_proc_acc_req(conn->conn_fsm,
 			 SUBSCR_CONN_E_ACCEPTED,
 			 SUBSCR_CONN_E_CN_CLOSE,
 			 (void*)&conn_from_paging_resp,
 			 net->vlr, conn,
 			 VLR_PR_ARQ_T_PAGING_RESP, mi_lv, &lai,
-			 conn->network->authentication_required,
-			 conn->network->a5_encryption,
+			 is_utran || conn->network->authentication_required,
+			 is_utran? VLR_CIPH_A5_3
+				 : conn->network->a5_encryption,
 			 classmark_is_r99(&conn->classmark),
-			 conn->via_ran == RAN_UTRAN_IU);
+			 is_utran);
 
 	return 0;
 }
@@ -3789,8 +3798,20 @@ static int msc_vlr_set_ciph_mode(void *msc_conn_ref,
 		return -EINVAL;
 	}
 
-	return msc_gsm0808_tx_cipher_mode(conn, ciph, tuple->vec.kc, 8,
-					  retrieve_imeisv);
+	switch (conn->via_ran) {
+	case RAN_GERAN_A:
+		return msc_gsm0808_tx_cipher_mode(conn, ciph, tuple->vec.kc, 8,
+						  retrieve_imeisv);
+	case RAN_UTRAN_IU:
+		return iu_tx_sec_mode_cmd(conn->iu.ue_ctx, tuple, 0, 1);
+
+	default:
+		break;
+	}
+	LOGP(DMM, LOGL_ERROR,
+	     "%s: cannot start ciphering, unknown RAN type %d\n",
+	     vlr_subscr_name(conn->vsub), conn->via_ran);
+	return -ENOTSUP;
 }
 
 /* VLR informs us that the subscriber data has somehow been modified */
