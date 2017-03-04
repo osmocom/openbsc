@@ -118,9 +118,9 @@ void test_ciph()
 	EXPECT_ACCEPTED(false);
 	thwart_rx_non_initial_requests();
 
-	btw("MS sends Ciphering Mode Complete, VLR accepts and sends CM Service Accept");
+	btw("MS sends Ciphering Mode Complete, VLR accepts; above Ciphering is an implicit CM Service Accept");
 	ms_sends_msg("0632");
-	VERBOSE_ASSERT(cm_service_result_sent, == RES_ACCEPT, "%d");
+	VERBOSE_ASSERT(cm_service_result_sent, == RES_NONE, "%d");
 
 	btw("a USSD request is serviced");
 	dtap_expect_tx_ussd("Your extension is 46071\r");
@@ -349,9 +349,9 @@ void test_ciph_tmsi()
 	EXPECT_ACCEPTED(false);
 	thwart_rx_non_initial_requests();
 
-	btw("MS sends Ciphering Mode Complete, VLR accepts and sends CM Service Accept");
+	btw("MS sends Ciphering Mode Complete, VLR accepts; above Ciphering is an implicit CM Service Accept");
 	ms_sends_msg("0632");
-	VERBOSE_ASSERT(cm_service_result_sent, == RES_ACCEPT, "%d");
+	VERBOSE_ASSERT(cm_service_result_sent, == RES_NONE, "%d");
 
 	btw("a USSD request is serviced");
 	dtap_expect_tx_ussd("Your extension is 46071\r");

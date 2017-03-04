@@ -225,7 +225,7 @@ DRLL Dispatching 04.08 message, pdisc=6
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
 DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
-- MS sends Ciphering Mode Complete, VLR accepts and sends CM Service Accept
+- MS sends Ciphering Mode Complete, VLR accepts; above Ciphering is an implicit CM Service Accept
   rx from MS: pdisc=0x06 msg_type=0x32
 DRR MSISDN:46071: CIPHERING MODE COMPLETE
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_CIPH}: Received Event PR_ARQ_E_CIPH_RES
@@ -237,13 +237,12 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_CIPH}: _proc_arq_
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_CIPH}: proc_arq_fsm_done(VLR_PR_ARQ_RES_PASSED)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_CIPH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
-- sending CM Service Accept for MSISDN:46071
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_CM_SERVICE_REQ
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: received_cm_service_request = true
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-  cm_service_result_sent == 1
+  cm_service_result_sent == 0
 - a USSD request is serviced
   expecting USSD:
   Your extension is 46071
@@ -700,7 +699,7 @@ DRLL Dispatching 04.08 message, pdisc=6
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
 DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
-- MS sends Ciphering Mode Complete, VLR accepts and sends CM Service Accept
+- MS sends Ciphering Mode Complete, VLR accepts; above Ciphering is an implicit CM Service Accept
   rx from MS: pdisc=0x06 msg_type=0x32
 DRR MSISDN:46071: CIPHERING MODE COMPLETE
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_CIPH}: Received Event PR_ARQ_E_CIPH_RES
@@ -712,13 +711,12 @@ DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_pos
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_CIPH}: proc_arq_fsm_done(VLR_PR_ARQ_RES_PASSED)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_CIPH}: state_chg to PR_ARQ_S_DONE
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Process Access Request result: VLR_PR_ARQ_RES_PASSED
-- sending CM Service Accept for MSISDN:46071
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: Received Event SUBSCR_CONN_E_ACCEPTED
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: SUBSCR_CONN_FROM_CM_SERVICE_REQ
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: received_cm_service_request = true
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
-  cm_service_result_sent == 1
+  cm_service_result_sent == 0
 - a USSD request is serviced
   expecting USSD:
   Your extension is 46071
