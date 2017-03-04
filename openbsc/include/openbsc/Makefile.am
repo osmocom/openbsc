@@ -48,6 +48,7 @@ noinst_HEADERS = \
 	ipaccess.h \
 	iu.h \
 	iucs.h \
+	iucs_ranap.h \
 	meas_feed.h \
 	meas_rep.h \
 	mgcp.h \

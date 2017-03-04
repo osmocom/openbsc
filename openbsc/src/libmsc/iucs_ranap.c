@@ -31,8 +31,7 @@
 #include <openbsc/iu.h>
 #include <openbsc/iucs.h>
 #include <openbsc/vlr.h>
-
-#include "iucs_ranap.h"
+#include <openbsc/iucs_ranap.h>
 
 /* To continue authorization after a Security Mode Complete */
 int gsm0408_authorize(struct gsm_subscriber_connection *conn);

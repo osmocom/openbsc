@@ -71,8 +71,7 @@
 #include <openbsc/msc_ifaces.h>
 #include <openbsc/iu.h>
 #include <openbsc/iucs.h>
-
-#include "iucs_ranap.h"
+#include <openbsc/iucs_ranap.h>
 
 static const char * const osmomsc_copyright =
 	"OsmoMSC - Osmocom Circuit-Switched Core Network implementation\r\n"
