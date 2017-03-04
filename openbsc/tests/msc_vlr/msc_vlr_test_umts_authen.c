@@ -398,6 +398,18 @@ void _test_umts_authen_resync(enum ran_type via_ran)
 			"2510" "02a83f62e9470000660d51afc75f169d"
 		/*       TL     RES */
 			"2708" "1df5f0b4f22b696e"
+		/* TL    TL     rand */
+		"0362"  "2010" "ac21d34937b4e1142a2c757af2949319"
+		/*       TL     sres       TL     kc */
+			"2104" "7818bfdc" "2208" "d175571f41f314a4"
+		/*       TL     3G IK */
+			"2310" "ff8edbceb6dd24799c77c3b9a6790c10"
+		/*       TL     3G CK */
+			"2410" "157c39022ca9d885a7f0766a7dfee448"
+		/*       TL     AUTN */
+			"2510" "8a43b91898e500002cf354c6f5d1f8c3"
+		/*       TL     RES */
+			"2708" "f748a7078f5018db"
 		,NULL);
 
 	VERBOSE_ASSERT(auth_request_sent, == true, "%d");
