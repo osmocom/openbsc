@@ -225,25 +225,10 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 {
 	struct osmo_scu_prim *prim;
 	struct msgb *msg;
-	uint8_t ik[16];
-	uint8_t ck[16];
-	unsigned int i;
-
-	/* C5 function to derive IK from Kc */
-	for (i = 0; i < 4; i++)
-		ik[i] = tp->vec.kc[i] ^ tp->vec.kc[i+4];
-	memcpy(ik+4, tp->vec.kc, 8);
-	for (i = 12; i < 16; i++)
-		ik[i] = ik[i-12];
-
-	if (send_ck) {
-		/* C4 function to derive CK from Kc */
-		memcpy(ck, tp->vec.kc, 8);
-		memcpy(ck+8, tp->vec.kc, 8);
-	}
 
 	/* create RANAP message */
-	msg = ranap_new_msg_sec_mod_cmd(ik, send_ck? ck : NULL, new_key ? RANAP_KeyStatus_new : RANAP_KeyStatus_old);
+	msg = ranap_new_msg_sec_mod_cmd(tp->vec.ik, send_ck? tp->vec.ck : NULL,
+			new_key ? RANAP_KeyStatus_new : RANAP_KeyStatus_old);
 	msg->l2h = msg->data;
 	/* wrap RANAP message in SCCP N-DATA.req */
 	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));

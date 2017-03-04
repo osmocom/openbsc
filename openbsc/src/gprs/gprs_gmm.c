@@ -1354,33 +1354,6 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	ctx->ra = ra_id;
 	if (ctx->ran_type == MM_CTX_T_GERAN_Gb)
 		ctx->gb.cell_id = cid;
-	else if (ctx->ran_type == MM_CTX_T_UTRAN_Iu) {
-		/* DEVELOPMENT HACK: Our current HLR does not support 3G
-		 * authentication tokens. A new HLR/VLR implementation is being
-		 * developed. Until it is ready and actual milenage
-		 * authentication is properly supported, we are hardcoding a
-		 * fixed Ki and use 2G auth. */
-		unsigned char tmp_rand[16];
-		/* Ki 000102030405060708090a0b0c0d0e0f */
-		struct osmo_sub_auth_data auth = {
-			.type	= OSMO_AUTH_TYPE_GSM,
-			.algo	= OSMO_AUTH_ALG_COMP128v1,
-			.u.gsm.ki = {
-				0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
-				0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
-				0x0e, 0x0f
-			},
-		};
-		/* XXX: Hack to make 3G auth work with special SIM card */
-		ctx->auth_state = SGSN_AUTH_AUTHENTICATE;
-
-		RAND_bytes(tmp_rand, 16);
-
-		memset(&ctx->auth_triplet.vec, 0, sizeof(ctx->auth_triplet.vec));
-		osmo_auth_gen_vec(&ctx->auth_triplet.vec, &auth, tmp_rand);
-
-		ctx->auth_triplet.key_seq = 0;
-	}
 
 	/* Update MM Context with other data */
 	ctx->drx_parms = drx_par;
