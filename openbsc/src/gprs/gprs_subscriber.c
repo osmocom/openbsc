@@ -157,7 +157,7 @@ struct gprs_subscr *gprs_subscr_get_or_create(const char *imsi)
 		gsub = gprs_subscr_alloc();
 		if (!gsub)
 			return NULL;
-		strncpy(gsub->imsi, imsi, sizeof(gsub->imsi));
+		osmo_strlcpy(gsub->imsi, imsi, sizeof(gsub->imsi));
 	}
 
 	if (!gsub->sgsn_data)

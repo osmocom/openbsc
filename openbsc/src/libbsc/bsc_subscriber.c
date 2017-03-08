@@ -80,7 +80,7 @@ void bsc_subscr_set_imsi(struct bsc_subscr *bsub, const char *imsi)
 {
 	if (!bsub)
 		return;
-	strncpy(bsub->imsi, imsi, sizeof(bsub->imsi));
+	osmo_strlcpy(bsub->imsi, imsi, sizeof(bsub->imsi));
 }
 
 struct bsc_subscr *bsc_subscr_find_or_create_by_imsi(struct llist_head *list,
