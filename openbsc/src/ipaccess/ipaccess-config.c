@@ -609,11 +609,13 @@ static struct abis_nm_sw_desc *create_swload(struct sdp_header *header)
 
 	load = talloc_zero(tall_ctx_config, struct abis_nm_sw_desc);
 
-	strncpy((char *)load->file_id, header->firmware_info.sw_part, 20);
-	load->file_id_len = strlen(header->firmware_info.sw_part) + 1;
+	osmo_strlcpy((char *)load->file_id, header->firmware_info.sw_part,
+		     sizeof(load->file_id));
+	load->file_id_len = strlen((char*)load->file_id) + 1;
 
-	strncpy((char *)load->file_version, header->firmware_info.version, 20);
-	load->file_version_len = strlen(header->firmware_info.version) + 1;
+	osmo_strlcpy((char *)load->file_version, header->firmware_info.version,
+		     sizeof(load->file_version));
+	load->file_version_len = strlen((char*)load->file_version) + 1;
 
 	return load;
 }
