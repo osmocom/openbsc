@@ -1,3 +1,4 @@
 openbsc/include/openbsc/gsm_data_shared.h usr/src/osmocom/openbsc/openbsc/include/openbsc/
 openbsc/include/openbsc/common_cs.h usr/src/osmocom/openbsc/openbsc/include/openbsc/
 openbsc/src/libcommon/gsm_data_shared.c usr/src/osmocom/openbsc/openbsc/src/libcommon/
+usr/lib/*/pkgconfig/openbsc.pc
