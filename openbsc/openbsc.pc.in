@@ -7,5 +7,4 @@ Name: OpenBSC
 Description: OpenBSC base station controller
 Requires:
 Version: @VERSION@
-Libs: -L${libdir} -lopenbsc
 Cflags: -I${includedir}
