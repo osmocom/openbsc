@@ -29,6 +29,7 @@ void _test_umts_authen(enum ran_type via_ran)
 	const char *imsi = "901700000010650";
 
 	net->authentication_required = true;
+	net->vlr->cfg.assign_tmsi = true;
 	rx_from_ran = via_ran;
 
 	btw("Location Update request causes a GSUP Send Auth Info request to HLR");
@@ -112,8 +113,25 @@ void _test_umts_authen(enum ran_type via_ran)
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
 	gsup_rx("06010809710000000156f0", NULL);
 
-	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
+
+	btw("a LU Accept with a new TMSI was sent, waiting for TMSI Realloc Compl");
+	EXPECT_CONN_COUNT(1);
+	EXPECT_ACCEPTED(false);
+	thwart_rx_non_initial_requests();
+
+	btw("even though the TMSI is not acked, we can already find the subscr with it");
+	vsub = vlr_subscr_find_by_tmsi(net->vlr, 0x03020100);
+	VERBOSE_ASSERT(vsub != NULL, == true, "%d");
+	VERBOSE_ASSERT(strcmp(vsub->imsi, imsi), == 0, "%d");
+	VERBOSE_ASSERT(vsub->tmsi_new, == 0x03020100, "0x%08x");
+	VERBOSE_ASSERT(vsub->tmsi, == GSM_RESERVED_TMSI, "0x%08x");
+	vlr_subscr_put(vsub);
+
+	btw("MS sends TMSI Realloc Complete");
+	ms_sends_msg("055b");
+
+	btw("LU was successful, and the conn has already been closed");
 	EXPECT_CONN_COUNT(0);
 
 	BTW("after a while, a new conn sends a CM Service Request. VLR responds with Auth Req, 2nd auth vector");
@@ -264,7 +282,11 @@ extern int milenage_f1(const u8 *opc, const u8 *k, const u8 *_rand,
 
 void _test_umts_authen_resync(enum ran_type via_ran)
 {
+	struct vlr_subscr *vsub;
+	const char *imsi = "901700000010650";
+
 	net->authentication_required = true;
+	net->vlr->cfg.assign_tmsi = true;
 	rx_from_ran = via_ran;
 
 	btw("Location Update request causes a GSUP Send Auth Info request to HLR");
@@ -428,8 +450,25 @@ void _test_umts_authen_resync(enum ran_type via_ran)
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
 	gsup_rx("06010809710000000156f0", NULL);
 
-	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
+
+	btw("a LU Accept with a new TMSI was sent, waiting for TMSI Realloc Compl");
+	EXPECT_CONN_COUNT(1);
+	EXPECT_ACCEPTED(false);
+	thwart_rx_non_initial_requests();
+
+	btw("even though the TMSI is not acked, we can already find the subscr with it");
+	vsub = vlr_subscr_find_by_tmsi(net->vlr, 0x03020100);
+	VERBOSE_ASSERT(vsub != NULL, == true, "%d");
+	VERBOSE_ASSERT(strcmp(vsub->imsi, imsi), == 0, "%d");
+	VERBOSE_ASSERT(vsub->tmsi_new, == 0x03020100, "0x%08x");
+	VERBOSE_ASSERT(vsub->tmsi, == GSM_RESERVED_TMSI, "0x%08x");
+	vlr_subscr_put(vsub);
+
+	btw("MS sends TMSI Realloc Complete");
+	ms_sends_msg("055b");
+
+	btw("LU was successful, and the conn has already been closed");
 	EXPECT_CONN_COUNT(0);
 
 	clear_vlr();
