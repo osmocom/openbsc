@@ -308,6 +308,7 @@ struct lu_compl_vlr_priv {
 	void *parent_event_data;
 	enum vlr_fsm_result result;
 	uint8_t cause;
+	bool assign_tmsi;
 };
 
 static void _vlr_lu_compl_fsm_done(struct osmo_fsm_inst *fi,
@@ -426,7 +427,7 @@ static void lu_compl_vlr_wait_subscr_pres(struct osmo_fsm_inst *fi,
 	if (vlr->cfg.check_imei_rqd) {
 		/* Check IMEI VLR */
 		osmo_fsm_inst_state_chg(fi,
-					vlr->cfg.assign_tmsi ?
+					lcvp->assign_tmsi ?
 					  LU_COMPL_VLR_S_WAIT_IMEI_TMSI
 					: LU_COMPL_VLR_S_WAIT_IMEI,
 					vlr_timer(vlr, 3270), 3270);
@@ -435,7 +436,7 @@ static void lu_compl_vlr_wait_subscr_pres(struct osmo_fsm_inst *fi,
 	}
 
 	/* Do we need to allocate a TMSI? */
-	if (vlr->cfg.assign_tmsi) {
+	if (lcvp->assign_tmsi) {
 		lu_compl_vlr_new_tmsi(fi);
 		return;
 	}
@@ -471,7 +472,7 @@ static void lu_compl_vlr_wait_imei(struct osmo_fsm_inst *fi, uint32_t event,
 	}
 
 	/* IMEI is available. Allocate TMSI if needed. */
-	if (vlr->cfg.assign_tmsi) {
+	if (lcvp->assign_tmsi) {
 		if (fi->state != LU_COMPL_VLR_S_WAIT_IMEI_TMSI)
 			LOGPFSML(fi, LOGL_ERROR,
 				 "TMSI required, expected to be in state"
@@ -574,7 +575,8 @@ lu_compl_vlr_proc_alloc(struct osmo_fsm_inst *parent,
 			struct vlr_subscr *vsub,
 			void *msc_conn_ref,
 			uint32_t parent_event_success,
-			uint32_t parent_event_failure)
+			uint32_t parent_event_failure,
+			bool assign_tmsi)
 {
 	struct osmo_fsm_inst *fi;
 	struct lu_compl_vlr_priv *lcvp;
@@ -589,6 +591,7 @@ lu_compl_vlr_proc_alloc(struct osmo_fsm_inst *parent,
 	lcvp->msc_conn_ref = msc_conn_ref;
 	lcvp->parent_event_success = parent_event_success;
 	lcvp->parent_event_failure = parent_event_failure;
+	lcvp->assign_tmsi = assign_tmsi;
 	fi->priv = lcvp;
 
 	return fi;
@@ -638,6 +641,7 @@ struct lu_fsm_priv {
 	enum vlr_ciph ciphering_required;
 	bool is_r99;
 	bool is_utran;
+	bool assign_tmsi;
 };
 
 
@@ -715,7 +719,8 @@ static void vlr_loc_upd_start_lu_compl_fsm(struct osmo_fsm_inst *fi)
 	lfp->lu_compl_vlr_fsm =
 		lu_compl_vlr_proc_alloc(fi, lfp->vsub, lfp->msc_conn_ref,
 					VLR_ULA_E_LU_COMPL_SUCCESS,
-					VLR_ULA_E_LU_COMPL_FAILURE);
+					VLR_ULA_E_LU_COMPL_FAILURE,
+					lfp->assign_tmsi);
 
 	osmo_fsm_inst_dispatch(lfp->lu_compl_vlr_fsm, LU_COMPL_VLR_E_START, NULL);
 }
@@ -1361,7 +1366,8 @@ vlr_loc_update(struct osmo_fsm_inst *parent,
 	       const struct osmo_location_area_id *new_lai,
 	       bool authentication_required,
 	       enum vlr_ciph ciphering_required,
-	       bool is_r99, bool is_utran)
+	       bool is_r99, bool is_utran,
+	       bool assign_tmsi)
 {
 	struct osmo_fsm_inst *fi;
 	struct lu_fsm_priv *lfp;
@@ -1385,6 +1391,7 @@ vlr_loc_update(struct osmo_fsm_inst *parent,
 	lfp->ciphering_required = ciphering_required;
 	lfp->is_r99 = is_r99;
 	lfp->is_utran = is_utran;
+	lfp->assign_tmsi = assign_tmsi;
 	if (imsi) {
 		strncpy(lfp->imsi, imsi, sizeof(lfp->imsi)-1);
 		lfp->imsi[sizeof(lfp->imsi)-1] = '\0';

@@ -247,7 +247,8 @@ vlr_loc_update(struct osmo_fsm_inst *parent,
 	       const struct osmo_location_area_id *new_lai,
 	       bool authentication_required,
 	       enum vlr_ciph ciphering_required,
-	       bool is_r99, bool is_utran);
+	       bool is_r99, bool is_utran,
+	       bool assign_tmsi);
 
 void vlr_loc_update_conn_timeout(struct osmo_fsm_inst *fi);
 

@@ -169,7 +169,8 @@ static void fsm_f_null(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 					      true,
 					      true,
 					      false,
-					      false);
+					      false,
+					      true);
 		OSMO_ASSERT(priv->subscr);
 		osmo_fsm_inst_state_chg(fi, ST_LU_SENT, 0, 0);
 		break;
