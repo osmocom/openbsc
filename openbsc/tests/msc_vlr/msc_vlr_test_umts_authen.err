@@ -103,9 +103,39 @@ DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Removing from paren
 DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Freeing instance
 DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Deallocated
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
-- sending LU Accept for MSISDN:42342
-DREF VLR subscr MSISDN:42342 usage increases to: 3
-DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_DONE
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: lu_compl_vlr_new_tmsi()
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_WAIT_TMSI_CNF
+- sending LU Accept for MSISDN:42342, with TMSI 0x03020100
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
+  lu_result_sent == 1
+- a LU Accept with a new TMSI was sent, waiting for TMSI Realloc Compl
+  llist_count(&net->subscr_conns) == 1
+msc_subscr_conn_is_accepted() == false
+  requests shall be thwarted
+DRLL Dispatching 04.08 message, pdisc=3
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
+DRLL Dispatching 04.08 message, pdisc=5
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
+DRLL Dispatching 04.08 message, pdisc=6
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
+DRLL Dispatching 04.08 message, pdisc=9
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
+- even though the TMSI is not acked, we can already find the subscr with it
+DREF VLR subscr MSISDN:42342 usage increases to: 2
+  vsub != NULL == 1
+  strcmp(vsub->imsi, imsi) == 0
+  vsub->tmsi_new == 0x03020100
+  vsub->tmsi == 0xffffffff
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
+- MS sends TMSI Realloc Complete
+  rx from MS: pdisc=0x05 msg_type=0x5b
+DRLL Dispatching 04.08 message, pdisc=5
+DMM TMSI Reallocation Completed. Subscriber: MSISDN:42342
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_NEW_TMSI_ACK
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_TMSI_CNF}: Received Event LU_COMPL_VLR_E_NEW_TMSI_ACK
+DREF VLR subscr MSISDN:42342 usage increases to: 2
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_TMSI_CNF}: state_chg to LU_COMPL_VLR_S_DONE
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_LU_COMPL_SUCCESS
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000010650)
@@ -124,13 +154,10 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cau
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
 DRLL subscr MSISDN:42342: Freeing subscriber connection
-DREF VLR subscr MSISDN:42342 usage decreases to: 2
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
-DREF VLR subscr MSISDN:42342 usage decreases to: 1
-<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
 - LU was successful, and the conn has already been closed
-  lu_result_sent == 1
   llist_count(&net->subscr_conns) == 0
 ---
 - after a while, a new conn sends a CM Service Request. VLR responds with Auth Req, 2nd auth vector
@@ -236,7 +263,7 @@ DREF VLR subscr MSISDN:42342 usage increases to: 2
   llist_count(&vsub->cs.requests) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 3
 DMM Subscriber MSISDN:42342 not paged yet, start paging.
-  RAN_GERAN_A sends out paging request to IMSI 901700000010650, TMSI 0xffffffff, LAC 0
+  RAN_GERAN_A sends out paging request to IMSI 901700000010650, TMSI 0x03020100, LAC 0
   strcmp(paging_expecting_imsi, imsi) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 4
   llist_count(&vsub->cs.requests) == 1
@@ -485,9 +512,39 @@ DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Removing from paren
 DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Freeing instance
 DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Deallocated
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
-- sending LU Accept for MSISDN:42342
-DREF VLR subscr MSISDN:42342 usage increases to: 3
-DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_DONE
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: lu_compl_vlr_new_tmsi()
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_WAIT_TMSI_CNF
+- sending LU Accept for MSISDN:42342, with TMSI 0x03020100
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
+  lu_result_sent == 1
+- a LU Accept with a new TMSI was sent, waiting for TMSI Realloc Compl
+  llist_count(&net->subscr_conns) == 1
+msc_subscr_conn_is_accepted() == false
+  requests shall be thwarted
+DRLL Dispatching 04.08 message, pdisc=3
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
+DRLL Dispatching 04.08 message, pdisc=5
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
+DRLL Dispatching 04.08 message, pdisc=6
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
+DRLL Dispatching 04.08 message, pdisc=9
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
+- even though the TMSI is not acked, we can already find the subscr with it
+DREF VLR subscr MSISDN:42342 usage increases to: 2
+  vsub != NULL == 1
+  strcmp(vsub->imsi, imsi) == 0
+  vsub->tmsi_new == 0x03020100
+  vsub->tmsi == 0xffffffff
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
+- MS sends TMSI Realloc Complete
+  rx from MS: pdisc=0x05 msg_type=0x5b
+DRLL Dispatching 04.08 message, pdisc=5
+DMM TMSI Reallocation Completed. Subscriber: MSISDN:42342
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_NEW_TMSI_ACK
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_TMSI_CNF}: Received Event LU_COMPL_VLR_E_NEW_TMSI_ACK
+DREF VLR subscr MSISDN:42342 usage increases to: 2
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_TMSI_CNF}: state_chg to LU_COMPL_VLR_S_DONE
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_LU_COMPL_SUCCESS
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000010650)
@@ -506,13 +563,10 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cau
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
 DRLL subscr MSISDN:42342: Freeing subscriber connection
-DREF VLR subscr MSISDN:42342 usage decreases to: 2
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
-DREF VLR subscr MSISDN:42342 usage decreases to: 1
-<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
 - LU was successful, and the conn has already been closed
-  lu_result_sent == 1
   llist_count(&net->subscr_conns) == 0
 ---
 - after a while, a new conn sends a CM Service Request. VLR responds with Auth Req, 2nd auth vector
@@ -619,7 +673,7 @@ DREF VLR subscr MSISDN:42342 usage increases to: 2
   llist_count(&vsub->cs.requests) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 3
 DMM Subscriber MSISDN:42342 not paged yet, start paging.
-  RAN_UTRAN_IU sends out paging request to IMSI 901700000010650, TMSI 0xffffffff, LAC 0
+  RAN_UTRAN_IU sends out paging request to IMSI 901700000010650, TMSI 0x03020100, LAC 0
   strcmp(paging_expecting_imsi, imsi) == 0
 DREF VLR subscr MSISDN:42342 usage increases to: 4
   llist_count(&vsub->cs.requests) == 1
@@ -895,9 +949,39 @@ DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Removing from paren
 DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Freeing instance
 DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Deallocated
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
-- sending LU Accept for MSISDN:42342
-DREF VLR subscr MSISDN:42342 usage increases to: 3
-DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_DONE
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: lu_compl_vlr_new_tmsi()
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_WAIT_TMSI_CNF
+- sending LU Accept for MSISDN:42342, with TMSI 0x03020100
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
+  lu_result_sent == 1
+- a LU Accept with a new TMSI was sent, waiting for TMSI Realloc Compl
+  llist_count(&net->subscr_conns) == 1
+msc_subscr_conn_is_accepted() == false
+  requests shall be thwarted
+DRLL Dispatching 04.08 message, pdisc=3
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
+DRLL Dispatching 04.08 message, pdisc=5
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
+DRLL Dispatching 04.08 message, pdisc=6
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
+DRLL Dispatching 04.08 message, pdisc=9
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
+- even though the TMSI is not acked, we can already find the subscr with it
+DREF VLR subscr MSISDN:42342 usage increases to: 2
+  vsub != NULL == 1
+  strcmp(vsub->imsi, imsi) == 0
+  vsub->tmsi_new == 0x03020100
+  vsub->tmsi == 0xffffffff
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
+- MS sends TMSI Realloc Complete
+  rx from MS: pdisc=0x05 msg_type=0x5b
+DRLL Dispatching 04.08 message, pdisc=5
+DMM TMSI Reallocation Completed. Subscriber: MSISDN:42342
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_NEW_TMSI_ACK
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_TMSI_CNF}: Received Event LU_COMPL_VLR_E_NEW_TMSI_ACK
+DREF VLR subscr MSISDN:42342 usage increases to: 2
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_TMSI_CNF}: state_chg to LU_COMPL_VLR_S_DONE
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_LU_COMPL_SUCCESS
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000010650)
@@ -916,13 +1000,10 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cau
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
 DRLL subscr MSISDN:42342: Freeing subscriber connection
-DREF VLR subscr MSISDN:42342 usage decreases to: 2
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
-DREF VLR subscr MSISDN:42342 usage decreases to: 1
-<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
 - LU was successful, and the conn has already been closed
-  lu_result_sent == 1
   llist_count(&net->subscr_conns) == 0
 DREF freeing VLR subscr MSISDN:42342
 ===== test_umts_authen_resync_geran: SUCCESS
@@ -1063,9 +1144,39 @@ DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Removing from paren
 DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Freeing instance
 DVLR sub_pres_vlr_fsm(901700000010650){SUB_PRES_VLR_S_DONE}: Deallocated
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: Received Event LU_COMPL_VLR_E_SUB_PRES_COMPL
-- sending LU Accept for MSISDN:42342
-DREF VLR subscr MSISDN:42342 usage increases to: 3
-DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_DONE
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: lu_compl_vlr_new_tmsi()
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_SUB_PRES}: state_chg to LU_COMPL_VLR_S_WAIT_TMSI_CNF
+- sending LU Accept for MSISDN:42342, with TMSI 0x03020100
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
+<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
+  lu_result_sent == 1
+- a LU Accept with a new TMSI was sent, waiting for TMSI Realloc Compl
+  llist_count(&net->subscr_conns) == 1
+msc_subscr_conn_is_accepted() == false
+  requests shall be thwarted
+DRLL Dispatching 04.08 message, pdisc=3
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
+DRLL Dispatching 04.08 message, pdisc=5
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
+DRLL Dispatching 04.08 message, pdisc=6
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
+DRLL Dispatching 04.08 message, pdisc=9
+DRLL subscr MSISDN:42342: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
+- even though the TMSI is not acked, we can already find the subscr with it
+DREF VLR subscr MSISDN:42342 usage increases to: 2
+  vsub != NULL == 1
+  strcmp(vsub->imsi, imsi) == 0
+  vsub->tmsi_new == 0x03020100
+  vsub->tmsi == 0xffffffff
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
+- MS sends TMSI Realloc Complete
+  rx from MS: pdisc=0x05 msg_type=0x5b
+DRLL Dispatching 04.08 message, pdisc=5
+DMM TMSI Reallocation Completed. Subscriber: MSISDN:42342
+DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_NEW_TMSI_ACK
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_TMSI_CNF}: Received Event LU_COMPL_VLR_E_NEW_TMSI_ACK
+DREF VLR subscr MSISDN:42342 usage increases to: 2
+DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_WAIT_TMSI_CNF}: state_chg to LU_COMPL_VLR_S_DONE
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_LU_COMPL_SUCCESS
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Terminating (cause = OSMO_FSM_TERM_PARENT)
 DVLR lu_compl_vlr_fsm(901700000010650){LU_COMPL_VLR_S_DONE}: Removing from parent vlr_lu_fsm(901700000010650)
@@ -1084,13 +1195,10 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cau
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
 DRLL subscr MSISDN:42342: Freeing subscriber connection
-DREF VLR subscr MSISDN:42342 usage decreases to: 2
+DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
-DREF VLR subscr MSISDN:42342 usage decreases to: 1
-<-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: vlr_gsupc_read_cb() returns 0
 - LU was successful, and the conn has already been closed
-  lu_result_sent == 1
   llist_count(&net->subscr_conns) == 0
 DREF freeing VLR subscr MSISDN:42342
 ===== test_umts_authen_resync_utran: SUCCESS
