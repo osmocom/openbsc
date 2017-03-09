@@ -419,7 +419,8 @@ int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 				is_utran || conn->network->authentication_required,
 				conn->network->a5_encryption,
 				classmark_is_r99(&conn->classmark),
-				is_utran);
+				is_utran,
+				net->vlr->cfg.assign_tmsi);
 	if (!lu_fsm) {
 		DEBUGP(DRR, "%s: Can't start LU FSM\n", mi_string);
 		return 0;
