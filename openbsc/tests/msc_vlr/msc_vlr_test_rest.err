@@ -4,6 +4,7 @@ msc_subscr_conn_is_accepted() == false
 - freshly allocated conn
 msc_subscr_conn_is_accepted() == false
 - conn_fsm present, in state NEW
+DREF unknown: MSC conn use + 1 == 1
 DVLR Subscr_Conn(test){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(test){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(test){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -26,6 +27,7 @@ msc_subscr_conn_is_accepted() == true
 DVLR Subscr_Conn(test){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_CN_CLOSE
 DVLR Subscr_Conn(test){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_RELEASED
 DVLR Subscr_Conn(test){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
+DREF unknown: MSC conn use - 1 == 0
 DRLL subscr unknown: Freeing subscriber connection
 DREF VLR subscr unknown usage decreases to: 0
 DREF freeing VLR subscr unknown
@@ -41,8 +43,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - CM Service Request without a prior Location Updating
   rx from MS: pdisc=0x05 msg_type=0x24
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -63,9 +67,11 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Deallocated
-DRLL Freeing subscriber connection with NULL subscriber
+DREF unknown: MSC conn use - 1 == 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF unknown: MSC conn use - 1 == 0
+DRLL Freeing subscriber connection with NULL subscriber
 - conn was released
   llist_count(&net->subscr_conns) == 0
 ===== test_cm_service_without_lu: SUCCESS
@@ -77,7 +83,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP LU request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -103,6 +111,7 @@ DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
@@ -172,6 +181,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -186,7 +196,9 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - Location Update request causes a GSUP LU request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -210,6 +222,7 @@ DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DREF MSISDN:46071: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
@@ -278,6 +291,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -291,6 +305,7 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - subscriber detaches
   rx from MS: pdisc=0x05 msg_type=0x01
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI DETACH INDICATION: MI(IMSI)=901700000004620
 DREF VLR subscr MSISDN:46071 usage increases to: 2
@@ -298,6 +313,7 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_two_lu: SUCCESS
@@ -309,7 +325,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request with unknown TMSI sends ID Request for IMSI
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(591536962){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(591536962){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(591536962){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -328,6 +346,7 @@ DMSC msc_tx 3 bytes to TMSI:0x23422342 via RAN_GERAN_A
 - DTAP --RAN_GERAN_A--> MS: 051801
 - DTAP matches expected message
 DREF VLR subscr TMSI:0x23422342 usage decreases to: 1
+DREF TMSI:0x23422342: MSC conn use - 1 == 1
   lu_result_sent == 0
 msc_subscr_conn_is_accepted() == false
   requests shall be thwarted
@@ -341,6 +360,7 @@ DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr TMSI:0x23422342: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
 - MS tells us the IMSI, causes a GSUP LU request to HLR
   rx from MS: pdisc=0x05 msg_type=0x59
+DREF TMSI:0x23422342: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IDENTITY RESPONSE: MI(IMSI)=901700000004620
 DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
@@ -357,6 +377,7 @@ DVLR upd_hlr_vlr_fsm(591536962){UPD_HLR_VLR_S_INIT}: Received Event UPD_HLR_VLR_
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(591536962){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
@@ -426,6 +447,7 @@ DVLR vlr_lu_fsm(591536962){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(591
 DVLR vlr_lu_fsm(591536962){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(591536962){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(591536962){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(591536962){SUBSCR_CONN_S_RELEASED}: Freeing instance

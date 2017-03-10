@@ -59,13 +59,13 @@ void msc_subscr_conn_init(void);
 
 struct bsc_api *msc_bsc_api();
 
-#define subscr_con_get(conn) _subscr_con_get(conn, __BASE_FILE__, __LINE__)
+#define msc_conn_get(conn) _msc_conn_get(conn, __BASE_FILE__, __LINE__)
 struct gsm_subscriber_connection *
-_subscr_con_get(struct gsm_subscriber_connection *conn,
-		const char *file, int line);
-#define subscr_con_put(conn) _subscr_con_put(conn, __BASE_FILE__, __LINE__)
-void _subscr_con_put(struct gsm_subscriber_connection *conn, const char *file,
-		     int line);
+_msc_conn_get(struct gsm_subscriber_connection *conn,
+	      const char *file, int line);
+#define msc_conn_put(conn) _msc_conn_put(conn, __BASE_FILE__, __LINE__)
+void _msc_conn_put(struct gsm_subscriber_connection *conn, const char *file,
+		   int line);
 
 int msc_create_conn_fsm(struct gsm_subscriber_connection *conn, const char *id);
 

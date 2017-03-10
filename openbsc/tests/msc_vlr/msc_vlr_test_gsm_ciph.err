@@ -2,7 +2,9 @@
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -25,6 +27,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a8000322201012aca96fb4ffdea5c985cbafa9b6e18b210420bde240220807fa7502e07e1c0003222010e7c03ba7cf0e2fde82b2dc4d63077d422104a29514ae2208e2b234f80788640003222010fa8f20b781b5881329d4fea26b1a3c5121045afc8d7222082392f14f709ae000032220100fd4cc8dbe8715d1f439e304edfd68dc2104bc8d1c5b2208da7cdd6bfe2d7000
@@ -43,6 +46,7 @@ DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
   auth_request_sent == 1
 - MS sends Authen Response, VLR accepts and sends Ciphering Mode Command to MS
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -58,6 +62,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
 - sending Ciphering Mode Command for IMSI:901700000004620: cipher=VLR_CIPH_A5_1 kc=61855fb81fc2a800 retrieve_imeisv=0
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_CIPH
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - needs ciph, not yet accepted
 msc_subscr_conn_is_accepted() == false
@@ -141,6 +146,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -154,8 +160,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - after a while, a new conn sends a CM Service Request. VLR responds with Auth Req, 2nd auth vector
   rx from MS: pdisc=0x05 msg_type=0x24
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -176,6 +184,7 @@ DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...rand=12aca96fb4ffdea5c985cbafa9b6e18b
 - ...expecting sres=20bde240
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DREF MSISDN:46071: MSC conn use - 1 == 1
   auth_request_sent == 1
   cm_service_result_sent == 0
 - needs auth, not yet accepted
@@ -191,6 +200,7 @@ DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
 - MS sends Authen Response, VLR accepts and requests Ciphering
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM MSISDN:46071: MM GSM AUTHENTICATION RESPONSE (sres = 20bde240)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -207,6 +217,7 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: got VLR_AU
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2()
 - sending Ciphering Mode Command for MSISDN:46071: cipher=VLR_CIPH_A5_1 kc=07fa7502e07e1c00 retrieve_imeisv=0
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_WAIT_CIPH
+DREF MSISDN:46071: MSC conn use - 1 == 1
   cm_service_result_sent == 0
   cipher_mode_cmd_sent == 1
 - needs ciph, not yet accepted
@@ -242,6 +253,7 @@ DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR
   expecting USSD:
   Your extension is 46071
   rx from MS: pdisc=0x0b msg_type=0x3b
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=11
 DMM MSISDN:46071 pdisc=11 msg_type=0x3b: received_cm_service_request changes to false
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
@@ -258,10 +270,12 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Deallocated
-DRLL subscr MSISDN:46071: Freeing subscriber connection
-DREF VLR subscr MSISDN:46071 usage decreases to: 1
+DREF MSISDN:46071: MSC conn use - 1 == 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - all requests serviced, conn has been released
   llist_count(&net->subscr_conns) == 0
 ---
@@ -284,8 +298,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 3
 - MS replies with Paging Response, and VLR sends Auth Request with third key
   rx from MS: pdisc=0x06 msg_type=0x27
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=6
 DRR PAGING RESPONSE: MI(IMSI)=901700000004620
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -306,6 +322,7 @@ DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: got auth tuple: us
 - ...rand=e7c03ba7cf0e2fde82b2dc4d63077d42
 - ...expecting sres=a29514ae
 DREF VLR subscr MSISDN:46071 usage decreases to: 4
+DREF MSISDN:46071: MSC conn use - 1 == 1
   auth_request_sent == 1
 - needs auth, not yet accepted
 msc_subscr_conn_is_accepted() == false
@@ -320,6 +337,7 @@ DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
 - MS sends Authen Response, VLR accepts and requests Ciphering
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM MSISDN:46071: MM GSM AUTHENTICATION RESPONSE (sres = a29514ae)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -336,6 +354,7 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: got VLR_AU
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2()
 - sending Ciphering Mode Command for MSISDN:46071: cipher=VLR_CIPH_A5_1 kc=e2b234f807886400 retrieve_imeisv=0
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_WAIT_CIPH
+DREF MSISDN:46071: MSC conn use - 1 == 1
   cipher_mode_cmd_sent == 1
 - needs ciph, not yet accepted
 msc_subscr_conn_is_accepted() == false
@@ -366,7 +385,7 @@ DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S
 DPAG Paging success for MSISDN:46071 (event=0)
 DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:46071 usage increases to: 5
-DMSC subscr MSISDN:46071: increased subscr_con use_count to 1
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DMSC msc_tx 91 bytes to MSISDN:46071 via RAN_GERAN_A
 - DTAP --RAN_GERAN_A--> MS: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
@@ -382,13 +401,16 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 4
   llist_count(&net->subscr_conns) == 1
 - MS replies with CP-ACK for received SMS
   rx from MS: pdisc=0x89 msg_type=0x04
+DREF MSISDN:46071: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 - MS also sends RP-ACK, MSC in turn sends CP-ACK for that
   rx from MS: pdisc=0x89 msg_type=0x01
+DREF MSISDN:46071: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DMSC msc_tx 2 bytes to MSISDN:46071 via RAN_GERAN_A
@@ -396,7 +418,7 @@ DMSC msc_tx 2 bytes to MSISDN:46071 via RAN_GERAN_A
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 3
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
-DMSC subscr MSISDN:46071: decreased subscr_conn use_count to 0
+DREF MSISDN:46071: MSC conn use - 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
@@ -404,10 +426,12 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Deallocated
-DRLL subscr MSISDN:46071: Freeing subscriber connection
-DREF VLR subscr MSISDN:46071 usage decreases to: 1
+DREF MSISDN:46071: MSC conn use - 1 == 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
   dtap_tx_confirmed == 1
 - SMS is done, conn is gone
   llist_count(&net->subscr_conns) == 0
@@ -415,6 +439,7 @@ DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 - subscriber detaches
   rx from MS: pdisc=0x05 msg_type=0x01
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI DETACH INDICATION: MI(IMSI)=901700000004620
 DREF VLR subscr MSISDN:46071 usage increases to: 2
@@ -422,6 +447,7 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_ciph: SUCCESS
@@ -433,7 +459,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -456,6 +484,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a8000322201012aca96fb4ffdea5c985cbafa9b6e18b210420bde240220807fa7502e07e1c0003222010e7c03ba7cf0e2fde82b2dc4d63077d422104a29514ae2208e2b234f80788640003222010fa8f20b781b5881329d4fea26b1a3c5121045afc8d7222082392f14f709ae000032220100fd4cc8dbe8715d1f439e304edfd68dc2104bc8d1c5b2208da7cdd6bfe2d7000
@@ -474,6 +503,7 @@ DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
   lu_result_sent == 0
 - MS sends Authen Response, VLR accepts and sends Ciphering Mode Command to MS
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -489,6 +519,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
 - sending Ciphering Mode Command for IMSI:901700000004620: cipher=VLR_CIPH_A5_1 kc=61855fb81fc2a800 retrieve_imeisv=0
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_CIPH
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
   auth_request_sent == 1
 - needs ciph, not yet accepted
@@ -580,6 +611,7 @@ DREF VLR subscr MSISDN:46071 usage increases to: 2
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - MS sends TMSI Realloc Complete
   rx from MS: pdisc=0x05 msg_type=0x5b
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM TMSI Reallocation Completed. Subscriber: MSISDN:46071
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_NEW_TMSI_ACK
@@ -603,10 +635,12 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
-DRLL subscr MSISDN:46071: Freeing subscriber connection
-DREF VLR subscr MSISDN:46071 usage decreases to: 1
+DREF MSISDN:46071: MSC conn use - 1 == 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - LU was successful, and the conn has already been closed
   llist_count(&net->subscr_conns) == 0
 - Subscriber has the new TMSI
@@ -620,8 +654,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - after a while, a new conn sends a CM Service Request using above TMSI. VLR responds with Auth Req, 2nd auth vector
   rx from MS: pdisc=0x05 msg_type=0x24
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(TMSI)=50462976
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -642,6 +678,7 @@ DVLR VLR_Authenticate(50462976){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count
 - ...rand=12aca96fb4ffdea5c985cbafa9b6e18b
 - ...expecting sres=20bde240
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DREF MSISDN:46071: MSC conn use - 1 == 1
   auth_request_sent == 1
   cm_service_result_sent == 0
 - needs auth, not yet accepted
@@ -657,6 +694,7 @@ DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
 - MS sends Authen Response, VLR accepts and requests Ciphering
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM MSISDN:46071: MM GSM AUTHENTICATION RESPONSE (sres = 20bde240)
 DVLR VLR_Authenticate(50462976){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -673,6 +711,7 @@ DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: got VLR_AUTH_RES_
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2()
 - sending Ciphering Mode Command for MSISDN:46071: cipher=VLR_CIPH_A5_1 kc=07fa7502e07e1c00 retrieve_imeisv=0
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_WAIT_CIPH
+DREF MSISDN:46071: MSC conn use - 1 == 1
   cm_service_result_sent == 0
   cipher_mode_cmd_sent == 1
 - needs ciph, not yet accepted
@@ -708,6 +747,7 @@ DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E
   expecting USSD:
   Your extension is 46071
   rx from MS: pdisc=0x0b msg_type=0x3b
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=11
 DMM MSISDN:46071 pdisc=11 msg_type=0x3b: received_cm_service_request changes to false
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
@@ -724,10 +764,12 @@ DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Terminating (cause = O
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(50462976)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Deallocated
-DRLL subscr MSISDN:46071: Freeing subscriber connection
-DREF VLR subscr MSISDN:46071 usage decreases to: 1
+DREF MSISDN:46071: MSC conn use - 1 == 1
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - all requests serviced, conn has been released
   llist_count(&net->subscr_conns) == 0
 ---
@@ -750,8 +792,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 3
 - MS replies with Paging Response using TMSI, and VLR sends Auth Request with third key
   rx from MS: pdisc=0x06 msg_type=0x27
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=6
 DRR PAGING RESPONSE: MI(TMSI)=50462976
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -772,6 +816,7 @@ DVLR VLR_Authenticate(50462976){VLR_SUB_AS_WAIT_RESP}: got auth tuple: use_count
 - ...rand=e7c03ba7cf0e2fde82b2dc4d63077d42
 - ...expecting sres=a29514ae
 DREF VLR subscr MSISDN:46071 usage decreases to: 4
+DREF MSISDN:46071: MSC conn use - 1 == 1
   auth_request_sent == 1
 - needs auth, not yet accepted
 msc_subscr_conn_is_accepted() == false
@@ -786,6 +831,7 @@ DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
 - MS sends Authen Response, VLR accepts and requests Ciphering
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM MSISDN:46071: MM GSM AUTHENTICATION RESPONSE (sres = a29514ae)
 DVLR VLR_Authenticate(50462976){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -802,6 +848,7 @@ DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: got VLR_AUTH_RES_
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: _proc_arq_vlr_node2()
 - sending Ciphering Mode Command for MSISDN:46071: cipher=VLR_CIPH_A5_1 kc=e2b234f807886400 retrieve_imeisv=0
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_WAIT_AUTH}: state_chg to PR_ARQ_S_WAIT_CIPH
+DREF MSISDN:46071: MSC conn use - 1 == 1
   cipher_mode_cmd_sent == 1
 - needs ciph, not yet accepted
 msc_subscr_conn_is_accepted() == false
@@ -832,7 +879,7 @@ DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPT
 DPAG Paging success for MSISDN:46071 (event=0)
 DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:46071 usage increases to: 5
-DMSC subscr MSISDN:46071: increased subscr_con use_count to 1
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DMSC msc_tx 91 bytes to MSISDN:46071 via RAN_GERAN_A
 - DTAP --RAN_GERAN_A--> MS: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
@@ -848,13 +895,16 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 4
   llist_count(&net->subscr_conns) == 1
 - MS replies with CP-ACK for received SMS
   rx from MS: pdisc=0x89 msg_type=0x04
+DREF MSISDN:46071: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
+DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 - MS also sends RP-ACK, MSC in turn sends CP-ACK for that
   rx from MS: pdisc=0x89 msg_type=0x01
+DREF MSISDN:46071: MSC conn use + 1 == 3
 DRLL Dispatching 04.08 message, pdisc=9
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DMSC msc_tx 2 bytes to MSISDN:46071 via RAN_GERAN_A
@@ -862,7 +912,7 @@ DMSC msc_tx 2 bytes to MSISDN:46071 via RAN_GERAN_A
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 3
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
-DMSC subscr MSISDN:46071: decreased subscr_conn use_count to 0
+DREF MSISDN:46071: MSC conn use - 1 == 2
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_COMMUNICATING}: state_chg to SUBSCR_CONN_S_RELEASED
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Terminating (cause = OSMO_FSM_TERM_REGULAR)
@@ -870,10 +920,12 @@ DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Terminating (cause = O
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(50462976)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Deallocated
-DRLL subscr MSISDN:46071: Freeing subscriber connection
-DREF VLR subscr MSISDN:46071 usage decreases to: 1
+DREF MSISDN:46071: MSC conn use - 1 == 1
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
   dtap_tx_confirmed == 1
 - SMS is done, conn is gone
   llist_count(&net->subscr_conns) == 0
@@ -881,6 +933,7 @@ DVLR Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
 - subscriber detaches, using TMSI
   rx from MS: pdisc=0x05 msg_type=0x01
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI DETACH INDICATION: MI(TMSI)=50462976
 DREF VLR subscr MSISDN:46071 usage increases to: 2
@@ -888,6 +941,7 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_ciph_tmsi: SUCCESS
@@ -899,7 +953,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -922,6 +978,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a8000322201012aca96fb4ffdea5c985cbafa9b6e18b210420bde240220807fa7502e07e1c0003222010e7c03ba7cf0e2fde82b2dc4d63077d422104a29514ae2208e2b234f80788640003222010fa8f20b781b5881329d4fea26b1a3c5121045afc8d7222082392f14f709ae000032220100fd4cc8dbe8715d1f439e304edfd68dc2104bc8d1c5b2208da7cdd6bfe2d7000
@@ -940,6 +997,7 @@ DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
   lu_result_sent == 0
 - MS sends Authen Response, VLR accepts and sends Ciphering Mode Command to MS
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -955,6 +1013,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
 - sending Ciphering Mode Command for IMSI:901700000004620: cipher=VLR_CIPH_A5_1 kc=61855fb81fc2a800 retrieve_imeisv=0
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_CIPH
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - needs ciph, not yet accepted
 msc_subscr_conn_is_accepted() == false
@@ -1041,6 +1100,7 @@ DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
 - MS replies with an Identity Response
   rx from MS: pdisc=0x05 msg_type=0x59
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IDENTITY RESPONSE: MI(IMEI)=423423423423423
 DVLR set IMEI on subscriber; IMSI=901700000004620 IMEI=423423423423423
@@ -1066,10 +1126,12 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
-DRLL subscr MSISDN:46071: Freeing subscriber connection
-DREF VLR subscr MSISDN:46071 usage decreases to: 1
+DREF MSISDN:46071: MSC conn use - 1 == 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - LU was successful, and the conn has already been closed
   lu_result_sent == 1
   llist_count(&net->subscr_conns) == 0
@@ -1081,6 +1143,7 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - subscriber detaches
   rx from MS: pdisc=0x05 msg_type=0x01
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI DETACH INDICATION: MI(IMSI)=901700000004620
 DREF VLR subscr MSISDN:46071 usage increases to: 2
@@ -1088,6 +1151,7 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_ciph_imei: SUCCESS
@@ -1099,7 +1163,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -1122,6 +1188,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a8000322201012aca96fb4ffdea5c985cbafa9b6e18b210420bde240220807fa7502e07e1c0003222010e7c03ba7cf0e2fde82b2dc4d63077d422104a29514ae2208e2b234f80788640003222010fa8f20b781b5881329d4fea26b1a3c5121045afc8d7222082392f14f709ae000032220100fd4cc8dbe8715d1f439e304edfd68dc2104bc8d1c5b2208da7cdd6bfe2d7000
@@ -1140,6 +1207,7 @@ DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
   lu_result_sent == 0
 - MS sends Authen Response, VLR accepts and sends Ciphering Mode Command to MS
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -1155,6 +1223,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
 - sending Ciphering Mode Command for IMSI:901700000004620: cipher=VLR_CIPH_A5_1 kc=61855fb81fc2a800 retrieve_imeisv=1
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_CIPH
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   cipher_mode_cmd_sent == 1
   cipher_mode_cmd_sent_with_imeisv == 1
   lu_result_sent == 0
@@ -1205,11 +1274,13 @@ DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr IMSI:901700000004620: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
 - MS replies with an Identity Response
   rx from MS: pdisc=0x05 msg_type=0x59
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IDENTITY RESPONSE: MI(IMEI)=423423423423423
 DVLR set IMEI on subscriber; IMSI=901700000004620 IMEI=423423423423423
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Received Event VLR_ULA_E_ID_IMEI
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_HLR_UPD}: Event VLR_ULA_E_ID_IMEI not permitted
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
 DVLR GSUP rx 17: 10010809710000004026f00804036470f1
@@ -1266,6 +1337,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -1279,6 +1351,7 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - subscriber detaches
   rx from MS: pdisc=0x05 msg_type=0x01
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI DETACH INDICATION: MI(IMSI)=901700000004620
 DREF VLR subscr MSISDN:46071 usage increases to: 2
@@ -1286,6 +1359,7 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_ciph_imeisv: SUCCESS
@@ -1297,7 +1371,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -1320,6 +1396,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a8000322201012aca96fb4ffdea5c985cbafa9b6e18b210420bde240220807fa7502e07e1c0003222010e7c03ba7cf0e2fde82b2dc4d63077d422104a29514ae2208e2b234f80788640003222010fa8f20b781b5881329d4fea26b1a3c5121045afc8d7222082392f14f709ae000032220100fd4cc8dbe8715d1f439e304edfd68dc2104bc8d1c5b2208da7cdd6bfe2d7000
@@ -1338,6 +1415,7 @@ DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
   lu_result_sent == 0
 - MS sends Authen Response, VLR accepts and sends Ciphering Mode Command to MS
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -1353,6 +1431,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: Received Event VLR_ULA_E_
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: vlr_loc_upd_post_auth()
 - sending Ciphering Mode Command for IMSI:901700000004620: cipher=VLR_CIPH_A5_1 kc=61855fb81fc2a800 retrieve_imeisv=0
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_AUTH}: state_chg to VLR_ULA_S_WAIT_CIPH
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - needs ciph, not yet accepted
 msc_subscr_conn_is_accepted() == false
@@ -1439,6 +1518,7 @@ DRLL Dispatching 04.08 message, pdisc=9
 DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
 - MS replies with an Identity Response
   rx from MS: pdisc=0x05 msg_type=0x59
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IDENTITY RESPONSE: MI(IMEI)=423423423423423
 DVLR set IMEI on subscriber; IMSI=901700000004620 IMEI=423423423423423
@@ -1447,6 +1527,7 @@ DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_IMEI_TMSI}: Received 
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_IMEI_TMSI}: lu_compl_vlr_new_tmsi()
 DVLR lu_compl_vlr_fsm(901700000004620){LU_COMPL_VLR_S_WAIT_IMEI_TMSI}: state_chg to LU_COMPL_VLR_S_WAIT_TMSI_CNF
 - sending LU Accept for MSISDN:46071, with TMSI 0x03020100
+DREF MSISDN:46071: MSC conn use - 1 == 1
 - a LU Accept with a new TMSI was sent, waiting for TMSI Realloc Compl
   llist_count(&net->subscr_conns) == 1
   lu_result_sent == 1
@@ -1469,6 +1550,7 @@ DREF VLR subscr MSISDN:46071 usage increases to: 2
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - MS sends TMSI Realloc Complete
   rx from MS: pdisc=0x05 msg_type=0x5b
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM TMSI Reallocation Completed. Subscriber: MSISDN:46071
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_WAIT_LU_COMPL}: Received Event VLR_ULA_E_NEW_TMSI_ACK
@@ -1492,10 +1574,12 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
-DRLL subscr MSISDN:46071: Freeing subscriber connection
-DREF VLR subscr MSISDN:46071 usage decreases to: 1
+DREF MSISDN:46071: MSC conn use - 1 == 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
+DRLL subscr MSISDN:46071: Freeing subscriber connection
+DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - LU was successful, and the conn has already been closed
   llist_count(&net->subscr_conns) == 0
 - Subscriber has the IMEI and TMSI
@@ -1507,6 +1591,7 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - subscriber detaches, using TMSI
   rx from MS: pdisc=0x05 msg_type=0x01
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI DETACH INDICATION: MI(TMSI)=50462976
 DREF VLR subscr MSISDN:46071 usage increases to: 2
@@ -1514,6 +1599,7 @@ DMM Subscriber MSISDN:46071 DETACHED
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
 ===== test_ciph_tmsi_imei: SUCCESS

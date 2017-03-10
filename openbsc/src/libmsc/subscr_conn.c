@@ -231,15 +231,7 @@ static void subscr_conn_fsm_cleanup(struct osmo_fsm_inst *fi,
 	conn->in_release = true;
 	conn->conn_fsm = NULL;
 
-	/* If we're closing in a middle of a trans, we need to clean up */
-	if (conn->use_count) {
-		DEBUGP(DMM, "%s: still in use (%u), cleaning up transactions\n",
-		       vlr_subscr_name(conn->vsub), conn->use_count);
-		trans_conn_closed(conn);
-	}
-	if (conn->use_count)
-		LOGP(DMM, LOGL_ERROR, "%s: closing conn but still in use (%u)\n",
-		     vlr_subscr_name(conn->vsub), conn->use_count);
+	trans_conn_closed(conn);
 
 	if (conn->via_ran == RAN_UTRAN_IU)
 		iu_tx_release(conn->iu.ue_ctx, NULL);
@@ -247,7 +239,7 @@ static void subscr_conn_fsm_cleanup(struct osmo_fsm_inst *fi,
 		 * received from the UE, or a timeout expires. For now, the log
 		 * says "unknown UE" for each release outcome. */
 
-	msc_subscr_con_free(conn);
+	msc_conn_put(conn);
 }
 
 int subscr_conn_fsm_timeout(struct osmo_fsm_inst *fi)
@@ -340,8 +332,8 @@ int msc_create_conn_fsm(struct gsm_subscriber_connection *conn, const char *id)
 	 * subscriber connection. If the FSM is freed along with the subscriber
 	 * connection, then in _osmo_fsm_inst_term() the osmo_fsm_inst_free()
 	 * that follows the cleanup() call would run into a double free. */
-	fi = osmo_fsm_inst_alloc(&subscr_conn_fsm, conn->network, conn,
-				 LOGL_DEBUG, id);
+	fi = osmo_fsm_inst_alloc(&subscr_conn_fsm, conn->network,
+				 msc_conn_get(conn), LOGL_DEBUG, id);
 
 	if (!fi) {
 		LOGP(DMM, LOGL_ERROR,

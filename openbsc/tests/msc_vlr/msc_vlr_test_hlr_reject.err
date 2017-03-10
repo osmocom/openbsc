@@ -2,7 +2,9 @@
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -25,6 +27,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _SEND_AUTH_INFO_ERROR = unknown IMSI
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020102
@@ -51,6 +54,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -70,7 +74,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -93,6 +99,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _SEND_AUTH_INFO_ERROR = net fail
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020111
@@ -119,6 +126,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -140,7 +148,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -163,6 +173,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a800
@@ -181,6 +192,7 @@ DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
   lu_result_sent == 0
 - MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -203,6 +215,7 @@ DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
@@ -260,6 +273,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -279,7 +293,9 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -300,6 +316,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DREF MSISDN:46071: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _SEND_AUTH_INFO_ERROR = net fail
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020111
@@ -318,6 +335,7 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 2
   lu_result_sent == 0
 - MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF MSISDN:46071: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM MSISDN:46071: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -340,6 +358,7 @@ DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF MSISDN:46071: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
@@ -396,6 +415,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -417,7 +437,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -440,6 +462,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a800
@@ -458,6 +481,7 @@ DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
   lu_result_sent == 0
 - MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -480,6 +504,7 @@ DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
@@ -537,6 +562,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -556,7 +582,9 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -577,6 +605,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DREF MSISDN:46071: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _SEND_AUTH_INFO_ERROR = net fail
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020111
@@ -603,6 +632,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -624,7 +654,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -647,6 +679,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT; VLR sends Auth Req to MS
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f003222010585df1ae287f6e273dce07090d61320b21042d8b2c3e220861855fb81fc2a800
@@ -665,6 +698,7 @@ DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
   lu_result_sent == 0
 - MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
   rx from MS: pdisc=0x05 msg_type=0x54
+DREF IMSI:901700000004620: MSC conn use + 1 == 2
 DRLL Dispatching 04.08 message, pdisc=5
 DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
@@ -687,6 +721,7 @@ DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: Received Event UPD_HL
 DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _INSERT_DATA_REQUEST, VLR responds with _INSERT_DATA_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_INSERT_DATA_REQUEST: 10010809710000004026f00804036470f1
@@ -744,6 +779,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -764,7 +800,9 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -785,6 +823,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+DREF MSISDN:46071: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends _SEND_AUTH_INFO_ERROR = unknown IMSI
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_ERROR: 09010809710000004026f0020102
@@ -811,6 +850,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -830,7 +870,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP Send Auth Info request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -853,6 +895,7 @@ DVLR GSUP tx: 08010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_SEND_AUTH_INFO_REQUEST: 08010809710000004026f0
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_NEEDS_AUTH}: state_chg to VLR_SUB_AS_NEEDS_AUTH_WAIT_AI
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - from HLR, rx _SEND_AUTH_INFO_RESULT but it lacks auth tuples
 <-- GSUP rx OSMO_GSUP_MSGT_SEND_AUTH_INFO_RESULT: 0a010809710000004026f0
@@ -878,6 +921,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -897,7 +941,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP LU request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -923,6 +969,7 @@ DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends UPDATE_LOCATION_ERROR
 <-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_ERROR: 05010809710000004026f0020102
@@ -949,6 +996,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
@@ -967,7 +1015,9 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 - Location Update request causes a GSUP LU request to HLR
   rx from MS: pdisc=0x05 msg_type=0x08
   new conn
+DREF unknown: MSC conn use + 1 == 1
 DRLL Dispatching 04.08 message, pdisc=5
+DREF unknown: MSC conn use + 1 == 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
@@ -993,6 +1043,7 @@ DVLR GSUP tx: 04010809710000004026f0
 GSUP --> HLR: OSMO_GSUP_MSGT_UPDATE_LOCATION_REQUEST: 04010809710000004026f0
 DVLR upd_hlr_vlr_fsm(901700000004620){UPD_HLR_VLR_S_INIT}: state_chg to UPD_HLR_VLR_S_WAIT_FOR_DATA
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
 - HLR sends only _UPDATE_LOCATION_RESULT, no INSERT DATA
 <-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
@@ -1040,6 +1091,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 2
 DVLR Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance

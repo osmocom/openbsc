@@ -48,19 +48,6 @@ static int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 	return 1;
 }
 
-/* receive a Level 3 Complete message and return MSC_CONN_ACCEPT or
- * MSC_CONN_REJECT */
-int msc_compl_l3(struct gsm_subscriber_connection *conn,
-		 struct msgb *msg, uint16_t chosen_channel)
-{
-	gsm0408_dispatch(conn, msg);
-
-	/* Always return acceptance, because even if the conn was not accepted,
-	 * we assumed ownership of it and the caller shall not interfere with
-	 * that. We may even already have discarded the conn. */
-	return MSC_CONN_ACCEPT;
-}
-
 static void subscr_conn_bump(struct gsm_subscriber_connection *conn)
 {
 	if (!conn)
@@ -73,13 +60,33 @@ static void subscr_conn_bump(struct gsm_subscriber_connection *conn)
 	osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_BUMP, NULL);
 }
 
-/* Receive a DTAP message from BSC */
-void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
+/* receive a Level 3 Complete message and return MSC_CONN_ACCEPT or
+ * MSC_CONN_REJECT */
+int msc_compl_l3(struct gsm_subscriber_connection *conn,
+		 struct msgb *msg, uint16_t chosen_channel)
 {
+	msc_conn_get(conn);
 	gsm0408_dispatch(conn, msg);
 
 	/* Bump whether the conn wants to be closed */
 	subscr_conn_bump(conn);
+	msc_conn_put(conn);
+
+	/* Always return acceptance, because even if the conn was not accepted,
+	 * we assumed ownership of it and the caller shall not interfere with
+	 * that. We may even already have discarded the conn. */
+	return MSC_CONN_ACCEPT;
+}
+
+/* Receive a DTAP message from BSC */
+void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
+{
+	msc_conn_get(conn);
+	gsm0408_dispatch(conn, msg);
+
+	/* Bump whether the conn wants to be closed */
+	subscr_conn_bump(conn);
+	msc_conn_put(conn);
 }
 
 /* Receive an ASSIGNMENT COMPLETE from BSC */
@@ -203,7 +210,6 @@ void msc_subscr_con_cleanup(struct gsm_subscriber_connection *conn)
 				? OSMO_FSM_TERM_REGULAR
 				: OSMO_FSM_TERM_ERROR,
 			   NULL);
-	conn->conn_fsm = NULL;
 }
 
 void msc_subscr_con_free(struct gsm_subscriber_connection *conn)
@@ -241,20 +247,17 @@ void msc_close_connection(struct gsm_subscriber_connection *conn)
 		return;
 	if (conn->in_release)
 		return;
-	if (!conn->conn_fsm) {
-		/* No FSM means no valid process is ongoing. Discard right
-		 * away. */
-		msc_subscr_con_free(conn);
+	if (!conn->conn_fsm)
 		return;
-	}
 	if (conn->conn_fsm->state == SUBSCR_CONN_S_RELEASED)
 		return;
 	osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_CN_CLOSE, NULL);
 }
 
 /* increment the ref-count. Needs to be called by every user */
-struct gsm_subscriber_connection *_subscr_con_get(struct gsm_subscriber_connection *conn,
-						  const char *file, int line)
+struct gsm_subscriber_connection *
+_msc_conn_get(struct gsm_subscriber_connection *conn,
+	      const char *file, int line)
 {
 	OSMO_ASSERT(conn);
 
@@ -262,33 +265,33 @@ struct gsm_subscriber_connection *_subscr_con_get(struct gsm_subscriber_connecti
 		return NULL;
 
 	conn->use_count++;
-	LOGPSRC(DMSC, LOGL_DEBUG, file, line,
-		"subscr %s: increased subscr_con use_count to %u\n",
+	LOGPSRC(DREF, LOGL_DEBUG, file, line,
+		"%s: MSC conn use + 1 == %u\n",
 		vlr_subscr_name(conn->vsub), conn->use_count);
 
 	return conn;
 }
 
 /* decrement the ref-count. Once it reaches zero, we release */
-void _subscr_con_put(struct gsm_subscriber_connection *conn,
-		     const char *file, int line)
+void _msc_conn_put(struct gsm_subscriber_connection *conn,
+		   const char *file, int line)
 {
 	OSMO_ASSERT(conn);
 
 	if (conn->use_count == 0) {
-		LOGP(DMSC, LOGL_ERROR, "trying to decrement conn use count, but is alrady 0\n");
+		LOGPSRC(DREF, LOGL_ERROR, file, line,
+			"%s: MSC conn use - 1 failed: is already 0\n",
+			vlr_subscr_name(conn->vsub));
 		return;
 	}
 
 	conn->use_count--;
-	LOGPSRC(DMSC, LOGL_DEBUG, file, line,
-		"subscr %s: decreased subscr_conn use_count to %u\n",
+	LOGPSRC(DREF, LOGL_DEBUG, file, line,
+		"%s: MSC conn use - 1 == %u\n",
 		vlr_subscr_name(conn->vsub), conn->use_count);
 
-#if 0
-	if (conn->use_count == 0 && conn->conn_fsm)
-		osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_MO_CLOSE, NULL);
-#endif
+	if (conn->use_count == 0)
+		msc_subscr_con_free(conn);
 }
 
 void msc_stop_paging(struct vlr_subscr *vsub)

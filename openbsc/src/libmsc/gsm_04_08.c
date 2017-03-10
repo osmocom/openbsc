@@ -199,7 +199,6 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 		LOGP(DMM, LOGL_ERROR,
 		     "%s: Conn clear request on uninitialized conn\n",
 		     vlr_subscr_name(conn->vsub));
-		msc_subscr_con_free(conn);
 		return;
 	}
 
@@ -3362,7 +3361,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		}
 
 		/* Assign conn */
-		trans->conn = subscr_con_get(conn);
+		trans->conn = msc_conn_get(conn);
 		vlr_subscr_put(vsub);
 	} else {
 		/* update the subscriber we deal with */
@@ -3512,7 +3511,7 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 			return -ENOMEM;
 		}
 		/* Assign transaction */
-		trans->conn = subscr_con_get(conn);
+		trans->conn = msc_conn_get(conn);
 	}
 
 	/* find function for current state and message */
