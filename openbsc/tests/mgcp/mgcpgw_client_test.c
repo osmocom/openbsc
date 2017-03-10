@@ -115,7 +115,7 @@ mgcp_trans_id_t dummy_mgcp_send(struct msgb *msg)
 
 	OSMO_ASSERT(mgcpgw_client_pending_add(mgcp, trans_id, test_response_cb, mgcp));
 
-	end = msgb_put(msg, 1);
+	end = (char*)msgb_put(msg, 1);
 	*end = '\0';
 	printf("composed:\n-----\n%s\n-----\n",
 	       (char*)msgb_l2(msg));

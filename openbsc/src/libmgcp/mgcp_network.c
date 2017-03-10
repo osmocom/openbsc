@@ -669,7 +669,7 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 
 			if (tap_idx == MGCP_TAP_BTS_OUT
 			    && !rtp_state->patched_first_rtp_payload) {
-				uint8_t *data = &buf[12];
+				uint8_t *data = (uint8_t*)&buf[12];
 				osmo_hexparse("e400", data, 2);
 				rtp_state->patched_first_rtp_payload = true;
 			}
