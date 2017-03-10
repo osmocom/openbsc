@@ -138,53 +138,6 @@ int gsm48_cc_tx_notify_ss(struct gsm_trans *trans, const char *message)
 	return gsm48_conn_sendmsg(ss_notify, trans->conn, trans);
 }
 
-void release_security_operation(struct gsm_subscriber_connection *conn)
-{
-	if (!conn->sec_operation)
-		return;
-
-	talloc_free(conn->sec_operation);
-	conn->sec_operation = NULL;
-	subscr_con_put(conn);
-}
-
-void allocate_security_operation(struct gsm_subscriber_connection *conn)
-{
-	conn->sec_operation = talloc_zero(tall_authciphop_ctx,
-	                                  struct gsm_security_operation);
-	if (conn->sec_operation)
-		subscr_con_get(conn);
-}
-
-int iu_hack__get_hardcoded_auth_tuple(struct gsm_auth_tuple *atuple)
-{
-	unsigned char tmp_rand[16];
-	/* Ki 000102030405060708090a0b0c0d0e0f */
-	struct osmo_sub_auth_data auth = {
-		.type	= OSMO_AUTH_TYPE_GSM,
-		.algo	= OSMO_AUTH_ALG_COMP128v1,
-		.u.gsm.ki = {
-			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
-			0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
-			0x0e, 0x0f
-		},
-	};
-
-	RAND_bytes(tmp_rand, sizeof(tmp_rand));
-
-	memset(&atuple->vec, 0, sizeof(atuple->vec));
-	osmo_auth_gen_vec(&atuple->vec, &auth, tmp_rand);
-
-	atuple->key_seq = 0;
-	return AUTH_DO_AUTH;
-}
-
-int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
-                         gsm_cbfn *cb, void *cb_data)
-{
-	OSMO_ASSERT(false);
-}
-
 /* Clear Request was received from MSC, release all transactions */
 void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
@@ -3531,18 +3484,6 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 	return rc;
 }
 
-/* Create a dummy to wait five seconds */
-void msc_release_anchor(struct gsm_subscriber_connection *conn)
-{
-	if (!conn->anch_operation)
-		return;
-
-	osmo_timer_del(&conn->anch_operation->timeout);
-	talloc_free(conn->anch_operation);
-	conn->anch_operation = NULL;
-	subscr_con_put(conn);
-}
-
 static bool msg_is_initially_permitted(const struct gsm48_hdr *hdr)
 {
 	uint8_t pdisc = gsm48_hdr_pdisc(hdr);
@@ -3650,7 +3591,6 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 
 	switch (pdisc) {
 	case GSM48_PDISC_CC:
-		msc_release_anchor(conn);
 		rc = gsm0408_rcv_cc(conn, msg);
 		break;
 	case GSM48_PDISC_MM:
@@ -3660,7 +3600,6 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		rc = gsm0408_rcv_rr(conn, msg);
 		break;
 	case GSM48_PDISC_SMS:
-		msc_release_anchor(conn);
 		rc = gsm0411_rcv_sms(conn, msg);
 		break;
 	case GSM48_PDISC_MM_GPRS:
@@ -3670,7 +3609,6 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		rc = -ENOTSUP;
 		break;
 	case GSM48_PDISC_NC_SS:
-		msc_release_anchor(conn);
 		rc = handle_rcv_ussd(conn, msg);
 		break;
 	default:

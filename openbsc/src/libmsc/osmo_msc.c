@@ -190,8 +190,6 @@ void msc_subscr_con_cleanup(struct gsm_subscriber_connection *conn)
 	if (!conn)
 		return;
 
-	msc_release_anchor(conn);
-
 	if (conn->vsub) {
 		DEBUGP(DRLL, "subscr %s: Freeing subscriber connection\n",
 		       vlr_subscr_name(conn->vsub));
