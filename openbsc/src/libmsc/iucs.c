@@ -151,7 +151,7 @@ int gsm0408_rcvmsg_iucs(struct gsm_network *network, struct msgb *msg,
 		     " %s from LAC %d to %d\n",
 		     vlr_subscr_name(conn->vsub), conn->lac, *lac);
 		/* Deallocate conn with previous LAC */
-		gsm0408_clear_request(conn, 0);
+		msc_conn_close(conn, GSM_CAUSE_INV_MAND_INFO);
 		/* At this point we could be tolerant and allocate a new
 		 * connection, but changing the LAC within the same connection
 		 * is shifty. Rather cancel everything. */

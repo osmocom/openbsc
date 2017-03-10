@@ -241,7 +241,11 @@ struct bsc_api *msc_bsc_api() {
 	return &msc_handler;
 }
 
-void msc_close_connection(struct gsm_subscriber_connection *conn)
+/* Signal the connection's FSM to gracefully terminate the connection by a
+ * SUBSCR_CONN_E_CN_CLOSE event.
+ * \param cause  a GSM_CAUSE_* constant, e.g. GSM_CAUSE_AUTH_FAILED.
+ */
+void msc_conn_close(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
 	if (!conn)
 		return;
@@ -251,7 +255,7 @@ void msc_close_connection(struct gsm_subscriber_connection *conn)
 		return;
 	if (conn->conn_fsm->state == SUBSCR_CONN_S_RELEASED)
 		return;
-	osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_CN_CLOSE, NULL);
+	osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_CN_CLOSE, &cause);
 }
 
 /* increment the ref-count. Needs to be called by every user */

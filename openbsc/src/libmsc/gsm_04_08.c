@@ -202,8 +202,7 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 		return;
 	}
 
-	/* TODO add cause item to msc_close_connection() */
-	osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_CN_CLOSE, &cause);
+	msc_conn_close(conn, cause);
 }
 
 /* clear all transactions globally; used in case of MNCC socket disconnect */
@@ -802,7 +801,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 		return 0;
 #endif
 
-	msc_close_connection(conn);
+	msc_conn_close(conn, 0);
 	return 0;
 }
 
@@ -898,7 +897,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	if (!conn->vsub) {
 		LOGP(DMM, LOGL_ERROR,
 		     "MM AUTHENTICATION RESPONSE: invalid: no subscriber\n");
-		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
+		msc_conn_close(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -912,7 +911,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	}
 
 	if (rc) {
-		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
+		msc_conn_close(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -937,7 +936,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 	if (!conn->vsub) {
 		LOGP(DMM, LOGL_ERROR,
 		     "MM R99 AUTHENTICATION FAILURE: invalid: no subscriber\n");
-		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
+		msc_conn_close(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -946,7 +945,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 		     "%s: MM R99 AUTHENTICATION FAILURE:"
 		     " l3 length invalid: %u\n",
 		     vlr_subscr_name(conn->vsub), msgb_l3len(msg));
-		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
+		msc_conn_close(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -969,7 +968,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 		     "%s: MM R99 AUTHENTICATION FAILURE:"
 		     " invalid Synch Failure: missing AUTS IE\n",
 		     vlr_subscr_name(conn->vsub));
-		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
+		msc_conn_close(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -986,7 +985,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 		     " got IE 0x%02x of %u bytes\n",
 		     vlr_subscr_name(conn->vsub),
 		     GSM48_IE_AUTS, auts_tag, auts_len);
-		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
+		msc_conn_close(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
@@ -995,7 +994,7 @@ static int gsm48_rx_mm_auth_fail(struct gsm_subscriber_connection *conn, struct 
 		     "%s: MM R99 AUTHENTICATION FAILURE:"
 		     " invalid Synch Failure msg: message truncated (%u)\n",
 		     vlr_subscr_name(conn->vsub), msgb_l3len(msg));
-		gsm0408_clear_request(conn, GSM_CAUSE_AUTH_FAILED);
+		msc_conn_close(conn, GSM_CAUSE_AUTH_FAILED);
 		return -EINVAL;
 	}
 
