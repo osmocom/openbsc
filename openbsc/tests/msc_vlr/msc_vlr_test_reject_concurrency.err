@@ -1,9 +1,9 @@
 ===== test_reject_2nd_conn
 - Location Update Request on one connection
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -35,10 +35,10 @@ DREF IMSI:901700000004620: MSC conn use - 1 == 1
   lu_result_sent == 0
   llist_count(&net->subscr_conns) == 1
 - Another Location Update Request from the same subscriber on another connection is rejected
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -149,10 +149,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_reject_lu_during_lu
 - Location Update Request
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -185,9 +185,9 @@ DREF IMSI:901700000004620: MSC conn use - 1 == 1
   llist_count(&net->subscr_conns) == 1
 ---
 - Another Location Update Request from the same subscriber on the same conn is dropped silently
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
 DREF IMSI:901700000004620: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DMM 901700000004620: Error: connection already in use
 DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
@@ -270,10 +270,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_reject_cm_during_lu
 - Location Update Request
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -306,14 +306,14 @@ DREF IMSI:901700000004620: MSC conn use - 1 == 1
   llist_count(&net->subscr_conns) == 1
 ---
 - A CM Service Request in the middle of a LU is rejected
-  rx from MS: pdisc=0x05 msg_type=0x24
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_CM_SERV_REQ
 DREF IMSI:901700000004620: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_CM_SERV_REQ (0x5:0x24)
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
 DMM IMSI:901700000004620: connection already in use
 DMM -> CM SERVICE Reject cause: 17
 DMSC msc_tx 3 bytes to IMSI:901700000004620 via RAN_GERAN_A
-- DTAP --RAN_GERAN_A--> MS: 052211
+- DTAP --RAN_GERAN_A--> MS: GSM48_MT_MM_CM_SERV_REJ: 052211
 - DTAP matches expected message
 DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
 DREF IMSI:901700000004620: MSC conn use - 1 == 1
@@ -397,10 +397,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_reject_paging_resp_during_lu
 - Location Update Request
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -433,9 +433,9 @@ DREF IMSI:901700000004620: MSC conn use - 1 == 1
   llist_count(&net->subscr_conns) == 1
 ---
 - An erratic Paging Response is dropped silently
-  rx from MS: pdisc=0x06 msg_type=0x27
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_RR_PAG_RESP
 DREF IMSI:901700000004620: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=6
+DRLL Dispatching 04.08 message GSM48_MT_RR_PAG_RESP (0x6:0x27)
 DRR PAGING RESPONSE: MI(IMSI)=901700000004620
 DMM 901700000004620: Error: connection already in use
 DMM IMSI:901700000004620: bump: conn still being established (SUBSCR_CONN_S_NEW)
@@ -521,10 +521,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 ---
 - Subscriber does a normal LU
 - Location Update Request
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -624,10 +624,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
   llist_count(&net->subscr_conns) == 0
 ---
 - Subscriber does a normal CM Service Request
-  rx from MS: pdisc=0x05 msg_type=0x24
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_CM_SERV_REQ
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_CM_SERV_REQ (0x5:0x24)
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
@@ -663,9 +663,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 1
   cm_service_result_sent == 1
 msc_subscr_conn_is_accepted() == true
 - A LU request on an open conn is dropped silently
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
 DREF MSISDN:46071: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DMM 901700000004620: Error: connection already in use
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: still awaiting first request after a CM Service Request
@@ -674,9 +674,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 1
   llist_count(&net->subscr_conns) == 1
 ---
 - subscriber detaches
-  rx from MS: pdisc=0x05 msg_type=0x01
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_IMSI_DETACH_IND
 DREF MSISDN:46071: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_IMSI_DETACH_IND (0x5:0x1)
 DMM IMSI DETACH INDICATION: MI(IMSI)=901700000004620
 DREF VLR subscr MSISDN:46071 usage increases to: 3
 DMM Subscriber MSISDN:46071 DETACHED
@@ -706,10 +706,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 ---
 - Subscriber does a normal LU
 - Location Update Request
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -809,10 +809,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
   llist_count(&net->subscr_conns) == 0
 ---
 - Subscriber does a normal CM Service Request
-  rx from MS: pdisc=0x05 msg_type=0x24
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_CM_SERV_REQ
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_CM_SERV_REQ (0x5:0x24)
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
@@ -848,9 +848,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 1
   cm_service_result_sent == 1
 msc_subscr_conn_is_accepted() == true
 - A second CM Service Request on the same conn is accepted without another auth dance
-  rx from MS: pdisc=0x05 msg_type=0x24
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_CM_SERV_REQ
 DREF MSISDN:46071: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_CM_SERV_REQ (0x5:0x24)
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
 DMM MSISDN:46071: re-using already accepted connection
 - sending CM Service Accept for MSISDN:46071
@@ -861,9 +861,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 1
   llist_count(&net->subscr_conns) == 1
 ---
 - subscriber detaches
-  rx from MS: pdisc=0x05 msg_type=0x01
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_IMSI_DETACH_IND
 DREF MSISDN:46071: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_IMSI_DETACH_IND (0x5:0x1)
 DMM IMSI DETACH INDICATION: MI(IMSI)=901700000004620
 DREF VLR subscr MSISDN:46071 usage increases to: 3
 DMM Subscriber MSISDN:46071 DETACHED
@@ -893,10 +893,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 ---
 - Subscriber does a normal LU
 - Location Update Request
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -996,10 +996,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
   llist_count(&net->subscr_conns) == 0
 ---
 - Subscriber does a normal CM Service Request
-  rx from MS: pdisc=0x05 msg_type=0x24
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_CM_SERV_REQ
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_CM_SERV_REQ (0x5:0x24)
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
@@ -1036,9 +1036,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 1
 msc_subscr_conn_is_accepted() == true
 ---
 - An erratic Paging Response on the same conn is dropped silently
-  rx from MS: pdisc=0x06 msg_type=0x27
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_RR_PAG_RESP
 DREF MSISDN:46071: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=6
+DRLL Dispatching 04.08 message GSM48_MT_RR_PAG_RESP (0x6:0x27)
 DRR PAGING RESPONSE: MI(IMSI)=901700000004620
 DMM 901700000004620: Error: connection already in use
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
@@ -1050,16 +1050,16 @@ DREF MSISDN:46071: MSC conn use - 1 == 1
 - a USSD request is serviced
   expecting USSD:
   Your extension is 46071
-  rx from MS: pdisc=0x0b msg_type=0x3b
+  MSC <--RAN_GERAN_A-- MS: GSM48_PDISC_NC_SS:0x3b
 DREF MSISDN:46071: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=11
-DMM MSISDN:46071 pdisc=11 msg_type=0x3b: received_cm_service_request changes to false
+DRLL Dispatching 04.08 message GSM48_PDISC_NC_SS:0x3b (0xb:0x3b)
+DMM MSISDN:46071: rx msg GSM48_PDISC_NC_SS:0x3b: received_cm_service_request changes to false
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DMM USSD: Own number requested
 DMM MSISDN:46071: MSISDN = 46071
 DMSC msc_tx 43 bytes to MSISDN:46071 via RAN_GERAN_A
-- DTAP --RAN_GERAN_A--> MS: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d27310cd06bbc51a0d
+- DTAP --RAN_GERAN_A--> MS: GSM48_PDISC_NC_SS:0x2a: 8b2a1c27a225020100302002013b301b04010f0416d9775d0e2ae3e965f73cfd7683d27310cd06bbc51a0d
 - DTAP matches expected message
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: bump: releasing conn
@@ -1087,10 +1087,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 ---
 - Subscriber does a normal LU
 - Location Update Request
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -1202,10 +1202,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 3
   paging_sent == 1
   paging_stopped == 0
 - MS replies with Paging Response, we deliver the SMS
-  rx from MS: pdisc=0x06 msg_type=0x27
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_RR_PAG_RESP
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=6
+DRLL Dispatching 04.08 message GSM48_MT_RR_PAG_RESP (0x6:0x27)
 DRR PAGING RESPONSE: MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
@@ -1235,7 +1235,7 @@ DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:46071 usage increases to: 6
 DREF MSISDN:46071: MSC conn use + 1 == 3
 DMSC msc_tx 91 bytes to MSISDN:46071 via RAN_GERAN_A
-- DTAP --RAN_GERAN_A--> MS: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
+- DTAP --RAN_GERAN_A--> MS: GSM48_PDISC_SMS:0x01: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 5
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
@@ -1250,9 +1250,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 ---
 - MS sends erratic LU Request, which is dropped silently
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
 DREF MSISDN:46071: MSC conn use + 1 == 3
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DMM 901700000004620: Error: connection already in use
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: connection still has active transaction: GSM48_PDISC_SMS
@@ -1260,9 +1260,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 2
   lu_result_sent == 0
   llist_count(&net->subscr_conns) == 1
 - MS replies with CP-ACK for received SMS
-  rx from MS: pdisc=0x89 msg_type=0x04
+  MSC <--RAN_GERAN_A-- MS: GSM48_PDISC_SMS:0x04
 DREF MSISDN:46071: MSC conn use + 1 == 3
-DRLL Dispatching 04.08 message, pdisc=9
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x04 (0x9:0x4)
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
@@ -1270,12 +1270,12 @@ DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: bump: connection 
 DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 - MS also sends RP-ACK, MSC in turn sends CP-ACK for that
-  rx from MS: pdisc=0x89 msg_type=0x01
+  MSC <--RAN_GERAN_A-- MS: GSM48_PDISC_SMS:0x01
 DREF MSISDN:46071: MSC conn use + 1 == 3
-DRLL Dispatching 04.08 message, pdisc=9
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x01 (0x9:0x1)
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DMSC msc_tx 2 bytes to MSISDN:46071 via RAN_GERAN_A
-- DTAP --RAN_GERAN_A--> MS: 0904
+- DTAP --RAN_GERAN_A--> MS: GSM48_PDISC_SMS:0x04: 0904
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 3
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
@@ -1307,10 +1307,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 ---
 - Subscriber does a normal LU
 - Location Update Request
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -1422,10 +1422,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 3
   paging_sent == 1
   paging_stopped == 0
 - MS replies with Paging Response, we deliver the SMS
-  rx from MS: pdisc=0x06 msg_type=0x27
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_RR_PAG_RESP
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=6
+DRLL Dispatching 04.08 message GSM48_MT_RR_PAG_RESP (0x6:0x27)
 DRR PAGING RESPONSE: MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
@@ -1455,7 +1455,7 @@ DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:46071 usage increases to: 6
 DREF MSISDN:46071: MSC conn use + 1 == 3
 DMSC msc_tx 91 bytes to MSISDN:46071 via RAN_GERAN_A
-- DTAP --RAN_GERAN_A--> MS: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
+- DTAP --RAN_GERAN_A--> MS: GSM48_PDISC_SMS:0x01: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 5
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
@@ -1470,9 +1470,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 ---
 - CM Service Request during open connection is accepted
-  rx from MS: pdisc=0x05 msg_type=0x24
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_CM_SERV_REQ
 DREF MSISDN:46071: MSC conn use + 1 == 3
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_CM_SERV_REQ (0x5:0x24)
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
 DMM MSISDN:46071: re-using already accepted connection
 - sending CM Service Accept for MSISDN:46071
@@ -1483,9 +1483,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
   g_conn->received_cm_service_request == 1
 - MS replies with CP-ACK for received SMS
-  rx from MS: pdisc=0x89 msg_type=0x04
+  MSC <--RAN_GERAN_A-- MS: GSM48_PDISC_SMS:0x04
 DREF MSISDN:46071: MSC conn use + 1 == 3
-DRLL Dispatching 04.08 message, pdisc=9
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x04 (0x9:0x4)
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
@@ -1493,12 +1493,12 @@ DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: bump: still await
 DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 - MS also sends RP-ACK, MSC in turn sends CP-ACK for that
-  rx from MS: pdisc=0x89 msg_type=0x01
+  MSC <--RAN_GERAN_A-- MS: GSM48_PDISC_SMS:0x01
 DREF MSISDN:46071: MSC conn use + 1 == 3
-DRLL Dispatching 04.08 message, pdisc=9
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x01 (0x9:0x1)
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DMSC msc_tx 2 bytes to MSISDN:46071 via RAN_GERAN_A
-- DTAP --RAN_GERAN_A--> MS: 0904
+- DTAP --RAN_GERAN_A--> MS: GSM48_PDISC_SMS:0x04: 0904
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 3
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
@@ -1511,9 +1511,9 @@ DREF MSISDN:46071: MSC conn use - 1 == 1
   llist_count(&net->subscr_conns) == 1
 ---
 - subscriber detaches
-  rx from MS: pdisc=0x05 msg_type=0x01
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_IMSI_DETACH_IND
 DREF MSISDN:46071: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_IMSI_DETACH_IND (0x5:0x1)
 DMM IMSI DETACH INDICATION: MI(IMSI)=901700000004620
 DREF VLR subscr MSISDN:46071 usage increases to: 3
 DMM Subscriber MSISDN:46071 DETACHED
@@ -1543,10 +1543,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 ---
 - Subscriber does a normal LU
 - Location Update Request
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -1658,10 +1658,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 3
   paging_sent == 1
   paging_stopped == 0
 - MS replies with Paging Response, we deliver the SMS
-  rx from MS: pdisc=0x06 msg_type=0x27
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_RR_PAG_RESP
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=6
+DRLL Dispatching 04.08 message GSM48_MT_RR_PAG_RESP (0x6:0x27)
 DRR PAGING RESPONSE: MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
@@ -1691,7 +1691,7 @@ DPAG Calling paging cbfn.
 DREF VLR subscr MSISDN:46071 usage increases to: 6
 DREF MSISDN:46071: MSC conn use + 1 == 3
 DMSC msc_tx 91 bytes to MSISDN:46071 via RAN_GERAN_A
-- DTAP --RAN_GERAN_A--> MS: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
+- DTAP --RAN_GERAN_A--> MS: GSM48_PDISC_SMS:0x01: 09015801000791447758100650004c0005806470f1000007101000000000445079da1e1ee7416937485e9ea7c965373d1d6683c270383b3d0ed3d36ff71c949e83c22072799e9687c5ec32a81d96afcbf4b4fb0c7ac3e9e9b7db05
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 5
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
@@ -1706,18 +1706,18 @@ DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 ---
 - MS sends another erratic Paging Response which is dropped silently
-  rx from MS: pdisc=0x06 msg_type=0x27
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_RR_PAG_RESP
 DREF MSISDN:46071: MSC conn use + 1 == 3
-DRLL Dispatching 04.08 message, pdisc=6
+DRLL Dispatching 04.08 message GSM48_MT_RR_PAG_RESP (0x6:0x27)
 DRR PAGING RESPONSE: MI(IMSI)=901700000004620
 DMM 901700000004620: Error: connection already in use
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_BUMP
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: bump: connection still has active transaction: GSM48_PDISC_SMS
 DREF MSISDN:46071: MSC conn use - 1 == 2
 - MS replies with CP-ACK for received SMS
-  rx from MS: pdisc=0x89 msg_type=0x04
+  MSC <--RAN_GERAN_A-- MS: GSM48_PDISC_SMS:0x04
 DREF MSISDN:46071: MSC conn use + 1 == 3
-DRLL Dispatching 04.08 message, pdisc=9
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x04 (0x9:0x4)
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_ACCEPTED}: state_chg to SUBSCR_CONN_S_COMMUNICATING
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_BUMP
@@ -1725,12 +1725,12 @@ DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: bump: connection 
 DREF MSISDN:46071: MSC conn use - 1 == 2
   llist_count(&net->subscr_conns) == 1
 - MS also sends RP-ACK, MSC in turn sends CP-ACK for that
-  rx from MS: pdisc=0x89 msg_type=0x01
+  MSC <--RAN_GERAN_A-- MS: GSM48_PDISC_SMS:0x01
 DREF MSISDN:46071: MSC conn use + 1 == 3
-DRLL Dispatching 04.08 message, pdisc=9
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x01 (0x9:0x1)
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_COMMUNICATING}: Received Event SUBSCR_CONN_E_COMMUNICATING
 DMSC msc_tx 2 bytes to MSISDN:46071 via RAN_GERAN_A
-- DTAP --RAN_GERAN_A--> MS: 0904
+- DTAP --RAN_GERAN_A--> MS: GSM48_PDISC_SMS:0x04: 0904
 - DTAP matches expected message
 DREF VLR subscr MSISDN:46071 usage decreases to: 3
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
