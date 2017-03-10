@@ -523,6 +523,7 @@ DIUCS   0: IMSI:901700000010650 Iu link 0x23, conn_id 42
 DIUCS subscribers registered: 1
 DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
 DIUCS IuCS security mode complete for IMSI:901700000010650
+DMM <- SECURITY MODE COMPLETE IMSI:901700000010650
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: Received Event VLR_ULA_E_CIPH_RES
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: vlr_loc_upd_post_ciph()
 DIUCS IMSI:901700000010650: tx CommonID 901700000010650
@@ -705,6 +706,7 @@ DIUCS   0: MSISDN:42342 Iu link 0x23, conn_id 42
 DIUCS subscribers registered: 1
 DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
 DIUCS IuCS security mode complete for MSISDN:42342
+DMM <- SECURITY MODE COMPLETE MSISDN:42342
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: Received Event PR_ARQ_E_CIPH_RES
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_node2_post_ciph()
 DIUCS MSISDN:42342: tx CommonID 901700000010650
@@ -840,6 +842,7 @@ DIUCS   0: MSISDN:42342 Iu link 0x23, conn_id 42
 DIUCS subscribers registered: 1
 DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
 DIUCS IuCS security mode complete for MSISDN:42342
+DMM <- SECURITY MODE COMPLETE MSISDN:42342
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: Received Event PR_ARQ_E_CIPH_RES
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: _proc_arq_vlr_node2_post_ciph()
 DIUCS MSISDN:42342: tx CommonID 901700000010650
@@ -1243,6 +1246,7 @@ DIUCS   0: IMSI:901700000010650 Iu link 0x23, conn_id 42
 DIUCS subscribers registered: 1
 DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
 DIUCS IuCS security mode complete for IMSI:901700000010650
+DMM <- SECURITY MODE COMPLETE IMSI:901700000010650
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: Received Event VLR_ULA_E_CIPH_RES
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: vlr_loc_upd_post_ciph()
 DIUCS IMSI:901700000010650: tx CommonID 901700000010650

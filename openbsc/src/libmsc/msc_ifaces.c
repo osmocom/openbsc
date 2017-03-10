@@ -76,7 +76,8 @@ int msc_gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_CM_SERV_ACC;
 
-	DEBUGP(DMM, "-> CM SERVICE ACCEPT\n");
+	DEBUGP(DMM, "-> CM SERVICE ACCEPT %s\n",
+	       vlr_subscr_name(conn->vsub));
 
 	return msc_tx_dtap(conn, msg);
 }

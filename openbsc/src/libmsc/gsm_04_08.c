@@ -3784,9 +3784,13 @@ static int msc_vlr_set_ciph_mode(void *msc_conn_ref,
 
 	switch (conn->via_ran) {
 	case RAN_GERAN_A:
+		DEBUGP(DMM, "-> CIPHER MODE COMMAND %s\n",
+		       vlr_subscr_name(conn->vsub));
 		return msc_gsm0808_tx_cipher_mode(conn, ciph, tuple->vec.kc, 8,
 						  retrieve_imeisv);
 	case RAN_UTRAN_IU:
+		DEBUGP(DMM, "-> SECURITY MODE CONTROL %s\n",
+		       vlr_subscr_name(conn->vsub));
 		return iu_tx_sec_mode_cmd(conn->iu.ue_ctx, tuple, 0, 1);
 
 	default:
@@ -3796,6 +3800,23 @@ static int msc_vlr_set_ciph_mode(void *msc_conn_ref,
 	     "%s: cannot start ciphering, unknown RAN type %d\n",
 	     vlr_subscr_name(conn->vsub), conn->via_ran);
 	return -ENOTSUP;
+}
+
+void msc_rx_sec_mode_compl(struct gsm_subscriber_connection *conn)
+{
+	struct vlr_ciph_result vlr_res = {};
+
+	if (!conn || !conn->vsub) {
+		LOGP(DMM, LOGL_ERROR,
+		     "Rx Security Mode Complete for invalid conn\n");
+		return;
+	}
+
+	DEBUGP(DMM, "<- SECURITY MODE COMPLETE %s\n",
+	       vlr_subscr_name(conn->vsub));
+
+	vlr_res.cause = VLR_CIPH_COMPL;
+	vlr_subscr_rx_ciph_res(conn->vsub, &vlr_res);
 }
 
 /* VLR informs us that the subscriber data has somehow been modified */

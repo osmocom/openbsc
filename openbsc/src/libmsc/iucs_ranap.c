@@ -32,6 +32,7 @@
 #include <openbsc/iucs.h>
 #include <openbsc/vlr.h>
 #include <openbsc/iucs_ranap.h>
+#include <openbsc/osmo_msc.h>
 
 /* To continue authorization after a Security Mode Complete */
 int gsm0408_authorize(struct gsm_subscriber_connection *conn);
@@ -54,8 +55,6 @@ static int iucs_rx_rab_assign(struct gsm_subscriber_connection *conn,
 int iucs_rx_sec_mode_compl(struct gsm_subscriber_connection *conn,
 			   RANAP_SecurityModeCompleteIEs_t *ies)
 {
-	struct vlr_ciph_result vlr_res = {};
-
 	OSMO_ASSERT(conn->via_ran == RAN_UTRAN_IU);
 
 	/* TODO evalute ies */
@@ -67,8 +66,7 @@ int iucs_rx_sec_mode_compl(struct gsm_subscriber_connection *conn,
 
 	conn->iu.integrity_protection = INTEGRITY_PROTECTION_IK;
 
-	vlr_res.cause = VLR_CIPH_COMPL;
-	vlr_subscr_rx_ciph_res(conn->vsub, &vlr_res);
+	msc_rx_sec_mode_compl(conn);
 	return 0;
 }
 
