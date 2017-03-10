@@ -3592,10 +3592,10 @@ void cm_service_request_concludes(struct gsm_subscriber_connection *conn,
 		uint8_t pdisc = gsm48_hdr_pdisc(gh);
 		uint8_t msg_type = gsm48_hdr_msg_type(gh);
 
-		DEBUGP(DMM, "%s pdisc=%d msg_type=0x%02x:"
+		DEBUGP(DMM, "%s: rx msg %s:"
 		       " received_cm_service_request changes to false\n",
 		       vlr_subscr_name(conn->vsub),
-		       pdisc, msg_type);
+		       gsm48_pdisc_msgtype_name(pdisc, msg_type));
 	}
 	conn->received_cm_service_request = false;
 }
@@ -3611,14 +3611,16 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	OSMO_ASSERT(conn);
 	OSMO_ASSERT(msg);
 
-	LOGP(DRLL, LOGL_DEBUG, "Dispatching 04.08 message, pdisc=%d\n", pdisc);
+	LOGP(DRLL, LOGL_DEBUG, "Dispatching 04.08 message %s (0x%x:0x%x)\n",
+	     gsm48_pdisc_msgtype_name(pdisc, gsm48_hdr_msg_type(gh)),
+	     pdisc, gsm48_hdr_msg_type(gh));
 
 	if (!msc_subscr_conn_is_accepted(conn)
 	    && !msg_is_initially_permitted(gh)) {
 		LOGP(DRLL, LOGL_ERROR,
-		     "subscr %s: Message not permitted for initial conn:"
-		     " pdisc=0x%02x msg_type=0x%02x\n",
-		     vlr_subscr_name(conn->vsub), gh->proto_discr, gh->msg_type);
+		     "subscr %s: Message not permitted for initial conn: %s\n",
+		     vlr_subscr_name(conn->vsub),
+		     gsm48_pdisc_msgtype_name(pdisc, gsm48_hdr_msg_type(gh)));
 		return -EACCES;
 	}
 

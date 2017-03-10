@@ -10,14 +10,14 @@ DMM Subscr_Conn(test){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
 DMM Subscr_Conn(test){SUBSCR_CONN_S_INIT}: state_chg to SUBSCR_CONN_S_NEW
 msc_subscr_conn_is_accepted() == false
   requests shall be thwarted
-DRLL Dispatching 04.08 message, pdisc=3
-DRLL subscr unknown: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
-DRLL Dispatching 04.08 message, pdisc=5
-DRLL subscr unknown: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
-DRLL Dispatching 04.08 message, pdisc=6
-DRLL subscr unknown: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
-DRLL Dispatching 04.08 message, pdisc=9
-DRLL subscr unknown: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
+DRLL Dispatching 04.08 message GSM48_MT_CC_SETUP (0x3:0x5)
+DRLL subscr unknown: Message not permitted for initial conn: GSM48_MT_CC_SETUP
+DRLL Dispatching 04.08 message unknown 0x33 (0x5:0x33)
+DRLL subscr unknown: Message not permitted for initial conn: unknown 0x33
+DRLL Dispatching 04.08 message GSM48_MT_RR_SYSINFO_1 (0x6:0x19)
+DRLL subscr unknown: Message not permitted for initial conn: GSM48_MT_RR_SYSINFO_1
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x01 (0x9:0x1)
+DRLL subscr unknown: Message not permitted for initial conn: GSM48_PDISC_SMS:0x01
 - fake: acceptance
 DREF VLR subscr unknown usage increases to: 1
 DMM Subscr_Conn(test){SUBSCR_CONN_S_NEW}: state_chg to SUBSCR_CONN_S_ACCEPTED
@@ -41,10 +41,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_cm_service_without_lu
 - CM Service Request without a prior Location Updating
-  rx from MS: pdisc=0x05 msg_type=0x24
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_CM_SERV_REQ
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_CM_SERV_REQ (0x5:0x24)
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
@@ -81,10 +81,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_two_lu
 - Location Update request causes a GSUP LU request to HLR
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -127,14 +127,14 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - having received subscriber data does not mean acceptance
 msc_subscr_conn_is_accepted() == false
   requests shall be thwarted
-DRLL Dispatching 04.08 message, pdisc=3
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
-DRLL Dispatching 04.08 message, pdisc=5
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
-DRLL Dispatching 04.08 message, pdisc=6
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
-DRLL Dispatching 04.08 message, pdisc=9
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
+DRLL Dispatching 04.08 message GSM48_MT_CC_SETUP (0x3:0x5)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: GSM48_MT_CC_SETUP
+DRLL Dispatching 04.08 message unknown 0x33 (0x5:0x33)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: unknown 0x33
+DRLL Dispatching 04.08 message GSM48_MT_RR_SYSINFO_1 (0x6:0x19)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: GSM48_MT_RR_SYSINFO_1
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x01 (0x9:0x1)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: GSM48_PDISC_SMS:0x01
   lu_result_sent == 0
 - HLR also sends GSUP _UPDATE_LOCATION_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
@@ -196,10 +196,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 ---
 - verify that the MS can send another LU request
 - Location Update request causes a GSUP LU request to HLR
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -240,14 +240,14 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 2
 - having received subscriber data does not mean acceptance
 msc_subscr_conn_is_accepted() == false
   requests shall be thwarted
-DRLL Dispatching 04.08 message, pdisc=3
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
-DRLL Dispatching 04.08 message, pdisc=5
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
-DRLL Dispatching 04.08 message, pdisc=6
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
-DRLL Dispatching 04.08 message, pdisc=9
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
+DRLL Dispatching 04.08 message GSM48_MT_CC_SETUP (0x3:0x5)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: GSM48_MT_CC_SETUP
+DRLL Dispatching 04.08 message unknown 0x33 (0x5:0x33)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: unknown 0x33
+DRLL Dispatching 04.08 message GSM48_MT_RR_SYSINFO_1 (0x6:0x19)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: GSM48_MT_RR_SYSINFO_1
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x01 (0x9:0x1)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: GSM48_PDISC_SMS:0x01
   lu_result_sent == 0
 - HLR also sends GSUP _UPDATE_LOCATION_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
@@ -307,10 +307,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
   llist_count(&net->subscr_conns) == 0
 ---
 - subscriber detaches
-  rx from MS: pdisc=0x05 msg_type=0x01
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_IMSI_DETACH_IND
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_IMSI_DETACH_IND (0x5:0x1)
 DMM IMSI DETACH INDICATION: MI(IMSI)=901700000004620
 DREF VLR subscr MSISDN:46071 usage increases to: 2
 DMM Subscriber MSISDN:46071 DETACHED
@@ -327,10 +327,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 
 ===== test_lu_unknown_tmsi
 - Location Update request with unknown TMSI sends ID Request for IMSI
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(591536962){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(591536962){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -347,7 +347,7 @@ DREF VLR subscr TMSI:0x23422342 usage increases to: 2
 DVLR vlr_lu_fsm(591536962){VLR_ULA_S_IDLE}: vlr_loc_upd_want_imsi()
 DVLR vlr_lu_fsm(591536962){VLR_ULA_S_IDLE}: state_chg to VLR_ULA_S_WAIT_IMSI
 DMSC msc_tx 3 bytes to TMSI:0x23422342 via RAN_GERAN_A
-- DTAP --RAN_GERAN_A--> MS: 051801
+- DTAP --RAN_GERAN_A--> MS: GSM48_MT_MM_ID_REQ: 051801
 - DTAP matches expected message
 DREF VLR subscr TMSI:0x23422342 usage decreases to: 1
 DMM TMSI:0x23422342: bump: conn still being established (SUBSCR_CONN_S_NEW)
@@ -355,18 +355,18 @@ DREF TMSI:0x23422342: MSC conn use - 1 == 1
   lu_result_sent == 0
 msc_subscr_conn_is_accepted() == false
   requests shall be thwarted
-DRLL Dispatching 04.08 message, pdisc=3
-DRLL subscr TMSI:0x23422342: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
-DRLL Dispatching 04.08 message, pdisc=5
-DRLL subscr TMSI:0x23422342: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
-DRLL Dispatching 04.08 message, pdisc=6
-DRLL subscr TMSI:0x23422342: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
-DRLL Dispatching 04.08 message, pdisc=9
-DRLL subscr TMSI:0x23422342: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
+DRLL Dispatching 04.08 message GSM48_MT_CC_SETUP (0x3:0x5)
+DRLL subscr TMSI:0x23422342: Message not permitted for initial conn: GSM48_MT_CC_SETUP
+DRLL Dispatching 04.08 message unknown 0x33 (0x5:0x33)
+DRLL subscr TMSI:0x23422342: Message not permitted for initial conn: unknown 0x33
+DRLL Dispatching 04.08 message GSM48_MT_RR_SYSINFO_1 (0x6:0x19)
+DRLL subscr TMSI:0x23422342: Message not permitted for initial conn: GSM48_MT_RR_SYSINFO_1
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x01 (0x9:0x1)
+DRLL subscr TMSI:0x23422342: Message not permitted for initial conn: GSM48_PDISC_SMS:0x01
 - MS tells us the IMSI, causes a GSUP LU request to HLR
-  rx from MS: pdisc=0x05 msg_type=0x59
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_ID_RESP
 DREF TMSI:0x23422342: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_ID_RESP (0x5:0x19)
 DMM IDENTITY RESPONSE: MI(IMSI)=901700000004620
 DVLR set IMSI on subscriber; IMSI=901700000004620 id=901700000004620
 DVLR vlr_lu_fsm(591536962){VLR_ULA_S_WAIT_IMSI}: Received Event VLR_ULA_E_ID_IMSI
@@ -398,14 +398,14 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
 - having received subscriber data does not mean acceptance
 msc_subscr_conn_is_accepted() == false
   requests shall be thwarted
-DRLL Dispatching 04.08 message, pdisc=3
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x03 msg_type=0x05
-DRLL Dispatching 04.08 message, pdisc=5
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x05 msg_type=0x33
-DRLL Dispatching 04.08 message, pdisc=6
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x06 msg_type=0x19
-DRLL Dispatching 04.08 message, pdisc=9
-DRLL subscr MSISDN:46071: Message not permitted for initial conn: pdisc=0x09 msg_type=0x01
+DRLL Dispatching 04.08 message GSM48_MT_CC_SETUP (0x3:0x5)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: GSM48_MT_CC_SETUP
+DRLL Dispatching 04.08 message unknown 0x33 (0x5:0x33)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: unknown 0x33
+DRLL Dispatching 04.08 message GSM48_MT_RR_SYSINFO_1 (0x6:0x19)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: GSM48_MT_RR_SYSINFO_1
+DRLL Dispatching 04.08 message GSM48_PDISC_SMS:0x01 (0x9:0x1)
+DRLL subscr MSISDN:46071: Message not permitted for initial conn: GSM48_PDISC_SMS:0x01
   lu_result_sent == 0
 - HLR also sends GSUP _UPDATE_LOCATION_RESULT
 <-- GSUP rx OSMO_GSUP_MSGT_UPDATE_LOCATION_RESULT: 06010809710000004026f0
