@@ -598,6 +598,49 @@ int gsm48_tx_mm_auth_rej(struct gsm_subscriber_connection *conn)
 	return gsm48_tx_simple(conn, GSM48_PDISC_MM, GSM48_MT_MM_AUTH_REJ);
 }
 
+#define CONN_REUSE 1
+#if CONN_REUSE
+static int msc_vlr_tx_cm_serv_acc(void *msc_conn_ref);
+static int msc_vlr_tx_cm_serv_rej(void *msc_conn_ref, enum vlr_proc_arq_result result);
+
+int cm_serv_conn_reuse(struct gsm_subscriber_connection *conn,
+		       const uint8_t *mi_lv)
+{
+	struct vlr_subscr *vsub;
+	uint8_t mi_type;
+	char mi_string[GSM48_MI_SIZE];
+	uint32_t tmsi;
+
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi_lv+1, mi_lv[0]);
+	mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;
+
+	switch (mi_type) {
+	case GSM_MI_TYPE_IMSI:
+		vsub = vlr_subscr_find_by_imsi(conn->network->vlr, mi_string);
+		break;
+	case GSM_MI_TYPE_TMSI:
+		tmsi = osmo_load32be(mi_lv+2);
+		vsub = vlr_subscr_find_by_tmsi(conn->network->vlr, tmsi);
+		break;
+	case GSM_MI_TYPE_IMEI:
+		/* TODO: IMEI (emergency call) */
+	default:
+		vsub = NULL;
+		break;
+	}
+
+	if (!vsub) {
+		msc_vlr_tx_cm_serv_rej(conn, VLR_PR_ARQ_RES_ILLEGAL_SUBSCR);
+		return -EINVAL;
+	}
+
+	DEBUGP(DMM, "%s: re-using already accepted connection\n",
+	       vlr_subscr_name(vsub));
+	conn->received_cm_service_request = true;
+	return conn->network->vlr->ops.tx_cm_serv_acc(conn);
+}
+#endif
+
 /*
  * Handle CM Service Requests
  * a) Verify that the packet is long enough to contain the information
@@ -664,14 +707,26 @@ int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *ms
 	}
 
 	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
-
-	rc = msc_create_conn_fsm(conn, mi_string);
-	if (rc)
-		/* logging already happened in msc_create_conn_fsm() */
-		return rc;
-
 	memcpy(conn->classmark.classmark2, classmark2, classmark2_len);
 	conn->classmark.classmark2_len = classmark2_len;
+
+#if CONN_REUSE
+	if (conn->conn_fsm) {
+		if (msc_subscr_conn_is_accepted(conn))
+			return cm_serv_conn_reuse(conn, mi-1);
+		LOGP(DMM, LOGL_ERROR, "%s: connection already in use\n",
+		     vlr_subscr_name(conn->vsub));
+		msc_vlr_tx_cm_serv_rej(conn, VLR_PR_ARQ_RES_UNKNOWN_ERROR);
+		return -EINVAL;
+	}
+#endif
+
+	rc = msc_create_conn_fsm(conn, mi_string);
+	if (rc) {
+		msc_vlr_tx_cm_serv_rej(conn, VLR_PR_ARQ_RES_UNKNOWN_ERROR);
+		/* logging already happened in msc_create_conn_fsm() */
+		return rc;
+	}
 
 #if BEFORE_MSCSPLIT
 	/* see mail on openbsc@ 9 Feb 2016 22:30:15 +0100

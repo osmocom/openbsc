@@ -164,7 +164,7 @@ void _paging_resp_part1()
 	EXPECT_CONN_COUNT(1);
 }
 
-void _paging_resp_part2()
+void _paging_resp_part2(int expect_conn_count)
 {
 	btw("MS replies with CP-ACK for received SMS");
 	ms_sends_msg("8904");
@@ -175,8 +175,8 @@ void _paging_resp_part2()
 	ms_sends_msg("890106020041020000");
 	VERBOSE_ASSERT(dtap_tx_confirmed, == true, "%d");
 
-	btw("SMS is done, conn is gone");
-	EXPECT_CONN_COUNT(0);
+	btw("SMS is done");
+	EXPECT_CONN_COUNT(expect_conn_count);
 }
 
 void test_reject_lu_during_lu()
@@ -242,10 +242,15 @@ void test_reject_lu_during_cm()
 	_normal_lu();
 	_normal_cm_service_req();
 
-	btw("An erratic LU request on the same conn results in conn termination");
+	btw("A LU request on an open conn is dropped silently");
+	/* TODO: accept periodic LU on an already open conn? */
 	lu_result_sent = RES_NONE;
 	ms_sends_msg("050802008168000130089910070000006402");
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+	EXPECT_CONN_COUNT(1);
+
+	BTW("subscriber detaches");
+	ms_sends_msg("050130089910070000006402");
 	EXPECT_CONN_COUNT(0);
 
 	clear_vlr();
@@ -303,7 +308,7 @@ void test_reject_paging_resp_during_paging_resp()
 	BTW("MS sends another erratic Paging Response which is dropped silently");
 	ms_sends_msg("06270703305882089910070000006402");
 
-	_paging_resp_part2();
+	_paging_resp_part2(0);
 
 	clear_vlr();
 	comment_end();
@@ -323,7 +328,7 @@ void test_reject_lu_during_paging_resp()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 	EXPECT_CONN_COUNT(1);
 
-	_paging_resp_part2();
+	_paging_resp_part2(0);
 
 	clear_vlr();
 	comment_end();
@@ -337,13 +342,18 @@ void test_reject_cm_during_paging_resp()
 	_page();
 	_paging_resp_part1();
 
-	BTW("MS sends erratic CM Service Request, which is dropped silently");
+	BTW("CM Service Request during open connection is accepted");
 	cm_service_result_sent = RES_NONE;
 	ms_sends_msg("05247803305886089910070000006402");
-	VERBOSE_ASSERT(cm_service_result_sent, == RES_NONE, "%d");
+	VERBOSE_ASSERT(cm_service_result_sent, == RES_ACCEPT, "%d");
 	EXPECT_CONN_COUNT(1);
+	VERBOSE_ASSERT(g_conn->received_cm_service_request, == true, "%d");
 
-	_paging_resp_part2();
+	_paging_resp_part2(1);
+
+	BTW("subscriber detaches");
+	ms_sends_msg("050130089910070000006402");
+	EXPECT_CONN_COUNT(0);
 
 	clear_vlr();
 	comment_end();
