@@ -1,10 +1,10 @@
 ===== test_ms_timeout_lu_auth_resp
 - Total time passed: 0.000000 s
 - Location Update request causes a GSUP Send Auth Info request to HLR
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -102,10 +102,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 ===== test_ms_timeout_cm_auth_resp
 - Total time passed: 0.000000 s
 - Location Update request causes a GSUP Send Auth Info request to HLR
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -148,9 +148,9 @@ DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
   auth_request_sent == 1
   lu_result_sent == 0
 - MS sends Authen Response, VLR accepts and sends GSUP LU Req to HLR
-  rx from MS: pdisc=0x05 msg_type=0x54
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_AUTH_RESP
 DREF IMSI:901700000004620: MSC conn use + 1 == 2
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_AUTH_RESP (0x5:0x14)
 DMM IMSI:901700000004620: MM GSM AUTHENTICATION RESPONSE (sres = 2d8b2c3e)
 DVLR VLR_Authenticate(901700000004620){VLR_SUB_AS_WAIT_RESP}: Received Event VLR_AUTH_E_MS_AUTH_RESP
 DVLR SUBSCR(IMSI:901700000004620) received res: 2d 8b 2c 3e 
@@ -244,10 +244,10 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 1
   llist_count(&net->subscr_conns) == 0
 ---
 - after a while, a new conn sends a CM Service Request. VLR responds with Auth Req, 2nd auth vector
-  rx from MS: pdisc=0x05 msg_type=0x24
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_CM_SERV_REQ
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_CM_SERV_REQ (0x5:0x24)
 DMM <- CM SERVICE REQUEST serv_type=0x08 MI(IMSI)=901700000004620
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated

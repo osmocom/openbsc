@@ -1,10 +1,10 @@
 ===== test_hlr_timeout_lu_auth_info
 - Total time passed: 0.000000 s
 - Location Update request causes a GSUP Send Auth Info request to HLR
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START
@@ -82,10 +82,10 @@ talloc_total_blocks(tall_bsc_ctx) == 9
 ===== test_hlr_timeout_lu_upd_loc_result
 - Total time passed: 0.000000 s
 - Location Update request causes a GSUP LU request to HLR
-  rx from MS: pdisc=0x05 msg_type=0x08
+  MSC <--RAN_GERAN_A-- MS: GSM48_MT_MM_LOC_UPD_REQUEST
   new conn
 DREF unknown: MSC conn use + 1 == 1
-DRLL Dispatching 04.08 message, pdisc=5
+DRLL Dispatching 04.08 message GSM48_MT_MM_LOC_UPD_REQUEST (0x5:0x8)
 DREF unknown: MSC conn use + 1 == 2
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Allocated
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_INIT}: Received Event SUBSCR_CONN_E_START

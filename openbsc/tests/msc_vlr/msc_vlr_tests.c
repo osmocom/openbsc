@@ -69,6 +69,17 @@ struct msgb *msgb_from_hex(const char *label, uint16_t size, const char *hex)
 	return msg;
 }
 
+const char *gh_type_name(struct gsm48_hdr *gh)
+{
+	return gsm48_pdisc_msgtype_name(gsm48_hdr_pdisc(gh),
+					gsm48_hdr_msg_type(gh));
+}
+
+const char *msg_type_name(struct msgb *msg)
+{
+	return gh_type_name((void*)msg->data);
+}
+
 void dtap_expect_tx(const char *hex)
 {
 	/* Has the previously expected dtap been received? */
@@ -153,8 +164,10 @@ void rx_from_ms(struct msgb *msg)
 	int rc;
 
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	log("rx from MS: pdisc=0x%02x msg_type=0x%02x",
-	    gh->proto_discr, gh->msg_type);
+
+	log("MSC <--%s-- MS: %s",
+	    ran_type_name(rx_from_ran),
+	    gh_type_name(gh));
 
 	if (g_conn && !conn_exists(g_conn))
 		g_conn = NULL;
@@ -425,8 +438,9 @@ int __wrap_gsup_client_send(struct gsup_client *gsupc, struct msgb *msg)
 
 int _validate_dtap(struct msgb *msg, enum ran_type to_ran)
 {
-	btw("DTAP --%s--> MS: %s",
-	    ran_type_name(to_ran),
+	struct gsm48_hdr *gh = (void*)msg->data;
+	btw("DTAP --%s--> MS: %s: %s",
+	    ran_type_name(to_ran), msg_type_name(msg),
 	    osmo_hexdump_nospc(msg->data, msg->len));
 
 	OSMO_ASSERT(dtap_tx_expected);
