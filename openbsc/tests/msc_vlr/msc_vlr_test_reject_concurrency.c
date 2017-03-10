@@ -203,8 +203,9 @@ void test_reject_cm_during_lu()
 
 	_normal_lu_part1();
 
-	BTW("An erratic CM Service Request is dropped silently");
+	BTW("A CM Service Request in the middle of a LU is rejected");
 	cm_service_result_sent = RES_NONE;
+	dtap_expect_tx("052211");
 	ms_sends_msg("05247803305886089910070000006402");
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 	VERBOSE_ASSERT(cm_service_result_sent, == RES_NONE, "%d");
@@ -264,10 +265,14 @@ void test_reject_cm_during_cm()
 	_normal_lu();
 	_normal_cm_service_req();
 
-	btw("Another CM Service Request request on the same conn results in conn termination");
+	btw("A second CM Service Request on the same conn is accepted without another auth dance");
 	cm_service_result_sent = RES_NONE;
 	ms_sends_msg("05247803305886089910070000006402");
-	VERBOSE_ASSERT(cm_service_result_sent, == RES_NONE, "%d");
+	VERBOSE_ASSERT(cm_service_result_sent, == RES_ACCEPT, "%d");
+	EXPECT_CONN_COUNT(1);
+
+	BTW("subscriber detaches");
+	ms_sends_msg("050130089910070000006402");
 	EXPECT_CONN_COUNT(0);
 
 	clear_vlr();
@@ -364,8 +369,8 @@ msc_vlr_test_func_t msc_vlr_tests[] = {
 	test_reject_lu_during_lu,
 	test_reject_cm_during_lu,
 	test_reject_paging_resp_during_lu,
-	//test_reject_lu_during_cm,
-	//test_reject_cm_during_cm,
+	test_reject_lu_during_cm,
+	test_reject_cm_during_cm,
 	test_reject_paging_resp_during_cm,
 	test_reject_lu_during_paging_resp,
 	test_reject_cm_during_paging_resp,
