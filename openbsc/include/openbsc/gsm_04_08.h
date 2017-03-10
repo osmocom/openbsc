@@ -39,6 +39,9 @@ static inline void set_radio_link_timeout(struct gsm48_cell_options *cell_option
 	cell_options->radio_link_timeout = (value >> 2) - 1;
 }
 
+void cm_service_request_concludes(struct gsm_subscriber_connection *conn,
+				  struct msgb *msg);
+
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
 void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause);

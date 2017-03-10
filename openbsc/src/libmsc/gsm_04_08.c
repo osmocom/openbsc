@@ -3464,6 +3464,7 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 		}
 		/* Assign transaction */
 		trans->conn = msc_conn_get(conn);
+		cm_service_request_concludes(conn, msg);
 	}
 
 	/* find function for current state and message */
@@ -3520,13 +3521,13 @@ static bool msg_is_initially_permitted(const struct gsm48_hdr *hdr)
 	return false;
 }
 
-static void
-cm_service_request_concludes(struct gsm_subscriber_connection *conn,
-			     struct msgb *msg)
+void cm_service_request_concludes(struct gsm_subscriber_connection *conn,
+				  struct msgb *msg)
 {
 
 	/* If a CM Service Request was received before, this is the request the
 	 * conn was opened for. No need to wait for further messages. */
+
 	if (!conn->received_cm_service_request)
 		return;
 
@@ -3579,15 +3580,6 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	if (silent_call_reroute(conn, msg))
 		return silent_call_rx(conn, msg);
 #endif
-
-	/* Should we receive RR messages like an odd UTRAN Classmark Change,
-	 * don't close the CM Service Request initiated conn yet. All others
-	 * constitue a service and the conn can be closed, or something unknown
-	 * is happening and we'd rather close the conn instead of idling around
-	 * (we may add more specific exceptions as they become apparent). */
-	if (pdisc != GSM48_PDISC_RR) {
-		cm_service_request_concludes(conn, msg);
-	}
 
 	switch (pdisc) {
 	case GSM48_PDISC_CC:

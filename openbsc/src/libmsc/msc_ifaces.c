@@ -86,6 +86,7 @@ int msc_gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 			     enum gsm48_reject_value value)
 {
 	struct msgb *msg;
+	conn->received_cm_service_request = false;
 
 	msg = gsm48_create_mm_serv_rej(value);
 	if (!msg) {

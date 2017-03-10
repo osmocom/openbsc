@@ -54,6 +54,8 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	 * As we answer everytying synchronously so far, there's no need
 	 * yet */
 
+	cm_service_request_concludes(conn, msg);
+
 	memset(&req, 0, sizeof(req));
 	gh = msgb_l3(msg);
 	rc = gsm0480_decode_ss_request(gh, msgb_l3len(msg), &req);

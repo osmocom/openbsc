@@ -835,6 +835,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		trans->conn = msc_conn_get(conn);
 
 		new_trans = 1;
+		cm_service_request_concludes(conn, msg);
 	}
 
 	/* 5.4: For MO, if a CP-DATA is received for a new
