@@ -181,15 +181,15 @@ int trans_assign_trans_id(struct gsm_network *net, struct vlr_subscr *vsub,
  * \param[in] conn Connection to check
  * \returns 1 in case there is a transaction, 0 otherwise
  */
-int trans_has_conn(const struct gsm_subscriber_connection *conn)
+struct gsm_trans *trans_has_conn(const struct gsm_subscriber_connection *conn)
 {
 	struct gsm_trans *trans;
 
 	llist_for_each_entry(trans, &conn->network->trans_list, entry)
 		if (trans->conn == conn)
-			return 1;
+			return trans;
 
-	return 0;
+	return NULL;
 }
 
 /*

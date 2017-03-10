@@ -3356,7 +3356,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			trans->paging_request = subscr_request_conn(
 							vsub,
 							setup_trig_pag_evt,
-							trans);
+							trans,
+							"MNCC: establish call");
 			if (!trans->paging_request) {
 				LOGP(DCC, LOGL_ERROR, "Failed to allocate paging token.\n");
 				vlr_subscr_put(vsub);

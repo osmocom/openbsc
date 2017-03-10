@@ -119,7 +119,7 @@ void subscr_conn_fsm_new(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 
 	if (from == SUBSCR_CONN_FROM_CM_SERVICE_REQ) {
 		conn->received_cm_service_request = true;
-		LOGPFSM(fi, "received_cm_service_request = true\n");
+		LOGPFSML(fi, LOGL_DEBUG, "received_cm_service_request = true\n");
 	}
 
 	osmo_fsm_inst_dispatch(fi, SUBSCR_CONN_E_BUMP, data);
@@ -155,19 +155,37 @@ void subscr_conn_fsm_new(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 static void subscr_conn_fsm_bump(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_subscriber_connection *conn = fi->priv;
+	struct gsm_trans *trans;
 
-	if (conn->silent_call)
+	if (conn->silent_call) {
+		LOGPFSML(fi, LOGL_DEBUG, "bump: silent call still active\n");
 		return;
+	}
 
-	if (conn->received_cm_service_request)
+	if (conn->received_cm_service_request) {
+		LOGPFSML(fi, LOGL_DEBUG, "bump: still awaiting first request after a CM Service Request\n");
 		return;
+	}
 
-	if (conn->vsub && !llist_empty(&conn->vsub->cs.requests))
+	if (conn->vsub && !llist_empty(&conn->vsub->cs.requests)) {
+		struct subscr_request *sr;
+		if (!log_check_level(fi->fsm->log_subsys, LOGL_DEBUG)) {
+			llist_for_each_entry(sr, &conn->vsub->cs.requests, entry) {
+				LOGPFSML(fi, LOGL_DEBUG, "bump: still active: %s\n",
+					 sr->label);
+			}
+		}
 		return;
+	}
 
-	if (trans_has_conn(conn))
+	if ((trans = trans_has_conn(conn))) {
+		LOGPFSML(fi, LOGL_DEBUG,
+			 "bump: connection still has active transaction: %s\n",
+			 gsm48_pdisc_name(trans->protocol));
 		return;
+	}
 
+	LOGPFSML(fi, LOGL_DEBUG, "bump: releasing conn\n");
 	osmo_fsm_inst_state_chg(fi, SUBSCR_CONN_S_RELEASED, 0, 0);
 }
 
@@ -310,7 +328,7 @@ static struct osmo_fsm subscr_conn_fsm = {
 	.num_states = ARRAY_SIZE(subscr_conn_fsm_states),
 	.allstate_event_mask = 0,
 	.allstate_action = NULL,
-	.log_subsys = DVLR,
+	.log_subsys = DMM,
 	.event_names = subscr_conn_fsm_event_names,
 	.cleanup = subscr_conn_fsm_cleanup,
 	.timer_cb = subscr_conn_fsm_timeout,

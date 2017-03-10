@@ -55,8 +55,12 @@ static void subscr_conn_bump(struct gsm_subscriber_connection *conn)
 	if (!conn->conn_fsm)
 		return;
 	if (!(conn->conn_fsm->state == SUBSCR_CONN_S_ACCEPTED
-	      || conn->conn_fsm->state == SUBSCR_CONN_S_COMMUNICATING))
+	      || conn->conn_fsm->state == SUBSCR_CONN_S_COMMUNICATING)) {
+		DEBUGP(DMM, "%s: bump: conn still being established (%s)\n",
+		       vlr_subscr_name(conn->vsub),
+		       osmo_fsm_inst_state_name(conn->conn_fsm));
 		return;
+	}
 	osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_BUMP, NULL);
 }
 

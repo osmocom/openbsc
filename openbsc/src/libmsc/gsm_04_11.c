@@ -1010,7 +1010,7 @@ int gsm411_send_sms_subscr(struct vlr_subscr *vsub,
 	/* if not, we have to start paging */
 	LOGP(DLSMS, LOGL_DEBUG, "Sending SMS: no connection open, start paging %s\n",
 	     vlr_subscr_name(vsub));
-	res = subscr_request_conn(vsub, paging_cb_send_sms, sms);
+	res = subscr_request_conn(vsub, paging_cb_send_sms, sms, "send SMS");
 	if (!res) {
 		send_signal(S_SMS_UNKNOWN_ERROR, NULL, sms, GSM_PAGING_BUSY);
 		sms_free(sms);

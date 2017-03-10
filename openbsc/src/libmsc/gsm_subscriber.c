@@ -126,8 +126,15 @@ int msc_paging_request(struct vlr_subscr *vsub)
 	return -EINVAL;
 }
 
+/*! \brief Start a paging request for vsub, call cbfn(param) when done.
+ * \param vsub  subscriber to page.
+ * \param cbfn  function to call when the conn is established.
+ * \param param  caller defined param to pass to cbfn().
+ * \param label  human readable label of the request kind used for logging.
+ */
 struct subscr_request *subscr_request_conn(struct vlr_subscr *vsub,
-					   gsm_cbfn *cbfn, void *param)
+					   gsm_cbfn *cbfn, void *param,
+					   const char *label)
 {
 	int rc;
 	struct subscr_request *request;
