@@ -2023,10 +2023,8 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 		else if(msg->data[4] != 0xf1)
 			LOGP(DRSL, LOGL_ERROR, "unsupported IMM.ass message format! (please fix)\n");
 		else {
-			tlli =  msg->data[8];
-			tlli |= msg->data[7] << 8;
-			tlli |= msg->data[6] << 16;
-			tlli |= msg->data[5] << 24;
+			msgb_pull(msg, 5); /* drop previous data to use msg_pull_u32 */
+			tlli = msgb_pull_u32(msg);
 			pcu_tx_imm_ass_sent(sign_link->trx->bts, tlli);
 		}
 		break;
