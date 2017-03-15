@@ -99,7 +99,7 @@ static int oap_evaluate_challenge(const struct oap_client_state *state,
 	memcpy(auth.u.umts.k, state->secret_k, sizeof(auth.u.umts.k));
 	memcpy(auth.u.umts.opc, state->secret_opc, sizeof(auth.u.umts.opc));
 	memset(auth.u.umts.amf, '\0', sizeof(auth.u.umts.amf));
-	auth.u.umts.sqn = 42; /* TODO use incrementing sequence nr */
+	auth.u.umts.sqn = 41; /* TODO use incrementing sequence nr */
 
 	memset(&vec, 0, sizeof(vec));
 	osmo_auth_gen_vec(&vec, &auth, rx_random);
