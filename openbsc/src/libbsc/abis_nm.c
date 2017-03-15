@@ -273,51 +273,111 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	return 0;
 }
 
-static int rx_fail_evt_rep(struct msgb *mb)
+static inline void log_oml_fail_rep(const struct gsm_bts *bts, const char *type,
+				    const char *severity, const uint8_t *p_val,
+				    const char *text)
+{
+	enum abis_nm_pcause_type pcause = p_val[0];
+	enum abis_mm_event_causes cause = osmo_load16be(p_val + 1);
+
+	LOGPC(DNM, LOGL_ERROR, "BTS %u: Failure Event Report: ", bts->nr);
+	if (type)
+		LOGPC(DNM, LOGL_ERROR, "Type=%s, ", type);
+	if (severity)
+		LOGPC(DNM, LOGL_ERROR, "Severity=%s, ", severity);
+
+	LOGPC(DNM, LOGL_ERROR, "Probable cause=%s: ",
+	      get_value_string(abis_nm_pcause_type_names, pcause));
+
+	if (pcause == NM_PCAUSE_T_MANUF)
+		LOGPC(DNM, LOGL_ERROR, "%s, ",
+		      get_value_string(abis_mm_event_cause_names, cause));
+	else
+		LOGPC(DNM, LOGL_ERROR, "%02X %02X ", p_val[1], p_val[2]);
+
+	if (text) {
+		LOGPC(DNM, LOGL_ERROR, "Additional Text=%s. ", text);
+	}
+
+	LOGPC(DNM, LOGL_ERROR, "\n");
+}
+
+static inline void handle_manufact_report(const struct gsm_bts *bts,
+					  const uint8_t *p_val, const char *type,
+					  const char *severity, const char *text)
+{
+	enum abis_mm_event_causes cause = osmo_load16be(p_val + 1);
+
+	switch (cause) {
+	case OSMO_EVT_PCU_VERS:
+		if (text)
+			LOGPC(DNM, LOGL_NOTICE,
+			      "BTS %u reported connected PCU version %s\n",
+			      bts->nr, text);
+		else
+			LOGPC(DNM, LOGL_ERROR,
+			      "BTS %u sent %s without actual version string.\n",
+			      bts->nr,
+			      get_value_string(abis_mm_event_cause_names,
+					       cause));
+		break;
+	default:
+		log_oml_fail_rep(bts, type, severity, p_val, text);
+	};
+}
+
+static int rx_fail_evt_rep(struct msgb *mb, const struct gsm_bts *bts)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	struct e1inp_sign_link *sign_link = mb->dst;
 	struct tlv_parsed tp;
-	const uint8_t *p_val;
-	char *p_text;
+	int rc = 0;
+	const uint8_t *p_val = NULL;
+	char *p_text = NULL;
+	const char *e_type = NULL, *severity = NULL;
 
-	LOGPC(DNM, LOGL_ERROR, "Failure Event Report: ");
+	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data,
+			  oh->length-sizeof(*foh));
 
-	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
-
-	if (TLVP_PRESENT(&tp, NM_ATT_EVENT_TYPE))
-		LOGPC(DNM, LOGL_ERROR, "Type=%s, ",
-		      abis_nm_event_type_name(*TLVP_VAL(&tp, NM_ATT_EVENT_TYPE)));
-	if (TLVP_PRESENT(&tp, NM_ATT_SEVERITY))
-		LOGPC(DNM, LOGL_ERROR, "Severity=%s, ",
-		      abis_nm_severity_name(*TLVP_VAL(&tp, NM_ATT_SEVERITY)));
-	if (TLVP_PRESENT(&tp, NM_ATT_PROB_CAUSE)) {
-		p_val = TLVP_VAL(&tp, NM_ATT_PROB_CAUSE);
-		LOGPC(DNM, LOGL_ERROR, "Probable cause=%s: ",
-		      get_value_string(abis_nm_pcause_type_names, p_val[0]));
-		if (p_val[0] == NM_PCAUSE_T_MANUF)
-			LOGPC(DNM, LOGL_ERROR, "%s, ",
-			      get_value_string(abis_mm_event_cause_names,
-					       osmo_load16be(p_val + 1)));
-		else
-			LOGPC(DNM, LOGL_ERROR, "%02X %02X ", p_val[1], p_val[2]);
-	}
 	if (TLVP_PRESENT(&tp, NM_ATT_ADD_TEXT)) {
 		p_val = TLVP_VAL(&tp, NM_ATT_ADD_TEXT);
-		p_text = talloc_strndup(tall_bsc_ctx, (const char *) p_val, TLVP_LEN(&tp, NM_ATT_ADD_TEXT));
-		if (p_text) {
-			LOGPC(DNM, LOGL_ERROR, "Additional Text=%s. ", p_text);
-			talloc_free(p_text);
-		}
+		p_text = talloc_strndup(tall_bsc_ctx, (const char *) p_val,
+					TLVP_LEN(&tp, NM_ATT_ADD_TEXT));
 	}
 
-	LOGPC(DNM, LOGL_ERROR, "\n");
+	if (TLVP_PRESENT(&tp, NM_ATT_EVENT_TYPE))
+		e_type = abis_nm_event_type_name(*TLVP_VAL(&tp,
+							   NM_ATT_EVENT_TYPE));
 
-	return 0;
+	if (TLVP_PRESENT(&tp, NM_ATT_SEVERITY))
+		severity = abis_nm_severity_name(*TLVP_VAL(&tp,
+							   NM_ATT_SEVERITY));
+
+	if (TLVP_PRESENT(&tp, NM_ATT_PROB_CAUSE)) {
+		p_val = TLVP_VAL(&tp, NM_ATT_PROB_CAUSE);
+
+		switch (p_val[0]) {
+		case NM_PCAUSE_T_MANUF:
+			handle_manufact_report(bts, p_val, e_type, severity,
+					       p_text);
+			break;
+		default:
+			log_oml_fail_rep(bts, e_type, severity, p_val, p_text);
+		};
+	} else {
+		LOGPC(DNM, LOGL_ERROR, "BTS%u: Failure Event Report without "
+		      "Probable Cause?!\n", bts->nr);
+		rc = -EINVAL;
+	}
+
+	if (p_text)
+		talloc_free(p_text);
+
+	return rc;
 }
 
-static int abis_nm_rcvmsg_report(struct msgb *mb)
+static int abis_nm_rcvmsg_report(struct msgb *mb, struct gsm_bts *bts)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	uint8_t mt = foh->msg_type;
@@ -335,7 +395,7 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 		osmo_signal_dispatch(SS_NM, S_NM_SW_ACTIV_REP, mb);
 		break;
 	case NM_MT_FAILURE_EVENT_REP:
-		rx_fail_evt_rep(mb);
+		rx_fail_evt_rep(mb, bts);
 		osmo_signal_dispatch(SS_NM, S_NM_FAIL_REP, mb);
 		break;
 	case NM_MT_TEST_REP:
@@ -580,7 +640,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 	/* check for unsolicited message */
 	if (is_report(mt))
-		return abis_nm_rcvmsg_report(mb);
+		return abis_nm_rcvmsg_report(mb, bts);
 
 	if (is_in_arr(mt, abis_nm_sw_load_msgs, ARRAY_SIZE(abis_nm_sw_load_msgs)))
 		return abis_nm_rcvmsg_sw(mb);
