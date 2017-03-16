@@ -44,19 +44,19 @@ extern struct gsm_network *bsc_gsmnet;
 /* Callback function for NACK on the OML NM */
 static int oml_msg_nack(struct nm_nack_signal_data *nack)
 {
-	if (nack->mt == NM_MT_SET_BTS_ATTR_NACK) {
-
-		LOGP(DNM, LOGL_ERROR, "Failed to set BTS attributes. That is fatal. "
-				"Was the bts type and frequency properly specified?\n");
-		goto drop_bts;
-	} else {
-		LOGP(DNM, LOGL_ERROR, "Got a NACK going to drop the OML links.\n");
-		goto drop_bts;
+	if (nack->mt == NM_MT_GET_ATTR_NACK) {
+		LOGP(DNM, LOGL_ERROR, "BTS%u does not support Get Attributes "
+		     "OML message.\n", nack->bts->nr);
+		return 0;
 	}
 
-	return 0;
+	if (nack->mt == NM_MT_SET_BTS_ATTR_NACK)
+		LOGP(DNM, LOGL_ERROR, "Failed to set BTS attributes. That is fatal. "
+		     "Was the bts type and frequency properly specified?\n");
+	else
+		LOGP(DNM, LOGL_ERROR, "Got %s NACK going to drop the OML links.\n",
+		     abis_nm_nack_name(nack->mt));
 
-drop_bts:
 	if (!nack->bts) {
 		LOGP(DNM, LOGL_ERROR, "Unknown bts. Can not drop it.\n");
 		return 0;
