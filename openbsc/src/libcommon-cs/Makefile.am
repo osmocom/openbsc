@@ -19,4 +19,5 @@ libcommon_cs_a_SOURCES = \
 	common_cs.c \
 	common_cs_vty.c \
 	gsm_data.c \
+	gsm_data_shared.c \
 	$(NULL)

@@ -129,6 +129,7 @@ meas_json_SOURCES = \
 
 meas_json_LDADD = \
 	$(top_builddir)/src/libcommon/libcommon.a \
+	$(top_builddir)/src/libcommon-cs/libcommon-cs.a \
 	$(LIBOSMOCORE_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
 	$(NULL)
