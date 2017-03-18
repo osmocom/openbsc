@@ -1225,3 +1225,6 @@ int main(int argc, char **argv)
 	printf("Done\n");
 	return EXIT_SUCCESS;
 }
+
+struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr) { return subscr; }
+struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr) { return NULL; }

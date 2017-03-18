@@ -24,6 +24,7 @@ osmo_bsc_mgcp_SOURCES = \
 
 osmo_bsc_mgcp_LDADD = \
 	$(top_builddir)/src/libcommon/libcommon.a \
+	$(top_builddir)/src/libcommon-cs/libcommon-cs.a \
 	$(top_builddir)/src/libmgcp/libmgcp.a \
 	$(LIBOSMOVTY_LIBS) \
 	$(LIBOSMOCORE_LIBS) \

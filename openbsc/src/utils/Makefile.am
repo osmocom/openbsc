@@ -69,6 +69,7 @@ smpp_mirror_SOURCES = \
 
 smpp_mirror_LDADD = \
 	$(top_builddir)/src/libcommon/libcommon.a \
+	$(top_builddir)/src/libcommon-cs/libcommon-cs.a \
 	$(LIBOSMOCORE_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBSMPP34_LIBS) \

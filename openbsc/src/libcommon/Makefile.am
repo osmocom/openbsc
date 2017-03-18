@@ -26,7 +26,6 @@ libcommon_a_SOURCES = \
 	socket.c \
 	talloc_ctx.c \
 	tall_bsc_ctx.c \
-	gsm_subscriber_base.c \
 	$(NULL)
 
 noinst_PROGRAMS = \
