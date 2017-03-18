@@ -21,12 +21,12 @@ libcommon_a_SOURCES = \
 	bsc_version.c \
 	common_vty.c \
 	debug.c \
-	gsm_data.c \
 	gsm_data_shared.c \
 	gsup_client.c \
 	oap_client.c \
 	socket.c \
 	talloc_ctx.c \
+	tall_bsc_ctx.c \
 	gsm_subscriber_base.c \
 	$(NULL)
 

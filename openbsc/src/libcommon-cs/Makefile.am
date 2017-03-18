@@ -17,4 +17,6 @@ noinst_LIBRARIES = libcommon-cs.a
 
 libcommon_cs_a_SOURCES = \
 	common_cs.c \
-	common_cs_vty.c
+	common_cs_vty.c \
+	gsm_data.c \
+	$(NULL)

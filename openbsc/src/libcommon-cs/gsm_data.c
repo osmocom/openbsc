@@ -37,8 +37,6 @@
 #include <openbsc/bsc_msc_data.h>
 #include <openbsc/abis_nm.h>
 
-void *tall_bsc_ctx;
-
 static LLIST_HEAD(bts_models);
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, uint8_t e1_nr,
