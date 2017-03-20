@@ -22,13 +22,13 @@
  */
 """
 
-__version__ = "0.4" # bump this on every non-trivial change
+__version__ = "0.5" # bump this on every non-trivial change
 
 from ipa import Ctrl, IPA
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet import reactor
 from twisted.protocols import basic
-import argparse
+import argparse, logging
 
 class IPACommon(basic.Int16StringReceiver):
     """
@@ -39,8 +39,7 @@ class IPACommon(basic.Int16StringReceiver):
         """
         Debug print helper
         """
-        if self.factory.debug:
-            print(line)
+        self.factory.log.debug(line)
 
     def osmo_CTRL(self, data):
         """
@@ -160,7 +159,8 @@ class IPACommon(basic.Int16StringReceiver):
         We have to resetDelay() here to drop internal state to default values to make reconnection logic work
         Make sure to call this via super() if overriding to keep reconnection logic intact
         """
-        self.dbg('IPA connection made!')
+        addr = self.transport.getPeer()
+        self.dbg('IPA connected to %s:%d peer' % (addr.host, addr.port))
         self.factory.resetDelay()
 
 
@@ -259,7 +259,8 @@ class IPAServer(CCM):
         Keep reconnection logic working by calling routine from CCM
         Initiate CCM upon connection
         """
-        print('IPA server connection made!')
+        addr = self.transport.getPeer()
+        self.factory.log.info('IPA server: connection from %s:%d client' % (addr.host, addr.port))
         super(IPAServer, self).connectionMade()
         self.transport.write(IPA().id_get())
 
@@ -275,7 +276,8 @@ class CtrlServer(CTRL):
         Send TRAP upon connection
         Note: we can't use sendString() because of it's incompatibility with IPA interpretation of length prefix
         """
-        print('CTRL server connection made!')
+        addr = self.transport.getPeer()
+        self.factory.log.info('CTRL server: connection from %s:%d client' % (addr.host, addr.port))
         super(CtrlServer, self).connectionMade()
         self.transport.write(Ctrl().trap('LOL', 'what'))
         self.transport.write(Ctrl().trap('rulez', 'XXX'))
@@ -287,14 +289,14 @@ class CtrlServer(CTRL):
         """
         CTRL SET command: always succeed
         """
-        print('SET [%s] %s' % (op_id, v))
+        self.dbg('SET [%s] %s' % (op_id, v))
         self.reply('SET_REPLY %s %s' % (op_id, v))
 
     def ctrl_GET(self, data, op_id, v):
         """
         CTRL GET command: always fail
         """
-        print('GET [%s] %s' % (op_id, v))
+        self.dbg('GET [%s] %s' % (op_id, v))
         self.reply('ERROR %s No variable found' % op_id)
 
 
@@ -304,31 +306,33 @@ class IPAFactory(ReconnectingClientFactory):
     Note: so far we do not really need separate Factory for acting as a server due to protocol simplicity
     """
     protocol = IPACommon
-    debug = False
+    log = None
     ccm_id = IPA().identity(unit=b'1515/0/1', mac=b'b0:0b:fa:ce:de:ad:be:ef', utype=b'sysmoBTS', name=b'StingRay', location=b'hell', sw=IPA.version.encode('utf-8'))
 
-    def __init__(self, proto=None, debug=False, ccm_id=None):
+    def __init__(self, proto=None, log=None, ccm_id=None):
         if proto:
             self.protocol = proto
-        if debug:
-            self.debug = debug
         if ccm_id:
             self.ccm_id = ccm_id
+        if log:
+            self.log = log
+        else:
+            self.log = logging.getLogger('IPAFactory')
+            log.setLevel(logging.CRITICAL)
+            log.addHandler(logging.NullHandler)
 
     def clientConnectionFailed(self, connector, reason):
         """
         Only necessary for as debugging aid - if we can somehow set parent's class noisy attribute then we can omit this method
         """
-        if self.debug:
-            print('IPAFactory connection failed:', reason.getErrorMessage())
+        self.log.warning('IPAFactory connection failed: %s' % reason.getErrorMessage())
         ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
 
     def clientConnectionLost(self, connector, reason):
         """
         Only necessary for as debugging aid - if we can somehow set parent's class noisy attribute then we can omit this method
         """
-        if self.debug:
-            print('IPAFactory connection lost:', reason.getErrorMessage())
+        self.log.warning('IPAFactory connection lost: %s' % reason.getErrorMessage())
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
 
@@ -345,29 +349,34 @@ if __name__ == '__main__':
     ic.add_argument("--ctrl", action='store_true', help="use CTRL protocol")
     args = p.parse_args()
     test = False
+
+    log = logging.getLogger('TwistedIPA')
+    log.setLevel(logging.DEBUG)
+    log.addHandler(logging.StreamHandler(sys.stdout))
+
     if args.ctrl:
         if args.client:
             # Start osmo-bsc to receive TRAP messages when osmo-bts-* connects to it
             print('CTRL client, connecting to %s:%d' % (args.host, args.port))
-            reactor.connectTCP(args.host, args.port, IPAFactory(CTRL, debug=True))
+            reactor.connectTCP(args.host, args.port, IPAFactory(CTRL, log))
             test = True
         if args.server:
             # Use bsc_control.py to issue set/get commands
             print('CTRL server, listening on port %d' % args.port)
-            reactor.listenTCP(args.port, IPAFactory(CtrlServer, debug=True))
+            reactor.listenTCP(args.port, IPAFactory(CtrlServer, log))
             test = True
     if args.ipa:
         if args.client:
             # Start osmo-nitb which would initiate A-bis/IP session
             print('IPA client, connecting to %s ports %d and %d' % (args.host, IPA.TCP_PORT_OML, IPA.TCP_PORT_RSL))
-            reactor.connectTCP(args.host, IPA.TCP_PORT_OML, IPAFactory(CCM, debug=True))
-            reactor.connectTCP(args.host, IPA.TCP_PORT_RSL, IPAFactory(CCM, debug=True))
+            reactor.connectTCP(args.host, IPA.TCP_PORT_OML, IPAFactory(CCM, log))
+            reactor.connectTCP(args.host, IPA.TCP_PORT_RSL, IPAFactory(CCM, log))
             test = True
         if args.server:
             # Start osmo-bts-* which would attempt to connect to us
             print('IPA server, listening on ports %d and %d' % (IPA.TCP_PORT_OML, IPA.TCP_PORT_RSL))
-            reactor.listenTCP(IPA.TCP_PORT_RSL, IPAFactory(IPAServer, debug=True))
-            reactor.listenTCP(IPA.TCP_PORT_OML, IPAFactory(IPAServer, debug=True))
+            reactor.listenTCP(IPA.TCP_PORT_RSL, IPAFactory(IPAServer, log))
+            reactor.listenTCP(IPA.TCP_PORT_OML, IPAFactory(IPAServer, log))
             test = True
     if test:
         reactor.run()
