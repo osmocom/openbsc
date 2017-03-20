@@ -22,6 +22,8 @@
  */
 """
 
+__version__ = "0.4" # bump this on every non-trivial change
+
 from ipa import Ctrl, IPA
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet import reactor
@@ -332,7 +334,7 @@ class IPAFactory(ReconnectingClientFactory):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser("Twisted IPA (module v%s) app" % IPA.version)
-    p.add_argument('-v', '--version', action='version', version='%(prog)s v0.3')
+    p.add_argument('-v', '--version', action='version', version="%(prog)s v" + __version__)
     p.add_argument('-p', '--port', type=int, default=4250, help="Port to use for CTRL interface")
     p.add_argument('-d', '--host', default='localhost', help="Adress to use for CTRL interface")
     cs = p.add_mutually_exclusive_group()
