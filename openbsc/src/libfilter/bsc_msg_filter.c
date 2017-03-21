@@ -295,6 +295,30 @@ static int _cr_check_pag_resp(void *ctx,
 	return 1;
 }
 
+static int _cr_check_detach_ind(void *ctx,
+			      uint8_t *data, unsigned int length, char **imsi)
+{
+	struct gsm48_imsi_detach_ind *ind;
+	char mi_string[GSM48_MI_SIZE];
+	uint8_t mi_type;
+
+	if (length < sizeof(*ind)) {
+		LOGP(DFILTER, LOGL_ERROR, "IMSI DETACH IND does not fit. Length was %d.\n", length);
+		return -1;
+	}
+
+	ind = (struct gsm48_imsi_detach_ind *) data;
+	mi_type = ind->mi[0] & GSM_MI_TYPE_MASK;
+
+	/* we need to let it pass for now */
+	if (mi_type != GSM_MI_TYPE_IMSI)
+		return 0;
+
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), ind->mi, ind->mi_len);
+	*imsi = talloc_strdup(ctx, mi_string);
+	return 1;
+}
+
 static int _dt_check_id_resp(struct bsc_filter_request *req,
 			     uint8_t *data, unsigned int length,
 			     struct bsc_filter_state *state,
@@ -356,6 +380,11 @@ int bsc_msg_filter_initial(struct gsm48_hdr *hdr48, size_t hdr48_len,
 		   msg_type == GSM48_MT_RR_PAG_RESP) {
 		*con_type = FLT_CON_TYPE_PAG_RESP;
 		ret = _cr_check_pag_resp(req->ctx, &hdr48->data[0],
+					hdr48_len - sizeof(*hdr48), imsi);
+	} else if (proto == GSM48_PDISC_MM &&
+		   msg_type == GSM48_MT_MM_IMSI_DETACH_IND) {
+		*con_type = FLT_CON_TYPE_OTHER;
+		ret = _cr_check_detach_ind(req->ctx, &hdr48->data[0],
 					hdr48_len - sizeof(*hdr48), imsi);
 	} else {
 		/* We only want to filter the above, let other things pass */
