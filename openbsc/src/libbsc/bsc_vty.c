@@ -245,6 +245,9 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->num_trx, VTY_NEWLINE);
 	vty_out(vty, "Description: %s%s",
 		bts->description ? bts->description : "(null)", VTY_NEWLINE);
+	if (strnlen(bts->pcu_version, MAX_VERSION_LENGTH))
+		vty_out(vty, "PCU version %s connected%s", bts->pcu_version,
+			VTY_NEWLINE);
 	vty_out(vty, "MS Max power: %u dBm%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "Minimum Rx Level for Access: %i dBm%s",
 		rxlev2dbm(bts->si_common.cell_sel_par.rxlev_acc_min),
@@ -649,7 +652,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		bts->early_classmark_allowed ? "allowed" : "forbidden", VTY_NEWLINE);
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
-	case GSM_BTS_TYPE_OSMO_SYSMO:
+	case GSM_BTS_TYPE_OSMOBTS:
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 		if (bts->ip_access.rsl_ip) {

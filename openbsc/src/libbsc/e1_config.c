@@ -179,7 +179,7 @@ int e1_reconfig_bts(struct gsm_bts *bts)
 
 	/* skip signal link initialization, this is done later for these BTS. */
 	if (bts->type == GSM_BTS_TYPE_NANOBTS ||
-	    bts->type == GSM_BTS_TYPE_OSMO_SYSMO)
+	    bts->type == GSM_BTS_TYPE_OSMOBTS)
 		return e1inp_line_update(line);
 
 	/* OML link */

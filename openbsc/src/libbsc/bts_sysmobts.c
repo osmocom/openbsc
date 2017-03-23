@@ -46,7 +46,7 @@ int bts_model_sysmobts_init(void)
 {
 	model_sysmobts = bts_model_nanobts;
 	model_sysmobts.name = "sysmobts";
-	model_sysmobts.type = GSM_BTS_TYPE_OSMO_SYSMO;
+	model_sysmobts.type = GSM_BTS_TYPE_OSMOBTS;
 
 	model_sysmobts.features.data = &model_sysmobts._features_data[0];
 	model_sysmobts.features.data_len =

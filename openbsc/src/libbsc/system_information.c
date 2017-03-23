@@ -830,7 +830,7 @@ static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 	/* ip.access nanoBTS needs l2_plen!! */
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
-	case GSM_BTS_TYPE_OSMO_SYSMO:
+	case GSM_BTS_TYPE_OSMOBTS:
 		*output++ = GSM48_LEN2PLEN(l2_plen);
 		l2_plen++;
 		break;
@@ -865,7 +865,7 @@ static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
 	/* ip.access nanoBTS needs l2_plen!! */
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
-	case GSM_BTS_TYPE_OSMO_SYSMO:
+	case GSM_BTS_TYPE_OSMOBTS:
 		*output++ = GSM48_LEN2PLEN(l2_plen);
 		l2_plen++;
 		break;
@@ -909,7 +909,7 @@ static int generate_si5ter(uint8_t *output, struct gsm_bts *bts)
 	/* ip.access nanoBTS needs l2_plen!! */
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
-	case GSM_BTS_TYPE_OSMO_SYSMO:
+	case GSM_BTS_TYPE_OSMOBTS:
 		*output++ = GSM48_LEN2PLEN(l2_plen);
 		l2_plen++;
 		break;
@@ -946,7 +946,7 @@ static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 	/* ip.access nanoBTS needs l2_plen!! */
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
-	case GSM_BTS_TYPE_OSMO_SYSMO:
+	case GSM_BTS_TYPE_OSMOBTS:
 		*output++ = GSM48_LEN2PLEN(l2_plen);
 		l2_plen++;
 		break;

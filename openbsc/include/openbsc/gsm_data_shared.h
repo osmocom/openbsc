@@ -64,6 +64,8 @@ enum gsm_chreq_reason_t {
 #define HARDCODED_BTS1_TS	6
 #define HARDCODED_BTS2_TS	11
 
+#define MAX_VERSION_LENGTH 64
+
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
 	GSM_HOOK_RR_PAGING,
@@ -489,8 +491,17 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_NANOBTS,
 	GSM_BTS_TYPE_RBS2000,
 	GSM_BTS_TYPE_NOKIA_SITE,
-	GSM_BTS_TYPE_OSMO_SYSMO,
+	GSM_BTS_TYPE_OSMOBTS,
 	_NUM_GSM_BTS_TYPE
+};
+
+enum gsm_bts_type_variant {
+	BTS_UNKNOWN,
+	BTS_OSMO_LITECELL15,
+	BTS_OSMO_OCTPHY,
+	BTS_OSMO_SYSMO,
+	BTS_OSMO_TRX,
+	_NUM_BTS_VARIANT
 };
 
 struct vty;
@@ -499,6 +510,7 @@ struct gsm_bts_model {
 	struct llist_head list;
 
 	enum gsm_bts_type type;
+	enum gsm_bts_type_variant variant;
 	const char *name;
 
 	bool started;
@@ -653,6 +665,11 @@ struct gsm_bts {
 	enum gsm_bts_type type;
 	struct gsm_bts_model *model;
 	enum gsm_band band;
+	char version[MAX_VERSION_LENGTH];
+
+	/* Connected PCU version (if any) */
+	char pcu_version[MAX_VERSION_LENGTH];
+
 	/* maximum Tx power that the MS is permitted to use in this cell */
 	int ms_max_power;
 

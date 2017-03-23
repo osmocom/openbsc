@@ -469,7 +469,7 @@ static inline int is_ipaccess_bts(struct gsm_bts *bts)
 {
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
-	case GSM_BTS_TYPE_OSMO_SYSMO:
+	case GSM_BTS_TYPE_OSMOBTS:
 		return 1;
 	default:
 		break;
@@ -480,7 +480,7 @@ static inline int is_ipaccess_bts(struct gsm_bts *bts)
 static inline int is_sysmobts_v2(struct gsm_bts *bts)
 {
 	switch (bts->type) {
-	case GSM_BTS_TYPE_OSMO_SYSMO:
+	case GSM_BTS_TYPE_OSMOBTS:
 		return 1;
 	default:
 		break;
