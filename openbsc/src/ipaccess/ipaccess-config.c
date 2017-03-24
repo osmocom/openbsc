@@ -52,6 +52,7 @@
 #include <openbsc/network_listen.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/abis/abis.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 
 struct gsm_network *bsc_gsmnet;
 
@@ -70,17 +71,9 @@ static char *firmware_analysis = NULL;
 static int found_trx = 0;
 static int loop_tests = 0;
 
-struct sw_load {
-	uint8_t file_id[255];
-	uint8_t file_id_len;
-
-	uint8_t file_version[255];
-	uint8_t file_version_len;
-};
-
 static void *tall_ctx_config = NULL;
-static struct sw_load *sw_load1 = NULL;
-static struct sw_load *sw_load2 = NULL;
+static struct abis_nm_sw_desc *sw_load1 = NULL;
+static struct abis_nm_sw_desc *sw_load2 = NULL;
 
 /*
 static uint8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
@@ -344,19 +337,11 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 		msg->l3h = &msg->l2h[3];
 
 		/* activate software */
-		if (sw_load1) {
-			msgb_v_put(msg, NM_ATT_SW_DESCR);
-			msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw_load1->file_id_len, sw_load1->file_id);
-			msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw_load1->file_version_len,
-					sw_load1->file_version);
-		}
+		if (sw_load1)
+			abis_nm_put_sw_desc(msg, sw_load1, true);
 
-		if (sw_load2) {
-			msgb_v_put(msg, NM_ATT_SW_DESCR);
-			msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw_load2->file_id_len, sw_load2->file_id);
-			msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw_load2->file_version_len,
-					sw_load2->file_version);
-		}
+		if (sw_load2)
+			abis_nm_put_sw_desc(msg, sw_load2, true);
 
 		/* fill in the data */
 		msg->l2h[0] = NM_ATT_IPACC_CUR_SW_CFG;
@@ -618,11 +603,11 @@ static int nm_state_event(int evt, uint8_t obj_class, void *obj,
 	return 0;
 }
 
-static struct sw_load *create_swload(struct sdp_header *header)
+static struct abis_nm_sw_desc *create_swload(struct sdp_header *header)
 {
-	struct sw_load *load;
+	struct abis_nm_sw_desc *load;
 
-	load = talloc_zero(tall_ctx_config, struct sw_load);
+	load = talloc_zero(tall_ctx_config, struct abis_nm_sw_desc);
 
 	strncpy((char *)load->file_id, header->firmware_info.sw_part, 20);
 	load->file_id_len = strlen(header->firmware_info.sw_part) + 1;

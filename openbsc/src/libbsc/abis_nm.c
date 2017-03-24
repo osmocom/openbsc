@@ -409,93 +409,29 @@ static int abis_nm_rcvmsg_report(struct msgb *mb, struct gsm_bts *bts)
 
 /* Activate the specified software into the BTS */
 static int ipacc_sw_activate(struct gsm_bts *bts, uint8_t obj_class, uint8_t i0, uint8_t i1,
-			     uint8_t i2, const uint8_t *sw_desc, uint8_t swdesc_len)
+			     uint8_t i2, const struct abis_nm_sw_desc *sw_desc)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	uint8_t len = swdesc_len;
-	uint8_t *trailer;
+	uint16_t len = abis_nm_sw_desc_len(sw_desc, true);
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_ACTIVATE_SW, obj_class, i0, i1, i2);
-
-	trailer = msgb_put(msg, swdesc_len);
-	memcpy(trailer, sw_desc, swdesc_len);
+	abis_nm_put_sw_desc(msg, sw_desc, true);
 
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_parse_sw_config(const uint8_t *sw_descr, const size_t sw_descr_len,
-			struct abis_nm_sw_descr *desc, const int res_len)
-{
-	static const struct tlv_definition sw_descr_def = {
-		.def = {
-			[NM_ATT_FILE_ID] =		{ TLV_TYPE_TL16V, },
-			[NM_ATT_FILE_VERSION] =		{ TLV_TYPE_TL16V, },
-		},
-	};
-
-	size_t pos = 0;
-	int desc_pos = 0;
-
-	for (pos = 0; pos < sw_descr_len && desc_pos < res_len; ++desc_pos) {
-		uint8_t tag;
-		uint16_t tag_len;
-		const uint8_t *val;
-		int len;
-
-		memset(&desc[desc_pos], 0, sizeof(desc[desc_pos]));
-		desc[desc_pos].start = &sw_descr[pos];
-
-		/* Classic TLV parsing doesn't work well with SW_DESCR because of it's
-		 * nested nature and the fact you have to assume it contains only two sub
-		 * tags NM_ATT_FILE_VERSION & NM_ATT_FILE_ID to parse it */
-		if (sw_descr[pos] != NM_ATT_SW_DESCR) {
-			LOGP(DNM, LOGL_ERROR,
-				"SW_DESCR attribute identifier not found!\n");
-			return -1;
-		}
-
-		pos += 1;
-		len = tlv_parse_one(&tag, &tag_len, &val,
-			&sw_descr_def, &sw_descr[pos], sw_descr_len - pos);
-		if (len < 0 || (tag != NM_ATT_FILE_ID)) {
-			LOGP(DNM, LOGL_ERROR,
-				"FILE_ID attribute identifier not found!\n");
-			return -2;
-		}
-		desc[desc_pos].file_id = val;
-		desc[desc_pos].file_id_len = tag_len;
-		pos += len;
-
-
-		len = tlv_parse_one(&tag, &tag_len, &val,
-			&sw_descr_def, &sw_descr[pos], sw_descr_len - pos);
-		if (len < 0 || (tag != NM_ATT_FILE_VERSION)) {
-			LOGP(DNM, LOGL_ERROR,
-				"FILE_VERSION attribute identifier not found!\n");
-			return -3;
-		}
-		desc[desc_pos].file_ver = val;
-		desc[desc_pos].file_ver_len = tag_len;
-		pos += len;
-
-		/* final size */
-		desc[desc_pos].len = &sw_descr[pos] - desc[desc_pos].start;
-	}
-
-	return desc_pos;
-}
-
-int abis_nm_select_newest_sw(const struct abis_nm_sw_descr *sw_descr,
-				const size_t size)
+int abis_nm_select_newest_sw(const struct abis_nm_sw_desc *sw_descr,
+			     const size_t size)
 {
 	int res = 0;
 	int i;
 
 	for (i = 1; i < size; ++i) {
-		if (memcmp(sw_descr[res].file_ver, sw_descr[i].file_ver,
-			OSMO_MIN(sw_descr[i].file_ver_len, sw_descr[res].file_ver_len)) < 0) {
+		if (memcmp(sw_descr[res].file_version, sw_descr[i].file_version,
+			   OSMO_MIN(sw_descr[i].file_version_len,
+				    sw_descr[res].file_version_len)) < 0) {
 			res = i;
 		}
 	}
@@ -511,7 +447,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	struct tlv_parsed tp;
 	const uint8_t *sw_config;
 	int ret, sw_config_len, len;
-	struct abis_nm_sw_descr sw_descr[5];
+	struct abis_nm_sw_desc sw_descr[5];
 
 	abis_nm_debugp_foh(DNM, foh);
 
@@ -542,8 +478,8 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	}
 
 	/* Parse up to two sw descriptions from the data */
-	len = abis_nm_parse_sw_config(sw_config, sw_config_len,
-				&sw_descr[0], ARRAY_SIZE(sw_descr));
+	len = abis_nm_get_sw_conf(sw_config, sw_config_len, &sw_descr[0],
+				  ARRAY_SIZE(sw_descr));
 	if (len <= 0) {
 		LOGP(DNM, LOGL_ERROR, "Failed to parse SW Config.\n");
 		return -EINVAL;
@@ -556,7 +492,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 				 foh->obj_inst.bts_nr,
 				 foh->obj_inst.trx_nr,
 				 foh->obj_inst.ts_nr,
-				 sw_descr[ret].start, sw_descr[ret].len);
+				 &sw_descr[ret]);
 }
 
 /* Receive a CHANGE_ADM_STATE_ACK, parse the TLV and update local state */
