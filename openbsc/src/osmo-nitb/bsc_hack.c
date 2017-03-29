@@ -59,7 +59,7 @@
 /* MCC and MNC for the Location Area Identifier */
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "sms.db";
-static const char *config_file = "openbsc.cfg";
+static const char *config_file = "osmo-nitb.cfg";
 static const char *rf_ctrl_path = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
