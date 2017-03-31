@@ -821,6 +821,8 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
 	vty_out(vty, " timer t3122 %u%s", gsmnet->T3122, VTY_NEWLINE);
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
+	vty_out(vty, " dyn_ts_allow_tch_f %d%s",
+		gsmnet->dyn_ts_allow_tch_f ? 1 : 0, VTY_NEWLINE);
 	vty_out(vty, " subscriber-keep-in-ram %d%s",
 		gsmnet->subscr_group->keep_subscr, VTY_NEWLINE);
 	if (gsmnet->tz.override != 0) {

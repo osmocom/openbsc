@@ -197,6 +197,18 @@ DEFUN(cfg_net_mm_info, cfg_net_mm_info_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_dyn_ts_allow_tch_f,
+      cfg_net_dyn_ts_allow_tch_f_cmd,
+      "dyn_ts_allow_tch_f (0|1)",
+      "Allow or disallow allocating TCH/F on TCH_F_TCH_H_PDCH timeslots\n"
+      "Disallow TCH/F on TCH_F_TCH_H_PDCH (default)\n"
+      "Allow TCH/F on TCH_F_TCH_H_PDCH\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->dyn_ts_allow_tch_f = atoi(argv[0]) ? true : false;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_net_subscr_keep,
       cfg_net_subscr_keep_cmd,
       "subscriber-keep-in-ram (0|1)",
@@ -295,6 +307,7 @@ int common_cs_vty_init(struct gsm_network *network,
 	install_element(GSMNET_NODE, &cfg_net_timezone_cmd);
 	install_element(GSMNET_NODE, &cfg_net_timezone_dst_cmd);
 	install_element(GSMNET_NODE, &cfg_net_no_timezone_cmd);
+	install_element(GSMNET_NODE, &cfg_net_dyn_ts_allow_tch_f_cmd);
 
 	return CMD_SUCCESS;
 }
