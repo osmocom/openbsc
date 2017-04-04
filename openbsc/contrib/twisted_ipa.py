@@ -22,7 +22,7 @@
  */
 """
 
-__version__ = "0.5" # bump this on every non-trivial change
+__version__ = "0.6" # bump this on every non-trivial change
 
 from ipa import Ctrl, IPA
 from twisted.internet.protocol import ReconnectingClientFactory
@@ -318,8 +318,8 @@ class IPAFactory(ReconnectingClientFactory):
             self.log = log
         else:
             self.log = logging.getLogger('IPAFactory')
-            log.setLevel(logging.CRITICAL)
-            log.addHandler(logging.NullHandler)
+            self.log.setLevel(logging.CRITICAL)
+            self.log.addHandler(logging.NullHandler)
 
     def clientConnectionFailed(self, connector, reason):
         """
