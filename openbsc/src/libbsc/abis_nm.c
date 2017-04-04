@@ -694,8 +694,21 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	case NM_MT_BS11_LMT_SESSION:
 		ret = abis_nm_rx_lmt_event(mb);
 		break;
+	case NM_MT_OPSTART_ACK:
+		abis_nm_debugp_foh(DNM, foh);
+		DEBUGPC(DNM, "Opstart ACK\n");
+		break;
+	case NM_MT_SET_CHAN_ATTR_ACK:
+		abis_nm_debugp_foh(DNM, foh);
+		DEBUGPC(DNM, "Set Channel Attributes ACK\n");
+		break;
+	case NM_MT_SET_RADIO_ATTR_ACK:
+		abis_nm_debugp_foh(DNM, foh);
+		DEBUGPC(DNM, "Set Radio Carrier Attributes ACK\n");
+		break;
 	case NM_MT_CONN_MDROP_LINK_ACK:
-		DEBUGP(DNM, "CONN MDROP LINK ACK\n");
+		abis_nm_debugp_foh(DNM, foh);
+		DEBUGPC(DNM, "CONN MDROP LINK ACK\n");
 		break;
 	case NM_MT_IPACC_RESTART_ACK:
 		osmo_signal_dispatch(SS_NM, S_NM_IPACC_RESTART_ACK, NULL);
@@ -705,6 +718,10 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		break;
 	case NM_MT_SET_BTS_ATTR_ACK:
 		break;
+	default:
+		abis_nm_debugp_foh(DNM, foh);
+		LOGPC(DNM, LOGL_ERROR, "Unhandled message %s\n",
+		      get_value_string(abis_nm_msgtype_names, mt));
 	}
 
 	abis_nm_queue_send_next(bts);
