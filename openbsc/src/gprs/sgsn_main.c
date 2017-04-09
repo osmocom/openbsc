@@ -431,7 +431,7 @@ int main(int argc, char **argv)
 	}
 
 #ifdef BUILD_IU
-	iu_init(tall_bsc_ctx, "127.0.0.2", 14001, gsm0408_gprs_rcvmsg_iu, sgsn_ranap_iu_event);
+	iu_init(tall_bsc_ctx, "OsmoSGSN", 2, "127.0.0.4", "127.0.0.1", 0, gsm0408_gprs_rcvmsg_iu, sgsn_ranap_iu_event);
 #endif
 
 	if (daemonize) {

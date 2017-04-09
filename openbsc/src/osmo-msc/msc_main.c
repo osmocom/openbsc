@@ -65,7 +65,6 @@
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/smpp.h>
 #include <osmocom/sigtran/sccp_sap.h>
-#include <osmocom/sigtran/sua.h>
 #include <openbsc/mgcpgw_client.h>
 
 #include <openbsc/msc_ifaces.h>
@@ -352,6 +351,8 @@ int main(int argc, char **argv)
 	/* For --version, vty_init() must be called before handling options */
 	vty_init(&msc_vty_info);
 
+	osmo_ss7_init();
+
 	/* Parse options */
 	handle_options(argc, argv);
 
@@ -504,7 +505,7 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
 	/* Set up IuCS */
-	iu_init(tall_msc_ctx, "127.0.0.1", 14001, rcvmsg_iu_cs, rx_iu_event);
+	iu_init(tall_msc_ctx, "OsmoMSC", 1, "127.0.0.3", "127.0.0.1", 0, rcvmsg_iu_cs, rx_iu_event);
 
 	if (msc_cmdline_config.daemonize) {
 		rc = osmo_daemonize();

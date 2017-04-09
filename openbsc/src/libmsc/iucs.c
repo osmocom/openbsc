@@ -40,8 +40,8 @@ static struct gsm_subscriber_connection *subscr_conn_allocate_iu(struct gsm_netw
 {
 	struct gsm_subscriber_connection *conn;
 
-	DEBUGP(DIUCS, "Allocating IuCS subscriber conn: lac %d, link_id %p, conn_id %" PRIx32 "\n",
-	       lac, ue->link, ue->conn_id);
+	DEBUGP(DIUCS, "Allocating IuCS subscriber conn: lac %d, conn_id %" PRIx32 "\n",
+	       lac, ue->conn_id);
 
 	conn = talloc_zero(network, struct gsm_subscriber_connection);
 	if (!conn)
@@ -61,8 +61,7 @@ static int same_ue_conn(struct ue_conn_ctx *a, struct ue_conn_ctx *b)
 {
 	if (a == b)
 		return 1;
-	return (a->link == b->link)
-		&& (a->conn_id == b->conn_id);
+	return (a->conn_id == b->conn_id);
 }
 
 static inline void log_subscribers(struct gsm_network *network)
@@ -78,8 +77,7 @@ static inline void log_subscribers(struct gsm_network *network)
 		case RAN_UTRAN_IU:
 			DEBUGPC(DIUCS, " Iu");
 			if (conn->iu.ue_ctx) {
-				DEBUGPC(DIUCS, " link %p, conn_id %d",
-					conn->iu.ue_ctx->link,
+				DEBUGPC(DIUCS, " conn_id %d",
 					conn->iu.ue_ctx->conn_id
 				       );
 			}
@@ -101,7 +99,7 @@ static inline void log_subscribers(struct gsm_network *network)
 	DEBUGP(DIUCS, "subscribers registered: %d\n", i);
 }
 
-/* Return an existing IuCS subscriber connection record for the given link and
+/* Return an existing IuCS subscriber connection record for the given
  * connection IDs, or return NULL if not found. */
 struct gsm_subscriber_connection *subscr_conn_lookup_iu(
 						struct gsm_network *network,
@@ -109,8 +107,8 @@ struct gsm_subscriber_connection *subscr_conn_lookup_iu(
 {
 	struct gsm_subscriber_connection *conn;
 
-	DEBUGP(DIUCS, "Looking for IuCS subscriber: link_id %p, conn_id %" PRIx32 "\n",
-	       ue->link, ue->conn_id);
+	DEBUGP(DIUCS, "Looking for IuCS subscriber: conn_id %" PRIx32 "\n",
+	       ue->conn_id);
 	log_subscribers(network);
 
 	llist_for_each_entry(conn, &network->subscr_conns, entry) {
@@ -118,12 +116,12 @@ struct gsm_subscriber_connection *subscr_conn_lookup_iu(
 			continue;
 		if (!same_ue_conn(conn->iu.ue_ctx, ue))
 			continue;
-		DEBUGP(DIUCS, "Found IuCS subscriber for link_id %p, conn_id %" PRIx32 "\n",
-		       ue->link, ue->conn_id);
+		DEBUGP(DIUCS, "Found IuCS subscriber for conn_id %" PRIx32 "\n",
+		       ue->conn_id);
 		return conn;
 	}
-	DEBUGP(DIUCS, "No IuCS subscriber found for link_id %p, conn_id %" PRIx32 "\n",
-	       ue->link, ue->conn_id);
+	DEBUGP(DIUCS, "No IuCS subscriber found for conn_id %" PRIx32 "\n",
+	       ue->conn_id);
 	return NULL;
 }
 

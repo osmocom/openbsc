@@ -36,9 +36,10 @@
 #include <osmocom/gsm/gsm48.h>
 #include <osmocom/gprs/gprs_msgb.h>
 
-#include <osmocom/sigtran/sua.h>
+#include <osmocom/sigtran/osmo_ss7.h>
 #include <osmocom/sigtran/sccp_sap.h>
 #include <osmocom/sigtran/sccp_helpers.h>
+#include <osmocom/sigtran/protocol/m3ua.h>
 
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/iu.h>
@@ -63,7 +64,7 @@ struct iu_grnc_id {
 };
 
 /* A remote RNC (Radio Network Controller, like BSC but for UMTS) that has
- * called us and is currently reachable at the given osmo_sccp_link. So, when we
+ * called us and is currently reachable at the given osmo_sccp_addr. So, when we
  * know a LAC for a subscriber, we can page it at the RNC matching that LAC or
  * RAC. An HNB-GW typically presents itself as if it were a single RNC, even
  * though it may have several RNCs in hNodeBs connected to it. Those will then
@@ -75,7 +76,7 @@ struct iu_rnc {
 	uint16_t rnc_id;
 	uint16_t lac; /* Location Area Code (used for CS and PS) */
 	uint8_t rac; /* Routing Area Code (used for PS only) */
-	struct osmo_sccp_link *link;
+	struct osmo_sccp_addr sccp_addr;
 };
 
 void *talloc_iu_ctx;
@@ -97,6 +98,9 @@ iu_event_cb_t global_iu_event_cb = NULL;
 static LLIST_HEAD(ue_conn_ctx_list);
 static LLIST_HEAD(rnc_list);
 
+static struct osmo_sccp_instance *g_sccp;
+static struct osmo_sccp_user *g_scu;
+
 const struct value_string iu_event_type_names[] = {
 	OSMO_VALUE_STRING(IU_EVENT_RAB_ASSIGN),
 	OSMO_VALUE_STRING(IU_EVENT_SECURITY_MODE_COMPLETE),
@@ -105,38 +109,37 @@ const struct value_string iu_event_type_names[] = {
 	{ 0, NULL }
 };
 
-struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sccp_link *link, uint32_t conn_id)
+struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sccp_addr *addr, uint32_t conn_id)
 {
 	struct ue_conn_ctx *ctx = talloc_zero(talloc_iu_ctx, struct ue_conn_ctx);
 
-	ctx->link = link;
+	ctx->sccp_addr = *addr;
 	ctx->conn_id = conn_id;
 	llist_add(&ctx->list, &ue_conn_ctx_list);
 
 	return ctx;
 }
 
-struct ue_conn_ctx *ue_conn_ctx_find(struct osmo_sccp_link *link,
-				     uint32_t conn_id)
+struct ue_conn_ctx *ue_conn_ctx_find(uint32_t conn_id)
 {
 	struct ue_conn_ctx *ctx;
 
 	llist_for_each_entry(ctx, &ue_conn_ctx_list, list) {
-		if (ctx->link == link && ctx->conn_id == conn_id)
+		if (ctx->conn_id == conn_id)
 			return ctx;
 	}
 	return NULL;
 }
 
 static struct iu_rnc *iu_rnc_alloc(uint16_t rnc_id, uint16_t lac, uint8_t rac,
-				   struct osmo_sccp_link *link)
+				   struct osmo_sccp_addr *addr)
 {
 	struct iu_rnc *rnc = talloc_zero(talloc_iu_ctx, struct iu_rnc);
 
 	rnc->rnc_id = rnc_id;
 	rnc->lac = lac;
 	rnc->rac = rac;
-	rnc->link = link;
+	rnc->sccp_addr = *addr;
 	llist_add(&rnc->entry, &rnc_list);
 
 	LOGP(DRANAP, LOGL_NOTICE, "New RNC %d (LAC=%d RAC=%d)\n",
@@ -146,7 +149,7 @@ static struct iu_rnc *iu_rnc_alloc(uint16_t rnc_id, uint16_t lac, uint8_t rac,
 }
 
 static struct iu_rnc *iu_rnc_register(uint16_t rnc_id, uint16_t lac,
-				      uint8_t rac, struct osmo_sccp_link *link)
+				      uint8_t rac, struct osmo_sccp_addr *addr)
 {
 	struct iu_rnc *rnc;
 	llist_for_each_entry(rnc, &rnc_list, entry) {
@@ -165,42 +168,16 @@ static struct iu_rnc *iu_rnc_register(uint16_t rnc_id, uint16_t lac,
 		rnc->lac = lac;
 		rnc->rac = rac;
 
-		if (link && rnc->link != link)
-			LOGP(DRANAP, LOGL_NOTICE, "RNC %d on new link"
+		if (addr && memcmp(&rnc->sccp_addr, addr, sizeof(*addr)))
+			LOGP(DRANAP, LOGL_NOTICE, "RNC %d on New SCCP Addr %s"
 			     " (LAC=%d RAC=%d)\n",
-			     rnc->rnc_id, rnc->lac, rnc->rac);
-		rnc->link = link;
+			     rnc->rnc_id, osmo_sccp_addr_dump(addr), rnc->lac, rnc->rac);
+		rnc->sccp_addr = *addr;
 		return rnc;
 	}
 
 	/* Not found, make a new one. */
-	return iu_rnc_alloc(rnc_id, lac, rac, link);
-}
-
-/* Discard/invalidate all ue_conn_ctx and iu_rnc entries that reference the
- * given link, since this link is invalid and about to be deallocated. For
- * each ue_conn_ctx, invoke the iu_event_cb_t with IU_EVENT_LINK_INVALIDATED.
- */
-void iu_link_del(struct osmo_sccp_link *link)
-{
-	struct iu_rnc *rnc, *rnc_next;
-	llist_for_each_entry_safe(rnc, rnc_next, &rnc_list, entry) {
-		if (!rnc->link)
-			continue;
-		if (rnc->link != link)
-			continue;
-		rnc->link = NULL;
-		llist_del(&rnc->entry);
-		talloc_free(rnc);
-	}
-
-	struct ue_conn_ctx *uec, *uec_next;
-	llist_for_each_entry_safe(uec, uec_next, &ue_conn_ctx_list, list) {
-		if (uec->link != link)
-			continue;
-		uec->link = NULL;
-		global_iu_event_cb(uec, IU_EVENT_LINK_INVALIDATED, NULL);
-	}
+	return iu_rnc_alloc(rnc_id, lac, rac, addr);
 }
 
 /***********************************************************************
@@ -219,7 +196,7 @@ int iu_rab_act(struct ue_conn_ctx *ue_ctx, struct msgb *msg)
 		       OSMO_SCU_PRIM_N_DATA,
 		       PRIM_OP_REQUEST,
 		       msg);
-	return osmo_sua_user_link_down(ue_ctx->link, &prim->oph);
+	return osmo_sccp_user_sap_down(g_scu, &prim->oph);
 }
 
 int iu_rab_deact(struct ue_conn_ctx *ue_ctx, uint8_t rab_id)
@@ -244,7 +221,7 @@ int iu_tx_sec_mode_cmd(struct ue_conn_ctx *uectx, struct gsm_auth_tuple *tp,
 	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
 			OSMO_SCU_PRIM_N_DATA,
 			PRIM_OP_REQUEST, msg);
-	osmo_sua_user_link_down(uectx->link, &prim->oph);
+	osmo_sccp_user_sap_down(g_scu, &prim->oph);
 
 	return 0;
 }
@@ -254,8 +231,8 @@ int iu_tx_common_id(struct ue_conn_ctx *uectx, const char *imsi)
 	struct msgb *msg;
 	struct osmo_scu_prim *prim;
 
-	LOGP(DRANAP, LOGL_INFO, "Transmitting RANAP CommonID (SUA link %p conn_id %u)\n",
-	     uectx->link, uectx->conn_id);
+	LOGP(DRANAP, LOGL_INFO, "Transmitting RANAP CommonID (SCCP conn_id %u)\n",
+	     uectx->conn_id);
 
 	msg = ranap_new_msg_common_id(imsi);
 	msg->l2h = msg->data;
@@ -264,7 +241,7 @@ int iu_tx_common_id(struct ue_conn_ctx *uectx, const char *imsi)
 	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
 			OSMO_SCU_PRIM_N_DATA,
 			PRIM_OP_REQUEST, msg);
-	osmo_sua_user_link_down(uectx->link, &prim->oph);
+	osmo_sccp_user_sap_down(g_scu, &prim->oph);
 	return 0;
 }
 
@@ -325,7 +302,7 @@ static int ranap_handle_co_initial_ue(void *ctx, RANAP_InitialUE_MessageIEs_t *i
 	memcpy(msgb_gmmh(msg), ies->nas_pdu.buf, ies->nas_pdu.size);
 
 	/* Make sure we know the RNC Id and LAC+RAC coming in on this connection. */
-	iu_rnc_register(grnc_id.rnc_id, ra_id.lac, ra_id.rac, ue_conn->link);
+	iu_rnc_register(grnc_id.rnc_id, ra_id.lac, ra_id.rac, &ue_conn->sccp_addr);
 	ue_conn->ra_id = ra_id;
 
 	/* Feed into the MM layer */
@@ -387,8 +364,8 @@ int iu_tx(struct msgb *msg_nas, uint8_t sapi)
 	struct msgb *msg;
 	struct osmo_scu_prim *prim;
 
-	LOGP(DRANAP, LOGL_INFO, "Transmitting L3 Message as RANAP DT (SUA link %p conn_id %u)\n",
-	     uectx->link, uectx->conn_id);
+	LOGP(DRANAP, LOGL_INFO, "Transmitting L3 Message as RANAP DT (SCCP conn_id %u)\n",
+	     uectx->conn_id);
 
 	msg = ranap_new_msg_dt(sapi, msg_nas->data, msgb_length(msg_nas));
 	msgb_free(msg_nas);
@@ -398,7 +375,7 @@ int iu_tx(struct msgb *msg_nas, uint8_t sapi)
 	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
 			OSMO_SCU_PRIM_N_DATA,
 			PRIM_OP_REQUEST, msg);
-	osmo_sua_user_link_down(uectx->link, &prim->oph);
+	osmo_sccp_user_sap_down(g_scu, &prim->oph);
 	return 0;
 }
 
@@ -424,7 +401,7 @@ int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause)
 	osmo_prim_init(&prim->oph, SCCP_SAP_USER,
 			OSMO_SCU_PRIM_N_DATA,
 			PRIM_OP_REQUEST, msg);
-	return osmo_sua_user_link_down(ctx->link, &prim->oph);
+	return osmo_sccp_user_sap_down(g_scu, &prim->oph);
 }
 
 static int ranap_handle_co_iu_rel_req(struct ue_conn_ctx *ctx, RANAP_Iu_ReleaseRequestIEs_t *ies)
@@ -595,21 +572,28 @@ static void cn_ranap_handle_cl(void *ctx, ranap_message *message)
  * Paging
  ***********************************************************************/
 
-/* Send a paging command down a given SUA link. tmsi and paging_cause are
+struct osmo_sccp_addr local_sccp_addr = {
+	.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC,
+	.ri = OSMO_SCCP_RI_SSN_PC,
+	.ssn = OSMO_SCCP_SSN_RANAP,
+	.pc = 1,
+};
+
+/* Send a paging command down a given SCCP User. tmsi and paging_cause are
  * optional and may be passed NULL and 0, respectively, to disable their use.
  * See enum RANAP_PagingCause.
  *
  * If TMSI is given, the IMSI is not sent over the air interface. Nevertheless,
  * the IMSI is still required for resolution in the HNB-GW and/or(?) RNC. */
-static int iu_tx_paging_cmd(struct osmo_sccp_link *link,
+static int iu_tx_paging_cmd(struct osmo_sccp_addr *called_addr,
 			    const char *imsi, const uint32_t *tmsi,
 			    bool is_ps, uint32_t paging_cause)
 {
 	struct msgb *msg;
 	msg = ranap_new_msg_paging_cmd(imsi, tmsi, is_ps? 1 : 0, paging_cause);
 	msg->l2h = msg->data;
-	return osmo_sccp_tx_unitdata_ranap(link, 1, 2, msg->data,
-					   msgb_length(msg));
+	osmo_sccp_tx_unitdata_msg(g_scu, &local_sccp_addr, called_addr, msg);
+	return 0;
 }
 
 static int iu_page(const char *imsi, const uint32_t *tmsi_or_ptimsi,
@@ -634,22 +618,18 @@ static int iu_page(const char *imsi, const uint32_t *tmsi_or_ptimsi,
 	}
 
 	llist_for_each_entry(rnc, &rnc_list, entry) {
-		if (!rnc->link) {
-			/* Not actually connected, don't count it. */
-			continue;
-		}
 		if (rnc->lac != lac)
 			continue;
 		if (is_ps && rnc->rac != rac)
 			continue;
 
 		/* Found a match! */
-		if (iu_tx_paging_cmd(rnc->link, imsi, tmsi_or_ptimsi, is_ps, 0)
+		if (iu_tx_paging_cmd(&rnc->sccp_addr, imsi, tmsi_or_ptimsi, is_ps, 0)
 		    == 0) {
 			LOGP(DRANAP, LOGL_DEBUG,
-			     "%s: Paged for IMSI %s on RNC %d, on SUA link %p\n",
+			     "%s: Paged for IMSI %s on RNC %d, on SCCP addr %s\n",
 			     is_ps? "IuPS" : "IuCS",
-			     imsi, rnc->rnc_id, rnc->link);
+			     imsi, rnc->rnc_id, osmo_sccp_addr_dump(&rnc->sccp_addr));
 			pagings_sent ++;
 		}
 	}
@@ -692,8 +672,8 @@ int iu_page_ps(const char *imsi, const uint32_t *ptmsi, uint16_t lac, uint8_t ra
  *
  ***********************************************************************/
 
-int tx_unitdata(struct osmo_sccp_link *link);
-int tx_conn_req(struct osmo_sccp_link *link, uint32_t conn_id);
+int tx_unitdata(struct osmo_sccp_user *scu);
+int tx_conn_req(struct osmo_sccp_user *scu, uint32_t conn_id);
 
 struct osmo_prim_hdr *make_conn_req(uint32_t conn_id);
 struct osmo_prim_hdr *make_dt1_req(uint32_t conn_id, const uint8_t *data, unsigned int len);
@@ -711,8 +691,9 @@ struct osmo_prim_hdr *make_conn_resp(struct osmo_scu_connect_param *param)
 	return &prim->oph;
 }
 
-static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
+static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 {
+	struct osmo_sccp_user *scu = _scu;
 	struct osmo_scu_prim *prim = (struct osmo_scu_prim *) oph;
 	struct osmo_prim_hdr *resp = NULL;
 	int rc;
@@ -734,10 +715,10 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 			     "Received invalid N-CONNECT.ind\n");
 			return 0;
 		}
-		ue = ue_conn_ctx_alloc(link, prim->u.connect.conn_id);
-		/* first ensure the local SUA/SCCP socket is ACTIVE */
+		ue = ue_conn_ctx_alloc(&prim->u.connect.calling_addr, prim->u.connect.conn_id);
+		/* first ensure the local SCCP socket is ACTIVE */
 		resp = make_conn_resp(&prim->u.connect);
-		osmo_sua_user_link_down(link, resp);
+		osmo_sccp_user_sap_down(scu, resp);
 		/* then handle the RANAP payload */
 		rc = ranap_cn_rx_co(cn_ranap_handle_co, ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
@@ -745,7 +726,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 		/* indication of disconnect */
 		DEBUGP(DRANAP, "N-DISCONNECT.ind(%u)\n",
 		       prim->u.disconnect.conn_id);
-		ue = ue_conn_ctx_find(link, prim->u.disconnect.conn_id);
+		ue = ue_conn_ctx_find(prim->u.disconnect.conn_id);
 		rc = ranap_cn_rx_co(cn_ranap_handle_co, ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
@@ -753,14 +734,14 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 		DEBUGP(DRANAP, "N-DATA.ind(%u, %s)\n", prim->u.data.conn_id,
 		       osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
 		/* resolve UE context */
-		ue = ue_conn_ctx_find(link, prim->u.data.conn_id);
+		ue = ue_conn_ctx_find(prim->u.data.conn_id);
 		rc = ranap_cn_rx_co(cn_ranap_handle_co, ue, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
 		/* connection-less data received */
 		DEBUGP(DRANAP, "N-UNITDATA.ind(%s)\n",
 		       osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
-		rc = ranap_cn_rx_cl(cn_ranap_handle_cl, link, msgb_l2(oph->msg), msgb_l2len(oph->msg));
+		rc = ranap_cn_rx_cl(cn_ranap_handle_cl, scu, msgb_l2(oph->msg), msgb_l2len(oph->msg));
 		break;
 	default:
 		rc = -1;
@@ -771,17 +752,19 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *link)
 	return rc;
 }
 
-int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
+int iu_init(void *ctx, const char *name, uint32_t local_pc, const char *listen_addr,
+	    const char *remote_addr, uint16_t local_port,
 	    iu_recv_cb_t iu_recv_cb, iu_event_cb_t iu_event_cb)
 {
-	struct osmo_sccp_user *user;
 	talloc_iu_ctx = talloc_named_const(ctx, 1, "iu");
 	talloc_asn1_ctx = talloc_named_const(talloc_iu_ctx, 1, "asn1");
 
 	global_iu_recv_cb = iu_recv_cb;
 	global_iu_event_cb = iu_event_cb;
-	osmo_sua_set_log_area(DSUA);
-	user = osmo_sua_user_create(talloc_iu_ctx, sccp_sap_up, talloc_iu_ctx);
-	return osmo_sua_server_listen(user, listen_addr, listen_port);
+	g_sccp = osmo_sccp_simple_client(talloc_iu_ctx, name, local_pc, OSMO_SS7_ASP_PROT_M3UA,
+					 local_port, listen_addr, M3UA_PORT, remote_addr);
+	g_scu = osmo_sccp_user_bind(g_sccp, name, sccp_sap_up, OSMO_SCCP_SSN_RANAP);
+
+	return 0;
 }
 

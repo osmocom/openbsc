@@ -5,13 +5,15 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/gsm48.h>
+#include <osmocom/sigtran/sccp_sap.h>
 
 #include <openbsc/common.h>
 
 struct sgsn_pdp_ctx;
 struct msgb;
-struct osmo_sccp_link;
 struct gsm_auth_tuple;
+struct osmo_sccp_addr;
+struct osmo_ss7_instance;
 
 struct RANAP_RAB_SetupOrModifiedItemIEs_s;
 struct RANAP_GlobalRNC_ID;
@@ -23,7 +25,10 @@ extern int asn1_xer_print;
 
 struct ue_conn_ctx {
 	struct llist_head list;
-	struct osmo_sccp_link *link;
+	/* TODO: It's not needed to store the full SCCP address for each
+	 * UE.  Rather than that, a pointer to the RNC should be far
+	 * sufficient */
+	struct osmo_sccp_addr sccp_addr;
 	uint32_t conn_id;
 	int integrity_active;
 	struct gprs_ra_id ra_id;
@@ -57,10 +62,9 @@ typedef int (* iu_event_cb_t )(struct ue_conn_ctx *ue_ctx,
 typedef int (* iu_rab_ass_resp_cb_t )(struct ue_conn_ctx *ue_ctx, uint8_t rab_id,
 		struct RANAP_RAB_SetupOrModifiedItemIEs_s *setup_ies);
 
-int iu_init(void *ctx, const char *listen_addr, uint16_t listen_port,
+int iu_init(void *ctx, const char *name, uint32_t local_pc, const char *listen_addr,
+	    const char *remote_addr, uint16_t local_port,
 	    iu_recv_cb_t iu_recv_cb, iu_event_cb_t iu_event_cb);
-
-void iu_link_del(struct osmo_sccp_link *link);
 
 int iu_tx(struct msgb *msg, uint8_t sapi);
 
