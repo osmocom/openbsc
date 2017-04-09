@@ -23,6 +23,8 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/sigtran/osmo_ss7.h>
+#include <osmocom/sigtran/sccp_sap.h>
 
 #include <openbsc/iu.h>
 
@@ -52,9 +54,10 @@ DEFUN(logging_asn_xer_print,
 	return CMD_SUCCESS;
 }
 
+#define IU_STR "Iu interface protocol options\n"
 DEFUN(cfg_iu_rab_assign_addr_enc, cfg_iu_rab_assign_addr_enc_cmd,
       "iu rab-assign-addr-enc (x213|v4raw)",
-      "Iu interface protocol options\n"
+      IU_STR
       "Choose RAB Assignment's Transport Layer Address encoding\n"
       "ITU-T X.213 compliant address encoding (default)\n"
       "32bit length raw IPv4 address (for ip.access nano3G)\n")
@@ -71,6 +74,21 @@ DEFUN(cfg_iu_rab_assign_addr_enc, cfg_iu_rab_assign_addr_enc_cmd,
 		*g_rab_assign_addr_enc = NSAP_ADDR_ENC_X213;
 	return CMD_SUCCESS;
 }
+
+extern struct osmo_sccp_addr local_sccp_addr;
+
+DEFUN(cfg_iu_local_addr_pc, cfg_iu_local_addr_pc_cmd,
+	"iu local-address point-code PC",
+	IU_STR "Local SCCP Address\n")
+{
+	local_sccp_addr.presence = OSMO_SCCP_ADDR_T_PC | OSMO_SCCP_ADDR_T_SSN;
+	local_sccp_addr.ri = OSMO_SCCP_RI_SSN_PC;
+	local_sccp_addr.pc = osmo_ss7_pointcode_parse(NULL, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+/* TODO: GT address configuration, in line with 4.5.1.1.1 of TS 25.410 */
 
 int iu_vty_config_write(struct vty *vty, const char *indent)
 {
@@ -95,6 +113,9 @@ int iu_vty_config_write(struct vty *vty, const char *indent)
 		return CMD_WARNING;
 	}
 
+	vty_out(vty, "%siu local-address point-code %s%s", indent,
+		osmo_ss7_pointcode_print(NULL, local_sccp_addr.pc), VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -105,4 +126,5 @@ void iu_vty_init(int iu_parent_node, enum nsap_addr_enc *rab_assign_addr_enc)
 	install_element(CFG_LOG_NODE, &logging_asn_debug_cmd);
 	install_element(CFG_LOG_NODE, &logging_asn_xer_print_cmd);
 	install_element(iu_parent_node, &cfg_iu_rab_assign_addr_enc_cmd);
+	install_element(iu_parent_node, &cfg_iu_local_addr_pc_cmd);
 }

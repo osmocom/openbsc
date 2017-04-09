@@ -518,10 +518,10 @@ DREF IMSI:901700000010650: MSC conn use - 1 == 1
   cipher_mode_cmd_sent == 1
   lu_result_sent == 0
 - MS sends SecurityModeControl acceptance, VLR accepts and sends GSUP LU Req to HLR
-DIUCS Looking for IuCS subscriber: link_id 0x23, conn_id 2a
-DIUCS   0: IMSI:901700000010650 Iu link 0x23, conn_id 42
+DIUCS Looking for IuCS subscriber: conn_id 2a
+DIUCS   0: IMSI:901700000010650 Iu conn_id 42
 DIUCS subscribers registered: 1
-DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
+DIUCS Found IuCS subscriber for conn_id 2a
 DIUCS IuCS security mode complete for IMSI:901700000010650
 DMM <- SECURITY MODE COMPLETE IMSI:901700000010650
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: Received Event VLR_ULA_E_CIPH_RES
@@ -701,10 +701,10 @@ DREF MSISDN:42342: MSC conn use - 1 == 1
   cipher_mode_cmd_sent == 1
   cm_service_result_sent == 0
 - MS sends SecurityModeControl acceptance, VLR accepts; above Ciphering is an implicit CM Service Accept
-DIUCS Looking for IuCS subscriber: link_id 0x23, conn_id 2a
-DIUCS   0: MSISDN:42342 Iu link 0x23, conn_id 42
+DIUCS Looking for IuCS subscriber: conn_id 2a
+DIUCS   0: MSISDN:42342 Iu conn_id 42
 DIUCS subscribers registered: 1
-DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
+DIUCS Found IuCS subscriber for conn_id 2a
 DIUCS IuCS security mode complete for MSISDN:42342
 DMM <- SECURITY MODE COMPLETE MSISDN:42342
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: Received Event PR_ARQ_E_CIPH_RES
@@ -837,10 +837,10 @@ DREF MSISDN:42342: MSC conn use - 1 == 1
   cipher_mode_cmd_sent == 1
   paging_stopped == 0
 - MS sends SecurityModeControl acceptance, VLR accepts and sends SMS
-DIUCS Looking for IuCS subscriber: link_id 0x23, conn_id 2a
-DIUCS   0: MSISDN:42342 Iu link 0x23, conn_id 42
+DIUCS Looking for IuCS subscriber: conn_id 2a
+DIUCS   0: MSISDN:42342 Iu conn_id 42
 DIUCS subscribers registered: 1
-DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
+DIUCS Found IuCS subscriber for conn_id 2a
 DIUCS IuCS security mode complete for MSISDN:42342
 DMM <- SECURITY MODE COMPLETE MSISDN:42342
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_WAIT_CIPH}: Received Event PR_ARQ_E_CIPH_RES
@@ -1241,10 +1241,10 @@ DREF IMSI:901700000010650: MSC conn use - 1 == 1
   cipher_mode_cmd_sent == 1
   lu_result_sent == 0
 - MS sends SecurityModeControl acceptance, VLR accepts and sends GSUP LU Req to HLR
-DIUCS Looking for IuCS subscriber: link_id 0x23, conn_id 2a
-DIUCS   0: IMSI:901700000010650 Iu link 0x23, conn_id 42
+DIUCS Looking for IuCS subscriber: conn_id 2a
+DIUCS   0: IMSI:901700000010650 Iu conn_id 42
 DIUCS subscribers registered: 1
-DIUCS Found IuCS subscriber for link_id 0x23, conn_id 2a
+DIUCS Found IuCS subscriber for conn_id 2a
 DIUCS IuCS security mode complete for IMSI:901700000010650
 DMM <- SECURITY MODE COMPLETE IMSI:901700000010650
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_WAIT_CIPH}: Received Event VLR_ULA_E_CIPH_RES

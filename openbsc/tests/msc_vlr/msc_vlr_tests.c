@@ -149,7 +149,6 @@ struct gsm_subscriber_connection *conn_new(void)
 	if (conn->via_ran == RAN_UTRAN_IU) {
 		struct ue_conn_ctx *ue_ctx = talloc_zero(conn, struct ue_conn_ctx);
 		*ue_ctx = (struct ue_conn_ctx){
-			.link = (void*)0x23,
 			.conn_id = 42,
 		};
 		conn->iu.ue_ctx = ue_ctx;
