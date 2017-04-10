@@ -45,7 +45,7 @@ static int sccp_ref_is_free(struct sccp_source_reference *ref, struct bsc_nat *n
 	struct nat_sccp_connection *conn;
 
 	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
-		if (memcmp(ref, &conn->patched_ref, sizeof(*ref)) == 0)
+		if (equal(ref, &conn->patched_ref))
 			return -1;
 	}
 
@@ -91,7 +91,7 @@ struct nat_sccp_connection *create_sccp_src_ref(struct bsc_connection *bsc,
 	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
 		if (conn->bsc != bsc)
 			continue;
-		if (memcmp(&conn->real_ref, parsed->src_local_ref, sizeof(conn->real_ref)) != 0)
+		if (!equal(parsed->src_local_ref, &conn->real_ref))
 			continue;
 
 		/* the BSC has reassigned the SRC ref and we failed to keep track */
@@ -159,9 +159,7 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
 	struct nat_sccp_connection *conn;
 
 	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
-		if (memcmp(parsed->src_local_ref,
-			   &conn->patched_ref, sizeof(conn->patched_ref)) == 0) {
-
+		if (equal(parsed->src_local_ref, &conn->patched_ref)) {
 			sccp_connection_destroy(conn);
 			return;
 		}
@@ -241,7 +239,7 @@ struct nat_sccp_connection *bsc_nat_find_con_by_bsc(struct bsc_nat *nat,
 	struct nat_sccp_connection *conn;
 
 	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
-		if (memcmp(ref, &conn->real_ref, sizeof(*ref)) == 0)
+		if (equal(ref, &conn->real_ref))
 			return conn;
 	}
 
