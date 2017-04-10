@@ -17,9 +17,13 @@ osmo-build-dep.sh libosmocore "" ac_cv_path_DOXYGEN=false
 export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LD_LIBRARY_PATH="$inst/lib"
 
+if [ "x$IU" = "x--enable-iu" ]; then
+	sccp_branch="old_sua"
+fi
+
 osmo-build-dep.sh libosmo-abis
 osmo-build-dep.sh libosmo-netif
-osmo-build-dep.sh libosmo-sccp
+osmo-build-dep.sh libosmo-sccp $sccp_branch
 PARALLEL_MAKE="" osmo-build-dep.sh libsmpp34
 osmo-build-dep.sh openggsn
 
