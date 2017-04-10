@@ -169,7 +169,7 @@ struct nat_rewrite *nat_rewrite_parse(void *ctx, const char *filename)
 {
 	FILE *file;
 	char *line = NULL;
-	size_t n = 2342;
+	size_t n = 0;
 	struct nat_rewrite *res;
 
 	file = fopen(filename, "r");
