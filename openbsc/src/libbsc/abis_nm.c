@@ -302,31 +302,27 @@ static inline void log_oml_fail_rep(const struct gsm_bts *bts, const char *type,
 	LOGPC(DNM, LOGL_ERROR, "\n");
 }
 
-static inline void handle_manufact_report(const struct gsm_bts *bts,
-					  const uint8_t *p_val, const char *type,
+static inline void handle_manufact_report(struct gsm_bts *bts, const uint8_t *p_val, const char *type,
 					  const char *severity, const char *text)
 {
 	enum abis_mm_event_causes cause = osmo_load16be(p_val + 1);
 
 	switch (cause) {
 	case OSMO_EVT_PCU_VERS:
-		if (text)
-			LOGPC(DNM, LOGL_NOTICE,
-			      "BTS %u reported connected PCU version %s\n",
-			      bts->nr, text);
-		else
-			LOGPC(DNM, LOGL_ERROR,
-			      "BTS %u sent %s without actual version string.\n",
-			      bts->nr,
-			      get_value_string(abis_mm_event_cause_names,
-					       cause));
+		if (text) {
+			LOGPC(DNM, LOGL_NOTICE, "BTS %u reported connected PCU version %s\n", bts->nr, text);
+			osmo_strlcpy(bts->pcu_version, text, sizeof(bts->pcu_version));
+		} else {
+			LOGPC(DNM, LOGL_ERROR, "BTS %u reported PCU disconnection.\n", bts->nr);
+			bts->pcu_version[0] = '\0';
+		}
 		break;
 	default:
 		log_oml_fail_rep(bts, type, severity, p_val, text);
 	};
 }
 
-static int rx_fail_evt_rep(struct msgb *mb, const struct gsm_bts *bts)
+static int rx_fail_evt_rep(struct msgb *mb, struct gsm_bts *bts)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
