@@ -51,6 +51,61 @@ static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
 	gsm_abis_mo_reset(mo);
 }
 
+const struct value_string bts_attribute_names[] = {
+	OSMO_VALUE_STRING(BTS_TYPE_VARIANT),
+	OSMO_VALUE_STRING(BTS_SUB_MODEL),
+	{ 0, NULL }
+};
+
+enum bts_attribute str2btsattr(const char *s)
+{
+	return get_string_value(bts_attribute_names, s);
+}
+
+const char *btsatttr2str(enum bts_attribute v)
+{
+	return get_value_string(bts_attribute_names, v);
+}
+
+const struct value_string osmo_bts_variant_names[_NUM_BTS_VARIANT + 1] = {
+	{ BTS_UNKNOWN,		"unknown" },
+	{ BTS_OSMO_LITECELL15,	"osmo-bts-lc15" },
+	{ BTS_OSMO_OCTPHY,	"osmo-bts-octphy" },
+	{ BTS_OSMO_SYSMO,	"osmo-bts-sysmo" },
+	{ BTS_OSMO_TRX,		"omso-bts-trx" },
+	{ 0, NULL }
+};
+
+enum gsm_bts_type_variant str2btsvariant(const char *arg)
+{
+	return get_string_value(osmo_bts_variant_names, arg);
+}
+
+const char *btsvariant2str(enum gsm_bts_type_variant v)
+{
+	return get_value_string(osmo_bts_variant_names, v);
+}
+
+const struct value_string bts_type_names[_NUM_GSM_BTS_TYPE + 1] = {
+	{ GSM_BTS_TYPE_UNKNOWN,		"unknown" },
+	{ GSM_BTS_TYPE_BS11,		"bs11" },
+	{ GSM_BTS_TYPE_NANOBTS,		"nanobts" },
+	{ GSM_BTS_TYPE_RBS2000,		"rbs2000" },
+	{ GSM_BTS_TYPE_NOKIA_SITE,	"nokia_site" },
+	{ GSM_BTS_TYPE_OSMOBTS,		"sysmobts" },
+	{ 0, NULL }
+};
+
+enum gsm_bts_type str2btstype(const char *arg)
+{
+	return get_string_value(bts_type_names, arg);
+}
+
+const char *btstype2str(enum gsm_bts_type type)
+{
+	return get_value_string(bts_type_names, type);
+}
+
 const struct value_string gsm_pchant_names[13] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
 	{ GSM_PCHAN_CCCH,	"CCCH" },

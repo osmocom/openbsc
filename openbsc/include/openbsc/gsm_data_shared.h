@@ -505,6 +505,12 @@ enum gsm_bts_type_variant {
 	_NUM_BTS_VARIANT
 };
 
+/* Used by OML layer for BTS Attribute reporting */
+enum bts_attribute {
+	BTS_TYPE_VARIANT,
+	BTS_SUB_MODEL,
+};
+
 struct vty;
 
 struct gsm_bts_model {
@@ -864,6 +870,14 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
 
+enum gsm_bts_type str2btstype(const char *arg);
+const char *btstype2str(enum gsm_bts_type type);
+
+enum bts_attribute str2btsattr(const char *s);
+const char *btsatttr2str(enum bts_attribute v);
+
+enum gsm_bts_type_variant str2btsvariant(const char *arg);
+const char *btsvariant2str(enum gsm_bts_type_variant v);
 
 const struct value_string gsm_pchant_names[13];
 const struct value_string gsm_pchant_descs[13];

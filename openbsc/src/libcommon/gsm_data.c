@@ -90,16 +90,6 @@ struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
 	return NULL;
 }
 
-const struct value_string bts_type_names[_NUM_GSM_BTS_TYPE+1] = {
-	{ GSM_BTS_TYPE_UNKNOWN,	"unknown" },
-	{ GSM_BTS_TYPE_BS11,	"bs11" },
-	{ GSM_BTS_TYPE_NANOBTS,	"nanobts" },
-	{ GSM_BTS_TYPE_RBS2000,	"rbs2000" },
-	{ GSM_BTS_TYPE_NOKIA_SITE, "nokia_site" },
-	{ GSM_BTS_TYPE_OSMOBTS,	"sysmobts" },
-	{ 0,			NULL }
-};
-
 const struct value_string bts_type_descs[_NUM_GSM_BTS_TYPE+1] = {
 	{ GSM_BTS_TYPE_UNKNOWN,		"Unknown BTS Type" },
 	{ GSM_BTS_TYPE_BS11,		"Siemens BTS (BS-11 or compatible)" },
@@ -109,16 +99,6 @@ const struct value_string bts_type_descs[_NUM_GSM_BTS_TYPE+1] = {
 	{ GSM_BTS_TYPE_OSMOBTS,		"sysmocom sysmoBTS" },
 	{ 0,				NULL }
 };
-
-enum gsm_bts_type parse_btstype(const char *arg)
-{
-	return get_string_value(bts_type_names, arg);
-}
-
-const char *btstype2str(enum gsm_bts_type type)
-{
-	return get_value_string(bts_type_names, type);
-}
 
 struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr)
 {

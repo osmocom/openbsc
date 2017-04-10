@@ -1614,7 +1614,7 @@ DEFUN(cfg_bts_type,
 	struct gsm_bts *bts = vty->index;
 	int rc;
 
-	rc = gsm_set_bts_type(bts, parse_btstype(argv[0]));
+	rc = gsm_set_bts_type(bts, str2btstype(argv[0]));
 	if (rc < 0)
 		return CMD_WARNING;
 
