@@ -664,6 +664,7 @@ struct gsm_bts {
 	uint8_t bsic;
 	/* type of BTS */
 	enum gsm_bts_type type;
+	enum gsm_bts_type_variant variant;
 	struct gsm_bts_model *model;
 	enum gsm_band band;
 	char version[MAX_VERSION_LENGTH];
