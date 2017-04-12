@@ -483,7 +483,8 @@ struct gsm_bts_trx {
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
 
-#define GSM_BTS_SI(bts, i)	(void *)(bts->si_buf[i])
+#define GSM_BTS_SI(bts, i)	(void *)((bts)->si_buf[i])
+#define GSM_LCHAN_SI(lchan, i)	(void *)((lchan)->si.buf[i])
 
 enum gsm_bts_type {
 	GSM_BTS_TYPE_UNKNOWN,
@@ -702,6 +703,9 @@ struct gsm_bts {
 
 	/* bitmask of all SI that are present/valid in si_buf */
 	uint32_t si_valid;
+	/* 3GPP TS 44.018 Table 10.5.2.33b.1 INDEX and COUNT for SI2quater */
+	uint8_t si2q_index;
+	uint8_t si2q_count;
 	/* buffers where we put the pre-computed SI */
 	sysinfo_buf_t si_buf[_MAX_SYSINFO_TYPE];
 

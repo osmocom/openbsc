@@ -256,7 +256,7 @@ static inline int append_uarfcns(struct bitvec *bv, const uint16_t *u,
 }
 
 /* generate SI2quater rest octets: 3GPP TS 44.018 § 10.5.2.33b */
-int rest_octets_si2quater(uint8_t *data, const struct osmo_earfcn_si2q *e,
+int rest_octets_si2quater(uint8_t *data, uint8_t index, uint8_t count, const struct osmo_earfcn_si2q *e,
 			  const uint16_t *u, const uint16_t *sc, size_t u_len)
 {
 	int rc;
@@ -275,9 +275,9 @@ int rest_octets_si2quater(uint8_t *data, const struct osmo_earfcn_si2q *e,
 
 	/* we do not support multiple si2quater messages at the moment: */
 	/* SI2quater_INDEX */
-	bitvec_set_uint(&bv, 0, 4);
+	bitvec_set_uint(&bv, index, 4);
 	/* SI2quater_COUNT */
-	bitvec_set_uint(&bv, 0, 4);
+	bitvec_set_uint(&bv, count, 4);
 
 	/* No Measurement_Parameters Description */
 	bitvec_set_bit(&bv, 0);

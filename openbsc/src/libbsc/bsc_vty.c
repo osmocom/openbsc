@@ -644,7 +644,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 				get_value_string(osmo_sitype_strs, i), VTY_NEWLINE);
 			vty_out(vty, "  system-information %s static %s%s",
 				get_value_string(osmo_sitype_strs, i),
-				osmo_hexdump_nospc(bts->si_buf[i], sizeof(bts->si_buf[i])),
+				osmo_hexdump_nospc(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN),
 				VTY_NEWLINE);
 		}
 	}
@@ -2687,11 +2687,11 @@ DEFUN(cfg_bts_si_static, cfg_bts_si_static_cmd,
 	}
 
 	/* Fill buffer with padding pattern */
-	memset(bts->si_buf[type], 0x2b, sizeof(bts->si_buf[type]));
+	memset(GSM_BTS_SI(bts, type), 0x2b, GSM_MACBLOCK_LEN);
 
 	/* Parse the user-specified SI in hex format, [partially] overwriting padding */
-	rc = osmo_hexparse(argv[1], bts->si_buf[type], sizeof(bts->si_buf[0]));
-	if (rc < 0 || rc > sizeof(bts->si_buf[0])) {
+	rc = osmo_hexparse(argv[1], GSM_BTS_SI(bts, type), GSM_MACBLOCK_LEN);
+	if (rc < 0 || rc > GSM_MACBLOCK_LEN) {
 		vty_out(vty, "Error parsing HEXSTRING%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -2829,7 +2829,7 @@ DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
 		e->prio_valid = true;
 	}
 
-	if (si2q_size_check(bts))
+	if (si2q_num(bts) < 2)
 		return CMD_SUCCESS;
 
 	vty_out(vty, "Warning: not enough space in SI2quater for a given EARFCN "

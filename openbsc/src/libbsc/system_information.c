@@ -149,18 +149,13 @@ unsigned uarfcn_size(const uint16_t *u, const uint16_t *sc, size_t u_len)
 	return s + r + append + range1024_p(k);
 }
 
-bool si2q_size_check(const struct gsm_bts *bts)
+uint8_t si2q_num(const struct gsm_bts *bts)
 {
-	const struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
-	const uint16_t *u = bts->si_common.data.uarfcn_list,
-		*sc = bts->si_common.data.scramble_list;
-	size_t len = bts->si_common.uarfcn_length;
-	unsigned e_sz = e ? earfcn_size(e) : 1,
-		u_sz = len ? uarfcn_size(u, sc, len) : 1;
+	const struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list; /* EARFCN */
+	const uint16_t *u = bts->si_common.data.uarfcn_list, *sc = bts->si_common.data.scramble_list; /* UARFCN */
+	size_t l = bts->si_common.uarfcn_length, e_sz = e ? earfcn_size(e) : 1, u_sz = l ? uarfcn_size(u, sc, l) : 1;
 	/* 2 bits are used in between UARFCN and EARFCN structs */
-	if (SI2Q_MIN_LEN + u_sz + 2 + e_sz > SI2Q_MAX_LEN)
-		return false;
-	return true;
+	return 1 + (e_sz + u_sz) / (SI2Q_MAX_LEN - (SI2Q_MIN_LEN + 2));
 }
 
 /* 3GPP TS 44.018, Table 9.1.54.1 - prepend diversity bit to scrambling code */
@@ -233,7 +228,7 @@ int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble,
 	scl[k] = scr;
 	bts->si_common.uarfcn_length++;
 
-	if (si2q_size_check(bts))
+	if (si2q_num(bts) < 2)
 		return 0;
 
 	bts_uarfcn_del(bts, arfcn, scramble);
@@ -557,11 +552,10 @@ static int list_arfcn(uint8_t *chan_list, uint8_t mask, char *text)
 	return n;
 }
 
-static int generate_si1(uint8_t *output, struct gsm_bts *bts)
+static int generate_si1(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	int rc;
-	struct gsm48_system_information_type_1 *si1 =
-		(struct gsm48_system_information_type_1 *) output;
+	struct gsm48_system_information_type_1 *si1 = (struct gsm48_system_information_type_1 *) GSM_BTS_SI(bts, t);
 
 	memset(si1, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
@@ -586,11 +580,10 @@ static int generate_si1(uint8_t *output, struct gsm_bts *bts)
 	return sizeof(*si1) + rc;
 }
 
-static int generate_si2(uint8_t *output, struct gsm_bts *bts)
+static int generate_si2(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	int rc;
-	struct gsm48_system_information_type_2 *si2 =
-		(struct gsm48_system_information_type_2 *) output;
+	struct gsm48_system_information_type_2 *si2 = (struct gsm48_system_information_type_2 *) GSM_BTS_SI(bts, t);
 
 	memset(si2, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
@@ -611,11 +604,11 @@ static int generate_si2(uint8_t *output, struct gsm_bts *bts)
 	return sizeof(*si2);
 }
 
-static int generate_si2bis(uint8_t *output, struct gsm_bts *bts)
+static int generate_si2bis(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_2bis *si2b =
-		(struct gsm48_system_information_type_2bis *) output;
+		(struct gsm48_system_information_type_2bis *) GSM_BTS_SI(bts, t);
 	int n;
 
 	memset(si2b, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
@@ -633,8 +626,7 @@ static int generate_si2bis(uint8_t *output, struct gsm_bts *bts)
 	if (n) {
 		/* indicate in SI2 and SI2bis: there is an extension */
 		struct gsm48_system_information_type_2 *si2 =
-			(struct gsm48_system_information_type_2 *)
-				bts->si_buf[SYSINFO_TYPE_2];
+			(struct gsm48_system_information_type_2 *) GSM_BTS_SI(bts, SYSINFO_TYPE_2);
 		si2->bcch_frequency_list[0] |= 0x20;
 		si2b->bcch_frequency_list[0] |= 0x20;
 	} else
@@ -645,11 +637,11 @@ static int generate_si2bis(uint8_t *output, struct gsm_bts *bts)
 	return sizeof(*si2b);
 }
 
-static int generate_si2ter(uint8_t *output, struct gsm_bts *bts)
+static int generate_si2ter(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_2ter *si2t =
-		(struct gsm48_system_information_type_2ter *) output;
+		(struct gsm48_system_information_type_2ter *) GSM_BTS_SI(bts, t);
 	int n;
 
 	memset(si2t, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
@@ -670,11 +662,11 @@ static int generate_si2ter(uint8_t *output, struct gsm_bts *bts)
 	return sizeof(*si2t);
 }
 
-static int generate_si2quater(uint8_t *output, struct gsm_bts *bts)
+static int generate_si2quater(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	int rc, i = MAX_EARFCN_LIST;
 	struct gsm48_system_information_type_2quater *si2q =
-		(struct gsm48_system_information_type_2quater *) output;
+		(struct gsm48_system_information_type_2quater *) GSM_BTS_SI(bts, t);
 
 	memset(si2q, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
@@ -683,7 +675,7 @@ static int generate_si2quater(uint8_t *output, struct gsm_bts *bts)
 	si2q->header.skip_indicator = 0;
 	si2q->header.system_information = GSM48_MT_RR_SYSINFO_2quater;
 
-	rc = rest_octets_si2quater(si2q->rest_octets,
+	rc = rest_octets_si2quater(si2q->rest_octets, bts->si2q_index, bts->si2q_count,
 				   &bts->si_common.si2quater_neigh_list,
 				   bts->si_common.data.uarfcn_list,
 				   bts->si_common.data.scramble_list,
@@ -727,11 +719,10 @@ static struct gsm48_si_ro_info si_info = {
 	.break_ind = 0,
 };
 
-static int generate_si3(uint8_t *output, struct gsm_bts *bts)
+static int generate_si3(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	int rc;
-	struct gsm48_system_information_type_3 *si3 =
-		(struct gsm48_system_information_type_3 *) output;
+	struct gsm48_system_information_type_3 *si3 = (struct gsm48_system_information_type_3 *) GSM_BTS_SI(bts, t);
 
 	memset(si3, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
@@ -775,11 +766,10 @@ static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 	return sizeof(*si3) + rc;
 }
 
-static int generate_si4(uint8_t *output, struct gsm_bts *bts)
+static int generate_si4(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	int rc;
-	struct gsm48_system_information_type_4 *si4 =
-		(struct gsm48_system_information_type_4 *) output;
+	struct gsm48_system_information_type_4 *si4 = (struct gsm48_system_information_type_4 *) GSM_BTS_SI(bts, t);
 	struct gsm_lchan *cbch_lchan;
 	uint8_t *restoct = si4->data;
 
@@ -815,14 +805,15 @@ static int generate_si4(uint8_t *output, struct gsm_bts *bts)
 	/* SI4 Rest Octets (10.5.2.35), containing
 		Optional Power offset, GPRS Indicator,
 		Cell Identity, LSA ID, Selection Parameter */
-	rc = rest_octets_si4(restoct, &si_info, output + GSM_MACBLOCK_LEN - restoct);
+	rc = rest_octets_si4(restoct, &si_info, (uint8_t *)GSM_BTS_SI(bts, t) + GSM_MACBLOCK_LEN - restoct);
 
 	return l2_plen + 1 + rc;
 }
 
-static int generate_si5(uint8_t *output, struct gsm_bts *bts)
+static int generate_si5(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_5 *si5;
+	uint8_t *output = GSM_BTS_SI(bts, t);
 	int rc, l2_plen = 18;
 
 	memset(output, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
@@ -838,7 +829,7 @@ static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 		break;
 	}
 
-	si5 = (struct gsm48_system_information_type_5 *) output;
+	si5 = (struct gsm48_system_information_type_5 *) GSM_BTS_SI(bts, t);
 
 	/* l2 pseudo length, not part of msg: 18 */
 	si5->rr_protocol_discriminator = GSM48_PDISC_RR;
@@ -854,9 +845,10 @@ static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 	return l2_plen;
 }
 
-static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
+static int generate_si5bis(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_5bis *si5b;
+	uint8_t *output = GSM_BTS_SI(bts, t);
 	int rc, l2_plen = 18;
 	int n;
 
@@ -873,7 +865,7 @@ static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
 		break;
 	}
 
-	si5b = (struct gsm48_system_information_type_5bis *) output;
+	si5b = (struct gsm48_system_information_type_5bis *) GSM_BTS_SI(bts, t);
 
 	/* l2 pseudo length, not part of msg: 18 */
 	si5b->rr_protocol_discriminator = GSM48_PDISC_RR;
@@ -887,8 +879,7 @@ static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
 	if (n) {
 		/* indicate in SI5 and SI5bis: there is an extension */
 		struct gsm48_system_information_type_5 *si5 =
-			(struct gsm48_system_information_type_5 *)
-				bts->si_buf[SYSINFO_TYPE_5];
+			(struct gsm48_system_information_type_5 *) GSM_BTS_SI(bts, SYSINFO_TYPE_5);
 		si5->bcch_frequency_list[0] |= 0x20;
 		si5b->bcch_frequency_list[0] |= 0x20;
 	} else
@@ -898,9 +889,10 @@ static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
 	return l2_plen;
 }
 
-static int generate_si5ter(uint8_t *output, struct gsm_bts *bts)
+static int generate_si5ter(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_5ter *si5t;
+	uint8_t *output = GSM_BTS_SI(bts, t);
 	int rc, l2_plen = 18;
 	int n;
 
@@ -917,7 +909,7 @@ static int generate_si5ter(uint8_t *output, struct gsm_bts *bts)
 		break;
 	}
 
-	si5t = (struct gsm48_system_information_type_5ter *) output;
+	si5t = (struct gsm48_system_information_type_5ter *) GSM_BTS_SI(bts, t);
 
 	/* l2 pseudo length, not part of msg: 18 */
 	si5t->rr_protocol_discriminator = GSM48_PDISC_RR;
@@ -935,9 +927,10 @@ static int generate_si5ter(uint8_t *output, struct gsm_bts *bts)
 	return l2_plen;
 }
 
-static int generate_si6(uint8_t *output, struct gsm_bts *bts)
+static int generate_si6(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_6 *si6;
+	uint8_t *output = GSM_BTS_SI(bts, t);
 	int l2_plen = 11;
 	int rc;
 
@@ -954,7 +947,7 @@ static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 		break;
 	}
 
-	si6 = (struct gsm48_system_information_type_6 *) output;
+	si6 = (struct gsm48_system_information_type_6 *) GSM_BTS_SI(bts, t);
 
 	/* l2 pseudo length, not part of msg: 11 */
 	si6->rr_protocol_discriminator = GSM48_PDISC_RR;
@@ -1015,10 +1008,10 @@ static struct gsm48_si13_info si13_default = {
 	},
 };
 
-static int generate_si13(uint8_t *output, struct gsm_bts *bts)
+static int generate_si13(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_13 *si13 =
-		(struct gsm48_system_information_type_13 *) output;
+		(struct gsm48_system_information_type_13 *) GSM_BTS_SI(bts, t);
 	int ret;
 
 	memset(si13, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
@@ -1048,7 +1041,7 @@ static int generate_si13(uint8_t *output, struct gsm_bts *bts)
 	return sizeof (*si13) + ret;
 }
 
-typedef int (*gen_si_fn_t)(uint8_t *output, struct gsm_bts *bts);
+typedef int (*gen_si_fn_t)(enum osmo_sysinfo_type t, struct gsm_bts *bts);
 
 static const gen_si_fn_t gen_si_fn[_MAX_SYSINFO_TYPE] = {
 	[SYSINFO_TYPE_1] = &generate_si1,
@@ -1090,5 +1083,5 @@ int gsm_generate_si(struct gsm_bts *bts, enum osmo_sysinfo_type si_type)
 	if (!gen_si)
 		return -EINVAL;
 
-	return gen_si(bts->si_buf[si_type], bts);
+	return gen_si(si_type, bts);
 }

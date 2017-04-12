@@ -99,13 +99,12 @@ static inline void gen(struct gsm_bts *bts)
 	bts->si_valid = 0;
 	bts->si_valid |= (1 << SYSINFO_TYPE_2quater);
 	/* should be no-op as entire buffer is filled with padding: */
-	memset(bts->si_buf[SYSINFO_TYPE_2quater], 0xAE, GSM_MACBLOCK_LEN);
+	memset(GSM_BTS_SI(bts, SYSINFO_TYPE_2quater), 0xAE, GSM_MACBLOCK_LEN);
 	int r = gsm_generate_si(bts, SYSINFO_TYPE_2quater);
 	bool v = bts->si_valid & (1 << SYSINFO_TYPE_2quater);
 	if (r > 0)
 		printf("generated %s SI2quater: [%d] %s\n",
-		       v ? "valid" : "invalid", r,
-		       osmo_hexdump(bts->si_buf[SYSINFO_TYPE_2quater], r));
+		       v ? "valid" : "invalid", r, osmo_hexdump(GSM_BTS_SI(bts, SYSINFO_TYPE_2quater), r));
 	else
 		printf("failed to generate SI2quater: %s\n", strerror(-r));
 }
