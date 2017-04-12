@@ -37,6 +37,7 @@
 /* SCCP helper */
 #define SCCP_IT_TIMER 60
 
+#if 0
 static LLIST_HEAD(active_connections);
 
 static void free_queued(struct osmo_bsc_sccp_con *conn)
@@ -172,6 +173,9 @@ static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 
 int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
+
+	printf("==================> bsc_queue_for_msc()\n");
+#if 0
 	struct sccp_connection *sccp = conn->sccp;
 
 	if (sccp->connection_state > SCCP_CONNECTION_STATE_ESTABLISHED) {
@@ -189,6 +193,7 @@ int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 		conn->sccp_queue_size += 1;
 		msgb_enqueue(&conn->sccp_queue, msg);
 	}
+#endif
 
 	return 0;
 }
@@ -196,6 +201,9 @@ int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 enum bsc_con bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 			      struct bsc_msc_data *msc, int send_ping)
 {
+
+	printf("==================> bsc_con bsc_create_new_connection()\n");
+#if 0
 	struct osmo_bsc_sccp_con *bsc_con;
 	struct sccp_connection *sccp;
 
@@ -243,18 +251,29 @@ enum bsc_con bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 	llist_add_tail(&bsc_con->entry, &active_connections);
 	conn->sccp_con = bsc_con;
 	return BSC_CON_SUCCESS;
+
+#endif
+	return BSC_CON_SUCCESS;
 }
 
 int bsc_open_connection(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
-	osmo_timer_schedule(&conn->sccp_cc_timeout, 10, 0);
-	sccp_connection_connect(conn->sccp, &sccp_ssn_bssap, msg);
-	msgb_free(msg);
+	printf("======================> bsc_open_connection()\n");
+
+
+//	osmo_timer_schedule(&conn->sccp_cc_timeout, 10, 0);
+//	sccp_connection_connect(conn->sccp, &sccp_ssn_bssap, msg);
+//	msgb_free(msg);
 	return 0;
 }
 
 int bsc_delete_connection(struct osmo_bsc_sccp_con *sccp)
 {
+	printf("======================> bsc_delete_connection()\n");
+	return 0;
+
+#if 0
+
 	if (!sccp)
 		return 0;
 
@@ -266,6 +285,7 @@ int bsc_delete_connection(struct osmo_bsc_sccp_con *sccp)
 	osmo_timer_del(&sccp->sccp_cc_timeout);
 	talloc_free(sccp);
 	return 0;
+#endif
 }
 
 static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
@@ -326,3 +346,4 @@ int osmo_bsc_sccp_init(struct gsm_network *gsmnet)
 
 	return 0;
 }
+#endif

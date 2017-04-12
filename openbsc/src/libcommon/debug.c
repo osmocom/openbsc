@@ -189,6 +189,12 @@ static const struct log_info_cat default_categories[] = {
 		.description = "Iu-CS Protocol",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DSIGTRAN] = {
+		.name = "DSIGTRAN",
+		.description = "SIGTRAN Signalling Transport",
+		.color = "\033[1;29m",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 static int filter_fn(const struct log_context *ctx, struct log_target *tar)

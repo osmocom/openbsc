@@ -28,6 +28,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/ctrl.h>
+#include <openbsc/osmo_bsc_sigtran.h>
 
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/ctrl/control_if.h>
@@ -269,8 +270,25 @@ int main(int argc, char **argv)
 	}
 
 
-	if (osmo_bsc_sccp_init(bsc_gsmnet) != 0) {
-		LOGP(DNM, LOGL_ERROR, "Failed to register SCCP.\n");
+	llist_for_each_entry(msc, &bsc_gsmnet->bsc_data->mscs, entry) {
+		/* FIXME: This has to come from a config file */
+		msc->msc_con->g_calling_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
+		msc->msc_con->g_calling_addr.ssn = SCCP_SSN_BSSAP;
+		msc->msc_con->g_calling_addr.ri = OSMO_SCCP_RI_SSN_PC;
+		msc->msc_con->g_calling_addr.pc = 23;
+		msc->msc_con->g_called_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
+		msc->msc_con->g_called_addr.ssn = SCCP_SSN_BSSAP;
+		msc->msc_con->g_called_addr.ri = OSMO_SCCP_RI_SSN_PC;
+		msc->msc_con->g_called_addr.pc = 1;
+	}
+
+//	if (osmo_bsc_sccp_init(bsc_gsmnet) != 0) {
+//		LOGP(DNM, LOGL_ERROR, "Failed to register SCCP.\n");
+//		exit(1);
+//	}
+
+	if (osmo_bsc_sigtran_init(&bsc_gsmnet->bsc_data->mscs) != 0) {
+		LOGP(DNM, LOGL_ERROR, "Failed to initalize sigtran backhaul.\n");
 		exit(1);
 	}
 

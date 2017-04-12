@@ -27,6 +27,7 @@
 #include <osmocom/gsm/gsm0808.h>
 
 #include <osmocom/sccp/sccp.h>
+#include <openbsc/osmo_bsc_sigtran.h>
 
 #define return_when_not_connected(conn) \
 	if (!conn->sccp_con) {\
@@ -45,7 +46,7 @@
 		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n"); \
 		return; \
 	} \
-	bsc_queue_for_msc(conn->sccp_con, resp);
+	osmo_bsc_sigtran_send(conn->sccp_con, resp);
 
 static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause);
 static int complete_layer3(struct gsm_subscriber_connection *conn,
@@ -263,7 +264,8 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 	}
 
 	/* allocate resource for a new connection */
-	ret = bsc_create_new_connection(conn, msc, send_ping);
+	//ret = bsc_create_new_connection(conn, msc, send_ping);
+	ret = osmo_bsc_sigtran_new_conn(conn, msc);
 
 	if (ret != BSC_CON_SUCCESS) {
 		/* allocation has failed */
@@ -292,13 +294,13 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 	if (!resp) {
 		LOGP(DMSC, LOGL_DEBUG, "Failed to create layer3 message.\n");
 		sccp_connection_free(conn->sccp_con->sccp);
-		bsc_delete_connection(conn->sccp_con);
+		osmo_bsc_sigtran_del_conn(conn->sccp_con);
 		return BSC_API_CONN_POL_REJECT;
 	}
 
-	if (bsc_open_connection(conn->sccp_con, resp) != 0) {
+	if (osmo_bsc_sigtran_open_conn(conn->sccp_con, resp) != 0) {
 		sccp_connection_free(conn->sccp_con->sccp);
-		bsc_delete_connection(conn->sccp_con);
+		osmo_bsc_sigtran_del_conn(conn->sccp_con);
 		msgb_free(resp);
 		return BSC_API_CONN_POL_REJECT;
 	}
@@ -474,7 +476,7 @@ static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 		return 1;
 	}
 
-	bsc_queue_for_msc(sccp, resp);
+	osmo_bsc_sigtran_send(sccp, resp);
 	return 1;
 }
 

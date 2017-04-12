@@ -40,6 +40,7 @@ enum {
 	DPCU,
 	DVLR,
 	DIUCS,
+	DSIGTRAN,
 	Debug_LastEntry,
 };
 

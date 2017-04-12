@@ -29,6 +29,7 @@
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0808.h>
+#include <openbsc/osmo_bsc_sigtran.h>
 
 /*
  * helpers for the assignment command
@@ -92,7 +93,19 @@ enum gsm48_chan_mode gsm88_to_chan_mode(enum gsm0808_permitted_speech speech)
 static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 				   struct msgb *msg, unsigned int length)
 {
-	LOGP(DMSC, LOGL_NOTICE, "Reset ACK from MSC\n");
+	LOGP(DMSC, LOGL_NOTICE, "Reset ACK from MSC No.: %i\n", msc->nr);
+	msc->msc_con->reset_ack = true;
+
+#if 0
+	struct msc_signal_data sig;
+	struct bsc_msc_data *data;
+
+	data = (struct bsc_msc_data *) msc;
+	sig.data = data;
+	osmo_signal_dispatch(SS_MSC, S_MSC_CONNECTED, &sig);
+	osmo_signal_dispatch(SS_MSC, S_MSC_AUTHENTICATED, &sig);
+#endif
+
 	return 0;
 }
 
@@ -199,7 +212,7 @@ static int bssmap_handle_clear_command(struct osmo_bsc_sccp_con *conn,
 		return -1;
 	}
 
-	bsc_queue_for_msc(conn, resp);
+	osmo_bsc_sigtran_send(conn, resp);
 	return 0;
 }
 
@@ -276,7 +289,7 @@ reject:
 		return -1;
 	}
 
-	bsc_queue_for_msc(conn, resp);
+	osmo_bsc_sigtran_send(conn, resp);
 	return -1;
 }
 
@@ -383,7 +396,7 @@ reject:
 		return -1;
 	}
 
-	bsc_queue_for_msc(conn, resp);
+	osmo_bsc_sigtran_send(conn, resp);
 	return -1;
 }
 

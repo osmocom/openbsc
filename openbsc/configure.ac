@@ -58,6 +58,7 @@ AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo B
     [osmo_ac_build_bsc="$enableval"],[osmo_ac_build_bsc="no"])
 if test "$osmo_ac_build_bsc" = "yes" ; then
     PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.6)
+    PKG_CHECK_MODULES(LIBOSMOSIGTRAN, libosmo-sigtran) # TODO version?
 fi
 AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
 AC_SUBST(osmo_ac_build_bsc)

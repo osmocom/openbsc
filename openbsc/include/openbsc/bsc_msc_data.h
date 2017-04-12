@@ -32,6 +32,13 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 
+
+#include <osmocom/sigtran/osmo_ss7.h>
+#include <osmocom/sigtran/sccp_sap.h>
+#include <osmocom/sigtran/sccp_helpers.h>
+#include <osmocom/sigtran/protocol/sua.h>
+#include <osmocom/sigtran/protocol/m3ua.h>
+
 #include <regex.h>
 
 struct osmo_bsc_rf;

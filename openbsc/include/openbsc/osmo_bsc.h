@@ -44,6 +44,9 @@ struct osmo_bsc_sccp_con {
 	uint8_t new_subscriber;
 
 	struct bsc_filter_state filter_state;
+
+	/* Sigtran connection ID */
+	int conn_id;
 };
 
 struct bsc_api *osmo_bsc_api();
