@@ -65,12 +65,14 @@
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/smpp.h>
 #include <osmocom/sigtran/sccp_sap.h>
+#include <osmocom/sigtran/osmo_ss7.h>
 #include <openbsc/mgcpgw_client.h>
 
 #include <openbsc/msc_ifaces.h>
 #include <openbsc/iu.h>
 #include <openbsc/iucs.h>
 #include <openbsc/iucs_ranap.h>
+#include <openbsc/a_iface.h>
 
 static const char * const osmomsc_copyright =
 	"OsmoMSC - Osmocom Circuit-Switched Core Network implementation\r\n"
@@ -505,7 +507,10 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
 	/* Set up IuCS */
-	iu_init(tall_msc_ctx, "OsmoMSC", 1, "127.0.0.3", "127.0.0.1", 0, rcvmsg_iu_cs, rx_iu_event);
+	//iu_init(tall_msc_ctx, "OsmoMSC", 1, "127.0.0.3", "127.0.0.1", 0, rcvmsg_iu_cs, rx_iu_event);
+
+	/* Set up A interface */
+	a_init(tall_msc_ctx, "OsmoMSC_A", 254, "127.0.0.3", "127.0.0.1", 0, msc_network);
 
 	if (msc_cmdline_config.daemonize) {
 		rc = osmo_daemonize();

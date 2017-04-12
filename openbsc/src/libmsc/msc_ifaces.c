@@ -213,10 +213,7 @@ int msc_call_assignment(struct gsm_trans *trans)
 
 	switch (conn->via_ran) {
 	case RAN_GERAN_A:
-		LOGP(DMSC, LOGL_ERROR,
-		     "msc_call_assignment(): A-interface BSSMAP Assignment"
-		     " Request not yet implemented\n");
-		return -ENOTSUP;
+		return a_assign(trans);
 
 	case RAN_UTRAN_IU:
 #ifdef BUILD_IU

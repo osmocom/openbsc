@@ -13,6 +13,7 @@ AM_CFLAGS = \
 	$(LIBCRYPTO_CFLAGS) \
 	$(LIBSMPP34_CFLAGS) \
 	$(LIBASN1C_CFLAGS) \
+	$(LIBOSMOSIGTRAN_CFLAGS) \
 	$(NULL)
 
 noinst_HEADERS = \
@@ -25,6 +26,7 @@ noinst_LIBRARIES = \
 
 libmsc_a_SOURCES = \
 	a_iface.c \
+	a_iface_bssap.c \
 	auth.c \
 	msc_vty.c \
 	db.c \

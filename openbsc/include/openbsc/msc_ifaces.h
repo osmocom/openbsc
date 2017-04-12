@@ -28,19 +28,17 @@
 /* Each main linkage must implement this function (see comment above). */
 extern int iu_tx(struct msgb *msg, uint8_t sapi);
 
-/* So far this is a dummy implemented in libmsc/a_iface.c. When A-interface
- * gets implemented, it should be in a separate lib (like libiu), this function
- * should move there, and the following comment should remain here: "
- * Each main linkage must implement this function (see comment above).
- * " */
+/* FIXME: Maybe the function prototypes that are implemented in a_iface.c
+ * should be moved to a_iface.h too? */
+
+/* Send DTAP message via A-interface (see also: a_iface.c) */
 extern int a_tx(struct msgb *msg);
 
-/* So far this is a dummy implemented in libmsc/a_iface.c. When A-interface
- * gets implemented, it should be in a separate lib (like libiu), this function
- * should move there, and the following comment should remain here: "
- * Each main linkage must implement this function (see comment above).
- * " */
+/* Page a subscriber via A-interface (see also: a_iface.c) */
 extern int a_page(const char *imsi, uint32_t tmsi, uint16_t lac);
+
+/* Send assignment request via A-interface */
+extern int a_assign(struct gsm_trans *trans);
 
 int msc_tx_dtap(struct gsm_subscriber_connection *conn,
 		struct msgb *msg);
@@ -50,6 +48,7 @@ int msc_gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 			     enum gsm48_reject_value value);
 
 /* TODO: specific to A interface, move this away */
+/* Send Cipher mode command via A-interface (see also: a_iface.c) */
 int msc_gsm0808_tx_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 			       const uint8_t *key, int len, int include_imeisv);
 

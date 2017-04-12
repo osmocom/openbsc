@@ -80,3 +80,5 @@ int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause);
 
 void iu_vty_init(int iu_parent_node, enum nsap_addr_enc *rab_assign_addr_enc);
 int iu_vty_config_write(struct vty *vty, const char *indent);
+
+struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sccp_addr *addr, uint32_t conn_id);

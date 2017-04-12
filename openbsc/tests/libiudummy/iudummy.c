@@ -61,3 +61,9 @@ int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause)
 	LOGP(DLGLOBAL, LOGL_INFO, "iu_tx_release() dummy called, NOT sending Release\n");
 	return 0;
 }
+
+struct ue_conn_ctx *ue_conn_ctx_alloc(struct osmo_sccp_addr *addr, uint32_t conn_id)
+{
+	LOGP(DLGLOBAL, LOGL_INFO, "ue_conn_ctx_alloc() dummy called, NOT allocating UE context\n");
+	return NULL;
+}

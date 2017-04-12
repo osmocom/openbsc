@@ -62,6 +62,8 @@ int msc_create_conn_fsm(struct gsm_subscriber_connection *conn, const char *id);
 int msc_vlr_alloc(struct gsm_network *net);
 int msc_vlr_start(struct gsm_network *net);
 
+void msc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci);
+int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause);
 int msc_compl_l3(struct gsm_subscriber_connection *conn,
 		 struct msgb *msg, uint16_t chosen_channel);
 void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id,
@@ -69,6 +71,11 @@ void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id,
 void msc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 			   struct msgb *msg, uint8_t alg_id);
 void msc_rx_sec_mode_compl(struct gsm_subscriber_connection *conn);
+void msc_classmark_chg(struct gsm_subscriber_connection *conn,
+		       const uint8_t *cm2, uint8_t cm2_len,
+		       const uint8_t *cm3, uint8_t cm3_len);
+void msc_assign_fail(struct gsm_subscriber_connection *conn,
+		     uint8_t cause, uint8_t *rr_cause);
 
 void msc_subscr_conn_init(void);
 bool msc_subscr_conn_is_accepted(struct gsm_subscriber_connection *conn);

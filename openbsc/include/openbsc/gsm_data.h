@@ -202,6 +202,11 @@ struct gsm_subscriber_connection {
 		uint16_t mgcp_rtp_port_cn;
 		uint8_t rab_id;
 	} iu;
+
+	struct {
+		struct osmo_sccp_user *scu;
+		int conn_id;
+	} a;
 };
 
 

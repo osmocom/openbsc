@@ -33,7 +33,7 @@
 #include <openbsc/gsm_04_11.h>
 
 /* Receive a SAPI-N-REJECT from BSC */
-static void msc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
+void msc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
 	int sapi = dlci & 0x7;
 
@@ -106,24 +106,24 @@ void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct ms
 }
 
 /* Receive an ASSIGNMENT COMPLETE from BSC */
-static void msc_assign_compl(struct gsm_subscriber_connection *conn,
-			     uint8_t rr_cause, uint8_t chosen_channel,
-			     uint8_t encr_alg_id, uint8_t speec)
+void msc_assign_compl(struct gsm_subscriber_connection *conn,
+		      uint8_t rr_cause, uint8_t chosen_channel,
+		      uint8_t encr_alg_id, uint8_t speec)
 {
 	LOGP(DRR, LOGL_DEBUG, "MSC assign complete (do nothing).\n");
 }
 
 /* Receive an ASSIGNMENT FAILURE from BSC */
-static void msc_assign_fail(struct gsm_subscriber_connection *conn,
-			    uint8_t cause, uint8_t *rr_cause)
+void msc_assign_fail(struct gsm_subscriber_connection *conn,
+		     uint8_t cause, uint8_t *rr_cause)
 {
 	LOGP(DRR, LOGL_DEBUG, "MSC assign failure (do nothing).\n");
 }
 
 /* Receive a CLASSMARK CHNAGE from BSC */
-static void msc_classmark_chg(struct gsm_subscriber_connection *conn,
-			      const uint8_t *cm2, uint8_t cm2_len,
-			      const uint8_t *cm3, uint8_t cm3_len)
+void msc_classmark_chg(struct gsm_subscriber_connection *conn,
+		       const uint8_t *cm2, uint8_t cm2_len,
+		       const uint8_t *cm3, uint8_t cm3_len)
 {
 	conn->classmark.classmark2_len = cm2_len;
 	memcpy(conn->classmark.classmark2, cm2, cm2_len);
@@ -238,7 +238,7 @@ void msc_subscr_con_free(struct gsm_subscriber_connection *conn)
 }
 
 /* Receive a CLEAR REQUEST from BSC */
-static int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
+int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
 	msc_subscr_conn_close(conn, cause);
 	return 1;
