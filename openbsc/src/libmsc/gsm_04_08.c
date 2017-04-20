@@ -3582,12 +3582,16 @@ void cm_service_request_concludes(struct gsm_subscriber_connection *conn,
 /* Main entry point for GSM 04.08/44.008 Layer 3 data (e.g. from the BSC). */
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm48_hdr *gh = msgb_l3(msg);
-	uint8_t pdisc = gsm48_hdr_pdisc(gh);
+	struct gsm48_hdr *gh;
+	uint8_t pdisc;
 	int rc = 0;
 
+	OSMO_ASSERT(msg->l3h)
 	OSMO_ASSERT(conn);
 	OSMO_ASSERT(msg);
+
+	gh = msgb_l3(msg);
+	pdisc = gsm48_hdr_pdisc(gh);
 
 	LOGP(DRLL, LOGL_DEBUG, "Dispatching 04.08 message %s (0x%x:0x%x)\n",
 	     gsm48_pdisc_msgtype_name(pdisc, gsm48_hdr_msg_type(gh)),
