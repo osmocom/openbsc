@@ -1062,8 +1062,7 @@ static void meas_rep_dump_vty(struct vty *vty, struct gsm_meas_rep *mr,
 			mr->flags & MEAS_REP_F_DL_VALID ? " " : "DLinval ",
 			VTY_NEWLINE);
 	if (mr->flags & MEAS_REP_F_MS_TO)
-		vty_out(vty, "%s  MS Timing Offset: %u%s", prefix,
-			mr->ms_timing_offset, VTY_NEWLINE);
+		vty_out(vty, "%s  MS Timing Offset: %d%s", prefix, mr->ms_timing_offset, VTY_NEWLINE);
 	if (mr->flags & MEAS_REP_F_MS_L1)
 		vty_out(vty, "%s  L1 MS Power: %u dBm, Timing Advance: %u%s",
 			prefix, mr->ms_l1.pwr, mr->ms_l1.ta, VTY_NEWLINE);

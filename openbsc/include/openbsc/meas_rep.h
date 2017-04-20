@@ -39,7 +39,8 @@ struct gsm_meas_rep {
 	struct gsm_meas_rep_unidir dl;
 
 	uint8_t bs_power;
-	uint8_t ms_timing_offset;
+	/* according to 3GPP TS 48.058 § MS Timing Offset [-63; 192] */
+	int16_t ms_timing_offset;
 	struct {
 		int8_t pwr;	/* MS power in dBm */
 		uint8_t ta;	/* MS timing advance */

@@ -437,8 +437,8 @@ static void append_osmo_tlvs(tlv_t **req_tlv, const struct gsm_lchan *lchan)
 		append_tlv_u8(req_tlv, TLVID_osmo_ta, mr->ms_l1.ta);
 		ms_dbm = ms_pwr_dbm(lchan->ts->trx->bts->band, mr->ms_l1.pwr);
 		append_tlv_u8(req_tlv, TLVID_osmo_ms_l1_txpwr, ms_dbm);
-	} else if (mr->flags & MEAS_REP_F_MS_TO)
-		append_tlv_u8(req_tlv, TLVID_osmo_ta, mr->ms_timing_offset);
+	} else if (mr->flags & MEAS_REP_F_MS_TO) /* Save Timing Offset field = MS Timing Offset + 63 */
+		append_tlv_u8(req_tlv, TLVID_osmo_ta, mr->ms_timing_offset + 63);
 
 	append_tlv_u16(req_tlv, TLVID_osmo_rxlev_ul,
 		       rxlev2dbm(ul_meas->full.rx_lev));

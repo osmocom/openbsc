@@ -200,7 +200,7 @@ void write_uni(struct ms_state *ms, struct ms_state_uni *msu,
 				  COLS-40, rxlev2dbm(lq->rx_lev), -110, -47,
 				  1, 2, FALSE, FALSE);
 	//IsVisibleObj(ms->ul.cdk) = FALSE;
-	snprintf(msu->label, sizeof(msu->label), "</%d>%1d<!%d> %3d %2u %2u %4u",
+	snprintf(msu->label, sizeof(msu->label), "</%d>%1d<!%d> %3d %2u %2d %4u",
 		 qual_col, lq->rx_qual, qual_col, pwr,
 		 ms->mr.ms_l1.ta, ms->mr.ms_timing_offset,
 		 now - msu->last_update);

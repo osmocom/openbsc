@@ -41,6 +41,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/rtp_proxy.h>
+#include <openbsc/gsm_subscriber.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/core/talloc.h>
@@ -1369,8 +1370,14 @@ static void print_meas_rep(struct gsm_lchan *lchan, struct gsm_meas_rep *mr)
 	int i;
 	const char *name = "";
 
-	if (lchan && lchan->conn)
-		name = bsc_subscr_name(lchan->conn->bsub);
+	if (lchan && lchan->conn) {
+		if (lchan->conn->bsub)
+			name = bsc_subscr_name(lchan->conn->bsub);
+		else if (lchan->conn->subscr)
+			name = lchan->conn->subscr->imsi;
+		else
+			name = lchan->name;
+	}
 
 	DEBUGP(DMEAS, "[%s] MEASUREMENT RESULT NR=%d ", name, mr->nr);
 
@@ -1379,6 +1386,7 @@ static void print_meas_rep(struct gsm_lchan *lchan, struct gsm_meas_rep *mr)
 
 	print_meas_rep_uni(&mr->ul, "ul");
 	DEBUGPC(DMEAS, "BS_POWER=%d ", mr->bs_power);
+
 	if (mr->flags & MEAS_REP_F_MS_TO)
 		DEBUGPC(DMEAS, "MS_TO=%d ", mr->ms_timing_offset);
 
@@ -1452,9 +1460,11 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	mr->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
 
 	/* Optional Parts */
-	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
-		mr->ms_timing_offset =
-			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET);
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET)) {
+		/* According to 3GPP TS 48.058 § MS Timing Offset = Timing Offset field - 63 */
+		mr->ms_timing_offset = *TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET) - 63;
+		mr->flags |= MEAS_REP_F_MS_TO;
+	}
 
 	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO)) {
 		struct e1inp_sign_link *sign_link = msg->dst;
