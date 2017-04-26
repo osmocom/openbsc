@@ -1,0 +1,12 @@
+[Unit]
+Description=Osmocom Gb proxy
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/osmo-gbproxy -c /etc/osmocom/osmo-gbproxy.cfg
+Restart=always
+RestartSec=2
+RestartPreventExitStatus=1
+
+[Install]
+WantedBy=multi-user.target
