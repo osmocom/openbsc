@@ -40,6 +40,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <inttypes.h>
 
 static struct bsc_nat *_nat;
 
@@ -173,6 +174,12 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 		vty_out(vty, "  osmux only%s", VTY_NEWLINE);
 		break;
 	}
+	if (bsc->bts_use_jibuf_override)
+		vty_out(vty, "  %sbts-jitter-buffer%s", bsc->bts_use_jibuf? "" : "no ", VTY_NEWLINE);
+	if (bsc->bts_jitter_delay_min_override)
+		vty_out(vty, "  bts-jitter-delay-min %"PRIu32"%s", bsc->bts_jitter_delay_min, VTY_NEWLINE);
+	if (bsc->bts_jitter_delay_max_override)
+		vty_out(vty, "  bts-jitter-delay-max %"PRIu32"%s", bsc->bts_jitter_delay_max, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -1231,6 +1238,71 @@ DEFUN(cfg_bsc_osmux,
 	return CMD_SUCCESS;
 }
 
+#define DEJITTER_STR "Uplink Jitter Buffer"
+DEFUN(cfg_bsc_bts_use_jibuf,
+      cfg_bsc_bts_use_jibuf_cmd,
+      "bts-jitter-buffer",
+      DEJITTER_STR "\n")
+{
+	struct bsc_config *conf = vty->index;
+	conf->bts_use_jibuf = true;
+	conf->bts_use_jibuf_override = true;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bsc_no_bts_use_jibuf,
+      cfg_bsc_no_bts_use_jibuf_cmd,
+      "no bts-jitter-buffer",
+      NO_STR DEJITTER_STR "\n")
+{
+	struct bsc_config *conf = vty->index;
+	conf->bts_use_jibuf = false;
+	conf->bts_use_jibuf_override = true;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bsc_bts_jitter_delay_min,
+      cfg_bsc_bts_jitter_delay_min_cmd,
+      "bts-jitter-buffer-delay-min <1-65535>",
+      DEJITTER_STR " Minimum Delay in ms\n" "Minimum Delay in ms\n")
+{
+	struct bsc_config *conf = vty->index;
+	conf->bts_jitter_delay_min = atoi(argv[0]);
+	if (!conf->bts_jitter_delay_min) {
+		vty_out(vty, "bts-jitter-buffer-delay-min cannot be zero.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (conf->bts_jitter_delay_min && conf->bts_jitter_delay_max &&
+	    conf->bts_jitter_delay_min > conf->bts_jitter_delay_max) {
+		vty_out(vty, "bts-jitter-buffer-delay-min cannot be bigger than " \
+			"bts-jitter-buffer-delay-max.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	conf->bts_jitter_delay_min_override = true;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bsc_bts_jitter_delay_max,
+      cfg_bsc_bts_jitter_delay_max_cmd,
+      "bts-jitter-buffer-delay-max <1-65535>",
+      DEJITTER_STR " Maximum Delay in ms\n" "Maximum Delay in ms\n")
+{
+	struct bsc_config *conf = vty->index;
+	conf->bts_jitter_delay_max = atoi(argv[0]);
+	if (!conf->bts_jitter_delay_max) {
+		vty_out(vty, "bts-jitter-buffer-delay-max cannot be zero.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (conf->bts_jitter_delay_min && conf->bts_jitter_delay_max &&
+	    conf->bts_jitter_delay_min > conf->bts_jitter_delay_max) {
+		vty_out(vty, "bts-jitter-buffer-delay-max cannot be smaller than " \
+			"bts-jitter-buffer-delay-min.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	conf->bts_jitter_delay_max_override = true;
+	return CMD_SUCCESS;
+}
+
 int bsc_nat_vty_init(struct bsc_nat *nat)
 {
 	_nat = nat;
@@ -1318,6 +1390,10 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_grp_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_no_paging_grp_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_osmux_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_bts_use_jibuf_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_no_bts_use_jibuf_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_bts_jitter_delay_min_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_bts_jitter_delay_max_cmd);
 
 	mgcp_vty_init();
 

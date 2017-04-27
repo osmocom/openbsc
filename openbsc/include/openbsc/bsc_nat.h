@@ -175,6 +175,16 @@ struct bsc_config {
 
 	/* Osmux is enabled/disabled per BSC */
 	int osmux;
+
+	/* Use a jitterbuffer on the bts-side receiver */
+	bool bts_use_jibuf;
+	/* Minimum and maximum buffer size for the jitter buffer, in ms */
+	uint32_t bts_jitter_delay_min;
+	uint32_t bts_jitter_delay_max;
+	/* Enabled if explicitly configured through VTY: */
+	bool bts_use_jibuf_override;
+	bool bts_jitter_delay_min_override;
+	bool bts_jitter_delay_max_override;
 };
 
 struct bsc_lac_entry {

@@ -580,6 +580,36 @@ static int mgcp_send_transcoder(struct mgcp_rtp_end *end,
 	return rc;
 }
 
+void mgcp_dejitter_udp_send(struct msgb *msg, void *data)
+{
+	struct mgcp_rtp_end *rtp_end = (struct mgcp_rtp_end *) data;
+
+	int rc = mgcp_udp_send(rtp_end->rtp.fd, &rtp_end->addr,
+			   rtp_end->rtp_port, (char*) msg->data, msg->len);
+	if (rc != msg->len)
+		LOGP(DMGCP, LOGL_ERROR,
+			"Failed to send data after jitter buffer: %d\n", rc);
+	msgb_free(msg);
+}
+
+static int enqueue_dejitter(struct osmo_jibuf *jb, struct mgcp_rtp_end *rtp_end, char *buf, int len)
+{
+	struct msgb *msg;
+	msg = msgb_alloc(len, "mgcp-jibuf");
+	if (!msg)
+		return -1;
+
+	memcpy(msg->data, buf, len);
+	msgb_put(msg, len);
+
+	if (osmo_jibuf_enqueue(jb, msg) < 0) {
+		rtp_end->dropped_packets += 1;
+		msgb_free(msg);
+	}
+
+	return len;
+}
+
 int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	      struct sockaddr_in *addr, char *buf, int rc)
 {
@@ -587,6 +617,7 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	struct mgcp_rtp_end *rtp_end;
 	struct mgcp_rtp_state *rtp_state;
 	int tap_idx;
+	struct osmo_jibuf *jb;
 
 	/* For loop toggle the destination and then dispatch. */
 	if (tcfg->audio_loop)
@@ -600,10 +631,12 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		rtp_end = &endp->net_end;
 		rtp_state = &endp->bts_state;
 		tap_idx = MGCP_TAP_NET_OUT;
+		jb = endp->bts_jb;
 	} else {
 		rtp_end = &endp->bts_end;
 		rtp_state = &endp->net_state;
 		tap_idx = MGCP_TAP_BTS_OUT;
+		jb = NULL;
 	}
 
 	if (!rtp_end->output_enabled)
@@ -621,9 +654,12 @@ int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
 			mgcp_patch_and_count(endp, rtp_state, rtp_end, addr, buf, len);
 			forward_data(rtp_end->rtp.fd, &endp->taps[tap_idx],
 				     buf, len);
-			rc = mgcp_udp_send(rtp_end->rtp.fd,
-					   &rtp_end->addr,
-					   rtp_end->rtp_port, buf, len);
+			if (jb)
+				rc = enqueue_dejitter(jb, rtp_end, buf, len);
+			else
+				rc = mgcp_udp_send(rtp_end->rtp.fd,
+						   &rtp_end->addr,
+						   rtp_end->rtp_port, buf, len);
 
 			if (rc <= 0)
 				return rc;

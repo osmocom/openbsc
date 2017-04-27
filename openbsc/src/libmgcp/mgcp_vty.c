@@ -29,6 +29,7 @@
 #include <openbsc/vty.h>
 
 #include <string.h>
+#include <inttypes.h>
 
 #define RTCP_OMIT_STR "Drop RTCP packets in both directions\n"
 #define RTP_PATCH_STR "Modify RTP packet header in both directions\n"
@@ -164,6 +165,13 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, "  osmux dummy %s%s",
 			g_cfg->osmux_dummy ? "on" : "off", VTY_NEWLINE);
 	}
+	if (g_cfg->bts_use_jibuf)
+		vty_out(vty, "  bts-jitter-buffer%s", VTY_NEWLINE);
+	if (g_cfg->bts_jitter_delay_min)
+		vty_out(vty, "  bts-jitter-delay-min %"PRIu32"%s", g_cfg->bts_jitter_delay_min, VTY_NEWLINE);
+	if (g_cfg->bts_jitter_delay_max)
+		vty_out(vty, "  bts-jitter-delay-max %"PRIu32"%s", g_cfg->bts_jitter_delay_max, VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -241,6 +249,11 @@ DEFUN(show_mcgp, show_mgcp_cmd,
 
 	if (g_cfg->osmux)
 		vty_out(vty, "Osmux used CID: %d%s", osmux_used_cid(), VTY_NEWLINE);
+	vty_out(vty, "Jitter Buffer by default on Uplink : %s%s",
+		g_cfg->bts_use_jibuf ? "on" : "off", VTY_NEWLINE);
+	if (g_cfg->bts_use_jibuf)
+		vty_out(vty, "Jitter Buffer delays: min=%"PRIu32" max=%"PRIu32"%s",
+		g_cfg->bts_jitter_delay_min, g_cfg->bts_jitter_delay_max, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1333,6 +1346,63 @@ DEFUN(cfg_mgcp_osmux_dummy,
 	return CMD_SUCCESS;
 }
 
+#define DEJITTER_STR "Uplink Jitter Buffer"
+DEFUN(cfg_mgcp_bts_use_jibuf,
+      cfg_mgcp_bts_use_jibuf_cmd,
+      "bts-jitter-buffer",
+      DEJITTER_STR "\n")
+{
+	g_cfg->bts_use_jibuf = true;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_no_bts_use_jibuf,
+      cfg_mgcp_no_bts_use_jibuf_cmd,
+      "no bts-jitter-buffer",
+      NO_STR DEJITTER_STR "\n")
+{
+	g_cfg->bts_use_jibuf = false;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_bts_jitter_delay_min,
+      cfg_mgcp_bts_jitter_delay_min_cmd,
+      "bts-jitter-buffer-delay-min <1-65535>",
+      DEJITTER_STR " Minimum Delay in ms\n" "Minimum Delay in ms\n")
+{
+	g_cfg->bts_jitter_delay_min = atoi(argv[0]);
+	if (!g_cfg->bts_jitter_delay_min) {
+		vty_out(vty, "bts-jitter-buffer-delay-min cannot be zero.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (g_cfg->bts_jitter_delay_min && g_cfg->bts_jitter_delay_max &&
+	    g_cfg->bts_jitter_delay_min > g_cfg->bts_jitter_delay_max) {
+		vty_out(vty, "bts-jitter-buffer-delay-min cannot be bigger than " \
+			"bts-jitter-buffer-delay-max.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_bts_jitter_delay_max,
+      cfg_mgcp_bts_jitter_delay_max_cmd,
+      "bts-jitter-buffer-delay-max <1-65535>",
+      DEJITTER_STR " Maximum Delay in ms\n" "Maximum Delay in ms\n")
+{
+	g_cfg->bts_jitter_delay_max = atoi(argv[0]);
+	if (!g_cfg->bts_jitter_delay_max) {
+		vty_out(vty, "bts-jitter-buffer-delay-max cannot be zero.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (g_cfg->bts_jitter_delay_min && g_cfg->bts_jitter_delay_max &&
+	    g_cfg->bts_jitter_delay_min > g_cfg->bts_jitter_delay_max) {
+		vty_out(vty, "bts-jitter-buffer-delay-max cannot be smaller than " \
+			"bts-jitter-buffer-delay-min.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
+}
+
 int mgcp_vty_init(void)
 {
 	install_element_ve(&show_mgcp_cmd);
@@ -1399,6 +1469,10 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_osmux_dummy_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_allow_transcoding_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_allow_transcoding_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_bts_use_jibuf_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_bts_use_jibuf_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_bts_jitter_delay_min_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_bts_jitter_delay_max_cmd);
 
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);

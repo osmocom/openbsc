@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include <osmocom/core/select.h>
+#include <osmocom/netif/jibuf.h>
 
 #define CI_UNUSED 0
 
@@ -205,6 +206,14 @@ struct mgcp_endpoint {
 			uint32_t octets;
 		} stats;
 	} osmux;
+
+	/* Jitter buffer */
+	struct osmo_jibuf* bts_jb;
+	/* Use a jitterbuffer on the bts-side receiver */
+	bool bts_use_jibuf;
+	/* Minimum and maximum buffer size for the jitter buffer, in ms */
+	uint32_t bts_jitter_delay_min;
+	uint32_t bts_jitter_delay_max;
 };
 
 #define for_each_line(line, save)			\
@@ -340,3 +349,8 @@ static inline const char *mgcp_bts_src_addr(struct mgcp_endpoint *endp)
 		return endp->cfg->bts_ports.bind_addr;
 	return endp->cfg->source_addr;
 }
+
+/**
+ * Internal jitter buffer related
+ */
+void mgcp_dejitter_udp_send(struct msgb *msg, void *data);

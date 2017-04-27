@@ -236,6 +236,12 @@ struct mgcp_config {
 	 * message.
 	 */
 	uint16_t osmux_dummy;
+
+	/* Use a jitterbuffer on the bts-side receiver */
+	bool bts_use_jibuf;
+	/* Minimum and maximum buffer size for the jitter buffer, in ms */
+	uint32_t bts_jitter_delay_min;
+	uint32_t bts_jitter_delay_max;
 };
 
 /* config management */

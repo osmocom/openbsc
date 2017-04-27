@@ -585,6 +585,16 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	if (state == MGCP_ENDP_CRCX) {
 		struct sockaddr_in sock;
 
+		/* set up jitter buffer parameters */
+		if (bsc_endp->bsc->cfg->bts_use_jibuf_override)
+			mgcp_endp->bts_use_jibuf = bsc_endp->bsc->cfg->bts_use_jibuf;
+
+		if (bsc_endp->bsc->cfg->bts_jitter_delay_min_override)
+			mgcp_endp->bts_jitter_delay_min = bsc_endp->bsc->cfg->bts_jitter_delay_min;
+
+		if (bsc_endp->bsc->cfg->bts_jitter_delay_max_override)
+			mgcp_endp->bts_jitter_delay_max = bsc_endp->bsc->cfg->bts_jitter_delay_max;
+
 		/* Annotate the allocated Osmux CID until the bsc confirms that
 		 * it agrees to use Osmux for this voice flow.
 		 */
