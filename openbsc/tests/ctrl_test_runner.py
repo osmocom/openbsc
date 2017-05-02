@@ -30,6 +30,11 @@ import struct
 import osmopy.obscvty as obscvty
 import osmopy.osmoutil as osmoutil
 
+# add $top_srcdir/contrib to find ipa.py
+sys.path.append(os.path.join(sys.path[0], '..', 'contrib'))
+
+from ipa import Ctrl, IPA
+
 # to be able to find $top_srcdir/doc/...
 confpath = os.path.join(sys.path[0], '..')
 verbose = False
@@ -65,20 +70,6 @@ class TestCtrlBase(unittest.TestCase):
         self.disconnect()
         osmoutil.end_proc(self.proc)
 
-    def prefix_ipa_ctrl_header(self, data):
-        return struct.pack(">HBB", len(data)+1, 0xee, 0) + data
-
-    def remove_ipa_ctrl_header(self, data):
-        if (len(data) < 4):
-            raise BaseException("Answer too short!")
-        (plen, ipa_proto, osmo_proto) = struct.unpack(">HBB", data[:4])
-        if (plen + 3 > len(data)):
-            print "Warning: Wrong payload length (expected %i, got %i)" % (plen, len(data) - 3)
-        if (ipa_proto != 0xee or osmo_proto != 0):
-            raise BaseException("Wrong protocol in answer!")
-
-        return data[4:plen+3], data[plen+3:]
-
     def disconnect(self):
         if not (self.sock is None):
             self.sock.close()
@@ -106,7 +97,7 @@ class TestCtrlBase(unittest.TestCase):
     def send(self, data):
         if verbose:
             print "Sending \"%s\"" %(data)
-        data = self.prefix_ipa_ctrl_header(data)
+        data = Ctrl().add_header(data)
         return self.sock.send(data) == len(data)
 
     def send_set(self, var, value, id):
@@ -133,7 +124,8 @@ class TestCtrlBase(unittest.TestCase):
         responses = {}
         data = self.sock.recv(4096)
         while (len(data)>0):
-            (answer, data) = self.remove_ipa_ctrl_header(data)
+            (head, data) = IPA().split_combined(data)
+            answer = Ctrl().rem_header(head)
             if verbose:
                 print "Got message:", answer
             (mtype, id, msg) = answer.split(None, 2)
