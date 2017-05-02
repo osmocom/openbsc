@@ -619,17 +619,18 @@ DEFUN(cfg_encrypt, cfg_encrypt_cmd,
       "Use GEA0 (no encryption)\n"
       "Use GEA1\nUse GEA2\nUse GEA3\nUse GEA4\n")
 {
-	if (!g_cfg->require_authentication) {
-		vty_out(vty, "%% unable to use encryption without "
-			"authentication: adjust auth-policy%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	enum gprs_ciph_algo c = get_string_value(gprs_cipher_names, argv[0]);
-	if (!gprs_cipher_supported(c)) {
-		vty_out(vty, "%% cipher %s is unsupported in current version%s",
-			argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
+	if (c != GPRS_ALGO_GEA0) {
+		if (!gprs_cipher_supported(c)) {
+			vty_out(vty, "%% cipher %s is unsupported in current version%s", argv[0], VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+
+		if (!g_cfg->require_authentication) {
+			vty_out(vty, "%% unable to use encryption %s without authentication: please adjust auth-policy%s",
+				argv[0], VTY_NEWLINE);
+			return CMD_WARNING;
+		}
 	}
 
 	g_cfg->cipher = c;
