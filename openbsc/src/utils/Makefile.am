@@ -29,9 +29,13 @@ bin_PROGRAMS = \
 	$(NULL)
 if HAVE_SQLITE3
 bin_PROGRAMS += \
-	osmo-meas-pcap2db \
 	osmo-meas-udp2db \
 	$(NULL)
+if HAVE_PCAP
+bin_PROGRAMS += \
+	osmo-meas-pcap2db \
+	$(NULL)
+endif
 endif
 if HAVE_LIBCDK
 bin_PROGRAMS += \

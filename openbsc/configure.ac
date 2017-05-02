@@ -120,7 +120,10 @@ AC_SUBST(found_libgtp_and_libcares)
 dnl checks for header files
 AC_HEADER_STDC
 AC_CHECK_HEADERS(dbi/dbd.h,,AC_MSG_ERROR(DBI library is not installed))
-AC_CHECK_HEADERS(pcap/pcap.h,,AC_MSG_ERROR(PCAP library is not installed))
+
+found_pcap=yes
+AC_CHECK_HEADERS(pcap/pcap.h,,found_pcap=no)
+AM_CONDITIONAL(HAVE_PCAP, test "$found_pcap" = yes)
 
 found_cdk=yes
 AC_CHECK_HEADERS(cdk/cdk.h,,found_cdk=no)
