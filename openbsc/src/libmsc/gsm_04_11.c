@@ -293,7 +293,7 @@ int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
 	 */
 	if (smpp_first) {
 		rc = smpp_try_deliver(gsms, conn);
-		if (rc == 1)
+		if (rc == GSM411_RP_CAUSE_MO_NUM_UNASSIGNED)
 			goto try_local;
 		if (rc < 0) {
 	 		LOGP(DLSMS, LOGL_ERROR, "%s: SMS delivery error: %d.",
@@ -317,12 +317,11 @@ try_local:
 		/* Avoid a second look-up */
 		if (smpp_first) {
 			rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
-			return 1; /* cause 1: unknown subscriber */
+			return GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
 		}
 
 		rc = smpp_try_deliver(gsms, conn);
-		if (rc == 1) {
-			rc = 1; /* cause 1: unknown subscriber */
+		if (rc == GSM411_RP_CAUSE_MO_NUM_UNASSIGNED) {
 			rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
 		} else if (rc < 0) {
 	 		LOGP(DLSMS, LOGL_ERROR, "%s: SMS delivery error: %d.",
@@ -333,7 +332,7 @@ try_local:
 					MSC_CTR_SMS_DELIVER_UNKNOWN_ERROR]);
 		}
 #else
-		rc = 1; /* cause 1: unknown subscriber */
+		rc = GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
 		rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
 #endif
 		return rc;

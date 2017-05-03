@@ -559,7 +559,7 @@ int smpp_try_deliver(struct gsm_sms *sms, struct gsm_subscriber_connection *conn
 
 	esme = smpp_route(g_smsc, &dst);
 	if (!esme)
-		return 1; /* unknown subscriber */
+		return GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
 
 	return deliver_to_esme(esme, sms, conn);
 }
