@@ -278,7 +278,7 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 }
 
 int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
-			struct gsm_sms *gsms, uint8_t sms_mti)
+		     struct gsm_sms *gsms, uint8_t sms_mti, bool *deferred)
 {
 	int rc;
 
@@ -292,7 +292,7 @@ int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
 	 * delivery of the SMS.
 	 */
 	if (smpp_first) {
-		rc = smpp_try_deliver(gsms, conn);
+		rc = smpp_try_deliver(gsms, conn, deferred);
 		if (rc == GSM411_RP_CAUSE_MO_NUM_UNASSIGNED)
 			goto try_local;
 		if (rc < 0) {
@@ -320,7 +320,7 @@ try_local:
 			return GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
 		}
 
-		rc = smpp_try_deliver(gsms, conn);
+		rc = smpp_try_deliver(gsms, conn, deferred);
 		if (rc == GSM411_RP_CAUSE_MO_NUM_UNASSIGNED) {
 			rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
 		} else if (rc < 0) {
@@ -363,8 +363,10 @@ try_local:
 
 /* process an incoming TPDU (called from RP-DATA)
  * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */
-static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *msg)
+static int gsm340_rx_tpdu(struct gsm_trans *trans, struct msgb *msg,
+			  uint32_t gsm411_msg_ref, bool *deferred)
 {
+	struct gsm_subscriber_connection *conn = trans->conn;
 	uint8_t *smsp = msgb_sms(msg);
 	struct gsm_sms *gsms;
 	unsigned int sms_alphabet;
@@ -394,6 +396,9 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 
 	smsp++;
 	gsms->msg_ref = *smsp++;
+
+	gsms->gsm411.transaction_id = trans->transaction_id;
+	gsms->gsm411.msg_ref = gsm411_msg_ref;
 
 	/* length in bytes of the destination address */
 	da_len_bytes = 2 + *smsp/2 + *smsp%2;
@@ -481,9 +486,10 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	/* FIXME: This looks very wrong */
 	send_signal(0, NULL, gsms, 0);
 
-	rc = sms_route_mt_sms(conn, msg, gsms, sms_mti);
+	rc = sms_route_mt_sms(conn, msg, gsms, sms_mti, deferred);
 out:
-	sms_free(gsms);
+	if (!deferred)
+		sms_free(gsms);
 
 	return rc;
 }
@@ -505,7 +511,7 @@ static int gsm411_rp_sendmsg(struct gsm411_smr_inst *inst, struct msgb *msg,
 	return gsm411_smr_send(inst, rl_msg_type, msg);
 }
 
-static int gsm411_send_rp_ack(struct gsm_trans *trans, uint8_t msg_ref)
+int gsm411_send_rp_ack(struct gsm_trans *trans, uint8_t msg_ref)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 
@@ -515,8 +521,8 @@ static int gsm411_send_rp_ack(struct gsm_trans *trans, uint8_t msg_ref)
 		msg_ref, GSM411_SM_RL_REPORT_REQ);
 }
 
-static int gsm411_send_rp_error(struct gsm_trans *trans,
-				uint8_t msg_ref, uint8_t cause)
+int gsm411_send_rp_error(struct gsm_trans *trans, uint8_t msg_ref,
+			 uint8_t cause)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 
@@ -536,6 +542,7 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 			  uint8_t dst_len, uint8_t *dst,
 			  uint8_t tpdu_len, uint8_t *tpdu)
 {
+	bool deferred = false;
 	int rc = 0;
 
 	if (src_len && src)
@@ -552,8 +559,8 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 
 	DEBUGP(DLSMS, "DST(%u,%s)\n", dst_len, osmo_hexdump(dst, dst_len));
 
-	rc = gsm340_rx_tpdu(trans->conn, msg);
-	if (rc == 0)
+	rc = gsm340_rx_tpdu(trans, msg, rph->msg_ref, &deferred);
+	if (rc == 0 && !deferred)
 		return gsm411_send_rp_ack(trans, rph->msg_ref);
 	else if (rc > 0)
 		return gsm411_send_rp_error(trans, rph->msg_ref, rc);

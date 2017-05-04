@@ -39,4 +39,9 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn,
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn);
 
 uint8_t sms_next_rp_msg_ref(uint8_t *next_rp_ref);
+
+int gsm411_send_rp_ack(struct gsm_trans *trans, uint8_t msg_ref);
+int gsm411_send_rp_error(struct gsm_trans *trans, uint8_t msg_ref,
+			 uint8_t cause);
+
 #endif

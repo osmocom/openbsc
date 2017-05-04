@@ -429,6 +429,11 @@ struct gsm_sms {
 	enum gsm_sms_source_id source;
 
 	struct {
+		uint8_t transaction_id;
+		uint32_t msg_ref;
+	} gsm411;
+
+	struct {
 		struct osmo_esme *esme;
 		uint32_t sequence_nr;
 		int transaction_mode;

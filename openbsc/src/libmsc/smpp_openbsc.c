@@ -44,6 +44,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/transaction.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/chan_alloc.h>
 
 #include "smpp_smsc.h"
 
@@ -460,12 +461,122 @@ static void append_osmo_tlvs(tlv_t **req_tlv, const struct gsm_lchan *lchan)
 	}
 }
 
+static void smpp_cmd_free(struct osmo_smpp_cmd *cmd)
+{
+	osmo_timer_del(&cmd->response_timer);
+	llist_del(&cmd->list);
+	subscr_put(cmd->subscr);
+	sms_free(cmd->sms);
+	talloc_free(cmd);
+}
+
+void smpp_cmd_flush_pending(struct osmo_esme *esme)
+{
+	struct osmo_smpp_cmd *cmd, *next;
+
+	llist_for_each_entry_safe(cmd, next, &esme->smpp_cmd_list, list)
+		smpp_cmd_free(cmd);
+}
+
+void smpp_cmd_ack(struct osmo_smpp_cmd *cmd)
+{
+	struct gsm_subscriber_connection *conn;
+	struct gsm_trans *trans;
+
+	conn = connection_for_subscr(cmd->subscr);
+	if (!conn) {
+		LOGP(DSMPP, LOGL_ERROR, "No connection to subscriber anymore\n");
+		return;
+	}
+
+	trans = trans_find_by_id(conn, GSM48_PDISC_SMS,
+				 cmd->sms->gsm411.transaction_id);
+	if (!trans) {
+		LOGP(DSMPP, LOGL_ERROR, "GSM transaction %u is gone\n",
+		     cmd->sms->gsm411.transaction_id);
+		return;
+	}
+
+	gsm411_send_rp_ack(trans, cmd->sms->gsm411.msg_ref);
+	smpp_cmd_free(cmd);
+}
+
+void smpp_cmd_err(struct osmo_smpp_cmd *cmd)
+{
+	struct gsm_subscriber_connection *conn;
+	struct gsm_trans *trans;
+
+	conn = connection_for_subscr(cmd->subscr);
+	if (!conn) {
+		LOGP(DSMPP, LOGL_ERROR, "No connection to subscriber anymore\n");
+		return;
+	}
+
+	trans = trans_find_by_id(conn, GSM48_PDISC_SMS,
+				 cmd->sms->gsm411.transaction_id);
+	if (!trans) {
+		LOGP(DSMPP, LOGL_ERROR, "GSM transaction %u is gone\n",
+		     cmd->sms->gsm411.transaction_id);
+		return;
+	}
+
+	gsm411_send_rp_error(trans, cmd->sms->gsm411.msg_ref,
+			     GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER);
+	smpp_cmd_free(cmd);
+}
+
+static void smpp_deliver_sm_cb(void *data)
+{
+	smpp_cmd_err(data);
+}
+
+static int smpp_cmd_enqueue(struct osmo_esme *esme,
+			    struct gsm_subscriber *subscr, struct gsm_sms *sms,
+			    uint32_t sequence_number, bool *deferred)
+{
+	struct osmo_smpp_cmd *cmd;
+
+	cmd = talloc_zero(esme, struct osmo_smpp_cmd);
+	if (!cmd)
+		return -1;
+
+	cmd->sequence_nr	= sequence_number;
+	cmd->sms		= sms;
+	cmd->subscr		= subscr_get(subscr);
+
+	/* FIXME: No predefined value for this response_timer as specified by
+	 * SMPP 3.4 specs, section 7.2. Make this configurable? Don't forget
+	 * lchan keeps busy until we get a reply to this SMPP command. Too high
+	 * value may exhaust resources.
+	 */
+	cmd->response_timer.cb	= smpp_deliver_sm_cb;
+	cmd->response_timer.data = cmd;
+	osmo_timer_schedule(&cmd->response_timer, 5, 0);
+	llist_add_tail(&cmd->list, &esme->smpp_cmd_list);
+	*deferred = true;
+
+	return 0;
+}
+
+struct osmo_smpp_cmd *smpp_cmd_find_by_seqnum(struct osmo_esme *esme,
+					      uint32_t sequence_nr)
+{
+	struct osmo_smpp_cmd *cmd;
+
+	llist_for_each_entry(cmd, &esme->smpp_cmd_list, list) {
+		if (cmd->sequence_nr == sequence_nr)
+			return cmd;
+	}
+	return NULL;
+}
+
 static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
-			   struct gsm_subscriber_connection *conn)
+			   struct gsm_subscriber_connection *conn,
+			   bool *deferred)
 {
 	struct deliver_sm_t deliver;
+	int mode, ret;
 	uint8_t dcs;
-	int mode;
 
 	memset(&deliver, 0, sizeof(deliver));
 	deliver.command_length	= 0;
@@ -537,7 +648,12 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 	if (esme->acl && esme->acl->osmocom_ext && conn->lchan)
 		append_osmo_tlvs(&deliver.tlv, conn->lchan);
 
-	return smpp_tx_deliver(esme, &deliver);
+	ret = smpp_tx_deliver(esme, &deliver);
+	if (ret < 0)
+		return ret;
+
+	return smpp_cmd_enqueue(esme, conn->subscr, sms,
+				deliver.sequence_number, deferred);
 }
 
 static struct smsc *g_smsc;
@@ -547,7 +663,8 @@ int smpp_route_smpp_first(struct gsm_sms *sms, struct gsm_subscriber_connection 
 	return g_smsc->smpp_first;
 }
 
-int smpp_try_deliver(struct gsm_sms *sms, struct gsm_subscriber_connection *conn)
+int smpp_try_deliver(struct gsm_sms *sms,
+		     struct gsm_subscriber_connection *conn, bool *deferred)
 {
 	struct osmo_esme *esme;
 	struct osmo_smpp_addr dst;
@@ -561,7 +678,7 @@ int smpp_try_deliver(struct gsm_sms *sms, struct gsm_subscriber_connection *conn
 	if (!esme)
 		return GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
 
-	return deliver_to_esme(esme, sms, conn);
+	return deliver_to_esme(esme, sms, conn, deferred);
 }
 
 struct smsc *smsc_from_vty(struct vty *v)

@@ -247,6 +247,7 @@ static void esme_destroy(struct osmo_esme *esme)
 		osmo_fd_unregister(&esme->wqueue.bfd);
 		close(esme->wqueue.bfd.fd);
 	}
+	smpp_cmd_flush_pending(esme);
 	llist_del(&esme->list);
 	talloc_free(esme);
 }
@@ -660,6 +661,7 @@ int smpp_tx_deliver(struct osmo_esme *esme, struct deliver_sm_t *deliver)
 static int smpp_handle_deliver_resp(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct deliver_sm_resp_t deliver_r;
+	struct osmo_smpp_cmd *cmd;
 	int rc;
 
 	memset(&deliver_r, 0, sizeof(deliver_r));
@@ -670,6 +672,20 @@ static int smpp_handle_deliver_resp(struct osmo_esme *esme, struct msgb *msg)
 			esme->system_id, smpp34_strerror);
 		return rc;
 	}
+
+	cmd = smpp_cmd_find_by_seqnum(esme, deliver_r.sequence_number);
+	if (!cmd) {
+		LOGP(DSMPP, LOGL_ERROR, "[%s] Rx DELIVER-SM RESP !? (%s)\n",
+			esme->system_id, get_value_string(smpp_status_strs,
+						  deliver_r.command_status));
+		return -1;
+	}
+
+	/* Map SMPP command status to GSM 04.11 cause? */
+	if (deliver_r.command_status == ESME_ROK)
+		smpp_cmd_ack(cmd);
+	else
+		smpp_cmd_err(cmd);
 
 	LOGP(DSMPP, LOGL_INFO, "[%s] Rx DELIVER-SM RESP (%s)\n",
 		esme->system_id, get_value_string(smpp_status_strs,
@@ -889,6 +905,7 @@ static int link_accept_cb(struct smsc *smsc, int fd,
 		return -ENOMEM;
 	}
 
+	INIT_LLIST_HEAD(&esme->smpp_cmd_list);
 	smpp_esme_get(esme);
 	esme->own_seq_nr = rand();
 	esme_inc_seq_nr(esme);

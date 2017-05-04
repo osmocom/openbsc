@@ -7,6 +7,7 @@
 #include <osmocom/core/utils.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/write_queue.h>
+#include <osmocom/core/timer.h>
 
 #include <smpp34.h>
 #include <smpp34_structs.h>
@@ -36,6 +37,8 @@ struct osmo_esme {
 	struct smsc *smsc;
 	struct osmo_smpp_acl *acl;
 	int use;
+
+	struct llist_head smpp_cmd_list;
 
 	uint32_t own_seq_nr;
 
@@ -83,6 +86,19 @@ struct osmo_smpp_route {
 	} u;
 };
 
+struct osmo_smpp_cmd {
+	struct llist_head	list;
+	struct gsm_subscriber	*subscr;
+	struct gsm_sms		*sms;
+	uint32_t		sequence_nr;
+	struct osmo_timer_list	response_timer;
+};
+
+struct osmo_smpp_cmd *smpp_cmd_find_by_seqnum(struct osmo_esme *esme,
+					      uint32_t sequence_number);
+void smpp_cmd_ack(struct osmo_smpp_cmd *cmd);
+void smpp_cmd_err(struct osmo_smpp_cmd *cmd);
+void smpp_cmd_flush_pending(struct osmo_esme *esme);
 
 struct smsc {
 	struct osmo_fd listen_ofd;
@@ -146,5 +162,5 @@ struct gsm_subscriber_connection;
 int smpp_route_smpp_first(struct gsm_sms *sms,
 			    struct gsm_subscriber_connection *conn);
 int smpp_try_deliver(struct gsm_sms *sms,
-			    struct gsm_subscriber_connection *conn);
+		     struct gsm_subscriber_connection *conn, bool *deferred);
 #endif
