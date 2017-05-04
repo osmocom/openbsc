@@ -1,1 +1,2 @@
 /usr/bin/osmo-nitb
+openbsc/contrib/*.py usr/bin/
