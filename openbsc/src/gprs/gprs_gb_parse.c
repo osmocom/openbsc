@@ -380,9 +380,8 @@ int gprs_gb_parse_dtap(uint8_t *data, size_t data_len,
 
 	default:
 		LOGP(DLLC, LOGL_NOTICE,
-		     "Unknown GSM 04.08 message type 0x%02hhx for protocol"
-		     " discriminator 0x%02hhx.\n",
-		     msg_type, pdisc);
+		     "Unhandled GSM 04.08 message type %s for protocol discriminator %s.\n",
+		     get_value_string(gprs_msgt_gmm_names, msg_type), get_value_string(gsm48_pdisc_names, pdisc));
 		break;
 	};
 
