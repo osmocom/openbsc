@@ -59,6 +59,9 @@ struct gsm_network *gsm_network_init(void *ctx,
 	net->country_code = country_code;
 	net->network_code = network_code;
 
+	/* Use 30 min periodic update interval as sane default */
+	net->t3212 = 5;
+
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
 	INIT_LLIST_HEAD(&net->subscr_conns);
@@ -110,6 +113,30 @@ struct msgb *gsm48_create_loc_upd_rej(uint8_t cause)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
 	gh->data[0] = cause;
 	return msg;
+}
+
+int gsm48_extract_mi(uint8_t *classmark2_lv, int length, char *mi_string, uint8_t *mi_type)
+{
+	/* Check the size for the classmark */
+	if (length < 1 + *classmark2_lv)
+		return -1;
+
+	uint8_t *mi_lv = classmark2_lv + *classmark2_lv + 1;
+	if (length < 2 + *classmark2_lv + mi_lv[0])
+		return -2;
+
+	*mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;
+	return gsm48_mi_to_string(mi_string, GSM48_MI_SIZE, mi_lv+1, *mi_lv);
+}
+
+int gsm48_paging_extract_mi(struct gsm48_pag_resp *resp, int length,
+			    char *mi_string, uint8_t *mi_type)
+{
+	static const uint32_t classmark_offset =
+		offsetof(struct gsm48_pag_resp, classmark2);
+	uint8_t *classmark2_lv = (uint8_t *) &resp->classmark2;
+	return gsm48_extract_mi(classmark2_lv, length - classmark_offset,
+				mi_string, mi_type);
 }
 
 uint8_t sms_next_rp_msg_ref(uint8_t *next_rp_ref)

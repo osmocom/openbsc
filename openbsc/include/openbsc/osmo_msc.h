@@ -50,6 +50,11 @@ static inline const char *subscr_conn_from_name(enum subscr_conn_from val)
 	return get_value_string(subscr_conn_from_names, val);
 }
 
+enum msc_compl_l3_rc {
+	MSC_CONN_ACCEPT = 0,
+	MSC_CONN_REJECT = 1,
+};
+
 
 struct bsc_api *msc_bsc_api();
 
