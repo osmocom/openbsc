@@ -354,10 +354,8 @@ int sms_queue_start(struct gsm_network *network, int max_pending)
 	sms->max_fail = 1;
 	sms->network = network;
 	sms->max_pending = max_pending;
-	sms->push_queue.data = sms;
-	sms->push_queue.cb = sms_submit_pending;
-	sms->resend_pending.data = sms;
-	sms->resend_pending.cb = sms_resend_pending;
+	osmo_timer_setup(&sms->push_queue, sms_submit_pending, sms);
+	osmo_timer_setup(&sms->resend_pending, sms_resend_pending, sms);
 
 	sms_submit_pending(sms);
 

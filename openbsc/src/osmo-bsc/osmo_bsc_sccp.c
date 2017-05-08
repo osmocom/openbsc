@@ -232,10 +232,8 @@ enum bsc_con bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 	bsc_con->send_ping = send_ping;
 
 	/* prepare the timers */
-	bsc_con->sccp_it_timeout.cb = sccp_it_timeout;
-	bsc_con->sccp_it_timeout.data = bsc_con;
-	bsc_con->sccp_cc_timeout.cb = sccp_cc_timeout;
-	bsc_con->sccp_cc_timeout.data = bsc_con;
+	osmo_timer_setup(&bsc_con->sccp_it_timeout, sccp_it_timeout, bsc_con);
+	osmo_timer_setup(&bsc_con->sccp_cc_timeout, sccp_cc_timeout, bsc_con);
 
 	INIT_LLIST_HEAD(&bsc_con->sccp_queue);
 

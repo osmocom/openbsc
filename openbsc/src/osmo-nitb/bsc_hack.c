@@ -369,13 +369,12 @@ int main(int argc, char **argv)
 	printf("DB: Database prepared.\n");
 
 	/* setup the timer */
-	db_sync_timer.cb = db_sync_timer_cb;
-	db_sync_timer.data = NULL;
+	osmo_timer_setup(&db_sync_timer, db_sync_timer_cb, NULL);
 	if (use_db_counter)
 		osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 
-	bsc_gsmnet->subscr_expire_timer.cb = subscr_expire_cb;
-	bsc_gsmnet->subscr_expire_timer.data = NULL;
+	osmo_timer_setup(&bsc_gsmnet->subscr_expire_timer, subscr_expire_cb,
+			 NULL);
 	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
 
 	signal(SIGINT, &signal_handler);

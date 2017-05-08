@@ -216,8 +216,7 @@ static void ussd_start_auth(struct bsc_nat_ussd_con *conn)
 {
 	struct msgb *msg;
 
-	conn->auth_timeout.data = conn;
-	conn->auth_timeout.cb = ussd_auth_cb;
+	osmo_timer_setup(&conn->auth_timeout, ussd_auth_cb, conn);
 	osmo_timer_schedule(&conn->auth_timeout, conn->nat->auth_timeout, 0);
 
 	msg = msgb_alloc_headroom(4096, 128, "auth message");

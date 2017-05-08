@@ -279,8 +279,8 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 			pending->cmd = cmd;
 
 			/* Setup the timeout */
-			pending->timeout.data = pending;
-			pending->timeout.cb = pending_timeout_cb;
+			osmo_timer_setup(&pending->timeout, pending_timeout_cb,
+					 pending);
 			/* TODO: Make timeout configurable */
 			osmo_timer_schedule(&pending->timeout, 10, 0);
 			llist_add_tail(&pending->list_entry, &bsc->cmd_pending);

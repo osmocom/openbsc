@@ -549,8 +549,7 @@ static int smpp_cmd_enqueue(struct osmo_esme *esme,
 	 * lchan keeps busy until we get a reply to this SMPP command. Too high
 	 * value may exhaust resources.
 	 */
-	cmd->response_timer.cb	= smpp_deliver_sm_cb;
-	cmd->response_timer.data = cmd;
+	osmo_timer_setup(&cmd->response_timer, smpp_deliver_sm_cb, cmd);
 	osmo_timer_schedule(&cmd->response_timer, 5, 0);
 	llist_add_tail(&cmd->list, &esme->smpp_cmd_list);
 	*deferred = true;

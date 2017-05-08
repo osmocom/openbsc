@@ -618,8 +618,8 @@ static void loc_upd_rej_cb(void *data)
 
 static void schedule_reject(struct gsm_subscriber_connection *conn)
 {
-	conn->loc_operation->updating_timer.cb = loc_upd_rej_cb;
-	conn->loc_operation->updating_timer.data = conn;
+	osmo_timer_setup(&conn->loc_operation->updating_timer, loc_upd_rej_cb,
+			 conn);
 	osmo_timer_schedule(&conn->loc_operation->updating_timer, 5, 0);
 }
 
@@ -2224,8 +2224,7 @@ static void gsm48_start_cc_timer(struct gsm_trans *trans, int current,
 				 int sec, int micro)
 {
 	DEBUGP(DCC, "starting timer T%x with %d seconds\n", current, sec);
-	trans->cc.timer.cb = gsm48_cc_timeout;
-	trans->cc.timer.data = trans;
+	osmo_timer_setup(&trans->cc.timer, gsm48_cc_timeout, trans);
 	osmo_timer_schedule(&trans->cc.timer, sec, micro);
 	trans->cc.Tcurrent = current;
 }
@@ -3955,8 +3954,7 @@ int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
 	if (!conn->anch_operation)
 		return -1;
 
-	conn->anch_operation->timeout.data = conn;
-	conn->anch_operation->timeout.cb = anchor_timeout;
+	osmo_timer_setup(&conn->anch_operation->timeout, anchor_timeout, conn);
 	osmo_timer_schedule(&conn->anch_operation->timeout, 5, 0);
 	return 0;
 }

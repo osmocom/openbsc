@@ -188,8 +188,8 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	 * to zero and we do not get any messages.
 	 */
 	if (paging_bts->available_slots == 0) {
-		paging_bts->credit_timer.cb = paging_give_credit;
-		paging_bts->credit_timer.data = paging_bts;
+		osmo_timer_setup(&paging_bts->credit_timer, paging_give_credit,
+				 paging_bts);
 		osmo_timer_schedule(&paging_bts->credit_timer, 5, 0);
 		return;
 	}
@@ -230,8 +230,8 @@ static void paging_init_if_needed(struct gsm_bts *bts)
 
 	bts->paging.bts = bts;
 	INIT_LLIST_HEAD(&bts->paging.pending_requests);
-	bts->paging.work_timer.cb = paging_worker;
-	bts->paging.work_timer.data = &bts->paging;
+	osmo_timer_setup(&bts->paging.work_timer, paging_worker,
+			 &bts->paging);
 
 	/* Large number, until we get a proper message */
 	bts->paging.available_slots = 20;
@@ -299,8 +299,7 @@ static int _paging_request(struct gsm_bts *bts, struct bsc_subscr *bsub,
 	req->chan_type = type;
 	req->cbfn = cbfn;
 	req->cbfn_param = data;
-	req->T3113.cb = paging_T3113_expired;
-	req->T3113.data = req;
+	osmo_timer_setup(&req->T3113, paging_T3113_expired, req);
 	osmo_timer_schedule(&req->T3113, bts->network->T3113, 0);
 	llist_add_tail(&req->entry, &bts_entry->pending_requests);
 	paging_schedule_if_needed(bts_entry);

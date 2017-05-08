@@ -77,8 +77,7 @@ static struct imsi_op *imsi_op_alloc(void *ctx, const char *imsi,
 	io = talloc_zero(ctx, struct imsi_op);
 	osmo_strlcpy(io->imsi, imsi, sizeof(io->imsi));
 	io->type = type;
-	io->timer.cb = imsi_op_timer_cb;
-	io->timer.data = io;
+	osmo_timer_setup(&io->timer, imsi_op_timer_cb, io);
 	llist_add(&io->list, &g_imsi_ops);
 	imsi_op_stats[type].num_alloc++;
 

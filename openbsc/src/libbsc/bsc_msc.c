@@ -211,8 +211,7 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 			"MSC(%s) Connection in progress\n", con->name);
 		fd->when = BSC_FD_WRITE;
 		fd->cb = msc_connection_connect;
-		con->timeout_timer.cb = msc_con_timeout;
-		con->timeout_timer.data = con;
+		osmo_timer_setup(&con->timeout_timer, msc_con_timeout, con);
 		osmo_timer_schedule(&con->timeout_timer, 20, 0);
 	} else if (ret < 0) {
 		perror("Connection failed");
@@ -277,8 +276,7 @@ void bsc_msc_schedule_connect(struct bsc_msc_connection *con)
 {
 	LOGP(DMSC, LOGL_NOTICE,
 		"Attempting to reconnect to the MSC(%s)\n", con->name);
-	con->reconnect_timer.cb = reconnect_msc;
-	con->reconnect_timer.data = con;
+	osmo_timer_setup(&con->reconnect_timer, reconnect_msc, con);
 	osmo_timer_schedule(&con->reconnect_timer, 5, 0);
 }
 

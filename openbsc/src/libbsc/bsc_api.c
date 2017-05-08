@@ -406,8 +406,7 @@ int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, in
 	}
 
 	/* we will now start the timer to complete the assignment */
-	conn->T10.cb = assignment_t10_timeout;
-	conn->T10.data = conn;
+	osmo_timer_setup(&conn->T10, assignment_t10_timeout, conn);
 	osmo_timer_schedule(&conn->T10, GSM0808_T10_VALUE);
 	return 0;
 

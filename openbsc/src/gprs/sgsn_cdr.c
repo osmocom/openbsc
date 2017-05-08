@@ -227,8 +227,8 @@ static int handle_sgsn_sig(unsigned int subsys, unsigned int signal,
 		clock_gettime(CLOCK_MONOTONIC, &signal_data->pdp->cdr_start);
 		signal_data->pdp->cdr_charging_id = signal_data->pdp->lib->cid;
 		cdr_log_pdp(inst, "pdp-act", signal_data->pdp);
-		signal_data->pdp->cdr_timer.cb = cdr_pdp_timeout;
-		signal_data->pdp->cdr_timer.data = signal_data->pdp;
+		osmo_timer_setup(&signal_data->pdp->cdr_timer, cdr_pdp_timeout,
+				 signal_data->pdp);
 		osmo_timer_schedule(&signal_data->pdp->cdr_timer, inst->cfg.cdr.interval, 0);
 		break;
 	case S_SGSN_PDP_DEACT:

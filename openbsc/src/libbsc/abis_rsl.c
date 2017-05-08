@@ -73,8 +73,7 @@ static void do_lchan_free(struct gsm_lchan *lchan)
 {
 	/* We start the error timer to make the channel available again */
 	if (lchan->state == LCHAN_S_REL_ERR) {
-		lchan->error_timer.data = lchan;
-		lchan->error_timer.cb = error_timeout_cb;
+		osmo_timer_setup(&lchan->error_timer, error_timeout_cb, lchan);
 		osmo_timer_schedule(&lchan->error_timer,
 				   lchan->ts->trx->bts->network->T3111 + 2, 0);
 	} else {
@@ -890,8 +889,7 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 	}
 
 	/* Start another timer or assume the BTS sends a ACK/NACK? */
-	lchan->act_timer.cb = lchan_deact_tmr_cb;
-	lchan->act_timer.data = lchan;
+	osmo_timer_setup(&lchan->act_timer, lchan_deact_tmr_cb, lchan);
 	osmo_timer_schedule(&lchan->act_timer, 4, 0);
 
 	rc =  abis_rsl_sendmsg(msg);
@@ -1200,8 +1198,7 @@ int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id,
 	 && release_mode == RSL_REL_LOCAL_END) {
 		DEBUGP(DRLL, "Scheduling release, becasuse Nokia InSite BTS does not send a RELease CONFirm.\n");
 		lchan->sapis[link_id & 0x7] = LCHAN_SAPI_REL;
-		lchan->rel_work.cb = lchan_rel_work_cb;
-		lchan->rel_work.data = lchan;
+		osmo_timer_setup(&lchan->rel_work, lchan_rel_work_cb, lchan);
 		osmo_timer_schedule(&lchan->rel_work, 0, 0);
 	}
 
@@ -1857,8 +1854,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lchan->tch_mode = GSM48_CMODE_SIGN;
 
 	/* Start another timer or assume the BTS sends a ACK/NACK? */
-	lchan->act_timer.cb = lchan_act_tmr_cb;
-	lchan->act_timer.data = lchan;
+	osmo_timer_setup(&lchan->act_timer, lchan_act_tmr_cb, lchan);
 	osmo_timer_schedule(&lchan->act_timer, 4, 0);
 
 	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
@@ -1898,8 +1894,7 @@ static int rsl_send_imm_assignment(struct gsm_lchan *lchan)
 	ia->l2_plen = GSM48_LEN2PLEN((sizeof(*ia)-1) + ia->mob_alloc_len);
 
 	/* Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
-	lchan->T3101.cb = t3101_expired;
-	lchan->T3101.data = lchan;
+	osmo_timer_setup(&lchan->T3101, t3101_expired, lchan);
 	osmo_timer_schedule(&lchan->T3101, bts->network->T3101, 0);
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
@@ -2031,8 +2026,7 @@ static void rsl_handle_release(struct gsm_lchan *lchan)
 
 	/* Stop T3109 and wait for T3111 before re-using the channel */
 	osmo_timer_del(&lchan->T3109);
-	lchan->T3111.cb = t3111_expired;
-	lchan->T3111.data = lchan;
+	osmo_timer_setup(&lchan->T3111, t3111_expired, lchan);
 	bts = lchan->ts->trx->bts;
 	osmo_timer_schedule(&lchan->T3111, bts->network->T3111, 0);
 }
@@ -2631,8 +2625,7 @@ static int dyn_ts_switchover_continue(struct gsm_bts_trx_ts *ts)
 	/* During switchover, we have received a release ack, which means that
 	 * the act_timer has been stopped. Start the timer again so we mark
 	 * this channel broken if the activation ack comes too late. */
-	lchan->act_timer.cb = lchan_act_tmr_cb;
-	lchan->act_timer.data = lchan;
+	osmo_timer_setup(&lchan->act_timer, lchan_act_tmr_cb, lchan);
 	osmo_timer_schedule(&lchan->act_timer, 4, 0);
 
 	rc = rsl_chan_activate_lchan(lchan, act_type, ho_ref);
@@ -2836,8 +2829,7 @@ int rsl_start_t3109(struct gsm_lchan *lchan)
 	if (bts->network->T3109 == 0)
 		return -1;
 
-	lchan->T3109.cb = t3109_expired;
-	lchan->T3109.data = lchan;
+	osmo_timer_setup(&lchan->T3109, t3109_expired, lchan);
 	osmo_timer_schedule(&lchan->T3109, bts->network->T3109, 0);
 	return 0;
 }

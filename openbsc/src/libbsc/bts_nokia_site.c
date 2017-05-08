@@ -1560,8 +1560,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 			 */
 			bts->nokia.wait_reset = 1;
 
-			bts->nokia.reset_timer.cb = &reset_timer_cb;
-			bts->nokia.reset_timer.data = bts;
+			osmo_timer_setup(&bts->nokia.reset_timer,
+					 reset_timer_cb, bts);
 			osmo_timer_schedule(&bts->nokia.reset_timer, bts->nokia.bts_reset_timer_cnf, 0);
 
 			struct gsm_e1_subslot *e1_link = &bts->oml_e1_link;

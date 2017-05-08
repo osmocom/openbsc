@@ -180,10 +180,8 @@ static void bsc_ping_timeout(void *_bsc)
 
 static void start_ping_pong(struct bsc_connection *bsc)
 {
-	bsc->pong_timeout.data = bsc;
-	bsc->pong_timeout.cb = bsc_pong_timeout;
-	bsc->ping_timeout.data = bsc;
-	bsc->ping_timeout.cb = bsc_ping_timeout;
+	osmo_timer_setup(&bsc->pong_timeout, bsc_pong_timeout, bsc);
+	osmo_timer_setup(&bsc->ping_timeout, bsc_ping_timeout, bsc);
 
 	bsc_ping_timeout(bsc);
 }
@@ -1446,8 +1444,7 @@ static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 	/*
 	 * start the hangup timer
 	 */
-	bsc->id_timeout.data = bsc;
-	bsc->id_timeout.cb = ipaccess_close_bsc;
+	osmo_timer_setup(&bsc->id_timeout, ipaccess_close_bsc, bsc);
 	osmo_timer_schedule(&bsc->id_timeout, nat->auth_timeout, 0);
 	return 0;
 }
@@ -1711,8 +1708,7 @@ int main(int argc, char **argv)
 
 	/* recycle timer */
 	sccp_set_log_area(DSCCP);
-	sccp_close.cb = sccp_close_unconfirmed;
-	sccp_close.data = NULL;
+	osmo_timer_setup(&sccp_close, sccp_close_unconfirmed, NULL);
 	osmo_timer_schedule(&sccp_close, SCCP_CLOSE_TIME, 0);
 
 	while (1) {

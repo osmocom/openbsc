@@ -845,8 +845,7 @@ int sgsn_gtp_init(struct sgsn_instance *sgi)
 	}
 
 	/* Start GTP re-transmission timer */
-	sgi->gtp_timer.cb = sgsn_gtp_tmr_cb;
-	sgi->gtp_timer.data = sgi;
+	osmo_timer_setup(&sgi->gtp_timer, sgsn_gtp_tmr_cb, sgi);
 	sgsn_gtp_tmr_start(sgi);
 
 	/* Register callbackcs with libgtp */

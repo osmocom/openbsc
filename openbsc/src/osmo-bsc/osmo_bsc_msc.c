@@ -526,10 +526,8 @@ int osmo_bsc_msc_init(struct bsc_msc_data *data)
 		return -1;
 	}
 
-	data->ping_timer.cb = msc_ping_timeout_cb;
-	data->ping_timer.data = data;
-	data->pong_timer.cb = msc_pong_timeout_cb;
-	data->pong_timer.data = data;
+	osmo_timer_setup(&data->ping_timer, msc_ping_timeout_cb, data);
+	osmo_timer_setup(&data->pong_timer, msc_pong_timeout_cb, data);
 
 	data->msc_con->write_queue.bfd.data = data;
 	data->msc_con->connection_loss = msc_connection_was_lost;

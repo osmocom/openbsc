@@ -889,9 +889,7 @@ static void sgsn_llme_check_cb(void *data_)
 
 void sgsn_inst_init()
 {
-	sgsn->llme_timer.cb = sgsn_llme_check_cb;
-	sgsn->llme_timer.data = NULL;
-
+	osmo_timer_setup(&sgsn->llme_timer, sgsn_llme_check_cb, NULL);
 	osmo_timer_schedule(&sgsn->llme_timer, GPRS_LLME_CHECK_TICK, 0);
 }
 

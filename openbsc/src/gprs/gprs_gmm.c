@@ -227,9 +227,7 @@ static void mmctx_timer_start(struct sgsn_mm_ctx *mm, unsigned int T,
 	mm->num_T_exp = 0;
 
 	/* FIXME: we should do this only once ? */
-	mm->timer.data = mm;
-	mm->timer.cb = &mmctx_timer_cb;
-
+	osmo_timer_setup(&mm->timer, mmctx_timer_cb, mm);
 	osmo_timer_schedule(&mm->timer, seconds, 0);
 }
 
@@ -2167,9 +2165,7 @@ static void pdpctx_timer_start(struct sgsn_pdp_ctx *pdp, unsigned int T,
 	pdp->num_T_exp = 0;
 
 	/* FIXME: we should do this only once ? */
-	pdp->timer.data = pdp;
-	pdp->timer.cb = &pdpctx_timer_cb;
-
+	osmo_timer_setup(&pdp->timer, pdpctx_timer_cb, pdp);
 	osmo_timer_schedule(&pdp->timer, seconds, 0);
 }
 

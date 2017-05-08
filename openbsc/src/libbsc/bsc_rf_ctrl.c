@@ -266,8 +266,7 @@ static int enter_grace(struct osmo_bsc_rf *rf)
 		return 0;
 	}
 
-	rf->grace_timeout.cb = grace_timeout;
-	rf->grace_timeout.data = rf;
+	osmo_timer_setup(&rf->grace_timeout, grace_timeout, rf);
 	osmo_timer_schedule(&rf->grace_timeout, rf->gsm_network->bsc_data->mid_call_timeout, 0);
 	LOGP(DLINP, LOGL_NOTICE, "Going to switch RF off in %d seconds.\n",
 	     rf->gsm_network->bsc_data->mid_call_timeout);
@@ -514,15 +513,12 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	rf->last_rf_lock_ctrl_command = talloc_strdup(rf, "");
 
 	/* check the rf state */
-	rf->rf_check.data = rf;
-	rf->rf_check.cb = rf_check_cb;
+	osmo_timer_setup(&rf->rf_check, rf_check_cb, rf);
 
 	/* delay cmd handling */
-	rf->delay_cmd.data = rf;
-	rf->delay_cmd.cb = rf_delay_cmd_cb;
+	osmo_timer_setup(&rf->delay_cmd, rf_delay_cmd_cb, rf);
 
-	rf->auto_off_timer.data = rf;
-	rf->auto_off_timer.cb = rf_auto_off_cb;
+	osmo_timer_setup(&rf->auto_off_timer, rf_auto_off_cb, rf);
 
 	/* listen to RF signals */
 	osmo_signal_register_handler(SS_MSC, msc_signal_handler, net);

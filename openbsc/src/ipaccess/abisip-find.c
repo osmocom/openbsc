@@ -200,9 +200,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	timer.cb = timer_cb;
-	timer.data = &bfd;
-
+	osmo_timer_setup(&timer, timer_cb, &bfd);
 	osmo_timer_schedule(&timer, 5, 0);
 
 	printf("Trying to find ip.access BTS by broadcast UDP...\n");

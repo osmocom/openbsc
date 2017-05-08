@@ -254,8 +254,7 @@ static void ping_timer_cb(void *gsupc_)
 
 static void start_test_procedure(struct gsup_client *gsupc)
 {
-	gsupc->ping_timer.data = gsupc;
-	gsupc->ping_timer.cb = &ping_timer_cb;
+	osmo_timer_setup(&gsupc->ping_timer, ping_timer_cb, gsupc);
 
 	gsupc->got_ipa_pong = 0;
 	osmo_timer_schedule(&gsupc->ping_timer, GSUP_CLIENT_PING_INTERVAL, 0);
@@ -290,8 +289,7 @@ struct gsup_client *gsup_client_create(const char *ip_addr,
 	if (!gsupc->link)
 		goto failed;
 
-	gsupc->connect_timer.data = gsupc;
-	gsupc->connect_timer.cb = &connect_timer_cb;
+	osmo_timer_setup(&gsupc->connect_timer, connect_timer_cb, gsupc);
 
 	rc = gsup_client_connect(gsupc);
 

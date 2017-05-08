@@ -1172,8 +1172,7 @@ static void mgcp_keepalive_timer_cb(void *_tcfg)
 void mgcp_trunk_set_keepalive(struct mgcp_trunk_config *tcfg, int interval)
 {
 	tcfg->keepalive_interval = interval;
-	tcfg->keepalive_timer.data = tcfg;
-	tcfg->keepalive_timer.cb = mgcp_keepalive_timer_cb;
+	osmo_timer_setup(&tcfg->keepalive_timer, mgcp_keepalive_timer_cb, tcfg);
 
 	if (interval <= 0)
 		osmo_timer_del(&tcfg->keepalive_timer);

@@ -1059,8 +1059,7 @@ static int ipaccess_proxy_setup(void)
 	if (!ipp)
 		return -ENOMEM;
 	INIT_LLIST_HEAD(&ipp->bts_list);
-	ipp->reconn_timer.cb = reconn_tmr_cb;
-	ipp->reconn_timer.data = ipp;
+	osmo_timer_setup(&ipp->reconn_timer, reconn_tmr_cb, ipp);
 
 	/* Listen for OML connections */
 	ret = make_sock(&ipp->oml_listen_fd, IPPROTO_TCP, INADDR_ANY,

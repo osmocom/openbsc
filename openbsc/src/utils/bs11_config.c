@@ -940,7 +940,7 @@ int main(int argc, char **argv)
 	abis_nm_bs11_factory_logon(g_bts, 1);
 	//abis_nm_bs11_get_serno(g_bts);
 
-	status_timer.cb = status_timer_cb;
+	osmo_timer_setup(&status_timer, status_timer_cb, NULL);
 
 	while (1) {
 		if (osmo_select_main(0) < 0)

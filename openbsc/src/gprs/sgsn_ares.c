@@ -71,12 +71,10 @@ static void osmo_ares_reschedule(struct sgsn_instance *sgsn)
 	osmo_timer_del(&sgsn->ares_timer);
 	timeout = ares_timeout(sgsn->ares_channel, NULL, &tv);
 	if (timeout) {
-		sgsn->ares_timer.cb = ares_timeout_cb;
-		sgsn->ares_timer.data = sgsn;
-
 		LOGP(DGPRS, LOGL_DEBUG, "C-ares scheduling timeout %llu.%llu\n",
 			(unsigned long long) tv.tv_sec,
 			(unsigned long long) tv.tv_usec);
+		osmo_timer_setup(&sgsn->ares_timer, ares_timeout_cb, sgsn);
 		osmo_timer_schedule(&sgsn->ares_timer, tv.tv_sec, tv.tv_usec);
 	}
 }

@@ -2438,9 +2438,7 @@ static void gtphub_gc_cb(void *data)
 
 static void gtphub_gc_start(struct gtphub *hub)
 {
-	hub->gc_timer.cb = gtphub_gc_cb;
-	hub->gc_timer.data = hub;
-
+	osmo_timer_setup(&hub->gc_timer, gtphub_gc_cb, hub);
 	osmo_timer_schedule(&hub->gc_timer, GTPH_GC_TICK_SECONDS, 0);
 }
 
