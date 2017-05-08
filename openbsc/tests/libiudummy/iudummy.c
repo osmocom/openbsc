@@ -9,6 +9,7 @@ struct msgb;
 struct ue_conn_ctx;
 struct gsm_auth_tuple;
 struct RANAP_Cause;
+struct osmo_sccp_addr;
 
 int iu_tx(struct msgb *msg, uint8_t sapi)
 {
