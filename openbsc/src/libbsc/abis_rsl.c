@@ -1382,8 +1382,6 @@ static void print_meas_rep(struct gsm_lchan *lchan, struct gsm_meas_rep *mr)
 	if (lchan && lchan->conn) {
 		if (lchan->conn->bsub)
 			name = bsc_subscr_name(lchan->conn->bsub);
-		else if (lchan->conn->subscr)
-			name = lchan->conn->subscr->imsi;
 		else
 			name = lchan->name;
 	}
@@ -1423,6 +1421,19 @@ static void print_meas_rep(struct gsm_lchan *lchan, struct gsm_meas_rep *mr)
 		DEBUGP(DMEAS, "IDX=%u ARFCN=%u BSIC=%u => %d dBm\n",
 			mrc->neigh_idx, mrc->arfcn, mrc->bsic, rxlev2dbm(mrc->rxlev));
 	}
+}
+
+static struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
+{
+	struct gsm_meas_rep *meas_rep;
+
+	meas_rep = &lchan->meas_rep[lchan->meas_rep_idx];
+	memset(meas_rep, 0, sizeof(*meas_rep));
+	meas_rep->lchan = lchan;
+	lchan->meas_rep_idx = (lchan->meas_rep_idx + 1)
+					% ARRAY_SIZE(lchan->meas_rep);
+
+	return meas_rep;
 }
 
 static int rsl_rx_meas_res(struct msgb *msg)

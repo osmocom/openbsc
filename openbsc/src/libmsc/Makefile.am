@@ -23,6 +23,7 @@ noinst_LIBRARIES = \
 	$(NULL)
 
 libmsc_a_SOURCES = \
+	a_iface.c \
 	auth.c \
 	db.c \
 	gsm_04_08.c \
@@ -32,6 +33,7 @@ libmsc_a_SOURCES = \
 	mncc.c \
 	mncc_builtin.c \
 	mncc_sock.c \
+	msc_ifaces.c \
 	rrlp.c \
 	silent_call.c \
 	sms_queue.c \

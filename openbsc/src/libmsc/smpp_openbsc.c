@@ -423,6 +423,7 @@ void append_tlv_u16(tlv_t **req_tlv, uint16_t tag, uint16_t val)
 	build_tlv(req_tlv, &tlv);
 }
 
+#if BEFORE_MSCSPLIT
 /* Append the Osmocom vendor-specific additional TLVs to a SMPP msg */
 static void append_osmo_tlvs(tlv_t **req_tlv, const struct gsm_lchan *lchan)
 {
@@ -461,6 +462,7 @@ static void append_osmo_tlvs(tlv_t **req_tlv, const struct gsm_lchan *lchan)
 				   (uint8_t *)vsub->imei, imei_len+1);
 	}
 }
+#endif
 
 struct {
 	uint32_t smpp_status_code;
@@ -680,8 +682,10 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
 	}
 
+#if BEFORE_MSCSPLIT
 	if (esme->acl && esme->acl->osmocom_ext && conn->lchan)
 		append_osmo_tlvs(&deliver.tlv, conn->lchan);
+#endif
 
 	ret = smpp_tx_deliver(esme, &deliver);
 	if (ret < 0)

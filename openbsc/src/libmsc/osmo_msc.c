@@ -21,6 +21,7 @@
  *
  */
 
+#include <openbsc/osmo_msc.h>
 #include <openbsc/bsc_api.h>
 #include <openbsc/debug.h>
 #include <openbsc/transaction.h>
@@ -69,9 +70,10 @@ static void subscr_conn_bump(struct gsm_subscriber_connection *conn)
 	osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_BUMP, NULL);
 }
 
-/* Receive a COMPLETE LAYER3 INFO from BSC */
-static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
-			uint16_t chosen_channel)
+/* receive a Level 3 Complete message and return MSC_CONN_ACCEPT or
+ * MSC_CONN_REJECT */
+enum msc_compl_l3_rc msc_compl_l3(struct gsm_subscriber_connection *conn,
+				  struct msgb *msg, uint16_t chosen_channel)
 {
 	/* Ownership of the gsm_subscriber_connection is still a bit mucky
 	 * between libbsc and libmsc. In libmsc, we use ref counting, but not
@@ -87,7 +89,7 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 		/* keep the use_count reserved, libbsc will discard. If we
 		 * released the ref count and discarded here, libbsc would
 		 * double-free. And we will not change bsc_api semantics. */
-		return BSC_API_CONN_POL_REJECT;
+		return MSC_CONN_REJECT;
 	}
 	DEBUGP(DMM, "compl_l3: Keeping conn\n");
 
@@ -96,7 +98,7 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 
 	/* If this should be kept, the conn->conn_fsm has placed a use_count */
 	msc_subscr_conn_put(conn);
-	return BSC_API_CONN_POL_ACCEPT;
+	return MSC_CONN_ACCEPT;
 
 #if 0
 	/*
@@ -105,14 +107,14 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	 * pending transaction or ongoing operation.
 	 */
 	if (conn->silent_call)
-		return BSC_API_CONN_POL_ACCEPT;
-	if (conn->sec_operation || conn->anch_operation)
-		return BSC_API_CONN_POL_ACCEPT;
+		return MSC_CONN_ACCEPT;
+	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
+		return MSC_CONN_ACCEPT;
 	if (trans_has_conn(conn))
-		return BSC_API_CONN_POL_ACCEPT;
+		return MSC_CONN_ACCEPT;
 
 	LOGP(DRR, LOGL_INFO, "MSC Complete L3: Rejecting connection.\n");
-	return BSC_API_CONN_POL_REJECT;
+	return MSC_CONN_REJECT;
 #endif
 }
 

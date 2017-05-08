@@ -71,25 +71,6 @@ int gsm_bts_model_register(struct gsm_bts_model *model)
 	return 0;
 }
 
-/* Get reference to a neighbor cell on a given BCCH ARFCN */
-struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
-				 uint16_t arfcn, uint8_t bsic)
-{
-	struct gsm_bts *neigh;
-	/* FIXME: use some better heuristics here to determine which cell
-	 * using this ARFCN really is closest to the target cell.  For
-	 * now we simply assume that each ARFCN will only be used by one
-	 * cell */
-
-	llist_for_each_entry(neigh, &bts->network->bts_list, list) {
-		if (neigh->c0->arfcn == arfcn &&
-		    neigh->bsic == bsic)
-			return neigh;
-	}
-
-	return NULL;
-}
-
 const struct value_string bts_type_descs[_NUM_GSM_BTS_TYPE+1] = {
 	{ GSM_BTS_TYPE_UNKNOWN,		"Unknown BTS Type" },
 	{ GSM_BTS_TYPE_BS11,		"Siemens BTS (BS-11 or compatible)" },
@@ -210,19 +191,6 @@ int bts_gprs_mode_is_compat(struct gsm_bts *bts, enum bts_gprs_mode mode)
 	return 1;
 }
 
-struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
-{
-	struct gsm_meas_rep *meas_rep;
-
-	meas_rep = &lchan->meas_rep[lchan->meas_rep_idx];
-	memset(meas_rep, 0, sizeof(*meas_rep));
-	meas_rep->lchan = lchan;
-	lchan->meas_rep_idx = (lchan->meas_rep_idx + 1)
-					% ARRAY_SIZE(lchan->meas_rep);
-
-	return meas_rep;
-}
-
 int gsm_btsmodel_set_feature(struct gsm_bts_model *model, enum gsm_bts_features feat)
 {
 	OSMO_ASSERT(_NUM_BTS_FEAT < MAX_BTS_FEATURES);
@@ -322,7 +290,7 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 	bts->si_common.chan_desc.att = 1; /* attachment required */
 	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5; /* paging frames */
 	bts->si_common.chan_desc.bs_ag_blks_res = 1; /* reserved AGCH blocks */
-	bts->si_common.chan_desc.t3212 = 5; /* Use 30 min periodic update interval as sane default */
+	bts->si_common.chan_desc.t3212 = net->t3212; /* Use network's current value */
 	gsm_bts_set_radio_link_timeout(bts, 32); /* Use RADIO LINK TIMEOUT of 32 */
 
 	llist_add_tail(&bts->list, &net->bts_list);
