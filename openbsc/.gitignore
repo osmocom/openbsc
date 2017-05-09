@@ -11,6 +11,7 @@ src/osmo-nitb/osmo-nitb
 src/osmo-bsc_mgcp/osmo-bsc_mgcp
 src/osmo-bsc/osmo-bsc
 src/utils/meas_vis
+src/utils/meas_json
 src/utils/osmo-meas-pcap2db
 src/utils/osmo-meas-udp2db
 src/utils/smpp_mirror
@@ -88,6 +89,7 @@ tests/sndcp_xid/sndcp_xid_test
 tests/slhc/slhc_test
 tests/v42bis/v42bis_test
 tests/nanobts_omlattr/nanobts_omlattr_test
+tests/oap/oap_client_test
 
 tests/atconfig
 tests/atlocal
