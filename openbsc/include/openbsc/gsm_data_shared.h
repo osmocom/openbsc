@@ -66,6 +66,8 @@ enum gsm_chreq_reason_t {
 
 #define MAX_VERSION_LENGTH 64
 
+#define MAX_BTS_FEATURES 128
+
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
 	GSM_HOOK_RR_PAGING,
@@ -533,7 +535,7 @@ struct gsm_bts_model {
 	struct tlv_definition nm_att_tlvdef;
 
 	struct bitvec features;
-	uint8_t _features_data[128/8];
+	uint8_t _features_data[MAX_BTS_FEATURES/8];
 };
 
 enum gsm_bts_features {
