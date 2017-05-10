@@ -439,6 +439,7 @@ int abis_nm_select_newest_sw(const struct abis_nm_sw_desc *sw_descr,
 	return res;
 }
 
+/* 3GPP TS 52.021 §6.2.5 */
 static int abis_nm_rx_sw_act_req(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
@@ -447,7 +448,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	struct tlv_parsed tp;
 	const uint8_t *sw_config;
 	int ret, sw_config_len, len;
-	struct abis_nm_sw_desc sw_descr[5];
+	struct abis_nm_sw_desc sw_descr[MAX_BTS_ATTR];
 
 	abis_nm_debugp_foh(DNM, foh);
 
@@ -1441,10 +1442,9 @@ int abis_nm_disc_terr_traf(struct abis_nm_h *h, struct abis_om_obj_inst *inst,
 }
 #endif
 
-/* Chapter 8.11.1 */
-int abis_nm_get_attr(struct gsm_bts *bts, uint8_t obj_class,
-			uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
-			uint8_t *attr, uint8_t attr_len)
+/* 3GPP TS 52.021 § 8.11.1 */
+int abis_nm_get_attr(struct gsm_bts *bts, uint8_t obj_class, uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
+		     const uint8_t *attr, uint8_t attr_len)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();

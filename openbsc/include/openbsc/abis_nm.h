@@ -28,6 +28,9 @@
 
 #include <openbsc/gsm_data.h>
 
+/* max number of attributes represented as 3GPP TS 52.021 §9.4.62 SW Description array */
+#define MAX_BTS_ATTR 5
+
 struct cell_global_id {
 	uint16_t mcc;
 	uint16_t mnc;
@@ -85,7 +88,7 @@ int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
 			   uint8_t e1_subslot);
 int abis_nm_get_attr(struct gsm_bts *bts, uint8_t obj_class,
 		     uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
-		     uint8_t *attr, uint8_t attr_len);
+		     const uint8_t *attr, uint8_t attr_len);
 int abis_nm_set_bts_attr(struct gsm_bts *bts, uint8_t *attr, int attr_len);
 int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, uint8_t *attr, int attr_len);
 int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, uint8_t chan_comb);

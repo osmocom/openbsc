@@ -545,6 +545,9 @@ enum gsm_bts_features {
 	BTS_FEAT_ECSD,
 	BTS_FEAT_HOPPING,
 	BTS_FEAT_MULTI_TSC,
+	BTS_FEAT_OML_ALERTS,
+	BTS_FEAT_AGCH_PCH_PROP,
+	BTS_FEAT_CBCH,
 };
 
 /*
@@ -676,6 +679,7 @@ struct gsm_bts {
 	struct gsm_bts_model *model;
 	enum gsm_band band;
 	char version[MAX_VERSION_LENGTH];
+	char sub_model[MAX_VERSION_LENGTH];
 
 	/* Connected PCU version (if any) */
 	char pcu_version[MAX_VERSION_LENGTH];
