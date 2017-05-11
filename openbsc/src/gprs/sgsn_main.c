@@ -343,6 +343,7 @@ int main(int argc, char **argv)
 	osmo_stats_vty_add_cmds(&gprs_log_info);
 	sgsn_vty_init(&sgsn_inst.cfg);
 	ctrl_vty_init(tall_bsc_ctx);
+	osmo_ss7_init();
 
 	handle_options(argc, argv);
 
