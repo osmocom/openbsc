@@ -1,5 +1,8 @@
 [Unit]
 Description=OpenBSC SGSN
+Wants=osmo-hlr.service
+After=osmo-hlr.service
+After=osmo-hnbgw.service
 
 [Service]
 Type=simple
