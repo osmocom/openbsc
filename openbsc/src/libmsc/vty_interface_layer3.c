@@ -1079,7 +1079,7 @@ DEFUN(cfg_nitb_subscr_random, cfg_nitb_subscr_random_cmd,
       "Minimum for subscriber extension\n""Maximum for subscriber extension\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	uint64_t mi = atoi(argv[0]), ma = atoi(argv[1]);
+	uint64_t mi = atoll(argv[0]), ma = atoll(argv[1]);
 	gsmnet->auto_create_subscr = true;
 	gsmnet->auto_assign_exten = true;
 	if (mi >= ma) {

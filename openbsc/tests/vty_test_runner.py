@@ -476,6 +476,17 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command('show subscriber imsi '+imsi)
         self.assert_(('% No subscriber found for imsi ' + imsi) == res)
 
+        # range
+        self.vty.command("end")
+        self.vty.command("configure terminal")
+        self.vty.command("nitb")
+        self.assertTrue(self.vty.verify("subscriber-create-on-demand random 9999999998 9999999999", ['']))
+        res = self.vty.command("show running-config")
+        self.assert_(res.find("subscriber-create-on-demand random 9999999998 9999999999"))
+        self.vty.command("end")
+
+
+
     def testSubscriberSettings(self):
         self.vty.enable()
 
