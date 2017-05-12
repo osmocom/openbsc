@@ -13,8 +13,7 @@
 
 /* generate SI1 rest octets */
 int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net);
-int rest_octets_si2quater(uint8_t *data, uint8_t index, uint8_t count, const struct osmo_earfcn_si2q *e,
-			  const uint16_t *u, const uint16_t *sc, size_t u_len);
+int rest_octets_si2quater(uint8_t *data, struct gsm_bts *bts);
 int rest_octets_si6(uint8_t *data, bool is1800_net);
 
 struct gsm48_si_selection_params {

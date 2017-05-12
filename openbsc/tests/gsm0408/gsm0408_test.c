@@ -84,18 +84,12 @@ static void test_location_area_identifier(void)
     COMPARE(lai48.lac, ==, htons(0x000f));
 }
 
-static inline void add_arfcn_b(struct osmo_earfcn_si2q *e, uint16_t earfcn,
-			       uint8_t bw)
+static inline void gen(struct gsm_bts *bts, const char *s)
 {
-	int r = osmo_earfcn_add(e, earfcn, bw);
-	if (r)
-		printf("failed to add EARFCN %u: %s\n", earfcn, strerror(-r));
-	else
-		printf("added EARFCN %u - ", earfcn);
-}
-
-static inline void gen(struct gsm_bts *bts)
-{
+	bts->u_offset = 0;
+	bts->e_offset = 0;
+	bts->si2q_index = 0;
+	bts->si2q_count = 0;
 	bts->si_valid = 0;
 	bts->si_valid |= (1 << SYSINFO_TYPE_2quater);
 	/* should be no-op as entire buffer is filled with padding: */
@@ -106,17 +100,32 @@ static inline void gen(struct gsm_bts *bts)
 		printf("generated %s SI2quater: [%d] %s\n",
 		       v ? "valid" : "invalid", r, osmo_hexdump(GSM_BTS_SI(bts, SYSINFO_TYPE_2quater), r));
 	else
-		printf("failed to generate SI2quater: %s\n", strerror(-r));
+		printf("%s() failed to generate SI2quater: %s\n", s, strerror(-r));
 }
 
-static inline void _bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn,
-			      uint16_t scramble, bool diversity)
+static inline void add_earfcn_b(struct gsm_bts *bts, uint16_t earfcn, uint8_t bw)
 {
-	int r = bts_uarfcn_add(bts, arfcn, scramble, diversity);
+	struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+	int r = osmo_earfcn_add(e, earfcn, bw);
+	if (r)
+		printf("failed to add EARFCN %u: %s\n", earfcn, strerror(-r));
+	else
+		printf("added EARFCN %u - ", earfcn);
+
+	gen(bts, __func__);
+}
+
+static inline void _bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble, bool diversity)
+{
+	int r;
+
+	bts->u_offset = 0;
+
+	r = bts_uarfcn_add(bts, arfcn, scramble, diversity);
 	if (r < 0)
 		printf("failed to add UARFCN to SI2quater: %s\n", strerror(-r));
 	else
-		gen(bts);
+		gen(bts, __func__);
 }
 
 static inline void test_si2q_segfault(void)
@@ -131,7 +140,7 @@ static inline void test_si2q_segfault(void)
 
 	_bts_uarfcn_add(bts, 10564, 319, 0);
 	_bts_uarfcn_add(bts, 10612, 319, 0);
-	gen(bts);
+	gen(bts, __func__);
 }
 
 static inline void test_si2q_mu(void)
@@ -151,7 +160,7 @@ static inline void test_si2q_mu(void)
 	_bts_uarfcn_add(bts, 10613, 64, 0);
 	_bts_uarfcn_add(bts, 10613, 164, 0);
 	_bts_uarfcn_add(bts, 10613, 14, 0);
-	gen(bts);
+	gen(bts, __func__);
 }
 
 static inline void test_si2q_u(void)
@@ -165,7 +174,7 @@ static inline void test_si2q_u(void)
 	bts = gsm_bts_alloc(network);
 
 	/* first generate invalid SI as no UARFCN added */
-	gen(bts);
+	gen(bts, __func__);
 	/* subsequent calls should produce valid SI if there's enough memory */
 	_bts_uarfcn_add(bts, 1982, 13, 1);
 	_bts_uarfcn_add(bts, 1982, 44, 0);
@@ -178,7 +187,7 @@ static inline void test_si2q_u(void)
 	_bts_uarfcn_add(bts, 1982, 223, 1);
 	_bts_uarfcn_add(bts, 1982, 14, 0);
 	_bts_uarfcn_add(bts, 1982, 88, 0);
-	gen(bts);
+	gen(bts, __func__);
 }
 
 static inline void test_si2q_e(void)
@@ -191,40 +200,22 @@ static inline void test_si2q_e(void)
 		exit(1);
 	bts = gsm_bts_alloc(network);
 
-	bts->si_common.si2quater_neigh_list.arfcn =
-		bts->si_common.data.earfcn_list;
-	bts->si_common.si2quater_neigh_list.meas_bw =
-		bts->si_common.data.meas_bw_list;
+	bts->si_common.si2quater_neigh_list.arfcn = bts->si_common.data.earfcn_list;
+	bts->si_common.si2quater_neigh_list.meas_bw = bts->si_common.data.meas_bw_list;
 	bts->si_common.si2quater_neigh_list.length = MAX_EARFCN_LIST;
 	bts->si_common.si2quater_neigh_list.thresh_hi = 5;
 
 	osmo_earfcn_init(&bts->si_common.si2quater_neigh_list);
 	/* first generate invalid SI as no EARFCN added */
-	gen(bts);
+	gen(bts, __func__);
 	/* subsequent calls should produce valid SI if there's enough memory */
-	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1917, 1);
-	gen(bts);
-
-	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1932,
-		    OSMO_EARFCN_MEAS_INVALID);
-	gen(bts);
-
-	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1937, 2);
-	gen(bts);
-
-	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1945,
-		    OSMO_EARFCN_MEAS_INVALID);
-	gen(bts);
-
-	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1965,
-		    OSMO_EARFCN_MEAS_INVALID);
-	gen(bts);
-
-	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1967, 4);
-	gen(bts);
-
-	add_arfcn_b(&bts->si_common.si2quater_neigh_list, 1982, 3);
-	gen(bts);
+	add_earfcn_b(bts, 1917, 1);
+	add_earfcn_b(bts, 1932, OSMO_EARFCN_MEAS_INVALID);
+	add_earfcn_b(bts, 1937, 2);
+	add_earfcn_b(bts, 1945, OSMO_EARFCN_MEAS_INVALID);
+	add_earfcn_b(bts, 1965, OSMO_EARFCN_MEAS_INVALID);
+	add_earfcn_b(bts, 1967, 4);
+	add_earfcn_b(bts, 1982, 3);
 }
 
 static void test_mi_functionality(void)

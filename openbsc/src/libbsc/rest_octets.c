@@ -58,30 +58,63 @@ int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net)
 	return bv.data_len;
 }
 
-/* Append Repeated E-UTRAN Neighbour Cell to bitvec:
- * see 3GPP TS 44.018 Table 10.5.2.33b.1
- */
-static inline void append_eutran_neib_cell(struct bitvec *bv,
-					    const struct osmo_earfcn_si2q *e)
+/* Append Repeated E-UTRAN Neighbour Cell to bitvec: see 3GPP TS 44.018 Table 10.5.2.33b.1 */
+static inline void append_eutran_neib_cell(struct bitvec *bv, struct gsm_bts *bts, uint8_t budget)
 {
-	unsigned i;
+	const struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+	unsigned i, skip = 0;
+	size_t offset = bts->e_offset;
+	uint8_t rem = budget - 6, earfcn_budget; /* account for mandatory stop bit and THRESH_E-UTRAN_high */
+	/* first we have to properly adjust budget requirements */
+	if (e->prio_valid) /* E-UTRAN_PRIORITY: 3GPP TS 45.008*/
+		rem -= 4;
+	else
+		rem--;
+
+	if (e->thresh_lo_valid) /* THRESH_E-UTRAN_low: */
+		rem -= 6;
+	else
+		rem--;
+
+	if (e->qrxlm_valid) /* E-UTRAN_QRXLEVMIN: */
+		rem -= 6;
+	else
+		rem--;
+
+	/* now we can proceed with actually adding EARFCNs within adjusted budget limit */
 	for (i = 0; i < e->length; i++) {
 		if (e->arfcn[i] != OSMO_EARFCN_INVALID) {
-			bitvec_set_bit(bv, 1); /* EARFCN: */
-			bitvec_set_uint(bv, e->arfcn[i], 16);
+			if (skip < offset) {
+				skip++; /* ignore EARFCNs added on previous calls */
+			} else {
+				earfcn_budget = 17; /* computer budget per-EARFCN */
+				if (OSMO_EARFCN_MEAS_INVALID == e->meas_bw[i])
+					earfcn_budget++;
+				else
+					earfcn_budget += 4;
 
-			if (OSMO_EARFCN_MEAS_INVALID == e->meas_bw[i])
-				bitvec_set_bit(bv, 0);
-			else {
-				/* Measurement Bandwidth: 9.1.54 */
-				bitvec_set_bit(bv, 1);
-				bitvec_set_uint(bv, e->meas_bw[i], 3);
+				if (rem - earfcn_budget < 0) {
+					break;
+				} else {
+					bts->e_offset++;
+					bitvec_set_bit(bv, 1); /* EARFCN: */
+					bitvec_set_uint(bv, e->arfcn[i], 16);
+
+					if (OSMO_EARFCN_MEAS_INVALID == e->meas_bw[i])
+						bitvec_set_bit(bv, 0);
+					else { /* Measurement Bandwidth: 9.1.54 */
+						bitvec_set_bit(bv, 1);
+						bitvec_set_uint(bv, e->meas_bw[i], 3);
+					}
+				}
 			}
 		}
 	}
 
 	/* stop bit - end of EARFCN + Measurement Bandwidth sequence */
 	bitvec_set_bit(bv, 0);
+
+	/* Note: we don't support different EARFCN arrays each with different priority, threshold etc. */
 
 	if (e->prio_valid) {
 		/* E-UTRAN_PRIORITY: 3GPP TS 45.008*/
@@ -108,8 +141,7 @@ static inline void append_eutran_neib_cell(struct bitvec *bv,
 		bitvec_set_bit(bv, 0);
 }
 
-static inline void append_earfcn(struct bitvec *bv,
-				const struct osmo_earfcn_si2q *e)
+static inline void append_earfcn(struct bitvec *bv, struct gsm_bts *bts, uint8_t budget)
 {
 	/* Additions in Rel-5: */
 	bitvec_set_bit(bv, H);
@@ -158,9 +190,8 @@ static inline void append_earfcn(struct bitvec *bv,
 	/* Repeated E-UTRAN Neighbour Cells */
 	bitvec_set_bit(bv, 1);
 
-	/* Note: we don't support different EARFCN arrays each with different
-	   priority, threshold etc. */
-	append_eutran_neib_cell(bv, e);
+	/* N. B: 25 bits are set in append_earfcn() - keep it in sync with budget adjustment below: */
+	append_eutran_neib_cell(bv, bts, budget - 25);
 
 	/* stop bit - end of Repeated E-UTRAN Neighbour Cells sequence: */
 	bitvec_set_bit(bv, 0);
@@ -180,22 +211,43 @@ static inline void append_earfcn(struct bitvec *bv,
 	bitvec_set_bit(bv, L);
 }
 
-/* Append single FDD UARFCN */
-static inline int append_utran_fdd(struct bitvec *bv, uint16_t u, int *sc,
-				   size_t length)
+static inline int f0_helper(int *sc, size_t length, uint8_t *chan_list)
 {
-	int f0, w[RANGE_ENC_MAX_ARFCNS] = { 0 };
-	uint8_t chan_list[16] = {0};
+	int w[RANGE_ENC_MAX_ARFCNS] = { 0 };
+
+	return range_encode(ARFCN_RANGE_1024, sc, length, w, 0, chan_list);
+}
+
+/* Estimate how many bits it'll take to append single FDD UARFCN */
+static inline int append_utran_fdd_length(uint16_t u, int *sc, size_t sc_len, size_t length)
+{
+	uint8_t chan_list[16] = { 0 };
+	int tmp[sc_len], f0;
+
+	memcpy(tmp, sc, sizeof(tmp));
+
+	f0 = f0_helper(tmp, length, chan_list);
+	if (f0 < 0)
+		return f0;
+
+	return 21 + range1024_p(length);
+}
+
+/* Append single FDD UARFCN */
+static inline int append_utran_fdd(struct bitvec *bv, uint16_t u, int *sc, size_t length)
+{
+	uint8_t chan_list[16] = { 0 };
+	int f0 = f0_helper(sc, length, chan_list);
+
+	if (f0 < 0)
+		return f0;
+
 	/* Repeated UTRAN FDD Neighbour Cells */
 	bitvec_set_bit(bv, 1);
 
 	/* FDD-ARFCN */
 	bitvec_set_bit(bv, 0);
 	bitvec_set_uint(bv, u, 14);
-
-	f0 = range_encode(ARFCN_RANGE_1024, sc, length, w, 0, chan_list);
-	if (f0 < 0)
-		return f0;
 
 	/* FDD_Indic0: parameter value '0000000000' is a member of the set? */
 	bitvec_set_bit(bv, f0);
@@ -205,15 +257,17 @@ static inline int append_utran_fdd(struct bitvec *bv, uint16_t u, int *sc,
 	f0 = bv->cur_bit;
 	bitvec_add_range1024(bv, (struct gsm48_range_1024 *)chan_list);
 	bv->cur_bit = f0 + range1024_p(length);
-	return 0;
+
+	return 21 + range1024_p(length);
 }
 
 /* Append multiple FDD UARFCNs */
-static inline int append_uarfcns(struct bitvec *bv, const uint16_t *u,
-				 const uint16_t *sc, size_t length)
+static inline int append_uarfcns(struct bitvec *bv, struct gsm_bts *bts, uint8_t budget)
 {
-	int i, j, k, rc, st = 0, a[length];
-	uint16_t cu = u[0]; /* caller ensures that length is positive */
+	const uint16_t *u = bts->si_common.data.uarfcn_list, *sc = bts->si_common.data.scramble_list;
+	int i, j, k, rc, st = 0, a[bts->si_common.uarfcn_length];
+	uint16_t cu = u[bts->u_offset]; /* caller ensures that length is positive */
+	uint8_t rem = budget - 7; /* account for constant bits right away */
 
 	/* 3G Neighbour Cell Description */
 	bitvec_set_bit(bv, 1);
@@ -227,24 +281,41 @@ static inline int append_uarfcns(struct bitvec *bv, const uint16_t *u,
 	/* No Bandwidth_FDD */
 	bitvec_set_bit(bv, 0);
 
-	for (i = 0; i < length; i++) {
+	for (i = bts->u_offset; i < bts->si_common.uarfcn_length; i++) {
 		for (j = st, k = 0; j < i; j++)
 			a[k++] = sc[j]; /* copy corresponding SCs */
+
 		if (u[i] != cu) { /* we've reached new UARFCN */
-			rc = append_utran_fdd(bv, cu, a, k);
-			if (rc < 0)
+			rc = append_utran_fdd_length(cu, a, bts->si_common.uarfcn_length, k);
+			if (rc < 0) { /* estimate bit length requirements */
 				return rc;
+			}
+
+			if (rem - rc < 0) {
+				break; /* we have ran out of budget in current SI2q */
+			} else {
+				rem -= append_utran_fdd(bv, cu, a, k);
+				bts->u_offset++;
+			}
 			cu = u[i];
 			st = i; /* update start position */
 		}
 	}
 
-	/* add last UARFCN not covered by previous cycle */
-	for (i = st, k = 0; i < length; i++)
-		a[k++] = sc[i];
-	rc = append_utran_fdd(bv, cu, a, k);
-	if (rc < 0)
-		return rc;
+	if (rem > 22) {	/* add last UARFCN not covered by previous cycle if it could possibly fit into budget */
+		for (i = st, k = 0; i < bts->si_common.uarfcn_length; i++)
+			a[k++] = sc[i];
+
+		rc = append_utran_fdd_length(cu, a, bts->si_common.uarfcn_length, k);
+		if (rc < 0) {
+			return rc;
+		}
+
+		if (rem - rc >= 0) {
+			rem -= append_utran_fdd(bv, cu, a, k);
+			bts->u_offset++;
+		}
+	}
 
 	/* stop bit - end of Repeated UTRAN FDD Neighbour Cells */
 	bitvec_set_bit(bv, 0);
@@ -256,11 +327,9 @@ static inline int append_uarfcns(struct bitvec *bv, const uint16_t *u,
 }
 
 /* generate SI2quater rest octets: 3GPP TS 44.018 § 10.5.2.33b */
-int rest_octets_si2quater(uint8_t *data, uint8_t index, uint8_t count, const struct osmo_earfcn_si2q *e,
-			  const uint16_t *u, const uint16_t *sc, size_t u_len)
+int rest_octets_si2quater(uint8_t *data, struct gsm_bts *bts)
 {
 	int rc;
-	unsigned sz;
 	struct bitvec bv;
 	bv.data = data;
 	bv.data_len = 20;
@@ -273,11 +342,10 @@ int rest_octets_si2quater(uint8_t *data, uint8_t index, uint8_t count, const str
 	/* MP_CHANGE_MARK */
 	bitvec_set_bit(&bv, 0);
 
-	/* we do not support multiple si2quater messages at the moment: */
 	/* SI2quater_INDEX */
-	bitvec_set_uint(&bv, index, 4);
+	bitvec_set_uint(&bv, bts->si2q_index, 4);
 	/* SI2quater_COUNT */
-	bitvec_set_uint(&bv, count, 4);
+	bitvec_set_uint(&bv, bts->si2q_count, 4);
 
 	/* No Measurement_Parameters Description */
 	bitvec_set_bit(&bv, 0);
@@ -294,22 +362,12 @@ int rest_octets_si2quater(uint8_t *data, uint8_t index, uint8_t count, const str
 	/* No extension (length) */
 	bitvec_set_bit(&bv, 0);
 
-	if (u_len) {
-		sz = uarfcn_size(u, sc, u_len);
+	if (bts->si_common.uarfcn_length) {
 		/* Even if we do not append EARFCN we still need to set 3 bits */
-		if (sz + bv.cur_bit + 3 > SI2Q_MAX_LEN) {
-			LOGP(DRR, LOGL_ERROR, "SI2quater: not enough memory to "
-			     "add UARFCNs bits, current %u + required %u + "
-			     "reminder %u > max %u\n", bv.cur_bit, sz, 3,
-			     SI2Q_MAX_LEN);
-			return -ENOMEM;
-		}
-
-		rc = append_uarfcns(&bv, u, sc, u_len);
+		rc = append_uarfcns(&bv, bts, SI2Q_MAX_LEN - (bv.cur_bit + 3));
 		if (rc < 0) {
-			LOGP(DRR, LOGL_ERROR, "SI2quater: failed to append %zu "
-			     "UARFCNs due to range encoding failure: %s\n",
-			     u_len, strerror(-rc));
+			LOGP(DRR, LOGL_ERROR, "SI2quater: failed to append %zu UARFCNs due to range encoding failure: %s\n",
+			     bts->si_common.uarfcn_length, strerror(-rc));
 			return rc;
 		}
 	} else { /* No 3G Neighbour Cell Description */
@@ -321,15 +379,14 @@ int rest_octets_si2quater(uint8_t *data, uint8_t index, uint8_t count, const str
 	/* No GPRS_3G_MEASUREMENT Parameters Descr. */
 	bitvec_set_bit(&bv, 0);
 
-	if (e) {
-		sz = earfcn_size(e);
-		if (sz + bv.cur_bit > SI2Q_MAX_LEN) {
-			LOGP(DRR, LOGL_ERROR, "SI2quater: not enough memory to "
-			     "add EARFCNs bits, current %u + required %u > max "
-			     "%u\n", bv.cur_bit, sz, SI2Q_MAX_LEN);
+	if (&bts->si_common.si2quater_neigh_list) { /* FIXME: use si2q_earfcn_count() in if */
+		append_earfcn(&bv, bts, SI2Q_MAX_LEN - bv.cur_bit);
+
+		/* FIXME: remove following check once multiple SI2q are properly supported */
+		if ((bts->e_offset != si2q_earfcn_count(&bts->si_common.si2quater_neigh_list)) ||
+		    si2q_earfcn_count(&bts->si_common.si2quater_neigh_list) > 5)
 			return -ENOMEM;
-		}
-		append_earfcn(&bv, e);
+
 	} else {
 		/* No Additions in Rel-5: */
 		bitvec_set_bit(&bv, L);

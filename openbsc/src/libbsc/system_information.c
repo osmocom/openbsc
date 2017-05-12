@@ -122,19 +122,22 @@ unsigned range512_q(unsigned m)
 	}
 }
 
-unsigned earfcn_size(const struct osmo_earfcn_si2q *e)
+static inline unsigned earfcn_size(const struct gsm_bts *bts)
 {
+	const struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list; /* EARFCN */
+
 	/* account for all the constant bits in append_earfcn() */
-	return 25 + osmo_earfcn_bit_size(e);
+	return 25 + osmo_earfcn_bit_size_ext(e, bts->e_offset);
 }
 
-unsigned uarfcn_size(const uint16_t *u, const uint16_t *sc, size_t u_len)
+static inline unsigned uarfcn_size(const struct gsm_bts *bts)
 {
-	/*account for all the constant bits in append_uarfcns() */
+	const uint16_t *u = bts->si_common.data.uarfcn_list;
+	uint16_t cu = u[bts->u_offset]; /* UARFCN */
+	/* account for all the constant bits in append_uarfcns() */
 	unsigned s = 7, append = 22, r = 0, i, st = 0, j, k;
-	uint16_t cu = u[0];
 
-	for (i = 0; i < u_len; i++) {
+	for (i = bts->u_offset; i < bts->si_common.uarfcn_length; i++) {
 		for (j = st, k = 0; j < i; j++, k++);
 		if (u[i] != cu) { /* we've reached new UARFCN */
 			r += (append + range1024_p(k));
@@ -144,18 +147,25 @@ unsigned uarfcn_size(const uint16_t *u, const uint16_t *sc, size_t u_len)
 	}
 
 	/* add last UARFCN not covered by previous cycle */
-	for (i = st, k = 0; i < u_len; i++, k++);
+	for (i = st, k = 0; i < bts->si_common.uarfcn_length; i++, k++);
 
 	return s + r + append + range1024_p(k);
 }
 
-uint8_t si2q_num(const struct gsm_bts *bts)
+uint8_t si2q_num(struct gsm_bts *bts)
 {
-	const struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list; /* EARFCN */
-	const uint16_t *u = bts->si_common.data.uarfcn_list, *sc = bts->si_common.data.scramble_list; /* UARFCN */
-	size_t l = bts->si_common.uarfcn_length, e_sz = e ? earfcn_size(e) : 1, u_sz = l ? uarfcn_size(u, sc, l) : 1;
+	size_t est, e_sz = 1, u_sz = 1;
+
+	if (&bts->si_common.si2quater_neigh_list) /* EARFCN */
+		e_sz = earfcn_size(bts);
+
+	if (bts->si_common.uarfcn_length) /* UARFCN */
+		u_sz = uarfcn_size(bts);
+
 	/* 2 bits are used in between UARFCN and EARFCN structs */
-	return 1 + (e_sz + u_sz) / (SI2Q_MAX_LEN - (SI2Q_MIN_LEN + 2));
+	est = 1 + (e_sz + u_sz) / (SI2Q_MAX_LEN - (SI2Q_MIN_LEN + 2));
+
+	return est;
 }
 
 /* 3GPP TS 44.018, Table 9.1.54.1 - prepend diversity bit to scrambling code */
@@ -191,8 +201,7 @@ int bts_uarfcn_del(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble)
 	return 0;
 }
 
-int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble,
-		   bool diversity)
+int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble, bool diversity)
 {
 	size_t len = bts->si_common.uarfcn_length, i, k = 0;
 	uint16_t scr, chk,
@@ -228,7 +237,7 @@ int bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t scramble,
 	scl[k] = scr;
 	bts->si_common.uarfcn_length++;
 
-	if (si2q_num(bts) < 2)
+	if (si2q_num(bts) < 2) /* FIXME: use SI2Q_MAX_NUM */
 		return 0;
 
 	bts_uarfcn_del(bts, arfcn, scramble);
@@ -662,11 +671,41 @@ static int generate_si2ter(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 	return sizeof(*si2t);
 }
 
+/* SI2quater messages are optional - we only generate them when neighbor UARFCNs or EARFCNs are configured */
+static inline bool si2quater_not_needed(struct gsm_bts *bts)
+{
+	unsigned i = MAX_EARFCN_LIST;
+
+	if (bts->si_common.si2quater_neigh_list.arfcn)
+		for (i = 0; i < MAX_EARFCN_LIST; i++)
+			if (bts->si_common.si2quater_neigh_list.arfcn[i] != OSMO_EARFCN_INVALID)
+				break;
+
+	if (!bts->si_common.uarfcn_length && i == MAX_EARFCN_LIST) {
+		bts->si_valid &= ~(1 << SYSINFO_TYPE_2quater); /* mark SI2q as invalid if no (E|U)ARFCNs are present */
+		return true;
+	}
+
+	return false;
+}
+
+size_t si2q_earfcn_count(const struct osmo_earfcn_si2q *e)
+{
+	unsigned i, ret = 0;
+	for (i = 0; i < e->length; i++)
+		if (e->arfcn[i] != OSMO_EARFCN_INVALID)
+			ret++;
+
+	return ret;
+}
+
 static int generate_si2quater(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 {
-	int rc, i = MAX_EARFCN_LIST;
-	struct gsm48_system_information_type_2quater *si2q =
-		(struct gsm48_system_information_type_2quater *) GSM_BTS_SI(bts, t);
+	int rc;
+	struct gsm48_system_information_type_2quater *si2q = GSM_BTS_SI2Q(bts);
+
+	if (si2quater_not_needed(bts)) /* generate rest_octets for SI2q only when necessary */
+		return GSM_MACBLOCK_LEN;
 
 	memset(si2q, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
@@ -675,21 +714,9 @@ static int generate_si2quater(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 	si2q->header.skip_indicator = 0;
 	si2q->header.system_information = GSM48_MT_RR_SYSINFO_2quater;
 
-	rc = rest_octets_si2quater(si2q->rest_octets, bts->si2q_index, bts->si2q_count,
-				   &bts->si_common.si2quater_neigh_list,
-				   bts->si_common.data.uarfcn_list,
-				   bts->si_common.data.scramble_list,
-				   bts->si_common.uarfcn_length);
+	rc = rest_octets_si2quater(si2q->rest_octets, bts);
 	if (rc < 0)
 		return rc;
-
-	if (bts->si_common.si2quater_neigh_list.arfcn)
-		for (i = 0; i < MAX_EARFCN_LIST; i++)
-			if (bts->si_common.si2quater_neigh_list.arfcn[i] !=
-			    OSMO_EARFCN_INVALID)
-				break;
-	if (!bts->si_common.uarfcn_length && i == MAX_EARFCN_LIST)
-		bts->si_valid &= ~(1 << SYSINFO_TYPE_2quater);
 
 	return sizeof(*si2q) + rc;
 }

@@ -2829,11 +2829,11 @@ DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
 		e->prio_valid = true;
 	}
 
-	if (si2q_num(bts) < 2)
+	if (si2q_num(bts) < 2) /* FIXME: use SI2Q_MAX_NUM */
 		return CMD_SUCCESS;
 
-	vty_out(vty, "Warning: not enough space in SI2quater for a given EARFCN "
-		"%u%s", arfcn, VTY_NEWLINE);
+	vty_out(vty, "Warning: not enough space in SI2quater (%u/%u used) for a given EARFCN %u%s",
+		bts->si2q_count, 2, arfcn, VTY_NEWLINE); /* FIXME: use SI2Q_MAX_NUM */
 	osmo_earfcn_del(e, arfcn);
 
 	return CMD_WARNING;

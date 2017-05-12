@@ -67,16 +67,16 @@ generated valid SI2quater: [23] 59 06 07 c0 00 25 52 88 0a 7e 10 99 64 00 0b 2b 
 generated valid SI2quater: [23] 59 06 07 c0 00 25 52 e8 0a 7f 52 88 0a 7e 10 99 64 00 0b 2b 2b 2b 2b 
 generated valid SI2quater: [23] 59 06 07 c0 00 25 52 e8 0a 7f 52 88 0a 7e 10 99 64 00 0b 2b 2b 2b 2b 
 Testing SYSINFO_TYPE_2quater EARFCN generation:
-generated invalid SI2quater: [23] 59 06 07 c0 00 04 86 59 0a 03 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated invalid SI2quater: [23] ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae 
 added EARFCN 1917 - generated valid SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be c8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1932 - generated valid SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 30 14 03 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1937 - generated valid SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 31 07 91 a0 a0 2b 2b 2b 2b 2b 2b 
 added EARFCN 1945 - generated valid SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 31 07 91 a8 3c c8 28 0b 2b 2b 2b 
 added EARFCN 1965 - generated valid SI2quater: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 31 07 91 a8 3c ca 0f 5a 0a 03 2b 
-added EARFCN 1967 - failed to generate SI2quater: Cannot allocate memory
-added EARFCN 1982 - failed to generate SI2quater: Cannot allocate memory
+added EARFCN 1967 - add_earfcn_b() failed to generate SI2quater: Cannot allocate memory
+added EARFCN 1982 - add_earfcn_b() failed to generate SI2quater: Cannot allocate memory
 Testing SYSINFO_TYPE_2quater UARFCN generation:
-generated invalid SI2quater: [23] 59 06 07 c0 00 04 86 59 00 03 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated invalid SI2quater: [23] ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae ae 
 generated valid SI2quater: [23] 59 06 07 c0 00 25 0f 7c 0c 1a 10 99 64 00 0b 2b 2b 2b 2b 2b 2b 2b 2b 
 generated valid SI2quater: [23] 59 06 07 c0 00 25 0f 7c 14 1a 1f 00 44 b2 00 03 2b 2b 2b 2b 2b 2b 2b 
 generated valid SI2quater: [23] 59 06 07 c0 00 25 0f 7c 18 58 12 f0 84 86 59 00 03 2b 2b 2b 2b 2b 2b 
