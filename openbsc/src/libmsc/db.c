@@ -1260,13 +1260,13 @@ int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber, uint64_t smin,
 			      uint64_t smax)
 {
 	dbi_result result = NULL;
-	uint32_t try;
+	uint64_t try;
 
 	for (;;) {
 		try = (rand() % (smax - smin + 1) + smin);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
-			"WHERE extension = %i",
+			"WHERE extension = %"PRIu64,
 			try
 		);
 		if (!result) {
@@ -1284,8 +1284,8 @@ int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber, uint64_t smin,
 		}
 		dbi_result_free(result);
 	}
-	sprintf(subscriber->extension, "%i", try);
-	DEBUGP(DDB, "Allocated extension %i for IMSI %s.\n", try, subscriber->imsi);
+	sprintf(subscriber->extension, "%"PRIu64, try);
+	DEBUGP(DDB, "Allocated extension %"PRIu64 " for IMSI %s.\n", try, subscriber->imsi);
 	return db_sync_subscriber(subscriber);
 }
 /*

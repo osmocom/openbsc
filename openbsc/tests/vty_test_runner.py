@@ -485,6 +485,17 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assert_(res.find("subscriber-create-on-demand random 9999999998 9999999999"))
         self.vty.command("end")
 
+        res = self.vty.command('subscriber create imsi ' + imsi)
+        print(res)
+        self.assert_(res.find("    IMSI: " + imsi) > 0)
+        self.assert_(res.find("9999999998") > 0 or res.find("9999999999") > 0)
+        self.assert_(res.find("    Extension: ") > 0)
+
+        res = self.vty.command('subscriber imsi ' + imsi + ' delete')
+        self.assert_("" == res)
+
+        res = self.vty.command('show subscriber imsi '+imsi)
+        self.assert_(('% No subscriber found for imsi ' + imsi) == res)
 
 
     def testSubscriberSettings(self):
