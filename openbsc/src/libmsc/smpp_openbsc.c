@@ -461,6 +461,37 @@ static void append_osmo_tlvs(tlv_t **req_tlv, const struct gsm_lchan *lchan)
 	}
 }
 
+struct {
+	uint32_t smpp_status_code;
+	uint8_t gsm411_cause;
+} smpp_to_gsm411_err_array[] = {
+
+	/* Seems like most phones don't care about the failure cause,
+	 * although some will display a different notification for
+	 * GSM411_RP_CAUSE_MO_NUM_UNASSIGNED
+	 * Some provoke a display of "Try again later"
+	 * while others a more definitive "Message sending failed"
+	 */
+
+	{ ESME_RSYSERR, 	GSM411_RP_CAUSE_MO_DEST_OUT_OF_ORDER	},
+	{ ESME_RINVDSTADR,	GSM411_RP_CAUSE_MO_NUM_UNASSIGNED	},
+	{ ESME_RMSGQFUL,	GSM411_RP_CAUSE_MO_CONGESTION		},
+	{ ESME_RINVSRCADR,	GSM411_RP_CAUSE_MO_SMS_REJECTED		},
+	{ ESME_RINVMSGID,	GSM411_RP_CAUSE_INV_TRANS_REF		}
+};
+
+static int smpp_to_gsm411_err(uint32_t smpp_status_code, int *gsm411_cause)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(smpp_to_gsm411_err_array); i++) {
+		if (smpp_to_gsm411_err_array[i].smpp_status_code != smpp_status_code)
+			continue;
+		*gsm411_cause = smpp_to_gsm411_err_array[i].gsm411_cause;
+		return 0;
+	}
+	return -1;
+}
+
 static void smpp_cmd_free(struct osmo_smpp_cmd *cmd)
 {
 	osmo_timer_del(&cmd->response_timer);
@@ -501,10 +532,11 @@ void smpp_cmd_ack(struct osmo_smpp_cmd *cmd)
 	smpp_cmd_free(cmd);
 }
 
-void smpp_cmd_err(struct osmo_smpp_cmd *cmd)
+void smpp_cmd_err(struct osmo_smpp_cmd *cmd, uint32_t status)
 {
 	struct gsm_subscriber_connection *conn;
 	struct gsm_trans *trans;
+	int gsm411_cause;
 
 	conn = connection_for_subscr(cmd->subscr);
 	if (!conn) {
@@ -520,14 +552,17 @@ void smpp_cmd_err(struct osmo_smpp_cmd *cmd)
 		return;
 	}
 
-	gsm411_send_rp_error(trans, cmd->sms->gsm411.msg_ref,
-			     GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER);
+	if (smpp_to_gsm411_err(status, &gsm411_cause) < 0)
+		gsm411_cause = GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
+
+	gsm411_send_rp_error(trans, cmd->sms->gsm411.msg_ref, gsm411_cause);
+
 	smpp_cmd_free(cmd);
 }
 
 static void smpp_deliver_sm_cb(void *data)
 {
-	smpp_cmd_err(data);
+	smpp_cmd_err(data, ESME_RSYSERR);
 }
 
 static int smpp_cmd_enqueue(struct osmo_esme *esme,

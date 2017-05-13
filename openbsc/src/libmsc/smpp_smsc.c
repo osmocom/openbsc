@@ -681,11 +681,10 @@ static int smpp_handle_deliver_resp(struct osmo_esme *esme, struct msgb *msg)
 		return -1;
 	}
 
-	/* Map SMPP command status to GSM 04.11 cause? */
 	if (deliver_r.command_status == ESME_ROK)
 		smpp_cmd_ack(cmd);
 	else
-		smpp_cmd_err(cmd);
+		smpp_cmd_err(cmd, deliver_r.command_status);
 
 	LOGP(DSMPP, LOGL_INFO, "[%s] Rx DELIVER-SM RESP (%s)\n",
 		esme->system_id, get_value_string(smpp_status_strs,

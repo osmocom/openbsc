@@ -97,7 +97,7 @@ struct osmo_smpp_cmd {
 struct osmo_smpp_cmd *smpp_cmd_find_by_seqnum(struct osmo_esme *esme,
 					      uint32_t sequence_number);
 void smpp_cmd_ack(struct osmo_smpp_cmd *cmd);
-void smpp_cmd_err(struct osmo_smpp_cmd *cmd);
+void smpp_cmd_err(struct osmo_smpp_cmd *cmd, uint32_t status);
 void smpp_cmd_flush_pending(struct osmo_esme *esme);
 
 struct smsc {
