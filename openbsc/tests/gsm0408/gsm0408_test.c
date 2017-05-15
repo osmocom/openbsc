@@ -28,6 +28,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/gsm_data_shared.h>
 #include <openbsc/debug.h>
 #include <openbsc/arfcn_range_encode.h>
 #include <openbsc/system_information.h>
@@ -86,21 +87,41 @@ static void test_location_area_identifier(void)
 
 static inline void gen(struct gsm_bts *bts, const char *s)
 {
+	int r;
+
 	bts->u_offset = 0;
 	bts->e_offset = 0;
 	bts->si2q_index = 0;
 	bts->si2q_count = 0;
 	bts->si_valid = 0;
 	bts->si_valid |= (1 << SYSINFO_TYPE_2quater);
+
 	/* should be no-op as entire buffer is filled with padding: */
 	memset(GSM_BTS_SI(bts, SYSINFO_TYPE_2quater), 0xAE, GSM_MACBLOCK_LEN);
-	int r = gsm_generate_si(bts, SYSINFO_TYPE_2quater);
-	bool v = bts->si_valid & (1 << SYSINFO_TYPE_2quater);
+
+	printf("generating SI2quater for %zu EARFCNs and %zu UARFCNs...\n",
+	       si2q_earfcn_count(&bts->si_common.si2quater_neigh_list), bts->si_common.uarfcn_length);
+
+	r = gsm_generate_si(bts, SYSINFO_TYPE_2quater);
 	if (r > 0)
-		printf("generated %s SI2quater: [%d] %s\n",
-		       v ? "valid" : "invalid", r, osmo_hexdump(GSM_BTS_SI(bts, SYSINFO_TYPE_2quater), r));
+		printf("generated %s SI2quater [%02u/%02u]: [%d] %s\n",
+		       (bts->si_valid & (1 << SYSINFO_TYPE_2quater)) ? "valid" : "invalid",
+		       bts->si2q_index, bts->si2q_count, r,
+		       osmo_hexdump((void *)GSM_BTS_SI2Q(bts), GSM_MACBLOCK_LEN));
 	else
 		printf("%s() failed to generate SI2quater: %s\n", s, strerror(-r));
+}
+
+static inline void del_earfcn_b(struct gsm_bts *bts, uint16_t earfcn)
+{
+	struct osmo_earfcn_si2q *e = &bts->si_common.si2quater_neigh_list;
+	int r = osmo_earfcn_del(e, earfcn);
+	if (r)
+		printf("failed to remove EARFCN %u: %s\n", earfcn, strerror(-r));
+	else
+		printf("removed EARFCN %u - ", earfcn);
+
+	gen(bts, __func__);
 }
 
 static inline void add_earfcn_b(struct gsm_bts *bts, uint16_t earfcn, uint8_t bw)
@@ -208,7 +229,9 @@ static inline void test_si2q_e(void)
 	osmo_earfcn_init(&bts->si_common.si2quater_neigh_list);
 	/* first generate invalid SI as no EARFCN added */
 	gen(bts, __func__);
-	/* subsequent calls should produce valid SI if there's enough memory */
+	/* subsequent calls should produce valid SI if there's enough memory and EARFCNs */
+	add_earfcn_b(bts, 1917, 5);
+	del_earfcn_b(bts, 1917);
 	add_earfcn_b(bts, 1917, 1);
 	add_earfcn_b(bts, 1932, OSMO_EARFCN_MEAS_INVALID);
 	add_earfcn_b(bts, 1937, 2);

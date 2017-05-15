@@ -692,6 +692,10 @@ static inline bool si2quater_not_needed(struct gsm_bts *bts)
 size_t si2q_earfcn_count(const struct osmo_earfcn_si2q *e)
 {
 	unsigned i, ret = 0;
+
+	if (!e)
+		return 0;
+
 	for (i = 0; i < e->length; i++)
 		if (e->arfcn[i] != OSMO_EARFCN_INVALID)
 			ret++;
@@ -777,7 +781,8 @@ static int generate_si3(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 		si_info.si2ter_indicator = 0;
 	}
 	if ((bts->si_valid & (1 << SYSINFO_TYPE_2quater))) {
-		LOGP(DRR, LOGL_INFO, "SI 2quater is included.\n");
+		LOGP(DRR, LOGL_INFO, "SI 2quater is included, based on %zu EARFCNs and %zu UARFCNs.\n",
+		     si2q_earfcn_count(&bts->si_common.si2quater_neigh_list), bts->si_common.uarfcn_length);
 		si_info.si2quater_indicator = 1;
 	} else {
 		si_info.si2quater_indicator = 0;

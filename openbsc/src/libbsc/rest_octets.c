@@ -379,14 +379,13 @@ int rest_octets_si2quater(uint8_t *data, struct gsm_bts *bts)
 	/* No GPRS_3G_MEASUREMENT Parameters Descr. */
 	bitvec_set_bit(&bv, 0);
 
-	if (&bts->si_common.si2quater_neigh_list) { /* FIXME: use si2q_earfcn_count() in if */
+	if (si2q_earfcn_count(&bts->si_common.si2quater_neigh_list)) {
 		append_earfcn(&bv, bts, SI2Q_MAX_LEN - bv.cur_bit);
 
 		/* FIXME: remove following check once multiple SI2q are properly supported */
 		if ((bts->e_offset != si2q_earfcn_count(&bts->si_common.si2quater_neigh_list)) ||
 		    si2q_earfcn_count(&bts->si_common.si2quater_neigh_list) > 5)
 			return -ENOMEM;
-
 	} else {
 		/* No Additions in Rel-5: */
 		bitvec_set_bit(&bv, L);
