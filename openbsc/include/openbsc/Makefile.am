@@ -93,6 +93,6 @@ openbsc_HEADERS = \
 	meas_rep.h \
 	$(NULL)
 
-openbscdir = \
-	$(includedir)/openbsc \
-	$(NULL)
+# DO NOT add a newline and '$(NULL)' to this line. That would add a trailing
+# space to the directory installed: $prefix/include/'openbsc '
+openbscdir = $(includedir)/openbsc
