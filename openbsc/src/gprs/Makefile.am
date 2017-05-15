@@ -99,8 +99,8 @@ osmo_sgsn_LDADD = \
 	$(LIBOSMOABIS_LIBS) \
 	$(LIBCARES_LIBS) \
 	$(LIBCRYPTO_LIBS) \
+	$(LIBGTP_LIBS) \
 	-lrt \
-	-lgtp \
 	-lm \
 	$(NULL)
 if BUILD_IU

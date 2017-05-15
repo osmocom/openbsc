@@ -109,6 +109,7 @@ osmo_meas_pcap2db_LDADD = \
 osmo_meas_pcap2db_CFLAGS = \
 	$(LIBOSMOCORE_CFLAGS) \
 	$(LIBOSMOGSM_CFLAGS) \
+	$(LIBOSMOABIS_CFLAGS) \
 	$(NULL)
 
 osmo_meas_udp2db_SOURCES = \
@@ -125,6 +126,7 @@ osmo_meas_udp2db_LDADD = \
 osmo_meas_udp2db_CFLAGS = \
 	$(LIBOSMOCORE_CFLAGS) \
 	$(LIBOSMOGSM_CFLAGS) \
+	$(LIBOSMOABIS_CFLAGS) \
 	$(NULL)
 
 meas_json_SOURCES = \
@@ -140,5 +142,6 @@ meas_json_LDADD = \
 meas_json_CFLAGS = \
 	$(LIBOSMOCORE_CFLAGS) \
 	$(LIBOSMOGSM_CFLAGS) \
+	$(LIBOSMOABIS_CFLAGS) \
 	$(NULL)
 
