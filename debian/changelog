@@ -1,3 +1,9 @@
+openbsc (0.15.0+z11) unstable; urgency=medium
+
+  * Add twisted ipa multiplex for ctrl cmds
+
+ -- Daniel Willmann <dwillmann@sysmocom.de>  Mon, 15 May 2017 16:04:50 +0200
+
 openbsc (0.15.0+z10) unstable; urgency=medium
 
   * Prevent a possible memory corruption in gbproxy
