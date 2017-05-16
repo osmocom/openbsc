@@ -1,3 +1,9 @@
+openbsc (0.15.1-fw.4) UNRELEASED; urgency=medium
+
+  * ussd: Avoid crashing when no connection is present in the transaction
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Tue, 16 May 2017 19:40:00 +0200
+
 openbsc (0.15.1-fw.3) UNRELEASED; urgency=medium
 
   * Added openbsc-dev package.
