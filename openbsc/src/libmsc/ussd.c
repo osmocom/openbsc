@@ -218,6 +218,13 @@ int on_ussd_response(struct gsm_network *net,
 	msgb_put(msg, reqhdr->component_length);
 
 	ssrep.transaction_id = (trans->transaction_id << 4) ^ 0x80;
+
+	if (!trans->conn) {
+		DEBUGP(DSS, "No connection for transaction with id: %d\n",
+			     trans->transaction_id);
+		msgb_free(msg);
+		return -1;
+	}
 	rc = gsm0480_send_component(trans->conn, msg, &ssrep);
 
 	if (reqhdr->message_type == GSM0480_MTYPE_RELEASE_COMPLETE) {
