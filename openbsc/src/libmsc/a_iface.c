@@ -192,6 +192,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		/* Handle inbound UNITDATA */
 		a_conn_info.called_addr = &scu_prim->u.unitdata.called_addr;
 		a_conn_info.calling_addr = &scu_prim->u.unitdata.calling_addr;
+		DEBUGP(DMSC, "N-UNITDATA.ind(%s)\n", osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
 		msc_handle_udt(scu, &a_conn_info, oph->msg);
 		break;
 
