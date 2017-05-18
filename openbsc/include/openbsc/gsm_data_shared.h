@@ -25,7 +25,6 @@
 #endif
 
 #include <openbsc/common_cs.h>
-#include <openbsc/rest_octets.h>
 
 struct osmo_bsc_data;
 
