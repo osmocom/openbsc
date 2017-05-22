@@ -427,19 +427,14 @@ int main(int argc, char **argv)
 	smpp_openbsc_start(msc_network);
 #endif
 
-#if 0
-	the bsc_ctrl_node_lookup() only returns BSC specific ctrl nodes
-
 	/* start control interface after reading config for
 	 * ctrl_vty_get_bind_addr() */
-	msc_network->ctrl = bsc_controlif_setup(msc_network,
-						ctrl_vty_get_bind_addr(),
-						OSMO_CTRL_PORT_MSC);
+	msc_network->ctrl = ctrl_interface_setup_dynip(msc_network, ctrl_vty_get_bind_addr(),
+						       OSMO_CTRL_PORT_MSC, NULL);
 	if (!msc_network->ctrl) {
 		printf("Failed to initialize control interface. Exiting.\n");
 		return -1;
 	}
-#endif
 
 #if 0
 TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_install().
@@ -449,12 +444,10 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	}
 #endif
 
-#if 0
 	if (msc_ctrl_cmds_install(msc_network) != 0) {
 		printf("Failed to initialize the MSC control commands.\n");
 		return -1;
 	}
-#endif
 
 	/* seed the PRNG */
 	srand(time(NULL));
