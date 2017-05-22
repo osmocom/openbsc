@@ -57,6 +57,7 @@ void mgcpgw_client_conf_init(struct mgcpgw_client_conf *conf)
 
 unsigned int mgcpgw_client_next_endpoint(struct mgcpgw_client *client)
 {
+	/* FIXME: wrapping / cleanup + re-use */
 	return client->next_endpoint ++;
 }
 
