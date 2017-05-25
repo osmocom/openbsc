@@ -114,9 +114,10 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	if (subsys != SS_L_INPUT)
 		return 0;
 
+	LOGP(DNM, LOGL_DEBUG, "%s(): Input signal '%s' received\n", __func__,
+			get_value_string(e1inp_signal_names, signal));
 	switch (signal) {
 	case S_L_INP_TEI_UP:
-		LOGP(DNM, LOGL_DEBUG, "%s() signal: S_L_INP_TEI_UP\n", __func__);
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
 			if (isd->trx->bts->type != GSM_BTS_TYPE_RBS2000)
@@ -129,7 +130,6 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		}
 		break;
 	case S_L_INP_TEI_DN:
-		LOGP(DNM, LOGL_DEBUG, "%s() signal: S_L_INP_TEI_DN\n", __func__);
 		if (isd->trx->bts->type != GSM_BTS_TYPE_RBS2000)
 			break;
 		LOGP(DNM, LOGL_NOTICE, "Line-%u TS-%u TEI-%u SAPI-%u: Link "
@@ -141,9 +141,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		lapd_sap_start(e1i_ts->lapd, isd->tei, isd->sapi);
 		break;
 	case S_L_INP_LINE_INIT:
-		LOGP(DNM, LOGL_DEBUG, "%s() signal: S_L_INP_LINE_INIT\n", __func__);
 	case S_L_INP_LINE_NOALARM:
-		LOGP(DNM, LOGL_DEBUG, "%s() signal: S_L_INP_LINE_NOALARM\n", __func__);
 		if (strcasecmp(isd->line->driver->name, "DAHDI")
 		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD")
 		 && strcasecmp(isd->line->driver->name, "UNIXSOCKET"))
@@ -151,7 +149,6 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		start_sabm_in_line(isd->line, 1);
 		break;
 	case S_L_INP_LINE_ALARM:
-		LOGP(DNM, LOGL_DEBUG, "%s() signal: S_L_INP_LINE_ALARM\n", __func__);
 		if (strcasecmp(isd->line->driver->name, "DAHDI")
 		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD")
 		 && strcasecmp(isd->line->driver->name, "UNIXSOCKET"))
