@@ -151,8 +151,13 @@ static void assignment_t10_timeout(void *_conn)
 	api->assign_fail(conn, GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
 }
 
-/**
- * Handle the multirate config
+/*! \brief Determine and apply AMR multi-rate configuration to lchan
+ *  Determine which AMR multi-rate configuration to use and apply it to
+ *  the lchan (so it can be communicated to BTS and MS during channel
+ *  activation.
+ *  \param[in] conn subscriber connection (used to resolve bsc_api)
+ *  \param[out] lchan logical channel to which to apply mr config
+ *  \param[in] full_rate whether to use full-rate (1) or half-rate (0) config
  */
 static void handle_mr_config(struct gsm_subscriber_connection *conn,
 			     struct gsm_lchan *lchan, int full_rate)
@@ -162,9 +167,13 @@ static void handle_mr_config(struct gsm_subscriber_connection *conn,
 	struct amr_multirate_conf *mr;
 	struct gsm48_multi_rate_conf *mr_conf;
 
+	/* BSC api override for this method, used in OsmoBSC mode with
+	 * bsc_mr_config() to use MSC-specific/specified configuration */
 	if (api->mr_config)
 		return api->mr_config(conn, lchan, full_rate);
 
+	/* NITB case: use the BTS-specic multi-rate configuration from
+	 * the vty/configuration file */
 	if (full_rate)
 		mr = &lchan->ts->trx->bts->mr_full;
 	else
@@ -178,6 +187,8 @@ static void handle_mr_config(struct gsm_subscriber_connection *conn,
 		mr_conf->icmi = 1;
 		mr_conf->m5_90 = 1;
 	}
+	/* store encoded MR config IE lchan for both MS (uplink) and BTS
+	 * (downlink) directions */
 	gsm48_multirate_config(lchan->mr_ms_lv, mr, mr->ms_mode);
 	gsm48_multirate_config(lchan->mr_bts_lv, mr, mr->bts_mode);
 }
