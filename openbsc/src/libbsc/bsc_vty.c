@@ -3852,8 +3852,12 @@ DEFUN(smscb_cmd, smscb_cmd_cmd,
 }
 
 /* resolve a gsm_bts_trx_ts basd on the given numeric identifiers */
-struct gsm_bts_trx_ts *vty_get_ts(struct vty *vty, int bts_nr, int trx_nr, int ts_nr, int ss_nr)
+static struct gsm_bts_trx_ts *vty_get_ts(struct vty *vty, const char *bts_str, const char *trx_str,
+					 const char *ts_str)
 {
+	int bts_nr = atoi(bts_str);
+	int trx_nr = atoi(trx_str);
+	int ts_nr = atoi(ts_str);
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
@@ -3883,12 +3887,9 @@ DEFUN(pdch_act, pdch_act_cmd,
 	"Deactivate Dynamic PDCH/TCH (-> TCH mode)\n")
 {
 	struct gsm_bts_trx_ts *ts;
-	int bts_nr = atoi(argv[0]);
-	int trx_nr = atoi(argv[1]);
-	int ts_nr = atoi(argv[2]);
 	int activate;
 
-	ts = vty_get_ts(vty, bts_nr, trx_nr, ts_nr, 0);
+	ts = vty_get_ts(vty, argv[0], argv[1], argv[2]);
 	if (!ts)
 		return CMD_WARNING;
 
@@ -3900,7 +3901,7 @@ DEFUN(pdch_act, pdch_act_cmd,
 
 	if (ts->pchan != GSM_PCHAN_TCH_F_PDCH) {
 		vty_out(vty, "%% Timeslot %u is not in dynamic TCH_F/PDCH "
-			"mode%s", ts_nr, VTY_NEWLINE);
+			"mode%s", ts->nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
