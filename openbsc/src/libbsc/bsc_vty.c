@@ -4026,7 +4026,6 @@ DEFUN(lchan_act, lchan_act_cmd,
 		vty_out(vty, "%% activating lchan %s%s", gsm_lchan_name(lchan), VTY_NEWLINE);
 		rsl_chan_activate_lchan(lchan, RSL_ACT_TYPE_INITIAL, 0);
 		rsl_ipacc_crcx(lchan);
-		/* FIXME: MDCX for RTP */
 	} else {
 		rsl_direct_rf_release(lchan);
 	}
@@ -4034,6 +4033,36 @@ DEFUN(lchan_act, lchan_act_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(lchan_mdcx, lchan_mdcx_cmd,
+	"bts <0-255> trx <0-255> timeslot <0-7> sub-slot <0-7> mdcx A.B.C.D <0-65535>",
+	"BTS related commands\n" "BTS Number\n" "Transceiver\n" "Transceiver Number\n"
+	"TRX Timeslot\n" "Timeslot Number\n" "Sub-Slot\n" "Sub-Slot Number\n"
+	"Modify RTP Connection\n" "MGW IP Address\n" "MGW UDP Port\n")
+{
+	struct gsm_bts_trx_ts *ts;
+	struct gsm_lchan *lchan;
+	int ss_nr = atoi(argv[3]);
+	int port = atoi(argv[5]);
+	struct in_addr ia;
+	inet_aton(argv[4], &ia);
+
+	ts = vty_get_ts(vty, argv[0], argv[1], argv[2]);
+	if (!ts)
+		return CMD_WARNING;
+
+	lchan = &ts->lchan[ss_nr];
+
+	if (ss_nr >= ts_subslots(ts)) {
+		vty_out(vty, "%% subslot %d >= permitted %d for physical channel %s%s",
+			ss_nr, ts_subslots(ts), gsm_pchan_name(ts->pchan), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty_out(vty, "%% connecting RTP of %s to %s:%u%s", gsm_lchan_name(lchan),
+		inet_ntoa(ia), port, VTY_NEWLINE);
+	rsl_ipacc_mdcx(lchan, ntohl(ia.s_addr), port, 0);
+	return CMD_SUCCESS;
+}
 extern int bsc_vty_init_extra(void);
 
 int bsc_vty_init(struct gsm_network *network)
@@ -4232,6 +4261,7 @@ int bsc_vty_init(struct gsm_network *network)
 	install_element(ENABLE_NODE, &restart_bts_cmd);
 	install_element(ENABLE_NODE, &pdch_act_cmd);
 	install_element(ENABLE_NODE, &lchan_act_cmd);
+	install_element(ENABLE_NODE, &lchan_mdcx_cmd);
 	install_element(ENABLE_NODE, &smscb_cmd_cmd);
 
 	abis_nm_vty_init();
