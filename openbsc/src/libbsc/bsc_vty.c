@@ -3851,6 +3851,29 @@ DEFUN(smscb_cmd, smscb_cmd_cmd,
 	return CMD_SUCCESS;
 }
 
+/* resolve a gsm_bts_trx_ts basd on the given numeric identifiers */
+struct gsm_bts_trx_ts *vty_get_ts(struct vty *vty, int bts_nr, int trx_nr, int ts_nr, int ss_nr)
+{
+	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts_trx_ts *ts;
+
+	bts = gsm_bts_num(gsmnet_from_vty(vty), bts_nr);
+	if (!bts) {
+		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
+		return NULL;
+	}
+
+	trx = gsm_bts_trx_num(bts, trx_nr);
+	if (!trx) {
+		vty_out(vty, "%% No such TRX (%d)%s", trx_nr, VTY_NEWLINE);
+		return NULL;
+	}
+
+	ts = &trx->ts[ts_nr];
+
+	return ts;
+}
 
 DEFUN(pdch_act, pdch_act_cmd,
 	"bts <0-255> trx <0-255> timeslot <0-7> pdch (activate|deactivate)",
@@ -3859,33 +3882,22 @@ DEFUN(pdch_act, pdch_act_cmd,
 	"Activate Dynamic PDCH/TCH (-> PDCH mode)\n"
 	"Deactivate Dynamic PDCH/TCH (-> TCH mode)\n")
 {
-	struct gsm_bts *bts;
-	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 	int bts_nr = atoi(argv[0]);
 	int trx_nr = atoi(argv[1]);
 	int ts_nr = atoi(argv[2]);
 	int activate;
 
-	bts = gsm_bts_num(gsmnet_from_vty(vty), bts_nr);
-	if (!bts) {
-		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
+	ts = vty_get_ts(vty, bts_nr, trx_nr, ts_nr, 0);
+	if (!ts)
 		return CMD_WARNING;
-	}
 
-	if (!is_ipaccess_bts(bts)) {
+	if (!is_ipaccess_bts(ts->trx->bts)) {
 		vty_out(vty, "%% This command only works for ipaccess BTS%s",
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	trx = gsm_bts_trx_num(bts, trx_nr);
-	if (!trx) {
-		vty_out(vty, "%% No such TRX (%d)%s", trx_nr, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	ts = &trx->ts[ts_nr];
 	if (ts->pchan != GSM_PCHAN_TCH_F_PDCH) {
 		vty_out(vty, "%% Timeslot %u is not in dynamic TCH_F/PDCH "
 			"mode%s", ts_nr, VTY_NEWLINE);
