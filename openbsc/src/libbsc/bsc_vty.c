@@ -3916,6 +3916,124 @@ DEFUN(pdch_act, pdch_act_cmd,
 
 }
 
+/* determine the logical channel type based on the physical channel type */
+static int lchan_type_by_pchan(enum gsm_phys_chan_config pchan)
+{
+	switch (pchan) {
+	case GSM_PCHAN_TCH_F:
+		return GSM_LCHAN_TCH_F;
+	case GSM_PCHAN_TCH_H:
+		return GSM_LCHAN_TCH_H;
+	case GSM_PCHAN_SDCCH8_SACCH8C:
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
+	case GSM_PCHAN_CCCH_SDCCH4:
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
+		return GSM_LCHAN_SDCCH;
+	default:
+		return -1;
+	}
+}
+
+/* configure the lchan for a single AMR mode (as specified) */
+static int lchan_set_single_amr_mode(struct gsm_lchan *lchan, uint8_t amr_mode)
+{
+	struct amr_multirate_conf mr;
+	struct gsm48_multi_rate_conf *mr_conf;
+	mr_conf = (struct gsm48_multi_rate_conf *) &mr.gsm48_ie;
+
+	if (amr_mode > 7)
+		return -1;
+
+	memset(&mr, 0, sizeof(mr));
+	mr_conf->ver = 1;
+	/* bit-mask of supported modes, only one bit is set. Reflects
+	 * Figure 10.5.2.47a where there are no thershold and only a
+	 * single mode */
+	mr.gsm48_ie[1] = 1 << amr_mode;
+
+	mr.ms_mode[0].mode = amr_mode;
+	mr.bts_mode[0].mode = amr_mode;
+
+	/* encode this configuration into the lchan for both uplink and
+	 * downlink direction */
+	gsm48_multirate_config(lchan->mr_ms_lv, &mr, mr.ms_mode);
+	gsm48_multirate_config(lchan->mr_bts_lv, &mr, mr.bts_mode);
+
+	return 0;
+}
+
+/* Debug/Measurement command to activate a given logical channel
+ * manually in a given mode/codec.  This is useful for receiver
+ * performance testing (FER/RBER/...) */
+DEFUN(lchan_act, lchan_act_cmd,
+	"bts <0-255> trx <0-255> timeslot <0-7> sub-slot <0-7> (activate|deactivate) (hr|fr|efr|amr) [<0-7>]",
+	"BTS related commands\n" "BTS Number\n" "Transceiver\n" "Transceiver Number\n"
+	"TRX Timeslot\n" "Timeslot Number\n" "Sub-Slot Number\n" "Sub-Slot Number\n"
+	"Manual Channel Activation (e.g. for BER test)\n"
+	"Manual Channel Deactivation (e.g. for BER test)\n"
+	"Half-Rate v1\n" "Full-Rate\n" "Enhanced Full Rate\n" "Adaptive Multi-Rate\n" "AMR Mode\n")
+{
+	struct gsm_bts_trx_ts *ts;
+	struct gsm_lchan *lchan;
+	int ss_nr = atoi(argv[3]);
+	const char *act_str = argv[4];
+	const char *codec_str = argv[5];
+	int activate;
+
+	ts = vty_get_ts(vty, argv[0], argv[1], argv[2]);
+	if (!ts)
+		return CMD_WARNING;
+
+	lchan = &ts->lchan[ss_nr];
+
+	if (!strcmp(act_str, "activate"))
+		activate = 1;
+	else
+		activate = 0;
+
+	if (ss_nr >= ts_subslots(ts)) {
+		vty_out(vty, "%% subslot %d >= permitted %d for physical channel %s%s",
+			ss_nr, ts_subslots(ts), gsm_pchan_name(ts->pchan), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (activate) {
+		int lchan_t;
+		if (lchan->state != LCHAN_S_NONE) {
+			vty_out(vty, "%% Cannot activate: Channel busy!%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		lchan_t = lchan_type_by_pchan(ts->pchan);
+		if (lchan_t < 0)
+			return CMD_WARNING;
+		/* configure the lchan */
+		lchan->type = lchan_t;
+		lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
+		if (!strcmp(codec_str, "hr") || !strcmp(codec_str, "fr"))
+			lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
+		else if (!strcmp(codec_str, "efr"))
+			lchan->tch_mode = GSM48_CMODE_SPEECH_EFR;
+		else if (!strcmp(codec_str, "amr")) {
+			int amr_mode;
+			if (argc < 7) {
+				vty_out(vty, "%% AMR requires specification of AMR mode%s", VTY_NEWLINE);
+				return CMD_WARNING;
+			}
+			amr_mode = atoi(argv[6]);
+			lchan->tch_mode = GSM48_CMODE_SPEECH_AMR;
+			lchan_set_single_amr_mode(lchan, amr_mode);
+		}
+		vty_out(vty, "%% activating lchan %s%s", gsm_lchan_name(lchan), VTY_NEWLINE);
+		rsl_chan_activate_lchan(lchan, RSL_ACT_TYPE_INITIAL, 0);
+		rsl_ipacc_crcx(lchan);
+		/* FIXME: MDCX for RTP */
+	} else {
+		rsl_direct_rf_release(lchan);
+	}
+
+	return CMD_SUCCESS;
+}
+
 extern int bsc_vty_init_extra(void);
 
 int bsc_vty_init(struct gsm_network *network)
@@ -4113,6 +4231,7 @@ int bsc_vty_init(struct gsm_network *network)
 	install_element(ENABLE_NODE, &drop_bts_cmd);
 	install_element(ENABLE_NODE, &restart_bts_cmd);
 	install_element(ENABLE_NODE, &pdch_act_cmd);
+	install_element(ENABLE_NODE, &lchan_act_cmd);
 	install_element(ENABLE_NODE, &smscb_cmd_cmd);
 
 	abis_nm_vty_init();
