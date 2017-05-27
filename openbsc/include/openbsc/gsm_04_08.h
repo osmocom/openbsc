@@ -94,6 +94,6 @@ void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 void release_security_operation(struct gsm_subscriber_connection *conn);
 void allocate_security_operation(struct gsm_subscriber_connection *conn);
 
-int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, struct amr_mode *modes);
+int gsm48_multirate_config(uint8_t *lv, const struct amr_multirate_conf *mr, const struct amr_mode *modes);
 
 #endif

@@ -378,7 +378,12 @@ void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 	}
 }
 
-int gsm48_multirate_config(uint8_t *lv, struct amr_multirate_conf *mr, struct amr_mode *modes)
+/*! \brief Encode a TS 04.08 multirate config LV according to 10.5.2.21aa
+ *  \param[out] lv caller-allocated buffer of 7 bytes. First octet is IS length
+ *  \param[in] mr multi-rate configuration to encode
+ *  \param[in] modes array describing the AMR modes
+ *  \returns 0 on success */
+int gsm48_multirate_config(uint8_t *lv, const struct amr_multirate_conf *mr, const struct amr_mode *modes)
 {
 	int num = 0, i;
 
