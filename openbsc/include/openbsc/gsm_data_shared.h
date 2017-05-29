@@ -512,6 +512,7 @@ enum gsm_bts_type_variant {
 enum bts_attribute {
 	BTS_TYPE_VARIANT,
 	BTS_SUB_MODEL,
+	TRX_PHY_VERSION,
 };
 
 struct vty;

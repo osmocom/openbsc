@@ -54,6 +54,7 @@ static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
 const struct value_string bts_attribute_names[] = {
 	OSMO_VALUE_STRING(BTS_TYPE_VARIANT),
 	OSMO_VALUE_STRING(BTS_SUB_MODEL),
+	OSMO_VALUE_STRING(TRX_PHY_VERSION),
 	{ 0, NULL }
 };
 

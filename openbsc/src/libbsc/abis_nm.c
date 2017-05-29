@@ -439,14 +439,14 @@ int abis_nm_select_newest_sw(const struct abis_nm_sw_desc *sw_descr,
 	return res;
 }
 
-static inline bool handle_attr(struct gsm_bts *bts, enum bts_attribute id, uint8_t *val, uint8_t len)
+static inline bool handle_attr(const struct gsm_bts *bts, enum bts_attribute id, uint8_t *val, uint8_t len)
 {
 	switch (id) {
 	case BTS_TYPE_VARIANT:
-		LOGP(DNM, LOGL_ERROR, "BTS reported variant: %s\n",  val);
+		LOGP(DNM, LOGL_NOTICE, "BTS%u reported variant: %s\n", bts->nr, val);
 		break;
 	case BTS_SUB_MODEL:
-		LOGP(DNM, LOGL_ERROR, "BTS reported submodel: %s\n",  val);
+		LOGP(DNM, LOGL_NOTICE, "BTS%u reported submodel: %s\n", bts->nr, val);
 		break;
 	default:
 		return false;
@@ -454,55 +454,87 @@ static inline bool handle_attr(struct gsm_bts *bts, enum bts_attribute id, uint8
 	return true;
 }
 
+/* Parse Attribute Response Info - return pointer to the actual content */
+static inline uint8_t *parse_attr_resp_info_unreported(uint8_t bts_nr, uint8_t *ari, uint16_t ari_len, uint16_t *out_len)
+{
+	uint8_t num_unreported = ari[0], i;
+
+	DEBUGP(DNM, "BTS%u Get Attributes Response Info: %u bytes total with %u unreported attributes\n",
+	       bts_nr, ari_len, num_unreported);
+
+	/* +1 because we have to account for number of unreported attributes, prefixing the list: */
+	for (i = 0; i < num_unreported; i++)
+		LOGP(DNM, LOGL_ERROR, "BTS%u Attribute %s is unreported\n",
+		     bts_nr, get_value_string(abis_nm_att_names, ari[i + 1]));
+
+	/* the data starts right after the list of unreported attributes + space for length of that list */
+	*out_len = ari_len - (num_unreported + 2);
+
+	return ari + num_unreported + 1; /* we have to account for 1st byte with number of unreported attributes */
+}
+
+/* Parse Attribute Response Info content for 3GPP TS 52.021 §9.4.28 Manufacturer Dependent State */
+static inline uint8_t *parse_attr_resp_info_manuf_state(const struct gsm_bts_trx *trx, uint8_t *data, uint16_t *data_len)
+{
+	struct tlv_parsed tp;
+	const uint8_t *power;
+	uint8_t adjust = 0;
+
+	if (!trx) /* this attribute does not make sense on BTS level, only on TRX level */
+		return data;
+
+	abis_nm_tlv_parse(&tp, trx->bts, data, *data_len);
+	if (TLVP_PRES_LEN(&tp, NM_ATT_MANUF_STATE, 1)) {
+		power = TLVP_VAL(&tp, NM_ATT_MANUF_STATE);
+		LOGP(DNM, LOGL_NOTICE, "%s Get Attributes Response: nominal power is %u\n", gsm_trx_name(trx), *power);
+		adjust = 2; /* adjust for parsed TV struct */
+	}
+
+	*data_len -= adjust;
+
+	return data + adjust;
+}
+
 /* Handle 3GPP TS 52.021 §9.4.64 Get Attribute Response Info */
-static int abis_nm_rx_get_attr_resp(struct msgb *mb, struct gsm_bts *bts)
+static int abis_nm_rx_get_attr_resp(struct msgb *mb, const struct gsm_bts_trx *trx)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	struct e1inp_sign_link *sign_link = mb->dst;
+	struct gsm_bts *bts = trx ? trx->bts : sign_link->trx->bts;
 	struct tlv_parsed tp;
-	const uint8_t *ari;
-	uint8_t unreported, i;
-	uint16_t ari_len;
+	uint8_t *data, i;
+	uint16_t data_len;
 	int rc;
 	struct abis_nm_sw_desc sw_descr[MAX_BTS_ATTR];
 
 	abis_nm_debugp_foh(DNM, foh);
 
-	DEBUGPC(DNM, "Get Attributes Response\n");
+	DEBUGPC(DNM, "Get Attributes Response for BTS%u\n", bts->nr);
 
-	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
-
-	if (!TLVP_PRESENT(&tp, NM_ATT_GET_ARI)) {
-		LOGP(DNM, LOGL_ERROR, "Get Attributes Response without Response Info?!\n");
+	abis_nm_tlv_parse(&tp, bts, foh->data, oh->length-sizeof(*foh));
+	if (!TLVP_PRES_LEN(&tp, NM_ATT_GET_ARI, 1)) {
+		LOGP(DNM, LOGL_ERROR, "BTS%u: Get Attributes Response without Response Info?!\n", bts->nr);
 		return -EINVAL;
 	}
 
-	ari = TLVP_VAL(&tp, NM_ATT_GET_ARI);
-	ari_len = TLVP_LEN(&tp, NM_ATT_GET_ARI);
-	/* Attributes Response Info has peculiar structure - first the number of unreported attributes */
-	unreported = ari[0];
-	DEBUGP(DNM, "Found Get Attributes Response Info: %u bytes total with %u unreported attributes\n",
-	       ari_len, unreported);
+	data = parse_attr_resp_info_unreported(bts->nr, TLVP_VAL(&tp, NM_ATT_GET_ARI), TLVP_LEN(&tp, NM_ATT_GET_ARI),
+					       &data_len);
 
-	/* than the list of unreported attributes */
-	for (i = 0; i < unreported; i++)
-		LOGP(DNM, LOGL_ERROR, "Attribute %s is unreported\n",   /* +1 because we have to account for number of */
-		     get_value_string(abis_nm_att_names, ari[i + 1])); /*  unreported attributes, prefixing the list. */
+	data = parse_attr_resp_info_manuf_state(trx, data, &data_len);
 
-	/* after that there's finally list of replies in form of sw-conf structure:
-	   it starts right after the list of unreported attributes + space for length of that list */
-	rc = abis_nm_get_sw_conf(ari + unreported + 1, ari_len - (unreported + 2), &sw_descr[0], ARRAY_SIZE(sw_descr));
+	/* after parsing manufacturer-specific attributes there's list of replies in form of sw-conf structure: */
+	rc = abis_nm_get_sw_conf(data, data_len, &sw_descr[0], ARRAY_SIZE(sw_descr));
 	if (rc > 0) {
 		for (i = 0; i < rc; i++) {
-			if (!handle_attr(bts, str2btsattr((const char *)sw_descr[i].file_id), sw_descr[i].file_version,
-					 sw_descr[i].file_version_len))
-				LOGP(DNM, LOGL_NOTICE, "ARI reported sw[%d/%d]: %s is %s\n",
-				     i, rc, sw_descr[i].file_id, sw_descr[i].file_version);
+			if (!handle_attr(bts, str2btsattr((const char *)sw_descr[i].file_id),
+					 sw_descr[i].file_version, sw_descr[i].file_version_len))
+				LOGP(DNM, LOGL_NOTICE, "BTS%u: ARI reported sw[%d/%d]: %s is %s\n",
+				     bts->nr, i, rc, sw_descr[i].file_id, sw_descr[i].file_version);
 		}
 	} else
-		LOGP(DNM, LOGL_ERROR, "Failed to parse SW-Config part of Get Attribute Response Info: %s\n",
-		     strerror(-rc));
+		LOGP(DNM, LOGL_ERROR, "BTS%u: failed to parse SW-Config part of Get Attribute Response Info: %s\n",
+		     bts->nr, strerror(-rc));
 
 	return 0;
 }
@@ -720,7 +752,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	case NM_MT_SET_BTS_ATTR_ACK:
 		break;
 	case NM_MT_GET_ATTR_RESP:
-		ret = abis_nm_rx_get_attr_resp(mb, bts);
+		ret = abis_nm_rx_get_attr_resp(mb, gsm_bts_trx_num(bts, (foh)->obj_inst.trx_nr));
 		break;
 	default:
 		abis_nm_debugp_foh(DNM, foh);
