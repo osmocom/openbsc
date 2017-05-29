@@ -143,11 +143,3 @@ int bsc_vty_is_config_node(struct vty *vty, int node)
 		return 1;
 	}
 }
-
-/* a talloc string replace routine */
-void bsc_replace_string(void *ctx, char **dst, const char *newstr)
-{
-	if (*dst)
-		talloc_free(*dst);
-	*dst = talloc_strdup(ctx, newstr);
-}

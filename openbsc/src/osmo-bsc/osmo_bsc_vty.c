@@ -230,7 +230,7 @@ DEFUN(cfg_net_bsc_token,
 {
 	struct bsc_msc_data *data = bsc_msc_data(vty);
 
-	bsc_replace_string(osmo_bsc_data(vty), &data->bsc_token, argv[0]);
+	osmo_talloc_replace_string(osmo_bsc_data(vty), &data->bsc_token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -490,7 +490,7 @@ DEFUN(cfg_net_msc_welcome_ussd,
 	if (!str)
 		return CMD_WARNING;
 
-	bsc_replace_string(osmo_bsc_data(vty), &data->ussd_welcome_txt, str);
+	osmo_talloc_replace_string(osmo_bsc_data(vty), &data->ussd_welcome_txt, str);
 	talloc_free(str);
 	return CMD_SUCCESS;
 }
@@ -518,7 +518,7 @@ DEFUN(cfg_net_msc_lost_ussd,
 	if (!str)
 		return CMD_WARNING;
 
-	bsc_replace_string(osmo_bsc_data(vty), &data->ussd_msc_lost_txt, str);
+	osmo_talloc_replace_string(osmo_bsc_data(vty), &data->ussd_msc_lost_txt, str);
 	talloc_free(str);
 	return CMD_SUCCESS;
 }
@@ -546,7 +546,7 @@ DEFUN(cfg_net_msc_grace_ussd,
 	if (!str)
 		return CMD_WARNING;
 
-	bsc_replace_string(osmo_bsc_data(vty), &data->ussd_grace_txt, str);
+	osmo_talloc_replace_string(osmo_bsc_data(vty), &data->ussd_grace_txt, str);
 	talloc_free(str);
 	return CMD_SUCCESS;
 }
@@ -574,7 +574,7 @@ DEFUN(cfg_net_bsc_missing_msc_ussd,
 	if (!txt)
 		return CMD_WARNING;
 
-	bsc_replace_string(data, &data->ussd_no_msc_txt, txt);
+	osmo_talloc_replace_string(data, &data->ussd_no_msc_txt, txt);
 	talloc_free(txt);
 	return CMD_SUCCESS;
 }
@@ -666,7 +666,7 @@ DEFUN(cfg_msc_acc_lst_name,
 {
 	struct bsc_msc_data *msc = bsc_msc_data(vty);
 
-	bsc_replace_string(msc, &msc->acc_lst_name, argv[0]);
+	osmo_talloc_replace_string(msc, &msc->acc_lst_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -695,7 +695,7 @@ DEFUN(cfg_net_bsc_mid_call_text,
 	if (!txt)
 		return CMD_WARNING;
 
-	bsc_replace_string(data, &data->mid_call_txt, txt);
+	osmo_talloc_replace_string(data, &data->mid_call_txt, txt);
 	talloc_free(txt);
 	return CMD_SUCCESS;
 }
@@ -717,7 +717,7 @@ DEFUN(cfg_net_rf_socket,
 {
 	struct osmo_bsc_data *data = osmo_bsc_data(vty);
 
-	bsc_replace_string(data, &data->rf_ctrl_name, argv[0]);
+	osmo_talloc_replace_string(data, &data->rf_ctrl_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -749,7 +749,7 @@ DEFUN(cfg_bsc_acc_lst_name,
 {
 	struct osmo_bsc_data *bsc = osmo_bsc_data(vty);
 
-	bsc_replace_string(bsc, &bsc->acc_lst_name, argv[0]);
+	osmo_talloc_replace_string(bsc, &bsc->acc_lst_name, argv[0]);
 	return CMD_SUCCESS;
 }
 

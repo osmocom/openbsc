@@ -479,7 +479,7 @@ DEFUN(cfg_nat_token, cfg_nat_token_cmd,
       "Authentication token configuration\n"
       "Token of the BSC, currently transferred in cleartext\n")
 {
-	bsc_replace_string(_nat, &_nat->token, argv[0]);
+	osmo_talloc_replace_string(_nat, &_nat->token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -502,7 +502,7 @@ DEFUN(cfg_nat_acc_lst_name,
       "Set the name of the access list to use.\n"
       "The name of the to be used access list.")
 {
-	bsc_replace_string(_nat, &_nat->acc_lst_name, argv[0]);
+	osmo_talloc_replace_string(_nat, &_nat->acc_lst_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -518,11 +518,11 @@ DEFUN(cfg_nat_include,
 	struct bsc_connection *con1, *con2;
 
 	if ('/' == argv[0][0])
-		bsc_replace_string(_nat, &_nat->resolved_path, argv[0]);
+		osmo_talloc_replace_string(_nat, &_nat->resolved_path, argv[0]);
 	else {
 		path = talloc_asprintf(_nat, "%s/%s", _nat->include_base,
 				       argv[0]);
-		bsc_replace_string(_nat, &_nat->resolved_path, path);
+		osmo_talloc_replace_string(_nat, &_nat->resolved_path, path);
 		talloc_free(path);
 	}
 
@@ -538,7 +538,7 @@ DEFUN(cfg_nat_include,
 		return CMD_WARNING;
 	}
 
-	bsc_replace_string(_nat, &_nat->include_file, argv[0]);
+	osmo_talloc_replace_string(_nat, &_nat->include_file, argv[0]);
 
 	llist_for_each_entry_safe(con1, con2, &_nat->bsc_connections,
 				  list_entry) {
@@ -574,7 +574,7 @@ DEFUN(cfg_nat_imsi_black_list_fn,
       "IMSI black listing\n" "Filename IMSI and reject-cause\n")
 {
 
-	bsc_replace_string(_nat, &_nat->imsi_black_list_fn, argv[0]);
+	osmo_talloc_replace_string(_nat, &_nat->imsi_black_list_fn, argv[0]);
 	if (_nat->imsi_black_list_fn) {
 		int rc;
 		struct osmo_config_list *rewr = NULL;
@@ -609,7 +609,7 @@ static int replace_rules(struct bsc_nat *nat, char **name,
 {
 	struct osmo_config_list *rewr = NULL;
 
-	bsc_replace_string(nat, name, file);
+	osmo_talloc_replace_string(nat, name, file);
 	if (*name) {
 		rewr = osmo_config_list_parse(nat, *name);
 		bsc_nat_num_rewr_entry_adapt(nat, head, rewr);
@@ -740,7 +740,7 @@ DEFUN(cfg_nat_prefix_trie,
 	_nat->num_rewr_trie = NULL;
 
 	/* replace the file name */
-	bsc_replace_string(_nat, &_nat->num_rewr_trie_name, argv[0]);
+	osmo_talloc_replace_string(_nat, &_nat->num_rewr_trie_name, argv[0]);
 	if (!_nat->num_rewr_trie_name) {
 		vty_out(vty, "%% prefix-tree no filename is present.%s", VTY_NEWLINE);
 		return CMD_WARNING;
@@ -789,7 +789,7 @@ DEFUN(cfg_nat_ussd_lst_name,
       "Set the name of the access list to check for IMSIs for USSD message\n"
       "The name of the access list for HLR USSD handling")
 {
-	bsc_replace_string(_nat, &_nat->ussd_lst_name, argv[0]);
+	osmo_talloc_replace_string(_nat, &_nat->ussd_lst_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -809,7 +809,7 @@ DEFUN(cfg_nat_ussd_token,
       "ussd-token TOKEN",
       "Set the token used to identify the USSD module\n" "Secret key\n")
 {
-	bsc_replace_string(_nat, &_nat->ussd_token, argv[0]);
+	osmo_talloc_replace_string(_nat, &_nat->ussd_token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -818,7 +818,7 @@ DEFUN(cfg_nat_ussd_local,
       "ussd-local-ip A.B.C.D",
       "Set the IP to listen for the USSD Provider\n" "IP Address\n")
 {
-	bsc_replace_string(_nat, &_nat->ussd_local, argv[0]);
+	osmo_talloc_replace_string(_nat, &_nat->ussd_local, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -884,7 +884,7 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN",
 	if (strncmp(conf->token, argv[0], 128) != 0)
 		conf->token_updated = true;
 
-	bsc_replace_string(conf, &conf->token, argv[0]);
+	osmo_talloc_replace_string(conf, &conf->token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -983,7 +983,7 @@ DEFUN(cfg_bsc_acc_lst_name,
 {
 	struct bsc_config *conf = vty->index;
 
-	bsc_replace_string(conf, &conf->acc_lst_name, argv[0]);
+	osmo_talloc_replace_string(conf, &conf->acc_lst_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -1035,7 +1035,7 @@ DEFUN(cfg_bsc_desc,
 {
 	struct bsc_config *conf = vty->index;
 
-	bsc_replace_string(conf, &conf->description, argv[0]);
+	osmo_talloc_replace_string(conf, &conf->description, argv[0]);
 	return CMD_SUCCESS;
 }
 

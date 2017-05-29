@@ -88,7 +88,7 @@ DEFUN(cfg_net_name_short,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
-	bsc_replace_string(gsmnet, &gsmnet->name_short, argv[0]);
+	osmo_talloc_replace_string(gsmnet, &gsmnet->name_short, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -99,7 +99,7 @@ DEFUN(cfg_net_name_long,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
-	bsc_replace_string(gsmnet, &gsmnet->name_long, argv[0]);
+	osmo_talloc_replace_string(gsmnet, &gsmnet->name_long, argv[0]);
 	return CMD_SUCCESS;
 }
 

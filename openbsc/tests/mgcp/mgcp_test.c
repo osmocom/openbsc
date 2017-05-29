@@ -532,7 +532,7 @@ static void test_messages(void)
 		last_endpoint = -1;
 		dummy_packets = 0;
 
-		bsc_replace_string(cfg, &cfg->trunk.audio_fmtp_extra, t->extra_fmtp);
+		osmo_talloc_replace_string(cfg, &cfg->trunk.audio_fmtp_extra, t->extra_fmtp);
 
 		inp = create_msg(t->req);
 		msg = mgcp_handle_message(cfg, inp);

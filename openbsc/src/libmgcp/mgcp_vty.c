@@ -261,7 +261,7 @@ DEFUN(cfg_mgcp_local_ip,
       IP_STR
       "IPv4 Address to use in SDP record\n")
 {
-	bsc_replace_string(g_cfg, &g_cfg->local_ip, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->local_ip, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -272,7 +272,7 @@ DEFUN(cfg_mgcp_bts_ip,
       IP_STR
       "IPv4 Address of the BTS\n")
 {
-	bsc_replace_string(g_cfg, &g_cfg->bts_ip, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->bts_ip, argv[0]);
 	inet_aton(g_cfg->bts_ip, &g_cfg->bts_in);
 	return CMD_SUCCESS;
 }
@@ -285,7 +285,7 @@ DEFUN(cfg_mgcp_bind_ip,
       IP_STR
       "IPv4 Address to bind to\n")
 {
-	bsc_replace_string(g_cfg, &g_cfg->source_addr, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->source_addr, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -403,7 +403,7 @@ DEFUN(cfg_mgcp_rtp_bts_bind_ip,
       "rtp bts-bind-ip A.B.C.D",
       RTP_STR "Bind endpoints facing the BTS\n" "Address to bind to\n")
 {
-	bsc_replace_string(g_cfg, &g_cfg->bts_ports.bind_addr, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->bts_ports.bind_addr, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -422,7 +422,7 @@ DEFUN(cfg_mgcp_rtp_net_bind_ip,
       "rtp net-bind-ip A.B.C.D",
       RTP_STR "Bind endpoints facing the Network\n" "Address to bind to\n")
 {
-	bsc_replace_string(g_cfg, &g_cfg->net_ports.bind_addr, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->net_ports.bind_addr, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -483,7 +483,7 @@ DEFUN(cfg_mgcp_sdp_fmtp_extra,
 	if (!txt)
 		return CMD_WARNING;
 
-	bsc_replace_string(g_cfg, &g_cfg->trunk.audio_fmtp_extra, txt);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->trunk.audio_fmtp_extra, txt);
 	talloc_free(txt);
 	return CMD_SUCCESS;
 }
@@ -529,7 +529,7 @@ DEFUN(cfg_mgcp_sdp_payload_name,
       "sdp audio-payload name NAME",
       SDP_STR AUDIO_STR "Name\n" "Payload name\n")
 {
-	bsc_replace_string(g_cfg, &g_cfg->trunk.audio_name, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->trunk.audio_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -714,7 +714,7 @@ DEFUN(cfg_mgcp_agent_addr,
       CALL_AGENT_STR IP_STR
       "IPv4 Address of the callagent\n")
 {
-	bsc_replace_string(g_cfg, &g_cfg->call_agent_addr, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->call_agent_addr, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -730,7 +730,7 @@ DEFUN(cfg_mgcp_transcoder,
       "Use a MGW to detranscoder RTP\n"
       "The IP address of the MGW")
 {
-	bsc_replace_string(g_cfg, &g_cfg->transcoder_ip, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->transcoder_ip, argv[0]);
 	inet_aton(g_cfg->transcoder_ip, &g_cfg->transcoder_in);
 
 	return CMD_SUCCESS;
@@ -838,7 +838,7 @@ DEFUN(cfg_trunk_sdp_fmtp_extra,
 	if (!txt)
 		return CMD_WARNING;
 
-	bsc_replace_string(g_cfg, &trunk->audio_fmtp_extra, txt);
+	osmo_talloc_replace_string(g_cfg, &trunk->audio_fmtp_extra, txt);
 	talloc_free(txt);
 	return CMD_SUCCESS;
 }
@@ -866,7 +866,7 @@ DEFUN(cfg_trunk_payload_name,
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 
-	bsc_replace_string(g_cfg, &trunk->audio_name, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &trunk->audio_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -1289,7 +1289,7 @@ DEFUN(cfg_mgcp_osmux_ip,
       "osmux bind-ip A.B.C.D",
       OSMUX_STR IP_STR "IPv4 Address to bind to\n")
 {
-	bsc_replace_string(g_cfg, &g_cfg->osmux_addr, argv[0]);
+	osmo_talloc_replace_string(g_cfg, &g_cfg->osmux_addr, argv[0]);
 	return CMD_SUCCESS;
 }
 

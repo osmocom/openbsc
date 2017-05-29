@@ -362,7 +362,7 @@ static int set_net_cfg_cmd(struct ctrl_cmd *cmd, void *data)
 		return CTRL_CMD_ERROR;
 
 	if (strcmp(bsc_variable, "access-list-name") == 0) {
-		bsc_replace_string(bsc_cfg, &bsc_cfg->acc_lst_name, cmd->value);
+		osmo_talloc_replace_string(bsc_cfg, &bsc_cfg->acc_lst_name, cmd->value);
 		cmd->reply = talloc_asprintf(cmd, "%s",
 				bsc_cfg->acc_lst_name ? bsc_cfg->acc_lst_name : "");
 		return CTRL_CMD_REPLY;

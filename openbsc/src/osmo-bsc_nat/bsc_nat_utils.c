@@ -139,7 +139,7 @@ void bsc_nat_free(struct bsc_nat *nat)
 
 void bsc_nat_set_msc_ip(struct bsc_nat *nat, const char *ip)
 {
-	bsc_replace_string(nat, &nat->main_dest->ip, ip);
+	osmo_talloc_replace_string(nat, &nat->main_dest->ip, ip);
 }
 
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)

@@ -253,7 +253,7 @@ int main(int argc, char **argv)
 
 	data = bsc_gsmnet->bsc_data;
 	if (rf_ctrl)
-		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctrl);
+		osmo_talloc_replace_string(data, &data->rf_ctrl_name, rf_ctrl);
 
 	data->rf_ctrl = osmo_bsc_rf_create(data->rf_ctrl_name, bsc_gsmnet);
 	if (!data->rf_ctrl) {

@@ -2946,7 +2946,7 @@ DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
 	struct gsm_bts *bts = vty->index;
 	int rc;
 
-	bsc_replace_string(bts, &bts->pcu_sock_path, argv[0]);
+	osmo_talloc_replace_string(bts, &bts->pcu_sock_path, argv[0]);
 	pcu_sock_exit(bts);
 	rc = pcu_sock_init(bts->pcu_sock_path, bts);
 	if (rc < 0) {
