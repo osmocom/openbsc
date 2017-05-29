@@ -53,6 +53,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/bsc_msc_data.h>
 #include <openbsc/osmo_bsc_rf.h>
+#include <openbsc/pcu_if.h>
 
 #include <openbsc/common_cs.h>
 
@@ -280,6 +281,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "Early Classmark Sending: %s%s",
 		bts->early_classmark_allowed ? "allowed" : "forbidden",
 		VTY_NEWLINE);
+	if (bts->pcu_sock_path)
+		vty_out(vty, "PCU Socket Path: %s%s", bts->pcu_sock_path, VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  Unit ID: %u/%u/0, OML Stream ID 0x%02x%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
@@ -764,6 +767,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			vty_out(vty, "  depends-on-bts %d%s", bts_nr, VTY_NEWLINE);
 		}
 	}
+	if (bts->pcu_sock_path)
+		vty_out(vty, "  pcu-socket %s%s", bts->pcu_sock_path, VTY_NEWLINE);
 
 	config_write_bts_model(vty, bts);
 }
@@ -2933,6 +2938,26 @@ DEFUN(cfg_bts_si5_neigh, cfg_bts_si5_neigh_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
+	"pcu-socket PATH",
+	"PCU Socket Path for using OsmoPCU co-located with BSC (legacy BTS)\n"
+	"Path in the file system for the unix-domain PCU socket\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int rc;
+
+	bsc_replace_string(bts, &bts->pcu_sock_path, argv[0]);
+	pcu_sock_exit(bts);
+	rc = pcu_sock_init(bts->pcu_sock_path, bts);
+	if (rc < 0) {
+		vty_out(vty, "%% Error creating PCU socket `%s' for BTS %u%s",
+			bts->pcu_sock_path, bts->nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 #define EXCL_RFLOCK_STR "Exclude this BTS from the global RF Lock\n"
 
 DEFUN(cfg_bts_excl_rf_lock,
@@ -4231,6 +4256,7 @@ int bsc_vty_init(struct gsm_network *network)
 	install_element(BTS_NODE, &cfg_bts_amr_hr_hyst2_cmd);
 	install_element(BTS_NODE, &cfg_bts_amr_hr_hyst3_cmd);
 	install_element(BTS_NODE, &cfg_bts_amr_hr_start_mode_cmd);
+	install_element(BTS_NODE, &cfg_bts_pcu_sock_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);

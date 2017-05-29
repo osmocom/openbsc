@@ -1,8 +1,6 @@
 #ifndef _PCU_IF_H
 #define _PCU_IF_H
 
-#define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
-
 #include <osmocom/gsm/l1sap.h>
 
 extern int pcu_direct;

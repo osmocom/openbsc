@@ -507,8 +507,6 @@ int bsc_network_configure(const char *config_file)
 {
 	struct gsm_bts *bts;
 	int rc;
-	char pcu_sock_path[PATH_MAX];
-	char pcu_sock_path_ending[PATH_MAX];
 
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {
@@ -534,18 +532,6 @@ int bsc_network_configure(const char *config_file)
 		rc = e1_reconfig_bts(bts);
 		if (rc < 0) {
 			LOGP(DNM, LOGL_FATAL, "Error enabling E1 input driver\n");
-			return rc;
-		}
-
-		strcpy(pcu_sock_path, PCU_SOCK_DEFAULT);
-		sprintf(pcu_sock_path_ending,"_%i", bts->nr);
-		if (bts->nr > 0)
-			strcat(pcu_sock_path, pcu_sock_path_ending);
-		rc = pcu_sock_init(pcu_sock_path, bts);
-
-		if (rc < 0) {
-			LOGP(DNM, LOGL_FATAL,
-			     "PCU L1 socket failed for bts %i\n", bts->nr);
 			return rc;
 		}
 	}
