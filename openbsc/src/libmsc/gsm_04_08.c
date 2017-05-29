@@ -42,6 +42,7 @@
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_80.h>
+#include <openbsc/gsm_04_14.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/paging.h>
@@ -4033,6 +4034,9 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	case GSM48_PDISC_NC_SS:
 		release_anchor(conn);
 		rc = handle_rcv_ussd(conn, msg);
+		break;
+	case GSM48_PDISC_TEST:
+		rc = gsm0414_rcv_test(conn, msg);
 		break;
 	default:
 		LOGP(DRLL, LOGL_NOTICE, "Unknown "

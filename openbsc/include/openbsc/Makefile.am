@@ -36,6 +36,7 @@ noinst_HEADERS = \
 	gprs_utils.h \
 	gsm_04_08.h \
 	gsm_04_11.h \
+	gsm_04_14.h \
 	gsm_04_80.h \
 	gsm_data.h \
 	gsm_data_shared.h \
