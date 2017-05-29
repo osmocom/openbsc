@@ -29,6 +29,8 @@
 #include <openbsc/a_iface.h>
 #include <openbsc/a_iface_bssap.h>
 #include <openbsc/transaction.h>
+#include <openbsc/mgcpgw_client.h>
+#include <osmocom/core/byteswap.h>
 
 /* A pointer to the GSM network we work with. By the current paradigm,
  * there can only be one gsm_network per MSC. The pointer is set once
@@ -128,15 +130,14 @@ int a_assign(struct gsm_trans *trans)
 {
 	struct gsm_subscriber_connection *conn;
 	struct gsm0808_channel_type ct;
-	uint16_t cic;
-	uint16_t *cic_ptr = NULL;
-	struct sockaddr_storage *ss = NULL;
 	struct gsm0808_speech_codec_list *scl = NULL;
 	uint32_t *ci_ptr = NULL;
+	struct msgb *msg;
+	struct sockaddr_storage rtp_addr;
+	struct sockaddr_in rtp_addr_in;
 
 	conn = trans->conn;
 	OSMO_ASSERT(conn);
-	struct msgb *msg;
 
 	/* FIXME: This is still work in progress */
 	/* Some fake parameters for testing */
@@ -145,14 +146,19 @@ int a_assign(struct gsm_trans *trans)
 	ct.perm_spch[0] = GSM0808_PERM_FR1;
 	ct.perm_spch_len = 1;
 
-	cic = 0x0023;
-	cic_ptr = &cic;
+	/* Package RTP-Address data */
+	memset(&rtp_addr_in, 0, sizeof(rtp_addr_in));
+	rtp_addr_in.sin_family = AF_INET;
+	rtp_addr_in.sin_port = osmo_htons(conn->iu.mgcp_rtp_port_ue);
+	rtp_addr_in.sin_addr.s_addr = osmo_htonl(mgcpgw_client_remote_addr_n(gsm_network->mgcpgw.client));
 
-	msg = gsm0808_create_ass(&ct, cic_ptr, ss, scl, ci_ptr);
+	memset(&rtp_addr, 0, sizeof(rtp_addr));
+	memcpy(&rtp_addr, &rtp_addr_in, sizeof(rtp_addr_in));
+
+	msg = gsm0808_create_ass(&ct, NULL, &rtp_addr, scl, ci_ptr);
 
 	LOGP(DMSC, LOGL_DEBUG, "N-DATA.req(%u, %s)\n", conn->a.conn_id, osmo_hexdump(msg->data, msg->len));
 	return osmo_sccp_tx_data_msg(conn->a.scu, conn->a.conn_id, msg);
-
 }
 
 /* Callback function, called by the SSCP stack when data arrives */

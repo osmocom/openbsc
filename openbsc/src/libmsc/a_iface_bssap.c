@@ -30,6 +30,9 @@
 #include <openbsc/a_iface_bssap.h>
 #include <openbsc/iu.h>
 #include <openbsc/osmo_msc.h>
+#include <osmocom/core/byteswap.h>
+
+#define IP_V4_ADDR_LEN 4
 
 /* Addresses of all BSCs which have been registered to this MSC */
 static LLIST_HEAD(bsc_addr_list);
@@ -526,14 +529,52 @@ static int bssmap_ass_compl(struct osmo_sccp_user *scu, struct a_conn_info *a_co
 {
 	struct gsm_network *network = a_conn_info->network;
 	struct gsm_subscriber_connection *conn;
+	struct mgcpgw_client *mgcp;
+	struct tlv_parsed tp;
+	struct sockaddr_storage rtp_addr;
+	struct sockaddr_in *rtp_addr_in;
+	int rc;
 
 	conn = subscr_conn_lookup_a(network, a_conn_info->conn_id);
 	if (!conn)
 		goto fail;
 
+	mgcp = conn->network->mgcpgw.client;
+	OSMO_ASSERT(mgcp);
+
 	LOGP(DMSC, LOGL_NOTICE, "BSC sends assignment complete message (conn_id=%i)\n", conn->a.conn_id);
 
-	/* Inform the MSC about the assignment completion event */
+	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 1, msgb_l3len(msg) - 1, 0, 0);
+
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_AOIP_TRASP_ADDR)) {
+		LOGP(DMSC, LOGL_ERROR, "AoIP transport identifier missing -- discarding message!\n");
+		goto fail;
+	}
+
+	/* Decode AoIP transport address element */
+	rc = gsm0808_dec_aoip_trasp_addr(&rtp_addr, TLVP_VAL(&tp, GSM0808_IE_AOIP_TRASP_ADDR), TLVP_LEN(&tp, GSM0808_IE_AOIP_TRASP_ADDR));
+	if (rc < 0) {
+		LOGP(DMSC, LOGL_ERROR, "Unable to decode aoip transport address.\n");
+		goto fail;
+	}
+
+	/* use address / port supplied with the AoIP
+	 * transport address element */
+	if(rtp_addr.ss_family == AF_INET)
+	{
+		rtp_addr_in = (struct sockaddr_in *)&rtp_addr;
+		conn->iu.mgcp_rtp_port_ue = osmo_ntohs(rtp_addr_in->sin_port);
+		/* FIXME: We also get the IP-Address of the remote (e.g. BTS)
+		 * end with the response. Currently we just ignore that address.
+		 * Instead we expect that our local MGCP gateway and the code
+		 * controlling it, magically knows the IP of the remote end. */
+	} else {
+		LOGP(DMSC, LOGL_ERROR, "Unsopported addressing scheme. (supports only IPV4)\n");
+		goto fail;
+	}
+
+	/* FIXME: Seems to be related to authentication or,
+	   encryption. Is this really in the right place? */
 	msc_rx_sec_mode_compl(conn);
 
 	msgb_free(msg);

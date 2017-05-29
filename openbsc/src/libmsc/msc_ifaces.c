@@ -172,9 +172,17 @@ static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 	conn->iu.mgcp_rtp_port_cn = r->audio_port;
 
 	rtp_ip = mgcpgw_client_remote_addr_n(conn->network->mgcpgw.client);
-	iu_rab_act_cs(uectx, conn->iu.rab_id, rtp_ip,
-		      conn->iu.mgcp_rtp_port_ue);
-	/* use_x213_nsap == 0 for ip.access nano3G */
+
+	if (trans->conn->via_ran == RAN_UTRAN_IU) {
+		/* Assign a voice channel via RANAP on 3G */
+		iu_rab_act_cs(uectx, conn->iu.rab_id, rtp_ip,
+			      conn->iu.mgcp_rtp_port_ue);
+		/* use_x213_nsap == 0 for ip.access nano3G */
+	} else if (trans->conn->via_ran == RAN_GERAN_A) {
+		/* Assign a voice channel via A on 2G */
+		return a_assign(trans);
+	} else
+		goto rab_act_cs_error;
 
 rab_act_cs_error:
 	/* FIXME abort call, invalidate conn, ... */
@@ -213,7 +221,11 @@ int msc_call_assignment(struct gsm_trans *trans)
 
 	switch (conn->via_ran) {
 	case RAN_GERAN_A:
-		return a_assign(trans);
+		/* FIXME We first go for conn_iu_rab_act_cs(), this function
+		 * will create a loopback rtp connection first and then call
+		 * a_assign(). Probably we need to find another name for
+		 * conn_iu_rab_act_cs? */
+		return conn_iu_rab_act_cs(trans);
 
 	case RAN_UTRAN_IU:
 #ifdef BUILD_IU
