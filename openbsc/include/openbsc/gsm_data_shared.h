@@ -252,6 +252,16 @@ struct gsm_lchan {
 		uint8_t speech_mode;
 #ifdef ROLE_BSC
 		struct rtp_socket *rtp_socket;
+
+		/* info we need to postpone the AoIP
+		 * assignment completed message */
+		struct {
+			uint8_t rr_cause;
+			uint8_t chosen_channel;
+			uint8_t encr_alg_id;
+			uint8_t speech_mode;
+			bool valid;
+		} ass_compl;
 #else
 		struct osmo_rtp_socket *rtp_socket;
 #endif

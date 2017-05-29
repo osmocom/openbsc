@@ -29,7 +29,11 @@
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0808.h>
+#include <osmocom/gsm/gsm0808_utils.h>
 #include <openbsc/osmo_bsc_sigtran.h>
+#include <osmocom/core/byteswap.h>
+
+#define IP_V4_ADDR_LEN 4
 
 /*
  * helpers for the assignment command
@@ -305,10 +309,14 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	struct bsc_msc_data *msc;
 	struct tlv_parsed tp;
 	uint8_t *data;
-	uint8_t timeslot;
-	uint8_t multiplex;
+	uint8_t timeslot = 0;
+	uint8_t multiplex = 0;
 	enum gsm48_chan_mode chan_mode = GSM48_CMODE_SIGN;
 	int i, supported, port, full_rate = -1;
+	bool aoip = false;
+	struct sockaddr_storage rtp_addr;
+	struct sockaddr_in *rtp_addr_in;
+	int rc;
 
 	if (!conn->conn) {
 		LOGP(DMSC, LOGL_ERROR, "No lchan/msc_data in cipher mode command.\n");
@@ -322,14 +330,24 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 		goto reject;
 	}
 
-	if (!TLVP_PRESENT(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)) {
-		LOGP(DMSC, LOGL_ERROR, "Identity code missing. Audio routing will not work.\n");
+	/* Detect if a CIC code is present, if so, we use the classic ip.access
+	 * method to calculate the RTP port */
+	if (TLVP_PRESENT(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)) {
+		conn->cic = osmo_load16be(TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
+		timeslot = conn->cic & 0x1f;
+		multiplex = (conn->cic & ~0x1f) >> 5;
+	} else if(TLVP_PRESENT(&tp, GSM0808_IE_AOIP_TRASP_ADDR)) {
+		/* Decode AoIP transport address element */
+		rc = gsm0808_dec_aoip_trasp_addr(&rtp_addr, TLVP_VAL(&tp, GSM0808_IE_AOIP_TRASP_ADDR), TLVP_LEN(&tp, GSM0808_IE_AOIP_TRASP_ADDR));
+		if (rc < 0) {
+			LOGP(DMSC, LOGL_ERROR, "Unable to decode aoip transport address.\n");
+			goto reject;
+		}
+		aoip = true;
+	} else {
+		LOGP(DMSC, LOGL_ERROR, "transport address missing. Audio routing will not work.\n");
 		goto reject;
 	}
-
-	conn->cic = osmo_load16be(TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
-	timeslot = conn->cic & 0x1f;
-	multiplex = (conn->cic & ~0x1f) >> 5;
 
 	/*
 	 * Currently we only support a limited subset of all
@@ -383,9 +401,25 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 		goto reject;
 	}
 
-	/* map it to a MGCP Endpoint and a RTP port */
-	port = mgcp_timeslot_to_endpoint(multiplex, timeslot);
-	conn->rtp_port = rtp_calculate_port(port, msc->rtp_base);
+	if (aoip == false) {
+		/* map it to a MGCP Endpoint and a RTP port */
+		port = mgcp_timeslot_to_endpoint(multiplex, timeslot);
+		conn->rtp_port = rtp_calculate_port(port, msc->rtp_base);
+		conn->rtp_ip = 0;
+	} else {
+		/* use address / port supplied with the AoIP
+		 * transport address element */
+		if(rtp_addr.ss_family == AF_INET)
+		{
+			rtp_addr_in = (struct sockaddr_in *)&rtp_addr;
+			conn->rtp_port = osmo_ntohs(rtp_addr_in->sin_port);
+			memcpy(&conn->rtp_ip, &rtp_addr_in->sin_addr.s_addr, IP_V4_ADDR_LEN);
+			conn->rtp_ip = osmo_ntohl(conn->rtp_ip);
+		} else {
+			LOGP(DMSC, LOGL_ERROR, "Unsopported addressing scheme. (supports only IPV4)\n");
+			goto reject;
+		}
+	}
 
 	return gsm0808_assign_req(conn->conn, chan_mode, full_rate);
 

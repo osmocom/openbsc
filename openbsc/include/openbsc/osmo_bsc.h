@@ -26,6 +26,7 @@ struct osmo_bsc_sccp_con {
 
 	/* for audio handling */
 	uint16_t cic;
+	uint32_t rtp_ip;
 	int rtp_port;
 
 	/* for advanced ping/pong */

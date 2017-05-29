@@ -435,11 +435,28 @@ static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_
 	struct msgb *resp;
 	return_when_not_connected(conn);
 
-	LOGP(DMSC, LOGL_INFO, "Tx MSC ASSIGN COMPL\n");
+	if (is_ipaccess_bts(conn->bts) && conn->sccp_con->rtp_ip) {
+		/* NOTE: In a network that makes use of an IPA base station
+		 * and AoIP, we have to wait until the BTS reports its RTP
+		 * IP/Port combination back to BSC via RSL. Unfortunately, the
+		 * IPA protocol sends its Abis assignment complete message
+		 * before it sends its RTP IP/Port via IPACC. So we will now
+		 * postpone the AoIP assignment completed message until we
+		 * know the RTP IP/Port combination. */
+		LOGP(DMSC, LOGL_INFO, "POSTPONE MSC ASSIGN COMPL\n");
+		conn->lchan->abis_ip.ass_compl.rr_cause = rr_cause;
+		conn->lchan->abis_ip.ass_compl.chosen_channel = chosen_channel;
+		conn->lchan->abis_ip.ass_compl.encr_alg_id = encr_alg_id;
+		conn->lchan->abis_ip.ass_compl.speech_mode = speech_model;
+		conn->lchan->abis_ip.ass_compl.valid = true;
 
-	resp = gsm0808_create_assignment_completed(rr_cause, chosen_channel,
-						   encr_alg_id, speech_model);
-	queue_msg_or_return(resp);
+	} else {
+		/* NOTE: Send the A assignment complete message immediately. */
+		LOGP(DMSC, LOGL_INFO, "Tx MSC ASSIGN COMPL\n");
+		resp = gsm0808_create_assignment_completed(rr_cause, chosen_channel,
+							   encr_alg_id, speech_model);
+		queue_msg_or_return(resp);
+	}
 }
 
 static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
