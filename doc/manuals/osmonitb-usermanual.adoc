@@ -31,6 +31,8 @@ include::chapters/mncc.adoc[]
 
 include::../common/chapters/control_if.adoc[]
 
+include::../common/chapters/cell-broadcast.adoc[]
+
 include::../common/chapters/abis.adoc[]
 
 include::../common/chapters/port_numbers.adoc[]
