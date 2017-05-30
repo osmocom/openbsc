@@ -199,11 +199,11 @@ const char *bts_gprs_mode_name(enum bts_gprs_mode mode)
 int bts_gprs_mode_is_compat(struct gsm_bts *bts, enum bts_gprs_mode mode)
 {
 	if (mode != BTS_GPRS_NONE &&
-	    !gsm_bts_has_feature(bts, BTS_FEAT_GPRS)) {
+	    !gsm_btsmodel_has_feature(bts->model, BTS_FEAT_GPRS)) {
 		return 0;
 	}
 	if (mode == BTS_GPRS_EGPRS &&
-	    !gsm_bts_has_feature(bts, BTS_FEAT_EGPRS)) {
+	    !gsm_btsmodel_has_feature(bts->model, BTS_FEAT_EGPRS)) {
 		return 0;
 	}
 
@@ -223,14 +223,14 @@ struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
 	return meas_rep;
 }
 
-int gsm_btsmodel_set_feature(struct gsm_bts_model *bts, enum gsm_bts_features feat)
+int gsm_btsmodel_set_feature(struct gsm_bts_model *model, enum gsm_bts_features feat)
 {
-	return bitvec_set_bit_pos(&bts->features, feat, 1);
+	return bitvec_set_bit_pos(&model->features, feat, 1);
 }
 
-int gsm_bts_has_feature(struct gsm_bts *bts, enum gsm_bts_features feat)
+bool gsm_btsmodel_has_feature(struct gsm_bts_model *model, enum gsm_bts_features feat)
 {
-	return bitvec_get_bit_pos(&bts->model->features, feat);
+	return bitvec_get_bit_pos(&model->features, feat);
 }
 
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
