@@ -106,6 +106,19 @@ const char *btstype2str(enum gsm_bts_type type)
 	return get_value_string(bts_type_names, type);
 }
 
+const struct value_string gsm_bts_features_descs[] = {
+	{ BTS_FEAT_HSCSD,		"HSCSD" },
+	{ BTS_FEAT_GPRS,		"GPRS" },
+	{ BTS_FEAT_EGPRS,		"EGPRS" },
+	{ BTS_FEAT_ECSD,		"ECSD" },
+	{ BTS_FEAT_HOPPING,		"Frequency Hopping" },
+	{ BTS_FEAT_MULTI_TSC,		"Multi-TSC" },
+	{ BTS_FEAT_OML_ALERTS,		"OML Alerts" },
+	{ BTS_FEAT_AGCH_PCH_PROP,	"AGCH/PCH proportional allocation" },
+	{ BTS_FEAT_CBCH,		"CBCH" },
+	{ 0, NULL }
+};
+
 const struct value_string gsm_chreq_descs[] = {
 	{ GSM_CHREQ_REASON_EMERG,	"emergency call" },
 	{ GSM_CHREQ_REASON_PAG,		"answer to paging" },
@@ -343,6 +356,8 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 	bts->rach_b_thresh = -1;
 	bts->rach_ldavg_slots = -1;
 	bts->paging.free_chans_need = -1;
+	bts->features.data = &bts->_features_data[0];
+	bts->features.data_len = sizeof(bts->_features_data);
 
 	/* si handling */
 	bts->bcch_change_mark = 1;

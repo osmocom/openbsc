@@ -225,11 +225,13 @@ struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
 
 int gsm_btsmodel_set_feature(struct gsm_bts_model *model, enum gsm_bts_features feat)
 {
+	OSMO_ASSERT(_NUM_BTS_FEAT < MAX_BTS_FEATURES);
 	return bitvec_set_bit_pos(&model->features, feat, 1);
 }
 
 bool gsm_btsmodel_has_feature(struct gsm_bts_model *model, enum gsm_bts_features feat)
 {
+	OSMO_ASSERT(_NUM_BTS_FEAT < MAX_BTS_FEATURES);
 	return bitvec_get_bit_pos(&model->features, feat);
 }
 
