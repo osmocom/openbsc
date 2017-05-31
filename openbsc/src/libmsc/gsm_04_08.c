@@ -1809,6 +1809,12 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 		setup.fields |= MNCC_F_BEARER_CAP;
 		gsm48_decode_bearer_cap(&setup.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
+
+		/* Create a copy of the bearer capability
+		 * in the transaction struct, so we can use
+		 * this information later */
+		memcpy(&trans->bearer_cap,&setup.bearer_cap,
+		       sizeof(trans->bearer_cap));
 	}
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
@@ -1966,6 +1972,12 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 		call_conf.fields |= MNCC_F_BEARER_CAP;
 		gsm48_decode_bearer_cap(&call_conf.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
+
+		/* Create a copy of the bearer capability
+		 * in the transaction struct, so we can use
+		 * this information later */
+		memcpy(&trans->bearer_cap,&call_conf.bearer_cap,
+		       sizeof(trans->bearer_cap));
 	}
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
@@ -2662,6 +2674,12 @@ static int gsm48_cc_rx_modify(struct gsm_trans *trans, struct msgb *msg)
 		modify.fields |= MNCC_F_BEARER_CAP;
 		gsm48_decode_bearer_cap(&modify.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
+
+		/* Create a copy of the bearer capability
+		 * in the transaction struct, so we can use
+		 * this information later */
+		memcpy(&trans->bearer_cap,&modify.bearer_cap,
+		       sizeof(trans->bearer_cap));
 	}
 
 	new_cc_state(trans, GSM_CSTATE_MO_ORIG_MODIFY);
@@ -2704,6 +2722,12 @@ static int gsm48_cc_rx_modify_complete(struct gsm_trans *trans, struct msgb *msg
 		modify.fields |= MNCC_F_BEARER_CAP;
 		gsm48_decode_bearer_cap(&modify.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
+
+		/* Create a copy of the bearer capability
+		 * in the transaction struct, so we can use
+		 * this information later */
+		memcpy(&trans->bearer_cap,&modify.bearer_cap,
+		       sizeof(trans->bearer_cap));
 	}
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
@@ -2744,6 +2768,12 @@ static int gsm48_cc_rx_modify_reject(struct gsm_trans *trans, struct msgb *msg)
 		modify.fields |= GSM48_IE_BEARER_CAP;
 		gsm48_decode_bearer_cap(&modify.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
+
+		/* Create a copy of the bearer capability
+		 * in the transaction struct, so we can use
+		 * this information later */
+		memcpy(&trans->bearer_cap,&modify.bearer_cap,
+		       sizeof(trans->bearer_cap));
 	}
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {

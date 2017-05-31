@@ -24,6 +24,7 @@
 #include <osmocom/sigtran/sccp_helpers.h>
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/protocol/gsm_08_08.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <openbsc/debug.h>
 #include <openbsc/msc_ifaces.h>
 #include <openbsc/a_iface.h>
@@ -125,6 +126,109 @@ int a_page(const char *imsi, uint32_t tmsi, uint16_t lac)
 	return page_count;
 }
 
+/* Convert speech version field */
+static uint8_t convert_Abis_sv_to_A_sv(int speech_ver)
+{
+	/* The speech versions that are transmitted in the Bearer capability
+	 * information element, that is transmitted on the Abis interfece
+	 * use a different encoding than the permitted speech version
+	 * identifier, that is signalled in the channel type element on the A
+	 * interface. (See also 3GPP TS 48.008, 3.2.2.1 and 3GPP TS 24.008,
+	 * 10.5.103 */
+
+	switch (speech_ver) {
+	case GSM48_BCAP_SV_FR:
+		return GSM0808_PERM_FR1;
+		break;
+	case GSM48_BCAP_SV_HR:
+		return GSM0808_PERM_HR1;
+		break;
+	case GSM48_BCAP_SV_EFR:
+		return GSM0808_PERM_FR2;
+		break;
+	case GSM48_BCAP_SV_AMR_F:
+		return GSM0808_PERM_FR3;
+		break;
+	case GSM48_BCAP_SV_AMR_H:
+		return GSM0808_PERM_HR3;
+		break;
+	case GSM48_BCAP_SV_AMR_OFW:
+		return GSM0808_PERM_FR4;
+		break;
+	case GSM48_BCAP_SV_AMR_OHW:
+		return GSM0808_PERM_HR4;
+		break;
+	case GSM48_BCAP_SV_AMR_FW:
+		return GSM0808_PERM_FR5;
+		break;
+	case GSM48_BCAP_SV_AMR_OH:
+		return GSM0808_PERM_HR6;
+		break;
+	}
+
+	/* If nothing matches, tag the result as invalid */
+	LOGP(DMSC, LOGL_ERROR, "Invalid permitted speech version / rate detected, discarding.\n");
+	return 0xFF;
+}
+
+/* Convert speech preference field */
+static uint8_t convert_Abis_prev_to_A_pref(int radio)
+{
+	/* The Radio channel requirement field that is transmitted in the
+	 * Bearer capability information element, that is transmitted on the
+	 * Abis interfece uses a different encoding than the Channel rate and
+	 * type field that is signalled in the channel type element on the A
+	 * interface. (See also 3GPP TS 48.008, 3.2.2.1 and 3GPP TS 24.008,
+	 * 10.5.102 */
+
+	switch (radio) {
+	case GSM48_BCAP_RRQ_FR_ONLY:
+		return GSM0808_SPEECH_FULL_BM;
+	case GSM48_BCAP_RRQ_DUAL_FR:
+		return GSM0808_SPEECH_FULL_PREF;
+	case GSM48_BCAP_RRQ_DUAL_HR:
+		return GSM0808_SPEECH_HALF_PREF;
+	}
+
+	LOGP(DMSC, LOGL_ERROR, "Invalid speech version / rate combination preference, defaulting to full rate.\n");
+	return GSM0808_SPEECH_FULL_BM;
+}
+
+/* Assemble the channel type field */
+static void make_channel_type(struct gsm_mncc_bearer_cap *bc, struct gsm0808_channel_type *ct)
+{
+	unsigned int i;
+	uint8_t sv;
+	unsigned int count = 0;
+	bool only_gsm_hr = true;
+
+	ct->ch_indctr = GSM0808_CHAN_SPEECH;
+
+	for (i = 0; i < ARRAY_SIZE(bc->speech_ver); i++) {
+		if (bc->speech_ver[i] == -1)
+			break;
+		sv = convert_Abis_sv_to_A_sv(bc->speech_ver[i]);
+
+		if (sv != 0xFF) {
+			/* Detect if something else than
+			 * GSM HR V1 is supported */
+			if (sv == GSM0808_PERM_HR2 ||
+			    sv == GSM0808_PERM_HR3 || sv == GSM0808_PERM_HR4 || sv == GSM0808_PERM_HR6)
+				only_gsm_hr = false;
+
+			ct->perm_spch[count] = sv;
+			count++;
+		}
+	}
+	ct->perm_spch_len = count;
+
+	if (only_gsm_hr)
+		/* Default to full rate, in case only GSM HR V1 is available */
+		ct->ch_rate_type = GSM0808_SPEECH_FULL_BM;
+	else
+		ct->ch_rate_type = convert_Abis_prev_to_A_pref(bc->radio);
+}
+
 /* Send assignment request via A-interface */
 int a_assign(struct gsm_trans *trans)
 {
@@ -139,12 +243,8 @@ int a_assign(struct gsm_trans *trans)
 	conn = trans->conn;
 	OSMO_ASSERT(conn);
 
-	/* FIXME: This is still work in progress */
-	/* Some fake parameters for testing */
-	ct.ch_indctr = GSM0808_CHAN_SPEECH;
-	ct.ch_rate_type = GSM0808_SPEECH_FULL_BM;
-	ct.perm_spch[0] = GSM0808_PERM_FR1;
-	ct.perm_spch_len = 1;
+	/* Channel type */
+	make_channel_type(&trans->bearer_cap, &ct);
 
 	/* Package RTP-Address data */
 	memset(&rtp_addr_in, 0, sizeof(rtp_addr_in));

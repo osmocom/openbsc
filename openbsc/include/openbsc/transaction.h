@@ -46,6 +46,9 @@ struct gsm_trans {
 	/* is thats one paging? */
 	struct subscr_request *paging_request;
 
+	/* bearer capabilities (rate and codec) */
+	struct gsm_mncc_bearer_cap bearer_cap;
+
 	union {
 		struct {
 
