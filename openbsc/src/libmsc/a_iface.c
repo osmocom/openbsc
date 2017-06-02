@@ -25,6 +25,7 @@
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
+#include <osmocom/gsm/gsm0808_utils.h>
 #include <openbsc/debug.h>
 #include <openbsc/msc_ifaces.h>
 #include <openbsc/a_iface.h>
@@ -195,7 +196,7 @@ static uint8_t convert_Abis_prev_to_A_pref(int radio)
 }
 
 /* Assemble the channel type field */
-static void make_channel_type(struct gsm_mncc_bearer_cap *bc, struct gsm0808_channel_type *ct)
+static void enc_channel_type(struct gsm0808_channel_type *ct, const struct gsm_mncc_bearer_cap *bc)
 {
 	unsigned int i;
 	uint8_t sv;
@@ -223,10 +224,31 @@ static void make_channel_type(struct gsm_mncc_bearer_cap *bc, struct gsm0808_cha
 	ct->perm_spch_len = count;
 
 	if (only_gsm_hr)
-		/* Default to full rate, in case only GSM HR V1 is available */
+		/* Note: We must avoid the usage of GSM HR1 as this
+		 * codec only offers very poor audio quality. If the
+		 * MS only supports GSM HR1 (and full rate), and has
+		 * a preference for half rate. Then we will ignore the
+		 * preference and assume a preference for full rate. */
 		ct->ch_rate_type = GSM0808_SPEECH_FULL_BM;
 	else
 		ct->ch_rate_type = convert_Abis_prev_to_A_pref(bc->radio);
+}
+
+/* Assemble the speech codec field */
+static int enc_speeach_codec_list(struct gsm0808_speech_codec_list *scl, const struct gsm0808_channel_type *ct)
+{
+	unsigned int i;
+	int rc;
+
+	memset(scl, 0, sizeof(*scl));
+	for (i = 0; i < ct->perm_spch_len; i++) {
+		rc = gsm0808_extrapolate_speech_codec(&scl->codec[i], ct->perm_spch[i]);
+		if (rc != 0)
+			return -EINVAL;
+	}
+	scl->len = i;
+
+	return 0;
 }
 
 /* Send assignment request via A-interface */
@@ -234,7 +256,7 @@ int a_assign(struct gsm_trans *trans)
 {
 	struct gsm_subscriber_connection *conn;
 	struct gsm0808_channel_type ct;
-	struct gsm0808_speech_codec_list *scl = NULL;
+	struct gsm0808_speech_codec_list scl;
 	uint32_t *ci_ptr = NULL;
 	struct msgb *msg;
 	struct sockaddr_storage rtp_addr;
@@ -244,7 +266,10 @@ int a_assign(struct gsm_trans *trans)
 	OSMO_ASSERT(conn);
 
 	/* Channel type */
-	make_channel_type(&trans->bearer_cap, &ct);
+	enc_channel_type(&ct, &trans->bearer_cap);
+
+	/* Speech codec list */
+	enc_speeach_codec_list(&scl, &ct);
 
 	/* Package RTP-Address data */
 	memset(&rtp_addr_in, 0, sizeof(rtp_addr_in));
@@ -255,7 +280,7 @@ int a_assign(struct gsm_trans *trans)
 	memset(&rtp_addr, 0, sizeof(rtp_addr));
 	memcpy(&rtp_addr, &rtp_addr_in, sizeof(rtp_addr_in));
 
-	msg = gsm0808_create_ass(&ct, NULL, &rtp_addr, scl, ci_ptr);
+	msg = gsm0808_create_ass(&ct, NULL, &rtp_addr, &scl, ci_ptr);
 
 	LOGP(DMSC, LOGL_DEBUG, "N-DATA.req(%u, %s)\n", conn->a.conn_id, osmo_hexdump(msg->data, msg->len));
 	return osmo_sccp_tx_data_msg(conn->a.scu, conn->a.conn_id, msg);

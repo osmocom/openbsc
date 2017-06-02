@@ -27,6 +27,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 #include <osmocom/gsm/gsm0808.h>
+#include <osmocom/gsm/gsm0808_utils.h>
 #include <openbsc/osmo_bsc_sigtran.h>
 
 #include <arpa/inet.h>
@@ -37,6 +38,7 @@ static int send_aoip_ass_compl(struct gsm_subscriber_connection *conn, struct gs
 	struct msgb *resp;
 	struct sockaddr_storage rtp_addr;
 	struct sockaddr_in rtp_addr_in;
+	struct gsm0808_speech_codec sc;
 
 	OSMO_ASSERT(lchan->abis_ip.ass_compl.valid == true);
 
@@ -48,13 +50,16 @@ static int send_aoip_ass_compl(struct gsm_subscriber_connection *conn, struct gs
 	memset(&rtp_addr, 0, sizeof(rtp_addr));
 	memcpy(&rtp_addr, &rtp_addr_in, sizeof(rtp_addr_in));
 
+	/* Extrapolate speech codec from speech mode */
+	gsm0808_extrapolate_speech_codec(&sc, lchan->abis_ip.ass_compl.speech_mode);
+
 	/* Generate message */
 	resp = gsm0808_create_ass_compl(lchan->abis_ip.ass_compl.rr_cause,
 					lchan->abis_ip.ass_compl.chosen_channel,
 					lchan->abis_ip.ass_compl.encr_alg_id,
 					lchan->abis_ip.ass_compl.speech_mode,
 					&rtp_addr,
-					NULL,
+					&sc,
 					NULL);
 
 	if (!resp) {

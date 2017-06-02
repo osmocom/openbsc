@@ -38,7 +38,11 @@
 /*
  * helpers for the assignment command
  */
-enum gsm0808_permitted_speech audio_support_to_gsm88(struct gsm_audio_support *audio)
+
+/* Helper function for match_codec_pref(), looks up a matching permitted speech
+ * value for a given msc audio codec pref */
+enum gsm0808_permitted_speech audio_support_to_gsm88(struct gsm_audio_support
+						     *audio)
 {
 	if (audio->hr) {
 		switch (audio->ver) {
@@ -52,8 +56,9 @@ enum gsm0808_permitted_speech audio_support_to_gsm88(struct gsm_audio_support *a
 			return GSM0808_PERM_HR3;
 			break;
 		default:
-			    LOGP(DMSC, LOGL_ERROR, "Wrong speech mode: %d\n", audio->ver);
-			    return GSM0808_PERM_FR1;
+			LOGP(DMSC, LOGL_ERROR, "Wrong speech mode: %d\n",
+			     audio->ver);
+			return GSM0808_PERM_FR1;
 		}
 	} else {
 		switch (audio->ver) {
@@ -67,12 +72,15 @@ enum gsm0808_permitted_speech audio_support_to_gsm88(struct gsm_audio_support *a
 			return GSM0808_PERM_FR3;
 			break;
 		default:
-			LOGP(DMSC, LOGL_ERROR, "Wrong speech mode: %d\n", audio->ver);
+			LOGP(DMSC, LOGL_ERROR, "Wrong speech mode: %d\n",
+			     audio->ver);
 			return GSM0808_PERM_HR1;
 		}
 	}
 }
 
+/* Helper function for match_codec_pref(), looks up a matching chan mode for
+ * a given permitted speech value */
 enum gsm48_chan_mode gsm88_to_chan_mode(enum gsm0808_permitted_speech speech)
 {
 	switch (speech) {
@@ -88,10 +96,98 @@ enum gsm48_chan_mode gsm88_to_chan_mode(enum gsm0808_permitted_speech speech)
 	case GSM0808_PERM_FR3:
 		return GSM48_CMODE_SPEECH_AMR;
 		break;
+	default:
+		LOGP(DMSC, LOGL_FATAL,
+		     "Unsupported permitted speech selected, assuming AMR as channel mode...\n");
+		return GSM48_CMODE_SPEECH_AMR;
+	}
+}
+
+/* Helper function for match_codec_pref(), tests if a given audio support
+ * matches one of the permitted speech settings of the channel type element.
+ * The matched permitted speech value is then also compared against the
+ * speech codec list. (optional, only relevant for AoIP) */
+static bool test_codec_pref(const struct gsm0808_channel_type *ct,
+			    const struct gsm0808_speech_codec_list *scl,
+			    uint8_t perm_spch)
+{
+	unsigned int i;
+	bool match = false;
+	struct gsm0808_speech_codec sc;
+	int rc;
+
+	/* Try to finde the given permitted speech value in the
+	 * codec list of the channel type element */
+	for (i = 0; i < ct->perm_spch_len; i++) {
+		if (ct->perm_spch[i] == perm_spch) {
+			match = true;
+			break;
+		}
 	}
 
-	LOGP(DMSC, LOGL_FATAL, "Should not be reached.\n");
-	return GSM48_CMODE_SPEECH_AMR;
+	/* If we do not have a speech codec list to test against,
+	 * we just exit early (will be always the case in non-AoIP networks) */
+	if (!scl)
+		return match;
+
+	/* If we failed to match until here, there is no
+	 * point in testing further */
+	if (match == false)
+		return false;
+
+	/* Extrapolate speech codec data */
+	rc = gsm0808_extrapolate_speech_codec(&sc, perm_spch);
+	if (rc < 0)
+		return false;
+
+	/* Try to find extrapolated speech codec data in
+	 * the speech codec list */
+	for (i = 0; i < scl->len; i++) {
+		if (memcmp(&sc, &scl->codec[i], sizeof(sc)) == 0)
+			return true;
+	}
+
+	return false;
+}
+
+/* Helper function for bssmap_handle_assignm_req(), matches the codec
+ * preferences from the MSC with the codec preferences */
+static int match_codec_pref(int *full_rate, enum gsm48_chan_mode *chan_mode,
+			    const struct gsm0808_channel_type *ct,
+			    const struct gsm0808_speech_codec_list *scl,
+			    const struct bsc_msc_data *msc)
+{
+	unsigned int i;
+	uint8_t perm_spch;
+	bool match = false;
+
+	for (i = 0; msc->audio_length; i++) {
+		perm_spch = audio_support_to_gsm88(msc->audio_support[i]);
+		if (test_codec_pref(ct, scl, perm_spch)) {
+			match = true;
+			break;
+		}
+	}
+
+	/* Exit without result, in case no match can be deteched */
+	if (!match) {
+		*full_rate = -1;
+		*chan_mode = GSM48_CMODE_SIGN;
+		return -1;
+	}
+
+	/* Check if the result is a half or full rate codec */
+	if (perm_spch == GSM0808_PERM_HR1 || perm_spch == GSM0808_PERM_HR2
+	    || perm_spch == GSM0808_PERM_HR3 || perm_spch == GSM0808_PERM_HR4
+	    || perm_spch == GSM0808_PERM_HR6)
+		*full_rate = 0;
+	else
+		*full_rate = 1;
+
+	/* Lookup a channel mode for the selected codec */
+	*chan_mode = gsm88_to_chan_mode(perm_spch);
+
+	return 0;
 }
 
 static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
@@ -308,23 +404,31 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	struct msgb *resp;
 	struct bsc_msc_data *msc;
 	struct tlv_parsed tp;
-	uint8_t *data;
 	uint8_t timeslot = 0;
 	uint8_t multiplex = 0;
 	enum gsm48_chan_mode chan_mode = GSM48_CMODE_SIGN;
-	int i, supported, port, full_rate = -1;
+	int port, full_rate = -1;
 	bool aoip = false;
 	struct sockaddr_storage rtp_addr;
 	struct sockaddr_in *rtp_addr_in;
+	struct gsm0808_channel_type ct;
+	struct gsm0808_speech_codec_list scl;
+	struct gsm0808_speech_codec_list *scl_ptr = NULL;
 	int rc;
+	const uint8_t *data;
+	char len;
 
 	if (!conn->conn) {
-		LOGP(DMSC, LOGL_ERROR, "No lchan/msc_data in cipher mode command.\n");
+		LOGP(DMSC, LOGL_ERROR,
+		     "No lchan/msc_data in cipher mode command.\n");
 		return -1;
 	}
 
+	msc = conn->msc;
+
 	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h + 1, length - 1, 0, 0);
 
+	/* Check for channel type element, if its missing, immediately reject */
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CHANNEL_TYPE)) {
 		LOGP(DMSC, LOGL_ERROR, "Mandatory channel type not present.\n");
 		goto reject;
@@ -333,70 +437,71 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	/* Detect if a CIC code is present, if so, we use the classic ip.access
 	 * method to calculate the RTP port */
 	if (TLVP_PRESENT(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)) {
-		conn->cic = osmo_load16be(TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
+		conn->cic =
+		    osmo_load16be(TLVP_VAL
+				  (&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
 		timeslot = conn->cic & 0x1f;
 		multiplex = (conn->cic & ~0x1f) >> 5;
-	} else if(TLVP_PRESENT(&tp, GSM0808_IE_AOIP_TRASP_ADDR)) {
+	} else if (TLVP_PRESENT(&tp, GSM0808_IE_AOIP_TRASP_ADDR)) {
 		/* Decode AoIP transport address element */
-		rc = gsm0808_dec_aoip_trasp_addr(&rtp_addr, TLVP_VAL(&tp, GSM0808_IE_AOIP_TRASP_ADDR), TLVP_LEN(&tp, GSM0808_IE_AOIP_TRASP_ADDR));
+		data = TLVP_VAL(&tp, GSM0808_IE_AOIP_TRASP_ADDR);
+		len = TLVP_LEN(&tp, GSM0808_IE_AOIP_TRASP_ADDR);
+		rc = gsm0808_dec_aoip_trasp_addr(&rtp_addr, data, len);
 		if (rc < 0) {
-			LOGP(DMSC, LOGL_ERROR, "Unable to decode aoip transport address.\n");
+			LOGP(DMSC, LOGL_ERROR,
+			     "Unable to decode aoip transport address.\n");
 			goto reject;
 		}
 		aoip = true;
 	} else {
-		LOGP(DMSC, LOGL_ERROR, "transport address missing. Audio routing will not work.\n");
+		LOGP(DMSC, LOGL_ERROR,
+		     "transport address missing. Audio routing will not work.\n");
 		goto reject;
 	}
 
-	/*
-	 * Currently we only support a limited subset of all
-	 * possible channel types. The limitation ends by not using
-	 * multi-slot, limiting the channel coding, speech...
-	 */
-	if (TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE) < 3) {
-		LOGP(DMSC, LOGL_ERROR, "ChannelType len !=3 not supported: %d\n",
-			TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE));
-		goto reject;
-	}
-
-	/*
-	 * Try to figure out if we support the proposed speech codecs. For
-	 * now we will always pick the full rate codecs.
-	 */
-
-	data = (uint8_t *) TLVP_VAL(&tp, GSM0808_IE_CHANNEL_TYPE);
-	if ((data[0] & 0xf) != 0x1) {
-		LOGP(DMSC, LOGL_ERROR, "ChannelType != speech: %d\n", data[0]);
-		goto reject;
-	}
-
-	/*
-	 * go through the list of preferred codecs of our gsm network
-	 * and try to find it among the permitted codecs. If we found
-	 * it we will send chan_mode to the right mode and break the
-	 * inner loop. The outer loop will exit due chan_mode having
-	 * the correct value.
-	 */
-	full_rate = 0;
-	msc = conn->msc;
-	for (supported = 0;
-		chan_mode == GSM48_CMODE_SIGN && supported < msc->audio_length;
-		++supported) {
-
-		int perm_val = audio_support_to_gsm88(msc->audio_support[supported]);
-		for (i = 2; i < TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE); ++i) {
-			if ((data[i] & 0x7f) == perm_val) {
-				chan_mode = gsm88_to_chan_mode(perm_val);
-				full_rate = (data[i] & 0x4) == 0;
-				break;
-			} else if ((data[i] & 0x80) == 0x00) {
-				break;
-			}
+	/* Decode speech codec list (AoIP) */
+	if (aoip) {
+		/* Check for speech codec list element */
+		if (!TLVP_PRESENT(&tp, GSM0808_IE_SPEECH_CODEC_LIST)) {
+			LOGP(DMSC, LOGL_ERROR,
+			     "Mandatory speech codec list not present.\n");
+			goto reject;
 		}
+
+		/* Decode Speech Codec list */
+		data = TLVP_VAL(&tp, GSM0808_IE_SPEECH_CODEC_LIST);
+		len = TLVP_LEN(&tp, GSM0808_IE_SPEECH_CODEC_LIST);
+		rc = gsm0808_dec_speech_codec_list(&scl, data, len);
+		if (rc < 0) {
+			LOGP(DMSC, LOGL_ERROR,
+			     "Unable to decode speech codec list\n");
+			goto reject;
+		}
+		scl_ptr = &scl;
 	}
 
-	if (chan_mode == GSM48_CMODE_SIGN) {
+	/* Decode Channel Type element */
+	data = TLVP_VAL(&tp, GSM0808_IE_CHANNEL_TYPE);
+	len = TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE);
+	rc = gsm0808_dec_channel_type(&ct, data, len);
+	if (rc < 0) {
+		LOGP(DMSC, LOGL_ERROR, "unable to decode channel type.\n");
+		goto reject;
+	}
+
+	/* Currently we only support a limited subset of all
+	 * possible channel types. The limitation ends by not using
+	 * multi-slot, limiting the channel coding to speech */
+	if (ct.ch_indctr != GSM0808_CHAN_SPEECH) {
+		LOGP(DMSC, LOGL_ERROR,
+		     "Unsupported channel type, currently only speech is supported!\n");
+		goto reject;
+	}
+
+	/* Match codec information from the assignment command against the
+	 * local preferences of the BSC */
+	rc = match_codec_pref(&full_rate, &chan_mode, &ct, scl_ptr, msc);
+	if (rc < 0) {
 		LOGP(DMSC, LOGL_ERROR, "No supported audio type found.\n");
 		goto reject;
 	}
@@ -409,14 +514,15 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	} else {
 		/* use address / port supplied with the AoIP
 		 * transport address element */
-		if(rtp_addr.ss_family == AF_INET)
-		{
+		if (rtp_addr.ss_family == AF_INET) {
 			rtp_addr_in = (struct sockaddr_in *)&rtp_addr;
 			conn->rtp_port = osmo_ntohs(rtp_addr_in->sin_port);
-			memcpy(&conn->rtp_ip, &rtp_addr_in->sin_addr.s_addr, IP_V4_ADDR_LEN);
+			memcpy(&conn->rtp_ip, &rtp_addr_in->sin_addr.s_addr,
+			       IP_V4_ADDR_LEN);
 			conn->rtp_ip = osmo_ntohl(conn->rtp_ip);
 		} else {
-			LOGP(DMSC, LOGL_ERROR, "Unsopported addressing scheme. (supports only IPV4)\n");
+			LOGP(DMSC, LOGL_ERROR,
+			     "Unsopported addressing scheme. (supports only IPV4)\n");
 			goto reject;
 		}
 	}
@@ -424,7 +530,9 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	return gsm0808_assign_req(conn->conn, chan_mode, full_rate);
 
 reject:
-	resp = gsm0808_create_assignment_failure(GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
+	resp =
+	    gsm0808_create_assignment_failure
+	    (GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
 	if (!resp) {
 		LOGP(DMSC, LOGL_ERROR, "Channel allocation failure.\n");
 		return -1;
