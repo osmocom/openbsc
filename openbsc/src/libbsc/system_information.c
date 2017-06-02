@@ -774,13 +774,13 @@ static int generate_si3(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 	/* allow/disallow DTXu */
 	gsm48_set_dtx(&si3->cell_options, bts->dtxu, bts->dtxu, true);
 
-	if ((bts->si_valid & (1 << SYSINFO_TYPE_2ter))) {
+	if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter)) {
 		LOGP(DRR, LOGL_INFO, "SI 2ter is included.\n");
 		si_info.si2ter_indicator = 1;
 	} else {
 		si_info.si2ter_indicator = 0;
 	}
-	if ((bts->si_valid & (1 << SYSINFO_TYPE_2quater))) {
+	if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2quater)) {
 		LOGP(DRR, LOGL_INFO, "SI 2quater is included, based on %zu EARFCNs and %zu UARFCNs.\n",
 		     si2q_earfcn_count(&bts->si_common.si2quater_neigh_list), bts->si_common.uarfcn_length);
 		si_info.si2quater_indicator = 1;

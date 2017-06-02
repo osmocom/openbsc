@@ -186,7 +186,7 @@ int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx)
 
 	for (n = 0; n < n_si; n++) {
 		i = gen_si[n];
-		if (!(bts->si_valid & (1 << i)))
+		if (!GSM_BTS_HAS_SI(bts, i))
 			continue;
 		rc = rsl_si(trx, i, si_len[i]);
 		if (rc < 0)

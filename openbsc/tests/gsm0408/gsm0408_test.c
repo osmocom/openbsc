@@ -105,7 +105,7 @@ static inline void gen(struct gsm_bts *bts, const char *s)
 	r = gsm_generate_si(bts, SYSINFO_TYPE_2quater);
 	if (r > 0)
 		printf("generated %s SI2quater [%02u/%02u]: [%d] %s\n",
-		       (bts->si_valid & (1 << SYSINFO_TYPE_2quater)) ? "valid" : "invalid",
+		       GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2quater) ? "valid" : "invalid",
 		       bts->si2q_index, bts->si2q_count, r,
 		       osmo_hexdump((void *)GSM_BTS_SI2Q(bts), GSM_MACBLOCK_LEN));
 	else

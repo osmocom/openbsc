@@ -5,12 +5,6 @@
 #include <openbsc/gsm_04_08.h>
 #include <osmocom/gsm/sysinfo.h>
 
-/* 16 is the max. number of SI2quater messages according to 3GPP TS 44.018: 4-bit index is used */
-#define SI2Q_MAX_NUM 16
-/* length in bits (for single SI2quater message) */
-#define SI2Q_MAX_LEN 160
-#define SI2Q_MIN_LEN 18
-
 /* generate SI1 rest octets */
 int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net);
 int rest_octets_si2quater(uint8_t *data, struct gsm_bts *bts);

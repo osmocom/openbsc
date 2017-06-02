@@ -26,6 +26,12 @@
 
 #include <openbsc/common_cs.h>
 
+/* 16 is the max. number of SI2quater messages according to 3GPP TS 44.018: 4-bit index is used (2#1111 = 10#15) */
+#define SI2Q_MAX_NUM 16
+/* length in bits (for single SI2quater message) */
+#define SI2Q_MAX_LEN 160
+#define SI2Q_MIN_LEN 18
+
 struct osmo_bsc_data;
 
 struct osmo_bsc_sccp_con;
@@ -486,6 +492,7 @@ struct gsm_bts_trx {
 };
 
 #define GSM_BTS_SI2Q(bts)	(struct gsm48_system_information_type_2quater *)((bts)->si_buf[SYSINFO_TYPE_2quater])
+#define GSM_BTS_HAS_SI(bts, i) ((bts)->si_valid & (1 << i))
 #define GSM_BTS_SI(bts, i)	(void *)((bts)->si_buf[i])
 #define GSM_LCHAN_SI(lchan, i)	(void *)((lchan)->si.buf[i])
 
