@@ -38,6 +38,7 @@
 #include <osmocom/sigtran/sccp_helpers.h>
 #include <osmocom/sigtran/protocol/sua.h>
 #include <osmocom/sigtran/protocol/m3ua.h>
+#include <osmocom/core/fsm.h>
 
 #include <regex.h>
 

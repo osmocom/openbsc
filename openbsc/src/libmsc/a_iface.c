@@ -36,6 +36,7 @@
 #include <openbsc/transaction.h>
 #include <openbsc/mgcpgw_client.h>
 #include <osmocom/core/byteswap.h>
+#include <osmocom/sccp/sccp_types.h>
 
 #define SSN_BSSAP	254	/* SCCP_SSN_BSSAP */
 #define SENDER_PC	1	/* Our local point code */
@@ -292,6 +293,26 @@ int a_assign(struct gsm_trans *trans)
 	return osmo_sccp_tx_data_msg(conn->a.scu, conn->a.conn_id, msg);
 }
 
+/* Check if we already know this BSC from a successfuly executed reset procedure. */
+static bool test_bsc_known(struct osmo_sccp_addr *bsc_addr)
+{
+	struct a_bsc_addr *addr;
+	struct llist_head *bsc_addr_list = get_bsc_addr_list();
+
+	/* Check if the given address is  */
+	llist_for_each_entry(addr, bsc_addr_list, list) {
+		if (memcmp(&addr->calling_addr, bsc_addr, sizeof(*bsc_addr)) == 0) {
+			LOGP(DMSC, LOGL_ERROR, "The calling BSC (%s) is known by this MSC, proceeding...\n",
+			     osmo_sccp_addr_dump(bsc_addr));
+			return true;
+		}
+	}
+
+	LOGP(DMSC, LOGL_ERROR, "The calling BSC (%s) is unknown to this MSC, rejecting...\n",
+	     osmo_sccp_addr_dump(bsc_addr));
+	return false;
+}
+
 /* Callback function, called by the SSCP stack when data arrives */
 static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 {
@@ -308,6 +329,13 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		a_conn_info.conn_id = scu_prim->u.connect.conn_id;
 		a_conn_info.called_addr = &scu_prim->u.connect.called_addr;
 		a_conn_info.calling_addr = &scu_prim->u.connect.calling_addr;
+
+		if (test_bsc_known(a_conn_info.calling_addr) == false) {
+			rc = osmo_sccp_tx_disconn(scu, a_conn_info.conn_id, a_conn_info.called_addr,
+						  SCCP_RETURN_CAUSE_UNQUALIFIED);
+			break;
+		}
+
 		osmo_sccp_tx_conn_resp(scu, scu_prim->u.connect.conn_id, &scu_prim->u.connect.called_addr, NULL, 0);
 		if (msgb_l2len(oph->msg) > 0) {
 			LOGP(DMSC, LOGL_DEBUG, "N-CONNECT.ind(%u, %s)\n",

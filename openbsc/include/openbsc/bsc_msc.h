@@ -61,7 +61,9 @@ struct bsc_msc_connection {
 	struct osmo_sccp_addr g_calling_addr;
 	struct osmo_sccp_addr g_called_addr;
 	struct osmo_timer_list msc_reset_timer;
-	bool reset_ack;
+	struct osmo_fsm_inst *fsm_reset;
+	unsigned int msc_conn_loss_count;
+
 	int conn_id_counter;
 };
 

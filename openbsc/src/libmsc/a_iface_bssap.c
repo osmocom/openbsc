@@ -105,7 +105,8 @@ static void bssmap_handle_reset(struct osmo_sccp_user *scu, struct a_conn_info *
 
 	/* Check if we know this BSC already, if yes, refresh its item */
 	llist_for_each_entry(known_addr, &bsc_addr_list, list) {
-		if (memcmp(&known_addr->calling_addr, a_conn_info->calling_addr, sizeof(*a_conn_info->calling_addr)) == 0) {
+		if (memcmp(&known_addr->calling_addr, a_conn_info->calling_addr, sizeof(*a_conn_info->calling_addr)) ==
+		    0) {
 			LOGP(DMSC, LOGL_NOTICE, "This BSC is already known to this MSC, refreshing its list item\n");
 			llist_del(&known_addr->list);
 			talloc_free(known_addr);
