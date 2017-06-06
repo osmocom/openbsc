@@ -22,6 +22,9 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/sigtran/sccp_helpers.h>
+#include <osmocom/sigtran/sccp_sap.h>
+#include <osmocom/sigtran/osmo_ss7.h>
+#include <osmocom/sigtran/protocol/m3ua.h>
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
@@ -33,6 +36,9 @@
 #include <openbsc/transaction.h>
 #include <openbsc/mgcpgw_client.h>
 #include <osmocom/core/byteswap.h>
+
+#define SSN_BSSAP	254	/* SCCP_SSN_BSSAP */
+#define SENDER_PC	1	/* Our local point code */
 
 /* A pointer to the GSM network we work with. By the current paradigm,
  * there can only be one gsm_network per MSC. The pointer is set once
@@ -339,23 +345,19 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 int a_init(void *ctx, const char *name, uint32_t local_pc,
 	   const char *listen_addr, const char *remote_addr, uint16_t local_port, struct gsm_network *network)
 {
-	/* FIXME: Clean this up! */
-	/* FIXME: Don't use the simple_server, use the simple_client instead! */
-#define RECEIVER_PC	23
-#define SSN_BSSAP	254	/* SCCP_SSN_BSSAP */
-#define SENDER_PC	1
-
+	/* FIXME: Remove hardcoded parameters, use parameters in parameter list */
 	struct osmo_sccp_instance *sccp;
+
+	LOGP(DMSC, LOGL_NOTICE, "Initalizing SCCP connection to stp...\n");
 
 	gsm_network = network;
 	osmo_ss7_init();
 
-	sccp = osmo_sccp_simple_server(NULL, SENDER_PC, OSMO_SS7_ASP_PROT_M3UA, -1, "127.0.0.2");
-
-	/* Why? */
-	osmo_sccp_simple_server_add_clnt(sccp, OSMO_SS7_ASP_PROT_M3UA, "RECEIVER", RECEIVER_PC, -1, 0, NULL);
-
-	osmo_sccp_user_bind(sccp, "MSC", &sccp_sap_up, SSN_BSSAP);
+	/* SCCP Protocol stack */
+	sccp =
+	    osmo_sccp_simple_client(NULL, "osmo-msc", SENDER_PC, OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT,
+				    "127.0.0.1");
+	osmo_sccp_user_bind(sccp, "osmo-msc", sccp_sap_up, SSN_BSSAP);
 
 	return 0;
 }

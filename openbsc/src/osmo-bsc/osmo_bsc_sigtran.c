@@ -311,7 +311,6 @@ int osmo_bsc_sigtran_del_conn(struct osmo_bsc_sccp_con *sccp)
 int osmo_bsc_sigtran_init(struct llist_head *mscs)
 {
 	/* FIXME: Remove hardcoded IP-Addresses */
-	/* FIXME: Use STP! */
 	struct bsc_msc_data *msc;
 	char msc_name[256];
 
@@ -328,7 +327,7 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 		/* SCCP Protocol stack */
 		msc->msc_con->sccp =
 		    osmo_sccp_simple_client(NULL, msc_name, msc->msc_con->g_calling_addr.pc,
-					    OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT, "127.0.0.2");
+					    OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT, "127.0.0.1");
 		msc->msc_con->sccp_user =
 		    osmo_sccp_user_bind(msc->msc_con->sccp, msc_name, sccp_sap_up, SCCP_SSN_BSSAP);
 
