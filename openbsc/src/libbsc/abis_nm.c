@@ -473,6 +473,45 @@ static inline uint8_t *parse_attr_resp_info_unreported(uint8_t bts_nr, uint8_t *
 	return ari + num_unreported + 1; /* we have to account for 1st byte with number of unreported attributes */
 }
 
+/* Parse Attribute Response Info content for 3GPP TS 52.021 §9.4.30 Manufacturer Id */
+static inline uint8_t *parse_attr_resp_info_manuf_id(struct gsm_bts *bts, uint8_t *data, uint16_t *data_len)
+{
+	struct tlv_parsed tp;
+	uint16_t m_id_len = 0;
+	uint8_t adjust = 0, i;
+
+	abis_nm_tlv_parse(&tp, bts, data, *data_len);
+	if (TLVP_PRES_LEN(&tp, NM_ATT_MANUF_ID, 2)) {
+		m_id_len = TLVP_LEN(&tp, NM_ATT_MANUF_ID);
+
+		if (m_id_len > MAX_BTS_FEATURES/8 + 1) {
+			LOGP(DNM, LOGL_NOTICE, "BTS%u Get Attributes Response: feature vector is truncated to %u bytes\n",
+			     bts->nr, MAX_BTS_FEATURES/8);
+			m_id_len = MAX_BTS_FEATURES/8;
+		}
+
+		if (m_id_len > _NUM_BTS_FEAT/8 + 1)
+			LOGP(DNM, LOGL_NOTICE, "BTS%u Get Attributes Response: reported unexpectedly long (%u bytes) "
+			     "feature vector - most likely it was compiled against newer BSC headers. "
+			     "Consider upgrading your BSC to later version.\n",
+			     bts->nr, m_id_len);
+
+		memcpy(bts->_features_data, TLVP_VAL(&tp, NM_ATT_MANUF_ID), m_id_len);
+		adjust = m_id_len + 3; /* adjust for parsed TL16V struct */
+
+		for (i = 0; i < _NUM_BTS_FEAT; i++)
+			if (gsm_bts_has_feature(bts, i) != gsm_btsmodel_has_feature(bts->model, i))
+				LOGP(DNM, LOGL_NOTICE, "BTS%u feature '%s' reported via OML does not match statically "
+				     "set feature: %u != %u. Please fix.\n", bts->nr,
+				     get_value_string(gsm_bts_features_descs, i),
+				     gsm_bts_has_feature(bts, i), gsm_btsmodel_has_feature(bts->model, i));
+	}
+
+	*data_len -= adjust;
+
+	return data + adjust;
+}
+
 /* Parse Attribute Response Info content for 3GPP TS 52.021 §9.4.28 Manufacturer Dependent State */
 static inline uint8_t *parse_attr_resp_info_manuf_state(const struct gsm_bts_trx *trx, uint8_t *data, uint16_t *data_len)
 {
@@ -522,6 +561,7 @@ static int abis_nm_rx_get_attr_resp(struct msgb *mb, const struct gsm_bts_trx *t
 					       &data_len);
 
 	data = parse_attr_resp_info_manuf_state(trx, data, &data_len);
+	data = parse_attr_resp_info_manuf_id(bts, data, &data_len);
 
 	/* after parsing manufacturer-specific attributes there's list of replies in form of sw-conf structure: */
 	rc = abis_nm_get_sw_conf(data, data_len, &sw_descr[0], ARRAY_SIZE(sw_descr));
