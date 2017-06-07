@@ -553,7 +553,8 @@ static int bssmap_ass_compl(struct osmo_sccp_user *scu, struct a_conn_info *a_co
 	}
 
 	/* Decode AoIP transport address element */
-	rc = gsm0808_dec_aoip_trasp_addr(&rtp_addr, TLVP_VAL(&tp, GSM0808_IE_AOIP_TRASP_ADDR), TLVP_LEN(&tp, GSM0808_IE_AOIP_TRASP_ADDR));
+	rc = gsm0808_dec_aoip_trasp_addr(&rtp_addr, TLVP_VAL(&tp, GSM0808_IE_AOIP_TRASP_ADDR),
+					 TLVP_LEN(&tp, GSM0808_IE_AOIP_TRASP_ADDR));
 	if (rc < 0) {
 		LOGP(DMSC, LOGL_ERROR, "Unable to decode aoip transport address.\n");
 		goto fail;
@@ -561,8 +562,7 @@ static int bssmap_ass_compl(struct osmo_sccp_user *scu, struct a_conn_info *a_co
 
 	/* use address / port supplied with the AoIP
 	 * transport address element */
-	if(rtp_addr.ss_family == AF_INET)
-	{
+	if (rtp_addr.ss_family == AF_INET) {
 		rtp_addr_in = (struct sockaddr_in *)&rtp_addr;
 		conn->iu.mgcp_rtp_port_ue = osmo_ntohs(rtp_addr_in->sin_port);
 		/* FIXME: We also get the IP-Address of the remote (e.g. BTS)
