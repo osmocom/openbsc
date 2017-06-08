@@ -345,3 +345,21 @@ void msc_call_release(struct gsm_trans *trans)
 	/* Release endpoint id */
 	mgcpgw_client_release_endpoint(conn->iu.mgcp_rtp_endpoint, mgcp);
 }
+
+void msc_call_release_all(struct mgcpgw_client *mgcp)
+{
+	struct msgb *msg;
+	unsigned int i;
+
+	uint16_t first_endpoint = mgcp->actual.first_endpoint;
+	uint16_t last_endpoint = mgcp->actual.last_endpoint;
+
+	for (i = first_endpoint; i < last_endpoint; i++) {
+		msg = mgcp_msg_dlcx(mgcp, i);
+		if (mgcpgw_client_tx(mgcp, msg, NULL, NULL))
+			LOGP(DMGCP, LOGL_ERROR,
+			     "Failed to send DLCX message for endpoint %u\n", i);
+
+		mgcpgw_client_release_endpoint(i, mgcp);
+	}
+}

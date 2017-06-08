@@ -56,3 +56,4 @@ int msc_tx_common_id(struct gsm_subscriber_connection *conn);
 int msc_call_assignment(struct gsm_trans *trans);
 int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2);
 void msc_call_release(struct gsm_trans *trans);
+void msc_call_release_all(struct mgcpgw_client *mgcp);
