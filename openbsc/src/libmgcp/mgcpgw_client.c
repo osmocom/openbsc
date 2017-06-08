@@ -35,20 +35,6 @@
 #include <unistd.h>
 #include <string.h>
 
-struct mgcpgw_client {
-	struct mgcpgw_client_conf actual;
-	uint32_t remote_addr;
-	struct osmo_wqueue wq;
-	mgcp_trans_id_t next_trans_id;
-	struct llist_head responses_pending;
-	struct llist_head inuse_endpoints;
-};
-
-struct mgcp_inuse_endpoint {
-	struct llist_head entry;
-	uint16_t id;
-};
-
 void mgcpgw_client_conf_init(struct mgcpgw_client_conf *conf)
 {
 	/* NULL and -1 default to MGCPGW_CLIENT_*_DEFAULT values */

@@ -3,11 +3,11 @@
 #include <stdint.h>
 
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/core/write_queue.h>
 
 enum mgcp_connection_mode;
 
 struct msgb;
-struct mgcpgw_client;
 struct vty;
 
 #define MGCPGW_CLIENT_LOCAL_ADDR_DEFAULT "0.0.0.0"
@@ -38,6 +38,20 @@ struct mgcp_response {
 	char *body;
 	struct mgcp_response_head head;
 	uint16_t audio_port;
+};
+
+struct mgcpgw_client {
+	struct mgcpgw_client_conf actual;
+	uint32_t remote_addr;
+	struct osmo_wqueue wq;
+	mgcp_trans_id_t next_trans_id;
+	struct llist_head responses_pending;
+	struct llist_head inuse_endpoints;
+};
+
+struct mgcp_inuse_endpoint {
+	struct llist_head entry;
+	uint16_t id;
 };
 
 /* Invoked when an MGCP response is received or sending failed.  When the
