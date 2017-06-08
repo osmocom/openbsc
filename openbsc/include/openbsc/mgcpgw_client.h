@@ -24,8 +24,8 @@ struct mgcpgw_client_conf {
 	int local_port;
 	const char *remote_addr;
 	int remote_port;
-	unsigned int first_endpoint;
-	unsigned int last_endpoint;
+	uint16_t first_endpoint;
+	uint16_t last_endpoint;
 };
 
 struct mgcp_response_head {
@@ -63,7 +63,11 @@ const char *mgcpgw_client_remote_addr_str(struct mgcpgw_client *mgcp);
 uint16_t mgcpgw_client_remote_port(struct mgcpgw_client *mgcp);
 uint32_t mgcpgw_client_remote_addr_n(struct mgcpgw_client *mgcp);
 
-unsigned int mgcpgw_client_next_endpoint(struct mgcpgw_client *client);
+/* Find and seize an unsused endpoint id */
+int mgcpgw_client_next_endpoint(struct mgcpgw_client *client);
+
+/* Release a seized endpoint id to make it available again for other calls */
+void mgcpgw_client_release_endpoint(uint16_t id, struct mgcpgw_client *client);
 
 int mgcp_response_parse_params(struct mgcp_response *r);
 

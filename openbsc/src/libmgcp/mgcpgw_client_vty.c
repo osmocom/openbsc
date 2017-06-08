@@ -79,10 +79,32 @@ DEFUN(cfg_mgcpgw_remote_port, cfg_mgcpgw_remote_port_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcpgw_endpoint_range, cfg_mgcpgw_endpoint_range_cmd,
+      "mgcpgw endpoint-range <1-65534> <1-65534>",
+      MGCPGW_STR "usable range of endpoint identifiers\n"
+      "set first useable endpoint identifier\n"
+      "set the last useable endpoint identifier\n")
+{
+	uint16_t first_endpoint = atoi(argv[0]);
+	uint16_t last_endpoint = atoi(argv[1]);
+
+	if (last_endpoint < first_endpoint) {
+		vty_out(vty, "last endpoint must be greater than first endpoint!%s",
+			VTY_NEWLINE);
+		return CMD_SUCCESS;
+	}
+
+	global_mgcpgw_client_conf->first_endpoint = first_endpoint;
+	global_mgcpgw_client_conf->last_endpoint = last_endpoint;
+	return CMD_SUCCESS;
+}
+
 int mgcpgw_client_config_write(struct vty *vty, const char *indent)
 {
 	const char *addr;
 	int port;
+	uint16_t first_endpoint;
+	uint16_t last_endpoint;
 
 	addr = global_mgcpgw_client_conf->local_addr;
 	if (addr)
@@ -102,6 +124,13 @@ int mgcpgw_client_config_write(struct vty *vty, const char *indent)
 		vty_out(vty, "%smgcpgw remote-port %u%s", indent,
 			(uint16_t)port, VTY_NEWLINE);
 
+	first_endpoint = global_mgcpgw_client_conf->first_endpoint;
+	last_endpoint = global_mgcpgw_client_conf->last_endpoint;
+	if (last_endpoint != 0) {
+		vty_out(vty, "%smgcpgw endpoint-range %u %u%s", indent,
+			first_endpoint, last_endpoint, VTY_NEWLINE);
+	}
+
 	return CMD_SUCCESS;
 }
 
@@ -113,4 +142,5 @@ void mgcpgw_client_vty_init(int node, struct mgcpgw_client_conf *conf)
 	install_element(node, &cfg_mgcpgw_local_port_cmd);
 	install_element(node, &cfg_mgcpgw_remote_ip_cmd);
 	install_element(node, &cfg_mgcpgw_remote_port_cmd);
+	install_element(node, &cfg_mgcpgw_endpoint_range_cmd);
 }
