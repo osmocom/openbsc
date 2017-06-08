@@ -328,3 +328,17 @@ int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2)
 
 	return 0;
 }
+
+void msc_call_release(struct gsm_trans *trans)
+{
+	struct msgb *msg;
+	struct gsm_subscriber_connection *conn = trans->conn;
+	struct mgcpgw_client *mgcp = conn->network->mgcpgw.client;
+
+	msg = mgcp_msg_dlcx(mgcp, conn->iu.mgcp_rtp_endpoint);
+
+	if (mgcpgw_client_tx(mgcp, msg, NULL, NULL))
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Failed to send DLCX message for %s\n",
+		     vlr_subscr_name(trans->vsub));
+}

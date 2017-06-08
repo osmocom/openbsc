@@ -1333,6 +1333,9 @@ void _gsm48_cc_trans_free(struct gsm_trans *trans)
 {
 	gsm48_stop_cc_timer(trans);
 
+	/* Make sure call also gets released on the mgcp side */
+	msc_call_release(trans);
+
 	/* send release to L4, if callref still exists */
 	if (trans->callref) {
 		/* Ressource unavailable */
