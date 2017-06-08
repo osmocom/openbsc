@@ -12,11 +12,13 @@
 #include <osmocom/core/stats.h>
 
 #include <osmocom/crypt/auth.h>
+#include <osmocom/sigtran/sccp_sap.h>
 
 #include <openbsc/common.h>
 #include <openbsc/rest_octets.h>
 #include <openbsc/common_cs.h>
 #include <openbsc/mgcpgw_client.h>
+
 
 /** annotations for msgb ownership */
 #define __uses
@@ -205,6 +207,7 @@ struct gsm_subscriber_connection {
 
 	struct {
 		struct osmo_sccp_user *scu;
+		struct osmo_sccp_addr bsc_addr;
 		int conn_id;
 	} a;
 };

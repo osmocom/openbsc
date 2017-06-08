@@ -42,7 +42,8 @@ static LLIST_HEAD(bsc_addr_list);
  */
 
 /* Allocate a new subscriber connection */
-static struct gsm_subscriber_connection *subscr_conn_allocate_a(struct gsm_network *network, struct ue_conn_ctx *ue,
+static struct gsm_subscriber_connection *subscr_conn_allocate_a(struct a_conn_info *a_conn_info,
+								struct gsm_network *network, struct ue_conn_ctx *ue,
 								uint16_t lac, struct osmo_sccp_user *scu, int conn_id)
 {
 	struct gsm_subscriber_connection *conn;
@@ -61,6 +62,10 @@ static struct gsm_subscriber_connection *subscr_conn_allocate_a(struct gsm_netwo
 
 	conn->a.conn_id = conn_id;
 	conn->a.scu = scu;
+
+	/* Also backup the calling address of the BSC, this allows us to
+	 * identify later which BSC is responsible for this subscriber connection */
+	memcpy(&conn->a.bsc_addr, a_conn_info->calling_addr, sizeof(conn->a.bsc_addr));
 
 	llist_add_tail(&conn->entry, &network->subscr_conns);
 	LOGP(DMSC, LOGL_NOTICE, "A-Interface subscriber connection successfully allocated!\n");
@@ -89,6 +94,22 @@ struct gsm_subscriber_connection *subscr_conn_lookup_a(struct gsm_network *netwo
 	return NULL;
 }
 
+/* Clear oprphand subscriber connections (called by bssmap_handle_reset()) */
+static void subscr_conn_clear_all(struct a_conn_info *a_conn_info)
+{
+	struct gsm_subscriber_connection *conn;
+	struct gsm_subscriber_connection *conn_temp;
+	struct gsm_network *network = a_conn_info->network;
+
+	llist_for_each_entry_safe(conn, conn_temp, &network->subscr_conns, entry) {
+		if (conn->via_ran == RAN_GERAN_A
+		    && memcmp(a_conn_info->calling_addr, &conn->a.bsc_addr, sizeof(conn->a.bsc_addr)) == 0) {
+			LOGP(DMSC, LOGL_NOTICE, "Dropping old subscriber connection (conn_id %i)\n", conn->a.conn_id);
+			msc_clear_request(conn, GSM48_CC_CAUSE_SWITCH_CONG);
+		}
+	}
+}
+
 /*
  * BSSMAP handling for UNITDATA
  */
@@ -102,6 +123,9 @@ static void bssmap_handle_reset(struct osmo_sccp_user *scu, struct a_conn_info *
 
 	LOGP(DMSC, LOGL_NOTICE, "Rx RESET from BSC %s\n", osmo_sccp_addr_dump(a_conn_info->calling_addr));
 	osmo_sccp_tx_unitdata_msg(scu, a_conn_info->called_addr, a_conn_info->calling_addr, gsm0808_create_reset_ack());
+
+	/* Make sure all orphand subscriber connections will be cleard */
+	subscr_conn_clear_all(a_conn_info);
 
 	/* Check if we know this BSC already, if yes, refresh its item */
 	llist_for_each_entry(known_addr, &bsc_addr_list, list) {
@@ -300,7 +324,7 @@ static int bssmap_handle_l3_compl(struct osmo_sccp_user *scu, struct a_conn_info
 
 	/* Create new subscriber context */
 	ue = ue_conn_ctx_alloc(a_conn_info->calling_addr, a_conn_info->conn_id);
-	conn = subscr_conn_allocate_a(network, ue, lac, scu, a_conn_info->conn_id);
+	conn = subscr_conn_allocate_a(a_conn_info, network, ue, lac, scu, a_conn_info->conn_id);
 
 	/* Handover location update to the MSC code */
 	/* msc_compl_l3() takes ownership of dtap_msg
