@@ -335,10 +335,13 @@ void msc_call_release(struct gsm_trans *trans)
 	struct gsm_subscriber_connection *conn = trans->conn;
 	struct mgcpgw_client *mgcp = conn->network->mgcpgw.client;
 
+	/* Send DLCX */
 	msg = mgcp_msg_dlcx(mgcp, conn->iu.mgcp_rtp_endpoint);
-
 	if (mgcpgw_client_tx(mgcp, msg, NULL, NULL))
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Failed to send DLCX message for %s\n",
 		     vlr_subscr_name(trans->vsub));
+
+	/* Release endpoint id */
+	mgcpgw_client_release_endpoint(conn->iu.mgcp_rtp_endpoint, mgcp);
 }
