@@ -29,7 +29,7 @@ struct a_conn_info {
 	struct gsm_network *network;
 };
 
-/* A structure to pack BSC clling addresses into a list */
+/* A structure to pack BSC calling addresses into a list */
 struct a_bsc_addr {
 	struct llist_head list;
 	struct osmo_sccp_addr called_addr;
