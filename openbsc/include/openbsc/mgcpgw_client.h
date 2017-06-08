@@ -24,6 +24,8 @@ struct mgcpgw_client_conf {
 	int local_port;
 	const char *remote_addr;
 	int remote_port;
+	unsigned int first_endpoint;
+	unsigned int last_endpoint;
 };
 
 struct mgcp_response_head {
@@ -75,6 +77,8 @@ struct msgb *mgcp_msg_crcx(struct mgcpgw_client *mgcp,
 struct msgb *mgcp_msg_mdcx(struct mgcpgw_client *mgcp,
 			   uint16_t rtp_endpoint, const char *rtp_conn_addr,
 			   uint16_t rtp_port, enum mgcp_connection_mode mode);
+
+struct msgb *mgcp_msg_dlcx(struct mgcpgw_client *mgcp, uint16_t rtp_endpoint);
 
 void mgcpgw_client_vty_init(int node, struct mgcpgw_client_conf *conf);
 int mgcpgw_client_config_write(struct vty *vty, const char *indent);
