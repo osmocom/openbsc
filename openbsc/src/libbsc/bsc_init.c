@@ -349,12 +349,12 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 			generate_cell_chan_list(ca, trx->bts);
 
 			/* Request generic BTS-level attributes */
-			abis_nm_get_attr(trx->bts, NM_OC_BTS, trx->bts->nr, trx->nr, 0xFF, bts_attr, sizeof(bts_attr));
+			abis_nm_get_attr(trx->bts, NM_OC_BTS, 0xFF, 0xFF, 0xFF, bts_attr, sizeof(bts_attr));
 
 			llist_for_each_entry(cur_trx, &trx->bts->trx_list, list) {
 				int i;
 				/* Request TRX-level attributes */
-				abis_nm_get_attr(cur_trx->bts, NM_OC_BASEB_TRANSC, cur_trx->bts->nr, cur_trx->nr, 0xFF,
+				abis_nm_get_attr(cur_trx->bts, NM_OC_BASEB_TRANSC, 0, cur_trx->nr, 0xFF,
 						 trx_attr, sizeof(trx_attr));
 				for (i = 0; i < ARRAY_SIZE(cur_trx->ts); i++)
 					generate_ma_for_ts(&cur_trx->ts[i]);

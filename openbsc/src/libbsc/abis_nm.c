@@ -1590,10 +1590,17 @@ int abis_nm_get_attr(struct gsm_bts *bts, uint8_t obj_class, uint8_t bts_nr, uin
 		     const uint8_t *attr, uint8_t attr_len)
 {
 	struct abis_om_hdr *oh;
-	struct msgb *msg = nm_msgb_alloc();
+	struct msgb *msg;
+
+	if (bts->type != GSM_BTS_TYPE_OSMOBTS) {
+		LOGPC(DNM, LOGL_NOTICE, "Getting attributes from BTS%d type %s is not supported.\n",
+		      bts->nr, btstype2str(bts->type));
+		return -EINVAL;
+	}
 
 	DEBUGP(DNM, "Get Attr (bts=%d)\n", bts->nr);
 
+	msg = nm_msgb_alloc();
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, attr_len, NM_MT_GET_ATTR, obj_class,
 			bts_nr, trx_nr, ts_nr);
