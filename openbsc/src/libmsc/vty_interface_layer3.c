@@ -47,6 +47,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/vty.h>
 #include <openbsc/gsm_04_80.h>
+#include <openbsc/gsm_04_14.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/sms_queue.h>
 #include <openbsc/mncc_int.h>
@@ -479,6 +480,97 @@ DEFUN(subscriber_ussd_notify,
 
 	subscr_put(subscr);
 	talloc_free(text);
+	return CMD_SUCCESS;
+}
+
+static int loop_by_char(uint8_t ch)
+{
+	switch (ch) {
+	case 'a':
+		return GSM414_LOOP_A;
+	case 'b':
+		return GSM414_LOOP_B;
+	case 'c':
+		return GSM414_LOOP_C;
+	case 'd':
+		return GSM414_LOOP_D;
+	case 'e':
+		return GSM414_LOOP_E;
+	case 'f':
+		return GSM414_LOOP_F;
+	case 'i':
+		return GSM414_LOOP_I;
+	}
+	return -1;
+}
+
+DEFUN(subscriber_mstest_close,
+      subscriber_mstest_close_cmd,
+      "subscriber " SUBSCR_TYPES " ID ms-test close-loop (a|b|c|d|e|f|i)",
+      SUBSCR_HELP "Send a TS 04.14 MS Test Command to subscriber\n"
+      "Close a TCH Loop inside the MS\n"
+      "Loop Type A\n"
+      "Loop Type B\n"
+      "Loop Type C\n"
+      "Loop Type D\n"
+      "Loop Type E\n"
+      "Loop Type F\n"
+      "Loop Type I\n")
+{
+	struct gsm_subscriber_connection *conn;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	const char *loop_str;
+	int loop_mode;
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	loop_str = argv[2];
+	loop_mode = loop_by_char(loop_str[0]);
+
+	conn = connection_for_subscr(subscr);
+	if (!conn) {
+		vty_out(vty, "%% An active connection is required for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		subscr_put(subscr);
+		return CMD_WARNING;
+	}
+
+	gsm0414_tx_close_tch_loop_cmd(conn, loop_mode);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(subscriber_mstest_open,
+      subscriber_mstest_open_cmd,
+      "subscriber " SUBSCR_TYPES " ID ms-test open-loop",
+      SUBSCR_HELP "Send a TS 04.14 MS Test Command to subscriber\n"
+      "Open a TCH Loop inside the MS\n")
+{
+	struct gsm_subscriber_connection *conn;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	conn = connection_for_subscr(subscr);
+	if (!conn) {
+		vty_out(vty, "%% An active connection is required for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		subscr_put(subscr);
+		return CMD_WARNING;
+	}
+
+	gsm0414_tx_open_loop_cmd(conn);
+
 	return CMD_SUCCESS;
 }
 
@@ -1166,6 +1258,8 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&subscriber_silent_call_start_cmd);
 	install_element_ve(&subscriber_silent_call_stop_cmd);
 	install_element_ve(&subscriber_ussd_notify_cmd);
+	install_element_ve(&subscriber_mstest_close_cmd);
+	install_element_ve(&subscriber_mstest_open_cmd);
 	install_element_ve(&subscriber_update_cmd);
 	install_element_ve(&show_stats_cmd);
 	install_element_ve(&show_smsqueue_cmd);
