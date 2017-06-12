@@ -490,13 +490,13 @@ static inline uint8_t *parse_attr_resp_info_manuf_id(struct gsm_bts *bts, uint8_
 			m_id_len = MAX_BTS_FEATURES/8;
 		}
 
-		if (m_id_len > _NUM_BTS_FEAT/8 + 1)
+		if (m_id_len > sizeof(bts->_features_data))
 			LOGP(DNM, LOGL_NOTICE, "BTS%u Get Attributes Response: reported unexpectedly long (%u bytes) "
 			     "feature vector - most likely it was compiled against newer BSC headers. "
 			     "Consider upgrading your BSC to later version.\n",
 			     bts->nr, m_id_len);
 
-		memcpy(bts->_features_data, TLVP_VAL(&tp, NM_ATT_MANUF_ID), m_id_len);
+		memcpy(bts->_features_data, TLVP_VAL(&tp, NM_ATT_MANUF_ID), sizeof(bts->_features_data));
 		adjust = m_id_len + 3; /* adjust for parsed TL16V struct */
 
 		for (i = 0; i < _NUM_BTS_FEAT; i++)
