@@ -180,7 +180,8 @@ static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 		/* use_x213_nsap == 0 for ip.access nano3G */
 	} else if (trans->conn->via_ran == RAN_GERAN_A) {
 		/* Assign a voice channel via A on 2G */
-		return a_assign(trans);
+		if (a_assign(trans) == -EINVAL)
+			goto rab_act_cs_error;
 	} else
 		goto rab_act_cs_error;
 
