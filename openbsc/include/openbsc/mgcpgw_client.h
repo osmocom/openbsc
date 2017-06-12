@@ -26,6 +26,7 @@ struct mgcpgw_client_conf {
 	int remote_port;
 	uint16_t first_endpoint;
 	uint16_t last_endpoint;
+	uint16_t bts_base;
 };
 
 struct mgcp_response_head {

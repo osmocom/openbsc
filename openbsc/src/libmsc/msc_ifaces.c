@@ -195,6 +195,7 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	struct mgcpgw_client *mgcp = conn->network->mgcpgw.client;
 	struct msgb *msg;
 	struct msgb *msg_dlcx;
+	uint16_t bts_base;
 
 	/* HACK. where to scope the RAB Id? At the conn / subscriber /
 	 * ue_conn_ctx? */
@@ -203,9 +204,14 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 
 	conn->iu.mgcp_rtp_endpoint =
 		mgcpgw_client_next_endpoint(conn->network->mgcpgw.client);
-	/* HACK: the addresses should be known from CRCX response
-	 * and config. */
-	conn->iu.mgcp_rtp_port_ue = 4000 + 2 * conn->iu.mgcp_rtp_endpoint;
+
+	/* This will calculate the port we assign to the BTS via AoIP
+	 * assignment command (or rab-assignment on 3G) The BTS will send
+	 * its RTP traffic to that port on the MGCPGW side. The MGCPGW only
+	 * gets the endpoint ID via the CRCX. It will do the same calculation
+	 * on his side too to get knowledge of the rtp port. */
+	bts_base = mgcp->actual.bts_base;
+	conn->iu.mgcp_rtp_port_ue = bts_base + 2 * conn->iu.mgcp_rtp_endpoint;
 
 	/* Since we know now the endpoint number, we enforce a DLCX on tha
 	 * endpoint in order to ensure that this endpoint is not occupied

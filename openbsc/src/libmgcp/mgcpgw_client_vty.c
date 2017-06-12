@@ -99,12 +99,26 @@ DEFUN(cfg_mgcpgw_endpoint_range, cfg_mgcpgw_endpoint_range_cmd,
 	return CMD_SUCCESS;
 }
 
+#define BTS_START_STR "First UDP port allocated for the BTS side\n"
+#define UDP_PORT_STR "UDP Port number\n"
+DEFUN(cfg_mgcp_rtp_bts_base_port,
+      cfg_mgcp_rtp_bts_base_port_cmd,
+      "mgcpgw bts-base <0-65534>",
+      MGCPGW_STR
+      BTS_START_STR
+      UDP_PORT_STR)
+{
+	global_mgcpgw_client_conf->bts_base = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 int mgcpgw_client_config_write(struct vty *vty, const char *indent)
 {
 	const char *addr;
 	int port;
 	uint16_t first_endpoint;
 	uint16_t last_endpoint;
+	uint16_t bts_base;
 
 	addr = global_mgcpgw_client_conf->local_addr;
 	if (addr)
@@ -131,6 +145,12 @@ int mgcpgw_client_config_write(struct vty *vty, const char *indent)
 			first_endpoint, last_endpoint, VTY_NEWLINE);
 	}
 
+	bts_base = global_mgcpgw_client_conf->bts_base;
+	if (bts_base) {
+		vty_out(vty, "%smgcpgw bts-base %u%s", indent,
+			bts_base, VTY_NEWLINE);
+	}
+
 	return CMD_SUCCESS;
 }
 
@@ -143,4 +163,5 @@ void mgcpgw_client_vty_init(int node, struct mgcpgw_client_conf *conf)
 	install_element(node, &cfg_mgcpgw_remote_ip_cmd);
 	install_element(node, &cfg_mgcpgw_remote_port_cmd);
 	install_element(node, &cfg_mgcpgw_endpoint_range_cmd);
+	install_element(node, &cfg_mgcp_rtp_bts_base_port_cmd);
 }
