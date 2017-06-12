@@ -496,10 +496,6 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 		return 7;
 	}
 
-	/* Make sure all mgcp endpoints are cleared */
-	msc_call_release_all(msc_network->mgcpgw.client);
-
-
 	/* Set up A-Interface */
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
