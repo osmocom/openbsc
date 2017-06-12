@@ -22,4 +22,17 @@
 int a_init(void *ctx, const char *name, uint32_t local_pc, const char *listen_addr,
 	   const char *remote_addr, uint16_t local_port, struct gsm_network *network);
 
+/* Send DTAP message via A-interface */
+int a_iface_tx_dtap(struct msgb *msg);
+
+/* Send Cipher mode command via A-interface */
+int a_iface_tx_cipher_mode(struct gsm_subscriber_connection *conn,
+			   int cipher, const uint8_t *key, int len, int include_imeisv);
+
+/* Page a subscriber via A-interface */
+int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac);
+
+/* Send assignment request via A-interface */
+int a_iface_tx_assignment(struct gsm_trans *trans);
+
 #pragma once

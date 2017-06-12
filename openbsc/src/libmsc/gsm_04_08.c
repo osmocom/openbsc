@@ -74,6 +74,7 @@
 
 #include <openbsc/msc_ifaces.h>
 #include <openbsc/iu.h>
+#include <openbsc/a_iface.h>
 
 #include <assert.h>
 
@@ -3804,8 +3805,8 @@ static int msc_vlr_set_ciph_mode(void *msc_conn_ref,
 	case RAN_GERAN_A:
 		DEBUGP(DMM, "-> CIPHER MODE COMMAND %s\n",
 		       vlr_subscr_name(conn->vsub));
-		return msc_gsm0808_tx_cipher_mode(conn, ciph, tuple->vec.kc, 8,
-						  retrieve_imeisv);
+		return a_iface_tx_cipher_mode(conn, ciph, tuple->vec.kc, 8,
+					      retrieve_imeisv);
 	case RAN_UTRAN_IU:
 		DEBUGP(DMM, "-> SECURITY MODE CONTROL %s\n",
 		       vlr_subscr_name(conn->vsub));

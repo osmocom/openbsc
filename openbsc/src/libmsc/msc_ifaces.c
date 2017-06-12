@@ -29,6 +29,7 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcpgw_client.h>
 #include <openbsc/vlr.h>
+#include <openbsc/a_iface.h>
 
 #include "../../bscconfig.h"
 
@@ -45,7 +46,7 @@ static int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	switch (conn->via_ran) {
 	case RAN_GERAN_A:
 		msg->dst = conn;
-		return a_tx(msg);
+		return a_iface_tx_dtap(msg);
 
 	case RAN_UTRAN_IU:
 		msg->dst = conn->iu.ue_ctx;
@@ -180,7 +181,7 @@ static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 		/* use_x213_nsap == 0 for ip.access nano3G */
 	} else if (trans->conn->via_ran == RAN_GERAN_A) {
 		/* Assign a voice channel via A on 2G */
-		if (a_assign(trans) == -EINVAL)
+		if (a_iface_tx_assignment(trans) == -EINVAL)
 			goto rab_act_cs_error;
 	} else
 		goto rab_act_cs_error;
@@ -241,8 +242,8 @@ int msc_call_assignment(struct gsm_trans *trans)
 	case RAN_GERAN_A:
 		/* FIXME We first go for conn_iu_rab_act_cs(), this function
 		 * will create a loopback rtp connection first and then call
-		 * a_assign(). Probably we need to find another name for
-		 * conn_iu_rab_act_cs? */
+		 * a_iface_tx_assignment(). Probably we need to find another
+		 * name for conn_iu_rab_act_cs? */
 		return conn_iu_rab_act_cs(trans);
 
 	case RAN_UTRAN_IU:

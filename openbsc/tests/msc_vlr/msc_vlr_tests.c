@@ -297,9 +297,9 @@ int __wrap_iu_page_cs(const char *imsi, const uint32_t *tmsi, uint16_t lac)
 	return _paging_sent(RAN_UTRAN_IU, imsi, tmsi ? *tmsi : GSM_RESERVED_TMSI, lac);
 }
 
-/* override, requires '-Wl,--wrap=a_page' */
-int __real_a_page(const char *imsi, uint32_t tmsi, uint16_t lac);
-int __wrap_a_page(const char *imsi, uint32_t tmsi, uint16_t lac)
+/* override, requires '-Wl,--wrap=a_iface_tx_paging' */
+int __real_a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac);
+int __wrap_a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 {
 	return _paging_sent(RAN_GERAN_A, imsi, tmsi, lac);
 }
@@ -468,9 +468,9 @@ int __wrap_iu_tx(struct msgb *msg, uint8_t sapi)
 	return _validate_dtap(msg, RAN_UTRAN_IU);
 }
 
-/* override, requires '-Wl,--wrap=a_tx' */
-int __real_a_tx(struct msgb *msg, uint8_t sapi);
-int __wrap_a_tx(struct msgb *msg, uint8_t sapi)
+/* override, requires '-Wl,--wrap=a_iface_tx_dtap' */
+int __real_a_iface_tx_dtap(struct msgb *msg);
+int __wrap_a_iface_tx_dtap(struct msgb *msg)
 {
 	return _validate_dtap(msg, RAN_GERAN_A);
 }

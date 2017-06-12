@@ -47,7 +47,7 @@
 static struct gsm_network *gsm_network = NULL;
 
 /* Send DTAP message via A-interface */
-int a_tx(struct msgb *msg)
+int a_iface_tx_dtap(struct msgb *msg)
 {
 	struct gsm_subscriber_connection *conn;
 	struct msgb *msg_resp;
@@ -74,8 +74,8 @@ int a_tx(struct msgb *msg)
 }
 
 /* Send Cipher mode command via A-interface */
-int msc_gsm0808_tx_cipher_mode(struct gsm_subscriber_connection *conn,
-			       int cipher, const uint8_t *key, int len, int include_imeisv)
+int a_iface_tx_cipher_mode(struct gsm_subscriber_connection *conn,
+			   int cipher, const uint8_t *key, int len, int include_imeisv)
 {
 	/* TODO generalize for A- and Iu interfaces, don't name after 08.08 */
 	struct msgb *msg_resp;
@@ -108,7 +108,7 @@ int msc_gsm0808_tx_cipher_mode(struct gsm_subscriber_connection *conn,
 }
 
 /* Page a subscriber via A-interface */
-int a_page(const char *imsi, uint32_t tmsi, uint16_t lac)
+int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 {
 	struct a_bsc_addr *addr;
 	struct llist_head *bsc_addr_list = get_bsc_addr_list();
@@ -259,7 +259,7 @@ static int enc_speeach_codec_list(struct gsm0808_speech_codec_list *scl, const s
 }
 
 /* Send assignment request via A-interface */
-int a_assign(struct gsm_trans *trans)
+int a_iface_tx_assignment(struct gsm_trans *trans)
 {
 	struct gsm_subscriber_connection *conn;
 	struct gsm0808_channel_type ct;

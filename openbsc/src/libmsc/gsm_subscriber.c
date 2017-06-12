@@ -43,6 +43,7 @@
 #include <openbsc/iu.h>
 #include <openbsc/osmo_msc.h>
 #include <openbsc/msc_ifaces.h>
+#include <openbsc/a_iface.h>
 
 void *tall_sub_req_ctx;
 
@@ -111,7 +112,7 @@ int msc_paging_request(struct vlr_subscr *vsub)
 	 * Need to add BSC paging at some point. */
 	switch (vsub->cs.attached_via_ran) {
 	case RAN_GERAN_A:
-		return a_page(vsub->imsi, vsub->tmsi, vsub->lac);
+		return a_iface_tx_paging(vsub->imsi, vsub->tmsi, vsub->lac);
 	case RAN_UTRAN_IU:
 		return iu_page_cs(vsub->imsi,
 				  vsub->tmsi == GSM_RESERVED_TMSI?
