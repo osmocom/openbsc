@@ -32,7 +32,6 @@ osmo_bsc_SOURCES = \
 	osmo_bsc_grace.c \
 	osmo_bsc_msc.c \
 	osmo_bsc_reset.c \
-	osmo_bsc_sccp.c \
 	osmo_bsc_sigtran.c \
 	osmo_bsc_filter.c \
 	osmo_bsc_bssap.c \
