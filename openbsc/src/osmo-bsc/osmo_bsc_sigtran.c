@@ -85,6 +85,17 @@ static void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
 				  &msc->msc_con->g_called_addr, msg);
 }
 
+/* Send reset-ack to MSC */
+void osmo_bsc_sigtran_tx_reset_ack(struct bsc_msc_data *msc)
+{
+	struct msgb *msg;
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET RACK to MSC No.: %i\n", msc->nr);
+	msg = gsm0808_create_reset_ack();
+	osmo_sccp_tx_unitdata_msg(msc->msc_con->sccp_user, &msc->msc_con->g_calling_addr,
+				  &msc->msc_con->g_called_addr, msg);
+}
+
+
 /* Find an MSC by its sigtran point code */
 static struct bsc_msc_data *get_msc_by_addr(struct osmo_sccp_addr *calling_addr)
 {
@@ -347,14 +358,11 @@ static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
 	bsc_send_ussd_release_complete(conn);
 }
 
-
-/* Callback function: Close all open connections */
-static void osmo_bsc_sigtran_reset_cb(void *priv)
+/* Close all open sigtran connections and channels */
+void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc)
 {
 	struct osmo_bsc_sccp_con *conn;
 	struct osmo_bsc_sccp_con *conn_temp;
-	struct bsc_msc_data *msc = (struct bsc_msc_data*) priv;
-
 	OSMO_ASSERT(msc);
 
 	/* Close all open connections */
@@ -365,6 +373,15 @@ static void osmo_bsc_sigtran_reset_cb(void *priv)
 		osmo_bsc_sigtran_del_conn(conn);
 	}
 	msc->msc_con->conn_id_counter = 0;
+}
+
+/* Callback function: Close all open connections */
+static void osmo_bsc_sigtran_reset_cb(void *priv)
+{
+	struct bsc_msc_data *msc = (struct bsc_msc_data*) priv;
+
+	/* Shut down all ongoint traffic */
+	osmo_bsc_sigtran_reset(msc);
 
 	/* Send reset to MSC */
 	osmo_bsc_sigtran_tx_reset(msc);

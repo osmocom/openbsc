@@ -203,6 +203,24 @@ static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 	return 0;
 }
 
+/* Handle MSC sided reset */
+static int bssmap_handle_reset(struct bsc_msc_data *msc,
+			       struct msgb *msg, unsigned int length)
+{
+	LOGP(DMSC, LOGL_NOTICE, "Reset from MSC No.: %i\n", msc->nr);
+
+	/* Instruct the bsc to close all open sigtran connections and to
+	 * close all active channels on the BTS side as well */
+	osmo_bsc_sigtran_reset(msc);
+
+	/* Inform the MSC that we have received the reset request and
+	 * that we acted accordingly */
+	osmo_bsc_sigtran_tx_reset_ack(msc);
+
+	return 0;
+}
+
+
 /* GSM 08.08 § 3.2.1.19 */
 static int bssmap_handle_paging(struct bsc_msc_data *msc,
 				struct msgb *msg, unsigned int payload_length)
@@ -552,6 +570,9 @@ static int bssmap_rcvmsg_udt(struct bsc_msc_data *msc,
 	switch (msg->l4h[0]) {
 	case BSS_MAP_MSG_RESET_ACKNOWLEDGE:
 		ret = bssmap_handle_reset_ack(msc, msg, length);
+		break;
+	case BSS_MAP_MSG_RESET:
+		ret = bssmap_handle_reset(msc, msg, length);
 		break;
 	case BSS_MAP_MSG_PAGING:
 		ret = bssmap_handle_paging(msc, msg, length);
