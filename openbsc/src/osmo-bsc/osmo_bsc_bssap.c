@@ -31,7 +31,7 @@
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/gsm0808_utils.h>
 #include <openbsc/osmo_bsc_sigtran.h>
-#include <openbsc/osmo_bsc_reset.h>
+#include <openbsc/a_reset.h>
 #include <osmocom/core/byteswap.h>
 
 #define IP_V4_ADDR_LEN 4
@@ -198,7 +198,7 @@ static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 
 	/* Inform the FSM that controls the RESET/RESET-ACK procedure
 	 * that we have successfully received the reset-ack message */
-	reset_ack_confirm(msc);
+	a_reset_ack_confirm(&msc->msc_con->reset);
 
 	return 0;
 }

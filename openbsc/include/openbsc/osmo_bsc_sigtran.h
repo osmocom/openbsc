@@ -38,11 +38,5 @@ int osmo_bsc_sigtran_send(struct osmo_bsc_sccp_con *conn, struct msgb *msg);
  * locally, when a connection is closed by the MSC */
 int osmo_bsc_sigtran_del_conn(struct osmo_bsc_sccp_con *sccp);
 
-/* Send reset to MSC */
-void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc);
-
-/* close all open connections */
-void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc);
-
 /* Initalize osmo sigtran backhaul */
 int osmo_bsc_sigtran_init(struct llist_head *mscs);

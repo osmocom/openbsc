@@ -31,7 +31,7 @@
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/osmo_bsc_grace.h>
 #include <openbsc/osmo_bsc_sigtran.h>
-#include <openbsc/osmo_bsc_reset.h>
+#include <openbsc/a_reset.h>
 #include <openbsc/gsm_04_80.h>
 
 /* A pointer to a list with all involved MSCs
@@ -76,7 +76,7 @@ static int pick_free_conn_id(struct bsc_msc_data *msc)
 }
 
 /* Send reset to MSC */
-void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
+static void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
 {
 	struct msgb *msg;
 	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to MSC No.: %i\n", msc->nr);
@@ -169,7 +169,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		/* Incoming data is a sign of a vital connection */
 		bsc_con = get_bsc_conn_by_conn_id(scu_prim->u.disconnect.conn_id);
 		if (bsc_con)
-			report_conn_success(bsc_con->msc);
+			a_reset_conn_success(&bsc_con->msc->msc_con->reset);
 
 		rc = handle_data_from_msc(scu_prim->u.data.conn_id, oph->msg);
 		break;
@@ -189,7 +189,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 			/* We might have a connectivity problem. Maybe we need to go
 			 * through the reset procedure again? */
 			if (scu_prim->u.disconnect.cause == 0)
-				report_conn_fail(bsc_con->msc);
+				a_reset_conn_fail(&bsc_con->msc->msc_con->reset);
 
 			rc = osmo_bsc_sigtran_del_conn(bsc_con);
 		}
@@ -216,7 +216,7 @@ enum bsc_con osmo_bsc_sigtran_new_conn(struct gsm_subscriber_connection *conn, s
 
 	LOGP(DMSC, LOGL_NOTICE, "Initalizing resources for new SIGTRAN connection to MSC No.: %i...\n", msc->nr);
 
-	if (sccp_conn_ready(msc) == false) {
+	if (a_reset_conn_ready(&msc->msc_con->reset) == false) {
 		LOGP(DMSC, LOGL_ERROR, "MSC is not connected. Dropping.\n");
 		return BSC_CON_REJECT_NO_LINK;
 	}
@@ -261,7 +261,7 @@ int osmo_bsc_sigtran_open_conn(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 
 	msc = conn->msc;
 
-	if (sccp_conn_ready(msc) == false) {
+	if (a_reset_conn_ready(&msc->msc_con->reset) == false) {
 		LOGP(DMSC, LOGL_ERROR, "MSC is not connected. Dropping.\n");
 		return -EINVAL;
 	}
@@ -288,7 +288,7 @@ int osmo_bsc_sigtran_send(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 
 	msc = conn->msc;
 
-	if (sccp_conn_ready(msc) == false) {
+	if (a_reset_conn_ready(&msc->msc_con->reset) == false) {
 		LOGP(DMSC, LOGL_ERROR, "MSC is not connected. Dropping.\n");
 		return -EINVAL;
 	}
@@ -319,7 +319,7 @@ int osmo_bsc_sigtran_del_conn(struct osmo_bsc_sccp_con *conn)
 
 		/* This bahaviour might be caused by a bad connection. Maybe we
 		 * will have to go through the reset procedure again */
-		report_conn_fail(conn->msc);
+		a_reset_conn_fail(&conn->msc->msc_con->reset);
 	}
 
 	llist_del(&conn->entry);
@@ -348,20 +348,26 @@ static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
 }
 
 
-/* close all open connections */
-void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc)
+/* Callback function: Close all open connections */
+static void osmo_bsc_sigtran_reset_cb(void *priv)
 {
 	struct osmo_bsc_sccp_con *conn;
 	struct osmo_bsc_sccp_con *conn_temp;
+	struct bsc_msc_data *msc = (struct bsc_msc_data*) priv;
 
+	OSMO_ASSERT(msc);
+
+	/* Close all open connections */
 	llist_for_each_entry_safe(conn, conn_temp, &active_connections, entry) {
 		if (conn->conn)
 			gsm0808_clear(conn->conn);
 		bsc_notify_msc_lost(conn);
 		osmo_bsc_sigtran_del_conn(conn);
 	}
-
 	msc->msc_con->conn_id_counter = 0;
+
+	/* Send reset to MSC */
+	osmo_bsc_sigtran_tx_reset(msc);
 }
 
 /* Initalize osmo sigtran backhaul */
@@ -389,7 +395,10 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 		    osmo_sccp_user_bind(msc->msc_con->sccp, msc_name, sccp_sap_up, SCCP_SSN_BSSAP);
 
 		/* Start MSC reset procedure */
-		start_reset_fsm(msc);
+		msc->msc_con->reset.priv = msc;
+		msc->msc_con->reset.cb = osmo_bsc_sigtran_reset_cb;
+		snprintf(msc->msc_con->reset.name,sizeof(msc->msc_con->reset.name),"MSC No. %u",msc->nr);
+		a_reset_start(&msc->msc_con->reset);
 	}
 
 	return 0;

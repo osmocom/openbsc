@@ -16,5 +16,6 @@ AM_CFLAGS = \
 noinst_LIBRARIES = libcommon-cs.a
 
 libcommon_cs_a_SOURCES = \
+	a_reset.c \
 	common_cs.c \
 	common_cs_vty.c

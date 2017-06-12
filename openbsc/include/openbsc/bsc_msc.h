@@ -25,6 +25,7 @@
 #include <osmocom/core/write_queue.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/sigtran/sccp_sap.h>
+#include <openbsc/a_reset.h>
 
 #include <netinet/in.h>
 
@@ -60,8 +61,7 @@ struct bsc_msc_connection {
 	struct osmo_sccp_user *sccp_user;
 	struct osmo_sccp_addr g_calling_addr;
 	struct osmo_sccp_addr g_called_addr;
-	struct osmo_fsm_inst *fsm_reset;
-	unsigned int msc_conn_loss_count;
+	struct a_reset_ctx reset;
 
 	int conn_id_counter;
 };

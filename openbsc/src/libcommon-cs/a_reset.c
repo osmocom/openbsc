@@ -34,8 +34,8 @@
 #define BAD_CONNECTION_THRESOLD 3	/* connection failures */
 
 enum fsm_states {
-	ST_DISC,		/* Disconnected from MSC */
-	ST_CONN,		/* We have a confirmed connection to the MSC */
+	ST_DISC,		/* Disconnected from remote end */
+	ST_CONN,		/* We have a confirmed connection */
 };
 
 static const struct value_string fsm_state_names[] = {
@@ -45,7 +45,7 @@ static const struct value_string fsm_state_names[] = {
 };
 
 enum fsm_evt {
-	EV_RESET_ACK,		/* got reset acknowlegement from the MSC */
+	EV_RESET_ACK,		/* got reset acknowlegement from remote end */
 	EV_N_DISCONNECT,	/* lost a connection */
 	EV_N_CONNECT,		/* made a successful connection */
 };
@@ -60,34 +60,35 @@ static const struct value_string fsm_evt_names[] = {
 /* Disconnected state */
 static void fsm_disc_cb(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
-	struct bsc_msc_data *msc = (struct bsc_msc_data *)data;
+	struct a_reset_ctx *reset = (struct a_reset_ctx *)data;
+	OSMO_ASSERT(reset);
 
-	LOGP(DMSC, LOGL_NOTICE, "fsm-state (msc-reset): %s, fsm-event: %s, MSC No.: %i\n",
-	     get_value_string(fsm_state_names, ST_DISC), get_value_string(fsm_evt_names, event), msc->nr);
-	msc->msc_con->msc_conn_loss_count = 0;
+	LOGP(DMSC, LOGL_NOTICE, "(%s) fsm-state (msc-reset): %s, fsm-event: %s\n", reset->name,
+	     get_value_string(fsm_state_names, ST_CONN), get_value_string(fsm_evt_names, event));
+
+	reset->conn_loss_counter = 0;
 	osmo_fsm_inst_state_chg(fi, ST_CONN, 0, 0);
 }
 
 /* Connected state */
 static void fsm_conn_cb(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
-	struct bsc_msc_data *msc = (struct bsc_msc_data *)data;
+	struct a_reset_ctx *reset = (struct a_reset_ctx *)data;
+	OSMO_ASSERT(reset);
 
-	LOGP(DMSC, LOGL_NOTICE, "fsm-state (msc-reset): %s, fsm-event: %s, MSC No.: %i\n",
-	     get_value_string(fsm_state_names, ST_CONN), get_value_string(fsm_evt_names, event), msc->nr);
-
-	OSMO_ASSERT(msc);
+	LOGP(DMSC, LOGL_NOTICE, "(%s) fsm-state (msc-reset): %s, fsm-event: %s\n", reset->name,
+	     get_value_string(fsm_state_names, ST_CONN), get_value_string(fsm_evt_names, event));
 
 	switch (event) {
 	case EV_N_DISCONNECT:
-		if (msc->msc_con->msc_conn_loss_count >= BAD_CONNECTION_THRESOLD) {
-			LOGP(DMSC, LOGL_NOTICE, "SIGTRAN connection to MSC No.: %i down, reconnecting...\n", msc->nr);
+		if (reset->conn_loss_counter >= BAD_CONNECTION_THRESOLD) {
+			LOGP(DMSC, LOGL_NOTICE, "(%s) SIGTRAN connection down, reconnecting...\n", reset->name);
 			osmo_fsm_inst_state_chg(fi, ST_DISC, RESET_RESEND_INTERVAL, RESET_RESEND_TIMER_NO);
 		} else
-			msc->msc_con->msc_conn_loss_count++;
+			reset->conn_loss_counter++;
 		break;
 	case EV_N_CONNECT:
-		msc->msc_con->msc_conn_loss_count = 0;
+		reset->conn_loss_counter = 0;
 		break;
 	}
 }
@@ -95,13 +96,12 @@ static void fsm_conn_cb(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 /* Timer callback to retransmit the reset signal */
 static int fsm_reset_ack_timeout_cb(struct osmo_fsm_inst *fi)
 {
-	struct bsc_msc_data *msc = (struct bsc_msc_data *)fi->priv;
+	struct a_reset_ctx *reset = (struct a_reset_ctx *)fi->priv;
 
-	LOGP(DMSC, LOGL_NOTICE, "reset-ack timeout (T%i) in state %s, MSC No.: %i, resending...\n", fi->T,
-	     get_value_string(fsm_state_names, fi->state), msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "(%s) reset-ack timeout (T%i) in state %s, resending...\n", reset->name, fi->T,
+	     get_value_string(fsm_state_names, fi->state));
 
-	osmo_bsc_sigtran_reset(msc);
-	osmo_bsc_sigtran_tx_reset(msc);
+	reset->cb(reset->priv);
 
 	osmo_fsm_inst_state_chg(fi, ST_DISC, RESET_RESEND_INTERVAL, RESET_RESEND_TIMER_NO);
 	return 0;
@@ -132,58 +132,54 @@ static struct osmo_fsm fsm = {
 };
 
 /* Create and start state machine which handles the reset/reset-ack procedure */
-void start_reset_fsm(struct bsc_msc_data *msc)
+void a_reset_start(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(msc);
-	OSMO_ASSERT(msc->msc_con);
+	OSMO_ASSERT(reset);
 
 	osmo_fsm_register(&fsm);
-	msc->msc_con->fsm_reset = osmo_fsm_inst_alloc(&fsm, NULL, NULL, LOGL_DEBUG, "FSM RESET INST");
-	OSMO_ASSERT(msc->msc_con->fsm_reset);
+	reset->fsm = osmo_fsm_inst_alloc(&fsm, NULL, NULL, LOGL_DEBUG, "FSM RESET INST");
+	OSMO_ASSERT(reset->fsm);
 
-	msc->msc_con->fsm_reset->priv = msc;
+	reset->fsm->priv = reset;
 
 	/* kick off reset-ack sending mechanism */
-	osmo_fsm_inst_state_chg(msc->msc_con->fsm_reset, ST_DISC, RESET_RESEND_INTERVAL, RESET_RESEND_TIMER_NO);
+	osmo_fsm_inst_state_chg(reset->fsm, ST_DISC, RESET_RESEND_INTERVAL, RESET_RESEND_TIMER_NO);
 }
 
 /* Confirm that we sucessfully received a reset acknowlege message */
-void reset_ack_confirm(struct bsc_msc_data *msc)
+void a_reset_ack_confirm(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(msc);
-	OSMO_ASSERT(msc->msc_con);
-	OSMO_ASSERT(msc->msc_con->fsm_reset);
+	OSMO_ASSERT(reset);
+	OSMO_ASSERT(reset->fsm);
 
-	osmo_fsm_inst_dispatch(msc->msc_con->fsm_reset, EV_RESET_ACK, msc);
+	osmo_fsm_inst_dispatch(reset->fsm, EV_RESET_ACK, reset);
 }
 
 /* Report a failed connection */
-void report_conn_fail(struct bsc_msc_data *msc)
+void a_reset_conn_fail(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(msc);
-	OSMO_ASSERT(msc->msc_con);
-	OSMO_ASSERT(msc->msc_con->fsm_reset);
+	OSMO_ASSERT(reset);
+	OSMO_ASSERT(reset->fsm);
 
-	osmo_fsm_inst_dispatch(msc->msc_con->fsm_reset, EV_N_DISCONNECT, msc);
+	osmo_fsm_inst_dispatch(reset->fsm, EV_N_DISCONNECT, reset);
 }
 
 /* Report a successful connection */
-void report_conn_success(struct bsc_msc_data *msc)
+void a_reset_conn_success(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(msc);
-	OSMO_ASSERT(msc->msc_con);
-	OSMO_ASSERT(msc->msc_con->fsm_reset);
+	OSMO_ASSERT(reset);
+	OSMO_ASSERT(reset->fsm);
 
-	osmo_fsm_inst_dispatch(msc->msc_con->fsm_reset, EV_N_CONNECT, msc);
+	osmo_fsm_inst_dispatch(reset->fsm, EV_N_CONNECT, reset);
 }
 
 /* Check if we have a connection to a specified msc */
-bool sccp_conn_ready(struct bsc_msc_data *msc)
+bool a_reset_conn_ready(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(msc);
-	OSMO_ASSERT(msc->msc_con);
-	OSMO_ASSERT(msc->msc_con->fsm_reset);
-	if (msc->msc_con->fsm_reset->state == ST_CONN)
+	OSMO_ASSERT(reset);
+	OSMO_ASSERT(reset->fsm);
+
+	if (reset->fsm->state == ST_CONN)
 		return true;
 
 	return false;
