@@ -32,6 +32,7 @@
 #include <openbsc/osmo_bsc_grace.h>
 #include <openbsc/osmo_bsc_sigtran.h>
 #include <openbsc/osmo_bsc_reset.h>
+#include <openbsc/gsm_04_80.h>
 
 /* A pointer to a list with all involved MSCs
  * (a copy of the pointer location submitted with osmo_bsc_sigtran_init() */
@@ -327,6 +328,26 @@ int osmo_bsc_sigtran_del_conn(struct osmo_bsc_sccp_con *conn)
 	return 0;
 }
 
+static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
+{
+	struct gsm_subscriber_connection *conn = con->conn;
+
+	/* send USSD notification if string configured and con->data is set */
+	if (!conn)
+		return;
+
+	/* check for config string */
+	if (!con->msc->ussd_msc_lost_txt)
+		return;
+	if (con->msc->ussd_msc_lost_txt[0] == '\0')
+		return;
+
+	/* send USSD notification */
+	bsc_send_ussd_notify(conn, 1, conn->sccp_con->msc->ussd_msc_lost_txt);
+	bsc_send_ussd_release_complete(conn);
+}
+
+
 /* close all open connections */
 void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc)
 {
@@ -336,6 +357,7 @@ void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc)
 	llist_for_each_entry_safe(conn, conn_temp, &active_connections, entry) {
 		if (conn->conn)
 			gsm0808_clear(conn->conn);
+		bsc_notify_msc_lost(conn);
 		osmo_bsc_sigtran_del_conn(conn);
 	}
 
