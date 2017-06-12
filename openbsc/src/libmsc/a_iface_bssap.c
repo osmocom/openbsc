@@ -94,7 +94,7 @@ struct gsm_subscriber_connection *subscr_conn_lookup_a(struct gsm_network *netwo
 	return NULL;
 }
 
-/* Clear oprphand subscriber connections (called by bssmap_handle_reset()) */
+/* Clear oprphand subscriber connections (called by bssmap_rx_reset()) */
 static void subscr_conn_clear_all(struct a_conn_info *a_conn_info)
 {
 	struct gsm_subscriber_connection *conn;
@@ -115,7 +115,7 @@ static void subscr_conn_clear_all(struct a_conn_info *a_conn_info)
  */
 
 /* Endpoint to handle BSSMAP reset */
-static void bssmap_handle_reset(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static void bssmap_rx_reset(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	struct a_bsc_addr *addr;
 	struct a_bsc_addr *known_addr;
@@ -165,7 +165,7 @@ static void bssmap_rcvmsg_udt(struct osmo_sccp_user *scu, struct a_conn_info *a_
 
 	switch (msg->l3h[0]) {
 	case BSS_MAP_MSG_RESET:
-		bssmap_handle_reset(scu, a_conn_info, msg);
+		bssmap_rx_reset(scu, a_conn_info, msg);
 		break;
 	default:
 		LOGP(DMSC, LOGL_NOTICE, "Unimplemented message format: %s -- message discarded!\n",
@@ -174,8 +174,8 @@ static void bssmap_rcvmsg_udt(struct osmo_sccp_user *scu, struct a_conn_info *a_
 	}
 }
 
-/* Handle incoming connection less data messages */
-void msc_handle_udt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+/* Receive incoming connection less data messages via sccp */
+void sccp_rx_udt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	/* Note: The only valid message type that can be received
 	 * via UNITDATA are BSS Management messages */
@@ -213,7 +213,7 @@ void msc_handle_udt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info,
  */
 
 /* Endpoint to handle BSSMAP clear request */
-static int bssmap_handle_clear_rqst(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int bssmap_rx_clear_rqst(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	struct gsm_network *network = a_conn_info->network;
 	struct tlv_parsed tp;
@@ -250,7 +250,7 @@ fail:
 }
 
 /* Endpoint to handle BSSMAP clear complete */
-static int bssmap_handle_clear_complete(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int bssmap_rx_clear_complete(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	int rc;
 
@@ -263,7 +263,7 @@ static int bssmap_handle_clear_complete(struct osmo_sccp_user *scu, struct a_con
 }
 
 /* Endpoint to handle layer 3 complete messages */
-static int bssmap_handle_l3_compl(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int bssmap_rx_l3_compl(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	struct tlv_parsed tp;
 	struct {
@@ -346,7 +346,7 @@ fail:
 }
 
 /* Endpoint to handle BSSMAP classmark update */
-static int bssmap_classmark_upd(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int bssmap_rx_classmark_upd(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	struct gsm_network *network = a_conn_info->network;
 	struct gsm_subscriber_connection *conn;
@@ -388,7 +388,7 @@ fail:
 }
 
 /* Endpoint to handle BSSMAP cipher mode complete */
-static int bssmap_ciph_compl(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int bssmap_rx_ciph_compl(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	/* FIXME: The field GSM0808_IE_LAYER_3_MESSAGE_CONTENTS is optional by
 	 * means of the specification. So there can be messages without L3 info.
@@ -433,7 +433,7 @@ fail:
 }
 
 /* Endpoint to handle BSSMAP cipher mode reject */
-static int bssmap_ciph_rej(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int bssmap_rx_ciph_rej(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	struct gsm_network *network = a_conn_info->network;
 	struct gsm_subscriber_connection *conn;
@@ -466,7 +466,7 @@ fail:
 }
 
 /* Endpoint to handle BSSMAP assignment failure */
-static int bssmap_ass_fail(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int bssmap_rx_ass_fail(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	struct gsm_network *network = a_conn_info->network;
 	struct gsm_subscriber_connection *conn;
@@ -510,7 +510,7 @@ fail:
 }
 
 /* Endpoint to handle sapi "n" reject */
-static int bssmap_sapi_n_rej(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int bssmap_rx_sapi_n_rej(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	struct gsm_network *network = a_conn_info->network;
 	struct gsm_subscriber_connection *conn;
@@ -550,7 +550,7 @@ fail:
 }
 
 /* Endpoint to handle assignment complete */
-static int bssmap_ass_compl(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int bssmap_rx_ass_compl(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	struct gsm_network *network = a_conn_info->network;
 	struct gsm_subscriber_connection *conn;
@@ -610,7 +610,7 @@ fail:
 }
 
 /* Handle incoming connection oriented BSSMAP messages */
-static int bssmap_rcvmsg_dt1(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int rx_bssmap(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	if (msgb_l3len(msg) < 1) {
 		LOGP(DMSC, LOGL_NOTICE, "Error: No data received -- discarding message!\n");
@@ -622,31 +622,31 @@ static int bssmap_rcvmsg_dt1(struct osmo_sccp_user *scu, struct a_conn_info *a_c
 
 	switch (msg->l3h[0]) {
 	case BSS_MAP_MSG_CLEAR_RQST:
-		return bssmap_handle_clear_rqst(scu, a_conn_info, msg);
+		return bssmap_rx_clear_rqst(scu, a_conn_info, msg);
 		break;
 	case BSS_MAP_MSG_CLEAR_COMPLETE:
-		return bssmap_handle_clear_complete(scu, a_conn_info, msg);
+		return bssmap_rx_clear_complete(scu, a_conn_info, msg);
 		break;
 	case BSS_MAP_MSG_COMPLETE_LAYER_3:
-		return bssmap_handle_l3_compl(scu, a_conn_info, msg);
+		return bssmap_rx_l3_compl(scu, a_conn_info, msg);
 		break;
 	case BSS_MAP_MSG_CLASSMARK_UPDATE:
-		return bssmap_classmark_upd(scu, a_conn_info, msg);
+		return bssmap_rx_classmark_upd(scu, a_conn_info, msg);
 		break;
 	case BSS_MAP_MSG_CIPHER_MODE_COMPLETE:
-		return bssmap_ciph_compl(scu, a_conn_info, msg);
+		return bssmap_rx_ciph_compl(scu, a_conn_info, msg);
 		break;
 	case BSS_MAP_MSG_CIPHER_MODE_REJECT:
-		return bssmap_ciph_rej(scu, a_conn_info, msg);
+		return bssmap_rx_ciph_rej(scu, a_conn_info, msg);
 		break;
 	case BSS_MAP_MSG_ASSIGMENT_FAILURE:
-		return bssmap_ass_fail(scu, a_conn_info, msg);
+		return bssmap_rx_ass_fail(scu, a_conn_info, msg);
 		break;
 	case BSS_MAP_MSG_SAPI_N_REJECT:
-		return bssmap_sapi_n_rej(scu, a_conn_info, msg);
+		return bssmap_rx_sapi_n_rej(scu, a_conn_info, msg);
 		break;
 	case BSS_MAP_MSG_ASSIGMENT_COMPLETE:
-		return bssmap_ass_compl(scu, a_conn_info, msg);
+		return bssmap_rx_ass_compl(scu, a_conn_info, msg);
 		break;
 	default:
 		LOGP(DMSC, LOGL_ERROR, "Unimplemented msg type: %s\n", gsm0808_bssmap_name(msg->l3h[0]));
@@ -658,7 +658,7 @@ static int bssmap_rcvmsg_dt1(struct osmo_sccp_user *scu, struct a_conn_info *a_c
 }
 
 /* Endpoint to handle regular BSSAP DTAP messages */
-static int dtap_rcvmsg(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+static int rx_dtap(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	struct gsm_network *network = a_conn_info->network;
 	struct gsm_subscriber_connection *conn;
@@ -682,7 +682,7 @@ static int dtap_rcvmsg(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_in
 }
 
 /* Handle incoming connection oriented messages */
-int msc_handle_dt1(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+int sccp_rx_dt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
 	if (msgb_l2len(msg) < sizeof(struct bssmap_header)) {
 		LOGP(DMSC, LOGL_NOTICE, "The header is too short -- discarding message!\n");
@@ -692,10 +692,10 @@ int msc_handle_dt1(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, 
 	switch (msg->l2h[0]) {
 	case BSSAP_MSG_BSS_MANAGEMENT:
 		msg->l3h = &msg->l2h[sizeof(struct bssmap_header)];
-		return bssmap_rcvmsg_dt1(scu, a_conn_info, msg);
+		return rx_bssmap(scu, a_conn_info, msg);
 		break;
 	case BSSAP_MSG_DTAP:
-		return dtap_rcvmsg(scu, a_conn_info, msg);
+		return rx_dtap(scu, a_conn_info, msg);
 		break;
 	default:
 		LOGP(DMSC, LOGL_ERROR, "Unimplemented BSSAP msg type: %s\n", gsm0808_bssap_name(msg->l2h[0]));

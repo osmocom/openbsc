@@ -340,7 +340,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		if (msgb_l2len(oph->msg) > 0) {
 			LOGP(DMSC, LOGL_DEBUG, "N-CONNECT.ind(%u, %s)\n",
 			     scu_prim->u.connect.conn_id, osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
-			rc = msc_handle_dt1(scu, &a_conn_info, oph->msg);
+			rc = sccp_rx_dt(scu, &a_conn_info, oph->msg);
 		} else
 			LOGP(DMSC, LOGL_DEBUG, "N-CONNECT.ind(%u)\n", scu_prim->u.connect.conn_id);
 		break;
@@ -350,7 +350,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		a_conn_info.conn_id = scu_prim->u.data.conn_id;
 		LOGP(DMSC, LOGL_DEBUG, "N-DATA.ind(%u, %s)\n",
 		     scu_prim->u.data.conn_id, osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
-		msc_handle_dt1(scu, &a_conn_info, oph->msg);
+		sccp_rx_dt(scu, &a_conn_info, oph->msg);
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
@@ -358,7 +358,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		a_conn_info.called_addr = &scu_prim->u.unitdata.called_addr;
 		a_conn_info.calling_addr = &scu_prim->u.unitdata.calling_addr;
 		DEBUGP(DMSC, "N-UNITDATA.ind(%s)\n", osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
-		msc_handle_udt(scu, &a_conn_info, oph->msg);
+		sccp_rx_udt(scu, &a_conn_info, oph->msg);
 		break;
 
 	default:
