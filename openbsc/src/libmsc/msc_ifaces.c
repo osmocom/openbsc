@@ -194,6 +194,7 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	struct gsm_subscriber_connection *conn = trans->conn;
 	struct mgcpgw_client *mgcp = conn->network->mgcpgw.client;
 	struct msgb *msg;
+	struct msgb *msg_dlcx;
 
 	/* HACK. where to scope the RAB Id? At the conn / subscriber /
 	 * ue_conn_ctx? */
@@ -205,6 +206,16 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	/* HACK: the addresses should be known from CRCX response
 	 * and config. */
 	conn->iu.mgcp_rtp_port_ue = 4000 + 2 * conn->iu.mgcp_rtp_endpoint;
+
+	/* Since we know now the endpoint number, we enforce a DLCX on tha
+	 * endpoint in order to ensure that this endpoint is not occupied
+	 * with some old connection that was not properly cleared during
+	 * some crash or restart event */
+	msg_dlcx = mgcp_msg_dlcx(mgcp, conn->iu.mgcp_rtp_endpoint);
+	if (mgcpgw_client_tx(mgcp, msg_dlcx, NULL, NULL))
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Failed to send DLCX message for %s\n",
+		     vlr_subscr_name(trans->vsub));
 
 	/* Establish the RTP stream first as looping back to the originator.
 	 * The MDCX will patch through to the counterpart. TODO: play a ring
