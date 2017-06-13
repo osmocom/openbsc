@@ -484,13 +484,13 @@ static inline uint8_t *parse_attr_resp_info_manuf_id(struct gsm_bts *bts, uint8_
 	if (TLVP_PRES_LEN(&tp, NM_ATT_MANUF_ID, 2)) {
 		m_id_len = TLVP_LEN(&tp, NM_ATT_MANUF_ID);
 
-		if (m_id_len > MAX_BTS_FEATURES/8 + 1) {
+		/* log potential BTS feature vector overflow */
+		if (m_id_len > sizeof(bts->_features_data))
 			LOGP(DNM, LOGL_NOTICE, "BTS%u Get Attributes Response: feature vector is truncated to %u bytes\n",
 			     bts->nr, MAX_BTS_FEATURES/8);
-			m_id_len = MAX_BTS_FEATURES/8;
-		}
 
-		if (m_id_len > sizeof(bts->_features_data))
+		/* check that max. expected BTS attribute is above given feature vector length */
+		if (m_id_len > OSMO_BYTES_FOR_BITS(_NUM_BTS_FEAT))
 			LOGP(DNM, LOGL_NOTICE, "BTS%u Get Attributes Response: reported unexpectedly long (%u bytes) "
 			     "feature vector - most likely it was compiled against newer BSC headers. "
 			     "Consider upgrading your BSC to later version.\n",
