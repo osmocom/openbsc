@@ -304,9 +304,16 @@ static int mgcp_do_write(struct osmo_fd *fd, struct msgb *msg)
 {
 	int ret;
 	static char strbuf[4096];
-	unsigned int l = msg->len < sizeof(strbuf)-1 ? msg->len : sizeof(strbuf)-1;
+	unsigned int l = msg->len < sizeof(strbuf) ? msg->len : sizeof(strbuf);
+	unsigned int i;
+
 	strncpy(strbuf, (const char*)msg->data, l);
-	strbuf[l] = '\0';
+	for (i = 0; i < sizeof(strbuf); i++) {
+		if (strbuf[i] == '\n' || strbuf[i] == '\r') {
+			strbuf[i] = '\0';
+			break;
+		}
+	}
 	DEBUGP(DMGCP, "Tx MGCP msg to MGCP GW: '%s'\n", strbuf);
 
 	LOGP(DMGCP, LOGL_DEBUG, "Sending msg to MGCP GW size: %u\n", msg->len);
