@@ -2774,6 +2774,7 @@ DEFUN(cfg_bts_neigh, cfg_bts_neigh_cmd,
 	return CMD_SUCCESS;
 }
 
+/* help text should be kept in sync with EARFCN_*_INVALID defines */
 DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
       "si2quater neighbor-list add earfcn <0-65535> thresh-hi <0-31> "
       "thresh-lo <0-32> prio <0-8> qrxlv <0-32> meas <0-8>",
@@ -2791,54 +2792,37 @@ DEFUN(cfg_bts_si2quater_neigh_add, cfg_bts_si2quater_neigh_add_cmd,
 	uint16_t arfcn = atoi(argv[0]);
 	uint8_t thresh_hi = atoi(argv[1]), thresh_lo = atoi(argv[2]),
 		prio = atoi(argv[3]), qrx = atoi(argv[4]), meas = atoi(argv[5]);
-	int r = osmo_earfcn_add(e, arfcn,
-				(meas < 8) ? meas : OSMO_EARFCN_MEAS_INVALID);
+	int r = bts_earfcn_add(bts, arfcn, thresh_hi, thresh_lo, prio, qrx, meas);
 
-	if (r < 0) {
-		vty_out(vty, "Unable to add ARFCN %u: %s%s", arfcn, strerror(-r),
-			VTY_NEWLINE);
-		return CMD_WARNING;
+	switch (r) {
+	case 1:
+		vty_out(vty, "Warning: multiple threshold-high are not supported, overriding with %u%s",
+			thresh_hi, VTY_NEWLINE);
+		break;
+	case EARFCN_THRESH_LOW_INVALID:
+		vty_out(vty, "Warning: multiple threshold-low are not supported, overriding with %u%s",
+			thresh_lo, VTY_NEWLINE);
+		break;
+	case EARFCN_QRXLV_INVALID + 1:
+		vty_out(vty, "Warning: multiple QRXLEVMIN are not supported, overriding with %u%s",
+			qrx, VTY_NEWLINE);
+		break;
+	case EARFCN_PRIO_INVALID:
+		vty_out(vty, "Warning: multiple priorities are not supported, overriding with %u%s",
+			prio, VTY_NEWLINE);
+		break;
+	default:
+		if (r < 0) {
+			vty_out(vty, "Unable to add ARFCN %u: %s%s", arfcn, strerror(-r), VTY_NEWLINE);
+			return CMD_WARNING;
+		}
 	}
 
-	if (e->thresh_hi && thresh_hi != e->thresh_hi)
-		vty_out(vty, "Warning: multiple threshold-high are not "
-			"supported, overriding previous threshold %u%s",
-			e->thresh_hi, VTY_NEWLINE);
-
-	e->thresh_hi = thresh_hi;
-
-	if (thresh_lo != 32) {
-		if (e->thresh_lo_valid && e->thresh_lo != thresh_lo)
-			vty_out(vty, "Warning: multiple threshold-low are not "
-				"supported, overriding previous threshold %u%s",
-				e->thresh_lo, VTY_NEWLINE);
-		e->thresh_lo = thresh_lo;
-		e->thresh_lo_valid = true;
-	}
-
-	if (qrx != 32) {
-		if (e->qrxlm_valid && e->qrxlm != qrx)
-			vty_out(vty, "Warning: multiple QRXLEVMIN are not "
-				"supported, overriding previous value %u%s",
-				e->qrxlm, VTY_NEWLINE);
-		e->qrxlm = qrx;
-		e->qrxlm_valid = true;
-	}
-
-	if (prio != 8) {
-		if (e->prio_valid && e->prio != prio)
-			vty_out(vty, "Warning: multiple priorities are not "
-				"supported, overriding previous value %u%s",
-				e->prio, VTY_NEWLINE);
-		e->prio = prio;
-		e->prio_valid = true;
-	}
-
-	if (si2q_num(bts) < 2) /* FIXME: use SI2Q_MAX_NUM */
+	if (si2q_num(bts) <= SI2Q_MAX_NUM)
 		return CMD_SUCCESS;
 
 	vty_out(vty, "Warning: not enough space in SI2quater (%u/%u used) for a given EARFCN %u%s",
-		bts->si2q_count, 2, arfcn, VTY_NEWLINE); /* FIXME: use SI2Q_MAX_NUM */
+		bts->si2q_count, SI2Q_MAX_NUM, arfcn, VTY_NEWLINE);
 	osmo_earfcn_del(e, arfcn);
 
 	return CMD_WARNING;
@@ -2877,16 +2861,14 @@ DEFUN(cfg_bts_si2quater_uarfcn_add, cfg_bts_si2quater_uarfcn_add_cmd,
 
 	switch(bts_uarfcn_add(bts, arfcn, scramble, atoi(argv[2]))) {
 	case -ENOMEM:
-		vty_out(vty, "Unable to add arfcn: max number of UARFCNs (%u) "
-			"reached%s", MAX_EARFCN_LIST, VTY_NEWLINE);
+		vty_out(vty, "Unable to add UARFCN: max number of UARFCNs (%u) reached%s", MAX_EARFCN_LIST, VTY_NEWLINE);
 		return CMD_WARNING;
 	case -ENOSPC:
-		vty_out(vty, "Warning: not enough space in si2quater for a "
-			"given arfcn%s", VTY_NEWLINE);
+		vty_out(vty, "Warning: not enough space in SI2quater for a given UARFCN (%u, %u)%s",
+			arfcn, scramble, VTY_NEWLINE);
 		return CMD_WARNING;
 	case -EADDRINUSE:
-		vty_out(vty, "Unable to add arfcn: (%u, %u) is already added%s",
-			arfcn, scramble, VTY_NEWLINE);
+		vty_out(vty, "Unable to add UARFCN: (%u, %u) is already added%s", arfcn, scramble, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 

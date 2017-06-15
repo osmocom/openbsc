@@ -26,7 +26,8 @@
 
 #include <openbsc/common_cs.h>
 
-/* 16 is the max. number of SI2quater messages according to 3GPP TS 44.018: 4-bit index is used (2#1111 = 10#15) */
+/* 16 is the max. number of SI2quater messages according to 3GPP TS 44.018 Table 10.5.2.33b.1:
+   4-bit index is used (2#1111 = 10#15) */
 #define SI2Q_MAX_NUM 16
 /* length in bits (for single SI2quater message) */
 #define SI2Q_MAX_LEN 160
@@ -301,8 +302,9 @@ struct gsm_lchan {
 		/* bitmask of all SI that are present/valid in si_buf */
 		uint32_t valid;
 		uint32_t last;
-		/* buffers where we put the pre-computed SI */
-		sysinfo_buf_t buf[_MAX_SYSINFO_TYPE];
+		/* buffers where we put the pre-computed SI:
+		   SI2Q_MAX_NUM is the max number of SI2quater messages (see 3GPP TS 44.018) */
+		sysinfo_buf_t buf[_MAX_SYSINFO_TYPE][SI2Q_MAX_NUM];
 	} si;
 	struct {
 		uint8_t flags;
@@ -491,10 +493,10 @@ struct gsm_bts_trx {
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
 
-#define GSM_BTS_SI2Q(bts)	(struct gsm48_system_information_type_2quater *)((bts)->si_buf[SYSINFO_TYPE_2quater])
+#define GSM_BTS_SI2Q(bts, i)   (struct gsm48_system_information_type_2quater *)((bts)->si_buf[SYSINFO_TYPE_2quater][i])
 #define GSM_BTS_HAS_SI(bts, i) ((bts)->si_valid & (1 << i))
-#define GSM_BTS_SI(bts, i)	(void *)((bts)->si_buf[i])
-#define GSM_LCHAN_SI(lchan, i)	(void *)((lchan)->si.buf[i])
+#define GSM_BTS_SI(bts, i)     (void *)((bts)->si_buf[i][0])
+#define GSM_LCHAN_SI(lchan, i) (void *)((lchan)->si.buf[i][0])
 
 enum gsm_bts_type {
 	GSM_BTS_TYPE_UNKNOWN,
@@ -739,7 +741,7 @@ struct gsm_bts {
 	uint8_t si2q_index; /* distinguish individual SI2quater messages */
 	uint8_t si2q_count; /* si2q_index for the last (highest indexed) individual SI2quater message */
 	/* buffers where we put the pre-computed SI */
-	sysinfo_buf_t si_buf[_MAX_SYSINFO_TYPE];
+	sysinfo_buf_t si_buf[_MAX_SYSINFO_TYPE][SI2Q_MAX_NUM];
 	/* offsets used while generating SI2quater */
 	size_t e_offset;
 	size_t u_offset;

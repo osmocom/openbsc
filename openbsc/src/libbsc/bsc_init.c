@@ -101,7 +101,7 @@ int bsc_shutdown_net(struct gsm_network *net)
 static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 {
 	struct gsm_bts *bts = trx->bts;
-	int rc;
+	int rc, j;
 
 	DEBUGP(DRR, "SI%s: %s\n", get_value_string(osmo_sitype_strs, i),
 		osmo_hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
@@ -113,6 +113,10 @@ static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 	case SYSINFO_TYPE_6:
 		rc = rsl_sacch_filling(trx, osmo_sitype2rsl(i),
 				       GSM_BTS_SI(bts, i), si_len);
+		break;
+	case SYSINFO_TYPE_2quater:
+		for (j = 0; j <= bts->si2q_count; j++)
+			rc = rsl_bcch_info(trx, i, (const uint8_t *)GSM_BTS_SI2Q(bts, j), GSM_MACBLOCK_LEN);
 		break;
 	default:
 		rc = rsl_bcch_info(trx, osmo_sitype2rsl(i),

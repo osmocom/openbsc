@@ -29,6 +29,13 @@ struct bsc_subscr;
 
 #define tmsi_from_string(str) strtoul(str, NULL, 10)
 
+/* 3-bit long values */
+#define EARFCN_PRIO_INVALID 8
+#define EARFCN_MEAS_BW_INVALID 8
+/* 5-bit long values */
+#define EARFCN_QRXLV_INVALID 32
+#define EARFCN_THRESH_LOW_INVALID 32
+
 enum gsm_security_event {
 	GSM_SECURITY_NOAVAIL,
 	GSM_SECURITY_AUTH_FAILED,
