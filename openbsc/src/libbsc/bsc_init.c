@@ -119,8 +119,7 @@ static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 			rc = rsl_bcch_info(trx, i, (const uint8_t *)GSM_BTS_SI2Q(bts, j), GSM_MACBLOCK_LEN);
 		break;
 	default:
-		rc = rsl_bcch_info(trx, osmo_sitype2rsl(i),
-				   GSM_BTS_SI(bts, i), si_len);
+		rc = rsl_bcch_info(trx, i, GSM_BTS_SI(bts, i), si_len);
 		break;
 	}
 
@@ -138,6 +137,9 @@ int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx)
 	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
 			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
 	bts->si_common.cell_sel_par.neci = bts->network->neci;
+
+	/* Zero, forget the state of the SIs */
+	bts->si_valid = 0;
 
 	/* First, we determine which of the SI messages we actually need */
 

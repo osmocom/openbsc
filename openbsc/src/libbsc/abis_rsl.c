@@ -226,11 +226,16 @@ static void lchan_deact_tmr_cb(void *data)
 
 
 /* Send a BCCH_INFO message as per Chapter 8.5.1 */
-int rsl_bcch_info(struct gsm_bts_trx *trx, uint8_t type,
-		  const uint8_t *data, int len)
+int rsl_bcch_info(const struct gsm_bts_trx *trx, enum osmo_sysinfo_type si_type, const uint8_t *data, int len)
 {
 	struct abis_rsl_dchan_hdr *dh;
+	const struct gsm_bts *bts = trx->bts;
 	struct msgb *msg = rsl_msgb_alloc();
+	uint8_t type = osmo_sitype2rsl(si_type);
+
+	if (bts->c0 != trx)
+		LOGP(DRR, LOGL_ERROR, "Attempting to set BCCH SI%s on wrong BTS%u/TRX%u\n",
+		     get_value_string(osmo_sitype_strs, si_type), bts->nr, trx->nr);
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof*dh);
 	init_dchan_hdr(dh, RSL_MT_BCCH_INFO);

@@ -25,7 +25,7 @@
 #include <stdbool.h>
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/gsm_utils.h>
-
+#include <osmocom/gsm/sysinfo.h>
 #include <osmocom/core/msgb.h>
 
 struct gsm_bts;
@@ -35,8 +35,7 @@ struct gsm_bts_trx_ts;
 
 #define GSM48_LEN2PLEN(a)	(((a) << 2) | 1)
 
-int rsl_bcch_info(struct gsm_bts_trx *trx, uint8_t type,
-		  const uint8_t *data, int len);
+int rsl_bcch_info(const struct gsm_bts_trx *trx, enum osmo_sysinfo_type si_type, const uint8_t *data, int len);
 int rsl_sacch_filling(struct gsm_bts_trx *trx, uint8_t type,
 		      const uint8_t *data, int len);
 int rsl_chan_activate(struct gsm_bts_trx *trx, uint8_t chan_nr,
