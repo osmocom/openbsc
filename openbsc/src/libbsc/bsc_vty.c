@@ -604,9 +604,11 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  periodic location update %u%s",
 			bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
 
-	vty_out(vty, "  radio-link-timeout %d%s",
-		get_radio_link_timeout(&bts->si_common.cell_options),
-		VTY_NEWLINE);
+	if (gsm_bts_get_radio_link_timeout(bts) < 0)
+		vty_out(vty, "  radio-link-timeout infinite%s", VTY_NEWLINE);
+	else
+		vty_out(vty, "  radio-link-timeout %d%s",
+			gsm_bts_get_radio_link_timeout(bts), VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
@@ -2299,7 +2301,25 @@ DEFUN(cfg_bts_radio_link_timeout, cfg_bts_radio_link_timeout_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	set_radio_link_timeout(&bts->si_common.cell_options, atoi(argv[0]));
+	gsm_bts_set_radio_link_timeout(bts, atoi(argv[0]));
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_radio_link_timeout_inf, cfg_bts_radio_link_timeout_inf_cmd,
+	"radio-link-timeout infinite",
+	"Radio link timeout criterion (BTS side)\n"
+	"Infinite Radio link timeout value (use only for BTS RF testing)\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts->type != GSM_BTS_TYPE_OSMOBTS) {
+		vty_out(vty, "%% infinite radio link timeout not supported by this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty_out(vty, "%% INFINITE RADIO LINK TIMEOUT, USE ONLY FOR BTS RF TESTING%s", VTY_NEWLINE);
+	gsm_bts_set_radio_link_timeout(bts, -1);
 
 	return CMD_SUCCESS;
 }
@@ -4180,6 +4200,7 @@ int bsc_vty_init(struct gsm_network *network)
 	install_element(BTS_NODE, &cfg_bts_penalty_time_cmd);
 	install_element(BTS_NODE, &cfg_bts_penalty_time_rsvd_cmd);
 	install_element(BTS_NODE, &cfg_bts_radio_link_timeout_cmd);
+	install_element(BTS_NODE, &cfg_bts_radio_link_timeout_inf_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_11bit_rach_support_for_egprs_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_ns_timer_cmd);

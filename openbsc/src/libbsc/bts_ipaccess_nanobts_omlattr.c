@@ -38,6 +38,7 @@ struct msgb *nanobts_attr_bts_get(struct gsm_bts *bts)
 {
 	struct msgb *msgb;
 	uint8_t buf[256];
+	int rlt;
 	msgb = msgb_alloc(1024, "nanobts_attr_bts");
 
 	memcpy(buf, "\x55\x5b\x61\x67\x6d\x73", 6);
@@ -46,9 +47,16 @@ struct msgb *nanobts_attr_bts_get(struct gsm_bts *bts)
 	/* interference avg. period in numbers of SACCH multifr */
 	msgb_tv_put(msgb, NM_ATT_INTAVE_PARAM, 0x06);
 
-	/* conn fail based on SACCH error rate */
-	buf[0] = 0x01;
-	buf[1] = get_radio_link_timeout(&bts->si_common.cell_options);
+	rlt = gsm_bts_get_radio_link_timeout(bts);
+	if (rlt == -1) {
+		/* Osmocom extension: Use infinite radio link timeout */
+		buf[0] = 0xFF;
+		buf[1] = 0x00;
+	} else {
+		/* conn fail based on SACCH error rate */
+		buf[0] = 0x01;
+		buf[1] = rlt;
+	}
 	msgb_tl16v_put(msgb, NM_ATT_CONN_FAIL_CRIT, 2, buf);
 
 	memcpy(buf, "\x1e\x24\x24\xa8\x34\x21\xa8", 7);

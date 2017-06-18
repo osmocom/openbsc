@@ -872,6 +872,8 @@ struct gsm_bts {
 		} data;
 	} si_common;
 	bool early_classmark_allowed;
+	/* for testing only: Have an infinitely long radio link timeout */
+	bool infinite_radio_link_timeout;
 
 	/* do we use static (user-defined) system information messages? (bitmask) */
 	uint32_t si_mode_static;
