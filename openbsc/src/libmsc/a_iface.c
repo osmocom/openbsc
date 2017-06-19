@@ -203,7 +203,7 @@ static uint8_t convert_Abis_prev_to_A_pref(int radio)
 }
 
 /* Assemble the channel type field */
-static void enc_channel_type(struct gsm0808_channel_type *ct, const struct gsm_mncc_bearer_cap *bc)
+int enc_channel_type(struct gsm0808_channel_type *ct, const struct gsm_mncc_bearer_cap *bc)
 {
 	unsigned int i;
 	uint8_t sv;
@@ -216,7 +216,6 @@ static void enc_channel_type(struct gsm0808_channel_type *ct, const struct gsm_m
 		if (bc->speech_ver[i] == -1)
 			break;
 		sv = convert_Abis_sv_to_A_sv(bc->speech_ver[i]);
-
 		if (sv != 0xFF) {
 			/* Detect if something else than
 			 * GSM HR V1 is supported */
@@ -239,6 +238,11 @@ static void enc_channel_type(struct gsm0808_channel_type *ct, const struct gsm_m
 		ct->ch_rate_type = GSM0808_SPEECH_FULL_BM;
 	else
 		ct->ch_rate_type = convert_Abis_prev_to_A_pref(bc->radio);
+
+	if (count)
+		return 0;
+	else
+		return -EINVAL;
 }
 
 /* Assemble the speech codec field */
@@ -268,15 +272,24 @@ int a_iface_tx_assignment(struct gsm_trans *trans)
 	struct msgb *msg;
 	struct sockaddr_storage rtp_addr;
 	struct sockaddr_in rtp_addr_in;
+	int rc;
 
 	conn = trans->conn;
 	OSMO_ASSERT(conn);
 
 	/* Channel type */
-	enc_channel_type(&ct, &trans->bearer_cap);
+	rc = enc_channel_type(&ct, &trans->bearer_cap);
+	if (rc < 0) {
+		LOGP(DMSC, LOGL_ERROR, "Faild to generate channel type -- assignment not sent!\n");
+		return -EINVAL;
+	}
 
 	/* Speech codec list */
-	enc_speeach_codec_list(&scl, &ct);
+	rc = enc_speeach_codec_list(&scl, &ct);
+	if (rc < 0) {
+		LOGP(DMSC, LOGL_ERROR, "Faild to generate Speech codec list -- assignment not sent!\n");
+		return -EINVAL;
+	}
 
 	/* Package RTP-Address data */
 	memset(&rtp_addr_in, 0, sizeof(rtp_addr_in));
