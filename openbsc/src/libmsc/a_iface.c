@@ -246,7 +246,7 @@ int enc_channel_type(struct gsm0808_channel_type *ct, const struct gsm_mncc_bear
 }
 
 /* Assemble the speech codec field */
-static int enc_speeach_codec_list(struct gsm0808_speech_codec_list *scl, const struct gsm0808_channel_type *ct)
+static int enc_speech_codec_list(struct gsm0808_speech_codec_list *scl, const struct gsm0808_channel_type *ct)
 {
 	unsigned int i;
 	int rc;
@@ -285,7 +285,7 @@ int a_iface_tx_assignment(struct gsm_trans *trans)
 	}
 
 	/* Speech codec list */
-	rc = enc_speeach_codec_list(&scl, &ct);
+	rc = enc_speech_codec_list(&scl, &ct);
 	if (rc < 0) {
 		LOGP(DMSC, LOGL_ERROR, "Faild to generate Speech codec list -- assignment not sent!\n");
 		return -EINVAL;
