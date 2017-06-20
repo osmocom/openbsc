@@ -37,6 +37,7 @@
 #include <openbsc/mgcpgw_client.h>
 #include <osmocom/core/byteswap.h>
 #include <osmocom/sccp/sccp_types.h>
+#include <openbsc/a_reset.h>
 
 #define SSN_BSSAP	254	/* SCCP_SSN_BSSAP */
 #define SENDER_PC	1	/* Our local point code */
@@ -45,6 +46,16 @@
  * there can only be one gsm_network per MSC. The pointer is set once
  * when calling a_init() */
 static struct gsm_network *gsm_network = NULL;
+
+struct bsc_context {
+	struct llist_head list;
+	struct a_reset_ctx reset;
+	struct osmo_sccp_addr addr;
+};
+
+static LLIST_HEAD(bsc_context_list);
+
+
 
 /* Send DTAP message via A-interface */
 int a_iface_tx_dtap(struct msgb *msg)
@@ -382,6 +393,17 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 	return rc;
 }
 
+/* Callback function: Close all open connections */
+static void a_reset_cb(void *priv)
+{
+	struct msgb *msg;
+	struct osmo_sccp_addr *addr = (struct osmo_sccp_addr*) priv;
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to BSC %s\n", osmo_sccp_addr_dump(addr));
+	msg = gsm0808_create_reset();
+//	osmo_sccp_tx_unitdata_msg(msc->msc_con->sccp_user, &msc->msc_con->g_calling_addr,
+//				  &msc->msc_con->g_called_addr, msg);
+}
+
 /* Initalize A interface connection between to MSC and BSC */
 int a_init(void *ctx, const char *name, uint32_t local_pc,
 	   const char *listen_addr, const char *remote_addr, uint16_t local_port, struct gsm_network *network)
@@ -394,11 +416,29 @@ int a_init(void *ctx, const char *name, uint32_t local_pc,
 	gsm_network = network;
 	osmo_ss7_init();
 
+	/* Add some BSCs to the context list */
+	/* FIXME: Make this configurable */
+	struct bsc_context *bsc_ctx;
+	bsc_ctx = talloc_zero(NULL, struct bsc_context);
+	bsc_ctx->reset.priv = &bsc_ctx->addr;
+	bsc_ctx->reset.cb = a_reset_cb;
+	llist_add_tail(&bsc_ctx->list, &bsc_context_list);
+	bsc_ctx->addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
+	bsc_ctx->addr.ssn = SCCP_SSN_BSSAP;
+	bsc_ctx->addr.ri = OSMO_SCCP_RI_SSN_PC;
+	bsc_ctx->addr.pc = 1;
+	bsc_ctx = NULL;
+
 	/* SCCP Protocol stack */
 	sccp =
 	    osmo_sccp_simple_client(NULL, "osmo-msc", SENDER_PC, OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT,
 				    "127.0.0.1");
 	osmo_sccp_user_bind(sccp, "osmo-msc", sccp_sap_up, SSN_BSSAP);
+
+	/* Start reset procedure for all BSC connections */
+	llist_for_each_entry(bsc_ctx, &bsc_context_list, list) {
+		a_reset_start(&bsc_ctx->reset);
+	}
 
 	return 0;
 }
