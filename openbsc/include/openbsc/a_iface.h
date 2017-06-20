@@ -34,4 +34,10 @@ int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac);
 /* Send assignment request via A-interface */
 int a_iface_tx_assignment(struct gsm_trans *trans);
 
+/* Clear all subscriber connections on a specified BSC */
+void a_clear_all(struct osmo_sccp_user *scu, struct osmo_sccp_addr *bsc_addr);
+
+/* Delete info of a closed connection from the active connection list */
+void a_delete_bsc_con(uint32_t conn_id);
+
 #pragma once
