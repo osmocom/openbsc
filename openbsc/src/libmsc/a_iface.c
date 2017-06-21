@@ -396,9 +396,9 @@ int a_init(void *ctx, const char *name, uint32_t local_pc,
 
 	/* SCCP Protocol stack */
 	sccp =
-	    osmo_sccp_simple_client(NULL, "osmo-msc", SENDER_PC, OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT,
+	    osmo_sccp_simple_client(NULL, name, SENDER_PC, OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT,
 				    "127.0.0.1");
-	osmo_sccp_user_bind(sccp, "osmo-msc", sccp_sap_up, SSN_BSSAP);
+	osmo_sccp_user_bind(sccp, name, sccp_sap_up, SSN_BSSAP);
 
 	return 0;
 }
