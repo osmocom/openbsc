@@ -28,14 +28,13 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/a_iface_bssap.h>
+#include <openbsc/a_iface.h>
 #include <openbsc/iu.h>
 #include <openbsc/osmo_msc.h>
 #include <osmocom/core/byteswap.h>
+#include <openbsc/a_reset.h>
 
 #define IP_V4_ADDR_LEN 4
-
-/* Addresses of all BSCs which have been registered to this MSC */
-static LLIST_HEAD(bsc_addr_list);
 
 /*
  * Helper functions to lookup and allocate subscribers
@@ -94,22 +93,6 @@ struct gsm_subscriber_connection *subscr_conn_lookup_a(struct gsm_network *netwo
 	return NULL;
 }
 
-/* Clear oprphand subscriber connections (called by bssmap_rx_reset()) */
-static void subscr_conn_clear_all(struct a_conn_info *a_conn_info)
-{
-	struct gsm_subscriber_connection *conn;
-	struct gsm_subscriber_connection *conn_temp;
-	struct gsm_network *network = a_conn_info->network;
-
-	llist_for_each_entry_safe(conn, conn_temp, &network->subscr_conns, entry) {
-		if (conn->via_ran == RAN_GERAN_A
-		    && memcmp(a_conn_info->calling_addr, &conn->a.bsc_addr, sizeof(conn->a.bsc_addr)) == 0) {
-			LOGP(DMSC, LOGL_NOTICE, "Dropping old subscriber connection (conn_id %i)\n", conn->a.conn_id);
-			msc_clear_request(conn, GSM48_CC_CAUSE_SWITCH_CONG);
-		}
-	}
-}
-
 /*
  * BSSMAP handling for UNITDATA
  */
@@ -117,36 +100,32 @@ static void subscr_conn_clear_all(struct a_conn_info *a_conn_info)
 /* Endpoint to handle BSSMAP reset */
 static void bssmap_rx_reset(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
-	struct a_bsc_addr *addr;
-	struct a_bsc_addr *known_addr;
-	bool addr_unknown = true;
-
-	LOGP(DMSC, LOGL_NOTICE, "Rx RESET from BSC %s\n", osmo_sccp_addr_dump(a_conn_info->calling_addr));
+	LOGP(DMSC, LOGL_NOTICE, "Rx RESET from BSC %s, sending RESET ACK\n", osmo_sccp_addr_dump(a_conn_info->calling_addr));
 	osmo_sccp_tx_unitdata_msg(scu, a_conn_info->called_addr, a_conn_info->calling_addr, gsm0808_create_reset_ack());
 
 	/* Make sure all orphand subscriber connections will be cleard */
-	subscr_conn_clear_all(a_conn_info);
+	a_clear_all(scu, a_conn_info->calling_addr);
 
-	/* Check if we know this BSC already, if yes, refresh its item */
-	llist_for_each_entry(known_addr, &bsc_addr_list, list) {
-		if (memcmp(&known_addr->calling_addr, a_conn_info->calling_addr, sizeof(*a_conn_info->calling_addr)) ==
-		    0) {
-			LOGP(DMSC, LOGL_NOTICE, "This BSC is already known to this MSC, refreshing its list item\n");
-			llist_del(&known_addr->list);
-			talloc_free(known_addr);
-			addr_unknown = false;
-			break;
-		}
+	msgb_free(msg);
+}
+
+/* Endpoint to handle BSSMAP reset acknowlegement */
+static void bssmap_rx_reset_ack(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
+{
+	if (a_conn_info->reset == NULL) {
+		LOGP(DMSC, LOGL_ERROR, "Received RESET ACK from an unknown BSC %s, ignoring...\n",
+		     osmo_sccp_addr_dump(a_conn_info->calling_addr));
+		goto fail;
 	}
-	if (addr_unknown)
-		LOGP(DMSC, LOGL_NOTICE, "This BSC is not known to this MSC yet, adding it to list\n");
 
-	addr = talloc_zero(NULL, struct a_bsc_addr);
-	memcpy(&addr->calling_addr, a_conn_info->calling_addr, sizeof(addr->calling_addr));
-	memcpy(&addr->called_addr, a_conn_info->called_addr, sizeof(addr->called_addr));
-	addr->scu = scu;
-	llist_add(&addr->list, &bsc_addr_list);
+	LOGP(DMSC, LOGL_NOTICE, "Received RESET ACK from BSC %s\n",
+	     osmo_sccp_addr_dump(a_conn_info->calling_addr));
 
+	/* Confirm that we managed to get the reset ack message
+	 * towards the connection reset logic */
+	a_reset_ack_confirm(a_conn_info->reset);
+
+fail:
 	msgb_free(msg);
 }
 
@@ -166,6 +145,9 @@ static void bssmap_rcvmsg_udt(struct osmo_sccp_user *scu, struct a_conn_info *a_
 	switch (msg->l3h[0]) {
 	case BSS_MAP_MSG_RESET:
 		bssmap_rx_reset(scu, a_conn_info, msg);
+		break;
+	case BSS_MAP_MSG_RESET_ACKNOWLEDGE:
+		bssmap_rx_reset_ack(scu, a_conn_info, msg);
 		break;
 	default:
 		LOGP(DMSC, LOGL_NOTICE, "Unimplemented message format: %s -- message discarded!\n",
@@ -257,6 +239,9 @@ static int bssmap_rx_clear_complete(struct osmo_sccp_user *scu, struct a_conn_in
 	LOGP(DMSC, LOGL_NOTICE, "Releasing connection (conn_id=%i)\n", a_conn_info->conn_id);
 	rc = osmo_sccp_tx_disconn(scu, a_conn_info->conn_id,
 				  a_conn_info->called_addr, SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
+
+	/* Remove the record from the list with active connections. */
+	a_delete_bsc_con(a_conn_info->conn_id);
 
 	msgb_free(msg);
 	return rc;
@@ -704,10 +689,4 @@ int sccp_rx_dt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, stru
 	}
 
 	return -EINVAL;
-}
-
-/* Get a list with all known BSCs */
-struct llist_head *get_bsc_addr_list(void)
-{
-	return &bsc_addr_list;
 }

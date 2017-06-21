@@ -158,7 +158,10 @@ void a_reset_ack_confirm(struct a_reset_ctx *reset)
 /* Report a failed connection */
 void a_reset_conn_fail(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(reset);
+	/* If no reset context is supplied, just drop the info */
+	if (!reset)
+		return;
+
 	OSMO_ASSERT(reset->fsm);
 
 	osmo_fsm_inst_dispatch(reset->fsm, EV_N_DISCONNECT, reset);
@@ -167,7 +170,10 @@ void a_reset_conn_fail(struct a_reset_ctx *reset)
 /* Report a successful connection */
 void a_reset_conn_success(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(reset);
+	/* If no reset context is supplied, just drop the info */
+	if (!reset)
+		return;
+
 	OSMO_ASSERT(reset->fsm);
 
 	osmo_fsm_inst_dispatch(reset->fsm, EV_N_CONNECT, reset);
@@ -176,9 +182,12 @@ void a_reset_conn_success(struct a_reset_ctx *reset)
 /* Check if we have a connection to a specified msc */
 bool a_reset_conn_ready(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(reset);
-	OSMO_ASSERT(reset->fsm);
+	/* If no reset context is supplied, we assume that
+	 * the connection can't be ready! */
+	if (!reset)
+		return false;
 
+	OSMO_ASSERT(reset->fsm);
 	if (reset->fsm->state == ST_CONN)
 		return true;
 

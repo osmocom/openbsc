@@ -194,7 +194,7 @@ static int match_codec_pref(int *full_rate, enum gsm48_chan_mode *chan_mode,
 static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 				   struct msgb *msg, unsigned int length)
 {
-	LOGP(DMSC, LOGL_NOTICE, "Reset ACK from MSC No.: %i\n", msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "RESET ACK from MSC No.: %i\n", msc->nr);
 
 	/* Inform the FSM that controls the RESET/RESET-ACK procedure
 	 * that we have successfully received the reset-ack message */
@@ -207,7 +207,7 @@ static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 static int bssmap_handle_reset(struct bsc_msc_data *msc,
 			       struct msgb *msg, unsigned int length)
 {
-	LOGP(DMSC, LOGL_NOTICE, "Reset from MSC No.: %i\n", msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "RESET from MSC No.: %i\n", msc->nr);
 
 	/* Instruct the bsc to close all open sigtran connections and to
 	 * close all active channels on the BTS side as well */

@@ -41,7 +41,14 @@ static struct llist_head *msc_list;
 #define RESET_INTERVAL 1	/* sek */
 #define SCCP_MSG_MAXSIZE 1024
 
+/* Internal list with connections we currently maintain. This 
+ * list is of type struct osmo_bsc_sccp_con */
 static LLIST_HEAD(active_connections);
+
+/* The SCCP stack will not assign connection IDs to us automatically, we
+ * will do this ourselves using a counter variable, that counts one up
+ * for every new connection */
+static uint32_t conn_id_counter;
 
 /* Helper function to Check if the given connection id is already assigned */
 static struct osmo_bsc_sccp_con *get_bsc_conn_by_conn_id(int conn_id)
@@ -60,14 +67,14 @@ static struct osmo_bsc_sccp_con *get_bsc_conn_by_conn_id(int conn_id)
 /* Pick a free connection id */
 static int pick_free_conn_id(struct bsc_msc_data *msc)
 {
-	int conn_id = msc->msc_con->conn_id_counter;
+	int conn_id = conn_id_counter;
 	int i;
 
 	for (i = 0; i < 0xFFFFFF; i++) {
 		conn_id++;
 		conn_id &= 0xFFFFFF;
 		if (get_bsc_conn_by_conn_id(conn_id) == false) {
-			msc->msc_con->conn_id_counter = conn_id;
+			conn_id_counter = conn_id;
 			return conn_id;
 		}
 	}
@@ -89,12 +96,11 @@ static void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
 void osmo_bsc_sigtran_tx_reset_ack(struct bsc_msc_data *msc)
 {
 	struct msgb *msg;
-	LOGP(DMSC, LOGL_NOTICE, "Sending RESET RACK to MSC No.: %i\n", msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET ACK to MSC No.: %i\n", msc->nr);
 	msg = gsm0808_create_reset_ack();
 	osmo_sccp_tx_unitdata_msg(msc->msc_con->sccp_user, &msc->msc_con->g_calling_addr,
 				  &msc->msc_con->g_called_addr, msg);
 }
-
 
 /* Find an MSC by its sigtran point code */
 static struct bsc_msc_data *get_msc_by_addr(struct osmo_sccp_addr *calling_addr)
@@ -367,12 +373,24 @@ void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc)
 
 	/* Close all open connections */
 	llist_for_each_entry_safe(conn, conn_temp, &active_connections, entry) {
-		if (conn->conn)
-			gsm0808_clear(conn->conn);
-		bsc_notify_msc_lost(conn);
-		osmo_bsc_sigtran_del_conn(conn);
+
+		/* We only may close connections which actually belong to this
+		 * MSC. All other open connections are left untouched */
+		if (conn->msc == msc) {
+			/* Notify active connection users via USSD that the MSC is down */
+			bsc_notify_msc_lost(conn);
+
+			/* Take down all occopied RF channels */
+			if (conn->conn)
+				gsm0808_clear(conn->conn);
+
+			/* Disconnect all Sigtran connections */
+			osmo_sccp_tx_disconn(msc->msc_con->sccp_user, conn->conn_id, &msc->msc_con->g_calling_addr, 0);
+
+			/* Delete subscriber connection */
+			osmo_bsc_sigtran_del_conn(conn);
+		}
 	}
-	msc->msc_con->conn_id_counter = 0;
 }
 
 /* Callback function: Close all open connections */
@@ -380,7 +398,7 @@ static void osmo_bsc_sigtran_reset_cb(void *priv)
 {
 	struct bsc_msc_data *msc = (struct bsc_msc_data*) priv;
 
-	/* Shut down all ongoint traffic */
+	/* Shut down all ongoing traffic */
 	osmo_bsc_sigtran_reset(msc);
 
 	/* Send reset to MSC */
@@ -399,6 +417,8 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 	osmo_ss7_init();
 
 	msc_list = mscs;
+
+	conn_id_counter = 0;
 
 	llist_for_each_entry(msc, msc_list, entry) {
 		snprintf(msc_name, sizeof(msc_name), "MSC No.: %u", msc->nr);

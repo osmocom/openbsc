@@ -38,6 +38,7 @@
 #include <osmocom/core/byteswap.h>
 #include <osmocom/sccp/sccp_types.h>
 #include <openbsc/a_reset.h>
+#include <openbsc/osmo_msc.h>
 
 #define SSN_BSSAP	254	/* SCCP_SSN_BSSAP */
 #define SENDER_PC	1	/* Our local point code */
@@ -47,15 +48,99 @@
  * when calling a_init() */
 static struct gsm_network *gsm_network = NULL;
 
-struct bsc_context {
+/* A struct to track currently active connections. We need that information
+ * to handle failure sitautions. In case of a problem, we must know which
+ * connections are currently open and which BSC is responsible. We also need
+ * the data to perform our connection checks (a_reset). All other logic will
+ * look at the connection ids and addresses that are supplied by the
+ * primitives */
+struct bsc_conn {
 	struct llist_head list;
-	struct a_reset_ctx reset;
-	struct osmo_sccp_addr addr;
+	struct osmo_sccp_addr called_addr;	/* BSC (remote) */
+	struct osmo_sccp_addr calling_addr;	/* MSC (local) */
+	uint32_t conn_id;			/* Connection identifier */
 };
 
+/* Internal list with connections we currently maintain. This
+ * list is of type struct bsc_conn (see above) */
+static LLIST_HEAD(active_connections);
+
+/* Context information about the BSC, will be used only internally in this
+ * file to manage the BSCs we are associated with */
+struct bsc_context {
+	struct llist_head list;
+	struct a_reset_ctx reset;		/* Reset FSM (one per BSC) */
+	struct osmo_sccp_addr called_addr;	/* BSC (remote) */
+	struct osmo_sccp_addr calling_addr;	/* MSC (local) */
+	struct osmo_sccp_user *sccp_user;	/* SCCP user (the same for all) */
+};
+
+/* List with BSCs we are associated with. This list is of type
+ * struct bsc_context (see above) */
 static LLIST_HEAD(bsc_context_list);
 
+/* Record info of a new active connection in the active connection list */
+static void record_bsc_con(void *ctx, struct osmo_sccp_addr *called_addr, struct osmo_sccp_addr *calling_addr,
+			   uint32_t conn_id)
+{
+	struct bsc_conn *conn;
 
+	conn = talloc_zero(ctx, struct bsc_conn);
+	OSMO_ASSERT(conn);
+
+	memcpy(&conn->called_addr, called_addr, sizeof(*called_addr));
+	memcpy(&conn->calling_addr, calling_addr, sizeof(*calling_addr));
+	conn->conn_id = conn_id;
+
+	llist_add_tail(&conn->list, &active_connections);
+}
+
+/* Delete info of a closed connection from the active connection list */
+void a_delete_bsc_con(uint32_t conn_id)
+{
+	struct bsc_conn *conn;
+	struct bsc_conn *conn_temp;
+
+	llist_for_each_entry_safe(conn, conn_temp, &active_connections, list) {
+		if (conn->conn_id == conn_id) {
+			llist_del(&conn->list);
+			talloc_free(conn);
+		}
+	}
+}
+
+/* Check if a specified connection id has an active SCCP connection */
+static bool check_connection_active(uint32_t conn_id)
+{
+	struct bsc_conn *conn;
+
+	/* Find the address for the current connection id */
+	llist_for_each_entry(conn, &active_connections, list) {
+		if (conn->conn_id == conn_id) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/* Get the reset context for a specifiec calling (BSC) address */
+static struct a_reset_ctx *get_reset_ctx_by_sccp_addr(struct osmo_sccp_addr *addr)
+{
+	struct bsc_context *bsc_ctx;
+
+	if (!addr)
+		return NULL;
+
+	llist_for_each_entry(bsc_ctx, &bsc_context_list, list) {
+		if (memcmp(&bsc_ctx->called_addr, addr, sizeof(*addr)) == 0)
+			return &bsc_ctx->reset;
+	}
+
+	LOGP(DMSC, LOGL_ERROR, "The calling BSC (%s) is unknown to this MSC ...\n",
+	     osmo_sccp_addr_dump(addr));
+	return NULL;
+}
 
 /* Send DTAP message via A-interface */
 int a_iface_tx_dtap(struct msgb *msg)
@@ -121,9 +206,9 @@ int a_iface_tx_cipher_mode(struct gsm_subscriber_connection *conn,
 /* Page a subscriber via A-interface */
 int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 {
-	struct a_bsc_addr *addr;
-	struct llist_head *bsc_addr_list = get_bsc_addr_list();
+	struct bsc_context *bsc_ctx;
 	struct gsm0808_cell_id_list cil;
+	struct msgb *msg;
 	int page_count = 0;
 
 	cil.id_discr = CELL_IDENT_LAC;
@@ -131,16 +216,26 @@ int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 	cil.id_list_len = 1;
 
 	/* Deliver paging request to all known BSCs */
-	llist_for_each_entry(addr, bsc_addr_list, list) {
-		LOGP(DMSC, LOGL_DEBUG, "Passing paging message from MSC to BSC %s (imsi=%s, tmsi=0x%08x, lac=%u)\n",
-		     osmo_sccp_addr_dump(&addr->calling_addr), imsi, tmsi, lac);
-		osmo_sccp_tx_unitdata_msg(addr->scu, &addr->called_addr, &addr->calling_addr,
-					  gsm0808_create_paging(imsi, &tmsi, &cil, NULL));
-		page_count++;
+	llist_for_each_entry(bsc_ctx, &bsc_context_list, list) {
+		if (a_reset_conn_ready(&bsc_ctx->reset)) {
+			LOGP(DMSC, LOGL_DEBUG,
+			     "Passing paging message from MSC %s to BSC %s (imsi=%s, tmsi=0x%08x, lac=%u)\n",
+			     osmo_sccp_addr_dump(&bsc_ctx->calling_addr),
+			     osmo_sccp_addr_dump(&bsc_ctx->called_addr), imsi, tmsi, lac);
+			msg = gsm0808_create_paging(imsi, &tmsi, &cil, NULL);
+			osmo_sccp_tx_unitdata_msg(bsc_ctx->sccp_user,
+						  &bsc_ctx->calling_addr, &bsc_ctx->called_addr, msg);
+			page_count++;
+		} else {
+			LOGP(DMSC, LOGL_DEBUG,
+			     "Connection down, dropping paging from MSC %s to BSC %s (imsi=%s, tmsi=0x%08x, lac=%u)\n",
+			     osmo_sccp_addr_dump(&bsc_ctx->calling_addr),
+			     osmo_sccp_addr_dump(&bsc_ctx->called_addr), imsi, tmsi, lac);
+		}
 	}
 
 	if (page_count <= 0)
-		LOGP(DMSC, LOGL_ERROR, "Could not deliver paging because no BSC is available!\n");
+		LOGP(DMSC, LOGL_ERROR, "Could not deliver paging because none of the associated BSCs is available!\n");
 
 	return page_count;
 }
@@ -317,26 +412,6 @@ int a_iface_tx_assignment(struct gsm_trans *trans)
 	return osmo_sccp_tx_data_msg(conn->a.scu, conn->a.conn_id, msg);
 }
 
-/* Check if we already know this BSC from a successfuly executed reset procedure. */
-static bool test_bsc_known(struct osmo_sccp_addr *bsc_addr)
-{
-	struct a_bsc_addr *addr;
-	struct llist_head *bsc_addr_list = get_bsc_addr_list();
-
-	/* Check if the given address is  */
-	llist_for_each_entry(addr, bsc_addr_list, list) {
-		if (memcmp(&addr->calling_addr, bsc_addr, sizeof(*bsc_addr)) == 0) {
-			LOGP(DMSC, LOGL_ERROR, "The calling BSC (%s) is known by this MSC, proceeding...\n",
-			     osmo_sccp_addr_dump(bsc_addr));
-			return true;
-		}
-	}
-
-	LOGP(DMSC, LOGL_ERROR, "The calling BSC (%s) is unknown to this MSC, rejecting...\n",
-	     osmo_sccp_addr_dump(bsc_addr));
-	return false;
-}
-
 /* Callback function, called by the SSCP stack when data arrives */
 static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 {
@@ -346,6 +421,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 	struct a_conn_info a_conn_info;
 	memset(&a_conn_info, 0, sizeof(a_conn_info));
 	a_conn_info.network = gsm_network;
+	a_conn_info.reset = NULL;
 
 	switch (OSMO_PRIM_HDR(&scu_prim->oph)) {
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
@@ -353,8 +429,9 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		a_conn_info.conn_id = scu_prim->u.connect.conn_id;
 		a_conn_info.called_addr = &scu_prim->u.connect.called_addr;
 		a_conn_info.calling_addr = &scu_prim->u.connect.calling_addr;
+		a_conn_info.reset = get_reset_ctx_by_sccp_addr(&scu_prim->u.unitdata.calling_addr);
 
-		if (test_bsc_known(a_conn_info.calling_addr) == false) {
+		if (a_reset_conn_ready(a_conn_info.reset) == false) {
 			rc = osmo_sccp_tx_disconn(scu, a_conn_info.conn_id, a_conn_info.called_addr,
 						  SCCP_RETURN_CAUSE_UNQUALIFIED);
 			break;
@@ -367,6 +444,8 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 			rc = sccp_rx_dt(scu, &a_conn_info, oph->msg);
 		} else
 			LOGP(DMSC, LOGL_DEBUG, "N-CONNECT.ind(%u)\n", scu_prim->u.connect.conn_id);
+
+		record_bsc_con(scu, &scu_prim->u.connect.calling_addr, &scu_prim->u.connect.called_addr, scu_prim->u.connect.conn_id);
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
@@ -381,6 +460,8 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		/* Handle inbound UNITDATA */
 		a_conn_info.called_addr = &scu_prim->u.unitdata.called_addr;
 		a_conn_info.calling_addr = &scu_prim->u.unitdata.calling_addr;
+		a_conn_info.reset = get_reset_ctx_by_sccp_addr(&scu_prim->u.unitdata.calling_addr);
+
 		DEBUGP(DMSC, "N-UNITDATA.ind(%s)\n", osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
 		sccp_rx_udt(scu, &a_conn_info, oph->msg);
 		break;
@@ -393,15 +474,43 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 	return rc;
 }
 
+/* Clear all subscriber connections on a specified BSC */
+void a_clear_all(struct osmo_sccp_user *scu, struct osmo_sccp_addr *bsc_addr)
+{
+	struct gsm_subscriber_connection *conn;
+	struct gsm_subscriber_connection *conn_temp;
+	struct gsm_network *network = gsm_network;
+
+	llist_for_each_entry_safe(conn, conn_temp, &network->subscr_conns, entry) {
+		/* Clear only A connections and connections that actually
+		 * belong to the specified BSC */
+		if (conn->via_ran == RAN_GERAN_A
+		    && memcmp(bsc_addr, &conn->a.bsc_addr, sizeof(conn->a.bsc_addr)) == 0) {
+			LOGP(DMSC, LOGL_NOTICE, "Dropping orphaned subscriber connection (conn_id %i)\n", conn->a.conn_id);
+			msc_clear_request(conn, GSM48_CC_CAUSE_SWITCH_CONG);
+
+			/* If there is still an SCCP connection active, remove it now */
+			if (check_connection_active(conn->a.conn_id)) {
+				osmo_sccp_tx_disconn(scu, conn->a.conn_id, bsc_addr, SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
+				a_delete_bsc_con(conn->a.conn_id);
+			}
+		}
+	}
+}
+
 /* Callback function: Close all open connections */
 static void a_reset_cb(void *priv)
 {
 	struct msgb *msg;
-	struct osmo_sccp_addr *addr = (struct osmo_sccp_addr*) priv;
-	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to BSC %s\n", osmo_sccp_addr_dump(addr));
+	struct bsc_context *bsc_ctx = (struct bsc_context*) priv;
+
+	/* Clear all now orphaned subscriber connections */
+	a_clear_all(bsc_ctx->sccp_user, &bsc_ctx->called_addr);
+
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to BSC %s\n", osmo_sccp_addr_dump(&bsc_ctx->called_addr));
 	msg = gsm0808_create_reset();
-//	osmo_sccp_tx_unitdata_msg(msc->msc_con->sccp_user, &msc->msc_con->g_calling_addr,
-//				  &msc->msc_con->g_called_addr, msg);
+	osmo_sccp_tx_unitdata_msg(bsc_ctx->sccp_user, &bsc_ctx->calling_addr,
+				  &bsc_ctx->called_addr, msg);
 }
 
 /* Initalize A interface connection between to MSC and BSC */
@@ -410,30 +519,36 @@ int a_init(void *ctx, const char *name, uint32_t local_pc,
 {
 	/* FIXME: Remove hardcoded parameters, use parameters in parameter list */
 	struct osmo_sccp_instance *sccp;
+	struct osmo_sccp_user *scu;
+	struct bsc_context *bsc_ctx;
 
 	LOGP(DMSC, LOGL_NOTICE, "Initalizing SCCP connection to stp...\n");
 
 	gsm_network = network;
 	osmo_ss7_init();
 
-	/* Add some BSCs to the context list */
-	/* FIXME: Make this configurable */
-	struct bsc_context *bsc_ctx;
-	bsc_ctx = talloc_zero(NULL, struct bsc_context);
-	bsc_ctx->reset.priv = &bsc_ctx->addr;
-	bsc_ctx->reset.cb = a_reset_cb;
-	llist_add_tail(&bsc_ctx->list, &bsc_context_list);
-	bsc_ctx->addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
-	bsc_ctx->addr.ssn = SCCP_SSN_BSSAP;
-	bsc_ctx->addr.ri = OSMO_SCCP_RI_SSN_PC;
-	bsc_ctx->addr.pc = 1;
-	bsc_ctx = NULL;
-
 	/* SCCP Protocol stack */
 	sccp =
 	    osmo_sccp_simple_client(NULL, "osmo-msc", SENDER_PC, OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT,
 				    "127.0.0.1");
-	osmo_sccp_user_bind(sccp, "osmo-msc", sccp_sap_up, SSN_BSSAP);
+	scu = osmo_sccp_user_bind(sccp, "osmo-msc", sccp_sap_up, SSN_BSSAP);
+
+	/* Add some BSCs to the context list */
+	/* FIXME: Make this configurable (VTY!) */
+	bsc_ctx = talloc_zero(NULL, struct bsc_context);
+	bsc_ctx->reset.priv = bsc_ctx;
+	bsc_ctx->reset.cb = a_reset_cb;
+	llist_add_tail(&bsc_ctx->list, &bsc_context_list);
+	bsc_ctx->called_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
+	bsc_ctx->called_addr.ssn = SCCP_SSN_BSSAP;
+	bsc_ctx->called_addr.ri = OSMO_SCCP_RI_SSN_PC;
+	bsc_ctx->called_addr.pc = 23;
+	bsc_ctx->calling_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
+	bsc_ctx->calling_addr.ssn = SCCP_SSN_BSSAP;
+	bsc_ctx->calling_addr.ri = OSMO_SCCP_RI_SSN_PC;
+	bsc_ctx->calling_addr.pc = 1;
+	bsc_ctx->sccp_user = scu;
+	bsc_ctx = NULL;
 
 	/* Start reset procedure for all BSC connections */
 	llist_for_each_entry(bsc_ctx, &bsc_context_list, list) {
