@@ -500,7 +500,7 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	/* TODO: implement A-Interface and remove above legacy stuff. */
 
 	/* Set up IuCS */
-	//iu_init(tall_msc_ctx, "OsmoMSC", 1, "127.0.0.3", "127.0.0.1", 0, rcvmsg_iu_cs, rx_iu_event);
+	iu_init(tall_msc_ctx, "OsmoMSC_Iu", 1, "127.0.0.3", "127.0.0.1", 0, rcvmsg_iu_cs, rx_iu_event);
 
 	/* Set up A interface */
 	a_init(tall_msc_ctx, "OsmoMSC_A", 254, "127.0.0.3", "127.0.0.1", 0, msc_network);
