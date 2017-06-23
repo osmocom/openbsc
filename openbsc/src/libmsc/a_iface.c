@@ -249,7 +249,7 @@ static int enc_speeach_codec_list(struct gsm0808_speech_codec_list *scl, const s
 
 	memset(scl, 0, sizeof(*scl));
 	for (i = 0; i < ct->perm_spch_len; i++) {
-		rc = gsm0808_extrapolate_speech_codec(&scl->codec[i], ct->perm_spch[i]);
+		rc = gsm0808_speech_codec_from_chan_type(&scl->codec[i], ct->perm_spch[i]);
 		if (rc != 0)
 			return -EINVAL;
 	}

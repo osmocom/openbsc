@@ -137,7 +137,7 @@ static bool test_codec_pref(const struct gsm0808_channel_type *ct,
 		return false;
 
 	/* Extrapolate speech codec data */
-	rc = gsm0808_extrapolate_speech_codec(&sc, perm_spch);
+	rc = gsm0808_speech_codec_from_chan_type(&sc, perm_spch);
 	if (rc < 0)
 		return false;
 
