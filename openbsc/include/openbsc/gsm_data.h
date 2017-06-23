@@ -483,6 +483,9 @@ struct gsm_network {
 	} iu;
 
 	struct osmo_sccp_instance *sccp;
+
+	/* A list with all associated BSCs */
+	struct llist_head bscs;
 };
 
 struct osmo_esme;

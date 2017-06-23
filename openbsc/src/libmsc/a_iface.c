@@ -62,20 +62,6 @@ struct bsc_conn {
  * list is of type struct bsc_conn (see above) */
 static LLIST_HEAD(active_connections);
 
-/* Context information about the BSC, will be used only internally in this
- * file to manage the BSCs we are associated with */
-struct bsc_context {
-	struct llist_head list;
-	struct a_reset_ctx reset;		/* Reset FSM (one per BSC) */
-	struct osmo_sccp_addr called_addr;	/* BSC (remote) */
-	struct osmo_sccp_addr calling_addr;	/* MSC (local) */
-	struct osmo_sccp_user *sccp_user;	/* SCCP user (the same for all) */
-};
-
-/* List with BSCs we are associated with. This list is of type
- * struct bsc_context (see above) */
-static LLIST_HEAD(bsc_context_list);
-
 /* Record info of a new active connection in the active connection list */
 static void record_bsc_con(void *ctx, struct osmo_sccp_addr *called_addr, struct osmo_sccp_addr *calling_addr,
 			   uint32_t conn_id)
@@ -129,7 +115,7 @@ static struct a_reset_ctx *get_reset_ctx_by_sccp_addr(struct osmo_sccp_addr *add
 	if (!addr)
 		return NULL;
 
-	llist_for_each_entry(bsc_ctx, &bsc_context_list, list) {
+	llist_for_each_entry(bsc_ctx, &gsm_network->bscs, list) {
 		if (memcmp(&bsc_ctx->called_addr, addr, sizeof(*addr)) == 0)
 			return &bsc_ctx->reset;
 	}
@@ -213,7 +199,7 @@ int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 	cil.id_list_len = 1;
 
 	/* Deliver paging request to all known BSCs */
-	llist_for_each_entry(bsc_ctx, &bsc_context_list, list) {
+	llist_for_each_entry(bsc_ctx, &gsm_network->bscs, list) {
 		if (a_reset_conn_ready(&bsc_ctx->reset)) {
 			LOGP(DMSC, LOGL_DEBUG,
 			     "Passing paging message from MSC %s to BSC %s (imsi=%s, tmsi=0x%08x, lac=%u)\n",
@@ -513,6 +499,11 @@ static void a_reset_cb(void *priv)
 /* Initalize A interface connection between to MSC and BSC */
 int a_init(void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *network)
 {
+
+
+#define SSN_BSSAP	254	/* SCCP_SSN_BSSAP */
+#define SENDER_PC	1	/* Our local point code */
+
 	/* FIXME: Remove hardcoded parameters, use parameters in parameter list */
 	struct osmo_sccp_user *scu;
 	struct bsc_context *bsc_ctx;
@@ -529,7 +520,7 @@ int a_init(void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *netwo
 	bsc_ctx = talloc_zero(NULL, struct bsc_context);
 	bsc_ctx->reset.priv = bsc_ctx;
 	bsc_ctx->reset.cb = a_reset_cb;
-	llist_add_tail(&bsc_ctx->list, &bsc_context_list);
+	llist_add_tail(&bsc_ctx->list, &gsm_network->bscs);
 	bsc_ctx->called_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
 	bsc_ctx->called_addr.ssn = SCCP_SSN_BSSAP;
 	bsc_ctx->called_addr.ri = OSMO_SCCP_RI_SSN_PC;
@@ -542,7 +533,7 @@ int a_init(void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *netwo
 	bsc_ctx = NULL;
 
 	/* Start reset procedure for all BSC connections */
-	llist_for_each_entry(bsc_ctx, &bsc_context_list, list) {
+	llist_for_each_entry(bsc_ctx, &gsm_network->bscs, list) {
 		a_reset_start(&bsc_ctx->reset);
 	}
 
