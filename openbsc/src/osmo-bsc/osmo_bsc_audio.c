@@ -51,7 +51,7 @@ static int send_aoip_ass_compl(struct gsm_subscriber_connection *conn, struct gs
 	memcpy(&rtp_addr, &rtp_addr_in, sizeof(rtp_addr_in));
 
 	/* Extrapolate speech codec from speech mode */
-	gsm0808_extrapolate_speech_codec(&sc, lchan->abis_ip.ass_compl.speech_mode);
+	gsm0808_speech_codec_from_chan_type(&sc, lchan->abis_ip.ass_compl.speech_mode);
 
 	/* Generate message */
 	resp = gsm0808_create_ass_compl(lchan->abis_ip.ass_compl.rr_cause,
