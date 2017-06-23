@@ -496,14 +496,22 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 		return 7;
 	}
 
-	/* Set up A-Interface */
-	/* TODO: implement A-Interface and remove above legacy stuff. */
+	/* Set up STP link to receive connections from BSC and HNBGW */
+	msc_network->sccp = osmo_sccp_simple_client(tall_msc_ctx, "OsmoMSC",
+						    1 /* FIXME: configurable */,
+						    OSMO_SS7_ASP_PROT_M3UA, 0,
+						    "127.0.0.3" /* FIXME: configurable */,
+						    M3UA_PORT, "127.0.0.1" /* FIXME: configurable */);
+	if (!msc_network->sccp) {
+		printf("Setting up SCCP client failed.\n");
+		return 8;
+	}
 
 	/* Set up IuCS */
-	iu_init(tall_msc_ctx, "OsmoMSC_Iu", 1, "127.0.0.3", "127.0.0.1", 0, rcvmsg_iu_cs, rx_iu_event);
+	iu_init(tall_msc_ctx, msc_network->sccp, rcvmsg_iu_cs, rx_iu_event);
 
 	/* Set up A interface */
-	a_init(tall_msc_ctx, "OsmoMSC_A", 254, "127.0.0.3", "127.0.0.1", 0, msc_network);
+	a_init(tall_msc_ctx, msc_network->sccp, msc_network);
 
 	if (msc_cmdline_config.daemonize) {
 		rc = osmo_daemonize();

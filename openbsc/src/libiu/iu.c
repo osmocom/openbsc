@@ -752,8 +752,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 	return rc;
 }
 
-int iu_init(void *ctx, const char *name, uint32_t local_pc, const char *listen_addr,
-	    const char *remote_addr, uint16_t local_port,
+int iu_init(void *ctx, struct osmo_sccp_instance *sccp,
 	    iu_recv_cb_t iu_recv_cb, iu_event_cb_t iu_event_cb)
 {
 	talloc_iu_ctx = talloc_named_const(ctx, 1, "iu");
@@ -761,9 +760,8 @@ int iu_init(void *ctx, const char *name, uint32_t local_pc, const char *listen_a
 
 	global_iu_recv_cb = iu_recv_cb;
 	global_iu_event_cb = iu_event_cb;
-	g_sccp = osmo_sccp_simple_client(talloc_iu_ctx, name, local_pc, OSMO_SS7_ASP_PROT_M3UA,
-					 local_port, listen_addr, M3UA_PORT, remote_addr);
-	g_scu = osmo_sccp_user_bind(g_sccp, name, sccp_sap_up, OSMO_SCCP_SSN_RANAP);
+	g_sccp = sccp;
+	g_scu = osmo_sccp_user_bind(g_sccp, "OsmoMSC-Iu", sccp_sap_up, OSMO_SCCP_SSN_RANAP);
 
 	return 0;
 }

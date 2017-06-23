@@ -62,8 +62,7 @@ typedef int (* iu_event_cb_t )(struct ue_conn_ctx *ue_ctx,
 typedef int (* iu_rab_ass_resp_cb_t )(struct ue_conn_ctx *ue_ctx, uint8_t rab_id,
 		struct RANAP_RAB_SetupOrModifiedItemIEs_s *setup_ies);
 
-int iu_init(void *ctx, const char *name, uint32_t local_pc, const char *listen_addr,
-	    const char *remote_addr, uint16_t local_port,
+int iu_init(void *ctx, struct osmo_sccp_instance *sccp,
 	    iu_recv_cb_t iu_recv_cb, iu_event_cb_t iu_event_cb);
 
 int iu_tx(struct msgb *msg, uint8_t sapi);

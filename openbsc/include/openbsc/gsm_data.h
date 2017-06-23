@@ -478,6 +478,8 @@ struct gsm_network {
 	struct {
 		enum nsap_addr_enc rab_assign_addr_enc;
 	} iu;
+
+	struct osmo_sccp_instance *sccp;
 };
 
 struct osmo_esme;

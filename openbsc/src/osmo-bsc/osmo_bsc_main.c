@@ -275,7 +275,7 @@ int main(int argc, char **argv)
 		msc->msc_con->g_calling_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
 		msc->msc_con->g_calling_addr.ssn = SCCP_SSN_BSSAP;
 		msc->msc_con->g_calling_addr.ri = OSMO_SCCP_RI_SSN_PC;
-		msc->msc_con->g_calling_addr.pc = 23;
+		msc->msc_con->g_calling_addr.pc = 42;
 		msc->msc_con->g_called_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
 		msc->msc_con->g_called_addr.ssn = SCCP_SSN_BSSAP;
 		msc->msc_con->g_called_addr.ri = OSMO_SCCP_RI_SSN_PC;

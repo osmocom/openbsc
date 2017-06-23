@@ -38,9 +38,6 @@
 #include <osmocom/core/byteswap.h>
 #include <osmocom/sccp/sccp_types.h>
 
-#define SSN_BSSAP	254	/* SCCP_SSN_BSSAP */
-#define SENDER_PC	1	/* Our local point code */
-
 /* A pointer to the GSM network we work with. By the current paradigm,
  * there can only be one gsm_network per MSC. The pointer is set once
  * when calling a_init() */
@@ -383,22 +380,15 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 }
 
 /* Initalize A interface connection between to MSC and BSC */
-int a_init(void *ctx, const char *name, uint32_t local_pc,
-	   const char *listen_addr, const char *remote_addr, uint16_t local_port, struct gsm_network *network)
+int a_init(void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *network)
 {
 	/* FIXME: Remove hardcoded parameters, use parameters in parameter list */
-	struct osmo_sccp_instance *sccp;
-
 	LOGP(DMSC, LOGL_NOTICE, "Initalizing SCCP connection to stp...\n");
 
 	gsm_network = network;
-	osmo_ss7_init();
 
 	/* SCCP Protocol stack */
-	sccp =
-	    osmo_sccp_simple_client(NULL, name, SENDER_PC, OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT,
-				    "127.0.0.1");
-	osmo_sccp_user_bind(sccp, name, sccp_sap_up, SSN_BSSAP);
+	osmo_sccp_user_bind(sccp, "OsmoMSC-A", sccp_sap_up, SCCP_SSN_BSSAP);
 
 	return 0;
 }

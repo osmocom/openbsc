@@ -61,6 +61,8 @@
 #include <osmocom/ctrl/control_if.h>
 #include <osmocom/ctrl/ports.h>
 
+#include <osmocom/sigtran/protocol/m3ua.h>
+
 #include <gtp.h>
 
 #include "../../bscconfig.h"
@@ -322,6 +324,7 @@ int main(int argc, char **argv)
 {
 	struct ctrl_handle *ctrl;
 	struct gsm_network dummy_network;
+	struct osmo_sccp_instance *sccp;
 	int rc;
 
 	srand(time(NULL));
@@ -432,7 +435,18 @@ int main(int argc, char **argv)
 	}
 
 #ifdef BUILD_IU
-	iu_init(tall_bsc_ctx, "OsmoSGSN", 2, "127.0.0.4", "127.0.0.1", 0, gsm0408_gprs_rcvmsg_iu, sgsn_ranap_iu_event);
+	sccp = osmo_sccp_simple_client(tall_bsc_ctx, "OsmoSGSN",
+				       2 /* FIXME: configurable */,
+				       OSMO_SS7_ASP_PROT_M3UA, 0,
+				       "127.0.0.4" /* FIXME: configurable */,
+				       M3UA_PORT,
+				       "127.0.0.1" /* FIXME: configurable */);
+	if (!sccp) {
+		printf("Setting up SCCP client failed.\n");
+		return 8;
+	}
+
+	iu_init(tall_bsc_ctx, sccp, gsm0408_gprs_rcvmsg_iu, sgsn_ranap_iu_event);
 #endif
 
 	if (daemonize) {
