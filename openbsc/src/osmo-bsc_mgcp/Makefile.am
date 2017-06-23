@@ -31,5 +31,6 @@ osmo_bsc_mgcp_LDADD = \
 	$(LIBOSMONETIF_LIBS) \
 	$(LIBBCG729_LIBS) \
 	$(LIBRARY_GSM) \
+	$(LIBOSMOSIGTRAN_LIBS) \
 	-lrt \
 	$(NULL)

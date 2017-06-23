@@ -354,6 +354,7 @@ int main(int argc, char **argv)
 	vty_init(&msc_vty_info);
 
 	osmo_ss7_init();
+	osmo_ss7_vty_init_sg();
 
 	/* Parse options */
 	handle_options(argc, argv);

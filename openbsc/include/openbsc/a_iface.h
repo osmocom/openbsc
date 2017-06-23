@@ -18,6 +18,23 @@
  *
  */
 
+#pragma once
+
+#include <openbsc/a_reset.h>
+
+/* A struct to keep a context information about the BSCs we are associated with */
+struct bsc_context {
+	struct llist_head list;
+
+	/* To be filled up by the user (VTY) */
+	struct osmo_sccp_addr called_addr;	/* BSC (remote) */
+	struct osmo_sccp_addr calling_addr;	/* MSC (local) */
+
+	/* Automatically filled up by a_init() */
+	struct a_reset_ctx reset;		/* Reset FSM (one per BSC) */
+	struct osmo_sccp_user *sccp_user;	/* SCCP user (the same for all) */
+};
+
 /* Initalize A interface connection between to MSC and BSC */
 int a_init(void *ctx, const char *name, uint32_t local_pc, const char *listen_addr,
 	   const char *remote_addr, uint16_t local_port, struct gsm_network *network);
@@ -40,5 +57,3 @@ void a_clear_all(struct osmo_sccp_user *scu, struct osmo_sccp_addr *bsc_addr);
 
 /* Delete info of a closed connection from the active connection list */
 void a_delete_bsc_con(uint32_t conn_id);
-
-#pragma once

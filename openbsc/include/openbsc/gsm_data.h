@@ -478,6 +478,9 @@ struct gsm_network {
 	struct {
 		enum nsap_addr_enc rab_assign_addr_enc;
 	} iu;
+
+	/* A list with all associated BSCs */
+	struct llist_head bscs;
 };
 
 struct osmo_esme;
