@@ -272,14 +272,10 @@ int main(int argc, char **argv)
 
 	llist_for_each_entry(msc, &bsc_gsmnet->bsc_data->mscs, entry) {
 		/* FIXME: This has to come from a config file */
-		msc->msc_con->g_calling_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
-		msc->msc_con->g_calling_addr.ssn = SCCP_SSN_BSSAP;
-		msc->msc_con->g_calling_addr.ri = OSMO_SCCP_RI_SSN_PC;
-		msc->msc_con->g_calling_addr.pc = 42;
-		msc->msc_con->g_called_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
-		msc->msc_con->g_called_addr.ssn = SCCP_SSN_BSSAP;
-		msc->msc_con->g_called_addr.ri = OSMO_SCCP_RI_SSN_PC;
-		msc->msc_con->g_called_addr.pc = 1;
+		osmo_sccp_make_addr_pc_ssn(&msc->msc_con->g_calling_addr,
+					   42, SCCP_SSN_BSSAP);
+		osmo_sccp_make_addr_pc_ssn(&msc->msc_con->g_called_addr,
+					   1, SCCP_SSN_BSSAP);
 	}
 
 //	if (osmo_bsc_sccp_init(bsc_gsmnet) != 0) {
