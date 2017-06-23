@@ -31,13 +31,19 @@ struct bsc_context {
 	struct osmo_sccp_addr calling_addr;	/* MSC (local) */
 
 	/* Automatically filled up by a_init() */
-	struct a_reset_ctx reset;		/* Reset FSM (one per BSC) */
-	struct osmo_sccp_user *sccp_user;	/* SCCP user (the same for all) */
+	char name[512];
+	struct a_reset_ctx *reset;		/* Reset FSM  */
+	struct osmo_ss7_instance *ss7;
+	struct osmo_sccp_instance *sccp;
+	struct osmo_sccp_user *sccp_user;
 };
 
-/* Initalize A interface connection between to MSC and BSC */
-int a_init(void *ctx, const char *name, uint32_t local_pc, const char *listen_addr,
-	   const char *remote_addr, uint16_t local_port, struct gsm_network *network);
+/* Initalize a new A connection for a remote bsc (called by VTY) */
+int a_init(struct gsm_network *network, struct osmo_sccp_addr *calling_addr, struct osmo_sccp_addr *called_addr,
+	   struct osmo_ss7_instance *ss7);
+
+/* Drop a no longer used A connection (called by VTY) */
+void a_drop(struct osmo_sccp_addr *calling_addr, struct osmo_sccp_addr *called_addr);
 
 /* Send DTAP message via A-interface */
 int a_iface_tx_dtap(struct msgb *msg);

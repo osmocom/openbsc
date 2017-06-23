@@ -55,13 +55,6 @@ struct bsc_msc_connection {
 	struct osmo_timer_list timeout_timer;
 
 	struct msgb *pending_msg;
-
-	/* Sigtran connection data */
-	struct osmo_sccp_instance *sccp;
-	struct osmo_sccp_user *sccp_user;
-	struct osmo_sccp_addr g_calling_addr;
-	struct osmo_sccp_addr g_called_addr;
-	struct a_reset_ctx reset;
 };
 
 struct bsc_msc_connection *bsc_msc_create(void *ctx, struct llist_head *dest);

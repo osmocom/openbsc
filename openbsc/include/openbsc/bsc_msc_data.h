@@ -111,6 +111,16 @@ struct bsc_msc_data {
 	char *ussd_grace_txt;
 
 	char *acc_lst_name;
+
+	/* Sigtran connection data */
+	struct {
+		struct osmo_ss7_instance *ss7;
+		struct osmo_sccp_instance *sccp;
+		struct osmo_sccp_user *sccp_user;
+		struct osmo_sccp_addr g_calling_addr;
+		struct osmo_sccp_addr g_called_addr;
+		struct a_reset_ctx *reset;
+	} a;
 };
 
 /*

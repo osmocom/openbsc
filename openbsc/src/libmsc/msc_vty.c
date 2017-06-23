@@ -32,6 +32,8 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/vlr.h>
 #include <openbsc/iu.h>
+#include <openbsc/a_iface.h>
+#include <osmocom/sccp/sccp_types.h>
 
 static struct cmd_node msc_node = {
 	MSC_NODE,
@@ -105,9 +107,96 @@ DEFUN(cfg_msc_no_assign_tmsi, cfg_msc_no_assign_tmsi_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_msc_register_bsc, cfg_msc_register_bsc_cmd,
+      "bsc cs7-instance <0-15> calling-addr NAME called-addr NAME",
+      "Register a new BSC connection to this MSC.\n"
+      "Associated SS7 instance\n"
+      "SS7 instance reference number\n"
+      "Calling Address (local address of this MSC)\n"
+      "SCCP address name\n"
+      "Called Address (remote address of the BSC)\n" "SCCP address name\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct osmo_sccp_addr *calling_addr;
+	struct osmo_sccp_addr *called_addr;
+	struct osmo_ss7_instance *inst;
+
+	uint32_t inst_id = atoi(argv[0]);
+	const char *calling_addr_name = argv[1];
+	const char *called_addr_name = argv[2];
+
+	inst = osmo_ss7_instance_find(inst_id);
+	if (!inst) {
+		vty_out(vty, "No SS7 instance %d found%s", inst_id,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	calling_addr = osmo_sccp_addr_by_name(calling_addr_name, inst);
+	if (!calling_addr) {
+		vty_out(vty, "No sccp address %s found%s", calling_addr_name,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	called_addr = osmo_sccp_addr_by_name(called_addr_name, inst);
+	if (!called_addr) {
+		vty_out(vty, "No sccp address %s found%s", called_addr_name,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	a_init(gsmnet, calling_addr, called_addr, inst);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_msc_no_register_bsc, cfg_msc_no_register_bsc_cmd,
+      "no bsc cs7-instance <0-15> calling-addr NAME called-addr NAME",
+      NO_STR
+      "Remove a BSC connection to this MSC.\n"
+      "Associated SS7 instance\n"
+      "SS7 instance reference number\n"
+      "Calling Address (local address of this MSC)\n"
+      "SCCP address name\n"
+      "Called Address (remote address of the BSC)\n" "SCCP address name\n")
+{
+	struct osmo_sccp_addr *calling_addr;
+	struct osmo_sccp_addr *called_addr;
+	struct osmo_ss7_instance *inst;
+
+	uint32_t inst_id = atoi(argv[0]);
+	const char *calling_addr_name = argv[1];
+	const char *called_addr_name = argv[2];
+
+	inst = osmo_ss7_instance_find(inst_id);
+	if (!inst) {
+		vty_out(vty, "No SS7 instance %d found%s", inst_id,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	calling_addr = osmo_sccp_addr_by_name(calling_addr_name, inst);
+	if (!calling_addr) {
+		vty_out(vty, "No sccp address %s found%s", calling_addr_name,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	called_addr = osmo_sccp_addr_by_name(called_addr_name, inst);
+	if (!called_addr) {
+		vty_out(vty, "No sccp address %s found%s", called_addr_name,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	a_drop(calling_addr, called_addr);
+	return CMD_SUCCESS;
+}
+
 static int config_write_msc(struct vty *vty)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct bsc_context *bsc_ctx;
 
 	vty_out(vty, "msc%s", VTY_NEWLINE);
 	if (!gsmnet->auto_create_subscr)
@@ -126,6 +215,18 @@ static int config_write_msc(struct vty *vty)
 
 	mgcpgw_client_config_write(vty, " ");
 	iu_vty_config_write(vty, " ");
+
+	/* write sccp connection configuration */
+	llist_for_each_entry(bsc_ctx, &gsmnet->a.bscs, list) {
+		OSMO_ASSERT(bsc_ctx->ss7);
+		vty_out(vty,
+			" bsc cs7-instance %u calling-addr %s called-addr %s%s",
+			bsc_ctx->ss7->cfg.id,
+			osmo_sccp_name_by_addr(&bsc_ctx->calling_addr,
+					       bsc_ctx->ss7),
+			osmo_sccp_name_by_addr(&bsc_ctx->called_addr,
+					       bsc_ctx->ss7), VTY_NEWLINE);
+	}
 
 	return CMD_SUCCESS;
 }
@@ -176,6 +277,9 @@ void msc_vty_init(struct gsm_network *msc_network)
 	install_element(MSC_NODE, &cfg_msc_no_subscr_create_cmd);
 	install_element(MSC_NODE, &cfg_msc_assign_tmsi_cmd);
 	install_element(MSC_NODE, &cfg_msc_no_assign_tmsi_cmd);
+	install_element(MSC_NODE, &cfg_msc_register_bsc_cmd);
+	install_element(MSC_NODE, &cfg_msc_no_register_bsc_cmd);
+
 	mgcpgw_client_vty_init(MSC_NODE, &msc_network->mgcpgw.conf);
 	iu_vty_init(MSC_NODE, &msc_network->iu.rab_assign_addr_enc);
 }

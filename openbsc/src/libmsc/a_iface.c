@@ -115,9 +115,9 @@ static struct a_reset_ctx *get_reset_ctx_by_sccp_addr(struct osmo_sccp_addr *add
 	if (!addr)
 		return NULL;
 
-	llist_for_each_entry(bsc_ctx, &gsm_network->bscs, list) {
+	llist_for_each_entry(bsc_ctx, &gsm_network->a.bscs, list) {
 		if (memcmp(&bsc_ctx->called_addr, addr, sizeof(*addr)) == 0)
-			return &bsc_ctx->reset;
+			return bsc_ctx->reset;
 	}
 
 	LOGP(DMSC, LOGL_ERROR, "The calling BSC (%s) is unknown to this MSC ...\n",
@@ -199,8 +199,8 @@ int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 	cil.id_list_len = 1;
 
 	/* Deliver paging request to all known BSCs */
-	llist_for_each_entry(bsc_ctx, &gsm_network->bscs, list) {
-		if (a_reset_conn_ready(&bsc_ctx->reset)) {
+	llist_for_each_entry(bsc_ctx, &gsm_network->a.bscs, list) {
+		if (a_reset_conn_ready(bsc_ctx->reset)) {
 			LOGP(DMSC, LOGL_DEBUG,
 			     "Passing paging message from MSC %s to BSC %s (imsi=%s, tmsi=0x%08x, lac=%u)\n",
 			     osmo_sccp_addr_dump(&bsc_ctx->calling_addr),
@@ -444,7 +444,6 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		a_conn_info.called_addr = &scu_prim->u.unitdata.called_addr;
 		a_conn_info.calling_addr = &scu_prim->u.unitdata.calling_addr;
 		a_conn_info.reset = get_reset_ctx_by_sccp_addr(&scu_prim->u.unitdata.calling_addr);
-
 		DEBUGP(DMSC, "N-UNITDATA.ind(%s)\n", osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
 		sccp_rx_udt(scu, &a_conn_info, oph->msg);
 		break;
@@ -487,61 +486,105 @@ static void a_reset_cb(void *priv)
 	struct msgb *msg;
 	struct bsc_context *bsc_ctx = (struct bsc_context*) priv;
 
+	/* Skip if the A interface is not properly initalized yet */
+	if (!gsm_network)
+		return;
+
 	/* Clear all now orphaned subscriber connections */
 	a_clear_all(bsc_ctx->sccp_user, &bsc_ctx->called_addr);
 
+	/* Send reset to the remote BSC */
 	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to BSC %s\n", osmo_sccp_addr_dump(&bsc_ctx->called_addr));
 	msg = gsm0808_create_reset();
 	osmo_sccp_tx_unitdata_msg(bsc_ctx->sccp_user, &bsc_ctx->calling_addr,
 				  &bsc_ctx->called_addr, msg);
 }
 
-/* Initalize A interface connection between to MSC and BSC */
-int a_init(void *ctx, const char *name, uint32_t local_pc,
-	   const char *listen_addr, const char *remote_addr, uint16_t local_port, struct gsm_network *network)
+/* Initalize a new A connection for a remote bsc (called by VTY) */
+int a_init(struct gsm_network *network, struct osmo_sccp_addr *calling_addr, struct osmo_sccp_addr *called_addr,
+	   struct osmo_ss7_instance *ss7)
 {
-
-
-#define SSN_BSSAP	254	/* SCCP_SSN_BSSAP */
-#define SENDER_PC	1	/* Our local point code */
-
-	/* FIXME: Remove hardcoded parameters, use parameters in parameter list */
-	struct osmo_sccp_instance *sccp;
-	struct osmo_sccp_user *scu;
 	struct bsc_context *bsc_ctx;
 
-	LOGP(DMSC, LOGL_NOTICE, "Initalizing SCCP connection to stp...\n");
+	OSMO_ASSERT(network);
+	OSMO_ASSERT(calling_addr);
+	OSMO_ASSERT(called_addr);
+	OSMO_ASSERT(ss7);
 
-	gsm_network = network;
-	osmo_ss7_init();
+	/* Set GSM network variable */
+	/* NOTE: There can only be one gsm network! */
+	if (gsm_network != NULL) {
+		OSMO_ASSERT(gsm_network == network);
+	} else
+		gsm_network = network;
 
-	/* SCCP Protocol stack */
-	sccp =
-	    osmo_sccp_simple_client(NULL, "osmo-msc", SENDER_PC, OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT,
+	/* Generate and fill up a new bsc context */
+	bsc_ctx = talloc_zero(gsm_network, struct bsc_context);
+	OSMO_ASSERT(bsc_ctx);
+
+	snprintf(bsc_ctx->name, sizeof(bsc_ctx->name), "%s/%s", osmo_sccp_name_by_addr(calling_addr, ss7),
+		 osmo_sccp_name_by_addr(called_addr, ss7));
+
+	bsc_ctx->ss7 = ss7;
+	bsc_ctx->sccp =
+	    osmo_sccp_simple_client(NULL, bsc_ctx->name, calling_addr->pc, OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT,
 				    "127.0.0.1");
-	scu = osmo_sccp_user_bind(sccp, "osmo-msc", sccp_sap_up, SSN_BSSAP);
+	bsc_ctx->sccp_user = osmo_sccp_user_bind(bsc_ctx->sccp, bsc_ctx->name, sccp_sap_up, SCCP_SSN_BSSAP);
 
-	/* Add some BSCs to the context list */
-	/* FIXME: Make this configurable (VTY!) */
-	bsc_ctx = talloc_zero(NULL, struct bsc_context);
-	bsc_ctx->reset.priv = bsc_ctx;
-	bsc_ctx->reset.cb = a_reset_cb;
-	llist_add_tail(&bsc_ctx->list, &gsm_network->bscs);
-	bsc_ctx->called_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
-	bsc_ctx->called_addr.ssn = SCCP_SSN_BSSAP;
-	bsc_ctx->called_addr.ri = OSMO_SCCP_RI_SSN_PC;
-	bsc_ctx->called_addr.pc = 23;
-	bsc_ctx->calling_addr.presence = OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC;
-	bsc_ctx->calling_addr.ssn = SCCP_SSN_BSSAP;
-	bsc_ctx->calling_addr.ri = OSMO_SCCP_RI_SSN_PC;
-	bsc_ctx->calling_addr.pc = 1;
-	bsc_ctx->sccp_user = scu;
-	bsc_ctx = NULL;
+	memcpy(&bsc_ctx->called_addr, called_addr, sizeof(*called_addr));
+	memcpy(&bsc_ctx->calling_addr, calling_addr, sizeof(*calling_addr));
 
-	/* Start reset procedure for all BSC connections */
-	llist_for_each_entry(bsc_ctx, &gsm_network->bscs, list) {
-		a_reset_start(&bsc_ctx->reset);
-	}
+	llist_add_tail(&bsc_ctx->list, &gsm_network->a.bscs);
+
+	/* Start reset procedure to make the new connection active */
+	bsc_ctx->reset = a_reset_alloc(bsc_ctx, bsc_ctx->name, a_reset_cb, bsc_ctx);
+
+	LOGP(DMSC, LOGL_NOTICE, "Adding new MSC/BSC connection (%s), MSC=%s,", bsc_ctx->name,
+	     osmo_sccp_addr_dump(calling_addr));
+	LOGPC(DMSC, LOGL_NOTICE, " BSC=%s...\n", osmo_sccp_addr_dump(called_addr));
 
 	return 0;
+}
+
+/* Drop a no longer used A connection (called by VTY) */
+void a_drop(struct osmo_sccp_addr *calling_addr, struct osmo_sccp_addr *called_addr)
+{
+	struct bsc_context *bsc_ctx;
+	struct bsc_context *bsc_ctx_temp;
+
+	OSMO_ASSERT(calling_addr);
+	OSMO_ASSERT(called_addr);
+
+	/* Find the BSC context depending on the given addresses */
+	llist_for_each_entry_safe(bsc_ctx, bsc_ctx_temp, &gsm_network->a.bscs, list) {
+		if (memcmp(&bsc_ctx->calling_addr, calling_addr, sizeof(*calling_addr)) == 0
+		    && memcmp(&bsc_ctx->called_addr, called_addr, sizeof(*called_addr)) == 0) {
+
+			OSMO_ASSERT(bsc_ctx->ss7);
+			OSMO_ASSERT(bsc_ctx->sccp);
+			OSMO_ASSERT(bsc_ctx->sccp_user);
+
+			LOGP(DMSC, LOGL_NOTICE, "Removing MSC/BSC connection (%s), MSC=%s,", bsc_ctx->name,
+			     osmo_sccp_addr_dump(calling_addr));
+			LOGPC(DMSC, LOGL_NOTICE, " BSC=%s...\n", osmo_sccp_addr_dump(called_addr));
+
+			/* Perform the reset procedure one last time. This will also tear
+			 * down all currently open connections. */
+			bsc_ctx->reset->cb(bsc_ctx->reset->priv);
+
+			/* Destroy reset handler FSM, reconnecting is no longer impossible */
+			a_reset_free(bsc_ctx->reset);
+
+			/* Destroy ss7 connection */
+			osmo_sccp_user_unbind(bsc_ctx->sccp_user);
+			osmo_sccp_instance_destroy(bsc_ctx->sccp);
+
+			/* Exterminate bsc context */
+			llist_del(&bsc_ctx->list);
+			memset(bsc_ctx, 0, sizeof(*bsc_ctx));
+			talloc_free(bsc_ctx);
+
+			return;
+		}
+	}
 }

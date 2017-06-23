@@ -45,7 +45,10 @@ struct a_reset_ctx {
 };
 
 /* Create and start state machine which handles the reset/reset-ack procedure */
-void a_reset_start(struct a_reset_ctx *reset);
+struct a_reset_ctx *a_reset_alloc(void *ctx, char *name, void *cb, void *priv);
+
+/* Tear down state machine */
+void a_reset_free(struct a_reset_ctx *reset);
 
 /* Confirm that we sucessfully received a reset acknowlege message */
 void a_reset_ack_confirm(struct a_reset_ctx *reset);

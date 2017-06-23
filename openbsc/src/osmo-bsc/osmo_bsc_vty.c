@@ -184,6 +184,18 @@ static void write_msc(struct vty *vty, struct bsc_msc_data *msc)
 
 	/* write amr options */
 	write_msc_amr_options(vty, msc);
+
+	/* write sccp connection configuration */
+	if (msc->a.ss7) {
+		vty_out(vty, " cs7-instance %u%s", msc->a.ss7->cfg.id,
+			VTY_NEWLINE);
+		vty_out(vty, " calling-addr %s%s",
+			osmo_sccp_name_by_addr(&msc->a.g_calling_addr,
+					       msc->a.ss7), VTY_NEWLINE);
+		vty_out(vty, " called-addr %s%s",
+			osmo_sccp_name_by_addr(&msc->a.g_called_addr,
+					       msc->a.ss7), VTY_NEWLINE);
+	}
 }
 
 static int config_write_msc(struct vty *vty)
@@ -685,6 +697,80 @@ DEFUN(cfg_msc_no_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_msc_cs7_instance,
+      cfg_msc_cs7_instance_cmd,
+      "cs7-instance <0-15>",
+      "Set Associated SS7 instance.\n" "SS7 instance reference number\n")
+{
+	struct bsc_msc_data *msc = bsc_msc_data(vty);
+	uint32_t inst_id = atoi(argv[0]);
+	struct osmo_ss7_instance *inst;
+
+	inst = osmo_ss7_instance_find(inst_id);
+	if (!inst) {
+		vty_out(vty, "No SS7 instance %d found%s", inst_id,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	msc->a.ss7 = inst;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_msc_cs7_calling_addr,
+      cfg_msc_cs7_calling_addr_cmd,
+      "calling-addr NAME",
+      "Calling Address (local address of this BSC)\n" "SCCP address name\n")
+{
+	struct bsc_msc_data *msc = bsc_msc_data(vty);
+	const char *calling_addr_name = argv[0];
+	struct osmo_sccp_addr *calling_addr;
+
+	if (!msc->a.ss7) {
+		vty_out(vty, "cs7-instance instance must be configured first%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	calling_addr = osmo_sccp_addr_by_name(calling_addr_name, msc->a.ss7);
+	if (!calling_addr) {
+		vty_out(vty, "No sccp address %s found%s", calling_addr_name,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	memcpy(&msc->a.g_calling_addr, calling_addr, sizeof(*calling_addr));
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_msc_cs7_called_addr,
+      cfg_msc_cs7_called_addr_cmd,
+      "called-addr NAME",
+      "Called Address (remote address of the MSC)\n" "SCCP address name\n")
+{
+	struct bsc_msc_data *msc = bsc_msc_data(vty);
+	const char *called_addr_name = argv[0];
+	struct osmo_sccp_addr *called_addr;
+
+	if (!msc->a.ss7) {
+		vty_out(vty, "cs7-instance instance must be configured first%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	called_addr = osmo_sccp_addr_by_name(called_addr_name, msc->a.ss7);
+	if (!called_addr) {
+		vty_out(vty, "No sccp address %s found%s", called_addr_name,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	memcpy(&msc->a.g_called_addr, called_addr, sizeof(*called_addr));
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_net_bsc_mid_call_text,
       cfg_net_bsc_mid_call_text_cmd,
       "mid-call-text .TEXT",
@@ -931,6 +1017,9 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_amr_4_75_cmd);
 	install_element(MSC_NODE, &cfg_msc_acc_lst_name_cmd);
 	install_element(MSC_NODE, &cfg_msc_no_acc_lst_name_cmd);
+	install_element(MSC_NODE, &cfg_msc_cs7_instance_cmd);
+	install_element(MSC_NODE, &cfg_msc_cs7_calling_addr_cmd);
+	install_element(MSC_NODE, &cfg_msc_cs7_called_addr_cmd);
 
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);
