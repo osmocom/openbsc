@@ -41,22 +41,20 @@
  */
 
 /* Allocate a new subscriber connection */
-static struct gsm_subscriber_connection *subscr_conn_allocate_a(const struct a_conn_info *a_conn_info,
-								struct gsm_network *network, struct ue_conn_ctx *ue,
+static struct gsm_subscriber_connection *subscr_conn_allocate_a(struct a_conn_info *a_conn_info,
+								struct gsm_network *network,
 								uint16_t lac, struct osmo_sccp_user *scu, int conn_id)
 {
 	struct gsm_subscriber_connection *conn;
 
-	LOGP(DMSC, LOGL_NOTICE, "Allocating A-Interface subscriber conn: lac %i, conn_id %i\n", lac, ue->conn_id);
+	LOGP(DMSC, LOGL_NOTICE, "Allocating A-Interface subscriber conn: lac %i, conn_id %i\n", lac, conn_id);
 
-	conn = talloc_zero(ue, struct gsm_subscriber_connection);
+	conn = talloc_zero(network, struct gsm_subscriber_connection);
 	if (!conn)
 		return NULL;
 
 	conn->network = network;
 	conn->via_ran = RAN_GERAN_A;
-	conn->iu.ue_ctx = ue;
-	conn->iu.ue_ctx->rab_assign_addr_enc = network->iu.rab_assign_addr_enc;
 	conn->lac = lac;
 
 	conn->a.conn_id = conn_id;
@@ -271,7 +269,6 @@ static int bssmap_rx_l3_compl(struct osmo_sccp_user *scu, const struct a_conn_in
 	int rc;
 
 	struct gsm_network *network = a_conn_info->network;
-	struct ue_conn_ctx *ue;
 	struct gsm_subscriber_connection *conn;
 
 	LOGP(DMSC, LOGL_NOTICE, "BSC has completed layer 3 connection (conn_id=%i)\n", a_conn_info->conn_id);
@@ -315,8 +312,7 @@ static int bssmap_rx_l3_compl(struct osmo_sccp_user *scu, const struct a_conn_in
 	msg->tail = msg->l3h + TLVP_LEN(&tp, GSM0808_IE_LAYER_3_INFORMATION);
 
 	/* Create new subscriber context */
-	ue = ue_conn_ctx_alloc(a_conn_info->bsc_addr, a_conn_info->conn_id);
-	conn = subscr_conn_allocate_a(a_conn_info, network, ue, lac, scu, a_conn_info->conn_id);
+	conn = subscr_conn_allocate_a(a_conn_info, network, lac, scu, a_conn_info->conn_id);
 
 	/* Handover location update to the MSC code */
 	/* msc_compl_l3() takes ownership of dtap_msg
