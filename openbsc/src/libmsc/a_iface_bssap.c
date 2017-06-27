@@ -584,7 +584,7 @@ static int bssmap_rx_ass_compl(struct osmo_sccp_user *scu, struct a_conn_info *a
 	 * transport address element */
 	if (rtp_addr.ss_family == AF_INET) {
 		rtp_addr_in = (struct sockaddr_in *)&rtp_addr;
-		conn->iu.mgcp_rtp_port_ue = osmo_ntohs(rtp_addr_in->sin_port);
+		conn->rtp.port_subscr = osmo_ntohs(rtp_addr_in->sin_port);
 		/* FIXME: We also get the IP-Address of the remote (e.g. BTS)
 		 * end with the response. Currently we just ignore that address.
 		 * Instead we expect that our local MGCP gateway and the code

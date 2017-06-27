@@ -170,18 +170,18 @@ static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 		goto rab_act_cs_error;
 	}
 
-	conn->iu.mgcp_rtp_port_cn = r->audio_port;
+	conn->rtp.port_cn = r->audio_port;
 
 	rtp_ip = mgcpgw_client_remote_addr_n(conn->network->mgcpgw.client);
 
 	if (trans->conn->via_ran == RAN_UTRAN_IU) {
 		/* Assign a voice channel via RANAP on 3G */
 		iu_rab_act_cs(uectx, conn->iu.rab_id, rtp_ip,
-			      conn->iu.mgcp_rtp_port_ue);
+			      conn->rtp.port_subscr);
 		/* use_x213_nsap == 0 for ip.access nano3G */
 	} else if (trans->conn->via_ran == RAN_GERAN_A) {
 		/* Assign a voice channel via A on 2G */
-		if (a_iface_tx_assignment(trans) == -EINVAL)
+		if (a_iface_tx_assignment(trans))
 			goto rab_act_cs_error;
 	} else
 		goto rab_act_cs_error;
@@ -213,7 +213,7 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	 * gets the endpoint ID via the CRCX. It will do the same calculation
 	 * on his side too to get knowledge of the rtp port. */
 	bts_base = mgcp->actual.bts_base;
-	conn->iu.mgcp_rtp_port_ue = bts_base + 2 * conn->iu.mgcp_rtp_endpoint;
+	conn->rtp.port_subscr = bts_base + 2 * conn->iu.mgcp_rtp_endpoint;
 
 	/* Since we know now the endpoint number, we enforce a DLCX on tha
 	 * endpoint in order to ensure that this endpoint is not occupied
@@ -286,7 +286,7 @@ static void mgcp_bridge(struct gsm_trans *from, struct gsm_trans *to,
 
 	msg = mgcp_msg_mdcx(mgcp,
 			    conn1->iu.mgcp_rtp_endpoint,
-			    ip, conn2->iu.mgcp_rtp_port_cn,
+			    ip, conn2->rtp.port_cn,
 			    mode);
 	if (mgcpgw_client_tx(mgcp, msg, mgcp_response_bridge_mdcx, from))
 		LOGP(DMGCP, LOGL_ERROR,

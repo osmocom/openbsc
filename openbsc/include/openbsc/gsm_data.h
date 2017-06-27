@@ -195,13 +195,16 @@ struct gsm_subscriber_connection {
 	uint16_t lac;
 	struct gsm_encr encr;
 
+	struct {
+		uint16_t port_subscr;
+		uint16_t port_cn;
+	} rtp;
+
 	/* which Iu-CS connection, if any. */
 	struct {
 		struct ue_conn_ctx *ue_ctx;
 		int integrity_protection;
 		unsigned int mgcp_rtp_endpoint;
-		uint16_t mgcp_rtp_port_ue;
-		uint16_t mgcp_rtp_port_cn;
 		uint8_t rab_id;
 	} iu;
 

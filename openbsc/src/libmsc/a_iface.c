@@ -291,7 +291,7 @@ int a_iface_tx_assignment(struct gsm_trans *trans)
 	/* Package RTP-Address data */
 	memset(&rtp_addr_in, 0, sizeof(rtp_addr_in));
 	rtp_addr_in.sin_family = AF_INET;
-	rtp_addr_in.sin_port = osmo_htons(conn->iu.mgcp_rtp_port_ue);
+	rtp_addr_in.sin_port = osmo_htons(conn->rtp.port_subscr);
 	rtp_addr_in.sin_addr.s_addr = osmo_htonl(mgcpgw_client_remote_addr_n(gsm_network->mgcpgw.client));
 
 	memset(&rtp_addr, 0, sizeof(rtp_addr));
