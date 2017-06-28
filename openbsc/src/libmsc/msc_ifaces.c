@@ -219,7 +219,9 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	 * endpoint in order to ensure that this endpoint is not occupied
 	 * with some old connection that was not properly cleared during
 	 * some crash or restart event */
-	msg_dlcx = mgcp_msg_dlcx(mgcp, conn->iu.mgcp_rtp_endpoint);
+	msg_dlcx =
+	    mgcp_msg_dlcx(mgcp, conn->iu.mgcp_rtp_endpoint,
+			  conn->iu.mgcp_rtp_endpoint);
 	if (mgcpgw_client_tx(mgcp, msg_dlcx, NULL, NULL))
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Failed to send DLCX message for %s\n",
@@ -228,8 +230,8 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 	/* Establish the RTP stream first as looping back to the originator.
 	 * The MDCX will patch through to the counterpart. TODO: play a ring
 	 * tone instead. */
-	msg = mgcp_msg_crcx(mgcp, conn->iu.mgcp_rtp_endpoint, trans->callref,
-			    MGCP_CONN_LOOPBACK);
+	msg = mgcp_msg_crcx(mgcp, conn->iu.mgcp_rtp_endpoint,
+			    conn->iu.mgcp_rtp_endpoint, MGCP_CONN_LOOPBACK);
 	return mgcpgw_client_tx(mgcp, msg, mgcp_response_rab_act_cs_crcx, trans);
 }
 #endif
@@ -355,7 +357,8 @@ void msc_call_release(struct gsm_trans *trans)
 	struct mgcpgw_client *mgcp = conn->network->mgcpgw.client;
 
 	/* Send DLCX */
-	msg = mgcp_msg_dlcx(mgcp, conn->iu.mgcp_rtp_endpoint);
+	msg = mgcp_msg_dlcx(mgcp, conn->iu.mgcp_rtp_endpoint,
+			    conn->iu.mgcp_rtp_endpoint);
 	if (mgcpgw_client_tx(mgcp, msg, NULL, NULL))
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Failed to send DLCX message for %s\n",

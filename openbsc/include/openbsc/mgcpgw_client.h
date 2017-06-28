@@ -97,7 +97,8 @@ struct msgb *mgcp_msg_mdcx(struct mgcpgw_client *mgcp,
 			   uint16_t rtp_endpoint, const char *rtp_conn_addr,
 			   uint16_t rtp_port, enum mgcp_connection_mode mode);
 
-struct msgb *mgcp_msg_dlcx(struct mgcpgw_client *mgcp, uint16_t rtp_endpoint);
+struct msgb *mgcp_msg_dlcx(struct mgcpgw_client *mgcp, uint16_t rtp_endpoint,
+			   unsigned int call_id);
 
 void mgcpgw_client_vty_init(int node, struct mgcpgw_client_conf *conf);
 int mgcpgw_client_config_write(struct vty *vty, const char *indent);
