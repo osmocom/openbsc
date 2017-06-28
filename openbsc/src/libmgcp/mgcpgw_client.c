@@ -606,12 +606,11 @@ struct msgb *mgcp_msg_mdcx(struct mgcpgw_client *mgcp,
 		 rtp_port);
 }
 
-struct msgb *mgcp_msg_dlcx(struct mgcpgw_client *mgcp, uint16_t rtp_endpoint)
+struct msgb *mgcp_msg_dlcx(struct mgcpgw_client *mgcp, uint16_t rtp_endpoint,
+			   unsigned int call_id)
 {
 	mgcp_trans_id_t trans_id = mgcpgw_client_next_trans_id(mgcp);
 	return mgcp_msg_from_str(trans_id,
-		 "DLCX %u %x@mgw MGCP 1.0\r\n"
-		 ,
-		 trans_id,
-		 rtp_endpoint);
+				 "DLCX %u %x@mgw MGCP 1.0\r\n"
+				 "C: %x\r\n", trans_id, rtp_endpoint, call_id);
 }
