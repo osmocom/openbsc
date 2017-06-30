@@ -34,6 +34,7 @@
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/buffer.h>
 #include <osmocom/vty/vty.h>
+#include <osmocom/sigtran/osmo_ss7.h>
 
 
 int bsc_vty_go_parent(struct vty *vty)
@@ -117,13 +118,15 @@ int bsc_vty_go_parent(struct vty *vty)
 	case MSC_NODE:
 	case MNCC_INT_NODE:
 	case NITB_NODE:
-	default:
-		if (bsc_vty_is_config_node(vty, vty->node))
-			vty->node = CONFIG_NODE;
-		else
-			vty->node = ENABLE_NODE;
-
+		vty->node = CONFIG_NODE;
 		vty->index = NULL;
+		break;
+	case SUBSCR_NODE:
+		vty->node = ENABLE_NODE;
+		vty->index = NULL;
+		break;
+	default:
+		osmo_ss7_vty_go_parent(vty);
 	}
 
 	return vty->node;
@@ -131,6 +134,11 @@ int bsc_vty_go_parent(struct vty *vty)
 
 int bsc_vty_is_config_node(struct vty *vty, int node)
 {
+	/* Check if libosmo-sccp declares the node in
+	 * question as config node */
+	if (osmo_ss7_is_config_node(vty, node))
+		return 1;
+
 	switch (node) {
 	/* add items that are not config */
 	case OML_NODE:
