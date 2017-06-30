@@ -88,8 +88,8 @@ static void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
 	struct msgb *msg;
 	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to MSC No.: %i\n", msc->nr);
 	msg = gsm0808_create_reset();
-	osmo_sccp_tx_unitdata_msg(msc->a.sccp_user, &msc->a.g_calling_addr,
-				  &msc->a.g_called_addr, msg);
+	osmo_sccp_tx_unitdata_msg(msc->a.sccp_user, &msc->a.bsc_addr,
+				  &msc->a.msc_addr, msg);
 }
 
 /* Send reset-ack to MSC */
@@ -98,8 +98,8 @@ void osmo_bsc_sigtran_tx_reset_ack(struct bsc_msc_data *msc)
 	struct msgb *msg;
 	LOGP(DMSC, LOGL_NOTICE, "Sending RESET ACK to MSC No.: %i\n", msc->nr);
 	msg = gsm0808_create_reset_ack();
-	osmo_sccp_tx_unitdata_msg(msc->a.sccp_user, &msc->a.g_calling_addr,
-				  &msc->a.g_called_addr, msg);
+	osmo_sccp_tx_unitdata_msg(msc->a.sccp_user, &msc->a.bsc_addr,
+				  &msc->a.msc_addr, msg);
 }
 
 /* Find an MSC by its sigtran point code */
@@ -107,7 +107,7 @@ static struct bsc_msc_data *get_msc_by_addr(struct osmo_sccp_addr *calling_addr)
 {
 	struct bsc_msc_data *msc;
 	llist_for_each_entry(msc, msc_list, entry) {
-		if (memcmp(calling_addr, &msc->a.g_called_addr, sizeof(*calling_addr)) == 0)
+		if (memcmp(calling_addr, &msc->a.msc_addr, sizeof(*calling_addr)) == 0)
 			return msc;
 	}
 
@@ -286,8 +286,8 @@ int osmo_bsc_sigtran_open_conn(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 	conn_id = conn->conn_id;
 	LOGP(DMSC, LOGL_NOTICE, "Opening new SIGTRAN connection (id=%i) to MSC No.: %i...\n", conn_id, msc->nr);
 
-	rc = osmo_sccp_tx_conn_req_msg(msc->a.sccp_user, conn_id, &msc->a.g_calling_addr,
-				       &msc->a.g_called_addr, msg);
+	rc = osmo_sccp_tx_conn_req_msg(msc->a.sccp_user, conn_id, &msc->a.bsc_addr,
+				       &msc->a.msc_addr, msg);
 
 	return rc;
 }
@@ -385,7 +385,7 @@ void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc)
 				gsm0808_clear(conn->conn);
 
 			/* Disconnect all Sigtran connections */
-			osmo_sccp_tx_disconn(msc->a.sccp_user, conn->conn_id, &msc->a.g_calling_addr, 0);
+			osmo_sccp_tx_disconn(msc->a.sccp_user, conn->conn_id, &msc->a.bsc_addr, 0);
 
 			/* Delete subscriber connection */
 			osmo_bsc_sigtran_del_conn(conn);
@@ -434,12 +434,12 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 		LOGP(DMSC, LOGL_NOTICE, "Initalizing SCCP connection to %s\n", msc_name);
 
 		/* Check if the sccp-address */
-		if (test_addr(&msc->a.g_calling_addr) < 0) {
+		if (test_addr(&msc->a.bsc_addr) < 0) {
 			LOGP(DMSC, LOGL_ERROR,
 			     "Insufficient local address (calling-address) configuration, check VTY-Config\n");
 			return -EINVAL;
 		}
-		if (test_addr(&msc->a.g_called_addr) < 0) {
+		if (test_addr(&msc->a.msc_addr) < 0) {
 			LOGP(DMSC, LOGL_ERROR,
 			     "Insufficient remote address (called-address) configuration, check VTY-Config\n");
 			return -EINVAL;
@@ -447,9 +447,9 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 
 		/* SCCP Protocol stack */
 		msc->a.sccp =
-		    osmo_sccp_simple_client(NULL, msc_name, msc->a.g_calling_addr.pc,
+		    osmo_sccp_simple_client(NULL, msc_name, msc->a.bsc_addr.pc,
 					    OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT, "127.0.0.1");
-		msc->a.sccp_user = osmo_sccp_user_bind(msc->a.sccp, msc_name, sccp_sap_up, msc->a.g_calling_addr.ssn);
+		msc->a.sccp_user = osmo_sccp_user_bind(msc->a.sccp, msc_name, sccp_sap_up, msc->a.bsc_addr.ssn);
 
 		/* Start MSC reset procedure */
 		msc->a.reset = a_reset_alloc(msc, msc_name, osmo_bsc_sigtran_reset_cb, msc);

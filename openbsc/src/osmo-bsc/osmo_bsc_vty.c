@@ -191,10 +191,10 @@ static void write_msc(struct vty *vty, struct bsc_msc_data *msc)
 		vty_out(vty, " cs7-instance %u%s", msc->a.ss7->cfg.id,
 			VTY_NEWLINE);
 		vty_out(vty, " calling-addr %s%s",
-			osmo_sccp_name_by_addr(&msc->a.g_calling_addr,
+			osmo_sccp_name_by_addr(&msc->a.bsc_addr,
 					       msc->a.ss7), VTY_NEWLINE);
 		vty_out(vty, " called-addr %s%s",
-			osmo_sccp_name_by_addr(&msc->a.g_called_addr,
+			osmo_sccp_name_by_addr(&msc->a.msc_addr,
 					       msc->a.ss7), VTY_NEWLINE);
 	}
 }
@@ -757,7 +757,7 @@ DEFUN(cfg_msc_cs7_calling_addr,
 
 	enforce_standard_ssn(vty, calling_addr);
 
-	memcpy(&msc->a.g_calling_addr, calling_addr, sizeof(*calling_addr));
+	memcpy(&msc->a.bsc_addr, calling_addr, sizeof(*calling_addr));
 	return CMD_SUCCESS;
 }
 
@@ -785,7 +785,7 @@ DEFUN(cfg_msc_cs7_called_addr,
 
 	enforce_standard_ssn(vty, called_addr);
 
-	memcpy(&msc->a.g_called_addr, called_addr, sizeof(*called_addr));
+	memcpy(&msc->a.msc_addr, called_addr, sizeof(*called_addr));
 
 	return CMD_SUCCESS;
 }

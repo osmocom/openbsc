@@ -117,8 +117,19 @@ struct bsc_msc_data {
 		struct osmo_ss7_instance *ss7;
 		struct osmo_sccp_instance *sccp;
 		struct osmo_sccp_user *sccp_user;
-		struct osmo_sccp_addr g_calling_addr;
-		struct osmo_sccp_addr g_called_addr;
+
+		/* Holds a copy of the our local MSC address,
+		 * this will be the sccp-address that is associated
+		 * with the A interface of this particular BSC,
+		 * this address is filled up by the VTY interface */
+		struct osmo_sccp_addr bsc_addr;
+
+		/* Holds a copy of the MSC address. This is the
+		 * address of the MSC that handles the calls of
+		 * this BSC. The address is configured via the
+		 * VTY interface */
+		struct osmo_sccp_addr msc_addr;
+
 		struct a_reset_ctx *reset;
 	} a;
 };
