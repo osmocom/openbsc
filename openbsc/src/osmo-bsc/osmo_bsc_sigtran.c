@@ -103,15 +103,15 @@ void osmo_bsc_sigtran_tx_reset_ack(struct bsc_msc_data *msc)
 }
 
 /* Find an MSC by its sigtran point code */
-static struct bsc_msc_data *get_msc_by_addr(struct osmo_sccp_addr *calling_addr)
+static struct bsc_msc_data *get_msc_by_addr(struct osmo_sccp_addr *msc_addr)
 {
 	struct bsc_msc_data *msc;
 	llist_for_each_entry(msc, msc_list, entry) {
-		if (memcmp(calling_addr, &msc->a.msc_addr, sizeof(*calling_addr)) == 0)
+		if (memcmp(msc_addr, &msc->a.msc_addr, sizeof(*msc_addr)) == 0)
 			return msc;
 	}
 
-	LOGP(DMSC, LOGL_ERROR, "Unable to find MSC data under address: %s\n", osmo_sccp_addr_dump(calling_addr));
+	LOGP(DMSC, LOGL_ERROR, "Unable to find MSC data under address: %s\n", osmo_sccp_addr_dump(msc_addr));
 	return NULL;
 }
 
@@ -131,9 +131,9 @@ static int handle_data_from_msc(int conn_id, struct msgb *msg)
 }
 
 /* Sent unitdata to MSC, use the point code to determine which MSC it is */
-static int handle_unitdata_from_msc(struct osmo_sccp_addr *calling_addr, struct msgb *msg)
+static int handle_unitdata_from_msc(struct osmo_sccp_addr *msc_addr, struct msgb *msg)
 {
-	struct bsc_msc_data *msc = get_msc_by_addr(calling_addr);
+	struct bsc_msc_data *msc = get_msc_by_addr(msc_addr);
 	int rc = -EINVAL;
 
 	if (msc) {
@@ -141,7 +141,7 @@ static int handle_unitdata_from_msc(struct osmo_sccp_addr *calling_addr, struct 
 		rc = bsc_handle_udt(msc, msg, msgb_l2len(msg));
 	} else
 		LOGP(DMSC, LOGL_NOTICE, "incoming unitdata data from unknown remote address: %s\n",
-		     osmo_sccp_addr_dump(calling_addr));
+		     osmo_sccp_addr_dump(msc_addr));
 
 	return rc;
 }
