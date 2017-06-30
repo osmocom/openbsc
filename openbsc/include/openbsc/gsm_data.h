@@ -209,8 +209,18 @@ struct gsm_subscriber_connection {
 	} iu;
 
 	struct {
+		/* A pointer to the SCCP user that handles
+		 * the SCCP connections for this subscriber
+		 * connection */
 		struct osmo_sccp_user *scu;
+
+		/* The address of the BSC that is associated
+		 * with this subscirber connection */
 		struct osmo_sccp_addr bsc_addr;
+
+		/* The connection identifier that is used
+		 * to reference the SCCP connection that is
+		 * associated with this subscriber connection */
 		int conn_id;
 	} a;
 };
@@ -481,6 +491,12 @@ struct gsm_network {
 	struct {
 		enum nsap_addr_enc rab_assign_addr_enc;
 	} iu;
+
+	struct {
+		/* A list with the context information about
+		 * all BSCs we have connections with */
+		struct llist_head bscs;
+	} a;
 
 	struct osmo_sccp_instance *sccp;
 };

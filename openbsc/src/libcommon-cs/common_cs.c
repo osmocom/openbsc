@@ -79,6 +79,8 @@ struct gsm_network *gsm_network_init(void *ctx,
 
 	net->dyn_ts_allow_tch_f = true;
 
+	INIT_LLIST_HEAD(&net->a.bscs);
+
 	return net;
 }
 

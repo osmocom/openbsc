@@ -28,16 +28,9 @@
 struct a_conn_info {
 	struct osmo_sccp_addr *called_addr;
 	struct osmo_sccp_addr *calling_addr;
-	int conn_id;
+	uint32_t conn_id;
 	struct gsm_network *network;
-};
-
-/* A structure to pack BSC calling addresses into a list */
-struct a_bsc_addr {
-	struct llist_head list;
-	struct osmo_sccp_addr called_addr;
-	struct osmo_sccp_addr calling_addr;
-	struct osmo_sccp_user *scu;
+	struct a_reset_ctx *reset;
 };
 
 /* Receive incoming connection less data messages via sccp */
@@ -46,5 +39,3 @@ void sccp_rx_udt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, st
 /* Receive incoming connection oriented data messages via sccp */
 int sccp_rx_dt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg);
 
-/* Get a list with all known BSCs */
-struct llist_head *get_bsc_addr_list(void);
