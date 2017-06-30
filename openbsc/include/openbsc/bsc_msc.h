@@ -61,7 +61,7 @@ struct bsc_msc_connection {
 	struct osmo_sccp_user *sccp_user;
 	struct osmo_sccp_addr g_calling_addr;
 	struct osmo_sccp_addr g_called_addr;
-	struct a_reset_ctx reset;
+	struct a_reset_ctx *reset;
 
 	int conn_id_counter;
 };

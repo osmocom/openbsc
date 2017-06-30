@@ -132,18 +132,47 @@ static struct osmo_fsm fsm = {
 };
 
 /* Create and start state machine which handles the reset/reset-ack procedure */
-void a_reset_start(struct a_reset_ctx *reset)
+struct a_reset_ctx *a_reset_alloc(void *ctx, char *name, void *cb, void *priv)
 {
-	OSMO_ASSERT(reset);
+	OSMO_ASSERT(name);
 
-	osmo_fsm_register(&fsm);
+	struct a_reset_ctx *reset;
+
+	/* Register the fsm description (if not already done) */
+	if (osmo_fsm_find_by_name(fsm.name) != &fsm)
+		osmo_fsm_register(&fsm);
+
+	/* Allocate and configure a new fsm instance */
+	reset = talloc_zero(ctx, struct a_reset_ctx);
+	OSMO_ASSERT(reset);
+	reset->priv = priv;
+	reset->cb = cb;
+	strncpy(reset->name, name, sizeof(reset->name));
+	reset->conn_loss_counter = 0;
 	reset->fsm = osmo_fsm_inst_alloc(&fsm, NULL, NULL, LOGL_DEBUG, "FSM RESET INST");
 	OSMO_ASSERT(reset->fsm);
-
 	reset->fsm->priv = reset;
+	LOGP(DMSC, LOGL_NOTICE, "(%s) reset handler fsm created.\n", reset->name);
 
 	/* kick off reset-ack sending mechanism */
 	osmo_fsm_inst_state_chg(reset->fsm, ST_DISC, RESET_RESEND_INTERVAL, RESET_RESEND_TIMER_NO);
+
+	return reset;
+}
+
+/* Tear down state machine */
+void a_reset_free(struct a_reset_ctx *reset)
+{
+	OSMO_ASSERT(reset);
+	OSMO_ASSERT(reset->fsm);
+
+	osmo_fsm_inst_free(reset->fsm);
+	reset->fsm = NULL;
+
+	memset(reset, 0, sizeof(*reset));
+	talloc_free(reset);
+
+	LOGP(DMSC, LOGL_NOTICE, "(%s) reset handler fsm destroyed.\n", reset->name);
 }
 
 /* Confirm that we sucessfully received a reset acknowlege message */
@@ -158,7 +187,10 @@ void a_reset_ack_confirm(struct a_reset_ctx *reset)
 /* Report a failed connection */
 void a_reset_conn_fail(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(reset);
+	/* If no reset context is supplied, just drop the info */
+	if (!reset)
+		return;
+
 	OSMO_ASSERT(reset->fsm);
 
 	osmo_fsm_inst_dispatch(reset->fsm, EV_N_DISCONNECT, reset);
@@ -167,7 +199,10 @@ void a_reset_conn_fail(struct a_reset_ctx *reset)
 /* Report a successful connection */
 void a_reset_conn_success(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(reset);
+	/* If no reset context is supplied, just drop the info */
+	if (!reset)
+		return;
+
 	OSMO_ASSERT(reset->fsm);
 
 	osmo_fsm_inst_dispatch(reset->fsm, EV_N_CONNECT, reset);
@@ -176,9 +211,12 @@ void a_reset_conn_success(struct a_reset_ctx *reset)
 /* Check if we have a connection to a specified msc */
 bool a_reset_conn_ready(struct a_reset_ctx *reset)
 {
-	OSMO_ASSERT(reset);
-	OSMO_ASSERT(reset->fsm);
+	/* If no reset context is supplied, we assume that
+	 * the connection can't be ready! */
+	if (!reset)
+		return false;
 
+	OSMO_ASSERT(reset->fsm);
 	if (reset->fsm->state == ST_CONN)
 		return true;
 

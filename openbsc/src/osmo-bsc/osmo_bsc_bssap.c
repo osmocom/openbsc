@@ -198,7 +198,7 @@ static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 
 	/* Inform the FSM that controls the RESET/RESET-ACK procedure
 	 * that we have successfully received the reset-ack message */
-	a_reset_ack_confirm(&msc->msc_con->reset);
+	a_reset_ack_confirm(msc->msc_con->reset);
 
 	return 0;
 }
