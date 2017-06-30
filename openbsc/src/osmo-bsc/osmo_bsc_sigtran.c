@@ -86,7 +86,7 @@ static int pick_free_conn_id(struct bsc_msc_data *msc)
 static void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
 {
 	struct msgb *msg;
-	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to MSC No.: %i\n", msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to MSC: %s\n", osmo_sccp_addr_dump(&msc->a.msc_addr));
 	msg = gsm0808_create_reset();
 	osmo_sccp_tx_unitdata_msg(msc->a.sccp_user, &msc->a.bsc_addr,
 				  &msc->a.msc_addr, msg);
@@ -96,7 +96,7 @@ static void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
 void osmo_bsc_sigtran_tx_reset_ack(struct bsc_msc_data *msc)
 {
 	struct msgb *msg;
-	LOGP(DMSC, LOGL_NOTICE, "Sending RESET ACK to MSC No.: %i\n", msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET ACK to MSC: %s\n", osmo_sccp_addr_dump(&msc->a.msc_addr));
 	msg = gsm0808_create_reset_ack();
 	osmo_sccp_tx_unitdata_msg(msc->a.sccp_user, &msc->a.bsc_addr,
 				  &msc->a.msc_addr, msg);
@@ -231,7 +231,8 @@ enum bsc_con osmo_bsc_sigtran_new_conn(struct gsm_subscriber_connection *conn, s
 	OSMO_ASSERT(conn);
 	OSMO_ASSERT(msc);
 
-	LOGP(DMSC, LOGL_NOTICE, "Initializing resources for new SIGTRAN connection to MSC No.: %i...\n", msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "Initializing resources for new SIGTRAN connection to MSC: %s...\n",
+	     osmo_sccp_addr_dump(&msc->a.msc_addr));
 
 	if (a_reset_conn_ready(msc->a.reset) == false) {
 		LOGP(DMSC, LOGL_ERROR, "MSC is not connected. Dropping.\n");
@@ -284,7 +285,8 @@ int osmo_bsc_sigtran_open_conn(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 	}
 
 	conn_id = conn->conn_id;
-	LOGP(DMSC, LOGL_NOTICE, "Opening new SIGTRAN connection (id=%i) to MSC No.: %i...\n", conn_id, msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "Opening new SIGTRAN connection (id=%i) to MSC: %s\n", conn_id,
+	     osmo_sccp_addr_dump(&msc->a.msc_addr));
 
 	rc = osmo_sccp_tx_conn_req_msg(msc->a.sccp_user, conn_id, &msc->a.bsc_addr,
 				       &msc->a.msc_addr, msg);
@@ -312,7 +314,8 @@ int osmo_bsc_sigtran_send(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 
 	conn_id = conn->conn_id;
 
-	LOGP(DMSC, LOGL_DEBUG, "Sending connection (id=%i) oriented data to MSC No.: %i...\n", conn_id, msc->nr);
+	LOGP(DMSC, LOGL_DEBUG, "Sending connection (id=%i) oriented data to MSC: %si\n",
+	     conn_id, osmo_sccp_addr_dump(&msc->a.msc_addr));
 
 	rc = osmo_sccp_tx_data_msg(msc->a.sccp_user, conn_id, msg);
 
@@ -430,8 +433,9 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 	conn_id_counter = 0;
 
 	llist_for_each_entry(msc, msc_list, entry) {
-		snprintf(msc_name, sizeof(msc_name), "MSC No.: %u", msc->nr);
-		LOGP(DMSC, LOGL_NOTICE, "Initializing SCCP connection to %s\n", msc_name);
+		snprintf(msc_name, sizeof(msc_name), "as-msc-%u", msc->nr);
+		LOGP(DMSC, LOGL_NOTICE, "Initializing SCCP connection to MSC %s (%s)\n",
+		     osmo_sccp_addr_dump(&msc->a.msc_addr), msc_name);
 
 		/* Check if the sccp-address */
 		if (test_addr(&msc->a.bsc_addr) < 0) {
