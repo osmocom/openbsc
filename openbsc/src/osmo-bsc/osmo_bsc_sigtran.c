@@ -96,7 +96,7 @@ static void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
 void osmo_bsc_sigtran_tx_reset_ack(struct bsc_msc_data *msc)
 {
 	struct msgb *msg;
-	LOGP(DMSC, LOGL_NOTICE, "Sending RESET RACK to MSC No.: %i\n", msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET ACK to MSC No.: %i\n", msc->nr);
 	msg = gsm0808_create_reset_ack();
 	osmo_sccp_tx_unitdata_msg(msc->a.sccp_user, &msc->a.g_calling_addr,
 				  &msc->a.g_called_addr, msg);
