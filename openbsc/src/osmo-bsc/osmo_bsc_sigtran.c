@@ -373,10 +373,23 @@ void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc)
 
 	/* Close all open connections */
 	llist_for_each_entry_safe(conn, conn_temp, &active_connections, entry) {
-		if (conn->conn)
-			gsm0808_clear(conn->conn);
-		bsc_notify_msc_lost(conn);
-		osmo_bsc_sigtran_del_conn(conn);
+
+		/* We only may close connections which actually belong to this
+		 * MSC. All other open connections are left untouched */
+		if (conn->msc == msc) {
+			/* Notify active connection users via USSD that the MSC is down */
+			bsc_notify_msc_lost(conn);
+
+			/* Take down all occopied RF channels */
+			if (conn->conn)
+				gsm0808_clear(conn->conn);
+
+			/* Disconnect all Sigtran connections */
+			osmo_sccp_tx_disconn(msc->a.sccp_user, conn->conn_id, &msc->a.g_calling_addr, 0);
+
+			/* Delete subscriber connection */
+			osmo_bsc_sigtran_del_conn(conn);
+		}
 	}
 }
 
