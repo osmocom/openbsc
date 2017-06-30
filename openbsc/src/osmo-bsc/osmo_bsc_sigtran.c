@@ -231,7 +231,7 @@ enum bsc_con osmo_bsc_sigtran_new_conn(struct gsm_subscriber_connection *conn, s
 	OSMO_ASSERT(conn);
 	OSMO_ASSERT(msc);
 
-	LOGP(DMSC, LOGL_NOTICE, "Initalizing resources for new SIGTRAN connection to MSC No.: %i...\n", msc->nr);
+	LOGP(DMSC, LOGL_NOTICE, "Initializing resources for new SIGTRAN connection to MSC No.: %i...\n", msc->nr);
 
 	if (a_reset_conn_ready(msc->a.reset) == false) {
 		LOGP(DMSC, LOGL_ERROR, "MSC is not connected. Dropping.\n");
@@ -431,7 +431,7 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 
 	llist_for_each_entry(msc, msc_list, entry) {
 		snprintf(msc_name, sizeof(msc_name), "MSC No.: %u", msc->nr);
-		LOGP(DMSC, LOGL_NOTICE, "Initalizing SCCP connection to %s\n", msc_name);
+		LOGP(DMSC, LOGL_NOTICE, "Initializing SCCP connection to %s\n", msc_name);
 
 		/* Check if the sccp-address */
 		if (test_addr(&msc->a.bsc_addr) < 0) {
