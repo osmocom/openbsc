@@ -217,6 +217,10 @@ int main(int argc, char **argv)
 	bsc_msg_lst_vty_init(tall_bsc_ctx, &access_lists, BSC_NODE);
 	ctrl_vty_init(tall_bsc_ctx);
 
+	/* Initalize SS7 */
+	osmo_ss7_init();
+	osmo_ss7_vty_init_sg();
+
 	INIT_LLIST_HEAD(&access_lists);
 
 	/* parse options */
@@ -268,20 +272,6 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
-
-
-	llist_for_each_entry(msc, &bsc_gsmnet->bsc_data->mscs, entry) {
-		/* FIXME: This has to come from a config file */
-		osmo_sccp_make_addr_pc_ssn(&msc->msc_con->g_calling_addr,
-					   42, SCCP_SSN_BSSAP);
-		osmo_sccp_make_addr_pc_ssn(&msc->msc_con->g_called_addr,
-					   1, SCCP_SSN_BSSAP);
-	}
-
-//	if (osmo_bsc_sccp_init(bsc_gsmnet) != 0) {
-//		LOGP(DNM, LOGL_ERROR, "Failed to register SCCP.\n");
-//		exit(1);
-//	}
 
 	if (osmo_bsc_sigtran_init(&bsc_gsmnet->bsc_data->mscs) != 0) {
 		LOGP(DNM, LOGL_ERROR, "Failed to initalize sigtran backhaul.\n");
