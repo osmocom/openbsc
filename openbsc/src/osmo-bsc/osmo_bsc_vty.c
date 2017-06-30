@@ -28,6 +28,7 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/sccp/sccp_types.h>
 
 #include <time.h>
 
@@ -717,6 +718,21 @@ DEFUN(cfg_msc_cs7_instance,
 	return CMD_SUCCESS;
 }
 
+/* Make sure only standard SSN numbers are used. If no ssn number is
+ * configured, silently apply the default SSN */
+static void enforce_standard_ssn(struct vty *vty, struct osmo_sccp_addr *addr)
+{
+	if (addr->presence & OSMO_SCCP_ADDR_T_SSN) {
+		if (addr->ssn != SCCP_SSN_BSSAP)
+			vty_out(vty,
+				"setting ssn different from the standard (%u) is not allowd!%s",
+				SCCP_SSN_BSSAP, VTY_NEWLINE);
+	}
+
+	addr->presence |= OSMO_SCCP_ADDR_T_SSN;
+	addr->ssn = SCCP_SSN_BSSAP;
+}
+
 DEFUN(cfg_msc_cs7_calling_addr,
       cfg_msc_cs7_calling_addr_cmd,
       "calling-addr NAME",
@@ -739,8 +755,9 @@ DEFUN(cfg_msc_cs7_calling_addr,
 		return CMD_WARNING;
 	}
 
-	memcpy(&msc->a.g_calling_addr, calling_addr, sizeof(*calling_addr));
+	enforce_standard_ssn(vty, calling_addr);
 
+	memcpy(&msc->a.g_calling_addr, calling_addr, sizeof(*calling_addr));
 	return CMD_SUCCESS;
 }
 
@@ -765,6 +782,8 @@ DEFUN(cfg_msc_cs7_called_addr,
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
+
+	enforce_standard_ssn(vty, called_addr);
 
 	memcpy(&msc->a.g_called_addr, called_addr, sizeof(*called_addr));
 

@@ -427,7 +427,7 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 		    osmo_sccp_simple_client(NULL, msc_name, msc->a.g_calling_addr.pc,
 					    OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT, "127.0.0.1");
 		msc->a.sccp_user =
-		    osmo_sccp_user_bind(msc->a.sccp, msc_name, sccp_sap_up, SCCP_SSN_BSSAP);
+		    osmo_sccp_user_bind(msc->a.sccp, msc_name, sccp_sap_up, msc->a.g_calling_addr.ssn);
 
 		/* Start MSC reset procedure */
 		msc->a.reset = a_reset_alloc(msc, msc_name, osmo_bsc_sigtran_reset_cb, msc);
