@@ -405,6 +405,17 @@ static void osmo_bsc_sigtran_reset_cb(void *priv)
 	osmo_bsc_sigtran_tx_reset(msc);
 }
 
+/* Check if a given sccp address fulfills minimum requirements */
+static int test_addr(struct osmo_sccp_addr *addr)
+{
+	if (!(addr->presence & OSMO_SCCP_ADDR_T_SSN))
+		return -EINVAL;
+	if (!(addr->presence & OSMO_SCCP_ADDR_T_PC))
+		return -EINVAL;
+
+	return 0;
+}
+
 /* Initalize osmo sigtran backhaul */
 int osmo_bsc_sigtran_init(struct llist_head *mscs)
 {
@@ -422,12 +433,23 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 		snprintf(msc_name, sizeof(msc_name), "MSC No.: %u", msc->nr);
 		LOGP(DMSC, LOGL_NOTICE, "Initalizing SCCP connection to %s\n", msc_name);
 
+		/* Check if the sccp-address */
+		if (test_addr(&msc->a.g_calling_addr) < 0) {
+			LOGP(DMSC, LOGL_ERROR,
+			     "Insufficient local address (calling-address) configuration, check VTY-Config\n");
+			return -EINVAL;
+		}
+		if (test_addr(&msc->a.g_called_addr) < 0) {
+			LOGP(DMSC, LOGL_ERROR,
+			     "Insufficient remote address (called-address) configuration, check VTY-Config\n");
+			return -EINVAL;
+		}
+
 		/* SCCP Protocol stack */
 		msc->a.sccp =
 		    osmo_sccp_simple_client(NULL, msc_name, msc->a.g_calling_addr.pc,
 					    OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT, "127.0.0.1");
-		msc->a.sccp_user =
-		    osmo_sccp_user_bind(msc->a.sccp, msc_name, sccp_sap_up, msc->a.g_calling_addr.ssn);
+		msc->a.sccp_user = osmo_sccp_user_bind(msc->a.sccp, msc_name, sccp_sap_up, msc->a.g_calling_addr.ssn);
 
 		/* Start MSC reset procedure */
 		msc->a.reset = a_reset_alloc(msc, msc_name, osmo_bsc_sigtran_reset_cb, msc);
