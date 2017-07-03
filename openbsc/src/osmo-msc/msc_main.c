@@ -511,7 +511,7 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 	iu_init(tall_msc_ctx, msc_network->sccp, rcvmsg_iu_cs, rx_iu_event);
 
 	/* Set up A interface */
-	a_init(tall_msc_ctx, msc_network->sccp, msc_network);
+	a_init(msc_network->sccp, msc_network);
 
 	if (msc_cmdline_config.daemonize) {
 		rc = osmo_daemonize();

@@ -49,7 +49,7 @@ struct bsc_context {
 };
 
 /* Initalize A interface connection between to MSC and BSC */
-int a_init(const void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *network);
+int a_init(struct osmo_sccp_instance *sccp, struct gsm_network *network);
 
 /* Send DTAP message via A-interface */
 int a_iface_tx_dtap(struct msgb *msg);

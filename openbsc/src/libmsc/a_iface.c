@@ -539,7 +539,7 @@ void a_clear_all(struct osmo_sccp_user *scu, const struct osmo_sccp_addr *bsc_ad
 }
 
 /* Initalize A interface connection between to MSC and BSC */
-int a_init(const void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *network)
+int a_init(struct osmo_sccp_instance *sccp, struct gsm_network *network)
 {
 	OSMO_ASSERT(sccp);
 	OSMO_ASSERT(network);
