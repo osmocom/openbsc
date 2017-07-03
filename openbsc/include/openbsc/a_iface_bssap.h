@@ -34,8 +34,8 @@ struct a_conn_info {
 };
 
 /* Receive incoming connection less data messages via sccp */
-void sccp_rx_udt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg);
+void sccp_rx_udt(struct osmo_sccp_user *scu, const struct a_conn_info *a_conn_info, struct msgb *msg);
 
 /* Receive incoming connection oriented data messages via sccp */
-int sccp_rx_dt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg);
+int sccp_rx_dt(struct osmo_sccp_user *scu, const struct a_conn_info *a_conn_info, struct msgb *msg);
 

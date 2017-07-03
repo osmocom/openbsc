@@ -132,7 +132,7 @@ static struct osmo_fsm fsm = {
 };
 
 /* Create and start state machine which handles the reset/reset-ack procedure */
-struct a_reset_ctx *a_reset_alloc(void *ctx, char *name, void *cb, void *priv)
+struct a_reset_ctx *a_reset_alloc(const void *ctx, const char *name, void *cb, void *priv)
 {
 	OSMO_ASSERT(name);
 

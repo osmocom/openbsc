@@ -49,24 +49,24 @@ struct bsc_context {
 };
 
 /* Initalize A interface connection between to MSC and BSC */
-int a_init(void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *network);
+int a_init(const void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *network);
 
 /* Send DTAP message via A-interface */
 int a_iface_tx_dtap(struct msgb *msg);
 
 /* Send Cipher mode command via A-interface */
-int a_iface_tx_cipher_mode(struct gsm_subscriber_connection *conn,
-			   int cipher, const uint8_t *key, int len, int include_imeisv);
+int a_iface_tx_cipher_mode(const struct gsm_subscriber_connection *conn,
+			   int cipher, const const uint8_t *key, int len, int include_imeisv);
 
 /* Page a subscriber via A-interface */
 int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac);
 
 /* Send assignment request via A-interface */
-int a_iface_tx_assignment(struct gsm_trans *trans);
+int a_iface_tx_assignment(const struct gsm_trans *trans);
 
 /* Clear all subscriber connections on a specified BSC
  * (Helper function for a_iface_bssap.c) */
-void a_clear_all(struct osmo_sccp_user *scu, struct osmo_sccp_addr *bsc_addr);
+void a_clear_all(struct osmo_sccp_user *scu, const struct osmo_sccp_addr *bsc_addr);
 
 /* Delete info of a closed connection from the active connection list
  * (Helper function for a_iface_bssap.c) */

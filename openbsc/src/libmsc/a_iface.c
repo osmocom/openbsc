@@ -61,7 +61,7 @@ struct bsc_conn {
 static LLIST_HEAD(active_connections);
 
 /* Record info of a new active connection in the active connection list */
-static void record_bsc_con(void *ctx, uint32_t conn_id)
+static void record_bsc_con(const void *ctx, uint32_t conn_id)
 {
 	struct bsc_conn *conn;
 
@@ -103,7 +103,7 @@ static bool check_connection_active(uint32_t conn_id)
 }
 
 /* Get the reset context for a specifiec calling (BSC) address */
-static struct a_reset_ctx *get_reset_ctx_by_sccp_addr(struct osmo_sccp_addr *addr)
+static struct a_reset_ctx *get_reset_ctx_by_sccp_addr(const struct osmo_sccp_addr *addr)
 {
 	struct bsc_context *bsc_ctx;
 
@@ -148,8 +148,8 @@ int a_iface_tx_dtap(struct msgb *msg)
 }
 
 /* Send Cipher mode command via A-interface */
-int a_iface_tx_cipher_mode(struct gsm_subscriber_connection *conn,
-			   int cipher, const uint8_t *key, int len, int include_imeisv)
+int a_iface_tx_cipher_mode(const struct gsm_subscriber_connection *conn,
+			   int cipher, const const uint8_t *key, int len, int include_imeisv)
 {
 	/* TODO generalize for A- and Iu interfaces, don't name after 08.08 */
 	struct msgb *msg_resp;
@@ -355,7 +355,7 @@ static int enc_speech_codec_list(struct gsm0808_speech_codec_list *scl, const st
 }
 
 /* Send assignment request via A-interface */
-int a_iface_tx_assignment(struct gsm_trans *trans)
+int a_iface_tx_assignment(const struct gsm_trans *trans)
 {
 	struct gsm_subscriber_connection *conn;
 	struct gsm0808_channel_type ct;
@@ -400,7 +400,7 @@ int a_iface_tx_assignment(struct gsm_trans *trans)
 }
 
 /* Callback function: Close all open connections */
-static void a_reset_cb(void *priv)
+static void a_reset_cb(const void *priv)
 {
 	struct msgb *msg;
 	struct bsc_context *bsc_ctx = (struct bsc_context*) priv;
@@ -420,7 +420,8 @@ static void a_reset_cb(void *priv)
 }
 
 /* Add a new BSC connection to our internal list with known BSCs */
-static void add_bsc(struct osmo_sccp_addr *msc_addr, struct osmo_sccp_addr *bsc_addr, struct osmo_sccp_user *scu)
+static void add_bsc(const struct osmo_sccp_addr *msc_addr, const struct osmo_sccp_addr *bsc_addr,
+		    struct osmo_sccp_user *scu)
 {
 	struct bsc_context *bsc_ctx;
 
@@ -510,7 +511,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 }
 
 /* Clear all subscriber connections on a specified BSC */
-void a_clear_all(struct osmo_sccp_user *scu, struct osmo_sccp_addr *bsc_addr)
+void a_clear_all(struct osmo_sccp_user *scu, const struct osmo_sccp_addr *bsc_addr)
 {
 	struct gsm_subscriber_connection *conn;
 	struct gsm_subscriber_connection *conn_temp;
@@ -538,7 +539,7 @@ void a_clear_all(struct osmo_sccp_user *scu, struct osmo_sccp_addr *bsc_addr)
 }
 
 /* Initalize A interface connection between to MSC and BSC */
-int a_init(void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *network)
+int a_init(const void *ctx, struct osmo_sccp_instance *sccp, struct gsm_network *network)
 {
 	OSMO_ASSERT(sccp);
 	OSMO_ASSERT(network);
