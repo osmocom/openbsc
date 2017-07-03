@@ -53,8 +53,6 @@ static struct gsm_network *gsm_network = NULL;
  * primitives */
 struct bsc_conn {
 	struct llist_head list;
-	struct osmo_sccp_addr called_addr;	/* BSC (remote) */
-	struct osmo_sccp_addr calling_addr;	/* MSC (local) */
 	uint32_t conn_id;			/* Connection identifier */
 };
 
@@ -63,16 +61,13 @@ struct bsc_conn {
 static LLIST_HEAD(active_connections);
 
 /* Record info of a new active connection in the active connection list */
-static void record_bsc_con(void *ctx, struct osmo_sccp_addr *called_addr, struct osmo_sccp_addr *calling_addr,
-			   uint32_t conn_id)
+static void record_bsc_con(void *ctx, uint32_t conn_id)
 {
 	struct bsc_conn *conn;
 
 	conn = talloc_zero(ctx, struct bsc_conn);
 	OSMO_ASSERT(conn);
 
-	memcpy(&conn->called_addr, called_addr, sizeof(*called_addr));
-	memcpy(&conn->calling_addr, calling_addr, sizeof(*calling_addr));
 	conn->conn_id = conn_id;
 
 	llist_add_tail(&conn->list, &active_connections);
@@ -476,8 +471,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		} else
 			LOGP(DMSC, LOGL_DEBUG, "N-CONNECT.ind(%u)\n", scu_prim->u.connect.conn_id);
 
-		record_bsc_con(scu, &scu_prim->u.connect.calling_addr, &scu_prim->u.connect.called_addr,
-			       scu_prim->u.connect.conn_id);
+		record_bsc_con(scu, scu_prim->u.connect.conn_id);
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_DATA, PRIM_OP_INDICATION):
