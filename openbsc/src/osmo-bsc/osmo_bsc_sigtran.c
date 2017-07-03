@@ -435,7 +435,7 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 	conn_id_counter = 0;
 
 	llist_for_each_entry(msc, msc_list, entry) {
-		snprintf(msc_name, sizeof(msc_name), "as-msc-%u", msc->nr);
+		snprintf(msc_name, sizeof(msc_name), "msc-%u", msc->nr);
 		LOGP(DMSC, LOGL_NOTICE, "Initializing SCCP connection to MSC %s (%s)\n",
 		     osmo_sccp_addr_dump(&msc->a.msc_addr), msc_name);
 
