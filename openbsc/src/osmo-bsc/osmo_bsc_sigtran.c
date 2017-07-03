@@ -65,7 +65,7 @@ static struct osmo_bsc_sccp_con *get_bsc_conn_by_conn_id(int conn_id)
 }
 
 /* Pick a free connection id */
-static int pick_free_conn_id(struct bsc_msc_data *msc)
+static int pick_free_conn_id(const struct bsc_msc_data *msc)
 {
 	int conn_id = conn_id_counter;
 	int i;
@@ -83,7 +83,7 @@ static int pick_free_conn_id(struct bsc_msc_data *msc)
 }
 
 /* Send reset to MSC */
-static void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
+static void osmo_bsc_sigtran_tx_reset(const struct bsc_msc_data *msc)
 {
 	struct msgb *msg;
 	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to MSC: %s\n", osmo_sccp_addr_dump(&msc->a.msc_addr));
@@ -93,7 +93,7 @@ static void osmo_bsc_sigtran_tx_reset(struct bsc_msc_data *msc)
 }
 
 /* Send reset-ack to MSC */
-void osmo_bsc_sigtran_tx_reset_ack(struct bsc_msc_data *msc)
+void osmo_bsc_sigtran_tx_reset_ack(const struct bsc_msc_data *msc)
 {
 	struct msgb *msg;
 	OSMO_ASSERT(msc);
@@ -104,7 +104,7 @@ void osmo_bsc_sigtran_tx_reset_ack(struct bsc_msc_data *msc)
 }
 
 /* Find an MSC by its sigtran point code */
-static struct bsc_msc_data *get_msc_by_addr(struct osmo_sccp_addr *msc_addr)
+static struct bsc_msc_data *get_msc_by_addr(const struct osmo_sccp_addr *msc_addr)
 {
 	struct bsc_msc_data *msc;
 	llist_for_each_entry(msc, msc_list, entry) {
@@ -132,7 +132,7 @@ static int handle_data_from_msc(int conn_id, struct msgb *msg)
 }
 
 /* Sent unitdata to MSC, use the point code to determine which MSC it is */
-static int handle_unitdata_from_msc(struct osmo_sccp_addr *msc_addr, struct msgb *msg)
+static int handle_unitdata_from_msc(const struct osmo_sccp_addr *msc_addr, struct msgb *msg)
 {
 	struct bsc_msc_data *msc = get_msc_by_addr(msc_addr);
 	int rc = -EINVAL;
@@ -268,7 +268,7 @@ enum bsc_con osmo_bsc_sigtran_new_conn(struct gsm_subscriber_connection *conn, s
 }
 
 /* Open a new connection oriented sigtran connection */
-int osmo_bsc_sigtran_open_conn(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
+int osmo_bsc_sigtran_open_conn(const struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
 	struct bsc_msc_data *msc;
 	int conn_id;
@@ -296,7 +296,7 @@ int osmo_bsc_sigtran_open_conn(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 }
 
 /* Send data to MSC */
-int osmo_bsc_sigtran_send(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
+int osmo_bsc_sigtran_send(const struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
 	int conn_id;
 	int rc;
@@ -350,7 +350,7 @@ int osmo_bsc_sigtran_del_conn(struct osmo_bsc_sccp_con *conn)
 }
 
 /* Send an USSD notification in case we loose the connection to the MSC */
-static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
+static void bsc_notify_msc_lost(const struct osmo_bsc_sccp_con *con)
 {
 	struct gsm_subscriber_connection *conn = con->conn;
 
@@ -370,7 +370,7 @@ static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
 }
 
 /* Close all open sigtran connections and channels */
-void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc)
+void osmo_bsc_sigtran_reset(const struct bsc_msc_data *msc)
 {
 	struct osmo_bsc_sccp_con *conn;
 	struct osmo_bsc_sccp_con *conn_temp;
@@ -399,7 +399,7 @@ void osmo_bsc_sigtran_reset(struct bsc_msc_data *msc)
 }
 
 /* Callback function: Close all open connections */
-static void osmo_bsc_sigtran_reset_cb(void *priv)
+static void osmo_bsc_sigtran_reset_cb(const void *priv)
 {
 	struct bsc_msc_data *msc = (struct bsc_msc_data*) priv;
 
@@ -411,7 +411,7 @@ static void osmo_bsc_sigtran_reset_cb(void *priv)
 }
 
 /* Check if a given sccp address fulfills minimum requirements */
-static int test_addr(struct osmo_sccp_addr *addr)
+static int test_addr(const struct osmo_sccp_addr *addr)
 {
 	if (!(addr->presence & OSMO_SCCP_ADDR_T_SSN))
 		return -EINVAL;
