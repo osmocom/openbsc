@@ -154,6 +154,9 @@ int a_iface_tx_cipher_mode(struct gsm_subscriber_connection *conn,
 	/* TODO generalize for A- and Iu interfaces, don't name after 08.08 */
 	struct msgb *msg_resp;
 	struct gsm0808_encrypt_info ei;
+
+	OSMO_ASSERT(conn);
+
 	LOGP(DMSC, LOGL_DEBUG, "Passing Cipher mode command message from MSC to BSC (conn_id=%i)\n", conn->a.conn_id);
 	uint8_t crm = 0x01;
 	uint8_t *crm_ptr = NULL;
@@ -188,6 +191,8 @@ int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 	struct gsm0808_cell_id_list cil;
 	struct msgb *msg;
 	int page_count = 0;
+
+	OSMO_ASSERT(imsi);
 
 	cil.id_discr = CELL_IDENT_LAC;
 	cil.id_list_lac[0] = lac;
@@ -294,6 +299,9 @@ int enc_channel_type(struct gsm0808_channel_type *ct, const struct gsm_mncc_bear
 	unsigned int count = 0;
 	bool only_gsm_hr = true;
 
+	OSMO_ASSERT(ct);
+	OSMO_ASSERT(bc);
+
 	ct->ch_indctr = GSM0808_CHAN_SPEECH;
 
 	for (i = 0; i < ARRAY_SIZE(bc->speech_ver); i++) {
@@ -358,6 +366,7 @@ int a_iface_tx_assignment(struct gsm_trans *trans)
 	struct sockaddr_in rtp_addr_in;
 	int rc;
 
+	OSMO_ASSERT(trans);
 	conn = trans->conn;
 	OSMO_ASSERT(conn);
 
@@ -506,6 +515,9 @@ void a_clear_all(struct osmo_sccp_user *scu, struct osmo_sccp_addr *bsc_addr)
 	struct gsm_subscriber_connection *conn;
 	struct gsm_subscriber_connection *conn_temp;
 	struct gsm_network *network = gsm_network;
+
+	OSMO_ASSERT(scu);
+	OSMO_ASSERT(bsc_addr);
 
 	llist_for_each_entry_safe(conn, conn_temp, &network->subscr_conns, entry) {
 		/* Clear only A connections and connections that actually

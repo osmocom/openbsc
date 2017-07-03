@@ -77,6 +77,8 @@ struct gsm_subscriber_connection *subscr_conn_lookup_a(struct gsm_network *netwo
 {
 	struct gsm_subscriber_connection *conn;
 
+	OSMO_ASSERT(network);
+
 	DEBUGP(DMSC, "Looking for A subscriber: conn_id %i\n", conn_id);
 
 	/* FIXME: log_subscribers() is defined in iucs.c as static inline, if
@@ -162,6 +164,10 @@ void sccp_rx_udt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, st
 	/* Note: The only valid message type that can be received
 	 * via UNITDATA are BSS Management messages */
 	struct bssmap_header *bs;
+
+	OSMO_ASSERT(scu);
+	OSMO_ASSERT(a_conn_info);
+	OSMO_ASSERT(msg);
 
 	LOGP(DMSC, LOGL_NOTICE, "Rx BSC UDT: %s\n", osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
@@ -669,6 +675,10 @@ static int rx_dtap(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, 
 /* Handle incoming connection oriented messages */
 int sccp_rx_dt(struct osmo_sccp_user *scu, struct a_conn_info *a_conn_info, struct msgb *msg)
 {
+	OSMO_ASSERT(scu);
+	OSMO_ASSERT(a_conn_info);
+	OSMO_ASSERT(msg);
+
 	if (msgb_l2len(msg) < sizeof(struct bssmap_header)) {
 		LOGP(DMSC, LOGL_NOTICE, "The header is too short -- discarding message!\n");
 		msgb_free(msg);
