@@ -124,7 +124,7 @@ static int handle_data_from_msc(int conn_id, struct msgb *msg)
 
 	if (bsc_con) {
 		msg->l3h = msgb_l2(msg);
-		rc = bsc_handle_dt1(bsc_con, msg, msgb_l2len(msg));
+		rc = bsc_handle_dt(bsc_con, msg, msgb_l2len(msg));
 	} else
 		LOGP(DMSC, LOGL_NOTICE, "incoming data from unknown connection id: %i\n", conn_id);
 

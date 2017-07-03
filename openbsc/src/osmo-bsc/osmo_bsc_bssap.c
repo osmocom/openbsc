@@ -696,8 +696,8 @@ int bsc_handle_udt(struct bsc_msc_data *msc,
 	return 0;
 }
 
-int bsc_handle_dt1(struct osmo_bsc_sccp_con *conn,
-		   struct msgb *msg, unsigned int len)
+int bsc_handle_dt(struct osmo_bsc_sccp_con *conn,
+		  struct msgb *msg, unsigned int len)
 {
 	if (len < sizeof(struct bssmap_header)) {
 		LOGP(DMSC, LOGL_ERROR, "The header is too short.\n");
