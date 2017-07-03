@@ -26,8 +26,8 @@
 /* A structure to hold tha most basic information about a sigtran connection
  * we use this struct internally here to pass connection data around */
 struct a_conn_info {
-	struct osmo_sccp_addr *called_addr;
-	struct osmo_sccp_addr *calling_addr;
+	struct osmo_sccp_addr *msc_addr;
+	struct osmo_sccp_addr *bsc_addr;
 	uint32_t conn_id;
 	struct gsm_network *network;
 	struct a_reset_ctx *reset;

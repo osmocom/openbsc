@@ -458,12 +458,12 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 		/* Handle inbound connection indication */
 		add_bsc(&scu_prim->u.connect.called_addr, &scu_prim->u.connect.calling_addr, scu);
 		a_conn_info.conn_id = scu_prim->u.connect.conn_id;
-		a_conn_info.called_addr = &scu_prim->u.connect.called_addr;
-		a_conn_info.calling_addr = &scu_prim->u.connect.calling_addr;
+		a_conn_info.msc_addr = &scu_prim->u.connect.called_addr;
+		a_conn_info.bsc_addr = &scu_prim->u.connect.calling_addr;
 		a_conn_info.reset = get_reset_ctx_by_sccp_addr(&scu_prim->u.unitdata.calling_addr);
 
 		if (a_reset_conn_ready(a_conn_info.reset) == false) {
-			rc = osmo_sccp_tx_disconn(scu, a_conn_info.conn_id, a_conn_info.called_addr,
+			rc = osmo_sccp_tx_disconn(scu, a_conn_info.conn_id, a_conn_info.msc_addr,
 						  SCCP_RETURN_CAUSE_UNQUALIFIED);
 			break;
 		}
@@ -491,8 +491,8 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
 		/* Handle inbound UNITDATA */
 		add_bsc(&scu_prim->u.unitdata.called_addr, &scu_prim->u.unitdata.calling_addr, scu);
-		a_conn_info.called_addr = &scu_prim->u.unitdata.called_addr;
-		a_conn_info.calling_addr = &scu_prim->u.unitdata.calling_addr;
+		a_conn_info.msc_addr = &scu_prim->u.unitdata.called_addr;
+		a_conn_info.bsc_addr = &scu_prim->u.unitdata.calling_addr;
 		a_conn_info.reset = get_reset_ctx_by_sccp_addr(&scu_prim->u.unitdata.calling_addr);
 		DEBUGP(DMSC, "N-UNITDATA.ind(%s)\n", osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
 		sccp_rx_udt(scu, &a_conn_info, oph->msg);
