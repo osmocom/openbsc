@@ -349,6 +349,7 @@ int osmo_bsc_sigtran_del_conn(struct osmo_bsc_sccp_con *conn)
 	return 0;
 }
 
+/* Send an USSD notification in case we loose the connection to the MSC */
 static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
 {
 	struct gsm_subscriber_connection *conn = con->conn;
