@@ -1,3 +1,9 @@
+openbsc (0.15.1-fw.5) UNRELEASED; urgency=medium
+
+  * Implement handover support for mncc bridge mode
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Tue, 4 Jul 2017 15:49:33 +0200
+
 openbsc (0.15.1-fw.4) UNRELEASED; urgency=medium
 
   * ussd: Avoid crashing when no connection is present in the transaction
