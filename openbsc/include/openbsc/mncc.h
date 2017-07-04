@@ -95,6 +95,7 @@ struct gsm_call {
 #define MNCC_RTP_CREATE		0x0204
 #define MNCC_RTP_CONNECT	0x0205
 #define MNCC_RTP_FREE		0x0206
+#define MNCC_RTP_MODIFY		0x0207
 
 #define GSM_TCHF_FRAME		0x0300
 #define GSM_TCHF_FRAME_EFR	0x0301

@@ -3503,6 +3503,80 @@ static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 	return 0;
 }
 
+static int ho_detect(struct gsm_lchan *lchan)
+{
+	struct gsm_network *net;
+	struct gsm_trans *tmp, *trans = NULL;
+
+	net = lchan->ts->trx->bts->network;
+	llist_for_each_entry(tmp, &net->trans_list, entry) {
+		if (!tmp->conn)
+			continue;
+		if (tmp->conn->lchan != lchan && tmp->conn->ho_lchan != lchan)
+			continue;
+		trans = tmp;
+		break;
+	}
+
+	if (!trans) {
+		LOGP(DMNCC, LOGL_ERROR, "%s lchan signal but no transaction.\n",
+			gsm_lchan_name(lchan));
+		return 0;
+	}
+
+	LOGP(DMNCC, LOGL_NOTICE, "%s sending pending RTP modify ind.\n",
+		gsm_lchan_name(lchan));
+
+	int msg_type;
+	switch (lchan->abis_ip.rtp_payload) {
+	case RTP_PT_GSM_FULL:
+		msg_type = GSM_TCHF_FRAME;
+		break;
+	case RTP_PT_GSM_EFR:
+		msg_type = GSM_TCHF_FRAME_EFR;
+		break;
+	case RTP_PT_GSM_HALF:
+		msg_type = GSM_TCHH_FRAME;
+		break;
+	case RTP_PT_AMR:
+		msg_type = GSM_TCH_FRAME_AMR;
+		break;
+	default:
+		LOGP(DMNCC, LOGL_ERROR, "%s unknown payload type %d\n",
+			gsm_lchan_name(lchan), lchan->abis_ip.rtp_payload);
+		msg_type = 0;
+		break;
+	}
+
+	mncc_recv_rtp(net, trans->callref, MNCC_RTP_MODIFY,
+			lchan->abis_ip.bound_ip,
+			lchan->abis_ip.bound_port,
+			lchan->abis_ip.rtp_payload,
+			msg_type);
+	return 0;
+}
+
+/* some other part of the code sends us a signal */
+static int handle_lchan_signal(unsigned int subsys, unsigned int signal,
+				 void *handler_data, void *signal_data)
+{
+	struct lchan_signal_data *lchan_data;
+	struct gsm_lchan *lchan;
+
+	lchan_data = signal_data;
+	switch (subsys) {
+	case SS_LCHAN:
+		lchan = lchan_data->lchan;
+		switch (signal) {
+		case S_LCHAN_HANDOVER_DETECT:
+			if (lchan->conn && lchan->conn->mncc_rtp_bridge)
+				return ho_detect(lchan);
+		}
+		break;
+	}
+
+	return 0;
+}
 
 static struct downstate {
 	uint32_t	states;
@@ -4035,4 +4109,5 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
 	osmo_signal_register_handler(SS_ABISIP, handle_abisip_signal, NULL);
+	osmo_signal_register_handler(SS_LCHAN, handle_lchan_signal, NULL);
 }
