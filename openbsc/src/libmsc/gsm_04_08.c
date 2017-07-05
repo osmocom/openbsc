@@ -861,12 +861,19 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	else {
 		/* Need to get GSM offset and convert into 15 min units */
 		/* This probably breaks if gmtoff returns a value not evenly divisible by 15? */
-		local_time = localtime(&cur_t);
 #ifdef HAVE_TM_GMTOFF_IN_TM
+		local_time = localtime(&cur_t);
 		tzunits = (local_time->tm_gmtoff/60)/15;
 #else
-#warning find a portable way to obtain the timezone offset
-		tzunits = 0;
+		/* find timezone offset */
+		time_t utc;
+		double offsetFromUTC;
+		utc = mktime(gmt_time);
+		local_time = localtime(&cur_t);
+		offsetFromUTC = difftime(cur_t, utc);
+		if (local_time->tm_isdst)
+			offsetFromUTC += 3600.0;
+		tzunits = ((int)offsetFromUTC) / 60 / 15;
 #endif
 		if (tzunits < 0) {
 			tzunits = tzunits/-1;
