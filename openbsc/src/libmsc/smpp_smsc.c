@@ -270,8 +270,7 @@ void smpp_esme_put(struct osmo_esme *esme)
 }
 
 /*! \brief try to find a SMPP route (ESME) for given destination */
-struct osmo_esme *
-smpp_route(const struct smsc *smsc, const struct osmo_smpp_addr *dest)
+int smpp_route(const struct smsc *smsc, const struct osmo_smpp_addr *dest, struct osmo_esme **pesme)
 {
 	struct osmo_smpp_route *r;
 	struct osmo_smpp_acl *acl = NULL;
@@ -314,15 +313,20 @@ smpp_route(const struct smsc *smsc, const struct osmo_smpp_addr *dest)
 		struct osmo_esme *esme;
 		DEBUGP(DSMPP, "ACL even has ESME, we can route to it!\n");
 		esme = acl->esme;
-		if (esme->bind_flags & ESME_BIND_RX)
-			return esme;
-		else
+		if (esme->bind_flags & ESME_BIND_RX) {
+			*pesme = esme;
+			return 0;
+		} else
 			LOGP(DSMPP, LOGL_NOTICE, "[%s] is matching route, "
 			     "but not bound for Rx, discarding MO SMS\n",
 				     esme->system_id);
 	}
 
-	return NULL;
+	*pesme = NULL;
+	if (acl)
+		return GSM48_CC_CAUSE_NETWORK_OOO;
+	else
+		return GSM48_CC_CAUSE_UNASSIGNED_NR;
 }
 
 

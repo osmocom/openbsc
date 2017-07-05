@@ -294,6 +294,7 @@ int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
 	if (smpp_first) {
 		rc = smpp_try_deliver(gsms, conn, deferred);
 		if (rc == GSM411_RP_CAUSE_MO_NUM_UNASSIGNED)
+			/* unknown subscriber, try local */
 			goto try_local;
 		if (rc < 0) {
 	 		LOGP(DLSMS, LOGL_ERROR, "%s: SMS delivery error: %d.",

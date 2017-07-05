@@ -126,8 +126,7 @@ void smpp_smsc_stop(struct smsc *smsc);
 void smpp_esme_get(struct osmo_esme *esme);
 void smpp_esme_put(struct osmo_esme *esme);
 
-struct osmo_esme *
-smpp_route(const struct smsc *smsc, const struct osmo_smpp_addr *dest);
+int smpp_route(const struct smsc *smsc, const struct osmo_smpp_addr *dest, struct osmo_esme **emse);
 
 struct osmo_smpp_acl *smpp_acl_alloc(struct smsc *smsc, const char *sys_id);
 struct osmo_smpp_acl *smpp_acl_by_system_id(struct smsc *smsc,

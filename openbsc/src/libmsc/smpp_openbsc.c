@@ -702,17 +702,18 @@ int smpp_try_deliver(struct gsm_sms *sms,
 {
 	struct osmo_esme *esme;
 	struct osmo_smpp_addr dst;
+	int rc;
 
 	memset(&dst, 0, sizeof(dst));
 	dst.ton = sms->dst.ton;
 	dst.npi = sms->dst.npi;
 	memcpy(dst.addr, sms->dst.addr, sizeof(dst.addr));
 
-	esme = smpp_route(g_smsc, &dst);
-	if (!esme)
-		return GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
+	rc = smpp_route(g_smsc, &dst, &esme);
+	if (!rc)
+		rc = deliver_to_esme(esme, sms, conn, deferred);
 
-	return deliver_to_esme(esme, sms, conn, deferred);
+	return rc;
 }
 
 struct smsc *smsc_from_vty(struct vty *v)
