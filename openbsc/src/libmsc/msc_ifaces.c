@@ -40,6 +40,11 @@ extern struct msgb *ranap_new_msg_rab_assign_voice(uint8_t rab_id,
 
 static int msc_tx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
+	if (!conn)
+		return -EINVAL;
+	if (!msg)
+		return -EINVAL;
+
 	DEBUGP(DMSC, "msc_tx %u bytes to %s via %s\n",
 	       msg->len, vlr_subscr_name(conn->vsub),
 	       ran_type_name(conn->via_ran));
@@ -71,9 +76,15 @@ int msc_tx_dtap(struct gsm_subscriber_connection *conn,
 /* 9.2.5 CM service accept */
 int msc_gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
 {
-	struct msgb *msg = gsm48_msgb_alloc_name("GSM 04.08 SERV ACC");
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	struct msgb *msg;
+	struct gsm48_hdr *gh;
 
+	if (!conn)
+		return -EINVAL;
+
+	msg = gsm48_msgb_alloc_name("GSM 04.08 SERV ACC");
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_CM_SERV_ACC;
 
@@ -88,6 +99,10 @@ int msc_gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 			     enum gsm48_reject_value value)
 {
 	struct msgb *msg;
+
+	if (!conn)
+		return -EINVAL;
+
 	conn->received_cm_service_request = false;
 
 	msg = gsm48_create_mm_serv_rej(value);
@@ -103,6 +118,9 @@ int msc_gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 
 int msc_tx_common_id(struct gsm_subscriber_connection *conn)
 {
+	if (!conn)
+		return -EINVAL;
+
 	/* Common ID is only sent over IuCS */
 	if (conn->via_ran != RAN_UTRAN_IU) {
 		LOGP(DMM, LOGL_INFO,
@@ -238,8 +256,14 @@ static int conn_iu_rab_act_cs(struct gsm_trans *trans)
 
 int msc_call_assignment(struct gsm_trans *trans)
 {
-	struct gsm_subscriber_connection *conn = trans->conn;
+	struct gsm_subscriber_connection *conn;
 
+	if (!trans)
+		return -EINVAL;
+	if (!trans->conn)
+		return -EINVAL;
+
+	conn = trans->conn;
 	switch (conn->via_ran) {
 	case RAN_GERAN_A:
 		/* FIXME We first go for conn_iu_rab_act_cs(), this function
@@ -339,6 +363,11 @@ static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
 
 int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2)
 {
+	if (!trans1)
+		return -EINVAL;
+	if (!trans2)
+		return -EINVAL;
+
 	/* First setup as loopback and configure the counterparts' endpoints,
 	 * so that when transmission starts the originating addresses are
 	 * already known to be valid. The mgcp callback will continue. */
@@ -353,8 +382,18 @@ int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2)
 void msc_call_release(struct gsm_trans *trans)
 {
 	struct msgb *msg;
-	struct gsm_subscriber_connection *conn = trans->conn;
-	struct mgcpgw_client *mgcp = conn->network->mgcpgw.client;
+	struct gsm_subscriber_connection *conn;
+	struct mgcpgw_client *mgcp;
+
+	if (!trans)
+		return;
+	if (!trans->conn)
+		return;
+	if (!trans->conn->network)
+		return;
+
+	conn = trans->conn;
+	mgcp = conn->network->mgcpgw.client;
 
 	/* Send DLCX */
 	msg = mgcp_msg_dlcx(mgcp, conn->iu.mgcp_rtp_endpoint,
