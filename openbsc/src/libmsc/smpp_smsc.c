@@ -654,6 +654,9 @@ int smpp_tx_deliver(struct osmo_esme *esme, struct deliver_sm_t *deliver)
 {
 	deliver->sequence_number = esme_inc_seq_nr(esme);
 
+	LOGP(DSMPP, LOGL_DEBUG, "[%s] Tx DELIVER-SM (from %s)\n",
+		esme->system_id, deliver->source_addr);
+
 	return PACK_AND_SEND(esme, deliver);
 }
 
