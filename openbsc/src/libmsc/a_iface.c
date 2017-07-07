@@ -292,7 +292,7 @@ static uint8_t convert_Abis_prev_to_A_pref(int radio)
 }
 
 /* Assemble the channel type field */
-int enc_channel_type(struct gsm0808_channel_type *ct, const struct gsm_mncc_bearer_cap *bc)
+static int enc_channel_type(struct gsm0808_channel_type *ct, const struct gsm_mncc_bearer_cap *bc)
 {
 	unsigned int i;
 	uint8_t sv;

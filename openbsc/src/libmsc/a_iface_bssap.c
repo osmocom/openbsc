@@ -71,7 +71,7 @@ static struct gsm_subscriber_connection *subscr_conn_allocate_a(struct a_conn_in
 
 /* Return an existing A subscriber connection record for the given
  * connection IDs, or return NULL if not found. */
-struct gsm_subscriber_connection *subscr_conn_lookup_a(const struct gsm_network *network, int conn_id)
+static struct gsm_subscriber_connection *subscr_conn_lookup_a(const struct gsm_network *network, int conn_id)
 {
 	struct gsm_subscriber_connection *conn;
 
