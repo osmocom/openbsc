@@ -64,6 +64,9 @@ int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac);
 /* Send assignment request via A-interface */
 int a_iface_tx_assignment(const struct gsm_trans *trans);
 
+/* Send clear command via A-interface */
+int a_iface_tx_clear_cmd(struct gsm_subscriber_connection *conn);
+
 /* Clear all subscriber connections on a specified BSC
  * (Helper function for a_iface_bssap.c) */
 void a_clear_all(struct osmo_sccp_user *scu, const struct osmo_sccp_addr *bsc_addr);

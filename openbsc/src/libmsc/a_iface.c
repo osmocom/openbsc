@@ -405,6 +405,17 @@ int a_iface_tx_assignment(const struct gsm_trans *trans)
 	return osmo_sccp_tx_data_msg(conn->a.scu, conn->a.conn_id, msg);
 }
 
+/* Send clear command via A-interface */
+int a_iface_tx_clear_cmd(struct gsm_subscriber_connection *conn)
+{
+	struct msgb *msg;
+
+	LOGP(DMSC, LOGL_NOTICE, "Sendig clear command to BSC (conn_id=%u)\n", conn->a.conn_id);
+
+	msg = gsm0808_create_clear_command(GSM0808_CAUSE_CALL_CONTROL);
+	return osmo_sccp_tx_data_msg(conn->a.scu, conn->a.conn_id, msg);
+}
+
 /* Callback function: Close all open connections */
 static void a_reset_cb(const void *priv)
 {
