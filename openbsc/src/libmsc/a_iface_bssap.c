@@ -41,7 +41,7 @@
  */
 
 /* Allocate a new subscriber connection */
-static struct gsm_subscriber_connection *subscr_conn_allocate_a(struct a_conn_info *a_conn_info,
+static struct gsm_subscriber_connection *subscr_conn_allocate_a(const struct a_conn_info *a_conn_info,
 								struct gsm_network *network,
 								uint16_t lac, struct osmo_sccp_user *scu, int conn_id)
 {
