@@ -79,6 +79,10 @@ void a_delete_bsc_con(uint32_t conn_id)
 	struct bsc_conn *conn;
 	struct bsc_conn *conn_temp;
 
+	LOGP(DMSC, LOGL_DEBUG,
+	     "Removing connection from active sccp-connection list (conn_id=%i)\n",
+	     conn_id);
+
 	llist_for_each_entry_safe(conn, conn_temp, &active_connections, list) {
 		if (conn->conn_id == conn_id) {
 			llist_del(&conn->list);
@@ -369,6 +373,8 @@ int a_iface_tx_assignment(const struct gsm_trans *trans)
 	OSMO_ASSERT(trans);
 	conn = trans->conn;
 	OSMO_ASSERT(conn);
+
+	LOGP(DMSC, LOGL_ERROR, "Sending assignment command to BSC (conn_id %u)\n", conn->a.conn_id);
 
 	/* Channel type */
 	rc = enc_channel_type(&ct, &trans->bearer_cap);
