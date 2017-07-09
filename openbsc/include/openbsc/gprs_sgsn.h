@@ -393,6 +393,8 @@ struct sgsn_subscriber_pdp_data {
 	char			apn_str[GSM_APN_LENGTH];
 	uint8_t			qos_subscribed[20];
 	size_t			qos_subscribed_len;
+	uint8_t			pdp_charg[2];
+	bool			has_pdp_charg;
 };
 
 struct sgsn_subscriber_data {
@@ -407,6 +409,9 @@ struct sgsn_subscriber_data {
 
 	uint8_t			hlr[9];
 	size_t			hlr_len;
+
+	uint8_t			pdp_charg[2];
+	bool			has_pdp_charg;
 };
 
 #define SGSN_ERROR_CAUSE_NONE (-1)

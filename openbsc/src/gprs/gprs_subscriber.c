@@ -324,6 +324,13 @@ static void gprs_subscr_gsup_insert_data(struct gprs_subscr *subscr,
 		}
 	}
 
+	if (gsup_msg->pdp_charg_enc && gsup_msg->pdp_charg_enc_len >= sizeof(sdata->pdp_charg)) {
+		memcpy(&sdata->pdp_charg, gsup_msg->pdp_charg_enc, sizeof(sdata->pdp_charg));
+		sdata->has_pdp_charg = 1;
+	} else {
+		sdata->has_pdp_charg = 0;
+	}
+
 	if (gsup_msg->pdp_info_compl) {
 		rc = gprs_subscr_pdp_data_clear(subscr);
 		if (rc > 0)
@@ -367,6 +374,13 @@ static void gprs_subscr_gsup_insert_data(struct gprs_subscr *subscr,
 				pdp_info->apn_enc, pdp_info->apn_enc_len);
 		memcpy(pdp_data->qos_subscribed, pdp_info->qos_enc, pdp_info->qos_enc_len);
 		pdp_data->qos_subscribed_len = pdp_info->qos_enc_len;
+
+		if (pdp_info->pdp_charg_enc && pdp_info->pdp_charg_enc_len >= sizeof(pdp_data->pdp_charg)) {
+			memcpy(&pdp_data->pdp_charg, pdp_info->pdp_charg_enc, sizeof(pdp_data->pdp_charg));
+			pdp_data->has_pdp_charg = 1;
+		} else {
+			pdp_data->has_pdp_charg = 0;
+		}
 	}
 }
 
