@@ -1,3 +1,4 @@
 Testing the gsm_subscriber chan logic
 Reached, didn't crash, test passed
 Testing subslot numbers for pchan types
+Testing the lchan printing: (bts=45,trx=0,ts=3,ss=4) (bts=45,trx=1,ts=3,ss=4)

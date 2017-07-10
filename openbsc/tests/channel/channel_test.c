@@ -70,7 +70,7 @@ void test_request_chan(void)
 	network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
 	if (!network)
 		exit(1);
-	bts = gsm_bts_alloc(network);
+	bts = gsm_bts_alloc(network, 0);
 	bts->location_area_code = 23;
 	s_conn.network = network;
 
@@ -91,6 +91,36 @@ void test_request_chan(void)
 
 	OSMO_ASSERT(s_end);
 }
+
+
+void test_bts_debug_print(void)
+{
+	struct gsm_network *network;
+	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
+
+	printf("Testing the lchan printing:");
+
+	/* Create a dummy network */
+	network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	if (!network)
+		exit(1);
+	/* Add a BTS with some reasonanbly non-zero id */
+	bts = gsm_bts_alloc(network, 45);
+	/* Add a second TRX to test on multiple TRXs */
+	gsm_bts_trx_alloc(bts);
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		char *name = gsm_lchan_name(&trx->ts[3].lchan[4]);
+
+		if (name)
+			printf(" %s", name);
+		else
+			printf("NULL name");
+	}
+	printf("\n");
+}
+
 
 void test_dyn_ts_subslots(void)
 {
@@ -128,6 +158,7 @@ int main(int argc, char **argv)
 
 	test_request_chan();
 	test_dyn_ts_subslots();
+	test_bts_debug_print();
 
 	return EXIT_SUCCESS;
 }

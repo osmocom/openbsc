@@ -312,7 +312,7 @@ static const struct gprs_rlc_cfg rlc_cfg_default = {
 	.initial_mcs = 6,
 };
 
-struct gsm_bts *gsm_bts_alloc(void *ctx)
+struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 {
 	struct gsm_bts *bts = talloc_zero(ctx, struct gsm_bts);
 	int i;
@@ -320,6 +320,7 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 	if (!bts)
 		return NULL;
 
+	bts->nr = bts_num;
 	bts->num_trx = 0;
 	INIT_LLIST_HEAD(&bts->trx_list);
 	bts->ms_max_power = 15;	/* dBm */

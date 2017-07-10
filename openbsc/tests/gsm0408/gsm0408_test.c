@@ -153,7 +153,7 @@ static inline void test_si2q_segfault(void)
 
 	if (!network)
 		exit(1);
-	bts = gsm_bts_alloc(network);
+	bts = gsm_bts_alloc(network, 0);
 
 	_bts_uarfcn_add(bts, 10564, 319, 0);
 	_bts_uarfcn_add(bts, 10612, 319, 0);
@@ -168,7 +168,7 @@ static inline void test_si2q_mu(void)
 
 	if (!network)
 		exit(1);
-	bts = gsm_bts_alloc(network);
+	bts = gsm_bts_alloc(network, 0);
 
 	_bts_uarfcn_add(bts, 10564, 318, 0);
 	_bts_uarfcn_add(bts, 10612, 319, 0);
@@ -188,7 +188,7 @@ static inline void test_si2q_u(void)
 	if (!network)
 		exit(1);
 
-	bts = gsm_bts_alloc(network);
+	bts = gsm_bts_alloc(network, 0);
 
 	/* first generate invalid SI as no UARFCN added */
 	gen(bts, __func__);
@@ -216,7 +216,7 @@ static inline void test_si2q_e(void)
 	if (!network)
 		exit(1);
 
-	bts = gsm_bts_alloc(network);
+	bts = gsm_bts_alloc(network, 0);
 
 	bts->si_common.si2quater_neigh_list.arfcn = bts->si_common.data.earfcn_list;
 	bts->si_common.si2quater_neigh_list.meas_bw = bts->si_common.data.meas_bw_list;
@@ -249,7 +249,7 @@ static inline void test_si2q_long(void)
 	if (!network)
 		exit(1);
 
-	bts = gsm_bts_alloc(network);
+	bts = gsm_bts_alloc(network, 0);
 
 	bts->si_common.si2quater_neigh_list.arfcn = bts->si_common.data.earfcn_list;
 	bts->si_common.si2quater_neigh_list.meas_bw = bts->si_common.data.meas_bw_list;
