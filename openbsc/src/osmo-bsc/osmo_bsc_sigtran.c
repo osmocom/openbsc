@@ -442,12 +442,14 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 		/* Check if the sccp-address */
 		if (test_addr(&msc->a.bsc_addr) < 0) {
 			LOGP(DMSC, LOGL_ERROR,
-			     "Insufficient local address (calling-address) configuration, check VTY-Config\n");
+			     "A-interface: invalid local SCCP address (a.bsc_addr) %s\n",
+			     osmo_sccp_addr_dump(&msc->a.bsc_addr));
 			return -EINVAL;
 		}
 		if (test_addr(&msc->a.msc_addr) < 0) {
 			LOGP(DMSC, LOGL_ERROR,
-			     "Insufficient remote address (called-address) configuration, check VTY-Config\n");
+			     "A-interface: invalid remote SCCP address for the MSC (a.msc_addr) %s\n",
+			     osmo_sccp_addr_dump(&msc->a.msc_addr));
 			return -EINVAL;
 		}
 
