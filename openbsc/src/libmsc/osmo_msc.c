@@ -208,7 +208,6 @@ void msc_subscr_con_cleanup(struct gsm_subscriber_connection *conn)
 		return;
 
 	if (conn->vsub) {
-		a_iface_tx_clear_cmd(conn);
 		DEBUGP(DRLL, "subscr %s: Freeing subscriber connection\n",
 		       vlr_subscr_name(conn->vsub));
 		msc_subscr_cleanup(conn->vsub);
@@ -217,6 +216,9 @@ void msc_subscr_con_cleanup(struct gsm_subscriber_connection *conn)
 	} else
 		DEBUGP(DRLL, "Freeing subscriber connection"
 		       " with NULL subscriber\n");
+
+	/* A-Interface connection */
+	a_iface_tx_clear_cmd(conn);
 
 	if (!conn->conn_fsm)
 		return;
