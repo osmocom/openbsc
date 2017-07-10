@@ -59,8 +59,8 @@ Use the `default-route` command to indicate that any MO-SMS without a
 more specific route should be routed to this ESME.
 
 Use the `deliver-src-imsi` command to indicate that the SMPP DELIVER
-messages for MO SMS should state the IMSI (rather than the MSISDN) as
-source address.
+messages for MO SMS and the SMPP ALERT should state the IMSI (rather
+than the MSISDN) as source address.
 
 Use the `osmocom-extensions` command to request that Osmocom specific
 extension TLVs shall be included in the SMPP PDUs.  Those extensions
@@ -82,6 +82,7 @@ towards your ESME.
 The following example configuration snippet shows a single ESME
 'galactica' with a prefix-route of all national numbers stating with
 2342:
+
 ----
 smpp
  local-tcp-port 2775
@@ -93,3 +94,51 @@ smpp
   osmocom-extensions
    route prefix national isdn 2342
 ----
+
+
+=== Osmocom SMPP protocol extensions
+
+Osmocom has implemented some extensions to the SMPP v3.4 protocol.
+
+These extensions can be enabled using the `osmocom-extensions` VTY
+command at `esme` level.
+
+The TLV definitions can be found in the
+`<osmocom/gsm/protocol/smpp34_osmocom.h>` header file provided by
+libosmocore.
+
+==== RF channel measuremets
+
+When the Osmocom SMPP extensions are enabled, we add the following
+TLVs to each SMPP DELIVER PDU:
+
+[options="header", cols="3,1,1,5"]
+|===
+| TLV | IEI | Length (Octets) | Purpose
+| TLVID_osmo_arfcn | 0x2300 | 2 | GSM ARFCN of the radio interface
+| TLVID_osmo_ta | 0x2301 | 1 | Timing Advance on the radio interface
+| TLVID_osmo_ms_l1_txpwr | 0x2307 | 1 | Transmit Power of the MS in uplink direction
+| TLVID_osmo_rxlev_ul | 0x2302 | 2 | Uplink receive level as measured by BTS in dBm (int16_t)
+| TLVID_osmo_rxqual_ul | 0x2303 | 1 | Uplink RxQual value as measured by BTS
+| TLVID_osmo_rxlev_dl | 0x2304 | 2 | Downlink receive level as measured by MS in dBm (int16_t)
+| TLVID_osmo_rxqual_dl | 0x2305 | 1 | Downlink RxQual value as measured by MS
+|===
+
+All of the above values reflect the *last measurement report* as
+recieved vi A-bis RSL from the BTS.  It is thus a snapshot value (of
+the average within one 480ms SACCH period), and not an average over
+all the SACCH periods during which the channel was open or the SMS was
+received. Not all measurement reports contain all the values.  So you
+might not get an TLVID_osmo_rxlev_dl IE, as that particular uplink
+frame might habe benn lost for the given snapshot we report.
+
+==== Equipment IMEI
+
+If we know the IMEI of the subscribers phone, we add the following TLV
+to each SMPP DELIVER PDU:
+
+[options="header", cols="3,1,1,5"]
+|===
+| TLV | IEI | Length | Purpose
+| TLVID_osmo_imei | 0x2306 | variable | IMEI of the subscibers phone (ME)
+|===
