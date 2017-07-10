@@ -3830,6 +3830,38 @@ DEFUN(restart_bts, restart_bts_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(bts_resend, bts_resend_cmd,
+      "bts <0-255> resend-system-information",
+      "BTS Specific Commands\n" "BTS Number\n"
+      "Re-generate + re-send BCCH SYSTEM INFORMATION\n")
+{
+	struct gsm_network *gsmnet;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts *bts;
+	unsigned int bts_nr;
+
+	gsmnet = gsmnet_from_vty(vty);
+
+	bts_nr = atoi(argv[0]);
+	if (bts_nr >= gsmnet->num_bts) {
+		vty_out(vty, "BTS number must be between 0 and %d. It was %d.%s",
+			gsmnet->num_bts, bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts = gsm_bts_num(gsmnet, bts_nr);
+	if (!bts) {
+		vty_out(vty, "BTS Nr. %d could not be found.%s", bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	llist_for_each_entry_reverse(trx, &bts->trx_list, list)
+		gsm_bts_trx_set_system_infos(trx);
+
+	return CMD_SUCCESS;
+}
+
+
 DEFUN(smscb_cmd, smscb_cmd_cmd,
 	"bts <0-255> smscb-command <1-4> HEXSTRING",
 	"BTS related commands\n" "BTS Number\n"
@@ -4288,6 +4320,7 @@ int bsc_vty_init(struct gsm_network *network)
 
 	install_element(ENABLE_NODE, &drop_bts_cmd);
 	install_element(ENABLE_NODE, &restart_bts_cmd);
+	install_element(ENABLE_NODE, &bts_resend_cmd);
 	install_element(ENABLE_NODE, &pdch_act_cmd);
 	install_element(ENABLE_NODE, &lchan_act_cmd);
 	install_element(ENABLE_NODE, &lchan_mdcx_cmd);
