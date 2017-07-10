@@ -70,7 +70,7 @@ void test_request_chan(void)
 	network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
 	if (!network)
 		exit(1);
-	bts = gsm_bts_alloc(network);
+	bts = gsm_bts_alloc(network, 0);
 	bts->location_area_code = 23;
 
 	/* Create a dummy subscriber */

@@ -306,12 +306,13 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 	if (!model && type != GSM_BTS_TYPE_UNKNOWN)
 		return NULL;
 
-	bts = gsm_bts_alloc(net);
+	bts = gsm_bts_alloc(net, net->num_bts);
 	if (!bts)
 		return NULL;
 
+	net->num_bts++;
+
 	bts->network = net;
-	bts->nr = net->num_bts++;
 	bts->type = type;
 	bts->model = model;
 	bts->bsic = bsic;
