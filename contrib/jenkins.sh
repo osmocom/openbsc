@@ -19,6 +19,7 @@ export LD_LIBRARY_PATH="$inst/lib"
 
 if [ "x$IU" = "x--enable-iu" ]; then
 	sccp_branch="old_sua"
+	osmo_iuh_branch="old_sua"
 fi
 
 osmo-build-dep.sh libosmo-abis
@@ -30,7 +31,7 @@ osmo-build-dep.sh openggsn
 if [ "x$IU" = "x--enable-iu" ]; then
 	osmo-build-dep.sh libasn1c
 	#osmo-build-dep.sh asn1c aper-prefix # only needed for make regen in osmo-iuh
-	osmo-build-dep.sh osmo-iuh
+	osmo-build-dep.sh osmo-iuh $osmo_iuh_branch
 fi
 
 set +x
