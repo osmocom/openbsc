@@ -604,7 +604,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			break;
 		case GSM48_MT_RR_STATUS:
 			LOGP(DRR, LOGL_NOTICE, "%s (cause: %s)\n",
-			     gsm48_rr_msg_name(GSM48_MT_RR_GPRS_SUSP_REQ),
+			     gsm48_rr_msg_name(GSM48_MT_RR_STATUS),
 			     rr_cause_name(gh->data[0]));
 			break;
 		case GSM48_MT_RR_MEAS_REP:
