@@ -26,6 +26,9 @@ int pcu_tx_imm_ass_sent(struct gsm_bts *bts, uint32_t tlli);
 /* Confirm the sending of an immediate assignment to the pcu */
 int pcu_tx_imm_ass_sent(struct gsm_bts *bts, uint32_t tlli);
 
+/* forward data from a RR GPRS SUSPEND REQ towards PCU */
+int pcu_tx_susp_req(struct gsm_lchan *lchan, uint32_t tlli, const uint8_t *ra_id, uint8_t cause);
+
 /* Open connection to PCU */
 int pcu_sock_init(const char *path, struct gsm_bts *bts);
 

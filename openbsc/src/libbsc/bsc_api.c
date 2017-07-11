@@ -2,7 +2,7 @@
 
 /* (C) 2010-2011 by Holger Hans Peter Freyther
  * (C) 2010-2011 by On-Waves
- * (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009-2017 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -32,11 +32,13 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/trau_mux.h>
+#include <openbsc/pcu_if.h>
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm48.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/byteswap.h>
 
 #define GSM0808_T10_VALUE    6, 0
 
@@ -570,6 +572,30 @@ static void handle_rr_ho_fail(struct msgb *msg)
 	/* FIXME: release allocated new channel */
 }
 
+/* TS 44.018 9.1.13b GPRS suspension request */
+static int handle_gprs_susp_req(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_gprs_susp_req *gsr;
+	uint32_t tlli;
+	int rc;
+
+	if (!gh || msgb_l3len(msg) < sizeof(*gh)+sizeof(*gsr)) {
+		LOGP(DRSL, LOGL_NOTICE, "%s Short GPRS SUSPEND REQ received, ignoring\n", gsm_lchan_name(msg->lchan));
+		return -EINVAL;
+	}
+
+	gsr = (struct gsm48_gprs_susp_req *) gh->data;
+	tlli = osmo_ntohl(gsr->tlli);
+
+	LOGP(DRSL, LOGL_INFO, "%s Fwd GPRS SUSPEND REQ for TLLI=0x%08x to PCU\n",
+		gsm_lchan_name(msg->lchan), tlli);
+	rc = pcu_tx_susp_req(msg->lchan, tlli, gsr->ra_id, gsr->cause);
+
+	msgb_free(msg);
+
+	return rc;
+}
 
 static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			  uint8_t link_id, struct msgb *msg)
@@ -599,8 +625,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 	case GSM48_PDISC_RR:
 		switch (msg_type) {
 		case GSM48_MT_RR_GPRS_SUSP_REQ:
-			DEBUGP(DRR, "%s\n",
-			       gsm48_rr_msg_name(GSM48_MT_RR_GPRS_SUSP_REQ));
+			handle_gprs_susp_req(msg);
 			break;
 		case GSM48_MT_RR_STATUS:
 			LOGP(DRR, LOGL_NOTICE, "%s (cause: %s)\n",

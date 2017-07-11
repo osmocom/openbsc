@@ -1,6 +1,6 @@
 /* pcu_sock.c: Connect from PCU via unix domain socket */
 
-/* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2017 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009-2012 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2012 by Holger Hans Peter Freyther
  * All Rights Reserved
@@ -303,6 +303,24 @@ int pcu_tx_imm_ass_sent(struct gsm_bts *bts, uint32_t tlli)
 
 	data_cnf_dt->sapi = PCU_IF_SAPI_PCH;
 	data_cnf_dt->tlli = tlli;
+
+	return pcu_sock_send(bts, msg);
+}
+
+/* forward data from a RR GPRS SUSPEND REQ towards PCU */
+int pcu_tx_susp_req(struct gsm_lchan *lchan, uint32_t tlli, const uint8_t *ra_id, uint8_t cause)
+{
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	struct msgb *msg;
+	struct gsm_pcu_if *pcu_prim;
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_SUSP_REQ, bts->nr);
+	if (!msg)
+		return -ENOMEM;
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	pcu_prim->u.susp_req.tlli = tlli;
+	memcpy(pcu_prim->u.susp_req.ra_id, ra_id, sizeof(pcu_prim->u.susp_req.ra_id));
+	pcu_prim->u.susp_req.cause = cause;
 
 	return pcu_sock_send(bts, msg);
 }
