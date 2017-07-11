@@ -177,6 +177,10 @@ struct gbproxy_peer *gbproxy_peer_alloc(struct gbproxy_config *cfg, uint16_t bvc
 
 	peer->bvci = bvci;
 	peer->ctrg = rate_ctr_group_alloc(peer, &peer_ctrg_desc, bvci);
+	if (!peer->ctrg) {
+		talloc_free(peer);
+		return NULL;
+	}
 	peer->cfg = cfg;
 
 	llist_add(&peer->list, &cfg->bts_peers);

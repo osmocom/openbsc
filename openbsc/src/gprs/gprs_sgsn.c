@@ -129,6 +129,7 @@ static const struct rate_ctr_group_desc sgsn_ctrg_desc = {
 
 void sgsn_rate_ctr_init() {
 	sgsn->rate_ctrs = rate_ctr_group_alloc(tall_bsc_ctx, &sgsn_ctrg_desc, 0);
+	OSMO_ASSERT(sgsn->rate_ctrs);
 }
 
 /* look-up an SGSN MM context based on Iu UE context (struct ue_conn_ctx)*/
@@ -229,6 +230,11 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_gb(uint32_t tlli,
 	LOGMMCTXP(LOGL_DEBUG, ctx, "Allocated with %s cipher.\n",
 		  get_value_string(gprs_cipher_names, ctx->ciph_algo));
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, tlli);
+	if (!ctx->ctrg) {
+		LOGMMCTXP(LOGL_ERROR, ctx, "Cannot allocate counter group\n");
+		talloc_free(ctx);
+		return NULL;
+	}
 	INIT_LLIST_HEAD(&ctx->pdp_list);
 
 	llist_add(&ctx->list, &sgsn_mm_ctxts);
@@ -252,6 +258,11 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc_iu(void *uectx)
 	ctx->pmm_state = PMM_DETACHED;
 	ctx->auth_triplet.key_seq = GSM_KEY_SEQ_INVAL;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, 0);
+	if (!ctx->ctrg) {
+		LOGMMCTXP(LOGL_ERROR, ctx, "Cannot allocate counter group\n");
+		talloc_free(ctx);
+		return NULL;
+	}
 
 	/* Need to get RAID from IU conn */
 	ctx->ra = ctx->iu.ue_ctx->ra_id;
@@ -379,6 +390,11 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 	pdp->mm = mm;
 	pdp->nsapi = nsapi;
 	pdp->ctrg = rate_ctr_group_alloc(pdp, &pdpctx_ctrg_desc, nsapi);
+	if (!pdp->ctrg) {
+		LOGPDPCTXP(LOGL_ERROR, pdp, "Error allocation counter group\n");
+		talloc_free(pdp);
+		return NULL;
+	}
 	llist_add(&pdp->list, &mm->pdp_list);
 	llist_add(&pdp->g_list, &sgsn_pdp_ctxts);
 

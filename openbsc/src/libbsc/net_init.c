@@ -61,6 +61,10 @@ struct gsm_network *bsc_network_init(void *ctx,
 
 	/* init statistics */
 	net->bsc_ctrs = rate_ctr_group_alloc(net, &bsc_ctrg_desc, 0);
+	if (!net->bsc_ctrs) {
+		talloc_free(net);
+		return NULL;
+	}
 
 	gsm_net_update_ctype(net);
 

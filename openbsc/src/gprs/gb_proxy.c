@@ -1431,6 +1431,10 @@ int gbproxy_init_config(struct gbproxy_config *cfg)
 
 	INIT_LLIST_HEAD(&cfg->bts_peers);
 	cfg->ctrg = rate_ctr_group_alloc(tall_bsc_ctx, &global_ctrg_desc, 0);
+	if (!cfg->ctrg) {
+		LOGP(DGPRS, LOGL_ERROR, "Cannot allocate global counter group!\n");
+		return -1;
+	}
 	clock_gettime(CLOCK_REALTIME, &tp);
 
 	return 0;
