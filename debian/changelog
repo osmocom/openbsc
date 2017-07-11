@@ -1,3 +1,10 @@
+openbsc (0.15.1-fw.6) UNRELEASED; urgency=medium
+
+  * libcommon: Fix log output for bts>0
+  * libmsc: Fix VTY output for handover counters
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Tue, 11 Jul 2017 19:52:21 +0200
+
 openbsc (0.15.1-fw.5) UNRELEASED; urgency=medium
 
   * Implement handover support for mncc bridge mode
