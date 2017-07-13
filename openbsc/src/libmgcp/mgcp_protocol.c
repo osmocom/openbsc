@@ -66,6 +66,42 @@ static int setup_rtp_processing(struct mgcp_endpoint *endp);
 
 static int mgcp_analyze_header(struct mgcp_parse_data *parse, char *data);
 
+/* Display an mgcp message on the log output */
+void display_mgcp_message(unsigned char *message, unsigned int len,
+			  char *preamble)
+{
+	unsigned char line[80];
+	unsigned char *ptr;
+	unsigned int consumed = 0;
+	unsigned int consumed_line = 0;
+	unsigned int line_count = 0;
+
+	while (1) {
+		memset(line, 0, sizeof(line));
+		ptr = line;
+		consumed_line = 0;
+		do {
+			if (*message != '\n' && *message != '\r') {
+				*ptr = *message;
+				ptr++;
+			}
+			message++;
+			consumed++;
+			consumed_line++;
+		} while (*message != '\n' && consumed < len
+			 && consumed_line < sizeof(line));
+
+		if (strlen((const char *)line)) {
+			LOGP(DMGCP, LOGL_DEBUG, "%s: line #%02u: %s\n",
+			     preamble, line_count, line);
+			line_count++;
+		}
+
+		if (consumed >= len)
+			return;
+	}
+}
+
 static int mgcp_check_param(const struct mgcp_endpoint *endp, const char *line)
 {
 	const size_t line_len = strlen(line);
@@ -157,7 +193,8 @@ static struct msgb *create_resp(struct mgcp_endpoint *endp, int code,
 	}
 
 	res->l2h = msgb_put(res, len);
-	LOGP(DMGCP, LOGL_DEBUG, "Generated response: code: %d for '%s'\n", code, res->l2h);
+	LOGP(DMGCP, LOGL_DEBUG, "Generated response: code=%d\n", code);
+	display_mgcp_message(res->l2h, msgb_l2len(res), "Generated response");
 
 	/*
 	 * Remember the last transmission per endpoint.
@@ -326,6 +363,8 @@ struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
 
 	if (mgcp_msg_terminate_nul(msg))
 		return NULL;
+
+	display_mgcp_message(msg->l2h, msgb_l2len(msg), "Received message");
 
         /* attempt to treat it as a response */
         if (sscanf((const char *)&msg->l2h[0], "%3d %*s", &code) == 1) {
