@@ -59,6 +59,13 @@ const char *auth_request_expect_autn;
 bool cipher_mode_cmd_sent;
 bool cipher_mode_cmd_sent_with_imeisv;
 
+int __real_a_iface_tx_clear_cmd(struct gsm_subscriber_connection *conn);
+int __wrap_a_iface_tx_clear_cmd(struct gsm_subscriber_connection *conn)
+{
+	btw("Sending clear command to BSC (conn_id=%u)\n", conn->a.conn_id);
+	return 0;
+}
+
 struct msgb *msgb_from_hex(const char *label, uint16_t size, const char *hex)
 {
 	struct msgb *msg = msgb_alloc(size, label);
