@@ -49,6 +49,13 @@ struct gsm_trans {
 	/* bearer capabilities (rate and codec) */
 	struct gsm_mncc_bearer_cap bearer_cap;
 
+	/* status of the assignment, true when done */
+	bool assignment_done;
+
+	/* if true, TCH_RTP_CREATE is sent after the
+	 * assignment is done */
+	bool tch_rtp_create;
+
 	union {
 		struct {
 

@@ -1281,6 +1281,8 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 	struct msgb *msg;
 	unsigned char *data;
 
+	DEBUGP(DMNCC, "transmit message %s\n", get_mncc_name(msg_type));
+
 #if BEFORE_MSCSPLIT
 	if (trans)
 		if (trans->conn && trans->conn->lchan)
@@ -1952,6 +1954,7 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	struct tlv_parsed tp;
 	struct gsm_mncc call_conf;
+	int rc;
 
 	gsm48_stop_cc_timer(trans);
 	gsm48_start_cc_timer(trans, 0x310, GSM48_T310);
@@ -2001,7 +2004,18 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 
 	new_cc_state(trans, GSM_CSTATE_MO_TERM_CALL_CONF);
 
-	msc_call_assignment(trans);
+	/* Assign call (if not done yet) */
+	if (trans->assignment_done == false) {
+		rc = msc_call_assignment(trans);
+		trans->assignment_done = true;
+	}
+	else
+		rc = 0;
+
+	/* don't continue, if there were problems with
+	 * the call assignment. */
+	if (rc)
+		return rc;
 
 	return mncc_recvmsg(trans->net, trans, MNCC_CALL_CONF_IND,
 			    &call_conf);
@@ -2032,7 +2046,15 @@ static int gsm48_cc_tx_call_proc_and_assign(struct gsm_trans *trans, void *arg)
 	if (rc)
 		return rc;
 
-	return msc_call_assignment(trans);
+	/* Assign call (if not done yet) */
+	if (trans->assignment_done == false) {
+		rc = msc_call_assignment(trans);
+		trans->assignment_done = true;
+	}
+	else
+		rc = 0;
+
+	return rc;
 }
 
 static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
@@ -2905,7 +2927,6 @@ static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 
 }
 
-#if BEFORE_MSCSPLIT
 static void mncc_recv_rtp(struct gsm_network *net, uint32_t callref,
 		int cmd, uint32_t addr, uint16_t port, uint32_t payload_type,
 		uint32_t payload_msg_type)
@@ -2927,34 +2948,27 @@ static void mncc_recv_rtp(struct gsm_network *net, uint32_t callref,
 
 static void mncc_recv_rtp_sock(struct gsm_network *net, struct gsm_trans *trans, int cmd)
 {
-	struct gsm_lchan *lchan;
 	int msg_type;
 
-	lchan = trans->conn->lchan;
-	switch (lchan->abis_ip.rtp_payload) {
-	case RTP_PT_GSM_FULL:
-		msg_type = GSM_TCHF_FRAME;
-		break;
-	case RTP_PT_GSM_EFR:
-		msg_type = GSM_TCHF_FRAME_EFR;
-		break;
-	case RTP_PT_GSM_HALF:
-		msg_type = GSM_TCHH_FRAME;
-		break;
-	case RTP_PT_AMR:
-		msg_type = GSM_TCH_FRAME_AMR;
-		break;
-	default:
-		LOGP(DMNCC, LOGL_ERROR, "%s unknown payload type %d\n",
-			gsm_lchan_name(lchan), lchan->abis_ip.rtp_payload);
-		msg_type = 0;
-		break;
-	}
+	/* FIXME This has to be set to some meaningful value.
+	 * Possible options are:
+	 * GSM_TCHF_FRAME, GSM_TCHF_FRAME_EFR,
+	 * GSM_TCHH_FRAME, GSM_TCH_FRAME_AMR
+	 * (0 if unknown) */
+	msg_type = GSM_TCHF_FRAME;
+
+	uint32_t addr = mgcpgw_client_remote_addr_n(net->mgcpgw.client);
+	uint16_t port = trans->conn->rtp.port_cn;
+
+	/* FIXME: This has to be set to some meaningful value,
+	 * before the MSC-Split, this value was pulled from
+	 * lchan->abis_ip.rtp_payload */
+	uint32_t payload_type = 0;
 
 	return mncc_recv_rtp(net, trans->callref, cmd,
-			lchan->abis_ip.bound_ip,
-			lchan->abis_ip.bound_port,
-			lchan->abis_ip.rtp_payload,
+			addr,
+			port,
+		        payload_type,
 			msg_type);
 }
 
@@ -2962,15 +2976,11 @@ static void mncc_recv_rtp_err(struct gsm_network *net, uint32_t callref, int cmd
 {
 	return mncc_recv_rtp(net, callref, cmd, 0, 0, 0, 0);
 }
-#endif
 
 static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 {
-#if BEFORE_MSCSPLIT
-	struct gsm_bts *bts;
-	struct gsm_lchan *lchan;
 	struct gsm_trans *trans;
-	enum gsm48_chan_mode m;
+	int rc;
 
 	/* Find callref */
 	trans = trans_find_by_callref(net, callref);
@@ -2986,50 +2996,49 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 		return 0;
 	}
 
-	lchan = trans->conn->lchan;
-	bts = lchan->ts->trx->bts;
-	if (!is_ipaccess_bts(bts)) {
-		/*
-		 * I want this to be straight forward and have no audio flow
-		 * through the nitb/osmo-mss system. This currently means that
-		 * this will not work with BS11/Nokia type BTS. We would need
-		 * to have a trau<->rtp bridge for these but still preferable
-		 * in another process.
-		 */
-		LOGP(DMNCC, LOGL_ERROR, "RTP create only works with IP systems\n");
-		mncc_recv_rtp_err(net, callref, MNCC_RTP_CREATE);
-		return -EINVAL;
-	}
-
 	trans->conn->mncc_rtp_bridge = 1;
-	/*
-	 * *sigh* we need to pick a codec now. Pick the most generic one
-	 * right now and hope we could fix that later on. This is very
-	 * similiar to the routine above.
-	 * Fallback to the internal MNCC mode to select a route.
-	 */
-	if (lchan->tch_mode == GSM48_CMODE_SIGN) {
-		trans->conn->mncc_rtp_create_pending = 1;
-		m = mncc_codec_for_mode(lchan->type);
-		LOGP(DMNCC, LOGL_DEBUG, "RTP create: codec=%s, chan_type=%s\n",
-		     get_value_string(gsm48_chan_mode_names, m),
-		     get_value_string(gsm_chan_t_names, lchan->type));
-		return gsm0808_assign_req(trans->conn, m,
-				lchan->type != GSM_LCHAN_TCH_H);
-	}
 
-	mncc_recv_rtp_sock(trans->net, trans, MNCC_RTP_CREATE);
+	/* When we call msc_call_assignment() we will trigger, depending
+	 * on the RAN type the call assignment on the A or Iu interface.
+	 * msc_call_assignment() also takes care about sending the CRCX
+	 * command to the MGCP-GW. The CRCX will return the port number,
+	 * where the PBX (e.g. Asterisk) will send its RTP stream to. We
+	 * have to return this port number back to the MNCC by sending
+	 * it back with the TCH_RTP_CREATE message. To make sure that
+	 * this message is sent AFTER the response to CRCX from the
+	 * MGCP-GW has arrived, we need will instruct msc_call_assignment()
+	 * to take care of this by setting trans->tch_rtp_create to true.
+	 * This will make sure that gsm48_tch_rtp_create() (below) is
+	 * called as soon as the local port number has become known. */
+	trans->tch_rtp_create = true;
+
+	/* Assign call (if not done yet) */
+	if (trans->assignment_done == false) {
+		rc = msc_call_assignment(trans);
+		trans->assignment_done = true;
+	}
+	else
+		rc = 0;
+
+	return rc;
+}
+
+/* Trigger TCH_RTP_CREATE acknowledgement */
+int gsm48_tch_rtp_create(struct gsm_trans *trans)
+{
+	/* This function is called as soon as the port, on which the
+	 * mgcp-gw expects the incoming RTP stream from the remote
+	 * end (e.g. Asterisk) is known. */
+
+	struct gsm_subscriber_connection *conn = trans->conn;
+	struct gsm_network *network = conn->network;
+
+	mncc_recv_rtp_sock(network, trans, MNCC_RTP_CREATE);
 	return 0;
-#else
-	/* not implemented yet! */
-	return -1;
-#endif
 }
 
 static int tch_rtp_connect(struct gsm_network *net, void *arg)
 {
-#if BEFORE_MSCSPLIT
-	struct gsm_lchan *lchan;
 	struct gsm_trans *trans;
 	struct gsm_mncc_rtp *rtp = arg;
 
@@ -3047,29 +3056,8 @@ static int tch_rtp_connect(struct gsm_network *net, void *arg)
 		return 0;
 	}
 
-	lchan = trans->conn->lchan;
-	LOGP(DMNCC, LOGL_DEBUG, "RTP connect: codec=%s, chan_type=%s\n",
-		     get_value_string(gsm48_chan_mode_names,
-				      mncc_codec_for_mode(lchan->type)),
-		     get_value_string(gsm_chan_t_names, lchan->type));
-
-	/* TODO: Check if payload_msg_type is compatible with what we have */
-	if (rtp->payload_type != lchan->abis_ip.rtp_payload) {
-		LOGP(DMNCC, LOGL_ERROR, "RTP connect with different RTP payload\n");
-		mncc_recv_rtp_err(net, rtp->callref, MNCC_RTP_CONNECT);
-	}
-
-	/*
-	 * FIXME: payload2 can't be sent with MDCX as the osmo-bts code
-	 * complains about both rtp and rtp payload2 being present in the
-	 * same package!
-	 */
-	trans->conn->mncc_rtp_connect_pending = 1;
-	return rsl_ipacc_mdcx(lchan, rtp->ip, rtp->port, 0);
-#else
-	/* not implemented yet! */
-	return -1;
-#endif
+	msc_call_connect(trans,rtp->port,rtp->ip);
+	return 0;
 }
 
 #if BEFORE_MSCSPLIT

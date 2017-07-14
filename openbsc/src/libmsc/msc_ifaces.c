@@ -204,6 +204,12 @@ static void mgcp_response_rab_act_cs_crcx(struct mgcp_response *r, void *priv)
 	} else
 		goto rab_act_cs_error;
 
+	/* Respond back to MNCC (if requested) */
+	if (trans->tch_rtp_create) {
+		if (gsm48_tch_rtp_create(trans))
+			goto rab_act_cs_error;
+	}
+
 rab_act_cs_error:
 	/* FIXME abort call, invalidate conn, ... */
 	return;
@@ -359,6 +365,51 @@ static void mgcp_response_bridge_mdcx(struct mgcp_response *r, void *priv)
 		     trans->bridge.state, vlr_subscr_name(trans->vsub));
 		break;
 	}
+}
+
+int msc_call_connect(struct gsm_trans *trans, uint16_t port, uint32_t ip)
+{
+	/* With this function we inform the MGCP-GW  where (ip/port) it
+	 * has to send its outgoing voic traffic. The receiving end will
+	 * usually be a PBX (e.g. Asterisk). The IP-Address we tell, will
+	 * not only be used to direct the traffic, it will also be used
+	 * as a filter to make sure only RTP packets from the right
+	 * remote end will reach the BSS. This is also the reason why
+	 * inbound audio will not work until this step is performed */
+
+	/* NOTE: This function is used when msc_call_bridge(), is not
+	 * applicable. This is usually the case when an external MNCC
+	 * is in use */
+
+	struct gsm_subscriber_connection *conn;
+	struct mgcpgw_client *mgcp;
+	struct msgb *msg;
+
+	if (!trans)
+		return -EINVAL;
+	if (!trans->conn)
+		return -EINVAL;
+	if (!trans->conn->network)
+		return -EINVAL;
+	if (!trans->conn->network->mgcpgw.client)
+		return -EINVAL;
+
+	mgcp = trans->conn->network->mgcpgw.client;
+
+	struct in_addr ip_addr;
+	ip_addr.s_addr = ntohl(ip);
+
+	conn = trans->conn;
+
+	msg = mgcp_msg_mdcx(mgcp,
+			    conn->iu.mgcp_rtp_endpoint,
+			    inet_ntoa(ip_addr), port, MGCP_CONN_RECV_SEND);
+	if (mgcpgw_client_tx(mgcp, msg, NULL, trans))
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Failed to send MDCX message for %s\n",
+		     vlr_subscr_name(trans->vsub));
+
+	return 0;
 }
 
 int msc_call_bridge(struct gsm_trans *trans1, struct gsm_trans *trans2)
