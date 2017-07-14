@@ -217,8 +217,9 @@ void msc_subscr_con_cleanup(struct gsm_subscriber_connection *conn)
 		DEBUGP(DRLL, "Freeing subscriber connection"
 		       " with NULL subscriber\n");
 
-	/* A-Interface connection */
-	a_iface_tx_clear_cmd(conn);
+	/* Clear A-Interface connection */
+	if (conn->via_ran == RAN_GERAN_A)
+		a_iface_tx_clear_cmd(conn);
 
 	if (!conn->conn_fsm)
 		return;
