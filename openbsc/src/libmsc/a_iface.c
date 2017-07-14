@@ -410,7 +410,7 @@ int a_iface_tx_clear_cmd(struct gsm_subscriber_connection *conn)
 {
 	struct msgb *msg;
 
-	LOGP(DMSC, LOGL_NOTICE, "Sendig clear command to BSC (conn_id=%u)\n", conn->a.conn_id);
+	LOGP(DMSC, LOGL_NOTICE, "Sending clear command to BSC (conn_id=%u)\n", conn->a.conn_id);
 
 	msg = gsm0808_create_clear_command(GSM0808_CAUSE_CALL_CONTROL);
 	return osmo_sccp_tx_data_msg(conn->a.scu, conn->a.conn_id, msg);
