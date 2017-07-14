@@ -58,6 +58,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 0
@@ -131,6 +133,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 0
@@ -281,6 +285,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -426,6 +432,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -576,6 +584,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -647,6 +657,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -797,6 +809,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -869,6 +883,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -941,6 +957,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 0
@@ -1017,6 +1035,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 0
@@ -1114,6 +1134,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF IMSI:901700000004620: MSC conn use - 1 == 0
 DRLL subscr IMSI:901700000004620: Freeing subscriber connection
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 2
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr IMSI:901700000004620 usage decreases to: 1

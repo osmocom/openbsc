@@ -105,6 +105,8 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 2
+- Sendig clear command to BSC (conn_id=0)
+
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
@@ -180,6 +182,8 @@ DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
   dtap_tx_confirmed == 1
 - all requests serviced, conn has been released
   llist_count(&net->subscr_conns) == 0
@@ -286,6 +290,8 @@ DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
   dtap_tx_confirmed == 1
 - SMS is done, conn is gone
   llist_count(&net->subscr_conns) == 0
@@ -303,6 +309,8 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
+- Sendig clear command to BSC (conn_id=0)
+
   llist_count(&net->subscr_conns) == 0
 ===== test_no_authen: SUCCESS
 
@@ -450,6 +458,8 @@ DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
 - LU was successful, and the conn has already been closed
   llist_count(&net->subscr_conns) == 0
 - Subscriber has the new TMSI
@@ -527,6 +537,8 @@ DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
 - all requests serviced, conn has been released
   llist_count(&net->subscr_conns) == 0
 ---
@@ -632,6 +644,8 @@ DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
   dtap_tx_confirmed == 1
 - SMS is done, conn is gone
   llist_count(&net->subscr_conns) == 0
@@ -774,6 +788,8 @@ DMM Subscr_Conn(50462976){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
 - LU was successful, and the conn has already been closed
   llist_count(&net->subscr_conns) == 0
 - subscriber has the new TMSI
@@ -797,6 +813,8 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
+- Sendig clear command to BSC (conn_id=0)
+
   llist_count(&net->subscr_conns) == 0
 ===== test_no_authen_tmsi: SUCCESS
 
@@ -942,6 +960,8 @@ DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
 - LU was successful, and the conn has already been closed
   lu_result_sent == 1
   llist_count(&net->subscr_conns) == 0
@@ -963,6 +983,8 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
+- Sendig clear command to BSC (conn_id=0)
+
   llist_count(&net->subscr_conns) == 0
 ===== test_no_authen_imei: SUCCESS
 
@@ -1132,6 +1154,8 @@ DMM Subscr_Conn(901700000004620){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:46071: MSC conn use - 1 == 0
 DRLL subscr MSISDN:46071: Freeing subscriber connection
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
+- Sendig clear command to BSC (conn_id=0)
+
 - LU was successful, and the conn has already been closed
   lu_result_sent == 1
   llist_count(&net->subscr_conns) == 0
@@ -1154,6 +1178,8 @@ DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
+- Sendig clear command to BSC (conn_id=0)
+
   llist_count(&net->subscr_conns) == 0
 ===== test_no_authen_tmsi_imei: SUCCESS
 

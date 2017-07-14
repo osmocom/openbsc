@@ -61,6 +61,7 @@ LDADD = \
 	$(NULL)
 
 LDFLAGS = \
+	-Wl,--wrap=a_iface_tx_clear_cmd \
 	-Wl,--wrap=gsup_client_create \
 	-Wl,--wrap=gsup_client_send \
 	-Wl,--wrap=a_iface_tx_dtap \
