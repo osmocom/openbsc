@@ -138,8 +138,8 @@ int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx)
 			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
 	bts->si_common.cell_sel_par.neci = bts->network->neci;
 
-	/* Zero, forget the state of the SIs */
-	bts->si_valid = 0;
+	/* Zero/forget the state of the dynamically computed SIs, leeping the static ones */
+	bts->si_valid = bts->si_mode_static;
 
 	/* First, we determine which of the SI messages we actually need */
 
