@@ -103,8 +103,11 @@ static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 	struct gsm_bts *bts = trx->bts;
 	int rc, j;
 
-	DEBUGP(DRR, "SI%s: %s\n", get_value_string(osmo_sitype_strs, i),
-		osmo_hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
+	if (si_len) {
+		DEBUGP(DRR, "SI%s: %s\n", get_value_string(osmo_sitype_strs, i),
+			osmo_hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
+	} else
+		DEBUGP(DRR, "SI%s: OFF\n", get_value_string(osmo_sitype_strs, i));
 
 	switch (i) {
 	case SYSINFO_TYPE_5:
@@ -112,14 +115,18 @@ static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 	case SYSINFO_TYPE_5ter:
 	case SYSINFO_TYPE_6:
 		rc = rsl_sacch_filling(trx, osmo_sitype2rsl(i),
-				       GSM_BTS_SI(bts, i), si_len);
+				       si_len ? GSM_BTS_SI(bts, i) : NULL, si_len);
 		break;
 	case SYSINFO_TYPE_2quater:
+		if (si_len == 0) {
+			rc = rsl_bcch_info(trx, i, NULL, 0);
+			break;
+		}
 		for (j = 0; j <= bts->si2q_count; j++)
 			rc = rsl_bcch_info(trx, i, (const uint8_t *)GSM_BTS_SI2Q(bts, j), GSM_MACBLOCK_LEN);
 		break;
 	default:
-		rc = rsl_bcch_info(trx, i, GSM_BTS_SI(bts, i), si_len);
+		rc = rsl_bcch_info(trx, i, si_len ? GSM_BTS_SI(bts, i) : NULL, si_len);
 		break;
 	}
 
@@ -192,9 +199,13 @@ int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx)
 
 	for (n = 0; n < n_si; n++) {
 		i = gen_si[n];
+		/* if we don't currently have this SI, we send a zero-length
+		 * RSL BCCH FILLING / SACCH FILLING * in order to deactivate
+		 * the SI, in case it might have previously been active */
 		if (!GSM_BTS_HAS_SI(bts, i))
-			continue;
-		rc = rsl_si(trx, i, si_len[i]);
+			rc = rsl_si(trx, i, 0);
+		else
+			rc = rsl_si(trx, i, si_len[i]);
 		if (rc < 0)
 			return rc;
 	}
