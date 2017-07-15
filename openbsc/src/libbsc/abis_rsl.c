@@ -245,12 +245,14 @@ int rsl_bcch_info(const struct gsm_bts_trx *trx, enum osmo_sysinfo_type si_type,
 	    && type == RSL_SYSTEM_INFO_13) {
 		/* Ericsson proprietary encoding of SI13 */
 		msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, RSL_ERIC_SYSTEM_INFO_13);
-		msgb_tlv_put(msg, RSL_IE_FULL_BCCH_INFO, len, data);
+		if (data)
+			msgb_tlv_put(msg, RSL_IE_FULL_BCCH_INFO, len, data);
 		msgb_tv_put(msg, RSL_IE_ERIC_BCCH_MAPPING, 0x00);
 	} else {
 		/* Normal encoding */
 		msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
-		msgb_tlv_put(msg, RSL_IE_FULL_BCCH_INFO, len, data);
+		if (data)
+			msgb_tlv_put(msg, RSL_IE_FULL_BCCH_INFO, len, data);
 	}
 
 	msg->dst = trx->rsl_link;
@@ -269,7 +271,8 @@ int rsl_sacch_filling(struct gsm_bts_trx *trx, uint8_t type,
 	ch->msg_type = RSL_MT_SACCH_FILL;
 
 	msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
-	msgb_tl16v_put(msg, RSL_IE_L3_INFO, len, data);
+	if (data)
+		msgb_tl16v_put(msg, RSL_IE_L3_INFO, len, data);
 
 	msg->dst = trx->rsl_link;
 
@@ -288,7 +291,8 @@ int rsl_sacch_info_modify(struct gsm_lchan *lchan, uint8_t type,
 	dh->chan_nr = chan_nr;
 
 	msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
-	msgb_tl16v_put(msg, RSL_IE_L3_INFO, len, data);
+	if (data)
+		msgb_tl16v_put(msg, RSL_IE_L3_INFO, len, data);
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
