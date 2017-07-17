@@ -2708,6 +2708,10 @@ static struct gtphub_peer_port *gtphub_addr_add_port(struct gtphub_peer_addr *a,
 
 	pp->counters_io = rate_ctr_group_alloc(osmo_gtphub_ctx,
 					       &gtphub_ctrg_io_desc, 0);
+	if (!pp->counters_io) {
+		talloc_free(pp);
+		return NULL;
+	}
 
 	llist_add(&pp->entry, &a->ports);
 
