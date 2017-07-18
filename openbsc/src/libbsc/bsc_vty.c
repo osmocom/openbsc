@@ -30,6 +30,7 @@
 #include <osmocom/vty/misc.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/gsm0502.h>
+#include <osmocom/ctrl/control_if.h>
 
 #include <arpa/inet.h>
 
@@ -4122,6 +4123,20 @@ DEFUN(lchan_mdcx, lchan_mdcx_cmd,
 	rsl_ipacc_mdcx(lchan, ntohl(ia.s_addr), port, 0);
 	return CMD_SUCCESS;
 }
+
+DEFUN(ctrl_trap, ctrl_trap_cmd,
+	"ctrl-interface generate-trap TRAP VALUE",
+	"Commands related to the CTRL Interface\n"
+	"Generate a TRAP for test purpose\n"
+	"Identity/Name of the TRAP variable\n"
+	"Value of the TRAP variable\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	ctrl_cmd_send_trap(net->ctrl, argv[0], (char *) argv[1]);
+	return CMD_SUCCESS;
+}
+
 extern int bsc_vty_init_extra(void);
 
 int bsc_vty_init(struct gsm_network *network)
@@ -4325,6 +4340,7 @@ int bsc_vty_init(struct gsm_network *network)
 	install_element(ENABLE_NODE, &lchan_act_cmd);
 	install_element(ENABLE_NODE, &lchan_mdcx_cmd);
 	install_element(ENABLE_NODE, &smscb_cmd_cmd);
+	install_element(ENABLE_NODE, &ctrl_trap_cmd);
 
 	abis_nm_vty_init();
 	abis_om2k_vty_init();
