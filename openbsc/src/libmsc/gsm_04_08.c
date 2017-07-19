@@ -2980,6 +2980,7 @@ static int gsm48_cc_rx_retrieve(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&retrieve, 0, sizeof(struct gsm_mncc));
 	retrieve.callref = trans->callref;
+	trans->conn->mncc_rtp_connect_pending = 1;
 	return mncc_recvmsg(trans->net, trans, MNCC_RETRIEVE_IND,
 			    &retrieve);
 }
