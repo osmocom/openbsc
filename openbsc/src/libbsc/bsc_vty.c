@@ -1544,14 +1544,14 @@ DEFUN(cfg_net_pag_any_tch,
 #define DECLARE_TIMER(number, doc) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
-      "timer t" #number  " <0-65535>",				\
+      "timer t" #number  " <1-65535>",				\
       "Configure GSM Timers\n"					\
       doc "Timer Value in seconds\n")				\
 {								\
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);	\
 	int value = atoi(argv[0]);				\
 								\
-	if (value < 0 || value > 65535) {			\
+	if (value < 1 || value > 65535) {			\
 		vty_out(vty, "Timer value %s out of range.%s",	\
 		        argv[0], VTY_NEWLINE);			\
 		return CMD_WARNING;				\
