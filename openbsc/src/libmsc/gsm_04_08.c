@@ -3471,6 +3471,8 @@ static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 			continue;
 		if (tmp->conn->lchan != lchan && tmp->conn->ho_lchan != lchan)
 			continue;
+		if (!tmp->tch_recv)
+			continue;
 		trans = tmp;
 		break;
 	}
@@ -3518,6 +3520,8 @@ static int ho_detect(struct gsm_lchan *lchan)
 		if (!tmp->conn)
 			continue;
 		if (tmp->conn->lchan != lchan && tmp->conn->ho_lchan != lchan)
+			continue;
+		if (!tmp->tch_recv)
 			continue;
 		trans = tmp;
 		break;
