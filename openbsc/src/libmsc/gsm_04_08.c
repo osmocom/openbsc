@@ -2049,6 +2049,10 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 			LOGP(DCC, LOGL_ERROR, "Error: RTP proxy is disabled\n");
 			return -EINVAL;
 		}
+		/* RTP bridge handling */
+		if (lchan->conn && lchan->conn->mncc_rtp_bridge) {
+			return 0;
+		}
 		/* In case, we don't have a RTP socket to the BTS yet, the BTS
 		 * will not be connected to our RTP proxy and the socket will
 		 * not be assigned to the application interface. This method
