@@ -289,10 +289,18 @@ enum gsm_auth_policy {
 	GSM_AUTH_POLICY_REGEXP, /* accept IMSIs matching given regexp */
 };
 
-#define GSM_T3101_DEFAULT 10
-#define GSM_T3105_DEFAULT 40
+#define GSM_T3101_DEFAULT 10	/* s */
+#define GSM_T3103_DEFAULT 5	/* s */
+#define GSM_T3105_DEFAULT 100	/* ms */
+#define GSM_T3107_DEFAULT 5	/* s */
+#define GSM_T3109_DEFAULT 19	/* s, must be 2s + radio_link_timeout*0.48 */
+#define GSM_T3111_DEFAULT 2	/* s */
 #define GSM_T3113_DEFAULT 60
+#define GSM_T3115_DEFAULT 10
+#define GSM_T3117_DEFAULT 10
+#define GSM_T3119_DEFAULT 10
 #define GSM_T3122_DEFAULT 10
+#define GSM_T3141_DEFAULT 10
 
 struct gsm_tz {
 	int override; /* if 0, use system's time zone instead. */

@@ -44,10 +44,17 @@ struct gsm_network *bsc_network_init(void *ctx,
 	net->num_bts = 0;
 	net->reject_cause = GSM48_REJECT_ROAMING_NOT_ALLOWED;
 	net->T3101 = GSM_T3101_DEFAULT;
+	net->T3103 = GSM_T3103_DEFAULT;
 	net->T3105 = GSM_T3105_DEFAULT;
+	net->T3107 = GSM_T3107_DEFAULT;
+	net->T3109 = GSM_T3109_DEFAULT;
+	net->T3111 = GSM_T3111_DEFAULT;
 	net->T3113 = GSM_T3113_DEFAULT;
+	net->T3115 = GSM_T3115_DEFAULT;
+	net->T3117 = GSM_T3117_DEFAULT;
+	net->T3119 = GSM_T3119_DEFAULT;
 	net->T3122 = GSM_T3122_DEFAULT;
-	/* FIXME: initialize all other timers! */
+	net->T3141 = GSM_T3141_DEFAULT;
 
 	/* default set of handover parameters */
 	net->handover.win_rxlev_avg = 10;

@@ -787,6 +787,11 @@ static int config_write_bts(struct vty *v)
 	return CMD_SUCCESS;
 }
 
+/* small helper macro for conditional dumping of timer */
+#define VTY_OUT_TIMER(number)	\
+	if (gsmnet->T##number != GSM_T##number##_DEFAULT)	\
+		vty_out(vty, " timer t"#number" %u%s", gsmnet->T##number, VTY_NEWLINE)
+
 static int config_write_net(struct vty *vty)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
@@ -820,18 +825,18 @@ static int config_write_net(struct vty *vty)
 		gsmnet->handover.pwr_hysteresis, VTY_NEWLINE);
 	vty_out(vty, " handover maximum distance %u%s",
 		gsmnet->handover.max_distance, VTY_NEWLINE);
-	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
-	vty_out(vty, " timer t3103 %u%s", gsmnet->T3103, VTY_NEWLINE);
-	vty_out(vty, " timer t3105 %u%s", gsmnet->T3105, VTY_NEWLINE);
-	vty_out(vty, " timer t3107 %u%s", gsmnet->T3107, VTY_NEWLINE);
-	vty_out(vty, " timer t3109 %u%s", gsmnet->T3109, VTY_NEWLINE);
-	vty_out(vty, " timer t3111 %u%s", gsmnet->T3111, VTY_NEWLINE);
-	vty_out(vty, " timer t3113 %u%s", gsmnet->T3113, VTY_NEWLINE);
-	vty_out(vty, " timer t3115 %u%s", gsmnet->T3115, VTY_NEWLINE);
-	vty_out(vty, " timer t3117 %u%s", gsmnet->T3117, VTY_NEWLINE);
-	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
-	vty_out(vty, " timer t3122 %u%s", gsmnet->T3122, VTY_NEWLINE);
-	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
+	VTY_OUT_TIMER(3101);
+	VTY_OUT_TIMER(3103);
+	VTY_OUT_TIMER(3105);
+	VTY_OUT_TIMER(3107);
+	VTY_OUT_TIMER(3109);
+	VTY_OUT_TIMER(3111);
+	VTY_OUT_TIMER(3113);
+	VTY_OUT_TIMER(3115);
+	VTY_OUT_TIMER(3117);
+	VTY_OUT_TIMER(3119);
+	VTY_OUT_TIMER(3122);
+	VTY_OUT_TIMER(3141);
 	vty_out(vty, " dyn_ts_allow_tch_f %d%s",
 		gsmnet->dyn_ts_allow_tch_f ? 1 : 0, VTY_NEWLINE);
 	vty_out(vty, " subscriber-keep-in-ram %d%s",
