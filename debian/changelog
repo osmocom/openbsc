@@ -1,3 +1,11 @@
+openbsc (0.15.1-fw.7) UNRELEASED; urgency=medium
+
+  * gsm_04_08: Implement support of placing an existing call on hold when another call comes in and switching to new call
+  * gsm_04_08: Enable mncc_rtp_connect_pending flag for conn after receiving retrieve ind to be able to re-connect rtp
+  * gsm_04_08: Add handling of rtp bridge mode in tch_recv_mncc function to avoid executing code which is used for rtp proxy mode
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Wed, 19 Jul 2017 18:42:10 +0200
+
 openbsc (0.15.1-fw.6) UNRELEASED; urgency=medium
 
   * libcommon: Fix log output for bts>0
