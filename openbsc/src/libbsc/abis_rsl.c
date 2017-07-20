@@ -2899,10 +2899,6 @@ int rsl_start_t3109(struct gsm_lchan *lchan)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
-	/* Disabled, mostly legacy code */
-	if (bts->network->T3109 == 0)
-		return -1;
-
 	osmo_timer_setup(&lchan->T3109, t3109_expired, lchan);
 	osmo_timer_schedule(&lchan->T3109, bts->network->T3109, 0);
 	return 0;
