@@ -206,7 +206,7 @@ if test "x$enable_ext_tests" = "xyes" ; then
 	AM_PATH_PYTHON
 	AC_CHECK_PROG(OSMOTESTEXT_CHECK,osmotestvty.py,yes)
 	 if test "x$OSMOTESTEXT_CHECK" != "xyes" ; then
-		AC_MSG_ERROR([Please install osmocom-python to run the VTY/CTRL tests.])
+		AC_MSG_ERROR([Please install git://osmocom.org/python/osmo-python-tests to run the VTY/CTRL tests.])
 	fi
 fi
 AC_MSG_CHECKING([whether to enable VTY/CTRL tests])
