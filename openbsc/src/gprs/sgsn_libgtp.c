@@ -235,11 +235,8 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	}
 
 	/* charging characteristics if present */
-	if (TLVP_LEN(tp, OSMO_IE_GSM_CHARG_CHAR) > 0) {
-		OSMO_ASSERT(TLVP_LEN(tp, OSMO_IE_GSM_CHARG_CHAR) <= sizeof(pdp->cch_pdp));
-		memcpy(&pdp->cch_pdp, TLVP_VAL(tp, OSMO_IE_GSM_CHARG_CHAR),
-			TLVP_LEN(tp, OSMO_IE_GSM_CHARG_CHAR));
-	}
+	if (TLVP_LEN(tp, OSMO_IE_GSM_CHARG_CHAR) >= sizeof(pdp->cch_pdp))
+		pdp->cch_pdp = tlvp_val16be(tp, OSMO_IE_GSM_CHARG_CHAR);
 
 	/* SGSN address for control plane */
 	pdp->gsnlc.l = sizeof(sgsn->cfg.gtp_listenaddr.sin_addr);
