@@ -4,13 +4,14 @@
 #define OSMO_MSC_H
 
 #include <osmocom/core/fsm.h>
+#include <osmocom/gsm/gsup.h>
 
 #include <openbsc/gsm_data.h>
 
 #include "bsc_api.h"
 
 #define MSC_HLR_REMOTE_IP_DEFAULT "127.0.0.1"
-#define MSC_HLR_REMOTE_PORT_DEFAULT 2222
+#define MSC_HLR_REMOTE_PORT_DEFAULT OSMO_GSUP_PORT
 
 enum subscr_conn_fsm_event {
 	/* Mark 0 as invalid to catch uninitialized vars */
