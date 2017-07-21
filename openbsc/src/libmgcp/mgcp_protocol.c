@@ -76,6 +76,9 @@ void display_mgcp_message(unsigned char *message, unsigned int len,
 	unsigned int consumed_line = 0;
 	unsigned int line_count = 0;
 
+	if (!log_check_level(DMGCP, LOGL_DEBUG))
+		return;
+
 	while (1) {
 		memset(line, 0, sizeof(line));
 		ptr = line;
