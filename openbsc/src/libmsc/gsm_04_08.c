@@ -1081,7 +1081,7 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 
 	lai.plmn.mcc = conn->network->country_code;
 	lai.plmn.mnc = conn->network->network_code;
-	lai.lac = 23; /* FIXME bts->location_area_code; */
+	lai.lac = conn->lac;
 
 	resp = (struct gsm48_pag_resp *) &gh->data[0];
 	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*gh),
