@@ -439,28 +439,36 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 		LOGP(DMSC, LOGL_NOTICE, "Initializing SCCP connection to MSC %s (%s)\n",
 		     osmo_sccp_addr_dump(&msc->a.msc_addr), msc_name);
 
-		/* Check if the sccp-address */
+		/* Check if the sccp-address fullfill minimum requirements (SSN+PC is present) */
 		if (test_addr(&msc->a.bsc_addr) < 0) {
 			LOGP(DMSC, LOGL_ERROR,
-			     "A-interface: invalid local SCCP address (a.bsc_addr) %s\n",
+			     "A-interface: invalid local SCCP address (a.bsc_addr=%s)\n",
 			     osmo_sccp_addr_dump(&msc->a.bsc_addr));
 			return -EINVAL;
 		}
 		if (test_addr(&msc->a.msc_addr) < 0) {
 			LOGP(DMSC, LOGL_ERROR,
-			     "A-interface: invalid remote SCCP address for the MSC (a.msc_addr) %s\n",
+			     "A-interface: invalid remote SCCP address for the MSC (a.msc_addr=%s)\n",
 			     osmo_sccp_addr_dump(&msc->a.msc_addr));
 			return -EINVAL;
 		}
 
-		/* SCCP Protocol stack */
+		/* SS7 Protocol stack */
 		msc->a.sccp =
-		    osmo_sccp_simple_client(NULL, msc_name, msc->a.bsc_addr.pc,
-					    OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT, "127.0.0.1");
+		    osmo_sccp_simple_client_on_ss7_id(msc, msc->a.cs7_instance, msc_name, msc->a.bsc_addr.pc,
+						      OSMO_SS7_ASP_PROT_M3UA, 0, NULL, M3UA_PORT, "127.0.0.1");
+		if (!msc->a.sccp)
+			return -EINVAL;
+
 		msc->a.sccp_user = osmo_sccp_user_bind(msc->a.sccp, msc_name, sccp_sap_up, msc->a.bsc_addr.ssn);
+		if (!msc->a.sccp_user)
+			return -EINVAL;
 
 		/* Start MSC reset procedure */
 		msc->a.reset = a_reset_alloc(msc, msc_name, osmo_bsc_sigtran_reset_cb, msc);
+		if (!msc->a.reset)
+			return -EINVAL;
+
 	}
 
 	return 0;

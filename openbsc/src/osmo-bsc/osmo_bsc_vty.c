@@ -187,16 +187,13 @@ static void write_msc(struct vty *vty, struct bsc_msc_data *msc)
 	write_msc_amr_options(vty, msc);
 
 	/* write sccp connection configuration */
-	if (msc->a.ss7) {
-		vty_out(vty, " cs7-instance %u%s", msc->a.ss7->cfg.id,
-			VTY_NEWLINE);
-		vty_out(vty, " bsc-addr %s%s",
-			osmo_sccp_name_by_addr(&msc->a.bsc_addr,
-					       msc->a.ss7), VTY_NEWLINE);
-		vty_out(vty, " msc-addr %s%s",
-			osmo_sccp_name_by_addr(&msc->a.msc_addr,
-					       msc->a.ss7), VTY_NEWLINE);
-	}
+	/* FIXME: This can not work, as we manipulate the address,
+	 * we can not expect to find it in the addressbok. We should
+	 * store the string names instead. */
+	vty_out(vty, " bsc-addr %s%s",
+		osmo_sccp_name_by_addr(&msc->a.bsc_addr), VTY_NEWLINE);
+	vty_out(vty, " msc-addr %s%s",
+		osmo_sccp_name_by_addr(&msc->a.msc_addr), VTY_NEWLINE);
 }
 
 static int config_write_msc(struct vty *vty)
@@ -698,26 +695,6 @@ DEFUN(cfg_msc_no_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_msc_cs7_instance,
-      cfg_msc_cs7_instance_cmd,
-      "cs7-instance <0-15>",
-      "Set Associated SS7 instance.\n" "SS7 instance reference number\n")
-{
-	struct bsc_msc_data *msc = bsc_msc_data(vty);
-	uint32_t inst_id = atoi(argv[0]);
-	struct osmo_ss7_instance *inst;
-
-	inst = osmo_ss7_instance_find(inst_id);
-	if (!inst) {
-		vty_out(vty, "No SS7 instance %d found%s", inst_id,
-			VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	msc->a.ss7 = inst;
-	return CMD_SUCCESS;
-}
-
 /* Make sure only standard SSN numbers are used. If no ssn number is
  * configured, silently apply the default SSN */
 static void enforce_standard_ssn(struct vty *vty, struct osmo_sccp_addr *addr)
@@ -740,24 +717,17 @@ DEFUN(cfg_msc_cs7_bsc_addr,
 {
 	struct bsc_msc_data *msc = bsc_msc_data(vty);
 	const char *bsc_addr_name = argv[0];
-	struct osmo_sccp_addr *bsc_addr;
+	struct osmo_ss7_instance *ss7;
 
-	if (!msc->a.ss7) {
-		vty_out(vty, "cs7-instance instance must be configured first%s",
-			VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	bsc_addr = osmo_sccp_addr_by_name(bsc_addr_name, msc->a.ss7);
-	if (!bsc_addr) {
+	ss7 = osmo_sccp_addr_by_name(&msc->a.bsc_addr, bsc_addr_name);
+	if (!ss7) {
 		vty_out(vty, "No sccp address %s found%s", bsc_addr_name,
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	enforce_standard_ssn(vty, bsc_addr);
-
-	memcpy(&msc->a.bsc_addr, bsc_addr, sizeof(*bsc_addr));
+	msc->a.cs7_instance = ss7->cfg.id;
+	enforce_standard_ssn(vty, &msc->a.bsc_addr);
 	return CMD_SUCCESS;
 }
 
@@ -768,25 +738,17 @@ DEFUN(cfg_msc_cs7_msc_addr,
 {
 	struct bsc_msc_data *msc = bsc_msc_data(vty);
 	const char *msc_addr_name = argv[0];
-	struct osmo_sccp_addr *msc_addr;
+	struct osmo_ss7_instance *ss7;
 
-	if (!msc->a.ss7) {
-		vty_out(vty, "cs7-instance instance must be configured first%s",
-			VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	msc_addr = osmo_sccp_addr_by_name(msc_addr_name, msc->a.ss7);
-	if (!msc_addr) {
+	ss7 = osmo_sccp_addr_by_name(&msc->a.msc_addr, msc_addr_name);
+	if (!ss7) {
 		vty_out(vty, "No sccp address %s found%s", msc_addr_name,
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	enforce_standard_ssn(vty, msc_addr);
-
-	memcpy(&msc->a.msc_addr, msc_addr, sizeof(*msc_addr));
-
+	msc->a.cs7_instance = ss7->cfg.id;
+	enforce_standard_ssn(vty, &msc->a.msc_addr);
 	return CMD_SUCCESS;
 }
 
@@ -1036,7 +998,6 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_amr_4_75_cmd);
 	install_element(MSC_NODE, &cfg_msc_acc_lst_name_cmd);
 	install_element(MSC_NODE, &cfg_msc_no_acc_lst_name_cmd);
-	install_element(MSC_NODE, &cfg_msc_cs7_instance_cmd);
 	install_element(MSC_NODE, &cfg_msc_cs7_bsc_addr_cmd);
 	install_element(MSC_NODE, &cfg_msc_cs7_msc_addr_cmd);
 
