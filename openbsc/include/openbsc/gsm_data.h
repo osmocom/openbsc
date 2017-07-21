@@ -489,16 +489,20 @@ struct gsm_network {
 	} mgcpgw;
 
 	struct {
+		/* CS7 instance id number (set via VTY) */
+		uint32_t cs7_instance;
 		enum nsap_addr_enc rab_assign_addr_enc;
+		struct osmo_sccp_instance *sccp;
 	} iu;
 
 	struct {
+		/* CS7 instance id number (set via VTY) */
+		uint32_t cs7_instance;
 		/* A list with the context information about
 		 * all BSCs we have connections with */
 		struct llist_head bscs;
+		struct osmo_sccp_instance *sccp;
 	} a;
-
-	struct osmo_sccp_instance *sccp;
 };
 
 struct osmo_esme;

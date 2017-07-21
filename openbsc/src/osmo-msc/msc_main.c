@@ -338,6 +338,55 @@ static int rx_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type,
 	return iucs_rx_ranap_event(msc_network, ctx, type, data);
 }
 
+#define A_DEFAULT_PC 1
+#define A_DEFAULT_LOCAL_IP "127.0.0.3"
+#define A_DEFAULT_REMOTE_IP "127.0.0.1"
+#define IU_DEFAULT_PC 3
+#define IU_DEFAULT_LOCAL_IP "127.0.0.6"
+#define IU_DEFAULT_REMOTE_IP "127.0.0.1"
+
+/* Setup sigtran connection */
+int ss7_setup(void *ctx)
+{
+	uint32_t cs7_instance_a = msc_network->a.cs7_instance;
+	uint32_t cs7_instance_iu = msc_network->iu.cs7_instance;
+
+	LOGP(DMSC, LOGL_NOTICE, "CS7 Instance identifier, A-Interface:  %u\n",
+	     cs7_instance_a);
+	LOGP(DMSC, LOGL_NOTICE, "CS7 Instance identifier, Iu-Interface: %u\n",
+	     cs7_instance_iu);
+
+	/* Create first SCCP instance (Iu) */
+	msc_network->iu.sccp =
+	    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_iu,
+					      "OsmoMSC-Iu", IU_DEFAULT_PC,
+					      OSMO_SS7_ASP_PROT_M3UA, 0,
+					      IU_DEFAULT_LOCAL_IP, 0,
+					      IU_DEFAULT_REMOTE_IP);
+	if (!msc_network->iu.sccp)
+		return -EINVAL;
+
+	/* If the VTY settings indicate, that the user wants to use only a
+	   single cs7 instance (A and Iu are running on the same instance,
+	   we just copy the pointer and exit early */
+	if (cs7_instance_a == cs7_instance_iu) {
+		msc_network->a.sccp = msc_network->iu.sccp;
+		return 0;
+	}
+
+	/* Create second SCCP instance (A) */
+	msc_network->a.sccp =
+	    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_a,
+					      "OsmoMSC-A", A_DEFAULT_PC,
+					      OSMO_SS7_ASP_PROT_M3UA, 0,
+					      A_DEFAULT_LOCAL_IP, 0,
+					      A_DEFAULT_REMOTE_IP);
+	if (!msc_network->a.sccp)
+		return -EINVAL;
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int rc;
@@ -354,6 +403,7 @@ int main(int argc, char **argv)
 	vty_init(&msc_vty_info);
 
 	osmo_ss7_init();
+	osmo_ss7_vty_init_sg();
 
 	/* Parse options */
 	handle_options(argc, argv);
@@ -496,22 +546,16 @@ TODO: we probably want some of the _net_ ctrl commands from bsc_base_ctrl_cmds_i
 		return 7;
 	}
 
-	/* Set up STP link to receive connections from BSC and HNBGW */
-	msc_network->sccp = osmo_sccp_simple_client(tall_msc_ctx, "OsmoMSC",
-						    1 /* FIXME: configurable */,
-						    OSMO_SS7_ASP_PROT_M3UA, 0,
-						    "127.0.0.3" /* FIXME: configurable */,
-						    M3UA_PORT, "127.0.0.1" /* FIXME: configurable */);
-	if (!msc_network->sccp) {
+	if (ss7_setup(tall_msc_ctx)) {
 		printf("Setting up SCCP client failed.\n");
 		return 8;
 	}
 
 	/* Set up IuCS */
-	iu_init(tall_msc_ctx, msc_network->sccp, rcvmsg_iu_cs, rx_iu_event);
+	iu_init(tall_msc_ctx, msc_network->iu.sccp, rcvmsg_iu_cs, rx_iu_event);
 
 	/* Set up A interface */
-	a_init(msc_network->sccp, msc_network);
+	a_init(msc_network->a.sccp, msc_network);
 
 	if (msc_cmdline_config.daemonize) {
 		rc = osmo_daemonize();
