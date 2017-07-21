@@ -314,8 +314,7 @@ static struct vty_app_info msc_vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
-static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, /* FIXME gprs_ in CS code */
-			uint16_t *sai)
+static int rcvmsg_iu_cs(struct msgb *msg, struct gprs_ra_id *ra_id, uint16_t *sai)
 {
 	DEBUGP(DIUCS, "got IuCS message"
 	       " %d bytes: %s\n",
