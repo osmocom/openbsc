@@ -748,28 +748,28 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	struct vlr_subscr *vsub = NULL;
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), idi->mi, idi->mi_len);
-	DEBUGP(DMM, "IMSI DETACH INDICATION: MI(%s)=%s",
-		gsm48_mi_type_name(mi_type), mi_string);
+	DEBUGP(DMM, "IMSI DETACH INDICATION: MI(%s)=%s\n",
+	       gsm48_mi_type_name(mi_type), mi_string);
 
 	rate_ctr_inc(&network->msc_ctrs->ctr[MSC_CTR_LOC_UPDATE_TYPE_DETACH]);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		DEBUGPC(DMM, "\n");
 		vsub = vlr_subscr_find_by_tmsi(network->vlr,
 					       tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
-		DEBUGPC(DMM, "\n");
 		vsub = vlr_subscr_find_by_imsi(network->vlr, mi_string);
 		break;
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
 		/* no sim card... FIXME: what to do ? */
-		DEBUGPC(DMM, ": unimplemented mobile identity type\n");
+		LOGP(DMM, LOGL_ERROR, "MI(%s)=%s: unimplemented mobile identity type\n",
+		     gsm48_mi_type_name(mi_type), mi_string);
 		break;
 	default:
-		DEBUGPC(DMM, ": unknown mobile identity type\n");
+		LOGP(DMM, LOGL_ERROR, "MI(%s)=%s: unknown mobile identity type\n",
+		     gsm48_mi_type_name(mi_type), mi_string);
 		break;
 	}
 
@@ -779,15 +779,15 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	conn->classmark.classmark1 = idi->classmark1;
 
 	if (!vsub) {
-		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
-		return 0;
+		LOGP(DMM, LOGL_ERROR, "IMSI DETACH for unknown subscriber MI(%s)=%s\n",
+		     gsm48_mi_type_name(mi_type), mi_string);
+	} else {
+		LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n",
+		     vlr_subscr_name(vsub));
+		vlr_subscr_rx_imsi_detach(vsub);
+		osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_DETACHED, vsub);
+		vlr_subscr_put(vsub);
 	}
-
-	LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n",
-	     vlr_subscr_name(vsub));
-	vlr_subscr_rx_imsi_detach(vsub);
-	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_DETACHED, vsub);
-	vlr_subscr_put(vsub);
 
 	msc_subscr_conn_close(conn, 0);
 	return 0;
