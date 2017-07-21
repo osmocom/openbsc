@@ -31,6 +31,8 @@
 #include <openbsc/transaction.h>
 #include <openbsc/signal.h>
 #include <openbsc/iu.h>
+#include <openbsc/a_iface.h>
+
 
 #define SUBSCR_CONN_TIMEOUT 5 /* seconds */
 
@@ -237,6 +239,11 @@ static void subscr_conn_fsm_cleanup(struct osmo_fsm_inst *fi,
 		/* FIXME: keep the conn until the Iu Release Outcome is
 		 * received from the UE, or a timeout expires. For now, the log
 		 * says "unknown UE" for each release outcome. */
+
+	/* Clear A-Interface connection */
+	if (conn->via_ran == RAN_GERAN_A)
+		a_iface_tx_clear_cmd(conn);
+
 
 	msc_subscr_conn_put(conn);
 }
