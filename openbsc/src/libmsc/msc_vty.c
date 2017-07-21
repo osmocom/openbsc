@@ -105,6 +105,26 @@ DEFUN(cfg_msc_no_assign_tmsi, cfg_msc_no_assign_tmsi_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_msc_cs7_instance_a,
+      cfg_msc_cs7_instance_a_cmd,
+      "cs7-instance-a <0-15>",
+      "Set SS7 to be used by the A-Interface.\n" "SS7 instance reference number\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->a.cs7_instance = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_msc_cs7_instance_iu,
+      cfg_msc_cs7_instance_iu_cmd,
+      "cs7-instance-iu <0-15>",
+      "Set SS7 to be used by the Iu-Interface.\n" "SS7 instance reference number\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->iu.cs7_instance = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 static int config_write_msc(struct vty *vty)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
@@ -123,6 +143,11 @@ static int config_write_msc(struct vty *vty)
 			VTY_NEWLINE);
 	vty_out(vty, " %sassign-tmsi%s",
 		gsmnet->vlr->cfg.assign_tmsi? "" : "no ", VTY_NEWLINE);
+
+	vty_out(vty, " cs7-instance-a %u%s", gsmnet->a.cs7_instance,
+		VTY_NEWLINE);
+	vty_out(vty, " cs7-instance-iu %u%s", gsmnet->iu.cs7_instance,
+		VTY_NEWLINE);
 
 	mgcpgw_client_config_write(vty, " ");
 	iu_vty_config_write(vty, " ");
@@ -176,6 +201,9 @@ void msc_vty_init(struct gsm_network *msc_network)
 	install_element(MSC_NODE, &cfg_msc_no_subscr_create_cmd);
 	install_element(MSC_NODE, &cfg_msc_assign_tmsi_cmd);
 	install_element(MSC_NODE, &cfg_msc_no_assign_tmsi_cmd);
+	install_element(MSC_NODE, &cfg_msc_cs7_instance_a_cmd);
+	install_element(MSC_NODE, &cfg_msc_cs7_instance_iu_cmd);
+
 	mgcpgw_client_vty_init(MSC_NODE, &msc_network->mgcpgw.conf);
 	iu_vty_init(MSC_NODE, &msc_network->iu.rab_assign_addr_enc);
 }
