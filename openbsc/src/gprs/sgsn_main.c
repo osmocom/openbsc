@@ -40,6 +40,8 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/core/stats.h>
 
+#include <osmocom/gsm/gsup.h>
+
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
 
@@ -83,6 +85,7 @@ static struct sgsn_instance sgsn_inst = {
 	.cfg = {
 		.gtp_statedir = "./",
 		.auth_policy = SGSN_AUTH_POLICY_CLOSED,
+		.gsup_server_port = OSMO_GSUP_PORT,
 	},
 };
 struct sgsn_instance *sgsn = &sgsn_inst;
