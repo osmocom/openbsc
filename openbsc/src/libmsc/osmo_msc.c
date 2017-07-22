@@ -271,12 +271,24 @@ void msc_subscr_conn_close(struct gsm_subscriber_connection *conn,
 {
 	if (!conn)
 		return;
-	if (conn->in_release)
+	if (conn->in_release) {
+		DEBUGP(DMM, "msc_subscr_conn_close(vsub=%s, cause=%u):"
+		       " already dispatching release, ignore.\n",
+		       vlr_subscr_name(conn->vsub), cause);
 		return;
-	if (!conn->conn_fsm)
+	}
+	if (!conn->conn_fsm) {
+		DEBUGP(DMM, "msc_subscr_conn_close(vsub=%s, cause=%u): no conn fsm,"
+		       " ignore.\n",
+		       vlr_subscr_name(conn->vsub), cause);
 		return;
-	if (conn->conn_fsm->state == SUBSCR_CONN_S_RELEASED)
+	}
+	if (conn->conn_fsm->state == SUBSCR_CONN_S_RELEASED) {
+		DEBUGP(DMM, "msc_subscr_conn_close(vsub=%s, cause=%u):"
+		       " conn fsm already releasing, ignore.\n",
+		       vlr_subscr_name(conn->vsub), cause);
 		return;
+	}
 	osmo_fsm_inst_dispatch(conn->conn_fsm, SUBSCR_CONN_E_CN_CLOSE, &cause);
 }
 

@@ -431,6 +431,7 @@ DMM IMSI DETACH for MSISDN:46071
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
@@ -1074,6 +1075,7 @@ DMM IMSI DETACH for MSISDN:46071
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
@@ -1289,6 +1291,7 @@ DMM IMSI DETACH for MSISDN:46071
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
@@ -1535,6 +1538,7 @@ DMM IMSI DETACH for MSISDN:46071
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
@@ -1957,6 +1961,7 @@ DMM IMSI DETACH for MSISDN:42342
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DREF VLR subscr MSISDN:42342 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:42342
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
