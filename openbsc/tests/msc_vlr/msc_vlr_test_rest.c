@@ -45,6 +45,7 @@ void test_early_stage()
 
 	btw("fake: acceptance");
 	g_conn->vsub = vlr_subscr_alloc(net->vlr);
+	g_conn->via_ran = RAN_GERAN_A;
 	OSMO_ASSERT(g_conn->vsub);
 	/* mark as silent call so it sticks around */
 	g_conn->silent_call = 1;
@@ -53,7 +54,9 @@ void test_early_stage()
 	EXPECT_ACCEPTED(true);
 
 	btw("CLOSE event marks conn_fsm as released and frees the conn");
+	expect_bssap_clear();
 	osmo_fsm_inst_dispatch(g_conn->conn_fsm, SUBSCR_CONN_E_CN_CLOSE, NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 	EXPECT_CONN_COUNT(0);
 
 	clear_vlr();
@@ -65,7 +68,9 @@ void test_cm_service_without_lu()
 	comment_start();
 
 	btw("CM Service Request without a prior Location Updating");
+	expect_bssap_clear();
 	ms_sends_msg("05247803305886089910070000006402");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("conn was released");
 	EXPECT_CONN_COUNT(0);
@@ -98,7 +103,9 @@ void test_two_lu()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -126,14 +133,18 @@ void test_two_lu()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
 	EXPECT_CONN_COUNT(0);
 
 	BTW("subscriber detaches");
+	expect_bssap_clear();
 	ms_sends_msg("050130089910070000006402");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -170,7 +181,9 @@ void test_lu_unknown_tmsi()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");

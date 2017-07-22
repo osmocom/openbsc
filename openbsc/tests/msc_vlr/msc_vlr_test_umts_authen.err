@@ -164,14 +164,14 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cau
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
 DMM msc_subscr_conn_close(vsub=MSISDN:42342, cause=2): no conn fsm, releasing directly without release event.
-- Sending clear command to BSC (conn_id=0)
-
+- BSSAP Clear --RAN_GERAN_A--> MS
 DREF MSISDN:42342: MSC conn use - 1 == 1
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
+  bssap_clear_sent == 1
 - LU was successful, and the conn has already been closed
   llist_count(&net->subscr_conns) == 0
 ---
@@ -277,14 +277,14 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from p
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
 DMM msc_subscr_conn_close(vsub=MSISDN:42342, cause=2): no conn fsm, releasing directly without release event.
-- Sending clear command to BSC (conn_id=0)
-
+- BSSAP Clear --RAN_GERAN_A--> MS
 DREF MSISDN:42342: MSC conn use - 1 == 1
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
+  bssap_clear_sent == 1
 - all requests serviced, conn has been released
   llist_count(&net->subscr_conns) == 0
 ---
@@ -425,8 +425,7 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from p
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
 DMM msc_subscr_conn_close(vsub=MSISDN:42342, cause=2): no conn fsm, releasing directly without release event.
-- Sending clear command to BSC (conn_id=0)
-
+- BSSAP Clear --RAN_GERAN_A--> MS
 DREF MSISDN:42342: MSC conn use - 1 == 1
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
@@ -434,6 +433,7 @@ DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
   dtap_tx_confirmed == 1
+  bssap_clear_sent == 1
 - SMS is done, conn is gone
   llist_count(&net->subscr_conns) == 0
 ---
@@ -449,10 +449,10 @@ DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DREF VLR subscr MSISDN:42342 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:42342
 DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, releasing directly without release event.
-- Sending clear command to BSC (conn_id=0)
-
+- BSSAP Clear --RAN_GERAN_A--> MS
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
+  bssap_clear_sent == 1
   llist_count(&net->subscr_conns) == 0
 ===== test_umts_authen_geran: SUCCESS
 
@@ -645,6 +645,7 @@ DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
+  iu_release_sent == 1
 - LU was successful, and the conn has already been closed
   llist_count(&net->subscr_conns) == 0
 ---
@@ -768,6 +769,7 @@ DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
+  iu_release_sent == 1
 - all requests serviced, conn has been released
   llist_count(&net->subscr_conns) == 0
 ---
@@ -927,6 +929,7 @@ DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
   dtap_tx_confirmed == 1
+  iu_release_sent == 1
 - SMS is done, conn is gone
   llist_count(&net->subscr_conns) == 0
 ---
@@ -945,6 +948,7 @@ DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, releasing directl
 - Iu Release --RAN_UTRAN_IU--> MS
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
+  iu_release_sent == 1
   llist_count(&net->subscr_conns) == 0
 ===== test_umts_authen_utran: SUCCESS
 
@@ -1147,14 +1151,14 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cau
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
 DMM msc_subscr_conn_close(vsub=MSISDN:42342, cause=2): no conn fsm, releasing directly without release event.
-- Sending clear command to BSC (conn_id=0)
-
+- BSSAP Clear --RAN_GERAN_A--> MS
 DREF MSISDN:42342: MSC conn use - 1 == 1
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
+  bssap_clear_sent == 1
 - LU was successful, and the conn has already been closed
   llist_count(&net->subscr_conns) == 0
 DREF freeing VLR subscr MSISDN:42342
@@ -1379,6 +1383,7 @@ DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
 DREF MSISDN:42342: MSC conn use - 1 == 0
 DRLL subscr MSISDN:42342: Freeing subscriber connection
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
+  iu_release_sent == 1
 - LU was successful, and the conn has already been closed
   llist_count(&net->subscr_conns) == 0
 DREF freeing VLR subscr MSISDN:42342

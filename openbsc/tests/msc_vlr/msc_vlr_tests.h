@@ -79,6 +79,38 @@ extern bool cipher_mode_cmd_sent_with_imeisv;
 extern bool paging_sent;
 extern bool paging_stopped;
 
+extern bool iu_release_expected;
+extern bool iu_release_sent;
+extern bool bssap_clear_expected;
+extern bool bssap_clear_sent;
+
+static inline void expect_iu_release()
+{
+	iu_release_expected = true;
+	iu_release_sent = false;
+}
+
+static inline void expect_bssap_clear()
+{
+	bssap_clear_expected = true;
+	bssap_clear_sent = false;
+}
+
+static inline void expect_release_clear(enum ran_type via_ran)
+{
+	switch (via_ran) {
+	case RAN_GERAN_A:
+		expect_bssap_clear();
+		return;
+	case RAN_UTRAN_IU:
+		expect_iu_release();
+		return;
+	default:
+		OSMO_ASSERT(false);
+		break;
+	}
+}
+
 struct msc_vlr_test_cmdline_opts {
 	bool verbose;
 	int run_test_nr;

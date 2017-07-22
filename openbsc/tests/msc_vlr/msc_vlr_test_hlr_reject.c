@@ -38,9 +38,11 @@ void test_hlr_rej_auth_info_unknown_imsi()
 
 	btw("HLR sends _SEND_AUTH_INFO_ERROR = unknown IMSI");
 	auth_request_sent = false;
+	expect_bssap_clear();
 	gsup_rx("09" "010809710000004026f0" "020102", NULL);
 	VERBOSE_ASSERT(auth_request_sent, == false, "%d");
 	VERBOSE_ASSERT(lu_result_sent, == RES_REJECT, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -62,9 +64,11 @@ void test_hlr_rej_auth_info_net_fail()
 
 	btw("HLR sends _SEND_AUTH_INFO_ERROR = net fail");
 	auth_request_sent = false;
+	expect_bssap_clear();
 	gsup_rx("09" "010809710000004026f0" "020111", NULL);
 	VERBOSE_ASSERT(auth_request_sent, == false, "%d");
 	VERBOSE_ASSERT(lu_result_sent, == RES_REJECT, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -118,7 +122,9 @@ void test_hlr_rej_auth_info_net_fail_no_reuse_tuples()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -145,9 +151,11 @@ void test_hlr_rej_auth_info_net_fail_no_reuse_tuples()
 
 	btw("HLR sends _SEND_AUTH_INFO_ERROR = net fail");
 	auth_request_sent = false;
+	expect_bssap_clear();
 	gsup_rx("09" "010809710000004026f0" "020111", NULL);
 	VERBOSE_ASSERT(auth_request_sent, == false, "%d");
 	VERBOSE_ASSERT(lu_result_sent, == RES_REJECT, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -201,7 +209,9 @@ void test_hlr_rej_auth_info_unkown_imsi_no_reuse_tuples()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -229,9 +239,11 @@ void test_hlr_rej_auth_info_unkown_imsi_no_reuse_tuples()
 
 	btw("HLR sends _SEND_AUTH_INFO_ERROR = unknown IMSI");
 	auth_request_sent = false;
+	expect_bssap_clear();
 	gsup_rx("09" "010809710000004026f0" "020102", NULL);
 	VERBOSE_ASSERT(auth_request_sent, == false, "%d");
 	VERBOSE_ASSERT(lu_result_sent, == RES_REJECT, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -255,6 +267,7 @@ void test_hlr_acc_but_no_auth_tuples()
 
 	btw("from HLR, rx _SEND_AUTH_INFO_RESULT but it lacks auth tuples");
 	auth_request_sent = false;
+	expect_bssap_clear();
 	gsup_rx("0a"
 		/* imsi */
 		"0108" "09710000004026f0"
@@ -262,6 +275,7 @@ void test_hlr_acc_but_no_auth_tuples()
 		,NULL);
 	VERBOSE_ASSERT(auth_request_sent, == false, "%d");
 	VERBOSE_ASSERT(lu_result_sent, == RES_REJECT, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -315,7 +329,9 @@ void test_hlr_rej_auth_info_net_fail_reuse_tuples()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -357,7 +373,9 @@ void test_hlr_rej_auth_info_net_fail_reuse_tuples()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -379,9 +397,11 @@ void test_hlr_rej_lu()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR sends UPDATE_LOCATION_ERROR");
+	expect_bssap_clear();
 	gsup_rx("05" "010809710000004026f0" "020102",
 		NULL);
 	VERBOSE_ASSERT(lu_result_sent, == RES_REJECT, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 	EXPECT_CONN_COUNT(0);
 
 	clear_vlr();
@@ -400,7 +420,9 @@ void test_hlr_no_insert_data()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR sends only _UPDATE_LOCATION_RESULT, no INSERT DATA");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	/* TODO should we wait for OSMO_GSUP_MSGT_INSERT_DATA_REQUEST? */
 

@@ -53,10 +53,12 @@ void test_no_authen()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 	EXPECT_CONN_COUNT(0);
 
 	BTW("after a while, a new conn sends a CM Service Request");
@@ -70,8 +72,10 @@ void test_no_authen()
 
 	btw("a USSD request is serviced");
 	dtap_expect_tx_ussd("Your extension is 46071\r");
+	expect_bssap_clear();
 	ms_sends_msg("0b3b1c15a11302010002013b300b04010f0406aa510c061b017f0100");
 	VERBOSE_ASSERT(dtap_tx_confirmed, == true, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("all requests serviced, conn has been released");
 	EXPECT_CONN_COUNT(0);
@@ -140,14 +144,18 @@ void test_no_authen()
 
 	btw("MS also sends RP-ACK, MSC in turn sends CP-ACK for that");
 	dtap_expect_tx("0904");
+	expect_bssap_clear();
 	ms_sends_msg("890106020041020000");
 	VERBOSE_ASSERT(dtap_tx_confirmed, == true, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("SMS is done, conn is gone");
 	EXPECT_CONN_COUNT(0);
 
 	BTW("subscriber detaches");
+	expect_bssap_clear();
 	ms_sends_msg("050130089910070000006402");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -200,7 +208,9 @@ void test_no_authen_tmsi()
 	vlr_subscr_put(vsub);
 
 	btw("MS sends TMSI Realloc Complete");
+	expect_bssap_clear();
 	ms_sends_msg("055b");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	EXPECT_CONN_COUNT(0);
@@ -224,7 +234,9 @@ void test_no_authen_tmsi()
 
 	btw("a USSD request is serviced");
 	dtap_expect_tx_ussd("Your extension is 46071\r");
+	expect_bssap_clear();
 	ms_sends_msg("0b3b1c15a11302010002013b300b04010f0406aa510c061b017f0100");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("all requests serviced, conn has been released");
 	EXPECT_CONN_COUNT(0);
@@ -293,8 +305,10 @@ void test_no_authen_tmsi()
 
 	btw("MS also sends RP-ACK, MSC in turn sends CP-ACK for that");
 	dtap_expect_tx("0904");
+	expect_bssap_clear();
 	ms_sends_msg("890106020041020000");
 	VERBOSE_ASSERT(dtap_tx_confirmed, == true, "%d");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("SMS is done, conn is gone");
 	EXPECT_CONN_COUNT(0);
@@ -343,7 +357,9 @@ void test_no_authen_tmsi()
 	vlr_subscr_put(vsub);
 
 	btw("MS sends TMSI Realloc Complete");
+	expect_bssap_clear();
 	ms_sends_msg("055b");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	EXPECT_CONN_COUNT(0);
@@ -357,7 +373,9 @@ void test_no_authen_tmsi()
 	vlr_subscr_put(vsub);
 
 	BTW("subscriber detaches, using new TMSI");
+	expect_bssap_clear();
 	ms_sends_msg("050130" "05f4" "07060504");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -406,7 +424,9 @@ void test_no_authen_imei()
 	thwart_rx_non_initial_requests();
 
 	btw("MS replies with an Identity Response");
+	expect_bssap_clear();
 	ms_sends_msg("0559084a32244332244332");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -419,7 +439,9 @@ void test_no_authen_imei()
 	vlr_subscr_put(vsub);
 
 	BTW("subscriber detaches");
+	expect_bssap_clear();
 	ms_sends_msg("050130089910070000006402");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -478,7 +500,9 @@ void test_no_authen_tmsi_imei()
 	thwart_rx_non_initial_requests();
 
 	btw("MS sends TMSI Realloc Complete");
+	expect_bssap_clear();
 	ms_sends_msg("055b");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -492,7 +516,9 @@ void test_no_authen_tmsi_imei()
 	vlr_subscr_put(vsub);
 
 	BTW("subscriber detaches");
+	expect_bssap_clear();
 	ms_sends_msg("050130089910070000006402");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();

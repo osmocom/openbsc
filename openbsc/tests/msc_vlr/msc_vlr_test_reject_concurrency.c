@@ -39,7 +39,9 @@ void test_reject_2nd_conn()
 	btw("Another Location Update Request from the same subscriber on another connection is rejected");
 	conn1 = g_conn;
 	g_conn = NULL;
+	expect_bssap_clear();
 	ms_sends_msg("050802008168000130089910070000006402");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 	VERBOSE_ASSERT(lu_result_sent, == RES_REJECT, "%d");
 	EXPECT_CONN_COUNT(1);
 
@@ -53,7 +55,9 @@ void test_reject_2nd_conn()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -83,7 +87,9 @@ void _normal_lu_part2()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -164,7 +170,7 @@ void _paging_resp_part1()
 	EXPECT_CONN_COUNT(1);
 }
 
-void _paging_resp_part2(int expect_conn_count)
+void _paging_resp_part2(int expect_conn_count, bool expect_clear)
 {
 	btw("MS replies with CP-ACK for received SMS");
 	ms_sends_msg("8904");
@@ -172,8 +178,12 @@ void _paging_resp_part2(int expect_conn_count)
 
 	btw("MS also sends RP-ACK, MSC in turn sends CP-ACK for that");
 	dtap_expect_tx("0904");
+	if (expect_clear)
+		expect_bssap_clear();
 	ms_sends_msg("890106020041020000");
 	VERBOSE_ASSERT(dtap_tx_confirmed, == true, "%d");
+	if (expect_clear)
+		VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("SMS is done");
 	EXPECT_CONN_COUNT(expect_conn_count);
@@ -251,7 +261,9 @@ void test_reject_lu_during_cm()
 	EXPECT_CONN_COUNT(1);
 
 	BTW("subscriber detaches");
+	expect_bssap_clear();
 	ms_sends_msg("050130089910070000006402");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 	EXPECT_CONN_COUNT(0);
 
 	clear_vlr();
@@ -272,7 +284,9 @@ void test_reject_cm_during_cm()
 	EXPECT_CONN_COUNT(1);
 
 	BTW("subscriber detaches");
+	expect_bssap_clear();
 	ms_sends_msg("050130089910070000006402");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 	EXPECT_CONN_COUNT(0);
 
 	clear_vlr();
@@ -293,7 +307,9 @@ void test_reject_paging_resp_during_cm()
 	BTW("The original CM Service Request can conclude");
 	btw("a USSD request is serviced");
 	dtap_expect_tx_ussd("Your extension is 46071\r");
+	expect_bssap_clear();
 	ms_sends_msg("0b3b1c15a11302010002013b300b04010f0406aa510c061b017f0100");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("all requests serviced, conn has been released");
 	EXPECT_CONN_COUNT(0);
@@ -313,7 +329,7 @@ void test_reject_paging_resp_during_paging_resp()
 	BTW("MS sends another erratic Paging Response which is dropped silently");
 	ms_sends_msg("06270703305882089910070000006402");
 
-	_paging_resp_part2(0);
+	_paging_resp_part2(0, true);
 
 	clear_vlr();
 	comment_end();
@@ -333,13 +349,13 @@ void test_reject_lu_during_paging_resp()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 	EXPECT_CONN_COUNT(1);
 
-	_paging_resp_part2(0);
+	_paging_resp_part2(0, true);
 
 	clear_vlr();
 	comment_end();
 }
 
-void test_reject_cm_during_paging_resp()
+void test_accept_cm_during_paging_resp()
 {
 	comment_start();
 
@@ -354,10 +370,12 @@ void test_reject_cm_during_paging_resp()
 	EXPECT_CONN_COUNT(1);
 	VERBOSE_ASSERT(g_conn->received_cm_service_request, == true, "%d");
 
-	_paging_resp_part2(1);
+	_paging_resp_part2(1, false);
 
 	BTW("subscriber detaches");
+	expect_bssap_clear();
 	ms_sends_msg("050130089910070000006402");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 	EXPECT_CONN_COUNT(0);
 
 	clear_vlr();
@@ -373,7 +391,7 @@ msc_vlr_test_func_t msc_vlr_tests[] = {
 	test_reject_cm_during_cm,
 	test_reject_paging_resp_during_cm,
 	test_reject_lu_during_paging_resp,
-	test_reject_cm_during_paging_resp,
+	test_accept_cm_during_paging_resp,
 	test_reject_paging_resp_during_paging_resp,
 	NULL
 };

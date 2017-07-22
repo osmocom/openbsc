@@ -59,6 +59,10 @@ const char *auth_request_expect_autn;
 bool cipher_mode_cmd_sent;
 bool cipher_mode_cmd_sent_with_imeisv;
 
+bool iu_release_expected = false;
+bool iu_release_sent = false;
+bool bssap_clear_expected = false;
+bool bssap_clear_sent = false;
 
 struct msgb *msgb_from_hex(const char *label, uint16_t size, const char *hex)
 {
@@ -332,6 +336,11 @@ void clear_vlr()
 
 	next_rand_byte = 0;
 
+	iu_release_expected = false;
+	iu_release_sent = false;
+	bssap_clear_expected = false;
+	bssap_clear_sent = false;
+
 	osmo_gettimeofday_override = false;
 }
 
@@ -474,6 +483,10 @@ int __real_iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *caus
 int __wrap_iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause)
 {
 	btw("Iu Release --%s--> MS", ran_type_name(RAN_UTRAN_IU));
+	OSMO_ASSERT(iu_release_expected);
+	iu_release_expected = false;
+	iu_release_sent = true;
+	return 0;
 }
 
 /* override, requires '-Wl,--wrap=a_iface_tx_dtap' */

@@ -73,8 +73,10 @@ void test_ms_timeout_lu_auth_resp()
 	fake_time_passes(1, 235);
 	EXPECT_CONN_COUNT(1);
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
+	expect_bssap_clear();
 	fake_time_passes(1, 235);
 	btw("SUBSCR_CONN_TIMEOUT has passed, conn is gone.");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 	EXPECT_CONN_COUNT(0);
 	VERBOSE_ASSERT(lu_result_sent, == RES_REJECT, "%d");
 
@@ -132,7 +134,9 @@ void test_ms_timeout_cm_auth_resp()
 	VERBOSE_ASSERT(lu_result_sent, == RES_NONE, "%d");
 
 	btw("HLR also sends GSUP _UPDATE_LOCATION_RESULT");
+	expect_bssap_clear();
 	gsup_rx("06010809710000004026f0", NULL);
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 
 	btw("LU was successful, and the conn has already been closed");
 	VERBOSE_ASSERT(lu_result_sent, == RES_ACCEPT, "%d");
@@ -167,8 +171,10 @@ void test_ms_timeout_cm_auth_resp()
 	fake_time_passes(1, 235);
 	EXPECT_CONN_COUNT(1);
 	VERBOSE_ASSERT(cm_service_result_sent, == RES_NONE, "%d");
+	expect_bssap_clear();
 	fake_time_passes(1, 235);
 	btw("SUBSCR_CONN_TIMEOUT has passed, conn is gone.");
+	VERBOSE_ASSERT(bssap_clear_sent, == true, "%d");
 	EXPECT_CONN_COUNT(0);
 	VERBOSE_ASSERT(cm_service_result_sent, == RES_REJECT, "%d");
 

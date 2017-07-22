@@ -23,6 +23,19 @@
 
 #include "msc_vlr_tests.h"
 
+#define ASSERT_RELEASE_CLEAR(via_ran) \
+	switch (via_ran) { \
+	case RAN_GERAN_A: \
+		VERBOSE_ASSERT(bssap_clear_sent, == true, "%d"); \
+		break; \
+	case RAN_UTRAN_IU: \
+		VERBOSE_ASSERT(iu_release_sent, == true, "%d"); \
+		break; \
+	default: \
+		OSMO_ASSERT(false); \
+		break; \
+	}
+
 void _test_umts_authen(enum ran_type via_ran)
 {
 	struct vlr_subscr *vsub;
@@ -167,7 +180,9 @@ void _test_umts_authen(enum ran_type via_ran)
 	vlr_subscr_put(vsub);
 
 	btw("MS sends TMSI Realloc Complete");
+	expect_release_clear(via_ran);
 	ms_sends_msg("055b");
+	ASSERT_RELEASE_CLEAR(via_ran);
 
 	btw("LU was successful, and the conn has already been closed");
 	EXPECT_CONN_COUNT(0);
@@ -210,8 +225,10 @@ void _test_umts_authen(enum ran_type via_ran)
 
 	btw("a USSD request is serviced");
 	dtap_expect_tx_ussd("Your extension is 42342\r");
+	expect_release_clear(via_ran);
 	ms_sends_msg("0b3b1c15a11302010002013b300b04010f0406aa510c061b017f0100");
 	OSMO_ASSERT(dtap_tx_confirmed);
+	ASSERT_RELEASE_CLEAR(via_ran);
 
 	btw("all requests serviced, conn has been released");
 	EXPECT_CONN_COUNT(0);
@@ -287,15 +304,19 @@ void _test_umts_authen(enum ran_type via_ran)
 
 	btw("MS also sends RP-ACK, MSC in turn sends CP-ACK for that");
 	dtap_expect_tx("0904");
+	expect_release_clear(via_ran);
 	ms_sends_msg("890106020041020000");
 	VERBOSE_ASSERT(dtap_tx_confirmed, == true, "%d");
+	ASSERT_RELEASE_CLEAR(via_ran);
 
 	btw("SMS is done, conn is gone");
 	EXPECT_CONN_COUNT(0);
 
 	BTW("subscriber detaches");
+	expect_release_clear(via_ran);
 	ms_sends_msg("050130"
 		     "089910070000106005" /* IMSI */);
+	ASSERT_RELEASE_CLEAR(via_ran);
 
 	EXPECT_CONN_COUNT(0);
 	clear_vlr();
@@ -527,7 +548,9 @@ void _test_umts_authen_resync(enum ran_type via_ran)
 	vlr_subscr_put(vsub);
 
 	btw("MS sends TMSI Realloc Complete");
+	expect_release_clear(via_ran);
 	ms_sends_msg("055b");
+	ASSERT_RELEASE_CLEAR(via_ran);
 
 	btw("LU was successful, and the conn has already been closed");
 	EXPECT_CONN_COUNT(0);
