@@ -782,8 +782,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 		LOGP(DMM, LOGL_ERROR, "IMSI DETACH for unknown subscriber MI(%s)=%s\n",
 		     gsm48_mi_type_name(mi_type), mi_string);
 	} else {
-		LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n",
-		     vlr_subscr_name(vsub));
+		LOGP(DMM, LOGL_INFO, "IMSI DETACH for %s\n", vlr_subscr_name(vsub));
 		vlr_subscr_rx_imsi_detach(vsub);
 		osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_DETACHED, vsub);
 		vlr_subscr_put(vsub);
