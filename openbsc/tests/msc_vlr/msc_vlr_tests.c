@@ -475,6 +475,13 @@ int __wrap_iu_tx(struct msgb *msg, uint8_t sapi)
 	return _validate_dtap(msg, RAN_UTRAN_IU);
 }
 
+/* override, requires '-Wl,--wrap=iu_tx_release' */
+int __real_iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause);
+int __wrap_iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause)
+{
+	btw("Iu Release --%s--> MS", ran_type_name(RAN_UTRAN_IU));
+}
+
 /* override, requires '-Wl,--wrap=a_iface_tx_dtap' */
 int __real_a_iface_tx_dtap(struct msgb *msg);
 int __wrap_a_iface_tx_dtap(struct msgb *msg)

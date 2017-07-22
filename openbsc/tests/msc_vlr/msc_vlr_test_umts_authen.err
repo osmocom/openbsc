@@ -631,6 +631,7 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
+- Iu Release --RAN_UTRAN_IU--> MS
 DREF MSISDN:42342: MSC conn use - 1 == 1
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
@@ -752,6 +753,7 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
+- Iu Release --RAN_UTRAN_IU--> MS
 DREF MSISDN:42342: MSC conn use - 1 == 1
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
@@ -908,6 +910,7 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
+- Iu Release --RAN_UTRAN_IU--> MS
 DREF MSISDN:42342: MSC conn use - 1 == 1
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated
@@ -1356,6 +1359,7 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
+- Iu Release --RAN_UTRAN_IU--> MS
 DREF MSISDN:42342: MSC conn use - 1 == 1
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Freeing instance
 DMM Subscr_Conn(901700000010650){SUBSCR_CONN_S_RELEASED}: Deallocated

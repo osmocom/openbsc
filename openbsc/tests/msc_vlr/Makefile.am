@@ -67,6 +67,7 @@ LDFLAGS = \
 	-Wl,--wrap=a_iface_tx_dtap \
 	-Wl,--wrap=a_iface_tx_paging \
 	-Wl,--wrap=iu_tx \
+	-Wl,--wrap=iu_tx_release \
 	-Wl,--wrap=iu_page_cs \
 	-Wl,--wrap=msc_stop_paging \
 	-Wl,--wrap=gsm340_gen_scts \
