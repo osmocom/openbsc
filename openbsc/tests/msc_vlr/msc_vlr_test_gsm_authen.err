@@ -149,6 +149,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:46071, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:46071: MSC conn use - 1 == 0
@@ -262,6 +263,7 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:46071, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:46071: MSC conn use - 1 == 1
@@ -408,6 +410,7 @@ DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000004620)
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000004620){PR_ARQ_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:46071, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:46071: MSC conn use - 1 == 1
@@ -431,7 +434,9 @@ DMM IMSI DETACH for MSISDN:46071
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
-DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, releasing directly without release event.
+- Sending clear command to BSC (conn_id=0)
+
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
@@ -622,6 +627,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:46071, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:46071: MSC conn use - 1 == 1
@@ -740,6 +746,7 @@ DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Terminating (cause = O
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(50462976)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:46071, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:46071: MSC conn use - 1 == 1
@@ -886,6 +893,7 @@ DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Terminating (cause = O
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(50462976)
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(50462976){PR_ARQ_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:46071, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:46071: MSC conn use - 1 == 1
@@ -1046,6 +1054,7 @@ DVLR vlr_lu_fsm(50462976){VLR_ULA_S_DONE}: Removing from parent Subscr_Conn(5046
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(50462976){VLR_ULA_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:46071, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:46071: MSC conn use - 1 == 1
@@ -1075,7 +1084,9 @@ DMM IMSI DETACH for MSISDN:46071
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
-DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, releasing directly without release event.
+- Sending clear command to BSC (conn_id=0)
+
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
@@ -1264,6 +1275,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:46071, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:46071: MSC conn use - 1 == 1
@@ -1291,7 +1303,9 @@ DMM IMSI DETACH for MSISDN:46071
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
-DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, releasing directly without release event.
+- Sending clear command to BSC (conn_id=0)
+
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
@@ -1511,6 +1525,7 @@ DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000004620){VLR_ULA_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:46071, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:46071: MSC conn use - 1 == 1
@@ -1538,7 +1553,9 @@ DMM IMSI DETACH for MSISDN:46071
 DREF VLR subscr MSISDN:46071 usage decreases to: 1
 DREF VLR subscr MSISDN:46071 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:46071
-DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, releasing directly without release event.
+- Sending clear command to BSC (conn_id=0)
+
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0
@@ -1679,6 +1696,7 @@ DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Removing from parent Subscr_Co
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: fsm_lu_cleanup called with cause OSMO_FSM_TERM_PARENT
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Freeing instance
 DVLR vlr_lu_fsm(901700000010650){VLR_ULA_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:42342, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:42342: MSC conn use - 1 == 0
@@ -1792,6 +1810,7 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:42342, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:42342: MSC conn use - 1 == 1
@@ -1938,6 +1957,7 @@ DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Terminating (ca
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Removing from parent Subscr_Conn(901700000010650)
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Freeing instance
 DVLR Process_Access_Request_VLR(901700000010650){PR_ARQ_S_DONE}: Deallocated
+DMM msc_subscr_conn_close(vsub=MSISDN:42342, cause=2): no conn fsm, releasing directly without release event.
 - Sending clear command to BSC (conn_id=0)
 
 DREF MSISDN:42342: MSC conn use - 1 == 1
@@ -1961,7 +1981,9 @@ DMM IMSI DETACH for MSISDN:42342
 DREF VLR subscr MSISDN:42342 usage decreases to: 1
 DREF VLR subscr MSISDN:42342 usage decreases to: 0
 DREF freeing VLR subscr MSISDN:42342
-DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, ignore.
+DMM msc_subscr_conn_close(vsub=unknown, cause=0): no conn fsm, releasing directly without release event.
+- Sending clear command to BSC (conn_id=0)
+
 DREF unknown: MSC conn use - 1 == 0
 DRLL Freeing subscriber connection with NULL subscriber
   llist_count(&net->subscr_conns) == 0

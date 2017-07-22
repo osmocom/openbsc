@@ -225,25 +225,9 @@ static void subscr_conn_fsm_cleanup(struct osmo_fsm_inst *fi,
 
 	if (!conn)
 		return;
-
-	if (conn->in_release)
-		return;
-	conn->in_release = true;
 	conn->conn_fsm = NULL;
 
-	/* If we're closing in a middle of a trans, we need to clean up */
-	trans_conn_closed(conn);
-
-	if (conn->via_ran == RAN_UTRAN_IU)
-		iu_tx_release(conn->iu.ue_ctx, NULL);
-		/* FIXME: keep the conn until the Iu Release Outcome is
-		 * received from the UE, or a timeout expires. For now, the log
-		 * says "unknown UE" for each release outcome. */
-
-	/* Clear A-Interface connection */
-	if (conn->via_ran == RAN_GERAN_A)
-		a_iface_tx_clear_cmd(conn);
-
+	msc_subscr_conn_close(conn, cause);
 
 	msc_subscr_conn_put(conn);
 }

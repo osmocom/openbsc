@@ -262,8 +262,35 @@ struct bsc_api *msc_bsc_api() {
 	return &msc_handler;
 }
 
-/* Signal the connection's FSM to gracefully terminate the connection by a
- * SUBSCR_CONN_E_CN_CLOSE event.
+void msc_subscr_conn_release_all(struct gsm_subscriber_connection *conn, uint32_t cause)
+{
+	if (conn->in_release)
+		return;
+	conn->in_release = true;
+
+	/* If we're closing in a middle of a trans, we need to clean up */
+	trans_conn_closed(conn);
+
+	switch (conn->via_ran) {
+	case RAN_UTRAN_IU:
+		iu_tx_release(conn->iu.ue_ctx, NULL);
+		/* FIXME: keep the conn until the Iu Release Outcome is
+		 * received from the UE, or a timeout expires. For now, the log
+		 * says "unknown UE" for each release outcome. */
+		break;
+	case RAN_GERAN_A:
+		a_iface_tx_clear_cmd(conn);
+		break;
+	default:
+		LOGP(DMM, LOGL_ERROR, "%s: Unknown RAN type, cannot tx release/clear\n",
+		     vlr_subscr_name(conn->vsub));
+		break;
+	}
+}
+
+/* If the conn->conn_fsm is still present, dispatch SUBSCR_CONN_E_CN_CLOSE
+ * event to gracefully terminate the connection. If the conn_fsm is already
+ * cleared, call msc_subscr_conn_release_all() to take release actions.
  * \param cause  a GSM_CAUSE_* constant, e.g. GSM_CAUSE_AUTH_FAILED.
  */
 void msc_subscr_conn_close(struct gsm_subscriber_connection *conn,
@@ -279,8 +306,11 @@ void msc_subscr_conn_close(struct gsm_subscriber_connection *conn,
 	}
 	if (!conn->conn_fsm) {
 		DEBUGP(DMM, "msc_subscr_conn_close(vsub=%s, cause=%u): no conn fsm,"
-		       " ignore.\n",
+		       " releasing directly without release event.\n",
 		       vlr_subscr_name(conn->vsub), cause);
+		/* In case of an IMSI Detach, we don't have conn_fsm. Release
+		 * anyway to ensure a timely Iu Release / BSSMAP Clear. */
+		msc_subscr_conn_release_all(conn, cause);
 		return;
 	}
 	if (conn->conn_fsm->state == SUBSCR_CONN_S_RELEASED) {
