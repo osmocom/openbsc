@@ -59,12 +59,6 @@ const char *auth_request_expect_autn;
 bool cipher_mode_cmd_sent;
 bool cipher_mode_cmd_sent_with_imeisv;
 
-int __real_a_iface_tx_clear_cmd(struct gsm_subscriber_connection *conn);
-int __wrap_a_iface_tx_clear_cmd(struct gsm_subscriber_connection *conn)
-{
-	btw("Sending clear command to BSC (conn_id=%u)\n", conn->a.conn_id);
-	return 0;
-}
 
 struct msgb *msgb_from_hex(const char *label, uint16_t size, const char *hex)
 {
@@ -487,6 +481,17 @@ int __real_a_iface_tx_dtap(struct msgb *msg);
 int __wrap_a_iface_tx_dtap(struct msgb *msg)
 {
 	return _validate_dtap(msg, RAN_GERAN_A);
+}
+
+/* override, requires '-Wl,--wrap=a_iface_tx_clear_cmd' */
+int __real_a_iface_tx_clear_cmd(struct gsm_subscriber_connection *conn);
+int __wrap_a_iface_tx_clear_cmd(struct gsm_subscriber_connection *conn)
+{
+	btw("BSSAP Clear --%s--> MS", ran_type_name(RAN_GERAN_A));
+	OSMO_ASSERT(bssap_clear_expected);
+	bssap_clear_expected = false;
+	bssap_clear_sent = true;
+	return 0;
 }
 
 static int fake_vlr_tx_lu_acc(void *msc_conn_ref, uint32_t send_tmsi)
