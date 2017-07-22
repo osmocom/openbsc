@@ -394,6 +394,9 @@ int iu_tx_release(struct ue_conn_ctx *ctx, const struct RANAP_Cause *cause)
 	if (!cause)
 		cause = &default_cause;
 
+	LOGP(DRANAP, LOGL_INFO, "Transmitting Iu Release (SCCP conn_id %u)\n",
+	     ctx->conn_id);
+
 	msg = ranap_new_msg_iu_rel_cmd(cause);
 	msg->l2h = msg->data;
 	prim = (struct osmo_scu_prim *) msgb_push(msg, sizeof(*prim));
