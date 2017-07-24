@@ -1550,7 +1550,7 @@ DEFUN(cfg_net_pag_any_tch,
       cfg_net_T##number##_cmd,					\
       "timer t" #number  " (default|<1-65535>)",		\
       "Configure GSM Timers\n"					\
-      doc							\
+      doc " (default: " EXPAND_AND_STRINGIFY(DEFAULT_TIMER(number)) " seconds)\n" \
       "Set to default timer value"				\
 	  " (" EXPAND_AND_STRINGIFY(DEFAULT_TIMER(number)) " seconds)\n" \
       "Timer Value in seconds\n")				\
@@ -1566,18 +1566,18 @@ DEFUN(cfg_net_pag_any_tch,
 	return CMD_SUCCESS;					\
 }
 
-DECLARE_TIMER(3101, "Set the timeout value for IMMEDIATE ASSIGNMENT.\n")
-DECLARE_TIMER(3103, "Set the timeout value for HANDOVER.\n")
-DECLARE_TIMER(3105, "Set the timer for repetition of PHYSICAL INFORMATION.\n")
-DECLARE_TIMER(3107, "Currently not used.\n")
-DECLARE_TIMER(3109, "Set the RSL SACCH deactivation timeout.\n")
-DECLARE_TIMER(3111, "Set the RSL timeout to wait before releasing the RF Channel.\n")
-DECLARE_TIMER(3113, "Set the time to try paging a subscriber.\n")
-DECLARE_TIMER(3115, "Currently not used.\n")
-DECLARE_TIMER(3117, "Currently not used.\n")
-DECLARE_TIMER(3119, "Currently not used.\n")
-DECLARE_TIMER(3122, "Waiting time (seconds) after IMM ASS REJECT\n")
-DECLARE_TIMER(3141, "Currently not used.\n")
+DECLARE_TIMER(3101, "Set the timeout value for IMMEDIATE ASSIGNMENT")
+DECLARE_TIMER(3103, "Set the timeout value for HANDOVER")
+DECLARE_TIMER(3105, "Set the timer for repetition of PHYSICAL INFORMATION")
+DECLARE_TIMER(3107, "Currently not used")
+DECLARE_TIMER(3109, "Set the RSL SACCH deactivation timeout")
+DECLARE_TIMER(3111, "Set the RSL timeout to wait before releasing the RF Channel")
+DECLARE_TIMER(3113, "Set the time to try paging a subscriber")
+DECLARE_TIMER(3115, "Currently not used")
+DECLARE_TIMER(3117, "Currently not used")
+DECLARE_TIMER(3119, "Currently not used")
+DECLARE_TIMER(3122, "Waiting time (seconds) after IMM ASS REJECT")
+DECLARE_TIMER(3141, "Currently not used")
 
 DEFUN_DEPRECATED(cfg_net_dtx,
 		 cfg_net_dtx_cmd,
