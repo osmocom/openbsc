@@ -1541,15 +1541,26 @@ DEFUN(cfg_net_pag_any_tch,
 	return CMD_SUCCESS;
 }
 
+#define DEFAULT_TIMER(number) GSM_T##number##_DEFAULT
+/* Add another expansion so that DEFAULT_TIMER() becomes its value */
+#define EXPAND_AND_STRINGIFY(x) OSMO_STRINGIFY(x)
+
 #define DECLARE_TIMER(number, doc) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
-      "timer t" #number  " <1-65535>",				\
+      "timer t" #number  " (default|<1-65535>)",		\
       "Configure GSM Timers\n"					\
-      doc "Timer Value in seconds\n")				\
+      doc							\
+      "Set to default timer value"				\
+	  " (" EXPAND_AND_STRINGIFY(DEFAULT_TIMER(number)) " seconds)\n" \
+      "Timer Value in seconds\n")				\
 {								\
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);	\
-	int value = atoi(argv[0]);				\
+	int value;						\
+	if (strcmp(argv[0], "default") == 0)			\
+		value = DEFAULT_TIMER(number);			\
+	else							\
+		value = atoi(argv[0]);				\
 								\
 	gsmnet->T##number = value;				\
 	return CMD_SUCCESS;					\
