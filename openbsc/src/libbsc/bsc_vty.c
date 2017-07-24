@@ -1551,12 +1551,6 @@ DEFUN(cfg_net_pag_any_tch,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);	\
 	int value = atoi(argv[0]);				\
 								\
-	if (value < 1 || value > 65535) {			\
-		vty_out(vty, "Timer value %s out of range.%s",	\
-		        argv[0], VTY_NEWLINE);			\
-		return CMD_WARNING;				\
-	}							\
-								\
 	gsmnet->T##number = value;				\
 	return CMD_SUCCESS;					\
 }
