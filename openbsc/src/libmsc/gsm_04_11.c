@@ -187,7 +187,7 @@ int gsm411_mn_send(struct gsm411_smr_inst *inst, int msg_type,
 	return gsm411_smc_send(&trans->sms.smc_inst, msg_type, msg);
 }
 
-static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
+static int gsm340_rx_sms_submit(struct gsm_sms *gsms)
 {
 	if (db_sms_store(gsms) != 0) {
 		LOGP(DLSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
@@ -277,8 +277,9 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	return msg->len - old_msg_len;
 }
 
-int sms_route_mt_sms(struct gsm_subscriber_connection *conn, struct msgb *msg,
-		     struct gsm_sms *gsms, uint8_t sms_mti, bool *deferred)
+static int sms_route_mt_sms(struct gsm_subscriber_connection *conn,
+			    struct gsm_sms *gsms, uint8_t sms_mti,
+			    bool *deferred)
 {
 	int rc;
 
@@ -342,7 +343,7 @@ try_local:
 	switch (sms_mti) {
 	case GSM340_SMS_SUBMIT_MS2SC:
 		/* MS is submitting a SMS */
-		rc = gsm340_rx_sms_submit(msg, gsms);
+		rc = gsm340_rx_sms_submit(gsms);
 		break;
 	case GSM340_SMS_COMMAND_MS2SC:
 	case GSM340_SMS_DELIVER_REP_MS2SC:
@@ -487,7 +488,7 @@ static int gsm340_rx_tpdu(struct gsm_trans *trans, struct msgb *msg,
 	/* FIXME: This looks very wrong */
 	send_signal(0, NULL, gsms, 0);
 
-	rc = sms_route_mt_sms(conn, msg, gsms, sms_mti, deferred);
+	rc = sms_route_mt_sms(conn, gsms, sms_mti, deferred);
 out:
 	if (!deferred)
 		sms_free(gsms);
