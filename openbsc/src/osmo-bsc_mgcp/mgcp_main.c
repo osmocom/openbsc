@@ -218,6 +218,8 @@ int main(int argc, char **argv)
 	cfg->get_net_downlink_format_cb = &mgcp_transcoding_net_downlink_format;
 #endif
 
+	cfg->trunk.force_realloc = 1;
+
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	logging_vty_add_cmds(NULL);
