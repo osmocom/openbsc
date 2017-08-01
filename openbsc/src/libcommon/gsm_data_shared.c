@@ -644,10 +644,13 @@ uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
-	case GSM_PCHAN_PDCH:
 	case GSM_PCHAN_TCH_F_PDCH:
 		OSMO_ASSERT(lchan_nr == 0);
 		cbits = 0x01;
+		break;
+	case GSM_PCHAN_PDCH:
+		OSMO_ASSERT(lchan_nr == 0);
+		cbits = RSL_CHAN_OSMO_PDCH >> 3;
 		break;
 	case GSM_PCHAN_TCH_H:
 		OSMO_ASSERT(lchan_nr < 2);

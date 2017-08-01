@@ -2439,7 +2439,7 @@ int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act)
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, msg_type);
 	dh->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
-	dh->chan_nr = gsm_pchan2chan_nr(GSM_PCHAN_PDCH, ts->nr, 0);
+	dh->chan_nr = gsm_pchan2chan_nr(GSM_PCHAN_TCH_F, ts->nr, 0);
 
 	DEBUGP(DRSL, "%s IPAC PDCH %sACT\n", gsm_ts_name(ts),
 		act ? "" : "DE");
