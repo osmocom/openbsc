@@ -95,12 +95,23 @@ static int pack_and_send(struct esme *esme, uint32_t type, void *ptr)
 }
 /* FIXME: merge with smpp_smsc.c */
 
+static struct tlv_t *find_tlv(struct tlv_t *head, uint16_t tag)
+{
+	struct tlv_t *t;
+
+	for (t = head; t != NULL; t = t->next) {
+		if (t->tag == tag)
+			return t;
+	}
+	return NULL;
+}
 
 static int smpp_handle_deliver(struct esme *esme, struct msgb *msg)
 {
 	struct deliver_sm_t deliver;
 	struct deliver_sm_resp_t deliver_r;
 	struct submit_sm_t submit;
+	tlv_t *t;
 	int rc;
 
 	memset(&deliver, 0, sizeof(deliver));
@@ -155,7 +166,18 @@ static int smpp_handle_deliver(struct esme *esme, struct msgb *msg)
 	memcpy(submit.short_message, deliver.short_message,
 		OSMO_MIN(sizeof(submit.short_message),
 			 sizeof(deliver.short_message)));
-	/* FIXME: TLV? */
+
+	/* FIXME: More TLV? */
+	t = find_tlv(deliver.tlv, TLVID_user_message_reference);
+	if (t) {
+		tlv_t tlv;
+
+		memset(&tlv, 0, sizeof(tlv));
+		tlv.tag = TLVID_user_message_reference;
+		tlv.length = 2;
+		tlv.value.val16 = t->value.val16;
+		build_tlv(&submit.tlv, &tlv);
+	}
 
 	return PACK_AND_SEND(esme, &submit);
 }
