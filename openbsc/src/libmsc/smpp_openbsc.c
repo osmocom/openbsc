@@ -200,6 +200,10 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 		sms->user_data_len = sms_msg_len;
 	}
 
+	t = find_tlv(submit->tlv, TLVID_user_message_reference);
+	if (t)
+		sms->msg_ref = ntohs(t->value.val16);
+
 	*psms = sms;
 	return ESME_ROK;
 }
@@ -514,6 +518,9 @@ void smpp_cmd_ack(struct osmo_smpp_cmd *cmd)
 	struct gsm_subscriber_connection *conn;
 	struct gsm_trans *trans;
 
+	if (cmd->is_report)
+		goto out;
+
 	conn = connection_for_subscr(cmd->subscr);
 	if (!conn) {
 		LOGP(DSMPP, LOGL_ERROR, "No connection to subscriber anymore\n");
@@ -537,6 +544,9 @@ void smpp_cmd_err(struct osmo_smpp_cmd *cmd, uint32_t status)
 	struct gsm_subscriber_connection *conn;
 	struct gsm_trans *trans;
 	int gsm411_cause;
+
+	if (cmd->is_report)
+		goto out;
 
 	conn = connection_for_subscr(cmd->subscr);
 	if (!conn) {
@@ -575,6 +585,7 @@ static int smpp_cmd_enqueue(struct osmo_esme *esme,
 		return -1;
 
 	cmd->sequence_nr	= sequence_number;
+	cmd->is_report		= sms->is_report;
 	cmd->gsm411_msg_ref	= sms->gsm411.msg_ref;
 	cmd->gsm411_trans_id	= sms->gsm411.transaction_id;
 	cmd->subscr		= subscr_get(subscr);
@@ -639,7 +650,12 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 	memcpy(deliver.destination_addr, sms->dst.addr,
 		sizeof(deliver.destination_addr));
 
-	deliver.esm_class	= 1;	/* datagram mode */
+	/* Short message contains a delivery receipt? Sect. 5.2.12. */
+	if (sms->is_report)
+		deliver.esm_class = 0x04;
+	else
+		deliver.esm_class = 1;	/* datagram mode */
+
 	if (sms->ud_hdr_ind)
 		deliver.esm_class |= 0x40;
 	if (sms->reply_path_req)
@@ -684,6 +700,9 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 
 	if (esme->acl && esme->acl->osmocom_ext && conn->lchan)
 		append_osmo_tlvs(&deliver.tlv, conn->lchan);
+
+	append_tlv_u16(&deliver.tlv, TLVID_user_message_reference,
+		       sms->msg_ref);
 
 	ret = smpp_tx_deliver(esme, &deliver);
 	if (ret < 0)

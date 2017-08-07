@@ -456,6 +456,7 @@ struct gsm_sms {
 	} smpp;
 
 	unsigned long validity_minutes;
+	bool is_report;
 	uint8_t reply_path_req;
 	uint8_t status_rep_req;
 	uint8_t ud_hdr_ind;

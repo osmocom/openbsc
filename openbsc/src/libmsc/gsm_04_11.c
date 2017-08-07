@@ -593,6 +593,57 @@ static int gsm411_rx_rp_data(struct msgb *msg, struct gsm_trans *trans,
 				rpud_len, rp_ud);
 }
 
+static struct gsm_sms *sms_report_alloc(struct gsm_sms *sms)
+{
+	struct gsm_sms *sms_report;
+	int len;
+
+	sms_report = sms_alloc();
+	OSMO_ASSERT(sms_report);
+
+	sms_report->msg_ref = sms->msg_ref;
+	sms_report->protocol_id = sms->protocol_id;
+	sms_report->data_coding_scheme = GSM338_DCS_1111_8BIT_DATA;
+
+	/* Invert address to send status report back to origin. */
+	sms_report->src = sms->dst;
+	sms_report->dst = sms->src;
+
+	/* As specified by Appendix B. Delivery Receipt Format.
+	 * TODO: Many fields in this string are just set with dummy values,
+	 * 	 revisit this.
+	 */
+	len = snprintf((char *)sms_report->user_data,
+		       sizeof(sms_report->user_data),
+		       "id:%.08llu sub:000 dlvrd:000 submit date:YYMMDDhhmm done date:YYMMDDhhmm stat:DELIVRD err:000 text:%.20s",
+		       sms->id, sms->user_data);
+	sms_report->user_data_len = len;
+	LOGP(DLSMS, LOGL_NOTICE, "%s\n", sms_report->user_data);
+
+	/* This represents a sms report. */
+	sms_report->is_report = true;
+
+	return sms_report;
+}
+
+static void sms_status_report(struct gsm_sms *gsms,
+			      struct gsm_subscriber_connection *conn)
+{
+	struct gsm_sms *sms_report;
+	int rc;
+
+	sms_report = sms_report_alloc(gsms);
+
+	rc = sms_route_mt_sms(conn, sms_report);
+	if (rc < 0) {
+		LOGP(DLSMS, LOGL_ERROR,
+		     "Failed to send status report! err=%d\n", rc);
+	}
+	LOGP(DLSMS, LOGL_NOTICE, "Status report has been sent\n");
+
+	sms_free(sms_report);
+}
+
 /* Receive a 04.11 RP-ACK message (response to RP-DATA from us) */
 static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 			    struct gsm411_rp_hdr *rph)
@@ -613,6 +664,9 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	db_sms_mark_delivered(sms);
 
 	send_signal(S_SMS_DELIVERED, trans, sms, 0);
+
+	if (sms->status_rep_req)
+		sms_status_report(sms, trans->conn);
 
 	sms_free(sms);
 	trans->sms.sms = NULL;

@@ -92,6 +92,7 @@ struct osmo_smpp_cmd {
 	uint32_t		sequence_nr;
 	uint32_t		gsm411_msg_ref;
 	uint8_t			gsm411_trans_id;
+	bool			is_report;
 	struct osmo_timer_list	response_timer;
 };
 
