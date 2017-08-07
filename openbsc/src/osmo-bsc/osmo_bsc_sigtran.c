@@ -410,16 +410,6 @@ static void osmo_bsc_sigtran_reset_cb(const void *priv)
 	osmo_bsc_sigtran_tx_reset(msc);
 }
 
-/* Check if a given sccp address fulfills minimum requirements */
-static int test_addr(const struct osmo_sccp_addr *addr)
-{
-	if (!(addr->presence & OSMO_SCCP_ADDR_T_SSN))
-		return -EINVAL;
-	if (!(addr->presence & OSMO_SCCP_ADDR_T_PC))
-		return -EINVAL;
-
-	return 0;
-}
 
 /* Initalize osmo sigtran backhaul */
 int osmo_bsc_sigtran_init(struct llist_head *mscs)
@@ -439,14 +429,20 @@ int osmo_bsc_sigtran_init(struct llist_head *mscs)
 		LOGP(DMSC, LOGL_NOTICE, "Initializing SCCP connection to MSC %s (%s)\n",
 		     osmo_sccp_addr_dump(&msc->a.msc_addr), msc_name);
 
+		/* Check if the VTY could determine a valid CS7 instance */
+		if (msc->a.cs7_instance_valid == false) {
+			LOGP(DMSC, LOGL_ERROR, "A-interface: Invalid CS7 instance\n");
+			return -EINVAL;
+		}
+
 		/* Check if the sccp-address fullfill minimum requirements (SSN+PC is present) */
-		if (test_addr(&msc->a.bsc_addr) < 0) {
+		if (!osmo_sccp_check_addr(&msc->a.bsc_addr, OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC)) {
 			LOGP(DMSC, LOGL_ERROR,
 			     "A-interface: invalid local SCCP address (a.bsc_addr=%s)\n",
 			     osmo_sccp_addr_dump(&msc->a.bsc_addr));
 			return -EINVAL;
 		}
-		if (test_addr(&msc->a.msc_addr) < 0) {
+		if (!osmo_sccp_check_addr(&msc->a.msc_addr, OSMO_SCCP_ADDR_T_SSN | OSMO_SCCP_ADDR_T_PC)) {
 			LOGP(DMSC, LOGL_ERROR,
 			     "A-interface: invalid remote SCCP address for the MSC (a.msc_addr=%s)\n",
 			     osmo_sccp_addr_dump(&msc->a.msc_addr));

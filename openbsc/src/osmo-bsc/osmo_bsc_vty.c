@@ -726,7 +726,18 @@ DEFUN(cfg_msc_cs7_bsc_addr,
 		return CMD_WARNING;
 	}
 
+	/* Prevent mixing addresses from different CS7/SS7 instances */
+	if (msc->a.cs7_instance_valid) {
+		if (msc->a.cs7_instance != ss7->cfg.id) {
+			vty_out(vty,
+				"SCCP address %s from different CS7 instance%s",
+				bsc_addr_name, VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	}
+
 	msc->a.cs7_instance = ss7->cfg.id;
+	msc->a.cs7_instance_valid = true;
 	enforce_standard_ssn(vty, &msc->a.bsc_addr);
 	return CMD_SUCCESS;
 }
@@ -747,7 +758,18 @@ DEFUN(cfg_msc_cs7_msc_addr,
 		return CMD_WARNING;
 	}
 
+	/* Prevent mixing addresses from different CS7/SS7 instances */
+	if (msc->a.cs7_instance_valid) {
+		if (msc->a.cs7_instance != ss7->cfg.id) {
+			vty_out(vty,
+				"SCCP address %s from different CS7 instance%s",
+				msc_addr_name, VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	}
+
 	msc->a.cs7_instance = ss7->cfg.id;
+	msc->a.cs7_instance_valid = true;
 	enforce_standard_ssn(vty, &msc->a.msc_addr);
 	return CMD_SUCCESS;
 }

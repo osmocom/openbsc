@@ -115,6 +115,7 @@ struct bsc_msc_data {
 	/* Sigtran connection data */
 	struct {
 		uint32_t cs7_instance;
+		bool cs7_instance_valid;
 		struct osmo_sccp_instance *sccp;
 		struct osmo_sccp_user *sccp_user;
 
