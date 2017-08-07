@@ -129,6 +129,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	sms = sms_alloc();
 	sms->source = SMS_SOURCE_SMPP;
 	sms->smpp.sequence_nr = submit->sequence_number;
+	sms->status_rep_req = submit->registered_delivery;
 
 	/* fill in the destination address */
 	sms->receiver = dest;
