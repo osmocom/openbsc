@@ -89,8 +89,9 @@ struct osmo_smpp_route {
 struct osmo_smpp_cmd {
 	struct llist_head	list;
 	struct gsm_subscriber	*subscr;
-	struct gsm_sms		*sms;
 	uint32_t		sequence_nr;
+	uint32_t		gsm411_msg_ref;
+	uint8_t			gsm411_trans_id;
 	struct osmo_timer_list	response_timer;
 };
 
@@ -161,5 +162,5 @@ struct gsm_subscriber_connection;
 int smpp_route_smpp_first(struct gsm_sms *sms,
 			    struct gsm_subscriber_connection *conn);
 int smpp_try_deliver(struct gsm_sms *sms,
-		     struct gsm_subscriber_connection *conn, bool *deferred);
+		     struct gsm_subscriber_connection *conn);
 #endif

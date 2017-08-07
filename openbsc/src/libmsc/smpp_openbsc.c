@@ -497,7 +497,6 @@ static void smpp_cmd_free(struct osmo_smpp_cmd *cmd)
 	osmo_timer_del(&cmd->response_timer);
 	llist_del(&cmd->list);
 	subscr_put(cmd->subscr);
-	sms_free(cmd->sms);
 	talloc_free(cmd);
 }
 
@@ -520,15 +519,14 @@ void smpp_cmd_ack(struct osmo_smpp_cmd *cmd)
 		goto out;
 	}
 
-	trans = trans_find_by_id(conn, GSM48_PDISC_SMS,
-				 cmd->sms->gsm411.transaction_id);
+	trans = trans_find_by_id(conn, GSM48_PDISC_SMS, cmd->gsm411_trans_id);
 	if (!trans) {
 		LOGP(DSMPP, LOGL_ERROR, "GSM transaction %u is gone\n",
-		     cmd->sms->gsm411.transaction_id);
+		     cmd->gsm411_trans_id);
 		goto out;
 	}
 
-	gsm411_send_rp_ack(trans, cmd->sms->gsm411.msg_ref);
+	gsm411_send_rp_ack(trans, cmd->gsm411_msg_ref);
 out:
 	smpp_cmd_free(cmd);
 }
@@ -545,18 +543,17 @@ void smpp_cmd_err(struct osmo_smpp_cmd *cmd, uint32_t status)
 		goto out;
 	}
 
-	trans = trans_find_by_id(conn, GSM48_PDISC_SMS,
-				 cmd->sms->gsm411.transaction_id);
+	trans = trans_find_by_id(conn, GSM48_PDISC_SMS, cmd->gsm411_trans_id);
 	if (!trans) {
 		LOGP(DSMPP, LOGL_ERROR, "GSM transaction %u is gone\n",
-		     cmd->sms->gsm411.transaction_id);
+		     cmd->gsm411_trans_id);
 		goto out;
 	}
 
 	if (smpp_to_gsm411_err(status, &gsm411_cause) < 0)
 		gsm411_cause = GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 
-	gsm411_send_rp_error(trans, cmd->sms->gsm411.msg_ref, gsm411_cause);
+	gsm411_send_rp_error(trans, cmd->gsm411_msg_ref, gsm411_cause);
 out:
 	smpp_cmd_free(cmd);
 }
@@ -568,7 +565,7 @@ static void smpp_deliver_sm_cb(void *data)
 
 static int smpp_cmd_enqueue(struct osmo_esme *esme,
 			    struct gsm_subscriber *subscr, struct gsm_sms *sms,
-			    uint32_t sequence_number, bool *deferred)
+			    uint32_t sequence_number)
 {
 	struct osmo_smpp_cmd *cmd;
 
@@ -577,7 +574,8 @@ static int smpp_cmd_enqueue(struct osmo_esme *esme,
 		return -1;
 
 	cmd->sequence_nr	= sequence_number;
-	cmd->sms		= sms;
+	cmd->gsm411_msg_ref	= sms->gsm411.msg_ref;
+	cmd->gsm411_trans_id	= sms->gsm411.transaction_id;
 	cmd->subscr		= subscr_get(subscr);
 
 	/* FIXME: No predefined value for this response_timer as specified by
@@ -588,7 +586,6 @@ static int smpp_cmd_enqueue(struct osmo_esme *esme,
 	osmo_timer_setup(&cmd->response_timer, smpp_deliver_sm_cb, cmd);
 	osmo_timer_schedule(&cmd->response_timer, 5, 0);
 	llist_add_tail(&cmd->list, &esme->smpp_cmd_list);
-	*deferred = true;
 
 	return 0;
 }
@@ -606,8 +603,7 @@ struct osmo_smpp_cmd *smpp_cmd_find_by_seqnum(struct osmo_esme *esme,
 }
 
 static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
-			   struct gsm_subscriber_connection *conn,
-			   bool *deferred)
+			   struct gsm_subscriber_connection *conn)
 {
 	struct deliver_sm_t deliver;
 	int mode, ret;
@@ -686,7 +682,7 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 		return ret;
 
 	return smpp_cmd_enqueue(esme, conn->subscr, sms,
-				deliver.sequence_number, deferred);
+				deliver.sequence_number);
 }
 
 static struct smsc *g_smsc;
@@ -697,7 +693,7 @@ int smpp_route_smpp_first(struct gsm_sms *sms, struct gsm_subscriber_connection 
 }
 
 int smpp_try_deliver(struct gsm_sms *sms,
-		     struct gsm_subscriber_connection *conn, bool *deferred)
+		     struct gsm_subscriber_connection *conn)
 {
 	struct osmo_esme *esme;
 	struct osmo_smpp_addr dst;
@@ -710,7 +706,7 @@ int smpp_try_deliver(struct gsm_sms *sms,
 
 	rc = smpp_route(g_smsc, &dst, &esme);
 	if (!rc)
-		rc = deliver_to_esme(esme, sms, conn, deferred);
+		rc = deliver_to_esme(esme, sms, conn);
 
 	return rc;
 }
