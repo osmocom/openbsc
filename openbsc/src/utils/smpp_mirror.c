@@ -123,14 +123,6 @@ static int smpp_handle_deliver(struct esme *esme, struct msgb *msg)
 
 	PACK_AND_SEND(esme, &deliver_r);
 
-	/* This is a delivery receipt, temporarily munch it until we teach
-	 * openbsc what to do with this.
-	 */
-	if (deliver.esm_class == 0x04) {
-		LOGP(DSMPP, LOGL_NOTICE, "%s\n", deliver.short_message);
-		return 0;
-	}
-
 	memset(&submit, 0, sizeof(submit));
 	submit.command_id = SUBMIT_SM;
 	submit.command_status = ESME_ROK;
@@ -148,7 +140,14 @@ static int smpp_handle_deliver(struct esme *esme, struct msgb *msg)
 		OSMO_MIN(sizeof(submit.source_addr),
 			 sizeof(deliver.destination_addr)));
 
-	submit.esm_class = deliver.esm_class;
+	/* Mirror delivery receipts as a delivery acknowledgements. */
+	if (deliver.esm_class == 0x04) {
+		LOGP(DSMPP, LOGL_DEBUG, "%s\n", deliver.short_message);
+		submit.esm_class = 0x08;
+	} else {
+		submit.esm_class = deliver.esm_class;
+	}
+
 	submit.registered_delivery = deliver.registered_delivery;
 	submit.protocol_id = deliver.protocol_id;
 	submit.priority_flag = deliver.priority_flag;
