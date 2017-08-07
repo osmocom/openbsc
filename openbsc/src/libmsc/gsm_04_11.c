@@ -366,7 +366,7 @@ static int gsm340_rx_tpdu(struct gsm_trans *trans, struct msgb *msg,
 	/* invert those fields where 0 means active/present */
 	sms_mti = *smsp & 0x03;
 	sms_vpf = (*smsp & 0x18) >> 3;
-	gsms->status_rep_req = (*smsp & 0x20);
+	gsms->status_rep_req = (*smsp & 0x20) >> 5;
 	gsms->ud_hdr_ind = (*smsp & 0x40);
 	/*
 	 * Not evaluating MMS (More Messages to Send) because the
