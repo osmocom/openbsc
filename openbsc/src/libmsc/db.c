@@ -50,7 +50,7 @@ static char *db_basename = NULL;
 static char *db_dirname = NULL;
 static dbi_conn conn;
 
-#define SCHEMA_REVISION "4"
+#define SCHEMA_REVISION "5"
 
 enum {
 	SCHEMA_META,
@@ -124,6 +124,8 @@ static const char *create_stmts[] = {
 		"valid_until TIMESTAMP, "
 		"reply_path_req INTEGER NOT NULL, "
 		"status_rep_req INTEGER NOT NULL, "
+		"is_report INTEGER NOT NULL, "
+		"msg_ref INTEGER NOT NULL, "
 		"protocol_id INTEGER NOT NULL, "
 		"data_coding_scheme INTEGER NOT NULL, "
 		"ud_hdr_ind INTEGER NOT NULL, "
@@ -370,6 +372,152 @@ rollback:
 	return -EINVAL;
 }
 
+/* Just like v3, but there is a new message reference field for status reports,
+ * that is set to zero for existing entries since there is no way we can infer
+ * this.
+ */
+static struct gsm_sms *sms_from_result_v4(dbi_result result)
+{
+	struct gsm_sms *sms = sms_alloc();
+	const unsigned char *user_data;
+	const char *text, *addr;
+
+	if (!sms)
+		return NULL;
+
+	sms->id = dbi_result_get_ulonglong(result, "id");
+
+	sms->reply_path_req = dbi_result_get_ulonglong(result, "reply_path_req");
+	sms->status_rep_req = dbi_result_get_ulonglong(result, "status_rep_req");
+	sms->ud_hdr_ind = dbi_result_get_ulonglong(result, "ud_hdr_ind");
+	sms->protocol_id = dbi_result_get_ulonglong(result, "protocol_id");
+	sms->data_coding_scheme = dbi_result_get_ulonglong(result,
+						  "data_coding_scheme");
+
+	addr = dbi_result_get_string(result, "src_addr");
+	osmo_strlcpy(sms->src.addr, addr, sizeof(sms->src.addr));
+	sms->src.ton = dbi_result_get_ulonglong(result, "src_ton");
+	sms->src.npi = dbi_result_get_ulonglong(result, "src_npi");
+
+	addr = dbi_result_get_string(result, "dest_addr");
+	osmo_strlcpy(sms->dst.addr, addr, sizeof(sms->dst.addr));
+	sms->dst.ton = dbi_result_get_ulonglong(result, "dest_ton");
+	sms->dst.npi = dbi_result_get_ulonglong(result, "dest_npi");
+
+	sms->user_data_len = dbi_result_get_field_length(result, "user_data");
+	user_data = dbi_result_get_binary(result, "user_data");
+	if (sms->user_data_len > sizeof(sms->user_data))
+		sms->user_data_len = (uint8_t) sizeof(sms->user_data);
+	memcpy(sms->user_data, user_data, sms->user_data_len);
+
+	text = dbi_result_get_string(result, "text");
+	if (text)
+		osmo_strlcpy(sms->text, text, sizeof(sms->text));
+	return sms;
+}
+
+static int update_db_revision_4(void)
+{
+	dbi_result result;
+	struct gsm_sms *sms;
+
+	LOGP(DDB, LOGL_NOTICE, "Going to migrate from revision 4\n");
+
+	result = dbi_conn_query(conn, "BEGIN EXCLUSIVE TRANSACTION");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to begin transaction (upgrade from rev 4)\n");
+		return -EINVAL;
+	}
+	dbi_result_free(result);
+
+	/* Rename old SMS table to be able create a new one */
+	result = dbi_conn_query(conn, "ALTER TABLE SMS RENAME TO SMS_4");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to rename the old SMS table (upgrade from rev 4).\n");
+		goto rollback;
+	}
+	dbi_result_free(result);
+
+	/* Create new SMS table with all the bells and whistles! */
+	result = dbi_conn_query(conn, create_stmts[SCHEMA_SMS]);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to create a new SMS table (upgrade from rev 4).\n");
+		goto rollback;
+	}
+	dbi_result_free(result);
+
+	/* Cycle through old messages and convert them to the new format */
+	result = dbi_conn_query(conn, "SELECT * FROM SMS_4");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed fetch messages from the old SMS table (upgrade from rev 4).\n");
+		goto rollback;
+	}
+	while (dbi_result_next_row(result)) {
+		sms = sms_from_result_v4(result);
+		if (db_sms_store(sms) != 0) {
+			LOGP(DDB, LOGL_ERROR, "Failed to store message to the new SMS table(upgrade from rev 4).\n");
+			sms_free(sms);
+			dbi_result_free(result);
+			goto rollback;
+		}
+		sms_free(sms);
+	}
+	dbi_result_free(result);
+
+	/* Remove the temporary table */
+	result = dbi_conn_query(conn, "DROP TABLE SMS_4");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to drop the old SMS table (upgrade from rev 4).\n");
+		goto rollback;
+	}
+	dbi_result_free(result);
+
+	/* We're done. Bump DB Meta revision to 4 */
+	result = dbi_conn_query(conn,
+				"UPDATE Meta "
+				"SET value = '5' "
+				"WHERE key = 'revision'");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to update DB schema revision (upgrade from rev 4).\n");
+		goto rollback;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_query(conn, "COMMIT TRANSACTION");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+			"Failed to commit the transaction (upgrade from rev 4)\n");
+		return -EINVAL;
+	} else {
+		dbi_result_free(result);
+	}
+
+	/* Shrink DB file size by actually wiping out SMS_4 table data */
+	result = dbi_conn_query(conn, "VACUUM");
+	if (!result)
+		LOGP(DDB, LOGL_ERROR,
+			"VACUUM failed. Ignoring it (upgrade from rev 4).\n");
+	else
+		dbi_result_free(result);
+
+	return 0;
+
+rollback:
+	result = dbi_conn_query(conn, "ROLLBACK TRANSACTION");
+	if (!result)
+		LOGP(DDB, LOGL_ERROR,
+			"Rollback failed (upgrade from rev 4).\n");
+	else
+		dbi_result_free(result);
+	return -EINVAL;
+}
+
 static int check_db_revision(void)
 {
 	dbi_result result;
@@ -412,6 +560,9 @@ static int check_db_revision(void)
 			goto error;
 	case 3:
 		if (update_db_revision_3())
+			goto error;
+	case 4:
+		if (update_db_revision_4())
 			goto error;
 
 	/* The end of waterfall */
@@ -1445,20 +1596,23 @@ int db_sms_store(struct gsm_sms *sms)
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO SMS "
 		"(created, valid_until, "
-		 "reply_path_req, status_rep_req, protocol_id, "
-		 "data_coding_scheme, ud_hdr_ind, "
+		 "reply_path_req, status_rep_req, is_report, "
+		 "msg_ref, protocol_id, data_coding_scheme, "
+		 "ud_hdr_ind, "
 		 "user_data, text, "
 		 "dest_addr, dest_ton, dest_npi, "
 		 "src_addr, src_ton, src_npi) VALUES "
 		"(datetime('now'), %u, "
 		"%u, %u, %u, "
-		"%u, %u, "
+		"%u, %u, %u, "
+		"%u, "
 		"%s, %s, "
 		"%s, %u, %u, "
 		"%s, %u, %u)",
 		validity_timestamp,
-		sms->reply_path_req, sms->status_rep_req, sms->protocol_id,
-		sms->data_coding_scheme, sms->ud_hdr_ind,
+		sms->reply_path_req, sms->status_rep_req, sms->is_report,
+		sms->msg_ref, sms->protocol_id, sms->data_coding_scheme,
+		sms->ud_hdr_ind,
 		q_udata, q_text,
 		q_daddr, sms->dst.ton, sms->dst.npi,
 		q_saddr, sms->src.ton, sms->src.npi);
@@ -1489,6 +1643,8 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 	/* FIXME: those should all be get_uchar, but sqlite3 is braindead */
 	sms->reply_path_req = dbi_result_get_ulonglong(result, "reply_path_req");
 	sms->status_rep_req = dbi_result_get_ulonglong(result, "status_rep_req");
+	sms->is_report = dbi_result_get_ulonglong(result, "is_report");
+	sms->msg_ref = dbi_result_get_ulonglong(result, "msg_ref");
 	sms->ud_hdr_ind = dbi_result_get_ulonglong(result, "ud_hdr_ind");
 	sms->protocol_id = dbi_result_get_ulonglong(result, "protocol_id");
 	sms->data_coding_scheme = dbi_result_get_ulonglong(result,
