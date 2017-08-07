@@ -130,6 +130,7 @@ static int smpp_handle_deliver(struct esme *esme, struct msgb *msg)
 			 sizeof(deliver.destination_addr)));
 
 	submit.esm_class = deliver.esm_class;
+	submit.registered_delivery = deliver.registered_delivery;
 	submit.protocol_id = deliver.protocol_id;
 	submit.priority_flag = deliver.priority_flag;
 	memcpy(submit.schedule_delivery_time, deliver.schedule_delivery_time,
