@@ -682,6 +682,11 @@ static void sms_status_report(struct gsm_sms *gsms,
 		LOGP(DLSMS, LOGL_ERROR,
 		     "Failed to send status report! err=%d\n", rc);
 	}
+
+	/* No route via SMPP, send the GSM 03.40 status-report now. */
+	if (gsms->receiver)
+		gsm340_rx_sms_submit(sms_report);
+
 	LOGP(DLSMS, LOGL_NOTICE, "Status report has been sent\n");
 
 	sms_free(sms_report);
