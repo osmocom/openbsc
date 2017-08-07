@@ -676,8 +676,6 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 	} else {
 		deliver.sm_length = sms->user_data_len;
 		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
-		deliver.sm_length = sms->user_data_len;
-		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
 	}
 
 	if (esme->acl && esme->acl->osmocom_ext && conn->lchan)
