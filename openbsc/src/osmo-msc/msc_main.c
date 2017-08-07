@@ -350,15 +350,27 @@ int ss7_setup(void *ctx)
 	uint32_t cs7_instance_a = msc_network->a.cs7_instance;
 	uint32_t cs7_instance_iu = msc_network->iu.cs7_instance;
 
+	char sccp_inst_name_iu[32];
+	char sccp_inst_name_A[32];
+
 	LOGP(DMSC, LOGL_NOTICE, "CS7 Instance identifier, A-Interface:  %u\n",
 	     cs7_instance_a);
 	LOGP(DMSC, LOGL_NOTICE, "CS7 Instance identifier, Iu-Interface: %u\n",
 	     cs7_instance_iu);
 
-	/* Create first SCCP instance (Iu) */
+	/* Setup instance names */
+	if (cs7_instance_a == cs7_instance_iu)
+		strcpy(sccp_inst_name_iu, "OsmoMSC-Iu-A");
+	else {
+		strcpy(sccp_inst_name_iu, "OsmoMSC-Iu");
+		strcpy(sccp_inst_name_A, "OsmoMSC-A");
+	}
+
+	/* Create first SCCP instance (Iu and possibly also for A) */
 	msc_network->iu.sccp =
 	    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_iu,
-					      "OsmoMSC-Iu", IU_DEFAULT_PC,
+					      sccp_inst_name_iu,
+					      IU_DEFAULT_PC,
 					      OSMO_SS7_ASP_PROT_M3UA, 0,
 					      IU_DEFAULT_LOCAL_IP, 0,
 					      IU_DEFAULT_REMOTE_IP);
@@ -376,7 +388,7 @@ int ss7_setup(void *ctx)
 	/* Create second SCCP instance (A) */
 	msc_network->a.sccp =
 	    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_a,
-					      "OsmoMSC-A", A_DEFAULT_PC,
+					      sccp_inst_name_A, A_DEFAULT_PC,
 					      OSMO_SS7_ASP_PROT_M3UA, 0,
 					      A_DEFAULT_LOCAL_IP, 0,
 					      A_DEFAULT_REMOTE_IP);
