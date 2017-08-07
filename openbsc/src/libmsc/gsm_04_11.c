@@ -356,9 +356,6 @@ try_local:
 		break;
 	}
 
-	if (!rc && !gsms->receiver)
-		rc = GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
-
 	return rc;
 }
 
