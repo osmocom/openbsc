@@ -277,6 +277,49 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	return msg->len - old_msg_len;
 }
 
+/* As defined by GSM 03.40, Section 9.2.2.3. */
+static int gsm340_gen_sms_status_report_tpdu(struct msgb *msg,
+					     struct gsm_sms *sms)
+{
+	unsigned int old_msg_len = msg->len;
+	uint8_t oa_len = 0;
+	uint8_t oa[12];	/* max len per 03.40 */
+	uint8_t *smsp;
+
+	/* generate first octet with masked bits */
+	smsp = msgb_put(msg, 1);
+	/* TP-MTI (message type indicator) */
+	*smsp = GSM340_SMS_STATUS_REP_SC2MS;
+	/* TP-MMS (more messages to send) */
+	if (0 /* FIXME */)
+		*smsp |= 0x04;
+	/* TP-MR (message reference) */
+	smsp = msgb_put(msg, 1);
+	*smsp = sms->msg_ref;
+	/* generate recipient address */
+	oa_len = gsm340_gen_oa_sub(oa, sizeof(oa), &sms->dst);
+	smsp = msgb_put(msg, oa_len);
+	memcpy(smsp, oa, oa_len);
+
+	/* generate TP-SCTS (Service centre timestamp) */
+	smsp = msgb_put(msg, 7);
+	gsm340_gen_scts(smsp, time(NULL));
+
+	/* generate TP-DT (Discharge time, in TP-SCTS format). */
+	smsp = msgb_put(msg, 7);
+	gsm340_gen_scts(smsp, time(NULL));
+
+	/* TP-ST (status) */
+	smsp = msgb_put(msg, 1);
+	/* From GSM 03.40, Section 9.2.3.15, 0x00 means OK. */
+	*smsp = 0x00;
+
+	LOGP(DLSMS, LOGL_INFO, "sending status report for SMS reference %x\n",
+	     sms->msg_ref);
+
+	return msg->len - old_msg_len;
+}
+
 static int sms_route_mt_sms(struct gsm_subscriber_connection *conn,
 			    struct gsm_sms *gsms)
 {
@@ -989,8 +1032,13 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	/* obtain a pointer for the rp_ud_len, so we can fill it later */
 	rp_ud_len = (uint8_t *)msgb_put(msg, 1);
 
-	/* generate the 03.40 SMS-DELIVER TPDU */
-	rc = gsm340_gen_sms_deliver_tpdu(msg, sms);
+	if (sms->is_report) {
+		/* generate the 03.40 SMS-STATUS-REPORT TPDU */
+		rc = gsm340_gen_sms_status_report_tpdu(msg, sms);
+	} else {
+		/* generate the 03.40 SMS-DELIVER TPDU */
+		rc = gsm340_gen_sms_deliver_tpdu(msg, sms);
+	}
 	if (rc < 0) {
 		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
 		sms_free(sms);

@@ -143,6 +143,10 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	osmo_strlcpy(sms->src.addr, (char *)submit->source_addr,
 		     sizeof(sms->src.addr));
 
+	/* This is a Delivery Acknowledgment. */
+	if (submit->esm_class == 0x08)
+		sms->is_report = true;
+
 	if (submit->esm_class & 0x40)
 		sms->ud_hdr_ind = 1;
 
