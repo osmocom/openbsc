@@ -278,7 +278,7 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 }
 
 static int sms_route_mt_sms(struct gsm_subscriber_connection *conn,
-			    struct gsm_sms *gsms, uint8_t sms_mti)
+			    struct gsm_sms *gsms)
 {
 	int rc;
 
@@ -336,23 +336,6 @@ try_local:
 		rc = GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
 		rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_SMS_NO_RECEIVER]);
 #endif
-		return rc;
-	}
-
-	switch (sms_mti) {
-	case GSM340_SMS_SUBMIT_MS2SC:
-		/* MS is submitting a SMS */
-		rc = gsm340_rx_sms_submit(gsms);
-		break;
-	case GSM340_SMS_COMMAND_MS2SC:
-	case GSM340_SMS_DELIVER_REP_MS2SC:
-		LOGP(DLSMS, LOGL_NOTICE, "Unimplemented MTI 0x%02x\n", sms_mti);
-		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
-		break;
-	default:
-		LOGP(DLSMS, LOGL_NOTICE, "Undefined MTI 0x%02x\n", sms_mti);
-		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
-		break;
 	}
 
 	return rc;
@@ -484,7 +467,27 @@ static int gsm340_rx_tpdu(struct gsm_trans *trans, struct msgb *msg,
 	/* FIXME: This looks very wrong */
 	send_signal(0, NULL, gsms, 0);
 
-	rc = sms_route_mt_sms(conn, gsms, sms_mti);
+	rc = sms_route_mt_sms(conn, gsms);
+
+	/* This SMS got routed through SMPP or no receiver exists. */
+	if (!gsms->receiver)
+		return rc;
+
+	switch (sms_mti) {
+	case GSM340_SMS_SUBMIT_MS2SC:
+		/* MS is submitting a SMS */
+		rc = gsm340_rx_sms_submit(gsms);
+		break;
+	case GSM340_SMS_COMMAND_MS2SC:
+	case GSM340_SMS_DELIVER_REP_MS2SC:
+		LOGP(DLSMS, LOGL_NOTICE, "Unimplemented MTI 0x%02x\n", sms_mti);
+		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
+		break;
+	default:
+		LOGP(DLSMS, LOGL_NOTICE, "Undefined MTI 0x%02x\n", sms_mti);
+		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
+		break;
+	}
 out:
 	sms_free(gsms);
 
