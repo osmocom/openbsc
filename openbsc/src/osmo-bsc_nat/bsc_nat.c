@@ -1628,6 +1628,9 @@ int main(int argc, char **argv)
 	rate_ctr_init(tall_bsc_ctx);
 	osmo_stats_init(tall_bsc_ctx);
 
+	/* Ensure that forced enpoint allocation is turned on by default */
+	cfg->trunk.force_realloc = 1;
+
 	/* init vty and parse */
 	if (mgcp_parse_config(config_file, nat->mgcp_cfg, MGCP_BSC_NAT) < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);

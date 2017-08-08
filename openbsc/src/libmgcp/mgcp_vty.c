@@ -591,6 +591,16 @@ DEFUN(cfg_mgcp_loop,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_force_realloc,
+      cfg_mgcp_force_realloc_cmd,
+      "force-realloc (0|1)",
+      "Force endpoint reallocation when the endpoint is still seized\n"
+      "Don't force reallocation\n" "force reallocation\n")
+{
+	g_cfg->trunk.force_realloc = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_mgcp_number_endp,
       cfg_mgcp_number_endp_cmd,
       "number endpoints <0-65534>",
@@ -803,9 +813,10 @@ static int config_write_trunk(struct vty *vty)
 				trunk->keepalive_interval, VTY_NEWLINE);
 		else
 			vty_out(vty, "  no rtp keep-alive%s", VTY_NEWLINE);
-
 		vty_out(vty, "  loop %d%s",
 			trunk->audio_loop, VTY_NEWLINE);
+		vty_out(vty, "  force-realloc %d%s",
+			trunk->force_realloc, VTY_NEWLINE);
 		if (trunk->omit_rtcp)
 			vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
 		else
@@ -1379,6 +1390,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd_old);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd_old);
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_force_realloc_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_omit_rtcp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_omit_rtcp_cmd);

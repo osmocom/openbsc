@@ -1101,7 +1101,6 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 	/* some more MGCP config handling */
 	cfg->data = nat;
 	cfg->policy_cb = bsc_mgcp_policy_cb;
-	cfg->trunk.force_realloc = 1;
 
 	if (cfg->bts_ip)
 		talloc_free(cfg->bts_ip);
