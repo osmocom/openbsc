@@ -162,7 +162,7 @@ static int match_codec_pref(int *full_rate, enum gsm48_chan_mode *chan_mode,
 	uint8_t perm_spch;
 	bool match = false;
 
-	for (i = 0; msc->audio_length; i++) {
+	for (i = 0; i < msc->audio_length; i++) {
 		perm_spch = audio_support_to_gsm88(msc->audio_support[i]);
 		if (test_codec_pref(ct, scl, perm_spch)) {
 			match = true;
