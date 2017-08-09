@@ -706,8 +706,7 @@ static void enforce_standard_ssn(struct vty *vty, struct osmo_sccp_addr *addr)
 				addr->ssn, SCCP_SSN_BSSAP, osmo_sccp_addr_dump(addr), VTY_NEWLINE);
 	}
 
-	addr->presence |= OSMO_SCCP_ADDR_T_SSN;
-	addr->ssn = SCCP_SSN_BSSAP;
+	osmo_sccp_addr_set_ssn(addr, SCCP_SSN_BSSAP);
 }
 
 DEFUN(cfg_msc_cs7_bsc_addr,
