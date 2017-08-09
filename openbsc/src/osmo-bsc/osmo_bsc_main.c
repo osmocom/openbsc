@@ -219,7 +219,9 @@ int main(int argc, char **argv)
 
 	/* Initalize SS7 */
 	osmo_ss7_init();
-	osmo_ss7_vty_init_sg();
+	/* FIXME: this must be _asp() and not _sg(), however fixing this
+	 * now will break VTY! */
+	osmo_ss7_vty_init_sg(tall_bsc_ctx);
 
 	INIT_LLIST_HEAD(&access_lists);
 
