@@ -414,9 +414,7 @@ int main(int argc, char **argv)
 	vty_init(&msc_vty_info);
 
 	osmo_ss7_init();
-	/* FIXME: this must be _asp() and not _sg(), however fixing this
-	 * now will break VTY! */
-	osmo_ss7_vty_init_sg(tall_msc_ctx);
+	osmo_ss7_vty_init_asp(tall_msc_ctx);
 
 	/* Parse options */
 	handle_options(argc, argv);
