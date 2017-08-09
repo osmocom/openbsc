@@ -1629,7 +1629,7 @@ int main(int argc, char **argv)
 	osmo_stats_init(tall_bsc_ctx);
 
 	/* Ensure that forced enpoint allocation is turned on by default */
-	cfg->trunk.force_realloc = 1;
+	nat->mgcp_cfg->trunk.force_realloc = 1;
 
 	/* init vty and parse */
 	if (mgcp_parse_config(config_file, nat->mgcp_cfg, MGCP_BSC_NAT) < 0) {
