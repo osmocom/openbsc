@@ -282,6 +282,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 
 	new_lchan->conn->ho_lchan = NULL;
 	new_lchan->conn->lchan = new_lchan;
+	new_lchan->conn->bts = new_lchan->ts->trx->bts;
 	ho->old_lchan->conn = NULL;
 
 	lchan_release(ho->old_lchan, 0, RSL_REL_LOCAL_END);
