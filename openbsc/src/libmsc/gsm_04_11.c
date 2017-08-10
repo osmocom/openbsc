@@ -213,9 +213,9 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 {
 	uint8_t *smsp;
 	uint8_t oa[12];	/* max len per 03.40 */
-	uint8_t oa_len = 0;
 	uint8_t octet_len;
 	unsigned int old_msg_len = msg->len;
+	int oa_len;
 
 	/* generate first octet with masked bits */
 	smsp = msgb_put(msg, 1);
@@ -233,6 +233,9 @@ static int gsm340_gen_sms_deliver_tpdu(struct msgb *msg, struct gsm_sms *sms)
 
 	/* generate originator address */
 	oa_len = gsm340_gen_oa_sub(oa, sizeof(oa), &sms->src);
+	if (oa_len < 0)
+		return -ENOSPC;
+
 	smsp = msgb_put(msg, oa_len);
 	memcpy(smsp, oa, oa_len);
 
@@ -282,9 +285,9 @@ static int gsm340_gen_sms_status_report_tpdu(struct msgb *msg,
 					     struct gsm_sms *sms)
 {
 	unsigned int old_msg_len = msg->len;
-	uint8_t oa_len = 0;
 	uint8_t oa[12];	/* max len per 03.40 */
 	uint8_t *smsp;
+	int oa_len;
 
 	/* generate first octet with masked bits */
 	smsp = msgb_put(msg, 1);
@@ -296,8 +299,12 @@ static int gsm340_gen_sms_status_report_tpdu(struct msgb *msg,
 	/* TP-MR (message reference) */
 	smsp = msgb_put(msg, 1);
 	*smsp = sms->msg_ref;
+
 	/* generate recipient address */
 	oa_len = gsm340_gen_oa_sub(oa, sizeof(oa), &sms->dst);
+	if (oa_len < 0)
+		return -ENOSPC;
+
 	smsp = msgb_put(msg, oa_len);
 	memcpy(smsp, oa, oa_len);
 
