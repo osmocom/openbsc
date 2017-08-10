@@ -1649,7 +1649,6 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 	sms->protocol_id = dbi_result_get_ulonglong(result, "protocol_id");
 	sms->data_coding_scheme = dbi_result_get_ulonglong(result,
 						  "data_coding_scheme");
-	/* sms->msg_ref is temporary and not stored in DB */
 
 	sms->dst.npi = dbi_result_get_ulonglong(result, "dest_npi");
 	sms->dst.ton = dbi_result_get_ulonglong(result, "dest_ton");
