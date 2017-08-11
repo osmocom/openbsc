@@ -110,6 +110,7 @@ static bool check_connection_active(uint32_t conn_id)
 static struct a_reset_ctx *get_reset_ctx_by_sccp_addr(const struct osmo_sccp_addr *addr)
 {
 	struct bsc_context *bsc_ctx;
+	struct osmo_ss7_instance *ss7;
 
 	if (!addr)
 		return NULL;
@@ -119,8 +120,10 @@ static struct a_reset_ctx *get_reset_ctx_by_sccp_addr(const struct osmo_sccp_add
 			return bsc_ctx->reset;
 	}
 
+	ss7 = osmo_ss7_instance_find(gsm_network->a.cs7_instance);
+	OSMO_ASSERT(ss7);
 	LOGP(DMSC, LOGL_ERROR, "The calling BSC (%s) is unknown to this MSC ...\n",
-	     osmo_sccp_addr_dump(addr));
+	     osmo_sccp_addr_name(ss7, addr));
 	return NULL;
 }
 
@@ -195,6 +198,7 @@ int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 	struct gsm0808_cell_id_list cil;
 	struct msgb *msg;
 	int page_count = 0;
+	struct osmo_ss7_instance *ss7;
 
 	OSMO_ASSERT(imsi);
 
@@ -202,13 +206,16 @@ int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 	cil.id_list_lac[0] = lac;
 	cil.id_list_len = 1;
 
+	ss7 = osmo_ss7_instance_find(gsm_network->a.cs7_instance);
+	OSMO_ASSERT(ss7);
+
 	/* Deliver paging request to all known BSCs */
 	llist_for_each_entry(bsc_ctx, &gsm_network->a.bscs, list) {
 		if (a_reset_conn_ready(bsc_ctx->reset)) {
 			LOGP(DMSC, LOGL_DEBUG,
 			     "Passing paging message from MSC %s to BSC %s (imsi=%s, tmsi=0x%08x, lac=%u)\n",
-			     osmo_sccp_addr_dump(&bsc_ctx->msc_addr),
-			     osmo_sccp_addr_dump(&bsc_ctx->bsc_addr), imsi, tmsi, lac);
+			     osmo_sccp_addr_name(ss7, &bsc_ctx->msc_addr),
+			     osmo_sccp_addr_name(ss7, &bsc_ctx->bsc_addr), imsi, tmsi, lac);
 			msg = gsm0808_create_paging(imsi, &tmsi, &cil, NULL);
 			osmo_sccp_tx_unitdata_msg(bsc_ctx->sccp_user,
 						  &bsc_ctx->msc_addr, &bsc_ctx->bsc_addr, msg);
@@ -216,8 +223,8 @@ int a_iface_tx_paging(const char *imsi, uint32_t tmsi, uint16_t lac)
 		} else {
 			LOGP(DMSC, LOGL_DEBUG,
 			     "Connection down, dropping paging from MSC %s to BSC %s (imsi=%s, tmsi=0x%08x, lac=%u)\n",
-			     osmo_sccp_addr_dump(&bsc_ctx->msc_addr),
-			     osmo_sccp_addr_dump(&bsc_ctx->bsc_addr), imsi, tmsi, lac);
+			     osmo_sccp_addr_name(ss7, &bsc_ctx->msc_addr),
+			     osmo_sccp_addr_name(ss7, &bsc_ctx->bsc_addr), imsi, tmsi, lac);
 		}
 	}
 
@@ -421,6 +428,7 @@ static void a_reset_cb(const void *priv)
 {
 	struct msgb *msg;
 	struct bsc_context *bsc_ctx = (struct bsc_context*) priv;
+	struct osmo_ss7_instance *ss7;
 
 	/* Skip if the A interface is not properly initalized yet */
 	if (!gsm_network)
@@ -430,7 +438,9 @@ static void a_reset_cb(const void *priv)
 	a_clear_all(bsc_ctx->sccp_user, &bsc_ctx->bsc_addr);
 
 	/* Send reset to the remote BSC */
-	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to BSC %s\n", osmo_sccp_addr_dump(&bsc_ctx->bsc_addr));
+	ss7 = osmo_ss7_instance_find(gsm_network->a.cs7_instance);
+	OSMO_ASSERT(ss7);
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to BSC %s\n", osmo_sccp_addr_name(ss7, &bsc_ctx->bsc_addr));
 	msg = gsm0808_create_reset();
 	osmo_sccp_tx_unitdata_msg(bsc_ctx->sccp_user, &bsc_ctx->msc_addr,
 				  &bsc_ctx->bsc_addr, msg);
@@ -441,6 +451,7 @@ static void add_bsc(const struct osmo_sccp_addr *msc_addr, const struct osmo_scc
 		    struct osmo_sccp_user *scu)
 {
 	struct bsc_context *bsc_ctx;
+	struct osmo_ss7_instance *ss7;
 
 	OSMO_ASSERT(bsc_addr);
 	OSMO_ASSERT(msc_addr);
@@ -450,7 +461,9 @@ static void add_bsc(const struct osmo_sccp_addr *msc_addr, const struct osmo_scc
 	if (get_reset_ctx_by_sccp_addr(bsc_addr))
 		return;
 
-	LOGP(DMSC, LOGL_NOTICE, "Adding new BSC connection for BSC %s...\n", osmo_sccp_addr_dump(bsc_addr));
+	ss7 = osmo_ss7_instance_find(gsm_network->a.cs7_instance);
+	OSMO_ASSERT(ss7);
+	LOGP(DMSC, LOGL_NOTICE, "Adding new BSC connection for BSC %s...\n", osmo_sccp_addr_name(ss7, bsc_addr));
 
 	/* Generate and fill up a new bsc context */
 	bsc_ctx = talloc_zero(gsm_network, struct bsc_context);
@@ -461,7 +474,7 @@ static void add_bsc(const struct osmo_sccp_addr *msc_addr, const struct osmo_scc
 	llist_add_tail(&bsc_ctx->list, &gsm_network->a.bscs);
 
 	/* Start reset procedure to make the new connection active */
-	bsc_ctx->reset = a_reset_alloc(bsc_ctx, osmo_sccp_addr_dump(bsc_addr), a_reset_cb, bsc_ctx);
+	bsc_ctx->reset = a_reset_alloc(bsc_ctx, osmo_sccp_addr_name(ss7, bsc_addr), a_reset_cb, bsc_ctx);
 }
 
 /* Callback function, called by the SSCP stack when data arrives */
