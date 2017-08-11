@@ -627,10 +627,6 @@ struct osmo_smpp_cmd *smpp_cmd_find_by_seqnum(struct osmo_esme *esme,
 	return NULL;
 }
 
-/* See SMPP 3.4, Section 5.2.17. registered_delivery (1 byte field). */
-#define SMPP34_NO_DELIVERY_RECEIPT	0x0
-#define SMPP34_DELIVERY_RECEIPT_REQ	0x1
-
 static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 			   struct gsm_subscriber_connection *conn)
 {
@@ -676,9 +672,7 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 	deliver.protocol_id 	= sms->protocol_id;
 	deliver.priority_flag	= 0;
 	if (sms->status_rep_req)
-		deliver.registered_delivery = SMPP34_DELIVERY_RECEIPT_REQ;
-	else
-		deliver.registered_delivery = SMPP34_NO_DELIVERY_RECEIPT;
+		deliver.registered_delivery = SMPP34_DELIVERY_RECEIPT_ON;
 
 	/* Figure out SMPP DCS from TP-DCS */
 	dcs = sms->data_coding_scheme;
