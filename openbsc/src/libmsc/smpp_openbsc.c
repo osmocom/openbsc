@@ -157,14 +157,13 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	osmo_strlcpy(sms->src.addr, (char *)submit->source_addr,
 		     sizeof(sms->src.addr));
 
-	/* This is a Delivery Acknowledgment. */
-	if (submit->esm_class == 0x08)
+	if (submit->esm_class == SMPP34_DELIVERY_ACK)
 		sms->is_report = true;
 
-	if (submit->esm_class & 0x40)
+	if (submit->esm_class & SMPP34_UDHI_IND)
 		sms->ud_hdr_ind = 1;
 
-	if (submit->esm_class & 0x80) {
+	if (submit->esm_class & SMPP34_REPLY_PATH) {
 		sms->reply_path_req = 1;
 #warning Implement reply path
 	}
@@ -240,7 +239,7 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 	sms->smpp.esme = esme;
 	sms->protocol_id = submit->protocol_id;
 
-	switch (submit->esm_class & 3) {
+	switch (submit->esm_class & SMPP34_MSG_MODE_MASK) {
 	case 0: /* default */
 	case 1: /* datagram */
 	case 3: /* store-and-forward */
@@ -664,16 +663,15 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
 	memcpy(deliver.destination_addr, sms->dst.addr,
 		sizeof(deliver.destination_addr));
 
-	/* Short message contains a delivery receipt? Sect. 5.2.12. */
 	if (sms->is_report)
-		deliver.esm_class = 0x04;
+		deliver.esm_class = SMPP34_DELIVERY_RECEIPT;
 	else
-		deliver.esm_class = 1;	/* datagram mode */
+		deliver.esm_class = SMPP34_DATAGRAM_MODE;
 
 	if (sms->ud_hdr_ind)
-		deliver.esm_class |= 0x40;
+		deliver.esm_class |= SMPP34_UDHI_IND;
 	if (sms->reply_path_req)
-		deliver.esm_class |= 0x80;
+		deliver.esm_class |= SMPP34_REPLY_PATH;
 
 	deliver.protocol_id 	= sms->protocol_id;
 	deliver.priority_flag	= 0;
