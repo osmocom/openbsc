@@ -277,10 +277,12 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	if (!addr)
 		addr = mgcp_net_src_addr(endp);
 
-	if (endp->osmux.state == OSMUX_STATE_NEGOTIATING)
+	if (endp->osmux.state == OSMUX_STATE_NEGOTIATING) {
 		sprintf(osmux_extension, "\nX-Osmux: %u", endp->osmux.cid);
-	else
+		endp->osmux.state = OSMUX_STATE_ACTIVATING;
+	} else {
 		osmux_extension[0] = '\0';
+	}
 
 	len = snprintf(sdp_record, sizeof(sdp_record),
 		       "I: %u%s\n\n", endp->ci, osmux_extension);
