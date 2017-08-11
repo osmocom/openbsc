@@ -72,26 +72,31 @@ static struct gsm_subscriber *subscr_by_dst(struct gsm_network *net,
 	return subscr;
 }
 
-/*! \brief find a TLV with given tag in list of libsmpp34 TLVs */
-static struct tlv_t *find_tlv(struct tlv_t *head, uint16_t tag)
+static int smpp34_submit_tlv_msg_payload(const struct tlv_t *t,
+					 const struct submit_sm_t *submit,
+					 const uint8_t **sms_msg,
+					 unsigned int *sms_msg_len)
 {
-	struct tlv_t *t;
-
-	for (t = head; t != NULL; t = t->next) {
-		if (t->tag == tag)
-			return t;
+	if (submit->sm_length) {
+		LOGP(DLSMS, LOGL_ERROR,
+		     "SMPP cannot have payload in TLV _and_ in the header\n");
+		return -1;
 	}
-	return NULL;
+	*sms_msg = t->value.octet;
+	*sms_msg_len = t->length;
+
+	return 0;
 }
 
 /*! \brief convert from submit_sm_t to gsm_sms */
 static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 			 const struct submit_sm_t *submit)
 {
+	const uint8_t *sms_msg = NULL;
 	struct gsm_subscriber *dest;
+	uint16_t msg_ref = 0;
 	struct gsm_sms *sms;
 	struct tlv_t *t;
-	const uint8_t *sms_msg;
 	unsigned int sms_msg_len;
 	int mode;
 
@@ -105,31 +110,40 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 		return ESME_RINVDSTADR;
 	}
 
-	t = find_tlv(submit->tlv, TLVID_message_payload);
-	if (t) {
-		if (submit->sm_length) {
-			/* ERROR: we cannot have both! */
-			LOGP(DLSMS, LOGL_ERROR, "SMPP Cannot have payload in "
-				"TLV _and_ in the header\n");
-			subscr_put(dest);
-			return ESME_ROPTPARNOTALLWD;
+	smpp34_tlv_for_each(t, submit->tlv) {
+		switch (t->tag) {
+		case TLVID_message_payload:
+			if (smpp34_submit_tlv_msg_payload(t, submit, &sms_msg,
+							  &sms_msg_len) < 0) {
+				subscr_put(dest);
+				return ESME_ROPTPARNOTALLWD;
+			}
+			break;
+		case TLVID_user_message_reference:
+			msg_ref = ntohs(t->value.val16);
+			break;
+		default:
+			break;
 		}
-		sms_msg = t->value.octet;
-		sms_msg_len = t->length;
-	} else if (submit->sm_length > 0 && submit->sm_length < 255) {
-		sms_msg = submit->short_message;
-		sms_msg_len = submit->sm_length;
-	} else {
-		LOGP(DLSMS, LOGL_ERROR,
-			"SMPP neither message payload nor valid sm_length.\n");
-		subscr_put(dest);
-		return ESME_RINVPARLEN;
+	}
+
+	if (!sms_msg) {
+		if (submit->sm_length > 0 && submit->sm_length < 255) {
+			sms_msg = submit->short_message;
+			sms_msg_len = submit->sm_length;
+		} else {
+			LOGP(DLSMS, LOGL_ERROR,
+			     "SMPP neither message payload nor valid sm_length.\n");
+			subscr_put(dest);
+			return ESME_RINVPARLEN;
+		}
 	}
 
 	sms = sms_alloc();
 	sms->source = SMS_SOURCE_SMPP;
 	sms->smpp.sequence_nr = submit->sequence_number;
 	sms->status_rep_req = submit->registered_delivery;
+	sms->msg_ref = msg_ref;
 
 	/* fill in the destination address */
 	sms->receiver = dest;
@@ -203,10 +217,6 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 		memcpy(sms->user_data, sms_msg, sms_msg_len);
 		sms->user_data_len = sms_msg_len;
 	}
-
-	t = find_tlv(submit->tlv, TLVID_user_message_reference);
-	if (t)
-		sms->msg_ref = ntohs(t->value.val16);
 
 	*psms = sms;
 	return ESME_ROK;
