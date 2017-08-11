@@ -100,7 +100,14 @@ static struct gsm_subscriber_connection *subscr_conn_lookup_a(const struct gsm_n
 /* Endpoint to handle BSSMAP reset */
 static void bssmap_rx_reset(struct osmo_sccp_user *scu, const struct a_conn_info *a_conn_info, struct msgb *msg)
 {
-	LOGP(DMSC, LOGL_NOTICE, "Rx RESET from BSC %s, sending RESET ACK\n", osmo_sccp_addr_dump(a_conn_info->bsc_addr));
+	struct gsm_network *network = a_conn_info->network;
+	struct osmo_ss7_instance *ss7;
+
+	ss7 = osmo_ss7_instance_find(network->a.cs7_instance);
+	OSMO_ASSERT(ss7);
+
+	LOGP(DMSC, LOGL_NOTICE, "Rx RESET from BSC %s, sending RESET ACK\n",
+	     osmo_sccp_addr_name(ss7, a_conn_info->bsc_addr));
 	osmo_sccp_tx_unitdata_msg(scu, a_conn_info->msc_addr, a_conn_info->bsc_addr, gsm0808_create_reset_ack());
 
 	/* Make sure all orphand subscriber connections will be cleard */
@@ -113,14 +120,20 @@ static void bssmap_rx_reset(struct osmo_sccp_user *scu, const struct a_conn_info
 static void bssmap_rx_reset_ack(const struct osmo_sccp_user *scu, const struct a_conn_info *a_conn_info,
 				struct msgb *msg)
 {
+
+	struct gsm_network *network = a_conn_info->network;
+	struct osmo_ss7_instance *ss7;
+
+	ss7 = osmo_ss7_instance_find(network->a.cs7_instance);
+	OSMO_ASSERT(ss7);
+
 	if (a_conn_info->reset == NULL) {
 		LOGP(DMSC, LOGL_ERROR, "Received RESET ACK from an unknown BSC %s, ignoring...\n",
-		     osmo_sccp_addr_dump(a_conn_info->bsc_addr));
+		     osmo_sccp_addr_name(ss7, a_conn_info->bsc_addr));
 		goto fail;
 	}
 
-	LOGP(DMSC, LOGL_NOTICE, "Received RESET ACK from BSC %s\n",
-	     osmo_sccp_addr_dump(a_conn_info->bsc_addr));
+	LOGP(DMSC, LOGL_NOTICE, "Received RESET ACK from BSC %s\n", osmo_sccp_addr_name(ss7, a_conn_info->bsc_addr));
 
 	/* Confirm that we managed to get the reset ack message
 	 * towards the connection reset logic */
