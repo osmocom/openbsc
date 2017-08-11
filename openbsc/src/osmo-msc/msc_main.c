@@ -337,63 +337,84 @@ static int rx_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type,
 	return iucs_rx_ranap_event(msc_network, ctx, type, data);
 }
 
-#define A_DEFAULT_PC 1
-#define A_DEFAULT_LOCAL_IP "127.0.0.3"
-#define A_DEFAULT_REMOTE_IP "127.0.0.1"
-#define IU_DEFAULT_PC 3
-#define IU_DEFAULT_LOCAL_IP "127.0.0.6"
-#define IU_DEFAULT_REMOTE_IP "127.0.0.1"
+/* Default point-code to be used for the A-Interface link */
+#define A_DEFAULT_PC "0.23.1"
+
+/* Default point-code to be used for the Iu-Interface link */
+#define IU_DEFAULT_PC "0.23.2"
+
+/* Default point-code to be used if A and Iu interface are on the same link */
+#define IU_A_DEFAULT_PC "0.23.1"
 
 /* Setup sigtran connection */
 int ss7_setup(void *ctx)
 {
 	uint32_t cs7_instance_a = msc_network->a.cs7_instance;
-	uint32_t cs7_instance_iu = msc_network->iu.cs7_instance;
-
-	char sccp_inst_name_iu[32];
-	char sccp_inst_name_A[32];
+#if BUILD_IU
+    uint32_t cs7_instance_iu = msc_network->iu.cs7_instance;
+#endif
+	uint32_t default_pc;
 
 	LOGP(DMSC, LOGL_NOTICE, "CS7 Instance identifier, A-Interface:  %u\n",
 	     cs7_instance_a);
+
+#if BUILD_IU
 	LOGP(DMSC, LOGL_NOTICE, "CS7 Instance identifier, Iu-Interface: %u\n",
 	     cs7_instance_iu);
+#endif
 
-	/* Setup instance names */
-	if (cs7_instance_a == cs7_instance_iu)
-		strcpy(sccp_inst_name_iu, "OsmoMSC-Iu-A");
-	else {
-		strcpy(sccp_inst_name_iu, "OsmoMSC-Iu");
-		strcpy(sccp_inst_name_A, "OsmoMSC-A");
-	}
-
-	/* Create first SCCP instance (Iu and possibly also for A) */
-	msc_network->iu.sccp =
-	    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_iu,
-					      sccp_inst_name_iu,
-					      IU_DEFAULT_PC,
-					      OSMO_SS7_ASP_PROT_M3UA, 0,
-					      IU_DEFAULT_LOCAL_IP, 0,
-					      IU_DEFAULT_REMOTE_IP);
-	if (!msc_network->iu.sccp)
-		return -EINVAL;
-
-	/* If the VTY settings indicate, that the user wants to use only a
-	   single cs7 instance (A and Iu are running on the same instance,
-	   we just copy the pointer and exit early */
+#if BUILD_IU
+	/* Setup SCCP instances */
 	if (cs7_instance_a == cs7_instance_iu) {
-		msc_network->a.sccp = msc_network->iu.sccp;
-		return 0;
-	}
+#endif
+		/* Create one single SCCP instance which will be used for both,
+		 * Iu and A at the same time, under the same point-code */
 
-	/* Create second SCCP instance (A) */
-	msc_network->a.sccp =
-	    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_a,
-					      sccp_inst_name_A, A_DEFAULT_PC,
-					      OSMO_SS7_ASP_PROT_M3UA, 0,
-					      A_DEFAULT_LOCAL_IP, 0,
-					      A_DEFAULT_REMOTE_IP);
-	if (!msc_network->a.sccp)
-		return -EINVAL;
+#if BUILD_IU
+		LOGP(DMSC, LOGL_NOTICE,
+		     "Iu and A interface will run on a single CS7/SCCP instance.\n");
+#endif
+
+		default_pc = osmo_ss7_pointcode_parse(NULL, IU_A_DEFAULT_PC);
+		msc_network->a.sccp =
+		    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_a,
+						      "OsmoMSC-Iu-A",
+						      default_pc,
+						      OSMO_SS7_ASP_PROT_M3UA, 0,
+						      NULL, 0, NULL);
+		if (!msc_network->a.sccp)
+			return -EINVAL;
+
+#if BUILD_IU
+		msc_network->iu.sccp = msc_network->a.sccp;
+	} else {
+		/* Create two separate SCCP instances to run A and Iu
+		 * independantyly on different pointcodes */
+
+		LOGP(DMSC, LOGL_NOTICE,
+		     "Iu and A interface will run on on two CS7/SCCP instances independantly.\n");
+
+		default_pc = osmo_ss7_pointcode_parse(NULL, IU_DEFAULT_PC);
+		msc_network->iu.sccp =
+		    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_iu,
+						      "OsmoMSC-Iu",
+						      default_pc,
+						      OSMO_SS7_ASP_PROT_M3UA,
+						      0, NULL, 0, NULL);
+		if (!msc_network->iu.sccp)
+			return -EINVAL;
+
+		default_pc = osmo_ss7_pointcode_parse(NULL, IU_DEFAULT_PC);
+		msc_network->a.sccp =
+		    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_a,
+						      "OsmoMSC-A",
+						      default_pc,
+						      OSMO_SS7_ASP_PROT_M3UA, 0,
+						      NULL, 0, NULL);
+		if (!msc_network->a.sccp)
+			return -EINVAL;
+	}
+#endif
 
 	return 0;
 }
