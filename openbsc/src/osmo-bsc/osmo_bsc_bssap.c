@@ -195,7 +195,8 @@ static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 				   struct msgb *msg, unsigned int length)
 {
 	LOGP(DMSC, LOGL_NOTICE, "RESET ACK from MSC: %s\n",
-	     osmo_sccp_addr_dump(&msc->a.msc_addr));
+	     osmo_sccp_addr_name(osmo_ss7_instance_find(msc->a.cs7_instance),
+				 &msc->a.msc_addr));
 
 	/* Inform the FSM that controls the RESET/RESET-ACK procedure
 	 * that we have successfully received the reset-ack message */
@@ -209,7 +210,8 @@ static int bssmap_handle_reset(struct bsc_msc_data *msc,
 			       struct msgb *msg, unsigned int length)
 {
 	LOGP(DMSC, LOGL_NOTICE, "RESET from MSC: %s\n",
-	     osmo_sccp_addr_dump(&msc->a.msc_addr));
+	     osmo_sccp_addr_name(osmo_ss7_instance_find(msc->a.cs7_instance),
+				 &msc->a.msc_addr));
 
 	/* Instruct the bsc to close all open sigtran connections and to
 	 * close all active channels on the BTS side as well */
@@ -221,7 +223,6 @@ static int bssmap_handle_reset(struct bsc_msc_data *msc,
 
 	return 0;
 }
-
 
 /* GSM 08.08 § 3.2.1.19 */
 static int bssmap_handle_paging(struct bsc_msc_data *msc,
