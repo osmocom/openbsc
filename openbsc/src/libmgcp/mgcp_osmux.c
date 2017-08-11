@@ -340,8 +340,7 @@ static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
 	if (endp->osmux.state == OSMUX_STATE_ENABLED)
 		goto out;
 
-	if (osmux_enable_endpoint(endp, OSMUX_ROLE_BSC_NAT,
-				  &addr->sin_addr, addr->sin_port) < 0 ){
+	if (osmux_enable_endpoint(endp, &addr->sin_addr, addr->sin_port) < 0 ) {
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Could not enable osmux in endpoint %d\n",
 		     ENDPOINT_NUMBER(endp));
@@ -433,8 +432,7 @@ int osmux_init(int role, struct mgcp_config *cfg)
 	return 0;
 }
 
-int osmux_enable_endpoint(struct mgcp_endpoint *endp, int role,
-			  struct in_addr *addr, uint16_t port)
+int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint16_t port)
 {
 	/* If osmux is enabled, initialize the output handler. This handler is
 	 * used to reconstruct the RTP flow from osmux. The RTP SSRC is
@@ -522,8 +520,7 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 		return 0;
 
 	if (endp->osmux.state == OSMUX_STATE_ACTIVATING) {
-		if (osmux_enable_endpoint(endp, OSMUX_ROLE_BSC,
-					  &endp->net_end.addr,
+		if (osmux_enable_endpoint(endp, &endp->net_end.addr,
 					  htons(endp->cfg->osmux_port)) < 0) {
 			LOGP(DMGCP, LOGL_ERROR,
 			     "Could not activate osmux in endpoint %d\n",
