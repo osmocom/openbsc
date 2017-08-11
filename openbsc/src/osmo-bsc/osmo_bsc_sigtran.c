@@ -86,8 +86,12 @@ static int pick_free_conn_id(const struct bsc_msc_data *msc)
 /* Send reset to MSC */
 static void osmo_bsc_sigtran_tx_reset(const struct bsc_msc_data *msc)
 {
+	struct osmo_ss7_instance *ss7;
 	struct msgb *msg;
-	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to MSC: %s\n", osmo_sccp_addr_dump(&msc->a.msc_addr));
+
+	ss7 = osmo_ss7_instance_find(msc->a.cs7_instance);
+	OSMO_ASSERT(ss7);
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET to MSC: %s\n", osmo_sccp_addr_name(ss7, &msc->a.msc_addr));
 	msg = gsm0808_create_reset();
 	osmo_sccp_tx_unitdata_msg(msc->a.sccp_user, &msc->a.bsc_addr,
 				  &msc->a.msc_addr, msg);
@@ -96,9 +100,13 @@ static void osmo_bsc_sigtran_tx_reset(const struct bsc_msc_data *msc)
 /* Send reset-ack to MSC */
 void osmo_bsc_sigtran_tx_reset_ack(const struct bsc_msc_data *msc)
 {
+	struct osmo_ss7_instance *ss7;
 	struct msgb *msg;
 	OSMO_ASSERT(msc);
-	LOGP(DMSC, LOGL_NOTICE, "Sending RESET ACK to MSC: %s\n", osmo_sccp_addr_dump(&msc->a.msc_addr));
+
+	ss7 = osmo_ss7_instance_find(msc->a.cs7_instance);
+	OSMO_ASSERT(ss7);
+	LOGP(DMSC, LOGL_NOTICE, "Sending RESET ACK to MSC: %s\n", osmo_sccp_addr_name(ss7, &msc->a.msc_addr));
 	msg = gsm0808_create_reset_ack();
 	osmo_sccp_tx_unitdata_msg(msc->a.sccp_user, &msc->a.bsc_addr,
 				  &msc->a.msc_addr, msg);
@@ -107,13 +115,16 @@ void osmo_bsc_sigtran_tx_reset_ack(const struct bsc_msc_data *msc)
 /* Find an MSC by its sigtran point code */
 static struct bsc_msc_data *get_msc_by_addr(const struct osmo_sccp_addr *msc_addr)
 {
+	struct osmo_ss7_instance *ss7;
 	struct bsc_msc_data *msc;
 	llist_for_each_entry(msc, msc_list, entry) {
 		if (memcmp(msc_addr, &msc->a.msc_addr, sizeof(*msc_addr)) == 0)
 			return msc;
 	}
 
-	LOGP(DMSC, LOGL_ERROR, "Unable to find MSC data under address: %s\n", osmo_sccp_addr_dump(msc_addr));
+	ss7 = osmo_ss7_instance_find(msc->a.cs7_instance);
+	OSMO_ASSERT(ss7);
+	LOGP(DMSC, LOGL_ERROR, "Unable to find MSC data under address: %s\n", osmo_sccp_addr_name(ss7, msc_addr));
 	return NULL;
 }
 
@@ -133,18 +144,22 @@ static int handle_data_from_msc(int conn_id, struct msgb *msg)
 }
 
 /* Sent unitdata to MSC, use the point code to determine which MSC it is */
-static int handle_unitdata_from_msc(const struct osmo_sccp_addr *msc_addr, struct msgb *msg)
+static int handle_unitdata_from_msc(const struct osmo_sccp_addr *msc_addr, struct msgb *msg,
+				    const struct osmo_sccp_user *scu)
 {
+	struct osmo_ss7_instance *ss7;
 	struct bsc_msc_data *msc = get_msc_by_addr(msc_addr);
 	int rc = -EINVAL;
 
 	if (msc) {
 		msg->l3h = msgb_l2(msg);
 		rc = bsc_handle_udt(msc, msg, msgb_l2len(msg));
-	} else
+	} else {
+		ss7 = osmo_sccp_get_ss7(osmo_sccp_get_sccp(scu));
+		OSMO_ASSERT(ss7);
 		LOGP(DMSC, LOGL_NOTICE, "incoming unitdata data from unknown remote address: %s\n",
-		     osmo_sccp_addr_dump(msc_addr));
-
+		     osmo_sccp_addr_name(ss7, msc_addr));
+	}
 	return rc;
 }
 
@@ -160,7 +175,7 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_UNITDATA, PRIM_OP_INDICATION):
 		/* Handle inbound UNITDATA */
 		DEBUGP(DMSC, "N-UNITDATA.ind(%s)\n", osmo_hexdump(msgb_l2(oph->msg), msgb_l2len(oph->msg)));
-		rc = handle_unitdata_from_msc(&scu_prim->u.unitdata.calling_addr, oph->msg);
+		rc = handle_unitdata_from_msc(&scu_prim->u.unitdata.calling_addr, oph->msg, scu);
 		break;
 
 	case OSMO_PRIM(OSMO_SCU_PRIM_N_CONNECT, PRIM_OP_INDICATION):
@@ -227,14 +242,17 @@ static int sccp_sap_up(struct osmo_prim_hdr *oph, void *_scu)
  * (not the connection ittself!) */
 enum bsc_con osmo_bsc_sigtran_new_conn(struct gsm_subscriber_connection *conn, struct bsc_msc_data *msc)
 {
+	struct osmo_ss7_instance *ss7;
 	struct osmo_bsc_sccp_con *bsc_con;
 	int conn_id;
 
 	OSMO_ASSERT(conn);
 	OSMO_ASSERT(msc);
 
+	ss7 = osmo_ss7_instance_find(msc->a.cs7_instance);
+	OSMO_ASSERT(ss7);
 	LOGP(DMSC, LOGL_NOTICE, "Initializing resources for new SIGTRAN connection to MSC: %s...\n",
-	     osmo_sccp_addr_dump(&msc->a.msc_addr));
+	     osmo_sccp_addr_name(ss7, &msc->a.msc_addr));
 
 	if (a_reset_conn_ready(msc->a.reset) == false) {
 		LOGP(DMSC, LOGL_ERROR, "MSC is not connected. Dropping.\n");
@@ -271,6 +289,7 @@ enum bsc_con osmo_bsc_sigtran_new_conn(struct gsm_subscriber_connection *conn, s
 /* Open a new connection oriented sigtran connection */
 int osmo_bsc_sigtran_open_conn(const struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
+	struct osmo_ss7_instance *ss7;
 	struct bsc_msc_data *msc;
 	int conn_id;
 	int rc;
@@ -287,8 +306,10 @@ int osmo_bsc_sigtran_open_conn(const struct osmo_bsc_sccp_con *conn, struct msgb
 	}
 
 	conn_id = conn->conn_id;
+	ss7 = osmo_ss7_instance_find(msc->a.cs7_instance);
+	OSMO_ASSERT(ss7);
 	LOGP(DMSC, LOGL_NOTICE, "Opening new SIGTRAN connection (id=%i) to MSC: %s\n", conn_id,
-	     osmo_sccp_addr_dump(&msc->a.msc_addr));
+	     osmo_sccp_addr_name(ss7, &msc->a.msc_addr));
 
 	rc = osmo_sccp_tx_conn_req_msg(msc->a.sccp_user, conn_id, &msc->a.bsc_addr,
 				       &msc->a.msc_addr, msg);
@@ -299,6 +320,7 @@ int osmo_bsc_sigtran_open_conn(const struct osmo_bsc_sccp_con *conn, struct msgb
 /* Send data to MSC */
 int osmo_bsc_sigtran_send(const struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
+	struct osmo_ss7_instance *ss7;
 	int conn_id;
 	int rc;
 	struct bsc_msc_data *msc;
@@ -316,8 +338,10 @@ int osmo_bsc_sigtran_send(const struct osmo_bsc_sccp_con *conn, struct msgb *msg
 
 	conn_id = conn->conn_id;
 
+	ss7 = osmo_ss7_instance_find(msc->a.cs7_instance);
+	OSMO_ASSERT(ss7);
 	LOGP(DMSC, LOGL_DEBUG, "Sending connection (id=%i) oriented data to MSC: %si\n",
-	     conn_id, osmo_sccp_addr_dump(&msc->a.msc_addr));
+	     conn_id, osmo_sccp_addr_name(ss7, &msc->a.msc_addr));
 
 	rc = osmo_sccp_tx_data_msg(msc->a.sccp_user, conn_id, msg);
 
