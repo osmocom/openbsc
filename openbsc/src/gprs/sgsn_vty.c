@@ -458,20 +458,22 @@ static void vty_dump_pdp(struct vty *vty, const char *pfx,
 	const char *imsi = pdp->mm ? pdp->mm->imsi : "(detaching)";
 	vty_out(vty, "%sPDP Context IMSI: %s, SAPI: %u, NSAPI: %u, TI: %u%s",
 		pfx, imsi, pdp->sapi, pdp->nsapi, pdp->ti, VTY_NEWLINE);
-	vty_out(vty, "%s  APN: %s%s", pfx,
-		gprs_apn2str(pdp->lib->apn_use.v, pdp->lib->apn_use.l),
-		VTY_NEWLINE);
-	vty_out(vty, "%s  PDP Address: %s%s", pfx,
-		gprs_pdpaddr2str(pdp->lib->eua.v, pdp->lib->eua.l),
-		VTY_NEWLINE);
-	vty_out(vty, "%s  GTP Local Control(%s / TEIC: 0x%08x) ", pfx,
-		gtp_ntoa(&pdp->lib->gsnlc), pdp->lib->teic_own);
-	vty_out(vty, "Data(%s / TEID: 0x%08x)%s",
-		gtp_ntoa(&pdp->lib->gsnlu), pdp->lib->teid_own, VTY_NEWLINE);
-	vty_out(vty, "%s  GTP Remote Control(%s / TEIC: 0x%08x) ", pfx,
-		gtp_ntoa(&pdp->lib->gsnrc), pdp->lib->teic_gn);
-	vty_out(vty, "Data(%s / TEID: 0x%08x)%s",
-		gtp_ntoa(&pdp->lib->gsnru), pdp->lib->teid_gn, VTY_NEWLINE);
+	if (pdp->lib) {
+		vty_out(vty, "%s  APN: %s%s", pfx,
+			gprs_apn2str(pdp->lib->apn_use.v, pdp->lib->apn_use.l),
+			VTY_NEWLINE);
+		vty_out(vty, "%s  PDP Address: %s%s", pfx,
+			gprs_pdpaddr2str(pdp->lib->eua.v, pdp->lib->eua.l),
+			VTY_NEWLINE);
+		vty_out(vty, "%s  GTP Local Control(%s / TEIC: 0x%08x) ", pfx,
+			gtp_ntoa(&pdp->lib->gsnlc), pdp->lib->teic_own);
+		vty_out(vty, "Data(%s / TEID: 0x%08x)%s",
+			gtp_ntoa(&pdp->lib->gsnlu), pdp->lib->teid_own, VTY_NEWLINE);
+		vty_out(vty, "%s  GTP Remote Control(%s / TEIC: 0x%08x) ", pfx,
+			gtp_ntoa(&pdp->lib->gsnrc), pdp->lib->teic_gn);
+		vty_out(vty, "Data(%s / TEID: 0x%08x)%s",
+			gtp_ntoa(&pdp->lib->gsnru), pdp->lib->teid_gn, VTY_NEWLINE);
+	}
 
 	vty_out_rate_ctr_group(vty, " ", pdp->ctrg);
 }
