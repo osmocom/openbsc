@@ -42,6 +42,8 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/stats.h>
 
+#include <osmocom/gsm/apn.h>
+
 
 static const int GTPH_GC_TICK_SECONDS = 1;
 
@@ -498,7 +500,7 @@ static int get_ie_apn_str(union gtpie_member *ie[], const char **apn_str)
 		len = sizeof(apn_buf) - 1;
 	apn_buf[len] = '\0';
 
-	*apn_str = gprs_apn_to_str(apn_buf, (uint8_t*)apn_buf, len);
+	*apn_str = osmo_apn_to_str(apn_buf, (uint8_t*)apn_buf, len);
 	if (!(*apn_str)) {
 		LOG(LOGL_ERROR, "APN IE: present but cannot be decoded: %s\n",
 		    osmo_hexdump((uint8_t*)apn_buf, len));

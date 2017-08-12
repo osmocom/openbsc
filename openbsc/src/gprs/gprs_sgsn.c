@@ -30,6 +30,7 @@
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
+#include <osmocom/gsm/apn.h>
 
 #include <openbsc/gprs_subscriber.h>
 #include <openbsc/debug.h>
@@ -757,7 +758,7 @@ struct sgsn_ggsn_ctx *sgsn_mm_ctx_find_ggsn_ctx(struct sgsn_mm_ctx *mmctx,
 			return NULL;
 		}
 
-		gprs_apn_to_str(req_apn_str,
+		osmo_apn_to_str(req_apn_str,
 				TLVP_VAL(tp, GSM48_IE_GSM_APN),
 				TLVP_LEN(tp, GSM48_IE_GSM_APN));
 

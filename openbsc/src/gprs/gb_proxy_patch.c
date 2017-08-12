@@ -28,6 +28,7 @@
 
 #include <osmocom/gprs/protocol/gsm_08_18.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/gsm/apn.h>
 
 /* patch RA identifier in place */
 static void gbproxy_patch_raid(uint8_t *raid_enc, struct gbproxy_peer *peer,
@@ -101,7 +102,7 @@ static void gbproxy_patch_apn_ie(struct msgb *msg,
 		LOGP(DGPRS, LOGL_DEBUG,
 		     "Patching %s to SGSN: Removing APN '%s'\n",
 		     log_text,
-		     gprs_apn_to_str(str1, apn, apn_len));
+		     osmo_apn_to_str(str1, apn, apn_len));
 
 		*new_apn_ie_len = 0;
 		gprs_msgb_resize_area(msg, apn_ie, apn_ie_len, 0);
@@ -116,8 +117,8 @@ static void gbproxy_patch_apn_ie(struct msgb *msg,
 		     "Patching %s to SGSN: "
 		     "Replacing APN '%s' -> '%s'\n",
 		     log_text,
-		     gprs_apn_to_str(str1, apn, apn_len),
-		     gprs_apn_to_str(str2, peer->cfg->core_apn,
+		     osmo_apn_to_str(str1, apn, apn_len),
+		     osmo_apn_to_str(str2, peer->cfg->core_apn,
 				       peer->cfg->core_apn_size));
 
 		*new_apn_ie_len = peer->cfg->core_apn_size + 2;

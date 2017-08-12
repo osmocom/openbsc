@@ -114,34 +114,6 @@ int gprs_msgb_resize_area(struct msgb *msg, uint8_t *area,
 	return 0;
 }
 
-/* TODO: Move these conversion functions to a utils file. */
-/* TODO: consolidate with gprs_apn2str(). */
-/** memmove apn_enc to out_str, replacing the length octets in apn_enc with '.'
- * (omitting the first one) and terminating with a '\0'.
- * out_str needs to have rest_chars amount of bytes or 1 whatever is bigger.
- */
-char * gprs_apn_to_str(char *out_str, const uint8_t *apn_enc, size_t rest_chars)
-{
-	char *str = out_str;
-
-	while (rest_chars > 0 && apn_enc[0]) {
-		size_t label_size = apn_enc[0];
-		if (label_size + 1 > rest_chars)
-			return NULL;
-
-		memmove(str, apn_enc + 1, label_size);
-		str += label_size;
-		rest_chars -= label_size + 1;
-		apn_enc += label_size + 1;
-
-		if (rest_chars)
-			*(str++) = '.';
-	}
-	str[0] = '\0';
-
-	return out_str;
-}
-
 int gprs_str_to_apn(uint8_t *apn_enc, size_t max_len, const char *str)
 {
 	uint8_t *last_len_field;

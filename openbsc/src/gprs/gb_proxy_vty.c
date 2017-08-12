@@ -29,6 +29,7 @@
 
 #include <openbsc/gsm_04_08.h>
 #include <osmocom/gprs/gprs_ns.h>
+#include <osmocom/gsm/apn.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gb_proxy.h>
@@ -107,7 +108,7 @@ static int config_write_gbproxy(struct vty *vty)
 	       if (g_cfg->core_apn_size > 0) {
 		       char str[500] = {0};
 		       vty_out(vty, " core-access-point-name %s%s",
-			       gprs_apn_to_str(str, g_cfg->core_apn,
+			       osmo_apn_to_str(str, g_cfg->core_apn,
 						 g_cfg->core_apn_size),
 			       VTY_NEWLINE);
 	       } else {

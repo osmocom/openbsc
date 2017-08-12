@@ -28,6 +28,7 @@
 #include <osmocom/core/utils.h>
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
+#include <osmocom/gsm/apn.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>
@@ -110,7 +111,6 @@ DECLARE_TIMER(3397, "Wait for DEACT AA PDP CTX ACK timer (s)")
 
 
 #define GSM48_MAX_APN_LEN	102	/* 10.5.6.1 */
-/* TODO: consolidate with gprs_apn_to_str(). */
 /** Copy apn to a static buffer, replacing the length octets in apn_enc with '.'
  * and terminating with a '\0'. Return the static buffer.
  * len: the length of the encoded APN (which has no terminating zero).
@@ -118,23 +118,10 @@ DECLARE_TIMER(3397, "Wait for DEACT AA PDP CTX ACK timer (s)")
 static char *gprs_apn2str(uint8_t *apn, unsigned int len)
 {
 	static char apnbuf[GSM48_MAX_APN_LEN+1];
-	unsigned int i = 0;
 
 	if (!apn)
 		return "";
-
-	if (len > sizeof(apnbuf)-1)
-		len = sizeof(apnbuf)-1;
-
-	memcpy(apnbuf, apn, len);
-	apnbuf[len] = '\0';
-
-	/* replace the domain name step sizes with dots */
-	while (i < len) {
-		unsigned int step = apnbuf[i];
-		apnbuf[i] = '.';
-		i += step+1;
-	}
+	osmo_apn_to_str(apnbuf, apn, len);
 
 	return apnbuf+1;
 }

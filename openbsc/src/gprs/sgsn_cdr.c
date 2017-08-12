@@ -22,6 +22,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/gprs_utils.h>
 #include <openbsc/debug.h>
+#include <osmocom/gsm/apn.h>
 
 #include <openbsc/vty.h>
 
@@ -145,7 +146,7 @@ static void cdr_log_pdp(struct sgsn_instance *inst, const char *ev,
 
 
 	if (pdp->lib) {
-		gprs_apn_to_str(apni, pdp->lib->apn_use.v, pdp->lib->apn_use.l);
+		osmo_apn_to_str(apni, pdp->lib->apn_use.v, pdp->lib->apn_use.l);
 		inet_ntop(AF_INET, &pdp->lib->hisaddr0.s_addr, ggsn_addr, sizeof(ggsn_addr));
 		extract_eua(&pdp->lib->eua, eua_addr);
 	}
