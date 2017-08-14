@@ -301,7 +301,7 @@ static int gsm340_gen_sms_status_report_tpdu(struct msgb *msg,
 	*smsp = sms->msg_ref;
 
 	/* generate recipient address */
-	oa_len = gsm340_gen_oa_sub(oa, sizeof(oa), &sms->dst);
+	oa_len = gsm340_gen_oa_sub(oa, sizeof(oa), &sms->src);
 	if (oa_len < 0)
 		return -ENOSPC;
 
