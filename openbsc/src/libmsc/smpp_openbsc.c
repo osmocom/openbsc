@@ -93,11 +93,11 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 			 const struct submit_sm_t *submit)
 {
 	const uint8_t *sms_msg = NULL;
+	unsigned int sms_msg_len = 0;
 	struct gsm_subscriber *dest;
 	uint16_t msg_ref = 0;
 	struct gsm_sms *sms;
 	struct tlv_t *t;
-	unsigned int sms_msg_len;
 	int mode;
 
 	dest = subscr_by_dst(net, submit->dest_addr_npi,
