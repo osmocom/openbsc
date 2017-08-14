@@ -66,7 +66,7 @@ AC_SUBST(osmo_ac_build_bsc)
 AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface])],
     [osmo_ac_build_smpp="$enableval"],[osmo_ac_build_smpp="no"])
 if test "$osmo_ac_build_smpp" = "yes" ; then
-    PKG_CHECK_MODULES(LIBSMPP34, libsmpp34 >= 1.10)
+    PKG_CHECK_MODULES(LIBSMPP34, libsmpp34 >= 1.12)
     AC_DEFINE(BUILD_SMPP, 1, [Define if we want to build SMPP])
 fi
 AM_CONDITIONAL(BUILD_SMPP, test "x$osmo_ac_build_smpp" = "xyes")
