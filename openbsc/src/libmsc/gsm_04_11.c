@@ -666,7 +666,7 @@ static struct gsm_sms *sms_report_alloc(struct gsm_sms *sms)
 	len = snprintf((char *)sms_report->user_data,
 		       sizeof(sms_report->user_data),
 		       "id:%.08llu sub:000 dlvrd:000 submit date:YYMMDDhhmm done date:YYMMDDhhmm stat:DELIVRD err:000 text:%.20s",
-		       sms->id, sms->user_data);
+		       sms->id, sms->text);
 	sms_report->user_data_len = len;
 	LOGP(DLSMS, LOGL_NOTICE, "%s\n", sms_report->user_data);
 
