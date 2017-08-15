@@ -124,12 +124,14 @@ struct bsc_msc_data {
 		 * with the A interface of this particular BSC,
 		 * this address is filled up by the VTY interface */
 		struct osmo_sccp_addr bsc_addr;
+		char *bsc_addr_name;
 
 		/* Holds a copy of the MSC address. This is the
 		 * address of the MSC that handles the calls of
 		 * this BSC. The address is configured via the
 		 * VTY interface */
 		struct osmo_sccp_addr msc_addr;
+		char *msc_addr_name;
 
 		struct a_reset_ctx *reset;
 	} a;

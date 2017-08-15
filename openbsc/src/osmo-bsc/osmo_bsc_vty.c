@@ -187,13 +187,14 @@ static void write_msc(struct vty *vty, struct bsc_msc_data *msc)
 	write_msc_amr_options(vty, msc);
 
 	/* write sccp connection configuration */
-	/* FIXME: This can not work, as we manipulate the address,
-	 * we can not expect to find it in the addressbok. We should
-	 * store the string names instead. */
-	vty_out(vty, " bsc-addr %s%s",
-		osmo_sccp_name_by_addr(&msc->a.bsc_addr), VTY_NEWLINE);
-	vty_out(vty, " msc-addr %s%s",
-		osmo_sccp_name_by_addr(&msc->a.msc_addr), VTY_NEWLINE);
+	if (msc->a.bsc_addr_name) {
+		vty_out(vty, " bsc-addr %s%s",
+			msc->a.bsc_addr_name, VTY_NEWLINE);
+	}
+	if (msc->a.msc_addr_name) {
+		vty_out(vty, " msc-addr %s%s",
+			msc->a.msc_addr_name, VTY_NEWLINE);
+	}
 }
 
 static int config_write_msc(struct vty *vty)
@@ -738,6 +739,7 @@ DEFUN(cfg_msc_cs7_bsc_addr,
 	msc->a.cs7_instance = ss7->cfg.id;
 	msc->a.cs7_instance_valid = true;
 	enforce_standard_ssn(vty, &msc->a.bsc_addr);
+	msc->a.bsc_addr_name = talloc_strdup(msc, bsc_addr_name);
 	return CMD_SUCCESS;
 }
 
@@ -770,6 +772,7 @@ DEFUN(cfg_msc_cs7_msc_addr,
 	msc->a.cs7_instance = ss7->cfg.id;
 	msc->a.cs7_instance_valid = true;
 	enforce_standard_ssn(vty, &msc->a.msc_addr);
+	msc->a.msc_addr_name = talloc_strdup(msc, msc_addr_name);
 	return CMD_SUCCESS;
 }
 
