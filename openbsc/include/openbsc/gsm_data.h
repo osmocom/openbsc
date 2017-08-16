@@ -215,7 +215,7 @@ struct gsm_subscriber_connection {
 		struct osmo_sccp_user *scu;
 
 		/* The address of the BSC that is associated
-		 * with this subscirber connection */
+		 * with this subscriber connection */
 		struct osmo_sccp_addr bsc_addr;
 
 		/* The connection identifier that is used
