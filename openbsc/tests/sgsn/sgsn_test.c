@@ -139,12 +139,12 @@ int __wrap_gprs_subscr_request_update_location(struct sgsn_mm_ctx *mmctx) {
 };
 
 /* override, requires '-Wl,--wrap=gprs_subscr_request_auth_info' */
-int __real_gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx);
-int (*subscr_request_auth_info_cb)(struct sgsn_mm_ctx *mmctx) =
+int __real_gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx, const uint8_t *auts, const uint8_t *auts_rand);
+int (*subscr_request_auth_info_cb)(struct sgsn_mm_ctx *mmctx, const uint8_t *auts, const uint8_t *auts_rand) =
 	&__real_gprs_subscr_request_auth_info;
 
-int __wrap_gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx) {
-	return (*subscr_request_auth_info_cb)(mmctx);
+int __wrap_gprs_subscr_request_auth_info(struct sgsn_mm_ctx *mmctx, const uint8_t *auts, const uint8_t *auts_rand) {
+	return (*subscr_request_auth_info_cb)(mmctx, auts, auts_rand);
 };
 
 /* override, requires '-Wl,--wrap=gsup_client_send' */
@@ -1160,7 +1160,7 @@ static void test_gmm_attach_subscr_fake_auth(void)
 	cleanup_test();
 }
 
-int my_subscr_request_auth_info_real_auth(struct sgsn_mm_ctx *mmctx)
+int my_subscr_request_auth_info_real_auth(struct sgsn_mm_ctx *mmctx, const uint8_t *auts, const uint8_t *auts_rand)
 {
 	struct gsm_auth_tuple at = {
 		.vec.sres = {0x51, 0xe5, 0x51, 0xe5},
