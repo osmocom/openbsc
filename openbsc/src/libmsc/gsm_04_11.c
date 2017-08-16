@@ -310,11 +310,11 @@ static int gsm340_gen_sms_status_report_tpdu(struct msgb *msg,
 
 	/* generate TP-SCTS (Service centre timestamp) */
 	smsp = msgb_put(msg, 7);
-	gsm340_gen_scts(smsp, time(NULL));
+	gsm340_gen_scts(smsp, sms->created);
 
 	/* generate TP-DT (Discharge time, in TP-SCTS format). */
 	smsp = msgb_put(msg, 7);
-	gsm340_gen_scts(smsp, time(NULL));
+	gsm340_gen_scts(smsp, sms->created);
 
 	/* TP-ST (status) */
 	smsp = msgb_put(msg, 1);

@@ -1641,6 +1641,7 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 
 	/* FIXME: validity */
 	/* FIXME: those should all be get_uchar, but sqlite3 is braindead */
+	sms->created = dbi_result_get_datetime(result, "created");
 	sms->reply_path_req = dbi_result_get_ulonglong(result, "reply_path_req");
 	sms->status_rep_req = dbi_result_get_ulonglong(result, "status_rep_req");
 	sms->is_report = dbi_result_get_ulonglong(result, "is_report");
