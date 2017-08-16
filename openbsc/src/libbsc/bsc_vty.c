@@ -56,6 +56,7 @@
 #include <openbsc/pcu_if.h>
 #include <openbsc/common_cs.h>
 #include <openbsc/vlr.h>
+#include <openbsc/handover.h>
 
 #include <inttypes.h>
 
@@ -1342,6 +1343,83 @@ DEFUN(show_lchan_summary,
         LCHAN_NR_STR)
 {
 	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
+}
+
+DEFUN(show_subscr_conn,
+      show_subscr_conn_cmd,
+      "show conns",
+      SHOW_STR "Display currently active subscriber connections\n")
+{
+	struct gsm_subscriber_connection *conn;
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	bool no_conns = true;
+	unsigned int count = 0;
+
+	vty_out(vty, "Active subscriber connections: %s", VTY_NEWLINE);
+
+	llist_for_each_entry(conn, &net->subscr_conns, entry) {
+		vty_out(vty, "conn nr #%u:%s", count, VTY_NEWLINE);
+		lchan_dump_full_vty(vty, conn->lchan);
+		no_conns = false;
+		count++;
+	}
+
+	if (no_conns)
+		vty_out(vty, "None%s", VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(handover_subscr_conn,
+      handover_subscr_conn_cmd,
+      "handover conn-nr CONN_NR bts BTS",
+      "Handover subscriber connection\n"
+      "Subscriber connection index\n" "index\n" "BTS to handover to\n" "BTS\n")
+{
+	struct gsm_subscriber_connection *conn;
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	unsigned int count = 0;
+	unsigned int conn_nr = atoi(argv[0]);
+	unsigned int bts_nr = atoi(argv[1]);
+	struct gsm_lchan *lchan;
+	struct gsm_bts *bts;
+	struct gsm_bts *new_bts = NULL;
+
+	/* Lookup the BTS where we want to handover to */
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (bts->nr == bts_nr) {
+			new_bts = bts;
+			break;
+		}
+	}
+
+	if (!new_bts) {
+		vty_out(vty, "Unable to trigger handover,"
+			"specified bts #%u does not exist%s", bts_nr,
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* Find the connection/lchan that we want to handover */
+	llist_for_each_entry(conn, &net->subscr_conns, entry) {
+		if (count == conn_nr) {
+			lchan = conn->lchan;
+			bts = conn->bts;
+
+			vty_out(vty, "starting handover for conn nr #%u...%s",
+				count, VTY_NEWLINE);
+			lchan_dump_full_vty(vty, lchan);
+			bsc_handover_start(lchan, new_bts);
+			return CMD_SUCCESS;
+		}
+		count++;
+	}
+
+	vty_out(vty, "Unable to trigger handover,"
+		"specified connection #%u does not exist%s", conn_nr,
+		VTY_NEWLINE);
+
+	return CMD_WARNING;
 }
 
 static void paging_dump_vty(struct vty *vty, struct gsm_paging_request *pag)
@@ -4104,6 +4182,9 @@ int bsc_vty_init(struct gsm_network *network)
 	install_element_ve(&show_ts_cmd);
 	install_element_ve(&show_lchan_cmd);
 	install_element_ve(&show_lchan_summary_cmd);
+
+	install_element_ve(&show_subscr_conn_cmd);
+	install_element_ve(&handover_subscr_conn_cmd);
 
 	install_element_ve(&show_paging_cmd);
 	install_element_ve(&show_paging_group_cmd);

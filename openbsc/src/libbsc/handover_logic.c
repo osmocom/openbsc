@@ -101,7 +101,8 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	if (bsc_ho_by_old_lchan(old_lchan))
 		return -EBUSY;
 
-	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
+	DEBUGP(DHO, "Beginning with handover operation"
+	       "(old_lchan on BTS %u, new BTS %u) ...\n",
 		old_lchan->ts->trx->bts->nr, bts->nr);
 
 	rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_HANDOVER_ATTEMPTED]);
