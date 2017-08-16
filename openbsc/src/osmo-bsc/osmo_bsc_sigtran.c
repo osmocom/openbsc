@@ -375,23 +375,23 @@ int osmo_bsc_sigtran_del_conn(struct osmo_bsc_sccp_con *conn)
 }
 
 /* Send an USSD notification in case we loose the connection to the MSC */
-static void bsc_notify_msc_lost(const struct osmo_bsc_sccp_con *con)
+static void bsc_notify_msc_lost(const struct osmo_bsc_sccp_con *conn)
 {
-	struct gsm_subscriber_connection *conn = con->conn;
+	struct gsm_subscriber_connection *subscr_conn = conn->conn;
 
-	/* send USSD notification if string configured and con->data is set */
-	if (!conn)
+	/* send USSD notification if string configured and conn->data is set */
+	if (!subscr_conn)
 		return;
 
 	/* check for config string */
-	if (!con->msc->ussd_msc_lost_txt)
+	if (!conn->msc->ussd_msc_lost_txt)
 		return;
-	if (con->msc->ussd_msc_lost_txt[0] == '\0')
+	if (conn->msc->ussd_msc_lost_txt[0] == '\0')
 		return;
 
 	/* send USSD notification */
-	bsc_send_ussd_notify(conn, 1, conn->sccp_con->msc->ussd_msc_lost_txt);
-	bsc_send_ussd_release_complete(conn);
+	bsc_send_ussd_notify(subscr_conn, 1, subscr_conn->sccp_con->msc->ussd_msc_lost_txt);
+	bsc_send_ussd_release_complete(subscr_conn);
 }
 
 /* Close all open sigtran connections and channels */
