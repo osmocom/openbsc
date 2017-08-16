@@ -113,7 +113,13 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 		break;
 
 	case S_ABISIP_MDCX_ACK:
-		if (is_ipaccess_bts(con->bts) && con->sccp_con->rtp_ip) {
+		if (con->ho_lchan) {
+			/* NOTE: When an ho_lchan exists, the MDCX is part of an
+			 * handover operation (intra-bsc). This means we will not
+			 * inform the MSC about the event, which means that no
+			 * assignment complete message is transmitted */
+			LOGP(DMSC, LOGL_INFO," RTP connection handover complete\n");
+		} else if (is_ipaccess_bts(con->bts) && con->sccp_con->rtp_ip) {
 			/* NOTE: This is only relevant on AoIP networks with
 			 * IPA based base stations. See also osmo_bsc_api.c,
 			 * function bsc_assign_compl() */
