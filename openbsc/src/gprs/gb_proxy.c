@@ -1266,8 +1266,7 @@ static int gbprox_rx_sig_from_sgsn(struct gbproxy_config *cfg,
 		rc = bssgp_tx_status(BSSGP_CAUSE_PDU_INCOMP_FEAT, NULL, orig_msg);
 		break;
 	default:
-		LOGP(DGPRS, LOGL_NOTICE, "BSSGP PDU type 0x%02x unknown\n",
-			pdu_type);
+		LOGP(DGPRS, LOGL_NOTICE, "BSSGP PDU type %s not supported\n", bssgp_pdu_str(pdu_type));
 		rate_ctr_inc(&cfg->ctrg->
 			     ctr[GBPROX_GLOB_CTR_PROTO_ERR_SGSN]);
 		rc = bssgp_tx_status(BSSGP_CAUSE_PROTO_ERR_UNSPEC, NULL, orig_msg);
