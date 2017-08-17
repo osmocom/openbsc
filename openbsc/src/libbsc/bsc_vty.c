@@ -1372,22 +1372,24 @@ DEFUN(show_subscr_conn,
 
 DEFUN(handover_subscr_conn,
       handover_subscr_conn_cmd,
-      "handover conn-nr CONN_NR bts BTS",
-      "Handover subscriber connection\n"
-      "Subscriber connection index\n" "index\n" "BTS to handover to\n" "BTS\n")
+      "handover <0-255> <0-255> <0-7> LCHAN_NR <0-255>",
+      "Handover subscriber connection to other BTS\n"
+      "BTS Number (current)\n" "TRX Number\n" "Timeslot Number\n"
+      LCHAN_NR_STR "BTS Number (new)\n")
 {
-	struct gsm_subscriber_connection *conn;
 	struct gsm_network *net = gsmnet_from_vty(vty);
-	unsigned int count = 0;
-	unsigned int conn_nr = atoi(argv[0]);
-	unsigned int bts_nr = atoi(argv[1]);
-	struct gsm_lchan *lchan;
+	struct gsm_subscriber_connection *conn;
 	struct gsm_bts *bts;
 	struct gsm_bts *new_bts = NULL;
+	unsigned int bts_nr = atoi(argv[0]);
+	unsigned int trx_nr = atoi(argv[1]);
+	unsigned int ts_nr = atoi(argv[2]);
+	unsigned int ss_nr = atoi(argv[3]);
+	unsigned int bts_nr_new = atoi(argv[4]);
 
 	/* Lookup the BTS where we want to handover to */
 	llist_for_each_entry(bts, &net->bts_list, list) {
-		if (bts->nr == bts_nr) {
+		if (bts->nr == bts_nr_new) {
 			new_bts = bts;
 			break;
 		}
@@ -1395,29 +1397,27 @@ DEFUN(handover_subscr_conn,
 
 	if (!new_bts) {
 		vty_out(vty, "Unable to trigger handover,"
-			"specified bts #%u does not exist%s", bts_nr,
+			"specified bts #%u does not exist %s", bts_nr_new,
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 	/* Find the connection/lchan that we want to handover */
 	llist_for_each_entry(conn, &net->subscr_conns, entry) {
-		if (count == conn_nr) {
-			lchan = conn->lchan;
-			bts = conn->bts;
-
-			vty_out(vty, "starting handover for conn nr #%u...%s",
-				count, VTY_NEWLINE);
-			lchan_dump_full_vty(vty, lchan);
-			bsc_handover_start(lchan, new_bts);
+		if (conn->bts->nr == bts_nr &&
+		    conn->lchan->ts->trx->nr == trx_nr &&
+		    conn->lchan->ts->nr == ts_nr && conn->lchan->nr == ss_nr) {
+			vty_out(vty, "starting handover for lchan %s...%s",
+				conn->lchan->name, VTY_NEWLINE);
+			lchan_dump_full_vty(vty, conn->lchan);
+			bsc_handover_start(conn->lchan, new_bts);
 			return CMD_SUCCESS;
 		}
-		count++;
 	}
 
 	vty_out(vty, "Unable to trigger handover,"
-		"specified connection #%u does not exist%s", conn_nr,
-		VTY_NEWLINE);
+		"specified connection (bts=%u,trx=%u,ts=%u,ss=%u) does not exist%s",
+		bts_nr, trx_nr, ts_nr, ss_nr, VTY_NEWLINE);
 
 	return CMD_WARNING;
 }
