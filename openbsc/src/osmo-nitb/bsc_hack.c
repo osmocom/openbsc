@@ -99,7 +99,6 @@ static void print_help()
 	printf("  -c --config-file filename  The config file to use.\n");
 	printf("  -s --disable-color\n");
 	printf("  -l --database db-name      The database to use.\n");
-	printf("  -a --authorize-everyone    Authorize every new subscriber. Dangerous!\n");
 	printf("  -T --timestamp             Prefix every log line with a timestamp.\n");
 	printf("  -V --version               Print the version of OpenBSC.\n");
 	printf("  -P --rtp-proxy             Enable the RTP Proxy code inside OpenBSC.\n");
@@ -122,7 +121,6 @@ static void handle_options(int argc, char **argv)
 			{"config-file", 1, 0, 'c'},
 			{"disable-color", 0, 0, 's'},
 			{"database", 1, 0, 'l'},
-			{"authorize-everyone", 0, 0, 'a'},
 			{"pcap", 1, 0, 'p'},
 			{"timestamp", 0, 0, 'T'},
 			{"version", 0, 0, 'V' },
