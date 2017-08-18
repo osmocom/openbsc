@@ -1369,9 +1369,8 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 		/* from BSS to SGSN */
 		peer = gbproxy_peer_by_nsei(cfg, nsvc->nsei);
 		if (!peer) {
-			LOGP(DGPRS, LOGL_NOTICE, "signal %u for unknown peer "
-			     "NSEI=%u/NSVCI=%u\n", signal, nsvc->nsei,
-			     nsvc->nsvci);
+			LOGP(DGPRS, LOGL_NOTICE, "signal '%s' for unknown peer NSEI=%u/NSVCI=%u\n",
+			     get_value_string(gprs_ns_signal_ns_names, signal), nsvc->nsei, nsvc->nsvci);
 			return 0;
 		}
 		switch (signal) {
@@ -1379,9 +1378,8 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 		case S_NS_BLOCK:
 			if (!peer->blocked)
 				break;
-			LOGP(DGPRS, LOGL_NOTICE, "Converting NS_RESET from "
-			     "NSEI=%u/NSVCI=%u into BSSGP_BVC_BLOCK to SGSN\n",
-			     nsvc->nsei, nsvc->nsvci);
+			LOGP(DGPRS, LOGL_NOTICE, "Converting '%s' from NSEI=%u/NSVCI=%u into BSSGP_BVC_BLOCK to SGSN\n",
+			     get_value_string(gprs_ns_signal_ns_names, signal), nsvc->nsei, nsvc->nsvci);
 			bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_BLOCK, nsvc->nsei,
 					     peer->bvci, 0);
 			break;
