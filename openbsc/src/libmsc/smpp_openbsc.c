@@ -120,7 +120,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 			}
 			break;
 		case TLVID_user_message_reference:
-			msg_ref = ntohs(t->value.val16);
+			msg_ref = t->value.val16;
 			break;
 		default:
 			break;
@@ -436,7 +436,7 @@ void append_tlv_u16(tlv_t **req_tlv, uint16_t tag, uint16_t val)
 	memset(&tlv, 0, sizeof(tlv));
 	tlv.tag = tag;
 	tlv.length = 2;
-	tlv.value.val16 = htons(val);
+	tlv.value.val16 = val;
 	build_tlv(req_tlv, &tlv);
 }
 
