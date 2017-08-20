@@ -202,6 +202,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
+	case SIGTERM:
 		bsc_shutdown_net(bsc_gsmnet);
 		osmo_signal_dispatch(SS_L_GLOBAL, S_L_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
@@ -376,6 +377,7 @@ int main(int argc, char **argv)
 	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
 
 	signal(SIGINT, &signal_handler);
+	signal(SIGTERM, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
