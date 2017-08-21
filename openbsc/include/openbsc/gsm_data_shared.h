@@ -24,8 +24,6 @@
 #include <osmocom/gsm/lapdm.h>
 #endif
 
-#include <openbsc/common_cs.h>
-
 /* 16 is the max. number of SI2quater messages according to 3GPP TS 44.018 Table 10.5.2.33b.1:
    4-bit index is used (2#1111 = 10#15) */
 #define SI2Q_MAX_NUM 16
@@ -131,6 +129,7 @@ struct om2k_mo {
 	struct osmo_fsm_inst *fsm;
 };
 
+#define MAX_A5_KEY_LEN	(128/8)
 #define A38_XOR_MIN_KEY_LEN	12
 #define A38_XOR_MAX_KEY_LEN	16
 #define A38_COMP128_KEY_LEN	16
@@ -232,7 +231,11 @@ struct gsm_lchan {
 	uint8_t bs_power;
 	uint8_t ms_power;
 	/* Encryption information */
-	struct gsm_encr encr;
+	struct {
+		uint8_t alg_id;
+		uint8_t key_len;
+		uint8_t key[MAX_A5_KEY_LEN];
+	} encr;
 
 	/* AMR bits */
 	uint8_t mr_ms_lv[7];
