@@ -259,8 +259,8 @@ int __wrap_RAND_bytes(unsigned char *buf, int num)
 void __real_gsm340_gen_scts(uint8_t *scts, time_t time);
 void __wrap_gsm340_gen_scts(uint8_t *scts, time_t time)
 {
-	/* Remove the time to encode for deterministic test results */
-	__real_gsm340_gen_scts(scts, 0);
+       /* Write fixed time bytes for deterministic test results */
+       osmo_hexparse("07101000000000", scts, 7);
 }
 
 const char *paging_expecting_imsi = NULL;
