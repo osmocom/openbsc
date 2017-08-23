@@ -209,7 +209,7 @@ static int attempt_handover(struct gsm_meas_rep *mr)
 	rc = handover_to_arfcn_bsic(mr->lchan, best_cell->arfcn, best_cell->bsic);
 	switch (rc) {
 	case 0:
-		LOGPC(DHO, LOGL_INFO, "Starting handover\n");
+		LOGPC(DHO, LOGL_INFO, "Starting handover: meas report number %d \n", mr->nr);
 		break;
 	case -ENOSPC:
 		LOGPC(DHO, LOGL_INFO, "No channel available\n");
@@ -257,20 +257,32 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 
 	/* Interference HO */
 	if (rxlev2dbm(av_rxlev) > -85 &&
-	    meas_rep_n_out_of_m_be(mr->lchan, dqual, 3, 4, 5))
+	    meas_rep_n_out_of_m_be(mr->lchan, dqual, 3, 4, 5)) {
+		LOGPC(DHO, LOGL_INFO, "HO cause: Interference HO av_rxlev=%d dbm \n",
+					rxlev2dbm(av_rxlev));
 		return attempt_handover(mr);
+	}
 
 	/* Bad Quality */
-	if (meas_rep_n_out_of_m_be(mr->lchan, dqual, 3, 4, 5))
+	if (meas_rep_n_out_of_m_be(mr->lchan, dqual, 3, 4, 5)) {
+		LOGPC(DHO, LOGL_INFO, "HO cause: Bad Quality av_rxlev=%d dbm \n",
+					rxlev2dbm(av_rxlev));
 		return attempt_handover(mr);
+	}
 
 	/* Low Level */
-	if (rxlev2dbm(av_rxlev) <= -110)
+	if (rxlev2dbm(av_rxlev) <= -110) {
+		LOGPC(DHO, LOGL_INFO, "HO cause: Low Level av_rxlev=%d dbm \n",
+					rxlev2dbm(av_rxlev));
 		return attempt_handover(mr);
+	}
 
 	/* Distance */
-	if (mr->ms_l1.ta > net->handover.max_distance)
+	if (mr->ms_l1.ta > net->handover.max_distance) {
+		LOGPC(DHO, LOGL_INFO, "HO cause: Distance av_rxlev=%d dbm ta=%d \n",
+					rxlev2dbm(av_rxlev), mr->ms_l1.ta);
 		return attempt_handover(mr);
+	}
 
 	/* Power Budget AKA Better Cell */
 	if ((mr->nr % net->handover.pwr_interval) == net->handover.pwr_interval - 1)
