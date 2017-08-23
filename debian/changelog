@@ -1,3 +1,9 @@
+openbsc (0.15.1-fw.8) UNRELEASED; urgency=medium
+
+  * Implement proper handover procedure handling at any stage of the call
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Wed, 23 Aug 2017 18:31:17 +0200
+
 openbsc (0.15.1-fw.7) UNRELEASED; urgency=medium
 
   * gsm_04_08: Implement support of placing an existing call on hold when another call comes in and switching to new call
