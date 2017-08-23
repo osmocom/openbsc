@@ -350,34 +350,43 @@ static int rx_iu_event(struct ue_conn_ctx *ctx, enum iu_event_type type,
 int ss7_setup(void *ctx)
 {
 	uint32_t cs7_instance_a = msc_network->a.cs7_instance;
-	uint32_t cs7_instance_iu = msc_network->iu.cs7_instance;
+#if BUILD_IU
+    uint32_t cs7_instance_iu = msc_network->iu.cs7_instance;
+#endif
 	uint32_t default_pc;
 
 	LOGP(DMSC, LOGL_NOTICE, "CS7 Instance identifier, A-Interface:  %u\n",
 	     cs7_instance_a);
+
+#if BUILD_IU
 	LOGP(DMSC, LOGL_NOTICE, "CS7 Instance identifier, Iu-Interface: %u\n",
 	     cs7_instance_iu);
+#endif
 
+#if BUILD_IU
 	/* Setup SCCP instances */
 	if (cs7_instance_a == cs7_instance_iu) {
+#endif
 		/* Create one single SCCP instance which will be used for both,
 		 * Iu and A at the same time, under the same point-code */
 
+#if BUILD_IU
 		LOGP(DMSC, LOGL_NOTICE,
 		     "Iu and A interface will run on a single CS7/SCCP instance.\n");
+#endif
 
 		default_pc = osmo_ss7_pointcode_parse(NULL, IU_A_DEFAULT_PC);
-		msc_network->iu.sccp =
-		    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_iu,
+		msc_network->a.sccp =
+		    osmo_sccp_simple_client_on_ss7_id(ctx, cs7_instance_a,
 						      "OsmoMSC-Iu-A",
 						      default_pc,
 						      OSMO_SS7_ASP_PROT_M3UA, 0,
 						      NULL, 0, NULL);
-		if (!msc_network->iu.sccp)
+		if (!msc_network->a.sccp)
 			return -EINVAL;
 
-		msc_network->a.sccp = msc_network->iu.sccp;
-
+#if BUILD_IU
+		msc_network->iu.sccp = msc_network->a.sccp;
 	} else {
 		/* Create two separate SCCP instances to run A and Iu
 		 * independantyly on different pointcodes */
@@ -405,6 +414,7 @@ int ss7_setup(void *ctx)
 		if (!msc_network->a.sccp)
 			return -EINVAL;
 	}
+#endif
 
 	return 0;
 }
