@@ -273,7 +273,7 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 		return attempt_handover(mr);
 
 	/* Power Budget AKA Better Cell */
-	if ((mr->nr % net->handover.pwr_interval) == 0)
+	if ((mr->nr % net->handover.pwr_interval) == net->handover.pwr_interval - 1)
 		return attempt_handover(mr);
 
 	return 0;
