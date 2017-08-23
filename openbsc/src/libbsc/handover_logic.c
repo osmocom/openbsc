@@ -186,9 +186,16 @@ static void ho_T3103_cb(void *_ho)
 {
 	struct bsc_handover *ho = _ho;
 	struct gsm_network *net = ho->new_lchan->ts->trx->bts->network;
+	struct msgb *msg;
 
 	DEBUGP(DHO, "HO T3103 expired\n");
 	rate_ctr_inc(&net->bsc_ctrs->ctr[BSC_CTR_HANDOVER_TIMEOUT]);
+
+	ho->new_lchan->conn->in_handover = 0;
+	while (!llist_empty(&ho->new_lchan->conn->ho_queue)) {
+		msg = msgb_dequeue(&ho->new_lchan->conn->ho_queue);
+		msgb_free(msg);
+	}
 
 	ho->new_lchan->conn->ho_lchan = NULL;
 	ho->new_lchan->conn = NULL;
@@ -214,6 +221,8 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 
 	gsm48_send_ho_cmd(ho->old_lchan, new_lchan, 0, ho->ho_ref);
 
+	new_lchan->conn->in_handover = 1;
+
 	/* start T3103.  We can continue either with T3103 expiration,
 	 * 04.08 HANDOVER COMPLETE or 04.08 HANDOVER FAIL */
 	ho->T3103.cb = ho_T3103_cb;
@@ -221,7 +230,8 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	osmo_timer_schedule(&ho->T3103, 10, 0);
 
 	/* create a RTP connection */
-	if (is_ipaccess_bts(new_lchan->ts->trx->bts))
+	if (is_ipaccess_bts(new_lchan->ts->trx->bts) &&
+					new_lchan->tch_mode != GSM48_CMODE_SIGN)
 		rsl_ipacc_crcx(new_lchan);
 
 	return 0;
@@ -273,6 +283,11 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	if (is_e1_bts(new_lchan->conn->bts))
 		switch_trau_mux(ho->old_lchan, new_lchan);
 
+	if (ho->old_lchan->conn->mncc_rtp_connect_pending) {
+		new_lchan->abis_ip.connect_port = ho->old_lchan->abis_ip.connect_port;
+		new_lchan->abis_ip.connect_ip = ho->old_lchan->abis_ip.connect_ip;
+	}
+
 	/* Replace the ho lchan with the primary one */
 	if (ho->old_lchan != new_lchan->conn->lchan)
 		LOGP(DHO, LOGL_ERROR, "Primary lchan changed during handover.\n");
@@ -295,26 +310,8 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 {
 	struct gsm_network *net = old_lchan->ts->trx->bts->network;
-	struct bsc_handover *ho;
-	struct gsm_lchan *new_lchan;
-
-	ho = bsc_ho_by_old_lchan(old_lchan);
-	if (!ho) {
-		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
-		return -ENODEV;
-	}
 
 	rate_ctr_inc(&net->bsc_ctrs->ctr[BSC_CTR_HANDOVER_FAILED]);
-
-	new_lchan = ho->new_lchan;
-
-	/* release the channel and forget about it */
-	ho->new_lchan->conn->ho_lchan = NULL;
-	ho->new_lchan->conn = NULL;
-	handover_free(ho);
-
-	lchan_release(new_lchan, 0, RSL_REL_LOCAL_END);
-
 
 	return 0;
 }

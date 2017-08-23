@@ -51,5 +51,6 @@ int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 int gsm0808_page(struct gsm_bts *bts, unsigned int page_group,
 		 unsigned int mi_len, uint8_t *mi, int chan_type);
 int gsm0808_clear(struct gsm_subscriber_connection *conn);
+int gsm0808_ho_clear(struct gsm_subscriber_connection *conn);
 
 #endif

@@ -253,11 +253,14 @@ struct gsm_subscriber_connection *bsc_subscr_con_allocate(struct gsm_lchan *lcha
 	conn->bts = lchan->ts->trx->bts;
 	lchan->conn = conn;
 	llist_add_tail(&conn->entry, &net->subscr_conns);
+	INIT_LLIST_HEAD(&conn->ho_queue);
 	return conn;
 }
 
 void bsc_subscr_con_free(struct gsm_subscriber_connection *conn)
 {
+	struct msgb *msg;
+
 	if (!conn)
 		return;
 
@@ -281,6 +284,11 @@ void bsc_subscr_con_free(struct gsm_subscriber_connection *conn)
 	if (conn->secondary_lchan) {
 		LOGP(DNM, LOGL_ERROR, "The secondary_lchan should have been cleared.\n");
 		conn->secondary_lchan->conn = NULL;
+	}
+
+	while (!llist_empty(&conn->ho_queue)) {
+		msg = msgb_dequeue(&conn->ho_queue);
+		msgb_free(msg);
 	}
 
 	llist_del(&conn->entry);
@@ -743,6 +751,17 @@ int gsm0808_clear(struct gsm_subscriber_connection *conn)
 	conn->bts = NULL;
 
 	osmo_timer_del(&conn->T10);
+
+	return 0;
+}
+
+/*
+ * Release handover RF Channel.
+ */
+int gsm0808_ho_clear(struct gsm_subscriber_connection *conn)
+{
+	if (conn->ho_lchan)
+		bsc_clear_handover(conn, 1);
 
 	return 0;
 }

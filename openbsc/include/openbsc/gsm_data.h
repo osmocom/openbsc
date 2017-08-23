@@ -140,6 +140,8 @@ struct gsm_subscriber_connection {
 	struct gsm_network *network;
 
 	int in_release;
+	int in_handover;
+	struct llist_head ho_queue;
 	struct gsm_lchan *lchan; /* BSC */
 	struct gsm_lchan *ho_lchan; /* BSC */
 	struct gsm_bts *bts; /* BSC */

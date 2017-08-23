@@ -148,6 +148,15 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 				sign_link->trx->bts->nr,
 				sign_link->trx->nr, msg->lchan->ts->nr,
 				gh->proto_discr, gh->msg_type);
+
+		if (conn->in_handover) {
+			msgb_enqueue(&conn->ho_queue, msg);
+			DEBUGP(DCC, "(bts %d trx %d ts %d) Suspend message sending to MS, "
+				"active HO procedure.\n",
+				sign_link->trx->bts->nr,
+				sign_link->trx->nr, msg->lchan->ts->nr);
+			return 0;
+		}
 	}
 
 	return gsm0808_submit_dtap(conn, msg, 0, 0);
@@ -1781,11 +1790,8 @@ static int switch_for_handover(struct gsm_lchan *old_lchan,
 	struct rtp_socket *old_rs, *new_rs, *other_rs;
 
 	/* Ask the new socket to send to the already known port. */
-	if (new_lchan->conn->mncc_rtp_bridge) {
-		LOGP(DHO, LOGL_DEBUG, "Forwarding RTP\n");
-		rsl_ipacc_mdcx(new_lchan,
-					old_lchan->abis_ip.connect_ip,
-					old_lchan->abis_ip.connect_port, 0);
+	if (new_lchan->ts->trx->bts->network->mncc_state) {
+		/* Audio path should be switched after receiving ho detect message.*/
 		return 0;
 	}
 
@@ -1853,8 +1859,10 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 	if (subsys != SS_ABISIP)
 		return 0;
 
+	net = lchan->ts->trx->bts->network;
+
 	/* RTP bridge handling */
-	if (lchan->conn && lchan->conn->mncc_rtp_bridge)
+	if (lchan->conn && net->mncc_state)
 		return tch_rtp_signal(lchan, signal);
 
 	/* in case we use direct BTS-to-BTS RTP */
@@ -1883,7 +1891,6 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 
 		/* check if any transactions on this lchan still have
 		 * a tch_recv_mncc request pending */
-		net = lchan->ts->trx->bts->network;
 		llist_for_each_entry(trans, &net->trans_list, entry) {
 			if (trans->conn && trans->conn->lchan == lchan && trans->tch_recv) {
 				DEBUGP(DCC, "pending tch_recv_mncc request\n");
@@ -2050,7 +2057,7 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 			return -EINVAL;
 		}
 		/* RTP bridge handling */
-		if (lchan->conn && lchan->conn->mncc_rtp_bridge) {
+		if (lchan->conn && net->mncc_state) {
 			return 0;
 		}
 		/* In case, we don't have a RTP socket to the BTS yet, the BTS
@@ -3362,6 +3369,41 @@ static void mncc_recv_rtp_err(struct gsm_network *net, uint32_t callref, int cmd
 	return mncc_recv_rtp(net, callref, cmd, 0, 0, 0, 0);
 }
 
+static void mncc_recv_rtp_modify(struct gsm_lchan *lchan, uint32_t callref)
+{
+	int msg_type;
+	struct gsm_network *net = lchan->ts->trx->bts->network;
+
+	LOGP(DMNCC, LOGL_NOTICE, "%s sending pending RTP modify ind.\n",
+		gsm_lchan_name(lchan));
+
+	switch (lchan->abis_ip.rtp_payload) {
+	case RTP_PT_GSM_FULL:
+		msg_type = GSM_TCHF_FRAME;
+		break;
+	case RTP_PT_GSM_EFR:
+		msg_type = GSM_TCHF_FRAME_EFR;
+		break;
+	case RTP_PT_GSM_HALF:
+		msg_type = GSM_TCHH_FRAME;
+		break;
+	case RTP_PT_AMR:
+		msg_type = GSM_TCH_FRAME_AMR;
+		break;
+	default:
+		LOGP(DMNCC, LOGL_ERROR, "%s unknown payload type %d\n",
+			gsm_lchan_name(lchan), lchan->abis_ip.rtp_payload);
+		msg_type = 0;
+		break;
+	}
+
+	mncc_recv_rtp(net, callref, MNCC_RTP_MODIFY,
+			lchan->abis_ip.bound_ip,
+			lchan->abis_ip.bound_port,
+			lchan->abis_ip.rtp_payload,
+			msg_type);
+}
+
 static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 {
 	struct gsm_bts *bts;
@@ -3411,6 +3453,9 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 		LOGP(DMNCC, LOGL_DEBUG, "RTP create: codec=%s, chan_type=%s\n",
 		     get_value_string(gsm48_chan_mode_names, m),
 		     get_value_string(gsm_chan_t_names, lchan->type));
+		if (trans->conn->in_handover) {
+			return 0;
+		}
 		return gsm0808_assign_req(trans->conn, m,
 				lchan->type != GSM_LCHAN_TCH_H);
 	}
@@ -3457,25 +3502,21 @@ static int tch_rtp_connect(struct gsm_network *net, void *arg)
 	 * same package!
 	 */
 	trans->conn->mncc_rtp_connect_pending = 1;
+	if (trans->conn->in_handover) {
+		lchan->abis_ip.connect_port = rtp->port;
+		lchan->abis_ip.connect_ip = rtp->ip;
+		return 0;
+	}
 	return rsl_ipacc_mdcx(lchan, rtp->ip, rtp->port, 0);
 }
 
 static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 {
 	struct gsm_network *net;
-	struct gsm_trans *tmp, *trans = NULL;
+	struct gsm_trans *trans;
 
 	net = lchan->ts->trx->bts->network;
-	llist_for_each_entry(tmp, &net->trans_list, entry) {
-		if (!tmp->conn)
-			continue;
-		if (tmp->conn->lchan != lchan && tmp->conn->ho_lchan != lchan)
-			continue;
-		if (!tmp->tch_recv)
-			continue;
-		trans = tmp;
-		break;
-	}
+	trans = trans_find_by_lchan(lchan);
 
 	if (!trans) {
 		LOGP(DMNCC, LOGL_ERROR, "%s IPA abis signal but no transaction.\n",
@@ -3498,7 +3539,7 @@ static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 		maybe_switch_for_handover(lchan);
 		break;
 	case S_ABISIP_MDCX_ACK:
-		if (lchan->conn->mncc_rtp_connect_pending) {
+		if (lchan->conn->mncc_rtp_connect_pending && !lchan->conn->in_handover) {
 			lchan->conn->mncc_rtp_connect_pending = 0;
 			LOGP(DMNCC, LOGL_NOTICE, "%s sending pending RTP connect ind.\n",
 				gsm_lchan_name(lchan));
@@ -3510,58 +3551,105 @@ static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 	return 0;
 }
 
-static int ho_detect(struct gsm_lchan *lchan)
+static void ho_queue_clean(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_network *net;
-	struct gsm_trans *tmp, *trans = NULL;
+	struct msgb *msg;
+	while (!llist_empty(&conn->ho_queue)) {
+		msg = msgb_dequeue(&conn->ho_queue);
+		msgb_free(msg);
+	}
+}
 
-	net = lchan->ts->trx->bts->network;
-	llist_for_each_entry(tmp, &net->trans_list, entry) {
-		if (!tmp->conn)
-			continue;
-		if (tmp->conn->lchan != lchan && tmp->conn->ho_lchan != lchan)
-			continue;
-		if (!tmp->tch_recv)
-			continue;
-		trans = tmp;
-		break;
+static void ho_resumption(struct gsm_lchan *lchan, struct gsm_trans *trans)
+{
+	struct msgb *msg;
+	enum gsm48_chan_mode m;
+
+	while (!llist_empty(&lchan->conn->ho_queue)) {
+		msg = msgb_dequeue(&lchan->conn->ho_queue);
+		gsm48_conn_sendmsg(msg, lchan->conn, trans);
 	}
 
+	if (trans->conn->mncc_rtp_create_pending &&
+					lchan->tch_mode == GSM48_CMODE_SIGN) {
+	  m = mncc_codec_for_mode(lchan->type);
+	  gsm0808_assign_req(lchan->conn, m, lchan->type != GSM_LCHAN_TCH_H);
+  }
+
+	if (trans->conn->mncc_rtp_connect_pending) {
+		rsl_ipacc_mdcx(lchan, lchan->abis_ip.connect_ip, lchan->abis_ip.connect_port, 0);
+	}
+}
+
+static int ho_complete(struct gsm_lchan *new_lchan)
+{
+	struct gsm_trans *trans;
+
+	new_lchan->conn->in_handover = 0;
+	trans = trans_find_by_lchan(new_lchan);
 	if (!trans) {
-		LOGP(DMNCC, LOGL_ERROR, "%s lchan signal but no transaction.\n",
-			gsm_lchan_name(lchan));
+		LOGP(DHO, LOGL_ERROR, "%s HO detected, but no transaction for new_lchan.\n",
+			gsm_lchan_name(new_lchan));
+		ho_queue_clean(new_lchan->conn);
 		return 0;
 	}
 
-	LOGP(DMNCC, LOGL_NOTICE, "%s sending pending RTP modify ind.\n",
-		gsm_lchan_name(lchan));
+	ho_resumption(new_lchan, trans);
+	return 0;
+}
 
-	int msg_type;
-	switch (lchan->abis_ip.rtp_payload) {
-	case RTP_PT_GSM_FULL:
-		msg_type = GSM_TCHF_FRAME;
-		break;
-	case RTP_PT_GSM_EFR:
-		msg_type = GSM_TCHF_FRAME_EFR;
-		break;
-	case RTP_PT_GSM_HALF:
-		msg_type = GSM_TCHH_FRAME;
-		break;
-	case RTP_PT_AMR:
-		msg_type = GSM_TCH_FRAME_AMR;
-		break;
-	default:
-		LOGP(DMNCC, LOGL_ERROR, "%s unknown payload type %d\n",
-			gsm_lchan_name(lchan), lchan->abis_ip.rtp_payload);
-		msg_type = 0;
-		break;
+static int ho_fail(struct gsm_lchan *old_lchan)
+{
+	struct gsm_trans *trans;
+
+	old_lchan->conn->in_handover = 0;
+	trans = trans_find_by_lchan(old_lchan);
+	if (trans)
+		ho_resumption(old_lchan, trans);
+	else {
+		LOGP(DHO, LOGL_ERROR, "%s HO fail, but no transaction for old_lchan.\n",
+			gsm_lchan_name(old_lchan));
+		ho_queue_clean(old_lchan->conn);
 	}
 
-	mncc_recv_rtp(net, trans->callref, MNCC_RTP_MODIFY,
-			lchan->abis_ip.bound_ip,
-			lchan->abis_ip.bound_port,
-			lchan->abis_ip.rtp_payload,
-			msg_type);
+	gsm0808_ho_clear(old_lchan->conn);
+	return 0;
+}
+
+static int ho_detect(struct gsm_lchan *new_lchan)
+{
+	struct gsm_trans *trans;
+	struct gsm_lchan *old_lchan;
+
+	trans = trans_find_by_lchan(new_lchan);
+
+	if (!trans) {
+		LOGP(DHO, LOGL_ERROR, "%s HO detected, but no transaction for new_lchan"
+			" with enabled tch_recv.\n",
+			gsm_lchan_name(new_lchan));
+		return 0;
+	}
+
+	if (!new_lchan->conn->mncc_rtp_bridge) {
+		LOGP(DHO, LOGL_ERROR, "%s HO detected, but connection not in mncc_rtp_bridge mode.\n",
+			gsm_lchan_name(new_lchan));
+		return 0;
+	}
+
+	old_lchan = bsc_handover_pending(new_lchan);
+	if (!old_lchan) {
+		LOGP(DHO, LOGL_ERROR, "%s HO detected, but no old_lchan for handover.\n",
+			gsm_lchan_name(new_lchan));
+		return 0;
+	}
+
+	LOGP(DHO, LOGL_DEBUG, "HO detected, forwarding RTP\n");
+	rsl_ipacc_mdcx(new_lchan,
+				old_lchan->abis_ip.connect_ip,
+				old_lchan->abis_ip.connect_port, 0);
+
+	mncc_recv_rtp_modify(new_lchan, trans->callref);
+
 	return 0;
 }
 
@@ -3576,10 +3664,15 @@ static int handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	switch (subsys) {
 	case SS_LCHAN:
 		lchan = lchan_data->lchan;
+		if (!lchan->conn)
+			return 0;
 		switch (signal) {
 		case S_LCHAN_HANDOVER_DETECT:
-			if (lchan->conn && lchan->conn->mncc_rtp_bridge)
-				return ho_detect(lchan);
+		  return ho_detect(lchan);
+		case S_LCHAN_HANDOVER_COMPL:
+		  return ho_complete(lchan);
+		case S_LCHAN_HANDOVER_FAIL:
+			return ho_fail(lchan);
 		}
 		break;
 	}
@@ -3967,6 +4060,11 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 		transaction_id, (conn->subscr)?(conn->subscr->extension):"-",
 		gsm48_cc_msg_name(msg_type), trans?(trans->cc.state):0,
 		gsm48_cc_state_name(trans?(trans->cc.state):0));
+
+	if (conn->in_handover) {
+		DEBUGP(DCC, "Message unhandled, handover procedure.\n");
+		return 0;
+	}
 
 	/* Create transaction */
 	if (!trans) {
