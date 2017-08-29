@@ -816,39 +816,16 @@ int rest_octets_si13(uint8_t *data, const struct gsm48_si13_info *si13)
 			bitvec_set_uint(&bv, si13->bcch_change_mark, 2);
 			append_gprs_mobile_alloc(&bv);
 		}
-		if (!si13->pbcch_present) {
-			/* PBCCH not present in cell */
-			bitvec_set_bit(&bv, 0);
-			bitvec_set_uint(&bv, si13->no_pbcch.rac, 8);
-			bitvec_set_bit(&bv, si13->no_pbcch.spgc_ccch_sup);
-			bitvec_set_uint(&bv, si13->no_pbcch.prio_acc_thr, 3);
-			bitvec_set_uint(&bv, si13->no_pbcch.net_ctrl_ord, 2);
-			append_gprs_cell_opt(&bv, &si13->cell_opts);
-			append_gprs_pwr_ctrl_pars(&bv, &si13->pwr_ctrl_pars);
-		} else {
-			/* PBCCH present in cell */
-			bitvec_set_bit(&bv, 1);
-			bitvec_set_uint(&bv, si13->pbcch.psi1_rep_per, 4);
-			/* PBCCH Descripiton */
-			bitvec_set_uint(&bv, si13->pbcch.pb, 4);
-			bitvec_set_uint(&bv, si13->pbcch.tsc, 3);
-			bitvec_set_uint(&bv, si13->pbcch.tn, 3);
-			switch (si13->pbcch.carrier_type) {
-			case PBCCH_BCCH:
-				bitvec_set_bit(&bv, 0);
-				bitvec_set_bit(&bv, 0);
-				break;
-			case PBCCH_ARFCN:
-				bitvec_set_bit(&bv, 0);
-				bitvec_set_bit(&bv, 1);
-				bitvec_set_uint(&bv, si13->pbcch.arfcn, 10);
-				break;
-			case PBCCH_MAIO:
-				bitvec_set_bit(&bv, 1);
-				bitvec_set_uint(&bv, si13->pbcch.maio, 6);
-				break;
-			}
-		}
+		/* PBCCH not present in cell:
+		   it shall never be indicated according to 3GPP TS 44.018 Table 10.5.2.37b.1 */
+		bitvec_set_bit(&bv, 0);
+		bitvec_set_uint(&bv, si13->rac, 8);
+		bitvec_set_bit(&bv, si13->spgc_ccch_sup);
+		bitvec_set_uint(&bv, si13->prio_acc_thr, 3);
+		bitvec_set_uint(&bv, si13->net_ctrl_ord, 2);
+		append_gprs_cell_opt(&bv, &si13->cell_opts);
+		append_gprs_pwr_ctrl_pars(&bv, &si13->pwr_ctrl_pars);
+
 		/* 3GPP TS 44.018 Release 6 / 10.5.2.37b */
 		bitvec_set_bit(&bv, H);	/* added Release 99 */
 		/* claim our SGSN is compatible with Release 99, as EDGE and EGPRS

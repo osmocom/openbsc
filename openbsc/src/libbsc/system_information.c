@@ -1079,15 +1079,10 @@ static struct gsm48_si13_info si13_default = {
 	},
 	.bcch_change_mark	= 1,
 	.si_change_field	= 0,
-	.pbcch_present		= 0,
-	{
-		.no_pbcch = {
-			.rac		= 0,	/* needs to be patched */
-			.spgc_ccch_sup 	= 0,
-			.net_ctrl_ord	= 0,
-			.prio_acc_thr	= 6,
-		},
-	},
+	.rac		= 0,	/* needs to be patched */
+	.spgc_ccch_sup 	= 0,
+	.net_ctrl_ord	= 0,
+	.prio_acc_thr	= 6,
 };
 
 static int generate_si13(enum osmo_sysinfo_type t, struct gsm_bts *bts)
@@ -1102,8 +1097,8 @@ static int generate_si13(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 	si13->header.skip_indicator = 0;
 	si13->header.system_information = GSM48_MT_RR_SYSINFO_13;
 
-	si13_default.no_pbcch.rac = bts->gprs.rac;
-	si13_default.no_pbcch.net_ctrl_ord = bts->gprs.net_ctrl_ord;
+	si13_default.rac = bts->gprs.rac;
+	si13_default.net_ctrl_ord = bts->gprs.net_ctrl_ord;
 
 	si13_default.cell_opts.ctrl_ack_type_use_block =
 		bts->gprs.ctrl_ack_type_use_block;

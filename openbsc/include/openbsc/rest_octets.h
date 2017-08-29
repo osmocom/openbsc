@@ -62,12 +62,6 @@ int rest_octets_si3(uint8_t *data, const struct gsm48_si_ro_info *si3);
 /* Generate SI4 Rest Octets (Chapter 10.5.2.35) */
 int rest_octets_si4(uint8_t *data, const struct gsm48_si_ro_info *si4, int len);
 
-enum pbcch_carrier_type {
-	PBCCH_BCCH,
-	PBCCH_ARFCN,
-	PBCCH_MAIO
-};
-
 /* TS 03.60 Chapter 6.3.3.1: Network Mode of Operation */
 enum gprs_nmo {
 	GPRS_NMO_I	= 0,	/* CS pagin on GPRS paging or traffic channel */
@@ -112,25 +106,10 @@ struct gsm48_si13_info {
 	struct gprs_power_ctrl_pars pwr_ctrl_pars;
 	uint8_t bcch_change_mark;
 	uint8_t si_change_field;
-	uint8_t pbcch_present;
-
-	union {
-		struct {
-			uint8_t rac;
-			uint8_t spgc_ccch_sup;
-			uint8_t net_ctrl_ord;
-			uint8_t prio_acc_thr;
-		} no_pbcch;
-		struct {
-			uint8_t psi1_rep_per;
-			uint8_t pb;
-			uint8_t tsc;
-			uint8_t tn;
-			enum pbcch_carrier_type carrier_type;
-			uint16_t arfcn;
-			uint8_t maio;
-		} pbcch;
-	};
+	uint8_t rac;
+	uint8_t spgc_ccch_sup;
+	uint8_t net_ctrl_ord;
+	uint8_t prio_acc_thr;
 };
 
 /* Generate SI13 Rest Octests (Chapter 10.5.2.37b) */
