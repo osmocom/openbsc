@@ -1,3 +1,5 @@
+:gfdl-enabled:
+
 OsmoNITB User Manual
 ====================
 Harald Welte <hwelte@sysmocom.de>
