@@ -1791,73 +1791,6 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable);
 
-/* handle audio path for handover */
-static int switch_for_handover(struct gsm_lchan *old_lchan,
-			struct gsm_lchan *new_lchan)
-{
-	struct rtp_socket *old_rs, *new_rs, *other_rs;
-
-	/* Ask the new socket to send to the already known port. */
-	if (new_lchan->conn->mncc_rtp_bridge) {
-		LOGP(DHO, LOGL_DEBUG, "Forwarding RTP\n");
-		rsl_ipacc_mdcx(new_lchan,
-					old_lchan->abis_ip.connect_ip,
-					old_lchan->abis_ip.connect_port, 0);
-		return 0;
-	}
-
-	if (ipacc_rtp_direct) {
-		LOGP(DHO, LOGL_ERROR, "unable to handover in direct RTP mode\n");
-		return 0;
-	}
-
-	/* RTP Proxy mode */
-	new_rs = new_lchan->abis_ip.rtp_socket;
-	old_rs = old_lchan->abis_ip.rtp_socket;
-
-	if (!new_rs) {
-		LOGP(DHO, LOGL_ERROR, "no RTP socket for new_lchan\n");
-		return -EIO;
-	}
-
-	rsl_ipacc_mdcx_to_rtpsock(new_lchan);
-
-	if (!old_rs) {
-		LOGP(DHO, LOGL_ERROR, "no RTP socket for old_lchan\n");
-		return -EIO;
-	}
-
-	/* copy rx_action and reference to other sock */
-	new_rs->rx_action = old_rs->rx_action;
-	new_rs->tx_action = old_rs->tx_action;
-	new_rs->transmit = old_rs->transmit;
-
-	switch (old_lchan->abis_ip.rtp_socket->rx_action) {
-	case RTP_PROXY:
-		other_rs = old_rs->proxy.other_sock;
-		rtp_socket_proxy(new_rs, other_rs);
-		/* delete reference to other end socket to prevent
-		 * rtp_socket_free() from removing the inverse reference */
-		old_rs->proxy.other_sock = NULL;
-		break;
-	case RTP_RECV_UPSTREAM:
-		new_rs->receive = old_rs->receive;
-		break;
-	case RTP_NONE:
-		break;
-	}
-
-	return 0;
-}
-
-static void maybe_switch_for_handover(struct gsm_lchan *lchan)
-{
-	struct gsm_lchan *old_lchan;
-	old_lchan = bsc_handover_pending(lchan);
-	if (old_lchan)
-		switch_for_handover(old_lchan, lchan);
-}
-
 /* some other part of the code sends us a signal */
 static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				 void *handler_data, void *signal_data)
@@ -1907,15 +1840,6 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				tch_recv_mncc(net, trans->callref, 1);
 			}
 		}
-
-		/*
-		 * TODO: this appears to be too early? Why not until after
-		 * the handover detect or the handover complete?
-		 *
-		 * Do we have a handover pending for this new lchan? In that
-		 * case re-route the audio from the old channel to the new one.
-		 */
-		maybe_switch_for_handover(lchan);
 		break;
 	case S_ABISIP_DLCX_IND:
 		/* the BTS tells us a RTP stream has been disconnected */
@@ -3500,11 +3424,6 @@ static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 				gsm_lchan_name(lchan));
 			mncc_recv_rtp_sock(net, trans, MNCC_RTP_CREATE);
 		}
-		/*
-		 * TODO: this appears to be too early? Why not until after
-		 * the handover detect or the handover complete?
-		 */
-		maybe_switch_for_handover(lchan);
 		break;
 	case S_ABISIP_MDCX_ACK:
 		if (lchan->conn->mncc_rtp_connect_pending) {
@@ -4048,6 +3967,104 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	return rc;
 }
 
+static int ho_switch_audio_rtp_bridge(struct gsm_lchan *old_lchan,
+			struct gsm_lchan *new_lchan)
+{
+	LOGP(DHO, LOGL_DEBUG, "Forwarding RTP\n");
+	rsl_ipacc_mdcx(new_lchan,
+				old_lchan->abis_ip.connect_ip,
+				old_lchan->abis_ip.connect_port, 0);
+	return 0;
+}
+
+static int ho_switch_audio_rtp_proxy(struct gsm_lchan *old_lchan,
+			struct gsm_lchan *new_lchan)
+{
+	struct rtp_socket *old_rs, *new_rs, *other_rs;
+	new_rs = new_lchan->abis_ip.rtp_socket;
+	old_rs = old_lchan->abis_ip.rtp_socket;
+
+	if (!new_rs) {
+		LOGP(DHO, LOGL_ERROR, "no RTP socket for new_lchan\n");
+		return -EIO;
+	}
+
+	rsl_ipacc_mdcx_to_rtpsock(new_lchan);
+
+	if (!old_rs) {
+		LOGP(DHO, LOGL_ERROR, "no RTP socket for old_lchan\n");
+		return -EIO;
+	}
+
+	/* copy rx_action and reference to other sock */
+	new_rs->rx_action = old_rs->rx_action;
+	new_rs->tx_action = old_rs->tx_action;
+	new_rs->transmit = old_rs->transmit;
+
+	switch (old_lchan->abis_ip.rtp_socket->rx_action) {
+	case RTP_PROXY:
+		other_rs = old_rs->proxy.other_sock;
+		rtp_socket_proxy(new_rs, other_rs);
+		/* delete reference to other end socket to prevent
+		 * rtp_socket_free() from removing the inverse reference */
+		old_rs->proxy.other_sock = NULL;
+		break;
+	case RTP_RECV_UPSTREAM:
+		new_rs->receive = old_rs->receive;
+		break;
+	case RTP_NONE:
+		break;
+	}
+
+	return 0;
+}
+
+/* GSM 08.58 HANDOVER DETECT has been received */
+static int ho_detect(struct gsm_lchan *new_lchan)
+{
+	struct gsm_lchan *old_lchan;
+	old_lchan = bsc_handover_pending(new_lchan);
+	if (!old_lchan)	{
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
+		return -ENODEV;
+	}
+
+	/* mncc rtp proxy mode */
+	if (new_lchan->conn->mncc_rtp_bridge) {
+		return ho_switch_audio_rtp_bridge(old_lchan, new_lchan);
+	}
+
+	/* rtp direct mode */
+	if (ipacc_rtp_direct) {
+		LOGP(DHO, LOGL_ERROR, "unable to handover in direct RTP mode\n");
+		return 0;
+	}
+
+	/* rtp proxy mode */
+  return ho_switch_audio_rtp_proxy(old_lchan, new_lchan);
+}
+
+ /* some other part of the code sends us a signal */
+static int handle_lchan_signal(unsigned int subsys, unsigned int signal,
+				 void *handler_data, void *signal_data)
+{
+	struct lchan_signal_data *lchan_data;
+	struct gsm_lchan *lchan;
+
+	lchan_data = signal_data;
+	switch (subsys) {
+	case SS_LCHAN:
+		lchan = lchan_data->lchan;
+		switch (signal) {
+		case S_LCHAN_HANDOVER_DETECT:
+			return ho_detect(lchan);
+		}
+		break;
+	}
+
+	return 0;
+}
+
 /*
  * This will be run by the linker when loading the DSO. We use it to
  * do system initialization, e.g. registration of signal handlers.
@@ -4055,4 +4072,5 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
 	osmo_signal_register_handler(SS_ABISIP, handle_abisip_signal, NULL);
+	osmo_signal_register_handler(SS_LCHAN, handle_lchan_signal, NULL);
 }

@@ -318,22 +318,6 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 	return 0;
 }
 
-/* GSM 08.58 HANDOVER DETECT has been received */
-static int ho_rsl_detect(struct gsm_lchan *new_lchan)
-{
-	struct bsc_handover *ho;
-
-	ho = bsc_ho_by_new_lchan(new_lchan);
-	if (!ho) {
-		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
-		return -ENODEV;
-	}
-
-	/* FIXME: do we actually want to do something here ? */
-
-	return 0;
-}
-
 static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 			   void *handler_data, void *signal_data)
 {
@@ -349,8 +333,6 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 			return ho_chan_activ_ack(lchan);
 		case S_LCHAN_ACTIVATE_NACK:
 			return ho_chan_activ_nack(lchan);
-		case S_LCHAN_HANDOVER_DETECT:
-			return ho_rsl_detect(lchan);
 		case S_LCHAN_HANDOVER_COMPL:
 			return ho_gsm48_ho_compl(lchan);
 		case S_LCHAN_HANDOVER_FAIL:
