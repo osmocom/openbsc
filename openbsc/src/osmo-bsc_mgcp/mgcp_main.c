@@ -43,6 +43,7 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/stats.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/linuxlist.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
@@ -198,6 +199,7 @@ static struct vty_app_info vty_info = {
 
 int main(int argc, char **argv)
 {
+	struct llist_head mgcp_cfgs;
 	struct gsm_network dummy_network;
 	struct sockaddr_in addr;
 	int on = 1, rc;
@@ -207,16 +209,6 @@ int main(int argc, char **argv)
 
 	osmo_init_ignore_signals();
 	osmo_init_logging(&log_info);
-
-	cfg = mgcp_config_alloc();
-	if (!cfg)
-		return -1;
-
-#ifdef BUILD_MGCP_TRANSCODING
-	cfg->setup_rtp_processing_cb = &mgcp_transcoding_setup;
-	cfg->rtp_processing_cb = &mgcp_transcoding_process_rtp;
-	cfg->get_net_downlink_format_cb = &mgcp_transcoding_net_downlink_format;
-#endif
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
@@ -229,15 +221,25 @@ int main(int argc, char **argv)
 	rate_ctr_init(tall_bsc_ctx);
 	osmo_stats_init(tall_bsc_ctx);
 
-	rc = mgcp_parse_config(config_file, cfg, MGCP_BSC);
+	rc = mgcp_parse_config(config_file, &mgcp_cfgs, MGCP_BSC);
 	if (rc < 0)
 		return rc;
+	if (llist_empty(&mgcp_cfgs))
+		return -1;
+
+	cfg = llist_entry(mgcp_cfgs.next, struct mgcp_config, entry);
 
 	/* start telnet after reading config for vty_get_bind_addr() */
 	rc = telnet_init_dynif(tall_bsc_ctx, &dummy_network,
 			       vty_get_bind_addr(), OSMO_VTY_PORT_BSC_MGCP);
 	if (rc < 0)
 		return rc;
+
+#ifdef BUILD_MGCP_TRANSCODING
+	cfg->setup_rtp_processing_cb = &mgcp_transcoding_setup;
+	cfg->rtp_processing_cb = &mgcp_transcoding_process_rtp;
+	cfg->get_net_downlink_format_cb = &mgcp_transcoding_net_downlink_format;
+#endif
 
 	/* set some callbacks */
 	cfg->reset_cb = mgcp_rsip_cb;
