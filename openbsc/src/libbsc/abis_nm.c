@@ -2791,9 +2791,13 @@ void abis_nm_ipaccess_cgi(uint8_t *buf, struct gsm_bts *bts)
 	*((uint16_t *)(buf + 5)) = htons(bts->cell_identity);
 }
 
-void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked)
+void gsm_trx_lock_rf(struct gsm_bts_trx *trx, bool locked, const char *reason)
 {
-	int new_state = locked ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
+	uint8_t new_state = locked ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
+
+	LOGP(DNM, LOGL_NOTICE, "(bts=%d,trx=%d) Changing adm. state %s -> %s [%s]\n", trx->bts->nr, trx->nr,
+	     get_value_string(abis_nm_adm_state_names, trx->mo.nm_state.administrative),
+	     get_value_string(abis_nm_adm_state_names, new_state), reason);
 
 	trx->mo.nm_state.administrative = new_state;
 	if (!trx->bts || !trx->bts->oml_link)

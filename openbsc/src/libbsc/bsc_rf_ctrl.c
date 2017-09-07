@@ -123,7 +123,7 @@ enum osmo_bsc_rf_policy osmo_bsc_rf_get_policy_by_bts(struct gsm_bts *bts)
 	}
 }
 
-static int lock_each_trx(struct gsm_network *net, int lock)
+static int lock_each_trx(struct gsm_network *net, bool lock)
 {
 	struct gsm_bts *bts;
 
@@ -138,7 +138,7 @@ static int lock_each_trx(struct gsm_network *net, int lock)
 		}
 
 		llist_for_each_entry(trx, &bts->trx_list, list) {
-			gsm_trx_lock_rf(trx, lock);
+			gsm_trx_lock_rf(trx, lock, "ctrl");
 		}
 	}
 
@@ -245,7 +245,7 @@ static void send_signal(struct osmo_bsc_rf *rf, int val)
 
 static int switch_rf_off(struct osmo_bsc_rf *rf)
 {
-	lock_each_trx(rf->gsm_network, 1);
+	lock_each_trx(rf->gsm_network, true);
 	send_signal(rf, S_RF_OFF);
 
 	return 0;
@@ -289,7 +289,7 @@ static void rf_delay_cmd_cb(void *data)
 	case RF_CMD_ON:
 		rf->last_state_command = "RF Direct On";
 		osmo_timer_del(&rf->grace_timeout);
-		lock_each_trx(rf->gsm_network, 0);
+		lock_each_trx(rf->gsm_network, false);
 		send_signal(rf, S_RF_ON);
 		osmo_timer_schedule(&rf->rf_check, 3, 0);
 		break;

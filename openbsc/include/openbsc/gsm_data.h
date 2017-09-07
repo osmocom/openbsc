@@ -578,7 +578,7 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net,
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, uint8_t e1_nr,
 		   uint8_t e1_ts, uint8_t e1_ts_ss);
 
-void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
+void gsm_trx_lock_rf(struct gsm_bts_trx *trx, bool locked, const char *reason);
 bool gsm_btsmodel_has_feature(struct gsm_bts_model *model, enum gsm_bts_features feat);
 struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
 int gsm_bts_trx_set_system_infos(struct gsm_bts_trx *trx);

@@ -3562,7 +3562,7 @@ DEFUN(cfg_trx_rf_locked,
 	int locked = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
 
-	gsm_trx_lock_rf(trx, locked);
+	gsm_trx_lock_rf(trx, locked, "vty");
 	return CMD_SUCCESS;
 }
 
