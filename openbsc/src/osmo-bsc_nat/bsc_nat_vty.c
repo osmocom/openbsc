@@ -843,6 +843,7 @@ DEFUN(cfg_nat_default_msc,
       "The MSC to route messages to by default\n" "MSC number\n")
 {
 	_nat->default_msc = atoi(argv[0]);
+	return CMD_SUCCESS;
 }
 
 DEFUN(cfg_nat_sdp_amr_mode_set,
