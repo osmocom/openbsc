@@ -485,8 +485,7 @@ free_stat:
 	talloc_free(stat);
 }
 
-
-struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
+struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *nat, struct mgcp_config *mgcp, int endpoint)
 {
 	struct nat_sccp_connection *con = NULL;
 	struct nat_sccp_connection *sccp;
@@ -495,6 +494,8 @@ struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 		if (sccp->msc_endp == -1)
 			continue;
 		if (sccp->msc_endp != endpoint)
+			continue;
+		if (sccp->mgcp_conf != mgcp)
 			continue;
 
 		con = sccp;
@@ -542,7 +543,7 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	}
 	bsc_endp->bsc = NULL;
 
-	sccp = bsc_mgcp_find_con(nat, endpoint);
+	sccp = bsc_mgcp_find_con(nat, tcfg->cfg, endpoint);
 
 	if (!sccp) {
 		LOGP(DMGCP, LOGL_ERROR, "Did not find BSC for change on endpoint: 0x%x state: %d\n", endpoint, state);
@@ -647,7 +648,7 @@ static void free_chan_downstream(struct mgcp_config *mgcp_cfg, struct mgcp_endpo
 	/* if a CRCX failed... send a DLCX down the stream */
 	if (bsc_endp->transaction_state == MGCP_ENDP_CRCX) {
 		struct nat_sccp_connection *con;
-		con = bsc_mgcp_find_con(bsc->nat, ENDPOINT_NUMBER(endp));
+		con = bsc_mgcp_find_con(bsc->nat, mgcp_cfg, ENDPOINT_NUMBER(endp));
 		if (!con) {
 			LOGP(DMGCP, LOGL_ERROR,
 				"No SCCP connection for endp 0x%x\n",
