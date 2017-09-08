@@ -260,7 +260,7 @@ struct bsc_nat {
 	int bsc_ip_dscp;
 
 	/* MGCP config */
-	struct mgcp_config *mgcp_cfg;
+	struct llist_head mgcp_cfgs;
 	uint8_t mgcp_msg[4096];
 	int mgcp_length;
 	int mgcp_ipa;
@@ -275,8 +275,6 @@ struct bsc_nat {
 	int auth_timeout;
 	int ping_timeout;
 	int pong_timeout;
-
-	struct bsc_endpoint *bsc_endpoints;
 
 	/* filter */
 	char *acc_lst_name;
@@ -331,6 +329,11 @@ struct bsc_nat_ussd_con {
 	struct msgb *pending_msg;
 
 	struct osmo_timer_list auth_timeout;
+};
+
+struct mgcp_nat_config {
+	struct bsc_nat *nat;
+	struct bsc_endpoint *bsc_endpoints;
 };
 
 /* create and init the structures */
@@ -389,7 +392,7 @@ int bsc_mgcp_assign_patch(struct nat_sccp_connection *, struct msgb *msg);
 void bsc_mgcp_init(struct nat_sccp_connection *);
 void bsc_mgcp_dlcx(struct nat_sccp_connection *);
 void bsc_mgcp_free_endpoints(struct bsc_nat *nat);
-int bsc_mgcp_nat_init(struct bsc_nat *nat);
+int bsc_mgcp_nat_init(struct bsc_nat *nat, struct llist_head* cfgs);
 
 struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
 struct msgb *bsc_mgcp_rewrite(char *input, int length, int endp, const char *ip,

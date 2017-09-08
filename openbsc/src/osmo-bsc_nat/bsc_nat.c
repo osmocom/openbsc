@@ -1615,12 +1615,6 @@ int main(int argc, char **argv)
 		return -4;
 	}
 
-	nat->mgcp_cfg = mgcp_config_alloc();
-	if (!nat->mgcp_cfg) {
-		fprintf(stderr, "Failed to allocate MGCP cfg.\n");
-		return -5;
-	}
-
 	/* We need to add mode-set for amr codecs */
 	nat->sdp_ensure_amr_mode_set = 1;
 
@@ -1640,7 +1634,7 @@ int main(int argc, char **argv)
 
 	/* init vty and parse */
 	telnet_init(tall_bsc_ctx, NULL, OSMO_VTY_PORT_BSC_NAT);
-	if (mgcp_parse_config(config_file, nat->mgcp_cfg, MGCP_BSC_NAT) < 0) {
+	if (mgcp_parse_config(config_file, &nat->mgcp_cfgs, MGCP_BSC_NAT) < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return -3;
 	}
@@ -1653,7 +1647,7 @@ int main(int argc, char **argv)
 	/*
 	 * Setup the MGCP code..
 	 */
-	if (bsc_mgcp_nat_init(nat) != 0)
+	if (bsc_mgcp_nat_init(nat, &nat->mgcp_cfgs) != 0)
 		return -4;
 
 	nat->ctrl = bsc_nat_controlif_setup(nat, 4250);

@@ -87,6 +87,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->tpdest_match);
 	INIT_LLIST_HEAD(&nat->sms_clear_tp_srr);
 	INIT_LLIST_HEAD(&nat->sms_num_rewr);
+	INIT_LLIST_HEAD(&nat->mgcp_cfgs);
 
 	nat->stats.sccp.conn = osmo_counter_alloc("nat.sccp.conn");
 	nat->stats.sccp.calls = osmo_counter_alloc("nat.sccp.calls");
