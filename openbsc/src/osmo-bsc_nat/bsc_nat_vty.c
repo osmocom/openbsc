@@ -825,12 +825,16 @@ DEFUN(cfg_nat_use_ipa_for_mgcp,
       "This needs to be set at start. Handle MGCP messages through "
       "the IPA protocol and not through the UDP socket.\n")
 {
-	if (_nat->mgcp_cfg->data)
+	if (!llist_empty(&_nat->mgcp_cfgs))
 		vty_out(vty,
 			"%%the setting will not be applied right now.%s",
 			VTY_NEWLINE);
-	_nat->mgcp_ipa = 1;
-	return CMD_SUCCESS;
+	vty_out(vty, "%%This setting is not supported anymore.%s",
+			VTY_NEWLINE);
+	return CMD_WARNING;
+#warning "MGCP IPA not supported"
+//	_nat->mgcp_ipa = 1;
+//	return CMD_SUCCESS;
 }
 
 DEFUN(cfg_nat_default_msc,
@@ -1305,6 +1309,11 @@ DEFUN(cfg_bsc_osmux,
 	else if (strcmp(argv[0], "only") == 0)
 		conf->osmux = OSMUX_USAGE_ONLY;
 
+#warning "OSMUX is missing support for multiple mgcp"
+	if (conf->osmux != OSMUX_USAGE_OFF)
+		return CMD_WARNING;
+
+#if 0
 	if (old == 0 && conf->osmux > 0 && !conf->nat->mgcp_cfg->osmux_init) {
 		LOGP(DMGCP, LOGL_NOTICE, "Setting up OSMUX socket\n");
 		if (osmux_init(OSMUX_ROLE_BSC_NAT, conf->nat->mgcp_cfg) < 0) {
@@ -1320,6 +1329,7 @@ DEFUN(cfg_bsc_osmux,
 		 * new upcoming flows should use RTP.
 		 */
 	}
+#endif
 
 	return CMD_SUCCESS;
 }

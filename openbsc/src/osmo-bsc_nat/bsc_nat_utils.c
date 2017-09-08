@@ -126,7 +126,8 @@ void bsc_nat_free(struct bsc_nat *nat)
 	osmo_counter_free(nat->stats.bsc.auth_fail);
 	osmo_counter_free(nat->stats.msc.reconn);
 	osmo_counter_free(nat->stats.ussd.reconn);
-	talloc_free(nat->mgcp_cfg);
+#warning "Free each mgcp"
+//	talloc_free(nat->mgcp_cfgs);
 	talloc_free(nat);
 }
 
