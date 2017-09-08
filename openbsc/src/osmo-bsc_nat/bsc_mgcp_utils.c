@@ -76,9 +76,12 @@ static void send_direct(struct bsc_nat *nat, struct msgb *output)
 
 static void mgcp_queue_for_call_agent(struct bsc_nat *nat, struct msgb *output)
 {
-	if (nat->mgcp_ipa)
-		bsc_nat_send_mgcp_to_msc(nat, output);
+#warning "The mgcp_ipa option is not supported anymore"
+#if 0
+	if (cfg->data->mgcp_ipa)
+		bsc_nat_send_mgcp_to_msc(cfg->data, output);
 	else
+#endif
 		send_direct(nat, output);
 }
 
@@ -950,11 +953,13 @@ void bsc_nat_handle_mgcp(struct bsc_nat *nat, struct msgb *msg)
 {
 	struct msgb *resp;
 
+#warning "This function is not needed without mgcp_ipa"
+
 	if (!nat->mgcp_ipa) {
 		LOGP(DMGCP, LOGL_ERROR, "MGCP message not allowed on IPA.\n");
 		return;
 	}
-
+#if 0
 	if (msgb_l2len(msg) > sizeof(nat->mgcp_msg) - 1) {
 		LOGP(DMGCP, LOGL_ERROR, "MGCP msg too big for handling.\n");
 		return;
@@ -970,7 +975,7 @@ void bsc_nat_handle_mgcp(struct bsc_nat *nat, struct msgb *msg)
 	/* we do have a direct answer... e.g. AUEP */
 	if (resp)
 		mgcp_queue_for_call_agent(nat, resp);
-
+#endif
 	return;
 }
 

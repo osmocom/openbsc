@@ -368,12 +368,14 @@ static void send_mgcp_reset(struct bsc_connection *bsc)
 	bsc_write_mgcp(bsc, mgcp_reset, sizeof mgcp_reset - 1);
 }
 
+#warning "Not supported for now"
+#if 0
 void bsc_nat_send_mgcp_to_msc(struct bsc_nat *nat, struct msgb *msg)
 {
 	ipa_prepend_header(msg, IPAC_PROTO_MGCP_OLD);
-#warning Disabled for now
 //	queue_for_msc(nat->msc_con, msg);
 }
+#endif
 
 /*
  * Below is the handling of messages coming
