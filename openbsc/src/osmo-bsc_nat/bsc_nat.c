@@ -1165,6 +1165,10 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 				con->msc_con = msc_conn_by_num(bsc->nat, bsc->nat->default_msc);
 			}
 			con_msc = con->msc_con;
+			/* Shortcuts for handling later */
+			con->msc_conf = msc_config_by_con(bsc->nat, con_msc);
+			con->mgcp_conf = mgcp_config_by_num(&bsc->nat->mgcp_cfgs, con->msc_conf->nr);
+
 			con->filter_state.con_type = con_type;
 			con->filter_state.imsi_checked = filter;
 			bsc_nat_extract_lac(bsc, con, parsed, msg);

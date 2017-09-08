@@ -204,7 +204,7 @@ int bsc_mgcp_assign_patch(struct nat_sccp_connection *con, struct msgb *msg)
 
 	endp = mgcp_timeslot_to_endpoint(multiplex, timeslot);
 
-	if (endp >= con->bsc->nat->mgcp_cfg->trunk.number_endpoints) {
+	if (endp >= con->mgcp_conf->trunk.number_endpoints) {
 		LOGP(DNAT, LOGL_ERROR,
 			"MSC attempted to assign bad endpoint 0x%x\n",
 			endp);
@@ -336,7 +336,7 @@ static void remember_pending_dlcx(struct nat_sccp_connection *con, uint32_t tran
 	}
 
 	/* take the endpoint here */
-	endp = &bsc->nat->mgcp_cfg->trunk.endpoints[con->msc_endp];
+	endp = &con->mgcp_conf->trunk.endpoints[con->msc_endp];
 
 	stats->remote_ref = con->remote_ref;
 	stats->src_ref = con->patched_ref;

@@ -72,6 +72,8 @@ struct nat_sccp_connection {
 
 	struct bsc_connection *bsc;
 	struct bsc_msc_connection *msc_con;
+	struct msc_config *msc_conf;
+	struct mgcp_config *mgcp_conf;
 
 	struct sccp_source_reference real_ref;
 	struct sccp_source_reference patched_ref;
