@@ -204,7 +204,7 @@ int bsc_mgcp_assign_patch(struct nat_sccp_connection *con, struct msgb *msg)
 
 	endp = mgcp_timeslot_to_endpoint(multiplex, timeslot);
 
-	if (endp >= con->bsc->nat->mgcp_cfg->trunk.number_endpoints) {
+	if (endp >= con->mgcp_conf->trunk.number_endpoints) {
 		LOGP(DNAT, LOGL_ERROR,
 			"MSC attempted to assign bad endpoint 0x%x\n",
 			endp);
@@ -336,7 +336,7 @@ static void remember_pending_dlcx(struct nat_sccp_connection *con, uint32_t tran
 	}
 
 	/* take the endpoint here */
-	endp = &bsc->nat->mgcp_cfg->trunk.endpoints[con->msc_endp];
+	endp = &con->mgcp_conf->trunk.endpoints[con->msc_endp];
 
 	stats->remote_ref = con->remote_ref;
 	stats->src_ref = con->patched_ref;
@@ -638,8 +638,8 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 /*
  * We do have a failure, free data downstream..
  */
-static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint *bsc_endp,
-				 struct bsc_connection *bsc)
+static void free_chan_downstream(struct mgcp_config *mgcp_cfg, struct mgcp_endpoint *endp,
+				 struct bsc_endpoint *bsc_endp, struct bsc_connection *bsc)
 {
 	LOGP(DMGCP, LOGL_ERROR, "No CI, freeing endpoint 0x%x in state %d\n",
 		ENDPOINT_NUMBER(endp), bsc_endp->transaction_state);
@@ -662,7 +662,7 @@ static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint
 		}
 	}
 
-	bsc_mgcp_free_endpoint(bsc->nat, ENDPOINT_NUMBER(endp));
+	bsc_mgcp_free_endpoint(mgcp_cfg, ENDPOINT_NUMBER(endp));
 	mgcp_release_endp(endp);
 }
 
