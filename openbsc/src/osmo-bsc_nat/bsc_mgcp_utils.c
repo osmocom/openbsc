@@ -66,15 +66,16 @@
 #include <errno.h>
 #include <unistd.h>
 
-static void send_direct(struct bsc_nat *nat, struct msgb *output)
+static void send_direct(struct mgcp_config *cfg, struct msgb *output)
 {
-	if (osmo_wqueue_enqueue(&nat->mgcp_cfg->gw_fd, output) != 0) {
+	if (osmo_wqueue_enqueue(&cfg->gw_fd, output) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to queue MGCP msg.\n");
 		msgb_free(output);
 	}
 }
 
-static void mgcp_queue_for_call_agent(struct bsc_nat *nat, struct msgb *output)
+/* Sends to the MSC-side  */
+static void mgcp_queue_for_call_agent(struct mgcp_config *cfg, struct msgb *output)
 {
 #warning "The mgcp_ipa option is not supported anymore"
 #if 0
@@ -82,7 +83,7 @@ static void mgcp_queue_for_call_agent(struct bsc_nat *nat, struct msgb *output)
 		bsc_nat_send_mgcp_to_msc(cfg->data, output);
 	else
 #endif
-		send_direct(nat, output);
+		send_direct(cfg, output);
 }
 
 int bsc_mgcp_nr_multiplexes(int max_endpoints)
@@ -239,24 +240,29 @@ int bsc_mgcp_assign_patch(struct nat_sccp_connection *con, struct msgb *msg)
 	return 0;
 }
 
-static void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int i)
+static void bsc_mgcp_free_endpoint(struct mgcp_config *mgcp, int i)
 {
-	if (nat->bsc_endpoints[i].transaction_id) {
-		talloc_free(nat->bsc_endpoints[i].transaction_id);
-		nat->bsc_endpoints[i].transaction_id = NULL;
+	struct mgcp_nat_config *mgcp_nat = mgcp->data;
+
+	if (mgcp_nat->bsc_endpoints[i].transaction_id) {
+		talloc_free(mgcp_nat->bsc_endpoints[i].transaction_id);
+		mgcp_nat->bsc_endpoints[i].transaction_id = NULL;
 	}
 
-	nat->bsc_endpoints[i].transaction_state = 0;
-	nat->bsc_endpoints[i].bsc = NULL;
+	mgcp_nat->bsc_endpoints[i].transaction_state = 0;
+	mgcp_nat->bsc_endpoints[i].bsc = NULL;
 }
 
 void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
 {
 	int i;
+	struct mgcp_config *mgcp_cfg;
 
-	for (i = 1; i < nat->mgcp_cfg->trunk.number_endpoints; ++i){
-		bsc_mgcp_free_endpoint(nat, i);
-		mgcp_release_endp(&nat->mgcp_cfg->trunk.endpoints[i]);
+	llist_for_each_entry(mgcp_cfg, &nat->mgcp_cfgs, entry) {
+		for (i = 1; i < mgcp_cfg->trunk.number_endpoints; ++i){
+			bsc_mgcp_free_endpoint(mgcp_cfg, i);
+			mgcp_release_endp(&mgcp_cfg->trunk.endpoints[i]);
+		}
 	}
 }
 
@@ -383,7 +389,7 @@ void bsc_mgcp_dlcx(struct nat_sccp_connection *con)
 		remember_pending_dlcx(con, con->bsc->next_transaction);
 		con->bsc->_endpoint_status[con->bsc_endp] = 0;
 		bsc_mgcp_send_dlcx(con->bsc, con->bsc_endp, con->bsc->next_transaction++);
-		bsc_mgcp_free_endpoint(con->bsc->nat, con->msc_endp);
+		bsc_mgcp_free_endpoint(con->mgcp_conf, con->msc_endp);
 	}
 
 	bsc_mgcp_init(con);
@@ -519,9 +525,13 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	struct mgcp_endpoint *mgcp_endp;
 	struct msgb *bsc_msg;
 
-	nat = tcfg->cfg->data;
-	bsc_endp = &nat->bsc_endpoints[endpoint];
-	mgcp_endp = &nat->mgcp_cfg->trunk.endpoints[endpoint];
+	struct mgcp_nat_config *mgcp_nat;
+
+	mgcp_nat = tcfg->cfg->data;
+	nat = mgcp_nat->nat;
+
+	bsc_endp = &mgcp_nat->bsc_endpoints[endpoint];
+	mgcp_endp = &tcfg->cfg->trunk.endpoints[endpoint];
 
 	if (bsc_endp->transaction_id) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x had pending transaction: '%s'\n",
@@ -701,6 +711,8 @@ err:
  */
 void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 {
+	struct mgcp_config *mgcp_cfg;
+	struct mgcp_nat_config *mgcp_nat;
 	struct msgb *output;
 	struct bsc_endpoint *bsc_endp = NULL;
 	struct mgcp_endpoint *endp = NULL;
@@ -720,18 +732,21 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	for (i = 1; i < bsc->nat->mgcp_cfg->trunk.number_endpoints; ++i) {
-		if (bsc->nat->bsc_endpoints[i].bsc != bsc)
-			continue;
-		/* no one listening? a bug? */
-		if (!bsc->nat->bsc_endpoints[i].transaction_id)
-			continue;
-		if (strcmp(transaction_id, bsc->nat->bsc_endpoints[i].transaction_id) != 0)
-			continue;
+	llist_for_each_entry(mgcp_cfg, &bsc->nat->mgcp_cfgs, entry) {
+		mgcp_nat = mgcp_cfg->data;
+		for (i = 1; i < mgcp_cfg->trunk.number_endpoints; ++i) {
+			if (mgcp_nat->bsc_endpoints[i].bsc != bsc)
+				continue;
+			/* no one listening? a bug? */
+			if (!mgcp_nat->bsc_endpoints[i].transaction_id)
+				continue;
+			if (strcmp(transaction_id, mgcp_nat->bsc_endpoints[i].transaction_id) != 0)
+				continue;
 
-		endp = &bsc->nat->mgcp_cfg->trunk.endpoints[i];
-		bsc_endp = &bsc->nat->bsc_endpoints[i];
-		break;
+			endp = &mgcp_cfg->trunk.endpoints[i];
+			bsc_endp = &mgcp_nat->bsc_endpoints[i];
+			break;
+		}
 	}
 
 	if (!bsc_endp && strncmp("nat-", transaction_id, 4) == 0) {
@@ -747,7 +762,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 
 	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
 	if (endp->ci == CI_UNUSED) {
-		free_chan_downstream(endp, bsc_endp, bsc);
+		free_chan_downstream(mgcp_cfg, endp, bsc_endp, bsc);
 		return;
 	}
 
@@ -755,12 +770,12 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		bsc_mgcp_osmux_confirm(endp, (const char *) msg->l2h);
 
 	/* If we require osmux and it is disabled.. fail */
-	if (nat_osmux_only(bsc->nat->mgcp_cfg, bsc->cfg) &&
+	if (nat_osmux_only(mgcp_cfg, bsc->cfg) &&
 		endp->osmux.state == OSMUX_STATE_DISABLED) {
 		LOGP(DMGCP, LOGL_ERROR,
 			"Failed to activate osmux endpoint 0x%x\n",
 			ENDPOINT_NUMBER(endp));
-		free_chan_downstream(endp, bsc_endp, bsc);
+		free_chan_downstream(mgcp_cfg, endp, bsc_endp, bsc);
 		return;
 	}
 
@@ -784,7 +799,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	mgcp_queue_for_call_agent(bsc->nat, output);
+	mgcp_queue_for_call_agent(mgcp_cfg, output);
 }
 
 int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60])
@@ -970,22 +985,27 @@ void bsc_nat_handle_mgcp(struct bsc_nat *nat, struct msgb *msg)
 	nat->mgcp_msg[nat->mgcp_length] = '\0';
 
 	/* now handle the message */
-	resp = mgcp_handle_message(nat->mgcp_cfg, msg);
+	resp = mgcp_handle_message(cfg, msg);
 
 	/* we do have a direct answer... e.g. AUEP */
 	if (resp)
-		mgcp_queue_for_call_agent(nat, resp);
+		mgcp_queue_for_call_agent(cfg, resp);
 #endif
 	return;
 }
 
+/* Reads MGCP messages from the MSC-side */
 static int mgcp_do_read(struct osmo_fd *fd)
 {
+	struct mgcp_config *cfg;
+	struct mgcp_nat_config *mgcp_nat;
 	struct bsc_nat *nat;
 	struct msgb *msg, *resp;
 	int rc;
 
-	nat = fd->data;
+	cfg = fd->data;
+	mgcp_nat = cfg->data;
+	nat = mgcp_nat->nat;
 
 	rc = read(fd->fd, nat->mgcp_msg, sizeof(nat->mgcp_msg) - 1);
 	if (rc <= 0) {
@@ -1004,12 +1024,12 @@ static int mgcp_do_read(struct osmo_fd *fd)
 
 	msg->l2h = msgb_put(msg, rc);
 	memcpy(msg->l2h, nat->mgcp_msg, msgb_l2len(msg));
-	resp = mgcp_handle_message(nat->mgcp_cfg, msg);
+	resp = mgcp_handle_message(cfg, msg);
 	msgb_free(msg);
 
 	/* we do have a direct answer... e.g. AUEP */
 	if (resp)
-		mgcp_queue_for_call_agent(nat, resp);
+		mgcp_queue_for_call_agent(cfg, resp);
 
 	return 0;
 }
@@ -1067,7 +1087,7 @@ static int init_mgcp_socket(struct bsc_nat *nat, struct mgcp_config *cfg)
 
 	osmo_wqueue_init(&cfg->gw_fd, 10);
 	cfg->gw_fd.bfd.when = BSC_FD_READ;
-	cfg->gw_fd.bfd.data = nat;
+	cfg->gw_fd.bfd.data = cfg;
 	cfg->gw_fd.read_cb = mgcp_do_read;
 	cfg->gw_fd.write_cb = mgcp_do_write;
 
