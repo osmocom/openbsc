@@ -242,6 +242,7 @@ struct mgcp_config {
 
 /* config management */
 struct mgcp_config *mgcp_config_alloc(void);
+struct mgcp_config *mgcp_config_by_num(struct llist_head *configs, int index);
 int mgcp_parse_config(const char *config_file, struct llist_head *cfg,
 		      enum mgcp_role role);
 int mgcp_vty_init(void);

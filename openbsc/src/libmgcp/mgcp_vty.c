@@ -234,11 +234,11 @@ static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg, int verbo
 	}
 }
 
-static struct mgcp_config *mgcp_config_num(int index)
+struct mgcp_config *mgcp_config_by_num(struct llist_head *configs, int index)
 {
 	struct mgcp_config *mgcp;
 
-	llist_for_each_entry(mgcp, &mgcp_configs, entry)
+	llist_for_each_entry(mgcp, configs, entry)
 		if (mgcp->nr == index)
 			return mgcp;
 
@@ -255,7 +255,7 @@ DEFUN(show_mcgp, show_mgcp_cmd,
 	struct mgcp_config *mgcp;
 	int show_stats = argc >= 2;
 
-	mgcp = mgcp_config_num(atoi(argv[0]));
+	mgcp = mgcp_config_by_num(&mgcp_configs, atoi(argv[0]));
 
 	dump_trunk(vty, &mgcp->trunk, show_stats);
 
@@ -287,7 +287,7 @@ DEFUN(cfg_mgcp,
 		_num_mgcp++;
 		mgcp->nr = mgcp_nr;
 	} else {
-		mgcp = mgcp_config_num(mgcp_nr);
+		mgcp = mgcp_config_by_num(&mgcp_configs, mgcp_nr);
 		vty->index = mgcp;
 		vty->node = MGCP_NODE;
 	}
@@ -1219,7 +1219,7 @@ DEFUN(loop_endp,
 	struct mgcp_trunk_config *trunk;
 	struct mgcp_endpoint *endp;
 
-	cfg = mgcp_config_num(atoi(argv[0]));
+	cfg = mgcp_config_by_num(&mgcp_configs, atoi(argv[0]));
 	if (!cfg) {
 		vty_out(vty, "%%MGCP %d not found in config. %s",
 				atoi(argv[0]), VTY_NEWLINE);
@@ -1278,7 +1278,7 @@ DEFUN(tap_call,
 	struct mgcp_endpoint *endp;
 	int port = 0;
 
-	cfg = mgcp_config_num(atoi(argv[0]));
+	cfg = mgcp_config_by_num(&mgcp_configs, atoi(argv[0]));
 	if (!cfg) {
 		vty_out(vty, "%%MGCP %d not found in config. %s",
 				atoi(argv[0]), VTY_NEWLINE);
@@ -1336,7 +1336,7 @@ DEFUN(free_endp, free_endp_cmd,
 	struct mgcp_trunk_config *trunk;
 	struct mgcp_endpoint *endp;
 
-	cfg = mgcp_config_num(atoi(argv[0]));
+	cfg = mgcp_config_by_num(&mgcp_configs, atoi(argv[0]));
 	if (!cfg) {
 		vty_out(vty, "%%MGCP %d not found in config. %s",
 				atoi(argv[0]), VTY_NEWLINE);
@@ -1377,7 +1377,7 @@ DEFUN(reset_endp, reset_endp_cmd,
 	struct mgcp_endpoint *endp;
 	int endp_no, rc;
 
-	cfg = mgcp_config_num(atoi(argv[0]));
+	cfg = mgcp_config_by_num(&mgcp_configs, atoi(argv[0]));
 	if (!cfg) {
 		vty_out(vty, "%%MGCP %d not found in config. %s",
 				atoi(argv[0]), VTY_NEWLINE);
@@ -1419,7 +1419,7 @@ DEFUN(reset_all_endp, reset_all_endp_cmd,
 	int rc;
 	struct mgcp_config *cfg;
 
-	cfg = mgcp_config_num(atoi(argv[0]));
+	cfg = mgcp_config_by_num(&mgcp_configs, atoi(argv[0]));
 	if (!cfg) {
 		vty_out(vty, "%%MGCP %d not found in config. %s",
 				atoi(argv[0]), VTY_NEWLINE);
