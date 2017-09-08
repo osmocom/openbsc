@@ -405,7 +405,7 @@ void bsc_mgcp_dlcx(struct nat_sccp_connection *);
 void bsc_mgcp_free_endpoints(struct bsc_nat *nat);
 int bsc_mgcp_nat_init(struct bsc_nat *nat, struct llist_head* cfgs);
 
-struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
+struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *, struct mgcp_config *, int endpoint_number);
 struct msgb *bsc_mgcp_rewrite(char *input, int length, int endp, const char *ip,
 			      int port, int osmux, int *first_payload_type, int mode_set);
 void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
