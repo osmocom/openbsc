@@ -638,8 +638,8 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 /*
  * We do have a failure, free data downstream..
  */
-static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint *bsc_endp,
-				 struct bsc_connection *bsc)
+static void free_chan_downstream(struct mgcp_config *mgcp_cfg, struct mgcp_endpoint *endp,
+				 struct bsc_endpoint *bsc_endp, struct bsc_connection *bsc)
 {
 	LOGP(DMGCP, LOGL_ERROR, "No CI, freeing endpoint 0x%x in state %d\n",
 		ENDPOINT_NUMBER(endp), bsc_endp->transaction_state);
@@ -662,7 +662,7 @@ static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint
 		}
 	}
 
-	bsc_mgcp_free_endpoint(bsc->nat, ENDPOINT_NUMBER(endp));
+	bsc_mgcp_free_endpoint(mgcp_cfg, ENDPOINT_NUMBER(endp));
 	mgcp_release_endp(endp);
 }
 
