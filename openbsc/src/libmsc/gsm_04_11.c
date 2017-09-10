@@ -519,7 +519,10 @@ static int gsm340_rx_tpdu(struct gsm_trans *trans, struct msgb *msg,
 
 	rc = sms_route_mt_sms(conn, gsms);
 
-	/* This SMS got routed through SMPP or no receiver exists. */
+	/* This SMS got routed through SMPP. */
+	if (gsms->smpp.esme)
+		return -EINPROGRESS;
+
 	if (!gsms->receiver)
 		return rc;
 
@@ -613,8 +616,10 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 		return gsm411_send_rp_ack(trans, rph->msg_ref);
 	else if (rc > 0)
 		return gsm411_send_rp_error(trans, rph->msg_ref, rc);
-	else
-		return rc;
+	else if (rc == -EINPROGRESS)
+		rc = 0;
+
+	return rc;
 }
 
 /* Receive a 04.11 RP-DATA message in accordance with Section 7.3.1.2 */
