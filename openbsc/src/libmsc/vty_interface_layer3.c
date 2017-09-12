@@ -1294,6 +1294,7 @@ int bsc_vty_init_extra(void)
 
 	install_element(CONFIG_NODE, &cfg_nitb_cmd);
 	install_node(&nitb_node, config_write_nitb);
+	vty_install_default(NITB_NODE);
 	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
 	install_element(NITB_NODE, &cfg_nitb_subscr_random_cmd);
 	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);

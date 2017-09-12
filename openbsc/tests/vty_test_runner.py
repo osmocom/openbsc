@@ -606,14 +606,6 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.assertTrue(self.vty.verify("exit", ['']))
         self.assertTrue(self.vty.node() is None)
 
-        # Check searching for outer node's commands
-        self.vty.command("configure terminal")
-        self.vty.command('msc 0')
-        self.vty.command("bsc")
-        self.assertEquals(self.vty.node(), 'config-bsc')
-        self.vty.command("msc 0")
-        self.assertEquals(self.vty.node(), 'config-msc')
-
     def testUssdNotificationsMsc(self):
         self.vty.enable()
         self.vty.command("configure terminal")
@@ -716,7 +708,6 @@ class TestVTYBSC(TestVTYGenericBSC):
     def testPingPongConfiguration(self):
         self.vty.enable()
         self.vty.verify("configure terminal", [''])
-        self.vty.verify("network", [''])
         self.vty.verify("msc 0", [''])
 
         self.vty.verify("timeout-ping 12", [''])
@@ -856,19 +847,6 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.assertEquals(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify('exit', ['']))
         self.assertTrue(self.vty.node() is None)
-
-        # Check searching for outer node's commands
-        self.vty.command('configure terminal')
-        self.vty.command('mgcp')
-        self.vty.command('nat')
-        self.assertEquals(self.vty.node(), 'config-nat')
-        self.vty.command('mgcp')
-        self.assertEquals(self.vty.node(), 'config-mgcp')
-        self.vty.command('nat')
-        self.assertEquals(self.vty.node(), 'config-nat')
-        self.vty.command('bsc 0')
-        self.vty.command('mgcp')
-        self.assertEquals(self.vty.node(), 'config-mgcp')
 
     def testRewriteNoRewrite(self):
         self.vty.enable()
