@@ -688,14 +688,14 @@ static int smpp_handle_deliver_resp(struct osmo_esme *esme, struct msgb *msg)
 		return -1;
 	}
 
+	LOGP(DSMPP, LOGL_INFO, "[%s] Rx DELIVER-SM RESP (%s)\n",
+		esme->system_id, get_value_string(smpp_status_strs,
+						  deliver_r.command_status));
+
 	if (deliver_r.command_status == ESME_ROK)
 		smpp_cmd_ack(cmd);
 	else
 		smpp_cmd_err(cmd, deliver_r.command_status);
-
-	LOGP(DSMPP, LOGL_INFO, "[%s] Rx DELIVER-SM RESP (%s)\n",
-		esme->system_id, get_value_string(smpp_status_strs,
-						  deliver_r.command_status));
 
 	return 0;
 }
