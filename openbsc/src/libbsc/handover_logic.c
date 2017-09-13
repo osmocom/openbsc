@@ -186,9 +186,16 @@ static void ho_T3103_cb(void *_ho)
 {
 	struct bsc_handover *ho = _ho;
 	struct gsm_network *net = ho->new_lchan->ts->trx->bts->network;
+	struct msgb *msg;
 
 	DEBUGP(DHO, "HO T3103 expired\n");
 	rate_ctr_inc(&net->bsc_ctrs->ctr[BSC_CTR_HANDOVER_TIMEOUT]);
+
+	ho->new_lchan->conn->in_handover = 0;
+	while (!llist_empty(&ho->new_lchan->conn->ho_queue)) {
+		msg = msgb_dequeue(&ho->new_lchan->conn->ho_queue);
+		msgb_free(msg);
+	}
 
 	ho->new_lchan->conn->ho_lchan = NULL;
 	ho->new_lchan->conn = NULL;
@@ -214,13 +221,16 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 
 	gsm48_send_ho_cmd(ho->old_lchan, new_lchan, 0, ho->ho_ref);
 
+	new_lchan->conn->in_handover = 1;
+
 	/* start T3103.  We can continue either with T3103 expiration,
 	 * 04.08 HANDOVER COMPLETE or 04.08 HANDOVER FAIL */
 	osmo_timer_setup(&ho->T3103, ho_T3103_cb, ho);
 	osmo_timer_schedule(&ho->T3103, 10, 0);
 
 	/* create a RTP connection */
-	if (is_ipaccess_bts(new_lchan->ts->trx->bts))
+	if (is_ipaccess_bts(new_lchan->ts->trx->bts) &&
+					new_lchan->tch_mode != GSM48_CMODE_SIGN)
 		rsl_ipacc_crcx(new_lchan);
 
 	return 0;

@@ -148,6 +148,15 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 				sign_link->trx->bts->nr,
 				sign_link->trx->nr, msg->lchan->ts->nr,
 				gh->proto_discr, gh->msg_type);
+
+		if (conn->in_handover) {
+			msgb_enqueue(&conn->ho_queue, msg);
+			DEBUGP(DCC, "(bts %d trx %d ts %d) Suspend message sending to MS, "
+				"active HO procedure.\n",
+				sign_link->trx->bts->nr,
+				sign_link->trx->nr, msg->lchan->ts->nr);
+			return 0;
+		}
 	}
 
 	return gsm0808_submit_dtap(conn, msg, 0, 0);
@@ -3811,6 +3820,11 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 		gsm48_cc_msg_name(msg_type), trans?(trans->cc.state):0,
 		gsm48_cc_state_name(trans?(trans->cc.state):0));
 
+	if (conn->in_handover) {
+		DEBUGP(DCC, "Message unhandled, handover procedure.\n");
+		return 0;
+	}
+
 	/* Create transaction */
 	if (!trans) {
 		DEBUGP(DCC, "Unknown transaction ID %x, "
@@ -4035,6 +4049,59 @@ static int ho_detect(struct gsm_lchan *new_lchan)
   return ho_switch_audio_rtp_proxy(old_lchan, new_lchan);
 }
 
+static void ho_queue_clean(struct gsm_subscriber_connection *conn)
+{
+	struct msgb *msg;
+	while (!llist_empty(&conn->ho_queue)) {
+		msg = msgb_dequeue(&conn->ho_queue);
+		msgb_free(msg);
+	}
+}
+
+static void ho_resumption(struct gsm_lchan *lchan, struct gsm_trans *trans)
+{
+	struct msgb *msg;
+
+	while (!llist_empty(&lchan->conn->ho_queue)) {
+		msg = msgb_dequeue(&lchan->conn->ho_queue);
+		gsm48_conn_sendmsg(msg, lchan->conn, trans);
+	}
+}
+
+static int ho_fail(struct gsm_lchan *old_lchan)
+{
+	struct gsm_trans *trans;
+
+	old_lchan->conn->in_handover = 0;
+	trans = trans_find_by_lchan(old_lchan);
+	if (trans)
+		ho_resumption(old_lchan, trans);
+	else {
+		LOGP(DHO, LOGL_ERROR, "%s HO fail, but no transaction for old_lchan.\n",
+			gsm_lchan_name(old_lchan));
+		ho_queue_clean(old_lchan->conn);
+	}
+
+	return 0;
+}
+
+static int ho_complete(struct gsm_lchan *new_lchan)
+{
+	struct gsm_trans *trans;
+
+	new_lchan->conn->in_handover = 0;
+	trans = trans_find_by_lchan(new_lchan);
+	if (!trans) {
+		LOGP(DHO, LOGL_ERROR, "%s HO detected, but no transaction for new_lchan.\n",
+			gsm_lchan_name(new_lchan));
+		ho_queue_clean(new_lchan->conn);
+		return 0;
+	}
+
+	ho_resumption(new_lchan, trans);
+	return 0;
+}
+
  /* some other part of the code sends us a signal */
 static int handle_lchan_signal(unsigned int subsys, unsigned int signal,
 				 void *handler_data, void *signal_data)
@@ -4049,6 +4116,10 @@ static int handle_lchan_signal(unsigned int subsys, unsigned int signal,
 		switch (signal) {
 		case S_LCHAN_HANDOVER_DETECT:
 			return ho_detect(lchan);
+		case S_LCHAN_HANDOVER_COMPL:
+		  return ho_complete(lchan);
+		case S_LCHAN_HANDOVER_FAIL:
+			return ho_fail(lchan);
 		}
 		break;
 	}
