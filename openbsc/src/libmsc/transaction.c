@@ -61,6 +61,24 @@ struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 	return NULL;
 }
 
+struct gsm_trans *trans_find_by_lchan(struct gsm_lchan *lchan)
+{
+	struct gsm_trans *tmp;
+	struct gsm_trans *trans = NULL;
+	struct gsm_network *net = lchan->ts->trx->bts->network;
+
+	llist_for_each_entry(tmp, &net->trans_list, entry) {
+		if (!tmp->conn)
+			continue;
+		if (tmp->conn->lchan != lchan && tmp->conn->ho_lchan != lchan)
+			continue;
+	  trans = tmp;
+		break;
+	}
+
+	return trans;
+}
+
 struct gsm_trans *trans_alloc(struct gsm_network *net,
 			      struct gsm_subscriber *subscr,
 			      uint8_t protocol, uint8_t trans_id,

@@ -3397,19 +3397,10 @@ static int tch_rtp_connect(struct gsm_network *net, void *arg)
 
 static int tch_rtp_signal(struct gsm_lchan *lchan, int signal)
 {
-	struct gsm_network *net;
-	struct gsm_trans *tmp, *trans = NULL;
+	struct gsm_network *net = lchan->ts->trx->bts->network;
+	struct gsm_trans *trans;
 
-	net = lchan->ts->trx->bts->network;
-	llist_for_each_entry(tmp, &net->trans_list, entry) {
-		if (!tmp->conn)
-			continue;
-		if (tmp->conn->lchan != lchan && tmp->conn->ho_lchan != lchan)
-			continue;
-		trans = tmp;
-		break;
-	}
-
+	trans = trans_find_by_lchan(lchan);
 	if (!trans) {
 		LOGP(DMNCC, LOGL_ERROR, "%s IPA abis signal but no transaction.\n",
 			gsm_lchan_name(lchan));
