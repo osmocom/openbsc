@@ -1169,7 +1169,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			con_msc = con->msc_con;
 			/* Shortcuts for handling later */
 			con->msc_conf = msc_config_by_con(bsc->nat, con_msc);
-			con->mgcp_conf = mgcp_config_by_num(&bsc->nat->mgcp_cfgs, con->msc_conf->nr);
+			con->mgcp_conf = mgcp_config_by_num(bsc->nat->mgcp_cfgs, con->msc_conf->nr);
 
 			con->filter_state.con_type = con_type;
 			con->filter_state.imsi_checked = filter;
@@ -1660,7 +1660,7 @@ int main(int argc, char **argv)
 	/*
 	 * Setup the MGCP code..
 	 */
-	if (bsc_mgcp_nat_init(nat, &nat->mgcp_cfgs) != 0)
+	if (bsc_mgcp_nat_init(nat, nat->mgcp_cfgs) != 0)
 		return -4;
 
 	/* start control interface after reading config for

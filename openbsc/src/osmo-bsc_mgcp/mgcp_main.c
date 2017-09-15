@@ -199,7 +199,7 @@ static struct vty_app_info vty_info = {
 
 int main(int argc, char **argv)
 {
-	struct llist_head mgcp_cfgs;
+	struct llist_head *mgcp_cfgs;
 	struct gsm_network dummy_network;
 	struct sockaddr_in addr;
 	int on = 1, rc;
@@ -224,10 +224,11 @@ int main(int argc, char **argv)
 	rc = mgcp_parse_config(config_file, &mgcp_cfgs, MGCP_BSC);
 	if (rc < 0)
 		return rc;
-	if (llist_empty(&mgcp_cfgs))
+
+	if (llist_empty(mgcp_cfgs))
 		return -1;
 
-	cfg = llist_entry(mgcp_cfgs.next, struct mgcp_config, entry);
+	cfg = llist_entry(mgcp_cfgs->next, struct mgcp_config, entry);
 
 	/* start telnet after reading config for vty_get_bind_addr() */
 	rc = telnet_init_dynif(tall_bsc_ctx, &dummy_network,

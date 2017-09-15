@@ -1679,7 +1679,7 @@ static int allocate_trunk(struct mgcp_trunk_config *trunk)
 	return 0;
 }
 
-int mgcp_parse_config(const char *config_file, struct llist_head *cfgs,
+int mgcp_parse_config(const char *config_file, struct llist_head **cfgs,
 		      enum mgcp_role role)
 {
 	int rc;
@@ -1720,7 +1720,8 @@ int mgcp_parse_config(const char *config_file, struct llist_head *cfgs,
 		}
 		cfg->role = role;
 	}
-	memcpy(cfgs, &mgcp_configs, sizeof(struct llist_head));
+
+	*cfgs = &mgcp_configs;
 
 	return 0;
 }
