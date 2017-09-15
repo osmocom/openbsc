@@ -246,7 +246,7 @@ struct mgcp_config *mgcp_config_by_num(struct llist_head *configs, int index)
 }
 
 DEFUN(show_mcgp, show_mgcp_cmd,
-      "show mgcp <MGCP_NO> [stats]",
+      "show mgcp MGCP_NO [stats]",
       SHOW_STR
       "Display information about the MGCP Media Gateway\n"
       "Include Statistics\n")
@@ -270,7 +270,7 @@ DEFUN(show_mcgp, show_mgcp_cmd,
 
 DEFUN(cfg_mgcp,
       cfg_mgcp_cmd,
-      "mgcp [<MSC_NR>]",
+      "mgcp [MGCP_NR]",
       "Configure the MGCP\n" "Identifier of the MGCP\n")
 {
 	struct mgcp_config *mgcp;
