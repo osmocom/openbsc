@@ -1,7 +1,7 @@
 <vtydoc xmlns='urn:osmocom:xml:libosmocore:vty:doc:1.0'>
-  <node id='0'>
+  <node id='Password'>
   </node>
-  <node id='1'>
+  <node id='_1'>
     <command id='show version'>
       <params>
         <param name='show' doc='Show running system information' />
@@ -202,7 +202,7 @@
         <param name='MASK' doc='The logmask to use' />
       </params>
     </command>
-    <command id='logging level (all|rll|cc|mm|rr|rsl|nm|mncc|pag|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp|llc|sndcp|nat|ctrl|smpp|filter|ranap|sua|lglobal|llapd|linp|lmux|lmi|lmib|lsms|lctrl|lgtp|lstats) (everything|debug|info|notice|error|fatal)'>
+    <command id='logging level (all|rll|cc|mm|rr|rsl|nm|mncc|pag|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp|llc|sndcp|nat|ctrl|smpp|filter|ranap|sua|pcu|lglobal|llapd|linp|lmux|lmi|lmib|lsms|lctrl|lgtp|lstats|lgsup|loap|lss7|lsccp|lsua|lm3ua|lmgcp) (everything|debug|info|notice|error|fatal)'>
       <params>
         <param name='logging' doc='Configure log message to this terminal' />
         <param name='level' doc='Set the log level for a specified category' />
@@ -233,6 +233,7 @@
         <param name='filter' doc='BSC/NAT IMSI based filtering' />
         <param name='ranap' doc='Radio Access Network Application Part Protocol' />
         <param name='sua' doc='SCCP User Adaptation Protocol' />
+        <param name='pcu' doc='PCU Interface' />
         <param name='lglobal' doc='Library-internal global log family' />
         <param name='llapd' doc='LAPD in libosmogsm' />
         <param name='linp' doc='A-bis Intput Subsystem' />
@@ -243,6 +244,13 @@
         <param name='lctrl' doc='Control Interface' />
         <param name='lgtp' doc='GPRS GTP library' />
         <param name='lstats' doc='Statistics messages and logging' />
+        <param name='lgsup' doc='Generic Subscriber Update Protocol' />
+        <param name='loap' doc='Osmocom Authentication Protocol' />
+        <param name='lss7' doc='libosmo-sigtran Signalling System 7' />
+        <param name='lsccp' doc='libosmo-sigtran SCCP Implementation' />
+        <param name='lsua' doc='libosmo-sigtran SCCP User Adaptation' />
+        <param name='lm3ua' doc='libosmo-sigtran MTP3 User Adaptation' />
+        <param name='lmgcp' doc='libosmo-mgcp Media Gateway Control Protocol' />
         <param name='everything' doc='Don&apos;t use. It doesn&apos;t log anything' />
         <param name='debug' doc='Log debug messages and higher levels' />
         <param name='info' doc='Log informational messages and higher levels' />
@@ -307,6 +315,34 @@
         <param name='e1_timeslot' doc='Display information about a E1 timeslot' />
         <param name='[line_nr]' doc='E1 Line Number' />
         <param name='[ts_nr]' doc='E1 Timeslot Number' />
+      </params>
+    </command>
+    <command id='show fsm NAME'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='fsm' doc='Show information about finite state machines' />
+        <param name='NAME' doc='Display information about a single named finite state machine' />
+      </params>
+    </command>
+    <command id='show fsm all'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='fsm' doc='Show information about finite state machines' />
+        <param name='all' doc='Display a list of all registered finite state machines' />
+      </params>
+    </command>
+    <command id='show fsm-instances NAME'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='fsm-instances' doc='Show information about finite state machine instances' />
+        <param name='NAME' doc='Display a list of all FSM instances of the named finite state machine' />
+      </params>
+    </command>
+    <command id='show fsm-instances all'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='fsm-instances' doc='Show information about finite state machine instances' />
+        <param name='all' doc='Display a list of all FSM instances of all finite state machine' />
       </params>
     </command>
     <command id='show subscriber (extension|imsi|tmsi|id) ID'>
@@ -423,6 +459,37 @@
         <param name='.TEXT' doc='Text of USSD message to send' />
       </params>
     </command>
+    <command id='subscriber (extension|imsi|tmsi|id) ID ms-test close-loop (a|b|c|d|e|f|i)'>
+      <params>
+        <param name='subscriber' doc='Operations on a Subscriber' />
+        <param name='extension' doc='Identify subscriber by extension (phone number)' />
+        <param name='imsi' doc='Identify subscriber by IMSI' />
+        <param name='tmsi' doc='Identify subscriber by TMSI' />
+        <param name='id' doc='Identify subscriber by database ID' />
+        <param name='ID' doc='Identifier for the subscriber' />
+        <param name='ms-test' doc='Send a TS 04.14 MS Test Command to subscriber' />
+        <param name='close-loop' doc='Close a TCH Loop inside the MS' />
+        <param name='a' doc='Loop Type A' />
+        <param name='b' doc='Loop Type B' />
+        <param name='c' doc='Loop Type C' />
+        <param name='d' doc='Loop Type D' />
+        <param name='e' doc='Loop Type E' />
+        <param name='f' doc='Loop Type F' />
+        <param name='i' doc='Loop Type I' />
+      </params>
+    </command>
+    <command id='subscriber (extension|imsi|tmsi|id) ID ms-test open-loop'>
+      <params>
+        <param name='subscriber' doc='Operations on a Subscriber' />
+        <param name='extension' doc='Identify subscriber by extension (phone number)' />
+        <param name='imsi' doc='Identify subscriber by IMSI' />
+        <param name='tmsi' doc='Identify subscriber by TMSI' />
+        <param name='id' doc='Identify subscriber by database ID' />
+        <param name='ID' doc='Identifier for the subscriber' />
+        <param name='ms-test' doc='Send a TS 04.14 MS Test Command to subscriber' />
+        <param name='open-loop' doc='Open a TCH Loop inside the MS' />
+      </params>
+    </command>
     <command id='subscriber (extension|imsi|tmsi|id) ID update'>
       <params>
         <param name='subscriber' doc='Operations on a Subscriber' />
@@ -454,10 +521,17 @@
         <param name='IMSI' doc='IMSI to be used as filter' />
       </params>
     </command>
+    <command id='show smpp esme'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='smpp' doc='SMPP Interface' />
+        <param name='esme' doc='SMPP Extrenal SMS Entity' />
+      </params>
+    </command>
   </node>
-  <node id='2'>
+  <node id='Password_2'>
   </node>
-  <node id='3'>
+  <node id='_2'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -719,7 +793,7 @@
         <param name='MASK' doc='The logmask to use' />
       </params>
     </command>
-    <command id='logging level (all|rll|cc|mm|rr|rsl|nm|mncc|pag|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp|llc|sndcp|nat|ctrl|smpp|filter|ranap|sua|lglobal|llapd|linp|lmux|lmi|lmib|lsms|lctrl|lgtp|lstats) (everything|debug|info|notice|error|fatal)'>
+    <command id='logging level (all|rll|cc|mm|rr|rsl|nm|mncc|pag|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp|llc|sndcp|nat|ctrl|smpp|filter|ranap|sua|pcu|lglobal|llapd|linp|lmux|lmi|lmib|lsms|lctrl|lgtp|lstats|lgsup|loap|lss7|lsccp|lsua|lm3ua|lmgcp) (everything|debug|info|notice|error|fatal)'>
       <params>
         <param name='logging' doc='Configure log message to this terminal' />
         <param name='level' doc='Set the log level for a specified category' />
@@ -750,6 +824,7 @@
         <param name='filter' doc='BSC/NAT IMSI based filtering' />
         <param name='ranap' doc='Radio Access Network Application Part Protocol' />
         <param name='sua' doc='SCCP User Adaptation Protocol' />
+        <param name='pcu' doc='PCU Interface' />
         <param name='lglobal' doc='Library-internal global log family' />
         <param name='llapd' doc='LAPD in libosmogsm' />
         <param name='linp' doc='A-bis Intput Subsystem' />
@@ -760,6 +835,13 @@
         <param name='lctrl' doc='Control Interface' />
         <param name='lgtp' doc='GPRS GTP library' />
         <param name='lstats' doc='Statistics messages and logging' />
+        <param name='lgsup' doc='Generic Subscriber Update Protocol' />
+        <param name='loap' doc='Osmocom Authentication Protocol' />
+        <param name='lss7' doc='libosmo-sigtran Signalling System 7' />
+        <param name='lsccp' doc='libosmo-sigtran SCCP Implementation' />
+        <param name='lsua' doc='libosmo-sigtran SCCP User Adaptation' />
+        <param name='lm3ua' doc='libosmo-sigtran MTP3 User Adaptation' />
+        <param name='lmgcp' doc='libosmo-mgcp Media Gateway Control Protocol' />
         <param name='everything' doc='Don&apos;t use. It doesn&apos;t log anything' />
         <param name='debug' doc='Log debug messages and higher levels' />
         <param name='info' doc='Log informational messages and higher levels' />
@@ -820,6 +902,13 @@
         <param name='&lt;0-65535&gt;' doc='BTS Number' />
       </params>
     </command>
+    <command id='bts &lt;0-255&gt; resend-system-information'>
+      <params>
+        <param name='bts' doc='BTS Specific Commands' />
+        <param name='&lt;0-255&gt;' doc='BTS Number' />
+        <param name='resend-system-information' doc='Re-generate + re-send BCCH SYSTEM INFORMATION' />
+      </params>
+    </command>
     <command id='bts &lt;0-255&gt; trx &lt;0-255&gt; timeslot &lt;0-7&gt; pdch (activate|deactivate)'>
       <params>
         <param name='bts' doc='BTS related commands' />
@@ -833,6 +922,40 @@
         <param name='deactivate' doc='Deactivate Dynamic PDCH/TCH (-&gt; TCH mode)' />
       </params>
     </command>
+    <command id='bts &lt;0-255&gt; trx &lt;0-255&gt; timeslot &lt;0-7&gt; sub-slot &lt;0-7&gt; (activate|deactivate) (hr|fr|efr|amr) [&lt;0-7&gt;]'>
+      <params>
+        <param name='bts' doc='BTS related commands' />
+        <param name='&lt;0-255&gt;' doc='BTS Number' />
+        <param name='trx' doc='Transceiver' />
+        <param name='&lt;0-255&gt;' doc='Transceiver Number' />
+        <param name='timeslot' doc='TRX Timeslot' />
+        <param name='&lt;0-7&gt;' doc='Timeslot Number' />
+        <param name='sub-slot' doc='Sub-Slot Number' />
+        <param name='&lt;0-7&gt;' doc='Sub-Slot Number' />
+        <param name='activate' doc='Manual Channel Activation (e.g. for BER test)' />
+        <param name='deactivate' doc='Manual Channel Deactivation (e.g. for BER test)' />
+        <param name='hr' doc='Half-Rate v1' />
+        <param name='fr' doc='Full-Rate' />
+        <param name='efr' doc='Enhanced Full Rate' />
+        <param name='amr' doc='Adaptive Multi-Rate' />
+        <param name='[&lt;0-7&gt;]' doc='AMR Mode' />
+      </params>
+    </command>
+    <command id='bts &lt;0-255&gt; trx &lt;0-255&gt; timeslot &lt;0-7&gt; sub-slot &lt;0-7&gt; mdcx A.B.C.D &lt;0-65535&gt;'>
+      <params>
+        <param name='bts' doc='BTS related commands' />
+        <param name='&lt;0-255&gt;' doc='BTS Number' />
+        <param name='trx' doc='Transceiver' />
+        <param name='&lt;0-255&gt;' doc='Transceiver Number' />
+        <param name='timeslot' doc='TRX Timeslot' />
+        <param name='&lt;0-7&gt;' doc='Timeslot Number' />
+        <param name='sub-slot' doc='Sub-Slot' />
+        <param name='&lt;0-7&gt;' doc='Sub-Slot Number' />
+        <param name='mdcx' doc='Modify RTP Connection' />
+        <param name='A.B.C.D' doc='MGW IP Address' />
+        <param name='&lt;0-65535&gt;' doc='MGW UDP Port' />
+      </params>
+    </command>
     <command id='bts &lt;0-255&gt; smscb-command &lt;1-4&gt; HEXSTRING'>
       <params>
         <param name='bts' doc='BTS related commands' />
@@ -840,6 +963,14 @@
         <param name='smscb-command' doc='SMS Cell Broadcast' />
         <param name='&lt;1-4&gt;' doc='Last Valid Block' />
         <param name='HEXSTRING' doc='Hex Encoded SMSCB message (up to 88 octets)' />
+      </params>
+    </command>
+    <command id='ctrl-interface generate-trap TRAP VALUE'>
+      <params>
+        <param name='ctrl-interface' doc='Commands related to the CTRL Interface' />
+        <param name='generate-trap' doc='Generate a TRAP for test purpose' />
+        <param name='TRAP' doc='Identity/Name of the TRAP variable' />
+        <param name='VALUE' doc='Value of the TRAP variable' />
       </params>
     </command>
     <command id='bts &lt;0-255&gt; oml class (site-manager|bts|radio-carrier|baseband-transceiver|channel|adjc|handover|power-contorl|btse|rack|test|envabtse|bport|gprs-nse|gprs-cell|gprs-nsvc|siemenshw) instance &lt;0-255&gt; &lt;0-255&gt; &lt;0-255&gt;'>
@@ -936,6 +1067,34 @@
         <param name='e1_timeslot' doc='Display information about a E1 timeslot' />
         <param name='[line_nr]' doc='E1 Line Number' />
         <param name='[ts_nr]' doc='E1 Timeslot Number' />
+      </params>
+    </command>
+    <command id='show fsm NAME'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='fsm' doc='Show information about finite state machines' />
+        <param name='NAME' doc='Display information about a single named finite state machine' />
+      </params>
+    </command>
+    <command id='show fsm all'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='fsm' doc='Show information about finite state machines' />
+        <param name='all' doc='Display a list of all registered finite state machines' />
+      </params>
+    </command>
+    <command id='show fsm-instances NAME'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='fsm-instances' doc='Show information about finite state machine instances' />
+        <param name='NAME' doc='Display a list of all FSM instances of the named finite state machine' />
+      </params>
+    </command>
+    <command id='show fsm-instances all'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='fsm-instances' doc='Show information about finite state machine instances' />
+        <param name='all' doc='Display a list of all FSM instances of all finite state machine' />
       </params>
     </command>
     <command id='show subscriber (extension|imsi|tmsi|id) ID'>
@@ -1052,6 +1211,37 @@
         <param name='.TEXT' doc='Text of USSD message to send' />
       </params>
     </command>
+    <command id='subscriber (extension|imsi|tmsi|id) ID ms-test close-loop (a|b|c|d|e|f|i)'>
+      <params>
+        <param name='subscriber' doc='Operations on a Subscriber' />
+        <param name='extension' doc='Identify subscriber by extension (phone number)' />
+        <param name='imsi' doc='Identify subscriber by IMSI' />
+        <param name='tmsi' doc='Identify subscriber by TMSI' />
+        <param name='id' doc='Identify subscriber by database ID' />
+        <param name='ID' doc='Identifier for the subscriber' />
+        <param name='ms-test' doc='Send a TS 04.14 MS Test Command to subscriber' />
+        <param name='close-loop' doc='Close a TCH Loop inside the MS' />
+        <param name='a' doc='Loop Type A' />
+        <param name='b' doc='Loop Type B' />
+        <param name='c' doc='Loop Type C' />
+        <param name='d' doc='Loop Type D' />
+        <param name='e' doc='Loop Type E' />
+        <param name='f' doc='Loop Type F' />
+        <param name='i' doc='Loop Type I' />
+      </params>
+    </command>
+    <command id='subscriber (extension|imsi|tmsi|id) ID ms-test open-loop'>
+      <params>
+        <param name='subscriber' doc='Operations on a Subscriber' />
+        <param name='extension' doc='Identify subscriber by extension (phone number)' />
+        <param name='imsi' doc='Identify subscriber by IMSI' />
+        <param name='tmsi' doc='Identify subscriber by TMSI' />
+        <param name='id' doc='Identify subscriber by database ID' />
+        <param name='ID' doc='Identifier for the subscriber' />
+        <param name='ms-test' doc='Send a TS 04.14 MS Test Command to subscriber' />
+        <param name='open-loop' doc='Open a TCH Loop inside the MS' />
+      </params>
+    </command>
     <command id='subscriber (extension|imsi|tmsi|id) ID update'>
       <params>
         <param name='subscriber' doc='Operations on a Subscriber' />
@@ -1092,6 +1282,17 @@
         <param name='id' doc='Identify subscriber by database ID' />
         <param name='ID' doc='Identifier for the subscriber' />
         <param name='delete' doc='Delete subscriber in HLR' />
+      </params>
+    </command>
+    <command id='subscriber (extension|imsi|tmsi|id) ID expire'>
+      <params>
+        <param name='subscriber' doc='Operations on a Subscriber' />
+        <param name='extension' doc='Identify subscriber by extension (phone number)' />
+        <param name='imsi' doc='Identify subscriber by IMSI' />
+        <param name='tmsi' doc='Identify subscriber by TMSI' />
+        <param name='id' doc='Identify subscriber by database ID' />
+        <param name='ID' doc='Identifier for the subscriber' />
+        <param name='expire' doc='Expire the subscriber Now' />
       </params>
     </command>
     <command id='subscriber (extension|imsi|tmsi|id) ID name .NAME'>
@@ -1209,8 +1410,15 @@
         <param name='NAME' doc='Name up to 31 characters included in report' />
       </params>
     </command>
+    <command id='show smpp esme'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='smpp' doc='SMPP Interface' />
+        <param name='esme' doc='SMPP Extrenal SMS Entity' />
+      </params>
+    </command>
   </node>
-  <node id='4'>
+  <node id='config'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -1372,6 +1580,11 @@
         <param name='history' doc='Display the session command history' />
       </params>
     </command>
+    <command id='network'>
+      <params>
+        <param name='network' doc='Configure the GSM network' />
+      </params>
+    </command>
     <command id='log stderr'>
       <params>
         <param name='log' doc='Configure logging sub-system' />
@@ -1488,11 +1701,6 @@
         <param name='&lt;1-65535&gt;' doc='Interval in seconds' />
       </params>
     </command>
-    <command id='network'>
-      <params>
-        <param name='network' doc='Configure the GSM network' />
-      </params>
-    </command>
     <command id='e1_input'>
       <params>
         <param name='e1_input' doc='Configure E1/T1/J1 TDM input' />
@@ -1513,8 +1721,13 @@
         <param name='ctrl' doc='Configure the Control Interface' />
       </params>
     </command>
+    <command id='smpp'>
+      <params>
+        <param name='smpp' doc='Configure SMPP SMS Interface' />
+      </params>
+    </command>
   </node>
-  <node id='7'>
+  <node id='config-log'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -1607,7 +1820,7 @@
         <param name='1' doc='Prefix each log message with category/subsystem name' />
       </params>
     </command>
-    <command id='logging level (all|rll|cc|mm|rr|rsl|nm|mncc|pag|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp|llc|sndcp|nat|ctrl|smpp|filter|ranap|sua|lglobal|llapd|linp|lmux|lmi|lmib|lsms|lctrl|lgtp|lstats) (everything|debug|info|notice|error|fatal)'>
+    <command id='logging level (all|rll|cc|mm|rr|rsl|nm|mncc|pag|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp|llc|sndcp|nat|ctrl|smpp|filter|ranap|sua|pcu|lglobal|llapd|linp|lmux|lmi|lmib|lsms|lctrl|lgtp|lstats|lgsup|loap|lss7|lsccp|lsua|lm3ua|lmgcp) (everything|debug|info|notice|error|fatal)'>
       <params>
         <param name='logging' doc='Configure log message to this terminal' />
         <param name='level' doc='Set the log level for a specified category' />
@@ -1638,6 +1851,7 @@
         <param name='filter' doc='BSC/NAT IMSI based filtering' />
         <param name='ranap' doc='Radio Access Network Application Part Protocol' />
         <param name='sua' doc='SCCP User Adaptation Protocol' />
+        <param name='pcu' doc='PCU Interface' />
         <param name='lglobal' doc='Library-internal global log family' />
         <param name='llapd' doc='LAPD in libosmogsm' />
         <param name='linp' doc='A-bis Intput Subsystem' />
@@ -1648,6 +1862,13 @@
         <param name='lctrl' doc='Control Interface' />
         <param name='lgtp' doc='GPRS GTP library' />
         <param name='lstats' doc='Statistics messages and logging' />
+        <param name='lgsup' doc='Generic Subscriber Update Protocol' />
+        <param name='loap' doc='Osmocom Authentication Protocol' />
+        <param name='lss7' doc='libosmo-sigtran Signalling System 7' />
+        <param name='lsccp' doc='libosmo-sigtran SCCP Implementation' />
+        <param name='lsua' doc='libosmo-sigtran SCCP User Adaptation' />
+        <param name='lm3ua' doc='libosmo-sigtran MTP3 User Adaptation' />
+        <param name='lmgcp' doc='libosmo-mgcp Media Gateway Control Protocol' />
         <param name='everything' doc='Don&apos;t use. It doesn&apos;t log anything' />
         <param name='debug' doc='Log debug messages and higher levels' />
         <param name='info' doc='Log informational messages and higher levels' />
@@ -1678,7 +1899,7 @@
       </params>
     </command>
   </node>
-  <node id='8'>
+  <node id='config-stats'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -1795,7 +2016,7 @@
       </params>
     </command>
   </node>
-  <node id='9'>
+  <node id='config-line'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -1863,7 +2084,7 @@
       </params>
     </command>
   </node>
-  <node id='10'>
+  <node id='config-e1_input'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -1913,7 +2134,7 @@
         <param name='end' doc='End current mode and change to enable mode.' />
       </params>
     </command>
-    <command id='e1_line &lt;0-255&gt; driver (misdn|misdn_lapd|dahdi|ipa)'>
+    <command id='e1_line &lt;0-255&gt; driver (misdn|misdn_lapd|dahdi|ipa|unixsocket)'>
       <params>
         <param name='e1_line' doc='Configure E1/T1/J1 Line' />
         <param name='&lt;0-255&gt;' doc='Line Number' />
@@ -1922,6 +2143,7 @@
         <param name='misdn_lapd' doc='mISDN supported E1 Card (userspace LAPD)' />
         <param name='dahdi' doc='DAHDI supported E1/T1/J1 Card' />
         <param name='ipa' doc='IPA TCP/IP input' />
+        <param name='unixsocket' doc='HSL TCP/IP input' />
       </params>
     </command>
     <command id='e1_line &lt;0-255&gt; port &lt;0-255&gt;'>
@@ -1930,6 +2152,14 @@
         <param name='&lt;0-255&gt;' doc='Line Number' />
         <param name='port' doc='Set physical port/span/card number' />
         <param name='&lt;0-255&gt;' doc='E1/T1 Port/Span/Card number' />
+      </params>
+    </command>
+    <command id='e1_line &lt;0-255&gt; socket .SOCKET'>
+      <params>
+        <param name='e1_line' doc='Configure E1/T1/J1 Line' />
+        <param name='&lt;0-255&gt;' doc='Line Number' />
+        <param name='socket' doc='Set socket path for unixsocket' />
+        <param name='.SOCKET' doc='socket path' />
       </params>
     </command>
     <command id='e1_line &lt;0-255&gt; name .LINE'>
@@ -1973,7 +2203,56 @@
       </params>
     </command>
   </node>
-  <node id='14'>
+  <node id='config-ctrl'>
+    <command id='help'>
+      <params>
+        <param name='help' doc='Description of the interactive help system' />
+      </params>
+    </command>
+    <command id='list'>
+      <params>
+        <param name='list' doc='Print command list' />
+      </params>
+    </command>
+    <command id='write terminal'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='terminal' doc='Write to terminal' />
+      </params>
+    </command>
+    <command id='write file'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='file' doc='Write to configuration file' />
+      </params>
+    </command>
+    <command id='write memory'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='memory' doc='Write configuration to the file (same as write file)' />
+      </params>
+    </command>
+    <command id='write'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+      </params>
+    </command>
+    <command id='show running-config'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='running-config' doc='running configuration' />
+      </params>
+    </command>
+    <command id='exit'>
+      <params>
+        <param name='exit' doc='Exit current mode and down to previous mode' />
+      </params>
+    </command>
+    <command id='end'>
+      <params>
+        <param name='end' doc='End current mode and change to enable mode.' />
+      </params>
+    </command>
     <command id='bind A.B.C.D'>
       <params>
         <param name='bind' doc='Set bind address to listen for Control connections' />
@@ -1981,7 +2260,7 @@
       </params>
     </command>
   </node>
-  <node id='19'>
+  <node id='config-net'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -2096,13 +2375,6 @@
         <param name='3' doc='A5/3: &apos;New&apos; Secure Encryption' />
       </params>
     </command>
-    <command id='neci (0|1)'>
-      <params>
-        <param name='neci' doc='New Establish Cause Indication' />
-        <param name='0' doc='Don&apos;t set the NECI bit' />
-        <param name='1' doc='Set the NECI bit' />
-      </params>
-    </command>
     <command id='rrlp mode (none|ms-based|ms-preferred|ass-preferred)'>
       <params>
         <param name='rrlp' doc='Radio Resource Location Protocol' />
@@ -2119,6 +2391,54 @@
         <param name='info' doc='Send MM INFO after LOC UPD ACCEPT' />
         <param name='0' doc='Disable' />
         <param name='1' doc='Enable' />
+      </params>
+    </command>
+    <command id='subscriber-keep-in-ram (0|1)'>
+      <params>
+        <param name='subscriber-keep-in-ram' doc='Keep unused subscribers in RAM.' />
+        <param name='0' doc='Delete unused subscribers' />
+        <param name='1' doc='Keep unused subscribers' />
+      </params>
+    </command>
+    <command id='timezone &lt;-19-19&gt; (0|15|30|45)'>
+      <params>
+        <param name='timezone' doc='Set the Timezone Offset of the network' />
+        <param name='&lt;-19-19&gt;' doc='Timezone offset (hours)' />
+        <param name='0' doc='Timezone offset (00 minutes)' />
+        <param name='15' doc='Timezone offset (15 minutes)' />
+        <param name='30' doc='Timezone offset (30 minutes)' />
+        <param name='45' doc='Timezone offset (45 minutes)' />
+      </params>
+    </command>
+    <command id='timezone &lt;-19-19&gt; (0|15|30|45) &lt;0-2&gt;'>
+      <params>
+        <param name='timezone' doc='Set the Timezone Offset of the network' />
+        <param name='&lt;-19-19&gt;' doc='Timezone offset (hours)' />
+        <param name='0' doc='Timezone offset (00 minutes)' />
+        <param name='15' doc='Timezone offset (15 minutes)' />
+        <param name='30' doc='Timezone offset (30 minutes)' />
+        <param name='45' doc='Timezone offset (45 minutes)' />
+        <param name='&lt;0-2&gt;' doc='DST offset (hours)' />
+      </params>
+    </command>
+    <command id='no timezone'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='timezone' doc='Disable network timezone override, use system tz' />
+      </params>
+    </command>
+    <command id='dyn_ts_allow_tch_f (0|1)'>
+      <params>
+        <param name='dyn_ts_allow_tch_f' doc='Allow or disallow allocating TCH/F on TCH_F_TCH_H_PDCH timeslots' />
+        <param name='0' doc='Disallow TCH/F on TCH_F_TCH_H_PDCH (default)' />
+        <param name='1' doc='Allow TCH/F on TCH_F_TCH_H_PDCH' />
+      </params>
+    </command>
+    <command id='neci (0|1)'>
+      <params>
+        <param name='neci' doc='New Establish Cause Indication' />
+        <param name='0' doc='Don&apos;t set the NECI bit' />
+        <param name='1' doc='Set the NECI bit' />
       </params>
     </command>
     <command id='handover (0|1)'>
@@ -2182,88 +2502,100 @@
         <param name='&lt;0-9999&gt;' doc='Number' />
       </params>
     </command>
-    <command id='timer t3101 &lt;0-65535&gt;'>
+    <command id='timer t3101 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3101' doc='Set the timeout value for IMMEDIATE ASSIGNMENT.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3101' doc='Set the timeout value for IMMEDIATE ASSIGNMENT (default: 10 seconds)' />
+        <param name='default' doc='Set to default timer value (10 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3103 &lt;0-65535&gt;'>
+    <command id='timer t3103 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3103' doc='Set the timeout value for HANDOVER.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3103' doc='Set the timeout value for HANDOVER (default: 5 seconds)' />
+        <param name='default' doc='Set to default timer value (5 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3105 &lt;0-65535&gt;'>
+    <command id='timer t3105 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3105' doc='Set the timer for repetition of PHYSICAL INFORMATION.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3105' doc='Set the timer for repetition of PHYSICAL INFORMATION (default: 100 seconds)' />
+        <param name='default' doc='Set to default timer value (100 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3107 &lt;0-65535&gt;'>
+    <command id='timer t3107 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3107' doc='Currently not used.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3107' doc='Currently not used (default: 5 seconds)' />
+        <param name='default' doc='Set to default timer value (5 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3109 &lt;0-65535&gt;'>
+    <command id='timer t3109 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3109' doc='Set the RSL SACCH deactivation timeout.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3109' doc='Set the RSL SACCH deactivation timeout (default: 19 seconds)' />
+        <param name='default' doc='Set to default timer value (19 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3111 &lt;0-65535&gt;'>
+    <command id='timer t3111 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3111' doc='Set the RSL timeout to wait before releasing the RF Channel.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3111' doc='Set the RSL timeout to wait before releasing the RF Channel (default: 2 seconds)' />
+        <param name='default' doc='Set to default timer value (2 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3113 &lt;0-65535&gt;'>
+    <command id='timer t3113 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3113' doc='Set the time to try paging a subscriber.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3113' doc='Set the time to try paging a subscriber (default: 60 seconds)' />
+        <param name='default' doc='Set to default timer value (60 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3115 &lt;0-65535&gt;'>
+    <command id='timer t3115 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3115' doc='Currently not used.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3115' doc='Currently not used (default: 10 seconds)' />
+        <param name='default' doc='Set to default timer value (10 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3117 &lt;0-65535&gt;'>
+    <command id='timer t3117 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3117' doc='Currently not used.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3117' doc='Currently not used (default: 10 seconds)' />
+        <param name='default' doc='Set to default timer value (10 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3119 &lt;0-65535&gt;'>
+    <command id='timer t3119 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3119' doc='Currently not used.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3119' doc='Currently not used (default: 10 seconds)' />
+        <param name='default' doc='Set to default timer value (10 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3122 &lt;0-65535&gt;'>
+    <command id='timer t3122 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3122' doc='Waiting time (seconds) after IMM ASS REJECT' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3122' doc='Waiting time (seconds) after IMM ASS REJECT (default: 10 seconds)' />
+        <param name='default' doc='Set to default timer value (10 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
-    <command id='timer t3141 &lt;0-65535&gt;'>
+    <command id='timer t3141 (default|&lt;1-65535&gt;)'>
       <params>
         <param name='timer' doc='Configure GSM Timers' />
-        <param name='t3141' doc='Currently not used.' />
-        <param name='&lt;0-65535&gt;' doc='Timer Value in seconds' />
+        <param name='t3141' doc='Currently not used (default: 10 seconds)' />
+        <param name='default' doc='Set to default timer value (10 seconds)' />
+        <param name='&lt;1-65535&gt;' doc='Timer Value in seconds' />
       </params>
     </command>
     <command id='dtx-used (0|1)'>
@@ -2271,13 +2603,6 @@
         <param name='dtx-used' doc='.HIDDEN' />
         <param name='0' doc='Obsolete' />
         <param name='1' doc='Obsolete' />
-      </params>
-    </command>
-    <command id='subscriber-keep-in-ram (0|1)'>
-      <params>
-        <param name='subscriber-keep-in-ram' doc='Keep unused subscribers in RAM.' />
-        <param name='0' doc='Delete unused subscribers' />
-        <param name='1' doc='Keep unused subscribers' />
       </params>
     </command>
     <command id='paging any use tch (0|1)'>
@@ -2297,7 +2622,7 @@
       </params>
     </command>
   </node>
-  <node id='20'>
+  <node id='config-net-bts'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -2360,7 +2685,7 @@
     </command>
     <command id='description .TEXT'>
       <params>
-        <param name='description' doc='Save human-readable decription of the object' />
+        <param name='description' doc='Save human-readable description of the object' />
         <param name='.TEXT' doc='Text until the end of the line' />
       </params>
     </command>
@@ -2440,33 +2765,6 @@
         <param name='ip.access' doc='Abis/IP specific options' />
         <param name='rsl-ip' doc='Set the IPA RSL IP Address of the BSC' />
         <param name='A.B.C.D' doc='Destination IP address for RSL connection' />
-      </params>
-    </command>
-    <command id='timezone &lt;-19-19&gt; (0|15|30|45)'>
-      <params>
-        <param name='timezone' doc='Set the Timezone Offset of this BTS' />
-        <param name='&lt;-19-19&gt;' doc='Timezone offset (hours)' />
-        <param name='0' doc='Timezone offset (00 minutes)' />
-        <param name='15' doc='Timezone offset (15 minutes)' />
-        <param name='30' doc='Timezone offset (30 minutes)' />
-        <param name='45' doc='Timezone offset (45 minutes)' />
-      </params>
-    </command>
-    <command id='timezone &lt;-19-19&gt; (0|15|30|45) &lt;0-2&gt;'>
-      <params>
-        <param name='timezone' doc='Set the Timezone Offset of this BTS' />
-        <param name='&lt;-19-19&gt;' doc='Timezone offset (hours)' />
-        <param name='0' doc='Timezone offset (00 minutes)' />
-        <param name='15' doc='Timezone offset (15 minutes)' />
-        <param name='30' doc='Timezone offset (30 minutes)' />
-        <param name='45' doc='Timezone offset (45 minutes)' />
-        <param name='&lt;0-2&gt;' doc='DST offset (hours)' />
-      </params>
-    </command>
-    <command id='no timezone'>
-      <params>
-        <param name='no' doc='Negate a command or set its defaults' />
-        <param name='timezone' doc='Disable BTS specific timezone' />
       </params>
     </command>
     <command id='nokia_site skip-reset (0|1)'>
@@ -2725,6 +3023,12 @@
         <param name='&lt;4-64&gt;' doc='Radio link timeout value (lost SACCH block)' />
       </params>
     </command>
+    <command id='radio-link-timeout infinite'>
+      <params>
+        <param name='radio-link-timeout' doc='Radio link timeout criterion (BTS side)' />
+        <param name='infinite' doc='Infinite Radio link timeout value (use only for BTS RF testing)' />
+      </params>
+    </command>
     <command id='gprs mode (none|gprs|egprs)'>
       <params>
         <param name='gprs' doc='GPRS Packet Network' />
@@ -2926,6 +3230,13 @@
         <param name='HEXSTRING' doc='Static user-specified SI content in HEX notation' />
       </params>
     </command>
+    <command id='early-classmark-sending (allowed|forbidden)'>
+      <params>
+        <param name='early-classmark-sending' doc='Early Classmark Sending' />
+        <param name='allowed' doc='Early Classmark Sending is allowed' />
+        <param name='forbidden' doc='Early Classmark Sending is forbidden' />
+      </params>
+    </command>
     <command id='neighbor-list mode (automatic|manual|manual-si5)'>
       <params>
         <param name='neighbor-list' doc='Neighbor List' />
@@ -2954,16 +3265,23 @@
         <param name='&lt;0-1023&gt;' doc='ARFCN of neighbor' />
       </params>
     </command>
-    <command id='si2quater neighbor-list add earfcn &lt;0-65535&gt; threshold &lt;0-31&gt; [&lt;0-7&gt;]'>
+    <command id='si2quater neighbor-list add earfcn &lt;0-65535&gt; thresh-hi &lt;0-31&gt; thresh-lo &lt;0-32&gt; prio &lt;0-8&gt; qrxlv &lt;0-32&gt; meas &lt;0-8&gt;'>
       <params>
         <param name='si2quater' doc='SI2quater Neighbor List' />
         <param name='neighbor-list' doc='SI2quater Neighbor List' />
         <param name='add' doc='Add to manual SI2quater neighbor list' />
         <param name='earfcn' doc='EARFCN of neighbor' />
         <param name='&lt;0-65535&gt;' doc='EARFCN of neighbor' />
-        <param name='threshold' doc='threshold high bits' />
+        <param name='thresh-hi' doc='threshold high bits' />
         <param name='&lt;0-31&gt;' doc='threshold high bits' />
-        <param name='[&lt;0-7&gt;]' doc='measurement bandwidth' />
+        <param name='thresh-lo' doc='threshold low bits' />
+        <param name='&lt;0-32&gt;' doc='threshold low bits (32 means NA)' />
+        <param name='prio' doc='priority' />
+        <param name='&lt;0-8&gt;' doc='priority (8 means NA)' />
+        <param name='qrxlv' doc='QRXLEVMIN' />
+        <param name='&lt;0-32&gt;' doc='QRXLEVMIN (32 means NA)' />
+        <param name='meas' doc='measurement bandwidth' />
+        <param name='&lt;0-8&gt;' doc='measurement bandwidth (8 means NA)' />
       </params>
     </command>
     <command id='si2quater neighbor-list del earfcn &lt;0-65535&gt;'>
@@ -3442,6 +3760,12 @@
         <param name='4' doc='Fourth codec' />
       </params>
     </command>
+    <command id='pcu-socket PATH'>
+      <params>
+        <param name='pcu-socket' doc='PCU Socket Path for using OsmoPCU co-located with BSC (legacy BTS)' />
+        <param name='PATH' doc='Path in the file system for the unix-domain PCU socket' />
+      </params>
+    </command>
     <command id='trx &lt;0-255&gt;'>
       <params>
         <param name='trx' doc='Radio Transceiver' />
@@ -3450,12 +3774,19 @@
     </command>
     <command id='is-connection-list (add|del) &lt;0-2047&gt; &lt;0-2047&gt; &lt;0-255&gt;'>
       <params>
-        <param name='is-connection-list' doc='Interface Switch Connnection List' />
+        <param name='is-connection-list' doc='Interface Switch Connection List' />
         <param name='add' doc='Add to IS list' />
         <param name='del' doc='Delete from IS list' />
         <param name='&lt;0-2047&gt;' doc='ICP1' />
         <param name='&lt;0-2047&gt;' doc='ICP2' />
         <param name='&lt;0-255&gt;' doc='Contiguity Index' />
+      </params>
+    </command>
+    <command id='abis-lower-transport (single-timeslot|super-channel)'>
+      <params>
+        <param name='abis-lower-transport' doc='Configure thee Abis Lower Transport' />
+        <param name='single-timeslot' doc='Single Timeslot (classic Abis)' />
+        <param name='super-channel' doc='SuperChannel (Packet Abis)' />
       </params>
     </command>
     <command id='con-connection-group &lt;1-31&gt;'>
@@ -3464,8 +3795,14 @@
         <param name='&lt;1-31&gt;' doc='CON Connection Group Number' />
       </params>
     </command>
+    <command id='del-connection-group &lt;1-31&gt;'>
+      <params>
+        <param name='del-connection-group' doc='Delete a CON (Concentrator) Connection Group' />
+        <param name='&lt;1-31&gt;' doc='CON Connection Group Number' />
+      </params>
+    </command>
   </node>
-  <node id='21'>
+  <node id='config-net-bts-trx'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -3523,7 +3860,7 @@
     </command>
     <command id='description .TEXT'>
       <params>
-        <param name='description' doc='Save human-readable decription of the object' />
+        <param name='description' doc='Save human-readable description of the object' />
         <param name='.TEXT' doc='Text until the end of the line' />
       </params>
     </command>
@@ -3584,7 +3921,7 @@
       </params>
     </command>
   </node>
-  <node id='22'>
+  <node id='config-net-bts-trx-ts'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -3717,7 +4054,7 @@
       </params>
     </command>
   </node>
-  <node id='27'>
+  <node id='oml'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -3782,7 +4119,7 @@
       </params>
     </command>
   </node>
-  <node id='31'>
+  <node id='om2k'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -3889,7 +4226,7 @@
       </params>
     </command>
   </node>
-  <node id='32'>
+  <node id='om2k-con-group'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -3962,7 +4299,7 @@
       </params>
     </command>
   </node>
-  <node id='35'>
+  <node id='config-mncc-int'>
     <command id='help'>
       <params>
         <param name='help' doc='Description of the interactive help system' />
@@ -4045,7 +4382,56 @@
       </params>
     </command>
   </node>
-  <node id='36'>
+  <node id='config-nitb'>
+    <command id='help'>
+      <params>
+        <param name='help' doc='Description of the interactive help system' />
+      </params>
+    </command>
+    <command id='list'>
+      <params>
+        <param name='list' doc='Print command list' />
+      </params>
+    </command>
+    <command id='write terminal'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='terminal' doc='Write to terminal' />
+      </params>
+    </command>
+    <command id='write file'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='file' doc='Write to configuration file' />
+      </params>
+    </command>
+    <command id='write memory'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='memory' doc='Write configuration to the file (same as write file)' />
+      </params>
+    </command>
+    <command id='write'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+      </params>
+    </command>
+    <command id='show running-config'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='running-config' doc='running configuration' />
+      </params>
+    </command>
+    <command id='exit'>
+      <params>
+        <param name='exit' doc='Exit current mode and down to previous mode' />
+      </params>
+    </command>
+    <command id='end'>
+      <params>
+        <param name='end' doc='End current mode and change to enable mode.' />
+      </params>
+    </command>
     <command id='subscriber-create-on-demand [no-extension]'>
       <params>
         <param name='subscriber-create-on-demand' doc='Make a new record when a subscriber is first seen.' />
@@ -4075,6 +4461,263 @@
       <params>
         <param name='no' doc='Negate a command or set its defaults' />
         <param name='assign-tmsi' doc='Assign TMSI during Location Updating.' />
+      </params>
+    </command>
+  </node>
+  <node id='config-smpp'>
+    <command id='help'>
+      <params>
+        <param name='help' doc='Description of the interactive help system' />
+      </params>
+    </command>
+    <command id='list'>
+      <params>
+        <param name='list' doc='Print command list' />
+      </params>
+    </command>
+    <command id='write terminal'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='terminal' doc='Write to terminal' />
+      </params>
+    </command>
+    <command id='write file'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='file' doc='Write to configuration file' />
+      </params>
+    </command>
+    <command id='write memory'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='memory' doc='Write configuration to the file (same as write file)' />
+      </params>
+    </command>
+    <command id='write'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+      </params>
+    </command>
+    <command id='show running-config'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='running-config' doc='running configuration' />
+      </params>
+    </command>
+    <command id='exit'>
+      <params>
+        <param name='exit' doc='Exit current mode and down to previous mode' />
+      </params>
+    </command>
+    <command id='end'>
+      <params>
+        <param name='end' doc='End current mode and change to enable mode.' />
+      </params>
+    </command>
+    <command id='smpp-first'>
+      <params>
+        <param name='smpp-first' doc='Try SMPP routes before the subscriber DB' />
+      </params>
+    </command>
+    <command id='no smpp-first'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='smpp-first' doc='Try SMPP before routes before the subscriber DB' />
+      </params>
+    </command>
+    <command id='local-tcp-port &lt;1-65535&gt;'>
+      <params>
+        <param name='local-tcp-port' doc='Set the local TCP port on which we listen for SMPP' />
+        <param name='&lt;1-65535&gt;' doc='TCP port number' />
+      </params>
+    </command>
+    <command id='local-tcp-ip A.B.C.D &lt;1-65535&gt;'>
+      <params>
+        <param name='local-tcp-ip' doc='Set the local IP address and TCP port on which we listen for SMPP' />
+        <param name='A.B.C.D' doc='Local IP address' />
+        <param name='&lt;1-65535&gt;' doc='TCP port number' />
+      </params>
+    </command>
+    <command id='system-id ID'>
+      <params>
+        <param name='system-id' doc='Set the System ID of this SMSC' />
+        <param name='ID' doc='Alphanumeric SMSC System ID' />
+      </params>
+    </command>
+    <command id='policy (accept-all|closed)'>
+      <params>
+        <param name='policy' doc='Set the authentication policy of this SMSC' />
+        <param name='accept-all' doc='Accept all SMPP connections independeint of system ID / passwd' />
+        <param name='closed' doc='Accept only SMPP connections from ESMEs explicitly configured' />
+      </params>
+    </command>
+    <command id='esme NAME'>
+      <params>
+        <param name='esme' doc='Configure a particular ESME' />
+        <param name='NAME' doc='Alphanumeric System ID of the ESME to be configured' />
+      </params>
+    </command>
+    <command id='no esme NAME'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='esme' doc='Remove ESME configuration' />
+        <param name='NAME' doc='Alphanumeric System ID of the ESME to be removed' />
+      </params>
+    </command>
+  </node>
+  <node id='config-smpp-esme'>
+    <command id='help'>
+      <params>
+        <param name='help' doc='Description of the interactive help system' />
+      </params>
+    </command>
+    <command id='list'>
+      <params>
+        <param name='list' doc='Print command list' />
+      </params>
+    </command>
+    <command id='write terminal'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='terminal' doc='Write to terminal' />
+      </params>
+    </command>
+    <command id='write file'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='file' doc='Write to configuration file' />
+      </params>
+    </command>
+    <command id='write memory'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+        <param name='memory' doc='Write configuration to the file (same as write file)' />
+      </params>
+    </command>
+    <command id='write'>
+      <params>
+        <param name='write' doc='Write running configuration to memory, network, or terminal' />
+      </params>
+    </command>
+    <command id='show running-config'>
+      <params>
+        <param name='show' doc='Show running system information' />
+        <param name='running-config' doc='running configuration' />
+      </params>
+    </command>
+    <command id='exit'>
+      <params>
+        <param name='exit' doc='Exit current mode and down to previous mode' />
+      </params>
+    </command>
+    <command id='end'>
+      <params>
+        <param name='end' doc='End current mode and change to enable mode.' />
+      </params>
+    </command>
+    <command id='password PASSWORD'>
+      <params>
+        <param name='password' doc='Set the password for this ESME' />
+        <param name='PASSWORD' doc='Alphanumeric password string' />
+      </params>
+    </command>
+    <command id='no password'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='password' doc='Remove the password for this ESME' />
+      </params>
+    </command>
+    <command id='route prefix (unknown|international|national|network|subscriber|alpha|abbrev) (unknown|isdn|x121|f69|e212|national|private|ermes|ip|wap) PREFIX'>
+      <params>
+        <param name='route' doc='Configure a route for MO-SMS to be sent to this ESME' />
+        <param name='prefix' doc='Prefix-match route' />
+        <param name='unknown' doc='Unknown type-of-number' />
+        <param name='international' doc='International type-of-number' />
+        <param name='national' doc='National type-of-number' />
+        <param name='network' doc='Network specific type-of-number' />
+        <param name='subscriber' doc='Subscriber type-of-number' />
+        <param name='alpha' doc='Alphanumeric type-of-number' />
+        <param name='abbrev' doc='Abbreviated type-of-number' />
+        <param name='unknown' doc='Unknown numbering plan' />
+        <param name='isdn' doc='ISDN (E.164) numbering plan' />
+        <param name='x121' doc='X.121 numbering plan' />
+        <param name='f69' doc='F.69 numbering plan' />
+        <param name='e212' doc='E.212 numbering plan' />
+        <param name='national' doc='National numbering plan' />
+        <param name='private' doc='Private numbering plan' />
+        <param name='ermes' doc='ERMES numbering plan' />
+        <param name='ip' doc='IP numbering plan' />
+        <param name='wap' doc='WAP numbeing plan' />
+        <param name='PREFIX' doc='Destination number prefix' />
+      </params>
+    </command>
+    <command id='no route prefix (unknown|international|national|network|subscriber|alpha|abbrev) (unknown|isdn|x121|f69|e212|national|private|ermes|ip|wap) PREFIX'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='route' doc='Configure a route for MO-SMS to be sent to this ESME' />
+        <param name='prefix' doc='Prefix-match route' />
+        <param name='unknown' doc='Unknown type-of-number' />
+        <param name='international' doc='International type-of-number' />
+        <param name='national' doc='National type-of-number' />
+        <param name='network' doc='Network specific type-of-number' />
+        <param name='subscriber' doc='Subscriber type-of-number' />
+        <param name='alpha' doc='Alphanumeric type-of-number' />
+        <param name='abbrev' doc='Abbreviated type-of-number' />
+        <param name='unknown' doc='Unknown numbering plan' />
+        <param name='isdn' doc='ISDN (E.164) numbering plan' />
+        <param name='x121' doc='X.121 numbering plan' />
+        <param name='f69' doc='F.69 numbering plan' />
+        <param name='e212' doc='E.212 numbering plan' />
+        <param name='national' doc='National numbering plan' />
+        <param name='private' doc='Private numbering plan' />
+        <param name='ermes' doc='ERMES numbering plan' />
+        <param name='ip' doc='IP numbering plan' />
+        <param name='wap' doc='WAP numbeing plan' />
+        <param name='PREFIX' doc='Destination number prefix' />
+      </params>
+    </command>
+    <command id='default-route'>
+      <params>
+        <param name='default-route' doc='Set this ESME as default-route for all SMS to unknown destinations' />
+      </params>
+    </command>
+    <command id='no default-route'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='default-route' doc='Remove this ESME as default-route for all SMS to unknown destinations' />
+      </params>
+    </command>
+    <command id='deliver-src-imsi'>
+      <params>
+        <param name='deliver-src-imsi' doc='Enable the use of IMSI as source address in DELIVER' />
+      </params>
+    </command>
+    <command id='no deliver-src-imsi'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='deliver-src-imsi' doc='Disable the use of IMSI as source address in DELIVER' />
+      </params>
+    </command>
+    <command id='osmocom-extensions'>
+      <params>
+        <param name='osmocom-extensions' doc='Enable the use of Osmocom SMPP Extensions for this ESME' />
+      </params>
+    </command>
+    <command id='no osmocom-extensions'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='osmocom-extensions' doc='Disable the use of Osmocom SMPP Extensions for this ESME' />
+      </params>
+    </command>
+    <command id='dcs-transparent'>
+      <params>
+        <param name='dcs-transparent' doc='Enable the transparent pass-through of TP-DCS to SMPP DataCoding' />
+      </params>
+    </command>
+    <command id='no dcs-transparent'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='dcs-transparent' doc='Disable the transparent pass-through of TP-DCS to SMPP DataCoding' />
       </params>
     </command>
   </node>
