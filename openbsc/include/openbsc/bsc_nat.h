@@ -361,7 +361,7 @@ void msc_config_free(struct msc_config *);
 
 struct bsc_nat *bsc_nat_alloc(void);
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat);
-void bsc_nat_set_msc_ip(struct bsc_nat *bsc, const char *ip);
+void bsc_nat_set_msc_ip(struct msc_config *msc, const char *ip);
 
 void sccp_connection_destroy(struct nat_sccp_connection *);
 void bsc_close_connection(struct bsc_connection *);
