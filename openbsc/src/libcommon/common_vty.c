@@ -102,7 +102,10 @@ int bsc_vty_go_parent(struct vty *vty)
 		break;
 	case TRUNK_NODE:
 		vty->node = MGCP_NODE;
-		vty->index = NULL;
+		{
+			struct mgcp_trunk_config *trunk = vty->index;
+			vty->index = trunk->cfg;
+		}
 		break;
 	case SMPP_ESME_NODE:
 		vty->node = SMPP_NODE;

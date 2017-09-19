@@ -171,6 +171,8 @@ enum mgcp_role {
 };
 
 struct mgcp_config {
+	struct llist_head entry;
+	int nr;
 	int source_port;
 	char *local_ip;
 	char *source_addr;
@@ -240,7 +242,7 @@ struct mgcp_config {
 
 /* config management */
 struct mgcp_config *mgcp_config_alloc(void);
-int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg,
+int mgcp_parse_config(const char *config_file, struct llist_head *cfg,
 		      enum mgcp_role role);
 int mgcp_vty_init(void);
 int mgcp_endpoints_allocate(struct mgcp_trunk_config *cfg);
