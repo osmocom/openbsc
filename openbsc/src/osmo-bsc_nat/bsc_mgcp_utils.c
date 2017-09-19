@@ -556,10 +556,10 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 
 	/* Allocate a Osmux circuit ID */
 	if (state == MGCP_ENDP_CRCX) {
-		if (nat->mgcp_cfg->osmux && sccp->bsc->cfg->osmux) {
+		if (tcfg->cfg->osmux && sccp->bsc->cfg->osmux) {
 			osmux_allocate_cid(mgcp_endp);
 			if (mgcp_endp->osmux.allocated_cid < 0 &&
-				nat_osmux_only(nat->mgcp_cfg, sccp->bsc->cfg)) {
+				nat_osmux_only(tcfg->cfg, sccp->bsc->cfg)) {
 				LOGP(DMGCP, LOGL_ERROR,
 					"Rejecting usage of endpoint\n");
 				return MGCP_POLICY_REJECT;
@@ -1081,77 +1081,92 @@ static int init_mgcp_socket(struct bsc_nat *nat, struct mgcp_config *cfg)
 	return 0;
 }
 
-int bsc_mgcp_nat_init(struct bsc_nat *nat)
+int bsc_mgcp_nat_init(struct bsc_nat *nat, struct llist_head *cfgs)
 {
-	struct mgcp_config *cfg = nat->mgcp_cfg;
+	struct mgcp_config *cfg;
+	struct mgcp_nat_config *mgcp_nat;
 
-	if (!cfg->call_agent_addr) {
-		LOGP(DMGCP, LOGL_ERROR, "The BSC nat requires the call agent ip to be set.\n");
-		return -1;
+	llist_for_each_entry(cfg, cfgs, entry) {
+		if (!cfg->call_agent_addr) {
+			LOGP(DMGCP, LOGL_ERROR, "The BSC nat requires the call agent ip to be set.\n");
+			return -1;
+		}
+
+		if (cfg->bts_ip) {
+			LOGP(DMGCP, LOGL_ERROR, "Do not set the BTS ip for the nat.\n");
+			return -1;
+		}
+
+		/* initialize the MGCP socket */
+		if (!nat->mgcp_ipa) {
+			int rc =  init_mgcp_socket(nat, cfg);
+			if (rc != 0)
+				return rc;
+		}
+
+
+		/* Create a user structure to keep bsc_endpoints per mgcp
+		 * config */
+		mgcp_nat = talloc_zero(cfg, struct mgcp_nat_config);
+		if (!mgcp_nat)
+			return -1;
+
+		mgcp_nat->nat = nat;
+		cfg->data = mgcp_nat;
+
+		/* some more MGCP config handling */
+		cfg->policy_cb = bsc_mgcp_policy_cb;
+		cfg->trunk.force_realloc = 1;
+
+		if (cfg->bts_ip)
+			talloc_free(cfg->bts_ip);
+		cfg->bts_ip = "";
+
+		mgcp_nat->bsc_endpoints = talloc_zero_array(nat,
+						       struct bsc_endpoint,
+						       cfg->trunk.number_endpoints + 1);
+		if (!mgcp_nat->bsc_endpoints) {
+			LOGP(DMGCP, LOGL_ERROR, "Failed to allocate nat endpoints\n");
+			close(cfg->gw_fd.bfd.fd);
+			cfg->gw_fd.bfd.fd = -1;
+			return -1;
+		}
+
+		if (mgcp_reset_transcoder(cfg) < 0) {
+			LOGP(DMGCP, LOGL_ERROR, "Failed to send packet to the transcoder.\n");
+			talloc_free(mgcp_nat->bsc_endpoints);
+			mgcp_nat->bsc_endpoints = NULL;
+			close(cfg->gw_fd.bfd.fd);
+			cfg->gw_fd.bfd.fd = -1;
+			return -1;
+		}
 	}
-
-	if (cfg->bts_ip) {
-		LOGP(DMGCP, LOGL_ERROR, "Do not set the BTS ip for the nat.\n");
-		return -1;
-	}
-
-	/* initialize the MGCP socket */
-	if (!nat->mgcp_ipa) {
-		int rc =  init_mgcp_socket(nat, cfg);
-		if (rc != 0)
-			return rc;
-	}
-
-
-	/* some more MGCP config handling */
-	cfg->data = nat;
-	cfg->policy_cb = bsc_mgcp_policy_cb;
-	cfg->trunk.force_realloc = 1;
-
-	if (cfg->bts_ip)
-		talloc_free(cfg->bts_ip);
-	cfg->bts_ip = "";
-
-	nat->bsc_endpoints = talloc_zero_array(nat,
-					       struct bsc_endpoint,
-					       cfg->trunk.number_endpoints + 1);
-	if (!nat->bsc_endpoints) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to allocate nat endpoints\n");
-		close(cfg->gw_fd.bfd.fd);
-		cfg->gw_fd.bfd.fd = -1;
-		return -1;
-	}
-
-	if (mgcp_reset_transcoder(cfg) < 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to send packet to the transcoder.\n");
-		talloc_free(nat->bsc_endpoints);
-		nat->bsc_endpoints = NULL;
-		close(cfg->gw_fd.bfd.fd);
-		cfg->gw_fd.bfd.fd = -1;
-		return -1;
-	}
-
 	return 0;
 }
 
 void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc)
 {
+	struct mgcp_config *mgcp_cfg;
+	struct mgcp_nat_config *mgcp_nat;
 	struct rate_ctr *ctr = NULL;
 	int i;
 
 	if (bsc->cfg)
 		ctr = &bsc->cfg->stats.ctrg->ctr[BCFG_CTR_DROPPED_CALLS];
 
-	for (i = 1; i < bsc->nat->mgcp_cfg->trunk.number_endpoints; ++i) {
-		struct bsc_endpoint *bsc_endp = &bsc->nat->bsc_endpoints[i];
+	llist_for_each_entry(mgcp_cfg, &bsc->nat->mgcp_cfgs, entry) {
+		mgcp_nat = mgcp_cfg->data;
+		for (i = 1; i < mgcp_cfg->trunk.number_endpoints; ++i) {
+			struct bsc_endpoint *bsc_endp = &mgcp_nat->bsc_endpoints[i];
 
-		if (bsc_endp->bsc != bsc)
-			continue;
+			if (bsc_endp->bsc != bsc)
+				continue;
 
-		if (ctr)
-			rate_ctr_inc(ctr);
+			if (ctr)
+				rate_ctr_inc(ctr);
 
-		bsc_mgcp_free_endpoint(bsc->nat, i);
-		mgcp_release_endp(&bsc->nat->mgcp_cfg->trunk.endpoints[i]);
+			bsc_mgcp_free_endpoint(mgcp_cfg, i);
+			mgcp_release_endp(&mgcp_cfg->trunk.endpoints[i]);
+		}
 	}
 }
