@@ -258,7 +258,7 @@ void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
 	int i;
 	struct mgcp_config *mgcp_cfg;
 
-	llist_for_each_entry(mgcp_cfg, &nat->mgcp_cfgs, entry) {
+	llist_for_each_entry(mgcp_cfg, nat->mgcp_cfgs, entry) {
 		for (i = 1; i < mgcp_cfg->trunk.number_endpoints; ++i){
 			bsc_mgcp_free_endpoint(mgcp_cfg, i);
 			mgcp_release_endp(&mgcp_cfg->trunk.endpoints[i]);
@@ -733,7 +733,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	llist_for_each_entry(mgcp_cfg, &bsc->nat->mgcp_cfgs, entry) {
+	llist_for_each_entry(mgcp_cfg, bsc->nat->mgcp_cfgs, entry) {
 		mgcp_nat = mgcp_cfg->data;
 		for (i = 1; i < mgcp_cfg->trunk.number_endpoints; ++i) {
 			if (mgcp_nat->bsc_endpoints[i].bsc != bsc)
@@ -1175,7 +1175,7 @@ void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc)
 	if (bsc->cfg)
 		ctr = &bsc->cfg->stats.ctrg->ctr[BCFG_CTR_DROPPED_CALLS];
 
-	llist_for_each_entry(mgcp_cfg, &bsc->nat->mgcp_cfgs, entry) {
+	llist_for_each_entry(mgcp_cfg, bsc->nat->mgcp_cfgs, entry) {
 		mgcp_nat = mgcp_cfg->data;
 		for (i = 1; i < mgcp_cfg->trunk.number_endpoints; ++i) {
 			struct bsc_endpoint *bsc_endp = &mgcp_nat->bsc_endpoints[i];

@@ -265,7 +265,7 @@ struct bsc_nat {
 	int bsc_ip_dscp;
 
 	/* MGCP config */
-	struct llist_head mgcp_cfgs;
+	struct llist_head *mgcp_cfgs;
 	uint8_t mgcp_msg[4096];
 	int mgcp_length;
 	int mgcp_ipa;
