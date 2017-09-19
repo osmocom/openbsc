@@ -826,6 +826,14 @@ DEFUN(cfg_nat_use_ipa_for_mgcp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_default_msc,
+      cfg_nat_default_msc_cmd,
+      "default msc NR",
+      "The MSC to route messages to by default\n" "MSC number\n")
+{
+	_nat->default_msc = atoi(argv[0]);
+}
+
 DEFUN(cfg_nat_sdp_amr_mode_set,
       cfg_nat_sdp_amr_mode_set_cmd,
       "sdp-ensure-amr-mode-set",
@@ -1114,6 +1122,33 @@ DEFUN(cfg_msc_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_msc_acc_lst_name,
+      cfg_msc_acc_lst_name_cmd,
+      "access-list-name NAME",
+      "Set the name of the access list to use.\n"
+      "The name of the to be used access list.")
+{
+	struct msc_config *conf = vty->index;
+
+	osmo_talloc_replace_string(conf, &conf->acc_lst_name, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_msc_no_acc_lst_name,
+      cfg_msc_no_acc_lst_name_cmd,
+      "no access-list-name",
+      NO_STR "Do not use an access-list for the MSC.\n")
+{
+	struct msc_config *conf = vty->index;
+
+	if (conf->acc_lst_name) {
+		talloc_free(conf->acc_lst_name);
+		conf->acc_lst_name = NULL;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(test_regex, test_regex_cmd,
       "test regex PATTERN STRING",
       "Test utilities\n"
@@ -1324,6 +1359,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_ussd_token_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_local_cmd);
 	install_element(NAT_NODE, &cfg_nat_use_ipa_for_mgcp_cmd);
+	install_element(NAT_NODE, &cfg_nat_default_msc_cmd);
 
 	bsc_msg_lst_vty_init(nat, &nat->access_lists, NAT_NODE);
 
@@ -1377,6 +1413,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_MSC_NODE, &cfg_msc_token_cmd);
 	install_element(NAT_MSC_NODE, &cfg_msc_ip_cmd);
 	install_element(NAT_MSC_NODE, &cfg_msc_port_cmd);
+	install_element(NAT_MSC_NODE, &cfg_msc_acc_lst_name_cmd);
+	install_element(NAT_MSC_NODE, &cfg_msc_no_acc_lst_name_cmd);
 
 	mgcp_vty_init();
 

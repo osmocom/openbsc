@@ -234,6 +234,10 @@ struct msc_config {
 	struct llist_head dests;
 	struct bsc_msc_dest *main_dest;
 	struct bsc_msc_connection *msc_con;
+
+	/* imsi white and blacklist */
+	char *acc_lst_name;
+
 	char *token;
 	unsigned nr;
 	struct bsc_nat *nat;
@@ -276,6 +280,7 @@ struct bsc_nat {
 	/* MSC connections */
 	struct llist_head msc_configs;
 	unsigned num_msc;
+	unsigned default_msc;
 
 	/* timeouts */
 	int auth_timeout;
@@ -358,6 +363,9 @@ struct msc_config *msc_config_alloc(struct bsc_nat *nat);
 struct msc_config *msc_config_by_num(struct bsc_nat *nat, unsigned num);
 struct msc_config *msc_config_by_con(struct bsc_nat *nat, const struct bsc_msc_connection *msc_con);
 void msc_config_free(struct msc_config *);
+
+struct bsc_msc_connection *msc_conn_by_num(struct bsc_nat *nat, unsigned num);
+struct bsc_msc_connection *msc_conn_by_imsi(struct bsc_nat *nat, const char *imsi);
 
 struct bsc_nat *bsc_nat_alloc(void);
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat);

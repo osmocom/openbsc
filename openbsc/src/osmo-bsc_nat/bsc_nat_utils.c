@@ -253,6 +253,38 @@ struct msc_config *msc_config_by_con(struct bsc_nat *nat, const struct bsc_msc_c
 	return NULL;
 }
 
+struct bsc_msc_connection *msc_conn_by_num(struct bsc_nat *nat, unsigned num)
+{
+	struct msc_config *conf;
+
+	conf = msc_config_by_num(nat, num);
+
+	if (!conf)
+		return NULL;
+
+	return conf->msc_con;
+}
+
+struct bsc_msc_connection *msc_conn_by_imsi(struct bsc_nat *nat, const char *imsi)
+{
+	struct msc_config *conf;
+
+	if (!imsi)
+		return NULL;
+
+	llist_for_each_entry(conf, &nat->msc_configs, entry) {
+		struct bsc_msg_acc_lst *acc;
+		acc = bsc_msg_acc_lst_find(&nat->access_lists, conf->acc_lst_name);
+		if (!acc)
+			continue;
+
+		if (!bsc_msg_acc_lst_check_allow(acc, imsi))
+			return conf->msc_con;
+	}
+
+	return NULL;
+}
+
 void msc_config_free(struct msc_config *cfg)
 {
 	llist_del(&cfg->entry);
