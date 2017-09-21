@@ -20,6 +20,7 @@
  */
 
 #include <arpa/inet.h>
+#include <time.h>
 
 #include <osmocom/gsm/tlv.h>
 
@@ -364,6 +365,7 @@ void ipaccess_drop_oml(struct gsm_bts *bts)
 
 	e1inp_sign_link_destroy(bts->oml_link);
 	bts->oml_link = NULL;
+	bts->uptime = 0;
 
 	/* we have issues reconnecting RSL, drop everything. */
 	llist_for_each_entry(trx, &bts->trx_list, list)
@@ -395,6 +397,8 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 	struct gsm_bts *bts;
 	struct ipaccess_unit *dev = unit_data;
 	struct e1inp_sign_link *sign_link = NULL;
+	struct timespec tp;
+	int rc;
 
 	bts = find_bts_by_unitid(bsc_gsmnet, dev->site_id, dev->bts_id);
 	if (!bts) {
@@ -423,6 +427,8 @@ ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
 			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML - 1],
 						E1INP_SIGN_OML, bts->c0,
 						bts->oml_tei, 0);
+		rc = clock_gettime(CLOCK_MONOTONIC, &tp);
+		bts->uptime = (rc < 0) ? 0 : tp.tv_sec; /* we don't need sub-second precision for uptime */
 		break;
 	case E1INP_SIGN_RSL: {
 		struct e1inp_ts *ts;

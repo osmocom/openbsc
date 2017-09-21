@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/buffer.h>
@@ -237,6 +238,9 @@ static void e1isl_dump_vty(struct vty *vty, struct e1inp_sign_link *e1l)
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
 	struct pchan_load pl;
+	unsigned long long sec;
+	struct timespec tp;
+	int rc;
 
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
 		"BSIC %u (NCC=%u, BCC=%u) and %u TRX%s",
@@ -307,8 +311,20 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		paging_pending_requests_nr(bts),
 		bts->paging.available_slots, VTY_NEWLINE);
 	if (is_ipaccess_bts(bts)) {
-		vty_out(vty, "  OML Link state: %s.%s",
-			bts->oml_link ? "connected" : "disconnected", VTY_NEWLINE);
+		vty_out(vty, "  OML Link state: ");
+		if (bts->oml_link) {
+			vty_out(vty, "connected");
+			if (bts->uptime) {
+				rc = clock_gettime(CLOCK_MONOTONIC, &tp);
+				if (rc == 0) { /* monotonic clock helps to ensure that conversion below is valid */
+					sec = (unsigned long long)difftime(tp.tv_sec, bts->uptime);
+					vty_out(vty, " %llu days %llu hours %llu min. %llu sec.%s",
+						OSMO_SEC2DAY(sec), OSMO_SEC2HRS(sec), OSMO_SEC2MIN(sec),
+						sec % 60, VTY_NEWLINE);
+				}
+			}
+		} else
+			vty_out(vty, "disconnected.%s", VTY_NEWLINE);
 	} else {
 		vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
 		e1isl_dump_vty(vty, bts->oml_link);

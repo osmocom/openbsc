@@ -20,7 +20,7 @@
 
 #include <string.h>
 #include <errno.h>
-
+#include <time.h>
 #include <netinet/in.h>
 
 #include <openbsc/gsm_data.h>
@@ -160,6 +160,8 @@ int e1_reconfig_bts(struct gsm_bts *bts)
 	struct e1inp_line *line;
 	struct e1inp_sign_link *oml_link;
 	struct gsm_bts_trx *trx;
+	struct timespec tp;
+	int rc;
 
 	DEBUGP(DLMI, "e1_reconfig_bts(%u)\n", bts->nr);
 
@@ -201,6 +203,8 @@ int e1_reconfig_bts(struct gsm_bts *bts)
 	if (bts->oml_link)
 		e1inp_sign_link_destroy(bts->oml_link);
 	bts->oml_link = oml_link;
+	rc = clock_gettime(CLOCK_MONOTONIC, &tp);
+	bts->uptime = (rc < 0) ? 0 : tp.tv_sec; /* we don't need sub-second precision for uptime */
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		e1_reconfig_trx(trx);

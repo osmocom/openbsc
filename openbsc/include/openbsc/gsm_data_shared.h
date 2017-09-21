@@ -715,6 +715,8 @@ struct gsm_bts {
 	struct gsm_e1_subslot oml_e1_link;
 	uint8_t oml_tei;
 	struct e1inp_sign_link *oml_link;
+	/* when OML link was established */
+	time_t uptime;
 
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
