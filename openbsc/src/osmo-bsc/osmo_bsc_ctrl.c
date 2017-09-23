@@ -466,13 +466,7 @@ err:
 	return 1;
 }
 
-CTRL_CMD_DEFINE(net_notification, "notification");
-static int get_net_notification(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "There is nothing to read";
-	return CTRL_CMD_ERROR;
-}
-
+CTRL_CMD_DEFINE_WO_NOVRF(net_notification, "notification");
 static int set_net_notification(struct ctrl_cmd *cmd, void *data)
 {
 	struct ctrl_cmd *trap;
@@ -502,18 +496,7 @@ handled:
 	return CTRL_CMD_HANDLED;
 }
 
-static int verify_net_notification(struct ctrl_cmd *cmd, const char *value, void *data)
-{
-	return 0;
-}
-
-CTRL_CMD_DEFINE(net_inform_msc, "inform-msc-v1");
-static int get_net_inform_msc(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "There is nothing to read";
-	return CTRL_CMD_ERROR;
-}
-
+CTRL_CMD_DEFINE_WO_NOVRF(net_inform_msc, "inform-msc-v1");
 static int set_net_inform_msc(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net;
@@ -540,18 +523,7 @@ static int set_net_inform_msc(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_HANDLED;
 }
 
-static int verify_net_inform_msc(struct ctrl_cmd *cmd, const char *value, void *data)
-{
-	return 0;
-}
-
-CTRL_CMD_DEFINE(net_ussd_notify, "ussd-notify-v1");
-static int get_net_ussd_notify(struct ctrl_cmd *cmd, void *data)
-{
-	cmd->reply = "There is nothing to read";
-	return CTRL_CMD_ERROR;
-}
-
+CTRL_CMD_DEFINE_WO(net_ussd_notify, "ussd-notify-v1");
 static int set_net_ussd_notify(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_subscriber_connection *conn;
