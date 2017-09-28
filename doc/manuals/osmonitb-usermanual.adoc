@@ -28,7 +28,7 @@ include::chapters/bts-examples.adoc[]
 
 include::chapters/hlr.adoc[]
 
-include::chapters/smpp.adoc[]
+include::../common/chapters/smpp.adoc[]
 
 include::../common/chapters/mncc.adoc[]
 
