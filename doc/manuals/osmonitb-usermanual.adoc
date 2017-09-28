@@ -1,4 +1,5 @@
 :gfdl-enabled:
+:program-name: OsmoNITB
 
 OsmoNITB User Manual
 ====================
