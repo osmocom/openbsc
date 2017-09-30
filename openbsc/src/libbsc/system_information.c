@@ -574,7 +574,13 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 	return bitvec2freq_list(chan_list, bv, bts, false, false);
 }
 
-/* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
+/*! generate a cell channel list as per Section 10.5.2.22 of 04.08
+ *  \param[out] chan_list caller-provided output buffer
+ *  \param[in] bts BTS descriptor used for input data
+ *  \param[in] si5 Are we generating SI5xxx (true) or SI2xxx (false)
+ *  \param[in] bis Are we generating SIXbis (true) or not (false)
+ *  \param[in] ter Are we generating SIXter (true) or not (false)
+ */
 static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts,
 	bool si5, bool bis, bool ter)
 {
