@@ -586,6 +586,7 @@ static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts,
 {
 	struct gsm_bts *cur_bts;
 	struct bitvec *bv;
+	int rc;
 
 	if (si5 && bts->neigh_list_manual_mode == NL_MODE_MANUAL_SI5SEP)
 		bv = &bts->si_common.si5_neigh_list;
@@ -606,7 +607,20 @@ static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts,
 	}
 
 	/* then we generate a GSM 04.08 frequency list from the bitvec */
-	return bitvec2freq_list(chan_list, bv, bts, bis, ter);
+	rc = bitvec2freq_list(chan_list, bv, bts, bis, ter);
+	if (rc < 0)
+		return rc;
+
+	/* Set BA-IND depending on whether we're generating SI2 or SI5.
+	 * The point here is to be able to correlate whether a given MS
+	 * measurement report was using the neighbor cells advertised in
+	 * SI2 or in SI5, as those two could very well be different */
+	if (si5)
+		chan_list[0] |= 0x10;
+	else
+		chan_list[0] &= ~0x10;
+
+	return rc;
 }
 
 static int list_arfcn(uint8_t *chan_list, uint8_t mask, char *text)

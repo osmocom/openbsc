@@ -64,141 +64,141 @@ Allocated reference: 0
 Allocated reference: 1
 Test SI2quater UARFCN (same scrambling code and diversity):
 generating SI2quater for 0 EARFCNs and 1 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 52 88 0a 7e 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 88 0a 7e 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 2 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 52 e8 0a 7f 52 88 0a 7e 0b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 e8 0a 7f 52 88 0a 7e 0b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 2 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 52 e8 0a 7f 52 88 0a 7e 0b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 e8 0a 7f 52 88 0a 7e 0b 2b 2b 2b 2b 2b 2b 2b 2b 
 Testing SYSINFO_TYPE_2quater EARFCN generation:
 generating SI2quater for 0 EARFCNs and 0 UARFCNs...
 generated invalid SI2quater [00/00]: [23] 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 added EARFCN 1917 - generating SI2quater for 1 EARFCNs and 0 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 04 86 59 83 be e8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 04 86 59 83 be e8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 removed EARFCN 1917 - generating SI2quater for 0 EARFCNs and 0 UARFCNs...
-generated invalid SI2quater [00/00]: [23] 59 06 07 c0 00 04 86 59 83 be e8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated invalid SI2quater [00/00]: [23] 59 06 07 40 00 04 86 59 83 be e8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1917 - generating SI2quater for 1 EARFCNs and 0 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 04 86 59 83 be c8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 04 86 59 83 be c8 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1932 - generating SI2quater for 2 EARFCNs and 0 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 30 14 03 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 04 86 59 83 be cc 1e 30 14 03 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1937 - generating SI2quater for 3 EARFCNs and 0 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 31 07 91 a0 a0 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 04 86 59 83 be cc 1e 31 07 91 a0 a0 2b 2b 2b 2b 2b 2b 
 added EARFCN 1945 - generating SI2quater for 4 EARFCNs and 0 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 31 07 91 a8 3c c8 28 0b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 04 86 59 83 be cc 1e 31 07 91 a8 3c c8 28 0b 2b 2b 2b 
 added EARFCN 1965 - generating SI2quater for 5 EARFCNs and 0 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 04 86 59 83 be cc 1e 31 07 91 a8 3c ca 0f 5a 0a 03 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 04 86 59 83 be cc 1e 31 07 91 a8 3c ca 0f 5a 0a 03 2b 
 added EARFCN 1967 - generating SI2quater for 6 EARFCNs and 0 UARFCNs...
-generated valid SI2quater [00/01]: [23] 59 06 07 c0 20 04 86 59 83 be cc 1e 31 07 91 a8 3c ca 0f 5a 0a 03 2b 
-generated valid SI2quater [01/01]: [23] 59 06 07 c2 20 04 86 59 83 d7 e0 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/01]: [23] 59 06 07 40 20 04 86 59 83 be cc 1e 31 07 91 a8 3c ca 0f 5a 0a 03 2b 
+generated valid SI2quater [01/01]: [23] 59 06 07 42 20 04 86 59 83 d7 e0 50 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 added EARFCN 1982 - generating SI2quater for 7 EARFCNs and 0 UARFCNs...
-generated valid SI2quater [00/01]: [23] 59 06 07 c0 20 04 86 59 83 be cc 1e 31 07 91 a8 3c ca 0f 5a 0a 03 2b 
-generated valid SI2quater [01/01]: [23] 59 06 07 c2 20 04 86 59 83 d7 e4 1e fa c2 80 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/01]: [23] 59 06 07 40 20 04 86 59 83 be cc 1e 31 07 91 a8 3c ca 0f 5a 0a 03 2b 
+generated valid SI2quater [01/01]: [23] 59 06 07 42 20 04 86 59 83 d7 e4 1e fa c2 80 2b 2b 2b 2b 2b 2b 2b 2b 
 Testing SYSINFO_TYPE_2quater UARFCN generation:
 generating SI2quater for 0 EARFCNs and 0 UARFCNs...
 generated invalid SI2quater [00/00]: [23] 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 generating SI2quater for 0 EARFCNs and 1 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 0c 1a 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 0c 1a 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 2 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 14 1a 1f 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 14 1a 1f 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 3 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 18 58 12 f0 83 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 18 58 12 f0 83 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 4 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 20 58 2e f0 f2 03 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 20 58 2e f0 f2 03 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 5 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 28 58 2e 22 f2 4e 83 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 28 58 2e 22 f2 4e 83 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 6 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 34 1a 64 26 5d f2 05 03 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 34 1a 64 26 5d f2 05 03 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 7 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 38 58 12 22 fd ce 8e 05 03 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 38 58 12 22 fd ce 8e 05 03 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 8 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 40 58 1d 22 fa ce 88 85 7b 0b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 40 58 1d 22 fa ce 88 85 7b 0b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 9 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 4c 7a 34 0e 64 77 85 43 55 c8 0b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 4c 7a 34 0e 64 77 85 43 55 c8 0b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 10 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 50 1c 3b 31 fa dd 88 85 7b c4 1c 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 50 1c 3b 31 fa dd 88 85 7b c4 1c 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 11 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 0f 7c 58 1c 3b 25 7a ea 08 91 fb c4 1f b0 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 58 1c 3b 25 7a ea 08 91 fb c4 1f b0 2b 2b 2b 
 Test SI2quater multiple UARFCNs:
 generating SI2quater for 0 EARFCNs and 1 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 52 88 0a 7c 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 88 0a 7c 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 2 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 52 e8 0a 7f 52 88 0a 7c 0b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 e8 0a 7f 52 88 0a 7c 0b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 3 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 52 e8 12 7e e0 a9 44 05 3e 0b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 e8 12 7e e0 a9 44 05 3e 0b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 4 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 52 e8 18 3f f4 90 54 a2 02 9f 03 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 e8 18 3f f4 90 54 a2 02 9f 03 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 5 UARFCNs...
-generated valid SI2quater [00/00]: [23] 59 06 07 c0 00 25 52 ea 08 81 52 e8 18 3f f4 90 54 a2 02 9f 03 2b 2b 
+generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 ea 08 81 52 e8 18 3f f4 90 54 a2 02 9f 03 2b 2b 
 generating SI2quater for 0 EARFCNs and 6 UARFCNs...
-generated valid SI2quater [00/01]: [23] 59 06 07 c0 20 25 52 ea 08 81 52 e8 10 3f f4 a9 75 04 a4 0b 2b 2b 2b 
-generated valid SI2quater [01/01]: [23] 59 06 07 c2 20 25 52 e8 28 81 df 7f fa 32 d4 a2 02 9f 03 2b 2b 2b 2b 
+generated valid SI2quater [00/01]: [23] 59 06 07 40 20 25 52 ea 08 81 52 e8 10 3f f4 a9 75 04 a4 0b 2b 2b 2b 
+generated valid SI2quater [01/01]: [23] 59 06 07 42 20 25 52 e8 28 81 df 7f fa 32 d4 a2 02 9f 03 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 7 UARFCNs...
-generated valid SI2quater [00/01]: [23] 59 06 07 c0 20 25 52 ea 10 81 ce a9 74 08 1f fa 54 ba 82 52 03 2b 2b 
-generated valid SI2quater [01/01]: [23] 59 06 07 c2 20 25 52 e8 30 81 d3 7f fd b2 86 54 a2 02 9f 03 2b 2b 2b 
+generated valid SI2quater [00/01]: [23] 59 06 07 40 20 25 52 ea 10 81 ce a9 74 08 1f fa 54 ba 82 52 03 2b 2b 
+generated valid SI2quater [01/01]: [23] 59 06 07 42 20 25 52 e8 30 81 d3 7f fd b2 86 54 a2 02 9f 03 2b 2b 2b 
 Testing SYSINFO_TYPE_2quater combined EARFCN & UARFCN generation:
 generating SI2quater for 17 EARFCNs and 1 UARFCNs...
-generated valid SI2quater [00/04]: [23] 59 06 07 c0 80 25 0f 70 0c 1a 10 99 66 0f 04 83 c1 1c bb 2b 03 2b 2b 
-generated valid SI2quater [01/04]: [23] 59 06 07 c2 80 04 86 59 83 c2 6c 1e 0f 60 f0 bb 08 3f d7 2e ca c1 2b 
-generated valid SI2quater [02/04]: [23] 59 06 07 c4 80 04 86 59 84 20 64 21 06 e1 08 55 08 53 d7 2e ca c1 2b 
-generated valid SI2quater [03/04]: [23] 59 06 07 c6 80 04 86 59 84 2a 64 21 56 e1 0a d5 08 49 d7 2e ca c1 2b 
-generated valid SI2quater [04/04]: [23] 59 06 07 c8 80 04 86 59 84 25 64 21 2e e1 09 94 e5 d9 58 2b 2b 2b 2b 
+generated valid SI2quater [00/04]: [23] 59 06 07 40 80 25 0f 70 0c 1a 10 99 66 0f 04 83 c1 1c bb 2b 03 2b 2b 
+generated valid SI2quater [01/04]: [23] 59 06 07 42 80 04 86 59 83 c2 6c 1e 0f 60 f0 bb 08 3f d7 2e ca c1 2b 
+generated valid SI2quater [02/04]: [23] 59 06 07 44 80 04 86 59 84 20 64 21 06 e1 08 55 08 53 d7 2e ca c1 2b 
+generated valid SI2quater [03/04]: [23] 59 06 07 46 80 04 86 59 84 2a 64 21 56 e1 0a d5 08 49 d7 2e ca c1 2b 
+generated valid SI2quater [04/04]: [23] 59 06 07 48 80 04 86 59 84 25 64 21 2e e1 09 94 e5 d9 58 2b 2b 2b 2b 
 generating SI2quater for 17 EARFCNs and 2 UARFCNs...
-generated valid SI2quater [00/04]: [23] 59 06 07 c0 80 25 0f 70 14 4d e7 00 44 b3 07 82 41 e0 8e 5d 95 83 2b 
-generated valid SI2quater [01/04]: [23] 59 06 07 c2 80 04 86 59 83 c2 6c 1e 0f 60 f0 bb 08 3f d7 2e ca c1 2b 
-generated valid SI2quater [02/04]: [23] 59 06 07 c4 80 04 86 59 84 20 64 21 06 e1 08 55 08 53 d7 2e ca c1 2b 
-generated valid SI2quater [03/04]: [23] 59 06 07 c6 80 04 86 59 84 2a 64 21 56 e1 0a d5 08 49 d7 2e ca c1 2b 
-generated valid SI2quater [04/04]: [23] 59 06 07 c8 80 04 86 59 84 25 64 21 2e e1 09 94 e5 d9 58 2b 2b 2b 2b 
+generated valid SI2quater [00/04]: [23] 59 06 07 40 80 25 0f 70 14 4d e7 00 44 b3 07 82 41 e0 8e 5d 95 83 2b 
+generated valid SI2quater [01/04]: [23] 59 06 07 42 80 04 86 59 83 c2 6c 1e 0f 60 f0 bb 08 3f d7 2e ca c1 2b 
+generated valid SI2quater [02/04]: [23] 59 06 07 44 80 04 86 59 84 20 64 21 06 e1 08 55 08 53 d7 2e ca c1 2b 
+generated valid SI2quater [03/04]: [23] 59 06 07 46 80 04 86 59 84 2a 64 21 56 e1 0a d5 08 49 d7 2e ca c1 2b 
+generated valid SI2quater [04/04]: [23] 59 06 07 48 80 04 86 59 84 25 64 21 2e e1 09 94 e5 d9 58 2b 2b 2b 2b 
 generating SI2quater for 17 EARFCNs and 3 UARFCNs...
-generated valid SI2quater [00/04]: [23] 59 06 07 c0 80 25 0f 70 1c 4d e7 03 04 86 59 83 c1 20 f0 47 2e ca c1 
-generated valid SI2quater [01/04]: [23] 59 06 07 c2 80 04 86 59 83 c2 6c 1e 0f 60 f0 bb 08 3f d7 2e ca c1 2b 
-generated valid SI2quater [02/04]: [23] 59 06 07 c4 80 04 86 59 84 20 64 21 06 e1 08 55 08 53 d7 2e ca c1 2b 
-generated valid SI2quater [03/04]: [23] 59 06 07 c6 80 04 86 59 84 2a 64 21 56 e1 0a d5 08 49 d7 2e ca c1 2b 
-generated valid SI2quater [04/04]: [23] 59 06 07 c8 80 04 86 59 84 25 64 21 2e e1 09 94 e5 d9 58 2b 2b 2b 2b 
+generated valid SI2quater [00/04]: [23] 59 06 07 40 80 25 0f 70 1c 4d e7 03 04 86 59 83 c1 20 f0 47 2e ca c1 
+generated valid SI2quater [01/04]: [23] 59 06 07 42 80 04 86 59 83 c2 6c 1e 0f 60 f0 bb 08 3f d7 2e ca c1 2b 
+generated valid SI2quater [02/04]: [23] 59 06 07 44 80 04 86 59 84 20 64 21 06 e1 08 55 08 53 d7 2e ca c1 2b 
+generated valid SI2quater [03/04]: [23] 59 06 07 46 80 04 86 59 84 2a 64 21 56 e1 0a d5 08 49 d7 2e ca c1 2b 
+generated valid SI2quater [04/04]: [23] 59 06 07 48 80 04 86 59 84 25 64 21 2e e1 09 94 e5 d9 58 2b 2b 2b 2b 
 generating SI2quater for 17 EARFCNs and 4 UARFCNs...
-generated valid SI2quater [00/04]: [23] 59 06 07 c0 80 25 0f 70 24 59 fa 26 73 84 86 59 83 c1 1c bb 2b 03 2b 
-generated valid SI2quater [01/04]: [23] 59 06 07 c2 80 04 86 59 83 c1 20 f0 9b 07 83 d8 3c 2e b9 76 56 0b 2b 
-generated valid SI2quater [02/04]: [23] 59 06 07 c4 80 04 86 59 84 1f ec 21 03 21 08 37 08 42 a7 2e ca c1 2b 
-generated valid SI2quater [03/04]: [23] 59 06 07 c6 80 04 86 59 84 29 ec 21 53 21 0a b7 08 56 a7 2e ca c1 2b 
-generated valid SI2quater [04/04]: [23] 59 06 07 c8 80 04 86 59 84 24 ec 21 2b 21 09 77 08 4c a7 2e ca c1 2b 
+generated valid SI2quater [00/04]: [23] 59 06 07 40 80 25 0f 70 24 59 fa 26 73 84 86 59 83 c1 1c bb 2b 03 2b 
+generated valid SI2quater [01/04]: [23] 59 06 07 42 80 04 86 59 83 c1 20 f0 9b 07 83 d8 3c 2e b9 76 56 0b 2b 
+generated valid SI2quater [02/04]: [23] 59 06 07 44 80 04 86 59 84 1f ec 21 03 21 08 37 08 42 a7 2e ca c1 2b 
+generated valid SI2quater [03/04]: [23] 59 06 07 46 80 04 86 59 84 29 ec 21 53 21 0a b7 08 56 a7 2e ca c1 2b 
+generated valid SI2quater [04/04]: [23] 59 06 07 48 80 04 86 59 84 24 ec 21 2b 21 09 77 08 4c a7 2e ca c1 2b 
 generating SI2quater for 17 EARFCNs and 5 UARFCNs...
-generated valid SI2quater [00/04]: [23] 59 06 07 c0 80 25 0f 70 2c 59 fa 30 73 f6 04 86 59 83 c1 1c bb 2b 03 
-generated valid SI2quater [01/04]: [23] 59 06 07 c2 80 04 86 59 83 c1 20 f0 9b 07 83 d8 3c 2e b9 76 56 0b 2b 
-generated valid SI2quater [02/04]: [23] 59 06 07 c4 80 04 86 59 84 1f ec 21 03 21 08 37 08 42 a7 2e ca c1 2b 
-generated valid SI2quater [03/04]: [23] 59 06 07 c6 80 04 86 59 84 29 ec 21 53 21 0a b7 08 56 a7 2e ca c1 2b 
-generated valid SI2quater [04/04]: [23] 59 06 07 c8 80 04 86 59 84 24 ec 21 2b 21 09 77 08 4c a7 2e ca c1 2b 
+generated valid SI2quater [00/04]: [23] 59 06 07 40 80 25 0f 70 2c 59 fa 30 73 f6 04 86 59 83 c1 1c bb 2b 03 
+generated valid SI2quater [01/04]: [23] 59 06 07 42 80 04 86 59 83 c1 20 f0 9b 07 83 d8 3c 2e b9 76 56 0b 2b 
+generated valid SI2quater [02/04]: [23] 59 06 07 44 80 04 86 59 84 1f ec 21 03 21 08 37 08 42 a7 2e ca c1 2b 
+generated valid SI2quater [03/04]: [23] 59 06 07 46 80 04 86 59 84 29 ec 21 53 21 0a b7 08 56 a7 2e ca c1 2b 
+generated valid SI2quater [04/04]: [23] 59 06 07 48 80 04 86 59 84 24 ec 21 2b 21 09 77 08 4c a7 2e ca c1 2b 
 generating SI2quater for 17 EARFCNs and 6 UARFCNs...
-generated valid SI2quater [00/05]: [23] 59 06 07 c0 a0 25 0f 70 34 f1 ae 15 f3 f4 83 04 86 59 72 ec ac 0b 2b 
-generated valid SI2quater [01/05]: [23] 59 06 07 c2 a0 04 86 59 83 c1 20 f0 48 3c 26 c1 e0 f5 cb b2 b0 2b 2b 
-generated valid SI2quater [02/05]: [23] 59 06 07 c4 a0 04 86 59 83 c2 ec 20 ff 61 08 19 08 41 b7 2e ca c1 2b 
-generated valid SI2quater [03/05]: [23] 59 06 07 c6 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
-generated valid SI2quater [04/05]: [23] 59 06 07 c8 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
-generated valid SI2quater [05/05]: [23] 59 06 07 ca a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/05]: [23] 59 06 07 40 a0 25 0f 70 34 f1 ae 15 f3 f4 83 04 86 59 72 ec ac 0b 2b 
+generated valid SI2quater [01/05]: [23] 59 06 07 42 a0 04 86 59 83 c1 20 f0 48 3c 26 c1 e0 f5 cb b2 b0 2b 2b 
+generated valid SI2quater [02/05]: [23] 59 06 07 44 a0 04 86 59 83 c2 ec 20 ff 61 08 19 08 41 b7 2e ca c1 2b 
+generated valid SI2quater [03/05]: [23] 59 06 07 46 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
+generated valid SI2quater [04/05]: [23] 59 06 07 48 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
+generated valid SI2quater [05/05]: [23] 59 06 07 4a a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 17 EARFCNs and 7 UARFCNs...
-generated valid SI2quater [00/05]: [23] 59 06 07 c0 a0 25 0f 70 3c f1 ae 15 f3 f4 83 01 84 86 59 72 ec ac 0b 
-generated valid SI2quater [01/05]: [23] 59 06 07 c2 a0 04 86 59 83 c1 20 f0 48 3c 26 c1 e0 f5 cb b2 b0 2b 2b 
-generated valid SI2quater [02/05]: [23] 59 06 07 c4 a0 04 86 59 83 c2 ec 20 ff 61 08 19 08 41 b7 2e ca c1 2b 
-generated valid SI2quater [03/05]: [23] 59 06 07 c6 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
-generated valid SI2quater [04/05]: [23] 59 06 07 c8 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
-generated valid SI2quater [05/05]: [23] 59 06 07 ca a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/05]: [23] 59 06 07 40 a0 25 0f 70 3c f1 ae 15 f3 f4 83 01 84 86 59 72 ec ac 0b 
+generated valid SI2quater [01/05]: [23] 59 06 07 42 a0 04 86 59 83 c1 20 f0 48 3c 26 c1 e0 f5 cb b2 b0 2b 2b 
+generated valid SI2quater [02/05]: [23] 59 06 07 44 a0 04 86 59 83 c2 ec 20 ff 61 08 19 08 41 b7 2e ca c1 2b 
+generated valid SI2quater [03/05]: [23] 59 06 07 46 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
+generated valid SI2quater [04/05]: [23] 59 06 07 48 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
+generated valid SI2quater [05/05]: [23] 59 06 07 4a a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 17 EARFCNs and 8 UARFCNs...
-generated valid SI2quater [00/02]: [23] 59 06 07 c0 40 25 0f 70 45 19 a0 0d 7d 7e a6 19 e7 00 44 b3 07 82 41 
-generated valid SI2quater [01/02]: [23] 59 06 07 c2 40 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
-generated valid SI2quater [02/02]: [23] 59 06 07 c4 40 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/02]: [23] 59 06 07 40 40 25 0f 70 45 19 a0 0d 7d 7e a6 19 e7 00 44 b3 07 82 41 
+generated valid SI2quater [01/02]: [23] 59 06 07 42 40 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
+generated valid SI2quater [02/02]: [23] 59 06 07 44 40 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 17 EARFCNs and 9 UARFCNs...
-generated valid SI2quater [00/02]: [23] 59 06 07 c0 40 25 0f 70 4d 19 a0 26 fd 66 a6 03 e7 fa 10 99 66 0f 04 
-generated valid SI2quater [01/02]: [23] 59 06 07 c2 40 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
-generated valid SI2quater [02/02]: [23] 59 06 07 c4 40 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/02]: [23] 59 06 07 40 40 25 0f 70 4d 19 a0 26 fd 66 a6 03 e7 fa 10 99 66 0f 04 
+generated valid SI2quater [01/02]: [23] 59 06 07 42 40 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
+generated valid SI2quater [02/02]: [23] 59 06 07 44 40 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 17 EARFCNs and 10 UARFCNs...
-generated valid SI2quater [00/05]: [23] 59 06 07 c0 a0 25 0f 70 55 47 89 1e fd 7c b0 00 e7 9b b0 04 12 c8 2b 
-generated valid SI2quater [01/05]: [23] 59 06 07 c2 a0 04 86 59 83 c1 20 f0 48 3c 26 c1 e0 f5 cb b2 b0 2b 2b 
-generated valid SI2quater [02/05]: [23] 59 06 07 c4 a0 04 86 59 83 c2 ec 20 ff 61 08 19 08 41 b7 2e ca c1 2b 
-generated valid SI2quater [03/05]: [23] 59 06 07 c6 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
-generated valid SI2quater [04/05]: [23] 59 06 07 c8 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
-generated valid SI2quater [05/05]: [23] 59 06 07 ca a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/05]: [23] 59 06 07 40 a0 25 0f 70 55 47 89 1e fd 7c b0 00 e7 9b b0 04 12 c8 2b 
+generated valid SI2quater [01/05]: [23] 59 06 07 42 a0 04 86 59 83 c1 20 f0 48 3c 26 c1 e0 f5 cb b2 b0 2b 2b 
+generated valid SI2quater [02/05]: [23] 59 06 07 44 a0 04 86 59 83 c2 ec 20 ff 61 08 19 08 41 b7 2e ca c1 2b 
+generated valid SI2quater [03/05]: [23] 59 06 07 46 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
+generated valid SI2quater [04/05]: [23] 59 06 07 48 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
+generated valid SI2quater [05/05]: [23] 59 06 07 4a a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 17 EARFCNs and 11 UARFCNs...
-generated valid SI2quater [00/05]: [23] 59 06 07 c0 a0 25 0f 70 5d 47 89 1e fd 7c b0 01 67 9b b3 f8 2b 2b 2b 
-generated valid SI2quater [01/05]: [23] 59 06 07 c2 a0 04 86 59 83 c1 20 f0 48 3c 26 c1 e0 f5 cb b2 b0 2b 2b 
-generated valid SI2quater [02/05]: [23] 59 06 07 c4 a0 04 86 59 83 c2 ec 20 ff 61 08 19 08 41 b7 2e ca c1 2b 
-generated valid SI2quater [03/05]: [23] 59 06 07 c6 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
-generated valid SI2quater [04/05]: [23] 59 06 07 c8 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
-generated valid SI2quater [05/05]: [23] 59 06 07 ca a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+generated valid SI2quater [00/05]: [23] 59 06 07 40 a0 25 0f 70 5d 47 89 1e fd 7c b0 01 67 9b b3 f8 2b 2b 2b 
+generated valid SI2quater [01/05]: [23] 59 06 07 42 a0 04 86 59 83 c1 20 f0 48 3c 26 c1 e0 f5 cb b2 b0 2b 2b 
+generated valid SI2quater [02/05]: [23] 59 06 07 44 a0 04 86 59 83 c2 ec 20 ff 61 08 19 08 41 b7 2e ca c1 2b 
+generated valid SI2quater [03/05]: [23] 59 06 07 46 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
+generated valid SI2quater [04/05]: [23] 59 06 07 48 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
+generated valid SI2quater [05/05]: [23] 59 06 07 4a a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
 Done.

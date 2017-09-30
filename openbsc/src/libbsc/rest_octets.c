@@ -361,8 +361,12 @@ int rest_octets_si2quater(uint8_t *data, struct gsm_bts *bts)
 	bv.data_len = 20;
 	bitvec_zero(&bv);
 
-	/* BA_IND */
-	bitvec_set_bit(&bv, 1);
+	/* BA_IND: Set to '0' as that's what we use for SI2xxx type,
+	 * whereas '1' is used for SI5xxx type messages. The point here
+	 * is to be able to correlate whether a given MS measurement
+	 * report was using the neighbor cells advertised in SI2 or in
+	 * SI5, as those two could very well be different */
+	bitvec_set_bit(&bv, 0);
 	/* 3G_BA_IND */
 	bitvec_set_bit(&bv, 1);
 	/* MP_CHANGE_MARK */
