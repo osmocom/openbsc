@@ -671,6 +671,67 @@ static void test_gsm411_rp_ref_wrap(void)
 	OSMO_ASSERT(res == 1);
 }
 
+static void test_si_ba_ind(void)
+{
+	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	struct gsm_bts *bts = gsm_bts_alloc(network, 0);
+	const struct gsm48_system_information_type_2 *si2 =
+		(struct gsm48_system_information_type_2 *) GSM_BTS_SI(bts, SYSINFO_TYPE_2);
+	const struct gsm48_system_information_type_2bis *si2bis =
+		(struct gsm48_system_information_type_2bis *) GSM_BTS_SI(bts, SYSINFO_TYPE_2bis);
+	const struct gsm48_system_information_type_2ter *si2ter =
+		(struct gsm48_system_information_type_2ter *) GSM_BTS_SI(bts, SYSINFO_TYPE_2ter);
+	const struct gsm48_system_information_type_5 *si5 =
+		(struct gsm48_system_information_type_5 *) GSM_BTS_SI(bts, SYSINFO_TYPE_5);
+	const struct gsm48_system_information_type_5bis *si5bis =
+		(struct gsm48_system_information_type_5bis *) GSM_BTS_SI(bts, SYSINFO_TYPE_5bis);
+	const struct gsm48_system_information_type_5ter *si5ter =
+		(struct gsm48_system_information_type_5ter *) GSM_BTS_SI(bts, SYSINFO_TYPE_5ter);
+
+	int rc;
+
+	bts->network = network;
+	bts->c0->arfcn = 23;
+
+	printf("Testing if BA-IND is set as expected in SI2xxx and SI5xxx\n");
+
+	rc = gsm_generate_si(bts, SYSINFO_TYPE_2);
+	OSMO_ASSERT(rc > 0);
+	printf("SI2: %s\n", osmo_hexdump((uint8_t *)si2, rc));
+	/* Validate BA-IND == 0 */
+	OSMO_ASSERT(!(si2->bcch_frequency_list[0] & 0x10));
+
+	rc = gsm_generate_si(bts, SYSINFO_TYPE_2bis);
+	OSMO_ASSERT(rc > 0);
+	printf("SI2bis: %s\n", osmo_hexdump((uint8_t *)si2bis, rc));
+	/* Validate BA-IND == 0 */
+	OSMO_ASSERT(!(si2bis->bcch_frequency_list[0] & 0x10));
+
+	rc = gsm_generate_si(bts, SYSINFO_TYPE_2ter);
+	OSMO_ASSERT(rc > 0);
+	printf("SI2ter: %s\n", osmo_hexdump((uint8_t *)si2ter, rc));
+	/* Validate BA-IND == 0 */
+	OSMO_ASSERT(!(si2ter->ext_bcch_frequency_list[0] & 0x10));
+
+	rc = gsm_generate_si(bts, SYSINFO_TYPE_5);
+	OSMO_ASSERT(rc > 0);
+	printf("SI5: %s\n", osmo_hexdump((uint8_t *)si5, rc));
+	/* Validate BA-IND == 1 */
+	OSMO_ASSERT(si5->bcch_frequency_list[0] & 0x10);
+
+	rc = gsm_generate_si(bts, SYSINFO_TYPE_5bis);
+	OSMO_ASSERT(rc > 0);
+	printf("SI5bis: %s\n", osmo_hexdump((uint8_t *)si5bis, rc));
+	/* Validate BA-IND == 1 */
+	OSMO_ASSERT(si5bis->bcch_frequency_list[0] & 0x10);
+
+	rc = gsm_generate_si(bts, SYSINFO_TYPE_5ter);
+	OSMO_ASSERT(rc > 0);
+	printf("SI5ter: %s\n", osmo_hexdump((uint8_t *)si5ter, rc));
+	/* Validate BA-IND == 1 */
+	OSMO_ASSERT(si5ter->bcch_frequency_list[0] & 0x10);
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
@@ -690,6 +751,8 @@ int main(int argc, char **argv)
 	test_si2q_u();
 	test_si2q_mu();
 	test_si2q_long();
+
+	test_si_ba_ind();
 
 	printf("Done.\n");
 

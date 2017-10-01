@@ -201,4 +201,11 @@ generated valid SI2quater [02/05]: [23] 59 06 07 44 a0 04 86 59 83 c2 ec 20 ff 6
 generated valid SI2quater [03/05]: [23] 59 06 07 46 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
 generated valid SI2quater [04/05]: [23] 59 06 07 48 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
 generated valid SI2quater [05/05]: [23] 59 06 07 4a a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+Testing if BA-IND is set as expected in SI2xxx and SI5xxx
+SI2: 59 06 1a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+SI2bis: 59 06 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+SI2ter: 59 06 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+SI5: 06 1d 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+SI5bis: 06 05 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+SI5ter: 06 06 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 Done.
