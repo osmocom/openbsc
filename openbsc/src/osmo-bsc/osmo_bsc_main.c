@@ -70,7 +70,7 @@ struct llist_head *bsc_access_lists(void)
 
 static void print_usage()
 {
-	printf("Usage: osmo-bsc\n");
+	printf("Usage: osmo-bsc-sccplite\n");
 }
 
 static void print_help()

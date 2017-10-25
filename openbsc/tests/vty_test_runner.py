@@ -579,11 +579,11 @@ class TestVTYNITB(TestVTYGenericBSC):
 class TestVTYBSC(TestVTYGenericBSC):
 
     def vty_command(self):
-        return ["./src/osmo-bsc/osmo-bsc", "-c",
-                "doc/examples/osmo-bsc/osmo-bsc.cfg"]
+        return ["./src/osmo-bsc/osmo-bsc-sccplite", "-c",
+                "doc/examples/osmo-bsc-sccplite/osmo-bsc-sccplite.cfg"]
 
     def vty_app(self):
-        return (4242, "./src/osmo-bsc/osmo-bsc", "OsmoBSC", "bsc")
+        return (4242, "./src/osmo-bsc/osmo-bsc-sccplite", "OsmoBSC", "bsc")
 
     def testConfigNetworkTree(self):
         self._testConfigNetworkTree()
@@ -1113,7 +1113,7 @@ def nat_bsc_sock_test(nr, tk, verbose = False, proc=None):
     return bsc
 
 def add_bsc_test(suite, workdir):
-    if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc")):
+    if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc-sccplite")):
         print("Skipping the BSC test")
         return
     test = unittest.TestLoader().loadTestsFromTestCase(TestVTYBSC)

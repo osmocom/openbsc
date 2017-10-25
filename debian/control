@@ -21,7 +21,7 @@ Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
 Vcs-Browser: http://openbsc.osmocom.org/trac/browser
 Homepage: https://projects.osmocom.org/projects/openbsc
 
-Package: osmocom-bsc
+Package: osmocom-bsc-sccplite
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
@@ -40,7 +40,7 @@ Depends: ${shlibs:Depends},
 Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
  This is the Network-in-a-Box version of OpenBSC. It has all the GSM network
  components bundled together. When using osmocom-nitb, there is no need for a
- Mobile Switching Center (MSC) which is needed when using osmocom-bsc.
+ Mobile Switching Center (MSC) which is needed when using osmocom-bsc-sccplite.
 
 Package: osmocom-ipaccess-utils
 Architecture: any
@@ -64,13 +64,13 @@ Package: osmocom-bsc-nat
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
-Recommends: osmocom-bsc
+Recommends: osmocom-bsc-sccplite
 Description: Osmocom Base Station Controller Network Address Translation
  This NAT is useful for masquerading multiple BSCs behind one. It listens
  for incoming BSCs on port 5000 and connects to a specified Mobile Switching
  Center (MSC).
  .
- This package is part of OpenBSC and closely related to osmocom-bsc.
+ This package is part of OpenBSC and closely related to osmocom-bsc-sccplite.
 
 Package: openbsc-dev
 Architecture: all
@@ -83,11 +83,11 @@ Description: Header file needed by tools tightly integrated
  The directory structure is copied after the structure in the repository
  and the header and .c file are installed into /usr/src/osmocom/openbsc/.
 
-Package: osmocom-bsc-dbg
+Package: osmocom-bsc-sccplite-dbg
 Architecture: any
 Section: debug
 Priority: extra
-Depends: osmocom-bsc (= ${binary:Version}), ${misc:Depends}
+Depends: osmocom-bsc-sccplite (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the OpenBSC BSC
  Make debugging possible
 

@@ -21,10 +21,10 @@ AM_LDFLAGS = \
 	$(NULL)
 
 bin_PROGRAMS = \
-	osmo-bsc \
+	osmo-bsc-sccplite \
 	$(NULL)
 
-osmo_bsc_SOURCES = \
+osmo_bsc_sccplite_SOURCES = \
 	osmo_bsc_main.c \
 	osmo_bsc_vty.c \
 	osmo_bsc_api.c \
@@ -38,7 +38,7 @@ osmo_bsc_SOURCES = \
 	$(NULL)
 
 # once again since TRAU uses CC symbol :(
-osmo_bsc_LDADD = \
+osmo_bsc_sccplite_LDADD = \
 	$(top_builddir)/src/libfilter/libfilter.a \
 	$(top_builddir)/src/libbsc/libbsc.a \
 	$(top_builddir)/src/libcommon-cs/libcommon-cs.a \

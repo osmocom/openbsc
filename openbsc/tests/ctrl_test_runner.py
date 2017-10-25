@@ -155,11 +155,11 @@ class TestCtrlBSC(TestCtrlBase):
         os.unlink("tmp_dummy_sock")
 
     def ctrl_command(self):
-        return ["./src/osmo-bsc/osmo-bsc", "-r", "tmp_dummy_sock", "-c",
-                "doc/examples/osmo-bsc/osmo-bsc.cfg"]
+        return ["./src/osmo-bsc/osmo-bsc-sccplite", "-r", "tmp_dummy_sock", "-c",
+                "doc/examples/osmo-bsc-sccplite/osmo-bsc-sccplite.cfg"]
 
     def ctrl_app(self):
-        return (4249, "./src/osmo-bsc/osmo-bsc", "OsmoBSC", "bsc")
+        return (4249, "./src/osmo-bsc/osmo-bsc-sccplite", "OsmoBSC", "bsc")
 
     def testCtrlErrs(self):
         r = self.do_get('invalid')
@@ -606,7 +606,7 @@ class TestCtrlNAT(TestCtrlBase):
         # added. e.g. by implementing a get for the list.
 
 def add_bsc_test(suite, workdir):
-    if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc")):
+    if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc/osmo-bsc-sccplite")):
         print("Skipping the BSC test")
         return
     test = unittest.TestLoader().loadTestsFromTestCase(TestCtrlBSC)

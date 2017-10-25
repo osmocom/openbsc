@@ -5,7 +5,7 @@ Wants=osmo-bsc-mgcp.service
 [Service]
 Type=simple
 Restart=always
-ExecStart=/usr/bin/osmo-bsc -c /etc/osmocom/osmo-bsc.cfg -s
+ExecStart=/usr/bin/osmo-bsc-sccplite -c /etc/osmocom/osmo-bsc-sccplite.cfg -s
 RestartSec=2
 
 [Install]

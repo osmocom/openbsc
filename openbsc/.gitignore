@@ -9,7 +9,7 @@ bscconfig.h.in
 openbsc.pc
 src/osmo-nitb/osmo-nitb
 src/osmo-bsc_mgcp/osmo-bsc_mgcp
-src/osmo-bsc/osmo-bsc
+src/osmo-bsc/osmo-bsc-sccplite
 src/utils/meas_vis
 src/utils/meas_json
 src/utils/osmo-meas-pcap2db

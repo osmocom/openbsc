@@ -4,6 +4,10 @@ openbsc (0.15.1) UNRELEASED; urgency=medium
   * Prevent SGSN starting with 'auth-policy remote' when no 'gsup remote-*' are configured.
     Note: such configs are broken without extra workarounds anyway.
 
+  [ Harald Welte ]
+  * Rename osmo-bsc to osmo-bsc-sccplite to avoid clashes with new 3GPP AoIP
+    osmo-bsc.git code
+
  -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Tue, 24 May 2016 23:14:31 +0200
 
 openbsc (0.14.0) unstable; urgency=low
