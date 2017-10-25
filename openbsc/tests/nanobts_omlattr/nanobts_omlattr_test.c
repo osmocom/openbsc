@@ -192,6 +192,9 @@ int main(int argc, char **argv)
 	struct gsm_network *net;
 	struct gsm_bts_trx *trx;
 
+	osmo_init_logging(&log_info);
+	log_set_log_level(osmo_stderr_target, LOGL_INFO);
+
 	ctx = talloc_named_const(NULL, 0, "ctx");
 
 	/* Allocate environmental structs (bts, net, trx) */
