@@ -3,9 +3,7 @@ SUBDIRS = \
 	db \
 	channel \
 	mgcp \
-	gprs \
 	abis \
-	gbproxy \
 	trau \
 	subscr \
 	mm_auth \
@@ -27,22 +25,6 @@ if BUILD_SMPP
 SUBDIRS += \
 	smpp \
 	$(NULL)
-endif
-if HAVE_LIBGTP
-SUBDIRS += \
-	gtphub \
-	$(NULL)
-
-if HAVE_LIBCARES
-SUBDIRS += \
-	sgsn \
-	oap \
-	xid \
-	sndcp_xid \
-	slhc \
-	v42bis \
-	$(NULL)
-endif
 endif
 
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.

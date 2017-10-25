@@ -16,24 +16,10 @@ noinst_HEADERS = \
 	chan_alloc.h \
 	common_bsc.h \
 	common_cs.h \
-	crc24.h \
 	ctrl.h \
 	db.h \
 	debug.h \
 	e1_config.h \
-	gb_proxy.h \
-	gprs_gb_parse.h \
-	gprs_gmm.h \
-	gprs_llc.h \
-	gprs_llc_xid.h \
-	gprs_sgsn.h \
-	gprs_sndcp.h \
-	gprs_sndcp_comp.h \
-	gprs_sndcp_dcomp.h \
-	gprs_sndcp_pcomp.h \
-	gprs_sndcp_xid.h \
-	gprs_subscriber.h \
-	gprs_utils.h \
 	gsm_04_08.h \
 	gsm_04_11.h \
 	gsm_04_14.h \
@@ -42,7 +28,6 @@ noinst_HEADERS = \
 	gsm_data_shared.h \
 	gsm_subscriber.h \
 	gsup_client.h \
-	gtphub.h \
 	handover.h \
 	handover_decision.h \
 	ipaccess.h \
@@ -72,10 +57,8 @@ noinst_HEADERS = \
 	rrlp.h \
 	rs232.h \
 	rtp_proxy.h \
-	sgsn.h \
 	signal.h \
 	silent_call.h \
-	slhc.h \
 	smpp.h \
 	sms_queue.h \
 	socket.h \
@@ -86,8 +69,6 @@ noinst_HEADERS = \
 	trau_upqueue.h \
 	ussd.h \
 	vty.h \
-	v42bis.h \
-	v42bis_private.h \
 	$(NULL)
 
 openbsc_HEADERS = \

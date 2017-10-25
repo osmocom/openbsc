@@ -43,7 +43,6 @@ SUBDIRS += \
 	osmo-bsc_mgcp \
 	utils \
 	ipaccess \
-	gprs \
 	$(NULL)
 
 # Conditional Programs

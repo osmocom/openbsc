@@ -47,12 +47,6 @@ cat $abs_srcdir/mgcp/mgcp_transcoding_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/mgcp/mgcp_transcoding_test], [], [expout], [ignore])
 AT_CLEANUP
 
-AT_SETUP([gprs])
-AT_KEYWORDS([gprs])
-cat $abs_srcdir/gprs/gprs_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/gprs/gprs_test], [], [expout], [ignore])
-AT_CLEANUP
-
 AT_SETUP([bsc-nat])
 AT_KEYWORDS([bsc-nat])
 AT_CHECK([test "$enable_nat_test" != no || exit 77])
@@ -92,72 +86,16 @@ cat $abs_srcdir/bsc/bsc_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/bsc/bsc_test], [], [expout], [ignore])
 AT_CLEANUP
 
-AT_SETUP([gbproxy])
-AT_KEYWORDS([gbproxy])
-cat $abs_srcdir/gbproxy/gbproxy_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/gbproxy/gbproxy_test], [], [expout], [ignore])
-AT_CLEANUP
-
 AT_SETUP([trau])
 AT_KEYWORDS([trau])
 cat $abs_srcdir/trau/trau_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/trau/trau_test], [], [expout], [ignore])
 AT_CLEANUP
 
-AT_SETUP([sgsn])
-AT_KEYWORDS([sgsn])
-AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
-cat $abs_srcdir/sgsn/sgsn_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/sgsn/sgsn_test], [], [expout], [ignore])
-AT_CLEANUP
-
-AT_SETUP([oap])
-AT_KEYWORDS([oap])
-AT_CHECK([test "$enable_oap_test" != no || exit 77])
-cat $abs_srcdir/oap/oap_client_test.ok > expout
-cat $abs_srcdir/oap/oap_client_test.err > experr
-AT_CHECK([$abs_top_builddir/tests/oap/oap_client_test], [], [expout], [experr])
-AT_CLEANUP
-
-AT_SETUP([gtphub])
-AT_KEYWORDS([gtphub])
-AT_CHECK([test "$enable_gtphub_test" != no || exit 77])
-cat $abs_srcdir/gtphub/gtphub_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/gtphub/gtphub_test], [], [expout], [ignore])
-AT_CLEANUP
-
 AT_SETUP([mm_auth])
 AT_KEYWORDS([mm_auth])
 cat $abs_srcdir/mm_auth/mm_auth_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/mm_auth/mm_auth_test], [], [expout], [ignore])
-AT_CLEANUP
-
-AT_SETUP([xid])
-AT_KEYWORDS([xid])
-AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
-cat $abs_srcdir/xid/xid_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/xid/xid_test], [], [expout], [ignore])
-AT_CLEANUP
-
-AT_SETUP([sndcp_xid])
-AT_KEYWORDS([sndcp_xid])
-AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
-cat $abs_srcdir/sndcp_xid/sndcp_xid_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/sndcp_xid/sndcp_xid_test], [], [expout], [ignore])
-AT_CLEANUP
-
-AT_SETUP([slhc])
-AT_KEYWORDS([slhc])
-AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
-cat $abs_srcdir/slhc/slhc_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/slhc/slhc_test], [], [expout], [ignore])
-AT_CLEANUP
-
-AT_SETUP([v42bis])
-AT_KEYWORDS([v42bis])
-AT_CHECK([test "$enable_sgsn_test" != no || exit 77])
-cat $abs_srcdir/v42bis/v42bis_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/v42bis/v42bis_test], [], [expout], [ignore])
 AT_CLEANUP
 
 AT_SETUP([nanobts_omlattr])

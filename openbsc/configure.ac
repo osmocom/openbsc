@@ -105,22 +105,6 @@ AM_CONDITIONAL(BUILD_IU, test "x$osmo_ac_iu" = "xyes")
 AC_SUBST(osmo_ac_iu)
 
 
-found_libgtp=yes
-PKG_CHECK_MODULES(LIBGTP, libgtp >= 0.92, , found_libgtp=no)
-AM_CONDITIONAL(HAVE_LIBGTP, test "$found_libgtp" = yes)
-AC_SUBST(found_libgtp)
-
-found_libcares=yes
-PKG_CHECK_MODULES([LIBCARES], [libcares], [], [found_libcares=no])
-AM_CONDITIONAL(HAVE_LIBCARES, test "$found_libcares" = yes)
-AC_SUBST(found_libcares)
-
-found_libgtp_and_libcares=no
-if test "$found_libgtp" = "yes" -a "$found_libcares" = "yes"; then
-    found_libgtp_and_libcares=yes
-fi
-AC_SUBST(found_libgtp_and_libcares)
-
 dnl checks for header files
 AC_HEADER_STDC
 AC_CHECK_HEADERS(dbi/dbd.h,,AC_MSG_ERROR(DBI library is not installed))
@@ -240,7 +224,6 @@ AC_OUTPUT(
     src/osmo-bsc_mgcp/Makefile
     src/ipaccess/Makefile
     src/utils/Makefile
-    src/gprs/Makefile
     tests/Makefile
     tests/atlocal
     tests/gsm0408/Makefile
@@ -250,20 +233,11 @@ AC_OUTPUT(
     tests/bsc-nat/Makefile
     tests/bsc-nat-trie/Makefile
     tests/mgcp/Makefile
-    tests/gprs/Makefile
-    tests/gbproxy/Makefile
     tests/abis/Makefile
     tests/smpp/Makefile
     tests/trau/Makefile
-    tests/sgsn/Makefile
     tests/subscr/Makefile
-    tests/oap/Makefile
-    tests/gtphub/Makefile
     tests/mm_auth/Makefile
-    tests/xid/Makefile
-    tests/sndcp_xid/Makefile
-    tests/slhc/Makefile
-    tests/v42bis/Makefile
     tests/nanobts_omlattr/Makefile
     doc/Makefile
     doc/examples/Makefile

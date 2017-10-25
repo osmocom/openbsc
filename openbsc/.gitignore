@@ -52,9 +52,6 @@ src/ipaccess/ipaccess-firmware
 src/ipaccess/ipaccess-proxy
 src/utils/isdnsync
 src/nat/bsc_nat
-src/gprs/osmo-sgsn
-src/gprs/osmo-gbproxy
-src/gprs/osmo-gtphub
 src/osmo-bsc_nat/osmo-bsc_nat
 src/libcommon/gsup_test_client
 
@@ -70,26 +67,16 @@ tests/mgcp/mgcp_test
 tests/sccp/sccp_test
 tests/sms/sms_test
 tests/timer/timer_test
-tests/gprs/gprs_test
-tests/gbproxy/gbproxy_test
 tests/abis/abis_test
 tests/si/si_test
 tests/smpp/smpp_test
 tests/bsc/bsc_test
 tests/trau/trau_test
 tests/mgcp/mgcp_transcoding_test
-tests/sgsn/sgsn_test
 tests/subscr/subscr_test
 tests/subscr/bsc_subscr_test
-tests/oap/oap_test
-tests/gtphub/gtphub_test
 tests/mm_auth/mm_auth_test
-tests/xid/xid_test
-tests/sndcp_xid/sndcp_xid_test
-tests/slhc/slhc_test
-tests/v42bis/v42bis_test
 tests/nanobts_omlattr/nanobts_omlattr_test
-tests/oap/oap_client_test
 
 tests/atconfig
 tests/atlocal
@@ -97,7 +84,5 @@ tests/package.m4
 tests/testsuite
 tests/testsuite.log
 
-gsn_restart
 src/openbsc.cfg*
 writtenconfig/
-gtphub_restart_count

@@ -20,8 +20,6 @@
 #define GSM_SUBSCRIBER_NO_EXPIRATION	0x0
 
 struct vty;
-struct sgsn_mm_ctx;
-struct sgsn_subscriber_data;
 
 struct subscr_request;
 
@@ -71,9 +69,6 @@ struct gsm_subscriber {
 	/* pending requests */
 	int is_paging;
 	struct llist_head requests;
-
-	/* GPRS/SGSN related fields */
-	struct sgsn_subscriber_data *sgsn_data;
 };
 
 enum gsm_subscriber_field {

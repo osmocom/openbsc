@@ -6,7 +6,6 @@ Build-Depends: debhelper (>= 9),
                autotools-dev,
                autoconf-archive,
                pkg-config,
-               libgtp-dev,
                libosmocore-dev,
                libosmo-sccp-dev,
                libdbi0-dev,
@@ -16,7 +15,6 @@ Build-Depends: debhelper (>= 9),
                libdbd-sqlite3,
                libpcap-dev,
                libssl-dev,
-               libc-ares-dev,
                libsmpp34-dev
 Standards-Version: 3.9.8
 Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
@@ -62,31 +60,6 @@ Description: Command line utilities for Siemens BS-11 BTS
  Additionally, it contains one tool for making use of an ISDN-card and the
  public telephone network as frequency standard for the E1 line.
 
-Package: osmocom-sgsn
-Architecture: any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
-Suggests: osmocom-bsc
-Description: Osmocom Serving GPRS Support Node
- This is an implementation of the GPRS Serving GPRS Support Node (SGSN). As
- such it implements the GPRS Mobility Management (GMM) and SM (Session
- Management).
- .
- The SGSN connects via the Gb-interface to the BSS (like the osmo-pcu or an
- ip.access nanoBTS), and it connects via the GTP protocol to a Gateway GPRS
- Support Node (GGSN) like openggsn.
-
-Package: osmocom-gbproxy
-Architecture: any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
-Recommends: osmocom-sgsn
-Description: Osmocom GPRS Gb Interface Proxy
- The purpose of the Gb proxy is to aggregate the Gb links of multiple
- BSS's and present them in one Gb link to the SGSN.
- .
- This package is part of OpenBSC and closely related to osmocom-sgsn.
-
 Package: osmocom-bsc-nat
 Architecture: any
 Depends: ${shlibs:Depends},
@@ -109,12 +82,6 @@ Description: Header file needed by tools tightly integrated
  .
  The directory structure is copied after the structure in the repository
  and the header and .c file are installed into /usr/src/osmocom/openbsc/.
-
-Package: osmo-gtphub
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Osmocom GTP Hub
- Proxy for comms between multiple SGSNs and GGSNs.
 
 Package: osmocom-bsc-dbg
 Architecture: any
@@ -148,34 +115,10 @@ Depends: osmocom-bs11-utils (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the OpenBSC BS11 utils
  Make debugging possible
 
-Package: osmocom-sgsn-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmocom-sgsn (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for the OpenBSC Serving GPRS Support Node
- Make debugging possible
-
-Package: osmocom-gbproxy-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmocom-gbproxy (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for the OpenBSC GPRS GBProxy
- Make debugging possible
-
 Package: osmocom-bsc-nat-dbg
 Architecture: any
 Section: debug
 Priority: extra
 Depends: osmocom-bsc-nat (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the OpenBSC Network Address Translation
- Make debugging possible
-
-Package: osmo-gtphub-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmo-gtphub (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for Osmocom GTP Hub
  Make debugging possible

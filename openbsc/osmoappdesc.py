@@ -31,25 +31,18 @@ app_configs = {
     "osmo-bsc": ["doc/examples/osmo-bsc/osmo-bsc.cfg"],
     "nat": ["doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg"],
     "mgcp": ["doc/examples/osmo-bsc_mgcp/mgcp.cfg"],
-    "gbproxy": ["doc/examples/osmo-gbproxy/osmo-gbproxy.cfg",
-             "doc/examples/osmo-gbproxy/osmo-gbproxy-legacy.cfg"],
-    "sgsn": ["doc/examples/osmo-sgsn/osmo-sgsn.cfg"],
     "nitb": ["doc/examples/osmo-nitb/nanobts/openbsc-multitrx.cfg",
              "doc/examples/osmo-nitb/nanobts/openbsc.cfg"],
-    "gtphub": ["doc/examples/osmo-gtphub/osmo-gtphub-1iface.cfg"]
 }
 
 
 apps = [(4242, "src/osmo-bsc/osmo-bsc", "OsmoBSC", "osmo-bsc"),
         (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat"),
         (4243, "src/osmo-bsc_mgcp/osmo-bsc_mgcp", "OpenBSC MGCP", "mgcp"),
-        (4246, "src/gprs/osmo-gbproxy", "OsmoGbProxy", "gbproxy"),
-        (4245, "src/gprs/osmo-sgsn", "OsmoSGSN", "sgsn"),
         (4242, "src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb"),
-        (4253, "src/gprs/osmo-gtphub", "OsmoGTPhub", "gtphub")
         ]
 
 vty_command = ["./src/osmo-nitb/osmo-nitb", "-c",
                "doc/examples/osmo-nitb/nanobts/openbsc.cfg"]
 
-vty_app = apps[5] # reference apps[] entry for osmo-nitb
+vty_app = apps[3] # reference apps[] entry for osmo-nitb

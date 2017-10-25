@@ -45,8 +45,7 @@ enum signal_subsystems {
 	SS_RF,
 	SS_MSC,
 	SS_HO,
-	SS_CCCH,
-	SS_SGSN,
+	SS_CCCH
 };
 
 /* SS_PAGING signals */
@@ -239,24 +238,6 @@ struct ccch_signal_data {
 	uint16_t rach_slot_count;
 	uint16_t rach_busy_count;
 	uint16_t rach_access_count;
-};
-
-/* GPRS SGSN signals SS_SGSN */
-enum signal_sgsn {
-	S_SGSN_ATTACH,
-	S_SGSN_DETACH,
-	S_SGSN_UPDATE,
-	S_SGSN_PDP_ACT,
-	S_SGSN_PDP_DEACT,
-	S_SGSN_PDP_TERMINATE,
-	S_SGSN_PDP_FREE,
-	S_SGSN_MM_FREE,
-};
-
-struct sgsn_mm_ctx;
-struct sgsn_signal_data {
-	struct sgsn_mm_ctx *mm;
-	struct sgsn_pdp_ctx *pdp;	/* non-NULL for PDP_ACT, PDP_DEACT, PDP_FREE */
 };
 
 #endif
