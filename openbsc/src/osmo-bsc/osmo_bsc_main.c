@@ -195,15 +195,15 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	msgb_talloc_ctx_init(tall_bsc_ctx, 0);
 
+	osmo_init_logging(&log_info);
+	osmo_stats_init(tall_bsc_ctx);
+
 	/* Allocate global gsm_network struct */
 	rc = bsc_network_alloc(NULL);
 	if (rc) {
 		fprintf(stderr, "Allocation failed. exiting.\n");
 		exit(1);
 	}
-
-	osmo_init_logging(&log_info);
-	osmo_stats_init(tall_bsc_ctx);
 
 	bts_init();
 	libosmo_abis_init(tall_bsc_ctx);
