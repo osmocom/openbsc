@@ -200,6 +200,7 @@ int main(int argc, char **argv)
 	gsm_bts_model_register(&bts_model_nanobts);
 	bts = gsm_bts_alloc_register(net, GSM_BTS_TYPE_NANOBTS, 63);
 	OSMO_ASSERT(bts);
+	bts->network = net;
 	trx = talloc_zero(ctx, struct gsm_bts_trx);
 
 	/* Parameters needed by nanobts_attr_bts_get() */
