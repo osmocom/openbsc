@@ -1,5 +1,7 @@
 #!/bin/sh -ex
 
+osmo-clean-workspace.sh
+
 artifact_deps() {
 
 	x="$($1 libosmocore)"
@@ -56,3 +58,5 @@ if [ "x$IU" = "x--enable-iu" ]; then
 fi
 
 . osmo-build.sh
+
+osmo-clean-workspace.sh
