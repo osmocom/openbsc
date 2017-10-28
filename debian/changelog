@@ -1,3 +1,958 @@
+openbsc (1.0.0) UNRELEASED; urgency=medium
+
+  [ Holger Hans Peter Freyther ]
+  * Revert "gprs: Use RAND_bytes for p-tmsi"
+  * sgsn: Fix pattern for too long msisdn
+  * osmux: Allow to listen to a specific address
+  * sgsn: Fix up the VTY doc strings
+  * stats/mgcp: Initialize the statistics for MGCP as well
+  * gbproxy: Count more GSM 04.08 messages
+  * gtp: Fix Makefile.am so maybe distcheck is now going to work
+  * gtphub: Fix the VTY prompt to make the tests move forward
+  * bsc/vty: Provide a hint of available input
+  * gtphub: Fix compilation using gcc5
+  * dahdi: The driver has moved to libosmo-abis
+  * gtphub: Make the two setter static as well
+  * db: Avoid undefined behavior when copying cm2/cm3 from the db
+  * gtphub: Fix use after free on failure
+  * gsm0408: Provide unique strings for the gsm 04.08 message
+  * msc: Remove oversimplified todo entry and add a comment
+  * meas: Do not retry to close the database
+  * mgcp: Fix compiler warnings on size_t on AMD64
+  * abis: Send the message without enforcing to wait for a response
+  * bsc: Add code to send ip.access reboot command to nanoBTS
+  * bsc: Add parameter to restart a bts
+  * subscr: Add testcase creating an already created subscriber
+  * subscr: Make db_create_subscriber fail on duplicates
+  * db: If creating a subscriber in the db fails, return NULL
+  * ctrl: Extend ctrl command to optionally handle alg+ki
+  * jenkins: Add the build script from jenkins here
+  * nat/vty: Don't assume one can magically add IPv4 addresses to lo
+  * nat/vty: Use different port for the mock MSC
+  * nat/vty: Convert into str for the VTY command
+  * nat/vty: And move to a different port..
+  * nat/vty: Remove second assumption about lo and binding
+  * nat/vty: Fix construct not working with python 2.6
+  * nat/vty: Do not print token update statement
+  * nat/ussd: Add an example of the USSD gateway side-channel
+  * debian: Make upgrading from debian SID easier
+  * filter/nat: Fix the context for the imsi assignment
+  * bsc: Create minimal SI6 rest octets
+  * ci: Attempt to disable doxygen warnings of dependencies
+  * lchan: Release channel in case of late activation ack
+  * ussd: Add band-aid for interrogationSS
+  * debian: Install header and source file to different directory
+  * debian: Require libgtp-dev after the SO version bump
+  * sgsn: Fix deeply flawed copying logic for PDP context activation
+  * sgsn: Fill the cch_pdp with a value coming from the tlv structure
+  * sgsn: Convert cch_pdp to host order for libgtp
+
+  [ Jacob Erlbeck ]
+  * sgsn/test: Add and call cleanup_test function
+  * sgsn/test: Really parse received DL LLC messages
+  * stats: Enable stats for sgsn, gbproxy, nitb, bsc, nat
+  * stats: Set class_id in rate_ctr group descriptions
+  * sgsn: Remove tlli_foreign2local
+  * sgsn/test: Add bssgp_raid parameter to send_0408_message
+  * sgsn: Make ra_id_equals available as gprs_ra_id_equals
+  * sgsn: Only look at TLLIs in sgsn_mm_ctx_by_tlli
+  * sgsn: Change handling of missing mmctx in gsm48_rx_gmm_ra_upd_req
+  * sgsn/test: Add test case test_gmm_routing_areas
+  * sgsn: Re-add searching for MM ctx based on TLLI / P-TMSI matches
+
+  [ Daniel Willmann ]
+  * gprs: Use RAND_bytes for p-tmsi
+  * gbproxy/test: Add and call cleanup_test function
+  * gprs/gb_proxy: Use RAND_bytes for gbproxy TLLI/TMSI allocation
+  * rename enum gprs_mm_state to gprs_gmm_state
+  * rename enum gprs_mm_state to gprs_gmm_state
+  * create_pdp_conf(): factor out PDP context accept dispatch as send_act_pdp_cont_acc()
+  * sgsn_mm_ctx_cleanup_free(): clean up LLME iff present (Gb, not Iu)
+  * gprs: more conditionals for Gb specific actions
+  * configure.ac: add --enable-iu with deps asn1c, ranap, sigtran
+  * add DRANAP debug constant
+  * add DSUA debug constant
+  * osmux: Add negotiation state so race conditions can't disable osmux
+  * gprs_gmm: Fix bit mask when determining update/attach type
+  * IuPS: track msg->dst aka ue_conn_ctx, comment
+  * IuPS: osmo-sgsn: add core IuPS impl, call iu_init()
+  * IuPS: redirect Iu in various places, link Iu in sgsn-test
+  * IuPS: add Iu response to create_pdp_conf()
+  * IuPS: add Iu response to delete_pdp_conf()
+  * IuPS: dev hack: init hardcoded Ki on ATT REQ
+  * IuPS: send Security Mode Command, track the new_key flag.
+  * IuPS: add GMM Service Request rx and tx
+  * IuPS: RA UPD: make sure to authorize, for Iu Integrity Protection
+  * IuPS: sgsn_mm_ctx: add enum gprs_pmm_state field, track PMM state
+  * IuPS: GMM Attach: reset MM ctx pending_req
+  * IuPS: Introduce function to change PMM state
+  * IuPS: Change GTP-U endpoint to SGSN in PMM_IDLE and page UE when data arrives
+  * gbproxy: Check whether gbproxy_update_link_state_after() deletes the link_info
+  * test/gbproxy: Test for possible memory corruption when link_info is freed
+
+  [ Harald Welte ]
+  * SGSN: Fix typo in VTY license statement.
+  * meas_db.c: fix compiler warnings
+  * Depend on libgtp >= 0.92, as previous versions don't have gtpie.h installed
+  * oap and gtphub tests must only be compiled of LIBGTP is present!
+  * Fix TSC/BSIC handling bug and remove bts->tsc
+  * vty: Print NCC/BCC and not just integer value of BSIC
+  * Fix compilation with no libc-ares present on the system
+  * tests/smpp: Fix linking order
+  * gsm_data_shared: compute/sprintf the lchan name only once
+  * remove old obsolete linux kernel and wireshark patches
+  * AUTHORS: Add Jacob and Neels
+  * bring the README into the 21st century
+  * mncc.c: Convert mncc_names[] to 'struct value_string'
+  * mncc: introduce 'struct gsm_mncc_bridge' for MNCC_BRIDGE
+  * indicate the GSM 04.08 channel mode in 'show lchan'
+  * add DOT graph showing NITB data structures and their references
+  * rename ipaccess-find into abisip-find
+  * Revert "move to hex TMSI representation"
+  * Start to use struct osmo_auth_vector from gsm_auth_tuple
+  * move gsm_04_08_gprs.h to libosmocore
+  * use new libosmocore gsm_23_003.h for IMEI/IMSI length
+  * Rename gprs_gsup_* to osmo_gsup_*
+  * rename gprs_shift_*() to osmo_shift_*()
+  * move osmo_shift_* / osmo_match_shift_* to libosmogsm
+  * gsup_messages: Add UMTS AKA related encoding/decoding support
+  * osmo_gsup_messge.[ch] documentation update (doxygen)
+  * move utils.h functions to libosmocore
+  * Move osmo_gsup_messages.[ch] to libosmocore
+  * oap_message.h: Remove dependency to openbsc include
+  * OAP: use osmo_oap_ prefix for OAP, rather than plain oap_
+  * OAP: Various coding style fixes
+  * osmo_oap_decode(): Use common argument ordering
+  * sgsn/GSUP: Support MAP-style nested LU/ISD
+  * Add human-readable name of  SGSN_AUTH_AUTHENTICATE
+  * sgsn_test: Adapt test case to now-existing InsertSubscriberData
+  * subscr_name(): Handle case for subscr == NULL
+  * rtp_proxy.c: Ensure msgb_alloc is large enough for largest AMR frame
+  * prepare sgsn_mm_ctx for Gb and Iu mode (UMTS)
+  * rename gsm0408_gprs_rcvmsg() to gsm0408_gprs_rcvmsg_gb()
+  * gprs_gmm.c: Make TLLI handling specific to Gb interface
+  * gprs_gmm.c: Perform LLME operations only if we have one
+  * remove old copy of documentation that now is in osmo-gsm-manuals.git
+  * add example config for sysmobts
+  * add .mailmap file for mapping git author name/mail in shortlog
+  * osmo-nitb: generate backtrace on SIGABRT
+  * COSMETIC: 'if' is not a function, so there is space before '('
+  * mncc_builtin: Properly reject DTMF
+  * WIP: OM2000: Full state machine implementation using osmo_fsm
+  * OM2000: Fix state machien for CF/TRXC on START Result
+  * SGSN: Use dummy all-zero MSISDN value in PDP Context Act on GTP
+  * RBS2000: re-establish any lost signalling links
+  * talloc_cxt: Fix compiler warning / missing #include
+  * bs11_config: remove compiler waring about unused variable
+  * RBS2000: Avoid segfault if ts->lapd instance doesn't exist
+  * RBS2000: Ensure the is-connection-list command is only used on RBS2000
+  * Support configuration of CON MO Groups/Paths from VTY
+  * OM2000: CON MO: Allow larger range for CCP and CI values
+  * OM2000: Add three IEs to TCH activation about which we have no clue
+  * OM2000: Fix missing dynamic TCH initialization
+  * abis_nm: Fix possible not-null-terminated buffer
+  * abis_nm: Fix non-null terminated buffer
+  * libmsc/db: avoid subscr->name without terminating NULL char
+  * Fix possible non-null-terminated buffer
+  * ipaccess-config: Handle setsockopt return value
+  * ipaccess-proxy: Check setsockopt() return value
+  * abis_nm: ceck fseek() return code in is_last_line()
+  * bsc_msc.c: Check setsockopt() return value
+  * sgsn_test: Fix missing = in == type check
+  * abisip-find: check bsc_fd_register() result
+  * bsc_ctrl: Ensure we don't pass NULL string into strtok_r()
+  * mgcp_protocol: Ensure we don't call strtok_r with NULL data
+  * cfg_bts_si2quater_neigh_add(): Don't call strerror() on negative value
+  * gsm0408_test.c: Don't pass negative value to strerror()
+  * channel_mode_from_lchan(): Add missing break statement
+  * add gsup_test_client program
+  * move OAP messages implementations to libosmocore
+  * bsc_vty: Fix missing break statements in switch()
+  * sgsn: Add GTP information to "show pdp-context"
+  * remove unused struct members of 'struct sgsn_pdp_ctx'
+  * Implement VTY configuration to control Early Classmark Sending
+  * OM2000: use assoc_so *only* for TS objects
+  * VTY: Print 3G auth tuples, not just 2G auth tuples
+  * OM2000: Add FIXME comments for missing resolving of RX/TX MO!
+  * OM2000: Change the order of MO initialization
+  * OM2000: Send ALTCRQ for SuperChannel after receiving IS Enable Req Ack
+  * RBS2000: Add the P-GSL Timer IE to RSL CHAN ACT for PDCH
+  * RBS2000 RSL: Support for sending RSL PAGING CMD for GPRS
+  * pcu_sock: Don't re-implement core functionality like gsm_bts_trx_num()
+  * pcu_sock: get rid of magic numbers and use ARRAY_SIZE() for array iteration
+  * pcu_sock: Forward paging request from PCU via RSL to BTS
+  * pcu_sock: Send non-NULL hLayer1 to PCU
+  * Use new e1inp_signal_names from libosmo-abis to print input signal names
+  * costmetic: Document gsm48_multirate_config() + const-ify input
+  * bsc_api.c: Documentation for handle_mr_config()
+  * bsc_vty: Factor vty_get_ts() out of pdch_act_cmd()
+  * bsc_vty.c: Further simplify vty_get_ts()
+  * bsc_vty.c: Add command for manual [de]actiovation of logical channels
+  * bsc_vty: Add command to manually issue IPAC MDCX
+  * libbsc: Create pcu-socket only as specified in config file
+  * don't re-implement osmo_talloc_replace_string()
+  * Add vty command "radio-link-timeout infinite" for uplink rx testing
+  * jenkins.sh: Proper error message if local environment isn't set up
+  * Support for TS 04.14 conformance test commands
+  * Add VTY commands for experimentation with TS 04.14 commands
+  * bsc_api: Fix copy+paste error in printing name of RR STATUS PDU
+  * libbsc: Add VTY command to re-send the SYSTEM INFORMATION to BTS
+  * check for missing result of rate_ctr_group_alloc()
+  * Fix regression causing loss of static system-information messages
+    (Closes: #2367)
+  * RSL: Allow disabling of BCCH/SACCH filling for given SI type
+  * gsm_bts_trx_set_system_infos(): Disable non-existing SI
+  * gtphob: check for missing result of rate_ctr_group_alloc()
+  * bsc_vty: Add VTY command to test CTRL TRAP feature
+  * GSM timers: User reasonable defaults; don't save if equal default
+  * bsc_vty: Don't allow timers of zero (0)
+  * remove code disabling T3109 if configured to 0
+  * SGSN: Fix RAN information exposed on GTP during PDP CTX CREATE
+  * Fix gsm_pchan2chan_nr() to use RSL_CHAN_OSMO_PDCH
+  * sgsn_vty: Don't assume pdp->lib is always valid
+  * Migrate from gprs_apn_to_str() to libosmocore osmo_apn_to_str()
+  * increase libsmpp34 version requirement to 1.12
+  * NITB: remove 'help' output about '-a' option that is removed for ages
+  * Treat SIGTERM just like SIGINT in our programs
+  * Use verify_value_string_arrays_are_terminated from osmo-ci
+  * libbsc: document arguments of generate_bcch_chan_list()
+  * Make sure BA-IND in all SI2xxx is '0' and in all SI5xxx is '1'
+  * gsm0408_test: Verify that BA-IND is 0 in SI2xxx and 1 in SI5xxx
+  * Fix nanobts_omlattr unit test
+  * nanobts_omlattra_test: Initialize logging before executing tests
+  * osmo-bsc: Initialize logging before initializing rate_ctr
+  * remove sgsn, gbproxy and gtphub from openbsc.git
+  * rename osmo-bsc to osmo-bsc-sccplite
+  * Bump version: 0.15.1 → 1.0.0
+
+  [ Neels Hofmeyr ]
+  * libcommon: soak up three static functions.
+  * oap: implement initial OAP API.
+  * oap: add oap testsuite skeleton
+  * oap: add OAP API test
+  * gsup/oap: add OAP to GSUP client.
+  * oap: add OAP config to VTY
+  * sgsn_vty.c: fix typo
+  * Add GTP hub initial code base.
+  * gtphub: add first bits of GRX ares
+  * gtphub: fix Echo behavior: respond directly.
+  * gtphub: add/fix IMSI and APN IE error handling
+  * gtphub: make test code reusable for future tests.
+  * gtphub: fix User plane decoding, add unit test.
+  * gtphub: fix handling of sender from nonstandard port.
+  * gtphub: Add logging for ares queries.
+  * gtphub: fix numerous segfaults, and other stupidities.
+  * gtphub: don't always try to do GGSN resolution.
+  * gtphub: add logging labels to bind struct.
+  * gtphub: review log levels, add level arg to LOG().
+  * gtphub: cosmetic: break long lines.
+  * fix build: remove obsolete gtphub EXTRA_DIST.
+  * gtphub: fix gtphub_read() semantics.
+  * gtphub: fix fatal log msg for SGSN proxy.
+  * gtphub: fix three oversights (thanks to coverity).
+  * gtphub: fix echo reply to SGSNs: wrong fd. Add test.
+  * gtphub: lose obsolete comment.
+  * gtphub: fix ares segfault: add missing initialization.
+  * gtphub: add enable_gtphub_test to atlocal.in.
+  * gtphub: remove another obsolete comment.
+  * gtphub_test: build only when c-ares and gtp are present.
+  * gtphub: add to debian build
+  * gtphub: add to osmoappdesc.py
+  * gtphub: fix number map range for TEIs.
+  * gtphub: nr_map: add min,max and wrap.
+  * gtphub: cosmetic: rename a file.
+  * gtphub: review some logging.
+  * gtphub: ares vty and init
+  * gtphub: ensure cleanup of peer addresses.
+  * gtphub: add explicit cleanup handles.
+  * gtphub: cosmetic: clarify bind pointer naming.
+  * gtphub: add first rate counters
+  * gtphub: first vty show commands.
+  * gtphub: cosmetic: fix an argument name.
+  * gtphub: move timestamp into packet struct.
+  * gtphub: cosmetic/prepare: add nr_map_refresh().
+  * gtphub: add assertion to ensure expiry ordering.
+  * gtphub: cosmetic/prepare: rename expiry queues.
+  * gtphub: track tunnels explicitly.
+  * gtphub: avoid segfault for incomplete tunnels.
+  * gtphub: fix a conditional for log output
+  * gtphub: complain about excess cmdline args.
+  * gtphub: implement restart counter properly.
+  * gtphub: cosmetic: for_each_side,_plane macros.
+  * gtphub: use a single TEI pool across planes.
+  * gtphub: make sure mapped TEIs aren't occupied (incomplete).
+  * gtphub: refactor: use side_idx everywhere.
+  * gtphub: vty: add missing SGSN-proxy output.
+  * gtphub: add two stubs for Delete PDP msgs
+  * gtphub: fix some style complaints from cppcheck
+  * gtphub: be more fatal about not finding an unused TEI.
+  * gtphub: fix segfault when empty config.
+  * gtphub: remove obsolete todo comment
+  * gtphub: handle Delete PDP Context.
+  * gtphub_test: add some cleanup asserts.
+  * gtphub_test: add test for Del PDP from GGSN side.
+  * gtphub: cosmetic
+  * gtphub: monitor GSNs' restart counters.
+  * gtphub: cosmetic: early continue for less indent
+  * gtphub: fix: add a missing NULL check
+  * gtphub: add test for reused TEI.
+  * gtphub: Add a debug log
+  * gtphub: add restart counter test
+  * gtphub: fix use after free.
+  * gtphub: wrap gtphub_write() for test suite.
+  * gtphub: fix restart cleanup peer matching.
+  * gtphub: cosmetic
+  * gtphub: improve logging for invalid packet
+  * gtphub: check TEI presence in Create PDP Ctx Response
+  * tests: fix condition to run sgsn, oap, gtphub tests
+  * gtphub: Del PDP: replace unnecessary lookup with asserts.
+  * gtphub: tweak an error log message
+  * gtphub: prepare: keep tunnel ref in gtp_packet_desc.
+  * gtphub: implement sgsn_use_sender for NAT.
+  * gtphub_test: tweak test_user_data(): no seq routing.
+  * gtphub: add test for SGSN behind NAT
+  * gtphub: tweak startup log for sgsn_use_sender
+  * gtphub: add gtphub-example.txt
+  * gtphub: enhance gtphub-example.txt
+  * gtphub: fix missing newline in log output
+  * gtphub: logging: have one newline per log.
+  * gtphub: tweak logging.
+  * gtphub: be strict about unknown cmdline args
+  * gtphub: add more detailed I/O rate counters.
+  * gtphub: log: add side str to msg for reused TEI
+  * gtphub_test: add test_parallel_context_creation()
+  * gtphub: log: add TEI reuse msg, fix another TEI msg.
+  * gtphub: fix: when checking TEIs, skip 0.
+  * gtphub: simplify/fix: one TEI mapping per tunnel.
+  * gtphub: log most common message type names.
+  * gtphub: improve handling of restarted peer.
+  * gtphub: add VTY show for peers and peer stats.
+  * gtphub: log: limit length of hex dumps.
+  * osmoappdesc.py: fix wrong index introduced by gtphub.
+  * gtphub VTY test: use only 127.0.0.1.
+  * gtphub VTY: fix doc strings for show cmds
+  * gtphub VTY: add newlines to some VTY docs' final lines
+  * fix bsc_vty out: timeslot indented too deeply.
+  * remove src/libgb/Makefile.am
+  * Add README.vty-tests
+  * openbsc/README: some fixes, add CSCN and Iu*
+  * gtphub: include ports.h instead of redefining OSMO_VTY_PORT_GTPHUB
+  * gtphub: tweak default logging level
+  * osmo-bsc: fix checking wrong pointer for ctrl setup success
+  * minor fixes in bsc_vty.c and bsc_nat.c
+  * bsc_nat: fail if VTY telnet port cannot be bound, clarify comment
+  * ipaccess_rcvmsg: fix returncode, add partial write warning
+  * gsm340_rx_tpdu: comment-out two unused vars
+  * enable telnet VTY bind address config for various programs
+  * osmo-nitb: add -M to pass specific MNCC socket path
+  * osmo-nitb: cosmetic: rename to rf_ctrl_path, following mncc_sock_path
+  * osmo-nitb: be strict about cmdline args
+  * enable ctrl bind config for various programs
+  * smpp: refactor initialization, add bind address
+  * bsc_test.c: fix tz.override val and note a FIXME
+  * osmo_bsc_filter.c: add fixme note
+  * minor comment
+  * use sqlite3_close() instead of sqlite3_close_v2()
+  * check return value of sqlite3_close(), retry up to three times.
+  * db: evaluate return value of sqlite3_finalize(), tweak log output.
+  * channel_test: don't segfault if paging fails
+  * 04.08: apply new bitmask functions, fix bitmask use
+  * 04.08: apply new transaction id inline functions
+  * bsc_scan_msc_msg: check protocol discriminator
+  * fix confusing typo in constant (THAN -> THEN)
+  * osmo-bsc: fix compiler warning: store struct in vty->index
+  * Add MM Auth test; add auth_action_str() function
+  * MM Auth test: add two tests for AUTH_THEN_CIPH
+  * MM Auth test: add test to re-use existing auth
+  * MM Auth: introduce AUTH_ERROR constant.
+  * MM Auth: return AUTH_NOT_AVAIL instead of hardcoded zero
+  * Fix MM Auth: disallow key_seq mismatch
+  * Fix MM Auth: zero-initialize auth tuple before first use
+  * gtphub_unmap_header_tei(): don't dereference unmapped_tei arg if not present (CID #57687)
+  * bsc_nat: forward_sccp_to_msc(): assert con presence (CID #57872)
+  * gbproxy_test: assert msg allocation (CID #57873)
+  * drop unneccessary duplicate linking: osmo-bsc
+  * drop unneccessary duplicate/unused linking: ipaccess
+  * drop unneccessary duplicate linking: osmo-nitb
+  * drop unneccessary duplicate linking: tests/gsm0408
+  * gsm04_08_clear_request(): release loc with arg release=0
+  * tweak db debug log: log TMSI as hex
+  * gprs_gmm.c: Don't try to de-reference NULL mmctx
+  * comment tweak for bsc_handover_start()
+  * debug log: cosmetic fixes
+  * gprs_gmm.c: don't transmit NOTEXIST when mmctx is NULL
+  * lchan_alloc(): on alloc failure, report original type
+  * dyn PDCH: allow allocating TCH/F on TCH/F_PDCH slots
+  * dyn PDCH: send PDCH ACT for each TCH/F_PDCH on TS Enable
+  * dyn PDCH: TS flags: rename one, add three, as enum
+  * dyn PDCH: fix: clear PDCH flags on TS reconnect (e.g. BTS re-connect)
+  * dyn PDCH: track pending PDCH de-/activation
+  * dyn PDCH: add lchan sanity checks in PDCH DE/ACT ACK
+  * dyn PDCH: set lchan->state after PDCH DEACT / before PDCH ACT
+  * bsc_version.c: update copyright date, add contributor
+  * configure: require libgsm for --enable-mgcp-transcoding
+  * rm dup: use channel type names from libosmocore
+  * typo in sgsn_test
+  * dyn PDCH: enable PDCH only after release due to error
+  * vty: show lchan summary: also show lchan->state
+  * debug log: log all lchan state transitions
+  * dyn PDCH: cosmetic: clarify lchan rel with assertion and comment
+  * err log: tweak dyn pdch ack error logging
+  * jenkins.sh: remove code dup
+  * jenkins.sh: add --enable-iu matrix build
+  * cosmetic: dyn_pdch_init(): flatten if-logic, add comments
+  * dyn pdch: don't PDCH ACT if gprs mode is none
+  * fix ctrl test: dyn TS: use new GSM_PCHAN_TCH_F_TCH_H_PDCH
+  * fix: create_pdp_conf(): unset reject_cause after unknown ran_type
+  * comments: clarify some dynamic TS comments
+  * cosmetic: rsl_rx_rf_chan_rel_ack(): use local ts var for brevity
+  * cosmetic: act lchan type: use constant instead of 0x00
+  * cosmetic: rsl_rx_chan_act_ack(): use local lchan var in 14 instances
+  * dyn TS: add ts->dyn state
+  * gsm_data_shared: add gsm_ts_and_pchan_name() for dyn ts logging
+  * code dup: join [rsl_]lchan_lookup() from libbsc and osmo-bts
+  * error log: abis_rsl.c: log errors in channel_mode_from_lchan()
+  * log lchan_alloc() result
+  * debug log: fix line endings for abis_rsl_rx_rll logging
+  * gsm_ts2chan_nr(): add assertions for lchan_nr
+  * cosmetic: dyn_pdch_init(): debug log: use new gsm_ts_and_pchan_name()
+  * error log: rsl_chan_activate_lchan: log channel mode error
+  * prepare dyn TS: act lchan: fetch the channel mode a bit later
+  * dyn TS: rename lchan->dyn_pdch to lchan->dyn
+  * dyn TS: gsm_lchan2chan_nr(): decouple from ts->pchan
+  * dyn TS: rsl *2chan_nr(): handle TCH/F_TCH/H_PDCH
+  * dyn TS: verify_chan_comb(): handle new dyn TS NM_CHANC_*
+  * dyn TS: rsl_lchan_lookup(): add dyn PCHAN
+  * dyn TS: enhance channel allocator for dynamic TS
+  * dyn TS: chan act: set chan_nr according to dyn pchan type
+  * dyn TS: implement pchan switchover logic
+  * dyn TS: split dyn_pdch_init() for new dyn type and rename
+  * dyn TS: Rename bsc_dyn_pdch.c to bsc_dyn_ts.c
+  * dyn TS: OS#1778 workaround: disable TCH/F on dyn TS for nitb
+  * gsm_pchan2chan_nr: disable a chan_nr assert in BTS, to not break octphy
+  * gsm_pchan2chan_nr(): fix uninitialized cbits
+  * comment: gsm48_gmm_sendmsg(): add spec reference on encryptable
+  * dyn TS: bts_chan_load: use correct nr of subslots for dyn ts
+  * chan_alloc.c: use ts_subslots() instead of subslots_per_pchan[]
+  * move ts_sublots() to gsm_data_shared.c, it will be used by osmo-bts
+  * dyn TS: move check whether to switch to PDCH to separate function
+  * dyn TS: fix error recovery: switch to PDCH after lchan error state
+  * dyn TS: clearly use lchan[0], fixing minor confusion
+  * dyn TS: fix: properly run an lchan activation timeout
+  * dyn TS: fix OS#1798: on late RF CHAN REL ACK, activate PDCH
+  * dyn TS: debug log 'switchover complete' only when there was a switchover
+  * dyn TS: debug log: if still in use, also log lchan type and state
+  * log: improve for rsl_lchan_mark_broken()
+  * log: rsl notice: tiny tweak for readability
+  * add libiu
+  * cosmetic: gprs_sgsn.c: move pdp.h include to top
+  * IuPS: add VTY config for asn_debug
+  * log: abis_rsl: don't log 'error' when there is no error
+  * log causing rx event for lchan_lookup errors
+  * properly #include <openbsc/gsm_data.h> from gsm_subscriber.h
+  * remove unused bsc_copyright from bsc_vty.c
+  * vty l3 help: fix typo 'comamnds'; fix english s/his//
+  * utils/Makefile.am: remove unused LIBOSMOVTY_CFLAGS
+  * cosmetic: various comment, whitespace tweaks
+  * Sanity fixes for gsm0408_dispatch(): rc, assertions
+  * debug log for sms: fix/add
+  * cosmetic: transaction.h: 1 comment typo, 1 whitespace
+  * cosmetic fixes in libcommon/talloc_ctx.c
+  * mscsplit: bsc_init: don't pass telnet dummy conn
+  * mscsplit: move subscriber conns list into struct gsm_network
+  * mscsplit: gsm_network_init(): add explicit root talloc ctx
+  * mscsplit: talloc_ctx_init(): decouple from global tall_bsc_ctx
+  * mscsplit: bsc_vty_init(): decouple from global bsc_gsmnet
+  * mscsplit: abis vty: decouple from global bsc_gsmnet variable
+  * mscsplit: add gsm_network backpointer to gsm_subscriber_connection
+  * mscsplit: directly access gsm_network backpointer from gsm_subscriber_connection
+  * cosmetic: vty_test_runner.py: add comment for vim auto settings
+  * vty_test_runner.py: raise exception when MSC socket connection fails
+  * log VTY telnet bind only once
+  * cosmetic: comment typo on e1_config.c
+  * channel test: prepare to add another test function
+  * channel_test: test nr of subslots for dyn pchan, with error
+  * Revert "bts: extend bts_chan_load to allow counting tch only"
+  * dyn TS: fix: ts_subslots() for TCH/F_PDCH in PDCH mode
+  * dyn TS: fix: abis_om2000: also handle dyn TS as TCH
+  * dyn TS: fix: e1_config.c: switch(pchan) for dyn TS
+  * cosmetic: bs11: also use ts_is_tch()
+  * vty_test_runner.py: fix nat_msc_test(): socket attach: reduce timeout, retry
+  * fix: send SNDCP XID only on GERAN Gb contexts
+  * log CTRL bind only once
+  * vty_test_runner.py: make unittest print all output by default
+  * vty_test_runner.py: fix indents to use spaces, fix vim comment
+  * build: be robust against install-sh files above the root dir
+  * configure: check for pkg-config presence
+  * Revert "bsc: count the usage of codec by setting the lchan active"
+  * abis_rsl_rx_dchan(): guard against lchan_lookup() returning NULL
+  * gsm_trx_name(): don't break if trx is NULL
+  * jenkins.sh: use osmo-build-dep.sh, log test failures
+  * ipaccess-config: initialize root talloc ctx with name
+  * bs11_config: initialize bs11 tall ctx, use instead of bsc ctx
+  * meas_pcap2db.c: remove unused include of msgb.h
+  * gtphub_test.c: remove unused include of msgb.h
+  * msgb talloc ctx: initialize in all main() scopes
+  * msgb ctx: use new msgb_talloc_ctx_init(), don't access talloc_msgb_ctx
+  * info log: iu: add line break to and tweak rx RAB Ass Resp log
+  * log: count_codecs(): drop logging of non-TCH lchan types
+  * bsc_vty: include dyn TS info in vty show lchan
+  * fix use after free in bsc_config_free
+  * OM2000: for TS conf of dyn TS, always send TCH/F chan comb
+  * OM2000: disallow ip.access style TCH/F_PDCH pchan type
+  * Add empty libcommon-cs
+  * define mncc_recv_cb_t to avoid code dup
+  * move to libcommon-cs: net init 1: rename to bsc_network_init
+  * move to libcommon-cs: net init 2: move bsc_network_init decl to new .h
+  * move to libcommon-cs: net init 3: actual move
+  * move to libcommon-cs: gsm48_create_mm_serv_rej(), gsm48_create_loc_upd_rej()
+  * IuPS: properly update ra_id on GMM Attach Request
+  * factor out gen of USSD notify and release complete to libosmocore
+  * factor out & introduce struct gsm_encr, in common_cs.h
+  * sms_next_rp_msg_ref(): use direct pointer to next_rp_ref counter
+  * tests: drop unused libmsc, unneeded duplicate libbsc linking
+  * split bsc_bootstrap_network() in alloc and config
+  * global gsm_network: move allocation further up
+  * move to libcommon-cs: global vty gsm_network pointer
+  * move to libcommon-cs: network VTY that isn't BSC-specific
+  * bsc vty: rename show_net_cmd to bsc_show_net_cmd
+  * reinvent connection_for_subscr() and move to libmsc
+  * Move timezone settings up to network level
+  * move to libcommon-cs: net timezone VTY config
+  * split subscr_con_allocate()/_free() in bsc_ and msc_
+  * osmo-nitb: exit when MNCC socket init failed
+  * gsm_subscriber_connection: mark BSC specific items
+  * abis_om2k: fix typo that declared non-existent struct gsm_bts_trx_s
+  * lchan release in error state: SACCH deact only for SACCH pchans
+  * cosmetic: chan_alloc: use switch instead of if-cascade
+  * Fix TCH/F_PDCH: no need to check ts subslots for PDCH
+  * Revert "Support Deactivate PDP Context Request from network"
+  * build: bump required libosmocore, libosmogsm to 0.9.4, for GSUP
+  * comments: gsup client: rename to Generic, adjust copyright and authors
+  * gprs_gsup_client*: remove the gprs_ prefix
+  * rename gprs_gsup_client.h to gsup_client.h
+  * gsup client, gsup_test_client: move logging to DLGSUP category
+  * oap: rename public API from oap_ to oap_client_
+  * rename oap.h to oap_client.h
+  * move gprs/oap.c to libcommon/oap_client.c
+  * move grps_gsup_client.c to libcommon/gsup_client.c
+  * oap_test.c: rename to avoid clash with libosmocore oap_test.c
+  * oap_client_test: print test descr to stderr, check stderr
+  * oap_client: move logging to DLOAP logging category
+  * oap_client_test: show bug: disabled state does not reject message
+  * oap_client: reject all messages in disabled/uninitialized state
+  * oap_client: make use of OAP optional: disable for NULL config
+  * fix: missing terminator in two value_string arrays
+  * gtphub: fix possible NULL deref: don't print NULL tunnel
+  * build: osmo-nitb: fix missing LIBCRYPTO_FLAGS
+  * build: remove obsolete $LIBCRYPT in two places
+  * gitignore: gsup_test_client binary
+  * use new OSMO_VALUE_STRING
+  * fix 'osmo-nitb --version' segfault
+  * Revert "Turn some warnings into errors"
+  * gprs subscr: fix: intended strcmp(), but is strcpy()
+  * undup: gtphub_test: use libosmocore's llist_count()
+  * fix strncpy() invocation in vty_interface_layer3.c and 3 tests
+  * cosmetic: use osmo_strlcpy() everywhere
+  * various comment / whitespace tweaks (libmsc, gprs, libcommon-cs)
+  * osmo_bsc_grace.h: use '<>' include, not '""'
+  * paging.h: use '<>' include, not '""'
+  * compiler warning: bsc_vty: remove two unused vars
+  * gsm0408_rcv_cc: guard against NULL subscriber
+  * vty tests: attempt to get at sporadic 'Broken Pipe' error
+  * vty tests: more attempts to resolve sporadic 'Broken Pipe' error
+  * vty tests: testBSCreload: ipa_handle_small: ensure rx of 4 bytes
+  * gsm48_tx_mm_auth_req(): support UMTS AUTN
+  * Revert "vty tests: more attempts to resolve sporadic 'Broken Pipe' error"
+  * gsm_04_08: implement parsing of UMTS Auth responses
+  * vty tests: more attempts to resolve 'Broken Pipe' error
+  * vty tests: more attempts to resolve 'Broken Pipe' error (3)
+  * vty tests: more attempts to resolve 'Broken Pipe' error (2)
+  * remove compiler warning: unused rc in vty_interface_layer3
+  * subscr_update_expire_lu(): fix (obscure) segfault
+  * logging: use central filter and ctx consts from libosmocore
+  * debug.h/c: remove unused cruft / cosmetic tweaks
+  * logging fixup: shorter names for LOGGING_FILTER_* and LOGGING_CTX_*
+  * cosmetic: remove unused scall_signal_data.subscr
+  * vty_test_runner.py: fix socket leak
+  * vty: fix subscr ref count leak in 'subscriber name' cmd
+  * cosmetic: gsm_data.h, README: rename CSCN to MSC
+  * cosmetic: clarify BSC's remote MSC data vs. OsmoMSC
+  * cosmetic: rename osmo_msc_data.h to bsc_msc_data.h
+  * cosmetic: rename struct osmo_msc_data to bsc_msc_data
+  * add struct gprs_subscr, separating gprs from gsm_subscriber
+  * vty_rest_runner.py: remove debug monitoring for TCP sockets
+  * python tests: remove process 'Launch' message, now at osmoutil
+  * smpp_test_runner.py: fix socket leak
+  * SGSN: Integrate support for UMTS AKA
+  * SGSN VTY: make missing GSUP server address+port fatal
+  * vty test: nat_msc_test: setsockopt REUSE to avoid TIME_WAIT problems
+  * ctrl_test_runner: speed up more than 10 fold by sleeping less
+  * fix: gprs_gmm, gprs_llc_vty: two unterminated value_string arrays
+  * subscriber conn: add indicator for originating RAN
+  * vty tests: allow picking specific tests to run by name
+  * vty tests: close msc socket after nat_msc_test
+  * add struct bsc_subscr, separating libbsc from gsm_subscriber
+  * python tests: vty and smpp: speed up >10 times
+  * oap tests: fix after SQN scheme changes from libosmocore
+  * jenkins: add value_string termination check
+  * bsc_/gprs_subscriber: fix: use osmo_strlcpy() to safely copy IMSI
+  * python tests: allow running from separate build dir
+  * LU counters: count completion and failure, not messages sent
+  * jenkins.sh: Iu: use libosmo-sccp,-netif master
+  * build: iu: use libosmo-sccp tag 'old_sua'
+  * fix VTY parsing: subscriber-create-on-demand random
+  * fix subscriber random extension allocation range
+  * fix '/include/openbsc ' to have no trailing space
+  * ipaccess-config: properly create swload
+  * jenkins: fix build of --enable-iu: use osmo-iuh tag 'old_sua'
+  * cosmetic: vty for timers: remove obsolete range check
+  * vty: add 'default' keyword to timer config
+  * timer vty: also print the default value in cmd doc
+  * Revert "factor out & introduce struct gsm_encr, in common_cs.h"
+  * fix vty tests: vty no longer goes to parent node implicitly
+  * jenkins: use osmo-clean-workspace.sh before and after build
+
+  [ Pablo Neira Ayuso ]
+  * mgcp_osmux: available circuit IDs from 0 to 255, not from 0 to 128
+  * libmsc: use GSM411_RP_CAUSE_MO_NUM_UNASSIGNED as return value
+  * libmsc: send RP-ACK to MS after ESME sends SMPP DELIVER-SM-RESP
+  * src: use osmo_timer_setup()
+  * gsm_04_11: get rid of unused parameter in sms_route_mt_sms()
+  * libmsc: do not leak pending SMPP command object on error path
+  * libmsc: remove dead code in sms_route_mt_sms()
+  * libmsc: remove duplicate lines in deliver_to_esme()
+  * libmsc: remove 'deferred' parameter in sms_route_mt_sms()
+  * libmsc: move gsm340_rx_sms_submit() to sms_route_mt_sms()
+  * libmsc: set registered_delivery field in SMPP 3.4 DELIVER_SM messages
+  * libmsc: report status report request flag from SMPP SUBMIT_SM
+  * libmsc: missing bit shift in status report flag when stored in sms object
+  * utils: smpp_mirror: set registered_delivery field in SMPP SUBMIT_SM
+  * utils: smpp_mirror: temporarily munch SMPP delivery receipts
+  * utils: smpp_mirror: reflect message reference TLV
+  * libmsc: add support for SMPP delivery receipts
+  * libmsc: update database to accomodate SMS status-report fields
+  * utils: smpp_mirror: bounce Delivery Receipts as Delivery Acknowledgments
+  * libmsc: handle delivery ack via SMPP SUBMIT SM / send GSM 03.40 status report
+  * libmsc: support GSM 03.40 status report for nitb
+  * libmsc: gsm340_gen_oa_sub() may return negative value
+  * libmsc: use smpp34_tlv_for_each() to avoid suboptimal TLV handling
+  * libmsc: use new smpp34 esm_class definitions
+  * libmsc: use SMPP34_DELIVERY_RECEIPT_* in libsmpp34
+  * libmsc: annotate esme route in the sms object from deliver_to_esme()
+  * libmsc: sms_route_mt_sms() may return uninitialized return value
+
+  [ Martin Hauke ]
+  * Fix no-return-in-nonvoid-function meas_vis.c
+  * Fix Warning: openbsc implicit-pointer-decl meas_udp2db.c:50
+
+  [ Alexander Huemer ]
+  * tests/oap: depend on libgtp
+  * tests/abis: fix format specifiers
+  * gprs: use libgtp cflags
+  * Consistenly format variables in */Makefile.am files
+  * Build fixes
+  * Add missing _CFLAGS and _LIBS
+
+  [ Ruben Undheim ]
+  * Patch to make openbsc find libsmpp34
+  * Fix some typos in stdout output
+  * deb: unbreak nightly builds
+
+  [ Vadim Yanitskiy ]
+  * move to hex TMSI representation
+  * db.c: implemented incremental migration
+  * mncc_sock: use osmo_sock_unix_init() from libosmocore
+  * VTY: add the dyn_ts_allow_tch_f option
+
+  [ Max ]
+  * Ignore vty test byproducts
+  * Fix segfault with broken config
+  * NAT: vty command to display number of BSCs
+  * NAT: extend debug output for ipaccess errors
+  * Remove trivial wrapper function
+  * NAT: allow allocating BSC in arbitrary order
+  * vty_test_runner: update ipa sending code
+  * NAT: move BSC config into separate file
+  * NAT: reload BSCs config dynamically
+  * Add SI2quater support to SI3
+  * Refactor SI-related code
+  * Add basic SI2quater support
+  * Fix documentation for command parameters
+  * Fix earfcn deletion
+  * Cleanup shared data structure
+  * Add basic UARFCN support
+  * Add vty check for max si2quater size
+  * Add extra debug output with channel mode and type
+  * Add missing include
+  * Fix comment typo
+  * Adjust si2quater ranges
+  * Disconnect calls with incompatible channel types / modes
+  * Ignore extended test leftovers
+  * Cleanup db test
+  * Move DTX settings to BTS
+  * Use proper measurement for handover
+  * Make extending subscriber creation easier
+  * Fix copy-paste error in SI6
+  * Make si2q scheduling optional
+  * Store last used FN for TCH
+  * Add regexp authorization policy for IMSI
+  * Add warning for unsupported DTX configurations
+  * Add DTXd indicator to gsm_lchan
+  * DTX: add data necessary for scheduling
+  * Add talkspurt indicator for gsm_lchan
+  * Fix SIGABRT on wrong AMR payload
+  * Make random extension range configurable
+  * Fix vty tests with subscriber deletion
+  * SGSN: force GSUP CN domain to PS
+  * SGSN: add vty config for choosing GPRS encryption
+  * SGSN: move TLLI unassignment into separate function
+  * Make random MSISDN assignment optional
+  * SGSN: prevent starting with inconsistent config
+  * SGSN: use unique AUTH REQ reference
+  * SGSN: split GEA key management from TLLI
+  * SGSN: add preliminary support for GPRS encryption
+  * SGSN: encrypt/decrypt only necessary frames
+  * SGSN: move cipher application to separate function
+  * Fix default subscriber regexp
+  * Improve code re-use
+  * Use random operation id
+  * Add python functions to get/set ctrl variables
+  * Add web proxy for control interface
+  * Modify SI 13 field for control_ack_type
+  * DTX: extend SID cache
+  * DTX: add flag for AMR HR P*
+  * DTX DL: use FSM for AMR
+  * Log use of incompatible BS-AG-BLKS-RES value
+  * Replace magic number with define
+  * DTX DL: Add FACCH cache
+  * Decrease count_codecs logging verbosity
+  * abisip-find: use protocol constant
+  * Replace duplicated code with macro call
+  * Add IPA multiplex
+  * Use IPA module for vty tests
+  * Add twisted-based IPA multiplex
+  * bsc_control.py: style corrections
+  * bsc_control.py: use ipa.py module
+  * bsc_control.py: remove unused -i option
+  * Improve GPRS logging
+  * Integrate Debian packaging changes
+  * Cosmetic fixes around SI generation
+  * Turn some warnings into errors
+  * Log expected SRES on GPRS AUTH REJECT
+  * Turn some compiler warnings into errors
+  * Print subcriber when skipping auth
+  * Improve OML failure report
+  * bsc_control.py: fix blocking
+  * Prevent segfault in range encoding
+  * SI2q: add support for multiple UARFCNs
+  * CTRL: remove boilerplate
+  * Remove dependency to autoconf-archive
+  * Attempt to fix nightly builds
+  * vty: remove ignored logging parameters
+  * Expand chan allocation logging
+  * Remove duplicating define
+  * Add support for extended SI2q parameters
+  * Handle DSD from HLR
+  * Fix potential segfault in sgsn_libgtp.c
+  * Add MS time. offset to gsm_lchan
+  * examples: remove logging level * everything
+  * Don't drop OML links for Get Attributes NACK
+  * twisted_ipa.py: bump version properly
+  * twisted_ipa.py: make debug logging more robust
+  * Add simple CTRL2SOAP proxy
+  * Handle PCU version received via OML alert
+  * python: fix Null logger
+  * abis: log known ACKs and unknown messages
+  * gsm_bts: add version and variant details
+  * Fix MS TO measurement representation
+  * Remove libs from openbsc.pc
+  * gbproxy: add example .service
+  * deb: install openbsc.pc
+  * Save PCU version reported by BTS
+  * Prepare for extended SI2quater support
+  * Add gsm_bts_type_variant to gsm_bts struct
+  * Make pcap dependency optional
+  * Fix vty warnings for GEA0
+  * ctrl: remove boilerplate code
+  * deb: install python scripts from contrib/
+  * Gb: use textual representation for parse log
+  * Use ipa.py for ctrl tests
+  * Use libosmocore for SW Description parsing
+  * Make BTS type and variant converters shareable
+  * Add forgotten items to .gitignore
+  * Use define for limit on number of BTS features
+  * Prepare for BTS attribute reporting via OML
+  * Restructure SI2quater generation
+  * SI2quater: fix EARFCN inclusion check
+  * Get basic BTS attributes
+  * Remove errorneous include
+  * Adjust BTS model feature check
+  * Add remote BTS feature storage and helpers
+  * Get TRX attributes
+  * Request and parse BTS feature list via OML
+  * OML: fix potential OOB memory access
+  * Move SI-related defines
+  * Update SI data structures and generation
+  * bsc_init: Forget which SIs are valid for the trx
+  * Fix BTS features length check
+  * Enable optional static builds
+  * Fix BTS attribute requests
+  * gbproxy: log unhandled BSSGP PDU as text
+  * gbproxy: log signal value as text
+  * Remove common_cs.h from .deb
+  * Use release helper from libosmocore
+  * SI13: drop PBCCH-related bits
+  * CTRL: cleanup write-only command functions
+  * Show OML link uptime in vty
+  * Make TRX rf locking more visible
+
+  [ Alexander Couzens ]
+  * add .gitreview
+  * gprs: use new uint8_t * for kv in gprs_cipher_run()
+  * libbsc: skip channel state LCHAN_S_INACTIVE while handover
+  * gprs_gmm: remove duplicated start of T3395
+  * bs11_config: add brackets to fix warning in argument parsing
+  * sgsn: add statistics counter for GPRS and PDP packets
+  * sgsn: add statistics counter for LLC packets
+  * libbsc/libmsc: convert old osmo counter into rate_ctrgs
+  * libmsc: add missing count of sms no receiver when using smpp_first
+  * libmsc/bsc: split rate counters into bsc and msc group
+  * bsc/netinit: correct mistyped rate counter
+  * gprs/gsm0408_gprs_force_reattach_oldmsg: check llme before use
+  * gprs/gprs_llc: fix null pointer deref in gprs_llc_rcvmsg
+  * sms: change rp err cause of smpp_try_deliver errors
+  * bts: extend bts_chan_load to allow counting tch only
+  * bsc: count the usage of codec by setting the lchan active
+  * msc: add counters to track call attempts/active/success/failed
+  * gprs/gprs_llc: count UI frames over SAPI in the statistics
+  * fix mistypes, spaces and tabs
+  * bsc: count the usage of codec by setting the lchan active
+  * gprs/sgsn: rename gprs->mm_state -> gmm_state
+  * gprs/sgsn: rename sgsn_mm_ctx_alloc() -> sgsn_mm_ctx_alloc_gb()
+  * gprs/gprs_mm: add value_strings for PMM & MM states
+  * gprs/sgsn_mm_ctx_alloc(): initialize MM state to IDLE
+  * gprs/sgsn_vty: fix typo in comment
+  * libmsc/update_db_revision_3(): free memleaking db result
+  * unixsocket: start sabm for UNIXSOCKET
+  * gprs_sgsn.c: initialize ptmsi with 0xdeadbeef
+  * libbsc: add chreq type for CHREQ_T_PDCH_ONE_PHASE & CHREQ_T_PDCH_TWO_PHASE
+  * abis_om2k: protect MO FSMs by NULL check
+  * libbsc: add rsl_ericsson_imm_assign_cmd() which reply with a confirmation message
+  * pcu_sock: set flag PCU_IF_FLAG_SYSMO by setting pcu_direct = 1
+  * pcu_sock: pcu_tx_info_ind allow to use TRX not starting from 0
+  * pcu_sock: implement direct tlli on AGCH
+  * abis_rsl: fix off-by-one length check when parsing ericson tlli field
+  * abis_rsl: use msgb_pull to parse tlli from msg
+
+  [ Andreas Eversberg ]
+  * dyn PDCH: Fix free slot search for chan_alloc_reverse == true
+  * dyn PDCH: Automatically deactivate/activate PDCH on TCH/F+PDCH channel
+
+  [ Dieter Spaar ]
+  * SGSN: fix FCS calculation for encrypted frames
+
+  [ bhargava ]
+  * Modify SI 13 field to support 11 bit RACH
+
+  [ Philipp ]
+  * Adding LLC-XID encoder / decoder and unit test
+  * Moving grs_sndcp.h header file to include
+  * Adding LLC-XID related modifications in LLC
+  * SNDCP: add SNDCP-XID encoder/decoder and unit test
+  * RFC1144: add slhc code from linux kernel
+  * RFC1144: integration and unit-test
+  * SNDCP: add RFC1144 header compression functionality
+  * V.42bis: add sourcecode from IAXmodem (SPANDSP)
+  * V.42bis: integration and unit test
+  * SNDCP: add V.42bis data compression functionality
+  * SLHC: Improving slhc (RFC1144) testcase
+  * SGSN: Fixing build config
+  * sndcp: Fixups for sndcp layer based on coverity-scan suggestions
+  * OML: Improve OML attribute handling
+  * gsm0408: Adding log output for 3g specific RR messages
+  * Cosmetic: Add missing switch to usage help
+  * OM2000: Add fault report parsing
+  * om2000: added support for ericssons sabm negotiation
+  * OM2000: Throw error when MO can not be enabled
+  * SNDCP: Fixup based on Coverity Scan suggestion
+  * rbs2000: Add missing bts feature definitions
+  * OM2000: Fixup based on Coverity Scan suggestion
+  * rsl: support for ericssons propritary SI13 format
+  * sndcp: fixup for coverity scan defect CID 149097
+  * LLC: Fixup element order in LLC-XID
+  * sndcp: Allow empty SNDCP-XID indications
+  * cosmetic: Rename phone to ms
+
+  [ root ]
+  * om2000: Add support for querying RBS capabilities
+
+  [ Pravin Kumarvel ]
+  * Correct Logging macro for pdpctx_timer_start
+  * Add support for pdpctx_timer_stop
+  * Support Deactivate PDP Context Request from network
+
+  [ Keith ]
+  * Pass actual smpp_avail_status through to smpp in alert_all_esme()
+  * Add VTY command to immediately expire user (set expire_lu to now)
+  * meas_json: fix NEIGH: missing array braces
+  * libmsc: Map SMPP command status to GSM 04.11 cause
+  * LIBMSC: Place correct dst address in status report
+  * LIBMSC: Use sms->text, not sms->user_data to construct report body
+  * libmsc: Use actual delivery time in delivery reports.
+  * libmsc: Log Rx DELIVER-SM RESP before calling gsm411_send_rp_ack
+
+  [ Philipp Maier ]
+  * compression: Fix nullpointer deref
+  * gprs: Fix compiler warning about uninitalized cause code
+  * om2000: add VTY command to delete CON groups
+  * XID: resend xid with pdp-ctx-ack messages
+  * silent_call: remove unfinished fuzzer interface
+  * sgsn: fix problem with leading-zero-IMSIs
+  * cosmetic: add copyright header to bsc_control.py
+  * cosmetic: Add commandline option to display version
+  * gprs: fix T3186 encoding in Sysinfo 13
+  * gsm_data_shared: add value strings for gsm_chreq
+  * libbsc: add debug log message to S_L_INP_* callbacks
+  * pcu_sock: add basic pcu interface support
+  * pcu_sock: Forward imm.ass PCU originated messages
+  * pcu_sock: Fix broken paging command
+
+  [ Minh-Quang Nguyen ]
+  * rsl: Fix dropping of LAPDm UA message.
+
+  [ Alexander Chemeris ]
+  * utils: 'meas_json' utility to convert measurement feed into a JSON feed.
+  * libmsc: Fix VTY output for handover counters.
+  * libcommon: Fix log output for bts>0.
+
+  [ Pau Espin Pedrol ]
+  * nat: Use equal func in bsc_sccp
+  * nat: Fix initial buffer size parameter for getline
+  * smpp_smsc.c: Log on sending deliver_sm message
+  * libmsc: Remove comment not applying anymore
+  * mgcp_osmux: Remove unused parameter
+  * mgcp: Fix uplink activation of Osmux stream
+  * sgsn_test: Fix wrong definition of wrap func
+  * smpp: Fix compilation warning
+  * libmsc: Fix wrong handling of user_message_reference parameter
+  * bsc_api: Fix NULL secondary_lchan access in handle_ass_fail
+  * libbsc: Use correct printf formatting for uint64_t
+
+  [ Benoit Bolsee ]
+  * smpp: fix return cause
+  * 04.08: find a portable way to obtain the timezone offset
+  * transaction: reject calls from unidentified subscribers
+
+  [ Ivan Kluchnikov ]
+  * handover_logic: set correct link to bts for subscriber_connection in case of moving this connection to another bts
+  * handover_decision: Fix condition for power budget handover attempt
+
+  [ André Boddenberg ]
+  * Make use of osmo-build.sh to use dependency artifacts for builds.
+
+ -- Harald Welte <laforge@gnumonks.org>  Sat, 28 Oct 2017 21:17:34 +0200
+
 openbsc (0.15.1) UNRELEASED; urgency=medium
 
   * Move forward toward a new release.
