@@ -582,7 +582,6 @@ int abis_om2k_vty_init(void)
 	install_element(ENABLE_NODE, &om2k_classnum_inst_cmd);
 	install_node(&om2k_node, dummy_config_write);
 
-	vty_install_default(OM2K_NODE);
 	install_element(OM2K_NODE, &om2k_reset_cmd);
 	install_element(OM2K_NODE, &om2k_start_cmd);
 	install_element(OM2K_NODE, &om2k_status_cmd);
@@ -596,7 +595,6 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_conf_req_cmd);
 
 	install_node(&om2k_con_group_node, dummy_config_write);
-	vty_install_default(OM2K_CON_GROUP_NODE);
 	install_element(OM2K_CON_GROUP_NODE, &cfg_om2k_con_path_dec_cmd);
 	install_element(OM2K_CON_GROUP_NODE, &cfg_om2k_con_path_conc_cmd);
 

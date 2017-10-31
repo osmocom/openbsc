@@ -1282,7 +1282,6 @@ int bsc_vty_init_extra(void)
 
 	install_element(CONFIG_NODE, &cfg_mncc_int_cmd);
 	install_node(&mncc_int_node, config_write_mncc_int);
-	vty_install_default(MNCC_INT_NODE);
 	install_element(MNCC_INT_NODE, &mnccint_def_codec_f_cmd);
 	install_element(MNCC_INT_NODE, &mnccint_def_codec_h_cmd);
 	install_element(MNCC_INT_NODE, &mnccint_meas_feed_cmd);
@@ -1294,7 +1293,6 @@ int bsc_vty_init_extra(void)
 
 	install_element(CONFIG_NODE, &cfg_nitb_cmd);
 	install_node(&nitb_node, config_write_nitb);
-	vty_install_default(NITB_NODE);
 	install_element(NITB_NODE, &cfg_nitb_subscr_create_cmd);
 	install_element(NITB_NODE, &cfg_nitb_subscr_random_cmd);
 	install_element(NITB_NODE, &cfg_nitb_no_subscr_create_cmd);

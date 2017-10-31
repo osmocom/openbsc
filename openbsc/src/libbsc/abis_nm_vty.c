@@ -183,7 +183,6 @@ int abis_nm_vty_init(void)
 	install_element(ENABLE_NODE, &oml_classnum_inst_cmd);
 	install_node(&oml_node, dummy_config_write);
 
-	vty_install_default(OML_NODE);
 	install_element(OML_NODE, &oml_chg_adm_state_cmd);
 	install_element(OML_NODE, &oml_opstart_cmd);
 

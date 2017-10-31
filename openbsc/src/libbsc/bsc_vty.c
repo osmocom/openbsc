@@ -4229,7 +4229,6 @@ int bsc_vty_init(struct gsm_network *network)
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
-	vty_install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_type_cmd);
 	install_element(BTS_NODE, &cfg_description_cmd);
 	install_element(BTS_NODE, &cfg_no_description_cmd);
@@ -4336,7 +4335,6 @@ int bsc_vty_init(struct gsm_network *network)
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
-	vty_install_default(TRX_NODE);
 	install_element(TRX_NODE, &cfg_trx_arfcn_cmd);
 	install_element(TRX_NODE, &cfg_description_cmd);
 	install_element(TRX_NODE, &cfg_no_description_cmd);
@@ -4348,7 +4346,6 @@ int bsc_vty_init(struct gsm_network *network)
 
 	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);
-	vty_install_default(TS_NODE);
 	install_element(TS_NODE, &cfg_ts_pchan_cmd);
 	install_element(TS_NODE, &cfg_ts_pchan_compat_cmd);
 	install_element(TS_NODE, &cfg_ts_tsc_cmd);

@@ -292,7 +292,6 @@ int common_cs_vty_init(struct gsm_network *network,
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);
-	vty_install_default(GSMNET_NODE);
 	install_element(GSMNET_NODE, &cfg_net_ncc_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mnc_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
