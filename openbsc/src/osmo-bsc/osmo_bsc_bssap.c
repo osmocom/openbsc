@@ -407,6 +407,10 @@ static int bssmap_rcvmsg_udt(struct bsc_msc_data *msc,
 	case BSS_MAP_MSG_PAGING:
 		ret = bssmap_handle_paging(msc, msg, length);
 		break;
+	default:
+		LOGP(DMSC, LOGL_NOTICE, "Received unimplemented BSSMAP UDT %s\n",
+			gsm0808_bssmap_name(msg->l4h[0]));
+		break;
 	}
 
 	return ret;
