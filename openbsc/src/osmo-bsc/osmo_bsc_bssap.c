@@ -29,6 +29,7 @@
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0808.h>
+#include <osmocom/sccp/sccp.h>
 
 /*
  * helpers for the assignment command
@@ -94,6 +95,35 @@ static int bssmap_handle_reset_ack(struct bsc_msc_data *msc,
 {
 	LOGP(DMSC, LOGL_NOTICE, "Reset ACK from MSC\n");
 	return 0;
+}
+
+static int bssmap_send_reset_ack(struct bsc_msc_data *msc)
+{
+	struct msgb *resp;
+	int rc;
+
+	LOGP(DMSC, LOGL_NOTICE, "Tx RESET-ACK to MSC\n");
+
+	resp = gsm0808_create_reset_ack();
+	OSMO_ASSERT(resp);
+
+	rc = sccp_write(resp, &sccp_ssn_bssap, &sccp_ssn_bssap, 0, msc->msc_con);
+	msgb_free(resp);
+	return rc;
+}
+
+static int bssmap_handle_reset(struct bsc_msc_data *msc,
+			       struct msgb *msg, unsigned int length)
+{
+	LOGP(DMSC, LOGL_NOTICE, "Rx RESET from MSC\n");
+
+	/* Instruct the BSC to close all open SCCP connections and to close all
+	 * active radio channels on the BTS side as well */
+	bsc_notify_and_close_conns(msc->msc_con);
+
+	/* Inform the MSC that we have received the reset request and
+	 * that we acted accordingly */
+	return bssmap_send_reset_ack(msc);
 }
 
 /* GSM 08.08 § 3.2.1.19 */
@@ -403,6 +433,9 @@ static int bssmap_rcvmsg_udt(struct bsc_msc_data *msc,
 	switch (msg->l4h[0]) {
 	case BSS_MAP_MSG_RESET_ACKNOWLEDGE:
 		ret = bssmap_handle_reset_ack(msc, msg, length);
+		break;
+	case BSS_MAP_MSG_RESET:
+		ret = bssmap_handle_reset(msc, msg, length);
 		break;
 	case BSS_MAP_MSG_PAGING:
 		ret = bssmap_handle_paging(msc, msg, length);

@@ -287,7 +287,7 @@ static void bsc_notify_msc_lost(struct osmo_bsc_sccp_con *con)
 	bsc_send_ussd_release_complete(conn);
 }
 
-static void bsc_notify_and_close_conns(struct bsc_msc_connection *msc_con)
+void bsc_notify_and_close_conns(struct bsc_msc_connection *msc_con)
 {
 	struct osmo_bsc_sccp_con *con, *tmp;
 

@@ -138,5 +138,6 @@ int osmo_bsc_audio_init(struct gsm_network *network);
 struct bsc_msc_data *osmo_msc_data_find(struct gsm_network *, int);
 struct bsc_msc_data *osmo_msc_data_alloc(struct gsm_network *, int);
 
+void bsc_notify_and_close_conns(struct bsc_msc_connection *msc_con);
 
 #endif
