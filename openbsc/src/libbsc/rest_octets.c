@@ -495,9 +495,12 @@ int rest_octets_si3(uint8_t *data, const struct gsm48_si_ro_info *si3)
 	/* GPRS Indicator */
 	append_gprs_ind(&bv, &si3->gprs_ind);
 
-	/* 3G Early Classmark Sending Restriction controlled by
+	/* 3G Early Classmark Sending Restriction. If H, then controlled by
 	 * early_cm_ctrl above */
-	bitvec_set_bit(&bv, H);
+	if (si3->early_cm_restrict_3g)
+		bitvec_set_bit(&bv, L);
+	else
+		bitvec_set_bit(&bv, H);
 
 	if (si3->si2quater_indicator) {
 		bitvec_set_bit(&bv, H); /* indicator struct present */

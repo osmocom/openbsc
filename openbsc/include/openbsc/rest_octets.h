@@ -48,6 +48,7 @@ struct gsm48_si_ro_info {
 	} scheduling;
 	struct gsm48_si3_gprs_ind gprs_ind;
 	/* SI 3 specific */
+	bool early_cm_restrict_3g;
 	bool si2quater_indicator;
 	/* SI 4 specific */
 	struct gsm48_lsa_params lsa_params;

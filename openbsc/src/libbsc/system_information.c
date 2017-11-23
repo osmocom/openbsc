@@ -812,6 +812,7 @@ static struct gsm48_si_ro_info si_info = {
 		.ra_colour = 0,
 		.present = 1,
 	},
+	.early_cm_restrict_3g = false,
 	.si2quater_indicator = false,
 	.lsa_params = {
 		.present = 0,
@@ -858,6 +859,7 @@ static int generate_si3(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 		si_info.si2quater_indicator = false;
 	}
 	si_info.early_cm_ctrl = bts->early_classmark_allowed;
+	si_info.early_cm_restrict_3g = !bts->early_classmark_allowed_3g;
 
 	/* SI3 Rest Octets (10.5.2.34), containing
 		CBQ, CELL_RESELECT_OFFSET, TEMPORARY_OFFSET, PENALTY_TIME

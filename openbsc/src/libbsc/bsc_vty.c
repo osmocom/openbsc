@@ -283,8 +283,11 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->si_common.chan_desc.bs_ag_blks_res, VTY_NEWLINE);
 	vty_out(vty, "System Information present: 0x%08x, static: 0x%08x%s",
 		bts->si_valid, bts->si_mode_static, VTY_NEWLINE);
-	vty_out(vty, "Early Classmark Sending: %s%s",
+	vty_out(vty, "Early Classmark Sending: 2G %s, 3G %s%s%s",
 		bts->early_classmark_allowed ? "allowed" : "forbidden",
+		bts->early_classmark_allowed_3g ? "allowed" : "forbidden",
+		bts->early_classmark_allowed_3g && !bts->early_classmark_allowed ?
+		" (forbidden by 2G bit)" : "",
 		VTY_NEWLINE);
 	if (bts->pcu_sock_path)
 		vty_out(vty, "PCU Socket Path: %s%s", bts->pcu_sock_path, VTY_NEWLINE);
@@ -672,6 +675,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	}
 	vty_out(vty, "  early-classmark-sending %s%s",
 		bts->early_classmark_allowed ? "allowed" : "forbidden", VTY_NEWLINE);
+	vty_out(vty, "  early-classmark-sending-3g %s%s",
+		bts->early_classmark_allowed_3g ? "allowed" : "forbidden", VTY_NEWLINE);
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 	case GSM_BTS_TYPE_OSMOBTS:
@@ -2770,6 +2775,22 @@ DEFUN(cfg_bts_early_cm, cfg_bts_early_cm_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_early_cm_3g, cfg_bts_early_cm_3g_cmd,
+	"early-classmark-sending-3g (allowed|forbidden)",
+	"3G Early Classmark Sending\n"
+	"3G Early Classmark Sending is allowed\n"
+	"3G Early Classmark Sending is forbidden\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!strcmp(argv[0], "allowed"))
+		bts->early_classmark_allowed_3g = true;
+	else
+		bts->early_classmark_allowed_3g = false;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_neigh_mode, cfg_bts_neigh_mode_cmd,
 	"neighbor-list mode (automatic|manual|manual-si5)",
 	"Neighbor List\n" "Mode of Neighbor List generation\n"
@@ -4291,6 +4312,7 @@ int bsc_vty_init(struct gsm_network *network)
 	install_element(BTS_NODE, &cfg_bts_si_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_si_static_cmd);
 	install_element(BTS_NODE, &cfg_bts_early_cm_cmd);
+	install_element(BTS_NODE, &cfg_bts_early_cm_3g_cmd);
 	install_element(BTS_NODE, &cfg_bts_neigh_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
