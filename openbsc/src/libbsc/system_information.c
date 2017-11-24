@@ -802,8 +802,8 @@ static struct gsm48_si_ro_info si_info = {
 	.power_offset = {
 		.present = 0,
 	},
-	.si2ter_indicator = 0,
-	.early_cm_ctrl = 1,
+	.si2ter_indicator = false,
+	.early_cm_ctrl = true,
 	.scheduling = {
 		.present = 0,
 	},
@@ -812,7 +812,7 @@ static struct gsm48_si_ro_info si_info = {
 		.ra_colour = 0,
 		.present = 1,
 	},
-	.si2quater_indicator = 0,
+	.si2quater_indicator = false,
 	.lsa_params = {
 		.present = 0,
 	},
@@ -846,16 +846,16 @@ static int generate_si3(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 
 	if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter)) {
 		LOGP(DRR, LOGL_INFO, "SI 2ter is included.\n");
-		si_info.si2ter_indicator = 1;
+		si_info.si2ter_indicator = true;
 	} else {
-		si_info.si2ter_indicator = 0;
+		si_info.si2ter_indicator = false;
 	}
 	if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2quater)) {
 		LOGP(DRR, LOGL_INFO, "SI 2quater is included, based on %zu EARFCNs and %zu UARFCNs.\n",
 		     si2q_earfcn_count(&bts->si_common.si2quater_neigh_list), bts->si_common.uarfcn_length);
-		si_info.si2quater_indicator = 1;
+		si_info.si2quater_indicator = true;
 	} else {
-		si_info.si2quater_indicator = 0;
+		si_info.si2quater_indicator = false;
 	}
 	si_info.early_cm_ctrl = bts->early_classmark_allowed;
 

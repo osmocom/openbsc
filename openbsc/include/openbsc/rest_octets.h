@@ -40,15 +40,15 @@ struct gsm48_lsa_params {
 struct gsm48_si_ro_info {
 	struct gsm48_si_selection_params selection_params;
 	struct gsm48_si_power_offset power_offset;
-	uint8_t si2ter_indicator;
-	uint8_t early_cm_ctrl;
+	bool si2ter_indicator;
+	bool early_cm_ctrl;
 	struct {
 		uint8_t where:3,
 			 present:1;
 	} scheduling;
 	struct gsm48_si3_gprs_ind gprs_ind;
 	/* SI 3 specific */
-	uint8_t si2quater_indicator;
+	bool si2quater_indicator;
 	/* SI 4 specific */
 	struct gsm48_lsa_params lsa_params;
 	uint16_t cell_id;
