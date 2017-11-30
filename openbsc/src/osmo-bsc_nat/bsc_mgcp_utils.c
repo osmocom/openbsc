@@ -712,7 +712,7 @@ err:
  */
 void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 {
-	struct mgcp_config *mgcp_cfg;
+	struct mgcp_config *mgcp_cfg, *mgcp_found = NULL;
 	struct mgcp_nat_config *mgcp_nat;
 	struct msgb *output;
 	struct bsc_endpoint *bsc_endp = NULL;
@@ -746,6 +746,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 
 			endp = &mgcp_cfg->trunk.endpoints[i];
 			bsc_endp = &mgcp_nat->bsc_endpoints[i];
+			mgcp_found = mgcp_cfg;
 			break;
 		}
 	}
@@ -763,7 +764,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 
 	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
 	if (endp->ci == CI_UNUSED) {
-		free_chan_downstream(mgcp_cfg, endp, bsc_endp, bsc);
+		free_chan_downstream(mgcp_found, endp, bsc_endp, bsc);
 		return;
 	}
 
@@ -771,12 +772,12 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		bsc_mgcp_osmux_confirm(endp, (const char *) msg->l2h);
 
 	/* If we require osmux and it is disabled.. fail */
-	if (nat_osmux_only(mgcp_cfg, bsc->cfg) &&
+	if (nat_osmux_only(mgcp_found, bsc->cfg) &&
 		endp->osmux.state == OSMUX_STATE_DISABLED) {
 		LOGP(DMGCP, LOGL_ERROR,
 			"Failed to activate osmux endpoint 0x%x\n",
 			ENDPOINT_NUMBER(endp));
-		free_chan_downstream(mgcp_cfg, endp, bsc_endp, bsc);
+		free_chan_downstream(mgcp_found, endp, bsc_endp, bsc);
 		return;
 	}
 
@@ -800,7 +801,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	mgcp_queue_for_call_agent(mgcp_cfg, output);
+	mgcp_queue_for_call_agent(mgcp_found, output);
 }
 
 int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60])
