@@ -77,7 +77,7 @@ static int neigh_meas_avg(struct neigh_meas_proc *nmp, int window)
 	int avg = 0;
 
 	/* reduce window to the actual number of existing measurements */
-	if (window < nmp->rxlev_cnt)
+	if (window > nmp->rxlev_cnt)
 		window = nmp->rxlev_cnt;
 	/* this should never happen */
 	if (window <= 0) {
