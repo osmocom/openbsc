@@ -822,7 +822,7 @@ uint32_t bsc_mgcp_extract_ci(const char *str)
 		return CI_UNUSED;
 	}
 
-	if (sscanf(res, "I: %u", &ci) != 1) {
+	if (sscanf(res, "I: %x", &ci) != 1) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to parse CI in msg '%s'\n", str);
 		return CI_UNUSED;
 	}
