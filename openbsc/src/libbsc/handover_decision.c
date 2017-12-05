@@ -80,8 +80,10 @@ static int neigh_meas_avg(struct neigh_meas_proc *nmp, int window)
 	if (window < nmp->rxlev_cnt)
 		window = nmp->rxlev_cnt;
 	/* this should never happen */
-	if (window == 0)
+	if (window <= 0) {
+		LOGP(DHO, LOGL_ERROR, "Requested Neighbor RxLev for invalid window size of %d\n", window);
 		return 0;
+	}
 
 	idx = calc_initial_idx(ARRAY_SIZE(nmp->rxlev),
 				nmp->rxlev_cnt % ARRAY_SIZE(nmp->rxlev),
