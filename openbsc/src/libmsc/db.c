@@ -183,6 +183,13 @@ static const char *create_stmts[] = {
 		")",
 };
 
+static inline int next_row(dbi_result result)
+{
+	if (!dbi_result_has_next_row(result))
+		return 0;
+	return dbi_result_next_row(result);
+}
+
 void db_error_func(dbi_conn conn, void *data)
 {
 	const char *msg;
@@ -310,7 +317,7 @@ static int update_db_revision_3(void)
 		     "Failed fetch messages from the old SMS table (upgrade from rev 3).\n");
 		goto rollback;
 	}
-	while (dbi_result_next_row(result)) {
+	while (next_row(result)) {
 		sms = sms_from_result_v3(result);
 		if (db_sms_store(sms) != 0) {
 			LOGP(DDB, LOGL_ERROR, "Failed to store message to the new SMS table(upgrade from rev 3).\n");
@@ -456,7 +463,7 @@ static int update_db_revision_4(void)
 		     "Failed fetch messages from the old SMS table (upgrade from rev 4).\n");
 		goto rollback;
 	}
-	while (dbi_result_next_row(result)) {
+	while (next_row(result)) {
 		sms = sms_from_result_v4(result);
 		if (db_sms_store(sms) != 0) {
 			LOGP(DDB, LOGL_ERROR, "Failed to store message to the new SMS table(upgrade from rev 4).\n");
@@ -532,7 +539,7 @@ static int check_db_revision(void)
 	if (!result)
 		return -EINVAL;
 
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		dbi_result_free(result);
 		return -EINVAL;
 	}
@@ -726,7 +733,7 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 	if (!result)
 		return -EIO;
 
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		dbi_result_free(result);
 		return -ENOENT;
 	}
@@ -774,7 +781,7 @@ int db_get_authinfo_for_subscr(struct gsm_auth_info *ainfo,
 	if (!result)
 		return -EIO;
 
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		dbi_result_free(result);
 		return -ENOENT;
 	}
@@ -860,7 +867,7 @@ int db_get_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 	if (!result)
 		return -EIO;
 
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		dbi_result_free(result);
 		return -ENOENT;
 	}
@@ -1050,7 +1057,7 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 		LOGP(DDB, LOGL_ERROR, "Failed to query Subscriber.\n");
 		return NULL;
 	}
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		DEBUGP(DDB, "Failed to find the Subscriber. '%u' '%s'\n",
 			field, id);
 		dbi_result_free(result);
@@ -1086,7 +1093,7 @@ int db_subscriber_update(struct gsm_subscriber *subscr)
 		LOGP(DDB, LOGL_ERROR, "Failed to query Subscriber: %llu\n", subscr->id);
 		return -EIO;
 	}
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		DEBUGP(DDB, "Failed to find the Subscriber. %llu\n",
 			subscr->id);
 		dbi_result_free(result);
@@ -1279,7 +1286,7 @@ int db_subscriber_list_active(void (*cb)(struct gsm_subscriber*,void*), void *cl
 		return -1;
 	}
 
-	while (dbi_result_next_row(result)) {
+	while (next_row(result)) {
 		struct gsm_subscriber *subscr;
 
 		subscr = subscr_alloc();
@@ -1357,7 +1364,7 @@ int db_subscriber_expire(void *priv, void (*callback)(void *priv, long long unsi
 		return -EIO;
 	}
 
-	while (dbi_result_next_row(result))
+	while (next_row(result))
 		callback(priv, dbi_result_get_ulonglong(result, "id"));
 
 	dbi_result_free(result);
@@ -1396,7 +1403,7 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 			dbi_result_free(result);
 			continue;
 		}
-		if (!dbi_result_next_row(result)) {
+		if (!next_row(result)) {
 			dbi_result_free(result);
 			DEBUGP(DDB, "Allocated TMSI %u for IMSI %s.\n",
 				subscriber->tmsi, subscriber->imsi);
@@ -1429,7 +1436,7 @@ int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber, uint64_t smin,
 			dbi_result_free(result);
 			continue;
 		}
-		if (!dbi_result_next_row(result)) {
+		if (!next_row(result)) {
 			dbi_result_free(result);
 			break;
 		}
@@ -1470,7 +1477,7 @@ int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t *token
 			dbi_result_free(result);
 			continue;
 		}
-		if (!dbi_result_next_row(result)) {
+		if (!next_row(result)) {
 			dbi_result_free(result);
 			break;
 		}
@@ -1530,7 +1537,7 @@ int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM230
 			LOGP(DDB, LOGL_ERROR, "Failed to query Equipment by IMEI.\n");
 			return 1;
 		}
-		if (!dbi_result_next_row(result)) {
+		if (!next_row(result)) {
 			LOGP(DDB, LOGL_ERROR, "Failed to find the Equipment.\n");
 			dbi_result_free(result);
 			return 1;
@@ -1686,7 +1693,7 @@ struct gsm_sms *db_sms_get(struct gsm_network *net, unsigned long long id)
 	if (!result)
 		return NULL;
 
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		dbi_result_free(result);
 		return NULL;
 	}
@@ -1715,7 +1722,7 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long mi
 	if (!result)
 		return NULL;
 
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		dbi_result_free(result);
 		return NULL;
 	}
@@ -1745,7 +1752,7 @@ struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net,
 	if (!result)
 		return NULL;
 
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		dbi_result_free(result);
 		return NULL;
 	}
@@ -1774,7 +1781,7 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 	if (!result)
 		return NULL;
 
-	if (!dbi_result_next_row(result)) {
+	if (!next_row(result)) {
 		dbi_result_free(result);
 		return NULL;
 	}
