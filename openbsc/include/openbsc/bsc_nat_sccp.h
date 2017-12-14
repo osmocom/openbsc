@@ -75,10 +75,12 @@ struct nat_sccp_connection {
 	struct msc_config *msc_conf;
 	struct mgcp_config *mgcp_conf;
 
-	struct sccp_source_reference real_ref;
-	struct sccp_source_reference patched_ref;
-	struct sccp_source_reference remote_ref;
-	int has_remote_ref;
+	struct sccp_source_reference bsc_real_ref;	/* local ref of the BSC to nat */
+	struct sccp_source_reference bsc_patched_ref;	/* local ref of the nat to MSC */
+
+	struct sccp_source_reference msc_real_ref;	/* local ref of the MSC to nat */
+
+	int has_msc_ref;
 
 	/* status */
 	int con_local;

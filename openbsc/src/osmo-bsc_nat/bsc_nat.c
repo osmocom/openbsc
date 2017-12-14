@@ -250,8 +250,8 @@ static struct msgb *nat_create_rlsd(struct nat_sccp_connection *conn)
 	rel = (struct sccp_connection_released *) msg->l2h;
 	rel->type = SCCP_MSG_TYPE_RLSD;
 	rel->release_cause = SCCP_RELEASE_CAUSE_SCCP_FAILURE;
-	rel->destination_local_reference = conn->remote_ref;
-	rel->source_local_reference = conn->patched_ref;
+	rel->destination_local_reference = conn->msc_real_ref;
+	rel->source_local_reference = conn->bsc_patched_ref;
 
 	return msg;
 }
@@ -297,8 +297,8 @@ static void nat_send_rlsd_bsc(struct nat_sccp_connection *conn)
 	rel = (struct sccp_connection_released *) msg->l2h;
 	rel->type = SCCP_MSG_TYPE_RLSD;
 	rel->release_cause = SCCP_RELEASE_CAUSE_SCCP_FAILURE;
-	rel->destination_local_reference = conn->real_ref;
-	rel->source_local_reference = conn->remote_ref;
+	rel->destination_local_reference = conn->bsc_real_ref;
+	rel->source_local_reference = conn->msc_real_ref;
 
 	bsc_write(conn->bsc, msg, IPAC_PROTO_SCCP);
 }
@@ -314,7 +314,7 @@ static struct msgb *nat_creat_clrc(struct nat_sccp_connection *conn, uint8_t cau
 		return NULL;
 	}
 
-	sccp = sccp_create_dt1(&conn->real_ref, msg->data, msg->len);
+	sccp = sccp_create_dt1(&conn->bsc_real_ref, msg->data, msg->len);
 	if (!sccp) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate SCCP msg.\n");
 		msgb_free(msg);
@@ -470,7 +470,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 {
 	struct msgb *rlsd;
 	/* 1. release the network */
-	rlsd = sccp_create_rlsd(&con->patched_ref, &con->remote_ref,
+	rlsd = sccp_create_rlsd(&con->bsc_patched_ref, &con->msc_real_ref,
 				SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
 	if (!rlsd)
 		LOGP(DNAT, LOGL_ERROR, "Failed to create RLSD message.\n");
@@ -488,7 +488,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 
 		if (payload) {
 			gsm0808_prepend_dtap_header(payload, 0);
-			udt = sccp_create_dt1(&con->real_ref, payload->data, payload->len);
+			udt = sccp_create_dt1(&con->bsc_real_ref, payload->data, payload->len);
 			if (udt)
 				bsc_write(bsc, udt, IPAC_PROTO_SCCP);
 			else
@@ -502,7 +502,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 
 	nat_send_clrc_bsc(con);
 
-	rlsd = sccp_create_rlsd(&con->remote_ref, &con->real_ref,
+	rlsd = sccp_create_rlsd(&con->msc_real_ref, &con->bsc_real_ref,
 				SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
 	if (!rlsd) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate RLSD for the BSC.\n");
@@ -543,20 +543,20 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 		if (!con)
 			goto send_refuse;
 
-		/* declare it local and assign a unique remote_ref */
+		/* declare it local and assign a unique msc_real_ref */
 		con->filter_state.con_type = FLT_CON_TYPE_LOCAL_REJECT;
 		con->con_local = NAT_CON_END_LOCAL;
-		con->has_remote_ref = 1;
-		con->remote_ref = con->patched_ref;
+		con->has_msc_ref = 1;
+		con->msc_real_ref = con->bsc_patched_ref;
 
 		/* 1. create a confirmation */
-		cc = sccp_create_cc(&con->remote_ref, &con->real_ref);
+		cc = sccp_create_cc(&con->msc_real_ref, &con->bsc_real_ref);
 		if (!cc)
 			goto send_refuse;
 
 		/* 2. create the DT1 */
 		gsm0808_prepend_dtap_header(payload, 0);
-		udt = sccp_create_dt1(&con->real_ref, payload->data, payload->len);
+		udt = sccp_create_dt1(&con->bsc_real_ref, payload->data, payload->len);
 		if (!udt) {
 			msgb_free(cc);
 			goto send_refuse;
@@ -571,7 +571,7 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 		}
 
 		/* 4. send a RLSD */
-		rlsd = sccp_create_rlsd(&con->remote_ref, &con->real_ref,
+		rlsd = sccp_create_rlsd(&con->msc_real_ref, &con->bsc_real_ref,
 					SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
 		if (!rlsd) {
 			msgb_free(cc);
@@ -930,7 +930,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 
 		if (ctr)
 			rate_ctr_inc(ctr);
-		if (sccp_patch->has_remote_ref) {
+		if (sccp_patch->has_msc_ref) {
 			if (sccp_patch->con_local == NAT_CON_END_MSC)
 				nat_send_rlsd_msc(sccp_patch);
 			else if (sccp_patch->con_local == NAT_CON_END_USSD)
@@ -1560,7 +1560,7 @@ static void sccp_close_unconfirmed(void *_data)
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	llist_for_each_entry_safe(conn, tmp1, &nat->sccp_connections, list_entry) {
-		if (conn->has_remote_ref)
+		if (conn->has_msc_ref)
 			continue;
 
 		int diff = (now.tv_sec - conn->creation_time.tv_sec) / 60;
@@ -1569,8 +1569,8 @@ static void sccp_close_unconfirmed(void *_data)
 
 		LOGP(DNAT, LOGL_ERROR,
 			"SCCP connection 0x%x/0x%x was never confirmed on bsc nr. %d\n",
-			sccp_src_ref_to_int(&conn->real_ref),
-			sccp_src_ref_to_int(&conn->patched_ref),
+			sccp_src_ref_to_int(&conn->bsc_real_ref),
+			sccp_src_ref_to_int(&conn->bsc_patched_ref),
 			conn->bsc->cfg->nr);
 		sccp_connection_destroy(conn);
 		destroyed = 1;

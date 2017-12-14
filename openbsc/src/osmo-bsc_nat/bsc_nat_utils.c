@@ -402,8 +402,8 @@ int bsc_config_handles_lac(struct bsc_config *cfg, int lac_nr)
 void sccp_connection_destroy(struct nat_sccp_connection *conn)
 {
 	LOGP(DNAT, LOGL_DEBUG, "Destroy 0x%x <-> 0x%x mapping for con %p\n",
-	     sccp_src_ref_to_int(&conn->real_ref),
-	     sccp_src_ref_to_int(&conn->patched_ref), conn->bsc);
+	     sccp_src_ref_to_int(&conn->bsc_real_ref),
+	     sccp_src_ref_to_int(&conn->bsc_patched_ref), conn->bsc);
 	bsc_mgcp_dlcx(conn);
 	llist_del(&conn->list_entry);
 	talloc_free(conn);
