@@ -213,7 +213,7 @@ int bsc_mgcp_assign_patch(struct nat_sccp_connection *con, struct msgb *msg)
 
 	/* find stale connections using that endpoint */
 	llist_for_each_entry(mcon, &con->bsc->nat->sccp_connections, list_entry) {
-		if (mcon->msc_endp == endp) {
+		if (mcon->msc_endp == endp && mcon->mgcp_conf == con->mgcp_conf) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Endpoint %d was assigned to 0x%x and now 0x%x\n",
 			     endp,
