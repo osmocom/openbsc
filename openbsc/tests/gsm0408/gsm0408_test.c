@@ -145,30 +145,36 @@ static inline void _bts_uarfcn_add(struct gsm_bts *bts, uint16_t arfcn, uint16_t
 	}
 }
 
-static inline void test_si2q_segfault(void)
+static inline struct gsm_bts *bts_init(void *ctx, struct gsm_network *net, const char *msg)
 {
-	struct gsm_bts *bts;
-	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
-	printf("Test SI2quater UARFCN (same scrambling code and diversity):\n");
-
-	if (!network)
+	struct gsm_bts *bts = gsm_bts_alloc(net, 0);
+	if (!bts) {
+		printf("BTS allocation failure in %s()\n", msg);
 		exit(1);
-	bts = gsm_bts_alloc(network, 0);
+	}
+	printf("BTS allocation OK in %s()\n", msg);
+
+	bts->network = net;
+
+	return bts;
+}
+
+static inline void test_si2q_segfault(struct gsm_network *net)
+{
+	struct gsm_bts *bts = bts_init(tall_bsc_ctx, net, __func__);
+	printf("Test SI2quater UARFCN (same scrambling code and diversity):\n");
 
 	_bts_uarfcn_add(bts, 10564, 319, 0);
 	_bts_uarfcn_add(bts, 10612, 319, 0);
 	gen(bts, __func__);
+
+	talloc_free(bts);
 }
 
-static inline void test_si2q_mu(void)
+static inline void test_si2q_mu(struct gsm_network *net)
 {
-	struct gsm_bts *bts;
-	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	struct gsm_bts *bts = bts_init(tall_bsc_ctx, net, __func__);
 	printf("Test SI2quater multiple UARFCNs:\n");
-
-	if (!network)
-		exit(1);
-	bts = gsm_bts_alloc(network, 0);
 
 	_bts_uarfcn_add(bts, 10564, 318, 0);
 	_bts_uarfcn_add(bts, 10612, 319, 0);
@@ -177,18 +183,14 @@ static inline void test_si2q_mu(void)
 	_bts_uarfcn_add(bts, 10613, 64, 0);
 	_bts_uarfcn_add(bts, 10613, 164, 0);
 	_bts_uarfcn_add(bts, 10613, 14, 0);
+
+	talloc_free(bts);
 }
 
-static inline void test_si2q_u(void)
+static inline void test_si2q_u(struct gsm_network *net)
 {
-	struct gsm_bts *bts;
-	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	struct gsm_bts *bts = bts_init(tall_bsc_ctx, net, __func__);
 	printf("Testing SYSINFO_TYPE_2quater UARFCN generation:\n");
-
-	if (!network)
-		exit(1);
-
-	bts = gsm_bts_alloc(network, 0);
 
 	/* first generate invalid SI as no UARFCN added */
 	gen(bts, __func__);
@@ -205,18 +207,14 @@ static inline void test_si2q_u(void)
 	_bts_uarfcn_add(bts, 1982, 223, 1);
 	_bts_uarfcn_add(bts, 1982, 14, 0);
 	_bts_uarfcn_add(bts, 1982, 88, 0);
+
+	talloc_free(bts);
 }
 
-static inline void test_si2q_e(void)
+static inline void test_si2q_e(struct gsm_network *net)
 {
-	struct gsm_bts *bts;
-	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	struct gsm_bts *bts = bts_init(tall_bsc_ctx, net, __func__);
 	printf("Testing SYSINFO_TYPE_2quater EARFCN generation:\n");
-
-	if (!network)
-		exit(1);
-
-	bts = gsm_bts_alloc(network, 0);
 
 	bts->si_common.si2quater_neigh_list.arfcn = bts->si_common.data.earfcn_list;
 	bts->si_common.si2quater_neigh_list.meas_bw = bts->si_common.data.meas_bw_list;
@@ -238,18 +236,14 @@ static inline void test_si2q_e(void)
 	add_earfcn_b(bts, 1965, OSMO_EARFCN_MEAS_INVALID);
 	add_earfcn_b(bts, 1967, 4);
 	add_earfcn_b(bts, 1982, 3);
+
+	talloc_free(bts);
 }
 
-static inline void test_si2q_long(void)
+static inline void test_si2q_long(struct gsm_network *net)
 {
-	struct gsm_bts *bts;
-	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	struct gsm_bts *bts = bts_init(tall_bsc_ctx, net, __func__);
 	printf("Testing SYSINFO_TYPE_2quater combined EARFCN & UARFCN generation:\n");
-
-	if (!network)
-		exit(1);
-
-	bts = gsm_bts_alloc(network, 0);
 
 	bts->si_common.si2quater_neigh_list.arfcn = bts->si_common.data.earfcn_list;
 	bts->si_common.si2quater_neigh_list.meas_bw = bts->si_common.data.meas_bw_list;
@@ -286,6 +280,8 @@ static inline void test_si2q_long(void)
 	_bts_uarfcn_add(bts, 1976, 224, 1);
 	_bts_uarfcn_add(bts, 1976, 225, 1);
 	_bts_uarfcn_add(bts, 1976, 226, 1);
+
+	talloc_free(bts);
 }
 
 static void test_mi_functionality(void)
@@ -671,10 +667,10 @@ static void test_gsm411_rp_ref_wrap(void)
 	OSMO_ASSERT(res == 1);
 }
 
-static void test_si_ba_ind(void)
+static void test_si_ba_ind(struct gsm_network *net)
 {
-	struct gsm_network *network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
-	struct gsm_bts *bts = gsm_bts_alloc(network, 0);
+	struct gsm_bts *bts = bts_init(tall_bsc_ctx, net, __func__);
+
 	const struct gsm48_system_information_type_2 *si2 =
 		(struct gsm48_system_information_type_2 *) GSM_BTS_SI(bts, SYSINFO_TYPE_2);
 	const struct gsm48_system_information_type_2bis *si2bis =
@@ -690,7 +686,6 @@ static void test_si_ba_ind(void)
 
 	int rc;
 
-	bts->network = network;
 	bts->c0->arfcn = 23;
 
 	printf("Testing if BA-IND is set as expected in SI2xxx and SI5xxx\n");
@@ -734,8 +729,16 @@ static void test_si_ba_ind(void)
 
 int main(int argc, char **argv)
 {
+	struct gsm_network *net;
+
 	osmo_init_logging(&log_info);
 	log_set_log_level(osmo_stderr_target, LOGL_INFO);
+
+	net = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	if (!net) {
+		printf("Network init failure.\n");
+		return EXIT_FAILURE;
+	}
 
 	test_location_area_identifier();
 	test_mi_functionality();
@@ -746,13 +749,13 @@ int main(int argc, char **argv)
 	test_range_encoding();
 	test_gsm411_rp_ref_wrap();
 
-	test_si2q_segfault();
-	test_si2q_e();
-	test_si2q_u();
-	test_si2q_mu();
-	test_si2q_long();
+	test_si2q_segfault(net);
+	test_si2q_e(net);
+	test_si2q_u(net);
+	test_si2q_mu(net);
+	test_si2q_long(net);
 
-	test_si_ba_ind();
+	test_si_ba_ind(net);
 
 	printf("Done.\n");
 

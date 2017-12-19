@@ -59,28 +59,23 @@ int paging_request(struct gsm_bts *bts, struct bsc_subscr *bsub, int type, gsm_c
 }
 
 
-void test_request_chan(void)
+void test_request_chan(struct gsm_network *net)
 {
-	struct gsm_network *network;
 	struct gsm_bts *bts;
 
 	printf("Testing the gsm_subscriber chan logic\n");
 
-	/* Create a dummy network */
-	network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
-	if (!network)
-		exit(1);
-	bts = gsm_bts_alloc(network, 0);
+	bts = gsm_bts_alloc(net, 0);
 	bts->location_area_code = 23;
-	s_conn.network = network;
+	s_conn.network = net;
 
 	/* Create a dummy subscriber */
 	struct gsm_subscriber *subscr = subscr_alloc();
 	subscr->lac = 23;
-	subscr->group = network->subscr_group;
+	subscr->group = net->subscr_group;
 
 	OSMO_ASSERT(subscr->group);
-	OSMO_ASSERT(subscr->group->net == network);
+	OSMO_ASSERT(subscr->group->net == net);
 
 	/* Ask for a channel... */
 	struct subscr_request *sr;
@@ -93,20 +88,15 @@ void test_request_chan(void)
 }
 
 
-void test_bts_debug_print(void)
+void test_bts_debug_print(struct gsm_network *net)
 {
-	struct gsm_network *network;
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 
 	printf("Testing the lchan printing:");
 
-	/* Create a dummy network */
-	network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
-	if (!network)
-		exit(1);
 	/* Add a BTS with some reasonanbly non-zero id */
-	bts = gsm_bts_alloc(network, 45);
+	bts = gsm_bts_alloc(net, 45);
 	/* Add a second TRX to test on multiple TRXs */
 	gsm_bts_trx_alloc(bts);
 
@@ -154,11 +144,18 @@ void test_dyn_ts_subslots(void)
 
 int main(int argc, char **argv)
 {
+	struct gsm_network *network;
+
 	osmo_init_logging(&log_info);
 
-	test_request_chan();
+	/* Create a dummy network */
+	network = bsc_network_init(tall_bsc_ctx, 1, 1, NULL);
+	if (!network)
+		return EXIT_FAILURE;
+
+	test_request_chan(network);
 	test_dyn_ts_subslots();
-	test_bts_debug_print();
+	test_bts_debug_print(network);
 
 	return EXIT_SUCCESS;
 }

@@ -62,6 +62,7 @@ testing RP-Reference wrap
 Allocated reference: 255
 Allocated reference: 0
 Allocated reference: 1
+BTS allocation OK in test_si2q_segfault()
 Test SI2quater UARFCN (same scrambling code and diversity):
 generating SI2quater for 0 EARFCNs and 1 UARFCNs...
 generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 88 0a 7e 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
@@ -69,6 +70,7 @@ generating SI2quater for 0 EARFCNs and 2 UARFCNs...
 generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 e8 0a 7f 52 88 0a 7e 0b 2b 2b 2b 2b 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 2 UARFCNs...
 generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 e8 0a 7f 52 88 0a 7e 0b 2b 2b 2b 2b 2b 2b 2b 2b 
+BTS allocation OK in test_si2q_e()
 Testing SYSINFO_TYPE_2quater EARFCN generation:
 generating SI2quater for 0 EARFCNs and 0 UARFCNs...
 generated invalid SI2quater [00/00]: [23] 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
@@ -92,6 +94,7 @@ generated valid SI2quater [01/01]: [23] 59 06 07 42 20 04 86 59 83 d7 e0 50 0b 2
 added EARFCN 1982 - generating SI2quater for 7 EARFCNs and 0 UARFCNs...
 generated valid SI2quater [00/01]: [23] 59 06 07 40 20 04 86 59 83 be cc 1e 31 07 91 a8 3c ca 0f 5a 0a 03 2b 
 generated valid SI2quater [01/01]: [23] 59 06 07 42 20 04 86 59 83 d7 e4 1e fa c2 80 2b 2b 2b 2b 2b 2b 2b 2b 
+BTS allocation OK in test_si2q_u()
 Testing SYSINFO_TYPE_2quater UARFCN generation:
 generating SI2quater for 0 EARFCNs and 0 UARFCNs...
 generated invalid SI2quater [00/00]: [23] 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
@@ -117,6 +120,7 @@ generating SI2quater for 0 EARFCNs and 10 UARFCNs...
 generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 50 1c 3b 31 fa dd 88 85 7b c4 1c 2b 2b 2b 2b 
 generating SI2quater for 0 EARFCNs and 11 UARFCNs...
 generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 0f 7c 58 1c 3b 25 7a ea 08 91 fb c4 1f b0 2b 2b 2b 
+BTS allocation OK in test_si2q_mu()
 Test SI2quater multiple UARFCNs:
 generating SI2quater for 0 EARFCNs and 1 UARFCNs...
 generated valid SI2quater [00/00]: [23] 59 06 07 40 00 25 52 88 0a 7c 0b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
@@ -134,6 +138,7 @@ generated valid SI2quater [01/01]: [23] 59 06 07 42 20 25 52 e8 28 81 df 7f fa 3
 generating SI2quater for 0 EARFCNs and 7 UARFCNs...
 generated valid SI2quater [00/01]: [23] 59 06 07 40 20 25 52 ea 10 81 ce a9 74 08 1f fa 54 ba 82 52 03 2b 2b 
 generated valid SI2quater [01/01]: [23] 59 06 07 42 20 25 52 e8 30 81 d3 7f fd b2 86 54 a2 02 9f 03 2b 2b 2b 
+BTS allocation OK in test_si2q_long()
 Testing SYSINFO_TYPE_2quater combined EARFCN & UARFCN generation:
 generating SI2quater for 17 EARFCNs and 1 UARFCNs...
 generated valid SI2quater [00/04]: [23] 59 06 07 40 80 25 0f 70 0c 1a 10 99 66 0f 04 83 c1 1c bb 2b 03 2b 2b 
@@ -201,6 +206,7 @@ generated valid SI2quater [02/05]: [23] 59 06 07 44 a0 04 86 59 83 c2 ec 20 ff 6
 generated valid SI2quater [03/05]: [23] 59 06 07 46 a0 04 86 59 84 21 54 21 4f 61 0a 99 08 55 b7 2e ca c1 2b 
 generated valid SI2quater [04/05]: [23] 59 06 07 48 a0 04 86 59 84 2b 54 21 27 61 09 59 08 4b b7 2e ca c1 2b 
 generated valid SI2quater [05/05]: [23] 59 06 07 4a a0 04 86 59 84 26 53 97 65 60 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+BTS allocation OK in test_si_ba_ind()
 Testing if BA-IND is set as expected in SI2xxx and SI5xxx
 SI2: 59 06 1a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 SI2bis: 59 06 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
