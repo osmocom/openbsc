@@ -106,6 +106,7 @@ void bsc_nat_free(struct bsc_nat *nat)
 	struct bsc_config *bcfg, *btmp;
 	struct msc_config *mcfg, *mtmp;
 	struct bsc_msg_acc_lst *lst, *tmp_lst;
+	struct mgcp_config *mgcp_cfg, *mgcp_tmp;
 
 	llist_for_each_entry_safe(mcfg, mtmp, &nat->msc_configs, entry)
 		msc_config_free(mcfg);
@@ -126,8 +127,9 @@ void bsc_nat_free(struct bsc_nat *nat)
 	osmo_counter_free(nat->stats.bsc.auth_fail);
 	osmo_counter_free(nat->stats.msc.reconn);
 	osmo_counter_free(nat->stats.ussd.reconn);
-#warning "Free each mgcp"
-//	talloc_free(nat->mgcp_cfgs);
+
+	llist_for_each_entry_safe(mgcp_cfg, mgcp_tmp, nat->mgcp_cfgs, entry)
+		mgcp_config_free(mgcp_cfg);
 	talloc_free(nat);
 }
 

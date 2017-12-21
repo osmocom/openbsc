@@ -1222,6 +1222,12 @@ struct mgcp_config *mgcp_config_alloc(void)
 	return cfg;
 }
 
+void mgcp_config_free(struct mgcp_config *cfg)
+{
+	llist_del(&cfg->entry);
+	talloc_free(cfg);
+}
+
 struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int nr)
 {
 	struct mgcp_trunk_config *trunk;
