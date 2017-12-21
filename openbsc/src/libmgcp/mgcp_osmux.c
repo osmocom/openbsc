@@ -120,9 +120,9 @@ osmux_handle_alloc(struct mgcp_config *cfg, struct in_addr *addr, int rem_port)
 	}
 
 	h->in->osmux_seq = 0; /* sequence number to start OSmux message from */
-	h->in->batch_factor = cfg->osmux_batch;
+	h->in->batch_factor = cfg->osmux_cfg->osmux_batch;
 	/* If batch size is zero, the library defaults to 1470 bytes. */
-	h->in->batch_size = cfg->osmux_batch_size;
+	h->in->batch_size = cfg->osmux_cfg->osmux_batch_size;
 	h->in->deliver = osmux_deliver;
 	osmux_xfrm_input_init(h->in);
 	h->in->data = h;
@@ -171,36 +171,39 @@ int osmux_xfrm_to_osmux(int type, char *buf, int rc, struct mgcp_endpoint *endp)
 }
 
 static struct mgcp_endpoint *
-endpoint_lookup(struct mgcp_config *cfg, int cid,
+endpoint_lookup(struct llist_head *cfgs, int cid,
 		struct in_addr *from_addr, int type)
 {
 	struct mgcp_endpoint *tmp = NULL;
+	struct mgcp_config *cfg;
 	int i;
 
-	/* Lookup for the endpoint that corresponds to this port */
-	for (i=0; i<cfg->trunk.number_endpoints; i++) {
-		struct in_addr *this;
+	llist_for_each_entry(cfg, cfgs, entry) {
+		/* Lookup for the endpoint that corresponds to this port */
+		for (i=0; i<cfg->trunk.number_endpoints; i++) {
+			struct in_addr *this;
 
-		tmp = &cfg->trunk.endpoints[i];
+			tmp = &cfg->trunk.endpoints[i];
 
-		if (!tmp->allocated)
-			continue;
+			if (!tmp->allocated)
+				continue;
 
-		switch(type) {
-		case MGCP_DEST_NET:
-			this = &tmp->net_end.addr;
-			break;
-		case MGCP_DEST_BTS:
-			this = &tmp->bts_end.addr;
-			break;
-		default:
-			/* Should not ever happen */
-			LOGP(DMGCP, LOGL_ERROR, "Bad type %d. Fix your code.\n", type);
-			return NULL;
+			switch(type) {
+			case MGCP_DEST_NET:
+				this = &tmp->net_end.addr;
+				break;
+			case MGCP_DEST_BTS:
+				this = &tmp->bts_end.addr;
+				break;
+			default:
+				/* Should not ever happen */
+				LOGP(DMGCP, LOGL_ERROR, "Bad type %d. Fix your code.\n", type);
+				return NULL;
+			}
+
+			if (tmp->osmux.cid == cid && this->s_addr == from_addr->s_addr)
+				return tmp;
 		}
-
-		if (tmp->osmux.cid == cid && this->s_addr == from_addr->s_addr)
-			return tmp;
 	}
 
 	LOGP(DMGCP, LOGL_ERROR, "Cannot find endpoint with cid=%d\n", cid);
@@ -269,7 +272,7 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 	struct osmux_hdr *osmuxh;
 	struct llist_head list;
 	struct sockaddr_in addr;
-	struct mgcp_config *cfg = ofd->data;
+	struct osmux_config *cfg = ofd->data;
 	uint32_t rem;
 
 	msg = osmux_recv(ofd, &addr);
@@ -285,7 +288,7 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 		struct mgcp_endpoint *endp;
 
 		/* Yes, we use MGCP_DEST_NET to locate the origin */
-		endp = endpoint_lookup(cfg, osmuxh->circuit_id,
+		endp = endpoint_lookup(cfg->mgcp_cfgs, osmuxh->circuit_id,
 				       &addr.sin_addr, MGCP_DEST_NET);
 		if (!endp) {
 			LOGP(DMGCP, LOGL_ERROR,
@@ -306,7 +309,7 @@ out:
 }
 
 /* This is called from the bsc-nat */
-static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
+static int osmux_handle_dummy(struct osmux_config *cfg, struct sockaddr_in *addr,
 			      struct msgb *msg)
 {
 	struct mgcp_endpoint *endp;
@@ -321,7 +324,7 @@ static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
 	LOGP(DMGCP, LOGL_DEBUG, "Received Osmux dummy load from %s\n",
 	     inet_ntoa(addr->sin_addr));
 
-	if (!cfg->osmux) {
+	if (!cfg->osmux_enabled) {
 		LOGP(DMGCP, LOGL_ERROR,
 		     "bsc wants to use Osmux but bsc-nat did not request it\n");
 		goto out;
@@ -330,7 +333,7 @@ static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
 	/* extract the osmux CID from the dummy message */
 	memcpy(&osmux_cid, &msg->data[1], sizeof(osmux_cid));
 
-	endp = endpoint_lookup(cfg, osmux_cid, &addr->sin_addr, MGCP_DEST_BTS);
+	endp = endpoint_lookup(cfg->mgcp_cfgs, osmux_cid, &addr->sin_addr, MGCP_DEST_BTS);
 	if (!endp) {
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Cannot find endpoint for Osmux CID %d\n", osmux_cid);
@@ -361,7 +364,7 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 	struct osmux_hdr *osmuxh;
 	struct llist_head list;
 	struct sockaddr_in addr;
-	struct mgcp_config *cfg = ofd->data;
+	struct osmux_config *cfg = ofd->data;
 	uint32_t rem;
 
 	msg = osmux_recv(ofd, &addr);
@@ -377,7 +380,7 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 		struct mgcp_endpoint *endp;
 
 		/* Yes, we use MGCP_DEST_BTS to locate the origin */
-		endp = endpoint_lookup(cfg, osmuxh->circuit_id,
+		endp = endpoint_lookup(cfg->mgcp_cfgs, osmuxh->circuit_id,
 				       &addr.sin_addr, MGCP_DEST_BTS);
 		if (!endp) {
 			LOGP(DMGCP, LOGL_ERROR,
@@ -397,7 +400,12 @@ out:
 	return 0;
 }
 
-int osmux_init(int role, struct mgcp_config *cfg)
+int osmux_is_inited(struct osmux_config *cfg)
+{
+	return cfg->osmux_init;
+}
+
+int osmux_init(int role, struct osmux_config *cfg)
 {
 	int ret;
 
@@ -461,7 +469,7 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint
 		return -1;
 	}
 	if (!osmux_xfrm_input_open_circuit(endp->osmux.in, endp->osmux.cid,
-					   endp->cfg->osmux_dummy)) {
+					   endp->cfg->osmux_cfg->osmux_dummy)) {
 		LOGP(DMGCP, LOGL_ERROR, "Cannot open osmux circuit %u\n",
 		     endp->osmux.cid);
 		return -1;
@@ -521,7 +529,7 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 
 	if (endp->osmux.state == OSMUX_STATE_ACTIVATING) {
 		if (osmux_enable_endpoint(endp, &endp->net_end.addr,
-					  htons(endp->cfg->osmux_port)) < 0) {
+					  htons(endp->cfg->osmux_cfg->osmux_port)) < 0) {
 			LOGP(DMGCP, LOGL_ERROR,
 			     "Could not activate osmux in endpoint %d\n",
 			     ENDPOINT_NUMBER(endp));
@@ -529,14 +537,14 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Osmux CID %u for %s:%u is now enabled\n",
 		     endp->osmux.cid, inet_ntoa(endp->net_end.addr),
-		     endp->cfg->osmux_port);
+		     endp->cfg->osmux_cfg->osmux_port);
 	}
 	LOGP(DMGCP, LOGL_DEBUG,
 	     "sending OSMUX dummy load to %s CID %u\n",
 	     inet_ntoa(endp->net_end.addr), endp->osmux.cid);
 
 	return mgcp_udp_send(osmux_fd.fd, &endp->net_end.addr,
-			     htons(endp->cfg->osmux_port), buf, sizeof(buf));
+			     htons(endp->cfg->osmux_cfg->osmux_port), buf, sizeof(buf));
 }
 
 /* bsc-nat allocates/releases the Osmux circuit ID */

@@ -701,8 +701,8 @@ static int mgcp_parse_osmux_cid(const char *line)
 
 static int mgcp_osmux_setup(struct mgcp_endpoint *endp, const char *line)
 {
-	if (!endp->cfg->osmux_init) {
-		if (osmux_init(OSMUX_ROLE_BSC, endp->cfg) < 0) {
+	if (!endp->cfg->osmux_cfg->osmux_init) {
+		if (osmux_init(OSMUX_ROLE_BSC, endp->cfg->osmux_cfg) < 0) {
 			LOGP(DMGCP, LOGL_ERROR, "Cannot init OSMUX\n");
 			return -1;
 		}
@@ -746,7 +746,7 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 			/* Osmux is not enabled in this bsc, ignore it so the
 			 * bsc-nat knows that we don't want to use Osmux.
 			 */
-			if (!p->endp->cfg->osmux)
+			if (!endp->cfg->osmux_cfg->osmux_enabled)
 				break;
 
 			if (strncmp("Osmux: ", line + 2, strlen("Osmux: ")) == 0)
@@ -821,7 +821,7 @@ mgcp_header_done:
 	if (osmux_cid >= 0) {
 		endp->osmux.cid = osmux_cid;
 		endp->osmux.state = OSMUX_STATE_NEGOTIATING;
-	} else if (endp->cfg->osmux == OSMUX_USAGE_ONLY) {
+	} else if (endp->cfg->osmux_cfg->osmux_enabled == OSMUX_USAGE_ONLY) {
 		LOGP(DMGCP, LOGL_ERROR,
 			"Osmux only and no osmux offered on 0x%x\n", ENDPOINT_NUMBER(endp));
 		goto error2;
@@ -1195,7 +1195,6 @@ struct mgcp_config *mgcp_config_alloc(void)
 
 	cfg->source_port = 2427;
 	cfg->source_addr = talloc_strdup(cfg, "0.0.0.0");
-	cfg->osmux_addr = talloc_strdup(cfg, "0.0.0.0");
 
 	cfg->transcoder_remote_base = 4000;
 

@@ -1302,6 +1302,7 @@ DEFUN(cfg_bsc_osmux,
        OSMUX_STR "Enable OSMUX\n" "Disable OSMUX\n" "Only OSMUX\n")
 {
 	struct bsc_config *conf = vty->index;
+	struct mgcp_config *mgcp_cfg;
 	int old = conf->osmux;
 
 	if (strcmp(argv[0], "on") == 0)
@@ -1311,14 +1312,13 @@ DEFUN(cfg_bsc_osmux,
 	else if (strcmp(argv[0], "only") == 0)
 		conf->osmux = OSMUX_USAGE_ONLY;
 
-#warning "OSMUX is missing support for multiple mgcp"
 	if (conf->osmux != OSMUX_USAGE_OFF)
 		return CMD_WARNING;
 
-#if 0
-	if (old == 0 && conf->osmux > 0 && !conf->nat->mgcp_cfg->osmux_init) {
+	mgcp_cfg = mgcp_config_by_num(conf->nat->mgcp_cfgs, 0);
+	if (old == 0 && conf->osmux > 0 && !osmux_is_inited(mgcp_cfg->osmux_cfg)) {
 		LOGP(DMGCP, LOGL_NOTICE, "Setting up OSMUX socket\n");
-		if (osmux_init(OSMUX_ROLE_BSC_NAT, conf->nat->mgcp_cfg) < 0) {
+		if (osmux_init(OSMUX_ROLE_BSC_NAT, mgcp_cfg->osmux_cfg) < 0) {
 			LOGP(DMGCP, LOGL_ERROR, "Cannot init OSMUX\n");
 			vty_out(vty, "%% failed to create Osmux socket%s",
 				VTY_NEWLINE);
@@ -1331,7 +1331,6 @@ DEFUN(cfg_bsc_osmux,
 		 * new upcoming flows should use RTP.
 		 */
 	}
-#endif
 
 	return CMD_SUCCESS;
 }

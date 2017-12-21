@@ -10,7 +10,8 @@ enum {
 	OSMUX_ROLE_BSC_NAT,
 };
 
-int osmux_init(int role, struct mgcp_config *cfg);
+int osmux_is_inited(struct osmux_config *cfg);
+int osmux_init(int role, struct osmux_config* cfg);
 int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint16_t port);
 void osmux_disable_endpoint(struct mgcp_endpoint *endp);
 void osmux_allocate_cid(struct mgcp_endpoint *endp);

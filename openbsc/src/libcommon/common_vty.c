@@ -127,6 +127,7 @@ int bsc_vty_go_parent(struct vty *vty)
 	case MSC_NODE:
 	case MNCC_INT_NODE:
 	case NITB_NODE:
+	case OSMUX_NODE:
 	default:
 		if (bsc_vty_is_config_node(vty, vty->node))
 			vty->node = CONFIG_NODE;

@@ -35,6 +35,7 @@
 #define RTP_KEEPALIVE_STR "Send dummy UDP packet to net RTP destination\n"
 
 static LLIST_HEAD(mgcp_configs);
+static struct osmux_config osmux_cfg;
 
 static struct mgcp_trunk_config *find_trunk(struct mgcp_config *cfg, int nr)
 {
@@ -51,6 +52,12 @@ static struct mgcp_trunk_config *find_trunk(struct mgcp_config *cfg, int nr)
 /*
  * vty code for mgcp below
  */
+struct cmd_node osmux_node = {
+	OSMUX_NODE,
+	"%s(osmux)# ",
+	1,
+};
+
 struct cmd_node mgcp_node = {
 	MGCP_NODE,
 	"%s(config-mgcp)# ",
@@ -62,6 +69,34 @@ struct cmd_node trunk_node = {
 	"%s(config-mgcp-trunk)# ",
 	1,
 };
+
+static void config_write_osmux(struct vty *vty)
+{
+	switch (osmux_cfg.osmux_enabled) {
+	case OSMUX_USAGE_ON:
+		vty_out(vty, "  osmux-enable on%s", VTY_NEWLINE);
+		break;
+	case OSMUX_USAGE_ONLY:
+		vty_out(vty, "  osmux-enable only%s", VTY_NEWLINE);
+		break;
+	case OSMUX_USAGE_OFF:
+	default:
+		vty_out(vty, "  osmux-enable off%s", VTY_NEWLINE);
+		break;
+	}
+	if (osmux_cfg.osmux_enabled) {
+		vty_out(vty, "  bind-ip %s%s",
+			osmux_cfg.osmux_addr, VTY_NEWLINE);
+		vty_out(vty, "  batch-factor %d%s",
+			osmux_cfg.osmux_batch, VTY_NEWLINE);
+		vty_out(vty, "  batch-size %u%s",
+			osmux_cfg.osmux_batch_size, VTY_NEWLINE);
+		vty_out(vty, "  port %u%s",
+			osmux_cfg.osmux_port, VTY_NEWLINE);
+		vty_out(vty, "  dummy %s%s",
+			osmux_cfg.osmux_dummy ? "on" : "off", VTY_NEWLINE);
+	}
+}
 
 static void config_write_mgcp_single(struct vty *vty, struct mgcp_config *cfg)
 {
@@ -140,30 +175,6 @@ static void config_write_mgcp_single(struct vty *vty, struct mgcp_config *cfg)
 		vty_out(vty, "  rtp force-ptime %d%s", cfg->bts_force_ptime, VTY_NEWLINE);
 	vty_out(vty, "  transcoder-remote-base %u%s", cfg->transcoder_remote_base, VTY_NEWLINE);
 
-	switch (cfg->osmux) {
-	case OSMUX_USAGE_ON:
-		vty_out(vty, "  osmux on%s", VTY_NEWLINE);
-		break;
-	case OSMUX_USAGE_ONLY:
-		vty_out(vty, "  osmux only%s", VTY_NEWLINE);
-		break;
-	case OSMUX_USAGE_OFF:
-	default:
-		vty_out(vty, "  osmux off%s", VTY_NEWLINE);
-		break;
-	}
-	if (cfg->osmux) {
-		vty_out(vty, "  osmux bind-ip %s%s",
-			cfg->osmux_addr, VTY_NEWLINE);
-		vty_out(vty, "  osmux batch-factor %d%s",
-			cfg->osmux_batch, VTY_NEWLINE);
-		vty_out(vty, "  osmux batch-size %u%s",
-			cfg->osmux_batch_size, VTY_NEWLINE);
-		vty_out(vty, "  osmux port %u%s",
-			cfg->osmux_port, VTY_NEWLINE);
-		vty_out(vty, "  osmux dummy %s%s",
-			cfg->osmux_dummy ? "on" : "off", VTY_NEWLINE);
-	}
 }
 
 static int config_write_mgcp(struct vty *vty)
@@ -262,11 +273,29 @@ DEFUN(show_mcgp, show_mgcp_cmd,
 	llist_for_each_entry(trunk, &mgcp->trunks, entry)
 		dump_trunk(vty, trunk, show_stats);
 
-	if (mgcp->osmux)
+	if (osmux_cfg.osmux_enabled)
 		vty_out(vty, "Osmux used CID: %d%s", osmux_used_cid(), VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_osmux,
+      cfg_osmux_cmd,
+      "osmux",
+      "Configure osmux support")
+{
+	osmux_cfg.mgcp_cfgs = &mgcp_configs;
+	osmux_cfg.osmux_port = OSMUX_PORT;
+	osmux_cfg.osmux_batch = 4;
+	osmux_cfg.osmux_batch_size = OSMUX_BATCH_DEFAULT_MAX;
+	osmux_cfg.osmux_addr = talloc_strdup(NULL, "0.0.0.0");
+
+	vty->node = OSMUX_NODE;
+	vty->index = &osmux_cfg;
+
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(cfg_mgcp,
       cfg_mgcp_cmd,
@@ -298,9 +327,7 @@ DEFUN(cfg_mgcp,
 	vty->index = mgcp;
 	vty->node = MGCP_NODE;
 
-	mgcp->osmux_port = OSMUX_PORT;
-	mgcp->osmux_batch = 4;
-	mgcp->osmux_batch_size = OSMUX_BATCH_DEFAULT_MAX;
+	mgcp->osmux_cfg = &osmux_cfg;
 
 	llist_add_tail(&mgcp->entry, &mgcp_configs);
 
@@ -690,7 +717,7 @@ DEFUN(cfg_mgcp_loop,
 {
 	struct mgcp_config *cfg = vty->index;
 
-	if (cfg->osmux) {
+	if (cfg->osmux_cfg->osmux_enabled) {
 		vty_out(vty, "Cannot use `loop' with `osmux'.%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1023,7 +1050,7 @@ DEFUN(cfg_trunk_loop,
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 
-	if (trunk->cfg->osmux) {
+	if (trunk->cfg->osmux_cfg->osmux_enabled) {
 		vty_out(vty, "Cannot use `loop' with `osmux'.%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1435,82 +1462,84 @@ DEFUN(reset_all_endp, reset_all_endp_cmd,
 }
 
 #define OSMUX_STR "RTP multiplexing\n"
-DEFUN(cfg_mgcp_osmux,
-      cfg_mgcp_osmux_cmd,
-      "osmux (on|off|only)",
+DEFUN(cfg_osmux_enable,
+      cfg_osmux_enable_cmd,
+      "osmux-enable (on|off|only)",
        OSMUX_STR "Enable OSMUX\n" "Disable OSMUX\n" "Only use OSMUX\n")
 {
-	struct mgcp_config *cfg = vty->index;
+	struct osmux_config *cfg = vty->index;
 
 	if (strcmp(argv[0], "off") == 0) {
-		cfg->osmux = OSMUX_USAGE_OFF;
+		cfg->osmux_enabled = OSMUX_USAGE_OFF;
 		return CMD_SUCCESS;
 	}
 
 	if (strcmp(argv[0], "on") == 0)
-		cfg->osmux = OSMUX_USAGE_ON;
+		cfg->osmux_enabled = OSMUX_USAGE_ON;
 	else if (strcmp(argv[0], "only") == 0)
-		cfg->osmux = OSMUX_USAGE_ONLY;
+		cfg->osmux_enabled = OSMUX_USAGE_ONLY;
 
+#warning fix
+/*
 	if (cfg->trunk.audio_loop) {
 		vty_out(vty, "Cannot use `loop' with `osmux'.%s",
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-
+*/
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_mgcp_osmux_ip,
-      cfg_mgcp_osmux_ip_cmd,
-      "osmux bind-ip A.B.C.D",
-      OSMUX_STR IP_STR "IPv4 Address to bind to\n")
+DEFUN(cfg_osmux_ip,
+      cfg_osmux_ip_cmd,
+      "bind-ip A.B.C.D",
+      IP_STR "IPv4 Address to bind to\n")
 {
-	struct mgcp_config *cfg = vty->index;
+	struct osmux_config *cfg = vty->index;
 
 	osmo_talloc_replace_string(cfg, &cfg->osmux_addr, argv[0]);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_mgcp_osmux_batch_factor,
-      cfg_mgcp_osmux_batch_factor_cmd,
-      "osmux batch-factor <1-8>",
-      OSMUX_STR "Batching factor\n" "Number of messages in the batch\n")
+DEFUN(cfg_osmux_batch_factor,
+      cfg_osmux_batch_factor_cmd,
+      "batch-factor <1-8>",
+      "Batching factor\n" "Number of messages in the batch\n")
 {
-	struct mgcp_config *cfg = vty->index;
+	struct osmux_config *cfg = vty->index;
 
 	cfg->osmux_batch = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_mgcp_osmux_batch_size,
-      cfg_mgcp_osmux_batch_size_cmd,
-      "osmux batch-size <1-65535>",
-      OSMUX_STR "batch size\n" "Batch size in bytes\n")
+DEFUN(cfg_osmux_batch_size,
+      cfg_osmux_batch_size_cmd,
+      "batch-size <1-65535>",
+      "batch size\n" "Batch size in bytes\n")
 {
-	struct mgcp_config *cfg = vty->index;
+	struct osmux_config *cfg = vty->index;
 
 	cfg->osmux_batch_size = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_mgcp_osmux_port,
-      cfg_mgcp_osmux_port_cmd,
-      "osmux port <1-65535>",
-      OSMUX_STR "port\n" "UDP port\n")
+DEFUN(cfg_osmux_port,
+      cfg_osmux_port_cmd,
+      "port <1-65535>",
+      "port\n" "UDP port\n")
 {
-	struct mgcp_config *cfg = vty->index;
+	struct osmux_config *cfg = vty->index;
 
 	cfg->osmux_port = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_mgcp_osmux_dummy,
-      cfg_mgcp_osmux_dummy_cmd,
-      "osmux dummy (on|off)",
-      OSMUX_STR "Dummy padding\n" "Enable dummy padding\n" "Disable dummy padding\n")
+DEFUN(cfg_osmux_dummy,
+      cfg_osmux_dummy_cmd,
+      "dummy (on|off)",
+      "Dummy padding\n" "Enable dummy padding\n" "Disable dummy padding\n")
 {
-	struct mgcp_config *cfg = vty->index;
+	struct osmux_config *cfg = vty->index;
 
 	if (strcmp(argv[0], "on") == 0)
 		cfg->osmux_dummy = 1;
@@ -1528,6 +1557,17 @@ int mgcp_vty_init(void)
 	install_element(ENABLE_NODE, &free_endp_cmd);
 	install_element(ENABLE_NODE, &reset_endp_cmd);
 	install_element(ENABLE_NODE, &reset_all_endp_cmd);
+
+	install_element(CONFIG_NODE, &cfg_osmux_cmd);
+	install_node(&osmux_node, config_write_osmux);
+
+	vty_install_default(OSMUX_NODE);
+	install_element(OSMUX_NODE, &cfg_osmux_enable_cmd);
+	install_element(OSMUX_NODE, &cfg_osmux_ip_cmd);
+	install_element(OSMUX_NODE, &cfg_osmux_batch_factor_cmd);
+	install_element(OSMUX_NODE, &cfg_osmux_batch_size_cmd);
+	install_element(OSMUX_NODE, &cfg_osmux_port_cmd);
+	install_element(OSMUX_NODE, &cfg_osmux_dummy_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);
@@ -1578,12 +1618,6 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_no_sdp_payload_send_ptime_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_send_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_sdp_payload_send_name_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_osmux_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_osmux_ip_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_factor_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_size_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_osmux_port_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_osmux_dummy_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_allow_transcoding_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_allow_transcoding_cmd);
 

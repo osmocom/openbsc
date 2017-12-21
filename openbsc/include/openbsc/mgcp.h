@@ -170,6 +170,28 @@ enum mgcp_role {
 	MGCP_BSC_NAT,
 };
 
+struct osmux_config {
+	struct llist_head *mgcp_cfgs;
+	/* osmux translator: 0 means disabled, 1 means enabled */
+	int osmux_enabled;
+	/* addr to bind the server to */
+	char *osmux_addr;
+	/* The BSC-NAT may ask for enabling osmux on demand. This tells us if
+	 * the osmux socket is already initialized.
+	 */
+	int osmux_init;
+	/* osmux batch factor: from 1 to 4 maximum */
+	int osmux_batch;
+	/* osmux batch size (in bytes) */
+	int osmux_batch_size;
+	/* osmux port */
+	uint16_t osmux_port;
+	/* Pad circuit with dummy messages until we see the first voice
+	 * message.
+	 */
+	uint16_t osmux_dummy;
+};
+
 struct mgcp_config {
 	struct llist_head entry;
 	int nr;
@@ -220,24 +242,7 @@ struct mgcp_config {
 
 	enum mgcp_role role;
 
-	/* osmux translator: 0 means disabled, 1 means enabled */
-	int osmux;
-	/* addr to bind the server to */
-	char *osmux_addr;
-	/* The BSC-NAT may ask for enabling osmux on demand. This tells us if
-	 * the osmux socket is already initialized.
-	 */
-	int osmux_init;
-	/* osmux batch factor: from 1 to 4 maximum */
-	int osmux_batch;
-	/* osmux batch size (in bytes) */
-	int osmux_batch_size;
-	/* osmux port */
-	uint16_t osmux_port;
-	/* Pad circuit with dummy messages until we see the first voice
-	 * message.
-	 */
-	uint16_t osmux_dummy;
+	struct osmux_config *osmux_cfg;
 };
 
 /* config management */

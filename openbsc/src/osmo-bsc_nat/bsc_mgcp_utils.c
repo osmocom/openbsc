@@ -511,7 +511,7 @@ struct nat_sccp_connection *bsc_mgcp_find_con(struct bsc_nat *nat, struct mgcp_c
 
 static int nat_osmux_only(struct mgcp_config *mgcp_cfg, struct bsc_config *bsc_cfg)
 {
-	if (mgcp_cfg->osmux == OSMUX_USAGE_ONLY)
+	if (mgcp_cfg->osmux_cfg->osmux_enabled == OSMUX_USAGE_ONLY)
 		return 1;
 	if (bsc_cfg->osmux == OSMUX_USAGE_ONLY)
 		return 1;
@@ -567,7 +567,7 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 
 	/* Allocate a Osmux circuit ID */
 	if (state == MGCP_ENDP_CRCX) {
-		if (tcfg->cfg->osmux && sccp->bsc->cfg->osmux) {
+		if (tcfg->cfg->osmux_cfg->osmux_enabled && sccp->bsc->cfg->osmux) {
 			osmux_allocate_cid(mgcp_endp);
 			if (mgcp_endp->osmux.allocated_cid < 0 &&
 				nat_osmux_only(tcfg->cfg, sccp->bsc->cfg)) {
