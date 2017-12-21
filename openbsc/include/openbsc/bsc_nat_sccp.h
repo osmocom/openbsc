@@ -79,6 +79,7 @@ struct nat_sccp_connection {
 	struct sccp_source_reference bsc_patched_ref;	/* local ref of the nat to MSC */
 
 	struct sccp_source_reference msc_real_ref;	/* local ref of the MSC to nat */
+	struct sccp_source_reference msc_patched_ref;	/* local ref of the nat to BSC */
 
 	int has_msc_ref;
 

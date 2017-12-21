@@ -43,9 +43,11 @@ static int equal(struct sccp_source_reference *ref1, struct sccp_source_referenc
 static int sccp_ref_is_free(struct sccp_source_reference *ref, struct bsc_nat *nat)
 {
 	struct nat_sccp_connection *conn;
-
+#warning "We could have two lists - one for msc and one for bsc side..."
 	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
 		if (equal(ref, &conn->bsc_patched_ref))
+			return -1;
+		if (memcmp(ref, &conn->msc_patched_ref, sizeof(*ref)) == 0)
 			return -1;
 	}
 
@@ -103,6 +105,12 @@ struct nat_sccp_connection *create_sccp_src_ref(struct bsc_connection *bsc,
 			llist_del(&conn->list_entry);
 			talloc_free(conn);
 			return NULL;
+		}
+		if (assign_src_local_reference(&conn->msc_patched_ref, bsc->nat) != 0) {
+			bsc_mgcp_dlcx(conn);
+			llist_del(&conn->list_entry);
+			talloc_free(conn);
+			return NULL;
 		} else {
 			clock_gettime(CLOCK_MONOTONIC, &conn->creation_time);
 			bsc_mgcp_dlcx(conn);
@@ -121,6 +129,12 @@ struct nat_sccp_connection *create_sccp_src_ref(struct bsc_connection *bsc,
 	clock_gettime(CLOCK_MONOTONIC, &conn->creation_time);
 	conn->bsc_real_ref = *parsed->src_local_ref;
 	if (assign_src_local_reference(&conn->bsc_patched_ref, bsc->nat) != 0) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to assign a ref.\n");
+		talloc_free(conn);
+		return NULL;
+	}
+
+	if (assign_src_local_reference(&conn->msc_patched_ref, bsc->nat) != 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to assign a ref.\n");
 		talloc_free(conn);
 		return NULL;
@@ -147,6 +161,7 @@ int update_sccp_src_ref(struct nat_sccp_connection *sccp, struct bsc_nat_parsed 
 
 	sccp->msc_real_ref = *parsed->src_local_ref;
 	sccp->has_msc_ref = 1;
+	*parsed->src_local_ref = sccp->msc_patched_ref;
 	LOGP(DNAT, LOGL_DEBUG, "Updating 0x%x to remote 0x%x on %p\n",
 	     sccp_src_ref_to_int(&sccp->bsc_patched_ref),
 	     sccp_src_ref_to_int(&sccp->msc_real_ref), sccp->bsc);
@@ -192,6 +207,8 @@ struct nat_sccp_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg,
 
 		/* Change the dest address to the real one */
 		*parsed->dest_local_ref = conn->bsc_real_ref;
+		if (parsed->src_local_ref && conn->has_msc_ref)
+			*parsed->src_local_ref = conn->msc_patched_ref;
 		return conn;
 	}
 
@@ -215,15 +232,21 @@ struct nat_sccp_connection *patch_sccp_src_ref_to_msc(struct msgb *msg,
 	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
 		if (conn->bsc != bsc)
 			continue;
-
+#warning "Do we need to patch the other ref in these ifs as well?"
 		if (parsed->src_local_ref) {
 			if (equal(parsed->src_local_ref, &conn->bsc_real_ref)) {
 				*parsed->src_local_ref = conn->bsc_patched_ref;
+				if (parsed->dest_local_ref)
+					*parsed->dest_local_ref = conn->msc_real_ref;
 				return conn;
 			}
 		} else if (parsed->dest_local_ref) {
-			if (equal(parsed->dest_local_ref, &conn->msc_real_ref))
+			if (equal(parsed->dest_local_ref, &conn->msc_patched_ref)) {
+				*parsed->dest_local_ref = conn->msc_real_ref;
+				if (parsed->src_local_ref)
+					*parsed->src_local_ref = conn->bsc_patched_ref;
 				return conn;
+			}
 		} else {
 			LOGP(DNAT, LOGL_ERROR, "Header has neither loc/dst ref.\n");
 			return NULL;

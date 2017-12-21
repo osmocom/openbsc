@@ -298,7 +298,7 @@ static void nat_send_rlsd_bsc(struct nat_sccp_connection *conn)
 	rel->type = SCCP_MSG_TYPE_RLSD;
 	rel->release_cause = SCCP_RELEASE_CAUSE_SCCP_FAILURE;
 	rel->destination_local_reference = conn->bsc_real_ref;
-	rel->source_local_reference = conn->msc_real_ref;
+	rel->source_local_reference = conn->msc_patched_ref;
 
 	bsc_write(conn->bsc, msg, IPAC_PROTO_SCCP);
 }
@@ -502,7 +502,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc,
 
 	nat_send_clrc_bsc(con);
 
-	rlsd = sccp_create_rlsd(&con->msc_real_ref, &con->bsc_real_ref,
+	rlsd = sccp_create_rlsd(&con->msc_patched_ref, &con->bsc_real_ref,
 				SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
 	if (!rlsd) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate RLSD for the BSC.\n");
@@ -547,7 +547,7 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 		con->filter_state.con_type = FLT_CON_TYPE_LOCAL_REJECT;
 		con->con_local = NAT_CON_END_LOCAL;
 		con->has_msc_ref = 1;
-		con->msc_real_ref = con->bsc_patched_ref;
+		con->msc_real_ref = con->msc_patched_ref;
 
 		/* 1. create a confirmation */
 		cc = sccp_create_cc(&con->msc_real_ref, &con->bsc_real_ref);

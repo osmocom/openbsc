@@ -217,8 +217,8 @@ int bsc_mgcp_assign_patch(struct nat_sccp_connection *con, struct msgb *msg)
 			LOGP(DNAT, LOGL_ERROR,
 			     "Endpoint %d was assigned to 0x%x and now 0x%x\n",
 			     endp,
-			     sccp_src_ref_to_int(&mcon->patched_ref),
-			     sccp_src_ref_to_int(&con->patched_ref));
+			     sccp_src_ref_to_int(&mcon->bsc_patched_ref),
+			     sccp_src_ref_to_int(&con->bsc_patched_ref));
 			bsc_mgcp_dlcx(mcon);
 		}
 	}
@@ -338,8 +338,8 @@ static void remember_pending_dlcx(struct nat_sccp_connection *con, uint32_t tran
 	/* take the endpoint here */
 	endp = &con->mgcp_conf->trunk.endpoints[con->msc_endp];
 
-	stats->remote_ref = con->remote_ref;
-	stats->src_ref = con->patched_ref;
+	stats->remote_ref = con->msc_real_ref;
+	stats->src_ref = con->bsc_patched_ref;
 
 	stats->ci = endp->ci;
 	stats->bts_rtp_port = endp->bts_end.rtp_port;

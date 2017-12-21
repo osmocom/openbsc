@@ -221,12 +221,13 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
 	vty_out(vty, "Listing all open SCCP connections%s", VTY_NEWLINE);
 
 	llist_for_each_entry(con, &_nat->sccp_connections, list_entry) {
-		vty_out(vty, "For BSC Nr: %d BSC ref: 0x%x; MUX ref: 0x%x; Network has ref: %d ref: 0x%x MSC/BSC mux: 0x%x/0x%x type: %s%s",
+		vty_out(vty, "For BSC Nr: %d BSC ref: 0x%x; MUX ref: 0x%x; Network has ref: %d ref: 0x%x; MUX ref: 0x%x; MSC/BSC mux: 0x%x/0x%x type: %s%s",
 			con->bsc->cfg ? con->bsc->cfg->nr : -1,
 			sccp_src_ref_to_int(&con->bsc_real_ref),
 			sccp_src_ref_to_int(&con->bsc_patched_ref),
 			con->has_msc_ref,
 			sccp_src_ref_to_int(&con->msc_real_ref),
+			sccp_src_ref_to_int(&con->msc_patched_ref),
 			con->msc_endp, con->bsc_endp,
 			bsc_con_type_to_string(con->filter_state.con_type),
 			VTY_NEWLINE);

@@ -330,7 +330,7 @@ static void test_contrack()
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
 	if (con_found != NULL) {
 		printf("Con should not exist realref(%u)\n",
-		       sccp_src_ref_to_int(&con_found->real_ref));
+		       sccp_src_ref_to_int(&con_found->bsc_real_ref));
 		abort();
 	}
 	rc_con = create_sccp_src_ref(con, parsed);
@@ -412,8 +412,8 @@ static void test_contrack()
 
 	/* verify that it is gone */
 	if (con_found != NULL) {
-		printf("Con should not exist real_ref(%u)\n",
-		       sccp_src_ref_to_int(&con_found->real_ref));
+		printf("Con should not exist bsc_real_ref(%u)\n",
+		       sccp_src_ref_to_int(&con_found->bsc_real_ref));
 		abort();
 	}
 	talloc_free(parsed);

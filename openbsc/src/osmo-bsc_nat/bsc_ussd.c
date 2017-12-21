@@ -348,8 +348,9 @@ static int forward_ussd(struct nat_sccp_connection *con, const struct ussd_reque
 	state = (struct ipac_msgt_sccp_state *) msgb_put(msg, sizeof(*state));
 	state->trans_id = req->transaction_id;
 	state->invoke_id = req->invoke_id;
-	memcpy(&state->src_ref, &con->remote_ref, sizeof(con->remote_ref));
-	memcpy(&state->dst_ref, &con->real_ref, sizeof(con->real_ref));
+#warning "Check if msc_real_ref should be used here"
+	memcpy(&state->src_ref, &con->msc_real_ref, sizeof(con->msc_real_ref));
+	memcpy(&state->dst_ref, &con->bsc_real_ref, sizeof(con->bsc_real_ref));
 	memcpy(state->imsi, con->filter_state.imsi, strlen(con->filter_state.imsi));
 
 	/* add additional tag/values */
