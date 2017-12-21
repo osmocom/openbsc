@@ -687,7 +687,7 @@ static void bsc_mgcp_osmux_confirm(struct mgcp_endpoint *endp, const char *str)
 
 	if (endp->osmux.cid != osmux_cid) {
 		LOGP(DMGCP, LOGL_ERROR,
-		     "BSC sent us wrong CID %u, we expected %u",
+		     "BSC sent us wrong CID %u, we expected %u\n",
 		     osmux_cid, endp->osmux.cid);
 		goto err;
 	}
