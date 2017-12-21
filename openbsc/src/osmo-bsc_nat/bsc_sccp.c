@@ -232,7 +232,6 @@ struct nat_sccp_connection *patch_sccp_src_ref_to_msc(struct msgb *msg,
 	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
 		if (conn->bsc != bsc)
 			continue;
-#warning "Do we need to patch the other ref in these ifs as well?"
 		if (parsed->src_local_ref) {
 			if (equal(parsed->src_local_ref, &conn->bsc_real_ref)) {
 				*parsed->src_local_ref = conn->bsc_patched_ref;
@@ -243,8 +242,6 @@ struct nat_sccp_connection *patch_sccp_src_ref_to_msc(struct msgb *msg,
 		} else if (parsed->dest_local_ref) {
 			if (equal(parsed->dest_local_ref, &conn->msc_patched_ref)) {
 				*parsed->dest_local_ref = conn->msc_real_ref;
-				if (parsed->src_local_ref)
-					*parsed->src_local_ref = conn->bsc_patched_ref;
 				return conn;
 			}
 		} else {
