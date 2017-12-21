@@ -427,7 +427,7 @@ int osmux_init(int role, struct osmux_config *cfg)
 		LOGP(DMGCP, LOGL_ERROR, "cannot bind OSMUX socket\n");
 		return ret;
 	}
-	mgcp_set_ip_tos(osmux_fd.fd, cfg->endp_dscp);
+	mgcp_set_ip_tos(osmux_fd.fd, cfg->osmux_dscp);
 	osmux_fd.when |= BSC_FD_READ;
 
 	ret = osmo_fd_register(&osmux_fd);

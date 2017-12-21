@@ -95,6 +95,8 @@ static void config_write_osmux(struct vty *vty)
 			osmux_cfg.osmux_port, VTY_NEWLINE);
 		vty_out(vty, "  dummy %s%s",
 			osmux_cfg.osmux_dummy ? "on" : "off", VTY_NEWLINE);
+		vty_out(vty, "  ip-dscp %d%s",
+			osmux_cfg.osmux_dscp, VTY_NEWLINE);
 	}
 }
 
@@ -548,7 +550,7 @@ DEFUN(cfg_mgcp_rtp_ip_dscp,
       cfg_mgcp_rtp_ip_dscp_cmd,
       "rtp ip-dscp <0-255>",
       RTP_STR
-      "Apply IP_TOS to the audio stream (including Osmux)\n" "The DSCP value\n")
+      "Apply IP_TOS to the audio stream\n" "The DSCP value\n")
 {
 	struct mgcp_config *cfg = vty->index;
 
@@ -1549,6 +1551,18 @@ DEFUN(cfg_osmux_dummy,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_osmux_ip_dscp,
+      cfg_osmux_ip_dscp_cmd,
+      "ip-dscp <0-255>",
+      "Apply IP_TOS to the Osmux stream\n" "The DSCP value\n")
+{
+	struct osmux_config *cfg = vty->index;
+
+	int dscp = atoi(argv[0]);
+	cfg->osmux_dscp = dscp;
+	return CMD_SUCCESS;
+}
+
 int mgcp_vty_init(void)
 {
 	install_element_ve(&show_mgcp_cmd);
@@ -1568,6 +1582,7 @@ int mgcp_vty_init(void)
 	install_element(OSMUX_NODE, &cfg_osmux_batch_size_cmd);
 	install_element(OSMUX_NODE, &cfg_osmux_port_cmd);
 	install_element(OSMUX_NODE, &cfg_osmux_dummy_cmd);
+	install_element(OSMUX_NODE, &cfg_osmux_ip_dscp_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);

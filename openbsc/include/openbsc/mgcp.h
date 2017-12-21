@@ -186,6 +186,8 @@ struct osmux_config {
 	int osmux_batch_size;
 	/* osmux port */
 	uint16_t osmux_port;
+	/* IP dscp */
+	int osmux_dscp;
 	/* Pad circuit with dummy messages until we see the first voice
 	 * message.
 	 */
