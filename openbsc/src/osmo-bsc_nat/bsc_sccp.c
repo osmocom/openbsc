@@ -43,7 +43,7 @@ static int equal(struct sccp_source_reference *ref1, struct sccp_source_referenc
 static int sccp_ref_is_free(struct sccp_source_reference *ref, struct bsc_nat *nat)
 {
 	struct nat_sccp_connection *conn;
-#warning "We could have two lists - one for msc and one for bsc side..."
+	/* We could have two lists - one for msc and one for bsc side... */
 	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
 		if (equal(ref, &conn->bsc_patched_ref))
 			return -1;
