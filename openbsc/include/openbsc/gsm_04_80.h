@@ -1,5 +1,4 @@
-#ifndef _GSM_04_80_H
-#define _GSM_04_80_H
+#pragma once
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/protocol/gsm_04_80.h>
@@ -21,5 +20,3 @@ int msc_send_ussd_release_complete(struct gsm_subscriber_connection *conn);
 int bsc_send_ussd_notify(struct gsm_subscriber_connection *conn, int level,
 			 const char *text);
 int bsc_send_ussd_release_complete(struct gsm_subscriber_connection *conn);
-
-#endif
