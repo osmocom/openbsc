@@ -37,8 +37,16 @@
 /* Declarations of USSD strings to be recognised */
 const char USSD_TEXT_OWN_NUMBER[] = "*#100#";
 
-/* Forward declarations of network-specific handler functions */
-static int send_own_number(struct gsm_subscriber_connection *conn, const struct msgb *msg, const struct ss_request *req);
+/* A network-specific handler function */
+static int send_own_number(struct gsm_subscriber_connection *conn, const struct msgb *msg, const struct ss_request *req)
+{
+	char *own_number = conn->subscr->extension;
+	char response_string[GSM_EXTENSION_LENGTH + 20];
+
+	/* Need trailing CR as EOT character */
+	snprintf(response_string, sizeof(response_string), "Your extension is %s\r", own_number);
+	return gsm0480_send_ussd_response(conn, msg, response_string, req);
+}
 
 
 /* Entrypoint - handler function common to all mobile-originated USSDs */
@@ -81,15 +89,4 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	/* check if we can release it */
 	msc_release_connection(conn);
 	return rc;
-}
-
-/* A network-specific handler function */
-static int send_own_number(struct gsm_subscriber_connection *conn, const struct msgb *msg, const struct ss_request *req)
-{
-	char *own_number = conn->subscr->extension;
-	char response_string[GSM_EXTENSION_LENGTH + 20];
-
-	/* Need trailing CR as EOT character */
-	snprintf(response_string, sizeof(response_string), "Your extension is %s\r", own_number);
-	return gsm0480_send_ussd_response(conn, msg, response_string, req);
 }
