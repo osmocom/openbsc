@@ -422,12 +422,12 @@ static void parse_base(struct mgcp_port_range *range, const char **argv)
 	range->base_port = port;
 }
 
-static void parse_range(struct mgcp_port_range *range, int range_start, const char **argv)
+static void parse_range(struct mgcp_port_range *range, const char **argv)
 {
 	range->mode = PORT_ALLOC_DYNAMIC;
 	range->range_start = atoi(argv[0]);
 	range->range_end = atoi(argv[1]);
-	range->last_port = range_start;
+	range->last_port = range->range_start;
 }
 
 
@@ -458,7 +458,7 @@ DEFUN(cfg_mgcp_rtp_bts_range,
 {
 	struct mgcp_config *cfg = vty->index;
 
-	parse_range(&cfg->bts_ports, cfg->bts_ports.range_start, argv);
+	parse_range(&cfg->bts_ports, argv);
 	return CMD_SUCCESS;
 }
 
@@ -470,7 +470,7 @@ DEFUN(cfg_mgcp_rtp_net_range,
 {
 	struct mgcp_config *cfg = vty->index;
 
-	parse_range(&cfg->net_ports, cfg->bts_ports.range_start, argv);
+	parse_range(&cfg->net_ports, argv);
 	return CMD_SUCCESS;
 }
 
@@ -497,7 +497,7 @@ DEFUN(cfg_mgcp_rtp_transcoder_range,
 {
 	struct mgcp_config *cfg = vty->index;
 
-	parse_range(&cfg->transcoder_ports, cfg->bts_ports.range_start, argv);
+	parse_range(&cfg->transcoder_ports, argv);
 	return CMD_SUCCESS;
 }
 
