@@ -496,6 +496,16 @@ class TestCtrlNITB(TestCtrlBase):
         self.assertEquals(r['var'], 'subscriber-modify-v1')
         self.assertEquals(r['value'], 'OK')
 
+        r = self.do_set('subscriber-modify-v1', '2620345,445566,comp128v2,00112233445566778899AABBCCDDEEFF')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'subscriber-modify-v1')
+        self.assertEquals(r['value'], 'OK')
+
+        r = self.do_set('subscriber-modify-v1', '2620345,445566,comp128v3,00112233445566778899AABBCCDDEEFF')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'subscriber-modify-v1')
+        self.assertEquals(r['value'], 'OK')
+
         r = self.do_set('subscriber-modify-v1', '2620345,445566,none')
         self.assertEquals(r['mtype'], 'SET_REPLY')
         self.assertEquals(r['var'], 'subscriber-modify-v1')

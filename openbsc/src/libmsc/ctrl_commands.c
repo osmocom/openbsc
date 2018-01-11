@@ -41,6 +41,10 @@ static bool alg_supported(const char *alg)
 		return true;
 	if (strcasecmp(alg, "comp128v1") == 0)
 		return true;
+	if (strcasecmp(alg, "comp128v2") == 0)
+		return true;
+	if (strcasecmp(alg, "comp128v3") == 0)
+		return true;
 	return false;
 }
 
@@ -118,6 +122,10 @@ static int set_subscriber_modify(struct ctrl_cmd *cmd, void *data)
 				ainfo.auth_algo = AUTH_ALGO_XOR;
 			else if (strcasecmp(alg, "comp128v1") == 0)
 				ainfo.auth_algo = AUTH_ALGO_COMP128v1;
+			else if (strcasecmp(alg, "comp128v2") == 0)
+				ainfo.auth_algo = AUTH_ALGO_COMP128v2;
+			else if (strcasecmp(alg, "comp128v3") == 0)
+				ainfo.auth_algo = AUTH_ALGO_COMP128v3;
 
 			rc = osmo_hexparse(ki, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
 			if (rc < 0) {

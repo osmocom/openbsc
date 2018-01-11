@@ -25,6 +25,7 @@
 #include <openbsc/auth.h>
 #include <openbsc/gsm_data.h>
 
+#include <osmocom/gsm/comp128v23.h>
 #include <osmocom/gsm/comp128.h>
 #include <osmocom/core/utils.h>
 
@@ -62,7 +63,8 @@ _use_xor(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 }
 
 static int
-_use_comp128_v1(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
+_use_comp128(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple,
+	enum gsm_auth_algo algo)
 {
 	if (ainfo->a3a8_ki_len != A38_COMP128_KEY_LEN) {
 		LOGP(DMM, LOGL_ERROR, "Invalid COMP128v1 key (len=%d) %s\n",
@@ -71,7 +73,23 @@ _use_comp128_v1(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 		return -1;
 	}
 
-	comp128(ainfo->a3a8_ki, atuple->vec.rand, atuple->vec.sres, atuple->vec.kc);
+	switch (algo) {
+	case AUTH_ALGO_COMP128v1:
+		comp128(ainfo->a3a8_ki, atuple->vec.rand,
+			atuple->vec.sres, atuple->vec.kc);
+		break;
+	case AUTH_ALGO_COMP128v2:
+		comp128v2(ainfo->a3a8_ki, atuple->vec.rand,
+			atuple->vec.sres, atuple->vec.kc);
+		break;
+	case AUTH_ALGO_COMP128v3:
+		comp128v3(ainfo->a3a8_ki, atuple->vec.rand,
+			atuple->vec.sres, atuple->vec.kc);
+		break;
+	default:
+		/* Unsupported version */
+		return -ENOTSUP;
+	}
 
 	return 0;
 }
@@ -139,7 +157,9 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 		break;
 
 	case AUTH_ALGO_COMP128v1:
-		if (_use_comp128_v1(&ainfo, atuple))
+	case AUTH_ALGO_COMP128v2:
+	case AUTH_ALGO_COMP128v3:
+		if (_use_comp128(&ainfo, atuple, ainfo.auth_algo))
 			return AUTH_NOT_AVAIL;
 		break;
 

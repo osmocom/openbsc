@@ -54,6 +54,8 @@ enum gsm_auth_algo {
 	AUTH_ALGO_NONE,
 	AUTH_ALGO_XOR,
 	AUTH_ALGO_COMP128v1,
+	AUTH_ALGO_COMP128v2,
+	AUTH_ALGO_COMP128v3,
 };
 
 struct gsm_auth_info {

@@ -775,11 +775,13 @@ DEFUN(ena_subscr_handover,
 	return CMD_SUCCESS;
 }
 
-#define A3A8_ALG_TYPES "(none|xor|comp128v1)"
+#define A3A8_ALG_TYPES "(none|xor|comp128v1|comp128v2|comp128v3)"
 #define A3A8_ALG_HELP 			\
 	"Use No A3A8 algorithm\n"	\
 	"Use XOR algorithm\n"		\
-	"Use COMP128v1 algorithm\n"
+	"Use COMP128v1 algorithm\n" \
+	"Use COMP128v2 algorithm\n" \
+	"Use COMP128v3 algorithm\n"
 
 DEFUN(ena_subscr_a3a8,
       ena_subscr_a3a8_cmd,
@@ -810,6 +812,12 @@ DEFUN(ena_subscr_a3a8,
 		maxlen = A38_XOR_MAX_KEY_LEN;
 	} else if (!strcasecmp(alg_str, "comp128v1")) {
 		ainfo.auth_algo = AUTH_ALGO_COMP128v1;
+		minlen = maxlen = A38_COMP128_KEY_LEN;
+	} else if (!strcasecmp(alg_str, "comp128v2")) {
+		ainfo.auth_algo = AUTH_ALGO_COMP128v2;
+		minlen = maxlen = A38_COMP128_KEY_LEN;
+	} else if (!strcasecmp(alg_str, "comp128v3")) {
+		ainfo.auth_algo = AUTH_ALGO_COMP128v3;
 		minlen = maxlen = A38_COMP128_KEY_LEN;
 	} else {
 		/* Unknown method */
