@@ -1683,7 +1683,7 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 
-		msc_con->name = "main MSC";
+		msc_con->name = conf->desc;
 		msc_con->connection_loss = msc_connection_was_lost;
 		msc_con->connected = msc_connection_connected;
 		msc_con->write_queue.read_cb = ipaccess_msc_read_cb;

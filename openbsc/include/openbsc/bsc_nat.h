@@ -238,6 +238,7 @@ struct msc_config {
 	/* imsi white and blacklist */
 	char *acc_lst_name;
 
+	char *desc;
 	char *token;
 	int nr;
 	struct bsc_nat *nat;

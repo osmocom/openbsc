@@ -155,6 +155,7 @@ static int config_write_nat(struct vty *vty)
 static void config_write_msc_single(struct vty *vty, struct msc_config *msc)
 {
 	vty_out(vty, " msc %u%s", msc->nr, VTY_NEWLINE);
+	vty_out(vty, "  desc %s%s", msc->desc, VTY_NEWLINE);
 	vty_out(vty, "  ip %s%s", msc->main_dest->ip, VTY_NEWLINE);
 	vty_out(vty, "  port %d%s", msc->main_dest->port, VTY_NEWLINE);
 	if (msc->token)
@@ -1100,6 +1101,16 @@ DEFUN(cfg_msc, cfg_msc_cmd, "msc MSC_NR",
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_msc_desc, cfg_msc_desc_cmd, "description NAME",
+	"MSC related configuration\n"
+	"Name of the MSC\n")
+{
+	struct msc_config *conf = vty->index;
+
+	osmo_talloc_replace_string(conf, &conf->desc, argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_msc_token, cfg_msc_token_cmd, "token TOKEN",
       "Authentication token configuration\n"
       "Token of the BSC, currently transferred in cleartext\n")
@@ -1424,6 +1435,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	/* MSC subgroups */
 	install_element(NAT_NODE, &cfg_msc_cmd);
 	install_node(&msc_node, config_write_msc);
+	install_element(NAT_MSC_NODE, &cfg_msc_desc_cmd);
 	install_element(NAT_MSC_NODE, &cfg_msc_token_cmd);
 	install_element(NAT_MSC_NODE, &cfg_msc_ip_cmd);
 	install_element(NAT_MSC_NODE, &cfg_msc_port_cmd);
