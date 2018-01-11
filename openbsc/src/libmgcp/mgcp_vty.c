@@ -70,8 +70,14 @@ struct cmd_node trunk_node = {
 	1,
 };
 
+static int dummy_config_write(struct vty *v)
+{
+	return CMD_SUCCESS;
+}
+
 static void config_write_osmux(struct vty *vty)
 {
+	vty_out(vty, "osmux%s", VTY_NEWLINE);
 	switch (osmux_cfg.osmux_enabled) {
 	case OSMUX_USAGE_ON:
 		vty_out(vty, "  osmux-enable on%s", VTY_NEWLINE);
@@ -100,8 +106,12 @@ static void config_write_osmux(struct vty *vty)
 	}
 }
 
+static void config_write_trunk_single(struct vty *vty, struct mgcp_trunk_config *trunk);
+
 static void config_write_mgcp_single(struct vty *vty, struct mgcp_config *cfg)
 {
+	struct mgcp_trunk_config *trunk;
+
 	vty_out(vty, "mgcp %u%s", cfg->nr, VTY_NEWLINE);
 	if (cfg->local_ip)
 		vty_out(vty, "  local ip %s%s", cfg->local_ip, VTY_NEWLINE);
@@ -176,6 +186,9 @@ static void config_write_mgcp_single(struct vty *vty, struct mgcp_config *cfg)
 	if (cfg->bts_force_ptime > 0)
 		vty_out(vty, "  rtp force-ptime %d%s", cfg->bts_force_ptime, VTY_NEWLINE);
 	vty_out(vty, "  transcoder-remote-base %u%s", cfg->transcoder_remote_base, VTY_NEWLINE);
+	llist_for_each_entry(trunk, &cfg->trunks, entry) {
+		config_write_trunk_single(vty, trunk);
+	}
 
 }
 
@@ -949,49 +962,44 @@ DEFUN(cfg_mgcp_trunk, cfg_mgcp_trunk_cmd,
 	return CMD_SUCCESS;
 }
 
-static int config_write_trunk(struct vty *vty)
+static void config_write_trunk_single(struct vty *vty, struct mgcp_trunk_config *trunk)
 {
-	struct mgcp_config *mgcp = vty->index;
-	struct mgcp_trunk_config *trunk;
+	vty_out(vty, "  trunk %d%s", trunk->trunk_nr, VTY_NEWLINE);
+	vty_out(vty, "   sdp audio-payload number %d%s",
+		trunk->audio_payload, VTY_NEWLINE);
+	vty_out(vty, "   sdp audio-payload name %s%s",
+		trunk->audio_name, VTY_NEWLINE);
+	vty_out(vty, "   %ssdp audio-payload send-ptime%s",
+		trunk->audio_send_ptime ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, "   %ssdp audio-payload send-name%s",
+		trunk->audio_send_name ? "" : "no ", VTY_NEWLINE);
 
-	llist_for_each_entry(trunk, &mgcp->trunks, entry) {
-		vty_out(vty, " trunk %d%s", trunk->trunk_nr, VTY_NEWLINE);
-		vty_out(vty, "  sdp audio-payload number %d%s",
-			trunk->audio_payload, VTY_NEWLINE);
-		vty_out(vty, "  sdp audio-payload name %s%s",
-			trunk->audio_name, VTY_NEWLINE);
-		vty_out(vty, "  %ssdp audio-payload send-ptime%s",
-			trunk->audio_send_ptime ? "" : "no ", VTY_NEWLINE);
-		vty_out(vty, "  %ssdp audio-payload send-name%s",
-			trunk->audio_send_name ? "" : "no ", VTY_NEWLINE);
+	if (trunk->keepalive_interval == MGCP_KEEPALIVE_ONCE)
+		vty_out(vty, "   rtp keep-alive once%s", VTY_NEWLINE);
+	else if (trunk->keepalive_interval)
+		vty_out(vty, "   rtp keep-alive %d%s",
+			trunk->keepalive_interval, VTY_NEWLINE);
+	else
+		vty_out(vty, "   no rtp keep-alive%s", VTY_NEWLINE);
 
-		if (trunk->keepalive_interval == MGCP_KEEPALIVE_ONCE)
-			vty_out(vty, "  rtp keep-alive once%s", VTY_NEWLINE);
-		else if (trunk->keepalive_interval)
-			vty_out(vty, "  rtp keep-alive %d%s",
-				trunk->keepalive_interval, VTY_NEWLINE);
-		else
-			vty_out(vty, "  no rtp keep-alive%s", VTY_NEWLINE);
-
-		vty_out(vty, "  loop %d%s",
-			trunk->audio_loop, VTY_NEWLINE);
-		if (trunk->omit_rtcp)
-			vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
-		else
-			vty_out(vty, "  no rtcp-omit%s", VTY_NEWLINE);
-		if (trunk->force_constant_ssrc || trunk->force_aligned_timing) {
-			vty_out(vty, "  %srtp-patch ssrc%s",
-				trunk->force_constant_ssrc ? "" : "no ", VTY_NEWLINE);
-			vty_out(vty, "  %srtp-patch timestamp%s",
-				trunk->force_aligned_timing ? "" : "no ", VTY_NEWLINE);
-		} else
-			vty_out(vty, "  no rtp-patch%s", VTY_NEWLINE);
-		if (trunk->audio_fmtp_extra)
-			vty_out(vty, "   sdp audio fmtp-extra %s%s",
-				trunk->audio_fmtp_extra, VTY_NEWLINE);
-		vty_out(vty, "  %sallow-transcoding%s",
-			trunk->no_audio_transcoding ? "no " : "", VTY_NEWLINE);
-	}
+	vty_out(vty, "   loop %d%s",
+		trunk->audio_loop, VTY_NEWLINE);
+	if (trunk->omit_rtcp)
+		vty_out(vty, "   rtcp-omit%s", VTY_NEWLINE);
+	else
+		vty_out(vty, "   no rtcp-omit%s", VTY_NEWLINE);
+	if (trunk->force_constant_ssrc || trunk->force_aligned_timing) {
+		vty_out(vty, "   %srtp-patch ssrc%s",
+			trunk->force_constant_ssrc ? "" : "no ", VTY_NEWLINE);
+		vty_out(vty, "   %srtp-patch timestamp%s",
+			trunk->force_aligned_timing ? "" : "no ", VTY_NEWLINE);
+	} else
+		vty_out(vty, "   no rtp-patch%s", VTY_NEWLINE);
+	if (trunk->audio_fmtp_extra)
+		vty_out(vty, "   sdp audio fmtp-extra %s%s",
+			trunk->audio_fmtp_extra, VTY_NEWLINE);
+	vty_out(vty, "   %sallow-transcoding%s",
+		trunk->no_audio_transcoding ? "no " : "", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1638,7 +1646,8 @@ int mgcp_vty_init(void)
 
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
-	install_node(&trunk_node, config_write_trunk);
+	install_node(&trunk_node, dummy_config_write);
+
 	install_element(TRUNK_NODE, &cfg_trunk_rtp_keepalive_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_rtp_keepalive_once_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_no_rtp_keepalive_cmd);
