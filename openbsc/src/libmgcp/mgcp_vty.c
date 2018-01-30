@@ -1507,7 +1507,7 @@ DEFUN(cfg_osmux_ip,
 {
 	struct osmux_config *cfg = vty->index;
 
-	osmo_talloc_replace_string(cfg, &cfg->osmux_addr, argv[0]);
+	osmo_talloc_replace_string(NULL, &cfg->osmux_addr, argv[0]);
 	return CMD_SUCCESS;
 }
 
