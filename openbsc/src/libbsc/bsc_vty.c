@@ -1276,10 +1276,10 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 			 void (*dump_cb)(struct vty *, struct gsm_lchan *))
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
-	struct gsm_bts *bts;
-	struct gsm_bts_trx *trx;
-	struct gsm_bts_trx_ts *ts;
-	struct gsm_lchan *lchan;
+	struct gsm_bts *bts = NULL;
+	struct gsm_bts_trx *trx = NULL;
+	struct gsm_bts_trx_ts *ts = NULL;
+	struct gsm_lchan *lchan = NULL;
 	int bts_nr, trx_nr, ts_nr, lchan_nr;
 
 	if (argc >= 1) {

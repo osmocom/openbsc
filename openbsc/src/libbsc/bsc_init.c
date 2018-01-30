@@ -101,7 +101,7 @@ int bsc_shutdown_net(struct gsm_network *net)
 static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 {
 	struct gsm_bts *bts = trx->bts;
-	int rc, j;
+	int rc = 0, j;
 
 	if (si_len) {
 		DEBUGP(DRR, "SI%s: %s\n", get_value_string(osmo_sitype_strs, i),

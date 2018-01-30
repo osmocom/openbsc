@@ -1156,7 +1156,7 @@ static int abis_nm_send_multi_segments(struct gsm_bts *bts, uint8_t msg_type,
 {
 	int len_remain, len_to_send, max_send;
 	int seq = 0;
-	int ret;
+	int ret = 0;
 
 	len_remain = len;
 

@@ -198,7 +198,7 @@ static int op_type_by_gsup_msgt(enum osmo_gsup_message_type msg_type)
 static int gsupc_read_cb(struct gsup_client *gsupc, struct msgb *msg)
 {
 	struct osmo_gsup_message gsup_msg = {0};
-	struct imsi_op *io;
+	struct imsi_op *io = NULL;
 	int rc;
 
 	DEBUGP(DGPRS, "Rx GSUP %s\n", osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
@@ -227,7 +227,13 @@ static int gsupc_read_cb(struct gsup_client *gsupc, struct msgb *msg)
 		break;
 	}
 
+	if (!io) {
+		printf("Could not find imsi_op\n");
+		return -1;
+	}
+
 	imsi_op_rx_gsup(io, &gsup_msg);
+
 	msgb_free(msg);
 
 	return 0;

@@ -193,7 +193,7 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 	struct gsm_subscriber *subscr = conn->subscr;
 	struct gsm_security_operation *op;
 	struct gsm_auth_tuple atuple;
-	int status = -1, rc;
+	int status = -1, rc = -1;
 
 	/* Check if we _can_ enable encryption. Cases where we can't:
 	 *  - Encryption disabled in config
