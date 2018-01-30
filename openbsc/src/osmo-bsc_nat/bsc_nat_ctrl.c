@@ -276,7 +276,8 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 			}
 			pending->ccon = cmd->ccon;
 			pending->ccon->closed_cb = ctrl_conn_closed_cb;
-			pending->cmd = cmd;
+			/* Copy command since it will be free()d after we exit here */
+			pending->cmd = ctrl_cmd_cpy(pending, cmd);
 
 			/* Setup the timeout */
 			osmo_timer_setup(&pending->timeout, pending_timeout_cb,
