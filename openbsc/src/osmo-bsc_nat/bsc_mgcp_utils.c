@@ -939,7 +939,7 @@ copy:
 	 * safely append another line.
 	 */
 	if (ensure_mode_set && !found_fmtp && payload != -1) {
-		snprintf(buf, sizeof(buf) - 1, "a=fmtp:%d mode-set=2%s",
+		snprintf(buf, sizeof(buf) - 1, "a=fmtp:%d mode-set=2 octet-align=1%s",
 			payload, cr ? "\r\n" : "\n");
 		buf[sizeof(buf) - 1] = '\0';
 		output->l3h = msgb_put(output, strlen(buf));
