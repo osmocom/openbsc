@@ -338,10 +338,12 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts)
 {
-	raid->mcc = bts->network->country_code;
-	raid->mnc = bts->network->network_code;
-	raid->lac = bts->location_area_code;
-	raid->rac = bts->gprs.rac;
+	*raid = (struct gprs_ra_id){
+		.mcc = bts->network->country_code,
+		.mnc = bts->network->network_code,
+		.lac = bts->location_area_code,
+		.rac = bts->gprs.rac,
+	};
 }
 
 int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts)
