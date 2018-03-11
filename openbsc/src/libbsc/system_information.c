@@ -933,7 +933,7 @@ static int generate_si5(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 		break;
 	}
 
-	si5 = (struct gsm48_system_information_type_5 *) GSM_BTS_SI(bts, t);
+	si5 = (struct gsm48_system_information_type_5 *) output;
 
 	/* l2 pseudo length, not part of msg: 18 */
 	si5->rr_protocol_discriminator = GSM48_PDISC_RR;
@@ -969,7 +969,7 @@ static int generate_si5bis(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 		break;
 	}
 
-	si5b = (struct gsm48_system_information_type_5bis *) GSM_BTS_SI(bts, t);
+	si5b = (struct gsm48_system_information_type_5bis *) output;
 
 	/* l2 pseudo length, not part of msg: 18 */
 	si5b->rr_protocol_discriminator = GSM48_PDISC_RR;
@@ -983,7 +983,7 @@ static int generate_si5bis(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 	if (n) {
 		/* indicate in SI5 and SI5bis: there is an extension */
 		struct gsm48_system_information_type_5 *si5 =
-			(struct gsm48_system_information_type_5 *) GSM_BTS_SI(bts, SYSINFO_TYPE_5);
+			(struct gsm48_system_information_type_5 *) GSM_BTS_SI(bts, SYSINFO_TYPE_5)+1;
 		si5->bcch_frequency_list[0] |= 0x20;
 		si5b->bcch_frequency_list[0] |= 0x20;
 	} else
@@ -1013,7 +1013,7 @@ static int generate_si5ter(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 		break;
 	}
 
-	si5t = (struct gsm48_system_information_type_5ter *) GSM_BTS_SI(bts, t);
+	si5t = (struct gsm48_system_information_type_5ter *) output;
 
 	/* l2 pseudo length, not part of msg: 18 */
 	si5t->rr_protocol_discriminator = GSM48_PDISC_RR;
@@ -1051,7 +1051,7 @@ static int generate_si6(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 		break;
 	}
 
-	si6 = (struct gsm48_system_information_type_6 *) GSM_BTS_SI(bts, t);
+	si6 = (struct gsm48_system_information_type_6 *) output;
 
 	/* l2 pseudo length, not part of msg: 11 */
 	si6->rr_protocol_discriminator = GSM48_PDISC_RR;
