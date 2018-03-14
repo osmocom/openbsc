@@ -56,6 +56,7 @@
 #include <openbsc/bsc_msc_data.h>
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/pcu_if.h>
+#include <openbsc/acc_ramp.h>
 
 #include <openbsc/common_cs.h>
 
@@ -260,6 +261,18 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "Cell Reselection Hysteresis: %u dBm%s",
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
+	vty_out(vty, "  Access Control Class ramping: %senabled%s",
+		acc_ramp_is_enabled(&bts->acc_ramp) ? "" : "not ", VTY_NEWLINE);
+	if (acc_ramp_is_enabled(&bts->acc_ramp)) {
+		if (!acc_ramp_step_interval_is_dynamic(&bts->acc_ramp))
+			vty_out(vty, "  Access Control Class ramping step interval: %u seconds%s",
+				acc_ramp_get_step_interval(&bts->acc_ramp), VTY_NEWLINE);
+		else
+			vty_out(vty, "  Access Control Class ramping step interval: dynamic%s", VTY_NEWLINE);
+	        vty_out(vty, "  enabling %u Access Control Class%s per ramping step%s",
+			acc_ramp_get_step_size(&bts->acc_ramp),
+			acc_ramp_get_step_size(&bts->acc_ramp) > 1 ? "es" : "", VTY_NEWLINE);
+	}
 	vty_out(vty, "RACH TX-Integer: %u%s", bts->si_common.rach_control.tx_integer,
 		VTY_NEWLINE);
 	vty_out(vty, "RACH Max transmissions: %u%s",
@@ -663,6 +676,15 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		for (i = 0; i < 8; i++)
 			if ((i != 2) && (bts->si_common.rach_control.t2 & (0x1 << i)))
 				vty_out(vty, "  rach access-control-class %d barred%s", i+8, VTY_NEWLINE);
+	vty_out(vty, "  %saccess-control-class-ramping%s", acc_ramp_is_enabled(&bts->acc_ramp) ? "" : "no ", VTY_NEWLINE);
+	if (!acc_ramp_step_interval_is_dynamic(&bts->acc_ramp)) {
+		vty_out(vty, "  access-control-class-ramping-step-interval %u%s",
+			acc_ramp_get_step_interval(&bts->acc_ramp), VTY_NEWLINE);
+	} else {
+		vty_out(vty, "  access-control-class-ramping-step-interval dynamic%s", VTY_NEWLINE);
+	}
+	vty_out(vty, "  access-control-class-ramping-step-size %u%s", acc_ramp_get_step_size(&bts->acc_ramp),
+		VTY_NEWLINE);
 	for (i = SYSINFO_TYPE_1; i < _MAX_SYSINFO_TYPE; i++) {
 		if (bts->si_mode_static & (1 << i)) {
 			vty_out(vty, "  system-information %s mode static%s",
@@ -1629,6 +1651,11 @@ DEFUN(cfg_bts,
 		/* allocate a new one */
 		bts = gsm_bts_alloc_register(gsmnet, GSM_BTS_TYPE_UNKNOWN,
 					     HARDCODED_BSIC);
+		/*
+		 * Initalize bts->acc_ramp here. Else we could segfault while
+		 * processing a configuration file with ACC ramping settings.
+		 */
+		acc_ramp_init(&bts->acc_ramp, false, bts);
 	} else
 		bts = gsm_bts_num(gsmnet, bts_nr);
 
@@ -3008,6 +3035,88 @@ DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_acc_ramping,
+      cfg_bts_acc_ramping_cmd,
+      "access-control-class-ramping",
+      "Enable Access Control Class ramping\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	acc_ramp_init(&bts->acc_ramp, true, bts);
+
+	/* ACC ramping takes effect when the BTS reconnects. */
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_acc_ramping, cfg_bts_no_acc_ramping_cmd,
+      "no access-control-class-ramping",
+      NO_STR
+      "Disable Access Control Class ramping\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (acc_ramp_is_enabled(&bts->acc_ramp)) {
+		acc_ramp_abort(&bts->acc_ramp);
+		acc_ramp_init(&bts->acc_ramp, false, bts);
+		gsm_bts_set_system_infos(bts);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_acc_ramping_step_interval,
+      cfg_bts_acc_ramping_step_interval_cmd,
+      "access-control-class-ramping-step-interval (<"
+      OSMO_STRINGIFY_VAL(ACC_RAMP_STEP_INTERVAL_MIN) "-"
+      OSMO_STRINGIFY_VAL(ACC_RAMP_STEP_INTERVAL_MAX) ">|dynamic)",
+      "Configure Access Control Class ramping step interval\n"
+      "Set a fixed step interval (in seconds)\n"
+      "Use dynamic step interval based on BTS channel load\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bool dynamic = (strcmp(argv[0], "dynamic") == 0);
+	int error;
+
+	if (dynamic) {
+		acc_ramp_set_step_interval_dynamic(&bts->acc_ramp);
+		return CMD_SUCCESS;
+	}
+
+	error = acc_ramp_set_step_interval(&bts->acc_ramp, atoi(argv[0]));
+	if (error != 0) {
+		if (error == -ERANGE)
+			vty_out(vty, "Unable to set ACC ramp step interval: value out of range%s", VTY_NEWLINE);
+		else
+			vty_out(vty, "Unable to set ACC ramp step interval: unknown error%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_acc_ramping_step_size,
+      cfg_bts_acc_ramping_step_size_cmd,
+      "access-control-class-ramping-step-size (<"
+      OSMO_STRINGIFY_VAL(ACC_RAMP_STEP_SIZE_MIN) "-"
+      OSMO_STRINGIFY_VAL(ACC_RAMP_STEP_SIZE_MAX) ">)",
+      "Configure Access Control Class ramping step size\n"
+      "Set the number of Access Control Classes to enable per ramping step\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int error;
+
+	error = acc_ramp_set_step_size(&bts->acc_ramp, atoi(argv[0]));
+	if (error != 0) {
+		if (error == -ERANGE)
+			vty_out(vty, "Unable to set ACC ramp step size: value out of range%s", VTY_NEWLINE);
+		else
+			vty_out(vty, "Unable to set ACC ramp step size: unknown error%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 #define EXCL_RFLOCK_STR "Exclude this BTS from the global RF Lock\n"
 
 DEFUN(cfg_bts_excl_rf_lock,
@@ -4354,6 +4463,10 @@ int bsc_vty_init(struct gsm_network *network)
 	install_element(BTS_NODE, &cfg_bts_amr_hr_hyst3_cmd);
 	install_element(BTS_NODE, &cfg_bts_amr_hr_start_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_pcu_sock_cmd);
+	install_element(BTS_NODE, &cfg_bts_acc_ramping_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_acc_ramping_cmd);
+	install_element(BTS_NODE, &cfg_bts_acc_ramping_step_interval_cmd);
+	install_element(BTS_NODE, &cfg_bts_acc_ramping_step_size_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);

@@ -381,6 +381,8 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	/* si handling */
 	bts->bcch_change_mark = 1;
 
+	bts->chan_load_avg = 0;
+
 	/* timer overrides */
 	bts->T3122 = 0; /* not overriden by default */
 

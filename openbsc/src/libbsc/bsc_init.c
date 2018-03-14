@@ -310,6 +310,12 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 		bsc_gsmnet->network_code, trx->bts->location_area_code,
 		trx->bts->cell_identity, trx->bts->bsic);
 
+	/*
+	 * Re-initialize ACC ramping to ensure ACCs are barred/allowed
+	 * according to our current VTY configuration.
+	 */
+	acc_ramp_init(&trx->bts->acc_ramp, acc_ramp_is_enabled(&trx->bts->acc_ramp), trx->bts);
+
 	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
 		rsl_nokia_si_begin(trx);
 	}
@@ -324,6 +330,9 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 
 	for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
 		generate_ma_for_ts(&trx->ts[i]);
+
+	if (acc_ramp_is_enabled(&trx->bts->acc_ramp))
+		acc_ramp_start(&trx->bts->acc_ramp);
 }
 
 /* Callback function to be called every time we receive a signal from INPUT */
@@ -379,8 +388,10 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 
 		if (isd->link_type == E1INP_SIGN_OML)
 			rate_ctr_inc(&trx->bts->network->bsc_ctrs->ctr[BSC_CTR_BTS_OML_FAIL]);
-		else if (isd->link_type == E1INP_SIGN_RSL)
+		else if (isd->link_type == E1INP_SIGN_RSL) {
 			rate_ctr_inc(&trx->bts->network->bsc_ctrs->ctr[BSC_CTR_BTS_RSL_FAIL]);
+			acc_ramp_abort(&trx->bts->acc_ramp);
+		}
 
 		/*
 		 * free all allocated channels. change the nm_state so the
@@ -508,6 +519,8 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	bts->si_common.ncc_permitted = 0xff;
 
 	bts->chan_load_samples_idx = 0;
+
+	acc_ramp_init(&bts->acc_ramp, false, bts);
 
 	/* Initialize the BTS state */
 	gsm_bts_mo_reset(bts);
