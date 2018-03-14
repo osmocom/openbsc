@@ -609,6 +609,8 @@ bts_update_t3122_chan_load(struct gsm_bts *bts)
 	load = ((used / total) * 100);
 	LOGP(DRLL, LOGL_DEBUG, "(bts=%d) channel load average is %lu.%.2lu%%\n",
 	     bts->nr, (load & 0xffffff00) >> 8, (load & 0xff) / 10);
+	osmo_stat_item_set(bts->bts_statg->items[BTS_STAT_CHAN_LOAD_AVERAGE],
+			   (load & 0xffffff00) >> 8);
 
 	/* Calculate new T3122 wait indicator. */
 	wait_ind = ((used / total) * max_wait_ind);
@@ -620,4 +622,5 @@ bts_update_t3122_chan_load(struct gsm_bts *bts)
 
 	LOGP(DRLL, LOGL_DEBUG, "(bts=%d) T3122 wait indicator set to %lu seconds\n", bts->nr, wait_ind);
 	bts->T3122 = (uint8_t)wait_ind;
+	osmo_stat_item_set(bts->bts_statg->items[BTS_STAT_T3122], wait_ind);
 }

@@ -907,6 +907,8 @@ struct gsm_bts {
 	char *pcu_sock_path;
 	struct pcu_sock_state *pcu_state;
 
+	struct osmo_stat_item_group *bts_statg;
+
 	/* BTS-specific overrides for timer values from struct gsm_network. */
 	uint8_t T3122;	/* ASSIGMENT REJECT wait indication */
 

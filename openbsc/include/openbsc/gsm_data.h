@@ -10,6 +10,7 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/stats.h>
+#include <osmocom/core/stat_item.h>
 
 #include <osmocom/crypt/auth.h>
 
@@ -175,6 +176,10 @@ struct gsm_subscriber_connection {
 #define ROLE_BSC
 #include "gsm_data_shared.h"
 
+enum {
+	BTS_STAT_CHAN_LOAD_AVERAGE,
+	BTS_STAT_T3122,
+};
 
 enum {
 	BSC_CTR_CHREQ_TOTAL,
