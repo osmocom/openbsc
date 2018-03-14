@@ -37,17 +37,13 @@ void lchan_reset(struct gsm_lchan *lchan);
 /* Release the given lchan */
 int lchan_release(struct gsm_lchan *lchan, int sacch_deact, enum rsl_rel_mode release_mode);
 
-struct load_counter {
-	unsigned int total;
-	unsigned int used;
-};
-
 struct pchan_load {
 	struct load_counter pchan[_GSM_PCHAN_MAX];
 };
 
 void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts);
 void network_chan_load(struct pchan_load *pl, struct gsm_network *net);
+void bts_update_t3122_chan_load(struct gsm_bts *bts);
 
 int trx_is_usable(struct gsm_bts_trx *trx);
 

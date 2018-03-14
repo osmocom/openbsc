@@ -23,6 +23,10 @@ channel_test_SOURCES = \
 	channel_test.c \
 	$(NULL)
 
+channel_test_LDFLAGS = \
+	-Wl,--wrap=paging_request \
+	$(NULL)
+
 channel_test_LDADD = \
 	$(top_builddir)/src/libmsc/libmsc.a \
 	$(top_builddir)/src/libbsc/libbsc.a \
@@ -30,6 +34,7 @@ channel_test_LDADD = \
 	$(top_builddir)/src/libcommon/libcommon.a \
 	$(LIBOSMOCORE_LIBS) \
 	$(LIBOSMOGSM_LIBS) \
+	$(LIBOSMOABIS_LIBS) \
 	$(LIBCRYPTO_LIBS) \
 	-ldbi \
 	$(NULL)

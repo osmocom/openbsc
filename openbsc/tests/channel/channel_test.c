@@ -48,8 +48,10 @@ static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, vo
 	return 0;
 }
 
-/* mock object for testing, directly invoke the cb... maybe later through the timer */
-int paging_request(struct gsm_bts *bts, struct bsc_subscr *bsub, int type, gsm_cbfn *cbfn, void *data)
+/* override, requires '-Wl,--wrap=paging_request'.
+/  mock object for testing, directly invoke the cb... maybe later through the timer */
+int __real_paging_request(struct gsm_bts *bts, struct bsc_subscr *bsub, int type, gsm_cbfn *cbfn, void *data);
+int __wrap_paging_request(struct gsm_bts *bts, struct bsc_subscr *bsub, int type, gsm_cbfn *cbfn, void *data)
 {
 	s_data = data;
 	s_cbfn = cbfn;
@@ -160,13 +162,12 @@ int main(int argc, char **argv)
 	return EXIT_SUCCESS;
 }
 
-void _abis_nm_sendmsg() {}
 void sms_alloc() {}
 void sms_free() {}
-void gsm_net_update_ctype(struct gsm_network *network) {}
 void gsm48_secure_channel() {}
-void paging_request_stop() {}
 void vty_out() {}
+void switch_trau_mux() {}
+void rtp_socket_free() {}
 
 struct tlv_definition nm_att_tlvdef;
 

@@ -541,3 +541,78 @@ void network_chan_load(struct pchan_load *pl, struct gsm_network *net)
 		bts_chan_load(pl, bts);
 }
 
+/* Update T3122 wait indicator based on samples of BTS channel load. */
+void
+bts_update_t3122_chan_load(struct gsm_bts *bts)
+{
+	struct pchan_load pl;
+	uint64_t used = 0;
+	uint32_t total = 0;
+	uint64_t load;
+	uint64_t wait_ind;
+	static const uint8_t min_wait_ind = GSM_T3122_DEFAULT;
+	static const uint8_t max_wait_ind = 128; /* max wait ~2 minutes */
+	int i;
+
+	/* Sum up current load across all channels. */
+	memset(&pl, 0, sizeof(pl));
+	bts_chan_load(&pl, bts);
+	for (i = 0; i < ARRAY_SIZE(pl.pchan); i++) {
+		struct load_counter *lc = &pl.pchan[i];
+
+		/* Ignore samples too large for fixed-point calculations (shouldn't happen). */
+		if (lc->used > UINT16_MAX || lc->total > UINT16_MAX) {
+			LOGP(DRLL, LOGL_NOTICE, "(bts=%d) numbers in channel load sample "
+			     "too large (used=%u / total=%u)\n", bts->nr, lc->used, lc->total);
+			continue;
+		}
+
+		used += lc->used;
+		total += lc->total;
+	}
+
+	/* Check for invalid samples (shouldn't happen). */
+	if (total == 0 || used > total) {
+		LOGP(DRLL, LOGL_NOTICE, "(bts=%d) bogus channel load sample (used=%lu / total=%u)\n",
+		     bts->nr, used, total);
+		bts->T3122 = 0; /* disable override of network-wide default value */
+		bts->chan_load_samples_idx = 0; /* invalidate other samples collected so far */
+		return;
+	}
+
+	/* If we haven't got enough samples yet, store measurement for later use. */
+	if (bts->chan_load_samples_idx < ARRAY_SIZE(bts->chan_load_samples)) {
+		struct load_counter *sample = &bts->chan_load_samples[bts->chan_load_samples_idx++];
+		sample->total = (unsigned int)total;
+		sample->used = (unsigned int)used;
+		return;
+	}
+
+	/* We have enough samples and will overwrite our current samples later. */
+	bts->chan_load_samples_idx = 0;
+
+	/* Add all previous samples to the current sample. */
+	for (i = 0; i < ARRAY_SIZE(bts->chan_load_samples); i++) {
+		struct load_counter *sample = &bts->chan_load_samples[i];
+		total += sample->total;
+		used += sample->used;
+	}
+
+	used <<= 8; /* convert to fixed-point */
+
+	/* Log channel load average. */
+	load = ((used / total) * 100);
+	LOGP(DRLL, LOGL_DEBUG, "(bts=%d) channel load average is %lu.%.2lu%%\n",
+	     bts->nr, (load & 0xffffff00) >> 8, (load & 0xff) / 10);
+
+	/* Calculate new T3122 wait indicator. */
+	wait_ind = ((used / total) * max_wait_ind);
+	wait_ind >>= 8; /* convert from fixed-point to integer */
+	if (wait_ind < min_wait_ind)
+		wait_ind = min_wait_ind;
+	else if (wait_ind > max_wait_ind)
+		wait_ind = max_wait_ind;
+
+	LOGP(DRLL, LOGL_DEBUG, "(bts=%d) T3122 wait indicator set to %lu seconds\n", bts->nr, wait_ind);
+	bts->T3122 = (uint8_t)wait_ind;
+}

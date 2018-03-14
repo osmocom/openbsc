@@ -674,6 +674,12 @@ struct bts_location {
 	double height;
 };
 
+/* Channel load counter */
+struct load_counter {
+	unsigned int total;
+	unsigned int used;
+};
+
 /* One BTS */
 struct gsm_bts {
 	/* list header in net->bts_list */
@@ -900,6 +906,13 @@ struct gsm_bts {
 	/* PCU socket state */
 	char *pcu_sock_path;
 	struct pcu_sock_state *pcu_state;
+
+	/* BTS-specific overrides for timer values from struct gsm_network. */
+	uint8_t T3122;	/* ASSIGMENT REJECT wait indication */
+
+	/* Periodic channel load measurements are used to maintain T3122. */
+	struct load_counter chan_load_samples[7];
+	int chan_load_samples_idx;
 
 #endif /* ROLE_BSC */
 	void *role;

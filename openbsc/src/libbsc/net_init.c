@@ -20,6 +20,22 @@
 #include <openbsc/common_cs.h>
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/bsc_msc_data.h>
+#include <openbsc/chan_alloc.h>
+
+/* XXX hard-coded for now */
+#define T3122_CHAN_LOAD_SAMPLE_INTERVAL 1 /* in seconds */
+
+static void update_t3122_chan_load_timer(void *data)
+{
+	struct gsm_network *net = data;
+	struct gsm_bts *bts;
+
+	llist_for_each_entry(bts, &net->bts_list, list)
+		bts_update_t3122_chan_load(bts);
+
+	/* Keep this timer ticking. */
+	osmo_timer_schedule(&net->t3122_chan_load_timer, T3122_CHAN_LOAD_SAMPLE_INTERVAL, 0);
+}
 
 struct gsm_network *bsc_network_init(void *ctx,
 				     uint16_t country_code,
@@ -65,6 +81,14 @@ struct gsm_network *bsc_network_init(void *ctx,
 	net->handover.max_distance = 9999;
 
 	INIT_LLIST_HEAD(&net->bts_list);
+
+	/*
+	 * At present all BTS in the network share one channel load timeout.
+	 * If this becomes a problem for networks with a lot of BTS, this
+	 * code could be refactored to run the timeout individually per BTS.
+	 */
+	osmo_timer_setup(&net->t3122_chan_load_timer, update_t3122_chan_load_timer, net);
+	osmo_timer_schedule(&net->t3122_chan_load_timer, T3122_CHAN_LOAD_SAMPLE_INTERVAL, 0);
 
 	/* init statistics */
 	net->bsc_ctrs = rate_ctr_group_alloc(net, &bsc_ctrg_desc, 0);

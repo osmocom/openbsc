@@ -1597,7 +1597,7 @@ DECLARE_TIMER(3113, "Set the time to try paging a subscriber")
 DECLARE_TIMER(3115, "Currently not used")
 DECLARE_TIMER(3117, "Currently not used")
 DECLARE_TIMER(3119, "Currently not used")
-DECLARE_TIMER(3122, "Waiting time (seconds) after IMM ASS REJECT")
+DECLARE_TIMER(3122, "Default waiting time (seconds) after IMM ASS REJECT")
 DECLARE_TIMER(3141, "Currently not used")
 
 DEFUN_DEPRECATED(cfg_net_dtx,

@@ -507,6 +507,8 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 	bts->si_common.ncc_permitted = 0xff;
 
+	bts->chan_load_samples_idx = 0;
+
 	/* Initialize the BTS state */
 	gsm_bts_mo_reset(bts);
 

@@ -1744,8 +1744,7 @@ static void t3109_expired(void *data)
 
 /* Format an IMM ASS REJ according to 04.08 Chapter 9.1.20 */
 static int rsl_send_imm_ass_rej(struct gsm_bts *bts,
-				unsigned int num_req_refs,
-				struct gsm48_req_ref *rqd_refs,
+				struct gsm48_req_ref *rqd_ref,
 				uint8_t wait_ind)
 {
 	uint8_t buf[GSM_MACBLOCK_LEN];
@@ -1757,25 +1756,22 @@ static int rsl_send_imm_ass_rej(struct gsm_bts *bts,
 	iar->msg_type = GSM48_MT_RR_IMM_ASS_REJ;
 	iar->page_mode = GSM48_PM_SAME;
 
-	memcpy(&iar->req_ref1, &rqd_refs[0], sizeof(iar->req_ref1));
+	/*
+	 * Set all request references and wait indications to the same value.
+	 * 3GPP TS 44.018 v4.5.0 release 4 (section 9.1.20.2) requires that
+	 * we duplicate reference and wait indication to fill the message.
+	 * The BTS will aggregate up to 4 of our ASS REJ messages if possible.
+	 */
+	memcpy(&iar->req_ref1, rqd_ref, sizeof(iar->req_ref1));
 	iar->wait_ind1 = wait_ind;
 
-	if (num_req_refs >= 2)
-		memcpy(&iar->req_ref2, &rqd_refs[1], sizeof(iar->req_ref2));
-	else
-		memcpy(&iar->req_ref2, &rqd_refs[0], sizeof(iar->req_ref2));
+	memcpy(&iar->req_ref2, rqd_ref, sizeof(iar->req_ref2));
 	iar->wait_ind2 = wait_ind;
 
-	if (num_req_refs >= 3)
-		memcpy(&iar->req_ref3, &rqd_refs[2], sizeof(iar->req_ref3));
-	else
-		memcpy(&iar->req_ref3, &rqd_refs[0], sizeof(iar->req_ref3));
+	memcpy(&iar->req_ref3, rqd_ref, sizeof(iar->req_ref3));
 	iar->wait_ind3 = wait_ind;
 
-	if (num_req_refs >= 4)
-		memcpy(&iar->req_ref4, &rqd_refs[3], sizeof(iar->req_ref4));
-	else
-		memcpy(&iar->req_ref4, &rqd_refs[0], sizeof(iar->req_ref4));
+	memcpy(&iar->req_ref4, rqd_ref, sizeof(iar->req_ref4));
 	iar->wait_ind4 = wait_ind;
 
 	/* we need to subtract 1 byte from sizeof(*iar) since ia includes the l2_plen field */
@@ -1870,12 +1866,18 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype, is_lu);
 	if (!lchan) {
+		uint8_t wait_ind;
 		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
 		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
 		rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_CHREQ_NO_CHANNEL]);
-		/* FIXME gather multiple CHAN RQD and reject up to 4 at the same time */
-		if (bts->network->T3122)
-			rsl_send_imm_ass_rej(bts, 1, rqd_ref, bts->network->T3122 & 0xff);
+		if (bts->T3122)
+			wait_ind = bts->T3122;
+		else if (bts->network->T3122)
+			wait_ind = bts->network->T3122 & 0xff;
+		else
+			wait_ind = GSM_T3122_DEFAULT;
+		/* The BTS will gather multiple CHAN RQD and reject up to 4 MS at the same time. */
+		rsl_send_imm_ass_rej(bts, rqd_ref, wait_ind);
 		return 0;
 	}
 
