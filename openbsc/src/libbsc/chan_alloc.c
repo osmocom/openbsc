@@ -554,6 +554,11 @@ bts_update_t3122_chan_load(struct gsm_bts *bts)
 	static const uint8_t max_wait_ind = 128; /* max wait ~2 minutes */
 	int i;
 
+	/* Ignore BTS that are not in operation, in order to not flood the log with "bogus channel load"
+	 * messages */
+	if (!trx_is_usable(bts->c0))
+		return;
+
 	/* Sum up current load across all channels. */
 	memset(&pl, 0, sizeof(pl));
 	bts_chan_load(&pl, bts);
