@@ -339,20 +339,20 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts)
 {
 	*raid = (struct gprs_ra_id){
-		.mcc = bts->network->country_code,
-		.mnc = bts->network->network_code,
+		.mcc = bts->network->plmn.mcc,
+		.mnc = bts->network->plmn.mnc,
+		.mnc_3_digits = bts->network->plmn.mnc_3_digits,
 		.lac = bts->location_area_code,
 		.rac = bts->gprs.rac,
 	};
 }
 
-int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts)
+void gsm48_ra_id_by_bts(struct gsm48_ra_id *buf, struct gsm_bts *bts)
 {
 	struct gprs_ra_id raid;
 
 	gprs_ra_id_by_bts(&raid, bts);
-
-	return gsm48_construct_ra(buf, &raid);
+	gsm48_encode_ra(buf, &raid);
 }
 
 int gsm_parse_reg(void *ctx, regex_t *reg, char **str, int argc, const char **argv)

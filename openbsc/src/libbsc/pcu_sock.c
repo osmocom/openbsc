@@ -152,8 +152,9 @@ static int pcu_tx_info_ind(struct gsm_bts *bts)
 		info_ind->flags |= PCU_IF_FLAG_SYSMO;
 
 	/* RAI */
-	info_ind->mcc = bts->network->country_code;
-	info_ind->mnc = bts->network->network_code;
+	info_ind->mcc = bts->network->plmn.mcc;
+	info_ind->mnc = bts->network->plmn.mnc;
+	info_ind->mnc_3_digits = bts->network->plmn.mnc_3_digits;
 	info_ind->lac = bts->location_area_code;
 	info_ind->rac = bts->gprs.rac;
 

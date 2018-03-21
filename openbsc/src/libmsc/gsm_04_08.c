@@ -82,12 +82,6 @@ static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 static void schedule_reject(struct gsm_subscriber_connection *conn);
 static void release_anchor(struct gsm_subscriber_connection *conn);
 
-struct gsm_lai {
-	uint16_t mcc;
-	uint16_t mnc;
-	uint16_t lac;
-};
-
 static int apply_codec_restrictions(struct gsm_bts *bts,
 	struct gsm_mncc_bearer_cap *bcap)
 {
@@ -512,9 +506,7 @@ static int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_ACCEPT;
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
-	gsm48_generate_lai(lai, conn->network->country_code,
-			   conn->network->network_code,
-			   conn->bts->location_area_code);
+	gsm48_generate_lai2(lai, bts_lai(conn->bts));
 
 	if (conn->subscr->tmsi == GSM_RESERVED_TMSI) {
 		uint8_t mi[10];

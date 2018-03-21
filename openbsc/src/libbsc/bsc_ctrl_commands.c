@@ -22,6 +22,7 @@
 #include <time.h>
 
 #include <osmocom/ctrl/control_cmd.h>
+#include <osmocom/gsm/gsm48.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -65,8 +66,62 @@ static int verify_vty_description_string(struct ctrl_cmd *cmd,
 	return 0;
 }
 
-CTRL_CMD_DEFINE_RANGE(net_mnc, "mnc", struct gsm_network, network_code, 0, 999);
-CTRL_CMD_DEFINE_RANGE(net_mcc, "mcc", struct gsm_network, country_code, 1, 999);
+CTRL_CMD_DEFINE(net_mcc, "mcc");
+static int get_net_mcc(struct ctrl_cmd *cmd, void *_data)
+{
+       struct gsm_network *net = cmd->node;
+       cmd->reply = talloc_asprintf(cmd, "%s", osmo_mcc_name(net->plmn.mcc));
+       if (!cmd->reply) {
+               cmd->reply = "OOM";
+               return CTRL_CMD_ERROR;
+       }
+       return CTRL_CMD_REPLY;
+}
+static int set_net_mcc(struct ctrl_cmd *cmd, void *_data)
+{
+       struct gsm_network *net = cmd->node;
+       uint16_t mcc;
+       if (osmo_mcc_from_str(cmd->value, &mcc))
+               return -1;
+       net->plmn.mcc = mcc;
+       return get_net_mcc(cmd, _data);
+}
+static int verify_net_mcc(struct ctrl_cmd *cmd, const char *value, void *_data)
+{
+       if (osmo_mcc_from_str(value, NULL))
+               return -1;
+       return 0;
+}
+
+CTRL_CMD_DEFINE(net_mnc, "mnc");
+static int get_net_mnc(struct ctrl_cmd *cmd, void *_data)
+{
+       struct gsm_network *net = cmd->node;
+       cmd->reply = talloc_asprintf(cmd, "%s", osmo_mnc_name(net->plmn.mnc, net->plmn.mnc_3_digits));
+       if (!cmd->reply) {
+               cmd->reply = "OOM";
+               return CTRL_CMD_ERROR;
+       }
+       return CTRL_CMD_REPLY;
+}
+static int set_net_mnc(struct ctrl_cmd *cmd, void *_data)
+{
+       struct gsm_network *net = cmd->node;
+       struct osmo_plmn_id plmn = net->plmn;
+       if (osmo_mnc_from_str(cmd->value, &plmn.mnc, &plmn.mnc_3_digits)) {
+               cmd->reply = "Error while decoding MNC";
+               return CTRL_CMD_ERROR;
+       }
+       net->plmn = plmn;
+       return get_net_mnc(cmd, _data);
+}
+static int verify_net_mnc(struct ctrl_cmd *cmd, const char *value, void *_data)
+{
+       if (osmo_mnc_from_str(value, NULL, NULL))
+               return -1;
+       return 0;
+}
+
 CTRL_CMD_VTY_STRING(net_short_name, "short-name", struct gsm_network, name_short);
 CTRL_CMD_VTY_STRING(net_long_name, "long-name", struct gsm_network, name_long);
 
@@ -101,6 +156,7 @@ CTRL_CMD_DEFINE_WO_NOVRF(net_apply_config, "apply-configuration");
 static int verify_net_mcc_mnc_apply(struct ctrl_cmd *cmd, const char *value, void *d)
 {
 	char *tmp, *saveptr, *mcc, *mnc;
+	int rc = 0;
 
 	tmp = talloc_strdup(cmd, value);
 	if (!tmp)
@@ -108,39 +164,45 @@ static int verify_net_mcc_mnc_apply(struct ctrl_cmd *cmd, const char *value, voi
 
 	mcc = strtok_r(tmp, ",", &saveptr);
 	mnc = strtok_r(NULL, ",", &saveptr);
-	talloc_free(tmp);
 
-	if (!mcc || !mnc)
-		return 1;
-	return 0;
+	if (osmo_mcc_from_str(mcc, NULL) || osmo_mnc_from_str(mnc, NULL, NULL))
+		rc = -1;
+
+	talloc_free(tmp);
+	return rc;
 }
 
 static int set_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_network *net = cmd->node;
 	char *tmp, *saveptr, *mcc_str, *mnc_str;
-	int mcc, mnc;
+	struct osmo_plmn_id plmn;
 
 	tmp = talloc_strdup(cmd, cmd->value);
 	if (!tmp)
 		goto oom;
 
-
 	mcc_str = strtok_r(tmp, ",", &saveptr);
 	mnc_str = strtok_r(NULL, ",", &saveptr);
 
-	mcc = atoi(mcc_str);
-	mnc = atoi(mnc_str);
+	if (osmo_mcc_from_str(mcc_str, &plmn.mcc)) {
+		cmd->reply = "Error while decoding MCC";
+		return CTRL_CMD_ERROR;
+	}
+
+	if (osmo_mnc_from_str(mnc_str, &plmn.mnc, &plmn.mnc_3_digits)) {
+		cmd->reply = "Error while decoding MNC";
+		return CTRL_CMD_ERROR;
+	}
 
 	talloc_free(tmp);
 
-	if (net->network_code == mnc && net->country_code == mcc) {
+	if (!osmo_plmn_cmp(&net->plmn, &plmn)) {
 		cmd->reply = "Nothing changed";
 		return CTRL_CMD_REPLY;
 	}
 
-	net->network_code = mnc;
-	net->country_code = mcc;
+	net->plmn = plmn;
 
 	return set_net_apply_config(cmd, data);
 

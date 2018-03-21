@@ -51,32 +51,20 @@ static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 static int complete_layer3(struct gsm_subscriber_connection *conn,
 			   struct msgb *msg, struct bsc_msc_data *msc);
 
-static uint16_t get_network_code_for_msc(struct bsc_msc_data *msc)
+static struct osmo_cell_global_id *cgi_for_msc(struct bsc_msc_data *msc, struct gsm_bts *bts)
 {
-	if (msc->core_mnc != -1)
-		return msc->core_mnc;
-	return msc->network->network_code;
-}
+	static struct osmo_cell_global_id cgi;
+	cgi.lai.plmn = msc->network->plmn;
+	if (msc->core_plmn.mcc != GSM_MCC_MNC_INVALID)
+		cgi.lai.plmn.mcc = msc->core_plmn.mcc;
+	if (msc->core_plmn.mnc != GSM_MCC_MNC_INVALID) {
+		cgi.lai.plmn.mnc = msc->core_plmn.mnc;
+		cgi.lai.plmn.mnc_3_digits = msc->core_plmn.mnc_3_digits;
+	}
+	cgi.lai.lac = (msc->core_lac != -1) ? msc->core_lac : bts->location_area_code;
+	cgi.cell_identity = (msc->core_ci != -1) ? msc->core_ci : bts->cell_identity;
 
-static uint16_t get_country_code_for_msc(struct bsc_msc_data *msc)
-{
-	if (msc->core_mcc != -1)
-		return msc->core_mcc;
-	return msc->network->country_code;
-}
-
-static uint16_t get_lac_for_msc(struct bsc_msc_data *msc, struct gsm_bts *bts)
-{
-	if (msc->core_lac != -1)
-		return msc->core_lac;
-	return bts->location_area_code;
-}
-
-static uint16_t get_ci_for_msc(struct bsc_msc_data *msc, struct gsm_bts *bts)
-{
-	if (msc->core_ci != -1)
-		return msc->core_ci;
-	return bts->cell_identity;
+	return &cgi;
 }
 
 static void bsc_maybe_lu_reject(struct gsm_subscriber_connection *conn, int con_type, int cause)
@@ -239,10 +227,6 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 	char *imsi = NULL;
 	struct timeval tv;
 	struct msgb *resp;
-	uint16_t network_code;
-	uint16_t country_code;
-	uint16_t lac;
-	uint16_t ci;
 	enum bsc_con ret;
 	int send_ping = msc->advanced_ping;
 
@@ -281,14 +265,9 @@ static int complete_layer3(struct gsm_subscriber_connection *conn,
 
 	/* check return value, if failed check msg for and send USSD */
 
-	network_code = get_network_code_for_msc(conn->sccp_con->msc);
-	country_code = get_country_code_for_msc(conn->sccp_con->msc);
-	lac = get_lac_for_msc(conn->sccp_con->msc, conn->bts);
-	ci = get_ci_for_msc(conn->sccp_con->msc, conn->bts);
-
 	bsc_scan_bts_msg(conn, msg);
 
-	resp = gsm0808_create_layer3(msg, network_code, country_code, lac, ci);
+	resp = gsm0808_create_layer3_2(msg, cgi_for_msc(conn->sccp_con->msc, conn->bts), NULL);
 	if (!resp) {
 		LOGP(DMSC, LOGL_DEBUG, "Failed to create layer3 message.\n");
 		sccp_connection_free(conn->sccp_con->sccp);

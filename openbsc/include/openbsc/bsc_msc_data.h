@@ -31,6 +31,7 @@
 
 #include <osmocom/core/timer.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
+#include <osmocom/gsm/gsm23003.h>
 
 #include <regex.h>
 
@@ -74,8 +75,7 @@ struct bsc_msc_data {
 	struct osmo_timer_list pong_timer;
 	int advanced_ping;
 	struct bsc_msc_connection *msc_con;
-	int core_mnc;
-	int core_mcc;
+	struct osmo_plmn_id core_plmn;
 	int core_lac;
 	int core_ci;
 	int rtp_base;

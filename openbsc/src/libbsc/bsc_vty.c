@@ -164,9 +164,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 {
 	struct pchan_load pl;
 
-	vty_out(vty, "BSC is on Country Code %u, Network Code %u "
-		"and has %u BTS%s", net->country_code, net->network_code,
-		net->num_bts, VTY_NEWLINE);
+	vty_out(vty, "BSC is on MCC-MNC %s and has %u BTS%s",
+		osmo_plmn_name(&net->plmn), net->num_bts, VTY_NEWLINE);
 	vty_out(vty, "  Long network name: '%s'%s",
 		net->name_long, VTY_NEWLINE);
 	vty_out(vty, "  Short network name: '%s'%s",
@@ -840,8 +839,9 @@ static int config_write_net(struct vty *vty)
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
 	vty_out(vty, "network%s", VTY_NEWLINE);
-	vty_out(vty, " network country code %u%s", gsmnet->country_code, VTY_NEWLINE);
-	vty_out(vty, " mobile network code %u%s", gsmnet->network_code, VTY_NEWLINE);
+	vty_out(vty, " network country code %s%s", osmo_mcc_name(gsmnet->plmn.mcc), VTY_NEWLINE);
+	vty_out(vty, " mobile network code %s%s",
+		osmo_mnc_name(gsmnet->plmn.mnc, gsmnet->plmn.mnc_3_digits), VTY_NEWLINE);
 	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
 	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);

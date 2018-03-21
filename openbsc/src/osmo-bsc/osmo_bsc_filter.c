@@ -33,20 +33,16 @@ static void handle_lu_request(struct gsm_subscriber_connection *conn,
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_upd_req *lu;
 	struct gsm48_loc_area_id lai;
-	struct gsm_network *net;
 
 	if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*lu)) {
 		LOGP(DMSC, LOGL_ERROR, "LU too small to look at: %u\n", msgb_l3len(msg));
 		return;
 	}
 
-	net = conn->bts->network;
-
 	gh = msgb_l3(msg);
 	lu = (struct gsm48_loc_upd_req *) gh->data;
 
-	gsm48_generate_lai(&lai, net->country_code, net->network_code,
-			   conn->bts->location_area_code);
+	gsm48_generate_lai2(&lai, bts_lai(conn->bts));
 
 	if (memcmp(&lai, &lu->lai, sizeof(lai)) != 0) {
 		LOGP(DMSC, LOGL_DEBUG, "Marking con for welcome USSD.\n");
@@ -319,9 +315,9 @@ static int bsc_patch_mm_info(struct gsm_subscriber_connection *conn,
 
 static int has_core_identity(struct bsc_msc_data *msc)
 {
-	if (msc->core_mnc != -1)
+	if (msc->core_plmn.mnc != GSM_MCC_MNC_INVALID)
 		return 1;
-	if (msc->core_mcc != -1)
+	if (msc->core_plmn.mcc != GSM_MCC_MNC_INVALID)
 		return 1;
 	if (msc->core_lac != -1)
 		return 1;
@@ -336,7 +332,6 @@ static int has_core_identity(struct bsc_msc_data *msc)
 int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct bsc_msc_data *msc;
-	struct gsm_network *net;
 	struct gsm48_loc_area_id *lai;
 	struct gsm48_hdr *gh;
 	uint8_t pdisc;
@@ -356,7 +351,6 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		return 0;
 
 	mtype = gsm48_hdr_msg_type(gh);
-	net = conn->bts->network;
 	msc = conn->sccp_con->msc;
 
 	if (mtype == GSM48_MT_MM_LOC_UPD_ACCEPT) {
@@ -364,9 +358,7 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 			if (msgb_l3len(msg) >= sizeof(*gh) + sizeof(*lai)) {
 				/* overwrite LAI in the message */
 				lai = (struct gsm48_loc_area_id *) &gh->data[0];
-				gsm48_generate_lai(lai, net->country_code,
-						   net->network_code,
-						   conn->bts->location_area_code);
+				gsm48_generate_lai2(lai, bts_lai(conn->bts));
 			}
 		}
 

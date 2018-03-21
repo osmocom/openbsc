@@ -186,10 +186,11 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 	policy = osmo_bsc_rf_get_policy_name(osmo_bsc_rf_get_policy_by_bts(bts));
 
 	cmd->reply = talloc_asprintf_append(cmd->reply,
-				",%s,%s,%s,%d,%d",
+				",%s,%s,%s,%s,%s",
 				oper, admin, policy,
-				bts->network->country_code,
-				bts->network->network_code);
+				osmo_mcc_name(bts->network->plmn.mcc),
+				osmo_mnc_name(bts->network->plmn.mnc,
+					      bts->network->plmn.mnc_3_digits));
 
 	osmo_bsc_send_trap(cmd, msc_con);
 	talloc_free(cmd);

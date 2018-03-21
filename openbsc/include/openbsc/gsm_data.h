@@ -11,6 +11,7 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/stats.h>
 #include <osmocom/core/stat_item.h>
+#include <osmocom/gsm/gsm23003.h>
 
 #include <osmocom/crypt/auth.h>
 
@@ -317,9 +318,8 @@ struct gsm_tz {
 };
 
 struct gsm_network {
-	/* global parameters */
-	uint16_t country_code;
-	uint16_t network_code;
+	struct osmo_plmn_id plmn;
+
 	char *name_long;
 	char *name_short;
 	enum gsm_auth_policy auth_policy;
@@ -428,6 +428,16 @@ struct gsm_network {
 	 * pointer is NULL to indicate absence of a bsc_subscribers list. */
 	struct llist_head *bsc_subscribers;
 };
+
+static inline const struct osmo_location_area_id *bts_lai(struct gsm_bts *bts)
+{
+	static struct osmo_location_area_id lai;
+	lai = (struct osmo_location_area_id){
+		.plmn = bts->network->plmn,
+		.lac = bts->location_area_code,
+	};
+	return &lai;
+}
 
 struct osmo_esme;
 
@@ -568,7 +578,7 @@ enum bts_gprs_mode bts_gprs_mode_parse(const char *arg, int *valid);
 const char *bts_gprs_mode_name(enum bts_gprs_mode mode);
 int bts_gprs_mode_is_compat(struct gsm_bts *bts, enum bts_gprs_mode mode);
 
-int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts);
+void gsm48_ra_id_by_bts(struct gsm48_ra_id *buf, struct gsm_bts *bts);
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 

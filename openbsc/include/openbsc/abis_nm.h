@@ -31,13 +31,6 @@
 /* max number of attributes represented as 3GPP TS 52.021 §9.4.62 SW Description array */
 #define MAX_BTS_ATTR 5
 
-struct cell_global_id {
-	uint16_t mcc;
-	uint16_t mnc;
-	uint16_t lac;
-	uint16_t ci;
-};
-
 /* The BCCH info from an ip.access test, in host byte order
  * and already parsed... */
 struct ipac_bcch_info {
@@ -52,7 +45,7 @@ struct ipac_bcch_info {
 	uint16_t frame_offset;
 	uint32_t frame_nr_offset;
 	uint8_t bsic;
-	struct cell_global_id cgi;
+	struct osmo_cell_global_id cgi;
 	uint8_t ba_list_si2[16];
 	uint8_t ba_list_si2bis[16];
 	uint8_t ba_list_si2ter[16];

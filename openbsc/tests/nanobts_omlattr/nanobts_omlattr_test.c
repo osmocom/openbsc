@@ -210,8 +210,7 @@ int main(int argc, char **argv)
 	bts->rach_ldavg_slots = -1;
 	bts->c0->arfcn = 866;
 	bts->cell_identity = 1337;
-	bts->network->country_code = 1;
-	bts->network->network_code = 1;
+	bts->network->plmn = (struct osmo_plmn_id){ .mcc=1, .mnc=1 };
 	bts->location_area_code = 1;
 	bts->gprs.rac = 0;
 	uint8_t attr_bts_expected[] =

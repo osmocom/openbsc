@@ -841,9 +841,7 @@ static int generate_si3(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 	si3->header.system_information = GSM48_MT_RR_SYSINFO_3;
 
 	si3->cell_identity = htons(bts->cell_identity);
-	gsm48_generate_lai(&si3->lai, bts->network->country_code,
-			   bts->network->network_code,
-			   bts->location_area_code);
+	gsm48_generate_lai2(&si3->lai, bts_lai(bts));
 	si3->control_channel_desc = bts->si_common.chan_desc;
 	si3->cell_options = bts->si_common.cell_options;
 	si3->cell_sel_par = bts->si_common.cell_sel_par;
@@ -895,9 +893,7 @@ static int generate_si4(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 	si4->header.skip_indicator = 0;
 	si4->header.system_information = GSM48_MT_RR_SYSINFO_4;
 
-	gsm48_generate_lai(&si4->lai, bts->network->country_code,
-			   bts->network->network_code,
-			   bts->location_area_code);
+	gsm48_generate_lai2(&si4->lai, bts_lai(bts));
 	si4->cell_sel_par = bts->si_common.cell_sel_par;
 	si4->rach_control = bts->si_common.rach_control;
 	if (acc_ramp_is_enabled(&bts->acc_ramp))
@@ -1069,9 +1065,7 @@ static int generate_si6(enum osmo_sysinfo_type t, struct gsm_bts *bts)
 	si6->skip_indicator = 0;
 	si6->system_information = GSM48_MT_RR_SYSINFO_6;
 	si6->cell_identity = htons(bts->cell_identity);
-	gsm48_generate_lai(&si6->lai, bts->network->country_code,
-			   bts->network->network_code,
-			   bts->location_area_code);
+	gsm48_generate_lai2(&si6->lai, bts_lai(bts));
 	si6->cell_options = bts->si_common.cell_options;
 	si6->ncc_permitted = bts->si_common.ncc_permitted;
 	/* allow/disallow DTXu */

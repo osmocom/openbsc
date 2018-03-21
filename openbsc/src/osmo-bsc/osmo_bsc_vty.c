@@ -27,6 +27,7 @@
 #include <openbsc/bsc_msg_filter.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/gsm/gsm48.h>
 #include <osmocom/vty/logging.h>
 
 #include <time.h>
@@ -110,12 +111,12 @@ static void write_msc(struct vty *vty, struct bsc_msc_data *msc)
 	if (msc->bsc_key_present)
 		vty_out(vty, " auth-key %s%s",
 			osmo_hexdump(msc->bsc_key, sizeof(msc->bsc_key)), VTY_NEWLINE);
-	if (msc->core_mnc != -1)
-		vty_out(vty, " core-mobile-network-code %d%s",
-			msc->core_mnc, VTY_NEWLINE);
-	if (msc->core_mcc != -1)
-		vty_out(vty, " core-mobile-country-code %d%s",
-			msc->core_mcc, VTY_NEWLINE);
+	if (msc->core_plmn.mnc != GSM_MCC_MNC_INVALID)
+		vty_out(vty, " core-mobile-network-code %s%s",
+			osmo_mnc_name(msc->core_plmn.mnc, msc->core_plmn.mnc_3_digits), VTY_NEWLINE);
+	if (msc->core_plmn.mcc != GSM_MCC_MNC_INVALID)
+		vty_out(vty, " core-mobile-country-code %s%s",
+			osmo_mcc_name(msc->core_plmn.mcc), VTY_NEWLINE);
 	if (msc->core_lac != -1)
 		vty_out(vty, " core-location-area-code %d%s",
 			msc->core_lac, VTY_NEWLINE);
@@ -264,7 +265,15 @@ DEFUN(cfg_net_bsc_ncc,
       "Use this network code for the core network\n" "MNC value\n")
 {
 	struct bsc_msc_data *data = bsc_msc_data(vty);
-	data->core_mnc = atoi(argv[0]);
+	uint16_t mnc;
+	bool mnc_3_digits;
+
+	if (osmo_mnc_from_str(argv[0], &mnc, &mnc_3_digits)) {
+		vty_out(vty, "%% Error decoding MNC: %s%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	data->core_plmn.mnc = mnc;
+	data->core_plmn.mnc_3_digits = mnc_3_digits;
 	return CMD_SUCCESS;
 }
 
@@ -273,8 +282,13 @@ DEFUN(cfg_net_bsc_mcc,
       "core-mobile-country-code <1-999>",
       "Use this country code for the core network\n" "MCC value\n")
 {
+	uint16_t mcc;
 	struct bsc_msc_data *data = bsc_msc_data(vty);
-	data->core_mcc = atoi(argv[0]);
+	if (osmo_mcc_from_str(argv[0], &mcc)) {
+		vty_out(vty, "%% Error decoding MCC: %s%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	data->core_plmn.mcc = mcc;
 	return CMD_SUCCESS;
 }
 

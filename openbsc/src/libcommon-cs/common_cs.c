@@ -63,8 +63,10 @@ struct gsm_network *gsm_network_init(void *ctx,
 	net->auto_create_subscr = true;
 	net->auto_assign_exten = true;
 
-	net->country_code = country_code;
-	net->network_code = network_code;
+	net->plmn = (struct osmo_plmn_id){
+		.mcc = country_code,
+		.mnc = network_code,
+	};
 
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);

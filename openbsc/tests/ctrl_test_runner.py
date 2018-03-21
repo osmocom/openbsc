@@ -375,27 +375,32 @@ class TestCtrlBSC(TestCtrlBase):
         r = self.do_get('mcc')
         self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'mcc')
-        self.assertEquals(r['value'], '23')
+        self.assertEquals(r['value'], '023')
 
         r = self.do_set('mcc', '023')
         r = self.do_get('mcc')
         self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'mcc')
-        self.assertEquals(r['value'], '23')
+        self.assertEquals(r['value'], '023')
 
     def testMnc(self):
         r = self.do_set('mnc', '9')
         r = self.do_get('mnc')
         self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'mnc')
-        self.assertEquals(r['value'], '9')
+        self.assertEquals(r['value'], '09')
 
         r = self.do_set('mnc', '09')
         r = self.do_get('mnc')
         self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'mnc')
-        self.assertEquals(r['value'], '9')
+        self.assertEquals(r['value'], '09')
 
+        r = self.do_set('mnc', '009')
+        r = self.do_get('mnc')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'mnc')
+        self.assertEquals(r['value'], '009')
 
     def testMccMncApply(self):
         # Test some invalid input
@@ -432,7 +437,7 @@ class TestCtrlBSC(TestCtrlBase):
         r = self.do_get('mnc')
         self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'mnc')
-        self.assertEquals(r['value'], '4')
+        self.assertEquals(r['value'], '04')
 
         r = self.do_get('mcc')
         self.assertEquals(r['mtype'], 'GET_REPLY')
@@ -448,7 +453,7 @@ class TestCtrlBSC(TestCtrlBase):
         r = self.do_get('mnc')
         self.assertEquals(r['mtype'], 'GET_REPLY')
         self.assertEquals(r['var'], 'mnc')
-        self.assertEquals(r['value'], '3')
+        self.assertEquals(r['value'], '03')
 
         r = self.do_get('mcc')
         self.assertEquals(r['mtype'], 'GET_REPLY')

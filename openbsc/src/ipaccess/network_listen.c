@@ -185,10 +185,10 @@ static int test_rep(void *_msg)
 			DEBUGP(DNM, "BCCH Info parsing failed\n");
 			break;
 		}
-		DEBUGP(DNM, "==> ARFCN %u, RxLev %2u, RxQual %2u: %3d-%d, LAC %d CI %d BSIC %u\n",
+		DEBUGP(DNM, "==> ARFCN %u, RxLev %2u, RxQual %2u: %s, LAC %d CI %d BSIC %u\n",
 			binfo.arfcn, binfo.rx_lev, binfo.rx_qual,
-			binfo.cgi.mcc, binfo.cgi.mnc,
-			binfo.cgi.lac, binfo.cgi.ci, binfo.bsic);
+			osmo_plmn_name(&binfo.cgi.lai.plmn),
+			binfo.cgi.lai.lac, binfo.cgi.cell_identity, binfo.bsic);
 
 		if (binfo.arfcn != last_arfcn) {
 			/* report is on a new arfcn, need to clear channel list */
