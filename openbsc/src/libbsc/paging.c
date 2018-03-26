@@ -326,6 +326,9 @@ int paging_request_bts(struct gsm_bts *bts, struct bsc_subscr *bsub,
 	return 1;
 }
 
+/*! Page a request on all BTS within Location Area
+ *  \returns Amount of BTS to which the paging request was sent, negative on error.
+ */
 int paging_request(struct gsm_network *network, struct bsc_subscr *bsub,
 		   int type, gsm_cbfn *cbfn, void *data)
 {

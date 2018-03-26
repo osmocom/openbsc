@@ -37,14 +37,18 @@ int bsc_grace_allow_new_connection(struct gsm_network *network, struct gsm_bts *
 static int normal_paging(struct bsc_subscr *subscr, int chan_needed,
 			 struct bsc_msc_data *msc)
 {
+	int rc, num_pages = 0;
 	/* we can't page by lac.. we need to page everything */
 	if (msc->core_lac != -1) {
 		struct gsm_bts *bts;
 
-		llist_for_each_entry(bts, &msc->network->bts_list, list)
-			paging_request_bts(bts, subscr, chan_needed, NULL, msc);
+		llist_for_each_entry(bts, &msc->network->bts_list, list) {
+			rc = paging_request_bts(bts, subscr, chan_needed, NULL, msc);
+			if (rc > 0)
+				num_pages += rc;
+		}
 
-		return 0;
+		return num_pages;
 	}
 
 	return paging_request(msc->network, subscr, chan_needed, NULL, msc);
@@ -54,6 +58,7 @@ static int locked_paging(struct bsc_subscr *subscr, int chan_needed,
 			 struct bsc_msc_data *msc)
 {
 	struct gsm_bts *bts = NULL;
+	int rc, num_pages = 0;
 
 	/*
 	 * Check if there is any BTS that is on for the given lac. Start
@@ -73,11 +78,13 @@ static int locked_paging(struct bsc_subscr *subscr, int chan_needed,
 		/*
 		 * now page on this bts
 		 */
-		paging_request_bts(bts, subscr, chan_needed, NULL, msc);
+		rc = paging_request_bts(bts, subscr, chan_needed, NULL, msc);
+		if (rc > 0)
+			num_pages += rc;
 	};
 
 	/* All bts are either off or in the grace period */
-	return 0;
+	return num_pages;
 }
 
 /**

@@ -138,6 +138,7 @@ static int bssmap_handle_paging(struct bsc_msc_data *msc,
 	uint8_t data_length;
 	const uint8_t *data;
 	uint8_t chan_needed = RSL_CHANNEED_ANY;
+	int rc;
 
 	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h + 1, payload_length - 1, 0, 0);
 
@@ -199,8 +200,14 @@ static int bssmap_handle_paging(struct bsc_msc_data *msc,
 	subscr->tmsi = tmsi;
 
 	LOGP(DMSC, LOGL_INFO, "Paging request from MSC IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n", mi_string, tmsi, tmsi, lac);
-	bsc_grace_paging_request(msc->network->bsc_data->rf_ctrl->policy,
+	rc = bsc_grace_paging_request(msc->network->bsc_data->rf_ctrl->policy,
 				 subscr, chan_needed, msc);
+	if (rc <= 0) {
+		LOGP(DMSC, LOGL_ERROR, "Paging request failed (%d): IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n",
+			rc, mi_string, tmsi, tmsi, lac);
+		return -1;
+	}
+
 	return 0;
 }
 
