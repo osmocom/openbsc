@@ -346,12 +346,12 @@ int paging_request(struct gsm_network *network, struct bsc_subscr *bsub,
 			break;
 
 		rc = paging_request_bts(bts, bsub, type, cbfn, data);
-		if (rc < 0) {
-			paging_request_stop(&network->bts_list, NULL, bsub,
-					    NULL, NULL);
+		if (rc >= 0)
+			num_pages += rc;
+		else if (rc == -EEXIST)
+			num_pages += 1;
+		else
 			return rc;
-		}
-		num_pages += rc;
 	} while (1);
 
 	if (num_pages == 0)
