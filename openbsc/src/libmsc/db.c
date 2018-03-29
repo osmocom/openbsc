@@ -41,8 +41,6 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/utils.h>
 
-#include <openssl/rand.h>
-
 /* Semi-Private-Interface (SPI) for the subscriber code */
 void subscr_direct_free(struct gsm_subscriber *subscr);
 
@@ -1378,8 +1376,9 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 	char *tmsi_quoted;
 
 	for (;;) {
-		if (RAND_bytes((uint8_t *) &subscriber->tmsi, sizeof(subscriber->tmsi)) != 1) {
-			LOGP(DDB, LOGL_ERROR, "RAND_bytes failed\n");
+		int rc = osmo_get_rand_id((uint8_t *) &subscriber->tmsi, sizeof(subscriber->tmsi));
+		if (rc < 0) {
+			LOGP(DDB, LOGL_ERROR, "osmo_get_rand_id() failed: %s\n", strerror(-rc));
 			return 1;
 		}
 		if (subscriber->tmsi == GSM_RESERVED_TMSI)
@@ -1458,8 +1457,9 @@ int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t *token
 	uint32_t try;
 
 	for (;;) {
-		if (RAND_bytes((uint8_t *) &try, sizeof(try)) != 1) {
-			LOGP(DDB, LOGL_ERROR, "RAND_bytes failed\n");
+		int rc = osmo_get_rand_id((uint8_t *) &try, sizeof(try));
+		if (rc < 0) {
+			LOGP(DDB, LOGL_ERROR, "osmo_get_rand_id() failed: %s\n", strerror(-rc));
 			return 1;
 		}
 		if (!try) /* 0 is an invalid token */

@@ -74,8 +74,6 @@
 
 #include <osmocom/abis/ipa.h>
 
-#include <openssl/rand.h>
-
 #include "../../bscconfig.h"
 
 #define SCCP_CLOSE_TIME 20
@@ -221,7 +219,7 @@ static void send_id_req(struct bsc_nat *nat, struct bsc_connection *bsc)
 	buf = v_put(buf, 0x23);
 	mrand = bsc->last_rand;
 
-	if (RAND_bytes(mrand, 16) != 1)
+	if (osmo_get_rand_id(mrand, 16) < 0)
 		goto failed_random;
 
 	memcpy(buf, mrand, 16);
@@ -232,7 +230,7 @@ static void send_id_req(struct bsc_nat *nat, struct bsc_connection *bsc)
 
 failed_random:
 	/* the timeout will trigger and close this connection */
-	LOGP(DNAT, LOGL_ERROR, "Failed to read from urandom.\n");
+	LOGP(DNAT, LOGL_ERROR, "osmo_get_rand_id() failed.\n");
 	return;
 }
 

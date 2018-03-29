@@ -121,7 +121,7 @@ int auth_get_tuple_for_subscr_verbose(struct gsm_auth_tuple *atuple,
 }
 
 /* override libssl RAND_bytes() to get testable crypto results */
-int RAND_bytes(uint8_t *rand, int len)
+int osmo_get_rand_id(uint8_t *rand, size_t len)
 {
 	memset(rand, 23, len);
 	return 1;

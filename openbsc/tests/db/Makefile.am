@@ -43,6 +43,5 @@ db_test_LDADD = \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBSMPP34_LIBS) \
 	$(LIBOSMOVTY_LIBS) \
-	$(LIBCRYPTO_LIBS) \
 	-ldbi \
 	$(NULL)

@@ -29,8 +29,6 @@
 #include <osmocom/gsm/comp128.h>
 #include <osmocom/core/utils.h>
 
-#include <openssl/rand.h>
-
 #include <stdlib.h>
 
 const struct value_string auth_action_names[] = {
@@ -141,8 +139,10 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	}
 	atuple->use_count = 1;
 
-	if (RAND_bytes(atuple->vec.rand, sizeof(atuple->vec.rand)) != 1) {
-		LOGP(DMM, LOGL_NOTICE, "RAND_bytes failed, can't generate new auth tuple\n");
+	rc = osmo_get_rand_id(atuple->vec.rand, sizeof(atuple->vec.rand));
+	if (rc < 0) {
+		LOGP(DMM, LOGL_NOTICE, "osmo_get_rand_id failed, can't generate new auth tuple: %s\n",
+		     strerror(-rc));
 		return AUTH_ERROR;
 	}
 

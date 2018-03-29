@@ -14,7 +14,6 @@ Build-Depends: debhelper (>= 9),
                libosmo-netif-dev,
                libdbd-sqlite3,
                libpcap-dev,
-               libssl-dev,
                libsmpp34-dev
 Standards-Version: 3.9.8
 Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
