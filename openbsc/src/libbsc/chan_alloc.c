@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/chan_alloc.h>
@@ -607,7 +608,7 @@ bts_update_t3122_chan_load(struct gsm_bts *bts)
 
 	/* Log channel load average. */
 	load = ((used / total) * 100);
-	LOGP(DRLL, LOGL_DEBUG, "(bts=%d) channel load average is %lu.%.2lu%%\n",
+	LOGP(DRLL, LOGL_DEBUG, "(bts=%d) channel load average is %"PRIu64".%.2"PRIu64"%%\n",
 	     bts->nr, (load & 0xffffff00) >> 8, (load & 0xff) / 10);
 	bts->chan_load_avg = ((load & 0xffffff00) >> 8);
 	OSMO_ASSERT(bts->chan_load_avg <= 100);
