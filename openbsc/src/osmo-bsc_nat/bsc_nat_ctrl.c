@@ -219,7 +219,7 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 	int ret = CTRL_CMD_HANDLED;
 	struct ctrl_cmd *bsc_cmd = NULL;
 	struct bsc_connection *bsc;
-	struct bsc_cmd_list *pending;
+	struct bsc_cmd_list *pending = NULL;
 	unsigned int nr;
 	char *bsc_variable;
 
@@ -292,6 +292,7 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 	cmd->reply = "no BSC with this nr";
 err:
 	ret = CTRL_CMD_ERROR;
+	talloc_free(pending);
 done:
 	talloc_free(bsc_cmd);
 	return ret;
