@@ -187,11 +187,13 @@ static int set_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
 
 	if (osmo_mcc_from_str(mcc_str, &plmn.mcc)) {
 		cmd->reply = "Error while decoding MCC";
+		talloc_free(tmp);
 		return CTRL_CMD_ERROR;
 	}
 
 	if (osmo_mnc_from_str(mnc_str, &plmn.mnc, &plmn.mnc_3_digits)) {
 		cmd->reply = "Error while decoding MNC";
+		talloc_free(tmp);
 		return CTRL_CMD_ERROR;
 	}
 
