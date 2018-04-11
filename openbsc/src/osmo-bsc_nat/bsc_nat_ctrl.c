@@ -235,57 +235,58 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 			continue;
 		if (!bsc->authenticated)
 			continue;
-		if (bsc->cfg->nr == nr) {
-			/* Add pending command to list */
-			pending = talloc_zero(bsc, struct bsc_cmd_list);
-			if (!pending) {
-				cmd->reply = "OOM";
-				goto err;
-			}
+		if (bsc->cfg->nr != nr)
+			continue;
 
-			pending->nat_id = get_next_free_bsc_id(bsc);
-			if (pending->nat_id < 0) {
-				cmd->reply = "No free ID found";
-				goto err;
-			}
-
-			bsc_cmd = ctrl_cmd_cpy(bsc, cmd);
-			if (!bsc_cmd) {
-				cmd->reply = "Could not forward command";
-				goto err;
-			}
-
-			talloc_free(bsc_cmd->id);
-			bsc_cmd->id = talloc_asprintf(bsc_cmd, "%i", pending->nat_id);
-			if (!bsc_cmd->id) {
-				cmd->reply = "OOM";
-				goto err;
-			}
-
-			talloc_free(bsc_cmd->variable);
-			bsc_cmd->variable = talloc_strdup(bsc_cmd, bsc_variable);
-			if (!bsc_cmd->variable) {
-				cmd->reply = "OOM";
-				goto err;
-			}
-
-			if (ctrl_cmd_send(&bsc->write_queue, bsc_cmd)) {
-				cmd->reply = "Sending failed";
-				goto err;
-			}
-			pending->ccon = cmd->ccon;
-			pending->ccon->closed_cb = ctrl_conn_closed_cb;
-			pending->cmd = cmd;
-
-			/* Setup the timeout */
-			osmo_timer_setup(&pending->timeout, pending_timeout_cb,
-					 pending);
-			/* TODO: Make timeout configurable */
-			osmo_timer_schedule(&pending->timeout, 10, 0);
-			llist_add_tail(&pending->list_entry, &bsc->cmd_pending);
-
-			goto done;
+		/* Add pending command to list */
+		pending = talloc_zero(bsc, struct bsc_cmd_list);
+		if (!pending) {
+			cmd->reply = "OOM";
+			goto err;
 		}
+
+		pending->nat_id = get_next_free_bsc_id(bsc);
+		if (pending->nat_id < 0) {
+			cmd->reply = "No free ID found";
+			goto err;
+		}
+
+		bsc_cmd = ctrl_cmd_cpy(bsc, cmd);
+		if (!bsc_cmd) {
+			cmd->reply = "Could not forward command";
+			goto err;
+		}
+
+		talloc_free(bsc_cmd->id);
+		bsc_cmd->id = talloc_asprintf(bsc_cmd, "%i", pending->nat_id);
+		if (!bsc_cmd->id) {
+			cmd->reply = "OOM";
+			goto err;
+		}
+
+		talloc_free(bsc_cmd->variable);
+		bsc_cmd->variable = talloc_strdup(bsc_cmd, bsc_variable);
+		if (!bsc_cmd->variable) {
+			cmd->reply = "OOM";
+			goto err;
+		}
+
+		if (ctrl_cmd_send(&bsc->write_queue, bsc_cmd)) {
+			cmd->reply = "Sending failed";
+			goto err;
+		}
+		pending->ccon = cmd->ccon;
+		pending->ccon->closed_cb = ctrl_conn_closed_cb;
+		pending->cmd = cmd;
+
+		/* Setup the timeout */
+		osmo_timer_setup(&pending->timeout, pending_timeout_cb,
+				 pending);
+		/* TODO: Make timeout configurable */
+		osmo_timer_schedule(&pending->timeout, 10, 0);
+		llist_add_tail(&pending->list_entry, &bsc->cmd_pending);
+
+		goto done;
 	}
 	/* We end up here if there's no bsc to handle our LAC */
 	cmd->reply = "no BSC with this nr";
