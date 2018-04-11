@@ -79,7 +79,6 @@ void bsc_nat_ctrl_del_pending(struct bsc_cmd_list *pending)
 {
 	llist_del(&pending->list_entry);
 	osmo_timer_del(&pending->timeout);
-	talloc_free(pending->cmd);
 	talloc_free(pending);
 }
 
@@ -275,8 +274,15 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 			cmd->reply = "Sending failed";
 			goto err;
 		}
+
+		/* caller owns cmd param and will destroy it after we return */
+		pending->cmd = ctrl_cmd_cpy(pending, cmd);
+		if (!pending->cmd) {
+			cmd->reply = "Could not answer command";
+			goto err;
+		}
 		cmd->ccon->closed_cb = ctrl_conn_closed_cb;
-		pending->cmd = cmd;
+		pending->cmd->ccon = cmd->ccon;
 
 		/* Setup the timeout */
 		osmo_timer_setup(&pending->timeout, pending_timeout_cb,
