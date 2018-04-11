@@ -102,7 +102,7 @@ int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 {
 	struct ctrl_cmd *cmd;
 	struct bsc_cmd_list *pending;
-	char *var, *id;
+	char *var;
 
 	cmd = ctrl_cmd_parse(bsc, msg);
 	msgb_free(msg);
@@ -142,13 +142,12 @@ int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 		/* Find the pending command */
 		pending = bsc_get_pending(bsc, cmd->id);
 		if (pending) {
-			id = talloc_strdup(cmd, pending->cmd->id);
-			if (!id) {
+			osmo_talloc_replace_string(cmd, &cmd->id, pending->cmd->id);
+			if (!cmd->id) {
 				cmd->type = CTRL_TYPE_ERROR;
 				cmd->reply = "OOM";
 				goto err;
 			}
-			cmd->id = id;
 			ctrl_cmd_send(&pending->ccon->write_queue, cmd);
 			bsc_nat_ctrl_del_pending(pending);
 		} else {
