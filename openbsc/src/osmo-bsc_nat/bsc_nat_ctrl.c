@@ -148,7 +148,7 @@ int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 				cmd->reply = "OOM";
 				goto err;
 			}
-			ctrl_cmd_send(&pending->ccon->write_queue, cmd);
+			ctrl_cmd_send(&pending->cmd->ccon->write_queue, cmd);
 			bsc_nat_ctrl_del_pending(pending);
 		} else {
 			/* We need to handle TRAPS here */
@@ -176,7 +176,7 @@ static void pending_timeout_cb(void *data)
 	LOGP(DNAT, LOGL_ERROR, "Command timed out\n");
 	pending->cmd->type = CTRL_TYPE_ERROR;
 	pending->cmd->reply = "Command timed out";
-	ctrl_cmd_send(&pending->ccon->write_queue, pending->cmd);
+	ctrl_cmd_send(&pending->cmd->ccon->write_queue, pending->cmd);
 
 	bsc_nat_ctrl_del_pending(pending);
 }
@@ -188,7 +188,7 @@ static void ctrl_conn_closed_cb(struct ctrl_connection *connection)
 
 	llist_for_each_entry(bsc, &g_nat->bsc_connections, list_entry) {
 		llist_for_each_entry_safe(pending, tmp, &bsc->cmd_pending, list_entry) {
-			if (pending->ccon == connection)
+			if (pending->cmd->ccon == connection)
 				bsc_nat_ctrl_del_pending(pending);
 		}
 	}
@@ -275,8 +275,7 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 			cmd->reply = "Sending failed";
 			goto err;
 		}
-		pending->ccon = cmd->ccon;
-		pending->ccon->closed_cb = ctrl_conn_closed_cb;
+		cmd->ccon->closed_cb = ctrl_conn_closed_cb;
 		pending->cmd = cmd;
 
 		/* Setup the timeout */

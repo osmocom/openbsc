@@ -70,9 +70,6 @@ struct bsc_cmd_list {
 	/* The NATed ID used on the bsc_con*/
 	int nat_id;
 
-	/* The control connection from which the command originated */
-	struct ctrl_connection *ccon;
-
 	/* The command from the control connection */
 	struct ctrl_cmd *cmd;
 };

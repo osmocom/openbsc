@@ -936,7 +936,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 	llist_for_each_entry_safe(cmd_entry, cmd_tmp, &connection->cmd_pending, list_entry) {
 		cmd_entry->cmd->type = CTRL_TYPE_ERROR;
 		cmd_entry->cmd->reply = "BSC closed the connection";
-		ctrl_cmd_send(&cmd_entry->ccon->write_queue, cmd_entry->cmd);
+		ctrl_cmd_send(&cmd_entry->cmd->ccon->write_queue, cmd_entry->cmd);
 		bsc_nat_ctrl_del_pending(cmd_entry);
 	}
 
