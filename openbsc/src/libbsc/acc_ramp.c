@@ -26,6 +26,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/acc_ramp.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/chan_alloc.h>
 #include <openbsc/signal.h>
 
 /*
@@ -257,7 +258,7 @@ void acc_ramp_set_step_interval_dynamic(struct acc_ramp *acc_ramp)
 
 /*!
  * Determine if ACC ramping should be started according to configuration, and
- * if ACC ramping is enabled, begin the ramping process.
+ * begin the ramping process if the necessary conditions are present.
  * Perform at least one ramping step to allow 'step_size' ACCs.
  * If 'step_size' is ACC_RAMP_STEP_SIZE_MAX, or if ACC ramping is disabled,
  * all ACCs will be allowed immediately.
@@ -269,9 +270,13 @@ void acc_ramp_trigger(struct acc_ramp *acc_ramp)
 	acc_ramp_abort(acc_ramp);
 
 	if (acc_ramp_is_enabled(acc_ramp)) {
-		/* Set all available ACCs to barred and start ramping up. */
-		barr_all_accs(acc_ramp);
-		do_acc_ramping_step(acc_ramp);
+		struct gsm_bts_trx *trx0 = gsm_bts_trx_by_nr(acc_ramp->bts, 0);
+		/* TRX 0 should be usable and unlocked, otherwise starting ACC ramping is pointless. */
+		if (trx0 && trx_is_usable(trx0) && trx0->mo.nm_state.administrative == NM_STATE_UNLOCKED) {
+			/* Set all available ACCs to barred and start ramping up. */
+			barr_all_accs(acc_ramp);
+			do_acc_ramping_step(acc_ramp);
+		}
 	}
 }
 
