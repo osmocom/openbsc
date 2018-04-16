@@ -42,14 +42,16 @@ static bool acc_is_enabled(struct gsm_bts *bts, unsigned int acc)
 static void allow_one_acc(struct acc_ramp *acc_ramp, unsigned int acc)
 {
 	OSMO_ASSERT(acc >= 0 && acc <= 9);
-	LOGP(DRSL, LOGL_DEBUG, "(bts=%d) ACC RAMP: allowing Access Control Class %u\n", acc_ramp->bts->nr, acc);
+	if (acc_ramp->barred_accs & (1 << acc))
+		LOGP(DRSL, LOGL_DEBUG, "(bts=%d) ACC RAMP: allowing Access Control Class %u\n", acc_ramp->bts->nr, acc);
 	acc_ramp->barred_accs &= ~(1 << acc);
 }
 
 static void barr_one_acc(struct acc_ramp *acc_ramp, unsigned int acc)
 {
 	OSMO_ASSERT(acc >= 0 && acc <= 9);
-	LOGP(DRSL, LOGL_DEBUG, "(bts=%d) ACC RAMP: barring Access Control Class %u\n", acc_ramp->bts->nr, acc);
+	if ((acc_ramp->barred_accs & (1 << acc)) == 0)
+		LOGP(DRSL, LOGL_DEBUG, "(bts=%d) ACC RAMP: barring Access Control Class %u\n", acc_ramp->bts->nr, acc);
 	acc_ramp->barred_accs |= (1 << acc);
 }
 
