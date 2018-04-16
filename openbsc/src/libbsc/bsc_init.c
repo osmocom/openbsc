@@ -318,8 +318,10 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 	/*
 	 * Trigger ACC ramping before sending system information to BTS.
 	 * This ensures that RACH control in system information is configured correctly.
+	 * TRX 0 should be usable and unlocked, otherwise starting ACC ramping is pointless.
 	 */
-	acc_ramp_trigger(&trx->bts->acc_ramp);
+	if (trx_is_usable(trx) && trx->mo.nm_state.administrative == NM_STATE_UNLOCKED)
+		acc_ramp_trigger(&trx->bts->acc_ramp);
 
 	gsm_bts_trx_set_system_infos(trx);
 
