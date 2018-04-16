@@ -79,6 +79,18 @@ struct acc_ramp {
 };
 
 /*!
+ * Enable or disable ACC ramping.
+ * When enabled, ramping begins once acc_ramp_start() is called.
+ * When disabled, an ACC ramping process in progress will continue
+ * unless acc_ramp_abort() is called as well.
+ * \param[in] acc_ramp Pointer to acc_ramp structure.
+ */
+static inline void acc_ramp_set_enabled(struct acc_ramp *acc_ramp, bool enable)
+{
+	acc_ramp->acc_ramping_enabled = enable;
+}
+
+/*!
  * Return true if ACC ramping is currently enabled, else false.
  * \param[in] acc_ramp Pointer to acc_ramp structure.
  */
@@ -141,9 +153,9 @@ static inline void acc_ramp_apply(struct gsm48_rach_control *rach_control, struc
 	rach_control->t3 |= acc_ramp_get_barred_t3(acc_ramp);
 }
 
-void acc_ramp_init(struct acc_ramp *acc_ramp, bool enable, struct gsm_bts *bts);
+void acc_ramp_init(struct acc_ramp *acc_ramp, struct gsm_bts *bts);
 int acc_ramp_set_step_size(struct acc_ramp *acc_ramp, unsigned int step_size);
 int acc_ramp_set_step_interval(struct acc_ramp *acc_ramp, unsigned int step_interval);
 void acc_ramp_set_step_interval_dynamic(struct acc_ramp *acc_ramp);
-void acc_ramp_start(struct acc_ramp *acc_ramp);
+void acc_ramp_trigger(struct acc_ramp *acc_ramp);
 void acc_ramp_abort(struct acc_ramp *acc_ramp);

@@ -311,19 +311,16 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 		trx->bts->location_area_code,
 		trx->bts->cell_identity, trx->bts->bsic);
 
-	/*
-	 * Re-initialize ACC ramping to ensure ACCs are barred/allowed
-	 * according to our current VTY configuration.
-	 */
-	acc_ramp_init(&trx->bts->acc_ramp, acc_ramp_is_enabled(&trx->bts->acc_ramp), trx->bts);
-
 	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
 		rsl_nokia_si_begin(trx);
 	}
 
-	/* Configure ACC ramping before sending system information to BTS. */
-	if (acc_ramp_is_enabled(&trx->bts->acc_ramp))
-		acc_ramp_start(&trx->bts->acc_ramp);
+	/*
+	 * Trigger ACC ramping before sending system information to BTS.
+	 * This ensures that RACH control in system information is configured correctly.
+	 */
+	acc_ramp_trigger(&trx->bts->acc_ramp);
+
 	gsm_bts_trx_set_system_infos(trx);
 
 	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {

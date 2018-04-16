@@ -140,28 +140,20 @@ static void do_acc_ramping_step(void *data)
  * Initialize an acc_ramp data structure.
  * Storage for this structure must be provided by the caller.
  *
- * If ACC ramping is enabled, all ACCs are denied by default.
- * A subsequent call to acc_ramp_start() will begin the ramping process.
- * If ACC ramping is disabled, all ACCs will be allowed by default,
- * and there is no need to do anything else.
+ * By default, ACC ramping is disabled and all ACCs are allowed.
  *
  * \param[in] acc_ramp Pointer to acc_ramp structure to be initialized.
- * \param[in] enable Indicates whether ACC ramping should be enabled or disabled.
  * \param[in] bts BTS which uses this ACC ramp data structure.
  */
-void acc_ramp_init(struct acc_ramp *acc_ramp, bool enable, struct gsm_bts *bts)
+void acc_ramp_init(struct acc_ramp *acc_ramp, struct gsm_bts *bts)
 {
 	acc_ramp->bts = bts;
-	acc_ramp->acc_ramping_enabled = enable;
+	acc_ramp_set_enabled(acc_ramp, false);
 	acc_ramp->step_size = ACC_RAMP_STEP_SIZE_DEFAULT;
 	acc_ramp->step_interval_sec = ACC_RAMP_STEP_INTERVAL_MIN;
 	acc_ramp->step_interval_is_fixed = false;
+	allow_all_enabled_accs(acc_ramp);
 	osmo_timer_setup(&acc_ramp->step_timer, do_acc_ramping_step, acc_ramp);
-
-	if (acc_ramp->acc_ramping_enabled)
-		barr_all_enabled_accs(acc_ramp);
-	else
-		allow_all_enabled_accs(acc_ramp);
 }
 
 /*!
@@ -211,28 +203,34 @@ void acc_ramp_set_step_interval_dynamic(struct acc_ramp *acc_ramp)
 }
 
 /*!
- * Begin the ramping process. Perform at least one ramping step to allow 'step_size' ACCs.
- * If 'step_size' is ACC_RAMP_STEP_SIZE_MAX, all ACCs will be allowed immediately.
+ * Determine if ACC ramping should be started according to configuration, and
+ * if ACC ramping is enabled, begin the ramping process.
+ * Perform at least one ramping step to allow 'step_size' ACCs.
+ * If 'step_size' is ACC_RAMP_STEP_SIZE_MAX, or if ACC ramping is disabled,
+ * all ACCs will be allowed immediately.
  * \param[in] acc_ramp Pointer to acc_ramp structure.
  */
-void acc_ramp_start(struct acc_ramp *acc_ramp)
+void acc_ramp_trigger(struct acc_ramp *acc_ramp)
 {
-	/* Abort any previously running ramping process. */
+	/* Abort any previously running ramping process and allow all available ACCs. */
 	acc_ramp_abort(acc_ramp);
 
-	/* Set all availble ACCs to barred and start ramping up. */
-	barr_all_enabled_accs(acc_ramp);
-	do_acc_ramping_step(acc_ramp);
+	if (acc_ramp_is_enabled(acc_ramp)) {
+		/* Set all available ACCs to barred and start ramping up. */
+		barr_all_enabled_accs(acc_ramp);
+		do_acc_ramping_step(acc_ramp);
+	}
 }
 
 /*!
- * Abort the ramping process. If ramping is disabled or has already finished,
- * then this function has no effect.
+ * Abort the ramping process and allow all available ACCs immediately.
  * \param[in] acc_ramp Pointer to acc_ramp structure.
  */
 void acc_ramp_abort(struct acc_ramp *acc_ramp)
 {
 	if (osmo_timer_pending(&acc_ramp->step_timer))
 		osmo_timer_del(&acc_ramp->step_timer);
+
+	allow_all_enabled_accs(acc_ramp);
 }
 
