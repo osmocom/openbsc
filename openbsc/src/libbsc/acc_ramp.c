@@ -32,12 +32,12 @@
  * Check if an ACC has been permanently barred for a BTS,
  * e.g. with the 'rach access-control-class' VTY command.
  */
-static bool acc_is_enabled(struct gsm_bts *bts, unsigned int acc)
+static bool acc_is_permanently_barred(struct gsm_bts *bts, unsigned int acc)
 {
 	OSMO_ASSERT(acc >= 0 && acc <= 9);
 	if (acc == 8 || acc == 9)
-		return (bts->si_common.rach_control.t2 & (1 << (acc - 8))) == 0;
-	return (bts->si_common.rach_control.t3 & (1 << (acc))) == 0;
+		return (bts->si_common.rach_control.t2 & (1 << (acc - 8)));
+	return (bts->si_common.rach_control.t3 & (1 << (acc)));
 }
 
 static void allow_one_acc(struct acc_ramp *acc_ramp, unsigned int acc)
@@ -56,20 +56,20 @@ static void barr_one_acc(struct acc_ramp *acc_ramp, unsigned int acc)
 	acc_ramp->barred_accs |= (1 << acc);
 }
 
-static void barr_all_enabled_accs(struct acc_ramp *acc_ramp)
+static void barr_all_accs(struct acc_ramp *acc_ramp)
 {
 	unsigned int acc;
 	for (acc = 0; acc < 10; acc++) {
-		if (acc_is_enabled(acc_ramp->bts, acc))
+		if (!acc_is_permanently_barred(acc_ramp->bts, acc))
 			barr_one_acc(acc_ramp, acc);
 	}
 }
 
-static void allow_all_enabled_accs(struct acc_ramp *acc_ramp)
+static void allow_all_accs(struct acc_ramp *acc_ramp)
 {
 	unsigned int acc;
 	for (acc = 0; acc < 10; acc++) {
-		if (acc_is_enabled(acc_ramp->bts, acc))
+		if (!acc_is_permanently_barred(acc_ramp->bts, acc))
 			allow_one_acc(acc_ramp, acc);
 	}
 }
@@ -102,7 +102,7 @@ static void do_acc_ramping_step(void *data)
 
 	/* Shortcut in case we only do one ramping step. */
 	if (acc_ramp->step_size == ACC_RAMP_STEP_SIZE_MAX) {
-		allow_all_enabled_accs(acc_ramp);
+		allow_all_accs(acc_ramp);
 		gsm_bts_set_system_infos(acc_ramp->bts);
 		return;
 	}
@@ -113,14 +113,14 @@ static void do_acc_ramping_step(void *data)
 		if (idx > 0) {
 			/* One of ACC0-ACC7 is still bared. */
 			unsigned int acc = idx - 1;
-			if (acc_is_enabled(acc_ramp->bts, acc))
+			if (!acc_is_permanently_barred(acc_ramp->bts, acc))
 				allow_one_acc(acc_ramp, acc);
 		} else {
 			idx = ffs(acc_ramp_get_barred_t2(acc_ramp));
 			if (idx == 1 || idx == 2) {
 				/* ACC8 or ACC9 is still barred. */
 				unsigned int acc = idx - 1 + 8;
-				if (acc_is_enabled(acc_ramp->bts, acc))
+				if (!acc_is_permanently_barred(acc_ramp->bts, acc))
 					allow_one_acc(acc_ramp, acc);
 			} else {
 				/* All ACCs are now allowed. */
@@ -196,7 +196,7 @@ void acc_ramp_init(struct acc_ramp *acc_ramp, struct gsm_bts *bts)
 	acc_ramp->step_size = ACC_RAMP_STEP_SIZE_DEFAULT;
 	acc_ramp->step_interval_sec = ACC_RAMP_STEP_INTERVAL_MIN;
 	acc_ramp->step_interval_is_fixed = false;
-	allow_all_enabled_accs(acc_ramp);
+	allow_all_accs(acc_ramp);
 	osmo_timer_setup(&acc_ramp->step_timer, do_acc_ramping_step, acc_ramp);
 	osmo_signal_register_handler(SS_NM, acc_ramp_nm_sig_cb, acc_ramp);
 }
@@ -262,7 +262,7 @@ void acc_ramp_trigger(struct acc_ramp *acc_ramp)
 
 	if (acc_ramp_is_enabled(acc_ramp)) {
 		/* Set all available ACCs to barred and start ramping up. */
-		barr_all_enabled_accs(acc_ramp);
+		barr_all_accs(acc_ramp);
 		do_acc_ramping_step(acc_ramp);
 	}
 }
@@ -276,6 +276,6 @@ void acc_ramp_abort(struct acc_ramp *acc_ramp)
 	if (osmo_timer_pending(&acc_ramp->step_timer))
 		osmo_timer_del(&acc_ramp->step_timer);
 
-	allow_all_enabled_accs(acc_ramp);
+	allow_all_accs(acc_ramp);
 }
 
