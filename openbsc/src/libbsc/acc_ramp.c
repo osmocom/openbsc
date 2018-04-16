@@ -144,7 +144,8 @@ static int acc_ramp_nm_sig_cb(unsigned int subsys, unsigned int signal, void *ha
 	struct acc_ramp *acc_ramp = handler_data;
 	struct gsm_bts_trx *trx = NULL;
 
-	if (signal != S_NM_STATECHG_ADM)
+	/* Handled signals map to an Administrative State Change ACK, or a State Changed Event Report. */
+	if (signal != S_NM_STATECHG_ADM && signal != S_NM_STATECHG_OPER)
 		return 0;
 
 	if (nsd->obj_class != NM_OC_RADIO_CARRIER)
@@ -163,7 +164,14 @@ static int acc_ramp_nm_sig_cb(unsigned int subsys, unsigned int signal, void *ha
 	/* Trigger or abort ACC ramping based on the new 'RF lock' state of this TRX. */
 	switch (nsd->new_state->administrative) {
 	case NM_STATE_UNLOCKED:
-		acc_ramp_trigger(acc_ramp);
+		/*
+		 * Do not re-trigger ACC ramping if ramping is already in progress.
+		 * A BTS might send several "unlock" change events: One in the Administrative
+		 * State Change ACK, and/or another in a State Changed Event Report.
+		 * For instance, the nanobts is known to send both.
+		 */
+		if (!osmo_timer_pending(&acc_ramp->step_timer))
+			acc_ramp_trigger(acc_ramp);
 		break;
 	case NM_STATE_LOCKED:
 	case NM_STATE_SHUTDOWN:
