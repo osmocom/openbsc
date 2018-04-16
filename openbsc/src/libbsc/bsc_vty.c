@@ -3045,7 +3045,10 @@ DEFUN(cfg_bts_acc_ramping,
 	if (!acc_ramp_is_enabled(&bts->acc_ramp))
 		acc_ramp_set_enabled(&bts->acc_ramp, true);
 
-	/* ACC ramping takes effect when the BTS reconnects. */
+	/*
+	 * ACC ramping takes effect either when the BTS reconnects RSL,
+	 * or when RF administrative state changes to 'unlocked'.
+	 */
 	return CMD_SUCCESS;
 }
 

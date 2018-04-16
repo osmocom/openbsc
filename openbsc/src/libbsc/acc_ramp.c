@@ -26,6 +26,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/acc_ramp.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/signal.h>
 
 /*
  * Check if an ACC has been permanently barred for a BTS,
@@ -136,6 +137,49 @@ static void do_acc_ramping_step(void *data)
 		osmo_timer_schedule(&acc_ramp->step_timer, get_next_step_interval(acc_ramp), 0);
 }
 
+/* Implements osmo_signal_cbfn() -- trigger or abort ACC ramping upon changes RF lock state. */
+static int acc_ramp_nm_sig_cb(unsigned int subsys, unsigned int signal, void *handler_data, void *signal_data)
+{
+	struct nm_statechg_signal_data *nsd = signal_data;
+	struct acc_ramp *acc_ramp = handler_data;
+	struct gsm_bts_trx *trx = NULL;
+
+	if (signal != S_NM_STATECHG_ADM)
+		return 0;
+
+	if (nsd->obj_class != NM_OC_RADIO_CARRIER)
+		return 0;
+
+	trx = nsd->obj;
+
+	/* We only care about state changes of the first TRX. */
+	if (trx->nr != 0)
+		return 0;
+
+	/* RSL must already be up. We cannot send RACH system information to the BTS otherwise. */
+	if (trx->rsl_link == NULL)
+		return 0;
+
+	/* Trigger or abort ACC ramping based on the new 'RF lock' state of this TRX. */
+	switch (nsd->new_state->administrative) {
+	case NM_STATE_UNLOCKED:
+		acc_ramp_trigger(acc_ramp);
+		break;
+	case NM_STATE_LOCKED:
+	case NM_STATE_SHUTDOWN:
+		acc_ramp_abort(acc_ramp);
+		break;
+	case NM_STATE_NULL:
+		break;
+	default:
+		LOGP(DRSL, LOGL_NOTICE, "(bts=%d) ACC RAMP: unrecognized administrative state '0x%x' reported for TRX 0\n",
+		    acc_ramp->bts->nr, nsd->new_state->administrative);
+		break;
+	}
+
+	return 0;
+}
+
 /*!
  * Initialize an acc_ramp data structure.
  * Storage for this structure must be provided by the caller.
@@ -154,6 +198,7 @@ void acc_ramp_init(struct acc_ramp *acc_ramp, struct gsm_bts *bts)
 	acc_ramp->step_interval_is_fixed = false;
 	allow_all_enabled_accs(acc_ramp);
 	osmo_timer_setup(&acc_ramp->step_timer, do_acc_ramping_step, acc_ramp);
+	osmo_signal_register_handler(SS_NM, acc_ramp_nm_sig_cb, acc_ramp);
 }
 
 /*!
