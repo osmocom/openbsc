@@ -972,14 +972,19 @@ struct smsc *smpp_smsc_alloc_init(void *ctx)
 /*! \brief Set the SMPP address and port without binding. */
 int smpp_smsc_conf(struct smsc *smsc, const char *bind_addr, uint16_t port)
 {
+	smsc->listen_port = port;
+
+	/* Avoid use-after-free if bind_addr == smsc->bind_addr */
+	if (smsc->bind_addr == bind_addr)
+		return 0;
+
 	talloc_free((void*)smsc->bind_addr);
 	smsc->bind_addr = NULL;
 	if (bind_addr) {
-		smsc->bind_addr = talloc_strdup(smsc, bind_addr);
+		smsc->bind_addr = bind_addr ? talloc_strdup(smsc, bind_addr) : NULL;
 		if (!smsc->bind_addr)
 			return -ENOMEM;
 	}
-	smsc->listen_port = port;
 	return 0;
 }
 
