@@ -579,7 +579,7 @@ bts_update_t3122_chan_load(struct gsm_bts *bts)
 
 	/* Check for invalid samples (shouldn't happen). */
 	if (total == 0 || used > total) {
-		LOGP(DRLL, LOGL_NOTICE, "(bts=%d) bogus channel load sample (used=%lu / total=%u)\n",
+		LOGP(DRLL, LOGL_NOTICE, "(bts=%d) bogus channel load sample (used=%"PRIu64" / total=%"PRIu32")\n",
 		     bts->nr, used, total);
 		bts->T3122 = 0; /* disable override of network-wide default value */
 		bts->chan_load_samples_idx = 0; /* invalidate other samples collected so far */
@@ -622,7 +622,7 @@ bts_update_t3122_chan_load(struct gsm_bts *bts)
 	else if (wait_ind > max_wait_ind)
 		wait_ind = max_wait_ind;
 
-	LOGP(DRLL, LOGL_DEBUG, "(bts=%d) T3122 wait indicator set to %lu seconds\n", bts->nr, wait_ind);
+	LOGP(DRLL, LOGL_DEBUG, "(bts=%d) T3122 wait indicator set to %"PRIu64" seconds\n", bts->nr, wait_ind);
 	bts->T3122 = (uint8_t)wait_ind;
 	osmo_stat_item_set(bts->bts_statg->items[BTS_STAT_T3122], wait_ind);
 }
