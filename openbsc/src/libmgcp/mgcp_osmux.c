@@ -267,7 +267,6 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct msgb *msg;
 	struct osmux_hdr *osmuxh;
-	struct llist_head list;
 	struct sockaddr_in addr;
 	struct mgcp_config *cfg = ofd->data;
 	uint32_t rem;
@@ -297,8 +296,7 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 		endp->osmux.stats.chunks++;
 		rem = msg->len;
 
-		osmux_xfrm_output(osmuxh, &endp->osmux.out, &list);
-		osmux_tx_sched(&list, scheduled_tx_bts_cb, endp);
+		osmux_xfrm_output_sched(&endp->osmux.out, osmuxh);
 	}
 out:
 	msgb_free(msg);
@@ -359,7 +357,6 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct msgb *msg;
 	struct osmux_hdr *osmuxh;
-	struct llist_head list;
 	struct sockaddr_in addr;
 	struct mgcp_config *cfg = ofd->data;
 	uint32_t rem;
@@ -389,8 +386,7 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 		endp->osmux.stats.chunks++;
 		rem = msg->len;
 
-		osmux_xfrm_output(osmuxh, &endp->osmux.out, &list);
-		osmux_tx_sched(&list, scheduled_tx_net_cb, endp);
+		osmux_xfrm_output_sched(&endp->osmux.out, osmuxh);
 	}
 out:
 	msgb_free(msg);
@@ -470,9 +466,13 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint
 	switch (endp->cfg->role) {
 		case MGCP_BSC_NAT:
 			endp->type = MGCP_OSMUX_BSC_NAT;
+			osmux_xfrm_output_set_tx_cb(&endp->osmux.out,
+							scheduled_tx_net_cb, endp);
 			break;
 		case MGCP_BSC:
 			endp->type = MGCP_OSMUX_BSC;
+			osmux_xfrm_output_set_tx_cb(&endp->osmux.out,
+							scheduled_tx_bts_cb, endp);
 			break;
 	}
 	endp->osmux.state = OSMUX_STATE_ENABLED;
@@ -484,6 +484,11 @@ void osmux_disable_endpoint(struct mgcp_endpoint *endp)
 {
 	LOGP(DMGCP, LOGL_INFO, "Releasing endpoint %u using Osmux CID %u\n",
 	     ENDPOINT_NUMBER(endp), endp->osmux.cid);
+
+	/* We are closing, we don't need pending RTP packets to be transmitted */
+	osmux_xfrm_output_set_tx_cb(&endp->osmux.out, NULL, NULL);
+	osmux_xfrm_output_flush(&endp->osmux.out);
+
 	osmux_xfrm_input_close_circuit(endp->osmux.in, endp->osmux.cid);
 	endp->osmux.state = OSMUX_STATE_DISABLED;
 	endp->osmux.cid = -1;
