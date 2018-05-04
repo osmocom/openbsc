@@ -1,3 +1,65 @@
+openbsc (1.1.0) unstable; urgency=medium
+
+  [ Neels Hofmeyr ]
+  * debian/rules: show testsuite.log when tests are failing
+  * vty: skip installing cmds now always installed by default
+  * vty: skip installing cmds now always installed by default
+  * sms.db: silence libdbi warnings on out-of-range index
+  * fix build: gprs_ra_id_by_bts(): ensure to init all values
+  * backport support for 3-digit MNC with leading zeros
+  * Migrate from OpenSSL to osmo_get_rand_id()
+
+  [ Harald Welte ]
+  * osmo-bsc: Print NOTICE message on unimplemented BSSMAP UDT
+  * osmo-bsc-sccplite: Implement incoming RESET procedure
+  * mgcp_transcoding_test: Add LIBOSMOABIS_CFLAGS
+  * sysinfo: Fix regression causing missing L2 Pseudo-Length in SI5/SI6
+    (Closes: #3059)
+
+  [ Pau Espin Pedrol ]
+  * Use type bool for boolean fields in gsm48_si_ro_info
+  * vty: Add cmd to configure 3g Early Classmark Sending
+  * mgcp_protocol: Don't print osmux stats if it is off
+  * bsc: Improve handling of paging_request return value
+  * bsc: paging: Fix losing paging messages for BTS
+  * libbsc: set_net_mcc_mnc_apply: Fix memleak on parsing incorrect mcc mnc
+  * bsc_nat: ctrl: fix memleak on reply receival
+  * bsc_nat: forward_to_bsc: remove one level of indentation
+  * bsc_nat: forward_to_bsc: Fix memleak on send failure
+  * bsc_nat: Drop redundant ccon ptr in bsc_cmd_list
+  * bsc_nat: ctrl: Fix crash on receveing bsc reply
+  * nat: Add jitter buffer on the uplink receiver
+  * smpp_smsc_conf: Fix heap-use-after-free
+  * chan_alloc.c: Fix log var formatting issues
+  * mgcp: switch to new osmux output APIs
+  * debian/changelog: change last release for unreleased to unstable
+
+  [ Max ]
+  * Fix tests after rate_ctr change
+
+  [ Vadim Yanitskiy ]
+  * libmsc: add support for both comp128v2 and comp128v3
+  * gsm_04_80.h: use '#pragma once' instead of includes
+  * gsm_04_80.h: cosmetic: whitespace fix
+  * src/libmsc/ussd.c: drop useless forward declaration
+
+  [ Stefan Sperling ]
+  * Make "waiting indicator" of IMMEDIATE ASSIGN REJECT dynamic.
+  * bts chan_load: ignore unusable BTS
+  * Add stat items for the BTS's channel load average and T3122.
+  * Add support for Access Control Class ramping.
+  * fix a format string error in bts_update_t3122_chan_load()
+  * fix initialization of acc ramping
+  * only log actual access control class ramping changes
+  * ensure that acc_ramp_init() is only called once
+  * trigger acc ramping based on trx rf-locked state
+  * rename helper functions in the acc ramp code to avoid confusion
+  * trigger acc ramping on state-changed-event reports
+  * only trigger acc ramping if trx 0 is usable and unlocked
+  * fix handling of state changes in acc ramping
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Fri, 04 May 2018 12:45:08 +0200
+
 openbsc (1.0.0) unstable; urgency=medium
 
   [ Holger Hans Peter Freyther ]

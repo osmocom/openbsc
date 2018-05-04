@@ -39,19 +39,19 @@ AC_SEARCH_LIBS([dlopen], [dl dld], [LIBRARY_DL="$LIBS";LIBS=""])
 AC_SUBST(LIBRARY_DL)
 
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.9.5)
-PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
-PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl)
-PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.9.5)
-PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.2.0)
-PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.6.4)
-PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 0.0.1)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.11.0)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.11.0)
+PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl >= 0.11.0)
+PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.11.0)
+PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.11.0)
+PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.5.0)
+PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 0.2.0)
 
 # Enabke/disable the NAT?
 AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Requires SCCP])],
     [osmo_ac_build_nat="$enableval"],[osmo_ac_build_nat="no"])
 if test "$osmo_ac_build_nat" = "yes" ; then
-        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.2)
+        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.9.0)
 fi
 AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
 AC_SUBST(osmo_ac_build_nat)
@@ -60,7 +60,7 @@ AC_SUBST(osmo_ac_build_nat)
 AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo BSC])],
     [osmo_ac_build_bsc="$enableval"],[osmo_ac_build_bsc="no"])
 if test "$osmo_ac_build_bsc" = "yes" ; then
-    PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.6)
+    PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.9.0)
 fi
 AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
 AC_SUBST(osmo_ac_build_bsc)
@@ -69,7 +69,7 @@ AC_SUBST(osmo_ac_build_bsc)
 AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface])],
     [osmo_ac_build_smpp="$enableval"],[osmo_ac_build_smpp="no"])
 if test "$osmo_ac_build_smpp" = "yes" ; then
-    PKG_CHECK_MODULES(LIBSMPP34, libsmpp34 >= 1.12)
+    PKG_CHECK_MODULES(LIBSMPP34, libsmpp34 >= 1.13.0)
     AC_DEFINE(BUILD_SMPP, 1, [Define if we want to build SMPP])
 fi
 AM_CONDITIONAL(BUILD_SMPP, test "x$osmo_ac_build_smpp" = "xyes")
@@ -95,9 +95,9 @@ AC_SUBST(osmo_ac_mgcp_transcoding)
 AC_ARG_ENABLE([iu], [AS_HELP_STRING([--enable-iu], [Build 3G support, aka IuPS and IuCS interfaces])],
     [osmo_ac_iu="$enableval"],[osmo_ac_iu="no"])
 if test "x$osmo_ac_iu" = "xyes" ; then
-    PKG_CHECK_MODULES(LIBASN1C, libasn1c) # TODO version?
-    PKG_CHECK_MODULES(LIBOSMORANAP, libosmo-ranap) # TODO version?
-    PKG_CHECK_MODULES(LIBOSMOSIGTRAN, libosmo-sigtran) # TODO version?
+    PKG_CHECK_MODULES(LIBASN1C, libasn1c >= 0.9.31)
+    PKG_CHECK_MODULES(LIBOSMORANAP, libosmo-ranap >= 0.3.0)
+    PKG_CHECK_MODULES(LIBOSMOSIGTRAN, libosmo-sigtran >= 0.9.0)
     AC_DEFINE(BUILD_IU, 1, [Define if we want to build IuPS and IuCS interfaces support])
 fi
 AM_CONDITIONAL(BUILD_IU, test "x$osmo_ac_iu" = "xyes")
