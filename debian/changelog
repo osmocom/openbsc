@@ -1,4 +1,4 @@
-openbsc (1.0.0) UNRELEASED; urgency=medium
+openbsc (1.0.0) unstable; urgency=medium
 
   [ Holger Hans Peter Freyther ]
   * Revert "gprs: Use RAND_bytes for p-tmsi"
