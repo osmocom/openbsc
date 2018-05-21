@@ -1,3 +1,9 @@
+openbsc (0.15.1-fw.9) UNRELEASED; urgency=medium
+
+  * Implement SMS online ECUR charging
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Mon, 21 May 2017 19:46:23 +0200
+
 openbsc (0.15.1-fw.8) UNRELEASED; urgency=medium
 
   * Implement proper handover procedure handling at any stage of the call
