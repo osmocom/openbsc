@@ -77,6 +77,19 @@ struct gsm_trans *trans_find_by_msgref(struct gsm_subscriber_connection *conn,
 	return NULL;
 }
 
+struct gsm_trans *trans_find_by_session_id(struct gsm_network *net,
+			 uint8_t proto, struct charging_session_id session_id)
+{
+	struct gsm_trans *trans;
+	llist_for_each_entry(trans, &net->trans_list, entry) {
+		if (trans->protocol == proto &&
+		    trans->session_id.h == session_id.h &&
+		    trans->session_id.l == session_id.l)
+			return trans;
+	}
+	return NULL;
+}
+
 struct gsm_trans *trans_find_by_lchan(struct gsm_lchan *lchan)
 {
 	struct gsm_trans *temp;

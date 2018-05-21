@@ -23,4 +23,7 @@ int subscr_purge_ms(struct gsm_subscriber *subscr);
 int subscr_tx_sms_message(struct gsm_subscriber *subscr,
                           struct gsm411_rp_hdr *rph);
 
+void init_charging_session_id(struct gsm_network *network);
+struct charging_session_id get_charging_session_id(struct gsm_network *network);
+
 #endif /* _GSM_SUP_H */

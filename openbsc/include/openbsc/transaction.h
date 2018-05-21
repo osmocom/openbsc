@@ -34,6 +34,10 @@ struct gsm_trans {
 
 	/* SMS RP message reference */
 	uint8_t msg_ref;
+
+	/* Charging session id */
+	struct charging_session_id session_id;
+
 	/* handle SMS local */
 	uint8_t sms_local;
 
@@ -77,6 +81,8 @@ struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 					uint32_t callref);
 struct gsm_trans *trans_find_by_msgref(struct gsm_subscriber_connection *conn,
 					uint8_t msg_ref);
+struct gsm_trans *trans_find_by_session_id(struct gsm_network *net,
+				   uint8_t proto, struct charging_session_id session_id);
 struct gsm_trans *trans_find_by_lchan(struct gsm_lchan *lchan);
 
 struct gsm_trans *trans_alloc(struct gsm_network *net,

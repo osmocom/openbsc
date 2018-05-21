@@ -247,6 +247,23 @@ static int rx_sms_message(struct gsup_client *sup_client,
 	return gsm411_send_rp_msg_subscr(subscr, msg);
 }
 
+void init_charging_session_id(struct gsm_network *network)
+{
+	network->session_id.h = (uint32_t)time(NULL);
+	network->session_id.l = 0;
+}
+struct charging_session_id get_charging_session_id(struct gsm_network *network)
+{
+	struct charging_session_id id;
+
+	if (++network->session_id.l == 0) /* overflow */
+		++network->session_id.h;
+	id.h = network->session_id.h;
+	id.l = network->session_id.l;
+
+	return id;
+}
+
 static int subscr_tx_sup_message(struct gsup_client *sup_client,
 								 struct gsm_subscriber *subscr,
 								 struct osmo_gsup_message *gsup_msg)

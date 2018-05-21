@@ -286,6 +286,11 @@ struct gsm_tz {
 	int dst; /* daylight savings */
 };
 
+struct charging_session_id {
+	uint32_t h;	/* initialized to the current time */
+	uint32_t l;	/* incremented each time a session id is created */
+};
+
 struct gsm_network {
 	/* global parameters */
 	uint16_t country_code;
