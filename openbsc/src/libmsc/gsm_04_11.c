@@ -393,24 +393,17 @@ static int gsm340_tpdu_dst_addr(struct msgb *msg, struct gsm_sms_addr* dst_addr)
 	return 0;
 }
 
-/* process an incoming TPDU (called from RP-DATA)
- * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */
-static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *msg)
+/* Decode an incoming TPDU (called from RP-DATA)
+ * return value > 0: RP CAUSE for ERROR; 0 = success */
+static int gsm340_decode_tpdu(struct gsm_subscriber_connection *conn, struct msgb *msg, struct gsm_sms *gsms)
 {
 	uint8_t *smsp = msgb_sms(msg);
-	struct gsm_sms *gsms;
 	unsigned int sms_alphabet;
 	uint8_t sms_mti, sms_vpf;
 	uint8_t *sms_vp;
 	uint8_t da_len_bytes;
 	uint8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
-
-	rate_ctr_inc(&conn->network->msc_ctrs->ctr[MSC_CTR_SMS_SUBMITTED]);
-
-	gsms = sms_alloc();
-	if (!gsms)
-		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 
 	/* invert those fields where 0 means active/present */
 	sms_mti = *smsp & 0x03;
@@ -431,12 +424,10 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	da_len_bytes = 2 + *smsp/2 + *smsp%2;
 	if (da_len_bytes > 12) {
 		LOGP(DLSMS, LOGL_ERROR, "Destination Address > 12 bytes ?!?\n");
-		rc = GSM411_RP_CAUSE_SEMANT_INC_MSG;
-		goto out;
+		return GSM411_RP_CAUSE_SEMANT_INC_MSG;
 	} else if (da_len_bytes < 4) {
 		LOGP(DLSMS, LOGL_ERROR, "Destination Address < 4 bytes ?!?\n");
-		rc = GSM411_RP_CAUSE_SEMANT_INC_MSG;
-		goto out;
+		return GSM411_RP_CAUSE_SEMANT_INC_MSG;
 	}
 	memset(address_lv, 0, sizeof(address_lv));
 	memcpy(address_lv, smsp, da_len_bytes);
@@ -455,8 +446,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 
 	sms_alphabet = gsm338_get_sms_alphabet(gsms->data_coding_scheme);
 	if (sms_alphabet == 0xffffffff) {
-		rc = GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
-		goto out;
+		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 	}
 
 	switch (sms_vpf) {
@@ -477,8 +467,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	default:
 		LOGP(DLSMS, LOGL_NOTICE,
 		     "SMS Validity period not implemented: 0x%02x\n", sms_vpf);
-		rc = GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
-		goto out;
+		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 	}
 	gsms->user_data_len = *smsp++;
 	if (gsms->user_data_len) {
@@ -510,13 +499,6 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 
 	gsms->validity_minutes = gsm340_validity_period(sms_vpf, sms_vp);
 
-	/* FIXME: This looks very wrong */
-	send_signal(0, NULL, gsms, 0);
-
-	rc = sms_route_mt_sms(conn, msg, gsms, sms_mti);
-out:
-	sms_free(gsms);
-
 	return rc;
 }
 
@@ -547,7 +529,7 @@ static int gsm411_send_rp_ack(struct gsm_trans *trans, uint8_t msg_ref)
 		msg_ref, GSM411_SM_RL_REPORT_REQ);
 }
 
-static int gsm411_send_rp_error(struct gsm_trans *trans,
+int gsm411_send_rp_error(struct gsm_trans *trans,
 				uint8_t msg_ref, uint8_t cause)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
@@ -561,6 +543,46 @@ static int gsm411_send_rp_error(struct gsm_trans *trans,
 		GSM411_MT_RP_ERROR_MT, msg_ref, GSM411_SM_RL_REPORT_REQ);
 }
 
+int gsm340_rx_tpdu(struct gsm_trans *trans)
+{
+	int rc, rc1;
+	uint32_t used_service_units = 0;
+	struct gsm_sms *gsms = trans->sms.sms;
+
+	/* FIXME: This looks very wrong */
+	send_signal(0, NULL, gsms, 0);
+
+	rc = sms_route_mt_sms(trans->conn, NULL, gsms, GSM340_SMS_SUBMIT_MS2SC);
+
+	// SMS Charging
+	if (trans->net->sms_ctf) {
+		if (rc == 0) {
+			used_service_units = 1;
+		}
+		rc1 = tx_reserve_units_request(OSMO_GSUP_MSGT_RESERVE_UNITS_REQUEST,
+					       OSMO_GSUP_MSGT_REQUEST_TYPE_TERMINATION,
+					       OSMO_CHARGING_SERVICE_TYPE_SMS,
+					       trans, used_service_units);
+		if (rc1 < 0) {
+			trans->sms.sms = NULL;
+			sms_free(gsms);
+			return gsm411_send_rp_error(trans, trans->msg_ref,
+						GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER);
+		}
+	}
+
+	trans->sms.sms = NULL;
+	sms_free(gsms);
+
+	if (rc == 0)
+		return gsm411_send_rp_ack(trans, trans->msg_ref);
+	else if (rc > 0)
+		return gsm411_send_rp_error(trans, trans->msg_ref, rc);
+	else
+		return rc;
+}
+
+
 /* Receive a 04.11 TPDU inside RP-DATA / user data */
 static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 			  struct gsm411_rp_hdr *rph,
@@ -568,6 +590,7 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 			  uint8_t dst_len, uint8_t *dst,
 			  uint8_t tpdu_len, uint8_t *tpdu)
 {
+	struct gsm_sms *gsms;
 	int rc = 0;
 
 	if (src_len && src)
@@ -602,13 +625,41 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 		return subscr_tx_sms_message(trans->subscr, rph);
 	}
 
-	rc = gsm340_rx_tpdu(trans->conn, msg);
-	if (rc == 0)
-		return gsm411_send_rp_ack(trans, rph->msg_ref);
-	else if (rc > 0)
-		return gsm411_send_rp_error(trans, rph->msg_ref, rc);
-	else
+	rate_ctr_inc(&trans->conn->bts->network->msc_ctrs->ctr[MSC_CTR_SMS_SUBMITTED]);
+
+	gsms = sms_alloc();
+	if (!gsms) {
+		gsm411_send_rp_error(trans, rph->msg_ref,
+			GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER);
+		return -ENOMEM;
+	}
+
+	/* Decode an incoming TPDU (called from RP-DATA) */
+	/* return value > 0: RP CAUSE for ERROR; 0 = success */
+	rc = gsm340_decode_tpdu(trans->conn, msg, gsms);
+	if (rc > 0) {
+		sms_free(gsms);
+		gsm411_send_rp_error(trans, rph->msg_ref, rc);
+		return -EIO;
+	}
+	trans->msg_ref = rph->msg_ref;
+	trans->sms.sms = gsms;
+
+	// SMS Charging: Initial Reserve Units Request
+	if (trans->net->sms_ctf) {
+		rc = tx_reserve_units_request(OSMO_GSUP_MSGT_RESERVE_UNITS_REQUEST,
+					      OSMO_GSUP_MSGT_REQUEST_TYPE_INITIAL,
+					      OSMO_CHARGING_SERVICE_TYPE_SMS, trans, 1);
+		if (rc < 0) {
+			trans->sms.sms = NULL;
+			sms_free(gsms);
+			gsm411_send_rp_error(trans, rph->msg_ref,
+					GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER);
+		}
 		return rc;
+	}
+
+	return gsm340_rx_tpdu(trans);
 }
 
 /* Receive a 04.11 RP-DATA message in accordance with Section 7.3.1.2 */

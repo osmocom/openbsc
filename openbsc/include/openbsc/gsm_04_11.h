@@ -42,4 +42,9 @@ int gsm411_send_rp_msg_subscr(struct gsm_subscriber *subscr,
 		    struct msgb *rp);
 
 uint8_t sms_next_rp_msg_ref(uint8_t *next_rp_ref);
+
+int gsm340_rx_tpdu(struct gsm_trans *trans);
+
+int gsm411_send_rp_error(struct gsm_trans *trans, uint8_t msg_ref, uint8_t cause);
+
 #endif

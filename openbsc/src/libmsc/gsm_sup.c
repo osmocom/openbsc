@@ -33,6 +33,7 @@
 #include <openbsc/gprs_utils.h>
 #include <openbsc/ussd.h>
 #include <openbsc/gsm_04_11.h>
+#include <openbsc/transaction.h>
 #include <osmocom/gsm/protocol/gsm_04_11.h>
 #include <osmocom/gsm/gsm0411_utils.h>
 
@@ -263,6 +264,247 @@ struct charging_session_id get_charging_session_id(struct gsm_network *network)
 
 	return id;
 }
+
+static void encode_sms_charging_info(struct msgb *msg, struct gsm_trans *trans)
+{
+	uint8_t bcd_buf[32];
+	size_t bcd_len;
+	struct gsm_sms *gsms = trans->sms.sms;
+
+	/* SMS: destination address (MSISDN): [Pres: M] [Format: TLV] [Length: 0-9] */
+	bcd_len = gsm48_encode_bcd_number(bcd_buf, sizeof(bcd_buf), 0, gsms->dst.addr);
+	msgb_tlv_put(msg, OSMO_GSUP_MSISDN_IE, bcd_len - 1, &bcd_buf[1]);
+
+	/* SMS: rp msg ref: [Pres: M] [Format: V] [Length: 1] */
+	msgb_put_u8(msg, trans->msg_ref);
+
+	/* SMS: tp msg ref: [Pres: M] [Format: V] [Length: 1] */
+	msgb_put_u8(msg, gsms->msg_ref);
+}
+
+int tx_reserve_units_request(enum osmo_gsup_charging_message_type msg_type,
+			      enum osmo_gsup_charging_request_type request_type,
+			      enum osmo_charging_service_type service_type,
+			      struct gsm_trans *trans, uint32_t service_units)
+{
+	uint8_t bcd_buf[32];
+	size_t bcd_len;
+	struct msgb *msg = gsup_client_msgb_alloc();
+
+	if (!msg)
+		return -ENOMEM;
+	if (!trans->subscr->extension)
+		return -1;
+
+	if (request_type == OSMO_GSUP_MSGT_REQUEST_TYPE_INITIAL)
+		trans->session_id = get_charging_session_id(trans->net);
+
+	/* Message type: [Pres: M] [Format: V] [Length: 1] */
+	msgb_put_u8(msg, msg_type);
+
+	/* Session id: [Pres: M] [Format: V] [Length: 8] */
+	msgb_put_u32(msg, trans->session_id.h);
+	msgb_put_u32(msg, trans->session_id.l);
+
+	/* Request type: [Pres: M] [Format: V] [Length: 1] */
+	msgb_put_u8(msg, request_type);
+
+	/* Service type: [Pres: M] [Format: V] [Length: 1] */
+	msgb_put_u8(msg, service_type);
+
+	/* Subscriber Identifier (MSISDN): [Pres: M] [Format: TLV] [Length: 0-9] */
+	bcd_len = gsm48_encode_bcd_number(bcd_buf, sizeof(bcd_buf),
+					  0, trans->subscr->extension);
+	msgb_tlv_put(msg, OSMO_GSUP_MSISDN_IE, bcd_len - 1, &bcd_buf[1]);
+
+	/* Service units [Pres: M] [Format: V] [Length: 4] */
+	msgb_put_u32(msg, service_units);
+
+	/* Encode Service Information */
+	switch (service_type) {
+	case OSMO_CHARGING_SERVICE_TYPE_SMS:
+		encode_sms_charging_info(msg, trans);
+		break;
+	default:
+		msgb_free(msg);
+		return -EINVAL;
+	}
+
+	switch (request_type) {
+	case OSMO_GSUP_MSGT_REQUEST_TYPE_INITIAL:
+		LOGGSESSIONP(LOGL_NOTICE, trans->session_id,
+			"Tx: Reserve Units Request: type = INITIAL, service = %d,"
+			" subscriber_id = %s, requested_units = %d, desr_addr = %s,"
+			" rp_msg_ref = %d, tp_msg_ref = %d\n",
+			service_type, trans->subscr->extension, service_units,
+			trans->sms.sms->dst.addr, trans->msg_ref, trans->sms.sms->msg_ref);
+		break;
+	case OSMO_GSUP_MSGT_REQUEST_TYPE_TERMINATION:
+		LOGGSESSIONP(LOGL_NOTICE, trans->session_id,
+			"Tx: Reserve Units Request: type = TERMINATION, service = %d,"
+			" subscriber_id = %s, used_units = %d, desr_addr = %s,"
+			" rp_msg_ref = %d, tp_msg_ref = %d\n",
+			service_type, trans->subscr->extension, service_units,
+			trans->sms.sms->dst.addr, trans->msg_ref, trans->sms.sms->msg_ref);
+		break;
+	default:
+		LOGGSESSIONP(LOGL_NOTICE, trans->session_id,
+			"Tx: Reserve Units Request with unsupported type = %d\n", request_type);
+	}
+
+	return gsup_client_send(trans->net->sms_ctf, msg);
+}
+
+static int osmo_gsup_reserve_units_response_decode(const uint8_t *const_data,
+		size_t data_len, struct osmo_gsup_reserve_units_response *response)
+{
+	int rc;
+	uint8_t *data = (uint8_t *)const_data;
+	uint8_t *value;
+
+	/* Message type: [Pres: M] [Format: V] [Length: 1] */
+	rc = osmo_shift_v_fixed(&data, &data_len, 1, &value);
+	if (rc < 0)
+		return -GMM_CAUSE_INV_MAND_INFO;
+	response->message_type = osmo_decode_big_endian(value, 1);
+
+	/* Session id: [Pres: M] [Format: V] [Length: 8] */
+	rc = osmo_shift_v_fixed(&data, &data_len, 4, &value);
+	if (rc < 0)
+		return -GMM_CAUSE_INV_MAND_INFO;
+	response->session_id.h = osmo_decode_big_endian(value, 4);
+	rc = osmo_shift_v_fixed(&data, &data_len, 4, &value);
+	if (rc < 0)
+		return -GMM_CAUSE_INV_MAND_INFO;
+	response->session_id.l = osmo_decode_big_endian(value, 4);
+
+	/* Request type: [Pres: M] [Format: V] [Length: 1] */
+	rc = osmo_shift_v_fixed(&data, &data_len, 1, &value);
+	if (rc < 0)
+		return -GMM_CAUSE_INV_MAND_INFO;
+	response->request_type = osmo_decode_big_endian(value, 1);
+
+	/* Result code: [Pres: M] [Format: V] [Length: 4] */
+	rc = osmo_shift_v_fixed(&data, &data_len, 4, &value);
+	if (rc < 0)
+		return -GMM_CAUSE_INV_MAND_INFO;
+	response->result_code = osmo_decode_big_endian(value, 4);
+
+	if (response->request_type == OSMO_GSUP_MSGT_REQUEST_TYPE_INITIAL) {
+		/* Service units: [Pres: O] [Format: V] [Length: 4] */
+		rc = osmo_shift_v_fixed(&data, &data_len, 4, &value);
+		if (rc < 0)
+			return -GMM_CAUSE_INV_MAND_INFO;
+		response->service_units = osmo_decode_big_endian(value, 4);
+	}
+
+	return 0;
+}
+
+static int rx_sms_reserve_units_response_init(struct gsm_network *net,
+			struct osmo_gsup_reserve_units_response *response)
+{
+	struct gsm_trans *trans;
+	struct gsm_sms *gsms;
+
+	trans = trans_find_by_session_id(net, GSM48_PDISC_SMS, response->session_id);
+	if (!trans) {
+		LOGGSESSIONP(LOGL_ERROR, response->session_id,
+			"Can't find transaction for Session Id from Reserve Units Response Initial\n");
+		return -EINVAL;
+	}
+
+	gsms = trans->sms.sms;
+
+	switch (response->result_code) {
+	case OSMO_CHARGING_RESULT_CODE_SUCCESS:
+		if (response->service_units == 1) {
+			return gsm340_rx_tpdu(trans);
+		} else {
+			LOGGSESSIONP(LOGL_ERROR, response->session_id,
+				"Received Service Units = %d in Reserve Units Response Initial\n",
+				response->result_code);
+			tx_reserve_units_request(OSMO_GSUP_MSGT_RESERVE_UNITS_REQUEST,
+						 OSMO_GSUP_MSGT_REQUEST_TYPE_TERMINATION,
+						 OSMO_CHARGING_SERVICE_TYPE_SMS,
+						 trans, 0);
+			trans->sms.sms = NULL;
+			sms_free(gsms);
+			return gsm411_send_rp_error(trans, trans->msg_ref,
+						    GSM411_RP_CAUSE_MO_CALL_BARRED);
+		}
+	case OSMO_CHARGING_RESULT_CODE_CREDIT_LIMIT_REACHED:
+		trans->sms.sms = NULL;
+		sms_free(gsms);
+		return gsm411_send_rp_error(trans, trans->msg_ref,
+						GSM411_RP_CAUSE_MO_CALL_BARRED);
+	default:
+		LOGGSESSIONP(LOGL_ERROR, response->session_id,
+			"Received Result Code %d in Reserve Units Response Initial\n",
+			response->result_code);
+		trans->sms.sms = NULL;
+		sms_free(gsms);
+		return gsm411_send_rp_error(trans, trans->msg_ref,
+						GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER);
+	}
+}
+
+static int rx_sms_reserve_units_response_term(struct gsm_network *net,
+			struct osmo_gsup_reserve_units_response *response)
+{
+	switch (response->result_code) {
+	case OSMO_CHARGING_RESULT_CODE_SUCCESS:
+		break;
+	default:
+		LOGGSESSIONP(LOGL_ERROR, response->session_id,
+			"Received Result Code %d in Reserve Units Response Termination\n",
+			response->result_code);
+	}
+	return 0;
+}
+
+static int rx_sms_reserve_units_response(struct gsm_network *net,
+			struct osmo_gsup_reserve_units_response *response)
+{
+	switch (response->request_type) {
+	case OSMO_GSUP_MSGT_REQUEST_TYPE_INITIAL:
+		LOGGSESSIONP(LOGL_NOTICE, response->session_id,
+			"Rx: Reserve Units Response: type = INITIAL, result_code = %d, granted_units = %d\n",
+			response->result_code, response->service_units);
+		return rx_sms_reserve_units_response_init(net, response);
+	case OSMO_GSUP_MSGT_REQUEST_TYPE_TERMINATION:
+		LOGGSESSIONP(LOGL_NOTICE, response->session_id,
+			"Rx: Reserve Units Response: type = TERMINATION, result_code = %d\n",
+			response->result_code);
+		return rx_sms_reserve_units_response_term(net, response);
+	case OSMO_GSUP_MSGT_REQUEST_TYPE_UPDATE:
+	case OSMO_GSUP_MSGT_REQUEST_TYPE_EVENT:
+	default:
+		LOGGSESSIONP(LOGL_NOTICE, response->session_id,
+			"Received unsupported Request Type %d in Reserve Units Response message\n",
+			response->request_type);
+		return -EINVAL;
+	}
+}
+
+static int rx_reserve_units_response(struct gsup_client *sup_client,
+				const uint8_t* const_data, size_t data_len)
+{
+	int rc;
+	struct gsm_network *net = sup_client->net;
+	struct osmo_gsup_reserve_units_response response = {0};
+
+	rc = osmo_gsup_reserve_units_response_decode(const_data, data_len, &response);
+	if (rc < 0) {
+		LOGGSESSIONP(LOGL_ERROR, response.session_id,
+			"decoding Reserve Units Response message fails with error '%s' (%d)\n",
+			get_value_string(gsm48_gmm_cause_names, -rc), -rc);
+		return rc;
+	}
+
+	return rx_sms_reserve_units_response(net, &response);
+}
+
 
 static int subscr_tx_sup_message(struct gsup_client *sup_client,
 								 struct gsm_subscriber *subscr,
@@ -551,6 +793,11 @@ static int subscr_rx_sup_message(struct gsup_client *sup_client, struct msgb *ms
 	if (*data == OSMO_GSUP_MSGT_SMS) {
 		return rx_sms_message(sup_client, data, data_len);
 	}
+
+	if (*data == OSMO_GSUP_MSGT_RESERVE_UNITS_RESPONSE) {
+		return rx_reserve_units_response(sup_client, data, data_len);
+	}
+
 	rc = osmo_gsup_decode(data, data_len, &gsup_msg);
 	if (rc < 0) {
 		LOGP(DSUP, LOGL_ERROR,
