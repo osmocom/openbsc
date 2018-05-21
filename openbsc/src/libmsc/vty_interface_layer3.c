@@ -1078,6 +1078,30 @@ DEFUN(sms_destination, sms_destination_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(sms_ocs, sms_ocs_cmd,
+	"sms ocs ADDR <0-65535>",
+	"Enable SMS OCS socket to a given address/port" "destination\n" "address or hostname\n" "port number\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
+	if (gsmnet->sms_ctf) {
+		LOGP(DSUP, LOGL_FATAL, "Can't create two SMS OCS clients\n");
+		vty_out(vty, "%%SMS OCS client already configured%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	gsmnet->sms_ctf = gsup_client_create(argv[0], atoi(argv[1]), &sup_read_cb, NULL);
+	if (!gsmnet->sms_ctf) {
+		LOGP(DSUP, LOGL_FATAL, "Cannot set up SMS OCS socket\n");
+		vty_out(vty, "%%Cannot set up SMS OCS socket%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	init_charging_session_id(gsmnet);
+	gsmnet->sms_ctf->net = gsmnet;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(logging_fltr_imsi,
       logging_fltr_imsi_cmd,
       "logging filter imsi IMSI",
@@ -1251,6 +1275,7 @@ int bsc_vty_init_extra(void)
 	install_element(NITB_NODE, &cfg_nitb_no_assign_tmsi_cmd);
 	install_element(NITB_NODE, &sup_ussd_destination_cmd);
 	install_element(NITB_NODE, &sms_destination_cmd);
+	install_element(NITB_NODE, &sms_ocs_cmd);
 
 	return 0;
 }

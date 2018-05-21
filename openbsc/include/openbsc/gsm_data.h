@@ -334,6 +334,8 @@ struct gsm_network {
 	struct gsup_client *hlr_sup_client;
 	struct gsup_client *ussd_sup_client;
 	struct gsup_client *sms_client;
+	struct gsup_client *sms_ctf;
+	struct charging_session_id session_id;
 
 	unsigned int num_bts;
 	struct llist_head bts_list;
