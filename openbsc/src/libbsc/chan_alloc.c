@@ -362,8 +362,8 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 	} else {
 		struct challoc_signal_data sig;
 
-		LOGP(DRLL, LOGL_ERROR, "Failed to allocate %s channel\n",
-		     gsm_lchant_name(type));
+		LOGP(DRLL, LOGL_ERROR, "(bts=%d) Failed to allocate %s channel\n",
+		     gsm_ts_and_pchan_name(bts->nr), gsm_lchant_name(type));
 
 		sig.bts = bts;
 		sig.type = type;
