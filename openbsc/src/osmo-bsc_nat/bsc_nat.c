@@ -1308,20 +1308,18 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 	int ret;
 
 	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &bsc->pending_msg);
-	if (ret <= 0) {
-		if (ret == -EAGAIN)
-			return 0;
-		if (ret == 0)
-			LOGP(DNAT, LOGL_ERROR,
-			     "The connection to the BSC Nr: %d was lost. Cleaning it\n",
-			     bsc->cfg ? bsc->cfg->nr : -1);
-		else
-			LOGP(DNAT, LOGL_ERROR,
-			     "Stream error on BSC Nr: %d. Failed to parse ip access message: %d (%s)\n",
-			     bsc->cfg ? bsc->cfg->nr : -1, ret, strerror(-ret));
-
-		bsc_close_connection(bsc);
-		return -1;
+	if (ret == -EAGAIN) {
+		return 0;
+	} else if (ret == 0) {
+		LOGP(DNAT, LOGL_ERROR,
+		     "The connection to the BSC Nr: %d was lost. Cleaning it\n",
+		     bsc->cfg ? bsc->cfg->nr : -1);
+		goto close_fd;
+	} else if (ret < 0) {
+		LOGP(DNAT, LOGL_ERROR,
+		     "Stream error on BSC Nr: %d. Failed to parse ip access message: %d (%s)\n",
+		     bsc->cfg ? bsc->cfg->nr : -1, ret, strerror(-ret));
+		 goto close_fd;
 	}
 
 
@@ -1356,8 +1354,11 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 	/* FIXME: Currently no PONG is sent to the BSC */
 	/* FIXME: Currently no ID ACK is sent to the BSC */
 	forward_sccp_to_msc(bsc, msg);
-
 	return 0;
+
+close_fd:
+	bsc_close_connection(bsc);
+	return -EBADF;
 }
 
 static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
