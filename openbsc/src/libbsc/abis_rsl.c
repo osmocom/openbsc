@@ -1842,7 +1842,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	/* Determine channel request cause code */
 	chreq_reason = get_reason_by_chreq(rqd_ref->ra, bts->network->neci);
-	LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: reason: %s (ra=0x%02x, neci=0x%02x, chreq_reason=0x%02x)\n",
+	LOGP(DRSL, LOGL_NOTICE, "(bts=%d) CHAN RQD: reason: %s (ra=0x%02x, neci=0x%02x, chreq_reason=0x%02x)\n",
 	     msg->lchan->ts->trx->bts->nr,
 	     get_value_string(gsm_chreq_descs, chreq_reason),
 	     rqd_ref->ra, bts->network->neci, chreq_reason);
@@ -1867,7 +1867,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lchan = lchan_alloc(bts, lctype, is_lu);
 	if (!lchan) {
 		uint8_t wait_ind;
-		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
+		LOGP(DRSL, LOGL_NOTICE, "(bts=%d) CHAN RQD: no resources for %s 0x%x\n",
 		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
 		rate_ctr_inc(&bts->network->bsc_ctrs->ctr[BSC_CTR_CHREQ_NO_CHANNEL]);
 		if (bts->T3122)
