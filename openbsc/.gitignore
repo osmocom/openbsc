@@ -37,6 +37,7 @@ missing
 stamp-h1
 libtool
 ltmain.sh
+m4/*.m4
 
 # git-version-gen magic
 .tarball-version
