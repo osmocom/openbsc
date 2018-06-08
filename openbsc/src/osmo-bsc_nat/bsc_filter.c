@@ -135,6 +135,8 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg)
 	return parsed;
 }
 
+/* Returns 0 if message is whitelisted (has to beforwarded by bsc-nat), 1 if
+/* it's blacklisted (not to be forwarded) */
 int bsc_nat_filter_ipa(int dir, struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	int i;
@@ -177,7 +179,7 @@ int bsc_nat_filter_ipa(int dir, struct msgb *msg, struct bsc_nat_parsed *parsed)
 		}
 	}
 
-	/* go through the whitelust now */
+	/* go through the whitelist now */
 	for (i = 0; i < ARRAY_SIZE(white_list); ++i) {
 		/* ignore the rule? */
 		if (white_list[i].filter_dir != FILTER_TO_BOTH
