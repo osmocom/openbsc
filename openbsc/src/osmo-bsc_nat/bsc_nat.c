@@ -1277,8 +1277,6 @@ exit:
 			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME))
 				ipaccess_auth_bsc(&tvp, bsc);
 		}
-
-		goto exit2;
 	}
 
 exit2:
