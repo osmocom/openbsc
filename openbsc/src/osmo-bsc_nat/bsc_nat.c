@@ -958,21 +958,23 @@ void bsc_close_connection(struct bsc_connection *connection)
 	talloc_free(connection);
 }
 
-static void bsc_maybe_close(struct bsc_connection *bsc)
+/* Returns true if bsc_close_connection() was called, false otherwise */
+static bool bsc_maybe_close(struct bsc_connection *bsc)
 {
 	struct nat_sccp_connection *sccp;
 	if (!bsc->nat->blocked)
-		return;
+		return false;
 
 	/* are there any connections left */
 	llist_for_each_entry(sccp, &bsc->nat->sccp_connections, list_entry)
 		if (sccp->bsc == bsc)
-			return;
+			return false;
 
 	/* nothing left, close the BSC */
 	LOGP(DNAT, LOGL_NOTICE, "Cleaning up BSC %d in blocking mode.\n",
 	     bsc->cfg ? bsc->cfg->nr : -1);
 	bsc_close_connection(bsc);
+	return true;
 }
 
 static void ipaccess_close_bsc(void *data)
@@ -1021,7 +1023,8 @@ static int verify_key(struct bsc_connection *conn, struct bsc_config *conf, cons
 	return osmo_constant_time_cmp(vec.res, key, 8) == 0;
 }
 
-static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc)
+/* Returns true if connection was successfully authenticated, false otherwise. */
+static bool ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc)
 {
 	struct bsc_config *conf;
 	const char *token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
@@ -1032,21 +1035,19 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 	if (bsc->cfg) {
 		LOGP(DNAT, LOGL_ERROR, "Reauth on fd %d bsc nr %d\n",
 		     bsc->write_queue.bfd.fd, bsc->cfg->nr);
-		return;
+		return true;
 	}
 
 	if (len <= 0) {
 		LOGP(DNAT, LOGL_ERROR, "Token with length zero on fd: %d\n",
 			bsc->write_queue.bfd.fd);
-		bsc_close_connection(bsc);
-		return;
+		return false;
 	}
 
 	if (token[len - 1] != '\0') {
 		LOGP(DNAT, LOGL_ERROR, "Token not null terminated on fd: %d\n",
 			bsc->write_queue.bfd.fd);
-		bsc_close_connection(bsc);
-		return;
+		return false;
 	}
 
 	/*
@@ -1061,8 +1062,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 		LOGP(DNAT, LOGL_ERROR,
 			"No bsc found for token '%s' len %d on fd: %d.\n", token,
 			bsc->write_queue.bfd.fd, len);
-		bsc_close_connection(bsc);
-		return;
+		return false;
 	}
 
 	/* We have set a key and expect it to be present */
@@ -1070,8 +1070,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 		LOGP(DNAT, LOGL_ERROR,
 			"Wrong key for bsc nr %d fd: %d.\n", conf->nr,
 			bsc->write_queue.bfd.fd);
-		bsc_close_connection(bsc);
-		return;
+		return false;
 	}
 
 	rate_ctr_inc(&conf->stats.ctrg->ctr[BCFG_CTR_NET_RECONN]);
@@ -1081,6 +1080,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 	LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc nr: %d on fd %d\n",
 		conf->nr, bsc->write_queue.bfd.fd);
 	start_ping_pong(bsc);
+	return true;
 }
 
 static void handle_con_stats(struct nat_sccp_connection *con)
@@ -1098,7 +1098,14 @@ static void handle_con_stats(struct nat_sccp_connection *con)
 	rate_ctr_inc(&ctrg->ctr[id]);
 }
 
-static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
+/*!
+ * Forward messages to msc and verify received authentication messages.
+ * \param[in] bsc Pointer to bsc_connection structure from which the message was received.
+ * \param[in] msg The msg received to be forwarded to the msc.
+ * \param[out] bsc_conn_closed Whether bsc_close_connection(bsc) was called inside the function.
+ *  \returns 0 on success, -1 on error.
+ */
+static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, bool *bsc_conn_closed)
 {
 	int con_filter = 0;
 	char *imsi = NULL;
@@ -1107,6 +1114,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	int con_type;
 	struct bsc_nat_parsed *parsed;
 	struct bsc_filter_reject_cause cause;
+	*bsc_conn_closed = false;
 
 	/* Parse and filter messages */
 	parsed = bsc_nat_parse(msg);
@@ -1216,7 +1224,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 				con_filter = con->con_local;
 			}
 			remove_sccp_src_ref(bsc, msg, parsed);
-			bsc_maybe_close(bsc);
+			*bsc_conn_closed = bsc_maybe_close(bsc);
 			break;
 		case SCCP_MSG_TYPE_UDT:
 			/* simply forward everything */
@@ -1277,8 +1285,12 @@ exit:
 					"message with malformed TLVs\n");
 				return ret;
 			}
-			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME))
-				ipaccess_auth_bsc(&tvp, bsc);
+			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME)) {
+				if (!ipaccess_auth_bsc(&tvp, bsc)) {
+					bsc_close_connection(bsc);
+					*bsc_conn_closed = true;
+				}
+			}
 		}
 	}
 
@@ -1296,6 +1308,7 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 	struct msgb *msg = NULL;
 	struct ipaccess_head *hh;
 	struct ipaccess_head_ext *hh_ext;
+	bool fd_closed = false;
 	int ret;
 
 	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &bsc->pending_msg);
@@ -1344,8 +1357,8 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 
 	/* FIXME: Currently no PONG is sent to the BSC */
 	/* FIXME: Currently no ID ACK is sent to the BSC */
-	forward_sccp_to_msc(bsc, msg);
-	return 0;
+	forward_sccp_to_msc(bsc, msg, &fd_closed);
+	return fd_closed ? -EBADF : 0;
 
 close_fd:
 	bsc_close_connection(bsc);
