@@ -1124,8 +1124,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	 */
 	if (!bsc->authenticated) {
 		LOGP(DNAT, LOGL_ERROR, "BSC is not authenticated.\n");
-		msgb_free(msg);
-		return -1;
+		goto exit2;
 	}
 
 
