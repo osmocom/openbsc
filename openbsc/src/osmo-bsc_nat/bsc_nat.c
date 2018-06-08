@@ -1142,7 +1142,9 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 				if (imsi)
 					bsc_nat_inform_reject(bsc, imsi);
 				bsc_stat_reject(filter, bsc, 0);
-				goto exit3;
+				/* send a SCCP Connection Refused */
+				bsc_send_con_refuse(bsc, parsed, con_type, &cause);
+				goto exit2;
 			}
 
 			if (!create_sccp_src_ref(bsc, parsed))
@@ -1282,15 +1284,6 @@ exit:
 exit2:
 	if (imsi)
 		talloc_free(imsi);
-	talloc_free(parsed);
-	msgb_free(msg);
-	return -1;
-
-exit3:
-	/* send a SCCP Connection Refused */
-	if (imsi)
-		talloc_free(imsi);
-	bsc_send_con_refuse(bsc, parsed, con_type, &cause);
 	talloc_free(parsed);
 	msgb_free(msg);
 	return -1;
