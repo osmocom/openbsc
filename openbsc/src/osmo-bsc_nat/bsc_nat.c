@@ -1261,7 +1261,6 @@ exit:
 	/* if we filter out the reset send an ack to the BSC */
 	if (parsed->bssap == 0 && parsed->gsm_type == BSS_MAP_MSG_RESET) {
 		send_reset_ack(bsc);
-		send_reset_ack(bsc);
 	} else if (parsed->ipa_proto == IPAC_PROTO_IPACCESS) {
 		/* do we know who is handling this? */
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP && msgb_l2len(msg) > 2) {
