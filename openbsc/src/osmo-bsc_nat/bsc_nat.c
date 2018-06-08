@@ -1038,12 +1038,14 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 	if (len <= 0) {
 		LOGP(DNAT, LOGL_ERROR, "Token with length zero on fd: %d\n",
 			bsc->write_queue.bfd.fd);
+		bsc_close_connection(bsc);
 		return;
 	}
 
 	if (token[len - 1] != '\0') {
 		LOGP(DNAT, LOGL_ERROR, "Token not null terminated on fd: %d\n",
 			bsc->write_queue.bfd.fd);
+		bsc_close_connection(bsc);
 		return;
 	}
 
