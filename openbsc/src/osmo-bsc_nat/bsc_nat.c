@@ -1465,6 +1465,7 @@ static void print_help()
 	printf("  -D --daemonize Fork the process into a background daemon\n");
 	printf("  -s --disable-color\n");
 	printf("  -T --timestamp. Print a timestamp in the debug output.\n");
+	printf("  -V --version. Print the version of OsmoBSCNAT.\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -m --msc=IP. The address of the MSC.\n");
 	printf("  -l --local=IP. The local address of this BSC.\n");
@@ -1481,12 +1482,13 @@ static void handle_options(int argc, char **argv)
 			{"config-file", 1, 0, 'c'},
 			{"disable-color", 0, 0, 's'},
 			{"timestamp", 0, 0, 'T'},
+			{"version", 0, 0, 'V' },
 			{"msc", 1, 0, 'm'},
 			{"local", 1, 0, 'l'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sTPc:m:l:D",
+		c = getopt_long(argc, argv, "hd:sTVPc:m:l:D",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1510,6 +1512,10 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'T':
 			log_set_print_timestamp(osmo_stderr_target, 1);
+			break;
+		case 'V':
+			print_version(1);
+			exit(0);
 			break;
 		case 'm':
 			msc_ip = optarg;
