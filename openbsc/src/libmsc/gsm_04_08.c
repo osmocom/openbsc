@@ -1220,7 +1220,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 {
 	struct gsm_network *net = conn->network;
 	uint8_t res[16];
-	uint8_t res_len;
+	uint8_t res_len = 0;
 	int rc;
 	bool is_r99;
 
