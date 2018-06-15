@@ -1464,6 +1464,7 @@ static void print_help()
 	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
 	printf("  -D --daemonize Fork the process into a background daemon\n");
 	printf("  -s --disable-color\n");
+	printf("  -T --timestamp. Print a timestamp in the debug output.\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -m --msc=IP. The address of the MSC.\n");
 	printf("  -l --local=IP. The local address of this BSC.\n");
