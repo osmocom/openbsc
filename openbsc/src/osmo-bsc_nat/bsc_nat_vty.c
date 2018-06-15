@@ -87,6 +87,46 @@ static void write_pgroup_lst(struct vty *vty, struct bsc_nat_paging_group *pgrou
 	dump_lac(vty, &pgroup->lists);
 }
 
+static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
+{
+	vty_out(vty, " bsc %u%s", bsc->nr, VTY_NEWLINE);
+	vty_out(vty, "  token %s%s", bsc->token, VTY_NEWLINE);
+	if (bsc->key_present)
+		vty_out(vty, "  auth-key %s%s", osmo_hexdump(bsc->key, 16), VTY_NEWLINE);
+	dump_lac(vty, &bsc->lac_list);
+	if (bsc->description)
+		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
+	if (bsc->acc_lst_name)
+		vty_out(vty, "  access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
+	vty_out(vty, "  max-endpoints %d%s", bsc->max_endpoints, VTY_NEWLINE);
+	if (bsc->paging_group != -1)
+		vty_out(vty, "  paging group %d%s", bsc->paging_group, VTY_NEWLINE);
+	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
+	switch (bsc->osmux) {
+	case OSMUX_USAGE_ON:
+		vty_out(vty, "  osmux on%s", VTY_NEWLINE);
+		break;
+	case OSMUX_USAGE_ONLY:
+		vty_out(vty, "  osmux only%s", VTY_NEWLINE);
+		break;
+	}
+	if (bsc->bts_use_jibuf_override)
+		vty_out(vty, "  %sbts-jitter-buffer%s", bsc->bts_use_jibuf? "" : "no ", VTY_NEWLINE);
+	if (bsc->bts_jitter_delay_min_override)
+		vty_out(vty, "  bts-jitter-delay-min %"PRIu32"%s", bsc->bts_jitter_delay_min, VTY_NEWLINE);
+	if (bsc->bts_jitter_delay_max_override)
+		vty_out(vty, "  bts-jitter-delay-max %"PRIu32"%s", bsc->bts_jitter_delay_max, VTY_NEWLINE);
+}
+
+static int config_write_bsc(struct vty *vty)
+{
+	struct bsc_config *bsc;
+
+	llist_for_each_entry(bsc, &_nat->bsc_configs, entry)
+		config_write_bsc_single(vty, bsc);
+	return CMD_SUCCESS;
+}
+
 static int config_write_nat(struct vty *vty)
 {
 	struct bsc_msg_acc_lst *lst;
@@ -148,46 +188,8 @@ static int config_write_nat(struct vty *vty)
 	vty_out(vty, " %ssdp-ensure-amr-mode-set%s",
 		_nat->sdp_ensure_amr_mode_set ? "" : "no ", VTY_NEWLINE);
 
-	return CMD_SUCCESS;
-}
+	config_write_bsc(vty);
 
-static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
-{
-	vty_out(vty, " bsc %u%s", bsc->nr, VTY_NEWLINE);
-	vty_out(vty, "  token %s%s", bsc->token, VTY_NEWLINE);
-	if (bsc->key_present)
-		vty_out(vty, "  auth-key %s%s", osmo_hexdump(bsc->key, 16), VTY_NEWLINE);
-	dump_lac(vty, &bsc->lac_list);
-	if (bsc->description)
-		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
-	if (bsc->acc_lst_name)
-		vty_out(vty, "  access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
-	vty_out(vty, "  max-endpoints %d%s", bsc->max_endpoints, VTY_NEWLINE);
-	if (bsc->paging_group != -1)
-		vty_out(vty, "  paging group %d%s", bsc->paging_group, VTY_NEWLINE);
-	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
-	switch (bsc->osmux) {
-	case OSMUX_USAGE_ON:
-		vty_out(vty, "  osmux on%s", VTY_NEWLINE);
-		break;
-	case OSMUX_USAGE_ONLY:
-		vty_out(vty, "  osmux only%s", VTY_NEWLINE);
-		break;
-	}
-	if (bsc->bts_use_jibuf_override)
-		vty_out(vty, "  %sbts-jitter-buffer%s", bsc->bts_use_jibuf? "" : "no ", VTY_NEWLINE);
-	if (bsc->bts_jitter_delay_min_override)
-		vty_out(vty, "  bts-jitter-delay-min %"PRIu32"%s", bsc->bts_jitter_delay_min, VTY_NEWLINE);
-	if (bsc->bts_jitter_delay_max_override)
-		vty_out(vty, "  bts-jitter-delay-max %"PRIu32"%s", bsc->bts_jitter_delay_max, VTY_NEWLINE);
-}
-
-static int config_write_bsc(struct vty *vty)
-{
-	struct bsc_config *bsc;
-
-	llist_for_each_entry(bsc, &_nat->bsc_configs, entry)
-		config_write_bsc_single(vty, bsc);
 	return CMD_SUCCESS;
 }
 
