@@ -126,12 +126,11 @@ static int ussd_read_cb(struct osmo_fd *bfd)
 	int ret;
 
 	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &conn->pending_msg);
+	if (ret == -EAGAIN)
+		return 0;
 	if (ret <= 0) {
-		if (ret == -EAGAIN)
-			return 0;
 		LOGP(DNAT, LOGL_ERROR, "USSD Connection was lost.\n");
-		bsc_nat_ussd_destroy(conn);
-		return -1;
+		goto close_fd;
 	}
 
 	LOGP(DNAT, LOGL_NOTICE, "MSG from USSD: %s proto: %d\n",
@@ -168,6 +167,10 @@ static int ussd_read_cb(struct osmo_fd *bfd)
 	}
 
 	return 0;
+
+close_fd:
+	bsc_nat_ussd_destroy(conn);
+	return -EBADF;
 }
 
 static void ussd_auth_cb(void *_data)
