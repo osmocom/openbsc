@@ -27,12 +27,12 @@
 #include <string.h>
 
 static const struct rate_ctr_desc acc_list_ctr_description[] = {
-	[ACC_LIST_LOCAL_FILTER]	= { "access-list.local-filter", "Rejected by rule for local"},
-	[ACC_LIST_GLOBAL_FILTER]= { "access-list.global-filter", "Rejected by rule for global"},
+	[ACC_LIST_LOCAL_FILTER]	= { "access-list:local-filter", "Rejected by rule for local"},
+	[ACC_LIST_GLOBAL_FILTER]= { "access-list:global-filter", "Rejected by rule for global"},
 };
 
 static const struct rate_ctr_group_desc bsc_cfg_acc_list_desc = {
-	.group_name_prefix = "nat.filter",
+	.group_name_prefix = "nat:filter",
 	.group_description = "NAT Access-List Statistics",
 	.num_ctr = ARRAY_SIZE(acc_list_ctr_description),
 	.ctr_desc = acc_list_ctr_description,

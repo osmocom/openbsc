@@ -46,23 +46,23 @@
 #include <unistd.h>
 
 static const struct rate_ctr_desc bsc_cfg_ctr_description[] = {
-	[BCFG_CTR_SCCP_CONN]     = { "sccp.conn",      "SCCP Connections         "},
-	[BCFG_CTR_SCCP_CALLS]    = { "sccp.calls",     "SCCP Assignment Commands "},
-	[BCFG_CTR_NET_RECONN]    = { "net.reconnects", "Network reconnects       "},
-	[BCFG_CTR_DROPPED_SCCP]  = { "dropped.sccp",   "Dropped SCCP connections."},
-	[BCFG_CTR_DROPPED_CALLS] = { "dropped.calls",  "Dropped active calls.    "},
-	[BCFG_CTR_REJECTED_CR]   = { "rejected.cr",    "Rejected CR due filter   "},
-	[BCFG_CTR_REJECTED_MSG]  = { "rejected.msg",   "Rejected MSG due filter  "},
-	[BCFG_CTR_ILL_PACKET]    = { "rejected.ill",   "Rejected due parse error "},
-	[BCFG_CTR_CON_TYPE_LU]   = { "conn.lu",        "Conn Location Update     "},
-	[BCFG_CTR_CON_CMSERV_RQ] = { "conn.rq",        "Conn CM Service Req      "},
-	[BCFG_CTR_CON_PAG_RESP]  = { "conn.pag",       "Conn Paging Response     "},
-	[BCFG_CTR_CON_SSA]       = { "conn.ssa",       "Conn USSD                "},
-	[BCFG_CTR_CON_OTHER]     = { "conn.other",     "Conn Other               "},
+	[BCFG_CTR_SCCP_CONN]     = { "sccp:conn",      "SCCP Connections         "},
+	[BCFG_CTR_SCCP_CALLS]    = { "sccp:calls",     "SCCP Assignment Commands "},
+	[BCFG_CTR_NET_RECONN]    = { "net:reconnects", "Network reconnects       "},
+	[BCFG_CTR_DROPPED_SCCP]  = { "dropped:sccp",   "Dropped SCCP connections."},
+	[BCFG_CTR_DROPPED_CALLS] = { "dropped:calls",  "Dropped active calls.    "},
+	[BCFG_CTR_REJECTED_CR]   = { "rejected:cr",    "Rejected CR due filter   "},
+	[BCFG_CTR_REJECTED_MSG]  = { "rejected:msg",   "Rejected MSG due filter  "},
+	[BCFG_CTR_ILL_PACKET]    = { "rejected:ill",   "Rejected due parse error "},
+	[BCFG_CTR_CON_TYPE_LU]   = { "conn:lu",        "Conn Location Update     "},
+	[BCFG_CTR_CON_CMSERV_RQ] = { "conn:rq",        "Conn CM Service Req      "},
+	[BCFG_CTR_CON_PAG_RESP]  = { "conn:pag",       "Conn Paging Response     "},
+	[BCFG_CTR_CON_SSA]       = { "conn:ssa",       "Conn USSD                "},
+	[BCFG_CTR_CON_OTHER]     = { "conn:other",     "Conn Other               "},
 };
 
 static const struct rate_ctr_group_desc bsc_cfg_ctrg_desc = {
-	.group_name_prefix = "nat.bsc",
+	.group_name_prefix = "nat:bsc",
 	.group_description = "NAT BSC Statistics",
 	.num_ctr = ARRAY_SIZE(bsc_cfg_ctr_description),
 	.ctr_desc = bsc_cfg_ctr_description,
