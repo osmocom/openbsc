@@ -39,6 +39,21 @@ static const struct rate_ctr_group_desc bsc_cfg_acc_list_desc = {
 	.class_id = OSMO_STATS_CLASS_GLOBAL,
 };
 
+/*! Find an unused index for this rate counter group.
+ *  \param[in] head List of allocated ctr groups of the same type
+ *  \returns the largest used index number + 1, or 0 if none exist yet. */
+static unsigned int rate_ctr_get_unused_idx(struct llist_head *head)
+{
+	unsigned int idx = 0;
+	struct bsc_msg_acc_lst *lst;
+
+	llist_for_each_entry(lst, head, list) {
+		if (idx <= lst->stats->idx)
+			idx = lst->stats->idx + 1;
+	}
+	return idx;
+}
+
 
 int bsc_msg_acc_lst_check_allow(struct bsc_msg_acc_lst *lst, const char *mi_string)
 {
@@ -71,6 +86,7 @@ struct bsc_msg_acc_lst *bsc_msg_acc_lst_find(struct llist_head *head, const char
 struct bsc_msg_acc_lst *bsc_msg_acc_lst_get(void *ctx, struct llist_head *head, const char *name)
 {
 	struct bsc_msg_acc_lst *lst;
+	unsigned int new_idx;
 
 	lst = bsc_msg_acc_lst_find(head, name);
 	if (lst)
@@ -82,8 +98,8 @@ struct bsc_msg_acc_lst *bsc_msg_acc_lst_get(void *ctx, struct llist_head *head, 
 		return NULL;
 	}
 
-	/* TODO: get the index right */
-	lst->stats = rate_ctr_group_alloc(lst, &bsc_cfg_acc_list_desc, 0);
+	new_idx = rate_ctr_get_unused_idx(head);
+	lst->stats = rate_ctr_group_alloc(lst, &bsc_cfg_acc_list_desc, new_idx);
 	if (!lst->stats) {
 		talloc_free(lst);
 		return NULL;
@@ -115,4 +131,3 @@ struct bsc_msg_acc_lst_entry *bsc_msg_acc_lst_entry_create(struct bsc_msg_acc_ls
 	llist_add_tail(&entry->list, &lst->fltr_list);
 	return entry;
 }
-
