@@ -287,28 +287,6 @@ DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "show bsc config",
-      SHOW_STR BSC_STR "Configuration of BSCs\n")
-{
-	struct bsc_config *conf;
-	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
-		vty_out(vty, "BSC token: '%s' nr: %u%s",
-			conf->token, conf->nr, VTY_NEWLINE);
-		if (conf->acc_lst_name)
-			vty_out(vty, " access-list: %s%s",
-				conf->acc_lst_name, VTY_NEWLINE);
-		vty_out(vty, " paging forbidden: %d%s",
-			conf->forbid_paging, VTY_NEWLINE);
-		if (conf->description)
-			vty_out(vty, " description: %s%s", conf->description, VTY_NEWLINE);
-		else
-			vty_out(vty, " No description.%s", VTY_NEWLINE);
-
-	}
-
-	return CMD_SUCCESS;
-}
-
 static void dump_stat_total(struct vty *vty, struct bsc_nat *nat)
 {
 	vty_out(vty, "NAT statistics%s", VTY_NEWLINE);
@@ -324,66 +302,96 @@ static void dump_stat_total(struct vty *vty, struct bsc_nat *nat)
 		osmo_counter_get(nat->stats.bsc.auth_fail), VTY_NEWLINE);
 }
 
-static void dump_stat_bsc(struct vty *vty, struct bsc_config *conf)
+static void dump_bsc_status(struct vty *vty, struct bsc_config *conf)
 {
-	int connected = 0;
-	struct bsc_connection *con;
 
-	vty_out(vty, " BSC nr: %d%s",
-		conf->nr, VTY_NEWLINE);
+	struct sockaddr_in sock;
+	socklen_t len = sizeof(sock);
+	struct bsc_connection *con_iter, *con = NULL;
+	struct bsc_lac_entry *lac;
+
+	vty_out(vty, "BSC token: '%s' nr: %u%s",
+		conf->token, conf->nr, VTY_NEWLINE);
+	if (conf->acc_lst_name)
+		vty_out(vty, " access-list: %s%s",
+			conf->acc_lst_name, VTY_NEWLINE);
+	vty_out(vty, " paging forbidden: %d%s",
+		conf->forbid_paging, VTY_NEWLINE);
+	if (conf->description)
+		vty_out(vty, " description: %s%s", conf->description, VTY_NEWLINE);
+	else
+		vty_out(vty, " No description.%s", VTY_NEWLINE);
+
+	llist_for_each_entry(lac, &conf->lac_list, entry) {
+		vty_out(vty,  " LAC: %d%s", lac->lac, VTY_NEWLINE);
+	}
+
+	llist_for_each_entry(con_iter, &_nat->bsc_connections, list_entry) {
+		if (con_iter->cfg == conf) {
+			con = con_iter;
+			break;
+		}
+	}
+	if (con) {
+		getpeername(con->write_queue.bfd.fd, (struct sockaddr *) &sock, &len);
+		vty_out(vty, " Conn-status: Connected, auth: %d, fd: %d, peername: %s, pending-stats: %u%s",
+			con->authenticated, con->write_queue.bfd.fd,
+			inet_ntoa(sock.sin_addr), con->pending_dlcx_count,
+			VTY_NEWLINE);
+	} else {
+		vty_out(vty,  " Conn-status: Disconnected%s", VTY_NEWLINE);
+	}
+
 	vty_out_rate_ctr_group(vty, " ", conf->stats.ctrg);
-
-	llist_for_each_entry(con, &conf->nat->bsc_connections, list_entry) {
-		if (con->cfg != conf)
-			continue;
-		connected = 1;
-		break;
-	}
-
-	vty_out(vty, "  Connected: %d%s", connected, VTY_NEWLINE);
 }
 
-DEFUN(show_stats,
-      show_stats_cmd,
-      "show statistics [NR]",
-      SHOW_STR "Display network statistics\n"
-      "Number of the BSC\n")
+#define BSC_ID_HELP \
+	"Identify BSC by nr\n" \
+	"Identify BSC by token\n" \
+	"Identify BSC by lac\n" \
+	"Show all BSC\n" \
+	"NR/token/lac of the BSC\n"
+DEFUN(show_bsc_status, show_bsc_status_cmd, "show bsc status (nr|token|lac|all) [IDENT]",
+      SHOW_STR BSC_STR "Status of BSC\n" BSC_ID_HELP)
 {
+	const char *id_type = argv[0];
+	const char *id = argv[1];
 	struct bsc_config *conf;
+	bool by_token = false, by_nr = false, by_lac = false, all = false;
+	bool found_one = false;
 
-	int nr = -1;
-
-	if (argc == 1)
-		nr = atoi(argv[0]);
-
-	dump_stat_total(vty, _nat);
-	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
-		if (argc == 1 && nr != conf->nr)
-			continue;
-		dump_stat_bsc(vty, conf);
+	if (strcmp(id_type, "all") == 0) {
+		all = true;
+		dump_stat_total(vty, _nat);
+	} else {
+		if (argc != 2) {
+			vty_out(vty, "%% Error: type %s requires an argument%s", id_type, VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		if (strcmp(id_type, "nr") == 0)
+			by_nr = true;
+		else if (strcmp(id_type, "token") == 0)
+			by_token = true;
+		else if (strcmp(id_type, "lac") == 0)
+			by_lac = true;
 	}
 
-	return CMD_SUCCESS;
-}
-
-DEFUN(show_stats_lac,
-      show_stats_lac_cmd,
-      "show statistics-by-lac <0-65535>",
-      SHOW_STR "Display network statistics by lac\n"
-      "The lac of the BSC\n")
-{
-	int lac;
-	struct bsc_config *conf;
-
-	lac = atoi(argv[0]);
-
-	dump_stat_total(vty, _nat);
 	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
-		if (!bsc_config_handles_lac(conf, lac))
+		if (by_nr && conf->nr != atoi(id))
 			continue;
-		dump_stat_bsc(vty, conf);
+		else if (by_token && strcmp(conf->token, id))
+			continue;
+		else if (by_lac && !bsc_config_handles_lac(conf, atoi(id)))
+			continue;
+
+		found_one = true;
+		dump_bsc_status(vty, conf);
 	}
 
+	if (!all && !found_one) {
+		vty_out(vty, "%% Error: BSC with %s %s not found%s", id_type, id, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 	return CMD_SUCCESS;
 }
 
@@ -1313,9 +1321,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_sccp_cmd);
 	install_element_ve(&show_bsc_cmd);
 	install_element_ve(&show_nat_bsc_cmd);
-	install_element_ve(&show_bsc_cfg_cmd);
-	install_element_ve(&show_stats_cmd);
-	install_element_ve(&show_stats_lac_cmd);
+	install_element_ve(&show_bsc_status_cmd);
 	install_element_ve(&close_bsc_cmd);
 	install_element_ve(&show_msc_cmd);
 	install_element_ve(&test_regex_cmd);
