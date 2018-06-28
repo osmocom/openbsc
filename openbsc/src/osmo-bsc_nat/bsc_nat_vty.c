@@ -129,7 +129,6 @@ static int config_write_bsc(struct vty *vty)
 
 static int config_write_nat(struct vty *vty)
 {
-	struct bsc_msg_acc_lst *lst;
 	struct bsc_nat_paging_group *pgroup;
 
 	vty_out(vty, "nat%s", VTY_NEWLINE);
@@ -179,8 +178,8 @@ static int config_write_nat(struct vty *vty)
 		vty_out(vty, " prefix-tree %s%s",
 			_nat->num_rewr_trie_name, VTY_NEWLINE);
 
-	llist_for_each_entry(lst, &_nat->access_lists, list)
-		bsc_msg_acc_lst_write(vty, lst);
+	bsc_msg_acc_lst_write(vty);
+
 	llist_for_each_entry(pgroup, &_nat->paging_groups, entry)
 		write_pgroup_lst(vty, pgroup);
 	if (_nat->mgcp_ipa)

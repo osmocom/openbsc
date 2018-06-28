@@ -111,7 +111,7 @@ DEFUN(cfg_lst_imsi_deny,
 	return CMD_SUCCESS;
 }
 
-void bsc_msg_acc_lst_write(struct vty *vty, struct bsc_msg_acc_lst *lst)
+static void bsc_msg_acc_lst_write_one(struct vty *vty, struct bsc_msg_acc_lst *lst)
 {
 	struct bsc_msg_acc_lst_entry *entry;
 
@@ -124,6 +124,14 @@ void bsc_msg_acc_lst_write(struct vty *vty, struct bsc_msg_acc_lst *lst)
 				lst->name, entry->imsi_deny,
 				entry->cm_reject_cause, entry->lu_reject_cause,
 				VTY_NEWLINE);
+	}
+}
+
+void bsc_msg_acc_lst_write(struct vty *vty)
+{
+	struct bsc_msg_acc_lst *lst;
+	llist_for_each_entry(lst, _acc_lst, list) {
+		bsc_msg_acc_lst_write_one(vty, lst);
 	}
 }
 

@@ -221,6 +221,8 @@ static int config_write_bsc(struct vty *vty)
 	if (bsc->acc_lst_name)
 		vty_out(vty, " access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
 
+	bsc_msg_acc_lst_write(vty);
+
 	return CMD_SUCCESS;
 }
 

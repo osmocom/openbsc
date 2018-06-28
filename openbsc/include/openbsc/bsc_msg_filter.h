@@ -104,4 +104,4 @@ struct bsc_msg_acc_lst_entry *bsc_msg_acc_lst_entry_create(struct bsc_msg_acc_ls
 int bsc_msg_acc_lst_check_allow(struct bsc_msg_acc_lst *lst, const char *imsi);
 
 void bsc_msg_acc_lst_vty_init(void *ctx, struct llist_head *lst, int node);
-void bsc_msg_acc_lst_write(struct vty *vty, struct bsc_msg_acc_lst *lst);
+void bsc_msg_acc_lst_write(struct vty *vty);
