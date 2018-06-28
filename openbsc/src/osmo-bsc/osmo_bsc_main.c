@@ -61,7 +61,7 @@ static const char *config_file = "openbsc.cfg";
 static const char *rf_ctrl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
-static struct llist_head access_lists;
+static LLIST_HEAD(access_lists);
 
 struct llist_head *bsc_access_lists(void)
 {
@@ -222,8 +222,6 @@ int main(int argc, char **argv)
 	bsc_vty_init(bsc_gsmnet);
 	bsc_msg_lst_vty_init(tall_bsc_ctx, &access_lists, BSC_NODE);
 	ctrl_vty_init(tall_bsc_ctx);
-
-	INIT_LLIST_HEAD(&access_lists);
 
 	/* parse options */
 	handle_options(argc, argv);
