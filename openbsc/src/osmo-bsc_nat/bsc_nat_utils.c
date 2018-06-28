@@ -324,7 +324,16 @@ void sccp_connection_destroy(struct nat_sccp_connection *conn)
 	talloc_free(conn);
 }
 
-
+/*! Parse paging message and provide pointer to first Cell identification item
+ * in Cell Identifier List IE.
+ * See e.g. GSM 08.08 Section 3.2.2.27 for Cell Identifier List.
+ * For multiple occurences, use tlv_parse2().
+ *  \param[in] msg msgbcontaining the paging cmd message to be decoded
+ *  \param[out] out_data pointer to first Cell identification item in Cell Identifier List IE.
+ *  \param[out] out_leng length of \ref out_data in bytes (the size of the array of items)
+ *  \returns Field "Cell identification discriminator" of the "Cell Identifier
+ *           List" IE (>=0) on success. Negative value on error.
+ */
 int bsc_nat_find_paging(struct msgb *msg,
 			const uint8_t **out_data, int *out_leng)
 {
@@ -352,17 +361,18 @@ int bsc_nat_find_paging(struct msgb *msg,
 	data_length = TLVP_LEN(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
 	data = TLVP_VAL(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
 
-	/* No need to try a different BSS */
-	if (data[0] == CELL_IDENT_BSS) {
-		return -3;
-	} else if (data[0] != CELL_IDENT_LAC) {
-		LOGP(DNAT, LOGL_ERROR, "Unhandled cell ident discrminator: %d\n", data[0]);
+	switch (data[0]) {
+	case CELL_IDENT_LAC:
+		*out_data = &data[1];
+		*out_leng = data_length - 1;
+		/* fall through */
+	case CELL_IDENT_BSS:
+		return data[0];
+	default:
+		LOGP(DNAT, LOGL_ERROR, "Unhandled cell ident discrminator: %s\n",
+		     gsm0808_cell_id_discr_name(data[0]));
 		return -4;
 	}
-
-	*out_data = &data[1];
-	*out_leng = data_length - 1;
-	return 0;
 }
 
 int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int length)

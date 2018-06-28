@@ -611,11 +611,21 @@ static void bsc_nat_handle_paging(struct bsc_nat *nat, struct msgb *msg)
 {
 	struct bsc_connection *bsc;
 	const uint8_t *paging_start;
-	int paging_length, i, ret;
+	int paging_length, i, discrim;
 
-	ret = bsc_nat_find_paging(msg, &paging_start, &paging_length);
-	if (ret != 0) {
-		LOGP(DNAT, LOGL_ERROR, "Could not parse paging message: %d\n", ret);
+	discrim = bsc_nat_find_paging(msg, &paging_start, &paging_length);
+	if (discrim < 0) {
+		LOGP(DNAT, LOGL_ERROR, "Could not parse paging message: %d\n", discrim);
+		return;
+	}
+
+	if (discrim == CELL_IDENT_BSS) {
+		/* All cells on the BSS are identified. */
+		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
+			if (!bsc->authenticated)
+				continue;
+			bsc_nat_send_paging(bsc, msg);
+		}
 		return;
 	}
 
