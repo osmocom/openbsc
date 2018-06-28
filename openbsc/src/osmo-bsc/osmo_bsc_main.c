@@ -220,7 +220,7 @@ int main(int argc, char **argv)
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	bsc_vty_init(bsc_gsmnet);
-	bsc_msg_lst_vty_init(tall_bsc_ctx, &access_lists, BSC_NODE);
+	bsc_msg_acc_lst_vty_init(tall_bsc_ctx, &access_lists, BSC_NODE);
 	ctrl_vty_init(tall_bsc_ctx);
 
 	/* parse options */

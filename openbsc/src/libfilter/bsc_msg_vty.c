@@ -127,7 +127,7 @@ void bsc_msg_acc_lst_write(struct vty *vty, struct bsc_msg_acc_lst *lst)
 	}
 }
 
-void bsc_msg_lst_vty_init(void *ctx, struct llist_head *lst, int node)
+void bsc_msg_acc_lst_vty_init(void *ctx, struct llist_head *lst, int node)
 {
 	_ctx = ctx;
 	_acc_lst = lst;
