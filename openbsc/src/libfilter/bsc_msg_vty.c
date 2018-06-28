@@ -26,6 +26,22 @@
 static struct llist_head *_acc_lst;
 static void *_ctx;
 
+static void bsc_msg_acc_lst_write_one(struct vty *vty, struct bsc_msg_acc_lst *lst)
+{
+	struct bsc_msg_acc_lst_entry *entry;
+
+	llist_for_each_entry(entry, &lst->fltr_list, list) {
+		if (entry->imsi_allow)
+			vty_out(vty, " access-list %s imsi-allow %s%s",
+				lst->name, entry->imsi_allow, VTY_NEWLINE);
+		if (entry->imsi_deny)
+			vty_out(vty, " access-list %s imsi-deny %s %d %d%s",
+				lst->name, entry->imsi_deny,
+				entry->cm_reject_cause, entry->lu_reject_cause,
+				VTY_NEWLINE);
+	}
+}
+
 DEFUN(cfg_lst_no,
       cfg_lst_no_cmd,
       "no access-list NAME",
@@ -52,6 +68,7 @@ DEFUN(show_acc_lst,
 		return CMD_WARNING;
 
 	vty_out(vty, "access-list %s%s", acc->name, VTY_NEWLINE);
+	bsc_msg_acc_lst_write_one(vty, acc);
 	vty_out_rate_ctr_group(vty, " ", acc->stats);
 
 	return CMD_SUCCESS;
@@ -109,22 +126,6 @@ DEFUN(cfg_lst_imsi_deny,
 	if (argc >= 4)
 		entry->lu_reject_cause = atoi(argv[3]);
 	return CMD_SUCCESS;
-}
-
-static void bsc_msg_acc_lst_write_one(struct vty *vty, struct bsc_msg_acc_lst *lst)
-{
-	struct bsc_msg_acc_lst_entry *entry;
-
-	llist_for_each_entry(entry, &lst->fltr_list, list) {
-		if (entry->imsi_allow)
-			vty_out(vty, " access-list %s imsi-allow %s%s",
-				lst->name, entry->imsi_allow, VTY_NEWLINE);
-		if (entry->imsi_deny)
-			vty_out(vty, " access-list %s imsi-deny %s %d %d%s",
-				lst->name, entry->imsi_deny,
-				entry->cm_reject_cause, entry->lu_reject_cause,
-				VTY_NEWLINE);
-	}
 }
 
 void bsc_msg_acc_lst_write(struct vty *vty)
