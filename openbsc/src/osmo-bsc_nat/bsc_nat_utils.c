@@ -331,13 +331,19 @@ int bsc_nat_find_paging(struct msgb *msg,
 	int data_length;
 	const uint8_t *data;
 	struct tlv_parsed tp;
+	int rc;
 
 	if (!msg->l3h || msgb_l3len(msg) < 3) {
 		LOGP(DNAT, LOGL_ERROR, "Paging message is too short.\n");
 		return -1;
 	}
 
-	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 3, msgb_l3len(msg) - 3, 0, 0);
+	rc = tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 3, msgb_l3len(msg) - 3, 0, 0);
+	if (rc < 0) {
+		LOGP(DNAT, LOGL_ERROR, "Failed parsing PAGING TLV -- discarding message! %s\n",
+			osmo_hexdump(msg->l3h, msgb_l3len(msg)));
+		return -1;
+	}
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST)) {
 		LOGP(DNAT, LOGL_ERROR, "No CellIdentifier List inside paging msg.\n");
 		return -2;
