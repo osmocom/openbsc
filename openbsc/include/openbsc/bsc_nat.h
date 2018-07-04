@@ -262,6 +262,7 @@ struct bsc_nat {
 	int mgcp_length;
 	int mgcp_ipa;
 	int sdp_ensure_amr_mode_set;
+	int paging_bss_forward;
 
 	/* msc things */
 	struct llist_head dests;

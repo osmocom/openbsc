@@ -620,6 +620,10 @@ static void bsc_nat_handle_paging(struct bsc_nat *nat, struct msgb *msg)
 	}
 
 	if (discrim == CELL_IDENT_BSS) {
+		if (!nat->paging_bss_forward) {
+			LOGP(DNAT, LOGL_DEBUG, "Dropping BSS paging based on current config\n");
+			return;
+		}
 		/* All cells on the BSS are identified. */
 		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
 			if (!bsc->authenticated)

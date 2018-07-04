@@ -186,6 +186,8 @@ static int config_write_nat(struct vty *vty)
 		vty_out(vty, " use-msc-ipa-for-mgcp%s", VTY_NEWLINE);
 	vty_out(vty, " %ssdp-ensure-amr-mode-set%s",
 		_nat->sdp_ensure_amr_mode_set ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, " %spaging-bss-forward%s",
+		_nat->paging_bss_forward ? "" : "no ", VTY_NEWLINE);
 
 	config_write_bsc(vty);
 
@@ -870,6 +872,24 @@ DEFUN(cfg_nat_no_sdp_amr_mode_set,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_paging_bss_forward,
+      cfg_nat_paging_bss_forward_cmd,
+      "paging-bss-forward",
+      "Forward Paging messages with BSS as Cell Identity Discriminator\n")
+{
+	_nat->paging_bss_forward = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_no_paging_bss_forward,
+      cfg_nat_no_paging_bss_forward_cmd,
+      "no paging-bss-forward",
+      NO_STR "Forward Paging messages with BSS as Cell Identity Discriminator\n")
+{
+	_nat->paging_bss_forward = 0;
+	return CMD_SUCCESS;
+}
+
 /* per BSC configuration */
 DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR",
       "BSC configuration\n" "Identifier of the BSC\n")
@@ -1373,6 +1393,9 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 	install_element(NAT_NODE, &cfg_nat_sdp_amr_mode_set_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_sdp_amr_mode_set_cmd);
+
+	install_element(NAT_NODE, &cfg_nat_paging_bss_forward_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_paging_bss_forward_cmd);
 
 	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);
