@@ -103,20 +103,11 @@ int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 	struct bsc_cmd_list *pending;
 	char *var;
 
-	cmd = ctrl_cmd_parse(bsc, msg);
+	cmd = ctrl_cmd_parse2(bsc, msg);
 	msgb_free(msg);
 
-	if (!cmd) {
-		cmd = talloc_zero(bsc, struct ctrl_cmd);
-		if (!cmd) {
-			LOGP(DNAT, LOGL_ERROR, "OOM!\n");
-			return -ENOMEM;
-		}
-		cmd->type = CTRL_TYPE_ERROR;
-		cmd->id = "err";
-		cmd->reply = "Failed to parse command.";
+	if (cmd->type == CTRL_TYPE_ERROR)
 		goto err;
-	}
 
 	if (bsc->cfg && !llist_empty(&bsc->cfg->lac_list)) {
 		if (cmd->variable) {
