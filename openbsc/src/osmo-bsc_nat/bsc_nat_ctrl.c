@@ -36,6 +36,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 
 
 #define NAT_MAX_CTRL_ID 65535
@@ -85,10 +86,20 @@ void bsc_nat_ctrl_del_pending(struct bsc_cmd_list *pending)
 static struct bsc_cmd_list *bsc_get_pending(struct bsc_connection *bsc, char *id_str)
 {
 	struct bsc_cmd_list *cmd_entry;
-	int id = atoi(id_str);
-	if (id == 0)
+	char * endptr = NULL;
+	long int long_id;
+	int id;
+
+	errno = 0;
+	long_id = (int) strtol(id_str, &endptr, 10);
+	 /* check parse errors */
+	if (id_str[0] == '\0' || endptr[0] != '\0')
+		return NULL;
+	/* check value store errors */
+	if (errno == ERANGE || long_id > INT_MAX || long_id < 0)
 		return NULL;
 
+	id = (int) long_id;
 	llist_for_each_entry(cmd_entry, &bsc->cmd_pending, list_entry) {
 		if (cmd_entry->nat_id == id) {
 			return cmd_entry;
