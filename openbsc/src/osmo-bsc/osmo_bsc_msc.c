@@ -224,9 +224,10 @@ static void handle_ctrl(struct bsc_msc_data *msc, struct msgb *msg)
 {
 	int ret;
 	struct ctrl_cmd *cmd;
+	bool parse_failed;
 
-	cmd = ctrl_cmd_parse2(msc->msc_con, msg);
-	if (cmd->type == CTRL_TYPE_ERROR) {
+	cmd = ctrl_cmd_parse3(msc->msc_con, msg, &parse_failed);
+	if (cmd->type == CTRL_TYPE_ERROR && parse_failed) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to parse control message.\n");
 
 		ctrl_cmd_send(&msc->msc_con->write_queue, cmd);
