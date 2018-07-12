@@ -111,13 +111,14 @@ static struct bsc_cmd_list *bsc_get_pending(struct bsc_connection *bsc, char *id
 int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 {
 	struct ctrl_cmd *cmd;
+	bool parse_failed;
 	struct bsc_cmd_list *pending;
 	char *var;
 
-	cmd = ctrl_cmd_parse2(bsc, msg);
+	cmd = ctrl_cmd_parse3(bsc, msg, &parse_failed);
 	msgb_free(msg);
 
-	if (cmd->type == CTRL_TYPE_ERROR)
+	if (cmd->type == CTRL_TYPE_ERROR && parse_failed)
 		goto err;
 
 	if (bsc->cfg && !llist_empty(&bsc->cfg->lac_list)) {
@@ -152,11 +153,14 @@ int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 			ctrl_cmd_send(&pending->cmd->ccon->write_queue, cmd);
 			bsc_nat_ctrl_del_pending(pending);
 		} else {
-			/* We need to handle TRAPS here */
-			if ((cmd->type != CTRL_TYPE_ERROR) &&
-			    (cmd->type != CTRL_TYPE_TRAP)) {
-				LOGP(DNAT, LOGL_NOTICE, "Got control message "
-					"from BSC without pending entry\n");
+			if ((cmd->type == CTRL_TYPE_ERROR)) {
+				LOGP(DNAT, LOGL_NOTICE, "Got ERROR CTRL message "
+				     "from BSC without pending/valid ID %s: %s\n",
+				     cmd->id, cmd->reply);
+			} else {
+				LOGP(DNAT, LOGL_NOTICE, "Got %s CTRL message "
+				     "from BSC without pending entry\n",
+				     get_value_string(ctrl_type_vals, cmd->type));
 				cmd->type = CTRL_TYPE_ERROR;
 				cmd->reply = "No request outstanding";
 				goto err;
