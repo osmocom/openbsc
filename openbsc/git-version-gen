@@ -92,8 +92,8 @@ fi
 if test -n "$v"
 then
     : # use $v
-elif test -d ./../.git \
-    && v=`git describe --abbrev=4 --match='v*' HEAD 2>/dev/null \
+elif
+       v=`git describe --abbrev=4 --match='v*' HEAD 2>/dev/null \
 	  || git describe --abbrev=4 HEAD 2>/dev/null` \
     && case $v in
 	 [0-9]*) ;;
