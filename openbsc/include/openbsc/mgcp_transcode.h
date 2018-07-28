@@ -21,7 +21,11 @@
 
 #include "bscconfig.h"
 
+#if HAVE_GSM_H
 #include <gsm.h>
+#elif HAVE_GSM_GSM_H
+#include <gsm/gsm.h>
+#endif
 #ifdef HAVE_BCG729
 #include <bcg729/decoder.h>
 #include <bcg729/encoder.h>

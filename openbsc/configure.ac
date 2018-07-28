@@ -81,6 +81,13 @@ AC_ARG_ENABLE([mgcp-transcoding], [AS_HELP_STRING([--enable-mgcp-transcoding], [
 AC_ARG_WITH([g729], [AS_HELP_STRING([--with-g729], [Enable G.729 encoding/decoding.])], [osmo_ac_with_g729="$withval"],[osmo_ac_with_g729="no"])
 
 if test "$osmo_ac_mgcp_transcoding" = "yes" ; then
+    AC_CHECK_HEADERS([gsm.h gsm/gsm.h], [osmo_ac_found_gsm_headers=yes])
+    if test "$osmo_ac_found_gsm_headers" != "yes" ; then
+	AC_MSG_ERROR([Unable to find the libgsm headers])
+    fi
+    AC_SUBST(HAVE_GSM_H)
+    AC_SUBST(HAVE_GSM_GSM_H)
+
     AC_SEARCH_LIBS([gsm_create], [gsm], [LIBRARY_GSM="$LIBS";LIBS=""], [AC_MSG_ERROR([--enable-mgcp-transcoding: cannot find usable libgsm])])
     AC_SUBST(LIBRARY_GSM)
     if test "$osmo_ac_with_g729" = "yes" ; then
