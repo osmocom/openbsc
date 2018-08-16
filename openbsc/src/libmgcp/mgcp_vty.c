@@ -168,9 +168,9 @@ static int config_write_mgcp(struct vty *vty)
 	if (g_cfg->bts_use_jibuf)
 		vty_out(vty, "  bts-jitter-buffer%s", VTY_NEWLINE);
 	if (g_cfg->bts_jitter_delay_min)
-		vty_out(vty, "  bts-jitter-delay-min %"PRIu32"%s", g_cfg->bts_jitter_delay_min, VTY_NEWLINE);
+		vty_out(vty, "  bts-jitter-buffer-delay-min %"PRIu32"%s", g_cfg->bts_jitter_delay_min, VTY_NEWLINE);
 	if (g_cfg->bts_jitter_delay_max)
-		vty_out(vty, "  bts-jitter-delay-max %"PRIu32"%s", g_cfg->bts_jitter_delay_max, VTY_NEWLINE);
+		vty_out(vty, "  bts-jitter-buffer-delay-max %"PRIu32"%s", g_cfg->bts_jitter_delay_max, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }

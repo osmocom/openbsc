@@ -113,9 +113,9 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 	if (bsc->bts_use_jibuf_override)
 		vty_out(vty, "  %sbts-jitter-buffer%s", bsc->bts_use_jibuf? "" : "no ", VTY_NEWLINE);
 	if (bsc->bts_jitter_delay_min_override)
-		vty_out(vty, "  bts-jitter-delay-min %"PRIu32"%s", bsc->bts_jitter_delay_min, VTY_NEWLINE);
+		vty_out(vty, "  bts-jitter-buffer-delay-min %"PRIu32"%s", bsc->bts_jitter_delay_min, VTY_NEWLINE);
 	if (bsc->bts_jitter_delay_max_override)
-		vty_out(vty, "  bts-jitter-delay-max %"PRIu32"%s", bsc->bts_jitter_delay_max, VTY_NEWLINE);
+		vty_out(vty, "  bts-jitter-buffer-delay-max %"PRIu32"%s", bsc->bts_jitter_delay_max, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
