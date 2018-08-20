@@ -71,6 +71,12 @@ Description: Osmocom Base Station Controller Network Address Translation
  .
  This package is part of OpenBSC and closely related to osmocom-bsc-sccplite.
 
+Package: osmo-bsc-mgcp
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: OsmoBSC-MGCP: Osmocom's Legacy Media Gateway.
+
 Package: openbsc-dev
 Architecture: all
 Depends: ${misc:Depends}
@@ -121,3 +127,10 @@ Priority: extra
 Depends: osmocom-bsc-nat (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the OpenBSC Network Address Translation
  Make debugging possible
+
+Package: osmo-bsc-mgcp-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Debug symbols for the  Osmocom's Legacy Media Gateway.
