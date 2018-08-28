@@ -65,7 +65,7 @@ static int oml_msg_nack(struct nm_nack_signal_data *nack)
 	}
 
 	if (is_ipaccess_bts(nack->bts))
-		ipaccess_drop_oml(nack->bts);
+		ipaccess_drop_oml_deferred(nack->bts);
 
 	return 0;
 }

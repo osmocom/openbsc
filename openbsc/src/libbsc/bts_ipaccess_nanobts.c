@@ -157,7 +157,7 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 			enum abis_nm_chan_comb ccomb =
 						abis_nm_chcomb4pchan(ts->pchan);
 			if (abis_nm_set_channel_attr(ts, ccomb) == -EINVAL) {
-				ipaccess_drop_oml(trx->bts);
+				ipaccess_drop_oml_deferred(trx->bts);
 				return -1;
 			}
 			abis_nm_chg_adm_state(trx->bts, obj_class,
@@ -360,6 +360,9 @@ void ipaccess_drop_oml(struct gsm_bts *bts)
 	struct gsm_bts *rdep_bts;
 	struct gsm_bts_trx *trx;
 
+	/* First of all, remove deferred drop if enabled */
+	osmo_timer_del(&bts->oml_drop_link_timer);
+
 	if (!bts->oml_link)
 		return;
 
@@ -386,6 +389,29 @@ void ipaccess_drop_oml(struct gsm_bts *bts)
 		LOGP(DLINP, LOGL_NOTICE, "Dropping BTS(%u) due BTS(%u).\n",
 			rdep_bts->nr, bts->nr);
 		ipaccess_drop_oml(rdep_bts);
+	}
+}
+
+/*! Callback for  \ref ipaccess_drop_oml_deferred_cb.
+ */
+static void ipaccess_drop_oml_deferred_cb(void *data)
+{
+	struct gsm_bts *bts = (struct gsm_bts *) data;
+	ipaccess_drop_oml(bts);
+}
+/*! Deferr \ref ipacces_drop_oml through a timer to avoid dropping structures in
+ *  current code context. This may be needed if we want to destroy the OML link
+ *  while being called from a lower layer "struct osmo_fd" cb, were it is
+ *  mandatory to return -EBADF if the osmo_fd has been destroyed. In case code
+ *  destroying an OML link is called through an osmo_signal, it becomes
+ *  impossible to return any value, thus deferring the destruction is required.
+ */
+void ipaccess_drop_oml_deferred(struct gsm_bts *bts)
+{
+	if (!osmo_timer_pending(&bts->oml_drop_link_timer) && bts->oml_link) {
+		LOGP(DLINP, LOGL_NOTICE, "(bts=%d) Deferring Drop of OML link.\n", bts->nr);
+		osmo_timer_setup(&bts->oml_drop_link_timer, ipaccess_drop_oml_deferred_cb, bts);
+		osmo_timer_schedule(&bts->oml_drop_link_timer, 0, 0);
 	}
 }
 

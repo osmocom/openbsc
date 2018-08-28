@@ -29,6 +29,7 @@ struct ipac_ext_lac_cmd {
 } __attribute__((packed));
 
 void ipaccess_drop_oml(struct gsm_bts *bts);
+void ipaccess_drop_oml_deferred(struct gsm_bts *bts);
 void ipaccess_drop_rsl(struct gsm_bts_trx *trx);
 
 struct sdp_header_item {

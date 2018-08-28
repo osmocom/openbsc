@@ -723,6 +723,8 @@ struct gsm_bts {
 	struct gsm_e1_subslot oml_e1_link;
 	uint8_t oml_tei;
 	struct e1inp_sign_link *oml_link;
+	/* Timer to use for deferred drop of OML link, see \ref ipaccess_drop_oml_deferred */
+	struct osmo_timer_list oml_drop_link_timer;
 	/* when OML link was established */
 	time_t uptime;
 
