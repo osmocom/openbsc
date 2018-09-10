@@ -456,8 +456,8 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint
 		LOGP(DMGCP, LOGL_ERROR, "Cannot allocate input osmux handle\n");
 		return -1;
 	}
-	if (!osmux_xfrm_input_open_circuit(endp->osmux.in, endp->osmux.cid,
-					   endp->cfg->osmux_dummy)) {
+	if (osmux_xfrm_input_open_circuit(endp->osmux.in, endp->osmux.cid,
+					   endp->cfg->osmux_dummy) < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Cannot open osmux circuit %u\n",
 		     endp->osmux.cid);
 		return -1;
