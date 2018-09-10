@@ -1,2 +1,2 @@
-/usr/bin/osmo-bsc_mgcp
+/lib/systemd/system/osmo-bsc-sccplite.service
 /usr/bin/osmo-bsc-sccplite

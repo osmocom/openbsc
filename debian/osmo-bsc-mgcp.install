@@ -1,1 +1,2 @@
+lib/systemd/system/osmo-bsc-mgcp.service
 usr/bin/osmo-bsc_mgcp

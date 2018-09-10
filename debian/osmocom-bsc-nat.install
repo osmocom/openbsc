@@ -1,1 +1,2 @@
+/lib/systemd/system/osmo-bsc-nat.service
 /usr/bin/osmo-bsc_nat

@@ -10,7 +10,7 @@ VERSION := $(shell echo '$(DEBVERS)' | sed -e 's/[+-].*//' -e 's/~//g')
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
-	dh $@ --sourcedirectory=openbsc --with autoreconf
+	dh $@ --sourcedirectory=openbsc --with=systemd --with autoreconf
 
 # This is needed for debian stable (squeeze)
 override_dh_autoreconf:
@@ -25,7 +25,7 @@ override_dh_strip:
 
 override_dh_auto_configure:
 	echo $(VERSION) > openbsc/.tarball-version
-	dh_auto_configure --sourcedirectory=openbsc -- --enable-nat --enable-osmo-bsc --enable-smpp
+	dh_auto_configure --sourcedirectory=openbsc -- --enable-nat --enable-osmo-bsc --enable-smpp --with-systemdsystemunitdir=/lib/systemd/system
 
 # Print test results in case of a failure
 override_dh_auto_test:
