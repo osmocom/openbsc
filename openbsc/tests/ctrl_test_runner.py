@@ -468,7 +468,7 @@ class TestCtrlNITB(TestCtrlBase):
 
     def ctrl_command(self):
         return ["./src/osmo-nitb/osmo-nitb", "-c",
-                "doc/examples/osmo-nitb/nanobts/openbsc.cfg", "-l", "test_hlr.sqlite3"]
+                "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg", "-l", "test_hlr.sqlite3"]
 
     def ctrl_app(self):
         return (4249, "./src/osmo-nitb/osmo-nitb", "OsmoBSC", "nitb")
@@ -577,7 +577,7 @@ class TestCtrlNAT(TestCtrlBase):
 
     def ctrl_command(self):
         return ["./src/osmo-bsc_nat/osmo-bsc_nat", "-c",
-                "doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg"]
+                "doc/examples/osmo-bsc_nat/osmo-bsc-nat.cfg"]
 
     def ctrl_app(self):
         return (4250, "./src/osmo-bsc_nat/osmo-bsc_nat", "OsmoNAT", "nat")

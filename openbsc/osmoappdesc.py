@@ -20,19 +20,19 @@ nitb_e1_configs = [
     "doc/examples/osmo-nitb/bs11/openbsc-2bts-2trx.cfg",
     "doc/examples/osmo-nitb/bs11/openbsc-1bts-2trx-hopping.cfg",
     "doc/examples/osmo-nitb/bs11/openbsc-1bts-2trx.cfg",
-    "doc/examples/osmo-nitb/bs11/openbsc.cfg",
+    "doc/examples/osmo-nitb/bs11/osmo-nitb.cfg",
     "doc/examples/osmo-nitb/nokia/openbsc_nokia_3trx.cfg",
     "doc/examples/osmo-nitb/nanobts/openbsc-multitrx.cfg",
-    "doc/examples/osmo-nitb/rbs2308/openbsc.cfg"
+    "doc/examples/osmo-nitb/rbs2308/osmo-nitb.cfg"
 ]
 
 
 app_configs = {
     "osmo-bsc-sccplite": ["doc/examples/osmo-bsc-sccplite/osmo-bsc-sccplite.cfg"],
-    "nat": ["doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg"],
-    "mgcp": ["doc/examples/osmo-bsc_mgcp/mgcp.cfg"],
+    "nat": ["doc/examples/osmo-bsc_nat/osmo-bsc-nat.cfg"],
+    "mgcp": ["doc/examples/osmo-bsc_mgcp/osmo-bsc-mgcp.cfg"],
     "nitb": ["doc/examples/osmo-nitb/nanobts/openbsc-multitrx.cfg",
-             "doc/examples/osmo-nitb/nanobts/openbsc.cfg"],
+             "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg"],
 }
 
 
@@ -43,6 +43,6 @@ apps = [(4242, "src/osmo-bsc/osmo-bsc-sccplite", "OsmoBSC", "osmo-bsc-sccplite")
         ]
 
 vty_command = ["./src/osmo-nitb/osmo-nitb", "-c",
-               "doc/examples/osmo-nitb/nanobts/openbsc.cfg"]
+               "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg"]
 
 vty_app = apps[3] # reference apps[] entry for osmo-nitb

@@ -1,2 +1,3 @@
+/etc/osmocom/osmo-bsc-sccplite.cfg
 /lib/systemd/system/osmo-bsc-sccplite.service
 /usr/bin/osmo-bsc-sccplite

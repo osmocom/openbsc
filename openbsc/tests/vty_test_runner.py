@@ -66,7 +66,7 @@ class TestVTYBase(unittest.TestCase):
 class TestVTYMGCP(TestVTYBase):
     def vty_command(self):
         return ["./src/osmo-bsc_mgcp/osmo-bsc_mgcp", "-c",
-                "doc/examples/osmo-bsc_mgcp/mgcp.cfg"]
+                "doc/examples/osmo-bsc_mgcp/osmo-bsc-mgcp.cfg"]
 
     def vty_app(self):
         return (4243, "./src/osmo-bsc_mgcp/osmo-bsc_mgcp", "OpenBSC MGCP", "mgcp")
@@ -170,7 +170,7 @@ class TestVTYNITB(TestVTYGenericBSC):
 
     def vty_command(self):
         return ["./src/osmo-nitb/osmo-nitb", "-c",
-                "doc/examples/osmo-nitb/nanobts/openbsc.cfg"]
+                "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg"]
 
     def vty_app(self):
         return (4242, "./src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb")
@@ -765,7 +765,7 @@ class TestVTYNAT(TestVTYGenericBSC):
 
     def vty_command(self):
         return ["./src/osmo-bsc_nat/osmo-bsc_nat", "-l", "127.0.0.1", "-c",
-                "doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg"]
+                "doc/examples/osmo-bsc_nat/osmo-bsc-nat.cfg"]
 
     def vty_app(self):
         return (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat")
