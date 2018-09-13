@@ -1423,12 +1423,8 @@ static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 	if (rc != 0)
 		LOGP(DNAT, LOGL_ERROR, "Failed to set IP_TOS: %s\n", strerror(errno));
 
-	/* todo... do something with the connection */
 	/* todo... use GNUtls to see if we want to trust this as a BTS */
 
-	/*
-	 *
-	 */
 	bsc = bsc_connection_alloc(nat);
 	if (!bsc) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate BSC struct.\n");
