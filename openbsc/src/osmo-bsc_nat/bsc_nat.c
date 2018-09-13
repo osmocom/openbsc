@@ -1208,7 +1208,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, boo
 					}
 
 					/* hand data to a side channel */
-					if (bsc_ussd_check(con, parsed, msg) == 1) 
+					if (bsc_ussd_check(con, parsed, msg) == 1)
 						con->con_local = NAT_CON_END_USSD;
 
 					/*
@@ -1703,7 +1703,7 @@ int main(int argc, char **argv)
 	nat->msc_con->connection_loss = msc_connection_was_lost;
 	nat->msc_con->connected = msc_connection_connected;
 	nat->msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
-	nat->msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
+	nat->msc_con->write_queue.write_cb = ipaccess_msc_write_cb;
 	nat->msc_con->write_queue.bfd.data = nat->msc_con;
 	bsc_msc_connect(nat->msc_con);
 
