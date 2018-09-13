@@ -864,7 +864,7 @@ static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 				msc_con->name, ret);
 
 		bsc_msc_lost(msc_con);
-		return -1;
+		return -EBADF;
 	}
 
 	LOGP(DNAT, LOGL_DEBUG,
