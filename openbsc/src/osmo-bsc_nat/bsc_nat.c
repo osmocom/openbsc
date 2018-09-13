@@ -1369,7 +1369,6 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 			return bsc_nat_handle_ctrlif_msg(bsc, msg);
 	}
 
-	/* FIXME: Currently no PONG is sent to the BSC */
 	/* FIXME: Currently no ID ACK is sent to the BSC */
 	forward_sccp_to_msc(bsc, msg, &fd_closed);
 	return fd_closed ? -EBADF : 0;
