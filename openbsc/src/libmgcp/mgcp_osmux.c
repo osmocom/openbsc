@@ -544,8 +544,8 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 			     htons(endp->cfg->osmux_port), buf, sizeof(buf));
 }
 
-/* bsc-nat allocates/releases the Osmux circuit ID */
-static uint8_t osmux_cid_bitmap[(OSMUX_CID_MAX + 7) / 8];
+/* bsc-nat allocates/releases the Osmux circuit ID. +7 to round up to 8 bit boundary. */
+static uint8_t osmux_cid_bitmap[(OSMUX_CID_MAX + 1 + 7) / 8];
 
 int osmux_used_cid(void)
 {
