@@ -434,12 +434,12 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint
 	 * used to reconstruct the RTP flow from osmux. The RTP SSRC is
 	 * allocated based on the circuit ID (endp->osmux.cid), which is unique
 	 * in the local scope to the BSC/BSC-NAT. We use it to divide the RTP
-	 * SSRC space (2^32) by the 256 possible circuit IDs, then randomly
+	 * SSRC space (2^32) by the OSMUX_CID_MAX + 1 possible circuit IDs, then randomly
 	 * select one value from that window. Thus, we have no chance to have
 	 * overlapping RTP SSRC traveling to the BTSes behind the BSC,
 	 * similarly, for flows traveling to the MSC.
 	 */
-	static const uint32_t rtp_ssrc_winlen = UINT32_MAX / 256;
+	static const uint32_t rtp_ssrc_winlen = UINT32_MAX / (OSMUX_CID_MAX + 1);
 
 	if (endp->osmux.state == OSMUX_STATE_DISABLED) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint %u didn't request Osmux\n",
