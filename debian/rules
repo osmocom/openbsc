@@ -24,7 +24,6 @@ override_dh_strip:
 	dh_strip -posmocom-bsc-nat --dbg-package=osmocom-bsc-nat-dbg
 
 override_dh_auto_configure:
-	echo $(VERSION) > openbsc/.tarball-version
 	dh_auto_configure --sourcedirectory=openbsc -- --enable-nat --enable-osmo-bsc --enable-smpp --with-systemdsystemunitdir=/lib/systemd/system
 
 # Print test results in case of a failure
