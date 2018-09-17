@@ -208,7 +208,7 @@ int bsc_nat_filter_ipa(int dir, struct msgb *msg, struct bsc_nat_parsed *parsed)
 				continue;
 
 			/* whitelisted */
-			LOGP(DNAT, LOGL_INFO, "Whitelisted with rule %d\n", i);
+			LOGP(DNAT, LOGL_DEBUG, "Whitelisted with rule %d\n", i);
 			return 0;
 		} else {
 			/* whitelisted */
