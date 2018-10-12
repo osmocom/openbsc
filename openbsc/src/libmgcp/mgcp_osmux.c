@@ -325,7 +325,7 @@ out:
 
 /* This is called from the bsc-nat */
 static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
-			      struct msgb *msg)
+			      struct msgb *msg, int endp_type)
 {
 	struct mgcp_endpoint *endp;
 	uint8_t osmux_cid;
@@ -333,7 +333,7 @@ static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
 	if (osmux_legacy_dummy_parse_cid(addr, msg, &osmux_cid) < 0)
 		goto out;
 
-	endp = endpoint_lookup(cfg, osmux_cid, &addr->sin_addr, MGCP_DEST_BTS);
+	endp = endpoint_lookup(cfg, osmux_cid, &addr->sin_addr, endp_type);
 	if (!endp) {
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Cannot find endpoint for Osmux CID %d\n", osmux_cid);
@@ -378,7 +378,7 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* not any further processing dummy messages */
 	if (msg->data[0] == MGCP_DUMMY_LOAD)
-		return osmux_handle_dummy(cfg, &addr, msg);
+		return osmux_handle_dummy(cfg, &addr, msg, MGCP_DEST_BTS);
 
 	rem = msg->len;
 	while((osmuxh = osmux_xfrm_output_pull(msg)) != NULL) {
