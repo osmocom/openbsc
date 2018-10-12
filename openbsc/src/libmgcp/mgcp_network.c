@@ -763,7 +763,7 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 		break;
 	}
 
-	LOGP(DMGCP, LOGL_ERROR, "Bad MGCP type %u on endpoint %u\n",
+	LOGP(DMGCP, LOGL_ERROR, "Bad MGCP type %u on endpoint 0x%x\n",
 	     endp->type, ENDPOINT_NUMBER(endp));
 	return 0;
 }
@@ -856,7 +856,7 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 		break;	/* Should not happen */
 	}
 
-	LOGP(DMGCP, LOGL_ERROR, "Bad MGCP type %u on endpoint %u\n",
+	LOGP(DMGCP, LOGL_ERROR, "Bad MGCP type %u on endpoint 0x%x\n",
 	     endp->type, ENDPOINT_NUMBER(endp));
 	return 0;
 }

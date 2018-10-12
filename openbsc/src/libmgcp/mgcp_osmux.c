@@ -340,12 +340,12 @@ static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
 
 	if (osmux_enable_endpoint(endp, &addr->sin_addr, addr->sin_port) < 0 ) {
 		LOGP(DMGCP, LOGL_ERROR,
-		     "Could not enable osmux in endpoint %d\n",
+		     "Could not enable osmux in endpoint 0x%x\n",
 		     ENDPOINT_NUMBER(endp));
 		goto out;
 	}
 
-	LOGP(DMGCP, LOGL_INFO, "Enabling osmux in endpoint %d for %s:%u\n",
+	LOGP(DMGCP, LOGL_INFO, "Enabling osmux in endpoint 0x%x for %s:%u\n",
 	     ENDPOINT_NUMBER(endp), inet_ntoa(addr->sin_addr),
 	     ntohs(addr->sin_port));
 out:
@@ -442,7 +442,7 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint
 	static const uint32_t rtp_ssrc_winlen = UINT32_MAX / (OSMUX_CID_MAX + 1);
 
 	if (endp->osmux.state == OSMUX_STATE_DISABLED) {
-		LOGP(DMGCP, LOGL_ERROR, "Endpoint %u didn't request Osmux\n",
+		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x didn't request Osmux\n",
 		     ENDPOINT_NUMBER(endp));
 		return -1;
 	}
@@ -482,7 +482,7 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint
 
 void osmux_disable_endpoint(struct mgcp_endpoint *endp)
 {
-	LOGP(DMGCP, LOGL_INFO, "Releasing endpoint %u using Osmux CID %u\n",
+	LOGP(DMGCP, LOGL_INFO, "Releasing endpoint 0x%x using Osmux CID %u\n",
 	     ENDPOINT_NUMBER(endp), endp->osmux.cid);
 
 	/* We are closing, we don't need pending RTP packets to be transmitted */
@@ -528,7 +528,7 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 		if (osmux_enable_endpoint(endp, &endp->net_end.addr,
 					  htons(endp->cfg->osmux_port)) < 0) {
 			LOGP(DMGCP, LOGL_ERROR,
-			     "Could not activate osmux in endpoint %d\n",
+			     "Could not activate osmux in endpoint 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
 		}
 		LOGP(DMGCP, LOGL_ERROR,
