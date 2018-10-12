@@ -211,7 +211,7 @@ int bsc_mgcp_assign_patch(struct nat_sccp_connection *con, struct msgb *msg)
 	llist_for_each_entry(mcon, &con->bsc->nat->sccp_connections, list_entry) {
 		if (mcon->msc_endp == endp) {
 			LOGP(DNAT, LOGL_ERROR,
-			     "Endpoint %d was assigned to 0x%x and now 0x%x\n",
+			     "Endpoint 0x%x was assigned to 0x%x and now 0x%x\n",
 			     endp,
 			     sccp_src_ref_to_int(&mcon->patched_ref),
 			     sccp_src_ref_to_int(&con->patched_ref));
