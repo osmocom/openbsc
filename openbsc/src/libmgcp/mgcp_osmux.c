@@ -275,6 +275,12 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 	if (!msg)
 		return -1;
 
+	if (!cfg->osmux) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "bsc-nat wants to use Osmux but bsc did not request it\n");
+		goto out;
+	}
+
 	/* not any further processing dummy messages */
 	if (msg->data[0] == MGCP_DUMMY_LOAD)
 		goto out;
@@ -319,12 +325,6 @@ static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
 	LOGP(DMGCP, LOGL_DEBUG, "Received Osmux dummy load from %s\n",
 	     inet_ntoa(addr->sin_addr));
 
-	if (!cfg->osmux) {
-		LOGP(DMGCP, LOGL_ERROR,
-		     "bsc wants to use Osmux but bsc-nat did not request it\n");
-		goto out;
-	}
-
 	/* extract the osmux CID from the dummy message */
 	memcpy(&osmux_cid, &msg->data[1], sizeof(osmux_cid));
 
@@ -364,6 +364,12 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 	msg = osmux_recv(ofd, &addr);
 	if (!msg)
 		return -1;
+
+	if (!cfg->osmux) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "bsc wants to use Osmux but bsc-nat did not request it\n");
+		goto out;
+	}
 
 	/* not any further processing dummy messages */
 	if (msg->data[0] == MGCP_DUMMY_LOAD)
