@@ -521,8 +521,8 @@ static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int 
 	mgcp_endp = &nat->mgcp_cfg->trunk.endpoints[endpoint];
 
 	if (bsc_endp->transaction_id) {
-		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x had pending transaction: '%s'\n",
-		     endpoint, bsc_endp->transaction_id);
+		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x had pending transaction: '%s' state %d\n",
+		     endpoint, bsc_endp->transaction_id, bsc_endp->transaction_state);
 		talloc_free(bsc_endp->transaction_id);
 		bsc_endp->transaction_id = NULL;
 		bsc_endp->transaction_state = 0;
