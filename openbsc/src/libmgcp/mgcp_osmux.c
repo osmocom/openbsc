@@ -530,11 +530,19 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 			LOGP(DMGCP, LOGL_ERROR,
 			     "Could not activate osmux in endpoint 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
+			return 0;
 		}
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Osmux CID %u for %s:%u is now enabled\n",
 		     endp->osmux.cid, inet_ntoa(endp->net_end.addr),
 		     endp->cfg->osmux_port);
+	}
+	if(endp->osmux.state != OSMUX_STATE_ENABLED) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "OSMUX dummy to %s CID %u: Osmux not enabled on endpoint 0x%x state %d\n",
+		     inet_ntoa(endp->net_end.addr), endp->osmux.cid,
+		     ENDPOINT_NUMBER(endp), endp->osmux.state);
+		     return 0;
 	}
 	LOGP(DMGCP, LOGL_DEBUG,
 	     "sending OSMUX dummy load to %s CID %u\n",
