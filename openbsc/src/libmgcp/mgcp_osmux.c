@@ -447,10 +447,6 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint
 		return -1;
 	}
 
-	osmux_xfrm_output_init(&endp->osmux.out,
-			       (endp->osmux.cid * rtp_ssrc_winlen) +
-			       (random() % rtp_ssrc_winlen));
-
 	endp->osmux.in = osmux_handle_lookup(endp->cfg, addr, port);
 	if (!endp->osmux.in) {
 		LOGP(DMGCP, LOGL_ERROR, "Cannot allocate input osmux handle\n");
@@ -462,6 +458,10 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint
 		     endp->osmux.cid);
 		return -1;
 	}
+
+	osmux_xfrm_output_init(&endp->osmux.out,
+			       (endp->osmux.cid * rtp_ssrc_winlen) +
+			       (random() % rtp_ssrc_winlen));
 
 	switch (endp->cfg->role) {
 		case MGCP_BSC_NAT:
