@@ -261,6 +261,34 @@ static struct msgb *osmux_recv(struct osmo_fd *ofd, struct sockaddr_in *addr)
 	return msg;
 }
 
+/* Updates endp osmux state and returns 0 if it can process messages, -1 otherwise */
+static int endp_osmux_state_check(struct mgcp_endpoint *endp, struct sockaddr_in *addr, bool sending)
+{
+	switch(endp->osmux.state) {
+	case OSMUX_STATE_ACTIVATING:
+		if (osmux_enable_endpoint(endp, &addr->sin_addr, addr->sin_port) < 0 ) {
+			LOGP(DMGCP, LOGL_ERROR,
+			     "Could not enable osmux in endpoint 0x%x for %s:%u\n",
+			     ENDPOINT_NUMBER(endp), inet_ntoa(addr->sin_addr),
+			     ntohs(addr->sin_port));
+			return -1;
+		}
+		LOGP(DMGCP, LOGL_INFO, "Enabling osmux in endpoint 0x%x for %s:%u\n",
+		     ENDPOINT_NUMBER(endp), inet_ntoa(addr->sin_addr),
+		     ntohs(addr->sin_port));
+		return 0;
+	case OSMUX_STATE_ENABLED:
+		return 0;
+	default:
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Osmux %s in endpoint 0x%x for %s:%u without full negotiation, state %d\n",
+		     sending ? "sent" : "received",
+		     ENDPOINT_NUMBER(endp), inet_ntoa(addr->sin_addr),
+		     ntohs(addr->sin_port), endp->osmux.state);
+		return -1;
+	}
+}
+
 static int osmux_legacy_dummy_parse_cid(struct sockaddr_in *addr, struct msgb *msg,
 					uint8_t *osmux_cid)
 {
@@ -312,11 +340,12 @@ int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
 			     osmuxh->circuit_id);
 			goto out;
 		}
-		endp->osmux.stats.octets += osmux_chunk_length(msg, rem);
-		endp->osmux.stats.chunks++;
+		if (endp_osmux_state_check(endp, &addr, false) == 0) {
+			endp->osmux.stats.octets += osmux_chunk_length(msg, rem);
+			endp->osmux.stats.chunks++;
+			osmux_xfrm_output_sched(&endp->osmux.out, osmuxh);
+		}
 		rem = msg->len;
-
-		osmux_xfrm_output_sched(&endp->osmux.out, osmuxh);
 	}
 out:
 	msgb_free(msg);
@@ -339,20 +368,8 @@ static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
 		     "Cannot find endpoint for Osmux CID %d\n", osmux_cid);
 		goto out;
 	}
-
-	if (endp->osmux.state == OSMUX_STATE_ENABLED)
-		goto out;
-
-	if (osmux_enable_endpoint(endp, &addr->sin_addr, addr->sin_port) < 0 ) {
-		LOGP(DMGCP, LOGL_ERROR,
-		     "Could not enable osmux in endpoint 0x%x\n",
-		     ENDPOINT_NUMBER(endp));
-		goto out;
-	}
-
-	LOGP(DMGCP, LOGL_INFO, "Enabling osmux in endpoint 0x%x for %s:%u\n",
-	     ENDPOINT_NUMBER(endp), inet_ntoa(addr->sin_addr),
-	     ntohs(addr->sin_port));
+	endp_osmux_state_check(endp, addr, false);
+	/* Only needed to punch hole in firewall, it can be dropped */
 out:
 	msgb_free(msg);
 	return 0;
@@ -393,11 +410,12 @@ int osmux_read_from_bsc_cb(struct osmo_fd *ofd, unsigned int what)
 			     osmuxh->circuit_id);
 			goto out;
 		}
-		endp->osmux.stats.octets += osmux_chunk_length(msg, rem);
-		endp->osmux.stats.chunks++;
+		if (endp_osmux_state_check(endp, &addr, false) == 0) {
+			endp->osmux.stats.octets += osmux_chunk_length(msg, rem);
+			endp->osmux.stats.chunks++;
+			osmux_xfrm_output_sched(&endp->osmux.out, osmuxh);
+		}
 		rem = msg->len;
-
-		osmux_xfrm_output_sched(&endp->osmux.out, osmuxh);
 	}
 out:
 	msgb_free(msg);
@@ -535,26 +553,9 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 	if (memcmp(&endp->net_end.addr, &addr_unset, sizeof(addr_unset)) == 0)
 		return 0;
 
-	if (endp->osmux.state == OSMUX_STATE_ACTIVATING) {
-		if (osmux_enable_endpoint(endp, &endp->net_end.addr,
-					  htons(endp->cfg->osmux_port)) < 0) {
-			LOGP(DMGCP, LOGL_ERROR,
-			     "Could not activate osmux in endpoint 0x%x\n",
-			     ENDPOINT_NUMBER(endp));
-			return 0;
-		}
-		LOGP(DMGCP, LOGL_ERROR,
-		     "Osmux CID %u for %s:%u is now enabled\n",
-		     endp->osmux.cid, inet_ntoa(endp->net_end.addr),
-		     endp->cfg->osmux_port);
-	}
-	if(endp->osmux.state != OSMUX_STATE_ENABLED) {
-		LOGP(DMGCP, LOGL_ERROR,
-		     "OSMUX dummy to %s CID %u: Osmux not enabled on endpoint 0x%x state %d\n",
-		     inet_ntoa(endp->net_end.addr), endp->osmux.cid,
-		     ENDPOINT_NUMBER(endp), endp->osmux.state);
-		     return 0;
-	}
+	if (endp_osmux_state_check(endp, &endp->net_end.addr, true) < 0)
+		return;
+
 	LOGP(DMGCP, LOGL_DEBUG,
 	     "sending OSMUX dummy load to %s CID %u\n",
 	     inet_ntoa(endp->net_end.addr), endp->osmux.cid);
