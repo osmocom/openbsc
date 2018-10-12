@@ -452,9 +452,9 @@ int osmux_enable_endpoint(struct mgcp_endpoint *endp, struct in_addr *addr, uint
 	 */
 	static const uint32_t rtp_ssrc_winlen = UINT32_MAX / (OSMUX_CID_MAX + 1);
 
-	if (endp->osmux.state == OSMUX_STATE_DISABLED) {
-		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x didn't request Osmux\n",
-		     ENDPOINT_NUMBER(endp));
+	if (endp->osmux.state != OSMUX_STATE_ACTIVATING) {
+		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x didn't negotiate Osmux, state %d\n",
+		     ENDPOINT_NUMBER(endp), endp->osmux.state);
 		return -1;
 	}
 
