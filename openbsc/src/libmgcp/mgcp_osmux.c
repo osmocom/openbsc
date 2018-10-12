@@ -261,6 +261,20 @@ static struct msgb *osmux_recv(struct osmo_fd *ofd, struct sockaddr_in *addr)
 	return msg;
 }
 
+static int osmux_legacy_dummy_parse_cid(struct sockaddr_in *addr, struct msgb *msg,
+					uint8_t *osmux_cid)
+{
+	if (msg->len < 1 + sizeof(osmux_cid)) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Discarding truncated Osmux dummy load\n");
+		return -1;
+	}
+
+	/* extract the osmux CID from the dummy message */
+	memcpy(osmux_cid, &msg->data[1], sizeof(*osmux_cid));
+	return 0;
+}
+
 #define osmux_chunk_length(msg, rem) (rem - msg->len);
 
 int osmux_read_from_bsc_nat_cb(struct osmo_fd *ofd, unsigned int what)
@@ -316,17 +330,8 @@ static int osmux_handle_dummy(struct mgcp_config *cfg, struct sockaddr_in *addr,
 	struct mgcp_endpoint *endp;
 	uint8_t osmux_cid;
 
-	if (msg->len < 1 + sizeof(osmux_cid)) {
-		LOGP(DMGCP, LOGL_ERROR,
-		     "Discarding truncated Osmux dummy load\n");
+	if (osmux_legacy_dummy_parse_cid(addr, msg, &osmux_cid) < 0)
 		goto out;
-	}
-
-	LOGP(DMGCP, LOGL_DEBUG, "Received Osmux dummy load from %s\n",
-	     inet_ntoa(addr->sin_addr));
-
-	/* extract the osmux CID from the dummy message */
-	memcpy(&osmux_cid, &msg->data[1], sizeof(osmux_cid));
 
 	endp = endpoint_lookup(cfg, osmux_cid, &addr->sin_addr, MGCP_DEST_BTS);
 	if (!endp) {
