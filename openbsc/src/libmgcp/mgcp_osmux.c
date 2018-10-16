@@ -554,7 +554,7 @@ int osmux_send_dummy(struct mgcp_endpoint *endp)
 		return 0;
 
 	if (endp_osmux_state_check(endp, &endp->net_end.addr, true) < 0)
-		return;
+		return 0;
 
 	LOGP(DMGCP, LOGL_DEBUG,
 	     "sending OSMUX dummy load to %s CID %u\n",
