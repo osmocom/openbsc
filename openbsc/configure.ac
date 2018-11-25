@@ -259,7 +259,6 @@ AC_OUTPUT(
     src/osmo-bsc/Makefile
     src/osmo-bsc_nat/Makefile
     src/osmo-bsc_mgcp/Makefile
-    src/ipaccess/Makefile
     src/utils/Makefile
     tests/Makefile
     tests/atlocal

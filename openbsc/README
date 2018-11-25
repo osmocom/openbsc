@@ -14,7 +14,6 @@ implementing protocol stacks and functional elements, including
  * Osmo-GbProxy - a Proxy to aggregate many Gb links as one Gb link to the SGSN
  * OsmoBSCNAT - a gateway aggregating many A links as one A link to the MSC
  * OsmoGTPHUB - a hub aggregating many GTP links (between SGSN and GGSN)
- * ipaccess-utils - some tools to discover + configure ip.access nanoBTS
  * bs11_config - a tool to configure the Siemens BS-11 microBTS
 
 Various interfaces towards the BTS are supported, among which are:

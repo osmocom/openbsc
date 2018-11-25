@@ -42,15 +42,6 @@ Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
  components bundled together. When using osmocom-nitb, there is no need for a
  Mobile Switching Center (MSC) which is needed when using osmocom-bsc-sccplite.
 
-Package: osmocom-ipaccess-utils
-Architecture: any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
-Description: Command line utilities for ip.access nanoBTS
- This package contains utilities that are specific for nanoBTS when being used
- together with OpenBSC. It contains mainly three tools: ipaccess-find,
- ipaccess-config and ipaccess-proxy.
-
 Package: osmocom-bs11-utils
 Architecture: any
 Depends: ${shlibs:Depends},

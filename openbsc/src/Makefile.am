@@ -42,7 +42,6 @@ SUBDIRS += \
 	osmo-nitb \
 	osmo-bsc_mgcp \
 	utils \
-	ipaccess \
 	$(NULL)
 
 # Conditional Programs
