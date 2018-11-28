@@ -1,0 +1,10 @@
+<vtydoc xmlns='urn:osmocom:xml:libosmocore:vty:doc:1.0'>
+    <node id='config-msc'>
+      <description>This node allows to configure the MSC connection related
+      settings.</description>
+    </node>
+    <node id='config-bsc'>
+      <description>This node allows to configure the BSC connection related
+      settings.</description>
+    </node>
+</vtydoc>

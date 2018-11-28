@@ -1,0 +1,196 @@
+[[overview]]
+== Overview
+
+This manual should help you getting started with OsmoNITB. It will cover
+aspects of configuring and running the OsmoNITB.
+
+[[intro_overview]]
+=== About OsmoNITB
+
+OsmoNITB is one particular version of the OpenBSC software suite.
+Unlike classic, distributed, hierarchical GSM networks, OsmoNITB
+implements all parts of a GSM Network (BSC, MSC, VLR, HLR, AUC, SMSC)
+__in the box__, i.e. in one element.
+
+The difference between classic GSM network architecture and the OsmoNITB
+based GSM network architecture is illustrated in <<fig-gsm-classic>> and
+<<fig-gsm-nitb>>.
+
+[[fig-gsm-classic]]
+.Classic GSM network architecture (simplified)
+[graphviz]
+----
+digraph G {
+	rankdir=LR;
+	MS0 [label="MS"]
+	MS1 [label="MS"]
+	MS2 [label="MS"]
+	MS3 [label="MS"]
+	BTS0 [label="BTS"]
+	BTS1 [label="BTS"]
+	MSC [label="MSC/VLR"]
+	HLR [label="HLR/AUC"]
+	MS0->BTS0 [label="Um"]
+	MS1->BTS0 [label="Um"]
+	MS2->BTS1 [label="Um"]
+	MS3->BTS1 [label="Um"]
+	BTS0->BSC [label="Abis"]
+	BTS1->BSC [label="Abis"]
+	BSC->MSC [label="A"]
+	MSC->HLR [label="C"]
+	MSC->EIR [label="F"]
+	MSC->SMSC
+}
+----
+
+[[fig-gsm-nitb]]
+.GSM system architecture using OsmoNITB
+[graphviz]
+----
+digraph G {
+	rankdir=LR;
+	MS0 [label="MS"]
+	MS1 [label="MS"]
+	MS2 [label="MS"]
+	MS3 [label="MS"]
+	BTS0 [label="BTS"]
+	BTS1 [label="BTS"]
+	MS0->BTS0 [label="Um"]
+	MS1->BTS0 [label="Um"]
+	MS2->BTS1 [label="Um"]
+	MS3->BTS1 [label="Um"]
+	BTS0->BSC [label="Abis"]
+	BTS1->BSC [label="Abis"]
+	subgraph cluster_nitb {
+		label = "OsmoNITB";
+		BSC
+		MSC [label="MSC/VLR"]
+		HLR [label="HLR/AUC"]
+		BSC->MSC [label="A"]
+		MSC->HLR [label="C"]
+		MSC->EIR [label="F"]
+		MSC->SMSC;
+	}
+}
+----
+
+
+=== Software Components
+
+OsmoNITB contains a variety of different software components, which
+we'll quickly describe in this section.
+
+==== A-bis Implementation
+
+OsmoNITB implements the ETSI/3GPP specified A-bis interface, including
+_3GPP TS 48.056_ <<3gpp-ts-48-056>> (LAPD), _3GPP TS 48.058_
+<<3gpp-ts-48-058>> (RSL) and 3GPP TS 52.021 <<3gpp-ts-52-021>> (OML). In
+addition, it supports a variety of vendor-specific extensions and
+dialects in order to communicate with BTSs from Siemens, Nokia,
+Ericsson, ip.access and sysmocom.
+
+For more information, see <<bts>> and <<bts-examples>>.
+
+
+==== BSC Implementation
+
+The BSC implementation covers the classic functionality of a GSM Base
+Station Controller, i.e.
+
+* configuring and bringing up BTSs with their TRXs and TSs
+* implementing the A-bis interface / protocols for signalling and actual
+  voice data (TRAU frames).
+* processing measurement results from the mobile stations in dedicated
+  mode, performing hand-over decision and execution.
+* Terminating the _3GPP TS 24.008_ <<3gpp-ts-24-008>> RR (Radio Resource)
+  sub-layer from the MS.
+
+For more information, see <<net>>, <<bts>> and <<bts-examples>>.
+
+
+==== HLR/AUC
+
+A minimalistic implementation of the subscriber database (HLR) and
+subscriber secret key storage (AUC).
+
+For more information, see <<hlr>>.
+
+
+==== SMSC
+
+A minimal store-and-forward server for SMS, supporting both MO and MT
+SMS service, as well as multi-part messages.
+
+The built-in SMSC also supports an external SMSC interface.  For more
+information, see <<smpp>>.
+
+
+==== MSC
+
+The MSC component of OsmoNITB implements the mobility management (MM)
+functions of the TS 04.08, as well as the optional security related
+procedures for cryptographic authentication and encryption.
+
+Furthermore, it can handle TS 04.08 Call Control (CC), either by use of
+an internal MNCC handler, or by use of an external MNCC agent.  For more
+information see <<mncc>>.
+
+
+==== TRAU mapper / E1 sub-channel muxer
+
+Unlike classic GSM networks, OsmoNITB does not perform any transcoding.
+Rather, a compatible codec is selected for both legs of a call, and
+codec frames are passed through transparently.  In order to achieve this
+with E1 based BTS, OsmoNITB contains a E1 sub-channel de- and
+re-multiplexer as well as a TRAU mapper that can map uplink to downlink
+frames and vice versa.
+
+
+==== RTP proxy
+
+BTS models implementing A-bis over IP don't use classic TRAU frames but
+typically transport the voice codec frames as RTP/UDP/IP protocol.
+OsmoNITB can either instruct the BTSs to send those voice streams
+directly to each other (BTS to BTS without any intermediary), or it can
+run an internal RTP proxy for passing frames from one BTS to another.
+
+.RTP flow without RTP proxy mode (default)
+[graphviz]
+----
+digraph G {
+	rankdir=LR;
+
+	MS0 [label="MS A"];
+	MS1 [label="MS B"];
+	BTS0 [label="BTS A"];
+	BTS1 [label="BTS B"];
+	NITB;
+
+	MS0 -> BTS0;
+	MS1 -> BTS1;
+	BTS0 -> NITB [label="Abis OML+RSL",dir=both];
+	BTS1 -> NITB [label="Abis OML+RSL",dir=both];
+	BTS0 -> BTS1 [label="RTP",dir=both]
+}
+----
+
+.RTP flow with RTP proxy mode
+[graphviz]
+----
+digraph G {
+	rankdir=LR;
+
+	MS0 [label="MS A"];
+	MS1 [label="MS B"];
+	BTS0 [label="BTS A"];
+	BTS1 [label="BTS B"];
+	NITB;
+
+	MS0 -> BTS0;
+	MS1 -> BTS1;
+	BTS0 -> NITB [label="Abis OML+RSL",dir=both];
+	BTS1 -> NITB [label="Abis OML+RSL",dir=both];
+	BTS0 -> NITB [label="RTP",dir=both]
+	BTS1 -> NITB [label="RTP",dir=both]
+}
+----
