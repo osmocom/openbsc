@@ -1,0 +1,8 @@
+*.html
+*.svg
+*.pdf
+*__*.png
+*.check
+generated
+common
+build
