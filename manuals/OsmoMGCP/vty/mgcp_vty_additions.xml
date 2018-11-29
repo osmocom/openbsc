@@ -1,0 +1,14 @@
+<vtydoc xmlns='urn:osmocom:xml:libosmocore:vty:doc:1.0'>
+    <node id='19'>
+      <child_of nodeid='4' />
+      <name>MGCP Global Commands</name>
+      <description>This node allows to configure global MGCP settings. These include
+      the various port numbers.</description>
+    </node>
+    <node id='27'>
+      <child_of nodeid='19' />
+      <name>MGCP Trunk Command</name>
+      <description>This node allows to configure a MGCP trunk. These include the number,
+      the local binding ports, SDP configuration.</description>
+    </node>
+</vtydoc>

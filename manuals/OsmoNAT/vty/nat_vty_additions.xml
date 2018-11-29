@@ -1,0 +1,32 @@
+<vtydoc xmlns='urn:osmocom:xml:libosmocore:vty:doc:1.0'>
+    <node id='19'>
+      <child_of nodeid='4' />
+      <name>MGCP Commands</name>
+      <description>This node allows to configure global MGCP settings. These include
+      the various port numbers.</description>
+    </node> 
+
+    <node id='23'>
+      <child_of nodeid='4' />
+      <name>NAT Commands</name>
+      <description>This node allows to configure the global NAT settings. These include
+      the destination address of the MSC, the filter and rewriting rules to use.</description>
+    </node>
+    <node id='24'>
+      <child_of nodeid='23' />
+      <name>BSC Commands</name>
+      <description>This node allows to configure a BSC. A BSC has a list of
+      LACs, an access token associated to it.</description>
+    </node>
+    <node id='27'>
+      <hide />
+    </node>
+    <node id='28'>
+      <child_of nodeid='23' />
+      <name>Paging Group Commands</name>
+      <description>This node allows to configure a Paging Group. A Paging Group 
+      holds the LACs of several destinations and a BSC can refer to a Paging
+      Group. This way several BSCs can receive the paging for a shared LAC.
+      </description>
+    </node>
+</vtydoc>
