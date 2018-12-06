@@ -1,3 +1,9 @@
+EXTRA_DIST = \
+  osmo-bsc-mgcp.service \
+  osmo-bsc-nat.service \
+  osmo-bsc-sccplite.service \
+  osmo-nitb.service
+
 if HAVE_SYSTEMD
 SYSTEMD_SERVICES = osmo-nitb.service osmo-bsc-mgcp.service
 
@@ -9,6 +15,5 @@ if BUILD_BSC
 SYSTEMD_SERVICES += osmo-bsc-sccplite.service
 endif
 
-EXTRA_DIST = $(SYSTEMD_SERVICES)
 systemdsystemunit_DATA = $(SYSTEMD_SERVICES)
 endif # HAVE_SYSTEMD
