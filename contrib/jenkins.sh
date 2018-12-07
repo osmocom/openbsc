@@ -1,4 +1,13 @@
 #!/bin/sh -ex
+# jenkins build helper script for openbsc.  This is how we build on jenkins.osmocom.org
+#
+# environment variables:
+# * IU: configure 3G support (values: "--enable-iu", "--disable-iu")
+# * MGCP: configure transcoding for MGCP (values: "--enable-mgcp-transcoding", "--disable-mgcp-transcoding")
+# * SMPP: configure the SMPP interface (values: "--enable-smpp", "--disable-smpp")
+# * WITH_MANUALS: build manual PDFs if set to "1"
+# * PUBLISH: upload manuals after building if set to "1" (ignored without WITH_MANUALS = "1")
+#
 
 osmo-clean-workspace.sh
 
@@ -58,5 +67,25 @@ if [ "x$IU" = "x--enable-iu" ]; then
 fi
 
 . osmo-build.sh
+
+# Build and publish manuals
+if [ "$WITH_MANUALS" = "1" ]; then
+	# Build all manuals first
+	osmo-build-dep.sh osmo-gsm-manuals
+	for dir in "$base"/manuals/*/; do
+		make -C "$dir"
+	done
+
+	# Run 'make check' for the OsmoNITB manuals.
+	# The other dirs only have VTY references, so there is no 'make check' target for them.
+	make -C "$base/manuals/OsmoNITB" check
+
+	# Publish all at once
+	if [ "$PUBLISH" = "1" ]; then
+		for dir in "$base"/manuals/*/; do
+			make -C "$dir" publish
+		done
+	fi
+fi
 
 osmo-clean-workspace.sh
