@@ -19,6 +19,11 @@
 #define MODE_7BIT	7
 #define MODE_8BIT	8
 
+enum esme_bind {
+	ESME_BIND_RX = 0x01,
+	ESME_BIND_TX = 0x02,
+};
+
 enum esme_read_state {
 	READ_ST_IN_LEN = 0,
 	READ_ST_IN_MSG = 1,

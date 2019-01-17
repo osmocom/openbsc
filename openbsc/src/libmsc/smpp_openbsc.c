@@ -279,6 +279,11 @@ static void alert_all_esme(struct smsc *smsc, struct gsm_subscriber *subscr,
 		/* we currently send an alert notification to each ESME that is
 		 * connected, and do not require a (non-existant) delivery
 		 * pending flag to be set before. */
+		if (!esme->bind_flags) {
+			LOGP(DSMPP, LOGL_INFO,
+			"ESME is not (yet) bound, skipping alert\n");
+			continue;
+		}
 		if (!esme->acl->alert_notifications) {
 			LOGP(DSMPP, LOGL_DEBUG,
 			"[%s] is not set to receive Alert Notifications\n", esme->system_id);

@@ -49,11 +49,6 @@
 	memset(str, 0, sizeof(*str));			\
 	rc = smpp34_unpack(type, str, data, len)
 
-enum emse_bind {
-	ESME_BIND_RX = 0x01,
-	ESME_BIND_TX = 0x02,
-};
-
 const struct value_string smpp_status_strs[] = {
 	{ ESME_ROK,		"No Error" },
 	{ ESME_RINVMSGLEN,	"Message Length is invalid" },
