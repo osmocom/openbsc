@@ -164,7 +164,7 @@ DEFUN(cfg_smpp_sys_id, cfg_smpp_sys_id_cmd,
 DEFUN(cfg_smpp_policy, cfg_smpp_policy_cmd,
 	"policy (accept-all|closed)",
 	"Set the authentication policy of this SMSC\n"
-	"Accept all SMPP connections independeint of system ID / passwd\n"
+	"Accept all SMPP connections independent of system ID / password\n"
 	"Accept only SMPP connections from ESMEs explicitly configured")
 {
 	struct smsc *smsc = smsc_from_vty(vty);
@@ -541,7 +541,7 @@ static void dump_one_esme(struct vty *vty, struct osmo_esme *esme)
 
 DEFUN(show_esme, show_esme_cmd,
 	"show smpp esme",
-	SHOW_STR "SMPP Interface\n" "SMPP Extrenal SMS Entity\n")
+	SHOW_STR "SMPP Interface\n" "SMPP External SMS Entity\n")
 {
 	struct smsc *smsc = smsc_from_vty(vty);
 	struct osmo_esme *esme;
