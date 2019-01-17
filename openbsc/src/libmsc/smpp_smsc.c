@@ -148,6 +148,7 @@ struct osmo_smpp_acl *smpp_acl_alloc(struct smsc *smsc, const char *sys_id)
 
 	acl->smsc = smsc;
 	strcpy(acl->system_id, sys_id);
+	acl->alert_notifications = 1;
 	INIT_LLIST_HEAD(&acl->route_list);
 
 	llist_add_tail(&acl->list, &smsc->acl_list);

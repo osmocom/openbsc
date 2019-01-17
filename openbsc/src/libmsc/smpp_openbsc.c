@@ -278,8 +278,12 @@ static void alert_all_esme(struct smsc *smsc, struct gsm_subscriber *subscr,
 	llist_for_each_entry(esme, &smsc->esme_list, list) {
 		/* we currently send an alert notification to each ESME that is
 		 * connected, and do not require a (non-existant) delivery
-		 * pending flag to be set before,  FIXME: make this VTY
-		 * configurable */
+		 * pending flag to be set before. */
+		if (!esme->acl->alert_notifications) {
+			LOGP(DSMPP, LOGL_DEBUG,
+			"[%s] is not set to receive Alert Notifications\n", esme->system_id);
+			continue;
+		}
 		if (esme->acl && esme->acl->deliver_src_imsi) {
 			smpp_tx_alert(esme, TON_Subscriber_Number,
 				      NPI_Land_Mobile_E212,

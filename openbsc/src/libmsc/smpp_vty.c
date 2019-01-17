@@ -499,6 +499,28 @@ DEFUN(cfg_esme_no_dcs_transp, cfg_esme_no_dcs_transp_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_esme_alert_notif, cfg_esme_alert_notif_cmd,
+	"alert-notifications",
+	"Disable sending of SMPP Alert Notifications for this ESME")
+{
+	struct osmo_smpp_acl *acl = vty->index;
+
+	acl->alert_notifications = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_esme_no_alert_notif, cfg_esme_no_alert_notif_cmd,
+	"no alert-notifications", NO_STR
+	"Disable sending of SMPP Alert Notifications for this ESME")
+{
+	struct osmo_smpp_acl *acl = vty->index;
+
+	acl->alert_notifications = 0;
+
+	return CMD_SUCCESS;
+}
+
 
 static void dump_one_esme(struct vty *vty, struct osmo_esme *esme)
 {
@@ -560,6 +582,8 @@ static void config_write_esme_single(struct vty *vty, struct osmo_smpp_acl *acl)
 		vty_out(vty, "  osmocom-extensions%s", VTY_NEWLINE);
 	if (acl->dcs_transparent)
 		vty_out(vty, "  dcs-transparent%s", VTY_NEWLINE);
+	if (acl->alert_notifications)
+		vty_out(vty, "  alert-notifications%s", VTY_NEWLINE);
 
 	llist_for_each_entry(r, &acl->route_list, list)
 		write_esme_route_single(vty, r);
@@ -603,6 +627,8 @@ int smpp_vty_init(void)
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_osmo_ext_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_dcs_transp_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_dcs_transp_cmd);
+	install_element(SMPP_ESME_NODE, &cfg_esme_alert_notif_cmd);
+	install_element(SMPP_ESME_NODE, &cfg_esme_no_alert_notif_cmd);
 
 	install_element_ve(&show_esme_cmd);
 
