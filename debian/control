@@ -85,14 +85,6 @@ Depends: osmocom-nitb (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the OpenBSC NITB
  Make debugging possible
 
-Package: osmocom-ipaccess-utils-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: osmocom-ipaccess-utils (= ${binary:Version}), ${misc:Depends}
-Description: Debug symbols for the OpenBSC ip.access utils
- Make debugging possible
-
 Package: osmocom-bs11-utils-dbg
 Architecture: any
 Section: debug
