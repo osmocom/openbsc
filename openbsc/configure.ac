@@ -243,7 +243,6 @@ dnl Generate the output
 AM_CONFIG_HEADER(bscconfig.h)
 
 AC_OUTPUT(
-    openbsc.pc
     include/openbsc/Makefile
     include/Makefile
     src/Makefile
