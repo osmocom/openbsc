@@ -67,29 +67,29 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 	msgb_put(msg, response_len);
 
 	/* Then wrap it as an Octet String */
-	msgb_wrap_with_TL(msg, ASN1_OCTET_STRING_TAG);
+	msgb_push_tl(msg, ASN1_OCTET_STRING_TAG);
 
 	/* Pre-pend the DCS octet string */
 	msgb_push_TLV1(msg, ASN1_OCTET_STRING_TAG, 0x0F);
 
 	/* Then wrap these as a Sequence */
-	msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
+	msgb_push_tl(msg, GSM_0480_SEQUENCE_TAG);
 
 	/* Pre-pend the operation code */
 	msgb_push_TLV1(msg, GSM0480_OPERATION_CODE,
 			GSM0480_OP_CODE_PROCESS_USS_REQ);
 
 	/* Wrap the operation code and IA5 string as a sequence */
-	msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
+	msgb_push_tl(msg, GSM_0480_SEQUENCE_TAG);
 
 	/* Pre-pend the invoke ID */
 	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
 
 	/* Wrap this up as a Return Result component */
-	msgb_wrap_with_TL(msg, GSM0480_CTYPE_RETURN_RESULT);
+	msgb_push_tl(msg, GSM0480_CTYPE_RETURN_RESULT);
 
 	/* Wrap the component in a Facility message */
-	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
+	msgb_push_tl(msg, GSM0480_IE_FACILITY);
 
 	/* And finally pre-pend the L3 header */
 	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
@@ -115,10 +115,10 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
 
 	/* Wrap this up as a Reject component */
-	msgb_wrap_with_TL(msg, GSM0480_CTYPE_REJECT);
+	msgb_push_tl(msg, GSM0480_CTYPE_REJECT);
 
 	/* Wrap the component in a Facility message */
-	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
+	msgb_push_tl(msg, GSM0480_IE_FACILITY);
 
 	/* And finally pre-pend the L3 header */
 	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
