@@ -1,3 +1,148 @@
+openbsc (1.2.0) unstable; urgency=medium
+
+  [ Pau Espin Pedrol ]
+  * acc_ramp: Increase log level of some messages
+  * bsc_nat.c: Return correct err code to avoid heap-user-after-free
+  * chan_alloc: Print bts nr on chan alloc failure
+  * abis_rsl: rsl_rx_chan_rqd: Format bts log string as in everywhere else
+  * gitignore: Filter m4 files
+  * bsc-nat: Avoid sending reset ack twice in a row
+  * bsc-nat: bsc_nat_filter_ipa: Improve documentation
+  * bsc-nat: forward_sccp_to_msc: Remove unneeded goto
+  * bsc-nat: forward_sccp_to_msc: Remove unneeded exit3 section
+  * bsc-nat: forward_sccp_to_msc: Fix memleak on receive from non authenticated bsc
+  * bsc-nat: ipaccess_auth_bsc: Close bsc conn immediately on bad format received
+  * bsc-nat: Avoid heap-use-after-free on bsc auth failure
+  * chan_alloc: Fix crash when failing to allocate channel
+  * gsm0408_dispatch: Fix uninitialized var warning
+  * bsc-nat: Fix missing help description for -T timestamp cmdline option
+  * bsc-nat: Add -V param to print version
+  * bsc-sccplite: Add -V param to print version
+  * bsc-nat: show running-config now prints bsc nodes
+  * bsc-nat: Avoid heap-use-after-free on USSD conn lost
+  * configure.ac: Add --enable-sanitize flag
+  * bsc-nat: Replace '.' in counter names with ':'
+  * bsc-nat: Allocate each ctr group with a different idx
+  * bsc-nat: Add more complete VTY command to show BSC related info
+  * Init access_lists before passing it as a parameter
+  * Rename bsc_msg_acc_lst_vty_init to have more uniform prefix
+  * bsc_vty: Write access list entries when storing bsc config
+  * filter: vty: Print policy list in cmd show access-list
+  * bsc-nat: find_paging: Check return code of tlv_parse
+  * bsc-nat: forward paging to all BSC when CELL_IDENT_BSS is received
+  * nat: Add VTY cmd paging-bss-forward to nat node
+  * nat: ctrl: Use ctrl_cmd_parse2 to obtain detailed error
+  * bsc: ctrl: Use ctrl_cmd_parse2 to obtain detailed error
+  * nat: ctrl: use strtol instead of atoi as it has explicit error documentation
+  * nat: ctrl: Avoid sending back received ERROR msgs
+  * bsc: ctrl: Avoid sending back received ERROR msgs
+  * vty: Fix typo writing bts-jitter-buffer-delay-{min,max}
+  * examples: osmo-bsc_mgcp: Update cfg file
+  * mgcp_test: tweak test failure output
+  * osmo-bsc-mgcp: Add debian package
+  * configure: Find correct libgsm's gsm.h header
+  * gsm_data.h: Replace '.' in counter names with ':'
+  * abis_nm_ipaccess_rsl_connect: Log bts and trx nr
+  * Fix heap-use-after-free due to OML link destruction
+  * Add osmo-bsc-nat systemd service and install it with debian
+  * debian: Install all service files from contrib/systemd
+  * systemd: describe osmo-bsc-sccplite service as legacy
+  * mgcp_osmux.c: osmux_enable_endpoint: Fix incorrect return check
+  * Install systemd services with autotools
+  * Install sample cfg file to /etc/osmocom
+  * cosmetic: Remove duplicate semicolon and whitespace
+  * nat: Remove misleading comment
+  * nat: Remove misleading comment
+  * nat: return -EBADF in read wqueue cb on fd closed
+  * debian/rules: Don't overwrite .tarball-version
+  * mgcp: Fix osmux_cid_bitmap static array size calculation
+  * bsc_filter: Move whitelisted info log to debug
+  * mgcp: Fix (again) osmux_cid_bitmap static array size calculation
+  * mgcp_osmux: Use define to calculate rtp_ssrc_winlen
+  * examples: nanobts: openbsc-multitrx.cfg: Set SDCCH in correct TS of TRX1
+  * mgcp: Avoid initing output without enabling osmux
+  * mgcp: Log endpoint nr consistently as hex
+  * nat: Log endpoint nr consistently as hex
+  * nat: Log state of pending transaction
+  * mgcp: osmux_send_dummy: Avoid logging incorrectly and sending if osmux not enabled
+  * mgcp: osmux: Don't process regular osmux frames if disabled by cfg
+  * mgcp: osmux: Move parse_cid of legacy dummy frames to own function
+  * mgcp: osmux: Make func handling dummy frames independent of endp type
+  * mgcp: osmux: allow enabling osmux only on correct activating state
+  * mgcp: osmux: Improve checks around activating and using enabled osmux
+  * osmux.h: Document enum osmux_state
+  * mgcp: osmux_send_dummy: Fix return without value
+  * bsc-nat: Enable octet-aligned when ensuring mode set
+  * smpp.adoc: describe VTY cmd 'local-tcp-ip' instead of 'local-tcp-port'
+  * Allow easily disabling GFDL references
+
+  [ Daniel Willmann ]
+  * git-version-gen: Don't check for .git directory
+
+  [ Neels Hofmeyr ]
+  * cosmetic: make osmo-python-tests dependency more accurate
+  * legacy_mgcp: mgcp_test: sanitize: free msgb_ctx
+  * Importing history from osmo-gsm-manuals
+  * make clean: also remove generated image files
+  * add 'make check' target
+  * OsmoBSC+NITB/running: fix title levels, one too deep
+  * OsmoNITB: include abis.adoc from common/chapters/
+  * fix 'make clean': shell glob, ignore failure
+  * move mncc.adoc to common chapters
+  * tweak common/mncc.adoc: use variable for program name
+  * move smpp.adoc to common chapters, generalize
+  * OsmoNITB: update vty reference
+  * refactor Makefile build rules, don't use the FORCE
+  * author info: add "former" to Holger's job title
+
+  [ Philipp Maier ]
+  * mgcp: add VTY Option to force-realloc endpoints
+  * osmo-nitb: Update VTY command reference
+
+  [ Harald Welte ]
+  * Debian: Include the osmo-bsc-mgcp systemd service in Debian package
+  * initial checkin of manuals to public repo
+  * Add link to Asciidoc source code of manual
+  * OsmoNITB HLR: expand on how to create subscribers
+  * Add chapter on Cell Broadcast Support in Osmocom (to BSC+NITB manual)
+  * SMPP: Document Osmocom extensions
+  * vty-ref: Update URI of docbook 5.0 schema
+
+  [ Max ]
+  * Fix build with latest libosmocore
+  * Add OsmoNITB control interface description
+  * Remove ipaccess utils
+  * fix build: apply msgb_wrap_with_TL() rename
+  * Remove meas_* utils
+  * Remove openbsc-dev package
+  * Remove osmocom-ipaccess-utils-dbg package
+
+  [ Jonathan Brielmaier ]
+  * fix various typos across all manuals
+
+  [ Ivaylo Kostov ]
+  * Typo in Chapter 14.2
+
+  [ Philipp ]
+  * Describe how to run multiple instances of osmo-nitb and osmo-bts
+
+  [ Oliver Smith ]
+  * vty/bsc_vty_additions.xml: copy from osmo-bsc
+  * build manuals moved here from osmo-gsm-manuals.git
+  * manuals/OsmoNITB: integrate into this repository
+  * OsmoMGCP and OsmoNAT manuals moved from osmo-gsm-manuals.git
+  * manuals: Osmo{NAT,MGCP} -> OsmoBSC{NAT,MGCP}
+  * Fix DISTCHECK_CONFIGURE_FLAGS override
+  * contrib: fix makedistcheck with disabled systemd
+  * contrib/jenkins.sh: build and publish manuals
+
+  [ Keith ]
+  * Don't send SMS STATUS REPORT locally if the ESME accepted it.
+  * Make alert notifications vty configurable per ESME
+  * Cosmetic: Fix spelling in smpp vty
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Wed, 30 Jan 2019 16:07:36 +0100
+
 openbsc (1.1.0) unstable; urgency=medium
 
   [ Neels Hofmeyr ]

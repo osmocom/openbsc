@@ -39,19 +39,19 @@ AC_SEARCH_LIBS([dlopen], [dl dld], [LIBRARY_DL="$LIBS";LIBS=""])
 AC_SUBST(LIBRARY_DL)
 
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.11.0)
-PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.11.0)
-PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl >= 0.11.0)
-PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.11.0)
-PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.11.0)
-PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.5.0)
-PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 0.2.0)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.0.1)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.0.1)
+PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl >= 1.0.1)
+PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.0.1)
+PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 1.0.1)
+PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.6.0)
+PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 0.4.0)
 
 # Enabke/disable the NAT?
 AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Requires SCCP])],
     [osmo_ac_build_nat="$enableval"],[osmo_ac_build_nat="no"])
 if test "$osmo_ac_build_nat" = "yes" ; then
-        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.9.0)
+        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 1.0.0)
 fi
 AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
 AC_SUBST(osmo_ac_build_nat)
@@ -60,7 +60,7 @@ AC_SUBST(osmo_ac_build_nat)
 AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo BSC])],
     [osmo_ac_build_bsc="$enableval"],[osmo_ac_build_bsc="no"])
 if test "$osmo_ac_build_bsc" = "yes" ; then
-    PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.9.0)
+    PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 1.0.0)
 fi
 AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
 AC_SUBST(osmo_ac_build_bsc)
