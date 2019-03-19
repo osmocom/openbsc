@@ -582,8 +582,8 @@ static void config_write_esme_single(struct vty *vty, struct osmo_smpp_acl *acl)
 		vty_out(vty, "  osmocom-extensions%s", VTY_NEWLINE);
 	if (acl->dcs_transparent)
 		vty_out(vty, "  dcs-transparent%s", VTY_NEWLINE);
-	if (acl->alert_notifications)
-		vty_out(vty, "  alert-notifications%s", VTY_NEWLINE);
+	if (!acl->alert_notifications)
+		vty_out(vty, "  no alert-notifications%s", VTY_NEWLINE);
 
 	llist_for_each_entry(r, &acl->route_list, list)
 		write_esme_route_single(vty, r);
