@@ -18,7 +18,6 @@ artifact_deps() {
 	x="${x}_$($1 libosmo-netif)"
 	x="${x}_$($1 libosmo-sccp "$sccp_branch")"
 	x="${x}_$($1 libsmpp34)"
-	x="${x}_$($1 openggsn)"
 
 	if [ "x$IU" = "x--enable-iu" ]; then
 		x="${x}_$($1 libasn1c)"
@@ -36,7 +35,6 @@ build_deps() {
 	osmo-build-dep.sh libosmo-netif
 	osmo-build-dep.sh libosmo-sccp "$sccp_branch"
 	PARALLEL_MAKE=-j1 osmo-build-dep.sh libsmpp34
-	osmo-build-dep.sh openggsn
 
 	if [ "x$IU" = "x--enable-iu" ]; then
 		osmo-build-dep.sh libasn1c
