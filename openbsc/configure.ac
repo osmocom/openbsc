@@ -98,18 +98,6 @@ fi
 AM_CONDITIONAL(BUILD_MGCP_TRANSCODING, test "x$osmo_ac_mgcp_transcoding" = "xyes")
 AC_SUBST(osmo_ac_mgcp_transcoding)
 
-# Enable/disable 3G aka IuPS + IuCS support?
-AC_ARG_ENABLE([iu], [AS_HELP_STRING([--enable-iu], [Build 3G support, aka IuPS and IuCS interfaces])],
-    [osmo_ac_iu="$enableval"],[osmo_ac_iu="no"])
-if test "x$osmo_ac_iu" = "xyes" ; then
-    PKG_CHECK_MODULES(LIBASN1C, libasn1c >= 0.9.31)
-    PKG_CHECK_MODULES(LIBOSMORANAP, libosmo-ranap >= 0.3.0)
-    PKG_CHECK_MODULES(LIBOSMOSIGTRAN, libosmo-sigtran >= 0.9.0)
-    AC_DEFINE(BUILD_IU, 1, [Define if we want to build IuPS and IuCS interfaces support])
-fi
-AM_CONDITIONAL(BUILD_IU, test "x$osmo_ac_iu" = "xyes")
-AC_SUBST(osmo_ac_iu)
-
 
 dnl checks for header files
 AC_HEADER_STDC
@@ -252,7 +240,6 @@ AC_OUTPUT(
     src/libmgcp/Makefile
     src/libcommon/Makefile
     src/libfilter/Makefile
-    src/libiu/Makefile
     src/libcommon-cs/Makefile
     src/osmo-nitb/Makefile
     src/osmo-bsc/Makefile
