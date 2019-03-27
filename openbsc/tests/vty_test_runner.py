@@ -922,8 +922,8 @@ class TestVTYNAT(TestVTYGenericBSC):
         self.assertEqual(data, "\x00\x01\xfe\x04")
 
         print "Going to send ID_RESP response"
-        res = ussdSocket.send(IPA().id_resp(IPA().tag_name('key')))
-        self.assertEqual(res, 10)
+        res = ussdSocket.send(IPA().id_resp(IPA().tag_name('key'+'\0')))
+        self.assertEqual(res, 11)
 
         # initiating PING/PONG cycle to know, that the ID_RESP message has been processed
 
@@ -1072,7 +1072,7 @@ def ipa_handle_resp(x, tk, verbose = False, proc=None):
         while True:
             print "\tsending IPA identity(%s) at %s" % (tk, time.strftime("%T"))
             try:
-                x.send(IPA().id_resp(IPA().identity(name = tk.encode('utf-8'))))
+                x.send(IPA().id_resp(IPA().identity(name = (tk+'\0').encode('utf-8'))))
                 print "\tdone sending IPA identity(%s) at %s" % (tk,
                                                             time.strftime("%T"))
                 break

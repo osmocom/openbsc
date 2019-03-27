@@ -456,9 +456,7 @@ static int answer_challenge(struct bsc_msc_data *data, struct msgb *inp, struct 
 		.algo		= OSMO_AUTH_ALG_MILENAGE,
 	};
 
-	ret = ipa_ccm_idtag_parse_off(&tvp,
-				inp->l2h + 1,
-				msgb_l2len(inp) - 1, 1);
+	ret = ipa_ccm_id_get_parse(&tvp, inp->l2h + 1, msgb_l2len(inp) - 1);
 	if (ret < 0) {
 		LOGP(DMSC, LOGL_ERROR, "ignoring IPA response "
 			"message with malformed TLVs: %s\n", osmo_hexdump(inp->l2h + 1,

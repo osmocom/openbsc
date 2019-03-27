@@ -141,9 +141,9 @@ static int ussd_read_cb(struct osmo_fd *bfd)
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
 			struct tlv_parsed tvp;
 			int ret;
-			ret = ipa_ccm_idtag_parse(&tvp,
-					     (unsigned char *) msg->l2h + 2,
-					     msgb_l2len(msg) - 2);
+			ret = ipa_ccm_id_resp_parse(&tvp,
+					     (unsigned char *) msg->l2h + 1,
+					     msgb_l2len(msg) - 1);
 			if (ret < 0) {
 				LOGP(DNAT, LOGL_ERROR, "ignoring IPA response "
 					"message with malformed TLVs\n");
