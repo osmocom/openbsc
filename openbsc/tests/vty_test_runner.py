@@ -20,6 +20,7 @@ import time
 import unittest
 import socket
 import subprocess
+import struct
 
 import osmopy.obscvty as obscvty
 import osmopy.osmoutil as osmoutil
@@ -1089,6 +1090,16 @@ def ipa_handle_resp(x, tk, verbose = False, proc=None):
         if (verbose):
             print "\tBSC <- NAT: ", s
 
+def ipa_handle_mgcp(x, verbose = False):
+    data = x.recv(3)
+    s = data2str(data)
+    if s[4:] != "fc":
+        print "expected IPA(MGCP) but received %r instead" % (s[4:])
+    ipa_len, = struct.unpack('>H', data[:2])
+    mgcp_msg = x.recv(ipa_len) # MGCP msg
+    if (verbose):
+        print "\tBSC <- NAT (MGCP[%d]): %s" % (ipa_len, mgcp_msg)
+
 def nat_bsc_num_con(x):
     return len(x.vty.command("show bsc connections").split('\n'))
 
@@ -1106,7 +1117,7 @@ def nat_bsc_sock_test(nr, tk, verbose = False, proc=None):
     ipa_handle_resp(bsc, tk, verbose, proc=proc)
     if proc:
       print "\tproc.poll() = %r" % proc.poll()
-    bsc.recv(27) # MGCP msg
+    ipa_handle_mgcp(bsc, verbose)
     if proc:
       print "\tproc.poll() = %r" % proc.poll()
     ipa_handle_small(bsc, verbose)
