@@ -3787,6 +3787,9 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		return rc;
 	}
 
+	if(msg_type == MNCC_REL_REQ && conn->mncc_rtp_create_pending)
+	        conn->mncc_rtp_create_pending = 0;
+
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
 		"Received '%s' from MNCC in state %d (%s)\n",
 		conn->bts->nr, conn->lchan->ts->trx->nr, conn->lchan->ts->nr,
