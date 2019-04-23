@@ -208,7 +208,7 @@ static int write_response_sdp(struct mgcp_endpoint *endp,
 
 	len = snprintf(sdp_record, size,
 			"v=0\r\n"
-			"o=- %u 23 IN IP4 %s\r\n"
+			"o=- %x 23 IN IP4 %s\r\n"
 			"s=-\r\n"
 			"c=IN IP4 %s\r\n"
 			"t=0 0\r\n",
@@ -285,7 +285,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	}
 
 	len = snprintf(sdp_record, sizeof(sdp_record),
-		       "I: %u%s\n\n", endp->ci, osmux_extension);
+		       "I: %x%s\n\n", endp->ci, osmux_extension);
 	if (len < 0)
 		return NULL;
 
@@ -512,7 +512,7 @@ static int verify_ci(const struct mgcp_endpoint *endp,
 	uint32_t ci = strtoul(_ci, NULL, 10);
 
 	if (ci != endp->ci) {
-		LOGP(DMGCP, LOGL_ERROR, "ConnectionIdentifiers do not match on 0x%x. %u != %s\n",
+		LOGP(DMGCP, LOGL_ERROR, "ConnectionIdentifiers do not match on 0x%x. %x != %x\n",
 			ENDPOINT_NUMBER(endp), endp->ci, _ci);
 		return -1;
 	}
@@ -891,7 +891,7 @@ mgcp_header_done:
 		osmo_jibuf_set_dequeue_cb(endp->bts_jb, mgcp_dejitter_udp_send, &endp->net_end);
 	}
 
-	LOGP(DMGCP, LOGL_DEBUG, "Creating endpoint on: 0x%x CI: %u port: %u/%u\n",
+	LOGP(DMGCP, LOGL_DEBUG, "Creating endpoint on: 0x%x CI: %x port: %u/%u\n",
 		ENDPOINT_NUMBER(endp), endp->ci,
 		endp->net_end.local_port, endp->bts_end.local_port);
 	if (p->cfg->change_cb)
