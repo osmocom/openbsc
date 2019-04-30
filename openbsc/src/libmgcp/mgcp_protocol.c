@@ -509,7 +509,7 @@ static int verify_call_id(const struct mgcp_endpoint *endp,
 static int verify_ci(const struct mgcp_endpoint *endp,
 		     const char *_ci)
 {
-	uint32_t ci = strtoul(_ci, NULL, 10);
+	uint32_t ci = strtoul(_ci, NULL, 16);
 
 	if (ci != endp->ci) {
 		LOGP(DMGCP, LOGL_ERROR, "ConnectionIdentifiers do not match on 0x%x. %x != %x\n",
