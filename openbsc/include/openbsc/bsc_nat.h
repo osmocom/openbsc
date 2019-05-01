@@ -356,10 +356,7 @@ void bsc_close_connection(struct bsc_connection *);
 
 const char *bsc_con_type_to_string(int type);
 
-/**
- * parse the given message into the above structure
- */
-struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg);
+int bsc_nat_parse(struct msgb *msg, struct bsc_nat_parsed *parsed);
 
 /**
  * filter based on IP Access header in both directions

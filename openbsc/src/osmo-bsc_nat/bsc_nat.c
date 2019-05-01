@@ -696,24 +696,23 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 {
 	struct nat_sccp_connection *con = NULL;
 	struct bsc_connection *bsc;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	int proto;
 
 	/* filter, drop, patch the message? */
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Can not parse msg from BSC.\n");
 		return -1;
 	}
 
-	if (bsc_nat_filter_ipa(DIR_BSC, msg, parsed))
+	if (bsc_nat_filter_ipa(DIR_BSC, msg, &parsed))
 		goto exit;
 
-	proto = parsed->ipa_proto;
+	proto = parsed.ipa_proto;
 
 	/* Route and modify the SCCP packet */
 	if (proto == IPAC_PROTO_SCCP) {
-		switch (parsed->sccp_type) {
+		switch (parsed.sccp_type) {
 		case SCCP_MSG_TYPE_UDT:
 			/* forward UDT messages to every BSC */
 			goto send_to_all;
@@ -722,8 +721,8 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
 		case SCCP_MSG_TYPE_IT:
-			con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
-			if (parsed->gsm_type == BSS_MAP_MSG_ASSIGMENT_RQST) {
+			con = patch_sccp_src_ref_to_bsc(msg, &parsed, nat);
+			if (parsed.gsm_type == BSS_MAP_MSG_ASSIGMENT_RQST) {
 				osmo_counter_inc(nat->stats.sccp.calls);
 
 				if (con) {
@@ -735,14 +734,14 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 				} else
 					LOGP(DNAT, LOGL_ERROR, "Assignment command but no BSC.\n");
 			} else if (con && con->con_local == NAT_CON_END_USSD &&
-				   parsed->gsm_type == BSS_MAP_MSG_CLEAR_CMD) {
+				   parsed.gsm_type == BSS_MAP_MSG_CLEAR_CMD) {
 				LOGP(DNAT, LOGL_NOTICE, "Clear Command for USSD Connection. Ignoring.\n");
 				con = NULL;
 			}
 			break;
 		case SCCP_MSG_TYPE_CC:
-			con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
-			if (!con || update_sccp_src_ref(con, parsed) != 0)
+			con = patch_sccp_src_ref_to_bsc(msg, &parsed, nat);
+			if (!con || update_sccp_src_ref(con, &parsed) != 0)
 				goto exit;
 			break;
 		case SCCP_MSG_TYPE_RLC:
@@ -755,27 +754,24 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 			goto exit;
 		}
 
-		if (!con && parsed->sccp_type == SCCP_MSG_TYPE_RLSD) {
+		if (!con && parsed.sccp_type == SCCP_MSG_TYPE_RLSD) {
 			LOGP(DNAT, LOGL_NOTICE, "Sending fake RLC on RLSD message to network.\n");
 			/* Exchange src/dest for the reply */
-			nat_send_rlc(msc_con, &parsed->original_dest_ref,
-					parsed->src_local_ref);
+			nat_send_rlc(msc_con, &parsed.original_dest_ref,
+					parsed.src_local_ref);
 		} else if (!con)
-			LOGP(DNAT, LOGL_ERROR, "Unknown connection for msg type: 0x%x from the MSC.\n", parsed->sccp_type);
+			LOGP(DNAT, LOGL_ERROR, "Unknown connection for msg type: 0x%x from the MSC.\n", parsed.sccp_type);
 	}
 
-	if (!con) {
-		talloc_free(parsed);
+	if (!con)
 		return -1;
-	}
+
 	if (!con->bsc->authenticated) {
-		talloc_free(parsed);
 		LOGP(DNAT, LOGL_ERROR, "Selected BSC not authenticated.\n");
 		return -1;
 	}
 
-	update_con_authorize(con, parsed, msg);
-	talloc_free(parsed);
+	update_con_authorize(con, &parsed, msg);
 
 	bsc_send_data(con->bsc, msg->l2h, msgb_l2len(msg), proto);
 	return 0;
@@ -786,7 +782,7 @@ send_to_all:
 	 * Command to every BSC in our network. We will analys the PAGING
 	 * message and then send it to the authenticated messages...
 	 */
-	if (parsed->ipa_proto == IPAC_PROTO_SCCP && parsed->gsm_type == BSS_MAP_MSG_PAGING) {
+	if (parsed.ipa_proto == IPAC_PROTO_SCCP && parsed.gsm_type == BSS_MAP_MSG_PAGING) {
 		bsc_nat_handle_paging(nat, msg);
 		goto exit;
 	}
@@ -795,11 +791,10 @@ send_to_all:
 		if (!bsc->authenticated)
 			continue;
 
-		bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed->ipa_proto);
+		bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed.ipa_proto);
 	}
 
 exit:
-	talloc_free(parsed);
 	return 0;
 }
 
@@ -1130,19 +1125,19 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, boo
 	struct bsc_msc_connection *con_msc = NULL;
 	struct bsc_connection *con_bsc = NULL;
 	int con_type;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	struct bsc_filter_reject_cause cause;
 	*bsc_conn_closed = false;
 
 	/* Parse and filter messages */
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	bool parsed_ok = bsc_nat_parse(msg, &parsed) == 0;
+	if (!parsed_ok) {
 		LOGP(DNAT, LOGL_ERROR, "Can not parse msg from BSC.\n");
 		msgb_free(msg);
 		return -1;
 	}
 
-	if (bsc_nat_filter_ipa(DIR_MSC, msg, parsed))
+	if (bsc_nat_filter_ipa(DIR_MSC, msg, &parsed))
 		goto exit;
 
 	/*
@@ -1157,32 +1152,32 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, boo
 
 
 	/* modify the SCCP entries */
-	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
+	if (parsed.ipa_proto == IPAC_PROTO_SCCP) {
 		int filter;
 		struct nat_sccp_connection *con;
-		switch (parsed->sccp_type) {
+		switch (parsed.sccp_type) {
 		case SCCP_MSG_TYPE_CR:
 			memset(&cause, 0, sizeof(cause));
-			filter = bsc_nat_filter_sccp_cr(bsc, msg, parsed,
+			filter = bsc_nat_filter_sccp_cr(bsc, msg, &parsed,
 						&con_type, &imsi, &cause);
 			if (filter < 0) {
 				if (imsi)
 					bsc_nat_inform_reject(bsc, imsi);
 				bsc_stat_reject(filter, bsc, 0);
 				/* send a SCCP Connection Refused */
-				bsc_send_con_refuse(bsc, parsed, con_type, &cause);
+				bsc_send_con_refuse(bsc, &parsed, con_type, &cause);
 				goto exit2;
 			}
 
-			if (!create_sccp_src_ref(bsc, parsed))
+			if (!create_sccp_src_ref(bsc, &parsed))
 				goto exit2;
-			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
+			con = patch_sccp_src_ref_to_msc(msg, &parsed, bsc);
 			OSMO_ASSERT(con);
 			con->msc_con = bsc->nat->msc_con;
 			con_msc = con->msc_con;
 			con->filter_state.con_type = con_type;
 			con->filter_state.imsi_checked = filter;
-			bsc_nat_extract_lac(bsc, con, parsed, msg);
+			bsc_nat_extract_lac(bsc, con, &parsed, msg);
 			if (imsi)
 				con->filter_state.imsi = talloc_steal(con, imsi);
 			imsi = NULL;
@@ -1194,13 +1189,13 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, boo
 		case SCCP_MSG_TYPE_DT1:
 		case SCCP_MSG_TYPE_CC:
 		case SCCP_MSG_TYPE_IT:
-			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
+			con = patch_sccp_src_ref_to_msc(msg, &parsed, bsc);
 			if (con) {
 				/* only filter non local connections */
 				if (!con->con_local) {
 					memset(&cause, 0, sizeof(cause));
 					filter = bsc_nat_filter_dt(bsc, msg,
-							con, parsed, &cause);
+							con, &parsed, &cause);
 					if (filter < 0) {
 						if (con->filter_state.imsi)
 							bsc_nat_inform_reject(bsc,
@@ -1212,20 +1207,19 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, boo
 					}
 
 					/* hand data to a side channel */
-					if (bsc_ussd_check(con, parsed, msg) == 1)
+					if (bsc_ussd_check(con, &parsed, msg) == 1)
 						con->con_local = NAT_CON_END_USSD;
 
 					/*
 					 * Optionally rewrite setup message. This can
-					 * replace the msg and the parsed structure becomes
-					 * invalid.
+					 * replace the msg and hence data in struct parsed
+					 * becomes invalid.
 					 */
-					msg = bsc_nat_rewrite_msg(bsc->nat, msg, parsed,
+					msg = bsc_nat_rewrite_msg(bsc->nat, msg, &parsed,
 									con->filter_state.imsi);
-					talloc_free(parsed);
-					parsed = NULL;
+					parsed_ok = false;
 				} else if (con->con_local == NAT_CON_END_USSD) {
-					bsc_ussd_check(con, parsed, msg);
+					bsc_ussd_check(con, &parsed, msg);
 				}
 
 				con_bsc = con->bsc;
@@ -1235,13 +1229,13 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, boo
 
 			break;
 		case SCCP_MSG_TYPE_RLC:
-			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
+			con = patch_sccp_src_ref_to_msc(msg, &parsed, bsc);
 			if (con) {
 				con_bsc = con->bsc;
 				con_msc = con->msc_con;
 				con_filter = con->con_local;
 			}
-			remove_sccp_src_ref(bsc, msg, parsed);
+			remove_sccp_src_ref(bsc, msg, &parsed);
 			*bsc_conn_closed = bsc_maybe_close(bsc);
 			break;
 		case SCCP_MSG_TYPE_UDT:
@@ -1249,16 +1243,16 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, boo
 			con = NULL;
 			break;
 		default:
-			LOGP(DNAT, LOGL_ERROR, "Not forwarding to msc sccp type: 0x%x\n", parsed->sccp_type);
+			LOGP(DNAT, LOGL_ERROR, "Not forwarding to msc sccp type: 0x%x\n", parsed.sccp_type);
 			con = NULL;
 			goto exit2;
 			break;
 		}
-        } else if (parsed->ipa_proto == IPAC_PROTO_MGCP_OLD) {
+        } else if (parsed.ipa_proto == IPAC_PROTO_MGCP_OLD) {
                 bsc_mgcp_forward(bsc, msg);
                 goto exit2;
 	} else {
-		LOGP(DNAT, LOGL_ERROR, "Not forwarding unknown stream id: 0x%x\n", parsed->ipa_proto);
+		LOGP(DNAT, LOGL_ERROR, "Not forwarding unknown stream id: 0x%x\n", parsed.ipa_proto);
 		goto exit2;
 	}
 
@@ -1275,22 +1269,21 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, boo
 	if (!con_msc) {
 		LOGP(DNAT, LOGL_ERROR, "Not forwarding data bsc_nr: %d ipa: %d type: 0x%x\n",
 			bsc->cfg->nr,
-			parsed ? parsed->ipa_proto : -1,
-			parsed ? parsed->sccp_type : -1);
+			parsed_ok ? parsed.ipa_proto : -1,
+			parsed_ok ? parsed.sccp_type : -1);
 		goto exit2;
 	}
 
 	/* send the non-filtered but maybe modified msg */
-	talloc_free(parsed);
 	queue_for_msc(con_msc, msg);
 
 	return 0;
 
 exit:
 	/* if we filter out the reset send an ack to the BSC */
-	if (parsed->bssap == 0 && parsed->gsm_type == BSS_MAP_MSG_RESET) {
+	if (parsed.bssap == 0 && parsed.gsm_type == BSS_MAP_MSG_RESET) {
 		send_reset_ack(bsc);
-	} else if (parsed->ipa_proto == IPAC_PROTO_IPACCESS) {
+	} else if (parsed.ipa_proto == IPAC_PROTO_IPACCESS) {
 		/* do we know who is handling this? */
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP && msgb_l2len(msg) > 2) {
 			struct tlv_parsed tvp;
@@ -1315,7 +1308,6 @@ exit:
 exit2:
 	if (imsi)
 		talloc_free(imsi);
-	talloc_free(parsed);
 	msgb_free(msg);
 	return -1;
 }

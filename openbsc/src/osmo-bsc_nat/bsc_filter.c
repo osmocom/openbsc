@@ -72,19 +72,24 @@ static struct bsc_pkt_filter white_list[] = {
 	{ IPAC_PROTO_MGCP_OLD, ALLOW_ANY, ALLOW_ANY, ALLOW_ANY, FILTER_TO_BOTH },
 };
 
-struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg)
+ /*! Parse the given message into the parsed structure.
+  *  \param[in] msg the IPA message to parse
+  *  \param[out] parsed the structure to fill with parsed values
+  *  \returns 0 on success, negative on error
+  */
+int bsc_nat_parse(struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	struct sccp_parse_result result;
-	struct bsc_nat_parsed *parsed;
 	struct ipaccess_head *hh;
 
 	/* quick fail */
 	if (msg->len < 4)
-		return NULL;
+		return -1;
 
-	parsed = talloc_zero(msg, struct bsc_nat_parsed);
 	if (!parsed)
-		return NULL;
+		return -1;
+
+	memset(parsed, 0, sizeof(*parsed));
 
 	/* more init */
 	parsed->ipa_proto = parsed->called_ssn = parsed->calling_ssn = -1;
@@ -99,22 +104,19 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg)
 	/* do a size check on the input */
 	if (ntohs(hh->len) != msgb_l2len(msg)) {
 		LOGP(DLINP, LOGL_ERROR, "Wrong input length?\n");
-		talloc_free(parsed);
-		return NULL;
+		return -1;
 	}
 
 	/* analyze sccp down here */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
 		memset(&result, 0, sizeof(result));
 		if (sccp_parse_header(msg, &result) != 0) {
-			talloc_free(parsed);
-			return 0;
+			return -1;
 		}
 
 		if (msg->l3h && msgb_l3len(msg) < 3) {
 			LOGP(DNAT, LOGL_ERROR, "Not enough space or GSM payload\n");
-			talloc_free(parsed);
-			return 0;
+			return -1;
 		}
 
 		parsed->sccp_type = sccp_determine_msg_type(msg);
@@ -132,7 +134,7 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg)
 		}
 	}
 
-	return parsed;
+	return 0;
 }
 
 /* Returns 0 if message is whitelisted (has to beforwarded by bsc-nat), 1 if

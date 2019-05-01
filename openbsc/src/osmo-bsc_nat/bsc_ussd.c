@@ -90,30 +90,27 @@ static void ussd_pong(struct bsc_nat_ussd_con *conn)
 static int forward_sccp(struct bsc_nat *nat, struct msgb *msg)
 {
 	struct nat_sccp_connection *con;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 
-
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Can not parse msg from USSD.\n");
 		msgb_free(msg);
 		return -1;
 	}
 
-	if (!parsed->dest_local_ref) {
+	if (!parsed.dest_local_ref) {
 		LOGP(DNAT, LOGL_ERROR, "No destination local reference.\n");
 		msgb_free(msg);
 		return -1;
 	}
 
-	con = bsc_nat_find_con_by_bsc(nat, parsed->dest_local_ref);
+	con = bsc_nat_find_con_by_bsc(nat, parsed.dest_local_ref);
 	if (!con || !con->bsc) {
 		LOGP(DNAT, LOGL_ERROR, "No active connection found.\n");
 		msgb_free(msg);
 		return -1;
 	}
 
-	talloc_free(parsed);
 	bsc_write_msg(&con->bsc->write_queue, msg);
 	return 0;
 }

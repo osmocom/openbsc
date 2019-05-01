@@ -618,8 +618,6 @@ struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct b
 
 	ipa_prepend_header(sccp, IPAC_PROTO_SCCP);
 
-	/* the parsed hangs off from msg but it needs to survive */
-	talloc_steal(sccp, parsed);
 	msgb_free(msg);
 	return sccp;
 }

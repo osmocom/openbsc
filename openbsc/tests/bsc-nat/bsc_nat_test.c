@@ -235,20 +235,19 @@ static void test_filter(void)
 	printf("Testing BSS Filtering.\n");
 	for (i = 0; i < ARRAY_SIZE(results); ++i) {
 		int result;
-		struct bsc_nat_parsed *parsed;
+		struct bsc_nat_parsed parsed;
 		struct msgb *msg = msgb_alloc(4096, "test-message");
 
 		printf("Going to test item: %d\n", i);
 		memcpy(msg->data, results[i].data, results[i].length);
 		msg->l2h = msgb_put(msg, results[i].length);
 
-		parsed = bsc_nat_parse(msg);
-		if (!parsed) {
+		if (bsc_nat_parse(msg, &parsed) < 0) {
 			printf("FAIL: Failed to parse the message\n");
 			continue;
 		}
 
-		result = bsc_nat_filter_ipa(results[i].dir, msg, parsed);
+		result = bsc_nat_filter_ipa(results[i].dir, msg, &parsed);
 		if (result != results[i].result) {
 			printf("FAIL: Not the expected result got: %d wanted: %d\n",
 				result, results[i].result);
@@ -310,7 +309,7 @@ static void test_contrack()
 	struct bsc_connection *con;
 	struct nat_sccp_connection *con_found;
 	struct nat_sccp_connection *rc_con;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	struct msgb *msg;
 
 	printf("Testing connection tracking.\n");
@@ -326,19 +325,19 @@ static void test_contrack()
 
 	/* 1.) create a connection */
 	copy_to_msg(msg, bsc_cr, sizeof(bsc_cr));
-	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
+	OSMO_ASSERT(bsc_nat_parse(msg, &parsed) == 0);
+	con_found = patch_sccp_src_ref_to_msc(msg, &parsed, con);
 	if (con_found != NULL) {
 		printf("Con should not exist realref(%u)\n",
 		       sccp_src_ref_to_int(&con_found->real_ref));
 		abort();
 	}
-	rc_con = create_sccp_src_ref(con, parsed);
+	rc_con = create_sccp_src_ref(con, &parsed);
 	if (!rc_con) {
 		printf("Failed to create a ref\n");
 		abort();
 	}
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
+	con_found = patch_sccp_src_ref_to_msc(msg, &parsed, con);
 	if (!con_found) {
 		printf("Failed to find connection.\n");
 		abort();
@@ -356,40 +355,39 @@ static void test_contrack()
 		printf("Failed to patch the BSC CR msg.\n");
 		abort();
 	}
-	talloc_free(parsed);
 
 	/* 2.) get the cc */
 	copy_to_msg(msg, msc_cc, sizeof(msc_cc));
-	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+	OSMO_ASSERT(bsc_nat_parse(msg, &parsed) == 0);
+	con_found = patch_sccp_src_ref_to_bsc(msg, &parsed, nat);
 	VERIFY(con_found, con, msg, msc_cc_patched, "MSC CC");
-	if (update_sccp_src_ref(con_found, parsed) != 0) {
+	if (update_sccp_src_ref(con_found, &parsed) != 0) {
 		printf("Failed to update the SCCP con.\n");
 		abort();
 	}
 
 	/* 3.) send some data */
 	copy_to_msg(msg, bsc_dtap, sizeof(bsc_dtap));
-	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
+	OSMO_ASSERT(bsc_nat_parse(msg, &parsed) == 0);
+	con_found = patch_sccp_src_ref_to_msc(msg, &parsed, con);
 	VERIFY(con_found, con, msg, bsc_dtap_patched, "BSC DTAP");
 
 	/* 4.) receive some data */
 	copy_to_msg(msg, msc_dtap, sizeof(msc_dtap));
-	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+	OSMO_ASSERT(bsc_nat_parse(msg, &parsed) == 0);
+	con_found = patch_sccp_src_ref_to_bsc(msg, &parsed, nat);
 	VERIFY(con_found, con, msg, msc_dtap_patched, "MSC DTAP");
 
 	/* 5.) close the connection */
 	copy_to_msg(msg, msc_rlsd, sizeof(msc_rlsd));
-	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+	OSMO_ASSERT(bsc_nat_parse(msg, &parsed) == 0);
+	con_found = patch_sccp_src_ref_to_bsc(msg, &parsed, nat);
 	VERIFY(con_found, con, msg, msc_rlsd_patched, "MSC RLSD");
 
 	/* 6.) confirm the connection close */
 	copy_to_msg(msg, bsc_rlc, sizeof(bsc_rlc));
-	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
+	OSMO_ASSERT(bsc_nat_parse(msg, &parsed) == 0);
+	con_found = patch_sccp_src_ref_to_msc(msg, &parsed, con);
 	if (!con_found) {
 		printf("Failed to find connection.\n");
 		abort();
@@ -403,12 +401,11 @@ static void test_contrack()
 		printf("Failed to patch the BSC CR msg.\n");
 		abort();
 	}
-	remove_sccp_src_ref(con, msg, parsed);
-	talloc_free(parsed);
+	remove_sccp_src_ref(con, msg, &parsed);
 
 	copy_to_msg(msg, bsc_rlc, sizeof(bsc_rlc));
-	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
+	OSMO_ASSERT(bsc_nat_parse(msg, &parsed) == 0);
+	con_found = patch_sccp_src_ref_to_msc(msg, &parsed, con);
 
 	/* verify that it is gone */
 	if (con_found != NULL) {
@@ -416,8 +413,6 @@ static void test_contrack()
 		       sccp_src_ref_to_int(&con_found->real_ref));
 		abort();
 	}
-	talloc_free(parsed);
-
 
 	bsc_config_free(con->cfg);
 	bsc_nat_free(nat);
@@ -507,7 +502,7 @@ static void test_mgcp_ass_tracking(void)
 	struct bsc_connection *bsc;
 	struct bsc_nat *nat;
 	struct nat_sccp_connection con;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	struct msgb *msg;
 
 	printf("Testing MGCP.\n");
@@ -529,7 +524,7 @@ static void test_mgcp_ass_tracking(void)
 
 	msg = msgb_alloc(4096, "foo");
 	copy_to_msg(msg, ass_cmd, sizeof(ass_cmd));
-	parsed = bsc_nat_parse(msg);
+	OSMO_ASSERT(bsc_nat_parse(msg, &parsed) == 0);
 
 	if (msg->l2h[16] != 0 ||
 	    msg->l2h[17] != 0x1) {
@@ -567,8 +562,6 @@ static void test_mgcp_ass_tracking(void)
 		printf("data cic: 0x%x %s\n", cic, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 		abort();
 	}
-
-	talloc_free(parsed);
 
 	bsc_mgcp_dlcx(&con);
 	if (con.bsc_endp != -1 || con.msc_endp != -1 ||
@@ -867,7 +860,7 @@ static void test_cr_filter()
 {
 	int i, res, contype;
 	struct msgb *msg = msgb_alloc(4096, "test_cr_filter");
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	struct bsc_msg_acc_lst *nat_lst, *bsc_lst;
 	struct bsc_msg_acc_lst_entry *nat_entry, *bsc_entry;
 	struct bsc_filter_reject_cause cause;
@@ -912,14 +905,13 @@ static void test_cr_filter()
 			      &cr_filter[i].bsc_imsi_deny) != 0)
 			abort();
 
-		parsed = bsc_nat_parse(msg);
-		if (!parsed) {
+		if (bsc_nat_parse(msg, &parsed) < 0) {
 			printf("FAIL: Failed to parse the message\n");
 			abort();
 		}
 
 		memset(&cause, 0, sizeof(cause));
-		res = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &contype, &imsi, &cause);
+		res = bsc_nat_filter_sccp_cr(bsc, msg, &parsed, &contype, &imsi, &cause);
 		if (res != cr_filter[i].result) {
 			printf("FAIL: Wrong result %d for test %d.\n", res, i);
 			abort();
@@ -934,8 +926,7 @@ static void test_cr_filter()
 			abort();
 		}
 
-		talloc_steal(parsed, imsi);
-		talloc_free(parsed);
+		talloc_free(imsi);
 	}
 
 	msgb_free(msg);
@@ -946,7 +937,7 @@ static void test_dt_filter()
 {
 	int i;
 	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	struct bsc_filter_reject_cause cause;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
@@ -960,26 +951,25 @@ static void test_dt_filter()
 	msgb_reset(msg);
 	copy_to_msg(msg, id_resp, ARRAY_SIZE(id_resp));
 
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
-	if (parsed->bssap != BSSAP_MSG_DTAP) {
+	if (parsed.bssap != BSSAP_MSG_DTAP) {
 		printf("FAIL: It should be dtap\n");
 		abort();
 	}
 
 	/* gsm_type is actually the size of the dtap */
-	if (parsed->gsm_type < msgb_l3len(msg) - 3) {
+	if (parsed.gsm_type < msgb_l3len(msg) - 3) {
 		printf("FAIL: Not enough space for the content\n");
 		abort();
 	}
 
 	memset(&cause, 0, sizeof(cause));
 	OSMO_ASSERT(!con->filter_state.imsi);
-	if (bsc_nat_filter_dt(bsc, msg, con, parsed, &cause) != 1) {
+	if (bsc_nat_filter_dt(bsc, msg, con, &parsed, &cause) != 1) {
 		printf("FAIL: Should have passed..\n");
 		abort();
 	}
@@ -991,13 +981,13 @@ static void test_dt_filter()
 		msgb_reset(msg);
 		copy_to_msg(msg, id_resp, ARRAY_SIZE(id_resp));
 
-		parsed = bsc_nat_parse(msg);
-		if (!parsed)
+		if (bsc_nat_parse(msg, &parsed) < 0)
 			continue;
+
 
 		con->filter_state.imsi_checked = 0;
 		memset(&cause, 0, sizeof(cause));
-		bsc_nat_filter_dt(bsc, msg, con, parsed, &cause);
+		bsc_nat_filter_dt(bsc, msg, con, &parsed, &cause);
 	}
 
 	msgb_free(msg);
@@ -1008,7 +998,7 @@ static void test_setup_rewrite()
 {
 	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
 	struct msgb *out;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	const char *imsi = "27408000001234";
 
 	struct bsc_nat *nat = bsc_nat_alloc();
@@ -1028,31 +1018,28 @@ static void test_setup_rewrite()
 	/* verify that nothing changed */
 	msgb_reset(msg);
 	copy_to_msg(msg, cc_setup_international, ARRAY_SIZE(cc_setup_international));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (msg != out) {
 		printf("FAIL: The message should not have been changed\n");
 		abort();
 	}
 
 	verify_msg(out, cc_setup_international, ARRAY_SIZE(cc_setup_international));
-	talloc_free(parsed);
 
 	/* verify that something in the message changes */
 	msgb_reset(msg);
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (!out) {
 		printf("FAIL: A new message should be created.\n");
 		abort();
@@ -1071,13 +1058,12 @@ static void test_setup_rewrite()
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
 	msg = msgb_alloc(4096, "test_dt_filter");
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (!out) {
 		printf("FAIL: A new message should be created.\n");
 		abort();
@@ -1096,13 +1082,12 @@ static void test_setup_rewrite()
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
 	msg = msgb_alloc(4096, "test_dt_filter");
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (out != msg) {
 		printf("FAIL: The message should be unchanged.\n");
 		abort();
@@ -1118,13 +1103,12 @@ static void test_setup_rewrite()
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
 	msg = msgb_alloc(4096, "test_dt_filter");
 	copy_to_msg(msg, cc_setup_national_patched, ARRAY_SIZE(cc_setup_national_patched));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse ID resp %d\n", __LINE__);
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (!out) {
 		printf("FAIL: A new message should be created %d.\n", __LINE__);
 		abort();
@@ -1146,13 +1130,12 @@ static void test_setup_rewrite()
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
 	msg = msgb_alloc(4096, "test_dt_filter");
 	copy_to_msg(msg, cc_setup_national_patched, ARRAY_SIZE(cc_setup_national_patched));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse ID resp %d\n", __LINE__);
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (!out) {
 		printf("FAIL: A new message should be created %d.\n", __LINE__);
 		abort();
@@ -1174,7 +1157,7 @@ static void test_setup_rewrite_prefix(void)
 {
 	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
 	struct msgb *out;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	const char *imsi = "27408000001234";
 
 	struct bsc_nat *nat = bsc_nat_alloc();
@@ -1195,13 +1178,12 @@ static void test_setup_rewrite_prefix(void)
 
 	msgb_reset(msg);
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (!out) {
 		printf("FAIL: A new message should be created.\n");
 		abort();
@@ -1223,7 +1205,7 @@ static void test_setup_rewrite_post(void)
 {
 	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
 	struct msgb *out;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	const char *imsi = "27408000001234";
 
 	struct bsc_nat *nat = bsc_nat_alloc();
@@ -1255,13 +1237,12 @@ static void test_setup_rewrite_post(void)
 
 	msgb_reset(msg);
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (!out) {
 		printf("FAIL: A new message should be created.\n");
 		abort();
@@ -1281,7 +1262,7 @@ static void test_setup_rewrite_post(void)
 static void test_sms_smsc_rewrite()
 {
 	struct msgb *msg = msgb_alloc(4096, "SMSC rewrite"), *out;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	const char *imsi = "515039900406700";
 
 	struct bsc_nat *nat = bsc_nat_alloc();
@@ -1317,13 +1298,12 @@ static void test_sms_smsc_rewrite()
 	 * Check if the SMSC address is changed
 	 */
 	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse SMS\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (out == msg) {
 		printf("FAIL: This should have changed.\n");
 		abort();
@@ -1337,13 +1317,12 @@ static void test_sms_smsc_rewrite()
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->smsc_rewr, NULL);
 	msg = msgb_alloc(4096, "SMSC rewrite");
 	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse SMS\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (out == msg) {
 		printf("FAIL: This should have changed.\n");
 		abort();
@@ -1357,13 +1336,12 @@ static void test_sms_smsc_rewrite()
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->sms_clear_tp_srr, NULL);
 	msg = msgb_alloc(4096, "SMSC rewrite");
 	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse SMS\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (out != msg) {
 		printf("FAIL: This should not have changed.\n");
 		abort();
@@ -1377,7 +1355,7 @@ static void test_sms_smsc_rewrite()
 static void test_sms_number_rewrite(void)
 {
 	struct msgb *msg, *out;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	const char *imsi = "515039900406700";
 
 	struct bsc_nat *nat = bsc_nat_alloc();
@@ -1401,13 +1379,12 @@ static void test_sms_number_rewrite(void)
 	 */
  	msg = msgb_alloc(4096, "SMSC rewrite");
 	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse SMS\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (out == msg) {
 		printf("FAIL: This should have changed.\n");
 		abort();
@@ -1429,13 +1406,12 @@ static void test_sms_number_rewrite(void)
 
  	msg = msgb_alloc(4096, "SMSC rewrite");
 	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
+	if (bsc_nat_parse(msg, &parsed) < 0) {
 		printf("FAIL: Could not parse SMS\n");
 		abort();
 	}
 
-	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, &parsed, imsi);
 	if (out == msg) {
 		printf("FAIL: This should have changed.\n");
 		abort();
@@ -1520,7 +1496,7 @@ static void test_nat_extract_lac()
 	struct bsc_connection *bsc;
 	struct bsc_nat *nat;
 	struct nat_sccp_connection con;
-	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_parsed parsed;
 	struct msgb *msg = msgb_alloc(4096, "test-message");
 
 	printf("Testing LAC extraction from SCCP CR\n");
@@ -1538,8 +1514,8 @@ static void test_nat_extract_lac()
 	memcpy(msg->l2h, bssmap_cr, ARRAY_SIZE(bssmap_cr));
 
 	/* parse it and pass it on */
-	parsed = bsc_nat_parse(msg);
-	res = bsc_nat_extract_lac(bsc, &con, parsed, msg);
+	OSMO_ASSERT(bsc_nat_parse(msg, &parsed) == 0);
+	res = bsc_nat_extract_lac(bsc, &con, &parsed, msg);
 	OSMO_ASSERT(res == 0);
 
 	/* verify the LAC */
