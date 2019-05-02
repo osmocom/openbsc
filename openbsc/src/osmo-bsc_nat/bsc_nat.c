@@ -1281,9 +1281,9 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg, boo
 	}
 
 	/* send the non-filtered but maybe modified msg */
+	talloc_free(parsed);
 	queue_for_msc(con_msc, msg);
-	if (parsed)
-		talloc_free(parsed);
+
 	return 0;
 
 exit:
