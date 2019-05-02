@@ -108,19 +108,23 @@ struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 	return NULL;
 }
 
-static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
+static int queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 {
+	int rc;
 	if (!con) {
 		LOGP(DLINP, LOGL_ERROR, "No MSC Connection assigned. Check your code.\n");
 		msgb_free(msg);
-		return;
+		return -EINVAL;
 	}
 
-
-	if (osmo_wqueue_enqueue(&con->write_queue, msg) != 0) {
+	rc = osmo_wqueue_enqueue(&con->write_queue, msg);
+	if (rc != 0) {
 		LOGP(DLINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
+		return rc;
 	}
+
+	return 0;
 }
 
 static void send_reset_ack(struct bsc_connection *bsc)
