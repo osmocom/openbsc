@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # (C) 2014 by Holger Hans Peter Freyther
 # based on vty_test_runner.py:

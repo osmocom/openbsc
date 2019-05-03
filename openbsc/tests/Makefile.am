@@ -64,10 +64,10 @@ if ENABLE_EXT_TESTS
 python-tests: $(BUILT_SOURCES)
 	osmotestvty.py -p $(abs_top_srcdir) -w $(abs_top_builddir) -v
 	osmotestconfig.py -p $(abs_top_srcdir) -w $(abs_top_builddir) -v
-	$(PYTHON) $(srcdir)/vty_test_runner.py -w $(abs_top_builddir) -v
-	$(PYTHON) $(srcdir)/ctrl_test_runner.py -w $(abs_top_builddir) -v
+	$(srcdir)/vty_test_runner.py -w $(abs_top_builddir) -v
+	$(srcdir)/ctrl_test_runner.py -w $(abs_top_builddir) -v
 if BUILD_SMPP
-	$(PYTHON) $(srcdir)/smpp_test_runner.py -w $(abs_top_builddir) -v
+	$(srcdir)/smpp_test_runner.py -w $(abs_top_builddir) -v
 endif
 	rm -f $(top_builddir)/hlr.sqlite3
 else

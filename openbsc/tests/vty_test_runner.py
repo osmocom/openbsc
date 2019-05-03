@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # (C) 2013 by Katerina Barone-Adesi <kat.obsc@gmail.com>
 # (C) 2013 by Holger Hans Peter Freyther
