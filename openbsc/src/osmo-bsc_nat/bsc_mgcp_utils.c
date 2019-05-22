@@ -663,19 +663,38 @@ static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint
 	mgcp_release_endp(endp);
 }
 
+/*! Check MGCP parameter line (string) for plausibility.
+ *  \param[in] endp pointer to endpoint (only used for log output)
+ *  \param[in] line single parameter line from the MGCP message
+ *  \returns 1 when line seems plausible, 0 on error */
+static int bsc_mgcp_check_param(const struct mgcp_endpoint *endp, const char *line)
+{
+	const size_t line_len = strlen(line);
+	if (line[0] != '\0' && line_len < 2) {
+		LOGP(DLMGCP, LOGL_ERROR,
+		     "Wrong MGCP option format: '%s' on 0x%x\n",
+		     line, ENDPOINT_NUMBER(endp));
+		return 0;
+	}
+
+	/* FIXME: A couple more checks wouldn't hurt... */
+
+	return 1;
+}
+
 static void bsc_mgcp_osmux_confirm(struct mgcp_endpoint *endp, const char *str)
 {
 	unsigned int osmux_cid;
-	char *res;
+	const char x_osmux_prefix[] = "X-Osmux: ";
+	const size_t x_osmux_prefix_len = strlen(x_osmux_prefix);
 
-	res = strstr(str, "X-Osmux: ");
-	if (!res) {
+	if (!str || strncasecmp(str, x_osmux_prefix, x_osmux_prefix_len)) {
 		LOGP(DMGCP, LOGL_INFO,
-		     "BSC doesn't want to use Osmux, failing back to RTP\n");
+		     "BSC doesn't want to use Osmux, failing back to RTP (str=%s)\n", str);
 		goto err;
 	}
 
-	if (sscanf(res, "X-Osmux: %u", &osmux_cid) != 1) {
+	if (sscanf(str + x_osmux_prefix_len, "%u", &osmux_cid) != 1) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to parse Osmux CID '%s'\n",
 		     str);
 		goto err;
@@ -713,6 +732,10 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	struct mgcp_endpoint *endp = NULL;
 	int i, code;
 	char transaction_id[60];
+	char *save;
+	char *line = NULL;
+	char *line_osmux = NULL;
+	char *line_ci = NULL;
 
 	/* Some assumption that our buffer is big enough.. and null terminate */
 	if (msgb_l2len(msg) > 2000) {
@@ -752,14 +775,42 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
+	save = alloca(msgb_l2len(msg) + 1); /* +1 -> null char appended */
+	memcpy(save, msg->l2h, msgb_l2len(msg) + 1);
+	for_each_line(line, save) {
+
+		if (!bsc_mgcp_check_param(endp, line))
+			continue;
+
+		switch (line[0]) {
+		case 'I':
+		case 'i':
+			line_ci = line;
+			break;
+		case 'X':
+		case 'x':
+			if (strncasecmp(line, "X-Osmux: ", strlen("X-Osmux: ")) == 0)
+				line_osmux = line;
+			/* Ignore unknown X-headers */
+			break;
+		case '\0':
+			/* Reached SDP section, we are done parsing header */
+			goto mgcp_header_done;
+			break;
+		default:
+			break;
+		}
+	}
+mgcp_header_done:
+
+	endp->ci = bsc_mgcp_extract_ci((const char *) line_ci);
 	if (endp->ci == CI_UNUSED) {
 		free_chan_downstream(endp, bsc_endp, bsc);
 		return;
 	}
 
 	if (endp->osmux.state == OSMUX_STATE_NEGOTIATING)
-		bsc_mgcp_osmux_confirm(endp, (const char *) msg->l2h);
+		bsc_mgcp_osmux_confirm(endp, line_osmux);
 
 	/* If we require osmux and it is disabled.. fail */
 	if (nat_osmux_only(bsc->nat->mgcp_cfg, bsc->cfg) &&
@@ -806,14 +857,16 @@ int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60])
 uint32_t bsc_mgcp_extract_ci(const char *str)
 {
 	unsigned int ci;
-	char *res = strstr(str, "I: ");
-	if (!res) {
-		LOGP(DMGCP, LOGL_ERROR, "No CI in msg '%s'\n", str);
+	const char ci_prefix[] = "I: ";
+	const size_t ci_prefix_len = strlen(ci_prefix);
+
+	if (!str || strncasecmp(str, ci_prefix, ci_prefix_len)) {
+		LOGP(DMGCP, LOGL_ERROR, "No CI in line '%s'\n", str);
 		return CI_UNUSED;
 	}
 
-	if (sscanf(res, "I: %x", &ci) != 1) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to parse CI in msg '%s'\n", str);
+	if (sscanf(str + ci_prefix_len, "%x", &ci) != 1) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to parse CI in line '%s'\n", str);
 		return CI_UNUSED;
 	}
 

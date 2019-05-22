@@ -675,7 +675,7 @@ static void test_mgcp_parse(void)
 		abort();
 	}
 
-	ci = bsc_mgcp_extract_ci(crcx_resp);
+	ci = bsc_mgcp_extract_ci(strstr(crcx_resp, "I: "));
 	if (ci != 0x0F) {
 		printf("Failed to parse the CI. Got: %d\n", ci);
 		abort();
