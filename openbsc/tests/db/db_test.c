@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <inttypes.h>
+#include <unistd.h>
 
 static struct gsm_network dummy_net;
 static struct gsm_subscriber_group dummy_sgrp;
@@ -208,6 +209,8 @@ int main()
 
 	dummy_net.subscr_group = &dummy_sgrp;
 	dummy_sgrp.net         = &dummy_net;
+	int rc;
+	fpos_t pos;
 
 	if (db_init("hlr.sqlite3")) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
@@ -215,10 +218,27 @@ int main()
 	}	 
 	printf("DB: Database initialized.\n");
 
-	if (db_prepare()) {
+	/* Muting stdout here because libdbi
+	 * may output noise on some platforms */
+
+	fflush(stdout);
+	fgetpos(stdout, &pos);
+	int old_stdout = dup(fileno(stdout));
+	freopen("/dev/null", "w", stdout);
+
+	rc = db_prepare();
+
+	fflush(stdout);
+	dup2(old_stdout, fileno(stdout));
+	close(old_stdout);
+	clearerr(stdout);
+	fsetpos(stdout, &pos);
+
+	if (rc) {
 		printf("DB: Failed to prepare database.\n");
 		return 1;
 	}
+
 	printf("DB: Database prepared.\n");
 
 	struct gsm_subscriber *alice = NULL;
