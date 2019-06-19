@@ -16,6 +16,7 @@ OSMO_NITB_BRANCH=$COMMIT ./regen_doc.sh osmo-nitb 4242 \
 	"$MANUAL_DIR/OsmoNITB/chapters/counters_generated.adoc" \
 	"$MANUAL_DIR/OsmoNITB/vty/nitb_vty_reference.xml"
 
-#OSMO_BSCNAT_BRANCH=$COMMIT ./regen_doc.sh osmo-bscnat 4244 \
-#	"$MANUAL_DIR/OsmoBSCNAT/chapters/counters_generated.adoc" \
-#	"$MANUAL_DIR/OsmoBSCNAT/vty/nat_vty_reference.xml"
+OSMO_BSCNAT_BRANCH=$COMMIT ./regen_doc.sh osmo-nitb 4244 \
+	"$MANUAL_DIR/OsmoBSCNAT/chapters/counters_generated.adoc" \
+	"$MANUAL_DIR/OsmoBSCNAT/vty/nat_vty_reference.xml" \
+	"osmo-bsc_nat -c /data/osmo-bsc-nat.cfg"
