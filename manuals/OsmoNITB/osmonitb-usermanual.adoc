@@ -18,6 +18,10 @@ include::./common/chapters/vty.adoc[]
 
 include::./common/chapters/logging.adoc[]
 
+include::./common/chapters/counters-overview.adoc[]
+
+include::{srcdir}/chapters/counters.adoc[]
+
 include::{srcdir}/chapters/net.adoc[]
 
 include::./common/chapters/bsc.adoc[]
