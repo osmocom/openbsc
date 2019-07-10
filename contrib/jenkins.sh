@@ -46,6 +46,7 @@ build_project() {
 	"$MAKE" $PARALLEL_MAKE
 	"$MAKE" check || cat-testlogs.sh
 	"$MAKE" distcheck || cat-testlogs.sh
+	"$MAKE" maintainer-clean
 }
 
 . osmo-build.sh
