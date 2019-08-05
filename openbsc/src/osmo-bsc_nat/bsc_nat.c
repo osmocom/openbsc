@@ -1628,8 +1628,8 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds(NULL);
-	osmo_stats_vty_add_cmds(&log_info);
+	logging_vty_add_cmds();
+	osmo_stats_vty_add_cmds();
 	bsc_nat_vty_init(nat);
 	ctrl_vty_init(tall_bsc_ctx);
 
