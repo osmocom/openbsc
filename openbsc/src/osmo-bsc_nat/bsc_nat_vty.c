@@ -1429,11 +1429,3 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 	return 0;
 }
-
-
-/* called by the telnet interface... we have our own init above */
-int bsc_vty_init(struct gsm_network *network)
-{
-	logging_vty_add_cmds(NULL);
-	return 0;
-}
