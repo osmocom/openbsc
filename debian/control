@@ -6,16 +6,16 @@ Build-Depends: debhelper (>= 9),
                autotools-dev,
                autoconf-archive,
                pkg-config,
-               libosmocore-dev,
-               libosmo-sccp-dev,
                libdbi0-dev,
                dh-autoreconf,
                dh-systemd (>= 1.5),
-               libosmo-abis-dev,
-               libosmo-netif-dev,
+               libsmpp34-dev (>= 1.13.0),
+               libosmocore-dev (>= 1.0.1),
+               libosmo-abis-dev (>= 0.6.0),
+               libosmo-netif-dev (>= 0.4.0),
+               libosmo-sccp-dev (>= 1.0.0),
                libdbd-sqlite3,
-               libpcap-dev,
-               libsmpp34-dev
+               libpcap-dev
 Standards-Version: 3.9.8
 Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
 Vcs-Browser: http://openbsc.osmocom.org/trac/browser
