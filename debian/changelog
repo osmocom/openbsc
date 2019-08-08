@@ -1,3 +1,16 @@
+openbsc (1.3.1) unstable; urgency=medium
+
+  [ Daniel Willmann ]
+  * manuals: Update osmonitb counter/vty documentation
+  * manuals: Generate vty/counter documentation for osmo-bscnat
+
+  [ Pau Espin Pedrol ]
+  * nat: Remove unused func bsc_vty_init()
+  * Remove undefined param passed to {logging,osmo_stats}_vty_add_cmds
+  * debian/control: Match dependency versions against configure.ac
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Thu, 08 Aug 2019 17:32:51 +0200
+
 openbsc (1.3.0) unstable; urgency=medium
 
   [ Keith ]
