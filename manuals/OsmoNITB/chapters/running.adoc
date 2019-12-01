@@ -12,7 +12,7 @@ arguments:
 *-h, --help*::
 	Print a short help message about the supported options
 *-V, --version*::
-	Print the compile-time version number of the OsmoBTS program
+	Print the compile-time version number of the program
 *-d, --debug 'DBGMASK','DBGLEVELS'*::
 	Set the log subsystems and levels for logging to stderr. This
 	has mostly been superseded by VTY-based logging configuration,
