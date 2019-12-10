@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # (C) 2014 by Holger Hans Peter Freyther
 # based on vty_test_runner.py:
@@ -46,8 +46,8 @@ class TestVTYBase(unittest.TestCase):
         try:
             self.proc = osmoutil.popen_devnull(osmo_vty_cmd)
         except OSError:
-            print >> sys.stderr, "Current directory: %s" % os.getcwd()
-            print >> sys.stderr, "Consider setting -b"
+            print("Current directory: %s" % os.getcwd(), file=sys.stderr)
+            print("Consider setting -b", file=sys.stderr)
 
         appstring = self.vty_app()[2]
         appport = self.vty_app()[0]
@@ -73,14 +73,14 @@ class TestSMPPNITB(TestVTYBase):
         # Enable the configuration
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal", ['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
 
         self.assertTrue(self.vty.verify('smpp', ['']))
-        self.assertEquals(self.vty.node(), 'config-smpp')
+        self.assertEqual(self.vty.node(), 'config-smpp')
         self.assertTrue(self.vty.verify('system-id test', ['']))
         self.assertTrue(self.vty.verify('local-tcp-port 2775', ['']))
         self.assertTrue(self.vty.verify('esme test', ['']))
-        self.assertEquals(self.vty.node(), 'config-smpp-esme')
+        self.assertEqual(self.vty.node(), 'config-smpp-esme')
         self.assertTrue(self.vty.verify('default-route', ['']))
         self.assertTrue(self.vty.verify('end', ['']))
 
@@ -88,7 +88,7 @@ class TestSMPPNITB(TestVTYBase):
         sck = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sck.setblocking(1)
         sck.connect(('0.0.0.0', 2775))
-        sck.sendall('\x00\x00\x00\x02\x00')
+        sck.sendall(b'\x00\x00\x00\x02\x00')
         sck.close()
 
         # Check if the VTY is still there
@@ -98,7 +98,7 @@ class TestSMPPNITB(TestVTYBase):
         sck = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sck.setblocking(1)
         sck.connect(('0.0.0.0', 2775))
-        sck.sendall('\x00\x01\x00\x01\x01')
+        sck.sendall(b'\x00\x01\x00\x01\x01')
         sck.close()
 
         self.vty.verify('enable',[''])
@@ -128,9 +128,9 @@ if __name__ == '__main__':
     if args.p:
         confpath = args.p
 
-    print "confpath %s, workdir %s" % (confpath, workdir)
+    print("confpath %s, workdir %s" % (confpath, workdir))
     os.chdir(workdir)
-    print "Running tests for specific SMPP"
+    print("Running tests for specific SMPP")
     suite = unittest.TestSuite()
     suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestSMPPNITB))
     res = unittest.TextTestRunner(verbosity=verbose_level).run(suite)
