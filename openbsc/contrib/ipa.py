@@ -56,7 +56,11 @@ class IPA(object):
         """
         Create TAG as TLV data
         """
-        return struct.pack(">HB", len(v) + 1, t) + v
+        if isinstance(v, str):
+            v = v.encode()
+        if isinstance(t, str):
+            t = t.encode()
+        return struct.pack(">HB".encode(), len(v) + 1, t) + v
 
     def proto(self, p):
         """
@@ -96,9 +100,15 @@ class IPA(object):
         """
         Add IPA header (with extension if necessary), data must be represented as bytes
         """
+        if isinstance(data, str):
+            data = data.encode()
+        if isinstance(proto, str):
+            proto = proto.encode()
+        if isinstance(ext, str):
+            ext = ext.encode()
         if ext is None:
-            return struct.pack(">HB", len(data) + 1, proto) + data
-        return struct.pack(">HBB", len(data) + 1, proto, ext) + data
+            return struct.pack(">HB".encode(), len(data) + 1, proto) + data
+        return struct.pack(">HBB".encode(), len(data) + 1, proto, ext) + data
 
     def del_header(self, data):
         """

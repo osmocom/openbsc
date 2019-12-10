@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # (C) 2013 by Katerina Barone-Adesi <kat.obsc@gmail.com>
 # This program is free software: you can redistribute it and/or modify

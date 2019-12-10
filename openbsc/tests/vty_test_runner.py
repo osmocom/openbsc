@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # (C) 2013 by Katerina Barone-Adesi <kat.obsc@gmail.com>
 # (C) 2013 by Holger Hans Peter Freyther
@@ -51,8 +51,8 @@ class TestVTYBase(unittest.TestCase):
         try:
             self.proc = osmoutil.popen_devnull(osmo_vty_cmd)
         except OSError:
-            print >> sys.stderr, "Current directory: %s" % os.getcwd()
-            print >> sys.stderr, "Consider setting -b"
+            print("Current directory: %s" % os.getcwd(), file=sys.stderr)
+            print("Consider setting -b", file=sys.stderr)
 
         appstring = self.vty_app()[2]
         appport = self.vty_app()[0]
@@ -75,28 +75,28 @@ class TestVTYMGCP(TestVTYBase):
     def testForcePtime(self):
         self.vty.enable()
         res = self.vty.command("show running-config")
-        self.assert_(res.find('  rtp force-ptime 20\r') > 0)
-        self.assertEquals(res.find('  no rtp force-ptime\r'), -1)
+        self.assertTrue(res.find('  rtp force-ptime 20\r') > 0)
+        self.assertEqual(res.find('  no rtp force-ptime\r'), -1)
 
         self.vty.command("configure terminal")
         self.vty.command("mgcp")
         self.vty.command("no rtp force-ptime")
         res = self.vty.command("show running-config")
-        self.assertEquals(res.find('  rtp force-ptime 20\r'), -1)
-        self.assertEquals(res.find('  no rtp force-ptime\r'), -1)
+        self.assertEqual(res.find('  rtp force-ptime 20\r'), -1)
+        self.assertEqual(res.find('  no rtp force-ptime\r'), -1)
 
     def testOmitAudio(self):
         self.vty.enable()
         res = self.vty.command("show running-config")
-        self.assert_(res.find('  sdp audio-payload send-name\r') > 0)
-        self.assertEquals(res.find('  no sdp audio-payload send-name\r'), -1)
+        self.assertTrue(res.find('  sdp audio-payload send-name\r') > 0)
+        self.assertEqual(res.find('  no sdp audio-payload send-name\r'), -1)
 
         self.vty.command("configure terminal")
         self.vty.command("mgcp")
         self.vty.command("no sdp audio-payload send-name")
         res = self.vty.command("show running-config")
-        self.assertEquals(res.find('  rtp sdp audio-payload send-name\r'), -1)
-        self.assert_(res.find('  no sdp audio-payload send-name\r') > 0)
+        self.assertEqual(res.find('  rtp sdp audio-payload send-name\r'), -1)
+        self.assertTrue(res.find('  no sdp audio-payload send-name\r') > 0)
 
         # TODO: test it for the trunk!
 
@@ -109,18 +109,18 @@ class TestVTYMGCP(TestVTYBase):
         # enable.. disable bts-bind-ip
         self.vty.command("rtp bts-bind-ip 254.253.252.250")
         res = self.vty.command("show running-config")
-        self.assert_(res.find('rtp bts-bind-ip 254.253.252.250') > 0)
+        self.assertTrue(res.find('rtp bts-bind-ip 254.253.252.250') > 0)
         self.vty.command("no rtp bts-bind-ip")
         res = self.vty.command("show running-config")
-        self.assertEquals(res.find('  rtp bts-bind-ip'), -1)
+        self.assertEqual(res.find('  rtp bts-bind-ip'), -1)
 
         # enable.. disable net-bind-ip
         self.vty.command("rtp net-bind-ip 254.253.252.250")
         res = self.vty.command("show running-config")
-        self.assert_(res.find('rtp net-bind-ip 254.253.252.250') > 0)
+        self.assertTrue(res.find('rtp net-bind-ip 254.253.252.250') > 0)
         self.vty.command("no rtp net-bind-ip")
         res = self.vty.command("show running-config")
-        self.assertEquals(res.find('  rtp net-bind-ip'), -1)
+        self.assertEqual(res.find('  rtp net-bind-ip'), -1)
 
 
 class TestVTYGenericBSC(TestVTYBase):
@@ -128,42 +128,42 @@ class TestVTYGenericBSC(TestVTYBase):
     def checkForEndAndExit(self):
         res = self.vty.command("list")
         #print ('looking for "exit"\n')
-        self.assert_(res.find('  exit\r') > 0)
+        self.assertTrue(res.find('  exit\r') > 0)
         #print 'found "exit"\nlooking for "end"\n'
-        self.assert_(res.find('  end\r') > 0)
+        self.assertTrue(res.find('  end\r') > 0)
         #print 'found "end"\n'
 
     def _testConfigNetworkTree(self):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal",['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("network",['']))
-        self.assertEquals(self.vty.node(), 'config-net')
+        self.assertEqual(self.vty.node(), 'config-net')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("bts 0",['']))
-        self.assertEquals(self.vty.node(), 'config-net-bts')
+        self.assertEqual(self.vty.node(), 'config-net-bts')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("trx 0",['']))
-        self.assertEquals(self.vty.node(), 'config-net-bts-trx')
+        self.assertEqual(self.vty.node(), 'config-net-bts-trx')
         self.checkForEndAndExit()
         self.vty.command("write terminal")
         self.assertTrue(self.vty.verify("exit",['']))
-        self.assertEquals(self.vty.node(), 'config-net-bts')
+        self.assertEqual(self.vty.node(), 'config-net-bts')
         self.assertTrue(self.vty.verify("exit",['']))
         self.assertTrue(self.vty.verify("bts 1",['']))
-        self.assertEquals(self.vty.node(), 'config-net-bts')
+        self.assertEqual(self.vty.node(), 'config-net-bts')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("trx 1",['']))
-        self.assertEquals(self.vty.node(), 'config-net-bts-trx')
+        self.assertEqual(self.vty.node(), 'config-net-bts-trx')
         self.checkForEndAndExit()
         self.vty.command("write terminal")
         self.assertTrue(self.vty.verify("exit",['']))
-        self.assertEquals(self.vty.node(), 'config-net-bts')
+        self.assertEqual(self.vty.node(), 'config-net-bts')
         self.assertTrue(self.vty.verify("exit",['']))
-        self.assertEquals(self.vty.node(), 'config-net')
+        self.assertEqual(self.vty.node(), 'config-net')
         self.assertTrue(self.vty.verify("exit",['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify("exit",['']))
         self.assertTrue(self.vty.node() is None)
 
@@ -196,35 +196,35 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         # check the default
         res = self.vty.command("write terminal")
-        self.assert_(res.find(' no smpp-first') > 0)
+        self.assertTrue(res.find(' no smpp-first') > 0)
 
         self.vty.verify("smpp-first", [''])
         res = self.vty.command("write terminal")
-        self.assert_(res.find(' smpp-first') > 0)
-        self.assertEquals(res.find('no smpp-first'), -1)
+        self.assertTrue(res.find(' smpp-first') > 0)
+        self.assertEqual(res.find('no smpp-first'), -1)
 
         self.vty.verify("no smpp-first", [''])
         res = self.vty.command("write terminal")
-        self.assert_(res.find('no smpp-first') > 0)
+        self.assertTrue(res.find('no smpp-first') > 0)
 
     def testVtyTree(self):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal", ['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('mncc-int', ['']))
-        self.assertEquals(self.vty.node(), 'config-mncc-int')
+        self.assertEqual(self.vty.node(), 'config-mncc-int')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('exit', ['']))
 
         if self.checkForSmpp():
-            self.assertEquals(self.vty.node(), 'config')
+            self.assertEqual(self.vty.node(), 'config')
             self.assertTrue(self.vty.verify('smpp', ['']))
-            self.assertEquals(self.vty.node(), 'config-smpp')
+            self.assertEqual(self.vty.node(), 'config-smpp')
             self.checkForEndAndExit()
             self.assertTrue(self.vty.verify("exit", ['']))
 
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify("exit", ['']))
         self.assertTrue(self.vty.node() is None)
 
@@ -234,10 +234,10 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         if self.checkForSmpp():
             self.vty.command('smpp')
-            self.assertEquals(self.vty.node(), 'config-smpp')
+            self.assertEqual(self.vty.node(), 'config-smpp')
             self.vty.command('mncc-int')
 
-        self.assertEquals(self.vty.node(), 'config-mncc-int')
+        self.assertEqual(self.vty.node(), 'config-mncc-int')
 
     def testVtyAuthorization(self):
         self.vty.enable()
@@ -267,7 +267,7 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.vty.command("si2quater neighbor-list del earfcn 1911")
         self.vty.command("si2quater neighbor-list del earfcn 1924")
         self.vty.command("si2quater neighbor-list del earfcn 2111")
-        self.assertEquals(before, self.vty.command("show running-config"))
+        self.assertEqual(before, self.vty.command("show running-config"))
         self.vty.command("si2quater neighbor-list add uarfcn 1976 13 1")
         self.vty.command("si2quater neighbor-list add uarfcn 1976 38 1")
         self.vty.command("si2quater neighbor-list add uarfcn 1976 44 1")
@@ -290,7 +290,7 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.vty.command("si2quater neighbor-list del uarfcn 1976 224")
         self.vty.command("si2quater neighbor-list del uarfcn 1976 225")
         self.vty.command("si2quater neighbor-list del uarfcn 1976 226")
-        self.assertEquals(before, self.vty.command("show running-config"))
+        self.assertEqual(before, self.vty.command("show running-config"))
 
     def testEnableDisablePeriodicLU(self):
         self.vty.enable()
@@ -306,14 +306,14 @@ class TestVTYNITB(TestVTYGenericBSC):
         # Enable periodic lu..
         self.vty.verify("periodic location update 60", [''])
         res = self.vty.command("write terminal")
-        self.assert_(res.find('periodic location update 60') > 0)
-        self.assertEquals(res.find('no periodic location update'), -1)
+        self.assertTrue(res.find('periodic location update 60') > 0)
+        self.assertEqual(res.find('no periodic location update'), -1)
 
         # Now disable it..
         self.vty.verify("no periodic location update", [''])
         res = self.vty.command("write terminal")
-        self.assertEquals(res.find('periodic location update 60'), -1)
-        self.assert_(res.find('no periodic location update') > 0)
+        self.assertEqual(res.find('periodic location update 60'), -1)
+        self.assertTrue(res.find('no periodic location update') > 0)
 
     def testEnableDisableSiHacks(self):
         self.vty.enable()
@@ -324,14 +324,14 @@ class TestVTYNITB(TestVTYGenericBSC):
         # Enable periodic lu..
         self.vty.verify("force-combined-si", [''])
         res = self.vty.command("write terminal")
-        self.assert_(res.find('  force-combined-si') > 0)
-        self.assertEquals(res.find('no force-combined-si'), -1)
+        self.assertTrue(res.find('  force-combined-si') > 0)
+        self.assertEqual(res.find('no force-combined-si'), -1)
 
         # Now disable it..
         self.vty.verify("no force-combined-si", [''])
         res = self.vty.command("write terminal")
-        self.assertEquals(res.find('  force-combined-si'), -1)
-        self.assert_(res.find('no force-combined-si') > 0)
+        self.assertEqual(res.find('  force-combined-si'), -1)
+        self.assertTrue(res.find('no force-combined-si') > 0)
 
     def testRachAccessControlClass(self):
         self.vty.enable()
@@ -355,7 +355,7 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command("write terminal")
         for classNum in range(16):
             if classNum != 10:
-                self.assert_(res.find("rach access-control-class " + str(classNum) + " barred") > 0)
+                self.assertTrue(res.find("rach access-control-class " + str(classNum) + " barred") > 0)
 
         # Allowed rach access control classes
         for classNum in range(16):
@@ -366,7 +366,7 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command("write terminal")
         for classNum in range(16):
             if classNum != 10:
-                self.assertEquals(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
+                self.assertEqual(res.find("rach access-control-class " + str(classNum) + " barred"), -1)
 
     def testSubscriberCreateDeleteTwice(self):
         """
@@ -385,23 +385,23 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         # Lets create one
         res = self.vty.command('subscriber create imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
+        self.assertTrue(res.find("    IMSI: "+imsi) > 0)
         # And now create one again.
         res2 = self.vty.command('subscriber create imsi '+imsi)
-        self.assert_(res2.find("    IMSI: "+imsi) > 0)
+        self.assertTrue(res2.find("    IMSI: "+imsi) > 0)
         self.assertEqual(res, res2)
 
         # Verify it has been created
         res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
+        self.assertTrue(res.find("    IMSI: "+imsi) > 0)
 
         # Delete it
         res = self.vty.command('subscriber imsi ' + imsi + ' delete')
-        self.assert_("" == res)
+        self.assertTrue("" == res)
 
         # Now it should not be there anymore
         res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(('% No subscriber found for imsi ' + imsi) == res)
+        self.assertTrue(('% No subscriber found for imsi ' + imsi) == res)
 
 
     def testSubscriberCreateDelete(self):
@@ -417,12 +417,12 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         # Lets create one
         res = self.vty.command('subscriber create imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
-        self.assert_(res.find("Extension") > 0)
+        self.assertTrue(res.find("    IMSI: "+imsi) > 0)
+        self.assertTrue(res.find("Extension") > 0)
 
         # Now we have it
         res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
+        self.assertTrue(res.find("    IMSI: "+imsi) > 0)
 
         # With narrow random interval
         self.vty.command("configure terminal")
@@ -431,16 +431,16 @@ class TestVTYNITB(TestVTYGenericBSC):
         # wrong interval
         res = self.vty.command("subscriber-create-on-demand random 221 122")
         # error string will contain arguments
-        self.assert_(res.find("122") > 0)
-        self.assert_(res.find("221") > 0)
+        self.assertTrue(res.find("122") > 0)
+        self.assertTrue(res.find("221") > 0)
         # correct interval - silent ok
         self.assertTrue(self.vty.verify("subscriber-create-on-demand random 221 222", ['']))
         self.vty.command("end")
 
         res = self.vty.command('subscriber create imsi ' + imsi2)
-        self.assert_(res.find("    IMSI: " + imsi2) > 0)
-        self.assert_(res.find("221") > 0 or res.find("222") > 0)
-        self.assert_(res.find("    Extension: ") > 0)
+        self.assertTrue(res.find("    IMSI: " + imsi2) > 0)
+        self.assertTrue(res.find("221") > 0 or res.find("222") > 0)
+        self.assertTrue(res.find("    Extension: ") > 0)
 
         # Without extension
         self.vty.command("configure terminal")
@@ -448,8 +448,8 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assertTrue(self.vty.verify("subscriber-create-on-demand no-extension", ['']))
         self.vty.command("end")
         res = self.vty.command('subscriber create imsi ' + imsi3)
-        self.assert_(res.find("    IMSI: " + imsi3) > 0)
-        self.assertEquals(res.find("Extension"), -1)
+        self.assertTrue(res.find("    IMSI: " + imsi3) > 0)
+        self.assertEqual(res.find("Extension"), -1)
 
         # With extension again
         self.vty.command("configure terminal")
@@ -460,22 +460,22 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.vty.command("end")
 
         res = self.vty.command('subscriber create imsi ' + imsi4)
-        self.assert_(res.find("    IMSI: " + imsi4) > 0)
-        self.assert_(res.find("    Extension: ") > 0)
+        self.assertTrue(res.find("    IMSI: " + imsi4) > 0)
+        self.assertTrue(res.find("    Extension: ") > 0)
 
         # Delete it
         res = self.vty.command('subscriber imsi ' + imsi + ' delete')
-        self.assert_("" == res)
+        self.assertTrue("" == res)
         res = self.vty.command('subscriber imsi ' + imsi2 + ' delete')
-        self.assert_("" == res)
+        self.assertTrue("" == res)
         res = self.vty.command('subscriber imsi ' + imsi3 + ' delete')
-        self.assert_("" == res)
+        self.assertTrue("" == res)
         res = self.vty.command('subscriber imsi ' + imsi4 + ' delete')
-        self.assert_("" == res)
+        self.assertTrue("" == res)
 
         # Now it should not be there anymore
         res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(('% No subscriber found for imsi ' + imsi) == res)
+        self.assertTrue(('% No subscriber found for imsi ' + imsi) == res)
 
         # range
         self.vty.command("end")
@@ -483,20 +483,20 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.vty.command("nitb")
         self.assertTrue(self.vty.verify("subscriber-create-on-demand random 9999999998 9999999999", ['']))
         res = self.vty.command("show running-config")
-        self.assert_(res.find("subscriber-create-on-demand random 9999999998 9999999999"))
+        self.assertTrue(res.find("subscriber-create-on-demand random 9999999998 9999999999"))
         self.vty.command("end")
 
         res = self.vty.command('subscriber create imsi ' + imsi)
         print(res)
-        self.assert_(res.find("    IMSI: " + imsi) > 0)
-        self.assert_(res.find("9999999998") > 0 or res.find("9999999999") > 0)
-        self.assert_(res.find("    Extension: ") > 0)
+        self.assertTrue(res.find("    IMSI: " + imsi) > 0)
+        self.assertTrue(res.find("9999999998") > 0 or res.find("9999999999") > 0)
+        self.assertTrue(res.find("    Extension: ") > 0)
 
         res = self.vty.command('subscriber imsi ' + imsi + ' delete')
-        self.assert_("" == res)
+        self.assertTrue("" == res)
 
         res = self.vty.command('show subscriber imsi '+imsi)
-        self.assert_(('% No subscriber found for imsi ' + imsi) == res)
+        self.assertTrue(('% No subscriber found for imsi ' + imsi) == res)
 
 
     def testSubscriberSettings(self):
@@ -508,18 +508,18 @@ class TestVTYNITB(TestVTYGenericBSC):
 
         # Lets create one
         res = self.vty.command('subscriber create imsi '+imsi)
-        self.assert_(res.find("    IMSI: "+imsi) > 0)
-        self.assert_(res.find("Extension") > 0)
+        self.assertTrue(res.find("    IMSI: "+imsi) > 0)
+        self.assertTrue(res.find("Extension") > 0)
 
         self.vty.verify('subscriber imsi '+wrong_imsi+' name wrong', ['% No subscriber found for imsi '+wrong_imsi])
         res = self.vty.command('subscriber imsi '+imsi+' name '+('X' * 160))
-        self.assert_(res.find("NAME is too long") > 0)
+        self.assertTrue(res.find("NAME is too long") > 0)
 
         self.vty.verify('subscriber imsi '+imsi+' name '+('G' * 159), [''])
 
         self.vty.verify('subscriber imsi '+wrong_imsi+' extension 840', ['% No subscriber found for imsi '+wrong_imsi])
         res = self.vty.command('subscriber imsi '+imsi+' extension '+('9' * 15))
-        self.assert_(res.find("EXTENSION is too long") > 0)
+        self.assertTrue(res.find("EXTENSION is too long") > 0)
 
         self.vty.verify('subscriber imsi '+imsi+' extension '+('1' * 14), [''])
 
@@ -529,34 +529,34 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.assertTrue(self.vty.verify("subscriber-create-on-demand", ['']))
         # wrong interval
         res = self.vty.command("subscriber-create-on-demand random 221 122")
-        self.assert_(res.find("122") > 0)
-        self.assert_(res.find("221") > 0)
+        self.assertTrue(res.find("122") > 0)
+        self.assertTrue(res.find("221") > 0)
         # correct interval
         self.assertTrue(self.vty.verify("subscriber-create-on-demand random 221 222", ['']))
         self.vty.command("end")
 
         # create subscriber with extension in a configured interval
         res = self.vty.command('subscriber create imsi ' + imsi2)
-        self.assert_(res.find("    IMSI: " + imsi2) > 0)
-        self.assert_(res.find("221") > 0 or res.find("222") > 0)
-        self.assert_(res.find("    Extension: ") > 0)
+        self.assertTrue(res.find("    IMSI: " + imsi2) > 0)
+        self.assertTrue(res.find("221") > 0 or res.find("222") > 0)
+        self.assertTrue(res.find("    Extension: ") > 0)
 
         # Delete it
         res = self.vty.command('subscriber imsi ' + imsi + ' delete')
-        self.assert_(res != "")
+        self.assertTrue(res != "")
         # imsi2 is inactive so deletion should succeed
         res = self.vty.command('subscriber imsi ' + imsi2 + ' delete')
-        self.assert_("" == res)
+        self.assertTrue("" == res)
 
     def testShowPagingGroup(self):
         res = self.vty.command("show paging-group 255 1234567")
         self.assertEqual(res, "% can't find BTS 255")
         res = self.vty.command("show paging-group 0 1234567")
-        self.assertEquals(res, "%Paging group for IMSI 1234567 on BTS #0 is 7")
+        self.assertEqual(res, "%Paging group for IMSI 1234567 on BTS #0 is 7")
 
     def testShowNetwork(self):
         res = self.vty.command("show network")
-        self.assert_(res.startswith('BSC is on Country Code') >= 0)
+        self.assertTrue(res.startswith('BSC is on Country Code') >= 0)
 
     def testMeasurementFeed(self):
         self.vty.enable()
@@ -564,17 +564,17 @@ class TestVTYNITB(TestVTYGenericBSC):
         self.vty.command("mncc-int")
 
         res = self.vty.command("write terminal")
-        self.assertEquals(res.find('meas-feed scenario'), -1)
+        self.assertEqual(res.find('meas-feed scenario'), -1)
 
         self.vty.command("meas-feed scenario bla")
         res = self.vty.command("write terminal")
-        self.assert_(res.find('meas-feed scenario bla') > 0)
+        self.assertTrue(res.find('meas-feed scenario bla') > 0)
 
         self.vty.command("meas-feed scenario abcdefghijklmnopqrstuvwxyz01234567890")
         res = self.vty.command("write terminal")
-        self.assertEquals(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz01234567890'), -1)
-        self.assertEquals(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz012345'), -1)
-        self.assert_(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz01234') > 0)
+        self.assertEqual(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz01234567890'), -1)
+        self.assertEqual(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz012345'), -1)
+        self.assertTrue(res.find('meas-feed scenario abcdefghijklmnopqrstuvwxyz01234') > 0)
 
 
 class TestVTYBSC(TestVTYGenericBSC):
@@ -592,18 +592,18 @@ class TestVTYBSC(TestVTYGenericBSC):
     def testVtyTree(self):
         self.vty.enable()
         self.assertTrue(self.vty.verify("configure terminal", ['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("msc 0", ['']))
-        self.assertEquals(self.vty.node(), 'config-msc')
+        self.assertEqual(self.vty.node(), 'config-msc')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("exit", ['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify("bsc", ['']))
-        self.assertEquals(self.vty.node(), 'config-bsc')
+        self.assertEqual(self.vty.node(), 'config-bsc')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify("exit", ['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify("exit", ['']))
         self.assertTrue(self.vty.node() is None)
 
@@ -624,12 +624,12 @@ class TestVTYBSC(TestVTYGenericBSC):
 
         # Verify settings
         res = self.vty.command("write terminal")
-        self.assert_(res.find('bsc-msc-lost-text MSC disconnected') > 0)
-        self.assertEquals(res.find('no bsc-msc-lost-text'), -1)
-        self.assert_(res.find('bsc-welcome-text Hello MS') > 0)
-        self.assertEquals(res.find('no bsc-welcome-text'), -1)
-        self.assert_(res.find('bsc-grace-text In grace period') > 0)
-        self.assertEquals(res.find('no bsc-grace-text'), -1)
+        self.assertTrue(res.find('bsc-msc-lost-text MSC disconnected') > 0)
+        self.assertEqual(res.find('no bsc-msc-lost-text'), -1)
+        self.assertTrue(res.find('bsc-welcome-text Hello MS') > 0)
+        self.assertEqual(res.find('no bsc-welcome-text'), -1)
+        self.assertTrue(res.find('bsc-grace-text In grace period') > 0)
+        self.assertEqual(res.find('no bsc-grace-text'), -1)
 
         # Now disable it..
         self.vty.verify("no bsc-msc-lost-text", [''])
@@ -638,12 +638,12 @@ class TestVTYBSC(TestVTYGenericBSC):
 
         # Verify settings
         res = self.vty.command("write terminal")
-        self.assertEquals(res.find('bsc-msc-lost-text MSC disconnected'), -1)
-        self.assert_(res.find('no bsc-msc-lost-text') > 0)
-        self.assertEquals(res.find('bsc-welcome-text Hello MS'), -1)
-        self.assert_(res.find('no bsc-welcome-text') > 0)
-        self.assertEquals(res.find('bsc-grace-text In grace period'), -1)
-        self.assert_(res.find('no bsc-grace-text') > 0)
+        self.assertEqual(res.find('bsc-msc-lost-text MSC disconnected'), -1)
+        self.assertTrue(res.find('no bsc-msc-lost-text') > 0)
+        self.assertEqual(res.find('bsc-welcome-text Hello MS'), -1)
+        self.assertTrue(res.find('no bsc-welcome-text') > 0)
+        self.assertEqual(res.find('bsc-grace-text In grace period'), -1)
+        self.assertTrue(res.find('no bsc-grace-text') > 0)
 
     def testUssdNotificationsBsc(self):
         self.vty.enable()
@@ -658,16 +658,16 @@ class TestVTYBSC(TestVTYGenericBSC):
 
         # Verify settings
         res = self.vty.command("write terminal")
-        self.assert_(res.find('missing-msc-text No MSC found') > 0)
-        self.assertEquals(res.find('no missing-msc-text'), -1)
+        self.assertTrue(res.find('missing-msc-text No MSC found') > 0)
+        self.assertEqual(res.find('no missing-msc-text'), -1)
 
         # Now disable it..
         self.vty.verify("no missing-msc-text", [''])
 
         # Verify settings
         res = self.vty.command("write terminal")
-        self.assertEquals(res.find('missing-msc-text No MSC found'), -1)
-        self.assert_(res.find('no missing-msc-text') > 0)
+        self.assertEqual(res.find('missing-msc-text No MSC found'), -1)
+        self.assertTrue(res.find('no missing-msc-text') > 0)
 
     def testNetworkTimezone(self):
         self.vty.enable()
@@ -685,26 +685,26 @@ class TestVTYBSC(TestVTYGenericBSC):
 
         # Verify settings
         res = self.vty.command("write terminal")
-        self.assert_(res.find('timezone 2 30') > 0)
-        self.assertEquals(res.find('timezone 2 30 '), -1)
+        self.assertTrue(res.find('timezone 2 30') > 0)
+        self.assertEqual(res.find('timezone 2 30 '), -1)
 
         # Set time zone with DST
         self.vty.verify("timezone 2 30 1", [''])
 
         # Verify settings
         res = self.vty.command("write terminal")
-        self.assert_(res.find('timezone 2 30 1') > 0)
+        self.assertTrue(res.find('timezone 2 30 1') > 0)
 
         # Now disable it..
         self.vty.verify("no timezone", [''])
 
         # Verify settings
         res = self.vty.command("write terminal")
-        self.assertEquals(res.find(' timezone'), -1)
+        self.assertEqual(res.find(' timezone'), -1)
 
     def testShowNetwork(self):
         res = self.vty.command("show network")
-        self.assert_(res.startswith('BSC is on Country Code') >= 0)
+        self.assertTrue(res.startswith('BSC is on Country Code') >= 0)
 
     def testPingPongConfiguration(self):
         self.vty.enable()
@@ -714,28 +714,28 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.vty.verify("timeout-ping 12", [''])
         self.vty.verify("timeout-pong 14", [''])
         res = self.vty.command("show running-config")
-        self.assert_(res.find(" timeout-ping 12") > 0)
-        self.assert_(res.find(" timeout-pong 14") > 0)
-        self.assert_(res.find(" no timeout-ping advanced") > 0)
+        self.assertTrue(res.find(" timeout-ping 12") > 0)
+        self.assertTrue(res.find(" timeout-pong 14") > 0)
+        self.assertTrue(res.find(" no timeout-ping advanced") > 0)
 
         self.vty.verify("timeout-ping advanced", [''])
         res = self.vty.command("show running-config")
-        self.assert_(res.find(" timeout-ping 12") > 0)
-        self.assert_(res.find(" timeout-pong 14") > 0)
-        self.assert_(res.find(" timeout-ping advanced") > 0)
+        self.assertTrue(res.find(" timeout-ping 12") > 0)
+        self.assertTrue(res.find(" timeout-pong 14") > 0)
+        self.assertTrue(res.find(" timeout-ping advanced") > 0)
 
         self.vty.verify("no timeout-ping advanced", [''])
         res = self.vty.command("show running-config")
-        self.assert_(res.find(" timeout-ping 12") > 0)
-        self.assert_(res.find(" timeout-pong 14") > 0)
-        self.assert_(res.find(" no timeout-ping advanced") > 0)
+        self.assertTrue(res.find(" timeout-ping 12") > 0)
+        self.assertTrue(res.find(" timeout-pong 14") > 0)
+        self.assertTrue(res.find(" no timeout-ping advanced") > 0)
 
         self.vty.verify("no timeout-ping", [''])
         res = self.vty.command("show running-config")
-        self.assertEquals(res.find(" timeout-ping 12"), -1)
-        self.assertEquals(res.find(" timeout-pong 14"), -1)
-        self.assertEquals(res.find(" no timeout-ping advanced"), -1)
-        self.assert_(res.find(" no timeout-ping") > 0)
+        self.assertEqual(res.find(" timeout-ping 12"), -1)
+        self.assertEqual(res.find(" timeout-pong 14"), -1)
+        self.assertEqual(res.find(" no timeout-ping advanced"), -1)
+        self.assertTrue(res.find(" no timeout-ping") > 0)
 
         self.vty.verify("timeout-ping advanced", ['%ping handling is disabled. Enable it first.'])
 
@@ -743,15 +743,15 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.vty.verify("timeout-ping 12", [''])
         self.vty.verify("timeout-pong 14", [''])
         res = self.vty.command("show running-config")
-        self.assert_(res.find(" timeout-ping 12") > 0)
-        self.assert_(res.find(" timeout-pong 14") > 0)
-        self.assert_(res.find(" timeout-ping advanced") > 0)
+        self.assertTrue(res.find(" timeout-ping 12") > 0)
+        self.assertTrue(res.find(" timeout-pong 14") > 0)
+        self.assertTrue(res.find(" timeout-ping advanced") > 0)
 
     def testMscDataCoreLACCI(self):
         self.vty.enable()
         res = self.vty.command("show running-config")
-        self.assertEquals(res.find("core-location-area-code"), -1)
-        self.assertEquals(res.find("core-cell-identity"), -1)
+        self.assertEqual(res.find("core-location-area-code"), -1)
+        self.assertEqual(res.find("core-cell-identity"), -1)
 
         self.vty.command("configure terminal")
         self.vty.command("msc 0")
@@ -759,8 +759,8 @@ class TestVTYBSC(TestVTYGenericBSC):
         self.vty.command("core-cell-identity 333")
 
         res = self.vty.command("show running-config")
-        self.assert_(res.find("core-location-area-code 666") > 0)
-        self.assert_(res.find("core-cell-identity 333") > 0)
+        self.assertTrue(res.find("core-location-area-code 666") > 0)
+        self.assertTrue(res.find("core-cell-identity 333") > 0)
 
 class TestVTYNAT(TestVTYGenericBSC):
 
@@ -781,7 +781,7 @@ class TestVTYNAT(TestVTYGenericBSC):
         nat_bsc_reload(self)
         bscs2 = self.vty.command("show bscs-config")
         # check that multiple calls to bscs-config-file give the same result
-        self.assertEquals(bscs1, bscs2)
+        self.assertEqual(bscs1, bscs2)
 
         # add new bsc
         self.vty.command("configure terminal")
@@ -805,23 +805,23 @@ class TestVTYNAT(TestVTYGenericBSC):
             b1 = nat_bsc_sock_test(1, "xyu", verbose=True, proc=self.proc)
             b2 = nat_bsc_sock_test(5, "key", verbose=True, proc=self.proc)
 
-            self.assertEquals("3 BSCs configured", self.vty.command("show nat num-bscs-configured"))
+            self.assertEqual("3 BSCs configured", self.vty.command("show nat num-bscs-configured"))
             self.assertTrue(3 == nat_bsc_num_con(self))
-            self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
+            self.assertEqual("MSC is connected: 1", self.vty.command("show msc connection"))
 
             nat_bsc_reload(self)
             bscs2 = self.vty.command("show bscs-config")
             # check that the reset to initial config succeeded
-            self.assertEquals(bscs1, bscs2)
+            self.assertEqual(bscs1, bscs2)
 
-            self.assertEquals("2 BSCs configured", self.vty.command("show nat num-bscs-configured"))
+            self.assertEqual("2 BSCs configured", self.vty.command("show nat num-bscs-configured"))
             self.assertTrue(1 == nat_bsc_num_con(self))
             rem = self.vty.command("show bsc connections").split(' ')
             # remaining connection is for BSC0
-            self.assertEquals('0', rem[2])
+            self.assertEqual('0', rem[2])
             # remaining connection is authorized
-            self.assertEquals('1', rem[4])
-            self.assertEquals("MSC is connected: 1", self.vty.command("show msc connection"))
+            self.assertEqual('1', rem[4])
+            self.assertEqual("MSC is connected: 1", self.vty.command("show msc connection"))
         finally:
             msc.close()
             msc_socket.close()
@@ -829,23 +829,23 @@ class TestVTYNAT(TestVTYGenericBSC):
     def testVtyTree(self):
         self.vty.enable()
         self.assertTrue(self.vty.verify('configure terminal', ['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('mgcp', ['']))
-        self.assertEquals(self.vty.node(), 'config-mgcp')
+        self.assertEqual(self.vty.node(), 'config-mgcp')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('exit', ['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify('nat', ['']))
-        self.assertEquals(self.vty.node(), 'config-nat')
+        self.assertEqual(self.vty.node(), 'config-nat')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('bsc 0', ['']))
-        self.assertEquals(self.vty.node(), 'config-nat-bsc')
+        self.assertEqual(self.vty.node(), 'config-nat-bsc')
         self.checkForEndAndExit()
         self.assertTrue(self.vty.verify('exit', ['']))
-        self.assertEquals(self.vty.node(), 'config-nat')
+        self.assertEqual(self.vty.node(), 'config-nat')
         self.assertTrue(self.vty.verify('exit', ['']))
-        self.assertEquals(self.vty.node(), 'config')
+        self.assertEqual(self.vty.node(), 'config')
         self.assertTrue(self.vty.verify('exit', ['']))
         self.assertTrue(self.vty.node() is None)
 
@@ -863,15 +863,15 @@ class TestVTYNAT(TestVTYGenericBSC):
 
         # Ensure the default
         res = self.vty.command("show running-config")
-        self.assert_(res.find('\n sdp-ensure-amr-mode-set') > 0)
+        self.assertTrue(res.find('\n sdp-ensure-amr-mode-set') > 0)
 
         self.vty.command("sdp-ensure-amr-mode-set")
         res = self.vty.command("show running-config")
-        self.assert_(res.find('\n sdp-ensure-amr-mode-set') > 0)
+        self.assertTrue(res.find('\n sdp-ensure-amr-mode-set') > 0)
 
         self.vty.command("no sdp-ensure-amr-mode-set")
         res = self.vty.command("show running-config")
-        self.assert_(res.find('\n no sdp-ensure-amr-mode-set') > 0)
+        self.assertTrue(res.find('\n no sdp-ensure-amr-mode-set') > 0)
 
     def testRewritePostNoRewrite(self):
         self.vty.enable()
@@ -916,35 +916,35 @@ class TestVTYNAT(TestVTYGenericBSC):
         ussdSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         ussdSocket.connect(('127.0.0.1', 5001))
         ussdSocket.settimeout(2.0)
-        print "Connected to %s:%d" % ussdSocket.getpeername()
+        print("Connected to %s:%d" % ussdSocket.getpeername())
 
-        print "Expecting ID_GET request"
+        print("Expecting ID_GET request")
         data = ussdSocket.recv(4)
-        self.assertEqual(data, "\x00\x01\xfe\x04")
+        self.assertEqual(data, b"\x00\x01\xfe\x04")
 
-        print "Going to send ID_RESP response"
+        print("Going to send ID_RESP response")
         res = ussdSocket.send(IPA().id_resp(IPA().tag_name('key'+'\0')))
         self.assertEqual(res, 11)
 
         # initiating PING/PONG cycle to know, that the ID_RESP message has been processed
 
-        print "Going to send PING request"
+        print("Going to send PING request")
         res = ussdSocket.send(IPA().ping())
         self.assertEqual(res, 4)
 
-        print "Expecting PONG response"
+        print("Expecting PONG response")
         data = ussdSocket.recv(4)
-        self.assertEqual(data, "\x00\x01\xfe\x01")
+        self.assertEqual(data, b"\x00\x01\xfe\x01")
 
         res = self.vty.verify("show ussd-connection", ['The USSD side channel provider is connected and authorized.'])
         self.assertTrue(res)
 
-        print "Going to shut down connection"
+        print("Going to shut down connection")
         ussdSocket.shutdown(socket.SHUT_WR)
 
-        print "Expecting EOF"
+        print("Expecting EOF")
         data = ussdSocket.recv(4)
-        self.assertEqual(data, "")
+        self.assertEqual(data, b"")
 
         ussdSocket.close()
 
@@ -967,7 +967,7 @@ class TestVTYNAT(TestVTYGenericBSC):
            if line.startswith(" access-list test-default"):
                 self.assertEqual(line, " access-list test-default imsi-deny ^123[0-9]*$ 11 11")
                 asserted = True
-        self.assert_(asserted)
+        self.assertTrue(asserted)
 
         # Check the optional CM Service Reject Cause
         self.vty.command("access-list test-cm-deny imsi-deny ^123[0-9]*$ 42").split("\r\n")
@@ -977,7 +977,7 @@ class TestVTYNAT(TestVTYGenericBSC):
            if line.startswith(" access-list test-cm"):
                 self.assertEqual(line, " access-list test-cm-deny imsi-deny ^123[0-9]*$ 42 11")
                 asserted = True
-        self.assert_(asserted)
+        self.assertTrue(asserted)
 
         # Check the optional LU Reject Cause
         self.vty.command("access-list test-lu-deny imsi-deny ^123[0-9]*$ 23 42").split("\r\n")
@@ -987,7 +987,7 @@ class TestVTYNAT(TestVTYGenericBSC):
            if line.startswith(" access-list test-lu"):
                 self.assertEqual(line, " access-list test-lu-deny imsi-deny ^123[0-9]*$ 23 42")
                 asserted = True
-        self.assert_(asserted)
+        self.assertTrue(asserted)
 
 def add_nat_test(suite, workdir):
     if not os.path.isfile(os.path.join(workdir, "src/osmo-bsc_nat/osmo-bsc_nat")):
@@ -1010,7 +1010,7 @@ def nat_msc_ip(x, ip, port):
     x.vty.command("end")
 
 def data2str(d):
-    return d.encode('hex').lower()
+    return d.hex()
 
 def nat_msc_test(x, ip, port, verbose = False):
     msc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1019,11 +1019,11 @@ def nat_msc_test(x, ip, port, verbose = False):
     msc.bind((ip, port))
     msc.listen(5)
     if (verbose):
-        print "MSC is ready at " + ip
+        print("MSC is ready at " + ip)
     conn = None
     while True:
         vty_response = x.vty.command("show msc connection")
-        print "'show msc connection' says: %r" % vty_response
+        print("'show msc connection' says: %r" % vty_response)
         if vty_response == "MSC is connected: 1":
             # success
             break;
@@ -1035,10 +1035,10 @@ def nat_msc_test(x, ip, port, verbose = False):
         while timeout_retries > 0:
             try:
                 conn, addr = msc.accept()
-                print "MSC got connection from ", addr
+                print("MSC got connection from ", addr)
                 break
             except socket.timeout:
-                print "socket timed out."
+                print("socket timed out.")
                 timeout_retries -= 1
                 continue
 
@@ -1053,52 +1053,52 @@ def ipa_handle_small(x, verbose = False):
       raise Exception("expected to receive 4 bytes, but got %d (%r)" % (len(s)/2, s))
     if "0001fe00" == s:
         if (verbose):
-            print "\tBSC <- NAT: PING?"
+            print("\tBSC <- NAT: PING?")
         x.send(IPA().pong())
     elif "0001fe06" == s:
         if (verbose):
-            print "\tBSC <- NAT: IPA ID ACK"
+            print("\tBSC <- NAT: IPA ID ACK")
         x.send(IPA().id_ack())
     elif "0001fe00" == s:
         if (verbose):
-            print "\tBSC <- NAT: PONG!"
+            print("\tBSC <- NAT: PONG!")
     else:
         if (verbose):
-            print "\tBSC <- NAT: ", s
+            print("\tBSC <- NAT: ", s)
 
 def ipa_handle_resp(x, tk, verbose = False, proc=None):
     s = data2str(x.recv(38))
     if "0023fe040108010701020103010401050101010011" in s:
         retries = 3
         while True:
-            print "\tsending IPA identity(%s) at %s" % (tk, time.strftime("%T"))
+            print("\tsending IPA identity(%s) at %s" % (tk, time.strftime("%T")))
             try:
                 x.send(IPA().id_resp(IPA().identity(name = (tk+'\0').encode('utf-8'))))
-                print "\tdone sending IPA identity(%s) at %s" % (tk,
-                                                            time.strftime("%T"))
+                print("\tdone sending IPA identity(%s) at %s" % (tk,
+                                                            time.strftime("%T")))
                 break
             except:
-                print "\tfailed sending IPA identity at", time.strftime("%T")
+                print("\tfailed sending IPA identity at", time.strftime("%T"))
                 if proc:
-                  print "\tproc.poll() = %r" % proc.poll()
+                  print("\tproc.poll() = %r" % proc.poll())
                 if retries < 1:
-                    print "\tgiving up"
+                    print("\tgiving up")
                     raise
-                print "\tretrying (%d attempts left)" % retries
+                print("\tretrying (%d attempts left)" % retries)
                 retries -= 1
     else:
         if (verbose):
-            print "\tBSC <- NAT: ", s
+            print("\tBSC <- NAT: ", s)
 
 def ipa_handle_mgcp(x, verbose = False):
     data = x.recv(3)
     s = data2str(data)
     if s[4:] != "fc":
-        print "expected IPA(MGCP) but received %r instead" % (s[4:])
+        print("expected IPA(MGCP) but received %r instead" % (s[4:]))
     ipa_len, = struct.unpack('>H', data[:2])
     mgcp_msg = x.recv(ipa_len) # MGCP msg
     if (verbose):
-        print "\tBSC <- NAT (MGCP[%d]): %s" % (ipa_len, mgcp_msg)
+        print("\tBSC <- NAT (MGCP[%d]): %s" % (ipa_len, mgcp_msg))
 
 def nat_bsc_num_con(x):
     return len(x.vty.command("show bsc connections").split('\n'))
@@ -1108,18 +1108,18 @@ def nat_bsc_sock_test(nr, tk, verbose = False, proc=None):
     bsc.bind(('127.0.0.1', 0))
     bsc.connect(('127.0.0.1', 5000))
     if (verbose):
-        print "BSC%d " %nr
-        print "\tconnected to %s:%d" % bsc.getpeername()
+        print("BSC%d " %nr)
+        print("\tconnected to %s:%d" % bsc.getpeername())
     if proc:
-      print "\tproc.poll() = %r" % proc.poll()
-      print "\tproc.pid = %r" % proc.pid
+      print("\tproc.poll() = %r" % proc.poll())
+      print("\tproc.pid = %r" % proc.pid)
     ipa_handle_small(bsc, verbose)
     ipa_handle_resp(bsc, tk, verbose, proc=proc)
     if proc:
-      print "\tproc.poll() = %r" % proc.poll()
+      print("\tproc.poll() = %r" % proc.poll())
     ipa_handle_mgcp(bsc, verbose)
     if proc:
-      print "\tproc.poll() = %r" % proc.poll()
+      print("\tproc.poll() = %r" % proc.poll())
     ipa_handle_small(bsc, verbose)
     return bsc
 
@@ -1156,9 +1156,9 @@ if __name__ == '__main__':
     if args.p:
         confpath = args.p
 
-    print "confpath %s, workdir %s" % (confpath, workdir)
+    print("confpath %s, workdir %s" % (confpath, workdir))
     os.chdir(workdir)
-    print "Running tests for specific VTY commands"
+    print("Running tests for specific VTY commands")
     suite = unittest.TestSuite()
     suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYMGCP))
     suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestVTYNITB))
