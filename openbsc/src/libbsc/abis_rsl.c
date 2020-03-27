@@ -686,6 +686,13 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
 	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
+	/* indicate MS power control to be performed by BTS: */
+	if (lchan->ts->trx->bts->type == GSM_BTS_TYPE_OSMOBTS)
+		msgb_tl_put(msg, RSL_IE_MS_POWER_PARAM);
+	/* else: Since IE MS_POWER_PARAM content is operator dependent, it's not
+	   known if non-osmocom BTS models will support an empty IE, so let's
+	   better skip sending it unless we know for sure what each expects. */
+
 	mr_config_for_bts(lchan, msg);
 
 	msg->dst = lchan->ts->trx->rsl_link;
