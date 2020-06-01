@@ -87,7 +87,7 @@ const struct value_string osmo_bts_variant_names[_NUM_BTS_VARIANT + 1] = {
 	{ BTS_OSMO_LITECELL15,	"osmo-bts-lc15" },
 	{ BTS_OSMO_OCTPHY,	"osmo-bts-octphy" },
 	{ BTS_OSMO_SYSMO,	"osmo-bts-sysmo" },
-	{ BTS_OSMO_TRX,		"omso-bts-trx" },
+	{ BTS_OSMO_TRX,		"osmo-bts-trx" },
 	{ 0, NULL }
 };
 
