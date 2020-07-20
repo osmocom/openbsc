@@ -24,9 +24,9 @@ include::{srcdir}/chapters/counters.adoc[]
 
 include::{srcdir}/chapters/net.adoc[]
 
-include::./common/chapters/bsc.adoc[]
+include::{srcdir}/chapters/bsc.adoc[]
 
-include::./common/chapters/bts.adoc[]
+include::{srcdir}/chapters/bts.adoc[]
 
 include::{srcdir}/chapters/bts-examples.adoc[]
 
@@ -49,4 +49,3 @@ include::./common/chapters/bibliography.adoc[]
 include::./common/chapters/glossary.adoc[]
 
 include::./common/chapters/gfdl.adoc[]
-

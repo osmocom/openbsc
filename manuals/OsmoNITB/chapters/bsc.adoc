@@ -1,0 +1,120 @@
+== BSC level configuration
+
+The BSC component is shared between OsmoBSC and OsmoNITB.  This chapter
+describes some of the configuration options related to this shared BSC
+component.
+
+=== Hand-over
+
+==== Hand-over in GSM
+
+Hand-over is the process of changing a MS with a currently active
+dedicated channel from one BTS to another BTS.  As opposed to idle mode,
+where the MS autonomously performs cell re-selection, in dedicated mode
+this happens under network control.
+
+In order to determine when to perform hand-over, and to which cells, the
+network requests the MS to perform measurements on a list of neighbor
+cell channels, which the MS then reports back to the network in the form
+of GSM RR 'Measurement Result' messages.  Those messages contain the
+downlink measurements as determined by the MS.
+
+Furthermore, the BTS also performs measurements on the uplink, and
+communicates those by means of RSL to the BSC.
+
+The hand-over decision is made by an algorithm that processes those
+measurement results and determines when to perform the hand-over.
+
+==== Configuration of hand-over in OsmoBSC/OsmoNITB
+
+OsmoBSC (like the internal BSC component of OsmoNITB) only support
+so-called intra-BSC hand-over, where the hand-over is performed between
+two BTSs within the same BSC.
+
+Hand-over is enabled and configured by the use of a set of `handover`
+commands.  Using those, you can tune the key parameters of the hand-over
+algorithm and adapt it to your specific environment.
+
+.Example handover configuration snippet
+----
+ handover 1 <1>
+ handover window rxlev averaging 10 <2>
+ handover window rxqual averaging 1 <3>
+ handover window rxlev neighbor averaging 10 <4>
+ handover power budget interval 6 <5>
+ handover power budget hysteresis 3 <6>
+ handover maximum distance 9999 <7>
+----
+<1> Enable hand-over
+<2> Set the RxLev averaging window for the serving cell to 10 measurements
+<3> Set the RxQual averaging window for the serving cell to 1
+    measurement (no window)
+<4> Set the RxLev averaging for neighbor cells to 10 measurements
+<5> Check for the conditions of a power budget hand-over every 6 SACCH
+    frames
+<6> A neighbor cell must be at least 3 dB stronger than the serving cell
+    to be considered a candidate for hand-over
+<7> Perform a maximum distance hand-over if TA is larger 9999 (i.e.  never)
+
+//TODO: Move all to BSC node
+
+=== Timer Configuration
+
+The GSM specification specifies a variety of timers both on the network
+as well as on the mobile station side.
+
+Those timers can be configured using the `timer tXXXX` command.
+
+.Configurable Timers
+|===
+|node|timer|default|description
+|network|t3101|10|Timeout for 'Immediate Assignment' (sec)
+|network|t3103|?|Timeout for Handover (sec)
+|network|t3105|40|Repetition of 'Physical Information' (sec)
+|network|t3107|?|?
+|network|t3109|?|RSL SACCH deactivation timeout (sec)
+|network|t3111|?|RSL timeout to wait before releasing the RF channel (sec)
+|network|t3113|60|Time to try paging for a subscriber (sec)
+|network|t3115|?|?
+|network|t3117|?|?
+|network|t3119|?|?
+|network|t3122|10|Waiting time after 'Immediate Assignment Reject'
+|network|t3141|?|?
+|===
+
+//TODO: split between BSC and MSC timers
+
+=== Discontinuous Transmission (DTX)
+
+GSM provides a full-duplex voice call service.  However, in any
+civilized communication between human beings, only one of the
+participants is speaking at any given point in time.  This means that
+most of the time, one of the two directions of the radio link is
+transmitting so-called 'silence frames'.
+
+During such periods of quiescence in one of the two directions, it is
+possible to suppress transmission of most of the radio bursts, as there
+is no voice signal to transport.  GSM calls this feature 'Discontinuous
+Transmission'.  It exists separately for uplink (DTXu) and downlink
+(DTXd).
+
+Downlink DTX is only permitted on non-primary transceivers (!= TRX0), as
+TRX0 must always transmit at constant output power to ensure it is
+detected during cell selection.
+
+Uplink DTX is possible on any TRX, and serves primarily two uses:
+
+possible on any TRX, and serves primarily two uses:
+
+. reducing the MS battery consumption by transmitting at a lower duty cycle
+. reducing the uplink interference caused in surrounding cells that
+  re-use the same ARFCN.
+
+DTS for both uplink and downlink is implemented in the BTS.  Not all BTS
+models support it.
+
+The Osmocom BSC component can instruct the BTS to enable or disable
+uplink and/or downlink DTX by means of A-bis OML.
+
+//TODO: Test/implement, at least for uplink
+//TODO: Move to BSC

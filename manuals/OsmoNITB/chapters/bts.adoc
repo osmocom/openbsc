@@ -1,0 +1,489 @@
+[[bts]]
+== Reviewing and Provisioning BTS configuration
+
+The main functionality of the BSC component is to manage BTSs. As such,
+provisioning BTSs within the BSC is one of the most common tasks during
+BSC operation. Just like about anything else in OsmoBSC, they are
+configured using the VTY.
+
+BTSs are internally numbered with integer numbers starting from "0" for
+the first BTS. BTS numbers have to be contiguous, so you cannot
+configure 0,1,2 and then 5.
+
+
+=== Reviewing current BTS status and configuration
+
+In order to view the status and properties of a BTS, you can issue the
+`show bts` command. If used without any BTS number, it will display
+information about all provisioned BTS numbers.
+
+----
+OsmoBSC> show bts 0
+BTS 0 is of nanobts type in band DCS1800, has CI 0 LAC 1, BSIC 63, TSC 7 and 1 TRX
+Description: (null)
+MS Max power: 15 dBm
+Minimum Rx Level for Access: -110 dBm
+Cell Reselection Hysteresis: 4 dBm
+RACH TX-Integer: 9
+RACH Max transmissions: 7
+System Information present: 0x0000007e, static: 0x00000000
+  Unit ID: 200/0/0, OML Stream ID 0xff
+  NM State: Oper 'Enabled', Admin 2, Avail 'OK'
+  Site Mgr NM State: Oper 'Enabled', Admin 0, Avail 'OK'
+  Paging: 0 pending requests, 0 free slots
+  OML Link state: connected.
+  Current Channel Load:
+                   TCH/F:   0% (0/5)
+                  SDCCH8:   0% (0/8)
+----
+
+You can also review the status of the TRXs configured within the BTSs of
+this BSC by using `show trx`:
+
+----
+OsmoBSC> show trx 0 0
+TRX 0 of BTS 0 is on ARFCN 871
+Description: (null)
+  RF Nominal Power: 23 dBm, reduced by 0 dB, resulting BS power: 23 dBm
+  NM State: Oper 'Enabled', Admin 2, Avail 'OK'
+  Baseband Transceiver NM State: Oper 'Enabled', Admin 2, Avail 'OK'
+  ip.access stream ID: 0x00
+----
+
+The output can be restricted to the TRXs of one specified BTS number
+(`show trx 0`) or even that of a single specified TRX within a
+specified BTS (`show trx 0 0`).
+
+Furthermore, information on the individual timeslots can be shown by
+means of `show timeslot`. The output can be restricted to the
+timeslots of a single BTS (`show timeslot 0`) or that of a single
+TRX (`show timeslot 0 0`). Finally, you can restrict the output to
+a single timeslot by specifying the BTS, TRX and TS numbers (`show
+timeslot 0 0 4`).
+
+----
+OsmoBSC> show timeslot 0 0 0
+BTS 0, TRX 0, Timeslot 0, phys cfg CCCH, TSC 7
+  NM State: Oper 'Enabled', Admin 2, Avail 'OK'
+OsmoBSC> show timeslot 0 0 1
+BTS 0, TRX 0, Timeslot 1, phys cfg SDCCH8, TSC 7
+  NM State: Oper 'Enabled', Admin 2, Avail 'OK'
+----
+
+
+=== Provisioning a new BTS
+
+In order to provision BTSs, you have to enter the BTS config node of the
+VTY. In order to configure BTS 0, you can issue the following sequence
+of commands:
+
+----
+OsmoBSC> enable
+OsmoBSC# configure terminal
+OsmoBSC(config)# network
+OsmoBSC(config-net)# bts 0
+OsmoBSC(config-net-bts)#
+----
+
+At this point, you have a plethora of commands, in fact an entire
+hierarchy of commands to configure all aspects of the BTS, as well as
+each of its TRX and each timeslot within each TRX. For a full
+reference, please consult the telnet VTY integrated help or the respective
+chapter in the VTY reference.
+
+BTS configuration depends quite a bit on the specific BTS vendor and
+model. The section below provides just one possible example for the
+case of a sysmoBTS.
+
+Note that from the `configure terminal` command onwards, the telnet VTY
+commands above are identical to configuration file settings, for details see
+<<vty>>.
+
+Starting with `network` as above, your complete sysmoBTS configuration may look
+like this:
+
+----
+network
+ bts 0
+  type sysmobts
+  band DCS1800
+  description The new BTS in Baikonur
+  location_area_code 2342
+  cell_identity 5
+  base_station_id_code 63
+  ip.access unit_id 8888 0
+  ms max power 40
+  trx 0
+   arfcn 871
+   nominal power 23
+   max_power_red 0
+   timeslot 0
+    phys_chan_config CCCH+SDCCH4
+   timeslot 1
+    phys_chan_config TCH/F
+   timeslot 2
+    phys_chan_config TCH/F
+   timeslot 3
+    phys_chan_config TCH/F
+   timeslot 4
+    phys_chan_config TCH/F
+   timeslot 5
+    phys_chan_config TCH/F
+   timeslot 6
+    phys_chan_config TCH/F
+   timeslot 7
+    phys_chan_config PDCH
+----
+
+
+=== System Information configuration
+
+A GSM BTS periodically transmits a series of 'SYSTEM INFORMATION'
+messages to mobile stations, both via the BCCH in idle mode, was well as
+via the SACCH in dedicated mode. There are many different types of such
+messages. For their detailed contents and encoding, please see _3GPP TS
+24.008_ <<3gpp-ts-24-008>>.
+
+For each of the 'SYSTEM INFORMATION' message types, you can configure to
+have the BSC generate it automatically ('computed'), or you can specify
+the respective binary message as a string of hexadecimal digits.
+
+The default configuration is to compute all (required) 'SYSTEM
+INFORMATION' messages automatically.
+
+Please see the _OsmoBSC VTY Reference Manual_ <<vty-ref-osmobsc>> for
+further information, particularly on the following commands:
+
+* `system-information (1|2|3|4|5|6|7|8|9|10|13|16|17|18|19|20|2bis|2ter|2quater|5bis|5ter) mode (static|computed)`
+* `system-information (1|2|3|4|5|6|7|8|9|10|13|16|17|18|19|20|2bis|2ter|2quater|5bis|5ter) static HEXSTRING`
+
+
+=== Neighbor List configuration
+
+Every BTS sends a list of ARFCNs of neighbor cells
+. within its 'SYSTEM INFORMATION 2' (and 2bis/2ter) messages on the BCCH
+. within its 'SYSTEM INFORMATION 5' messages on SACCH in dedicated mode
+
+For every BTS config node in the VTY, you can specify the behavior of
+the neighbor list using the `neighbor list mode` VTY command:
+
+automatic::
+	Automatically generate a list of neighbor cells using all other
+	BTSs configured in the VTY
+manual::
+	Manually specify the neighbor list by means of `neighbor-list
+(add|del) arfcn <0-1023>` commands, having identical neighbor lists on
+BCCH (SI2) and SACCH (SI5)
+
+manual-si5::
+	Manually specify the neighbor list by means of `neighbor-list
+(add|del) arfcn <0-1023>` for BCCH (SI2) and a separate neighbor list by
+means of `si5 neighbor-list (add|del) arfcn <0-1023>` for SACCH (SI5).
+
+
+=== Configuring GPRS PCU parameters of a BTS
+
+In the case of BTS models using Abis/IP (IPA), the GPRS PCU is located
+inside the BTS. The BTS then establishes a Gb connection to the SGSN.
+
+All the BTS-internal PCU configuration is performed via A-bis OML by
+means of configuring the 'CELL', 'NSVC' (NS Virtual Connection and 'NSE'
+(NS Entity).
+
+There is one 'CELL' node and one 'NSE' node, but there are two 'NSVC'
+nodes. At the time of this writing, only the NSVC 0 is supported by
+OsmoBTS, while both NSVC are supported by the ip.access nanoBTS.
+
+The respective VTY configuration parameters are described below. They
+all exist beneath each BTS VTY config node.
+
+But let's first start with a small example
+
+.Example configuration of GPRS PCU parameters at VTY BTS node
+----
+OsmoBSC(config-net-bts)# gprs mode gprs
+OsmoBSC(config-net-bts)# gprs routing area 1
+OsmoBSC(config-net-bts)# gprs cell bvci 1234
+OsmoBSC(config-net-bts)# gprs nsei 1234
+OsmoBSC(config-net-bts)# gprs nsvc 0 nsvci 1234
+OsmoBSC(config-net-bts)# gprs nsvc 0 local udp port 23000
+OsmoBSC(config-net-bts)# gprs nsvc 0 remote udp port 23000
+OsmoBSC(config-net-bts)# gprs nsvc 0 remote ip 192.168.100.239
+----
+
+
+=== More explanation about the PCU config parameters
+
+//FIXME: should this go into VTY additions?
+
+==== `gprs mode (none|gprs|egprs)`
+
+This command determines if GPRS (or EGPRS) services are to be enabled in
+this cell at all.
+
+
+==== `gprs cell bvci <2-65535>`
+
+Configures the 'BSSGP Virtual Circuit Identifier'. It must be unique
+between all BGSGP connections to one SGSN.
+
+NOTE: It is up to the system administrator to ensure all PCUs are
+allocated an unique bvci. OsmoBSC will not ensure this policy.
+
+
+==== `gprs nsei <0-65535>`
+
+Configures the 'NS Entity Identifier'. It must be unique between all NS
+connections to one SGSN.
+
+NOTE: It is up to the system administrator to ensure all PCUs are
+allocated an unique bvci. OsmoBSC will not ensure this policy.
+
+
+==== `gprs nsvc <0-1> nsvci <0-65535>`
+
+Configures the 'NS Virtual Connection Identifier'. It must be unique
+between all NS virtual connections to one SGSN.
+
+NOTE: It is up to the system administrator to ensure all PCUs are
+allocated an unique nsvci. OsmoBSC will not ensure this policy.
+
+
+==== `gprs nsvc <0-1> local udp port <0-65535>`
+
+Configures the local (PCU side) UDP port for the NS-over-UDP link.
+
+
+==== `gprs nsvc <0-1> remote udp port <0-65535>`
+
+Configures the remote (SGSN side) UDP port for the NS-over-UDP link.
+
+
+==== `gprs nsvc <0-1> remote ip A.B.C.D`
+
+Configures the remote (SGSN side) UDP port for the NS-over-UDP link.
+
+
+==== `gprs ns timer (tns-block|tns-block-retries|tns-reset|tns-reset-retries|tns-test|tns-alive|tns-alive-retries)` <0-255>
+
+Configures the various GPRS NS related timers. Please check the GPRS NS
+specification for the detailed meaning of those timers.
+
+
+=== Dynamic Timeslot Configuration (TCH / PDCH)
+
+A dynamic timeslot is in principle a voice timeslot (TCH) that is used to serve
+GPRS data (PDCH) when no voice call is active on it. This enhances GPRS
+bandwidth while no voice calls are active, which is dynamically scaled down as
+voice calls need to be served. This is a tremendous improvement in service over
+statically assigning a fixed number of timeslots for voice and data.
+
+The causality is as follows: to establish a voice call, the
+MSC requests a logical channel of a given TCH kind from the BSC. The BSC
+assigns such a channel from a BTS' TRX's timeslot of its choice. The knowledge
+that a given timeslot is dynamic exists only on the BSC level. When the MSC
+asks for a logical channel, the BSC may switch off PDCH on a dynamic timeslot
+and then assign a logical TCH channel on it. Hence, though compatibility with
+the BTS needs to be ensured, any MSC is compatible with dynamic timeslots by
+definition.
+
+OsmoBSC support two kinds of dynamic timeslot handling, configured
+via the `network` / `bts` / `trx` / `timeslot` / `phys_chan_config`
+configuration. Not all BTS models support dynamic channels.
+
+[[dyn_ts_compat]]
+.Dynamic timeslot support by various BTS models
+[cols="50%,25%,25%"]
+|===
+|                    |`TCH/F_TCH/H_PDCH` |`TCH/F_PDCH`
+|ip.access nanoBTS   |-                  |supported
+|Ericsson RBS        |supported          |-
+|sysmoBTS using _osmo-bts-sysmo_ |supported |supported
+|various SDR platforms using _osmo-bts-trx_ |supported |supported
+|Nutaq Litecell 1.5 using _osmo-bts-litecell15_ |supported |supported
+|Octasic OctBTS using _osmo-bts-octphy_ | supported  | supported
+|===
+
+The _OsmoBTS Abis Protocol Specification_ <<osmobts-abis-spec>> describes the
+non-standard RSL messages used for these timeslot kinds.
+
+NOTE: Same as for dedicated PDCH timeslots, you need to enable GPRS and operate
+a PCU, SGSN and GGSN to provide the actual data service.
+
+==== Osmocom Style Dynamic Timeslots (TCH/F_TCH/H_PDCH)
+
+Timeslots of the `TCH/F_TCH/H_PDCH` type dynamically switch between TCH/F,
+TCH/H and PDCH, depending on the channel kind requested by the MSC. The RSL
+messaging for `TCH/F_TCH/H_PDCH` timeslots is compatible with Ericsson RBS.
+
+BTS models supporting this timeslot kind are shown in <<dyn_ts_compat>>.
+
+==== ip.access Style Dynamic Timeslots (TCH/F_PDCH)
+
+Timeslots of the `TCH/F_PDCH` type dynamically switch between TCH/F and PDCH.
+The RSL messaging for `TCH/F_PDCH` timeslots is compatible with ip.access
+nanoBTS.
+
+BTS models supporting this timeslot kind are shown in <<dyn_ts_compat>>.
+
+==== Avoid PDCH Exhaustion
+
+To avoid disrupting GPRS, configure at least one timeslot as dedicated PDCH.
+With only dynamic timeslots, a given number of voice calls would convert all
+timeslots to TCH, and no PDCH timeslots would be left for GPRS service.
+
+==== Dynamic Timeslot Configuration Examples
+
+This is an extract of an `osmo-bsc`` config file. A timeslot configuration with
+five Osmocom style dynamic timeslots and one dedicated PDCH may look like this:
+
+----
+network
+ bts 0
+  trx 0
+   timeslot 0
+    phys_chan_config CCCH+SDCCH4
+   timeslot 1
+    phys_chan_config SDCCH8
+   timeslot 2
+    phys_chan_config TCH/F_TCH/H_PDCH
+   timeslot 3
+    phys_chan_config TCH/F_TCH/H_PDCH
+   timeslot 4
+    phys_chan_config TCH/F_TCH/H_PDCH
+   timeslot 5
+    phys_chan_config TCH/F_TCH/H_PDCH
+   timeslot 6
+    phys_chan_config TCH/F_TCH/H_PDCH
+   timeslot 7
+    phys_chan_config PDCH
+----
+
+With the ip.access nanoBTS, only `TCH/F_PDCH` dynamic timeslots are supported,
+and hence a nanoBTS configuration may look like this:
+
+----
+network
+ bts 0
+  trx 0
+   timeslot 0
+    phys_chan_config CCCH+SDCCH4
+   timeslot 1
+    phys_chan_config SDCCH8
+   timeslot 2
+    phys_chan_config TCH/F_PDCH
+   timeslot 3
+    phys_chan_config TCH/F_PDCH
+   timeslot 4
+    phys_chan_config TCH/F_PDCH
+   timeslot 5
+    phys_chan_config TCH/F_PDCH
+   timeslot 6
+    phys_chan_config TCH/F_PDCH
+   timeslot 7
+    phys_chan_config PDCH
+----
+
+=== Tuning Access to the BTS
+
+OsmoBSC offers several configuration options to fine-tune access to the BTS.
+It can allow only a portion of the subscribers access to the network.
+This can also be used to ramp up access to the network on startup by slowly
+letting in more and more subscribers. This is especially useful for isolated
+cells with a huge number of subscribers.
+
+Other options control the behaviour of the MS when it needs to access the
+random access channel before a dedicated channel is established.
+
+If the BTS is connected to the BSC via a high-latency connection the MS should
+wait longer for an answer to a RACH request. If it does not the network will
+have to deal with an increased load due to duplicate RACH requests. However,
+in order to minimize the delay when a RACH request or response gets lost the
+MS should not wait too long before retransmitting.
+
+==== Load Management
+
+Every SIM card is member of one of the ten regular ACCs (0-9). Access to the
+BTS can be restricted to SIMs that are members of certain ACCs.
+
+Since the ACCs are distributed uniformly across all SIMs allowing only ACCs
+0-4 to connect to the BTS should reduce its load by 50%.
+
+The default is to allow all ACCs to connect.
+
+.Example: Restrict access to the BTS by ACC
+----
+network
+ bts 0
+  rach access-control-class 1 barred <1>
+  rach access-control-class 9 allowed <2>
+----
+<1> Disallow SIMs with access-class 1 from connecting to the BTS
+<2> Permit SIMs with access-class 9 to connect to the BTS.
+
+
+Smaller cells with lots of subscribers can be overwhelmed with traffic after
+the network is turned on. This is especially true in areas with little to no
+reception from other networks. To manage the load OsmoBSC has an option to
+enable one Access Class at a time so initial access to the network is
+distributed across a longer time.
+
+.Example: Ramp up access to the BTS after startup
+----
+network
+ bts 0
+  access-control-class-ramping <1>
+  access-control-class-ramping-step-interval 30 <2>
+  access-control-class-ramping-step-size 1 <3>
+----
+<1> Turn on access-control-class ramping
+<2> Enable more ACCs every 30 seconds
+<3> At each step enable one more ACC
+
+
+==== RACH Parameter Configuration
+
+The following parameters allow control over how the MS can access the random
+access channel (RACH). It is possible to set a minimum receive level under
+which the MS will not even attempt to access the network.
+
+The RACH is a shared channel which means multiple MS can choose to send a
+request at the same time. To minimize the risk of a collision each MS will
+choose a random number of RACH slots to wait before trying to send a RACH
+request.
+
+On very busy networks the range this number is chosen from should be
+high to avoid collisions, but a lower range reduces the overall delay when
+trying to establish a channel.
+
+The option `rach tx integer N` controls the range from which this number X
+is chosen. It is `0 <= X < max(8,N)`.
+
+After sending a RACH request the MS will wait a random amount of slots before
+retransmitting its RACH request. The range it will wait is also determined by
+the option `rach tx integer N`, but calculating it is not so straightforward.
+It is defined as `S <= X < S+N` where `S` is determined from a table.
+
+In particular `S` is lowest when `N` is one of 3, 8, 14 or 50 and highest when
+`N` is 7, 12 or 32.
+
+For more information see _3GPP TA 44.018_ <<3gpp-ts-44-018>> Ch. 3.3.1.1.2 and
+Table 3.3.1.1.2.1 in particular.
+
+The amount of times the MS attempts to retransmit RACH requests can also be
+changed. A higher number means more load on the RACH while a lower number can
+cause channel establishment to fail due to collisions or bad reception.
+
+.Example: Configure RACH Access Parameters
+----
+network
+ bts 0
+  rxlev access min 20 <1>
+  rach tx integer 50<2>
+  rach max transmission <3>
+----
+<1> Allow access to the network if the MS receives the BCCH of the cell at
+-90dBm or better (20dB above -110dBm).
+<2> This number affects how long the MS waits before (re-)transmitting RACH
+requests.
+<3> How often to retransmit the RACH request.
