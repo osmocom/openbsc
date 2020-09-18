@@ -206,6 +206,7 @@ int main()
 	printf("Testing subscriber database code.\n");
 	osmo_init_logging(&log_info);
 	log_set_print_filename(osmo_stderr_target, 0);
+	log_set_use_color(osmo_stderr_target, 0);
 
 	dummy_net.subscr_group = &dummy_sgrp;
 	dummy_sgrp.net         = &dummy_net;
