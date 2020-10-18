@@ -237,7 +237,7 @@ static int ussd_listen_cb(struct osmo_fd *bfd, unsigned int what)
 	socklen_t sa_len = sizeof(sa);
 	int fd;
 
-	if (!(what & BSC_FD_READ))
+	if (!(what & OSMO_FD_READ))
 		return 0;
 
 	fd = accept(bfd->fd, (struct sockaddr *) &sa, &sa_len);
@@ -259,7 +259,7 @@ static int ussd_listen_cb(struct osmo_fd *bfd, unsigned int what)
 	osmo_wqueue_init(&conn->queue, 10);
 	conn->queue.bfd.data = conn;
 	conn->queue.bfd.fd = fd;
-	conn->queue.bfd.when = BSC_FD_READ;
+	conn->queue.bfd.when = OSMO_FD_READ;
 	conn->queue.read_cb = ussd_read_cb;
 	conn->queue.write_cb = bsc_write_cb;
 

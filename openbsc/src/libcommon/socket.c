@@ -65,7 +65,7 @@ int make_sock(struct osmo_fd *bfd, int proto,
 
 	bfd->fd = socket(AF_INET, type, proto);
 	bfd->cb = cb;
-	bfd->when = BSC_FD_READ;
+	bfd->when = OSMO_FD_READ;
 	bfd->data = data;
 	bfd->priv_nr = priv_nr;
 

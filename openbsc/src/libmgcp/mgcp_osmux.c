@@ -445,7 +445,7 @@ int osmux_init(int role, struct mgcp_config *cfg)
 		return ret;
 	}
 	mgcp_set_ip_tos(osmux_fd.fd, cfg->endp_dscp);
-	osmux_fd.when |= BSC_FD_READ;
+	osmux_fd.when |= OSMO_FD_READ;
 
 	ret = osmo_fd_register(&osmux_fd);
 	if (ret < 0) {

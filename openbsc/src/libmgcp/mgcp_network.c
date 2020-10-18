@@ -972,14 +972,14 @@ static int bind_rtp(struct mgcp_config *cfg, const char *source_addr,
 	mgcp_set_ip_tos(rtp_end->rtp.fd, cfg->endp_dscp);
 	mgcp_set_ip_tos(rtp_end->rtcp.fd, cfg->endp_dscp);
 
-	rtp_end->rtp.when = BSC_FD_READ;
+	rtp_end->rtp.when = OSMO_FD_READ;
 	if (osmo_fd_register(&rtp_end->rtp) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTP port %d on 0x%x\n",
 			rtp_end->local_port, endpno);
 		goto cleanup2;
 	}
 
-	rtp_end->rtcp.when = BSC_FD_READ;
+	rtp_end->rtcp.when = OSMO_FD_READ;
 	if (osmo_fd_register(&rtp_end->rtcp) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTCP port %d on 0x%x\n",
 			rtp_end->local_port + 1, endpno);

@@ -373,7 +373,7 @@ static int rf_ctrl_accept(struct osmo_fd *bfd, unsigned int what)
 	osmo_wqueue_init(&conn->queue, 10);
 	conn->queue.bfd.data = conn;
 	conn->queue.bfd.fd = fd;
-	conn->queue.bfd.when = BSC_FD_READ | BSC_FD_WRITE;
+	conn->queue.bfd.when = OSMO_FD_READ | OSMO_FD_WRITE;
 	conn->queue.read_cb = rf_read_cmd;
 	conn->queue.write_cb = rf_write_cmd;
 	conn->rf = rf;
@@ -479,7 +479,7 @@ static int rf_create_socket(struct osmo_bsc_rf *rf, const char *path)
 		return -1;
 	}
 
-	bfd->when = BSC_FD_READ;
+	bfd->when = OSMO_FD_READ;
 	bfd->cb = rf_ctrl_accept;
 	bfd->data = rf;
 

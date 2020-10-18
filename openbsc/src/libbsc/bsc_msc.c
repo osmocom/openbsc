@@ -81,7 +81,7 @@ static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 	queue = container_of(fd, struct osmo_wqueue, bfd);
 	con = container_of(queue, struct bsc_msc_connection, write_queue);
 
-	if ((what & BSC_FD_WRITE) == 0) {
+	if ((what & OSMO_FD_WRITE) == 0) {
 		LOGP(DMSC, LOGL_ERROR,
 			"MSC(%s) Callback but not writable.\n", con->name);
 		return -1;
@@ -107,7 +107,7 @@ static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 
 	/* go to full operation */
 	fd->cb = osmo_wqueue_bfd_cb;
-	fd->when = BSC_FD_READ | BSC_FD_EXCEPT;
+	fd->when = OSMO_FD_READ | OSMO_FD_EXCEPT;
 
 	con->is_connected = 1;
 	LOGP(DMSC, LOGL_NOTICE,
@@ -209,7 +209,7 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 	if (ret == -1 && errno == EINPROGRESS) {
 		LOGP(DMSC, LOGL_ERROR,
 			"MSC(%s) Connection in progress\n", con->name);
-		fd->when = BSC_FD_WRITE;
+		fd->when = OSMO_FD_WRITE;
 		fd->cb = msc_connection_connect;
 		osmo_timer_setup(&con->timeout_timer, msc_con_timeout, con);
 		osmo_timer_schedule(&con->timeout_timer, 20, 0);
@@ -218,7 +218,7 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 		connection_loss(con);
 		return ret;
 	} else {
-		fd->when = BSC_FD_READ | BSC_FD_EXCEPT;
+		fd->when = OSMO_FD_READ | OSMO_FD_EXCEPT;
 		fd->cb = osmo_wqueue_bfd_cb;
 		con->is_connected = 1;
 		if (con->connected)

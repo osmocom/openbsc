@@ -153,7 +153,7 @@ static int mgcp_create_port(struct bsc_msc_data *data)
 	}
 
 	osmo_wqueue_init(&data->mgcp_agent, 10);
-	data->mgcp_agent.bfd.when = BSC_FD_READ;
+	data->mgcp_agent.bfd.when = OSMO_FD_READ;
 	data->mgcp_agent.bfd.data = data;
 	data->mgcp_agent.read_cb = mgcp_do_read;
 	data->mgcp_agent.write_cb = mgcp_do_write;

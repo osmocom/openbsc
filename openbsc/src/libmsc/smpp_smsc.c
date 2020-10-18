@@ -915,7 +915,7 @@ static int link_accept_cb(struct smsc *smsc, int fd,
 	osmo_wqueue_init(&esme->wqueue, 10);
 	esme->wqueue.bfd.fd = fd;
 	esme->wqueue.bfd.data = esme;
-	esme->wqueue.bfd.when = BSC_FD_READ;
+	esme->wqueue.bfd.when = OSMO_FD_READ;
 
 	if (osmo_fd_register(&esme->wqueue.bfd) != 0) {
 		close(fd);

@@ -1127,7 +1127,7 @@ static int init_mgcp_socket(struct bsc_nat *nat, struct mgcp_config *cfg)
 	}
 
 	osmo_wqueue_init(&cfg->gw_fd, 10);
-	cfg->gw_fd.bfd.when = BSC_FD_READ;
+	cfg->gw_fd.bfd.when = OSMO_FD_READ;
 	cfg->gw_fd.bfd.data = nat;
 	cfg->gw_fd.read_cb = mgcp_do_read;
 	cfg->gw_fd.write_cb = mgcp_do_write;

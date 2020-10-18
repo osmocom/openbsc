@@ -246,7 +246,7 @@ int main(int argc, char **argv)
 
         /* we need to bind a socket */
         if (rc == 0) {
-		cfg->gw_fd.bfd.when = BSC_FD_READ;
+		cfg->gw_fd.bfd.when = OSMO_FD_READ;
 		cfg->gw_fd.bfd.cb = read_call_agent;
 		cfg->gw_fd.bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
 		if (cfg->gw_fd.bfd.fd < 0) {

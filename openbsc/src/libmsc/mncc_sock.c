@@ -73,7 +73,7 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 
 	/* Actually enqueue the message and mark socket write need */
 	msgb_enqueue(&net->upqueue, msg);
-	net->mncc_state->conn_bfd.when |= BSC_FD_WRITE;
+	net->mncc_state->conn_bfd.when |= OSMO_FD_WRITE;
 	return 0;
 }
 
@@ -88,7 +88,7 @@ static void mncc_sock_close(struct mncc_sock_state *state)
 	osmo_fd_unregister(bfd);
 
 	/* re-enable the generation of ACCEPT for new connections */
-	state->listen_bfd.when |= BSC_FD_READ;
+	state->listen_bfd.when |= OSMO_FD_READ;
 
 	/* release all exisitng calls */
 	gsm0408_clear_all_trans(state->net, GSM48_PDISC_CC);
@@ -151,7 +151,7 @@ static int mncc_sock_write(struct osmo_fd *bfd)
 		msg = llist_entry(net->upqueue.next, struct msgb, list);
 		mncc_prim = (struct gsm_mncc *)msg->data;
 
-		bfd->when &= ~BSC_FD_WRITE;
+		bfd->when &= ~OSMO_FD_WRITE;
 
 		/* bug hunter 8-): maybe someone forgot msgb_put(...) ? */
 		if (!msgb_length(msg)) {
@@ -166,7 +166,7 @@ static int mncc_sock_write(struct osmo_fd *bfd)
 			goto close;
 		if (rc < 0) {
 			if (errno == EAGAIN) {
-				bfd->when |= BSC_FD_WRITE;
+				bfd->when |= OSMO_FD_WRITE;
 				break;
 			}
 			goto close;
@@ -190,12 +190,12 @@ static int mncc_sock_cb(struct osmo_fd *bfd, unsigned int flags)
 {
 	int rc = 0;
 
-	if (flags & BSC_FD_READ)
+	if (flags & OSMO_FD_READ)
 		rc = mncc_sock_read(bfd);
 	if (rc < 0)
 		return rc;
 
-	if (flags & BSC_FD_WRITE)
+	if (flags & OSMO_FD_WRITE)
 		rc = mncc_sock_write(bfd);
 
 	return rc;
@@ -227,7 +227,7 @@ static void queue_hello(struct mncc_sock_state *mncc)
 	hello->lchan_type_offset = offsetof(struct gsm_mncc, lchan_type);
 
 	msgb_enqueue(&mncc->net->upqueue, msg);
-	mncc->conn_bfd.when |= BSC_FD_WRITE;
+	mncc->conn_bfd.when |= OSMO_FD_WRITE;
 }
 
 /* accept a new connection */
@@ -250,13 +250,13 @@ static int mncc_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 		LOGP(DMNCC, LOGL_NOTICE, "MNCC app connects but we already have "
 			"another active connection ?!?\n");
 		/* We already have one MNCC app connected, this is all we support */
-		state->listen_bfd.when &= ~BSC_FD_READ;
+		state->listen_bfd.when &= ~OSMO_FD_READ;
 		close(rc);
 		return 0;
 	}
 
 	conn_bfd->fd = rc;
-	conn_bfd->when = BSC_FD_READ;
+	conn_bfd->when = OSMO_FD_READ;
 	conn_bfd->cb = mncc_sock_cb;
 	conn_bfd->data = state;
 
@@ -299,7 +299,7 @@ int mncc_sock_init(struct gsm_network *net, const char *sock_path)
 		return -1;
 	}
 
-	bfd->when = BSC_FD_READ;
+	bfd->when = OSMO_FD_READ;
 	bfd->cb = mncc_sock_accept;
 	bfd->data = state;
 

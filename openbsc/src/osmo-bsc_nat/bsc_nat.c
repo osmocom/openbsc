@@ -1381,7 +1381,7 @@ static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 
-	if (!(what & BSC_FD_READ))
+	if (!(what & OSMO_FD_READ))
 		return 0;
 
 	fd = accept(bfd->fd, (struct sockaddr *) &sa, &sa_len);
@@ -1431,7 +1431,7 @@ static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 	bsc->write_queue.bfd.fd = fd;
 	bsc->write_queue.read_cb = ipaccess_bsc_read_cb;
 	bsc->write_queue.write_cb = bsc_write_cb;
-	bsc->write_queue.bfd.when = BSC_FD_READ;
+	bsc->write_queue.bfd.when = OSMO_FD_READ;
 	if (osmo_fd_register(&bsc->write_queue.bfd) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to register BSC fd.\n");
 		close(fd);

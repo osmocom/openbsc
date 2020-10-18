@@ -286,7 +286,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	else
 		memcpy(payload, frame->data, payload_len);
 	msgb_enqueue(&rss->tx_queue, msg);
-	rss->bfd.when |= BSC_FD_WRITE;
+	rss->bfd.when |= OSMO_FD_WRITE;
 
 	return 0;
 }
@@ -396,7 +396,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 
 	rc = read(rss->bfd.fd, msg->data, RTP_ALLOC_SIZE);
 	if (rc == 0) {
-		rss->bfd.when &= ~BSC_FD_READ;
+		rss->bfd.when &= ~OSMO_FD_READ;
 		goto out_free;
 	} else if (rc < 0) {
 		/* Ignore "connection refused". this happens, If we open the
@@ -405,7 +405,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 			goto out_free;
 		DEBUGPC(DLMUX, "Read of RTP socket (%p) failed (errno %d, "
 			"%s)\n", rs, errno, strerror(errno));
-		rss->bfd.when &= ~BSC_FD_READ;
+		rss->bfd.when &= ~OSMO_FD_READ;
 		goto out_free;
 	}
 
@@ -430,7 +430,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 			goto out_free;
 		}
 		msgb_enqueue(&other_rss->tx_queue, msg);
-		other_rss->bfd.when |= BSC_FD_WRITE;
+		other_rss->bfd.when |= OSMO_FD_WRITE;
 		break;
 
 	case RTP_RECV_UPSTREAM:
@@ -448,7 +448,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 			if (rc < 0)
 				goto out_free;
 			msgb_enqueue(&rss->tx_queue, msg);
-			rss->bfd.when |= BSC_FD_WRITE;
+			rss->bfd.when |= OSMO_FD_WRITE;
 			break;
 		}
 		if (rss->bfd.priv_nr != RTP_PRIV_RTP) {
@@ -482,7 +482,7 @@ static int rtp_socket_write(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 
 	msg = msgb_dequeue(&rss->tx_queue);
 	if (!msg) {
-		rss->bfd.when &= ~BSC_FD_WRITE;
+		rss->bfd.when &= ~OSMO_FD_WRITE;
 		return 0;
 	}
 
@@ -516,10 +516,10 @@ static int rtp_bfd_cb(struct osmo_fd *bfd, unsigned int flags)
 		return -EINVAL;
 	}
 
-	if (flags & BSC_FD_READ)
+	if (flags & OSMO_FD_READ)
 		rtp_socket_read(rs, rss);
 
-	if (flags & BSC_FD_WRITE)
+	if (flags & OSMO_FD_WRITE)
 		rtp_socket_write(rs, rss);
 
 	return 0;
@@ -600,7 +600,7 @@ static int rtp_sub_socket_bind(struct rtp_sub_socket *rss, uint32_t ip,
 	rss->sin_local.sin_family = AF_INET;
 	rss->sin_local.sin_addr.s_addr = htonl(ip);
 	rss->sin_local.sin_port = htons(port);
-	rss->bfd.when |= BSC_FD_READ;
+	rss->bfd.when |= OSMO_FD_READ;
 
 	rc = bind(rss->bfd.fd, (struct sockaddr *)&rss->sin_local,
 		  sizeof(rss->sin_local));
