@@ -1,10 +1,17 @@
 :gfdl-enabled:
 :program-name: OsmoNITB
 
-OsmoNITB User Manual
-====================
+OBSOLETE OsmoNITB User Manual
+=============================
 Harald Welte <hwelte@sysmocom.de>
 
+WARNING:: osmo-nitb is obsolete since 2017. It is not actively maintained,
+and it lack several man-years of development effort that went into the
+so-called post-NITB stack consisting of separate OsmoBSC, OsmoMSC,
+OsmoMGW and OsmoHLR.  You should not use this software except for
+archaeological purpose. You will be on your own.  Do not contact the
+developers about any issues you may experience while running unsuported,
+obsolete software!
 
 include::./common/chapters/preface.adoc[]
 

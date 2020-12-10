@@ -468,7 +468,8 @@ class TestCtrlNITB(TestCtrlBase):
 
     def ctrl_command(self):
         return ["./src/osmo-nitb/osmo-nitb", "-c",
-                "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg", "-l", "test_hlr.sqlite3"]
+                "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg", "-l", "test_hlr.sqlite3",
+                "--yes-i-really-want-to-run-prehistoric-software"]
 
     def ctrl_app(self):
         return (4249, "./src/osmo-nitb/osmo-nitb", "OsmoBSC", "nitb")

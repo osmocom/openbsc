@@ -39,10 +39,11 @@ app_configs = {
 apps = [(4242, "src/osmo-bsc/osmo-bsc-sccplite", "OsmoBSC", "osmo-bsc-sccplite"),
         (4244, "src/osmo-bsc_nat/osmo-bsc_nat",  "OsmoBSCNAT", "nat"),
         (4243, "src/osmo-bsc_mgcp/osmo-bsc_mgcp", "OpenBSC MGCP", "mgcp"),
-        (4242, "src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb"),
+        (4242, "src/osmo-nitb/osmo-nitb --yes-i-really-want-to-run-prehistoric-software", "OpenBSC", "nitb"),
         ]
 
 vty_command = ["./src/osmo-nitb/osmo-nitb", "-c",
-               "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg"]
+               "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg",
+               "--yes-i-really-want-to-run-prehistoric-software"]
 
 vty_app = apps[3] # reference apps[] entry for osmo-nitb

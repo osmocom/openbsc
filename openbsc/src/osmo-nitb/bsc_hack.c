@@ -65,6 +65,7 @@ extern const char *openbsc_copyright;
 static int daemonize = 0;
 static const char *mncc_sock_path = NULL;
 static int use_db_counter = 1;
+static bool yes_i_really_want = false;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -115,6 +116,7 @@ static void handle_options(int argc, char **argv)
 	while (1) {
 		int option_index = 0, c;
 		static struct option long_options[] = {
+			{"yes-i-really-want-to-run-prehistoric-software", 0, 0, 0},
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
 			{"daemonize", 0, 0, 'D'},
@@ -139,6 +141,10 @@ static void handle_options(int argc, char **argv)
 			break;
 
 		switch (c) {
+		case 0:
+			if (option_index == 0)
+				yes_i_really_want = true;
+			break;
 		case 'h':
 			print_usage();
 			print_help();
@@ -281,6 +287,28 @@ int main(int argc, char **argv)
 
 	/* Parse options */
 	handle_options(argc, argv);
+
+#define DIVIDER	"======================================================================\n"
+	if (!yes_i_really_want) {
+		fprintf(stderr, DIVIDER
+			"ERROR: You should not run osmo-nitb. It is ancient, unmaintained and\n"
+			"obsolete for several years.  If you really want to ignore years of hard work on\n"
+			"the new post-NITB stack (osmo-bsc, osmo-mgw, osmo-msc, osmo-hlr, osmo-stp),\n"
+			"you may ues the '--yes-i-really-want-to-run-prehistoric-software' command line\n"
+			"argument.  DON'T EVER BOTHER THE DEVELOPERS IF YOU ENCOUNTER PROBLEMS WITH IT!!!\n"
+			"Use https://osmocom.org/projects/cellular-infrastructure/wiki/Osmocom_Network_In_The_Box\n"
+			DIVIDER);
+		exit(2);
+	} else {
+		fprintf(stderr, DIVIDER
+			"WARNING: You should not run osmo-nitb except for archaeological purpose.\n"
+			"It is ancient, unmaintained and obsolete for several years.  But you seem\n"
+			"to insist on using obsolete and known-broken software that ignores years \n"
+			"of hard development work. That's your choice, but you have been warned.\n"
+			"DON'T EVER BOTHER THE DEVELOPERS IF YOU ENCOUNTER PROBLEMS WITH IT!!!\n"
+			"Use https://osmocom.org/projects/cellular-infrastructure/wiki/Osmocom_Network_In_The_Box\n"
+			DIVIDER);
+	}
 
 	/* Allocate global gsm_network struct; choose socket/internal MNCC */
 	rc = bsc_network_alloc(mncc_sock_path?

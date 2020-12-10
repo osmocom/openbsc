@@ -64,7 +64,8 @@ class TestSMPPNITB(TestVTYBase):
 
     def vty_command(self):
         return ["./src/osmo-nitb/osmo-nitb", "-c",
-                "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg"]
+                "doc/examples/osmo-nitb/nanobts/osmo-nitb.cfg",
+                "--yes-i-really-want-to-run-prehistoric-software"]
 
     def vty_app(self):
         return (4242, "./src/osmo-nitb/osmo-nitb", "OpenBSC", "nitb")
