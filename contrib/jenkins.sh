@@ -54,7 +54,6 @@ build_project() {
 # Build and publish manuals
 if [ "$WITH_MANUALS" = "1" ]; then
 	# Build all manuals first
-	osmo-build-dep.sh osmo-gsm-manuals
 	for dir in "$base"/manuals/*/; do
 		make -C "$dir"
 	done
