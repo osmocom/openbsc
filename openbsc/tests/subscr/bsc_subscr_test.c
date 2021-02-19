@@ -118,6 +118,7 @@ int main()
 	log_set_print_timestamp(osmo_stderr_target, 0);
 	log_set_use_color(osmo_stderr_target, 0);
 	log_set_print_category(osmo_stderr_target, 1);
+	log_set_print_category_hex(osmo_stderr_target, 0);
 	log_set_category_filter(osmo_stderr_target, DREF, 1, LOGL_DEBUG);
 
 	bsc_subscribers = talloc_zero(NULL, struct llist_head);
