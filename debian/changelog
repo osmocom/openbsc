@@ -1,3 +1,19 @@
+openbsc (1.4.1) unstable; urgency=medium
+
+  [ Oliver Smith ]
+  * contrib/jenkins: don't build osmo-gsm-manuals
+  * debian/control: remove dh-systemd build-depend
+
+  [ Pau Espin Pedrol ]
+  * tests: Explicitly drop category from log
+  * gitignore: Ignore configure~ file
+  * tests: Replace deprecated API log_set_print_filename
+
+  [ Harald Welte ]
+  * add README.md to indicate what this repo is about
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 16 Nov 2021 18:35:09 +0100
+
 openbsc (1.4.0) unstable; urgency=medium
 
   [ Harald Welte ]
