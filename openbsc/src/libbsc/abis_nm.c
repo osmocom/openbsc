@@ -1993,6 +1993,8 @@ int abis_nm_perform_test(struct gsm_bts *bts, uint8_t obj_class,
 
 	if (!msg)
 		msg = nm_msgb_alloc();
+	if (!msg)
+		return -ENOMEM;
 
 	msgb_tv_push(msg, NM_ATT_AUTON_REPORT, auton_report);
 	msgb_tv_push(msg, NM_ATT_TEST_NO, test_nr);
