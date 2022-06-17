@@ -16,8 +16,8 @@ Build-Depends: debhelper (>= 9),
                libdbd-sqlite3,
                libpcap-dev
 Standards-Version: 3.9.8
-Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
-Vcs-Browser: http://openbsc.osmocom.org/trac/browser
+Vcs-Git: https://gitea.osmocom.org/cellular-infrastructure/openbsc
+Vcs-Browser: https://gitea.osmocom.org/cellular-infrastructure/openbsc
 Homepage: https://projects.osmocom.org/projects/openbsc
 
 Package: osmocom-bsc-sccplite
