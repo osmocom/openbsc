@@ -1,6 +1,6 @@
 To run the configuration parsing and output (VTY) test suite, first install
 
-  git://git.osmocom.org/python/osmo-python-tests
+  https://gitea.osmocom.org/cellular-infrastructure/osmo-python-tests
 
 and pass the following configure options here:
 
