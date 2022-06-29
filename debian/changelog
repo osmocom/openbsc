@@ -1,3 +1,14 @@
+openbsc (1.4.2) unstable; urgency=medium
+
+  [ Vadim Yanitskiy ]
+  * libbsc: fix potential null-dereference in abis_nm_perform_test()
+
+  [ Harald Welte ]
+  * update git repository URLs (git->https; gitea)
+  * update git URLs (git -> https; gitea)
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Wed, 29 Jun 2022 12:47:48 +0200
+
 openbsc (1.4.1) unstable; urgency=medium
 
   [ Oliver Smith ]
