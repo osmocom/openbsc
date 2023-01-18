@@ -8,50 +8,57 @@
 # * PUBLISH: upload manuals after building if set to "1" (ignored without WITH_MANUALS = "1")
 #
 
+if ! [ -x "$(command -v osmo-build-dep.sh)" ]; then
+	echo "Error: We need to have scripts/osmo-deps.sh from http://git.osmocom.org/osmo-ci/ in PATH !"
+	exit 2
+fi
+
+base="$PWD"
+deps="$base/deps"
+inst="$deps/install"
+export deps inst
+
 osmo-clean-workspace.sh
 
-artifact_deps() {
+mkdir -p "$deps"
+rm -rf "$inst"
 
-	x="$($1 libosmocore)"
-	x="${x}_$($1 libosmo-abis)"
-	x="${x}_$($1 libosmo-netif)"
-	x="${x}_$($1 libosmo-sccp "$sccp_branch")"
-	x="${x}_$($1 libsmpp34)"
+#
+# Build deps
+#
+osmo-build-dep.sh libosmocore master ac_cv_path_DOXYGEN=false
 
-	echo "${x}.tar.gz"
-}
+verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
 
-build_deps() {
+export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
+export LD_LIBRARY_PATH="$inst/lib"
+export PATH="$inst/bin:$PATH"
 
-	osmo-build-dep.sh libosmocore master ac_cv_path_DOXYGEN=false
-	verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
-	osmo-build-dep.sh libosmo-abis
-	osmo-build-dep.sh libosmo-netif
-	osmo-build-dep.sh libosmo-sccp "$sccp_branch"
-	PARALLEL_MAKE=-j1 osmo-build-dep.sh libsmpp34
-}
+osmo-build-dep.sh libosmo-abis
+osmo-build-dep.sh libosmo-netif
+osmo-build-dep.sh libosmo-sccp "$sccp_branch"
+PARALLEL_MAKE=-j1 osmo-build-dep.sh libsmpp34
 
-build_project() {
+#
+# Build project
+#
+cd "$base/openbsc"
+autoreconf --install --force
 
-	cd "$base/openbsc"
+./configure "$SMPP" "$MGCP" \
+	--enable-osmo-bsc \
+	--enable-nat  \
+	--enable-vty-tests \
+	--enable-external-tests
 
-	autoreconf --install --force
+"$MAKE" $PARALLEL_MAKE
+"$MAKE" check || cat-testlogs.sh
+"$MAKE" distcheck || cat-testlogs.sh
+"$MAKE" maintainer-clean
 
-	./configure "$SMPP" "$MGCP" \
-		--enable-osmo-bsc \
-		--enable-nat  \
-		--enable-vty-tests \
-		--enable-external-tests
-
-	"$MAKE" $PARALLEL_MAKE
-	"$MAKE" check || cat-testlogs.sh
-	"$MAKE" distcheck || cat-testlogs.sh
-	"$MAKE" maintainer-clean
-}
-
-. osmo-build.sh
-
+#
 # Build and publish manuals
+#
 if [ "$WITH_MANUALS" = "1" ]; then
 	# Build all manuals first
 	for dir in "$base"/manuals/*/; do
