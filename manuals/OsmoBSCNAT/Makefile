@@ -4,4 +4,5 @@ srcdir=$(CURDIR)
 VTY_REFERENCE = osmo-bsc-nat-vty-reference.xml
 include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.vty-reference.inc
 
+OSMO_REPOSITORY = openbsc
 include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.common.inc

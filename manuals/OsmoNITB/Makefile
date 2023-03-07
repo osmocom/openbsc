@@ -8,4 +8,5 @@ include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.asciidoc.inc
 VTY_REFERENCE = osmonitb-vty-reference.xml
 include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.vty-reference.inc
 
+OSMO_REPOSITORY = openbsc
 include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.common.inc
