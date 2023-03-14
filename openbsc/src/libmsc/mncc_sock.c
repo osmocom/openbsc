@@ -83,9 +83,9 @@ static void mncc_sock_close(struct mncc_sock_state *state)
 
 	LOGP(DMNCC, LOGL_NOTICE, "MNCC Socket has LOST connection\n");
 
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
-	osmo_fd_unregister(bfd);
 
 	/* re-enable the generation of ACCEPT for new connections */
 	state->listen_bfd.when |= OSMO_FD_READ;
