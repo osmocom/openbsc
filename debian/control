@@ -1,8 +1,8 @@
 Source: openbsc
-Maintainer: Harald Welte <laforge@gnumonks.org>
+Maintainer: Osmocom team <openbsc@lists.osmocom.org>
 Section: net
 Priority: optional
-Build-Depends: debhelper (>= 9),
+Build-Depends: debhelper (>= 10),
                autotools-dev,
                autoconf-archive,
                pkg-config,
