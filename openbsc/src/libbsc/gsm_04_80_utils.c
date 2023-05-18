@@ -1,6 +1,6 @@
 /* OpenBSC utility functions for 3GPP TS 04.80 */
 
-/* (C) 2016 by sysmocom s.m.f.c. GmbH <info@sysmocom.de>
+/* (C) 2016 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *

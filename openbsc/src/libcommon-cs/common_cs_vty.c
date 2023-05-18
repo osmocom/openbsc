@@ -1,6 +1,6 @@
 /* Code used by both libbsc and libmsc (common_cs means "BSC or MSC").
  *
- * (C) 2016 by sysmocom s.m.f.c. <info@sysmocom.de>
+ * (C) 2016 by sysmocom - s.f.m.c. <info@sysmocom.de>
  * (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
