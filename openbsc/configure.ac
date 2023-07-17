@@ -198,9 +198,9 @@ AC_ARG_ENABLE([external_tests],
 				[Include the VTY/CTRL tests in make check [default=no]]),
 		[enable_ext_tests="$enableval"],[enable_ext_tests="no"])
 if test "x$enable_ext_tests" = "xyes" ; then
-	AC_CHECK_PROG(PYTHON2_AVAIL,python2,yes)
-	if test "x$PYTHON2_AVAIL" != "xyes" ; then
-		AC_MSG_ERROR([Please install python2 to run the VTY/CTRL tests.])
+	AC_CHECK_PROG(PYTHON3_AVAIL,python3,yes)
+	if test "x$PYTHON3_AVAIL" != "xyes" ; then
+		AC_MSG_ERROR([Please install python3 to run the VTY/CTRL tests.])
 	fi
 	AC_CHECK_PROG(OSMOTESTEXT_CHECK,osmotestvty.py,yes)
 	 if test "x$OSMOTESTEXT_CHECK" != "xyes" ; then
